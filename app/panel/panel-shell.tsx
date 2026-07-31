@@ -10,6 +10,7 @@ const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
 const modules = [
   { name: "Genel Bakış", permission: null, href: "/panel" },
   { name: "CRM & Satış", permission: "crm.read", href: "/panel/crm" },
+  { name: "Satış Siparişleri", permission: "sales.read", href: "/panel/satis-siparisleri" },
   { name: "Arvos İş Takibi", permission: "work.read", href: "/panel/isler" },
   { name: "Finans", permission: "finance.read", href: "/panel/finans" },
   { name: "Tedarikçi Borçları", permission: "finance.read", href: "/panel/finans/tedarikci-borclari" },
@@ -21,12 +22,7 @@ const modules = [
   { name: "Aktivite Kayıtları", permission: "audit.read", href: "/panel/aktivite" },
 ];
 
-const planLabels = {
-  trial: "Deneme Paketi",
-  starter: "Başlangıç Paketi",
-  professional: "Profesyonel Paket",
-  enterprise: "Kurumsal Paket",
-} as const;
+const planLabels = { trial: "Deneme Paketi", starter: "Başlangıç Paketi", professional: "Profesyonel Paket", enterprise: "Kurumsal Paket" } as const;
 
 export default function PanelShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -39,42 +35,23 @@ export default function PanelShell({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (pathname === "/panel") {
-      setLoading(false);
-      return;
-    }
-
+    if (pathname === "/panel") { setLoading(false); return; }
     const current = getStoredSession();
-    if (!current) {
-      router.replace("/giris");
-      return;
-    }
-
-    setSession(current);
-    void loadWorkspace(current);
+    if (!current) { router.replace("/giris"); return; }
+    setSession(current); void loadWorkspace(current);
   }, [pathname, router]);
 
   async function loadWorkspace(current: SupabaseSession) {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const organizationRows = await getMyOrganizations(current);
       const storedOrganizationId = window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY);
       const active = organizationRows.find((item) => item.organization_id === storedOrganizationId) || organizationRows[0] || null;
-      setMemberships(organizationRows);
-      setMembership(active);
-
-      if (!active) {
-        router.replace("/panel");
-        return;
-      }
-
+      setMemberships(organizationRows); setMembership(active);
+      if (!active) { router.replace("/panel"); return; }
       setPermissions(await getRolePermissions(current, active.role?.id));
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Panel menüsü yüklenemedi.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Panel menüsü yüklenemedi."); }
+    finally { setLoading(false); }
   }
 
   const permissionCodes = useMemo(() => new Set(permissions.map((permission) => permission.code)), [permissions]);
@@ -82,49 +59,15 @@ export default function PanelShell({ children }: { children: ReactNode }) {
 
   async function handleOrganizationChange(organizationId: string) {
     if (!session || organizationId === membership?.organization_id) return;
-    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
-    window.location.reload();
+    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId); window.location.reload();
   }
 
-  async function handleLogout() {
-    window.localStorage.removeItem(ACTIVE_ORGANIZATION_KEY);
-    await signOut();
-    router.replace("/giris");
-  }
+  async function handleLogout() { window.localStorage.removeItem(ACTIVE_ORGANIZATION_KEY); await signOut(); router.replace("/giris"); }
 
   if (pathname === "/panel") return children;
   if (loading) return <main className="panel-loading">Panel ve çalışma alanı yükleniyor...</main>;
   if (!membership) return <main className="panel-loading">Çalışma alanı bulunamadı.</main>;
 
   const organization = membership.organization;
-
-  return (
-    <div className="panel-shell">
-      <aside className="panel-sidebar">
-        <button className="panel-logo panel-logo-button" type="button" onClick={() => router.push("/panel")}>
-          <img src="/arvoos-logo.png" alt="ArvoOS" />
-        </button>
-        <div className="panel-company">
-          <small>AKTİF ÇALIŞMA ALANI</small>
-          {memberships.length > 1 ? (
-            <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => void handleOrganizationChange(event.target.value)}>
-              {memberships.map((item) => <option key={item.organization_id} value={item.organization_id}>{item.organization.name}</option>)}
-            </select>
-          ) : <b>{organization.name}</b>}
-          <span>{planLabels[organization.plan]}</span>
-        </div>
-        <nav aria-label="Panel modülleri">
-          {visibleModules.map((module) => {
-            const active = module.href === "/panel" ? pathname === "/panel" : pathname === module.href || pathname.startsWith(`${module.href}/`);
-            return <button key={module.href} className={active ? "active" : undefined} type="button" onClick={() => router.push(module.href)}>{module.name}</button>;
-          })}
-        </nav>
-        <button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button>
-      </aside>
-      <div className="panel-module-content">
-        {error && <div className="panel-error panel-error-wide" role="alert">{error}</div>}
-        {children}
-      </div>
-    </div>
-  );
+  return <div className="panel-shell"><aside className="panel-sidebar"><button className="panel-logo panel-logo-button" type="button" onClick={() => router.push("/panel")}><img src="/arvoos-logo.png" alt="ArvoOS" /></button><div className="panel-company"><small>AKTİF ÇALIŞMA ALANI</small>{memberships.length > 1 ? <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => void handleOrganizationChange(event.target.value)}>{memberships.map((item) => <option key={item.organization_id} value={item.organization_id}>{item.organization.name}</option>)}</select> : <b>{organization.name}</b>}<span>{planLabels[organization.plan]}</span></div><nav aria-label="Panel modülleri">{visibleModules.map((module) => { const active = module.href === "/panel" ? pathname === "/panel" : pathname === module.href || pathname.startsWith(`${module.href}/`); return <button key={module.href} className={active ? "active" : undefined} type="button" onClick={() => router.push(module.href)}>{module.name}</button>; })}</nav><button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button></aside><div className="panel-module-content">{error && <div className="panel-error panel-error-wide" role="alert">{error}</div>}{children}</div></div>;
 }

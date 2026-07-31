@@ -8,6 +8,7 @@ import "./crm.css";
 import "./work.css";
 import "./finance.css";
 import "./inventory.css";
+import "./sales.css";
 import "./shell.css";
 
 export const metadata: Metadata = {
