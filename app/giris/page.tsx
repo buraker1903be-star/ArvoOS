@@ -20,30 +20,99 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:"32px",background:"radial-gradient(circle at 20% 10%, rgba(61,92,255,.18), transparent 34%), #07101f",color:"#fff",fontFamily:"Arial, sans-serif"}}>
-      <section style={{width:"min(100%, 460px)",padding:"40px",border:"1px solid rgba(255,255,255,.12)",borderRadius:"28px",background:"rgba(13,24,43,.88)",boxShadow:"0 28px 80px rgba(0,0,0,.35)"}}>
-        <a href="/" style={{display:"inline-flex",marginBottom:"34px",color:"#fff",textDecoration:"none",fontWeight:800,fontSize:"22px"}}>ArvoOS</a>
-        <p style={{margin:"0 0 8px",fontSize:"13px",letterSpacing:".12em",color:"#8da6ff",fontWeight:700}}>GÜVENLİ KURUMSAL ERİŞİM</p>
-        <h1 style={{margin:"0 0 12px",fontSize:"38px",lineHeight:1.08}}>Hesabınıza giriş yapın</h1>
-        <p style={{margin:"0 0 28px",color:"#aebbd0",lineHeight:1.65}}>Ekibinizin iş akışlarına, finansal verilerine ve yönetim paneline tek noktadan erişin.</p>
+    <main className="login-page">
+      <style>{`
+        .login-page{min-height:100vh;background:radial-gradient(circle at 10% 18%,#f7faf3 0,transparent 34%),radial-gradient(circle at 88% 14%,#eaf2df 0,transparent 31%),#fff;color:var(--n);position:relative;overflow:hidden}
+        .login-page:before{content:"";position:absolute;width:620px;height:620px;border-radius:50%;right:-240px;top:-180px;background:radial-gradient(circle,#8eae6838,transparent 67%);filter:blur(8px)}
+        .login-shell{min-height:100vh;max-width:var(--page);margin:auto;padding:32px 48px;display:grid;grid-template-rows:auto 1fr auto;position:relative;z-index:1}
+        .login-header{height:70px;display:flex;align-items:center;justify-content:space-between}
+        .login-logo{display:flex;width:180px;height:58px;align-items:center;overflow:hidden}
+        .login-logo img{width:180px;height:101px;object-fit:contain}
+        .back-link{font-family:var(--font-heading);font-size:13px;font-weight:700;color:var(--n);padding:11px 16px;border:1px solid var(--line);border-radius:10px;background:#ffffffb8;transition:.25s}
+        .back-link:hover{border-color:#a8bd91;transform:translateY(-2px)}
+        .login-content{display:grid;grid-template-columns:1.08fr .82fr;gap:90px;align-items:center;padding:48px 0 70px}
+        .login-intro{max-width:650px}
+        .login-kicker{font-family:var(--font-heading);font-size:11px;letter-spacing:.17em;font-weight:800;color:var(--gd);margin-bottom:22px}
+        .login-intro h1{font-family:var(--font-heading);font-size:56px;line-height:1.08;letter-spacing:-.045em;margin:0}
+        .login-intro h1 span{display:block;color:var(--gd)}
+        .login-intro>p{max-width:590px;font-size:17px;line-height:1.75;color:var(--muted);margin:25px 0 32px}
+        .login-features{display:grid;gap:13px}
+        .login-feature{display:flex;align-items:center;gap:12px;font-size:13px;color:#566573;font-weight:600}
+        .login-feature i{width:30px;height:30px;border-radius:8px;background:#edf3e7;color:var(--gd);display:grid;place-items:center;font-style:normal;font-weight:800}
+        .login-card{width:100%;max-width:470px;justify-self:end;padding:39px;background:#fffffff0;border:1px solid #dfe6dc;border-radius:20px;box-shadow:0 30px 75px #06264e17;backdrop-filter:blur(18px)}
+        .login-card-head{margin-bottom:27px}
+        .login-card-head small{font-family:var(--font-heading);font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--gd)}
+        .login-card-head h2{font-family:var(--font-heading);font-size:30px;letter-spacing:-.03em;margin:9px 0 8px}
+        .login-card-head p{font-size:13px;line-height:1.65;color:var(--muted);margin:0}
+        .login-form{display:grid;gap:17px}
+        .login-label{display:grid;gap:8px;font-size:13px;font-weight:700;color:var(--n)}
+        .login-input{height:52px;border-radius:11px;border:1px solid #d9e1d6;background:#fbfcfa;color:var(--n);padding:0 15px;font:500 15px var(--font-body);outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+        .login-input:focus{border-color:#86a766;background:#fff;box-shadow:0 0 0 4px #749b4918}
+        .login-row{display:flex;justify-content:space-between;align-items:center;gap:15px;font-size:12px}
+        .remember{display:flex;align-items:center;gap:8px;color:var(--muted)}
+        .remember input{accent-color:var(--g)}
+        .forgot{color:var(--gd);font-weight:700}
+        .login-submit{min-height:54px;border:0;border-radius:12px;background:linear-gradient(135deg,#7ca64d,#5f8738);color:#fff;font:700 15px var(--font-heading);cursor:pointer;box-shadow:0 12px 28px #6c923a2d;transition:transform .25s,box-shadow .25s}
+        .login-submit:hover{transform:translateY(-2px);box-shadow:0 18px 36px #6c923a42}
+        .login-message{margin:0;padding:13px 14px;border-radius:10px;background:#edf3e7;color:#52752f;font-size:12px;line-height:1.55;border:1px solid #dce8d2}
+        .login-note{margin:23px 0 0;text-align:center;color:#7c8993;font-size:12px}
+        .login-footer{height:58px;border-top:1px solid #edf0ec;display:flex;align-items:flex-end;justify-content:space-between;color:#89949d;font-size:11px}
+        .login-footer a{color:var(--gd);font-weight:700}
+        @media(max-width:900px){.login-shell{padding:24px}.login-content{grid-template-columns:1fr;gap:42px;padding-top:35px}.login-intro{text-align:center;margin:auto}.login-intro h1{font-size:44px}.login-intro>p{margin-left:auto;margin-right:auto}.login-features{max-width:430px;margin:auto;text-align:left}.login-card{justify-self:center}.login-footer{gap:20px}}
+        @media(max-width:560px){.login-shell{padding:18px}.login-header{height:60px}.login-logo,.login-logo img{width:145px}.back-link{font-size:11px;padding:9px 11px}.login-content{padding:28px 0 45px}.login-intro h1{font-size:36px}.login-intro>p{font-size:15px}.login-card{padding:27px 22px;border-radius:16px}.login-card-head h2{font-size:26px}.login-row{align-items:flex-start;flex-direction:column}.login-footer{height:auto;padding:20px 0;flex-direction:column;align-items:center;text-align:center}}
+      `}</style>
 
-        <form onSubmit={handleSubmit} style={{display:"grid",gap:"18px"}}>
-          <label style={{display:"grid",gap:"8px",fontSize:"14px",fontWeight:700}}>E-posta
-            <input name="email" type="email" autoComplete="email" placeholder="ad@sirketiniz.com" style={{height:"52px",borderRadius:"14px",border:"1px solid rgba(255,255,255,.14)",background:"rgba(255,255,255,.06)",color:"#fff",padding:"0 16px",fontSize:"16px",outline:"none"}} />
-          </label>
-          <label style={{display:"grid",gap:"8px",fontSize:"14px",fontWeight:700}}>Şifre
-            <input name="password" type="password" autoComplete="current-password" placeholder="Şifreniz" style={{height:"52px",borderRadius:"14px",border:"1px solid rgba(255,255,255,.14)",background:"rgba(255,255,255,.06)",color:"#fff",padding:"0 16px",fontSize:"16px",outline:"none"}} />
-          </label>
-          <div style={{display:"flex",justifyContent:"space-between",gap:"16px",fontSize:"14px"}}>
-            <label style={{display:"flex",alignItems:"center",gap:"8px",color:"#aebbd0"}}><input type="checkbox" /> Beni hatırla</label>
-            <a href="mailto:destek@arvo-os.com?subject=ArvoOS%20Şifre%20Sıfırlama" style={{color:"#9db0ff",textDecoration:"none"}}>Şifremi unuttum</a>
+      <div className="login-shell">
+        <header className="login-header">
+          <a className="login-logo" href="/" aria-label="ArvoOS ana sayfa">
+            <img src="/arvoos-logo.png" alt="ArvoOS" />
+          </a>
+          <a className="back-link" href="/">← Ana sayfaya dön</a>
+        </header>
+
+        <section className="login-content">
+          <div className="login-intro">
+            <div className="login-kicker">ARVOOS KURUMSAL ERİŞİM</div>
+            <h1>Tüm işletmeniz.<span>Tek bir çalışma alanında.</span></h1>
+            <p>Müşterilerinizden finansa, ekip görevlerinden günlük operasyonlara kadar tüm süreçlerinize güvenli biçimde erişin.</p>
+            <div className="login-features">
+              <div className="login-feature"><i>✓</i> Rol bazlı güvenli erişim ve yetkilendirme</div>
+              <div className="login-feature"><i>✓</i> Tüm ekipler için ortak ve güncel çalışma alanı</div>
+              <div className="login-feature"><i>✓</i> İş akışları, raporlar ve bildirimler tek merkezde</div>
+            </div>
           </div>
-          <button type="submit" style={{height:"54px",border:0,borderRadius:"14px",background:"#5d72ff",color:"#fff",fontSize:"16px",fontWeight:800,cursor:"pointer"}}>Giriş Yap →</button>
-          {message && <p role="status" style={{margin:0,padding:"13px 14px",borderRadius:"12px",background:"rgba(93,114,255,.13)",color:"#cbd4ff",fontSize:"14px",lineHeight:1.5}}>{message}</p>}
-        </form>
 
-        <p style={{margin:"26px 0 0",color:"#8998af",fontSize:"13px",textAlign:"center"}}>Hesabınız yoksa kurum yöneticinizden davet isteyin.</p>
-      </section>
+          <section className="login-card">
+            <div className="login-card-head">
+              <small>HOŞ GELDİNİZ</small>
+              <h2>Hesabınıza giriş yapın</h2>
+              <p>ArvoOS çalışma alanınıza erişmek için kurumsal hesap bilgilerinizi girin.</p>
+            </div>
+
+            <form className="login-form" onSubmit={handleSubmit}>
+              <label className="login-label">E-posta adresi
+                <input className="login-input" name="email" type="email" autoComplete="email" placeholder="ad@sirketiniz.com" />
+              </label>
+              <label className="login-label">Şifre
+                <input className="login-input" name="password" type="password" autoComplete="current-password" placeholder="Şifrenizi girin" />
+              </label>
+              <div className="login-row">
+                <label className="remember"><input type="checkbox" /> Beni hatırla</label>
+                <a className="forgot" href="mailto:destek@arvo-os.com?subject=ArvoOS%20Şifre%20Sıfırlama">Şifremi unuttum</a>
+              </div>
+              <button className="login-submit" type="submit">Giriş Yap →</button>
+              {message && <p className="login-message" role="status">{message}</p>}
+            </form>
+
+            <p className="login-note">Hesabınız yoksa kurum yöneticinizden davet isteyin.</p>
+          </section>
+        </section>
+
+        <footer className="login-footer">
+          <span>© 2026 ArvoOS. Tüm hakları saklıdır.</span>
+          <span>Yardıma mı ihtiyacınız var? <a href="mailto:destek@arvo-os.com">Destek ekibine ulaşın</a></span>
+        </footer>
+      </div>
     </main>
   );
 }
