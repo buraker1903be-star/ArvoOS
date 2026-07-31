@@ -8,7 +8,7 @@ import { bootstrapOrganization, getMyOrganizations, getRolePermissions, type Org
 const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
 
 const modules = [
-  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read", href: null },
+  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read", href: "/panel/crm" },
   { name: "İş Akışları", description: "Görevler, sorumlular ve ilerleme", permission: "crm.read", href: null },
   { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read", href: null },
   { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "inventory.read", href: null },
