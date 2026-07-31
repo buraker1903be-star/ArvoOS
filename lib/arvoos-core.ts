@@ -11,18 +11,39 @@ export type Organization = {
   is_active: boolean;
 };
 
+export type RoleSummary = {
+  id: string;
+  name: string;
+  code: string;
+};
+
 export type OrganizationMembership = {
   organization_id: string;
   user_id: string;
   status: "invited" | "active" | "suspended";
   organization: Organization;
-  role: { id: string; name: string; code: string } | null;
+  role: RoleSummary | null;
 };
 
 export type Permission = {
   code: string;
   name: string;
   module: string;
+};
+
+export type OrganizationMember = {
+  organization_id: string;
+  user_id: string;
+  status: "invited" | "active" | "suspended";
+  joined_at: string | null;
+  created_at: string;
+  role: RoleSummary | null;
+  profile: {
+    id: string;
+    full_name: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+  } | null;
 };
 
 type RolePermissionRow = {
@@ -74,6 +95,23 @@ export async function getRolePermissions(session: SupabaseSession, roleId?: stri
   );
 
   return rows.flatMap((row) => row.permission ? [row.permission] : []);
+}
+
+export async function getOrganizationMembers(session: SupabaseSession, organizationId: string) {
+  const select = encodeURIComponent("organization_id,user_id,status,joined_at,created_at,role:roles(id,name,code),profile:profiles(id,full_name,phone,avatar_url)");
+  const organizationFilter = encodeURIComponent(`eq.${organizationId}`);
+  return coreRequest<OrganizationMember[]>(
+    `/rest/v1/organization_members?select=${select}&organization_id=${organizationFilter}&order=created_at.asc`,
+    { method: "GET", accessToken: session.access_token },
+  );
+}
+
+export async function getOrganizationRoles(session: SupabaseSession, organizationId: string) {
+  const organizationFilter = encodeURIComponent(`eq.${organizationId}`);
+  return coreRequest<RoleSummary[]>(
+    `/rest/v1/roles?select=id,name,code&organization_id=${organizationFilter}&order=name.asc`,
+    { method: "GET", accessToken: session.access_token },
+  );
 }
 
 export async function bootstrapOrganization(session: SupabaseSession, name: string, slug: string) {
