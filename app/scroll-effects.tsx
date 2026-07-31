@@ -44,13 +44,23 @@ export default function ScrollEffects() {
       stage.style.setProperty("--tilt-y", `${-x}deg`);
     };
 
+    const onLoginClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const loginLink = target?.closest<HTMLAnchorElement>('a[href="#giris"]');
+      if (!loginLink) return;
+      event.preventDefault();
+      window.location.assign("/giris");
+    };
+
     onScroll();
     addEventListener("scroll", onScroll, { passive: true });
     addEventListener("pointermove", onPointerMove, { passive: true });
+    document.addEventListener("click", onLoginClick);
     return () => {
       observer.disconnect();
       removeEventListener("scroll", onScroll);
       removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("click", onLoginClick);
     };
   }, []);
 
