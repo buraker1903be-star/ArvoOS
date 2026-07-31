@@ -11,48 +11,27 @@ export type Organization = {
   is_active: boolean;
 };
 
-export type RoleSummary = {
-  id: string;
-  name: string;
-  code: string;
-};
-
 export type OrganizationMembership = {
   organization_id: string;
   user_id: string;
   status: "invited" | "active" | "suspended";
   organization: Organization;
-  role: RoleSummary | null;
+  role: { id: string; name: string; code: string } | null;
 };
 
-export type Permission = {
-  code: string;
-  name: string;
-  module: string;
-};
-
+export type Permission = { code: string; name: string; module: string };
+export type RoleSummary = { id: string; name: string; code: string };
 export type OrganizationMember = {
   organization_id: string;
   user_id: string;
   status: "invited" | "active" | "suspended";
   joined_at: string | null;
-  created_at: string;
+  profile: { full_name: string | null; phone: string | null } | null;
   role: RoleSummary | null;
-  profile: {
-    id: string;
-    full_name: string | null;
-    phone: string | null;
-    avatar_url: string | null;
-  } | null;
 };
 
-type RolePermissionRow = {
-  permission: Permission | null;
-};
-
-type CoreRequestOptions = RequestInit & {
-  accessToken: string;
-};
+type RolePermissionRow = { permission: Permission | null };
+type CoreRequestOptions = RequestInit & { accessToken: string };
 
 async function coreRequest<T>(path: string, options: CoreRequestOptions): Promise<T> {
   const { accessToken, headers, ...requestOptions } = options;
@@ -86,32 +65,64 @@ export async function getMyOrganizations(session: SupabaseSession) {
 
 export async function getRolePermissions(session: SupabaseSession, roleId?: string | null) {
   if (!roleId) return [];
-
   const select = encodeURIComponent("permission:permissions(code,name,module)");
   const roleFilter = encodeURIComponent(`eq.${roleId}`);
   const rows = await coreRequest<RolePermissionRow[]>(
     `/rest/v1/role_permissions?select=${select}&role_id=${roleFilter}`,
     { method: "GET", accessToken: session.access_token },
   );
-
   return rows.flatMap((row) => row.permission ? [row.permission] : []);
 }
 
 export async function getOrganizationMembers(session: SupabaseSession, organizationId: string) {
-  const select = encodeURIComponent("organization_id,user_id,status,joined_at,created_at,role:roles(id,name,code),profile:profiles(id,full_name,phone,avatar_url)");
-  const organizationFilter = encodeURIComponent(`eq.${organizationId}`);
+  const select = encodeURIComponent("organization_id,user_id,status,joined_at,profile:profiles(full_name,phone),role:roles(id,name,code)");
   return coreRequest<OrganizationMember[]>(
-    `/rest/v1/organization_members?select=${select}&organization_id=${organizationFilter}&order=created_at.asc`,
+    `/rest/v1/organization_members?select=${select}&organization_id=eq.${organizationId}&order=created_at.asc`,
     { method: "GET", accessToken: session.access_token },
   );
 }
 
 export async function getOrganizationRoles(session: SupabaseSession, organizationId: string) {
-  const organizationFilter = encodeURIComponent(`eq.${organizationId}`);
   return coreRequest<RoleSummary[]>(
-    `/rest/v1/roles?select=id,name,code&organization_id=${organizationFilter}&order=name.asc`,
+    `/rest/v1/roles?select=id,name,code&organization_id=eq.${organizationId}&order=name.asc`,
     { method: "GET", accessToken: session.access_token },
   );
+}
+
+export async function updateMemberAccess(
+  session: SupabaseSession,
+  organizationId: string,
+  userId: string,
+  roleId: string,
+  status: OrganizationMember["status"],
+) {
+  return coreRequest<void>("/rest/v1/rpc/update_member_access", {
+    method: "POST",
+    accessToken: session.access_token,
+    body: JSON.stringify({
+      target_organization_id: organizationId,
+      target_user_id: userId,
+      target_role_id: roleId,
+      target_status: status,
+    }),
+  });
+}
+
+export async function createOrganizationInvitation(
+  session: SupabaseSession,
+  organizationId: string,
+  email: string,
+  roleId: string,
+) {
+  return coreRequest<string>("/rest/v1/rpc/create_organization_invitation", {
+    method: "POST",
+    accessToken: session.access_token,
+    body: JSON.stringify({
+      target_organization_id: organizationId,
+      target_email: email,
+      target_role_id: roleId,
+    }),
+  });
 }
 
 export async function bootstrapOrganization(session: SupabaseSession, name: string, slug: string) {
