@@ -19,6 +19,16 @@ export type OrganizationMembership = {
   role: { id: string; name: string; code: string } | null;
 };
 
+export type Permission = {
+  code: string;
+  name: string;
+  module: string;
+};
+
+type RolePermissionRow = {
+  permission: Permission | null;
+};
+
 type CoreRequestOptions = RequestInit & {
   accessToken: string;
 };
@@ -51,6 +61,19 @@ export async function getMyOrganizations(session: SupabaseSession) {
     `/rest/v1/organization_members?select=${select}&user_id=${userFilter}&status=eq.active`,
     { method: "GET", accessToken: session.access_token },
   );
+}
+
+export async function getRolePermissions(session: SupabaseSession, roleId?: string | null) {
+  if (!roleId) return [];
+
+  const select = encodeURIComponent("permission:permissions(code,name,module)");
+  const roleFilter = encodeURIComponent(`eq.${roleId}`);
+  const rows = await coreRequest<RolePermissionRow[]>(
+    `/rest/v1/role_permissions?select=${select}&role_id=${roleFilter}`,
+    { method: "GET", accessToken: session.access_token },
+  );
+
+  return rows.flatMap((row) => row.permission ? [row.permission] : []);
 }
 
 export async function bootstrapOrganization(session: SupabaseSession, name: string, slug: string) {
