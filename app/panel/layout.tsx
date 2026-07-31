@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./panel.css";
+import "./team.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS Panel",
