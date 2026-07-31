@@ -16,6 +16,7 @@ const modules = [
   { name: "Organizasyon Yapısı", description: "Şube, lokasyon ve departman yönetimi", permission: "organization.manage", href: "/panel/organizasyon" },
   { name: "Ekip Yönetimi", description: "Kullanıcı, rol ve hesap durumları", permission: "users.read", href: "/panel/ekip" },
   { name: "Rol ve Yetkiler", description: "Rol bazlı modül ve işlem izinleri", permission: "roles.manage", href: "/panel/roller" },
+  { name: "Aktivite Kayıtları", description: "Kullanıcı ve sistem işlemlerinin denetim geçmişi", permission: "audit.read", href: "/panel/aktivite" },
 ];
 
 const planLabels = { trial: "Deneme Paketi", starter: "Başlangıç Paketi", professional: "Profesyonel Paket", enterprise: "Kurumsal Paket" } as const;
