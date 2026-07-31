@@ -10,6 +10,7 @@ export type RoleSummary = { id: string; name: string; code: string; description?
 export type OrganizationMember = { organization_id: string; user_id: string; status: "invited" | "active" | "suspended"; joined_at: string | null; profile: { full_name: string | null; phone: string | null } | null; role: RoleSummary | null };
 export type Branch = { id: string; organization_id: string; name: string; code: string; address: string | null; is_active: boolean; created_at: string };
 export type Department = { id: string; organization_id: string; branch_id: string | null; name: string; code: string; is_active: boolean; created_at: string; branch: { id: string; name: string; code: string } | null };
+export type ActivityLog = { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; entity_id: string | null; metadata: Record<string, unknown>; created_at: string; actor: { full_name: string | null; phone: string | null } | null };
 
 type RolePermissionRow = { permission: Permission | null };
 type CoreRequestOptions = RequestInit & { accessToken: string };
@@ -82,6 +83,11 @@ export async function saveBranch(session: SupabaseSession, organizationId: strin
 
 export async function saveDepartment(session: SupabaseSession, organizationId: string, department: Partial<Department> & Pick<Department, "name" | "code" | "is_active">) {
   return coreRequest<string>("/rest/v1/rpc/save_department", { method: "POST", accessToken: session.access_token, body: JSON.stringify({ target_organization_id: organizationId, target_department_id: department.id || null, target_branch_id: department.branch_id || null, target_name: department.name, target_code: department.code, target_is_active: department.is_active }) });
+}
+
+export async function getOrganizationActivityLogs(session: SupabaseSession, organizationId: string, limit = 200) {
+  const select = encodeURIComponent("id,organization_id,actor_user_id,action,entity_type,entity_id,metadata,created_at,actor:profiles(full_name,phone)");
+  return coreRequest<ActivityLog[]>(`/rest/v1/activity_logs?select=${select}&organization_id=eq.${organizationId}&order=created_at.desc&limit=${limit}`, { method: "GET", accessToken: session.access_token });
 }
 
 export async function bootstrapOrganization(session: SupabaseSession, name: string, slug: string) {
