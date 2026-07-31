@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { getStoredSession, signOut, type SupabaseSession } from "@/lib/supabase-auth";
 import { bootstrapOrganization, getMyOrganizations, type OrganizationMembership } from "@/lib/arvoos-core";
 
+const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
+
 const modules = [
   ["CRM & Satış", "Müşteri, talep ve teklif süreçleri"],
   ["İş Akışları", "Görevler, sorumlular ve ilerleme"],
@@ -24,15 +26,20 @@ const planLabels = {
 export default function PanelPage() {
   const router = useRouter();
   const [session, setSession] = useState<SupabaseSession | null>(null);
+  const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
   const [membership, setMembership] = useState<OrganizationMembership | null>(null);
   const [checking, setChecking] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-  async function loadOrganization(current: SupabaseSession) {
+  async function loadOrganizations(current: SupabaseSession) {
     try {
       const organizations = await getMyOrganizations(current);
-      setMembership(organizations[0] || null);
+      const storedOrganizationId = window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY);
+      const active = organizations.find((item) => item.organization_id === storedOrganizationId) || organizations[0] || null;
+      setMemberships(organizations);
+      setMembership(active);
+      if (active) window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, active.organization_id);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Çalışma alanı yüklenemedi.");
     } finally {
@@ -48,8 +55,16 @@ export default function PanelPage() {
     }
 
     setSession(current);
-    void loadOrganization(current);
+    void loadOrganizations(current);
   }, [router]);
+
+  function handleOrganizationChange(organizationId: string) {
+    const nextMembership = memberships.find((item) => item.organization_id === organizationId);
+    if (!nextMembership) return;
+    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
+    setMembership(nextMembership);
+    setError("");
+  }
 
   async function handleCreateOrganization(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,8 +83,9 @@ export default function PanelPage() {
     setError("");
 
     try {
-      await bootstrapOrganization(session, name, slug);
-      await loadOrganization(session);
+      const organizationId = await bootstrapOrganization(session, name, slug);
+      window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
+      await loadOrganizations(session);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Firma oluşturulamadı.");
     } finally {
@@ -78,7 +94,8 @@ export default function PanelPage() {
   }
 
   async function handleLogout() {
-    signOut();
+    window.localStorage.removeItem(ACTIVE_ORGANIZATION_KEY);
+    await signOut();
     router.replace("/giris");
   }
 
@@ -113,7 +130,15 @@ export default function PanelPage() {
     <main className="panel-shell">
       <aside className="panel-sidebar">
         <a className="panel-logo" href="/"><img src="/arvoos-logo.png" alt="ArvoOS" /></a>
-        <div className="panel-company"><small>AKTİF ÇALIŞMA ALANI</small><b>{organization.name}</b><span>{planLabels[organization.plan]}</span></div>
+        <div className="panel-company">
+          <small>AKTİF ÇALIŞMA ALANI</small>
+          {memberships.length > 1 ? (
+            <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => handleOrganizationChange(event.target.value)}>
+              {memberships.map((item) => <option key={item.organization_id} value={item.organization_id}>{item.organization.name}</option>)}
+            </select>
+          ) : <b>{organization.name}</b>}
+          <span>{planLabels[organization.plan]}</span>
+        </div>
         <nav><button className="active">Genel Bakış</button>{modules.map(([name]) => <button key={name}>{name}</button>)}</nav>
         <button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button>
       </aside>
@@ -127,7 +152,7 @@ export default function PanelPage() {
         {error && <div className="panel-error panel-error-wide" role="alert">{error}</div>}
 
         <section className="hero-card">
-          <div><small>SİSTEM DURUMU</small><h2>{organization.name} çalışma alanı aktif.</h2><p>Organizasyon, üyelik ve rol bilgileriniz Supabase üzerinden gerçek zamanlı olarak doğrulanıyor. Firma verileri diğer müşterilerden tenant bazında izole ediliyor.</p></div>
+          <div><small>SİSTEM DURUMU</small><h2>{organization.name} çalışma alanı aktif.</h2><p>Organizasyon, üyelik ve rol bilgileriniz Supabase üzerinden doğrulanıyor. Firma verileri diğer müşterilerden tenant bazında izole ediliyor.</p></div>
           <strong>{organization.is_active ? "Aktif" : "Askıda"}</strong>
         </section>
 
