@@ -1,19 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredSession, signOut, type SupabaseSession } from "@/lib/supabase-auth";
-import { bootstrapOrganization, getMyOrganizations, type OrganizationMembership } from "@/lib/arvoos-core";
+import { bootstrapOrganization, getMyOrganizations, getRolePermissions, type OrganizationMembership, type Permission } from "@/lib/arvoos-core";
 
 const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
 
 const modules = [
-  ["CRM & Satış", "Müşteri, talep ve teklif süreçleri"],
-  ["İş Akışları", "Görevler, sorumlular ve ilerleme"],
-  ["Finans", "Tahsilat, gider ve nakit akışı"],
-  ["Satın Alma", "Tedarikçi, onay ve teslimat"],
-  ["Stok", "Ürün, hizmet ve kritik seviye"],
-  ["İnsan Kaynakları", "Ekip, rol ve izin yönetimi"],
+  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read" },
+  { name: "İş Akışları", description: "Görevler, sorumlular ve ilerleme", permission: "crm.read" },
+  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read" },
+  { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "inventory.read" },
+  { name: "Stok", description: "Ürün, hizmet ve kritik seviye", permission: "inventory.read" },
+  { name: "İnsan Kaynakları", description: "Ekip, rol ve izin yönetimi", permission: "users.read" },
 ];
 
 const planLabels = {
@@ -28,9 +28,24 @@ export default function PanelPage() {
   const [session, setSession] = useState<SupabaseSession | null>(null);
   const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
   const [membership, setMembership] = useState<OrganizationMembership | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [checking, setChecking] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+
+  const permissionCodes = useMemo(() => new Set(permissions.map((permission) => permission.code)), [permissions]);
+  const visibleModules = modules.filter((module) => permissionCodes.has(module.permission));
+
+  async function activateMembership(current: SupabaseSession, nextMembership: OrganizationMembership | null) {
+    setMembership(nextMembership);
+    setPermissions([]);
+
+    if (!nextMembership) return;
+
+    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, nextMembership.organization_id);
+    const rolePermissions = await getRolePermissions(current, nextMembership.role?.id);
+    setPermissions(rolePermissions);
+  }
 
   async function loadOrganizations(current: SupabaseSession) {
     try {
@@ -38,8 +53,7 @@ export default function PanelPage() {
       const storedOrganizationId = window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY);
       const active = organizations.find((item) => item.organization_id === storedOrganizationId) || organizations[0] || null;
       setMemberships(organizations);
-      setMembership(active);
-      if (active) window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, active.organization_id);
+      await activateMembership(current, active);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Çalışma alanı yüklenemedi.");
     } finally {
@@ -58,12 +72,20 @@ export default function PanelPage() {
     void loadOrganizations(current);
   }, [router]);
 
-  function handleOrganizationChange(organizationId: string) {
+  async function handleOrganizationChange(organizationId: string) {
+    if (!session) return;
     const nextMembership = memberships.find((item) => item.organization_id === organizationId);
     if (!nextMembership) return;
-    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
-    setMembership(nextMembership);
+
+    setChecking(true);
     setError("");
+    try {
+      await activateMembership(session, nextMembership);
+    } catch (permissionError) {
+      setError(permissionError instanceof Error ? permissionError.message : "Yetkiler yüklenemedi.");
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function handleCreateOrganization(event: FormEvent<HTMLFormElement>) {
@@ -99,9 +121,7 @@ export default function PanelPage() {
     router.replace("/giris");
   }
 
-  if (checking) {
-    return <main className="panel-loading">Çalışma alanı doğrulanıyor...</main>;
-  }
+  if (checking) return <main className="panel-loading">Çalışma alanı ve yetkiler doğrulanıyor...</main>;
 
   if (!membership) {
     return (
@@ -133,13 +153,16 @@ export default function PanelPage() {
         <div className="panel-company">
           <small>AKTİF ÇALIŞMA ALANI</small>
           {memberships.length > 1 ? (
-            <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => handleOrganizationChange(event.target.value)}>
+            <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => void handleOrganizationChange(event.target.value)}>
               {memberships.map((item) => <option key={item.organization_id} value={item.organization_id}>{item.organization.name}</option>)}
             </select>
           ) : <b>{organization.name}</b>}
           <span>{planLabels[organization.plan]}</span>
         </div>
-        <nav><button className="active">Genel Bakış</button>{modules.map(([name]) => <button key={name}>{name}</button>)}</nav>
+        <nav>
+          <button className="active">Genel Bakış</button>
+          {visibleModules.map((module) => <button key={module.name}>{module.name}</button>)}
+        </nav>
         <button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button>
       </aside>
 
@@ -152,19 +175,23 @@ export default function PanelPage() {
         {error && <div className="panel-error panel-error-wide" role="alert">{error}</div>}
 
         <section className="hero-card">
-          <div><small>SİSTEM DURUMU</small><h2>{organization.name} çalışma alanı aktif.</h2><p>Organizasyon, üyelik ve rol bilgileriniz Supabase üzerinden doğrulanıyor. Firma verileri diğer müşterilerden tenant bazında izole ediliyor.</p></div>
+          <div><small>SİSTEM DURUMU</small><h2>{organization.name} çalışma alanı aktif.</h2><p>Menüler ve modüller, Supabase rol ve izin kayıtlarına göre gösteriliyor. Kullanıcı yalnızca yetkili olduğu çalışma alanlarını ve modülleri görebilir.</p></div>
           <strong>{organization.is_active ? "Aktif" : "Askıda"}</strong>
         </section>
 
         <section className="metric-grid">
-          <article><small>Açık talepler</small><b>0</b><span>CRM veri modeli sırada</span></article>
-          <article><small>Aktif iş akışları</small><b>0</b><span>Görev altyapısı hazırlanıyor</span></article>
-          <article><small>Bekleyen tahsilat</small><b>₺0</b><span>Finans modülü hazırlanıyor</span></article>
+          <article><small>Erişilebilir modül</small><b>{visibleModules.length}</b><span>Rol izinlerine göre</span></article>
+          <article><small>Tanımlı izin</small><b>{permissions.length}</b><span>Aktif çalışma alanında</span></article>
+          <article><small>Bağlı firma</small><b>{memberships.length}</b><span>Tenant üyelikleriniz</span></article>
           <article><small>Yetki seviyeniz</small><b className="role-metric">{roleName}</b><span>{membership.role?.code || "member"}</span></article>
         </section>
 
         <section className="module-grid">
-          {modules.map(([name, description]) => <article key={name}><small>MODÜL</small><h3>{name}</h3><p>{description}</p><button type="button">Kurulum sırasına alındı</button></article>)}
+          {visibleModules.length > 0 ? visibleModules.map((module) => (
+            <article key={module.name}><small>YETKİLİ MODÜL</small><h3>{module.name}</h3><p>{module.description}</p><button type="button">Modüle erişiminiz var</button></article>
+          )) : (
+            <article><small>ERİŞİM SINIRLI</small><h3>Henüz modül yetkiniz yok</h3><p>Kurum yöneticiniz rolünüze görüntüleme veya yönetim izni verdiğinde ilgili modüller burada açılacaktır.</p><button type="button" disabled>Yetki bekleniyor</button></article>
+          )}
         </section>
       </section>
     </main>
