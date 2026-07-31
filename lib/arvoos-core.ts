@@ -11,6 +11,25 @@ export type OrganizationMember = { organization_id: string; user_id: string; sta
 export type Branch = { id: string; organization_id: string; name: string; code: string; address: string | null; is_active: boolean; created_at: string };
 export type Department = { id: string; organization_id: string; branch_id: string | null; name: string; code: string; is_active: boolean; created_at: string; branch: { id: string; name: string; code: string } | null };
 export type ActivityLog = { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; entity_id: string | null; metadata: Record<string, unknown>; created_at: string; actor: { full_name: string | null; phone: string | null } | null };
+export type CrmCustomer = {
+  id: string;
+  organization_id: string;
+  customer_type: "company" | "person";
+  status: "lead" | "active" | "passive";
+  name: string;
+  tax_number: string | null;
+  tax_office: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  city: string | null;
+  address: string | null;
+  notes: string | null;
+  assigned_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  assigned_user: { full_name: string | null; phone: string | null } | null;
+};
 
 type RolePermissionRow = { permission: Permission | null };
 type CoreRequestOptions = RequestInit & { accessToken: string };
@@ -88,6 +107,34 @@ export async function saveDepartment(session: SupabaseSession, organizationId: s
 export async function getOrganizationActivityLogs(session: SupabaseSession, organizationId: string, limit = 200) {
   const select = encodeURIComponent("id,organization_id,actor_user_id,action,entity_type,entity_id,metadata,created_at,actor:profiles(full_name,phone)");
   return coreRequest<ActivityLog[]>(`/rest/v1/activity_logs?select=${select}&organization_id=eq.${organizationId}&order=created_at.desc&limit=${limit}`, { method: "GET", accessToken: session.access_token });
+}
+
+export async function getCrmCustomers(session: SupabaseSession, organizationId: string) {
+  const select = encodeURIComponent("id,organization_id,customer_type,status,name,tax_number,tax_office,email,phone,website,city,address,notes,assigned_user_id,created_at,updated_at,assigned_user:profiles(full_name,phone)");
+  return coreRequest<CrmCustomer[]>(`/rest/v1/crm_customers?select=${select}&organization_id=eq.${organizationId}&order=created_at.desc`, { method: "GET", accessToken: session.access_token });
+}
+
+export async function saveCrmCustomer(session: SupabaseSession, organizationId: string, customer: Partial<CrmCustomer> & Pick<CrmCustomer, "customer_type" | "status" | "name">) {
+  return coreRequest<string>("/rest/v1/rpc/save_crm_customer", {
+    method: "POST",
+    accessToken: session.access_token,
+    body: JSON.stringify({
+      target_organization_id: organizationId,
+      target_customer_id: customer.id || null,
+      target_customer_type: customer.customer_type,
+      target_status: customer.status,
+      target_name: customer.name,
+      target_tax_number: customer.tax_number || "",
+      target_tax_office: customer.tax_office || "",
+      target_email: customer.email || "",
+      target_phone: customer.phone || "",
+      target_website: customer.website || "",
+      target_city: customer.city || "",
+      target_address: customer.address || "",
+      target_notes: customer.notes || "",
+      target_assigned_user_id: customer.assigned_user_id || null,
+    }),
+  });
 }
 
 export async function bootstrapOrganization(session: SupabaseSession, name: string, slug: string) {
