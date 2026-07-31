@@ -19,8 +19,8 @@ export type OrganizationMembership = {
   role: { id: string; name: string; code: string } | null;
 };
 
-export type Permission = { code: string; name: string; module: string };
-export type RoleSummary = { id: string; name: string; code: string };
+export type Permission = { id?: string; code: string; name: string; module: string; description?: string | null };
+export type RoleSummary = { id: string; name: string; code: string; description?: string | null; is_system?: boolean };
 export type OrganizationMember = {
   organization_id: string;
   user_id: string;
@@ -65,13 +65,20 @@ export async function getMyOrganizations(session: SupabaseSession) {
 
 export async function getRolePermissions(session: SupabaseSession, roleId?: string | null) {
   if (!roleId) return [];
-  const select = encodeURIComponent("permission:permissions(code,name,module)");
+  const select = encodeURIComponent("permission:permissions(id,code,name,module,description)");
   const roleFilter = encodeURIComponent(`eq.${roleId}`);
   const rows = await coreRequest<RolePermissionRow[]>(
     `/rest/v1/role_permissions?select=${select}&role_id=${roleFilter}`,
     { method: "GET", accessToken: session.access_token },
   );
   return rows.flatMap((row) => row.permission ? [row.permission] : []);
+}
+
+export async function getAllPermissions(session: SupabaseSession) {
+  return coreRequest<Permission[]>(
+    "/rest/v1/permissions?select=id,code,name,module,description&order=module.asc,name.asc",
+    { method: "GET", accessToken: session.access_token },
+  );
 }
 
 export async function getOrganizationMembers(session: SupabaseSession, organizationId: string) {
@@ -84,9 +91,32 @@ export async function getOrganizationMembers(session: SupabaseSession, organizat
 
 export async function getOrganizationRoles(session: SupabaseSession, organizationId: string) {
   return coreRequest<RoleSummary[]>(
-    `/rest/v1/roles?select=id,name,code&organization_id=eq.${organizationId}&order=name.asc`,
+    `/rest/v1/roles?select=id,name,code,description,is_system&organization_id=eq.${organizationId}&order=name.asc`,
     { method: "GET", accessToken: session.access_token },
   );
+}
+
+export async function saveOrganizationRole(
+  session: SupabaseSession,
+  organizationId: string,
+  roleId: string | null,
+  name: string,
+  code: string,
+  description: string,
+  permissionCodes: string[],
+) {
+  return coreRequest<string>("/rest/v1/rpc/save_organization_role", {
+    method: "POST",
+    accessToken: session.access_token,
+    body: JSON.stringify({
+      target_organization_id: organizationId,
+      target_role_id: roleId,
+      target_name: name,
+      target_code: code,
+      target_description: description,
+      target_permission_codes: permissionCodes,
+    }),
+  });
 }
 
 export async function updateMemberAccess(
