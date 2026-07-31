@@ -5,6 +5,7 @@ import "./structure.css";
 import "./audit.css";
 import "./crm.css";
 import "./work.css";
+import "./finance.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS Panel",
