@@ -8,12 +8,12 @@ import { bootstrapOrganization, getMyOrganizations, getRolePermissions, type Org
 const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
 
 const modules = [
-  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read" },
-  { name: "İş Akışları", description: "Görevler, sorumlular ve ilerleme", permission: "crm.read" },
-  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read" },
-  { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "inventory.read" },
-  { name: "Stok", description: "Ürün, hizmet ve kritik seviye", permission: "inventory.read" },
-  { name: "İnsan Kaynakları", description: "Ekip, rol ve izin yönetimi", permission: "users.read" },
+  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read", href: null },
+  { name: "İş Akışları", description: "Görevler, sorumlular ve ilerleme", permission: "crm.read", href: null },
+  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read", href: null },
+  { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "inventory.read", href: null },
+  { name: "Stok", description: "Ürün, hizmet ve kritik seviye", permission: "inventory.read", href: null },
+  { name: "Ekip Yönetimi", description: "Kullanıcı, rol ve hesap durumları", permission: "users.read", href: "/panel/ekip" },
 ];
 
 const planLabels = {
@@ -121,6 +121,10 @@ export default function PanelPage() {
     router.replace("/giris");
   }
 
+  function openModule(href: string | null) {
+    if (href) router.push(href);
+  }
+
   if (checking) return <main className="panel-loading">Çalışma alanı ve yetkiler doğrulanıyor...</main>;
 
   if (!membership) {
@@ -161,7 +165,7 @@ export default function PanelPage() {
         </div>
         <nav>
           <button className="active">Genel Bakış</button>
-          {visibleModules.map((module) => <button key={module.name}>{module.name}</button>)}
+          {visibleModules.map((module) => <button key={module.name} type="button" onClick={() => openModule(module.href)}>{module.name}</button>)}
         </nav>
         <button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button>
       </aside>
@@ -188,7 +192,12 @@ export default function PanelPage() {
 
         <section className="module-grid">
           {visibleModules.length > 0 ? visibleModules.map((module) => (
-            <article key={module.name}><small>YETKİLİ MODÜL</small><h3>{module.name}</h3><p>{module.description}</p><button type="button">Modüle erişiminiz var</button></article>
+            <article key={module.name}>
+              <small>YETKİLİ MODÜL</small>
+              <h3>{module.name}</h3>
+              <p>{module.description}</p>
+              <button type="button" disabled={!module.href} onClick={() => openModule(module.href)}>{module.href ? "Modülü Aç" : "Geliştirme Sırasında"}</button>
+            </article>
           )) : (
             <article><small>ERİŞİM SINIRLI</small><h3>Henüz modül yetkiniz yok</h3><p>Kurum yöneticiniz rolünüze görüntüleme veya yönetim izni verdiğinde ilgili modüller burada açılacaktır.</p><button type="button" disabled>Yetki bekleniyor</button></article>
           )}
