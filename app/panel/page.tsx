@@ -10,7 +10,7 @@ const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
 const modules = [
   { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read", href: "/panel/crm" },
   { name: "Arvos İş Takibi", description: "Projeler, görevler, sorumlular ve ilerleme", permission: "work.read", href: "/panel/isler" },
-  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read", href: null },
+  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read", href: "/panel/finans" },
   { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "inventory.read", href: null },
   { name: "Stok", description: "Ürün, hizmet ve kritik seviye", permission: "inventory.read", href: null },
   { name: "Organizasyon Yapısı", description: "Şube, lokasyon ve departman yönetimi", permission: "organization.manage", href: "/panel/organizasyon" },
