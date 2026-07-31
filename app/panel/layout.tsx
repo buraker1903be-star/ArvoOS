@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PanelShell from "./panel-shell";
 import "./panel.css";
 import "./team.css";
 import "./structure.css";
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <div className="panel-root">{children}</div>;
+  return <div className="panel-root"><PanelShell>{children}</PanelShell></div>;
 }
