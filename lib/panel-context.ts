@@ -18,6 +18,8 @@ type PanelOrganization = {
   slug: string;
   status: string;
   plan_code: string;
+  sector: string;
+  custom_domain: string | null;
 };
 
 export const getPanelContext = cache(async () => {
@@ -26,7 +28,7 @@ export const getPanelContext = cache(async () => {
   const userId = auth?.claims?.sub;
   if (!userId) redirect("/login");
   const { data: rows, error } = await supabase.from("organization_memberships")
-    .select("organization_id,role,organizations(id,name,slug,status,plan_code)")
+    .select("organization_id,role,organizations(id,name,slug,status,plan_code,sector,custom_domain)")
     .eq("user_id", userId).eq("is_active", true).limit(1);
   if (error) throw new Error("Kurum üyeliği okunamadı.");
   const membership = rows?.[0] as { organization_id: string; role: string; organizations: PanelOrganization | PanelOrganization[] | null } | undefined;
