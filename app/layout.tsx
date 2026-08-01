@@ -14,14 +14,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
+  metadataBase: new URL("https://arvo-os.com"),
+  title: {
+    default: "ArvoOS | Kurumsal İşletim Sistemi",
+    template: "%s | ArvoOS",
+  },
+  description:
+    "ArvoOS; satış, finans, operasyon, ekip ve müşteri süreçlerini tek merkezde birleştiren kurumsal işletim sistemidir.",
+  applicationName: "ArvoOS",
   other: {
     "codex-preview": "development",
   },
   icons: {
-    icon: "/favicon.svg",
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 
@@ -31,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
