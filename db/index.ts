@@ -1,3 +1,4 @@
+// @ts-expect-error Cloudflare provides this virtual module in the Sites runtime.
 import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
