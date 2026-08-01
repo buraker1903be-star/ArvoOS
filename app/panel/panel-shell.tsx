@@ -12,6 +12,7 @@ const modules = [
   { name: "CRM & Satış", permission: "crm.read", href: "/panel/crm" },
   { name: "Satış Siparişleri", permission: "sales.read", href: "/panel/satis-siparisleri" },
   { name: "Sevkiyat", permission: "shipping.read", href: "/panel/sevkiyat" },
+  { name: "İrsaliyeler", permission: "delivery_notes.read", href: "/panel/irsaliyeler" },
   { name: "Arvos İş Takibi", permission: "work.read", href: "/panel/isler" },
   { name: "Finans", permission: "finance.read", href: "/panel/finans" },
   { name: "Tedarikçi Borçları", permission: "finance.read", href: "/panel/finans/tedarikci-borclari" },
