@@ -19,7 +19,7 @@ export default async function PlatformPage() {
       <div><small>PLATFORM ÖZETİ</small><h2>ArvoOS yönetim katmanı hazır.</h2><p>Kurum, paket, kullanıcı ve modül çekirdeği güvenli biçimde çalışıyor. Yeni müşteriler bu merkezden yönetilecek.</p></div>
       <dl><div><dt>AKTİF KURUM</dt><dd>{organization.name}</dd></div><div><dt>PAKET</dt><dd>{organization.plan_code}</dd></div><div><dt>MODÜL</dt><dd>{modules.length}</dd></div><div><dt>ROL</dt><dd>Owner</dd></div></dl>
     </section>
-    <section className="platform-grid">{areas.map((area) => <article className="panel-card platform-card" key={area.title}><i>{area.icon}</i><span>{area.value}</span><h3>{area.title}</h3><p>{area.description}</p><button type="button" disabled>Yönetim ekranı hazırlanıyor</button></article>)}</section>
+    <section className="platform-grid">{areas.map((area) => <article className="panel-card platform-card" key={area.title}><i>{area.icon}</i><span>{area.value}</span><h3>{area.title}</h3><p>{area.description}</p><small className="platform-coming">YÖNETİM EKRANI HAZIRLANIYOR</small></article>)}</section>
     <div className="platform-note"><span>i</span><p><b>Bu alan kurum panelinden farklı bir ürün değildir.</b> Aynı ArvoOS arayüzü, owner rolünde platform yönetim araçlarını ek olarak gösterir.</p><Link href="/panel">Genel bakışa dön →</Link></div>
   </>;
 }
