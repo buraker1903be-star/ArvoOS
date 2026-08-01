@@ -12,16 +12,24 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   documents: { code: "documents", name: "Belgeler", description: "Kurumsal belge merkezi", icon: "BL" },
 };
 
+type PanelOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  plan_code: string;
+};
+
 export const getPanelContext = cache(async () => {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
   if (!userId) redirect("/login");
   const { data: rows, error } = await supabase.from("organization_memberships")
-    .select("organization_id,role,organizations(id,name,status,plan_code)")
+    .select("organization_id,role,organizations(id,name,slug,status,plan_code)")
     .eq("user_id", userId).eq("is_active", true).limit(1);
   if (error) throw new Error("Kurum üyeliği okunamadı.");
-  const membership = rows?.[0] as { organization_id: string; role: string; organizations: { id: string; name: string; status: string; plan_code: string } | { id: string; name: string; status: string; plan_code: string }[] | null } | undefined;
+  const membership = rows?.[0] as { organization_id: string; role: string; organizations: PanelOrganization | PanelOrganization[] | null } | undefined;
   const organization = Array.isArray(membership?.organizations) ? membership.organizations[0] : membership?.organizations;
   if (!membership || !organization) redirect("/kurulum");
   const { data: moduleRows, error: moduleError } = await supabase.from("organization_modules")
@@ -34,5 +42,6 @@ export const getPanelContext = cache(async () => {
     const fallback = panelModules[row.module_code];
     return { code: row.module_code, name: fallback?.name ?? item?.name ?? row.module_code, description: fallback?.description ?? item?.description ?? "", sortOrder: item?.sort_order ?? 0, icon: fallback?.icon ?? "•" };
   }).sort((a, b) => a.sortOrder - b.sortOrder);
-  return { supabase, userId, membership, organization, modules };
+  const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
+  return { supabase, userId, membership, organization, modules, isPlatformOwner };
 });
