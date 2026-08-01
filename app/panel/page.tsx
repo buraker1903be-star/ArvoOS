@@ -1,118 +1,54 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { logout } from "./actions";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getStoredSession, signOut, type SupabaseSession } from "@/lib/supabase-auth";
-import { bootstrapOrganization, getMyOrganizations, getRolePermissions, type OrganizationMembership, type Permission } from "@/lib/arvoos-core";
+const labels: Record<string, [string, string]> = {
+  crm: ["◎", "Talep, teklif ve satış süreçleri"],
+  operations: ["↗", "Görevler, terminler ve ilerleme"],
+  finance: ["₺", "Gelir, gider ve tahsilat görünümü"],
+  reporting: ["▦", "Yetkiye bağlı kurum raporları"],
+  hr: ["◇", "Ekip ve organizasyon yönetimi"],
+  documents: ["⌁", "Kurumsal belge merkezi"],
+};
 
-const ACTIVE_ORGANIZATION_KEY = "arvoos.activeOrganizationId";
-const REQUEST_TIMEOUT_MS = 12000;
+export default async function PanelPage() {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getClaims();
+  const userId = auth?.claims?.sub;
+  if (!userId) redirect("/login");
 
-const modules = [
-  { name: "CRM & Satış", description: "Müşteri, talep ve teklif süreçleri", permission: "crm.read", href: "/panel/crm" },
-  { name: "Satış Siparişleri", description: "Sipariş, teslim tarihi ve satış hacmi", permission: "sales.read", href: "/panel/satis-siparisleri" },
-  { name: "Sevkiyat", description: "Depo çıkışı, taşıyıcı ve teslimat operasyonu", permission: "shipping.read", href: "/panel/sevkiyat" },
-  { name: "Arvos İş Takibi", description: "Projeler, görevler, sorumlular ve ilerleme", permission: "work.read", href: "/panel/isler" },
-  { name: "Finans", description: "Tahsilat, gider ve nakit akışı", permission: "finance.read", href: "/panel/finans" },
-  { name: "Satın Alma", description: "Tedarikçi, onay ve teslimat", permission: "purchasing.read", href: "/panel/satinalma" },
-  { name: "Stok", description: "Ürün, hizmet ve kritik seviye", permission: "inventory.read", href: "/panel/stok" },
-  { name: "Organizasyon Yapısı", description: "Şube, lokasyon ve departman yönetimi", permission: "organization.manage", href: "/panel/organizasyon" },
-  { name: "Ekip Yönetimi", description: "Kullanıcı, rol ve hesap durumları", permission: "users.read", href: "/panel/ekip" },
-  { name: "Rol ve Yetkiler", description: "Rol bazlı modül ve işlem izinleri", permission: "roles.manage", href: "/panel/roller" },
-  { name: "Aktivite Kayıtları", description: "Kullanıcı ve sistem işlemlerinin denetim geçmişi", permission: "audit.read", href: "/panel/aktivite" },
-];
+  const { data: rows } = await supabase
+    .from("organization_memberships")
+    .select("organization_id,role,organizations(id,name,status,plan_code)")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .limit(1);
 
-const planLabels = { trial: "Deneme Paketi", starter: "Başlangıç Paketi", professional: "Profesyonel Paket", enterprise: "Kurumsal Paket" } as const;
+  const membership = rows?.[0] as {
+    organization_id: string;
+    role: string;
+    organizations: { id: string; name: string; status: string; plan_code: string } | { id: string; name: string; status: string; plan_code: string }[] | null;
+  } | undefined;
+  const organization = Array.isArray(membership?.organizations)
+    ? membership.organizations[0]
+    : membership?.organizations;
 
-function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error(message)), REQUEST_TIMEOUT_MS);
-    promise.then((value) => { window.clearTimeout(timer); resolve(value); }, (error) => { window.clearTimeout(timer); reject(error); });
-  });
-}
-
-export default function PanelPage() {
-  const router = useRouter();
-  const [session, setSession] = useState<SupabaseSession | null>(null);
-  const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
-  const [membership, setMembership] = useState<OrganizationMembership | null>(null);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [checking, setChecking] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
-
-  const permissionCodes = useMemo(() => new Set(permissions.map((permission) => permission.code)), [permissions]);
-  const visibleModules = modules.filter((module) => permissionCodes.has(module.permission));
-
-  async function activateMembership(current: SupabaseSession, nextMembership: OrganizationMembership | null) {
-    setMembership(nextMembership);
-    setPermissions([]);
-    if (!nextMembership) return;
-    window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, nextMembership.organization_id);
-    const rows = await withTimeout(getRolePermissions(current, nextMembership.role?.id), "Yetkiler alınamadı. Bağlantıyı kontrol edip tekrar deneyin.");
-    setPermissions(rows);
+  if (!membership || !organization) {
+    return <main className="pending-shell"><section className="pending-card"><span>A</span><small>ARVOOS KURUM PANELİ</small><h1>Hesabınız doğrulandı.</h1><p>Kullanıcınıza henüz kurum ve paket atanmamış. Kurulum ekibi erişim kapsamınızı tanımladığında çalışma alanınız otomatik olarak açılır.</p><a href="mailto:info@arvo-os.com?subject=ArvoOS%20kurum%20ataması">Kurulum desteği alın</a><form action={logout}><button>Güvenli çıkış</button></form></section></main>;
   }
 
-  async function loadOrganizations(current: SupabaseSession) {
-    setChecking(true);
-    setError("");
-    try {
-      const organizations = await withTimeout(getMyOrganizations(current), "Çalışma alanı alınamadı. Bağlantıyı kontrol edip tekrar deneyin.");
-      const storedOrganizationId = window.localStorage.getItem(ACTIVE_ORGANIZATION_KEY);
-      const active = organizations.find((item) => item.organization_id === storedOrganizationId) || organizations[0] || null;
-      setMemberships(organizations);
-      await activateMembership(current, active);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Çalışma alanı yüklenemedi.");
-    } finally {
-      setChecking(false);
-    }
-  }
+  const { data: modules } = await supabase
+    .from("organization_modules")
+    .select("module_code,arvo_modules(name,description,sort_order)")
+    .eq("organization_id", membership.organization_id)
+    .eq("is_enabled", true);
 
-  useEffect(() => {
-    const current = getStoredSession();
-    if (!current) { router.replace("/giris"); return; }
-    setSession(current);
-    void loadOrganizations(current);
-  }, [router]);
-
-  async function handleOrganizationChange(organizationId: string) {
-    if (!session) return;
-    const nextMembership = memberships.find((item) => item.organization_id === organizationId);
-    if (!nextMembership) return;
-    setChecking(true);
-    setError("");
-    try { await activateMembership(session, nextMembership); }
-    catch (permissionError) { setError(permissionError instanceof Error ? permissionError.message : "Yetkiler yüklenemedi."); }
-    finally { setChecking(false); }
-  }
-
-  async function handleCreateOrganization(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!session || creating) return;
-    const form = new FormData(event.currentTarget);
-    const name = String(form.get("name") || "").trim();
-    const slug = String(form.get("slug") || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
-    if (!name || !slug) { setError("Firma adı ve çalışma alanı kodu zorunludur."); return; }
-    setCreating(true); setError("");
-    try {
-      const organizationId = await withTimeout(bootstrapOrganization(session, name, slug), "Firma oluşturma isteği zaman aşımına uğradı.");
-      window.localStorage.setItem(ACTIVE_ORGANIZATION_KEY, organizationId);
-      await loadOrganizations(session);
-    } catch (createError) { setError(createError instanceof Error ? createError.message : "Firma oluşturulamadı."); }
-    finally { setCreating(false); }
-  }
-
-  async function handleLogout() { window.localStorage.removeItem(ACTIVE_ORGANIZATION_KEY); await signOut(); router.replace("/giris"); }
-
-  if (checking) return <main className="panel-loading">Çalışma alanı ve yetkiler doğrulanıyor...</main>;
-
-  if (error && !membership) return <main className="panel-setup-page"><section className="panel-setup-card"><img src="/arvoos-logo.png" alt="ArvoOS" /><small>BAĞLANTI SORUNU</small><h1>Panel yüklenemedi</h1><p>{error}</p><button type="button" onClick={() => session && void loadOrganizations(session)}>Tekrar Dene</button><button className="setup-logout" type="button" onClick={handleLogout}>Yeniden giriş yap</button></section></main>;
-
-  if (!membership) return <main className="panel-setup-page"><section className="panel-setup-card"><img src="/arvoos-logo.png" alt="ArvoOS" /><small>ARVOOS KURULUM SİHİRBAZI</small><h1>İlk çalışma alanınızı oluşturun</h1><p>Bu firma, ArvoOS içindeki kullanıcılarınızın, rollerinizin ve tüm işletme verilerinizin ana çalışma alanı olacaktır.</p><form onSubmit={handleCreateOrganization}><label>Firma adı<input name="name" placeholder="Örn. Arvos" autoComplete="organization" /></label><label>Çalışma alanı kodu<input name="slug" placeholder="arvos" autoCapitalize="none" /></label>{error && <div className="panel-error" role="alert">{error}</div>}<button type="submit" disabled={creating}>{creating ? "Oluşturuluyor..." : "Çalışma Alanını Oluştur"}</button></form><button className="setup-logout" type="button" onClick={handleLogout}>Farklı hesapla giriş yap</button></section></main>;
-
-  const organization = membership.organization;
-  const roleName = membership.role?.name || "Standart Kullanıcı";
-
-  return <main className="panel-shell"><aside className="panel-sidebar"><a className="panel-logo" href="/"><img src="/arvoos-logo.png" alt="ArvoOS" /></a><div className="panel-company"><small>AKTİF ÇALIŞMA ALANI</small>{memberships.length > 1 ? <select aria-label="Aktif çalışma alanı" value={membership.organization_id} onChange={(event) => void handleOrganizationChange(event.target.value)}>{memberships.map((item) => <option key={item.organization_id} value={item.organization_id}>{item.organization.name}</option>)}</select> : <b>{organization.name}</b>}<span>{planLabels[organization.plan]}</span></div><nav><button className="active">Genel Bakış</button>{visibleModules.map((module) => <button key={module.name} type="button" onClick={() => router.push(module.href)}>{module.name}</button>)}</nav><button className="logout" type="button" onClick={handleLogout}>Çıkış Yap</button></aside><section className="panel-content"><header className="panel-header"><div><small>{organization.name.toUpperCase()} OPERASYON MERKEZİ</small><h1>Hoş geldiniz</h1><p>{session?.user.email} · {roleName}</p></div><span>{session?.user.email?.slice(0, 2).toUpperCase()}</span></header>{error && <div className="panel-error panel-error-wide" role="alert">{error} <button type="button" onClick={() => session && void loadOrganizations(session)}>Tekrar Dene</button></div>}<section className="hero-card"><div><small>SİSTEM DURUMU</small><h2>{organization.name} çalışma alanı aktif.</h2><p>Projeler, görevler, ekip sorumlulukları ve müşteri süreçleri bu çalışma alanından yönetilebilir.</p></div><strong>{organization.is_active ? "Aktif" : "Askıda"}</strong></section><section className="metric-grid"><article><small>Erişilebilir modül</small><b>{visibleModules.length}</b><span>Rol izinlerine göre</span></article><article><small>Tanımlı izin</small><b>{permissions.length}</b><span>Aktif çalışma alanında</span></article><article><small>Bağlı firma</small><b>{memberships.length}</b><span>Tenant üyelikleriniz</span></article><article><small>Yetki seviyeniz</small><b className="role-metric">{roleName}</b><span>{membership.role?.code || "member"}</span></article></section><section className="module-grid">{visibleModules.length > 0 ? visibleModules.map((module) => <article key={module.name}><small>YETKİLİ MODÜL</small><h3>{module.name}</h3><p>{module.description}</p><button type="button" onClick={() => router.push(module.href)}>Modülü Aç</button></article>) : <article><small>ERİŞİM SINIRLI</small><h3>Henüz modül yetkiniz yok</h3><p>Kurum yöneticiniz rolünüze görüntüleme veya yönetim izni verdiğinde ilgili modüller burada açılacaktır.</p><button type="button" disabled>Yetki bekleniyor</button></article>}</section></section></main>;
+  return <main className="panel-shell">
+    <aside><div className="panel-logo"><span>A</span><b>ArvoOS</b></div><nav><a className="active" href="/panel">⌂ <span>Genel Bakış</span></a>{(modules ?? []).map((item) => <a key={item.module_code} href={"#"+item.module_code}>{labels[item.module_code]?.[0] ?? "•"} <span>{item.module_code}</span></a>)}</nav><form action={logout}><button>↪ <span>Güvenli çıkış</span></button></form></aside>
+    <section className="panel-main"><header><div><small>{organization.name.toUpperCase()}</small><h1>Genel Bakış</h1></div><div className="user-chip"><span>{organization.name[0]}</span><p><b>Kurum kullanıcısı</b><small>{membership.role}</small></p></div></header>
+      <section className="welcome"><div><small>KURUM ÇALIŞMA ALANI</small><h2>Hoş geldiniz.</h2><p>ArvoOS kurum ve paket çekirdeğiniz aktif. Yetkinize ve paketinize tanımlanan modüller güvenli biçimde sunulur.</p></div><div><span>Paket</span><b>{organization.plan_code}</b><small>{organization.status === "active" ? "Aktif kullanım" : "Kurulum sürecinde"}</small></div></section>
+      <section className="panel-metrics"><article><span>ETKİN MODÜL</span><b>{modules?.length ?? 0}</b><small>Kurum paketine tanımlı</small></article><article><span>ERİŞİM ROLÜ</span><b>{membership.role}</b><small>Yetki kapsamınız</small></article><article><span>KURUM DURUMU</span><b>{organization.status}</b><small>Güncel sistem durumu</small></article></section>
+      <section className="module-area"><div><small>ÇALIŞMA ALANLARI</small><h2>Etkin modülleriniz</h2></div><div className="panel-modules">{(modules ?? []).length ? (modules ?? []).map((item) => { const relation = item.arvo_modules as {name?:string;description?:string}|{name?:string;description?:string}[]|null; const mod=Array.isArray(relation)?relation[0]:relation; return <article id={item.module_code} key={item.module_code}><span>{labels[item.module_code]?.[0] ?? "•"}</span><small>ETKİN MODÜL</small><h3>{mod?.name ?? item.module_code}</h3><p>{labels[item.module_code]?.[1] ?? mod?.description}</p><b>Kurulum kapsamına göre açılacak →</b></article>; }) : <div className="empty">Kurumunuza ait modüller kurulum ekibi tarafından tanımlanıyor.</div>}</div></section>
+    </section>
+  </main>;
 }
