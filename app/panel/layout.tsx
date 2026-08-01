@@ -10,6 +10,7 @@ import "./finance.css";
 import "./inventory.css";
 import "./sales.css";
 import "./shipping.css";
+import "./delivery-notes.css";
 import "./shell.css";
 
 export const metadata: Metadata = {
