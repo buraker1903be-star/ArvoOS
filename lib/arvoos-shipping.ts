@@ -1,29 +1,8 @@
 import type { SupabaseSession } from "@/lib/supabase-auth";
+import { supabaseRequest } from "@/lib/supabase-rest";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://scgjhsyygkmntxytkjbf.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_S0jBPDJuvwLuHI3TzyGllQ_PVlBAslN";
-
-type RequestOptions = RequestInit & { accessToken: string };
-
-async function request<T>(path: string, options: RequestOptions): Promise<T> {
-  const { accessToken, headers, ...rest } = options;
-  const response = await fetch(`${SUPABASE_URL}${path}`, {
-    ...rest,
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...headers,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null) as { message?: string } | null;
-    throw new Error(error?.message || `Sevkiyat isteği başarısız oldu (${response.status}).`);
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+function request<T>(path: string, options: RequestInit & { accessToken: string }) {
+  return supabaseRequest<T>(path, { ...options, errorMessage: "Sevkiyat isteği başarısız oldu" });
 }
 
 export type SalesShipment = {
