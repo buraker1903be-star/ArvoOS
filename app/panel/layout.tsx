@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 import "./panel.css";
 import "./panel-ux.css";
 import "./panel-page-system.css";
@@ -21,7 +22,7 @@ const roleNames: Record<string, string> = {
 };
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { membership, organization, modules, isPlatformOwner } = await getPanelContext();
+  const { membership, organization, modules, isPlatformOwner, workspaces } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
@@ -39,6 +40,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <header className="panel-topbar">
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
         <div className="panel-top-actions">
+          <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} />
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
             {hasMessages ? <Link className="panel-quick-action" href="/panel/messages" aria-label="Mesajlar"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b></Link> : null}
             <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
