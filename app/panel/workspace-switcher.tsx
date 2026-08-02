@@ -1,43 +1,47 @@
+"use client";
+
+import type { ChangeEvent } from "react";
 import type { PanelWorkspace } from "@/lib/panel-context";
 
 type Props = {
   workspaces: PanelWorkspace[];
   activeOrganizationId: string;
-  variant?: "topbar" | "sidebar";
+  variant?: "topbar" | "card";
 };
 
 function getLabel(slug: string) {
   return slug === "arvo-os" ? "ArvoOS Platform" : "AkademikMerkez";
 }
 
-function SwitchForm({ workspace, className, children }: { workspace: PanelWorkspace; className: string; children: React.ReactNode }) {
-  return <form action="/panel/switch" method="get" className="workspace-switch-form">
-    <input type="hidden" name="organization_id" value={workspace.organizationId} />
-    <button type="submit" className={className}>{children}</button>
-  </form>;
-}
-
 export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = "topbar" }: Props) {
   if (workspaces.length < 2) return null;
 
-  if (variant === "sidebar") {
-    return <div className="sidebar-workspace-switcher" aria-label="Çalışma alanları">
-      <small>ÇALIŞMA ALANI SEÇ</small>
-      <div className="sidebar-workspace-list">
-        {workspaces.map((workspace) => {
-          const active = workspace.organizationId === activeOrganizationId;
-          const label = getLabel(workspace.organization.slug);
-          const content = <>
-            <span>{label.slice(0, 1)}</span>
-            <p><b>{label}</b><small>{active ? "Aktif çalışma alanı" : "Geçiş yap"}</small></p>
-            <i>{active ? "✓" : "→"}</i>
-          </>;
+  if (variant === "card") {
+    const activeWorkspace = workspaces.find((workspace) => workspace.organizationId === activeOrganizationId) ?? workspaces[0];
 
-          return active
-            ? <div className="sidebar-workspace-item active" key={workspace.organizationId} aria-current="page">{content}</div>
-            : <SwitchForm className="sidebar-workspace-item" key={workspace.organizationId} workspace={workspace}>{content}</SwitchForm>;
-        })}
+    function handleChange(event: ChangeEvent<HTMLSelectElement>) {
+      const organizationId = event.target.value;
+      if (!organizationId || organizationId === activeOrganizationId) return;
+      window.location.assign(`/panel/switch?organization_id=${encodeURIComponent(organizationId)}`);
+    }
+
+    return <div className="workspace-card-select">
+      <small>ÇALIŞMA ALANI</small>
+      <div className="workspace-card-control">
+        <span>{getLabel(activeWorkspace.organization.slug).slice(0, 1)}</span>
+        <select
+          aria-label="Çalışma alanını değiştir"
+          value={activeOrganizationId}
+          onChange={handleChange}
+        >
+          {workspaces.map((workspace) => <option key={workspace.organizationId} value={workspace.organizationId}>
+            {getLabel(workspace.organization.slug)}
+          </option>)}
+        </select>
+        <i aria-hidden="true">⌄</i>
       </div>
+      <b>{getLabel(activeWorkspace.organization.slug)}</b>
+      <em>{activeWorkspace.organization.plan_code} paket</em>
     </div>;
   }
 
@@ -51,15 +55,9 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
       {workspaces.map((workspace) => {
         const active = workspace.organizationId === activeOrganizationId;
         const label = getLabel(workspace.organization.slug);
-        const content = <>
-          <span>{label.slice(0, 1).toUpperCase()}</span>
-          <p><b>{label}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
-          <i>{active ? "✓" : "→"}</i>
-        </>;
-
         return active
-          ? <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page">{content}</div>
-          : <SwitchForm className="workspace-switcher-item" key={workspace.organizationId} workspace={workspace}>{content}</SwitchForm>;
+          ? <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page"><span>{label.slice(0, 1)}</span><p><b>{label}</b><small>Aktif</small></p><i>✓</i></div>
+          : <button className="workspace-switcher-item" key={workspace.organizationId} type="button" onClick={() => window.location.assign(`/panel/switch?organization_id=${encodeURIComponent(workspace.organizationId)}`)}><span>{label.slice(0, 1)}</span><p><b>{label}</b><small>Geçiş yap</small></p><i>→</i></button>;
       })}
     </div>
   </details>;
