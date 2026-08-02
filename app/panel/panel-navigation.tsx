@@ -19,7 +19,6 @@ type NavigationGroup = {
 const groups: NavigationGroup[] = [
   { key: "crm", label: "CRM", icon: "C", codes: ["crm", "requests", "sales", "proposals", "contracts"] },
   { key: "operations", label: "Operasyon", icon: "O", codes: ["operations", "tasks", "calendar", "workflows"] },
-  { key: "messages", label: "Mesajlar", icon: "M", codes: ["messages"] },
   { key: "finance", label: "Finans", icon: "F", codes: ["finance", "accounts", "banking", "billing", "payments", "e_invoice"] },
   { key: "hr", label: "İnsan Kaynakları", icon: "İK", codes: ["hr"] },
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
