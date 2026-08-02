@@ -1,5 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { createOpportunity, moveOpportunity } from "./actions";
+import { OpenNewRequestButton } from "./open-new-request-button";
 import "./crm.css";
 
 const columns = [
@@ -51,7 +52,7 @@ export default async function CrmPage() {
   return <div className="crm-page-stack">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">MÜŞTERİ VE SATIŞ</small><h1>CRM</h1><p>Yeni talepleri kaydedin, görüşmeden tahsilata kadar tüm süreci tek akışta yönetin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{newRequests.length} yeni talep</span></div>
+      <div className="panel-page-actions"><span className="status-pill">{newRequests.length} yeni talep</span><OpenNewRequestButton /></div>
     </div>
 
     <section className="crm-metrics">
@@ -61,7 +62,7 @@ export default async function CrmPage() {
       <article><small>KAZANMA ORANI</small><strong>%{conversion}</strong><span>Sonuçlanan kayıtlar</span></article>
     </section>
 
-    <details className="panel-card crm-create">
+    <details className="panel-card crm-create" id="new-request-panel">
       <summary><span><b>+ Yeni talep</b><small>Müşteri veya kurum talebini kaydedin</small></span><em>Aç</em></summary>
       <form className="panel-form" action={createOpportunity}>
         <label>Talep konusu<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Kurumsal paket bilgi talebi" /></label>
