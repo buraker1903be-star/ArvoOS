@@ -1,4 +1,5 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../components/panel-drawer";
 import { createBankAccount, createBankTransaction, reconcileBankTransaction } from "./actions";
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value / 100);
@@ -23,7 +24,29 @@ export default async function BankingPage() {
   return <>
     <div className="panel-pagehead">
       <div><small className="panel-kicker">FİNANS</small><h1>Banka ve mutabakat</h1><p>Hesapları, hareketleri ve eşleşmeleri yönetin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{unmatched} eşleşmeyen</span></div>
+      <div className="panel-page-actions">
+        <span className="status-pill">{unmatched} eşleşmeyen</span>
+        <PanelDrawer triggerLabel="+ Banka hesabı" title="Yeni banka hesabı" description="Kurumun kullanacağı banka hesabını kaydedin.">
+          <form className="panel-form" action={createBankAccount}>
+            <label>Banka adı<input name="bank_name" required minLength={2} /></label>
+            <label>Hesap sahibi<input name="account_name" /></label>
+            <label>IBAN<input name="iban" required minLength={15} /></label>
+            <label>Açılış bakiyesi<input name="opening_balance" type="number" step="0.01" defaultValue="0" /></label>
+            <div className="form-actions wide"><button className="panel-primary" type="submit">Hesabı kaydet</button></div>
+          </form>
+        </PanelDrawer>
+        <PanelDrawer triggerLabel="+ Banka hareketi" title="Yeni banka hareketi" description="Para girişini veya çıkışını ilgili hesaba ekleyin.">
+          <form className="panel-form" action={createBankTransaction}>
+            <label>Hesap<select name="bank_account_id" required>{(accounts ?? []).map((item) => <option key={item.id} value={item.id}>{item.bank_name} · {item.iban}</option>)}</select></label>
+            <label>Yön<select name="direction"><option value="inflow">Para girişi</option><option value="outflow">Para çıkışı</option></select></label>
+            <label>Tutar<input name="amount" type="number" step="0.01" required min="0.01" /></label>
+            <label>Tarih<input name="transaction_date" type="date" /></label>
+            <label className="wide">Açıklama<input name="description" required minLength={2} /></label>
+            <label>Referans<input name="reference_no" /></label>
+            <div className="form-actions wide"><button className="panel-primary" type="submit">Hareketi kaydet</button></div>
+          </form>
+        </PanelDrawer>
+      </div>
     </div>
 
     <section className="metric-strip">
@@ -32,25 +55,6 @@ export default async function BankingPage() {
       <article><div><small>ÇIKIŞ</small><strong>{money(outgoing)}</strong><p>Toplam para çıkışı</p></div></article>
       <article><div><small>EŞLEŞMEYEN</small><strong>{unmatched}</strong><p>Mutabakat bekliyor</p></div></article>
     </section>
-
-    <div className="panel-action-row">
-      <details className="panel-card panel-action-details"><summary>+ Banka hesabı</summary><form className="panel-form" action={createBankAccount}>
-        <label>Banka adı<input name="bank_name" required minLength={2} /></label>
-        <label>Hesap sahibi<input name="account_name" /></label>
-        <label>IBAN<input name="iban" required minLength={15} /></label>
-        <label>Açılış bakiyesi<input name="opening_balance" type="number" step="0.01" defaultValue="0" /></label>
-        <div className="form-actions wide"><button className="panel-primary" type="submit">Hesabı kaydet</button></div>
-      </form></details>
-      <details className="panel-card panel-action-details"><summary>+ Banka hareketi</summary><form className="panel-form" action={createBankTransaction}>
-        <label>Hesap<select name="bank_account_id" required>{(accounts ?? []).map((item) => <option key={item.id} value={item.id}>{item.bank_name} · {item.iban}</option>)}</select></label>
-        <label>Yön<select name="direction"><option value="inflow">Para girişi</option><option value="outflow">Para çıkışı</option></select></label>
-        <label>Tutar<input name="amount" type="number" step="0.01" required min="0.01" /></label>
-        <label>Tarih<input name="transaction_date" type="date" /></label>
-        <label className="wide">Açıklama<input name="description" required minLength={2} /></label>
-        <label>Referans<input name="reference_no" /></label>
-        <div className="form-actions wide"><button className="panel-primary" type="submit">Hareketi kaydet</button></div>
-      </form></details>
-    </div>
 
     <section className="panel-card">
       <div className="section-heading"><div><small className="panel-kicker">HAREKETLER</small><h2>Mutabakat listesi</h2></div><span>Son 100 kayıt</span></div>
