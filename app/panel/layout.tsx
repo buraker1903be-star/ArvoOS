@@ -30,8 +30,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   return <div className="panel-root"><main className="panel-frame">
     <aside className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
-      <div className="panel-org"><small>AKTİF ÇALIŞMA ALANI</small><b>{organization.name}</b><span>{organization.plan_code} paket</span></div>
-      <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="sidebar" />
+      <div className="panel-org panel-org-switchable">
+        <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
+      </div>
       <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} />
       <div className="panel-sidebar-footer">
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
@@ -42,7 +43,6 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <header className="panel-topbar">
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
         <div className="panel-top-actions">
-          <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} />
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
             {hasMessages ? <Link className="panel-quick-action" href="/panel/messages" aria-label="Mesajlar"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b></Link> : null}
             <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
