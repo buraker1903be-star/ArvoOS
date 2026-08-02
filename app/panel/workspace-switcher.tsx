@@ -1,4 +1,4 @@
-import { switchWorkspace } from "./actions";
+import Link from "next/link";
 import type { PanelWorkspace } from "@/lib/panel-context";
 
 type Props = {
@@ -18,14 +18,26 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId }: Props) {
       <small>ÇALIŞMA ALANLARI</small>
       {workspaces.map((workspace) => {
         const active = workspace.organizationId === activeOrganizationId;
-        return <form action={switchWorkspace} key={workspace.organizationId}>
-          <input type="hidden" name="organization_id" value={workspace.organizationId} />
-          <button type="submit" className={active ? "active" : ""} disabled={active}>
-            <span>{workspace.organization.name.slice(0, 1).toUpperCase()}</span>
-            <p><b>{workspace.organization.slug === "arvo-os" ? "ArvoOS Platform" : workspace.organization.name}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
-            <i>{active ? "✓" : "→"}</i>
-          </button>
-        </form>;
+        const label = workspace.organization.slug === "arvo-os" ? "ArvoOS Platform" : "AkademikMerkez";
+
+        if (active) {
+          return <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page">
+            <span>{label.slice(0, 1).toUpperCase()}</span>
+            <p><b>{label}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
+            <i>✓</i>
+          </div>;
+        }
+
+        return <Link
+          className="workspace-switcher-item"
+          href={`/panel/switch?organization_id=${encodeURIComponent(workspace.organizationId)}`}
+          key={workspace.organizationId}
+          prefetch={false}
+        >
+          <span>{label.slice(0, 1).toUpperCase()}</span>
+          <p><b>{label}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
+          <i>→</i>
+        </Link>;
       })}
     </div>
   </details>;
