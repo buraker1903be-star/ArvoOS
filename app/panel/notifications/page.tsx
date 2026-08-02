@@ -13,7 +13,7 @@ type NotificationRow = {
 };
 
 export default async function NotificationsPage() {
-  const { supabase, organizationId, isPlatformOwner } = await getPanelContext();
+  const { supabase, organization, isPlatformOwner } = await getPanelContext();
   let query = supabase
     .from("notifications")
     .select("id,title,message,category,action_url,read_at,created_at")
@@ -22,7 +22,7 @@ export default async function NotificationsPage() {
 
   query = isPlatformOwner
     ? query.eq("audience", "founder")
-    : query.eq("audience", "organization").eq("organization_id", organizationId);
+    : query.eq("audience", "organization").eq("organization_id", organization.id);
 
   const { data } = await query;
   const notifications = (data ?? []) as NotificationRow[];
