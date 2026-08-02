@@ -6,7 +6,7 @@ import { createCustomerOrganization, toggleOrganizationModule, updateOrganizatio
 type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
 type ManagedOrganization = { id: string; name: string; slug: string; status: string; plan_code: string; sector: string; custom_domain: string | null };
 
-export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string }> }) {
+export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string }> }) {
   const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
@@ -16,12 +16,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const selectedOrganization = organizations.find((item) => item.id === params.organization) ?? organizations.find((item) => item.id === founderOrganization.id) ?? organizations[0];
   if (!selectedOrganization) throw new Error("Yönetilecek kurum bulunamadı.");
   const targetId = selectedOrganization.id;
-  const [{ count: memberCount }, { count: requestCount }, { data: plans }, { data: moduleData }] = await Promise.all([
+  const [{ count: memberCount }, { count: requestCount }, { data: plans }, { data: moduleData }, { data: invitationData }] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
     supabase.from("crm_requests").select("id", { count: "exact", head: true }).eq("organization_id", targetId),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
+    supabase.from("organization_invitations").select("email,status,sent_at,accepted_at,error_message").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(1),
   ]);
+  const latestInvitation = invitationData?.[0];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
     const relation = Array.isArray(row.arvo_modules) ? row.arvo_modules[0] : row.arvo_modules;
     const fallback = panelModules[row.module_code];
@@ -30,24 +32,28 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const enabledCount = moduleRows.filter((module) => module.enabled).length;
 
   return <>
-    <div className="panel-pagehead"><div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını, paketlerini ve modül erişimlerini canlı sistem üzerinde yönetin.</p></div><span className="owner-badge">◇ KURUCU YETKİSİ</span></div>
+    <div className="panel-pagehead"><div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını, ilk owner davetini, paketlerini ve modül erişimlerini yönetin.</p></div><span className="owner-badge">◇ KURUCU YETKİSİ</span></div>
+    {params.provisioned === "1" ? <div className="team-notice">Kurum oluşturuldu ve ilk owner daveti gönderildi.</div> : null}
 
     <section className="management-grid">
       <article className="panel-card management-card">
-        <div className="management-heading"><div><small>YENİ MÜŞTERİ</small><h2>Kurum oluştur</h2></div><span className="status-pill">Tek işlem</span></div>
+        <div className="management-heading"><div><small>TENANT PROVISIONING</small><h2>Yeni müşteri kurumu</h2></div><span className="status-pill">Owner davetli</span></div>
         <form className="panel-form" action={createCustomerOrganization}>
           <label>Kurum adı<input name="name" minLength={2} maxLength={160} required placeholder="Örn. AkademikMerkez" /></label>
           <label>Kısa ad / slug<input name="slug" minLength={2} maxLength={80} placeholder="akademikmerkez" /></label>
           <label>Sektör<input name="sector" defaultValue="general" minLength={2} maxLength={80} required /></label>
-          <label>Paket<select name="plan_code" defaultValue="trial">{(plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
+          <label>Paket<select name="plan_code" defaultValue="starter">{(plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
+          <label>İlk owner adı<input name="owner_name" minLength={2} maxLength={120} required placeholder="Ad Soyad" /></label>
+          <label>İlk owner e-posta<input name="owner_email" type="email" required placeholder="owner@firma.com" /></label>
           <label className="wide">Özel alan adı<input name="custom_domain" placeholder="panel.firma.com" /></label>
-          <div className="wide management-submit"><small>Kurum ve paket modülleri atomik olarak oluşturulur.</small><button className="panel-primary" type="submit">Kurumu oluştur</button></div>
+          <div className="wide management-submit"><small>Kurum, modüller ve owner daveti tek provisioning akışında hazırlanır.</small><button className="panel-primary" type="submit">Kurumu hazırla ve davet et</button></div>
         </form>
       </article>
 
       <article className="panel-card management-card">
         <div className="management-heading"><div><small>YÖNETİLECEK KURUM</small><h2>Kurum seçimi</h2></div><span className="status-pill">{organizations.length} kurum</span></div>
         <form className="panel-form" method="get"><label className="wide">Aktif hedef kurum<select name="organization" defaultValue={targetId}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.plan_code}</option>)}</select></label><div className="wide management-submit"><small>Seçim yalnızca kurucu yönetim görünümünü değiştirir.</small><button className="panel-primary" type="submit">Kurumu aç</button></div></form>
+        {latestInvitation ? <div className="platform-note"><span>i</span><p><b>Owner daveti: {latestInvitation.email}</b> Durum: {latestInvitation.status}{latestInvitation.error_message ? ` · ${latestInvitation.error_message}` : ""}</p></div> : null}
       </article>
     </section>
 
@@ -58,7 +64,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       <article className="panel-card management-card"><div className="management-heading"><div><small>PAKET VE ERİŞİM</small><h2>Modül yönetimi</h2></div><span className="status-pill">{enabledCount}/{moduleRows.length} etkin</span></div><div className="module-control-list">{moduleRows.map((module) => <div className="module-control" key={module.code}><div><b>{module.name}</b><small>{module.description}</small></div><form action={toggleOrganizationModule}><input type="hidden" name="organization_id" value={targetId} /><input type="hidden" name="module_code" value={module.code} /><input type="hidden" name="is_enabled" value={String(!module.enabled)} /><button className={module.enabled ? "module-toggle enabled" : "module-toggle"} type="submit"><i /><span>{module.enabled ? "Etkin" : "Kapalı"}</span></button></form></div>)}</div></article>
     </section>
 
-    <section className="platform-grid compact-platform-grid"><article className="panel-card platform-card"><i>KY</i><span>{memberCount ?? 0} aktif</span><h3>Kullanıcılar ve Roller</h3><p>Seçilen kurumun aktif üyelik sayısı canlı veriden okunur.</p><small className="platform-coming">KURUM BAZLI</small></article><article className="panel-card platform-card"><i>CRM</i><span>{requestCount ?? 0} kayıt</span><h3>CRM Verileri</h3><p>Seçilen kuruma ait talep hacmi ve satış süreci canlı kayıtlardan okunur.</p><small className="platform-coming">CANLI VERİ</small></article><article className="panel-card platform-card"><i>DN</i><span>RLS aktif</span><h3>Denetim ve Güvenlik</h3><p>Yönetim işlemleri ArvoOS ana kurumundaki doğrulanmış kurucu hesabıyla sınırlandırılır.</p><small className="platform-coming">KURUCU SINIRI</small></article></section>
-    <div className="platform-note"><span>i</span><p><b>Kurucu erişimi müşteri kurum rollerinden bağımsızdır.</b> Hedef kurum üzerinde yapılan işlemler ArvoOS kurucu kimliğiyle doğrulanır.</p><Link href="/panel">Genel bakışa dön →</Link></div>
+    <section className="platform-grid compact-platform-grid"><article className="panel-card platform-card"><i>KY</i><span>{memberCount ?? 0} aktif</span><h3>Kullanıcılar ve Roller</h3><p>Owner daveti doğrulandığında üyelik otomatik aktifleşir.</p><small className="platform-coming">AUTH BAĞLI</small></article><article className="panel-card platform-card"><i>CRM</i><span>{requestCount ?? 0} kayıt</span><h3>CRM Verileri</h3><p>Seçilen kuruma ait talep hacmi canlı kayıtlardan okunur.</p><small className="platform-coming">CANLI VERİ</small></article><article className="panel-card platform-card"><i>DN</i><span>RLS aktif</span><h3>Denetim ve Güvenlik</h3><p>Provisioning işlemleri kurucu kimliği ve veritabanı politikalarıyla sınırlandırılır.</p><small className="platform-coming">KURUCU SINIRI</small></article></section>
+    <div className="platform-note"><span>i</span><p><b>Deneme durumu paket değildir.</b> Yeni kurum `status=trial` ile açılır; paket starter, professional veya enterprise olarak atanır.</p><Link href="/panel">Genel bakışa dön →</Link></div>
   </>;
 }
