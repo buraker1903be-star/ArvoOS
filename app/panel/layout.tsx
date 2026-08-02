@@ -8,6 +8,7 @@ import "./panel.css";
 import "./panel-ux.css";
 import "./panel-page-system.css";
 import "./panel-top-actions.css";
+import "./sidebar-workspace-switcher.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -29,7 +30,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   return <div className="panel-root"><main className="panel-frame">
     <aside className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
-      <div className="panel-org"><small>ÇALIŞMA ALANI</small><b>{organization.name}</b><span>{organization.plan_code} paket</span></div>
+      <div className="panel-org"><small>AKTİF ÇALIŞMA ALANI</small><b>{organization.name}</b><span>{organization.plan_code} paket</span></div>
+      <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="sidebar" />
       <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} />
       <div className="panel-sidebar-footer">
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
