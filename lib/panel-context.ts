@@ -26,10 +26,9 @@ type PanelOrganization = {
   custom_domain: string | null;
 };
 
-type MembershipRow = {
+type WorkspaceRpcRow = PanelOrganization & {
   organization_id: string;
   role: string;
-  organizations: PanelOrganization | PanelOrganization[] | null;
 };
 
 export type PanelWorkspace = {
@@ -44,16 +43,23 @@ export const getPanelContext = cache(async () => {
   const userId = auth?.claims?.sub;
   if (!userId) redirect("/login");
 
-  const { data: rows, error } = await supabase.from("organization_memberships")
-    .select("organization_id,role,organizations(id,name,slug,status,plan_code,sector,custom_domain)")
-    .eq("user_id", userId)
-    .eq("is_active", true);
-  if (error) throw new Error("Kurum üyelikleri okunamadı.");
+  const { data: rows, error } = await supabase.rpc("get_my_workspaces");
+  if (error) throw new Error("Çalışma alanları okunamadı: " + error.message);
 
-  const workspaces = ((rows ?? []) as MembershipRow[]).flatMap((row) => {
-    const organization = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
-    return organization ? [{ organizationId: row.organization_id, role: row.role, organization }] : [];
-  }) as PanelWorkspace[];
+  const workspaces = ((rows ?? []) as WorkspaceRpcRow[]).map((row) => ({
+    organizationId: row.organization_id,
+    role: row.role,
+    organization: {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      status: row.status,
+      plan_code: row.plan_code,
+      sector: row.sector,
+      custom_domain: row.custom_domain,
+    },
+  })) as PanelWorkspace[];
+
   if (!workspaces.length) redirect("/kurulum");
 
   const cookieStore = await cookies();
