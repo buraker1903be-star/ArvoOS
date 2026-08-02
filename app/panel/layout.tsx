@@ -6,6 +6,7 @@ import { PanelNavigation } from "./panel-navigation";
 import "./panel.css";
 import "./panel-ux.css";
 import "./panel-page-system.css";
+import "./panel-top-actions.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -22,6 +23,7 @@ const roleNames: Record<string, string> = {
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { membership, organization, modules, isPlatformOwner } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
+  const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
   return <div className="panel-root"><main className="panel-frame">
     <aside className="panel-sidebar">
@@ -36,7 +38,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <section className="panel-workspace">
       <header className="panel-topbar">
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
-        <div className="panel-top-actions"><Link className="panel-icon-button" aria-label="Bildirimler" href="/panel/notifications">◌</Link><div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div></div>
+        <div className="panel-top-actions">
+          <div className="panel-quick-actions" aria-label="Hızlı erişim">
+            {hasMessages ? <Link className="panel-quick-action" href="/panel/messages" aria-label="Mesajlar"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b></Link> : null}
+            <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
+          </div>
+          <div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
+        </div>
       </header>
       <div className="panel-content">{children}</div>
     </section>
