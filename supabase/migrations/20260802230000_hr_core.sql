@@ -33,8 +33,13 @@ create table if not exists public.hr_employees (
   unique (organization_id,employee_no),
   unique (id,organization_id),
   constraint hr_employees_department_org_fk foreign key (department_id,organization_id)
-    references public.hr_departments(id,organization_id) on delete no action
+    references public.hr_departments(id,organization_id) on delete no action,
+  check (termination_date is null or hire_date is null or termination_date >= hire_date)
 );
+
+create unique index if not exists hr_employees_org_user_uidx
+  on public.hr_employees(organization_id,user_id)
+  where user_id is not null;
 
 alter table public.hr_departments add constraint hr_departments_manager_org_fk
   foreign key (manager_employee_id,organization_id)
@@ -84,12 +89,23 @@ grant select,insert,update on public.hr_departments,public.hr_employees,public.h
 
 create policy "members_read_hr_departments" on public.hr_departments for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_departments.organization_id and m.user_id=(select auth.uid()) and m.is_active));
 create policy "admins_manage_hr_departments" on public.hr_departments for all to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_departments.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))) with check (exists(select 1 from public.organization_memberships m where m.organization_id=hr_departments.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin')));
-create policy "members_read_hr_employees" on public.hr_employees for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_employees.organization_id and m.user_id=(select auth.uid()) and m.is_active));
+
+create policy "admins_or_self_read_hr_employees" on public.hr_employees for select to authenticated using (
+  user_id=(select auth.uid()) or exists(select 1 from public.organization_memberships m where m.organization_id=hr_employees.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))
+);
 create policy "admins_manage_hr_employees" on public.hr_employees for all to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_employees.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))) with check (exists(select 1 from public.organization_memberships m where m.organization_id=hr_employees.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin')));
-create policy "members_read_hr_leave" on public.hr_leave_requests for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_leave_requests.organization_id and m.user_id=(select auth.uid()) and m.is_active));
-create policy "members_create_own_hr_leave" on public.hr_leave_requests for insert to authenticated with check (created_by=(select auth.uid()) and exists(select 1 from public.hr_employees e where e.id=hr_leave_requests.employee_id and e.organization_id=hr_leave_requests.organization_id and e.user_id=(select auth.uid())));
+
+create policy "admins_or_self_read_hr_leave" on public.hr_leave_requests for select to authenticated using (
+  exists(select 1 from public.hr_employees e where e.id=hr_leave_requests.employee_id and e.organization_id=hr_leave_requests.organization_id and e.user_id=(select auth.uid()))
+  or exists(select 1 from public.organization_memberships m where m.organization_id=hr_leave_requests.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))
+);
+create policy "members_create_own_hr_leave" on public.hr_leave_requests for insert to authenticated with check (created_by=(select auth.uid()) and exists(select 1 from public.hr_employees e where e.id=hr_leave_requests.employee_id and e.organization_id=hr_leave_requests.organization_id and e.user_id=(select auth.uid()) and e.employment_status in ('active','on_leave')));
 create policy "admins_manage_hr_leave" on public.hr_leave_requests for update to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_leave_requests.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))) with check (exists(select 1 from public.organization_memberships m where m.organization_id=hr_leave_requests.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin')));
-create policy "members_read_hr_reviews" on public.hr_performance_reviews for select to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_performance_reviews.organization_id and m.user_id=(select auth.uid()) and m.is_active));
+
+create policy "admins_or_self_read_hr_reviews" on public.hr_performance_reviews for select to authenticated using (
+  exists(select 1 from public.hr_employees e where e.id=hr_performance_reviews.employee_id and e.organization_id=hr_performance_reviews.organization_id and e.user_id=(select auth.uid()))
+  or exists(select 1 from public.organization_memberships m where m.organization_id=hr_performance_reviews.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))
+);
 create policy "admins_manage_hr_reviews" on public.hr_performance_reviews for all to authenticated using (exists(select 1 from public.organization_memberships m where m.organization_id=hr_performance_reviews.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin'))) with check (exists(select 1 from public.organization_memberships m where m.organization_id=hr_performance_reviews.organization_id and m.user_id=(select auth.uid()) and m.is_active and m.role in ('owner','admin')));
 
 insert into public.arvo_modules(code,name,description,sort_order,is_active)
