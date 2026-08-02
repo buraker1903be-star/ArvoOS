@@ -1,6 +1,6 @@
 create table if not exists public.billing_customers (
   organization_id uuid primary key references public.organizations(id) on delete cascade,
-  provider text not null default 'manual' check (provider in ('manual','stripe','iyzico')),
+  provider text not null default 'manual' check (provider in ('manual','paytr')),
   provider_customer_id text,
   billing_email text,
   tax_number text,
@@ -13,7 +13,7 @@ create table if not exists public.billing_customers (
 create table if not exists public.billing_subscriptions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  provider text not null default 'manual' check (provider in ('manual','stripe','iyzico')),
+  provider text not null default 'manual' check (provider in ('manual','paytr')),
   provider_subscription_id text,
   plan_code public.plan_code not null,
   status text not null default 'trialing' check (status in ('trialing','active','past_due','paused','canceled','incomplete')),
@@ -33,7 +33,7 @@ create table if not exists public.billing_invoices (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
   subscription_id uuid references public.billing_subscriptions(id) on delete set null,
-  provider text not null default 'manual' check (provider in ('manual','stripe','iyzico')),
+  provider text not null default 'manual' check (provider in ('manual','paytr')),
   provider_invoice_id text,
   status text not null default 'draft' check (status in ('draft','open','paid','void','uncollectible')),
   currency text not null default 'TRY',
