@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 
-const plans = new Set(["starter", "professional", "enterprise"]);
+const plans = new Set(["trial", "starter", "professional", "enterprise"]);
 
 function cleanDomain(value: string) {
   const domain = value.trim().toLowerCase()
@@ -16,9 +16,24 @@ function cleanDomain(value: string) {
   return domain;
 }
 
-export async function updateOrganizationSettings(formData: FormData) {
-  const { supabase, organization, isPlatformOwner } = await getPanelContext();
+async function requireFounderTarget(formData: FormData) {
+  const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  if (!organizationId) throw new Error("Yönetilecek kurum seçilmedi.");
+
+  const { data: target, error } = await supabase.from("organizations")
+    .select("id,slug")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (error || !target) throw new Error("Hedef kurum bulunamadı.");
+  return { supabase, organizationId, target };
+}
+
+export async function updateOrganizationSettings(formData: FormData) {
+  const { supabase, organizationId } = await requireFounderTarget(formData);
 
   const name = String(formData.get("name") ?? "").trim();
   const sector = String(formData.get("sector") ?? "").trim();
@@ -35,15 +50,15 @@ export async function updateOrganizationSettings(formData: FormData) {
     plan_code: planCode,
     custom_domain: customDomain,
     updated_at: new Date().toISOString(),
-  }).eq("id", organization.id);
+  }).eq("id", organizationId);
 
   if (error) throw new Error("Kurum ayarları kaydedilemedi.");
   revalidatePath("/panel", "layout");
+  revalidatePath(`/panel/platform?organization=${organizationId}`);
 }
 
 export async function toggleOrganizationModule(formData: FormData) {
-  const { supabase, organization, isPlatformOwner } = await getPanelContext();
-  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+  const { supabase, organizationId } = await requireFounderTarget(formData);
 
   const moduleCode = String(formData.get("module_code") ?? "");
   const isEnabled = String(formData.get("is_enabled") ?? "") === "true";
@@ -51,9 +66,10 @@ export async function toggleOrganizationModule(formData: FormData) {
 
   const { error } = await supabase.from("organization_modules")
     .update({ is_enabled: isEnabled })
-    .eq("organization_id", organization.id)
+    .eq("organization_id", organizationId)
     .eq("module_code", moduleCode);
 
   if (error) throw new Error("Modül durumu değiştirilemedi.");
   revalidatePath("/panel", "layout");
+  revalidatePath(`/panel/platform?organization=${organizationId}`);
 }
