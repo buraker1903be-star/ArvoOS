@@ -1,6 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../components/panel-drawer";
 import { createOpportunity, moveOpportunity } from "./actions";
-import { OpenNewRequestButton } from "./open-new-request-button";
 import "./crm.css";
 
 const columns = [
@@ -49,10 +49,22 @@ export default async function CrmPage() {
   const lost = opportunities.filter((item) => item.stage === "lost");
   const conversion = won.length + lost.length ? Math.round(won.length / (won.length + lost.length) * 100) : 0;
 
+  const requestForm = <form className="panel-form" action={createOpportunity}>
+    <label>Talep konusu<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Kurumsal paket bilgi talebi" /></label>
+    <label>Müşteri / kurum<input name="customer_name" required minLength={2} maxLength={180} /></label>
+    <label>E-posta<input name="contact_email" type="email" /></label>
+    <label>Telefon<input name="contact_phone" /></label>
+    <label>Beklenen tutar<input name="estimated_value" type="number" min="0" step="0.01" defaultValue="0" /></label>
+    <label>Planlanan sonuç tarihi<input name="expected_close_date" type="date" /></label>
+    <label>Talep kaynağı<input name="source" placeholder="Web sitesi, telefon, referans..." /></label>
+    <label className="wide">Talep notu<textarea name="notes" maxLength={2000} /></label>
+    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Talebi kaydet</button></div>
+  </form>;
+
   return <div className="crm-page-stack">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">MÜŞTERİ VE SATIŞ</small><h1>CRM</h1><p>Yeni talepleri kaydedin, görüşmeden tahsilata kadar tüm süreci tek akışta yönetin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{newRequests.length} yeni talep</span><OpenNewRequestButton /></div>
+      <div className="panel-page-actions"><span className="status-pill">{newRequests.length} yeni talep</span><PanelDrawer triggerLabel="+ Yeni talep" title="Yeni talep" description="Müşteri veya kurum talebini kaydedin.">{requestForm}</PanelDrawer></div>
     </div>
 
     <section className="crm-metrics">
@@ -61,21 +73,6 @@ export default async function CrmPage() {
       <article><small>TAHMİNİ GELİR</small><strong>{money(weightedValue)}</strong><span>Olasılığa göre</span></article>
       <article><small>KAZANMA ORANI</small><strong>%{conversion}</strong><span>Sonuçlanan kayıtlar</span></article>
     </section>
-
-    <details className="panel-card crm-create" id="new-request-panel">
-      <summary><span><b>+ Yeni talep</b><small>Müşteri veya kurum talebini kaydedin</small></span><em>Aç</em></summary>
-      <form className="panel-form" action={createOpportunity}>
-        <label>Talep konusu<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Kurumsal paket bilgi talebi" /></label>
-        <label>Müşteri / kurum<input name="customer_name" required minLength={2} maxLength={180} /></label>
-        <label>E-posta<input name="contact_email" type="email" /></label>
-        <label>Telefon<input name="contact_phone" /></label>
-        <label>Beklenen tutar<input name="estimated_value" type="number" min="0" step="0.01" defaultValue="0" /></label>
-        <label>Planlanan sonuç tarihi<input name="expected_close_date" type="date" /></label>
-        <label>Talep kaynağı<input name="source" placeholder="Web sitesi, telefon, referans..." /></label>
-        <label className="wide">Talep notu<textarea name="notes" maxLength={2000} /></label>
-        <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Talebi kaydet</button></div>
-      </form>
-    </details>
 
     <div className="section-heading"><div><small className="panel-kicker">SÜREÇ TAKİBİ</small><h2>Talep ve satış aşamaları</h2></div><span>{opportunities.length} toplam kayıt · {money(activeValue)} aktif değer</span></div>
     <section className="crm-board">
