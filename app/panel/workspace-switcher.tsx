@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { PanelWorkspace } from "@/lib/panel-context";
 
 type Props = {
@@ -9,6 +8,13 @@ type Props = {
 
 function getLabel(slug: string) {
   return slug === "arvo-os" ? "ArvoOS Platform" : "AkademikMerkez";
+}
+
+function SwitchForm({ workspace, className, children }: { workspace: PanelWorkspace; className: string; children: React.ReactNode }) {
+  return <form action="/panel/switch" method="get" className="workspace-switch-form">
+    <input type="hidden" name="organization_id" value={workspace.organizationId} />
+    <button type="submit" className={className}>{children}</button>
+  </form>;
 }
 
 export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = "topbar" }: Props) {
@@ -29,7 +35,7 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
 
           return active
             ? <div className="sidebar-workspace-item active" key={workspace.organizationId} aria-current="page">{content}</div>
-            : <Link className="sidebar-workspace-item" href={`/panel/switch?organization_id=${encodeURIComponent(workspace.organizationId)}`} key={workspace.organizationId} prefetch={false}>{content}</Link>;
+            : <SwitchForm className="sidebar-workspace-item" key={workspace.organizationId} workspace={workspace}>{content}</SwitchForm>;
         })}
       </div>
     </div>;
@@ -45,20 +51,15 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
       {workspaces.map((workspace) => {
         const active = workspace.organizationId === activeOrganizationId;
         const label = getLabel(workspace.organization.slug);
-
-        if (active) {
-          return <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page">
-            <span>{label.slice(0, 1).toUpperCase()}</span>
-            <p><b>{label}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
-            <i>✓</i>
-          </div>;
-        }
-
-        return <Link className="workspace-switcher-item" href={`/panel/switch?organization_id=${encodeURIComponent(workspace.organizationId)}`} key={workspace.organizationId} prefetch={false}>
+        const content = <>
           <span>{label.slice(0, 1).toUpperCase()}</span>
           <p><b>{label}</b><small>{workspace.role === "owner" ? "Owner" : workspace.role}</small></p>
-          <i>→</i>
-        </Link>;
+          <i>{active ? "✓" : "→"}</i>
+        </>;
+
+        return active
+          ? <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page">{content}</div>
+          : <SwitchForm className="workspace-switcher-item" key={workspace.organizationId} workspace={workspace}>{content}</SwitchForm>;
       })}
     </div>
   </details>;
