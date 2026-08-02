@@ -25,6 +25,12 @@ const groups: NavigationGroup[] = [
   { key: "reports", label: "Raporlar", icon: "R", codes: ["reporting", "reports", "analytics"] },
 ];
 
+const crmChildren = [
+  { href: "/panel/crm", label: "Talepler", exact: true },
+  { href: "/panel/crm/proposals", label: "Teklifler", exact: false },
+  { href: "/panel/crm/contracts", label: "Sözleşmeler", exact: false },
+];
+
 const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
 export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
@@ -43,6 +49,21 @@ export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelMo
 
       <div className="panel-nav-groups">
         {resolved.filter((group) => group.items.length > 0).map((group) => {
+          if (group.key === "crm") {
+            const active = pathname.startsWith("/panel/crm");
+            return (
+              <details className={active ? "panel-nav-group active" : "panel-nav-group"} key={group.key} open={active}>
+                <summary><i>{group.icon}</i><span>{group.label}</span><em>3</em></summary>
+                <div className="panel-nav-children">
+                  {crmChildren.map((item) => {
+                    const selected = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                    return <Link className={selected ? "active" : ""} href={item.href} key={item.href}><span>{item.label}</span></Link>;
+                  })}
+                </div>
+              </details>
+            );
+          }
+
           const active = group.items.some((item) => pathname.startsWith(`/panel/${item.code}`));
           const first = group.items[0];
 
