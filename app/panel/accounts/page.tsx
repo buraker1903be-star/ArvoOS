@@ -1,4 +1,5 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../components/panel-drawer";
 import { createEntry, createParty } from "./actions";
 
 const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
@@ -28,7 +29,28 @@ export default async function AccountsPage() {
   return <>
     <div className="panel-pagehead">
       <div><small className="panel-kicker">FİNANS</small><h1>Cari hesaplar</h1><p>Müşteri ve tedarikçi bakiyelerini takip edin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{totals.length} cari</span></div>
+      <div className="panel-page-actions">
+        <span className="status-pill">{totals.length} cari</span>
+        <PanelDrawer triggerLabel="+ Yeni cari" title="Yeni cari" description="Müşteri veya tedarikçi kartı oluşturun.">
+          <form className="panel-form" action={createParty}>
+            <label>Cari adı<input name="name" required minLength={2} maxLength={180} /></label>
+            <label>Tür<select name="party_type"><option value="customer">Müşteri</option><option value="supplier">Tedarikçi</option><option value="both">Her ikisi</option></select></label>
+            <label>Vergi no<input name="tax_number" /></label><label>Vergi dairesi<input name="tax_office" /></label>
+            <label>E-posta<input name="email" type="email" /></label><label>Telefon<input name="phone" /></label>
+            <div className="form-actions wide"><button className="panel-primary" type="submit">Cariyi kaydet</button></div>
+          </form>
+        </PanelDrawer>
+        <PanelDrawer triggerLabel="+ Yeni hareket" title="Yeni cari hareketi" description="Seçili cariye borç veya alacak hareketi ekleyin.">
+          <form className="panel-form" action={createEntry}>
+            <label>Cari<select name="party_id" required>{totals.map((party) => <option key={party.id} value={party.id}>{party.name}</option>)}</select></label>
+            <label>Hareket<select name="entry_type"><option value="debit">Borçlandır</option><option value="credit">Alacaklandır</option></select></label>
+            <label>Tutar<input name="amount" type="number" min="0.01" step="0.01" required /></label>
+            <label>Tarih<input name="transaction_date" type="date" /></label><label>Vade<input name="due_date" type="date" /></label>
+            <label>Referans<input name="reference_no" /></label><label className="wide">Açıklama<input name="description" required minLength={2} maxLength={500} /></label>
+            <div className="form-actions wide"><button className="panel-primary" type="submit">Hareketi kaydet</button></div>
+          </form>
+        </PanelDrawer>
+      </div>
     </div>
 
     <section className="metric-strip">
@@ -37,24 +59,6 @@ export default async function AccountsPage() {
       <article><div><small>NET BAKİYE</small><strong>{money(receivable - payable)}</strong><p>Toplam pozisyon</p></div></article>
       <article><div><small>AKTİF CARİ</small><strong>{totals.length}</strong><p>Müşteri ve tedarikçi</p></div></article>
     </section>
-
-    <div className="panel-action-row">
-      <details className="panel-card panel-action-details"><summary>+ Yeni cari</summary><form className="panel-form" action={createParty}>
-        <label>Cari adı<input name="name" required minLength={2} maxLength={180} /></label>
-        <label>Tür<select name="party_type"><option value="customer">Müşteri</option><option value="supplier">Tedarikçi</option><option value="both">Her ikisi</option></select></label>
-        <label>Vergi no<input name="tax_number" /></label><label>Vergi dairesi<input name="tax_office" /></label>
-        <label>E-posta<input name="email" type="email" /></label><label>Telefon<input name="phone" /></label>
-        <div className="form-actions wide"><button className="panel-primary" type="submit">Cariyi kaydet</button></div>
-      </form></details>
-      <details className="panel-card panel-action-details"><summary>+ Yeni hareket</summary><form className="panel-form" action={createEntry}>
-        <label>Cari<select name="party_id" required>{totals.map((party) => <option key={party.id} value={party.id}>{party.name}</option>)}</select></label>
-        <label>Hareket<select name="entry_type"><option value="debit">Borçlandır</option><option value="credit">Alacaklandır</option></select></label>
-        <label>Tutar<input name="amount" type="number" min="0.01" step="0.01" required /></label>
-        <label>Tarih<input name="transaction_date" type="date" /></label><label>Vade<input name="due_date" type="date" /></label>
-        <label>Referans<input name="reference_no" /></label><label className="wide">Açıklama<input name="description" required minLength={2} maxLength={500} /></label>
-        <div className="form-actions wide"><button className="panel-primary" type="submit">Hareketi kaydet</button></div>
-      </form></details>
-    </div>
 
     <div className="section-heading"><div><small className="panel-kicker">CARİ LİSTESİ</small><h2>Bakiyeler</h2></div></div>
     <section className="panel-modules">{totals.map((party) => <article className="panel-card account-summary-card" key={party.id}>
