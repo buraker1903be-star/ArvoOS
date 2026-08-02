@@ -23,9 +23,9 @@ export async function createOpportunity(formData: FormData) {
   const expectedCloseDate = String(formData.get("expected_close_date") ?? "") || null;
   const estimatedValue = Math.round(Number(formData.get("estimated_value") ?? 0) * 100);
 
-  if (title.length < 2 || title.length > 180) throw new Error("Fırsat başlığı 2–180 karakter olmalı.");
-  if (customerName.length < 2 || customerName.length > 180) throw new Error("Müşteri adı 2–180 karakter olmalı.");
-  if (!Number.isFinite(estimatedValue) || estimatedValue < 0) throw new Error("Geçersiz fırsat tutarı.");
+  if (title.length < 2 || title.length > 180) throw new Error("Talep konusu 2–180 karakter olmalıdır.");
+  if (customerName.length < 2 || customerName.length > 180) throw new Error("Müşteri veya kurum adı 2–180 karakter olmalıdır.");
+  if (!Number.isFinite(estimatedValue) || estimatedValue < 0) throw new Error("Geçersiz talep tutarı.");
 
   const { error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
@@ -41,26 +41,28 @@ export async function createOpportunity(formData: FormData) {
     owner_user_id: userId,
     created_by: userId,
   });
-  if (error) throw new Error("Fırsat oluşturulamadı: " + error.message);
+  if (error) throw new Error("Talep oluşturulamadı: " + error.message);
   revalidatePath("/panel/crm");
   revalidatePath("/panel");
 }
 
 export async function moveOpportunity(formData: FormData) {
   const { supabase, membership } = await crmContext();
-  const opportunityId = String(formData.get("opportunity_id") ?? "");
-  const stage = String(formData.get("stage") ?? "");
+  const opportunityId = String(formData.get("opportunity_id") ?? "").trim();
+  const stage = String(formData.get("stage") ?? "").trim();
   const lostReason = String(formData.get("lost_reason") ?? "").trim();
-  if (!stages.has(stage)) throw new Error("Geçersiz satış aşaması.");
+  if (!opportunityId) throw new Error("Güncellenecek talep bulunamadı.");
+  if (!stages.has(stage)) throw new Error("Geçersiz talep aşaması.");
   if (stage === "lost" && lostReason.length < 2) throw new Error("Kayıp nedeni girilmelidir.");
 
-  const { error } = await supabase.from("crm_opportunities").update({
+  const { data, error } = await supabase.from("crm_opportunities").update({
     stage,
     probability: stageProbability[stage],
     lost_reason: stage === "lost" ? lostReason : null,
     updated_at: new Date().toISOString(),
-  }).eq("id", opportunityId).eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Fırsat aşaması güncellenemedi: " + error.message);
+  }).eq("id", opportunityId).eq("organization_id", membership.organization_id).select("id").maybeSingle();
+  if (error) throw new Error("Talep aşaması güncellenemedi: " + error.message);
+  if (!data) throw new Error("Talep bulunamadı veya bu kaydı güncelleme yetkiniz yok.");
   revalidatePath("/panel/crm");
   revalidatePath("/panel");
 }
