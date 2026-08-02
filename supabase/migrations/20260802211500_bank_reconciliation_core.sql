@@ -40,11 +40,11 @@ create table if not exists public.bank_transactions (
   constraint bank_transactions_invoice_org_fk
     foreign key (matched_invoice_id, organization_id)
     references public.billing_invoices(id, organization_id)
-    on delete set null,
+    on delete no action,
   constraint bank_transactions_party_org_fk
     foreign key (matched_party_id, organization_id)
     references public.account_parties(id, organization_id)
-    on delete set null
+    on delete no action
 );
 
 alter table public.organization_bank_accounts enable row level security;
