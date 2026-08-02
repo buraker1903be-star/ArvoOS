@@ -8,7 +8,7 @@ const money = (amount: number) => new Intl.NumberFormat("tr-TR", {
 }).format(amount / 100);
 
 export default async function PanelPage() {
-  const { supabase, membership, organization, modules, isPlatformOwner } = await getPanelContext();
+  const { supabase, organization, isPlatformOwner } = await getPanelContext();
   const organizationId = organization.id;
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -21,7 +21,6 @@ export default async function PanelPage() {
     { count: openWorkflowCount },
     { count: pendingPaymentCount },
     { count: unreadNotificationCount },
-    { data: license },
     { data: paidInvoices },
   ] = await Promise.all([
     supabase.from("crm_requests").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
@@ -34,7 +33,6 @@ export default async function PanelPage() {
     isPlatformOwner
       ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "founder").is("read_at", null)
       : supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "organization").eq("organization_id", organizationId).is("read_at", null),
-    supabase.from("organization_licenses").select("license_status,current_period_end,user_limit,ai_credit_limit,ai_credits_used").eq("organization_id", organizationId).maybeSingle(),
     isPlatformOwner
       ? supabase.from("billing_invoices").select("total").eq("status", "paid").gte("paid_at", monthStart.toISOString())
       : supabase.from("billing_invoices").select("total").eq("organization_id", organizationId).eq("status", "paid").gte("paid_at", monthStart.toISOString()),
@@ -45,42 +43,45 @@ export default async function PanelPage() {
   const activeOpportunities = (opportunities ?? []).filter((item) => !["won", "lost"].includes(item.stage));
   const pipelineValue = activeOpportunities.reduce((sum, item) => sum + Number(item.estimated_value ?? 0), 0);
   const weightedForecast = activeOpportunities.reduce((sum, item) => sum + Math.round(Number(item.estimated_value ?? 0) * Number(item.probability ?? 0) / 100), 0);
-  const opportunityWonCount = (opportunities ?? []).filter((item) => item.stage === "won").length;
-  const opportunityClosedCount = (opportunities ?? []).filter((item) => ["won", "lost"].includes(item.stage)).length;
-  const opportunityWinRate = opportunityClosedCount ? Math.round((opportunityWonCount / opportunityClosedCount) * 100) : 0;
-  const aiUsageRate = license?.ai_credit_limit
-    ? Math.min(100, Math.round((Number(license.ai_credits_used ?? 0) / Number(license.ai_credit_limit)) * 100))
-    : 0;
-  const licenseEnd = license?.current_period_end
-    ? new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(license.current_period_end))
-    : "Tanımlı değil";
 
   return <>
-    <div className="panel-pagehead"><div><small className="panel-kicker">{isPlatformOwner ? "KURUCU ÇALIŞMA ALANI" : "KURUM ÇALIŞMA ALANI"}</small><h1>{isPlatformOwner ? "Yönetim Merkezi" : "Genel Bakış"}</h1><p>{isPlatformOwner ? "ArvoOS platformunu ve kurum operasyonlarını tek merkezden yönetin." : "Satıştan operasyona tüm ekibiniz için tek çalışma merkezi."}</p></div><div className="panel-page-actions"><span className="live-badge"><i /> Sistem aktif</span>{isPlatformOwner ? <Link className="panel-primary" href="/panel/platform">Platformu yönet</Link> : null}</div></div>
+    <div className="panel-pagehead">
+      <div>
+        <small className="panel-kicker">BUGÜN</small>
+        <h1>{isPlatformOwner ? "Yönetim özeti" : "Ana Sayfa"}</h1>
+        <p>Bekleyen işler, satışlar ve tahsilatlar tek bakışta.</p>
+      </div>
+      <div className="panel-page-actions">
+        <Link className="panel-secondary" href="/panel/reporting">Raporlar</Link>
+        <Link className="panel-primary" href="/panel/crm">Yeni fırsat</Link>
+      </div>
+    </div>
 
-    <section className="executive-hero">
-      <div className="executive-hero-copy"><small>ARVOOS EXECUTIVE LIGHT</small><h2>{isPlatformOwner ? "İşletmenizin tamamı, tek bir yönetim ritminde." : "Ekibinizin tamamı, tek bir çalışma ritminde."}</h2><p>Satış, operasyon, finans ve ekip verilerini birbirine bağlı süreçlerle yönetin. Her karar güncel kurum verisine dayanır.</p><div className="hero-actions"><Link href="/panel/crm">Yeni fırsat oluştur</Link><Link href="/panel/reporting">Raporları incele →</Link></div></div>
-      <div className="executive-status"><small>LİSANS DURUMU</small><strong>{license?.license_status === "active" ? "Aktif" : license?.license_status ?? "Kurulumda"}</strong><span><i /> {organization.plan_code.toUpperCase()} paket</span><div><b>{licenseEnd}</b><small>dönem bitişi</small></div></div>
+    <section className="metric-strip metric-strip-five">
+      <article><span className="metric-icon">◎</span><div><small>AKTİF FIRSAT</small><strong>{activeOpportunities.length}</strong><p>{money(pipelineValue)} toplam değer</p></div></article>
+      <article><span className="metric-icon">↗</span><div><small>TAHMİNİ GELİR</small><strong>{money(weightedForecast)}</strong><p>Olasılığa göre</p></div></article>
+      <article><span className="metric-icon">◇</span><div><small>AKTİF İŞ</small><strong>{openWorkflowCount ?? 0}</strong><p>Planlanan ve devam eden</p></div></article>
+      <article><span className="metric-icon">▦</span><div><small>BU AY TAHSİLAT</small><strong>{money(monthlyRevenue)}</strong><p>{pendingPaymentCount ?? 0} ödeme bekliyor</p></div></article>
+      <article><span className="metric-icon">◌</span><div><small>BİLDİRİM</small><strong>{unreadNotificationCount ?? 0}</strong><p>Okunmamış kayıt</p></div></article>
     </section>
 
-    <section className="metric-strip">
-      <article><span className="metric-icon">◎</span><div><small>AKTİF FIRSAT</small><strong>{activeOpportunities.length}</strong><p>{money(pipelineValue)} pipeline değeri</p></div></article>
-      <article><span className="metric-icon">↗</span><div><small>AĞIRLIKLI TAHMİN</small><strong>{money(weightedForecast)}</strong><p>%{opportunityWinRate} fırsat kazanma oranı</p></div></article>
-      <article><span className="metric-icon">◇</span><div><small>AÇIK İŞ AKIŞI</small><strong>{openWorkflowCount ?? 0}</strong><p>Planlanan veya devam eden</p></div></article>
-      <article><span className="metric-icon">▦</span><div><small>BU AY TAHSİLAT</small><strong>{money(monthlyRevenue)}</strong><p>{pendingPaymentCount ?? 0} ödeme incelemede</p></div></article>
-    </section>
+    <section className="panel-grid dashboard-grid">
+      <article className="panel-card panel-span-2">
+        <div className="section-heading compact"><div><small className="panel-kicker">ÖNCELİKLİ İŞLER</small><h2>Bugün neye odaklanmalı?</h2></div></div>
+        <div className="dashboard-actions">
+          <Link href="/panel/crm"><span>Satış fırsatlarını incele</span><b>{activeOpportunities.length}</b></Link>
+          <Link href="/panel/operations"><span>Aktif işleri takip et</span><b>{openWorkflowCount ?? 0}</b></Link>
+          <Link href="/panel/finance"><span>Bekleyen tahsilatları kontrol et</span><b>{pendingPaymentCount ?? 0}</b></Link>
+          <Link href="/panel/notifications"><span>Bildirimleri gözden geçir</span><b>{unreadNotificationCount ?? 0}</b></Link>
+        </div>
+      </article>
 
-    <section className="platform-overview">
-      <div><small>GÜNLÜK OPERASYON NABZI</small><h2>Karar bekleyen başlıklar</h2><p>Satış, operasyon, ödeme ve bildirim verileri canlı olarak hesaplanır.</p></div>
-      <dl>
-        <div><dt>TOPLAM TALEP</dt><dd>{requestCount ?? 0}</dd></div>
-        <div><dt>TALEP DÖNÜŞÜMÜ</dt><dd>%{requestConversionRate}</dd></div>
-        <div><dt>OKUNMAMIŞ BİLDİRİM</dt><dd>{unreadNotificationCount ?? 0}</dd></div>
-        <div><dt>AI KULLANIMI</dt><dd>%{aiUsageRate}</dd></div>
-      </dl>
+      <article className="panel-card">
+        <div className="section-heading compact"><div><small className="panel-kicker">SATIŞ ÖZETİ</small><h2>Dönüşüm</h2></div></div>
+        <div className="dashboard-summary-number">%{requestConversionRate}</div>
+        <p>{requestCount ?? 0} talepten {wonCount ?? 0} tanesi satışa dönüştü.</p>
+        <Link className="panel-text-link" href="/panel/crm">CRM'i aç →</Link>
+      </article>
     </section>
-
-    <div className="section-heading"><div><small className="panel-kicker">OPERASYON MERKEZİ</small><h2>Çalışma alanları</h2></div><span>{modules.length} modül etkin</span></div>
-    <section className="panel-modules">{modules.map((module, index) => <article className="panel-card panel-module" key={module.code}><div className="module-top"><i>{module.icon}</i><span>0{index + 1}</span></div><small>ETKİN MODÜL</small><h3>{module.name}</h3><p>{module.description}</p><Link href={"/panel/" + module.code}>Çalışma alanını aç <b>→</b></Link></article>)}</section>
   </>;
 }
