@@ -14,6 +14,9 @@ create table if not exists public.organization_bank_accounts (
   unique (id, organization_id)
 );
 
+create unique index if not exists billing_invoices_id_org_uidx
+  on public.billing_invoices(id, organization_id);
+
 create table if not exists public.bank_transactions (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -25,15 +28,23 @@ create table if not exists public.bank_transactions (
   description text not null check (char_length(description) between 2 and 500),
   reference_no text,
   reconciliation_status text not null default 'unmatched' check (reconciliation_status in ('unmatched','matched','ignored')),
-  matched_invoice_id uuid references public.billing_invoices(id) on delete set null,
-  matched_party_id uuid references public.account_parties(id) on delete set null,
+  matched_invoice_id uuid,
+  matched_party_id uuid,
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint bank_transactions_account_org_fk
     foreign key (bank_account_id, organization_id)
     references public.organization_bank_accounts(id, organization_id)
-    on delete cascade
+    on delete cascade,
+  constraint bank_transactions_invoice_org_fk
+    foreign key (matched_invoice_id, organization_id)
+    references public.billing_invoices(id, organization_id)
+    on delete set null,
+  constraint bank_transactions_party_org_fk
+    foreign key (matched_party_id, organization_id)
+    references public.account_parties(id, organization_id)
+    on delete set null
 );
 
 alter table public.organization_bank_accounts enable row level security;
