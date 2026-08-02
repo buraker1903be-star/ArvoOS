@@ -22,7 +22,7 @@ const groups: NavigationGroup[] = [
   { key: "finance", label: "Finans", icon: "F", codes: ["finance", "accounts", "banking", "billing", "payments", "e_invoice"] },
   { key: "hr", label: "İnsan Kaynakları", icon: "İK", codes: ["hr"] },
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
-  { key: "reports", label: "Raporlar", icon: "R", codes: ["reports", "analytics"] },
+  { key: "reports", label: "Raporlar", icon: "R", codes: ["reporting", "reports", "analytics"] },
   { key: "settings", label: "Ayarlar", icon: "A", codes: ["settings", "users", "roles", "integrations", "domains", "packages", "support"] },
 ];
 
