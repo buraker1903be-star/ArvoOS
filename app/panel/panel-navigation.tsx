@@ -23,26 +23,17 @@ const groups: NavigationGroup[] = [
   { key: "hr", label: "İnsan Kaynakları", icon: "İK", codes: ["hr"] },
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
   { key: "reports", label: "Raporlar", icon: "R", codes: ["reporting", "reports", "analytics"] },
-  { key: "settings", label: "Ayarlar", icon: "A", codes: ["settings", "users", "roles", "integrations", "domains", "packages", "support"] },
 ];
 
 const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
 export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
   const pathname = usePathname();
-  const assigned = new Set<string>();
 
-  const resolved = groups.map((group) => {
-    const items = modules.filter((module) => group.codes.includes(normalize(module.code)));
-    items.forEach((item) => assigned.add(item.code));
-    return { ...group, items };
-  });
-
-  const unmatched = modules.filter((module) => !assigned.has(module.code));
-  if (unmatched.length) {
-    const settings = resolved.find((group) => group.key === "settings");
-    settings?.items.push(...unmatched);
-  }
+  const resolved = groups.map((group) => ({
+    ...group,
+    items: modules.filter((module) => group.codes.includes(normalize(module.code))),
+  }));
 
   return (
     <nav className="panel-nav panel-nav-v2" aria-label="Ana menü">
@@ -77,6 +68,10 @@ export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelMo
           );
         })}
       </div>
+
+      <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings">
+        <i>A</i><span>Ayarlar</span>
+      </Link>
 
       {isPlatformOwner ? (
         <Link className={pathname.startsWith("/panel/platform") ? "panel-nav-group-link owner-link active" : "panel-nav-group-link owner-link"} href="/panel/platform">
