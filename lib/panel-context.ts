@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,28 +24,61 @@ type PanelOrganization = {
   custom_domain: string | null;
 };
 
+type MembershipRow = {
+  organization_id: string;
+  role: string;
+  organizations: PanelOrganization | PanelOrganization[] | null;
+};
+
+export type PanelWorkspace = {
+  organizationId: string;
+  role: string;
+  organization: PanelOrganization;
+};
+
 export const getPanelContext = cache(async () => {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
   if (!userId) redirect("/login");
+
   const { data: rows, error } = await supabase.from("organization_memberships")
     .select("organization_id,role,organizations(id,name,slug,status,plan_code,sector,custom_domain)")
-    .eq("user_id", userId).eq("is_active", true).limit(1);
-  if (error) throw new Error("Kurum üyeliği okunamadı.");
-  const membership = rows?.[0] as { organization_id: string; role: string; organizations: PanelOrganization | PanelOrganization[] | null } | undefined;
-  const organization = Array.isArray(membership?.organizations) ? membership.organizations[0] : membership?.organizations;
-  if (!membership || !organization) redirect("/kurulum");
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  if (error) throw new Error("Kurum üyelikleri okunamadı.");
+
+  const workspaces = ((rows ?? []) as MembershipRow[]).flatMap((row) => {
+    const organization = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
+    return organization ? [{ organizationId: row.organization_id, role: row.role, organization }] : [];
+  }) as PanelWorkspace[];
+  if (!workspaces.length) redirect("/kurulum");
+
+  const cookieStore = await cookies();
+  const requestedOrganizationId = cookieStore.get("arvo_workspace")?.value;
+  const selectedWorkspace = workspaces.find((item) => item.organizationId === requestedOrganizationId)
+    ?? workspaces.find((item) => item.organization.slug === "arvo-os")
+    ?? workspaces[0];
+
+  const membership = {
+    organization_id: selectedWorkspace.organizationId,
+    role: selectedWorkspace.role,
+  };
+  const organization = selectedWorkspace.organization;
+
   const { data: moduleRows, error: moduleError } = await supabase.from("organization_modules")
     .select("module_code,arvo_modules(name,description,sort_order)")
-    .eq("organization_id", membership.organization_id).eq("is_enabled", true);
+    .eq("organization_id", membership.organization_id)
+    .eq("is_enabled", true);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");
+
   const modules = (moduleRows ?? []).map((row) => {
     const relation = row.arvo_modules as { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null;
     const item = Array.isArray(relation) ? relation[0] : relation;
     const fallback = panelModules[row.module_code];
     return { code: row.module_code, name: fallback?.name ?? item?.name ?? row.module_code, description: fallback?.description ?? item?.description ?? "", sortOrder: item?.sort_order ?? 0, icon: fallback?.icon ?? "•" };
   }).sort((a, b) => a.sortOrder - b.sortOrder);
+
   const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
-  return { supabase, userId, membership, organization, modules, isPlatformOwner };
+  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces };
 });
