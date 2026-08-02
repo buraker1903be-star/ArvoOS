@@ -1,4 +1,5 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../components/panel-drawer";
 import { addWorkflowStep, createWorkflow, setWorkflowStatus, toggleWorkflowStep } from "./actions";
 import "./operations.css";
 
@@ -20,23 +21,24 @@ export default async function OperationsPage() {
   const allSteps = workflows.flatMap((item) => item.operation_steps ?? []);
   const progress = allSteps.length ? Math.round(allSteps.filter((step) => step.is_completed).length / allSteps.length * 100) : 0;
 
+  const workflowForm = <form className="panel-form" action={createWorkflow}>
+    <label>İş başlığı<input name="title" required minLength={2} maxLength={180} placeholder="Müşteri teslimat süreci" /></label>
+    <label>Müşteri / kurum<input name="customer_name" maxLength={160} /></label>
+    <label>Öncelik<select name="priority" defaultValue="normal"><option value="low">Düşük</option><option value="normal">Normal</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></label>
+    <label>Başlangıç durumu<select name="status" defaultValue="planned"><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option></select></label>
+    <label>Termin<input name="due_date" type="date" /></label>
+    <label className="wide">İlk adımlar<textarea name="steps" placeholder="Her satıra bir adım yazın" /></label>
+    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">İşi oluştur</button></div>
+  </form>;
+
   return <>
-    <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><a className="panel-primary" href="#new-workflow">+ Yeni iş</a></div></div>
+    <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" title="Yeni iş" description="İş başlığını, önceliğini ve ilk adımlarını belirleyin.">{workflowForm}</PanelDrawer></div></div>
     <section className="ops-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>
       <article><small>AKSİYON BEKLEYEN</small><strong>{blockedCount}</strong><span>Beklemede</span></article>
       <article><small>TAMAMLANAN</small><strong>{completedCount}</strong><span>Kapanan iş</span></article>
       <article><small>İLERLEME</small><strong>%{progress}</strong><span>Tamamlanan adımlar</span></article>
     </section>
-    <details className="panel-card ops-create" id="new-workflow"><summary>Yeni iş oluştur</summary><form className="panel-form" action={createWorkflow}>
-      <label>İş başlığı<input name="title" required minLength={2} maxLength={180} placeholder="Müşteri teslimat süreci" /></label>
-      <label>Müşteri / kurum<input name="customer_name" maxLength={160} /></label>
-      <label>Öncelik<select name="priority" defaultValue="normal"><option value="low">Düşük</option><option value="normal">Normal</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></label>
-      <label>Başlangıç durumu<select name="status" defaultValue="planned"><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option></select></label>
-      <label>Termin<input name="due_date" type="date" /></label>
-      <label className="wide">İlk adımlar<textarea name="steps" placeholder="Her satıra bir adım yazın" /></label>
-      <div className="wide panel-form-actions"><button className="panel-primary" type="submit">İşi oluştur</button></div>
-    </form></details>
     <section className="ops-board">{boardStatuses.map((status) => { const items = workflows.filter((workflow) => workflow.status === status); return <section className={"ops-column column-" + status} key={status}><header><div><small>{statusNames[status]}</small><strong>{items.length}</strong></div></header><div className="ops-column-list">
       {items.map((workflow) => { const steps = [...(workflow.operation_steps ?? [])].sort((a,b) => a.sort_order - b.sort_order); const done = steps.filter((step) => step.is_completed).length; const percentage = steps.length ? Math.round(done / steps.length * 100) : 0; return <article className="panel-card ops-kanban-card" key={workflow.id}>
         <div className="ops-card-top"><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span><small>{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "Termin yok"}</small></div><h3>{workflow.title}</h3><p>{workflow.customer_name || "Kurum içi iş"}</p>
