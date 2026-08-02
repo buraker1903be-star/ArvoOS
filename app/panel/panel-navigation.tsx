@@ -18,8 +18,8 @@ const groups: NavigationGroup[] = [
 const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 const crmChildren = [
   { href: "/panel/crm", label: "Talepler", exact: true },
-  { href: "/panel/crm/proposals", label: "Teklifler" },
-  { href: "/panel/crm/contracts", label: "Sözleşmeler" },
+  { href: "/panel/crm/proposals", label: "Teklifler", exact: false },
+  { href: "/panel/crm/contracts", label: "Sözleşmeler", exact: false },
 ];
 
 export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
@@ -32,15 +32,15 @@ export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelMo
       {resolved.filter((group) => group.items.length > 0).map((group) => {
         if (group.key === "crm") {
           const active = pathname.startsWith("/panel/crm");
-          return <details className={active ? "panel-nav-group active" : "panel-nav-group"} key={group.key} open={active}>
-            <summary><i>{group.icon}</i><span>{group.label}</span><em>3</em></summary>
-            <div className="panel-nav-children">
+          return <div className={active ? "panel-nav-group active crm-nav-static" : "panel-nav-group crm-nav-static"} key={group.key}>
+            <div className="crm-nav-heading"><i>{group.icon}</i><span>{group.label}</span><em>3</em></div>
+            <div className="panel-nav-children crm-nav-children">
               {crmChildren.map((item) => {
                 const selected = item.exact ? pathname === item.href : pathname.startsWith(item.href);
                 return <Link className={selected ? "active" : ""} href={item.href} key={item.href}><span>{item.label}</span></Link>;
               })}
             </div>
-          </details>;
+          </div>;
         }
         const active = group.items.some((item) => pathname.startsWith(`/panel/${item.code}`));
         const first = group.items[0];
