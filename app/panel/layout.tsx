@@ -5,6 +5,7 @@ import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
 import "./panel.css";
 import "./panel-ux.css";
+import "./panel-page-system.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
