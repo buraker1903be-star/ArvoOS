@@ -3,7 +3,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createChannel, sendMessage } from "./actions";
 
 export default async function MessagesPage({ searchParams }: { searchParams: Promise<{ channel?: string }> }) {
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "messages")) throw new Error("Mesajlaşma modülüne erişiminiz yok.");
   const { channel } = await searchParams;
   const canManage = ["owner","admin"].includes(membership.role);
@@ -28,7 +28,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
       <aside className="panel-card" style={{padding:12}}><div className="section-heading"><div><small className="panel-kicker">KANALLAR</small><h2>Ekip alanları</h2></div></div><div style={{display:"flex",flexDirection:"column",gap:6}}>{(channels ?? []).map((item)=><Link className={activeChannel?.id===item.id?"panel-primary":"panel-secondary"} href={`/panel/messages?channel=${item.id}`} key={item.id}># {item.name}</Link>)}{!channels?.length?<p className="panel-muted">Henüz kanal yok.</p>:null}</div></aside>
       <article className="panel-card" style={{minHeight:480,display:"flex",flexDirection:"column",gap:16}}>
         <div className="section-heading"><div><small className="panel-kicker">AKTİF KANAL</small><h2>{activeChannel ? `# ${activeChannel.name}` : "Kanal seçin"}</h2>{activeChannel?.description?<p>{activeChannel.description}</p>:null}</div></div>
-        <div style={{display:"flex",flexDirection:"column",gap:10,flex:1,overflowY:"auto",maxHeight:420}}>{(messages ?? []).map((message)=><div key={message.id} style={{padding:"12px 14px",border:"1px solid var(--ux-line)",borderRadius:10,background:message.sender_id===membership.user_id?"var(--ux-soft)":"#fff"}}><small>{new Date(message.created_at).toLocaleString("tr-TR")}</small><p style={{margin:"6px 0 0",whiteSpace:"pre-wrap"}}>{message.body}</p></div>)}{activeChannel && !messages?.length?<p className="panel-muted">Bu kanalda henüz mesaj yok.</p>:null}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:10,flex:1,overflowY:"auto",maxHeight:420}}>{(messages ?? []).map((message)=><div key={message.id} style={{padding:"12px 14px",border:"1px solid var(--ux-line)",borderRadius:10,background:message.sender_id===userId?"var(--ux-soft)":"#fff"}}><small>{new Date(message.created_at).toLocaleString("tr-TR")}</small><p style={{margin:"6px 0 0",whiteSpace:"pre-wrap"}}>{message.body}</p></div>)}{activeChannel && !messages?.length?<p className="panel-muted">Bu kanalda henüz mesaj yok.</p>:null}</div>
         {activeChannel ? <form className="panel-form" action={sendMessage}><input type="hidden" name="channel_id" value={activeChannel.id}/><label className="wide">Mesaj<textarea name="body" required minLength={1} maxLength={4000} placeholder="Mesajınızı yazın..."/></label><div className="wide form-actions"><button className="panel-primary" type="submit">Gönder</button></div></form> : null}
       </article>
     </section>
