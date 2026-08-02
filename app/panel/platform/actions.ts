@@ -43,6 +43,8 @@ export async function createCustomerOrganization(formData: FormData) {
   const ownerName = String(formData.get("owner_name") ?? "").trim();
   const ownerEmail = String(formData.get("owner_email") ?? "").trim().toLowerCase();
   const customDomain = cleanDomain(String(formData.get("custom_domain") ?? ""));
+  const seedCrm = formData.get("seed_crm") === "on";
+  const seedOperations = formData.get("seed_operations") === "on";
 
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
@@ -53,7 +55,7 @@ export async function createCustomerOrganization(formData: FormData) {
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
   const { data, error } = await supabase.functions.invoke("provision-organization", {
-    body: { name, slug, sector, planCode, ownerName, ownerEmail, customDomain, redirectBase },
+    body: { name, slug, sector, planCode, ownerName, ownerEmail, customDomain, seedCrm, seedOperations, redirectBase },
   });
   if (error || !data?.organization_id) {
     const message = data?.error || error?.message || "Kurum provisioning işlemi tamamlanamadı.";
