@@ -36,7 +36,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <section className="panel-workspace">
       <header className="panel-topbar">
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
-        <div className="panel-top-actions"><button className="panel-icon-button" aria-label="Bildirimler">◌</button><div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div></div>
+        <div className="panel-top-actions"><Link className="panel-icon-button" aria-label="Bildirimler" href="/panel/notifications">◌</Link><div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div></div>
       </header>
       <div className="panel-content">{children}</div>
     </section>
