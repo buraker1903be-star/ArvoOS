@@ -49,32 +49,33 @@ export default async function CrmPage() {
 
   return <>
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">CRM PIPELINE 2.0</small><h1>Satış yaşam döngüsünü tek hunide yönetin</h1><p>Lead’den tahsilata kadar tüm fırsatları aşama, değer ve kapanış tarihiyle takip edin.</p></div>
-      <span className="status-pill">{opportunities.length} fırsat</span>
+      <div><small className="panel-kicker">SATIŞ</small><h1>CRM</h1><p>Fırsatları aşamalarına göre takip edin ve satış sürecini yönetin.</p></div>
+      <div className="panel-page-actions"><span className="status-pill">{active.length} aktif fırsat</span><a className="panel-primary" href="#new-opportunity">Yeni fırsat</a></div>
     </div>
 
     <section className="crm-metrics">
       <article><small>AKTİF FIRSAT</small><strong>{active.length}</strong><span>Devam eden satış</span></article>
-      <article><small>PIPELINE DEĞERİ</small><strong>{money(activeValue)}</strong><span>Toplam tahmini değer</span></article>
-      <article><small>AĞIRLIKLI TAHMİN</small><strong>{money(weightedValue)}</strong><span>Olasılığa göre gelir</span></article>
-      <article><small>DÖNÜŞÜM</small><strong>%{conversion}</strong><span>Kazanılan / sonuçlanan</span></article>
+      <article><small>PIPELINE</small><strong>{money(activeValue)}</strong><span>Toplam tahmini değer</span></article>
+      <article><small>TAHMİNİ GELİR</small><strong>{money(weightedValue)}</strong><span>Olasılığa göre</span></article>
+      <article><small>KAZANMA ORANI</small><strong>%{conversion}</strong><span>Sonuçlanan fırsatlar</span></article>
     </section>
 
-    <details className="panel-card crm-create">
-      <summary>Yeni satış fırsatı oluştur</summary>
+    <details className="panel-card crm-create" id="new-opportunity">
+      <summary><span>Yeni fırsat oluştur</span><small>Müşteri ve satış bilgilerini ekleyin</small></summary>
       <form className="panel-form" action={createOpportunity}>
-        <label>Fırsat başlığı<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Kurumsal Professional paket" /></label>
+        <label>Fırsat adı<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Professional paket satışı" /></label>
         <label>Müşteri / kurum<input name="customer_name" required minLength={2} maxLength={180} /></label>
         <label>E-posta<input name="contact_email" type="email" /></label>
         <label>Telefon<input name="contact_phone" /></label>
         <label>Tahmini tutar<input name="estimated_value" type="number" min="0" step="0.01" defaultValue="0" /></label>
         <label>Beklenen kapanış<input name="expected_close_date" type="date" /></label>
         <label>Kaynak<input name="source" placeholder="Web sitesi, referans, etkinlik..." /></label>
-        <label className="wide">Notlar<textarea name="notes" maxLength={2000} /></label>
-        <button className="panel-primary wide" type="submit">Fırsatı pipeline'a ekle</button>
+        <label className="wide">Not<textarea name="notes" maxLength={2000} /></label>
+        <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Fırsatı oluştur</button></div>
       </form>
     </details>
 
+    <div className="section-heading"><div><small className="panel-kicker">PIPELINE</small><h2>Satış aşamaları</h2></div><span>{opportunities.length} toplam kayıt</span></div>
     <section className="crm-board">
       {columns.map((column) => {
         const cards = opportunities.filter((item) => item.stage === column.code);
@@ -83,21 +84,21 @@ export default async function CrmPage() {
           <header><div><small>{column.name.toUpperCase()}</small><strong>{cards.length}</strong></div><span>{money(total)}</span></header>
           <div className="crm-cards">
             {cards.map((item) => <article className="panel-card crm-card" key={item.id}>
-              <div className="crm-card-top"><small>%{item.probability} olasılık</small>{item.source ? <span>{item.source}</span> : null}</div>
+              <div className="crm-card-top"><small>%{item.probability}</small>{item.source ? <span>{item.source}</span> : null}</div>
               <h3>{item.title}</h3><p>{item.customer_name}</p>
               <strong>{money(item.estimated_value)}</strong>
               {item.expected_close_date ? <small>Kapanış: {new Date(item.expected_close_date + "T00:00:00").toLocaleDateString("tr-TR")}</small> : null}
               <form action={moveOpportunity}>
                 <input type="hidden" name="opportunity_id" value={item.id} />
-                <select name="stage" defaultValue={item.stage}>
+                <select name="stage" defaultValue={item.stage} aria-label="Satış aşaması">
                   {columns.map((stage) => <option value={stage.code} key={stage.code}>{stage.name}</option>)}
                   <option value="lost">Kaybedildi</option>
                 </select>
-                <input name="lost_reason" placeholder="Kayıp nedeni (gerekirse)" />
-                <button type="submit">Aşamayı güncelle</button>
+                <input name="lost_reason" placeholder="Kayıp nedeni" aria-label="Kayıp nedeni" />
+                <button className="panel-secondary" type="submit">Güncelle</button>
               </form>
             </article>)}
-            {!cards.length ? <div className="crm-empty">Bu aşamada fırsat yok.</div> : null}
+            {!cards.length ? <div className="crm-empty">Kayıt yok</div> : null}
           </div>
         </section>;
       })}
