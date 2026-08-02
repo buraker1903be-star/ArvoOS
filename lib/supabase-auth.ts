@@ -1,5 +1,4 @@
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://scgjhsyygkmntxytkjbf.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_S0jBPDJuvwLuHI3TzyGllQ_PVlBAslN";
+import { getSupabasePublicConfig } from "@/lib/supabase-rest";
 
 export type SupabaseSession = {
   access_token: string;
@@ -25,11 +24,12 @@ function storage(remember = false) {
 }
 
 export async function signInWithPassword(email: string, password: string, remember = false) {
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+  const { url, publishableKey } = getSupabasePublicConfig();
+  const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      apikey: publishableKey,
+      Authorization: `Bearer ${publishableKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ email, password }),
@@ -71,10 +71,11 @@ export async function signOut() {
   if (typeof window === "undefined") return;
   const session = getStoredSession();
   if (session?.access_token) {
-    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+    const { url, publishableKey } = getSupabasePublicConfig();
+    await fetch(`${url}/auth/v1/logout`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
+        apikey: publishableKey,
         Authorization: `Bearer ${session.access_token}`,
       },
     }).catch(() => undefined);
