@@ -18,12 +18,12 @@ export async function markNotificationRead(formData: FormData) {
 }
 
 export async function markAllNotificationsRead() {
-  const { supabase, organizationId, isPlatformOwner } = await getPanelContext();
+  const { supabase, organization, isPlatformOwner } = await getPanelContext();
   let query = supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
 
   query = isPlatformOwner
     ? query.eq("audience", "founder")
-    : query.eq("audience", "organization").eq("organization_id", organizationId);
+    : query.eq("audience", "organization").eq("organization_id", organization.id);
 
   const { error } = await query;
   if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
