@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
 function value(formData: FormData, key: string, max = 4000) {
@@ -17,6 +18,20 @@ export async function createChannel(formData: FormData) {
   const { error } = await supabase.from("message_channels").insert({ organization_id: membership.organization_id, name, description: description || null, created_by: userId });
   if (error) throw new Error("Kanal oluşturulamadı: " + error.message);
   revalidatePath("/panel/messages");
+}
+
+export async function createDirectConversation(formData: FormData) {
+  const { supabase, modules } = await getPanelContext();
+  if (!modules.some((module) => module.code === "messages")) throw new Error("Mesajlaşma modülüne erişiminiz yok.");
+  const targetUserId = value(formData,"target_user_id",80);
+  if (!targetUserId) throw new Error("Mesaj göndermek istediğiniz kişiyi seçin.");
+
+  const { data, error } = await supabase.rpc("create_direct_message_channel", { target_user_id: targetUserId });
+  if (error) throw new Error("Özel sohbet açılamadı: " + error.message);
+  if (!data) throw new Error("Özel sohbet oluşturulamadı.");
+
+  revalidatePath("/panel/messages");
+  redirect(`/panel/messages?channel=${data}`);
 }
 
 export async function sendMessage(formData: FormData) {
