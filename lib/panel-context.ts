@@ -10,6 +10,7 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   reporting: { code: "reporting", name: "Raporlama", description: "Yetkiye bağlı kurum raporları", icon: "RP" },
   hr: { code: "hr", name: "Ekip ve İnsan Kaynakları", description: "Ekip ve organizasyon yönetimi", icon: "İK" },
   documents: { code: "documents", name: "Belgeler", description: "Kurumsal belge merkezi", icon: "BL" },
+  support: { code: "support", name: "Destek Merkezi", description: "Destek talepleri ve çözüm takibi", icon: "DS" },
 };
 
 type PanelOrganization = {
