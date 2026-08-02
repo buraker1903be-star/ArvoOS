@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 
-const plans = new Set(["trial", "starter", "professional", "enterprise"]);
+const plans = new Set(["starter", "professional", "enterprise"]);
 
 function cleanDomain(value: string) {
   const domain = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
@@ -38,23 +39,29 @@ export async function createCustomerOrganization(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const slug = cleanSlug(String(formData.get("slug") ?? name));
   const sector = String(formData.get("sector") ?? "general").trim();
-  const planCode = String(formData.get("plan_code") ?? "trial").trim();
+  const planCode = String(formData.get("plan_code") ?? "starter").trim();
+  const ownerName = String(formData.get("owner_name") ?? "").trim();
+  const ownerEmail = String(formData.get("owner_email") ?? "").trim().toLowerCase();
   const customDomain = cleanDomain(String(formData.get("custom_domain") ?? ""));
 
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
+  if (ownerName.length < 2 || ownerName.length > 120) throw new Error("Owner adı 2–120 karakter olmalı.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) throw new Error("Geçerli bir owner e-posta adresi girin.");
 
-  const { data, error } = await supabase.rpc("create_customer_organization", {
-    p_name: name,
-    p_slug: slug,
-    p_sector: sector,
-    p_plan_code: planCode,
-    p_custom_domain: customDomain,
+  const requestHeaders = await headers();
+  const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
+  const { data, error } = await supabase.functions.invoke("provision-organization", {
+    body: { name, slug, sector, planCode, ownerName, ownerEmail, customDomain, redirectBase },
   });
-  if (error || !data) throw new Error(error?.message ?? "Kurum oluşturulamadı.");
+  if (error || !data?.organization_id) {
+    const message = data?.error || error?.message || "Kurum provisioning işlemi tamamlanamadı.";
+    throw new Error(message);
+  }
+
   revalidatePath("/panel", "layout");
-  redirect(`/panel/platform?organization=${data}`);
+  redirect(`/panel/platform?organization=${data.organization_id}&provisioned=1`);
 }
 
 export async function updateOrganizationSettings(formData: FormData) {
