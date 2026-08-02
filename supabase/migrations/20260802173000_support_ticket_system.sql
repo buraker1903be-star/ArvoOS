@@ -9,17 +9,22 @@ create table if not exists public.support_tickets (
   last_message_at timestamptz not null default now(),
   resolved_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, organization_id)
 );
 
 create table if not exists public.support_messages (
   id uuid primary key default gen_random_uuid(),
-  ticket_id uuid not null references public.support_tickets(id) on delete cascade,
+  ticket_id uuid not null,
   organization_id uuid not null references public.organizations(id) on delete cascade,
   author_id uuid not null references auth.users(id) on delete restrict,
   body text not null check (char_length(body) between 1 and 5000),
   is_staff boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint support_messages_ticket_org_fk
+    foreign key (ticket_id, organization_id)
+    references public.support_tickets(id, organization_id)
+    on delete cascade
 );
 
 alter table public.support_tickets enable row level security;
@@ -48,7 +53,13 @@ create policy "members_read_own_support_messages" on public.support_messages for
   )
 );
 create policy "members_create_support_messages" on public.support_messages for insert to authenticated with check (
-  author_id = (select auth.uid()) and (
+  author_id = (select auth.uid())
+  and exists (
+    select 1 from public.support_tickets t
+    where t.id = support_messages.ticket_id
+      and t.organization_id = support_messages.organization_id
+  )
+  and (
     ((select private.is_arvoos_founder()) and is_staff = true)
     or (is_staff = false and exists (
       select 1 from public.organization_memberships m
@@ -58,10 +69,20 @@ create policy "members_create_support_messages" on public.support_messages for i
 );
 
 create or replace function private.touch_support_ticket() returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  ticket_organization_id uuid;
 begin
+  select organization_id into ticket_organization_id
+  from public.support_tickets
+  where id = new.ticket_id;
+
+  if ticket_organization_id is null or ticket_organization_id <> new.organization_id then
+    raise exception 'Support ticket organization mismatch';
+  end if;
+
   update public.support_tickets set last_message_at = new.created_at, updated_at = now(),
     status = case when new.is_staff then 'waiting_customer' else case when status in ('resolved','closed') then 'open' else status end end
-  where id = new.ticket_id;
+  where id = new.ticket_id and organization_id = new.organization_id;
   insert into public.notifications (organization_id,audience,category,title,message,action_url,metadata)
   values (
     new.organization_id,
