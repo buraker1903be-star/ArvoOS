@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { WORKSPACE_COOKIE } from "@/lib/panel-context";
 
 export async function switchWorkspace(formData: FormData) {
   const organizationId = String(formData.get("organization_id") ?? "").trim();
@@ -22,19 +23,21 @@ export async function switchWorkspace(formData: FormData) {
   if (error || !membership) throw new Error("Bu çalışma alanına erişim yetkiniz yok.");
 
   const cookieStore = await cookies();
-  cookieStore.set("arvo_workspace", organizationId, {
+  cookieStore.set(WORKSPACE_COOKIE, organizationId, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });
-  redirect("/panel");
+  cookieStore.delete("arvo_workspace");
+  redirect("/panel?workspace_changed=1");
 }
 
 export async function logout() {
   const supabase = await createClient();
   const cookieStore = await cookies();
+  cookieStore.delete(WORKSPACE_COOKIE);
   cookieStore.delete("arvo_workspace");
   await supabase.auth.signOut();
   redirect("/login");

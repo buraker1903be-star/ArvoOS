@@ -14,6 +14,8 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   support: { code: "support", name: "Destek Merkezi", description: "Destek talepleri ve çözüm takibi", icon: "DS" },
 };
 
+export const WORKSPACE_COOKIE = "arvo_workspace_v2";
+
 type PanelOrganization = {
   id: string;
   name: string;
@@ -55,8 +57,9 @@ export const getPanelContext = cache(async () => {
   if (!workspaces.length) redirect("/kurulum");
 
   const cookieStore = await cookies();
-  const requestedOrganizationId = cookieStore.get("arvo_workspace")?.value;
+  const requestedOrganizationId = cookieStore.get(WORKSPACE_COOKIE)?.value;
   const selectedWorkspace = workspaces.find((item) => item.organizationId === requestedOrganizationId)
+    ?? workspaces.find((item) => item.organization.slug === "akademikmerkez")
     ?? workspaces.find((item) => item.organization.slug === "arvo-os")
     ?? workspaces[0];
 

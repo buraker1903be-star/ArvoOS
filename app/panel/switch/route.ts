@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { WORKSPACE_COOKIE } from "@/lib/panel-context";
 
 export async function GET(request: NextRequest) {
   const organizationId = request.nextUrl.searchParams.get("organization_id")?.trim();
@@ -14,9 +15,7 @@ export async function GET(request: NextRequest) {
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
 
-  if (!userId) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  if (!userId) return NextResponse.redirect(new URL("/login", request.url));
 
   const { data: membership, error } = await supabase
     .from("organization_memberships")
@@ -31,14 +30,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  const response = NextResponse.redirect(destination);
-  response.cookies.set("arvo_workspace", organizationId, {
+  destination.searchParams.set("workspace_changed", "1");
+  const response = NextResponse.redirect(destination, 303);
+  response.cookies.set(WORKSPACE_COOKIE, organizationId, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });
-  response.headers.set("Cache-Control", "no-store");
+  response.cookies.delete("arvo_workspace");
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
   return response;
 }
