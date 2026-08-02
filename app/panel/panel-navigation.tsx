@@ -17,6 +17,7 @@ const groups: NavigationGroup[] = [
 
 const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 const crmChildren = [
+  { href: "/panel/crm/overview", label: "Genel Bakış" },
   { href: "/panel/crm", label: "Talepler", exact: true },
   { href: "/panel/crm/proposals", label: "Teklifler" },
   { href: "/panel/crm/contracts", label: "Sözleşmeler" },
@@ -33,7 +34,7 @@ export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelMo
         if (group.key === "crm") {
           const active = pathname.startsWith("/panel/crm");
           return <details className={active ? "panel-nav-group active" : "panel-nav-group"} key={group.key} open={active}>
-            <summary><i>{group.icon}</i><span>{group.label}</span><em>3</em></summary>
+            <summary><i>{group.icon}</i><span>{group.label}</span><em>4</em></summary>
             <div className="panel-nav-children">
               {crmChildren.map((item) => {
                 const selected = item.exact ? pathname === item.href : pathname.startsWith(item.href);
