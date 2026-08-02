@@ -1,26 +1,13 @@
 import type { SupabaseSession } from "@/lib/supabase-auth";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://scgjhsyygkmntxytkjbf.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_S0jBPDJuvwLuHI3TzyGllQ_PVlBAslN";
+import { supabaseRequest } from "@/lib/supabase-rest";
 
 async function rpc<T>(session: SupabaseSession, functionName: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+  return supabaseRequest<T>(`/rest/v1/rpc/${functionName}`, {
     method: "POST",
-    headers: {
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
+    accessToken: session.access_token,
+    errorMessage: "Satın alma işlemi başarısız oldu",
     body: JSON.stringify(body),
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null) as { message?: string } | null;
-    throw new Error(error?.message || `Satın alma işlemi başarısız oldu (${response.status}).`);
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
 }
 
 export function receivePurchaseRequest(
