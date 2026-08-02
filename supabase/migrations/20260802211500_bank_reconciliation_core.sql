@@ -78,14 +78,17 @@ select id,'banking',true from public.organizations
 on conflict (organization_id,module_code) do update set is_enabled=true;
 
 insert into public.organization_bank_accounts (organization_id,bank_name,account_name,iban,currency,created_by)
-select o.id,'T. Garanti Bankası','Ana Tahsilat Hesabı','TR480006200115100006290081','TRY',m.user_id
+select o.id,'T. Garanti Bankası','ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD.ŞTİ.','TR480006200115100006290081','TRY',m.user_id
 from public.organizations o
 join lateral (
   select user_id from public.organization_memberships
   where organization_id=o.id and is_active=true and role in ('owner','admin')
   order by created_at asc limit 1
 ) m on true
-on conflict (organization_id,iban) do nothing;
+on conflict (organization_id,iban) do update set
+  account_name = excluded.account_name,
+  bank_name = excluded.bank_name,
+  updated_at = now();
 
 create index if not exists organization_bank_accounts_org_idx on public.organization_bank_accounts(organization_id,is_active);
 create index if not exists bank_transactions_org_date_idx on public.bank_transactions(organization_id,transaction_date desc,created_at desc);
