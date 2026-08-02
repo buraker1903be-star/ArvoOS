@@ -23,8 +23,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   return <>
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">FİNANS VE ABONELİK</small><h1>Ödeme ve Lisans</h1><p>Havale/EFT bilgilerini görüntüleyin, dekont gönderin ve ödeme durumunu takip edin.</p></div>
-      <span className="status-pill">{license?.license_status ?? "trialing"}</span>
+      <div><small className="panel-kicker">FİNANS VE ABONELİK</small><h1>Ödeme ve Lisans</h1><p>Havale/EFT bilgilerini görüntüleyin, dekont gönderin veya PayTR ile online ödeme yapın.</p></div>
+      <div className="management-actions"><a className="panel-primary" href="/panel/billing/paytr">PayTR ile öde</a><span className="status-pill">{license?.license_status ?? "trialing"}</span></div>
     </div>
 
     {params.submitted === "1" ? <div className="team-notice">Dekontunuz alındı. Kurucu onayından sonra lisansınız otomatik etkinleştirilecek.</div> : null}
