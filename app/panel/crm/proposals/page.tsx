@@ -1,97 +1,24 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../../components/panel-drawer";
+import { issueProposalLink, updateProposal } from "../sales-actions";
 import "../crm.css";
 
-type Opportunity = {
-  id: string;
-  title: string;
-  customer_name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  stage: string;
-  estimated_value: number;
-  probability: number;
-  expected_close_date: string | null;
-  source: string | null;
-  request_details: { service_type?: string; academic_level?: string; university?: string } | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type Props = { searchParams: Promise<{ search?: string; status?: string }> };
-
-const proposalStages = ["proposal", "proposal_ready", "proposal_approved"];
-const statusLabels: Record<string, string> = {
-  proposal: "Teklif hazırlanıyor",
-  proposal_ready: "Teklif hazır",
-  proposal_approved: "Teklif onaylandı",
-};
-const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value / 100);
-const clean = (value?: string) => value?.trim().replace(/\s+/g, " ").slice(0, 100) ?? "";
-
-export default async function ProposalsPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const search = clean(params.search);
-  const status = proposalStages.includes(params.status ?? "") ? params.status! : "";
-  const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
-
-  let query = supabase.from("crm_opportunities")
-    .select("id,title,customer_name,contact_email,contact_phone,stage,estimated_value,probability,expected_close_date,source,request_details,created_at,updated_at")
-    .eq("organization_id", membership.organization_id)
-    .in("stage", proposalStages);
-  if (search) query = query.or(`customer_name.ilike.%${search}%,title.ilike.%${search}%`);
-  if (status) query = query.eq("stage", status);
-
-  const { data, error } = await query.order("updated_at", { ascending: false });
-  if (error) throw new Error("Teklif kayıtları okunamadı: " + error.message);
-
-  const rows = (data ?? []) as Opportunity[];
-  const total = rows.reduce((sum, row) => sum + Number(row.estimated_value ?? 0), 0);
-  const approved = rows.filter((row) => row.stage === "proposal_approved").length;
-  const filtered = Boolean(search || status);
-
-  return <div className="crm-page-stack">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">CRM / TEKLİF YÖNETİMİ</small><h1>Teklifler</h1><p>Taleplerden hazırlanan teklifleri müşteri, hizmet, durum ve geçerlilik bilgileriyle yönetin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><Link className="panel-primary" href="/panel/crm">Taleplere git</Link></div>
-    </div>
-
-    <section className="crm-metrics">
-      <article><small>TOPLAM TEKLİF</small><strong>{rows.length}</strong><span>Filtre sonucundaki kayıtlar</span></article>
-      <article><small>TEKLİF DEĞERİ</small><strong>{money(total)}</strong><span>Toplam teklif bedeli</span></article>
-      <article><small>ONAY BEKLEYEN</small><strong>{rows.length - approved}</strong><span>Hazırlık veya müşteri dönüşü</span></article>
-      <article><small>ONAYLANAN</small><strong>{approved}</strong><span>Sözleşmeye dönüştürülebilir</span></article>
-    </section>
-
-    <section className="panel-card">
-      <form action="/panel/crm/proposals" method="get" className="panel-form" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(220px,.35fr) auto" }}>
-        <label>Teklif / müşteri ara<input type="search" name="search" defaultValue={search} placeholder="Müşteri veya talep konusu" /></label>
-        <label>Durum<select name="status" defaultValue={status}><option value="">Aktif tekliflerin tümü</option>{proposalStages.map((stage) => <option value={stage} key={stage}>{statusLabels[stage]}</option>)}</select></label>
-        <div className="panel-form-actions"><button className="panel-primary" type="submit">Filtrele</button>{filtered ? <Link className="panel-secondary" href="/panel/crm/proposals">Temizle</Link> : null}</div>
-      </form>
-    </section>
-
-    <section className="panel-card">
-      <div className="section-heading compact"><div><small className="panel-kicker">TEKLİF LİSTESİ</small><h2>Teklif kayıtları</h2></div><span>{rows.length} sonuç</span></div>
-      <div className="dashboard-actions">
-        {rows.map((row) => {
-          const detail = row.request_details ?? {};
-          return <article key={row.id} className="crm-card" style={{ marginBottom: 10 }}>
-            <div className="crm-card-top"><small>{statusLabels[row.stage] ?? row.stage}</small><span>{row.source || "Doğrudan"}</span></div>
-            <h3>{row.customer_name}</h3>
-            <p>{row.title}</p>
-            <small>{[detail.service_type, detail.academic_level, detail.university].filter(Boolean).join(" · ") || "Hizmet bilgisi belirtilmedi"}</small>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginTop: 12 }}>
-              <span><small>İletişim</small><b>{row.contact_phone || row.contact_email || "Belirtilmedi"}</b></span>
-              <span><small>Geçerlilik / hedef</small><b>{row.expected_close_date ? new Date(row.expected_close_date + "T00:00:00").toLocaleDateString("tr-TR") : "Belirtilmedi"}</b></span>
-              <span><small>Teklif bedeli</small><b>{money(row.estimated_value)}</b></span>
-            </div>
-            <div className="panel-page-actions" style={{ marginTop: 14 }}><Link className="panel-secondary" href="/panel/crm">Kaynağı görüntüle</Link>{row.stage === "proposal_approved" ? <Link className="panel-primary" href="/panel/crm/contracts">Sözleşme sürecine geç</Link> : null}</div>
-          </article>;
-        })}
-        {!rows.length ? <div className="crm-empty">{filtered ? "Filtrelerle eşleşen teklif bulunamadı." : "Henüz teklif aşamasında kayıt bulunmuyor."}</div> : null}
-      </div>
-    </section>
-  </div>;
+type Props={searchParams:Promise<{search?:string;status?:string;share?:string}>};
+type Proposal={id:string;proposal_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;valid_until:string|null;status:string;created_at:string;crm_opportunities:{customer_name:string;contact_email:string|null;contact_phone:string|null;title:string}|null};
+const statuses=["draft","sent","accepted","rejected","expired","archived"];
+const labels:Record<string,string>={draft:"Taslak",sent:"Gönderildi",accepted:"Kabul edildi",rejected:"Reddedildi",expired:"Süresi doldu",archived:"Arşiv"};
+const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
+export default async function ProposalsPage({searchParams}:Props){
+ const p=await searchParams; const search=(p.search??"").trim(); const status=statuses.includes(p.status??"")?p.status!:""; const share=p.share??"";
+ const {supabase,membership,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
+ let q=supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,created_at,crm_opportunities!inner(customer_name,contact_email,contact_phone,title)").eq("organization_id",membership.organization_id);
+ if(status) q=q.eq("status",status); if(search) q=q.or(`proposal_no.ilike.%${search}%,title.ilike.%${search}%`);
+ const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Teklifler okunamadı: "+error.message); const rows=(data??[]) as unknown as Proposal[];
+ const shareUrl=share?`https://app.arvo-os.com/teklif/${share}`:""; const total=rows.reduce((s,r)=>s+Number(r.amount),0);
+ return <div className="crm-page-stack"><div className="panel-pagehead"><div><small className="panel-kicker">CRM / TEKLİFLER</small><h1>Teklifler</h1><p>Teklifleri düzenleyin, müşteriye bağlantı ile gönderin ve karar durumunu takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><Link className="panel-primary" href="/panel/crm">Taleplere git</Link></div></div>
+ {shareUrl?<section className="panel-card"><small className="panel-kicker">PAYLAŞIM BAĞLANTISI HAZIR</small><h2>Teklif bağlantısı</h2><p style={{wordBreak:"break-all"}}>{shareUrl}</p><div className="panel-page-actions"><a className="panel-primary" href={`mailto:?subject=Teklifiniz&body=${encodeURIComponent("Teklifinizi incelemek için: "+shareUrl)}`}>E-posta ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent("Teklifinizi incelemek için: "+shareUrl)}`}>WhatsApp ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>Önizle</a></div></section>:null}
+ <section className="crm-metrics"><article><small>TOPLAM</small><strong>{rows.length}</strong><span>Teklif kaydı</span></article><article><small>TOPLAM DEĞER</small><strong>{money(total,"TRY")}</strong><span>Teklif bedeli</span></article><article><small>BEKLEYEN</small><strong>{rows.filter(r=>["draft","sent"].includes(r.status)).length}</strong><span>Müşteri kararı</span></article><article><small>KABUL</small><strong>{rows.filter(r=>r.status==="accepted").length}</strong><span>Sözleşmeye aktarılan</span></article></section>
+ <section className="panel-card"><form method="get" className="crm-filter-form"><label><span>Teklif / müşteri ara</span><input name="search" defaultValue={search}/></label><label><span>Durum</span><select name="status" defaultValue={status}><option value="">Tümü</option>{statuses.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/crm/proposals">Temizle</Link></div></form></section>
+ <section className="crm-record-list">{rows.map(row=>{const customer=row.crm_opportunities;const edit=<form className="panel-form" action={updateProposal}><input type="hidden" name="proposal_id" value={row.id}/><label>Başlık<input name="title" defaultValue={row.title} required/></label><label>Tutar<input name="amount" type="number" step="0.01" min="0" defaultValue={(row.amount/100).toFixed(2)} required/></label><label className="wide">Kapsam<textarea name="scope" defaultValue={row.scope??""} required/></label><label>Ödeme planı<input name="payment_plan" defaultValue={row.payment_plan??""}/></label><label>Geçerlilik<input name="valid_until" type="date" defaultValue={row.valid_until??""}/></label><div className="wide panel-form-actions"><button className="panel-primary">Kaydet</button></div></form>;return <article className="panel-card crm-record" key={row.id}><div className="crm-record-main"><div className="crm-record-heading"><span className="crm-record-number">{row.proposal_no}</span><span className="status-pill">{labels[row.status]??row.status}</span></div><h2>{customer?.customer_name}</h2><h3>{row.title}</h3><div className="crm-record-meta"><span>{customer?.contact_phone||"Telefon yok"}</span><span>{customer?.contact_email||"E-posta yok"}</span><span>{row.valid_until?`Geçerli: ${new Date(row.valid_until+"T00:00:00").toLocaleDateString("tr-TR")}`:"Süre yok"}</span></div><p>{row.scope}</p><div className="panel-page-actions"><PanelDrawer triggerLabel="Düzenle" title={row.proposal_no} description="Teklif bilgilerini kontrol edin.">{edit}</PanelDrawer>{!["accepted","rejected","archived"].includes(row.status)?<form action={issueProposalLink}><input type="hidden" name="proposal_id" value={row.id}/><button className="panel-primary">Link oluştur / yenile</button></form>:null}</div></div><aside className="crm-record-side"><small>TEKLİF BEDELİ</small><strong>{money(row.amount,row.currency)}</strong><span>{row.payment_plan||"Ödeme planı belirtilmedi"}</span></aside></article>})}{!rows.length?<div className="panel-card crm-empty">Teklif bulunamadı.</div>:null}</section></div>;
 }
