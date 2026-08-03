@@ -59,3 +59,15 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
   revalidatePath("/panel/finance");
   revalidatePath("/panel");
 }
+
+export async function collectPaymentInstallment(formData: FormData) {
+  const { supabase } = await financeContext();
+  const installmentId = String(formData.get("installment_id") ?? "").trim();
+  if (!installmentId) throw new Error("Taksit seçilemedi.");
+  const { error } = await supabase.rpc("collect_payment_installment", { target_installment_id: installmentId });
+  if (error) throw new Error("Tahsilat kaydedilemedi: " + error.message);
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/finance/payment-plans");
+  revalidatePath("/panel/finance/accounts");
+  revalidatePath("/panel");
+}
