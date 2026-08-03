@@ -10,10 +10,10 @@ const amount=(formData:FormData,key:string)=>Math.round(Number(formData.get(key)
 export async function createProposal(formData:FormData){
  const {supabase}=await getPanelContext();
  const opportunityId=text(formData,"opportunity_id",80); const title=text(formData,"title",180); const scope=text(formData,"scope"); const proposalAmount=amount(formData,"amount");
- const taxStatus=text(formData,"tax_status",20); const paymentPlanType=text(formData,"payment_plan_type",20); const paymentPlan=text(formData,"payment_plan",1000); const validUntil=text(formData,"valid_until",20)||null;
+ const taxStatus=text(formData,"tax_status",20); const paymentPlanType=text(formData,"payment_plan_type",20); const paymentPlan=text(formData,"payment_plan",1000); const validUntil=text(formData,"valid_until",20)||null; const estimatedDeliveryDate=text(formData,"estimated_delivery_date",20)||null;
  let paymentSchedule:unknown=[]; try{paymentSchedule=JSON.parse(text(formData,"payment_schedule",10000)||"[]")}catch{throw new Error("Ödeme planı okunamadı.")}
  if(!opportunityId||title.length<2||scope.length<2||!Number.isFinite(proposalAmount)||proposalAmount<0)throw new Error("Teklif bilgileri eksik veya geçersiz.");
- const {data,error}=await supabase.rpc("create_crm_proposal_v2",{target_opportunity_id:opportunityId,proposal_title:title,proposal_scope:scope,proposal_amount:proposalAmount,proposal_tax_status:taxStatus,proposal_payment_plan_type:paymentPlanType,proposal_payment_plan:paymentPlan||null,proposal_payment_schedule:paymentSchedule,proposal_valid_until:validUntil});
+ const {data,error}=await supabase.rpc("create_crm_proposal_v2",{target_opportunity_id:opportunityId,proposal_title:title,proposal_scope:scope,proposal_amount:proposalAmount,proposal_tax_status:taxStatus,proposal_payment_plan_type:paymentPlanType,proposal_payment_plan:paymentPlan||null,proposal_payment_schedule:paymentSchedule,proposal_valid_until:validUntil,proposal_estimated_delivery_date:estimatedDeliveryDate});
  if(error)throw new Error("Teklif oluşturulamadı: "+error.message); const row=Array.isArray(data)?data[0]:data; revalidatePath("/panel/crm");revalidatePath("/panel/crm/proposals");redirect(`/panel/crm/proposals?share=${encodeURIComponent(row?.access_token??"")}`);
 }
 
