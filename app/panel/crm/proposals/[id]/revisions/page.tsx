@@ -21,6 +21,13 @@ type ProposalRevision = {
   created_by: string | null;
 };
 
+type SelectedProposal = {
+  id: string;
+  root_proposal_id: string | null;
+  organization_id: string;
+  crm_opportunities: { customer_name: string } | { customer_name: string }[] | null;
+};
+
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", {
   style: "currency",
   currency,
@@ -44,7 +51,7 @@ export default async function ProposalRevisionHistoryPage({ params }: { params: 
     throw new Error("CRM modülüne erişiminiz yok.");
   }
 
-  const { data: selected, error: selectedError } = await supabase
+  const { data: selectedData, error: selectedError } = await supabase
     .from("crm_proposals")
     .select("id,root_proposal_id,organization_id,crm_opportunities(customer_name)")
     .eq("id", id)
@@ -52,7 +59,8 @@ export default async function ProposalRevisionHistoryPage({ params }: { params: 
     .maybeSingle();
 
   if (selectedError) throw new Error(`Teklif okunamadı: ${selectedError.message}`);
-  if (!selected) notFound();
+  if (!selectedData) notFound();
+  const selected = selectedData as unknown as SelectedProposal;
 
   const rootId = selected.root_proposal_id || selected.id;
   const { data, error } = await supabase
