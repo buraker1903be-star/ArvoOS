@@ -2,63 +2,49 @@
 
 import { useMemo, useState } from "react";
 import { createProposal } from "./sales-actions";
+import {
+  calculatePaymentSchedule,
+  getPaymentPlanLabel,
+  type PaymentPlanType,
+} from "@/lib/payment-schedule";
 
 type Props = { opportunityId: string; customerName: string; title: string; scope: string };
 type Tax = "excluded" | "included" | "exempt";
-type Plan = "cash" | "half" | "thirds" | "custom";
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", {
   style: "currency",
   currency: "TRY",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
-}).format(value);
+}).format(value / 100);
 
 export function ProposalBuilderForm({ opportunityId, customerName, title, scope }: Props) {
   const [amount, setAmount] = useState(0);
   const [tax, setTax] = useState<Tax>("excluded");
-  const [plan, setPlan] = useState<Plan>("cash");
-  const [custom, setCustom] = useState("");
+  const [plan, setPlan] = useState<PaymentPlanType>("cash");
+  const [firstPaymentDate, setFirstPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const calculation = useMemo(() => {
+    const amountCents = Math.max(0, Math.round(amount * 100));
     if (tax === "included") {
-      const gross = amount;
-      const net = gross / 1.2;
+      const gross = amountCents;
+      const net = Math.round(gross / 1.2);
       return { net, vat: gross - net, gross };
     }
     if (tax === "excluded") {
-      const net = amount;
-      const vat = net * 0.2;
+      const net = amountCents;
+      const vat = Math.round(net * 0.2);
       return { net, vat, gross: net + vat };
     }
-    return { net: amount, vat: 0, gross: amount };
+    return { net: amountCents, vat: 0, gross: amountCents };
   }, [amount, tax]);
 
   const schedule = useMemo(() => {
-    const total = Math.round(calculation.gross * 100) / 100;
-    if (plan === "cash") return [{ label: "Peşin ödeme", amount: total }];
-    if (plan === "half") {
-      const first = Math.round(total * 50) / 100;
-      return [{ label: "Peşin ödeme", amount: first }, { label: "Teslim öncesi", amount: total - first }];
-    }
-    if (plan === "thirds") {
-      const first = Math.floor((total * 100) / 3) / 100;
-      return [
-        { label: "Peşin ödeme", amount: first },
-        { label: "Ara ödeme", amount: first },
-        { label: "Teslim öncesi", amount: total - first * 2 },
-      ];
-    }
-    return [];
-  }, [calculation.gross, plan]);
+    const startDate = firstPaymentDate ? new Date(`${firstPaymentDate}T12:00:00`) : new Date();
+    return calculatePaymentSchedule(calculation.gross, plan, startDate);
+  }, [calculation.gross, plan, firstPaymentDate]);
 
-  const planText = plan === "cash"
-    ? "Peşin Ödeme"
-    : plan === "half"
-      ? "%50 Peşin - %50 Teslim Öncesi"
-      : plan === "thirds"
-        ? "1/3 Peşin - Ara Ödeme - Teslim Öncesi"
-        : custom;
+  const planText = getPaymentPlanLabel(plan);
 
   return <div className="proposal-drawer-content">
     <section className="proposal-drawer-intro">
@@ -75,9 +61,8 @@ export function ProposalBuilderForm({ opportunityId, customerName, title, scope 
       <label className="wide">Teklif başlığı<input name="title" required defaultValue={title} /></label>
       <label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
       <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
-      <label className="wide">Ödeme planı<select name="payment_plan_type" value={plan} onChange={(event) => setPlan(event.target.value as Plan)}><option value="cash">Peşin Ödeme</option><option value="half">%50 Peşin - %50 Teslim Öncesi</option><option value="thirds">1/3 Peşin - Ara Ödeme - Teslim Öncesi</option><option value="custom">Özel Ödeme Planı</option></select></label>
-
-      {plan === "custom" ? <label className="wide">Özel ödeme planı<textarea value={custom} onChange={(event) => setCustom(event.target.value)} required placeholder="Ödeme tutarlarını, oranları ve vadeleri yazın." /></label> : null}
+      <label>Ödeme planı<select name="payment_plan_type" value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">Peşin Ödeme</option><option value="half">%50 Peşin - %50 Teslim Öncesi</option><option value="installments_3">3 Taksit</option><option value="installments_6">6 Taksit</option><option value="installments_12">12 Taksit</option></select></label>
+      <label>İlk ödeme tarihi<input type="date" value={firstPaymentDate} onChange={(event) => setFirstPaymentDate(event.target.value)} /></label>
 
       <label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={scope} /></label>
       <label className="wide">Geçerlilik tarihi<input name="valid_until" type="date" /></label>
@@ -87,7 +72,10 @@ export function ProposalBuilderForm({ opportunityId, customerName, title, scope 
         <div><span>Ara toplam</span><b>{money(calculation.net)}</b></div>
         <div><span>KDV</span><b>{money(calculation.vat)}</b></div>
         <div className="proposal-summary-total"><span>Genel toplam</span><strong>{money(calculation.gross)}</strong></div>
-        {schedule.length ? <section className="proposal-payment-breakdown"><small>ÖDEME DAĞILIMI</small>{schedule.map((item, index) => <div key={`${item.label}-${index}`}><span>{index + 1}. {item.label}</span><b>{money(item.amount)}</b></div>)}</section> : null}
+        <section className="proposal-payment-breakdown">
+          <small>OTOMATİK ÖDEME PLANI</small>
+          {schedule.map((item) => <div key={`${item.sequence}-${item.due_date}`}><span>{item.sequence}. {item.label} · {new Date(`${item.due_date}T12:00:00`).toLocaleDateString("tr-TR")}</span><b>{money(item.amount)}</b></div>)}
+        </section>
       </section>
 
       <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Teklifi Oluştur</button></div>
