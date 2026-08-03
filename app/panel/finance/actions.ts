@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 
 const types = new Set(["income", "expense"]);
 const statuses = new Set(["planned", "paid", "canceled"]);
+const invoiceStatuses = new Set(["draft", "open", "paid", "void"]);
 
 async function financeContext() {
   const context = await getPanelContext();
@@ -69,5 +70,23 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/payment-plans");
   revalidatePath("/panel/finance/accounts");
+  revalidatePath("/panel/finance/invoices");
+  revalidatePath("/panel");
+}
+
+export async function updateInvoiceStatus(formData: FormData) {
+  const { supabase, membership } = await financeContext();
+  const invoiceId = String(formData.get("invoice_id") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  if (!invoiceId) throw new Error("Fatura seçilemedi.");
+  if (!invoiceStatuses.has(status)) throw new Error("Geçersiz fatura durumu.");
+
+  const { error } = await supabase.from("billing_invoices").update({
+    status,
+    paid_at: status === "paid" ? new Date().toISOString() : null,
+  }).eq("id", invoiceId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Fatura durumu güncellenemedi: " + error.message);
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/finance/invoices");
   revalidatePath("/panel");
 }
