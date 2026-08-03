@@ -33,8 +33,6 @@ type Contract = {
   proposal_id: string | null;
   opportunity_id: string;
   status: string;
-  amount: number;
-  currency: string;
 };
 
 type Opportunity = {
@@ -80,11 +78,6 @@ const formatDate = (value?: string | null, withTime = false) => {
     : { dateStyle: "medium" });
 };
 
-const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", {
-  style: "currency",
-  currency: currency || "TRY",
-}).format(Number(value || 0) / 100);
-
 export default async function OperationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, membership, modules } = await getPanelContext();
@@ -105,7 +98,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
 
   const { data: contractData } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,proposal_id,opportunity_id,status,amount,currency")
+    .select("id,contract_no,proposal_id,opportunity_id,status")
     .eq("workflow_id", workflow.id)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
@@ -233,7 +226,6 @@ export default async function OperationDetailPage({ params }: { params: Promise<
             <div className="opd-link"><span>Sözleşme durumu</span><strong>{contract?.status || "—"}</strong></div>
             <div className="opd-link"><span>Teklif</span><strong>{proposal?.proposal_no || "Bağlı değil"}</strong></div>
             <div className="opd-link"><span>Teklif durumu</span><strong>{proposal?.status || "—"}</strong></div>
-            <div className="opd-link"><span>Sözleşme bedeli</span><strong>{contract ? money(contract.amount, contract.currency) : "—"}</strong></div>
           </div>
         </section>
 
