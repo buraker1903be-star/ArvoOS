@@ -1,100 +1,24 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { PanelDrawer } from "../../components/panel-drawer";
+import { issueContractLink, updateContract } from "../sales-actions";
 import "../crm.css";
 
-type Opportunity = {
-  id: string;
-  title: string;
-  customer_name: string;
-  contact_email: string | null;
-  contact_phone: string | null;
-  stage: string;
-  estimated_value: number;
-  expected_close_date: string | null;
-  source: string | null;
-  request_details: { service_type?: string; academic_level?: string; university?: string; scope?: string } | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type Props = { searchParams: Promise<{ search?: string; status?: string }> };
-
-const contractStages = ["contract", "contract_ready", "payment", "payment_pending", "payment_approved"];
-const statusLabels: Record<string, string> = {
-  contract: "Sözleşme hazırlanıyor",
-  contract_ready: "İmza bekliyor",
-  payment: "Ödeme sürecinde",
-  payment_pending: "Ödeme bekleniyor",
-  payment_approved: "Ödeme onaylandı",
-};
-const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value / 100);
-const clean = (value?: string) => value?.trim().replace(/\s+/g, " ").slice(0, 100) ?? "";
-
-export default async function ContractsPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const search = clean(params.search);
-  const status = contractStages.includes(params.status ?? "") ? params.status! : "";
-  const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
-
-  let query = supabase.from("crm_opportunities")
-    .select("id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,request_details,created_at,updated_at")
-    .eq("organization_id", membership.organization_id)
-    .in("stage", contractStages);
-  if (search) query = query.or(`customer_name.ilike.%${search}%,title.ilike.%${search}%`);
-  if (status) query = query.eq("stage", status);
-
-  const { data, error } = await query.order("updated_at", { ascending: false });
-  if (error) throw new Error("Sözleşme kayıtları okunamadı: " + error.message);
-
-  const rows = (data ?? []) as Opportunity[];
-  const total = rows.reduce((sum, row) => sum + Number(row.estimated_value ?? 0), 0);
-  const signed = rows.filter((row) => ["payment", "payment_pending", "payment_approved"].includes(row.stage)).length;
-  const paid = rows.filter((row) => row.stage === "payment_approved").length;
-  const filtered = Boolean(search || status);
-
-  return <div className="crm-page-stack">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">CRM / SÖZLEŞME YÖNETİMİ</small><h1>Sözleşmeler</h1><p>Onaylanan tekliflerden oluşan sözleşmeleri; imza, ödeme, teslim ve iş açılışı süreciyle birlikte takip edin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link></div>
-    </div>
-
-    <section className="crm-metrics">
-      <article><small>TOPLAM SÖZLEŞME</small><strong>{rows.length}</strong><span>Filtre sonucundaki kayıtlar</span></article>
-      <article><small>SÖZLEŞME DEĞERİ</small><strong>{money(total)}</strong><span>Toplam hizmet bedeli</span></article>
-      <article><small>İMZALANAN</small><strong>{signed}</strong><span>Ödeme aşamasına geçen</span></article>
-      <article><small>ÖDEMESİ ONAYLANAN</small><strong>{paid}</strong><span>İş açılışına hazır</span></article>
-    </section>
-
-    <section className="panel-card">
-      <form action="/panel/crm/contracts" method="get" className="panel-form" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(220px,.35fr) auto" }}>
-        <label>Sözleşme / müşteri ara<input type="search" name="search" defaultValue={search} placeholder="Müşteri veya hizmet konusu" /></label>
-        <label>Durum<select name="status" defaultValue={status}><option value="">Aktif sözleşmelerin tümü</option>{contractStages.map((stage) => <option value={stage} key={stage}>{statusLabels[stage]}</option>)}</select></label>
-        <div className="panel-form-actions"><button className="panel-primary" type="submit">Filtrele</button>{filtered ? <Link className="panel-secondary" href="/panel/crm/contracts">Temizle</Link> : null}</div>
-      </form>
-    </section>
-
-    <section className="panel-card">
-      <div className="section-heading compact"><div><small className="panel-kicker">SÖZLEŞME LİSTESİ</small><h2>Sözleşme kayıtları</h2></div><span>{rows.length} sonuç</span></div>
-      <div className="dashboard-actions">
-        {rows.map((row) => {
-          const detail = row.request_details ?? {};
-          return <article key={row.id} className="crm-card" style={{ marginBottom: 10 }}>
-            <div className="crm-card-top"><small>{statusLabels[row.stage] ?? row.stage}</small><span>{row.source || "Doğrudan"}</span></div>
-            <h3>{row.customer_name}</h3>
-            <p>{row.title}</p>
-            <small>{[detail.service_type, detail.academic_level, detail.university].filter(Boolean).join(" · ") || "Hizmet bilgisi belirtilmedi"}</small>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginTop: 12 }}>
-              <span><small>İletişim</small><b>{row.contact_phone || row.contact_email || "Belirtilmedi"}</b></span>
-              <span><small>Teslim / kapanış</small><b>{row.expected_close_date ? new Date(row.expected_close_date + "T00:00:00").toLocaleDateString("tr-TR") : "Belirtilmedi"}</b></span>
-              <span><small>Sözleşme bedeli</small><b>{money(row.estimated_value)}</b></span>
-            </div>
-            {detail.scope ? <p style={{ marginTop: 12 }}>{detail.scope.slice(0, 220)}{detail.scope.length > 220 ? "…" : ""}</p> : null}
-            <div className="panel-page-actions" style={{ marginTop: 14 }}><Link className="panel-secondary" href="/panel/crm/proposals">Bağlı teklifi görüntüle</Link>{row.stage === "payment_approved" ? <Link className="panel-primary" href="/panel/operations">İş açılışına geç</Link> : null}</div>
-          </article>;
-        })}
-        {!rows.length ? <div className="crm-empty">{filtered ? "Filtrelerle eşleşen sözleşme bulunamadı." : "Henüz sözleşme aşamasında kayıt bulunmuyor."}</div> : null}
-      </div>
-    </section>
-  </div>;
+type Props={searchParams:Promise<{search?:string;status?:string;share?:string}>};
+type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;start_date:string|null;due_date:string|null;status:string;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;crm_opportunities:{customer_name:string;contact_email:string|null;contact_phone:string|null;title:string}|null};
+const statuses=["draft","sent","signed","rejected","cancelled","completed"];
+const labels:Record<string,string>={draft:"Taslak",sent:"İmza bekliyor",signed:"İmzalandı",rejected:"Reddedildi",cancelled:"İptal",completed:"Tamamlandı"};
+const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
+export default async function ContractsPage({searchParams}:Props){
+ const p=await searchParams; const search=(p.search??"").trim(); const status=statuses.includes(p.status??"")?p.status!:""; const share=p.share??"";
+ const {supabase,membership,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
+ let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,signed_name,signed_at,workflow_id,created_at,crm_opportunities!inner(customer_name,contact_email,contact_phone,title)").eq("organization_id",membership.organization_id);
+ if(status) q=q.eq("status",status); if(search) q=q.or(`contract_no.ilike.%${search}%,title.ilike.%${search}%`);
+ const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const rows=(data??[]) as unknown as Contract[];
+ const shareUrl=share?`https://app.arvo-os.com/sozlesme/${share}`:""; const total=rows.reduce((s,r)=>s+Number(r.amount),0);
+ return <div className="crm-page-stack"><div className="panel-pagehead"><div><small className="panel-kicker">CRM / SÖZLEŞMELER</small><h1>Sözleşmeler</h1><p>Tekliften oluşan sözleşmeleri kontrol edin, imzaya gönderin ve oluşan iş akışını takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link></div></div>
+ {shareUrl?<section className="panel-card"><small className="panel-kicker">İMZA BAĞLANTISI HAZIR</small><h2>Sözleşme bağlantısı</h2><p style={{wordBreak:"break-all"}}>{shareUrl}</p><div className="panel-page-actions"><a className="panel-primary" href={`mailto:?subject=Sözleşmeniz&body=${encodeURIComponent("Sözleşmenizi inceleyip imzalamak için: "+shareUrl)}`}>E-posta ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent("Sözleşmenizi inceleyip imzalamak için: "+shareUrl)}`}>WhatsApp ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>Önizle</a></div></section>:null}
+ <section className="crm-metrics"><article><small>TOPLAM</small><strong>{rows.length}</strong><span>Sözleşme kaydı</span></article><article><small>TOPLAM DEĞER</small><strong>{money(total,"TRY")}</strong><span>Sözleşme bedeli</span></article><article><small>İMZA BEKLEYEN</small><strong>{rows.filter(r=>["draft","sent"].includes(r.status)).length}</strong><span>Müşteri imzası</span></article><article><small>İMZALANAN</small><strong>{rows.filter(r=>r.status==="signed").length}</strong><span>İş akışı oluşturulan</span></article></section>
+ <section className="panel-card"><form method="get" className="crm-filter-form"><label><span>Sözleşme / müşteri ara</span><input name="search" defaultValue={search}/></label><label><span>Durum</span><select name="status" defaultValue={status}><option value="">Tümü</option>{statuses.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/crm/contracts">Temizle</Link></div></form></section>
+ <section className="crm-record-list">{rows.map(row=>{const customer=row.crm_opportunities;const edit=<form className="panel-form" action={updateContract}><input type="hidden" name="contract_id" value={row.id}/><label>Başlık<input name="title" defaultValue={row.title} required/></label><label>Tutar<input name="amount" type="number" step="0.01" min="0" defaultValue={(row.amount/100).toFixed(2)} required/></label><label className="wide">Kapsam<textarea name="scope" defaultValue={row.scope??""} required/></label><label>Ödeme planı<input name="payment_plan" defaultValue={row.payment_plan??""}/></label><label>Başlangıç<input name="start_date" type="date" defaultValue={row.start_date??""}/></label><label>Teslim<input name="due_date" type="date" defaultValue={row.due_date??""}/></label><div className="wide panel-form-actions"><button className="panel-primary">Kaydet</button></div></form>;return <article className="panel-card crm-record" key={row.id}><div className="crm-record-main"><div className="crm-record-heading"><span className="crm-record-number">{row.contract_no}</span><span className="status-pill">{labels[row.status]??row.status}</span></div><h2>{customer?.customer_name}</h2><h3>{row.title}</h3><div className="crm-record-meta"><span>{customer?.contact_phone||"Telefon yok"}</span><span>{customer?.contact_email||"E-posta yok"}</span><span>{row.due_date?`Teslim: ${new Date(row.due_date+"T00:00:00").toLocaleDateString("tr-TR")}`:"Teslim tarihi yok"}</span></div><p>{row.scope}</p>{row.signed_name?<p><b>İmzalayan:</b> {row.signed_name} · {row.signed_at?new Date(row.signed_at).toLocaleString("tr-TR"):""}</p>:null}<div className="panel-page-actions">{!["signed","completed","cancelled"].includes(row.status)?<><PanelDrawer triggerLabel="Düzenle" title={row.contract_no} description="Sözleşme bilgilerini kontrol edin.">{edit}</PanelDrawer><form action={issueContractLink}><input type="hidden" name="contract_id" value={row.id}/><button className="panel-primary">İmzaya gönder</button></form></>:null}{row.workflow_id?<Link className="panel-primary" href="/panel/operations">İş akışını aç</Link>:null}</div></div><aside className="crm-record-side"><small>SÖZLEŞME BEDELİ</small><strong>{money(row.amount,row.currency)}</strong><span>{row.payment_plan||"Ödeme planı belirtilmedi"}</span></aside></article>})}{!rows.length?<div className="panel-card crm-empty">Sözleşme bulunamadı.</div>:null}</section></div>;
 }
