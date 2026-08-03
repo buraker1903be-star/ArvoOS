@@ -7,15 +7,15 @@ export function PrintDocumentButton() {
       onClick={() => window.print()}
       className="print-hide"
       style={{
-        border: "1px solid #cfd7cf",
+        border: "1px solid #b8c0ba",
         borderRadius: 10,
         background: "#fff",
-        padding: "10px 14px",
+        padding: "11px 16px",
         fontWeight: 800,
         cursor: "pointer",
       }}
     >
-      Yazdır / PDF Kaydet
+      PDF Olarak İndir
     </button>
   );
 }
