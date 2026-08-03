@@ -6,6 +6,7 @@ import { createProposal } from "./sales-actions";
 import { RequestEntryForm } from "./request-entry-form";
 import { requestStageNames, requestStages } from "./request-status";
 import "./crm.css";
+import "./request-page.css";
 
 type SearchParams = Promise<{ arama?: string; durum?: string }>;
 type RequestDetails = { service_type?: string; academic_level?: string; university?: string; department?: string; language?: string; scope?: string };
@@ -40,11 +41,8 @@ export default async function RequestsPage({searchParams}:{searchParams:SearchPa
 
   return <div className="crm-page-stack">
     <div className="panel-pagehead"><div><small className="panel-kicker">TALEP YÖNETİMİ</small><h1>Talepler</h1><p>Yeni talepleri inceleyin, teklif aşamasına devredin veya iptal edilenleri arşivleyin.</p></div><div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><PanelDrawer triggerLabel="+ Yeni talep" title={academicMode?"Talep Girişi":"Yeni talep"} description="Müşteri ve talep bilgilerini kaydedin."><RequestEntryForm academicMode={academicMode}/></PanelDrawer></div></div>
-
     <section className="crm-metrics"><article><small>YENİ TALEP</small><strong>{newRequests}</strong><span>İlk değerlendirmeyi bekliyor</span></article><article><small>TALEP İNCELENİYOR</small><strong>{reviewing}</strong><span>İnceleme sürecinde</span></article><article><small>TEKLİFLERE DEVREDİLDİ</small><strong>{transferred}</strong><span>Teklifler bölümünde</span></article><article><small>ARŞİVLENDİ</small><strong>{archived}</strong><span>İptal edilen kayıtlar</span></article></section>
-
     <section className="panel-card crm-filter-card"><form action="/panel/crm" method="get" className="crm-filter-form"><label><span>Müşteri / talep ara</span><input type="search" name="arama" defaultValue={rawSearch??""} placeholder="Müşteri, konu, telefon veya e-posta"/></label><label><span>Durum</span><select name="durum" defaultValue={selectedStage}><option value="">Aktif Talepler</option><option value="tumu">Tüm Kayıtlar</option>{requestStages.map((stage)=><option value={stage.code} key={stage.code}>{stage.name}</option>)}</select></label><div><button className="panel-primary" type="submit">Filtrele</button><a className="panel-secondary" href="/panel/crm">Temizle</a></div></form></section>
-
     <section className="crm-record-list">{rows.map((item)=>{
       const details=item.request_details??{};
       const proposalForm=<form className="panel-form" action={createProposal}><input type="hidden" name="opportunity_id" value={item.id}/><label>Teklif başlığı<input name="title" required defaultValue={item.title}/></label><label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required/></label><label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={details.scope||item.notes||item.title}/></label><label>Ödeme planı<input name="payment_plan" placeholder="Örn. %50 başlangıç, %50 teslim"/></label><label>Geçerlilik tarihi<input name="valid_until" type="date"/></label><div className="wide panel-form-actions"><button className="panel-primary" type="submit">Teklifi oluştur</button></div></form>;
