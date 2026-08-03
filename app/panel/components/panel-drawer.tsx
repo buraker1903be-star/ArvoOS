@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState, type ReactNode } from "react";
+import "./panel-drawer.css";
 
 type PanelDrawerProps = {
   triggerLabel: string;
