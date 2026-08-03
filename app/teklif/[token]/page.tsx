@@ -8,6 +8,7 @@ import { respondToProposal } from "./actions";
 
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(Number(value || 0) / 100);
 const date = (value?: string | null) => value ? new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString("tr-TR") : "—";
+const firstIp = (value: string | null) => value?.split(",")[0]?.trim() || null;
 const statusNames: Record<string, string> = { accepted: "Teklif kabul edildi", rejected: "Teklif reddedildi", expired: "Teklifin süresi doldu", archived: "Teklif arşivlendi" };
 const taxNames: Record<string, string> = { included: "KDV Dahil", excluded: "KDV", exempt: "KDV İstisna" };
 
@@ -21,6 +22,17 @@ export default async function PublicProposalPage({ params, searchParams }: { par
   await supabase.rpc("mark_crm_proposal_viewed", { public_token: token });
 
   const requestHeaders = await headers();
+  const accessIp = firstIp(requestHeaders.get("x-forwarded-for")) || requestHeaders.get("x-real-ip") || requestHeaders.get("cf-connecting-ip") || null;
+  await supabase.rpc("log_public_document_access", {
+    public_token: token,
+    target_document_type: "proposal",
+    target_access_type: "public_view",
+    target_ip: accessIp,
+    target_user_agent: requestHeaders.get("user-agent")?.slice(0, 1000) || null,
+    target_referrer: requestHeaders.get("referer")?.slice(0, 1000) || null,
+    target_metadata: { number: row.proposal_no, source: "public_proposal" },
+  });
+
   const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host") || "arvo-os.com";
   const protocol = requestHeaders.get("x-forwarded-proto") || "https";
   const verificationUrl = `${protocol}://${host}/teklif/${token}`;
