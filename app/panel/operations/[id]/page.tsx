@@ -10,6 +10,7 @@ type Contract={id:string;contract_no:string;proposal_id:string|null;opportunity_
 type Opportunity={customer_name:string;contact_email:string|null;contact_phone:string|null;title:string|null;stage:string|null};
 type Proposal={id:string;proposal_no:string;status:string};
 type Comment={id:string;body:string;created_at:string;created_by:string|null};
+type Activity={id:string;title:string;detail:string;at:string;kind:"created"|"step"|"comment"};
 
 const statusNames:Record<string,string>={planned:"Planlandı",in_progress:"Devam ediyor",blocked:"Beklemede",completed:"Tamamlandı",cancelled:"İptal"};
 const priorityNames:Record<string,string>={low:"Düşük",normal:"Normal",high:"Yüksek",urgent:"Acil"};
@@ -35,6 +36,11 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  if(commentsError)throw new Error("İş yorumları okunamadı: "+commentsError.message);
  const comments=(commentsData??[]) as Comment[];
  const customerName=opportunity?.customer_name||workflow.customer_name||"Kurum içi iş";
+ const activities:Activity[]=[
+  {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created"},
+  ...steps.filter(step=>step.completed_at).map(step=>({id:`step-${step.id}`,title:"Görev tamamlandı",detail:step.title,at:step.completed_at!,kind:"step" as const})),
+  ...comments.map(comment=>({id:`comment-${comment.id}`,title:"Yorum eklendi",detail:comment.body.length>90?`${comment.body.slice(0,90)}…`:comment.body,at:comment.created_at,kind:"comment" as const})),
+ ].sort((a,b)=>new Date(b.at).getTime()-new Date(a.at).getTime()).slice(0,12);
 
  return <div className="ops-detail-page">
   <div className="panel-pagehead ops-detail-pagehead">
@@ -51,7 +57,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
 
   <div className="ops-detail-layout">
    <div className="ops-detail-main">
-    <section className="panel-card ops-detail-card">
+    <section className="panel-card ops-detail-card ops-detail-workflow-card">
      <div className="ops-detail-section-head"><div><small className="panel-kicker">GÖREVLER / AŞAMALAR</small><h2>İş Akışı</h2></div><strong>%{progress}</strong></div>
      <div className="ops-progress ops-detail-progress"><div><span style={{width:`${progress}%`}}/></div><b>{completedCount}/{steps.length}</b></div>
      <div className="ops-detail-timeline">
@@ -74,6 +80,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
     <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{opportunity?.contact_phone||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage||"—"}</dd></div></dl></section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status||"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status||"—"}</dd></div></dl></section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form></section>
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">AKTİVİTE</small><h2>Son Hareketler</h2><div className="ops-activity-list">{activities.map(activity=><article key={activity.id} className={`activity-${activity.kind}`}><i>{activity.kind==="created"?"＋":activity.kind==="step"?"✓":"•"}</i><div><strong>{activity.title}</strong><p>{activity.detail}</p><time>{formatDate(activity.at,true)}</time></div></article>)}</div></section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">ZAMAN</small><h2>İş Bilgileri</h2><dl className="ops-detail-list"><div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at,true)}</dd></div><div><dt>Son Güncelleme</dt><dd>{formatDate(workflow.updated_at,true)}</dd></div></dl></section>
    </aside>
   </div>
