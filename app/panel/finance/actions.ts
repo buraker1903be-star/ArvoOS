@@ -74,6 +74,33 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel");
 }
 
+export async function rebuildPaymentPlan(formData: FormData) {
+  const { supabase } = await financeContext();
+  const planId = String(formData.get("plan_id") ?? "").trim();
+  const installmentCount = Number(formData.get("installment_count") ?? 0);
+  const firstDueDate = String(formData.get("first_due_date") ?? "").trim();
+  const intervalMonths = Number(formData.get("interval_months") ?? 1);
+
+  if (!planId) throw new Error("Ödeme planı seçilemedi.");
+  if (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 36) throw new Error("Taksit sayısı 1–36 arasında olmalı.");
+  if (!firstDueDate) throw new Error("İlk vade tarihi zorunludur.");
+  if (!Number.isInteger(intervalMonths) || intervalMonths < 1 || intervalMonths > 12) throw new Error("Taksit aralığı 1–12 ay arasında olmalı.");
+
+  const { error } = await supabase.rpc("rebuild_payment_plan_installments", {
+    p_plan_id: planId,
+    p_installment_count: installmentCount,
+    p_first_due_date: firstDueDate,
+    p_interval_months: intervalMonths,
+  });
+  if (error) {
+    if (error.message.includes("payment_plan_has_paid_installments")) throw new Error("Tahsil edilmiş taksiti bulunan ödeme planı değiştirilemez.");
+    throw new Error("Ödeme planı güncellenemedi: " + error.message);
+  }
+  revalidatePath("/panel/finance/payment-plans");
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel");
+}
+
 export async function updateInvoiceStatus(formData: FormData) {
   const { supabase, membership } = await financeContext();
   const invoiceId = String(formData.get("invoice_id") ?? "").trim();
