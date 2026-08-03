@@ -35,9 +35,13 @@ export async function createOpportunity(formData: FormData) {
   const notes = text(formData, "notes", 4000);
   const expectedCloseDate = text(formData, "expected_close_date", 20) || null;
   const estimatedValue = Math.round(Number(formData.get("estimated_value") ?? 0) * 100);
+  const selectedServiceType = text(formData, "service_type", 120);
+  const customServiceType = text(formData, "other_service_type", 120);
+  const serviceType = selectedServiceType === "Diğer" ? customServiceType : selectedServiceType;
 
   if (title.length < 2 || title.length > 180) throw new Error("Talep konusu 2–180 karakter olmalıdır.");
   if (customerName.length < 2 || customerName.length > 180) throw new Error("Müşteri veya kurum adı 2–180 karakter olmalıdır.");
+  if (selectedServiceType === "Diğer" && customServiceType.length < 2) throw new Error("Diğer hizmet türünü yazmalısınız.");
   if (!Number.isFinite(estimatedValue) || estimatedValue < 0) throw new Error("Geçersiz talep tutarı.");
 
   const details = {
@@ -48,7 +52,7 @@ export async function createOpportunity(formData: FormData) {
     program: text(formData, "program", 180),
     academic_level: text(formData, "academic_level", 80),
     advisor: text(formData, "advisor", 180),
-    service_type: text(formData, "service_type", 120),
+    service_type: serviceType,
     language: text(formData, "language", 80),
     page_or_sample_info: text(formData, "page_or_sample_info", 300),
     analysis_software: text(formData, "analysis_software", 180),
