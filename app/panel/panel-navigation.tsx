@@ -20,7 +20,6 @@ const crmChildren = [
   { href: "/panel/crm", label: "Talepler", exact: true },
   { href: "/panel/crm/proposals", label: "Teklifler", exact: false },
   { href: "/panel/crm/contracts", label: "Sözleşmeler", exact: true },
-  { href: "/panel/crm/contract-templates", label: "Sözleşme Şablonları", exact: false },
 ];
 
 export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
