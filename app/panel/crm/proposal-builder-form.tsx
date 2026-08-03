@@ -18,11 +18,13 @@ const money = (value: number) => new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 2,
 }).format(value / 100);
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export function ProposalBuilderForm({ opportunityId, customerName, title, scope }: Props) {
   const [amount, setAmount] = useState(0);
   const [tax, setTax] = useState<Tax>("excluded");
   const [plan, setPlan] = useState<PaymentPlanType>("cash");
-  const [firstPaymentDate, setFirstPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [firstPaymentDate, setFirstPaymentDate] = useState(today);
 
   const calculation = useMemo(() => {
     const amountCents = Math.max(0, Math.round(amount * 100));
@@ -50,7 +52,7 @@ export function ProposalBuilderForm({ opportunityId, customerName, title, scope 
     <section className="proposal-drawer-intro">
       <small>YENİ TEKLİF</small>
       <h3 style={{ fontSize: "18px", lineHeight: 1.25, margin: "8px 0 10px", maxWidth: "calc(100% - 8px)" }}>{customerName} için teklif</h3>
-      <p style={{ margin: 0, paddingBottom: "2px" }}>Teklif tutarını, KDV durumunu ve ödeme planını belirleyin.</p>
+      <p style={{ margin: 0, paddingBottom: "2px" }}>Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin.</p>
     </section>
 
     <form className="panel-form proposal-builder" action={createProposal}>
@@ -63,9 +65,10 @@ export function ProposalBuilderForm({ opportunityId, customerName, title, scope 
       <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
       <label>Ödeme planı<select name="payment_plan_type" value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">Peşin Ödeme</option><option value="half">%50 Peşin - %50 Teslim Öncesi</option><option value="installments_3">3 Taksit</option><option value="installments_6">6 Taksit</option><option value="installments_12">12 Taksit</option></select></label>
       <label>İlk ödeme tarihi<input type="date" value={firstPaymentDate} onChange={(event) => setFirstPaymentDate(event.target.value)} /></label>
+      <label>Tahmini teslim tarihi<input name="estimated_delivery_date" type="date" min={today()} required /></label>
+      <label>Geçerlilik tarihi<input name="valid_until" type="date" min={today()} /></label>
 
       <label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={scope} /></label>
-      <label className="wide">Geçerlilik tarihi<input name="valid_until" type="date" /></label>
 
       <section className="proposal-live-summary wide" aria-live="polite">
         <header><span>TEKLİF ÖZETİ</span><strong>{money(calculation.gross)}</strong></header>
