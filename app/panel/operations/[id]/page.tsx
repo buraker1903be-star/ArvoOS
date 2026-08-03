@@ -37,7 +37,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  const comments=(commentsData??[]) as Comment[];
  const customerName=opportunity?.customer_name||workflow.customer_name||"Kurum içi iş";
  const activities:Activity[]=[
-  {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created"},
+  {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created" as const},
   ...steps.filter(step=>step.completed_at).map(step=>({id:`step-${step.id}`,title:"Görev tamamlandı",detail:step.title,at:step.completed_at!,kind:"step" as const})),
   ...comments.map(comment=>({id:`comment-${comment.id}`,title:"Yorum eklendi",detail:comment.body.length>90?`${comment.body.slice(0,90)}…`:comment.body,at:comment.created_at,kind:"comment" as const})),
  ].sort((a,b)=>new Date(b.at).getTime()-new Date(a.at).getTime()).slice(0,12);
