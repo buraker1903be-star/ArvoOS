@@ -63,8 +63,8 @@ export function ProposalBuilderForm({ opportunityId, customerName, title, scope 
   return <div className="proposal-drawer-content">
     <section className="proposal-drawer-intro">
       <small>YENİ TEKLİF</small>
-      <h3>{customerName}</h3>
-      <p>Teklif tutarını, KDV durumunu ve ödeme planını belirleyin. Kaydedildiğinde talep otomatik olarak Tekliflere Devredildi durumuna geçer.</p>
+      <h3 style={{ fontSize: "18px", lineHeight: 1.25, margin: "8px 0 10px", maxWidth: "calc(100% - 8px)" }}>{customerName} için teklif</h3>
+      <p style={{ margin: 0, paddingBottom: "2px" }}>Teklif tutarını, KDV durumunu ve ödeme planını belirleyin.</p>
     </section>
 
     <form className="panel-form proposal-builder" action={createProposal}>
