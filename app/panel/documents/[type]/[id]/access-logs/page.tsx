@@ -14,6 +14,13 @@ type AccessLog = {
   created_at: string;
 };
 
+type DocumentRecord = {
+  id: string;
+  title: string;
+  proposal_no?: string;
+  contract_no?: string;
+};
+
 const accessLabels: Record<string, string> = {
   panel_preview: "Panel önizleme",
   public_view: "Public görüntüleme",
@@ -42,7 +49,7 @@ export default async function DocumentAccessLogsPage({ params }: { params: Promi
 
   const table = type === "proposal" ? "crm_proposals" : "crm_contracts";
   const numberColumn = type === "proposal" ? "proposal_no" : "contract_no";
-  const { data: document, error: documentError } = await supabase
+  const { data: documentData, error: documentError } = await supabase
     .from(table)
     .select(`id,${numberColumn},title`)
     .eq("id", id)
@@ -50,7 +57,8 @@ export default async function DocumentAccessLogsPage({ params }: { params: Promi
     .maybeSingle();
 
   if (documentError) throw new Error(`Belge okunamadı: ${documentError.message}`);
-  if (!document) notFound();
+  if (!documentData) notFound();
+  const document = documentData as unknown as DocumentRecord;
 
   const { data, error } = await supabase
     .from("document_access_logs")
@@ -62,7 +70,9 @@ export default async function DocumentAccessLogsPage({ params }: { params: Promi
 
   if (error) throw new Error(`Erişim kayıtları okunamadı: ${error.message}`);
   const rows = (data ?? []) as AccessLog[];
-  const documentNumber = String(document[numberColumn] ?? "Belge");
+  const documentNumber = type === "proposal"
+    ? document.proposal_no || "Belge"
+    : document.contract_no || "Belge";
   const uniqueIps = new Set(rows.map((row) => row.access_ip).filter(Boolean)).size;
   const publicViews = rows.filter((row) => row.access_type === "public_view").length;
   const pdfActions = rows.filter((row) => row.access_type === "pdf_print").length;
