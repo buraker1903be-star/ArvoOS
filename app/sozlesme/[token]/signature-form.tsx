@@ -105,6 +105,6 @@ export function ContractSignatureForm({ token }: { token: string }) {
     </div>
     {message ? <p className="ct-form-error">{message}</p> : null}
     <label className="ct-accept"><input type="checkbox" name="accepted" required/><span>Sözleşmenin tamamını, hizmet kapsamını ve ödeme planını okudum; kendi irademle kabul ediyorum.</span></label>
-    <button type="submit">Sözleşmeyi Mavi İmza ile Onayla</button>
+    <button type="submit">Sözleşmeyi İmzala</button>
   </form>;
 }
