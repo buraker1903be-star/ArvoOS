@@ -6,7 +6,7 @@ const money=(value:number,currency:string)=>new Intl.NumberFormat("tr-TR",{style
 const date=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:00:00`).toLocaleDateString("tr-TR",{day:"2-digit",month:"long",year:"numeric"}):"—";
 const statuses:Record<string,string>={draft:"Taslak",sent:"Gönderildi",accepted:"Kabul edildi",rejected:"Reddedildi",expired:"Süresi doldu",archived:"Arşivlendi"};
 const taxes:Record<string,string>={included:"KDV Dahil",excluded:"KDV Hariç",exempt:"KDV İstisnası"};
-const planTypes=new Set<PaymentPlanType>(["cash","half","installments_3","installments_6","installments_12"]);
+const planTypes=new Set<PaymentPlanType>(["cash","half","third","custom"]);
 
 export function ProposalDocument({row,verificationUrl,toolbarLeft,actions,notice}:{row:any;verificationUrl?:string|null;toolbarLeft?:ReactNode;actions?:ReactNode;notice?:string|null}){
  const brand=/^#[0-9a-fA-F]{6}$/.test(row.organization_primary_color||"")?row.organization_primary_color:"#b28a49";

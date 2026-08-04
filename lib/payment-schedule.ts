@@ -1,4 +1,4 @@
-export type PaymentPlanType = "cash" | "half" | "installments_3" | "installments_6" | "installments_12";
+export type PaymentPlanType = "cash" | "half" | "third" | "custom";
 
 export type PaymentScheduleItem = {
   sequence: number;
@@ -24,14 +24,20 @@ const splitCents = (totalCents: number, count: number) => {
   return Array.from({ length: safeCount }, (_, index) => base + (index < remainder ? 1 : 0));
 };
 
+const percentOf = (amount: number, total: number) => (total ? Number(((amount / total) * 100).toFixed(2)) : 0);
+
 export function getPaymentPlanLabel(type: PaymentPlanType) {
   if (type === "cash") return "Peşin Ödeme";
-  if (type === "half") return "%50 Peşin - %50 Teslim Öncesi";
-  if (type === "installments_3") return "3 Taksit";
-  if (type === "installments_6") return "6 Taksit";
-  return "12 Taksit";
+  if (type === "half") return "%50 Peşin (Sözleşme Onayında) - %50 Teslim Öncesi";
+  if (type === "third") return "1/3 Peşin (Sözleşme Onayında) - Ara Ödeme - Son Ödeme (Teslim Öncesi)";
+  return "Özel Ödeme Planı";
 }
 
+/**
+ * "custom" hariç tüm planlar burada tamamen otomatik hesaplanır (Ücret Hesapla).
+ * "custom" için sadece tek satırlık bir başlangıç noktası döner; gerçek satırlar
+ * ProposalBuilderForm içindeki düzenlenebilir taksit listesinden gelir.
+ */
 export function calculatePaymentSchedule(
   totalCents: number,
   type: PaymentPlanType,
@@ -46,20 +52,22 @@ export function calculatePaymentSchedule(
   if (type === "half") {
     const [first, second] = splitCents(safeTotal, 2);
     return [
-      { sequence: 1, label: "Peşin ödeme", due_date: isoDate(startDate), amount: first, percentage: 50 },
-      { sequence: 2, label: "Teslim öncesi", due_date: isoDate(addDays(startDate, 30)), amount: second, percentage: 50 },
+      { sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: first, percentage: percentOf(first, safeTotal) },
+      { sequence: 2, label: "Teslim Öncesi", due_date: isoDate(addDays(startDate, 30)), amount: second, percentage: percentOf(second, safeTotal) },
     ];
   }
 
-  const count = type === "installments_3" ? 3 : type === "installments_6" ? 6 : 12;
-  const amounts = splitCents(safeTotal, count);
-  return amounts.map((amount, index) => ({
-    sequence: index + 1,
-    label: `${index + 1}. Taksit`,
-    due_date: isoDate(addDays(startDate, index * 30)),
-    amount,
-    percentage: safeTotal ? Number(((amount / safeTotal) * 100).toFixed(2)) : 0,
-  }));
+  if (type === "third") {
+    const [first, second, third] = splitCents(safeTotal, 3);
+    return [
+      { sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: first, percentage: percentOf(first, safeTotal) },
+      { sequence: 2, label: "Ara Ödeme", due_date: isoDate(addDays(startDate, 20)), amount: second, percentage: percentOf(second, safeTotal) },
+      { sequence: 3, label: "Son Ödeme (Teslim Öncesi)", due_date: isoDate(addDays(startDate, 40)), amount: third, percentage: percentOf(third, safeTotal) },
+    ];
+  }
+
+  // custom: tek satırlık başlangıç noktası, kullanıcı formda satır ekler/çıkarır.
+  return [{ sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: safeTotal, percentage: 100 }];
 }
 
 export function normalizePaymentSchedule(
@@ -102,7 +110,7 @@ export function normalizePaymentSchedule(
   }
 
   // If the stored plan is stale or malformed, rebuild it from the selected plan type.
-  if (fallbackType) {
+  if (fallbackType && fallbackType !== "custom") {
     const firstDueDate = rows[0]?.due_date
       ? new Date(`${rows[0].due_date}T12:00:00`)
       : fallbackStartDate;

@@ -70,3 +70,26 @@
   .proposal-builder{gap:15px}
   .proposal-live-summary>header strong{font-size:17px}
 }
+
+/* ---------- Özel Ödeme Planı (taksit düzenleyici) ---------- */
+.custom-plan-editor{border:1px solid var(--ux-line);border-radius:14px;background:var(--surface-2);padding:16px}
+.custom-plan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.custom-plan-head small{color:var(--accent-600);font-size:8px;font-weight:800;letter-spacing:.12em}
+.custom-plan-total{padding:5px 9px;border-radius:999px;font-size:9px;font-weight:800}
+.custom-plan-total.ok{background:var(--success-soft);color:var(--success)}
+.custom-plan-total.warn{background:var(--warning-soft);color:var(--warning)}
+.custom-plan-rows{display:flex;flex-direction:column;gap:8px}
+.custom-plan-row{display:grid;grid-template-columns:20px minmax(0,1.4fr) 55px 12px minmax(0,.9fr) minmax(0,.9fr) 28px;align-items:center;gap:6px}
+.custom-plan-index{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--surface);color:var(--muted);font-size:8px;font-weight:800}
+.custom-plan-row input{width:100%;min-width:0;padding:8px 9px;border:1px solid var(--ux-line);border-radius:8px;background:var(--surface);color:var(--ux-primary);font-size:9px}
+.custom-plan-percent-sign{color:var(--muted);font-size:9px;text-align:center}
+.custom-plan-amount{font-size:9px;font-weight:800;color:var(--ink);text-align:right;white-space:nowrap}
+.custom-plan-remove{width:24px;height:24px;border:1px solid var(--ux-line);border-radius:7px;background:var(--surface);color:var(--danger);cursor:pointer;font-size:10px;line-height:1}
+.custom-plan-remove:disabled{opacity:.35;cursor:not-allowed}
+.custom-plan-add{margin-top:12px}
+.custom-plan-hint{margin:10px 0 0;color:var(--warning);font-size:9px}
+
+@media(max-width:760px){
+  .custom-plan-row{grid-template-columns:18px minmax(0,1fr) 46px 26px}
+  .custom-plan-row input[type="date"],.custom-plan-amount{grid-column:2/span 3}
+}
