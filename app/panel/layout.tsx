@@ -4,6 +4,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+import { ThemeToggle } from "./theme-toggle";
+import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
 import "./panel-page-system.css";
@@ -47,6 +49,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
             {hasMessages ? <Link className="panel-quick-action" href="/panel/messages" aria-label="Mesajlar"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b></Link> : null}
             <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
           </div>
+          <ThemeToggle />
           <div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
       </header>

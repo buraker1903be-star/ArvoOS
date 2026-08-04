@@ -1,5 +1,5 @@
 .panel-drawer-root .panel-drawer{--drawer-gutter:30px}
-.panel-drawer-root .panel-drawer .panel-drawer-header{position:relative!important;display:block!important;box-sizing:border-box;width:100%;min-height:112px;padding:26px 82px 22px var(--drawer-gutter)!important;background:#fff;text-align:left}
+.panel-drawer-root .panel-drawer .panel-drawer-header{position:relative!important;display:block!important;box-sizing:border-box;width:100%;min-height:112px;padding:26px 82px 22px var(--drawer-gutter)!important;background:var(--surface);text-align:left}
 .panel-drawer-root .panel-drawer .panel-drawer-header>div{display:block!important;width:100%;min-width:0;margin:0!important;padding:0!important;text-align:left}
 .panel-drawer-root .panel-drawer .panel-drawer-header .panel-kicker{display:block;margin:0 0 9px!important;text-align:left}
 .panel-drawer-root .panel-drawer .panel-drawer-header h2{max-width:100%;margin:0!important;font-size:22px!important;line-height:1.2!important;text-align:left;overflow-wrap:anywhere}
