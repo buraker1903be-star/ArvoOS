@@ -82,11 +82,12 @@ export default async function OperationsCalendarPage({ searchParams }: { searchP
   };
 
   return <div className="crm-page-stack">
-    <OperationsTabs active="takvim" />
     <div className="panel-pagehead">
       <div><small className="panel-kicker">OPERASYON / TAKVİM</small><h1>İş Takvimi</h1><p>İşlerin termin tarihlerini takvim üzerinde görün. (CRM randevu takviminden ayrıdır.)</p></div>
       <div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span></div>
     </div>
+    <OperationsTabs active="takvim" />
+    <div className="module-tab-panel">
 
     <section className="panel-card calendar-card">
       <div className="calendar-month-nav">
@@ -125,5 +126,6 @@ export default async function OperationsCalendarPage({ searchParams }: { searchP
         )) : <p className="panel-empty">Bu gün için terminli iş yok.</p>}
       </div>
     </section>
+    </div>
   </div>;
 }

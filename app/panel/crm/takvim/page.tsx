@@ -148,7 +148,6 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
 
   return (
     <div className="crm-page-stack">
-      <CrmTabs active="takvim" />
       <div className="panel-pagehead">
         <div><small className="panel-kicker">CRM / TAKVİM</small><h1>Satış Takvimi</h1><p>{isManager ? "Tüm ekibin randevularını görüntüleyin." : "Kendi randevularınızı ve notlarınızı yönetin."}</p></div>
         <div className="panel-page-actions">
@@ -156,6 +155,8 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
           {drawer}
         </div>
       </div>
+      <CrmTabs active="takvim" />
+      <div className="module-tab-panel">
 
       <div className="calendar-toolbar">
         <div className="calendar-view-toggle">
@@ -225,6 +226,7 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

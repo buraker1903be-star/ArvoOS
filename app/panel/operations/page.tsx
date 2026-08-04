@@ -34,8 +34,9 @@ export default async function OperationsPage() {
   </form>;
 
   return <>
-    <OperationsTabs active="is-akisi" />
     <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
+    <OperationsTabs active="is-akisi" />
+    <div className="module-tab-panel">
     <section className="ops-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>
       <article><small>AKSİYON BEKLEYEN</small><strong>{blockedCount}</strong><span>Beklemede</span></article>
@@ -51,5 +52,6 @@ export default async function OperationsPage() {
         <form className="ops-add-step" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id} /><input name="title" required minLength={2} maxLength={180} placeholder="Yeni adım" /><button type="submit">+</button></form>
         <form className="ops-move" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id} /><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button type="submit">Güncelle</button></form>
       </article>})}{!items.length ? <div className="ops-column-empty">Kayıt yok</div> : null}</div></section>})}</section>
+    </div>
   </>;
 }

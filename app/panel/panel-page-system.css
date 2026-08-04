@@ -131,9 +131,17 @@
 }
 
 /* ---------- Shared horizontal tab bar (CRM, Operasyon, and any future module) ---------- */
-.module-tabs{display:inline-flex;margin-bottom:18px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);overflow:hidden}
+.module-tabs{display:inline-flex;margin-bottom:0;border:1px solid var(--line);border-bottom:0;border-radius:var(--r-sm) var(--r-sm) 0 0;background:var(--surface);overflow:hidden;position:relative;z-index:1}
 .module-tabs a{padding:9px 16px;font-size:10px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
 .module-tabs a+a{border-left:1px solid var(--line)}
 .module-tabs a:hover{background:var(--surface-2);color:var(--ink)}
 .module-tabs a.active{background:var(--brand-700);color:#fff}
-@media(max-width:620px){.module-tabs{display:flex;width:100%}.module-tabs a{flex:1;text-align:center;padding:9px 8px}}
+.module-tab-panel{padding-top:18px;border:1px solid var(--line);border-top:0;border-radius:0 var(--r-md) var(--r-md) var(--r-md);background:var(--surface-2);margin-bottom:20px}
+.module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:18px;margin-right:18px}
+.module-tab-panel>*:first-child{margin-top:18px}
+.module-tab-panel>*:last-child{margin-bottom:18px}
+@media(max-width:620px){
+  .module-tabs{display:flex;width:100%}
+  .module-tabs a{flex:1;text-align:center;padding:9px 8px}
+  .module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:12px;margin-right:12px}
+}

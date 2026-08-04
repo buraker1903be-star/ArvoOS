@@ -60,11 +60,12 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   const gridTemplateColumns = `200px repeat(${daysInMonth}, minmax(22px, 1fr))`;
 
   return <div className="crm-page-stack">
-    <OperationsTabs active="gantt" />
     <div className="panel-pagehead">
       <div><small className="panel-kicker">OPERASYON / GANTT</small><h1>Gantt Çizelgesi</h1><p>İşlerin başlangıç ve termin tarihlerini takvim üzerinde görün.</p></div>
       <div className="panel-page-actions"><span className="status-pill">{plotted.length} iş</span></div>
     </div>
+    <OperationsTabs active="gantt" />
+    <div className="module-tab-panel">
 
     <section className="panel-card gantt-card">
       <div className="calendar-month-nav">
@@ -127,5 +128,6 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
         </div>
       </section>
     ) : null}
+    </div>
   </div>;
 }
