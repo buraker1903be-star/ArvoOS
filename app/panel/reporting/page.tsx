@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { PrintReportButton } from "./print-report-button";
 import "./reporting.css";
 
 const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
@@ -38,8 +39,9 @@ type Transaction = { transaction_type: "income" | "expense"; status: string; amo
 type Invoice = { status: string; total: number; created_at: string; paid_at: string | null; due_at: string | null };
 type Workflow = { status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string };
 
-export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ aralik?: string; baslangic?: string; bitis?: string }> }) {
+export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ tab?: string; aralik?: string; baslangic?: string; bitis?: string }> }) {
   const params = await searchParams;
+  const tab = params.tab === "prim" ? "prim" : "genel";
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "reporting")) throw new Error("Raporlar modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
@@ -126,8 +128,72 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const avgCompletionDays = completionDurations.length ? Math.round(completionDurations.reduce((sum, d) => sum + d, 0) / completionDurations.length) : null;
   const priorityBuckets = ["urgent", "high", "normal", "low"].map((priority) => ({ priority, count: workflows.filter((w) => w.priority === priority && !["completed", "cancelled"].includes(w.status)).length }));
 
+  // ---------- Prim Raporu (tahsilat başına) ----------
+  let commissionRows: { installmentId: string; date: string; customerName: string; contractNo: string; amount: number; employeeName: string; rate: number; commission: number }[] = [];
+  if (tab === "prim") {
+    const { data: paidInstallments } = await supabase.from("payment_installments")
+      .select("id,payment_plan_id,amount,paid_at,installment_no")
+      .eq("organization_id", organizationId).eq("status", "paid")
+      .gte("paid_at", rangeStart.toISOString()).lte("paid_at", new Date(rangeEnd.getTime() + 86399000).toISOString())
+      .order("paid_at", { ascending: false });
+    const installmentRows = (paidInstallments ?? []) as { id: string; payment_plan_id: string; amount: number; paid_at: string; installment_no: number }[];
+
+    if (installmentRows.length) {
+      const planIds = [...new Set(installmentRows.map((i) => i.payment_plan_id))];
+      const { data: planData } = await supabase.from("payment_plans").select("id,contract_id,party_id").in("id", planIds);
+      const plans = (planData ?? []) as { id: string; contract_id: string; party_id: string }[];
+
+      const contractIds = [...new Set(plans.map((p) => p.contract_id))];
+      const { data: contractData } = contractIds.length ? await supabase.from("crm_contracts").select("id,contract_no,opportunity_id").in("id", contractIds) : { data: [] };
+      const contracts = (contractData ?? []) as { id: string; contract_no: string; opportunity_id: string | null }[];
+
+      const opportunityIds = [...new Set(contracts.map((c) => c.opportunity_id).filter((v): v is string => Boolean(v)))];
+      const { data: oppData2 } = opportunityIds.length ? await supabase.from("crm_opportunities").select("id,assigned_employee_id").in("id", opportunityIds) : { data: [] };
+      const opportunityEmployeeMap = new Map(((oppData2 ?? []) as { id: string; assigned_employee_id: string | null }[]).map((o) => [o.id, o.assigned_employee_id]));
+
+      const partyIds = [...new Set(plans.map((p) => p.party_id))];
+      const { data: partyData2 } = partyIds.length ? await supabase.from("account_parties").select("id,name").in("id", partyIds) : { data: [] };
+      const partyNameMap = new Map(((partyData2 ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
+
+      const employeeIds = [...new Set([...opportunityEmployeeMap.values()].filter((v): v is string => Boolean(v)))];
+      const { data: commissionEmployeeData } = employeeIds.length ? await supabase.from("hr_employees").select("id,full_name,commission_rate").in("id", employeeIds) : { data: [] };
+      const commissionEmployeeMap = new Map(((commissionEmployeeData ?? []) as { id: string; full_name: string; commission_rate: number }[]).map((e) => [e.id, e]));
+
+      const planMap = new Map(plans.map((p) => [p.id, p]));
+      const contractMap = new Map(contracts.map((c) => [c.id, c]));
+
+      commissionRows = installmentRows.map((installment) => {
+        const plan = planMap.get(installment.payment_plan_id);
+        const contract = plan ? contractMap.get(plan.contract_id) : undefined;
+        const employeeId = contract?.opportunity_id ? opportunityEmployeeMap.get(contract.opportunity_id) : null;
+        const employee = employeeId ? commissionEmployeeMap.get(employeeId) : null;
+        const rate = employee?.commission_rate ?? 0;
+        const amount = Number(installment.amount);
+        return {
+          installmentId: installment.id,
+          date: installment.paid_at,
+          customerName: plan ? (partyNameMap.get(plan.party_id) ?? "Bilinmeyen") : "Bilinmeyen",
+          contractNo: contract?.contract_no ?? "—",
+          amount,
+          employeeName: employee?.full_name ?? "Atanmadı",
+          rate,
+          commission: Math.round(amount * rate / 100),
+        };
+      });
+    }
+  }
+  const commissionByEmployee = new Map<string, { name: string; rate: number; collections: number; totalAmount: number; totalCommission: number }>();
+  for (const row of commissionRows) {
+    const current = commissionByEmployee.get(row.employeeName) ?? { name: row.employeeName, rate: row.rate, collections: 0, totalAmount: 0, totalCommission: 0 };
+    current.collections += 1; current.totalAmount += row.amount; current.totalCommission += row.commission;
+    commissionByEmployee.set(row.employeeName, current);
+  }
+  const commissionSummary = [...commissionByEmployee.values()].sort((a, b) => b.totalCommission - a.totalCommission);
+  const totalCommissionAmount = commissionRows.reduce((sum, row) => sum + row.commission, 0);
+  const totalCollectedAmount = commissionRows.reduce((sum, row) => sum + row.amount, 0);
+
   const rangeLabel = rangeKey === "bu_ay" ? "Bu ay" : rangeKey === "gecen_ay" ? "Geçen ay" : rangeKey === "bu_yil" ? "Bu yıl" : `${rangeStart.toLocaleDateString("tr-TR")} – ${rangeEnd.toLocaleDateString("tr-TR")}`;
-  const rangeHref = (extra: Record<string, string>) => { const usp = new URLSearchParams({ aralik: rangeKey, ...(params.baslangic ? { baslangic: params.baslangic } : {}), ...(params.bitis ? { bitis: params.bitis } : {}), ...extra }); return `/panel/reporting?${usp.toString()}`; };
+  const rangeHref = (extra: Record<string, string>) => { const usp = new URLSearchParams({ tab, aralik: rangeKey, ...(params.baslangic ? { baslangic: params.baslangic } : {}), ...(params.bitis ? { bitis: params.bitis } : {}), ...extra }); return `/panel/reporting?${usp.toString()}`; };
 
   return <>
     <div className="panel-pagehead">
@@ -135,13 +201,21 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       <div className="panel-page-actions"><span className="status-pill">{rangeLabel}</span></div>
     </div>
 
+    <div className="module-tabs">
+      <Link className={tab === "genel" ? "active" : ""} href={`/panel/reporting?tab=genel&aralik=${rangeKey}${params.baslangic ? `&baslangic=${params.baslangic}` : ""}${params.bitis ? `&bitis=${params.bitis}` : ""}`}>Genel Bakış</Link>
+      <Link className={tab === "prim" ? "active" : ""} href={`/panel/reporting?tab=prim&aralik=${rangeKey}${params.baslangic ? `&baslangic=${params.baslangic}` : ""}${params.bitis ? `&bitis=${params.bitis}` : ""}`}>Prim Raporu</Link>
+    </div>
+
+    <div className="module-tab-panel">
+
     <div className="report-range-bar">
-      <div className="module-tabs">
+      <div className="report-range-tabs">
         <Link className={rangeKey === "bu_ay" ? "active" : ""} href={rangeHref({ aralik: "bu_ay" })}>Bu Ay</Link>
         <Link className={rangeKey === "gecen_ay" ? "active" : ""} href={rangeHref({ aralik: "gecen_ay" })}>Geçen Ay</Link>
         <Link className={rangeKey === "bu_yil" ? "active" : ""} href={rangeHref({ aralik: "bu_yil" })}>Bu Yıl</Link>
       </div>
       <form className="report-custom-range" method="get">
+        <input type="hidden" name="tab" value={tab} />
         <input type="hidden" name="aralik" value="ozel" />
         <input name="baslangic" type="date" defaultValue={params.baslangic} required />
         <span>–</span>
@@ -150,6 +224,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       </form>
     </div>
 
+    {tab === "genel" ? <>
     <section className="metric-strip">
       <article><div><small>KAZANILAN SATIŞ</small><strong>{money(wonValue)}</strong><p>{wonInRange.length} fırsat · {rangeLabel.toLowerCase()}</p></div></article>
       <article><div><small>KAZANMA ORANI</small><strong>%{winRate}</strong><p>{wonInRange.length} kazanıldı / {lostInRange.length} kaybedildi</p></div></article>
@@ -228,6 +303,67 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
           ))}
         </div>
       </section>
+    </div>
+    </> : null}
+
+    {tab === "prim" ? <div className="report-print-area">
+      <div className="report-print-head">
+        <div>
+          <h2>Prim Raporu</h2>
+          <p>{rangeLabel} · Tahsilat başına hesaplanan satış primi</p>
+        </div>
+        <PrintReportButton />
+      </div>
+
+      <section className="metric-strip">
+        <article><div><small>TOPLAM TAHSİLAT</small><strong>{money(totalCollectedAmount)}</strong><p>{commissionRows.length} tahsilat</p></div></article>
+        <article><div><small>HESAPLANAN PRİM</small><strong>{money(totalCommissionAmount)}</strong><p>Tüm temsilciler toplamı</p></div></article>
+        <article><div><small>PRİM ALAN TEMSİLCİ</small><strong>{commissionSummary.filter((row) => row.name !== "Atanmadı").length}</strong><p>Bu aralıkta tahsilatı olan</p></div></article>
+        <article><div><small>ORTALAMA PRİM ORANI</small><strong>%{commissionRows.length ? (commissionRows.reduce((sum, row) => sum + row.rate, 0) / commissionRows.length).toFixed(1) : "0"}</strong><p>Tahsilat ağırlıklı değil, basit ortalama</p></div></article>
+      </section>
+
+      {commissionSummary.length ? (
+        <section className="panel-card report-card">
+          <div className="section-heading compact"><div><small className="panel-kicker">TEMSİLCİ ÖZETİ</small><h2>Prim hak edişi</h2></div></div>
+          <div className="report-rep-table">
+            {commissionSummary.map((row) => (
+              <div className="report-rep-row prim-row" key={row.name}>
+                <span className="report-rep-name">{row.name}</span>
+                <span className="report-rep-stat">%{row.rate} oran</span>
+                <span className="report-rep-stat">{row.collections} tahsilat</span>
+                <span className="report-rep-stat">{money(row.totalAmount)} toplam</span>
+                <strong>{money(row.totalCommission)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="panel-card report-card">
+        <div className="section-heading compact"><div><small className="panel-kicker">DETAY</small><h2>Tahsilat bazında dökümü</h2></div></div>
+        {commissionRows.length ? (
+          <div className="panel-table">
+            <table>
+              <thead><tr><th>Tarih</th><th>Müşteri</th><th>Sözleşme</th><th>Tahsilat</th><th>Temsilci</th><th>Oran</th><th>Prim</th></tr></thead>
+              <tbody>
+                {commissionRows.map((row) => (
+                  <tr key={row.installmentId}>
+                    <td>{new Date(row.date).toLocaleDateString("tr-TR")}</td>
+                    <td>{row.customerName}</td>
+                    <td>{row.contractNo}</td>
+                    <td>{money(row.amount)}</td>
+                    <td>{row.employeeName}</td>
+                    <td>%{row.rate}</td>
+                    <td><b>{money(row.commission)}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="panel-empty">{rangeLabel} içinde tahsil edilmiş taksit bulunamadı.</p>}
+      </section>
+    </div> : null}
+
     </div>
   </>;
 }

@@ -3,6 +3,11 @@
    ============================================================ */
 
 .report-range-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.report-range-tabs{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);overflow:hidden}
+.report-range-tabs a{padding:7px 13px;font-size:9px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
+.report-range-tabs a+a{border-left:1px solid var(--line)}
+.report-range-tabs a:hover{background:var(--surface);color:var(--ink)}
+.report-range-tabs a.active{background:var(--brand-700);color:#fff}
 .report-custom-range{display:flex;align-items:center;gap:8px}
 .report-custom-range input{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:10px}
 .report-custom-range span{color:var(--dim)}
@@ -53,4 +58,20 @@
   .report-range-bar{flex-direction:column;align-items:stretch}
   .report-custom-range{flex-wrap:wrap}
   .report-bar-row{grid-template-columns:64px minmax(0,1fr) auto}
+}
+
+/* ---------- Prim Raporu / print output ---------- */
+.report-print-area{display:flex;flex-direction:column;gap:16px}
+.report-print-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.report-print-head h2{margin:0;font:750 20px var(--font-heading);color:var(--ink)}
+.report-print-head p{margin:5px 0 0;color:var(--muted);font-size:10px}
+.prim-row{grid-template-columns:minmax(0,1.3fr) auto auto auto auto}
+
+@media print{
+  .panel-sidebar,.panel-topbar,.panel-page-actions,.module-tabs,.report-range-bar,.report-print-button{display:none !important}
+  .panel-content{padding:0 !important}
+  .module-tab-panel{border:0 !important;background:#fff !important;padding:0 !important;margin:0 !important}
+  .report-print-area{gap:10px}
+  .panel-card{box-shadow:none !important;border:1px solid #ccc !important}
+  body{background:#fff !important}
 }
