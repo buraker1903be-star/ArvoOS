@@ -1,0 +1,102 @@
+type VercelVerificationChallenge = { type: string; domain: string; value: string; reason: string };
+
+type VercelDomainResponse = {
+  name?: string;
+  apexName?: string;
+  verified?: boolean;
+  verification?: VercelVerificationChallenge[];
+  error?: { code: string; message: string };
+};
+
+type VercelDomainConfigResponse = {
+  misconfigured?: boolean;
+  error?: { code: string; message: string };
+};
+
+export type DomainConnectResult = {
+  ok: boolean;
+  verified: boolean;
+  message: string;
+  records: { type: string; name: string; value: string }[];
+};
+
+function vercelConfig() {
+  const token = process.env.VERCEL_TOKEN;
+  const projectId = process.env.VERCEL_PROJECT_ID;
+  const teamId = process.env.VERCEL_TEAM_ID || "";
+  return { token, projectId, teamId };
+}
+
+function apiUrl(path: string, teamId: string) {
+  const base = `https://api.vercel.com${path}`;
+  return teamId ? `${base}${path.includes("?") ? "&" : "?"}teamId=${encodeURIComponent(teamId)}` : base;
+}
+
+function isApexDomain(domain: string) {
+  return domain.split(".").length <= 2;
+}
+
+function recordHintsFor(domain: string): { type: string; name: string; value: string }[] {
+  return isApexDomain(domain)
+    ? [{ type: "A", name: "@", value: "76.76.21.21" }]
+    : [{ type: "CNAME", name: domain.split(".")[0], value: "cname.vercel-dns.com" }];
+}
+
+/** Adds a domain to the Vercel project. Safe to call again for an existing domain. */
+export async function connectDomainToVercel(domain: string): Promise<DomainConnectResult> {
+  const { token, projectId, teamId } = vercelConfig();
+  if (!token || !projectId) {
+    return { ok: false, verified: false, message: "Vercel entegrasyonu yapılandırılmamış (VERCEL_TOKEN / VERCEL_PROJECT_ID eksik).", records: [] };
+  }
+
+  const response = await fetch(apiUrl(`/v10/projects/${projectId}/domains`, teamId), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: domain }),
+  });
+  const data = (await response.json().catch(() => ({}))) as VercelDomainResponse;
+
+  if (!response.ok) {
+    // Domain already attached to this project: treat as success, fall through to a status check.
+    if (data?.error?.code !== "domain_already_in_use" && !(response.status === 400 && /already/i.test(data?.error?.message ?? ""))) {
+      return { ok: false, verified: false, message: data?.error?.message || "Alan adı Vercel'e eklenemedi.", records: recordHintsFor(domain) };
+    }
+  }
+
+  const challenges = (data.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
+  const records = challenges.length ? challenges : recordHintsFor(domain);
+
+  return {
+    ok: true,
+    verified: Boolean(data.verified),
+    message: data.verified
+      ? "Alan adı doğrulandı."
+      : "Alan adı eklendi, DNS kayıtlarının doğrulanması bekleniyor.",
+    records,
+  };
+}
+
+/** Re-checks whether a previously-added domain's DNS is now correctly configured. */
+export async function checkVercelDomainStatus(domain: string): Promise<{ ok: boolean; verified: boolean; message: string }> {
+  const { token, teamId } = vercelConfig();
+  if (!token) return { ok: false, verified: false, message: "Vercel entegrasyonu yapılandırılmamış." };
+
+  const response = await fetch(apiUrl(`/v6/domains/${encodeURIComponent(domain)}/config`, teamId), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = (await response.json().catch(() => ({}))) as VercelDomainConfigResponse;
+  if (!response.ok) return { ok: false, verified: false, message: data?.error?.message || "Durum kontrol edilemedi." };
+
+  const verified = data.misconfigured === false;
+  return { ok: true, verified, message: verified ? "Alan adı doğrulandı ve aktif." : "DNS kayıtları henüz doğrulanmadı; yayılması birkaç saat sürebilir." };
+}
+
+/** Removes a domain from the Vercel project (used when a customer changes/clears their custom domain). */
+export async function disconnectDomainFromVercel(domain: string): Promise<void> {
+  const { token, projectId, teamId } = vercelConfig();
+  if (!token || !projectId) return;
+  await fetch(apiUrl(`/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`, teamId), {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => undefined);
+}

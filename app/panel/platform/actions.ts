@@ -75,7 +75,25 @@ export async function updateOrganizationSettings(formData: FormData) {
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
-  const { error } = await supabase.from("organizations").update({ name, sector, plan_code: planCode, custom_domain: customDomain, updated_at: new Date().toISOString() }).eq("id", organizationId);
+
+  const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
+  const updates: Record<string, unknown> = { name, sector, plan_code: planCode, custom_domain: customDomain, updated_at: new Date().toISOString() };
+
+  if (customDomain !== (current?.custom_domain ?? null)) {
+    const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");
+    if (current?.custom_domain) await disconnectDomainFromVercel(current.custom_domain);
+    if (customDomain) {
+      const result = await connectDomainToVercel(customDomain);
+      if (!result.ok) throw new Error(result.message);
+      updates.custom_domain_status = result.verified ? "verified" : "pending";
+      updates.custom_domain_verification = result.records;
+    } else {
+      updates.custom_domain_status = null;
+      updates.custom_domain_verification = null;
+    }
+  }
+
+  const { error } = await supabase.from("organizations").update(updates).eq("id", organizationId);
   if (error) throw new Error("Kurum ayarları kaydedilemedi.");
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform?organization=${organizationId}`);

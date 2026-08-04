@@ -145,3 +145,17 @@
   .module-tabs a{flex:1;text-align:center;padding:9px 8px}
   .module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:12px;margin-right:12px}
 }
+
+/* ---------- Özel alan adı (Ayarlar) ---------- */
+.domain-status-block{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.domain-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.domain-status-row>span:first-child{font-size:10px;font-weight:800;color:var(--ink)}
+.status-pill.domain-status-verified{background:var(--success-soft);color:var(--success)}
+.status-pill.domain-status-pending{background:var(--warning-soft);color:var(--warning)}
+.status-pill.domain-status-failed{background:var(--danger-soft);color:var(--danger)}
+.domain-dns-block{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
+.domain-dns-block>small{display:block;margin-bottom:8px;color:var(--muted);font-size:7px;font-weight:800;letter-spacing:.1em}
+.domain-dns-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.domain-dns-table th,.domain-dns-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:9px;color:var(--ink)}
+.domain-dns-table th{color:var(--muted);font-size:7px;font-weight:800}
+.domain-dns-block>p{margin:8px 0;color:var(--dim);font-size:8px;line-height:1.5}

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { updateDocumentBranding } from "./actions";
+import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
 
 const roleNames: Record<string, string> = {owner:"Kurum Sahibi",admin:"Kurum Yöneticisi",manager:"Birim Yöneticisi",member:"Ekip Üyesi"};
 const integrationCodes = new Set(["banking","payments","e_invoice","billing","integrations","domains"]);
+const domainStatusLabels: Record<string, string> = { pending: "Doğrulama bekleniyor", verified: "Doğrulandı", failed: "Doğrulanamadı" };
 
 export default async function SettingsPage() {
   const { organization, membership, modules, supabase } = await getPanelContext();
@@ -11,13 +12,43 @@ export default async function SettingsPage() {
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
   const canManage = ["owner", "admin"].includes(membership.role);
   const {data:branding}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url").eq("id",membership.organization_id).single();
+  const {data:domainInfo}=await supabase.from("organizations").select("custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
+  const dnsRecords = (domainInfo?.custom_domain_verification ?? []) as { type: string; name: string; value: string }[];
 
   return <>
     <div className="panel-pagehead"><div><small className="panel-kicker">YÖNETİM</small><h1>Ayarlar</h1><p>Kurum, ekip, entegrasyon ve belge kimliğini tek yerden yönetin.</p></div><div className="panel-page-actions"><span className="status-pill">{roleNames[membership.role] ?? membership.role}</span></div></div>
     <section className="metric-strip"><article><div><small>PAKET</small><strong>{organization.plan_code.toUpperCase()}</strong><p>Aktif kurum paketi</p></div></article><article><div><small>MODÜL</small><strong>{modules.length}</strong><p>Etkin çalışma alanı</p></div></article><article><div><small>ENTEGRASYON</small><strong>{integrations.length}</strong><p>Etkin bağlantı alanı</p></div></article><article><div><small>DURUM</small><strong>{organization.status === "active" ? "Aktif" : organization.status}</strong><p>Kurum erişimi</p></div></article></section>
 
     <section className="settings-grid">
-      <article className="panel-card settings-card"><div><small>KURUM</small><h3>Kurum bilgileri</h3><p>Temel çalışma alanı ve alan adı bilgileri.</p></div><dl className="settings-list"><div><dt>Kurum</dt><dd>{organization.name}</dd></div><div><dt>Sektör</dt><dd>{organization.sector || "Belirtilmedi"}</dd></div><div><dt>Çalışma alanı</dt><dd>{organization.slug}</dd></div><div><dt>Özel alan adı</dt><dd>{organization.custom_domain || "Tanımlı değil"}</dd></div></dl></article>
+      <article className="panel-card settings-card"><div><small>KURUM</small><h3>Kurum bilgileri</h3><p>Temel çalışma alanı ve alan adı bilgileri.</p></div><dl className="settings-list"><div><dt>Kurum</dt><dd>{organization.name}</dd></div><div><dt>Sektör</dt><dd>{organization.sector || "Belirtilmedi"}</dd></div><div><dt>Çalışma alanı</dt><dd>{organization.slug}</dd></div></dl></article>
+
+      <article className="panel-card settings-card">
+        <div><small>ÖZEL ALAN ADI</small><h3>Kendi domain&apos;inizle çalışın</h3><p>Panelinize kendi alan adınızdan (örn. panel.firmaniz.com) erişilebilir hale getirin.</p></div>
+        {canManage ? (
+          <form className="panel-form" action={updateCustomDomain}>
+            <label className="wide">Alan adı<input name="custom_domain" defaultValue={domainInfo?.custom_domain ?? ""} placeholder="panel.firmaniz.com" /></label>
+            <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet ve Bağla</button></div>
+          </form>
+        ) : <p className="panel-empty">Bu ayarı değiştirme yetkiniz yok.</p>}
+        {domainInfo?.custom_domain ? (
+          <div className="domain-status-block">
+            <div className="domain-status-row">
+              <span>{domainInfo.custom_domain}</span>
+              <span className={`status-pill domain-status-${domainInfo.custom_domain_status ?? "pending"}`}>{domainStatusLabels[domainInfo.custom_domain_status ?? "pending"] ?? "Bilinmiyor"}</span>
+            </div>
+            {domainInfo.custom_domain_status !== "verified" && dnsRecords.length ? (
+              <div className="domain-dns-block">
+                <small>DNS SAĞLAYICINIZA EKLEYİN</small>
+                <table className="domain-dns-table"><thead><tr><th>Tür</th><th>Ad</th><th>Değer</th></tr></thead><tbody>
+                  {dnsRecords.map((record, index) => <tr key={index}><td>{record.type}</td><td>{record.name}</td><td>{record.value}</td></tr>)}
+                </tbody></table>
+                <p>DNS değişikliklerinin yayılması birkaç dakika ile birkaç saat sürebilir.</p>
+                {canManage ? <form action={checkCustomDomainStatus}><button className="panel-secondary" type="submit">Doğrulamayı Kontrol Et</button></form> : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </article>
 
       <article className="panel-card settings-card" style={{gridColumn:"1 / -1"}}>
         <div><small>KURUMSAL KİMLİK</small><h3>Belge ve teklif görünümü</h3><p>Logo, renk, iletişim bilgileri ve kaşe-imza görseli A4 belgelerde otomatik kullanılır.</p></div>

@@ -92,3 +92,65 @@ export async function updateDocumentBranding(formData: FormData) {
 
   revalidatePath("/panel/settings");
 }
+
+function cleanDomain(value: string) {
+  const domain = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (!domain) return null;
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) throw new Error("Geçerli bir alan adı girin (örn. panel.firma.com).");
+  return domain;
+}
+
+export async function updateCustomDomain(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin"].includes(membership.role)) throw new Error("Alan adı ayarlarını değiştirme yetkiniz yok.");
+
+  const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");
+  const domain = cleanDomain(String(formData.get("custom_domain") ?? ""));
+
+  const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
+  if (current?.custom_domain && current.custom_domain !== domain) {
+    await disconnectDomainFromVercel(current.custom_domain);
+  }
+
+  if (!domain) {
+    const { error } = await supabase.from("organizations").update({
+      custom_domain: null, custom_domain_status: null, custom_domain_verification: null, custom_domain_updated_at: new Date().toISOString(),
+    }).eq("id", membership.organization_id);
+    if (error) throw new Error("Alan adı kaldırılamadı: " + error.message);
+    revalidatePath("/panel/settings");
+    return;
+  }
+
+  const result = await connectDomainToVercel(domain);
+  if (!result.ok) throw new Error(result.message);
+
+  const { error } = await supabase.from("organizations").update({
+    custom_domain: domain,
+    custom_domain_status: result.verified ? "verified" : "pending",
+    custom_domain_verification: result.records,
+    custom_domain_updated_at: new Date().toISOString(),
+  }).eq("id", membership.organization_id);
+  if (error) throw new Error("Alan adı kaydedilemedi: " + error.message);
+
+  revalidatePath("/panel/settings");
+}
+
+export async function checkCustomDomainStatus() {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+
+  const { data: org } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
+  if (!org?.custom_domain) throw new Error("Tanımlı bir özel alan adı yok.");
+
+  const { checkVercelDomainStatus } = await import("@/lib/vercel-domains");
+  const result = await checkVercelDomainStatus(org.custom_domain);
+  if (!result.ok) throw new Error(result.message);
+
+  const { error } = await supabase.from("organizations").update({
+    custom_domain_status: result.verified ? "verified" : "pending",
+    custom_domain_updated_at: new Date().toISOString(),
+  }).eq("id", membership.organization_id);
+  if (error) throw new Error("Durum güncellenemedi: " + error.message);
+
+  revalidatePath("/panel/settings");
+}
