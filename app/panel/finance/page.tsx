@@ -41,13 +41,13 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     hasCari
       ? supabase.from("account_parties").select("id,name,party_type,tax_number,account_entries(id,party_id,entry_type,amount,description,transaction_date)").eq("organization_id", organizationId).eq("is_active", true).order("name")
       : Promise.resolve({ data: [] as Party[], error: null }),
-    hasBanking
+    tab === "banka"
       ? supabase.from("bank_transactions").select("id,bank_account_id,direction,amount,transaction_date,description,reference_no,reconciliation_status,matched_invoice_id,matched_party_id").eq("organization_id", organizationId).order("transaction_date", { ascending: false }).limit(100)
       : Promise.resolve({ data: [] as DetailedBankTransaction[] }),
-    hasBanking
+    tab === "banka"
       ? supabase.from("billing_invoices").select("id,total,status,created_at").eq("organization_id", organizationId).in("status", ["open", "paid"]).order("created_at", { ascending: false }).limit(50)
       : Promise.resolve({ data: [] as { id: string; total: number; status: string }[] }),
-    hasBanking
+    tab === "banka"
       ? supabase.from("account_parties").select("id,name").eq("organization_id", organizationId).eq("is_active", true).order("name")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);

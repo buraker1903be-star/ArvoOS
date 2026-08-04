@@ -53,13 +53,13 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
 
   const sixMonthsAgo = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth() - 5, 1);
 
-  const [{ data: oppData }, { data: employeeData }, { data: txData }, { data: invoiceData }, { data: workflowData }] = await Promise.all([
+  const [{ data: oppData }, { data: employeeData }, { data: txData }, { data: invoiceData }, { data: workflowData }] = tab === "genel" ? await Promise.all([
     supabase.from("crm_opportunities").select("id,stage,estimated_value,assigned_employee_id,created_at,updated_at").eq("organization_id", organizationId),
     supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId),
     supabase.from("finance_transactions").select("transaction_type,status,amount,created_at,due_date").eq("organization_id", organizationId).gte("created_at", sixMonthsAgo.toISOString()),
     supabase.from("billing_invoices").select("status,total,created_at,paid_at,due_at").eq("organization_id", organizationId).gte("created_at", sixMonthsAgo.toISOString()),
     supabase.from("operation_workflows").select("status,priority,start_date,due_date,created_at,updated_at").eq("organization_id", organizationId),
-  ]);
+  ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const opportunities = (oppData ?? []) as Opportunity[];
   const employees = (employeeData ?? []) as Employee[];
