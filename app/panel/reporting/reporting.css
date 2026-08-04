@@ -69,9 +69,11 @@
 
 @media print{
   .panel-sidebar,.panel-topbar,.panel-page-actions,.module-tabs,.report-range-bar,.report-print-button{display:none !important}
-  .panel-content{padding:0 !important}
+  .panel-frame{display:block !important}
+  .panel-content{padding:0 !important;width:100% !important;margin:0 !important}
+  .panel-workspace{background:#fff !important}
   .module-tab-panel{border:0 !important;background:#fff !important;padding:0 !important;margin:0 !important}
   .report-print-area{gap:10px}
-  .panel-card{box-shadow:none !important;border:1px solid #ccc !important}
+  .panel-card{box-shadow:none !important;border:1px solid #ccc !important;break-inside:avoid}
   body{background:#fff !important}
 }
