@@ -38,6 +38,7 @@ export default async function LoginPage({
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" /></label>
           <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>
           <button type="submit">Giriş Yap <b>→</b></button>
+          <Link href="/auth/forgot-password">Şifremi unuttum</Link>
           <a href="mailto:info@arvo-os.com?subject=ArvoOS%20erişim%20desteği">Erişim desteği alın</a>
           <small>Hesaplar kurum yöneticisi tarafından oluşturulur. Açık üyelik bulunmaz.</small>
         </form>
