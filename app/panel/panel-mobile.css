@@ -1,4 +1,4 @@
-.panel-mobile-menu-button,.panel-mobile-menu-overlay,.panel-mobile-menu-close{display:none}
+.panel-mobile-menu-button,.panel-mobile-menu-overlay,.panel-mobile-menu-close,.panel-mobile-bottom-nav{display:none}
 
 @media (max-width: 900px){
   html.panel-menu-open,html.panel-menu-open body{overflow:hidden}
@@ -15,13 +15,19 @@
   .panel-user{padding-left:0;border-left:0}
   .panel-user p{display:none}
   .panel-user>span{width:34px;height:34px}
-  .panel-content{padding:20px 14px max(56px,calc(40px + env(safe-area-inset-bottom)))}
+  .panel-content{padding:20px 14px max(112px,calc(92px + env(safe-area-inset-bottom)))}
   .panel-mobile-menu-button{position:fixed;top:14px;left:14px;z-index:120;width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);cursor:pointer}
   .panel-mobile-menu-button span{display:block;width:18px;height:2px;border-radius:2px;background:currentColor}
   .panel-mobile-menu-overlay{position:fixed;inset:0;z-index:90;display:block;border:0;background:rgba(9,18,14,.54);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}
   html.panel-menu-open .panel-mobile-menu-overlay{opacity:1;visibility:visible}
   .panel-mobile-menu-close{position:fixed;top:16px;left:min(calc(86vw - 50px),290px);z-index:130;width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:25px;line-height:1;opacity:0;visibility:hidden;cursor:pointer}
   html.panel-menu-open .panel-mobile-menu-close{opacity:1;visibility:visible}
+  .panel-mobile-bottom-nav{position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));min-height:64px;padding:6px;border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:18px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 14px 34px rgba(16,28,22,.2);backdrop-filter:blur(18px) saturate(160%)}
+  .panel-mobile-bottom-nav>a,.panel-mobile-bottom-nav>button{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;border-radius:13px;background:transparent;color:var(--muted);text-decoration:none;cursor:pointer}
+  .panel-mobile-bottom-nav span{font-size:19px;line-height:1}
+  .panel-mobile-bottom-nav b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;line-height:1.2}
+  .panel-mobile-bottom-nav :is(a,button).is-active{background:var(--accent-100);color:var(--accent-700)}
+  .panel-mobile-bottom-nav :is(a,button):active{transform:scale(.97)}
   .panel-pagehead{align-items:stretch;flex-direction:column;gap:14px;margin-bottom:18px}
   .panel-pagehead>div{min-width:0}
   .panel-page-actions{width:100%;display:flex;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
@@ -34,8 +40,15 @@
   form{min-width:0}
   form label{min-width:0}
   .executive-hero,.platform-overview{grid-template-columns:1fr;padding:24px;gap:22px}
-  .metric-strip{grid-template-columns:1fr 1fr}
-  .metric-strip article{border-bottom:1px solid var(--line)}
+  .metric-strip,.metric-strip-five{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metric-strip article{min-width:0;border-bottom:1px solid var(--line)}
+  .metric-strip strong{font-size:18px;overflow-wrap:anywhere}
+  .metric-strip p{line-height:1.35}
+  .panel-grid.dashboard-grid{display:grid;grid-template-columns:1fr;gap:14px}
+  .dashboard-grid .panel-span-2{grid-column:auto}
+  .dashboard-actions{display:grid;gap:8px}
+  .dashboard-actions a{min-height:52px;padding:13px 14px;border-radius:12px}
+  .dashboard-summary-number{font-size:42px}
   .panel-modules,.platform-grid{grid-template-columns:1fr}
   .panel-card,.panel-module{min-width:0;padding:18px}
   .panel-card h2,.panel-card h3,.panel-card p{overflow-wrap:anywhere}
@@ -49,7 +62,8 @@
 @media (max-width: 560px){
   .panel-topbar{padding-right:10px}
   .panel-content{padding-left:10px;padding-right:10px}
-  .metric-strip{grid-template-columns:1fr}
+  .panel-mobile-bottom-nav{left:8px;right:8px;border-radius:16px}
+  .metric-strip,.metric-strip-five{grid-template-columns:1fr}
   .metric-strip article{border-right:0;min-height:88px}
   .hero-actions{flex-direction:column}
   .hero-actions a{width:100%;text-align:center}
