@@ -5,6 +5,7 @@ import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { ThemeToggle } from "./theme-toggle";
+import { NavProgress } from "./nav-progress";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -30,6 +31,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
   return <div className="panel-root"><main className="panel-frame">
+    <NavProgress />
     <aside className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
       <div className="panel-org panel-org-switchable">

@@ -37,6 +37,24 @@
 
 .panel-theme-toggle{font-size:15px;line-height:1;display:grid;place-items:center}
 
+/* ---------- Navigation progress bar (click feedback on page transitions) ---------- */
+.nav-progress{position:fixed;top:0;left:0;z-index:2000;height:3px;width:0;background:linear-gradient(90deg,var(--accent-600),var(--accent-400));box-shadow:0 0 12px color-mix(in srgb, var(--accent-500) 70%, transparent);opacity:0;pointer-events:none;transition:width .16s ease,opacity .18s ease}
+.nav-progress.visible{opacity:1}
+.nav-progress-glow{position:absolute;top:0;right:0;width:70px;height:100%;background:linear-gradient(90deg,transparent,#fff9);filter:blur(1px);animation:navProgressShimmer 1s ease-in-out infinite}
+@keyframes navProgressShimmer{0%,100%{opacity:.5}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.nav-progress{transition:none}.nav-progress-glow{animation:none}}
+
+/* ---------- Instant press feedback for buttons & primary links ---------- */
+.panel-primary:active,.panel-secondary:active,.panel-danger:active,.panel-icon-button:active,
+.hero-actions a:active,.workspace-switcher summary:active,.crm-card>button:active,
+.ops-add-step button:active,.ops-move button:active,.dashboard-actions a:active,
+.panel-quick-action:active,.status-pill:is(button):active{
+  transform:scale(.96);
+  filter:brightness(.97);
+  transition:transform .08s ease,filter .08s ease;
+}
+.panel-module a:active,.crm-column>header:active{opacity:.85}
+
 /* ---------- Slide-over drawer ---------- */
 .panel-drawer-root{position:fixed;inset:0;z-index:1000;pointer-events:none;visibility:hidden}
 .panel-drawer-root.open{pointer-events:auto;visibility:visible}
