@@ -23,7 +23,7 @@ function toTimestamp(dateValue: string, timeValue: string) {
 }
 
 export async function createAppointment(formData: FormData) {
-  const { supabase, organizationId, isManager, ownEmployeeId } = await resolveContext();
+  const { supabase, organizationId, isManager, ownEmployeeId, userId } = await resolveContext();
   const requestedEmployeeId = String(formData.get("employee_id") ?? "").trim();
   const employeeId = isManager && requestedEmployeeId ? requestedEmployeeId : ownEmployeeId;
   if (!employeeId) throw new Error("Randevunun bağlı olacağı bir personel bulunamadı. Önce Ekip Yönetimi'nden panel erişiminizi tanımlayın.");
@@ -47,6 +47,7 @@ export async function createAppointment(formData: FormData) {
     note: note || null,
     starts_at: startsAt,
     ends_at: endsAt,
+    created_by: userId,
   });
   if (error) throw new Error("Randevu oluşturulamadı: " + error.message);
 
