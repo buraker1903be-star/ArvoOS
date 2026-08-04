@@ -10,6 +10,7 @@ type Department = { id: string; name: string; code: string | null; is_active: bo
 type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean; commission_rate: number };
 type Member = { organization_id: string; user_id: string; role: string; is_active: boolean; joined_at: string };
 type Profile = { id: string; full_name: string | null };
+type HrEmployeeInfo = { user_id: string | null; full_name: string; job_title: string | null };
 type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string };
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("tr-TR");
@@ -38,6 +39,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   let members: Member[] = [];
   let invitations: Invitation[] = [];
   let profileMap = new Map<string, string | null>();
+  let hrEmployeeMap = new Map<string, HrEmployeeInfo>();
   if (tab === "ekip" && canManageTeam) {
     const [{ data: memberData, error: memberError }, { data: invitationData, error: invitationError }] = await Promise.all([
       supabase.from("organization_memberships").select("organization_id,user_id,role,is_active,joined_at").eq("organization_id", membership.organization_id).order("joined_at", { ascending: true }),
@@ -50,6 +52,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
     const userIds = members.map((member) => member.user_id);
     const { data: profileData } = userIds.length ? await supabase.from("profiles").select("id,full_name").in("id", userIds) : { data: [] as Profile[] };
     profileMap = new Map(((profileData ?? []) as Profile[]).map((profile) => [profile.id, profile.full_name]));
+    const { data: hrEmployeeData } = userIds.length ? await supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id", membership.organization_id).in("user_id", userIds) : { data: [] as HrEmployeeInfo[] };
+    hrEmployeeMap = new Map(((hrEmployeeData ?? []) as HrEmployeeInfo[]).filter((item) => item.user_id).map((item) => [item.user_id as string, item]));
   }
   const activeTeamCount = members.filter((member) => member.is_active).length;
 
@@ -129,11 +133,19 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
       <section className="panel-card">
         <div className="section-heading compact"><div><small className="panel-kicker">EKİP ÜYELERİ</small><h2>Panel erişimi olanlar</h2></div></div>
         <div className="team-member-list">
-          {members.map((member) => (
+          {members.map((member) => {
+            const hrInfo = hrEmployeeMap.get(member.user_id);
+            const displayName = hrInfo?.full_name || profileMap.get(member.user_id) || (member.user_id === userId ? roleNames[membership.role] ?? "Siz" : "İsimsiz kullanıcı");
+            const subline = member.user_id === userId
+              ? (hrInfo?.job_title ? `Siz · ${hrInfo.job_title}` : "Siz")
+              : hrInfo
+                ? [hrInfo.job_title, `Katılım: ${new Date(member.joined_at).toLocaleDateString("tr-TR")}`].filter(Boolean).join(" · ")
+                : `Katılım: ${new Date(member.joined_at).toLocaleDateString("tr-TR")} · Personel kaydı yok`;
+            return (
             <div className="team-member-row" key={member.user_id}>
               <div className="team-member-identity">
-                <span className="team-avatar">{(profileMap.get(member.user_id) || "K").slice(0, 2).toUpperCase()}</span>
-                <div><b>{profileMap.get(member.user_id) || "İsimsiz kullanıcı"}</b><small>{member.user_id === userId ? "Siz" : `Katılım: ${new Date(member.joined_at).toLocaleDateString("tr-TR")}`}</small></div>
+                <span className="team-avatar">{displayName.slice(0, 2).toUpperCase()}</span>
+                <div><b>{displayName}</b><small>{subline}</small></div>
               </div>
               {member.user_id === userId ? (
                 <span className="status-pill">{roleNames[member.role] ?? member.role} · Kendiniz</span>
@@ -151,7 +163,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                 </form>
               )}
             </div>
-          ))}
+            );
+          })}
           {!members.length ? <p className="panel-empty">Henüz ekip üyesi yok.</p> : null}
         </div>
       </section>
