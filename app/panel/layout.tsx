@@ -6,7 +6,7 @@ import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
-import { MobilePanelMenu } from "./mobile-panel-menu";
+import { MobileDrawer } from "./mobile-drawer";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -14,6 +14,7 @@ import "./panel-page-system.css";
 import "./panel-top-actions.css";
 import "./sidebar-workspace-switcher.css";
 import "./panel-mobile.css";
+import "./mobile-drawer.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -34,7 +35,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
-    <MobilePanelMenu hasMessages={hasMessages} />
+    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
       <div className="panel-org panel-org-switchable">
