@@ -20,7 +20,7 @@ type DetailedBankTransaction = { id: string; bank_account_id: string; direction:
 function daysOverdue(date: string | null) { if (!date) return 0; const due = new Date(date.includes("T") ? date : `${date}T00:00:00`); return Math.max(0, Math.floor((Date.now() - due.getTime()) / 86400000)); }
 function contractNumberFromNotes(notes: string | null) { return notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null; }
 
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; tur?: string }> }) {
   const params = await searchParams;
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "finance")) throw new Error("Finans modülüne erişiminiz yok.");
@@ -78,6 +78,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   });
   const receivable = partyTotals.filter((party) => party.balance > 0).reduce((sum, party) => sum + party.balance, 0);
   const payable = partyTotals.filter((party) => party.balance < 0).reduce((sum, party) => sum + Math.abs(party.balance), 0);
+  const filteredParties = partyTotals.filter((party) => {
+    if (!params.tur || params.tur === "tumu") return true;
+    if (params.tur === "musteri") return ["customer", "both"].includes(party.party_type);
+    if (params.tur === "tedarikci") return ["supplier", "both"].includes(party.party_type);
+    return true;
+  });
 
   const bankTxRows = (detailedBankTransactions ?? []) as DetailedBankTransaction[];
   const bankTxUnmatched = bankTxRows.filter((item) => item.reconciliation_status === "unmatched").length;
@@ -93,7 +99,15 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <span className="status-pill">{tab === "cari" ? `${partyTotals.length} cari` : tab === "banka" ? `${bankTxUnmatched} eşleşmeyen` : `${items.length + invoiceItems.length} kayıt`}</span>
         {tab === "genel" && canManage ? <PanelDrawer triggerLabel="+ Yeni hareket" title="Yeni gelir veya gider kaydı" description="Planlanan veya gerçekleşen bir finansal hareket ekleyin.">
           <form className="panel-form finance-form" action={createFinanceTransaction}>
-            <label>Tür<select name="transaction_type" defaultValue="income"><option value="income">Gelir</option><option value="expense">Gider</option></select></label><label>Başlık<input name="title" required minLength={2} maxLength={180} /></label><label>Cari / karşı taraf<input name="counterparty" maxLength={180} /></label><label>Kategori<input name="category" maxLength={120} /></label><label>Tutar<input name="amount" type="number" min="0.01" step="0.01" required /></label><label>Vade<input name="due_date" type="date" /></label><label className="wide">Not<textarea name="notes" maxLength={1000} /></label>
+            <label>Tür<select name="transaction_type" defaultValue="income"><option value="income">Gelir</option><option value="expense">Gider</option></select></label>
+            <label>Başlık<input name="title" required minLength={2} maxLength={180} /></label>
+            <label className="wide">Cari (varsa)<select name="party_id" defaultValue=""><option value="">— Cari seçme, aşağıya serbest yaz —</option>{partyTotals.map((party) => <option key={party.id} value={party.id}>{party.name}{party.party_type === "supplier" ? " · Tedarikçi" : party.party_type === "both" ? " · Müşteri/Tedarikçi" : " · Müşteri"}</option>)}</select></label>
+            <label>Cari adı (cari seçmediyseniz)<input name="counterparty" maxLength={180} placeholder="Serbest yazı" /></label>
+            <label>Kategori<input name="category" maxLength={120} /></label>
+            <label>Tutar<input name="amount" type="number" min="0.01" step="0.01" required /></label>
+            <label>Vade<input name="due_date" type="date" /></label>
+            <label className="wide">Not<textarea name="notes" maxLength={1000} /></label>
+            <p className="wide finance-form-hint">Cari seçerseniz bu hareket otomatik olarak Cari Hesaplar bakiyesine de işlenir.</p>
             <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydı oluştur</button></div>
           </form>
         </PanelDrawer> : null}
@@ -151,6 +165,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
     ) : null}
 
+    <div className="finance-tab-panel">
     {tab === "genel" ? <>
       <section className="finance-metrics">
         <article><small>BANKA BAKİYESİ</small><strong>{money(bankBalance)}</strong><span>{accountList.length} aktif hesap</span></article>
@@ -208,12 +223,19 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <article><div><small>NET BAKİYE</small><strong>{money(receivable - payable)}</strong><p>Toplam pozisyon</p></div></article>
         <article><div><small>AKTİF CARİ</small><strong>{partyTotals.length}</strong><p>Müşteri ve tedarikçi</p></div></article>
       </section>
-      <div className="section-heading"><div><small className="panel-kicker">CARİ LİSTESİ</small><h2>Bakiyeler</h2></div></div>
-      <section className="panel-modules">{partyTotals.map((party) => <article className="panel-card account-summary-card" key={party.id}>
+      <div className="section-heading"><div><small className="panel-kicker">CARİ LİSTESİ</small><h2>Bakiyeler</h2></div>
+        <div className="finance-tabs finance-tabs-sub">
+          <a className={!params.tur || params.tur === "tumu" ? "active" : ""} href={`${tabHref("cari")}&tur=tumu`}>Tümü</a>
+          <a className={params.tur === "musteri" ? "active" : ""} href={`${tabHref("cari")}&tur=musteri`}>Müşteriler</a>
+          <a className={params.tur === "tedarikci" ? "active" : ""} href={`${tabHref("cari")}&tur=tedarikci`}>Tedarikçiler</a>
+        </div>
+      </div>
+      <section className="panel-modules">{filteredParties.map((party) => <article className="panel-card account-summary-card" key={party.id}>
         <small>{party.party_type === "supplier" ? "TEDARİKÇİ" : party.party_type === "both" ? "MÜŞTERİ / TEDARİKÇİ" : "MÜŞTERİ"}</small>
         <h3>{party.name}</h3><p>{party.tax_number || "Vergi numarası yok"}</p>
         <strong>{money(Math.abs(party.balance))}</strong><span>{party.balance >= 0 ? "Alacak" : "Borç"}</span>
-      </article>)}{!partyTotals.length ? <div className="panel-card panel-empty">Henüz cari kart yok.</div> : null}</section>
+      </article>)}{!filteredParties.length ? <div className="panel-card panel-empty">{partyTotals.length ? "Bu filtreye uygun cari yok." : "Henüz cari kart yok."}</div> : null}</section>
     </> : null}
+    </div>
   </>;
 }

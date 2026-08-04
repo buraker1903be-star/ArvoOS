@@ -18,7 +18,8 @@ export async function createFinanceTransaction(formData: FormData) {
   const { supabase, userId, membership } = await financeContext();
   const transactionType = String(formData.get("transaction_type") ?? "");
   const title = String(formData.get("title") ?? "").trim();
-  const counterparty = String(formData.get("counterparty") ?? "").trim();
+  const partyId = String(formData.get("party_id") ?? "").trim() || null;
+  const freeCounterparty = String(formData.get("counterparty") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const dueDate = String(formData.get("due_date") ?? "") || null;
@@ -28,12 +29,20 @@ export async function createFinanceTransaction(formData: FormData) {
   if (title.length < 2 || title.length > 180) throw new Error("İşlem başlığı 2–180 karakter olmalı.");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("Tutar sıfırdan büyük olmalı.");
 
+  let counterparty = freeCounterparty || null;
+  if (partyId) {
+    const { data: party, error: partyError } = await supabase.from("account_parties").select("id,name").eq("id", partyId).eq("organization_id", membership.organization_id).maybeSingle();
+    if (partyError || !party) throw new Error("Seçilen cari bulunamadı.");
+    counterparty = party.name;
+  }
+
   const { error } = await supabase.from("finance_transactions").insert({
     organization_id: membership.organization_id,
     transaction_type: transactionType,
     status: "planned",
     title,
     counterparty: counterparty || null,
+    party_id: partyId,
     category: category || null,
     amount,
     due_date: dueDate,
@@ -41,6 +50,22 @@ export async function createFinanceTransaction(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Finans kaydı oluşturulamadı: " + error.message);
+
+  if (partyId) {
+    const { error: entryError } = await supabase.from("account_entries").insert({
+      organization_id: membership.organization_id,
+      party_id: partyId,
+      entry_type: transactionType === "income" ? "debit" : "credit",
+      source_type: "manual",
+      amount,
+      description: title,
+      transaction_date: new Date().toISOString().slice(0, 10),
+      due_date: dueDate,
+      created_by: userId,
+    });
+    if (entryError) throw new Error("Finans kaydı oluşturuldu ama cari hareketi eklenemedi: " + entryError.message);
+  }
+
   revalidatePath("/panel/finance");
   revalidatePath("/panel");
 }

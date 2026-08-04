@@ -157,3 +157,14 @@
   .finance-invoice-card form{flex-direction:column}
   .finance-plan-editor form{grid-template-columns:1fr}
 }
+
+/* ---------- Visually connect the tab bar to its panel content ---------- */
+.finance-tabs{margin-bottom:0;border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;position:relative;z-index:1}
+.finance-tab-panel{padding-top:18px;border:1px solid var(--line);border-top:0;border-radius:0 var(--r-md) var(--r-md) var(--r-md);background:var(--surface-2);margin-bottom:20px}
+.finance-tab-panel>section,.finance-tab-panel>.section-heading{margin-left:18px;margin-right:18px}
+.finance-tab-panel>section:first-child{margin-top:18px}
+.finance-tab-panel>section:last-child,.finance-tab-panel>*:last-child{margin-bottom:18px}
+.finance-tabs-sub{display:inline-flex;margin-bottom:0}
+.finance-tabs-sub a{padding:7px 12px;font-size:9px}
+.finance-form-hint{margin:-4px 0 4px;color:var(--muted);font-size:9px;line-height:1.5}
+@media(max-width:620px){.finance-tab-panel>section,.finance-tab-panel>.section-heading{margin-left:12px;margin-right:12px}}
