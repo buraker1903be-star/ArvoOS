@@ -4,8 +4,6 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
-const roleNames: Record<string, string> = { owner: "Kurum Sahibi", admin: "Yönetici", manager: "Ekip Lideri", member: "Üye" };
-
 async function teamContext() {
   const context = await getPanelContext();
   if (!["owner", "admin"].includes(context.membership.role)) throw new Error("Ekip yönetimi için yönetici yetkisi gerekiyor.");
@@ -59,5 +57,3 @@ export async function cancelInvitation(formData: FormData) {
   if (error) throw new Error("Davet iptal edilemedi: " + error.message);
   revalidatePath("/panel/ekip");
 }
-
-export { roleNames };

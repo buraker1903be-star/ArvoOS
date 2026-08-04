@@ -1,6 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { inviteTeamMember, updateTeamMemberAccess, cancelInvitation, roleNames } from "./actions";
+import { inviteTeamMember, updateTeamMemberAccess, cancelInvitation } from "./actions";
+import { roleNames } from "./role-names";
 import "./ekip.css";
 
 type Member = { organization_id: string; user_id: string; role: string; is_active: boolean; joined_at: string };
