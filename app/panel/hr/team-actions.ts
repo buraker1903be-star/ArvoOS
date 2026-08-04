@@ -21,26 +21,14 @@ export async function inviteTeamMember(formData: FormData) {
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  const accessToken = sessionData?.session?.access_token;
-  if (sessionError || !accessToken) throw new Error("Oturum doğrulanamadı, lütfen sayfayı yenileyip tekrar deneyin.");
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !anonKey) throw new Error("Supabase yapılandırması eksik (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).");
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/invite-team-member`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      apikey: anonKey,
-    },
-    body: JSON.stringify({ organizationId: membership.organization_id, email, role, fullName, redirectBase }),
+  const { data, error } = await supabase.functions.invoke("invite-team-member", {
+    body: { organizationId: membership.organization_id, email, role, fullName, redirectBase },
   });
-  const result = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(result?.error || `Davet gönderilemedi (HTTP ${response.status}).`);
+  if (error || data?.error) {
+    // The exact failure reason (even for early/permission failures) is always
+    // written to organization_invitations by the function itself, so it can
+    // be looked up directly in SQL regardless of what this SDK error exposes.
+    throw new Error(data?.error || error?.message || "Davet gönderilemedi. En son hatayı 'organization_invitations' tablosundan kontrol edin.");
   }
   revalidatePath("/panel/hr");
 }
