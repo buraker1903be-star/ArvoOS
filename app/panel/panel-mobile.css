@@ -3,8 +3,18 @@
 @media (max-width: 900px){
   html.panel-menu-open,html.panel-menu-open body{overflow:hidden}
   .panel-frame{display:block;min-height:100vh}
-  .panel-sidebar{position:fixed;inset:0 auto 0 0;z-index:100;width:min(86vw,340px);height:100dvh;transform:translateX(-105%);transition:transform .25s ease;box-shadow:24px 0 60px rgba(0,0,0,.35);overflow-y:auto;padding-top:72px;padding-bottom:max(18px,env(safe-area-inset-bottom))}
+  .panel-sidebar{position:fixed!important;inset:0 auto 0 0!important;z-index:100;width:min(86vw,340px)!important;max-width:340px;height:100dvh;transform:translateX(-105%);transition:transform .25s ease;box-shadow:24px 0 60px rgba(0,0,0,.35);overflow-x:hidden!important;overflow-y:auto!important;padding:72px 16px max(18px,env(safe-area-inset-bottom))!important;display:flex!important;flex-direction:column!important;align-items:stretch!important}
   html.panel-menu-open .panel-sidebar{transform:translateX(0)}
+  .panel-sidebar>*{width:100%!important;max-width:100%!important;min-width:0!important;flex:none!important}
+  .panel-sidebar .panel-brand{display:flex!important;flex-direction:row!important;align-items:center!important;padding:4px 8px 18px!important}
+  .panel-sidebar .panel-org{display:block!important;margin:0 0 14px!important;padding:12px!important;overflow:hidden!important}
+  .panel-sidebar .panel-org-switchable,.panel-sidebar .workspace-switcher,.panel-sidebar [class*="workspace"]{width:100%!important;max-width:100%!important;min-width:0!important}
+  .panel-sidebar .panel-nav{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:4px!important;width:100%!important;overflow:visible!important;padding:0!important}
+  .panel-sidebar .panel-nav-title,.panel-sidebar .panel-nav-separator{display:block!important;width:100%!important}
+  .panel-sidebar .panel-nav a{display:flex!important;flex-direction:row!important;align-items:center!important;width:100%!important;min-height:46px!important;padding:9px 10px!important;white-space:normal!important}
+  .panel-sidebar .panel-nav a i{flex:0 0 30px!important}
+  .panel-sidebar .panel-nav a span,.panel-sidebar .panel-nav a b{display:block!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+  .panel-sidebar-footer{margin-top:auto!important}
   .panel-workspace{min-width:0;width:100%}
   .panel-topbar{min-height:64px;padding:10px 14px 10px 64px;gap:10px}
   .panel-breadcrumb{min-width:0}
@@ -22,7 +32,9 @@
   html.panel-menu-open .panel-mobile-menu-overlay{opacity:1;visibility:visible}
   .panel-mobile-menu-close{position:fixed;top:16px;left:min(calc(86vw - 50px),290px);z-index:130;width:36px;height:36px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:25px;line-height:1;opacity:0;visibility:hidden;cursor:pointer}
   html.panel-menu-open .panel-mobile-menu-close{opacity:1;visibility:visible}
-  .panel-mobile-bottom-nav{position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));min-height:64px;padding:6px;border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:18px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 14px 34px rgba(16,28,22,.2);backdrop-filter:blur(18px) saturate(160%)}
+  .panel-mobile-bottom-nav{position:fixed;left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));z-index:80;display:grid;min-height:64px;padding:6px;border:1px solid color-mix(in srgb,var(--line) 82%,transparent);border-radius:18px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 14px 34px rgba(16,28,22,.2);backdrop-filter:blur(18px) saturate(160%)}
+  .panel-mobile-bottom-nav.has-four-items{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .panel-mobile-bottom-nav.has-three-items{grid-template-columns:repeat(3,minmax(0,1fr))}
   .panel-mobile-bottom-nav>a,.panel-mobile-bottom-nav>button{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;border-radius:13px;background:transparent;color:var(--muted);text-decoration:none;cursor:pointer}
   .panel-mobile-bottom-nav span{font-size:19px;line-height:1}
   .panel-mobile-bottom-nav b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;line-height:1.2}
