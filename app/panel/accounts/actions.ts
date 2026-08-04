@@ -53,3 +53,38 @@ export async function createEntry(formData: FormData) {
   if (error) throw new Error("Cari hareket eklenemedi: " + error.message);
   revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
 }
+
+export async function updateEntry(formData: FormData) {
+  const { supabase, membership } = await accountsContext();
+  const entryId = String(formData.get("entry_id") ?? "").trim();
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  const entryType = String(formData.get("entry_type") ?? "debit");
+  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const description = String(formData.get("description") ?? "").trim();
+  if (!entryId) throw new Error("Hareket seçilmedi.");
+  if (!["debit", "credit"].includes(entryType)) throw new Error("Geçersiz hareket türü.");
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Tutar sıfırdan büyük olmalı.");
+  if (description.length < 2 || description.length > 500) throw new Error("Açıklama 2–500 karakter olmalı.");
+  const { error } = await supabase.from("account_entries").update({
+    entry_type: entryType,
+    amount,
+    description,
+    reference_no: String(formData.get("reference_no") ?? "").trim() || null,
+    transaction_date: String(formData.get("transaction_date") ?? "") || undefined,
+    due_date: String(formData.get("due_date") ?? "") || null,
+  }).eq("id", entryId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Cari hareket güncellenemedi: " + error.message);
+  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
+  revalidatePath(`/panel/accounts/${partyId}`);
+}
+
+export async function deleteEntry(formData: FormData) {
+  const { supabase, membership } = await accountsContext();
+  const entryId = String(formData.get("entry_id") ?? "").trim();
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  if (!entryId) throw new Error("Hareket seçilmedi.");
+  const { error } = await supabase.from("account_entries").delete().eq("id", entryId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Cari hareket silinemedi: " + error.message);
+  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
+  revalidatePath(`/panel/accounts/${partyId}`);
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createFinanceTransaction, updateFinanceTransactionStatus } from "./actions";
@@ -252,6 +253,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <small>{party.party_type === "supplier" ? "TEDARİKÇİ" : party.party_type === "both" ? "MÜŞTERİ / TEDARİKÇİ" : "MÜŞTERİ"}</small>
         <h3>{party.name}</h3><p>{party.tax_number || "Vergi numarası yok"}</p>
         <strong>{money(Math.abs(party.balance))}</strong><span>{party.balance >= 0 ? "Alacak" : "Borç"}</span>
+        <Link className="panel-text-link" href={`/panel/accounts/${party.id}`}>Hareket dökümü →</Link>
       </article>)}{!filteredParties.length ? <div className="panel-card panel-empty">{partyTotals.length ? "Bu filtreye uygun cari yok." : "Henüz cari kart yok."}</div> : null}</section>
     </> : null}
     </div>
