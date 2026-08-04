@@ -89,18 +89,31 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
   }).eq("id", transactionId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Finans kaydı güncellenemedi: " + error.message);
 
-  // Tek yerden tamamlama: "Ödendi" işaretlenince bağlı cari bakiyesi ve
-  // (varsa) sözleşme faturası da otomatik kapatılır, ayrı ayrı güncelleme
-  // gerekmez.
+  // Tek yerden tamamlama: "Ödendi" işaretlenince bağlı cari bakiyesi,
+  // (varsa) sözleşme faturası ve ödeme planındaki taksitler de otomatik
+  // kapatılır — ayrı ayrı güncelleme gerekmez, Prim Raporu da anında
+  // güncel tahsilat verisini görür.
   if (status === "paid" && !alreadyPaid) {
     let partyId = transaction.party_id as string | null;
     const contractNo = transaction.notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null;
 
     if (!partyId && contractNo) {
-      const { data: contract } = await supabase.from("crm_contracts").select("party_id,invoice_id").eq("organization_id", membership.organization_id).ilike("contract_no", contractNo).maybeSingle();
+      const { data: contract } = await supabase.from("crm_contracts").select("id,party_id,invoice_id").eq("organization_id", membership.organization_id).ilike("contract_no", contractNo).maybeSingle();
       if (contract?.party_id) partyId = contract.party_id;
       if (contract?.invoice_id) {
         await supabase.from("billing_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", contract.invoice_id).eq("organization_id", membership.organization_id);
+      }
+      if (contract?.id) {
+        const { data: plan } = await supabase.from("payment_plans").select("id").eq("organization_id", membership.organization_id).eq("contract_id", contract.id).maybeSingle();
+        if (plan?.id) {
+          const { data: pendingInstallments } = await supabase.from("payment_installments").select("id,amount").eq("organization_id", membership.organization_id).eq("payment_plan_id", plan.id).eq("status", "pending").order("installment_no", { ascending: true });
+          let remaining = Number(transaction.amount);
+          for (const installment of pendingInstallments ?? []) {
+            if (remaining <= 0) break;
+            await supabase.from("payment_installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", installment.id).eq("organization_id", membership.organization_id);
+            remaining -= Number(installment.amount);
+          }
+        }
       }
     }
 
@@ -120,6 +133,7 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
   }
 
   revalidatePath("/panel/finance");
+  revalidatePath("/panel/reporting");
   revalidatePath("/panel");
 }
 
@@ -133,6 +147,7 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel/finance/payment-plans");
   revalidatePath("/panel/finance/accounts");
   revalidatePath("/panel/finance/invoices");
+  revalidatePath("/panel/reporting");
   revalidatePath("/panel");
 }
 
