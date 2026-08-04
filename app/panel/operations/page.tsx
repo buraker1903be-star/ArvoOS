@@ -9,14 +9,36 @@ const statusNames: Record<string, string> = { planned: "Planlandı", in_progress
 const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
 const boardStatuses = ["planned", "in_progress", "blocked", "completed"] as const;
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
-type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; operation_steps: Step[] };
+type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; contract_id: string | null; operation_steps: Step[] };
 
 export default async function OperationsPage() {
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
-  const { data, error } = await supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false });
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
-  const workflows = (data ?? []) as Workflow[];
+  const allWorkflows = (data ?? []) as Workflow[];
+
+  // Tamamlanan + ödemesi tam kapanan işler panoyu şişirmesin diye burada
+  // canlı olarak arşive ayrılır (ayrı bir "arşivlendi" alanı tutmuyoruz,
+  // gerçek fatura durumuna göre her açılışta yeniden hesaplanır).
+  const completedContractIds = [...new Set(allWorkflows.filter((wf) => wf.status === "completed" && wf.contract_id).map((wf) => wf.contract_id as string))];
+  const settledContractIds = new Set<string>();
+  if (completedContractIds.length) {
+    const { data: contracts } = await supabase.from("crm_contracts").select("id,invoice_id").in("id", completedContractIds);
+    const invoiceIds = (contracts ?? []).map((c) => c.invoice_id).filter((value): value is string => Boolean(value));
+    const invoiceStatusById = new Map<string, string>();
+    if (invoiceIds.length) {
+      const { data: invoices } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
+      for (const invoice of invoices ?? []) invoiceStatusById.set(invoice.id, invoice.status);
+    }
+    for (const contract of contracts ?? []) {
+      if (contract.invoice_id && invoiceStatusById.get(contract.invoice_id) === "paid") settledContractIds.add(contract.id);
+    }
+  }
+  const isSettled = (wf: Workflow) => wf.status === "completed" && (!wf.contract_id || settledContractIds.has(wf.contract_id));
+  const workflows = allWorkflows.filter((wf) => !isSettled(wf));
+  const archivedWorkflows = allWorkflows.filter(isSettled);
+
   const activeCount = workflows.filter((item) => item.status === "in_progress").length;
   const blockedCount = workflows.filter((item) => item.status === "blocked").length;
   const completedCount = workflows.filter((item) => item.status === "completed").length;
@@ -52,6 +74,19 @@ export default async function OperationsPage() {
         <form className="ops-add-step" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id} /><input name="title" required minLength={2} maxLength={180} placeholder="Yeni adım" /><button type="submit">+</button></form>
         <form className="ops-move" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id} /><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button type="submit">Güncelle</button></form>
       </article>})}{!items.length ? <div className="ops-column-empty">Kayıt yok</div> : null}</div></section>})}</section>
+    {archivedWorkflows.length ? (
+      <details className="ops-archive">
+        <summary><span>Arşivlenen işler</span><em>{archivedWorkflows.length}</em><small>Tamamlandı ve ödemesi kapandı, panoyu meşgul etmiyor</small></summary>
+        <div className="ops-archive-list">
+          {archivedWorkflows.map((workflow) => (
+            <Link key={workflow.id} href={`/panel/operations/${workflow.id}`} className="ops-archive-row">
+              <div><b>{workflow.title}</b><small>{workflow.customer_name || "Kurum içi iş"}</small></div>
+              <span className="status-pill">Ödendi ve tamamlandı</span>
+            </Link>
+          ))}
+        </div>
+      </details>
+    ) : null}
     </div>
   </>;
 }
