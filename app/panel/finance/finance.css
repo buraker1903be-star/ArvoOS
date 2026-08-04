@@ -8,6 +8,14 @@
 .finance-tabs a+a{border-left:1px solid var(--line)}
 .finance-tabs a:hover{background:var(--surface-2);color:var(--ink)}
 .finance-tabs a.active{background:var(--brand-700);color:#fff}
+.finance-priority{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+.finance-priority-item{flex:1;min-width:240px;display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.finance-priority-item>span{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--info-soft);color:var(--info);font-weight:800}
+.finance-priority-item.risk{border-color:color-mix(in srgb, var(--danger) 30%, var(--line));background:var(--danger-soft)}
+.finance-priority-item.risk>span{background:var(--danger);color:#fff}
+.finance-priority-item b{display:block;font-size:12px;color:var(--ink)}
+.finance-priority-item small{display:block;margin-top:2px;color:var(--muted);font-size:9px}
+.finance-more-note{margin:8px 0 0;padding:10px;text-align:center;color:var(--dim);font-size:9px;border-top:1px solid var(--line)}
 @media(max-width:620px){.finance-tabs{display:flex;width:100%}.finance-tabs a{flex:1;text-align:center;padding:9px 8px}}
 .finance-metrics-six{grid-template-columns:repeat(3,minmax(0,1fr))}
 .finance-metrics article,.finance-create,.finance-list,.finance-side,.aging-card,.due-card{border:1px solid var(--line);background:var(--surface);border-radius:20px}
