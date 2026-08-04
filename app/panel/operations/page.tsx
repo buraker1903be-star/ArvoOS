@@ -33,7 +33,7 @@ export default async function OperationsPage() {
   </form>;
 
   return <>
-    <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
+    <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
     <section className="ops-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>
       <article><small>AKSİYON BEKLEYEN</small><strong>{blockedCount}</strong><span>Beklemede</span></article>

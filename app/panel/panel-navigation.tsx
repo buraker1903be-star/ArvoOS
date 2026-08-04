@@ -22,6 +22,11 @@ const crmChildren = [
   { href: "/panel/crm/contracts", label: "Sözleşmeler", exact: true },
   { href: "/panel/crm/takvim", label: "Takvim", exact: false },
 ];
+const operationsChildren = [
+  { href: "/panel/operations", label: "İş Akışı", exact: true },
+  { href: "/panel/operations/gantt", label: "Gantt Çizelgesi", exact: false },
+  { href: "/panel/operations/takvim", label: "Takvim", exact: false },
+];
 
 export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
   const pathname = usePathname();
@@ -37,6 +42,18 @@ export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelMo
             <div className="crm-nav-heading"><i>{group.icon}</i><span>{group.label}</span><em>{crmChildren.length}</em></div>
             <div className="panel-nav-children crm-nav-children">
               {crmChildren.map((item) => {
+                const selected = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+                return <Link className={selected ? "active" : ""} href={item.href} key={item.href}><span>{item.label}</span></Link>;
+              })}
+            </div>
+          </div>;
+        }
+        if (group.key === "operations") {
+          const active = pathname.startsWith("/panel/operations");
+          return <div className={active ? "panel-nav-group active crm-nav-static" : "panel-nav-group crm-nav-static"} key={group.key}>
+            <div className="crm-nav-heading"><i>{group.icon}</i><span>{group.label}</span><em>{operationsChildren.length}</em></div>
+            <div className="panel-nav-children crm-nav-children">
+              {operationsChildren.map((item) => {
                 const selected = item.exact ? pathname === item.href : pathname.startsWith(item.href);
                 return <Link className={selected ? "active" : ""} href={item.href} key={item.href}><span>{item.label}</span></Link>;
               })}
