@@ -22,7 +22,7 @@ export async function createBankAccount(formData: FormData) {
     iban, opening_balance: openingBalance, created_by: userId,
   });
   if (error) throw new Error("Banka hesabı eklenemedi: " + error.message);
-  revalidatePath("/panel/banking");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/banking");
 }
 
 export async function createBankTransaction(formData: FormData) {
@@ -39,8 +39,7 @@ export async function createBankTransaction(formData: FormData) {
     description, reference_no: referenceNo || null, transaction_date: transactionDate, created_by: userId,
   });
   if (error) throw new Error("Banka hareketi eklenemedi: " + error.message);
-  revalidatePath("/panel/banking");
-  revalidatePath("/panel/finance");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/banking");
 }
 
 export async function reconcileBankTransaction(formData: FormData) {
@@ -57,5 +56,5 @@ export async function reconcileBankTransaction(formData: FormData) {
     updated_at: new Date().toISOString(),
   }).eq("id", transactionId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Mutabakat güncellenemedi: " + error.message);
-  revalidatePath("/panel/banking");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/banking");
 }

@@ -3,6 +3,7 @@
    ============================================================ */
 
 .finance-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.finance-tabs{margin-bottom:18px}
 .finance-metrics-six{grid-template-columns:repeat(3,minmax(0,1fr))}
 .finance-metrics article,.finance-create,.finance-list,.finance-side,.aging-card,.due-card{border:1px solid var(--line);background:var(--surface);border-radius:20px}
 .finance-metrics article{padding:22px;display:flex;flex-direction:column;gap:8px}

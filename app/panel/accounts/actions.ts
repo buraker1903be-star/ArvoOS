@@ -27,7 +27,7 @@ export async function createParty(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Cari kart oluşturulamadı: " + error.message);
-  revalidatePath("/panel/accounts");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
 }
 
 export async function createEntry(formData: FormData) {
@@ -51,5 +51,5 @@ export async function createEntry(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Cari hareket eklenemedi: " + error.message);
-  revalidatePath("/panel/accounts");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
 }
