@@ -27,7 +27,7 @@ export async function inviteTeamMember(formData: FormData) {
   if (error || data?.error) {
     throw new Error(data?.error || error?.message || "Davet gönderilemedi.");
   }
-  revalidatePath("/panel/ekip");
+  revalidatePath("/panel/hr");
 }
 
 export async function updateTeamMemberAccess(formData: FormData) {
@@ -43,7 +43,7 @@ export async function updateTeamMemberAccess(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .eq("user_id", userId);
   if (error) throw new Error("Kullanıcı güncellenemedi: " + error.message);
-  revalidatePath("/panel/ekip");
+  revalidatePath("/panel/hr");
 }
 
 export async function cancelInvitation(formData: FormData) {
@@ -55,5 +55,5 @@ export async function cancelInvitation(formData: FormData) {
     .eq("id", invitationId)
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Davet iptal edilemedi: " + error.message);
-  revalidatePath("/panel/ekip");
+  revalidatePath("/panel/hr");
 }

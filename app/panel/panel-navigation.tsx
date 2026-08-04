@@ -17,7 +17,7 @@ const groups: NavigationGroup[] = [
 
 const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
-export function PanelNavigation({ modules, isPlatformOwner, canManageTeam }: { modules: PanelModule[]; isPlatformOwner: boolean; canManageTeam: boolean }) {
+export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
   const pathname = usePathname();
   const resolved = groups.map((group) => ({ ...group, items: modules.filter((module) => group.codes.includes(normalize(module.code))) }));
 
@@ -55,7 +55,6 @@ export function PanelNavigation({ modules, isPlatformOwner, canManageTeam }: { m
       })}
     </div>
     <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings"><i>A</i><span>Ayarlar</span></Link>
-    {canManageTeam ? <Link className={pathname.startsWith("/panel/ekip") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/ekip"><i>E</i><span>Ekip Yönetimi</span></Link> : null}
     {isPlatformOwner ? <Link className={pathname.startsWith("/panel/platform") ? "panel-nav-group-link owner-link active" : "panel-nav-group-link owner-link"} href="/panel/platform"><i>◇</i><span>Platform Yönetimi</span><b>OWNER</b></Link> : null}
   </nav>;
 }

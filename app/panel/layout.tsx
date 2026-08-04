@@ -37,7 +37,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <div className="panel-org panel-org-switchable">
         <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
       </div>
-      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} canManageTeam={["owner", "admin"].includes(membership.role)} />
+      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} />
       <div className="panel-sidebar-footer">
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
         <form className="panel-logout" action={logout}><button type="submit">↪ <span>Çıkış yap</span></button></form>
