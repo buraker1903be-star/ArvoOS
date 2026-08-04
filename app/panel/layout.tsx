@@ -34,7 +34,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
-    <MobilePanelMenu />
+    <MobilePanelMenu hasMessages={hasMessages} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
       <div className="panel-org panel-org-switchable">
