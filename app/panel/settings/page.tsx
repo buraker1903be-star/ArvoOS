@@ -23,19 +23,19 @@ export default async function SettingsPage() {
         <div><small>KURUMSAL KİMLİK</small><h3>Belge ve teklif görünümü</h3><p>Logo, renk, iletişim bilgileri ve kaşe-imza görseli A4 belgelerde otomatik kullanılır.</p></div>
         <form className="panel-form" action={updateDocumentBranding} encType="multipart/form-data">
           <label className="wide">Logo URL<input name="logo_url" type="url" defaultValue={branding?.logo_url??""} placeholder="https://.../logo.png" disabled={!canManage}/></label>
-          {branding?.logo_url?<div className="wide" style={{padding:"16px",border:"1px solid #e0e5e1",borderRadius:12,background:"#fff"}}><small style={{display:"block",marginBottom:10}}>LOGO ÖNİZLEME</small><img src={branding.logo_url} alt="Kurum logosu" style={{maxWidth:220,maxHeight:80,objectFit:"contain"}}/></div>:null}
+          {branding?.logo_url?<div className="wide" style={{padding:"16px",border:"1px solid var(--line)",borderRadius:12,background:"var(--surface)"}}><small style={{display:"block",marginBottom:10}}>LOGO ÖNİZLEME</small><img src={branding.logo_url} alt="Kurum logosu" style={{maxWidth:220,maxHeight:80,objectFit:"contain"}}/></div>:null}
           <label>Kurumsal renk<input name="primary_color" type="color" defaultValue={branding?.primary_color??"#183f31"} disabled={!canManage}/></label>
           <label>E-posta<input name="contact_email" type="email" defaultValue={branding?.contact_email??""} disabled={!canManage}/></label>
           <label>Telefon<input name="contact_phone" defaultValue={branding?.contact_phone??""} disabled={!canManage}/></label>
           <label>Web sitesi<input name="website_url" type="url" defaultValue={branding?.website_url??""} disabled={!canManage}/></label>
 
-          <div className="wide" style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(260px,.65fr)",gap:18,padding:"18px",border:"1px solid #dfe6e1",borderRadius:14,background:"#fbfcfb"}}>
+          <div className="wide" style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(260px,.65fr)",gap:18,padding:"18px",border:"1px solid var(--line)",borderRadius:14,background:"var(--surface-2)"}}>
             <label style={{margin:0}}>Kaşe ve imza görseli
               <input name="signature_file" type="file" accept="image/png,image/jpeg,image/webp" disabled={!canManage}/>
-              <small style={{display:"block",marginTop:8,color:"#68756e"}}>Şeffaf arka planlı PNG önerilir. En fazla 5 MB.</small>
+              <small style={{display:"block",marginTop:8,color:"var(--muted)"}}>Şeffaf arka planlı PNG önerilir. En fazla 5 MB.</small>
             </label>
-            <div style={{minHeight:150,border:"1px dashed #c8d1cb",borderRadius:12,background:"#fff",display:"grid",placeItems:"center",padding:16,textAlign:"center"}}>
-              {branding?.signature_stamp_url?<img src={branding.signature_stamp_url} alt="Kaşe ve imza önizlemesi" style={{maxWidth:"100%",maxHeight:135,objectFit:"contain"}}/>:<span style={{color:"#7a867f",fontSize:13}}>Henüz kaşe-imza görseli yüklenmedi.</span>}
+            <div style={{minHeight:150,border:"1px dashed var(--line)",borderRadius:12,background:"var(--surface)",display:"grid",placeItems:"center",padding:16,textAlign:"center"}}>
+              {branding?.signature_stamp_url?<img src={branding.signature_stamp_url} alt="Kaşe ve imza önizlemesi" style={{maxWidth:"100%",maxHeight:135,objectFit:"contain"}}/>:<span style={{color:"var(--muted)",fontSize:13}}>Henüz kaşe-imza görseli yüklenmedi.</span>}
             </div>
             {branding?.signature_stamp_url?<label style={{gridColumn:"1 / -1",display:"flex",alignItems:"center",gap:8,margin:0,fontWeight:600}}><input name="remove_signature" type="checkbox" disabled={!canManage} style={{width:18,height:18}}/>Mevcut kaşe-imza görselini kaldır</label>:null}
           </div>

@@ -1,1 +1,72 @@
-.crm-request-card{grid-template-columns:minmax(0,1fr) 250px;align-items:stretch}.crm-request-actions{display:flex;flex-direction:column;gap:9px;padding-left:20px;border-left:1px solid var(--ux-line)}.crm-request-actions>small{margin-bottom:3px;color:#74808a;font-size:8px;font-weight:800;letter-spacing:.11em}.crm-request-actions>.panel-primary,.crm-request-actions>.panel-secondary,.crm-request-actions>.panel-danger,.crm-request-actions>form>.panel-danger{width:100%;min-height:40px}.crm-request-actions>form{margin:0}.crm-request-actions>form>.panel-danger{border-color:#f3c4c0}.crm-status-form{display:flex;flex-direction:column;gap:8px;margin-top:5px;padding-top:12px;border-top:1px solid var(--ux-line)}.crm-status-form label{display:flex;flex-direction:column;gap:6px;color:#687584;font-size:8px;font-weight:800}.crm-status-form select,.crm-status-form input{width:100%;min-height:40px;padding:9px 11px;border:1px solid var(--ux-line);border-radius:9px;background:#fff;color:var(--ux-primary);font:10px var(--font-body)}.crm-request-preview{display:flex;flex-direction:column}.crm-request-preview>span{align-self:flex-start;display:inline-flex;padding:7px 10px;border-radius:8px;background:var(--ux-soft);color:#527333;font-size:9px;font-weight:800}.crm-request-preview h3{margin:24px 0 5px;font-size:24px}.crm-request-preview h4{margin:0 0 24px;color:#526171;font-size:15px}.crm-request-preview dl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 18px}.crm-request-preview dl div{min-height:78px;padding:14px;border:1px solid var(--ux-line);border-radius:12px;background:#fafcf9}.crm-request-preview dt{color:#75808a;font-size:8px;font-weight:800}.crm-request-preview dd{margin:7px 0 0;color:var(--ux-primary);font-size:11px;font-weight:700}.crm-request-preview p{margin:0 0 14px;padding:16px;border-radius:12px;background:#f7f9f6;color:#627080;font-size:11px;line-height:1.75}.crm-page-stack .panel-drawer-header{position:relative;display:block;padding:26px 86px 22px 30px;background:#fff}.crm-page-stack .panel-drawer-header h2{margin:0;font-size:24px}.crm-page-stack .panel-drawer-header p{display:none}.crm-page-stack .panel-drawer-close{position:absolute;top:22px;right:30px}.crm-page-stack .panel-drawer-body{min-height:0;padding-top:0}.proposal-drawer-content{display:flex;flex-direction:column}.proposal-drawer-intro{margin:0 -30px 24px;padding:24px 30px;border-bottom:1px solid var(--ux-line);background:#f8faf7}.proposal-drawer-intro small{display:block;color:#6f934c;font-size:8px;font-weight:800;letter-spacing:.15em}.proposal-drawer-intro h3{margin:10px 0 8px;font:750 22px/1.2 var(--font-heading);color:var(--ux-primary)}.proposal-drawer-intro p{margin:0;color:#687584;font-size:11px;line-height:1.65}.proposal-builder{gap:18px}.proposal-builder label{font-size:10px}.proposal-builder input,.proposal-builder select,.proposal-builder textarea{font-size:12px;min-height:46px}.proposal-builder textarea{min-height:112px}.proposal-live-summary{display:grid;gap:0;padding:18px;border:1px solid var(--ux-line);border-radius:14px;background:#f7f9f6}.proposal-live-summary>header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid #dfe5dc}.proposal-live-summary>header span,.proposal-payment-breakdown>small{color:#6f934c;font-size:8px;font-weight:800;letter-spacing:.12em}.proposal-live-summary>header strong{font-size:20px;color:var(--ux-primary)}.proposal-live-summary>div,.proposal-payment-breakdown>div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid #e4e9e1}.proposal-live-summary span{color:#687584;font-size:10px}.proposal-live-summary b,.proposal-live-summary strong{font-size:12px}.proposal-summary-total strong{color:var(--ux-primary);font-size:15px}.proposal-payment-breakdown{margin-top:12px;padding-top:14px;border-top:1px solid #dfe5dc}.proposal-payment-breakdown>small{display:block;margin-bottom:5px}.proposal-payment-breakdown>div:last-child{border-bottom:0}.proposal-builder .panel-form-actions{margin-top:2px}.proposal-builder .panel-form-actions .panel-primary{min-height:46px;font-size:11px}@media(max-width:1100px){.crm-request-card{grid-template-columns:1fr}.crm-request-actions{padding:16px 0 0;border-left:0;border-top:1px solid var(--ux-line);display:grid;grid-template-columns:1fr 1fr}.crm-request-actions>small,.crm-status-form{grid-column:1/-1}}@media(max-width:620px){.crm-request-actions{grid-template-columns:1fr}.crm-request-actions>small,.crm-status-form{grid-column:auto}.crm-request-preview dl{grid-template-columns:1fr}.crm-page-stack .panel-drawer-header{padding:20px 72px 18px 20px}.crm-page-stack .panel-drawer-close{top:16px;right:20px}.proposal-drawer-intro{margin:0 -20px 20px;padding:20px}.proposal-drawer-intro h3{font-size:20px}.proposal-builder{gap:15px}.proposal-live-summary>header strong{font-size:17px}}
+/* ============================================================
+   ArvoOS Panel — CRM Request Detail & Proposal Builder
+   ============================================================ */
+
+.crm-request-card{grid-template-columns:minmax(0,1fr) 250px;align-items:stretch}
+.crm-request-actions{display:flex;flex-direction:column;gap:9px;padding-left:20px;border-left:1px solid var(--ux-line)}
+.crm-request-actions>small{margin-bottom:3px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.11em}
+.crm-request-actions>.panel-primary,.crm-request-actions>.panel-secondary,.crm-request-actions>.panel-danger,.crm-request-actions>form>.panel-danger{width:100%;min-height:40px}
+.crm-request-actions>form{margin:0}
+.crm-request-actions>form>.panel-danger{border-color:color-mix(in srgb, var(--danger) 40%, var(--line))}
+
+.crm-status-form{display:flex;flex-direction:column;gap:8px;margin-top:5px;padding-top:12px;border-top:1px solid var(--ux-line)}
+.crm-status-form label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:8px;font-weight:800}
+.crm-status-form select,.crm-status-form input{width:100%;min-height:40px;padding:9px 11px;border:1px solid var(--ux-line);border-radius:9px;background:var(--surface);color:var(--ux-primary);font:10px var(--font-body)}
+
+.crm-request-preview{display:flex;flex-direction:column}
+.crm-request-preview>span{align-self:flex-start;display:inline-flex;padding:7px 10px;border-radius:8px;background:var(--ux-soft);color:var(--accent-600);font-size:9px;font-weight:800}
+.crm-request-preview h3{margin:24px 0 5px;font-size:24px;color:var(--ink)}
+.crm-request-preview h4{margin:0 0 24px;color:var(--muted);font-size:15px}
+.crm-request-preview dl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 18px}
+.crm-request-preview dl div{min-height:78px;padding:14px;border:1px solid var(--ux-line);border-radius:12px;background:var(--surface-2)}
+.crm-request-preview dt{color:var(--muted);font-size:8px;font-weight:800}
+.crm-request-preview dd{margin:7px 0 0;color:var(--ux-primary);font-size:11px;font-weight:700}
+.crm-request-preview p{margin:0 0 14px;padding:16px;border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:11px;line-height:1.75}
+
+.crm-page-stack .panel-drawer-header{position:relative;display:block;padding:26px 86px 22px 30px;background:var(--surface)}
+.crm-page-stack .panel-drawer-header h2{margin:0;font-size:24px}
+.crm-page-stack .panel-drawer-header p{display:none}
+.crm-page-stack .panel-drawer-close{position:absolute;top:22px;right:30px}
+.crm-page-stack .panel-drawer-body{min-height:0;padding-top:0}
+
+/* ---------- Proposal builder ---------- */
+.proposal-drawer-content{display:flex;flex-direction:column}
+.proposal-drawer-intro{margin:0 -30px 24px;padding:24px 30px;border-bottom:1px solid var(--ux-line);background:var(--surface-2)}
+.proposal-drawer-intro small{display:block;color:var(--accent-600);font-size:8px;font-weight:800;letter-spacing:.15em}
+.proposal-drawer-intro h3{margin:10px 0 8px;font:750 22px/1.2 var(--font-heading);color:var(--ux-primary)}
+.proposal-drawer-intro p{margin:0;color:var(--muted);font-size:11px;line-height:1.65}
+.proposal-builder{gap:18px}
+.proposal-builder label{font-size:10px}
+.proposal-builder input,.proposal-builder select,.proposal-builder textarea{font-size:12px;min-height:46px}
+.proposal-builder textarea{min-height:112px}
+
+.proposal-live-summary{display:grid;gap:0;padding:18px;border:1px solid var(--ux-line);border-radius:14px;background:var(--surface-2)}
+.proposal-live-summary>header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.proposal-live-summary>header span,.proposal-payment-breakdown>small{color:var(--accent-600);font-size:8px;font-weight:800;letter-spacing:.12em}
+.proposal-live-summary>header strong{font-size:20px;color:var(--ux-primary)}
+.proposal-live-summary>div,.proposal-payment-breakdown>div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.proposal-live-summary span{color:var(--muted);font-size:10px}
+.proposal-live-summary b,.proposal-live-summary strong{font-size:12px;color:var(--ink)}
+.proposal-summary-total strong{color:var(--ux-primary);font-size:15px}
+.proposal-payment-breakdown{margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
+.proposal-payment-breakdown>small{display:block;margin-bottom:5px}
+.proposal-payment-breakdown>div:last-child{border-bottom:0}
+.proposal-builder .panel-form-actions{margin-top:2px}
+.proposal-builder .panel-form-actions .panel-primary{min-height:46px;font-size:11px}
+
+@media(max-width:1100px){
+  .crm-request-card{grid-template-columns:1fr}
+  .crm-request-actions{padding:16px 0 0;border-left:0;border-top:1px solid var(--ux-line);display:grid;grid-template-columns:1fr 1fr}
+  .crm-request-actions>small,.crm-status-form{grid-column:1/-1}
+}
+@media(max-width:620px){
+  .crm-request-actions{grid-template-columns:1fr}
+  .crm-request-actions>small,.crm-status-form{grid-column:auto}
+  .crm-request-preview dl{grid-template-columns:1fr}
+  .crm-page-stack .panel-drawer-header{padding:20px 72px 18px 20px}
+  .crm-page-stack .panel-drawer-close{top:16px;right:20px}
+  .proposal-drawer-intro{margin:0 -20px 20px;padding:20px}
+  .proposal-drawer-intro h3{font-size:20px}
+  .proposal-builder{gap:15px}
+  .proposal-live-summary>header strong{font-size:17px}
+}
