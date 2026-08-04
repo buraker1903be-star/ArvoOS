@@ -63,7 +63,25 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const expectedIncome = standaloneItems.filter((item) => item.transaction_type === "income" && item.status === "planned").reduce((sum, item) => sum + Number(item.amount), 0) + invoiceItems.filter((item) => ["draft", "open"].includes(item.status)).reduce((sum, item) => sum + Number(item.total ?? 0), 0);
   const expectedExpense = items.filter((item) => item.transaction_type === "expense" && item.status === "planned").reduce((sum, item) => sum + Number(item.amount), 0);
   const bankOpening = accountList.reduce((sum, item) => sum + Number(item.opening_balance ?? 0), 0); const bankInflows = bankMoves.filter((item) => item.direction === "inflow").reduce((sum, item) => sum + Number(item.amount), 0); const bankOutflows = bankMoves.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + Number(item.amount), 0); const bankBalance = bankOpening + bankInflows - bankOutflows; const unmatchedCount = bankMoves.filter((item) => item.reconciliation_status === "unmatched").length;
-  const aging = { current: 0, d30: 0, d60: 0, d90: 0, over90: 0 }; for (const entry of ledger.filter((item) => item.entry_type === "debit")) { const overdue = daysOverdue(entry.due_date); const amount = Number(entry.amount); if (!entry.due_date || overdue === 0) aging.current += amount; else if (overdue <= 30) aging.d30 += amount; else if (overdue <= 60) aging.d60 += amount; else if (overdue <= 90) aging.d90 += amount; else aging.over90 += amount; }
+  const partyLedger = new Map<string, { net: number; earliestDue: string | null }>();
+  for (const entry of ledger) {
+    const key = entry.party_id;
+    const current = partyLedger.get(key) ?? { net: 0, earliestDue: null };
+    const amount = Number(entry.amount);
+    current.net += entry.entry_type === "debit" ? amount : -amount;
+    if (entry.entry_type === "debit" && entry.due_date && (!current.earliestDue || entry.due_date < current.earliestDue)) current.earliestDue = entry.due_date;
+    partyLedger.set(key, current);
+  }
+  const aging = { current: 0, d30: 0, d60: 0, d90: 0, over90: 0 };
+  for (const { net, earliestDue } of partyLedger.values()) {
+    if (net <= 0) continue;
+    const overdue = daysOverdue(earliestDue);
+    if (!earliestDue || overdue === 0) aging.current += net;
+    else if (overdue <= 30) aging.d30 += net;
+    else if (overdue <= 60) aging.d60 += net;
+    else if (overdue <= 90) aging.d90 += net;
+    else aging.over90 += net;
+  }
   const upcoming = [...standaloneItems.filter((item) => item.status === "planned" && item.due_date).map((item) => ({ id: `tx-${item.id}`, label: item.title, amount: item.amount, date: item.due_date!, type: item.transaction_type })), ...invoiceItems.filter((item) => ["draft", "open"].includes(item.status) && item.due_at).map((item) => ({ id: `inv-${item.id}`, label: "Açık fatura", amount: item.total, date: item.due_at!, type: "income" as const }))].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 6);
   const projectedCash = paidIncome - paidExpense + expectedIncome - expectedExpense;
   const overdueTotal = aging.d30 + aging.d60 + aging.d90 + aging.over90;

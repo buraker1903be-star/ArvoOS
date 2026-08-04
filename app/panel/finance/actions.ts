@@ -71,10 +71,16 @@ export async function createFinanceTransaction(formData: FormData) {
 }
 
 export async function updateFinanceTransactionStatus(formData: FormData) {
-  const { supabase, membership } = await financeContext();
+  const { supabase, membership, userId } = await financeContext();
   const transactionId = String(formData.get("transaction_id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!statuses.has(status)) throw new Error("Geçersiz finans durumu.");
+
+  const { data: transaction, error: fetchError } = await supabase.from("finance_transactions")
+    .select("id,title,amount,notes,party_id,transaction_type,status")
+    .eq("id", transactionId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (fetchError || !transaction) throw new Error("Finans kaydı bulunamadı.");
+  const alreadyPaid = transaction.status === "paid";
 
   const { error } = await supabase.from("finance_transactions").update({
     status,
@@ -82,6 +88,37 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
     updated_at: new Date().toISOString(),
   }).eq("id", transactionId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Finans kaydı güncellenemedi: " + error.message);
+
+  // Tek yerden tamamlama: "Ödendi" işaretlenince bağlı cari bakiyesi ve
+  // (varsa) sözleşme faturası da otomatik kapatılır, ayrı ayrı güncelleme
+  // gerekmez.
+  if (status === "paid" && !alreadyPaid) {
+    let partyId = transaction.party_id as string | null;
+    const contractNo = transaction.notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null;
+
+    if (!partyId && contractNo) {
+      const { data: contract } = await supabase.from("crm_contracts").select("party_id,invoice_id").eq("organization_id", membership.organization_id).ilike("contract_no", contractNo).maybeSingle();
+      if (contract?.party_id) partyId = contract.party_id;
+      if (contract?.invoice_id) {
+        await supabase.from("billing_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", contract.invoice_id).eq("organization_id", membership.organization_id);
+      }
+    }
+
+    if (partyId) {
+      const { error: entryError } = await supabase.from("account_entries").insert({
+        organization_id: membership.organization_id,
+        party_id: partyId,
+        entry_type: transaction.transaction_type === "income" ? "credit" : "debit",
+        source_type: "payment",
+        amount: transaction.amount,
+        description: `${transaction.title} tahsil edildi`,
+        transaction_date: new Date().toISOString().slice(0, 10),
+        created_by: userId,
+      });
+      if (entryError) throw new Error("Ödeme işaretlendi ama cari bakiyesi güncellenemedi: " + entryError.message);
+    }
+  }
+
   revalidatePath("/panel/finance");
   revalidatePath("/panel");
 }
