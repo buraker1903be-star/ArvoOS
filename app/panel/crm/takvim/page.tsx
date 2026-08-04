@@ -3,6 +3,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { AppointmentForm } from "./appointment-form";
 import { updateAppointmentStatus, deleteAppointment } from "./actions";
+import { CrmTabs } from "../crm-tabs";
 import "../takvim.css";
 
 const managerRoles = new Set(["owner", "admin", "manager"]);
@@ -147,6 +148,7 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
 
   return (
     <div className="crm-page-stack">
+      <CrmTabs active="takvim" />
       <div className="panel-pagehead">
         <div><small className="panel-kicker">CRM / TAKVİM</small><h1>Satış Takvimi</h1><p>{isManager ? "Tüm ekibin randevularını görüntüleyin." : "Kendi randevularınızı ve notlarınızı yönetin."}</p></div>
         <div className="panel-page-actions">

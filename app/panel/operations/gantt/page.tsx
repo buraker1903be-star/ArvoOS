@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { OperationsTabs } from "../operations-tabs";
 import "../../gantt.css";
 
 const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
@@ -59,6 +60,7 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   const gridTemplateColumns = `200px repeat(${daysInMonth}, minmax(22px, 1fr))`;
 
   return <div className="crm-page-stack">
+    <OperationsTabs active="gantt" />
     <div className="panel-pagehead">
       <div><small className="panel-kicker">OPERASYON / GANTT</small><h1>Gantt Çizelgesi</h1><p>İşlerin başlangıç ve termin tarihlerini takvim üzerinde görün.</p></div>
       <div className="panel-page-actions"><span className="status-pill">{plotted.length} iş</span></div>

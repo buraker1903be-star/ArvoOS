@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { addWorkflowStep, createWorkflow, setWorkflowStatus, toggleWorkflowStep } from "./actions";
+import { OperationsTabs } from "./operations-tabs";
 import "./operations.css";
 
 const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
@@ -33,6 +34,7 @@ export default async function OperationsPage() {
   </form>;
 
   return <>
+    <OperationsTabs active="is-akisi" />
     <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
     <section className="ops-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>

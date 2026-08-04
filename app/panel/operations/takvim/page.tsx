@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { OperationsTabs } from "../operations-tabs";
 import "../../crm/takvim.css";
 
 const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
@@ -81,6 +82,7 @@ export default async function OperationsCalendarPage({ searchParams }: { searchP
   };
 
   return <div className="crm-page-stack">
+    <OperationsTabs active="takvim" />
     <div className="panel-pagehead">
       <div><small className="panel-kicker">OPERASYON / TAKVİM</small><h1>İş Takvimi</h1><p>İşlerin termin tarihlerini takvim üzerinde görün. (CRM randevu takviminden ayrıdır.)</p></div>
       <div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span></div>
