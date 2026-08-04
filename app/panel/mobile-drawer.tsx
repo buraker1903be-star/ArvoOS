@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  PanelModule,
+  resolveGroupHref,
+  resolveNavigationGroups,
+} from "./panel-navigation-config";
 
-type PanelModule = { code: string; name: string; icon?: string | null };
 type MobileItem = { href: string; label: string; icon: string };
-
-const normalize = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
 export function MobileDrawer({
   modules,
@@ -25,36 +27,21 @@ export function MobileDrawer({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const items = useMemo<MobileItem[]>(() => {
-    const normalizedModules = modules.map((module) => ({ ...module, normalizedCode: normalize(module.code) }));
-    const codes = new Set(normalizedModules.map((module) => module.normalizedCode));
-    const firstModuleHref = (acceptedCodes: string[], fallback: string) => {
-      const module = normalizedModules.find((item) => acceptedCodes.includes(item.normalizedCode));
-      return module ? `/panel/${module.code}` : fallback;
-    };
+    const groups = resolveNavigationGroups(modules)
+      .filter((group) => group.items.length > 0)
+      .map((group) => ({
+        href: resolveGroupHref(group),
+        label: group.label,
+        icon: group.icon,
+      }));
 
-    const result: MobileItem[] = [{ href: "/panel", label: "Ana Sayfa", icon: "⌂" }];
+    const result: MobileItem[] = [
+      { href: "/panel", label: "Ana Sayfa", icon: "⌂" },
+      ...groups,
+    ];
 
-    if (["crm", "requests", "sales", "proposals", "contracts"].some((code) => codes.has(code))) {
-      result.push({ href: "/panel/crm", label: "CRM", icon: "C" });
-    }
-    if (["operations", "tasks", "calendar", "workflows"].some((code) => codes.has(code))) {
-      result.push({ href: "/panel/operations", label: "Operasyon", icon: "O" });
-    }
-    if (["finance", "accounts", "banking", "billing", "payments", "e_invoice"].some((code) => codes.has(code))) {
-      result.push({ href: firstModuleHref(["finance", "billing", "payments", "e_invoice", "accounts", "banking"], "/panel/finance"), label: "Finans", icon: "F" });
-    }
-    if (codes.has("hr")) {
-      result.push({ href: firstModuleHref(["hr"], "/panel/hr"), label: "İnsan Kaynakları", icon: "İK" });
-    }
-    if (["documents", "files", "templates"].some((code) => codes.has(code))) {
-      result.push({ href: firstModuleHref(["documents", "files", "templates"], "/panel/documents"), label: "Dokümanlar", icon: "D" });
-    }
-    if (["reporting", "reports", "analytics"].some((code) => codes.has(code))) {
-      result.push({ href: firstModuleHref(["reporting", "reports", "analytics"], "/panel/reporting"), label: "Raporlar", icon: "R" });
-    }
-    if (codes.has("messages")) {
-      result.push({ href: firstModuleHref(["messages"], "/panel/messages"), label: "Mesajlar", icon: "M" });
-    }
+    const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
+    if (hasMessages) result.push({ href: "/panel/messages", label: "Mesajlar", icon: "M" });
 
     result.push({ href: "/panel/notifications", label: "Bildirimler", icon: "B" });
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
