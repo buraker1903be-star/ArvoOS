@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
+import { NewOrganizationWizard } from "./new-organization-wizard";
 
 type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
 type ManagedOrganization = { id: string; name: string; slug: string; status: string; plan_code: string; sector: string; custom_domain: string | null; provisioning_state: string };
@@ -46,23 +47,12 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
   return <>
     <div className="panel-pagehead"><div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını, provisioning durumlarını, owner davetlerini ve paket erişimlerini yönetin.</p></div><span className="owner-badge">◇ KURUCU YETKİSİ</span></div>
-    {params.provisioned === "1" ? <div className="team-notice">Kurum hazırlandı; owner daveti gönderildi ve kabul bekleniyor.</div> : null}
+    {params.provisioned === "1" ? <div className="wizard-success"><span>✓</span><div><b>{selectedOrganization.name} kuruldu</b><p>Davet {latestInvitation?.email ?? "belirtilen adrese"} gönderildi ve kabul bekleniyor. Aşağıdan modülleri özelleştirebilir veya kurum ayarlarını düzenleyebilirsiniz.</p></div></div> : null}
 
     <section className="management-grid">
       <article className="panel-card management-card">
-        <div className="management-heading"><div><small>TENANT PROVISIONING</small><h2>Yeni müşteri kurumu</h2></div><span className="status-pill">Otomatik kurulum</span></div>
-        <form className="panel-form" action={createCustomerOrganization}>
-          <label>Kurum adı<input name="name" minLength={2} maxLength={160} required placeholder="Örn. AkademikMerkez" /></label>
-          <label>Kısa ad / slug<input name="slug" minLength={2} maxLength={80} placeholder="akademikmerkez" /></label>
-          <label>Sektör<input name="sector" defaultValue="general" minLength={2} maxLength={80} required /></label>
-          <label>Paket<select name="plan_code" defaultValue="starter">{(plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
-          <label>İlk owner adı<input name="owner_name" minLength={2} maxLength={120} required placeholder="Ad Soyad" /></label>
-          <label>İlk owner e-posta<input name="owner_email" type="email" required placeholder="owner@firma.com" /></label>
-          <label className="wide">Özel alan adı<input name="custom_domain" placeholder="panel.firma.com" /></label>
-          <label><input name="seed_crm" type="checkbox" /> CRM demo verisi</label>
-          <label><input name="seed_operations" type="checkbox" /> Operasyon demo verisi</label>
-          <div className="wide management-submit"><small>Kurum, modüller, demo verileri ve owner daveti tek provisioning akışında hazırlanır.</small><button className="panel-primary" type="submit">Kurumu hazırla ve davet et</button></div>
-        </form>
+        <div className="management-heading"><div><small>TENANT PROVISIONING</small><h2>Yeni müşteri kurulumu</h2></div><span className="status-pill">4 adım</span></div>
+        <NewOrganizationWizard action={createCustomerOrganization} plans={(plans ?? []).map((plan) => ({ code: plan.code, name: plan.name }))} />
       </article>
 
       <article className="panel-card management-card">

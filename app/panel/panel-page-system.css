@@ -55,6 +55,29 @@
 }
 .panel-module a:active,.crm-column>header:active{opacity:.85}
 
+/* ---------- New customer setup wizard ---------- */
+.wizard{display:flex;flex-direction:column;gap:22px}
+.wizard-steps{display:flex;list-style:none;margin:0;padding:0;gap:6px;counter-reset:none}
+.wizard-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--dim);font-size:9px;font-weight:800;white-space:nowrap;transition:.18s ease}
+.wizard-steps li span{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--line);color:var(--muted);font-size:9px}
+.wizard-steps li.active{background:var(--accent-100);color:var(--accent-600)}
+.wizard-steps li.active span{background:var(--accent-500);color:#fff}
+.wizard-steps li.done{color:var(--muted)}
+.wizard-steps li.done span{background:var(--accent-500);color:#fff}
+.wizard-step-intro{margin:0 0 14px;color:var(--muted);font-size:10px;line-height:1.6}
+.wizard-check{display:flex!important;align-items:center;gap:8px;font-weight:700!important}
+.wizard-check input{width:16px;height:16px;margin:0}
+.wizard-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+.wizard-summary div{padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
+.wizard-summary dt{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}
+.wizard-summary dd{margin:5px 0 0;color:var(--ink);font-size:11px;font-weight:700;overflow-wrap:anywhere}
+.wizard-nav{display:flex;justify-content:space-between;align-items:center;padding-top:6px}
+.wizard-success{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;margin-bottom:16px;border:1px solid color-mix(in srgb, var(--success) 30%, var(--line));border-radius:var(--r-lg);background:var(--success-soft)}
+.wizard-success>span{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--success);color:#fff;font-weight:800}
+.wizard-success b{display:block;color:var(--ink);font-size:13px}
+.wizard-success p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+@media(max-width:620px){.wizard-steps{flex-wrap:wrap}.wizard-steps li{flex:1 1 calc(50% - 6px)}.wizard-summary{grid-template-columns:1fr}}
+
 /* ---------- Specificity guard: button-style links keep their own color
    even when nested inside a card that styles plain <a> text links ---------- */
 .panel-primary:link,.panel-primary:visited,.panel-primary:hover,.panel-primary:active{color:#fff}
