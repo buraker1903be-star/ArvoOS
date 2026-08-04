@@ -136,7 +136,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     </div>
 
     {(hasCari || hasBanking) ? (
-      <div className="calendar-view-toggle finance-tabs">
+      <div className="finance-tabs">
         <a className={tab === "genel" ? "active" : ""} href={tabHref("genel")}>Genel Bakış</a>
         {hasCari ? <a className={tab === "cari" ? "active" : ""} href={tabHref("cari")}>Cari Hesaplar</a> : null}
         {hasBanking ? <a className={tab === "banka" ? "active" : ""} href={tabHref("banka")}>Banka ve Mutabakat</a> : null}

@@ -3,7 +3,12 @@
    ============================================================ */
 
 .finance-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
-.finance-tabs{margin-bottom:18px}
+.finance-tabs{display:inline-flex;margin-bottom:18px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);overflow:hidden}
+.finance-tabs a{padding:9px 16px;font-size:10px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
+.finance-tabs a+a{border-left:1px solid var(--line)}
+.finance-tabs a:hover{background:var(--surface-2);color:var(--ink)}
+.finance-tabs a.active{background:var(--brand-700);color:#fff}
+@media(max-width:620px){.finance-tabs{display:flex;width:100%}.finance-tabs a{flex:1;text-align:center;padding:9px 8px}}
 .finance-metrics-six{grid-template-columns:repeat(3,minmax(0,1fr))}
 .finance-metrics article,.finance-create,.finance-list,.finance-side,.aging-card,.due-card{border:1px solid var(--line);background:var(--surface);border-radius:20px}
 .finance-metrics article{padding:22px;display:flex;flex-direction:column;gap:8px}
