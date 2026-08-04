@@ -24,9 +24,20 @@ export async function inviteTeamMember(formData: FormData) {
   const { data, error } = await supabase.functions.invoke("invite-team-member", {
     body: { organizationId: membership.organization_id, email, role, fullName, redirectBase },
   });
-  if (error || data?.error) {
-    throw new Error(data?.error || error?.message || "Davet gönderilemedi.");
+  if (error) {
+    let message = error.message || "Davet gönderilemedi.";
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const body = await context.json();
+        if (body?.error) message = body.error;
+      } catch {
+        // response body wasn't JSON; keep the generic message
+      }
+    }
+    throw new Error(message);
   }
+  if (data?.error) throw new Error(data.error);
   revalidatePath("/panel/hr");
 }
 

@@ -82,7 +82,40 @@ Deno.serve(async (request) => {
         full_name: fullName || undefined,
       },
     });
-    if (inviteError) throw new Error(`Davet e-postası gönderilemedi: ${inviteError.message}`);
+
+    if (inviteError) {
+      // Email already belongs to an existing account: link them to this
+      // organization directly instead of failing the whole invite.
+      const alreadyExists = /already registered|already exists|email_exists/i.test(inviteError.message || "");
+      if (!alreadyExists) throw new Error(`Davet e-postası gönderilemedi: ${inviteError.message}`);
+
+      let existingUserId: string | null = null;
+      let page = 1;
+      while (!existingUserId && page <= 20) {
+        const { data: userPage, error: listError } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+        if (listError || !userPage?.users?.length) break;
+        const match = userPage.users.find((candidate) => (candidate.email || "").toLowerCase() === email);
+        if (match) existingUserId = match.id;
+        if (userPage.users.length < 200) break;
+        page += 1;
+      }
+      if (!existingUserId) throw new Error("Bu e-posta zaten kayıtlı görünüyor ama kullanıcı bulunamadı. Lütfen Supabase Authentication panelinden kontrol edin.");
+
+      const { error: membershipError } = await adminClient.from("organization_memberships")
+        .upsert({ organization_id: organizationId, user_id: existingUserId, role, is_active: true }, { onConflict: "organization_id,user_id" });
+      if (membershipError) throw new Error(`Kullanıcı zaten kayıtlı, kuruma eklenemedi: ${membershipError.message}`);
+
+      await adminClient.from("organization_invitations").update({
+        status: "accepted",
+        auth_user_id: existingUserId,
+        sent_at: new Date().toISOString(),
+        accepted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        error_message: null,
+      }).eq("id", invitationId);
+
+      return json({ invitation_id: invitationId, status: "accepted", linked_existing_user: true });
+    }
 
     await adminClient.from("organization_invitations").update({
       status: "sent",
