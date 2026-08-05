@@ -57,7 +57,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
       <article className="panel-card management-card">
         <div className="management-heading"><div><small>YÖNETİLECEK KURUM</small><h2>Kurum seçimi</h2></div><span className="status-pill">{organizations.length} kurum</span></div>
-        <form className="panel-form" method="get"><label className="wide">Aktif hedef kurum<select name="organization" defaultValue={targetId}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.plan_code}</option>)}</select></label><div className="wide management-submit"><small>Seçim yalnızca kurucu yönetim görünümünü değiştirir.</small><button className="panel-primary" type="submit">Kurumu aç</button></div></form>
+        <form className="panel-form" method="get"><label className="wide">Aktif hedef kurum<select name="organization" defaultValue={targetId}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.display_name ? `${item.display_name} - ${item.name}` : item.name} · {item.plan_code}</option>)}</select></label><div className="wide management-submit"><small>Seçim yalnızca kurucu yönetim görünümünü değiştirir.</small><button className="panel-primary" type="submit">Kurumu aç</button></div></form>
         <div className="platform-note"><span>i</span><p><b>Provisioning: {stateLabels[selectedOrganization.provisioning_state] ?? selectedOrganization.provisioning_state}</b>{latestInvitation ? ` · ${latestInvitation.email} · ${latestInvitation.status}` : " · Owner daveti yok"}{latestInvitation?.error_message ? ` · ${latestInvitation.error_message}` : ""}</p></div>
       </article>
     </section>
