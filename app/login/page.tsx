@@ -62,8 +62,7 @@ export default async function LoginPage({
       <section className="login-form-wrap">
         <form action={login} className="login-card">
           <div className="login-card-brand">
-            {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : null}
-            <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>
+            {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>}
           </div>
           <span>GÜVENLİ PANEL GİRİŞİ</span>
           <h2>Panel’e Hoşgeldiniz</h2>
