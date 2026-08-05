@@ -99,6 +99,86 @@ export async function createProposal(
   redirect(`/panel/crm/proposals?share=${encodeURIComponent(row.access_token)}`);
 }
 
+// Talep sayfasından "Direkt Sözleşme Oluştur" ile çağrılır: fiyat/ödeme
+// planı yine teklif kaydı olarak tutulur (iç kayıt, raporlama için), ama
+// müşterinin online onaylamasını beklemeden aynı işlemde sözleşmeye
+// dönüştürülür.
+export async function createContractDirectly(
+  _previousState: CreateProposalState,
+  formData: FormData,
+): Promise<CreateProposalState> {
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const title = text(formData, "title", 180);
+  const scope = text(formData, "scope");
+  const proposalAmount = amount(formData, "amount");
+  const taxStatus = text(formData, "tax_status", 20);
+  const paymentPlanType = text(formData, "payment_plan_type", 20);
+  const paymentPlan = text(formData, "payment_plan", 1000);
+  const validUntil = text(formData, "valid_until", 20) || null;
+  const estimatedDeliveryDate =
+    text(formData, "estimated_delivery_date", 20) || null;
+
+  let paymentSchedule: unknown = [];
+  try {
+    paymentSchedule = JSON.parse(text(formData, "payment_schedule", 10000) || "[]");
+  } catch {
+    return { error: "Ödeme planı okunamadı. Ödeme planını yeniden oluşturun." };
+  }
+
+  if (
+    !opportunityId ||
+    title.length < 2 ||
+    scope.length < 2 ||
+    !Number.isFinite(proposalAmount) ||
+    proposalAmount < 0
+  ) {
+    return { error: "Sözleşme bilgileri eksik veya geçersiz." };
+  }
+
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) return { error: "Bu işlem için yetkiniz yok." };
+
+  const { data, error } = await supabase.rpc("create_crm_proposal_v2", {
+    target_opportunity_id: opportunityId,
+    proposal_title: title,
+    proposal_scope: scope,
+    proposal_amount: proposalAmount,
+    proposal_tax_status: taxStatus,
+    proposal_payment_plan_type: paymentPlanType,
+    proposal_payment_plan: paymentPlan || null,
+    proposal_payment_schedule: paymentSchedule,
+    proposal_valid_until: validUntil,
+    proposal_estimated_delivery_date: estimatedDeliveryDate,
+  });
+
+  if (error) {
+    console.error("create_crm_proposal_v2 failed (direct contract)", { code: error.code, message: error.message, opportunityId, paymentPlanType, taxStatus });
+    return { error: proposalErrorMessage(error.message) };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.access_token) {
+    return { error: "Kayıt oluşturuldu ancak sözleşmeye dönüştürülemedi." };
+  }
+
+  const { data: acceptData, error: acceptError } = await supabase.rpc("respond_to_crm_proposal", {
+    public_token: row.access_token,
+    decision: "accept",
+  });
+  if (acceptError) {
+    return { error: "Sözleşmeye dönüştürülemedi: " + acceptError.message };
+  }
+  const acceptRow = Array.isArray(acceptData) ? acceptData[0] : acceptData;
+  if (acceptRow?.result_status !== "accepted") {
+    return { error: "Sözleşmeye dönüştürülemedi, durumu kontrol edin." };
+  }
+
+  revalidatePath("/panel/crm");
+  revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm/contracts");
+  redirect(`/panel/crm/contracts${acceptRow?.contract_token ? `?share=${encodeURIComponent(acceptRow.contract_token)}` : ""}`);
+}
+
 export async function updateProposal(formData: FormData) {
   const { supabase } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);

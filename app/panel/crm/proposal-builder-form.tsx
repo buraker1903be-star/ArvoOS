@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { createProposal, type CreateProposalState } from "./sales-actions";
+import { createProposal, createContractDirectly, type CreateProposalState } from "./sales-actions";
 import {
   calculatePaymentSchedule,
   getPaymentPlanLabel,
@@ -15,6 +15,7 @@ type Props = {
   customerName: string;
   title: string;
   scope: string;
+  mode?: "proposal" | "contract";
 };
 type Tax = "excluded" | "included" | "exempt";
 type CustomRow = {
@@ -43,8 +44,10 @@ const customRowPresets = [
   "Son Ödeme (Teslim Öncesi)",
 ];
 
-function SubmitButton({ customPlanValid }: { customPlanValid: boolean }) {
+function SubmitButton({ customPlanValid, mode }: { customPlanValid: boolean; mode: "proposal" | "contract" }) {
   const { pending } = useFormStatus();
+  const idleLabel = mode === "contract" ? "Sözleşmeyi Oluştur" : "Teklifi Oluştur";
+  const pendingLabel = mode === "contract" ? "Sözleşme Oluşturuluyor..." : "Teklif Oluşturuluyor...";
 
   return (
     <button
@@ -53,7 +56,7 @@ function SubmitButton({ customPlanValid }: { customPlanValid: boolean }) {
       disabled={pending || !customPlanValid}
       aria-disabled={pending || !customPlanValid}
     >
-      {pending ? "Teklif Oluşturuluyor..." : "Teklifi Oluştur"}
+      {pending ? pendingLabel : idleLabel}
     </button>
   );
 }
@@ -63,9 +66,10 @@ export function ProposalBuilderForm({
   customerName,
   title,
   scope,
+  mode = "proposal",
 }: Props) {
   const [state, formAction] = useActionState(
-    createProposal,
+    mode === "contract" ? createContractDirectly : createProposal,
     initialCreateProposalState,
   );
   const [amount, setAmount] = useState(0);
@@ -155,7 +159,7 @@ export function ProposalBuilderForm({
   return (
     <div className="proposal-drawer-content">
       <section className="proposal-drawer-intro">
-        <small>YENİ TEKLİF</small>
+        <small>{mode === "contract" ? "DİREKT SÖZLEŞME" : "YENİ TEKLİF"}</small>
         <h3
           style={{
             fontSize: "18px",
@@ -164,10 +168,12 @@ export function ProposalBuilderForm({
             maxWidth: "calc(100% - 8px)",
           }}
         >
-          {customerName} için teklif
+          {customerName} için {mode === "contract" ? "sözleşme" : "teklif"}
         </h3>
         <p style={{ margin: 0, paddingBottom: "2px" }}>
-          Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin.
+          {mode === "contract"
+            ? "Tutarı ve ödeme planını belirleyin — müşteri onayı beklenmeden sözleşme hemen oluşturulacak."
+            : "Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin."}
         </p>
       </section>
 
@@ -179,7 +185,7 @@ export function ProposalBuilderForm({
 
         {state.error ? (
           <div className="wide panel-form-error" role="alert" aria-live="assertive" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>
-            <strong>Teklif oluşturulamadı</strong>
+            <strong>{mode === "contract" ? "Sözleşme oluşturulamadı" : "Teklif oluşturulamadı"}</strong>
             <p style={{ margin: "6px 0 0" }}>{state.error}</p>
           </div>
         ) : null}
@@ -226,7 +232,7 @@ export function ProposalBuilderForm({
           </section>
         </section>
 
-        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} /></div>
+        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} mode={mode} /></div>
       </form>
     </div>
   );
