@@ -2,10 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  createProposal,
-  initialCreateProposalState,
-} from "./sales-actions";
+import { createProposal, type CreateProposalState } from "./sales-actions";
 import {
   calculatePaymentSchedule,
   getPaymentPlanLabel,
@@ -27,6 +24,7 @@ type CustomRow = {
   due_date: string;
 };
 
+const initialCreateProposalState: CreateProposalState = { error: null };
 const money = (value: number) =>
   new Intl.NumberFormat("tr-TR", {
     style: "currency",
@@ -175,239 +173,60 @@ export function ProposalBuilderForm({
 
       <form className="panel-form proposal-builder" action={formAction}>
         <input type="hidden" name="opportunity_id" value={opportunityId} />
-        <input
-          type="hidden"
-          name="payment_schedule"
-          value={JSON.stringify(schedule)}
-        />
+        <input type="hidden" name="payment_schedule" value={JSON.stringify(schedule)} />
         <input type="hidden" name="payment_plan_type" value={plan} />
         <input type="hidden" name="payment_plan" value={planText} />
 
         {state.error ? (
-          <div
-            className="wide panel-form-error"
-            role="alert"
-            aria-live="assertive"
-            style={{
-              border: "1px solid currentColor",
-              borderRadius: "10px",
-              padding: "12px 14px",
-            }}
-          >
+          <div className="wide panel-form-error" role="alert" aria-live="assertive" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>
             <strong>Teklif oluşturulamadı</strong>
             <p style={{ margin: "6px 0 0" }}>{state.error}</p>
           </div>
         ) : null}
 
-        <label className="wide">
-          Teklif başlığı
-          <input name="title" required defaultValue={title} />
-        </label>
-        <label>
-          Teklif tutarı
-          <input
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            onChange={(event) => setAmount(Number(event.target.value) || 0)}
-          />
-        </label>
-        <label>
-          KDV durumu
-          <select
-            name="tax_status"
-            value={tax}
-            onChange={(event) => setTax(event.target.value as Tax)}
-          >
-            <option value="excluded">KDV Hariç</option>
-            <option value="included">KDV Dahil</option>
-            <option value="exempt">KDV İstisna</option>
-          </select>
-        </label>
-        <label className="wide">
-          Ödeme planı
-          <select
-            value={plan}
-            onChange={(event) =>
-              setPlan(event.target.value as PaymentPlanType)
-            }
-          >
-            <option value="cash">1. Peşin Ödeme</option>
-            <option value="half">
-              2. %50 Peşin (Sözleşme Onayında) + %50 Teslim Öncesi
-            </option>
-            <option value="third">
-              3. 1/3 Peşin (Sözleşme Onayında) + Ara Ödeme + Son Ödeme
-              (Teslim Öncesi)
-            </option>
-            <option value="custom">
-              4. Özel Ödeme Planı (Taksitli)
-            </option>
-          </select>
-        </label>
-        {plan !== "custom" ? (
-          <label>
-            İlk ödeme tarihi
-            <input
-              type="date"
-              value={firstPaymentDate}
-              onChange={(event) => setFirstPaymentDate(event.target.value)}
-            />
-          </label>
-        ) : null}
-        <label>
-          Tahmini teslim tarihi
-          <input
-            name="estimated_delivery_date"
-            type="date"
-            min={today()}
-            required
-          />
-        </label>
-        <label>
-          Geçerlilik tarihi
-          <input name="valid_until" type="date" min={today()} />
-        </label>
-
-        <label className="wide">
-          Hizmet kapsamı
-          <textarea name="scope" required defaultValue={scope} />
-        </label>
+        <label className="wide">Teklif başlığı<input name="title" required defaultValue={title} /></label>
+        <label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
+        <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
+        <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">1. Peşin Ödeme</option><option value="half">2. %50 Peşin (Sözleşme Onayında) + %50 Teslim Öncesi</option><option value="third">3. 1/3 Peşin (Sözleşme Onayında) + Ara Ödeme + Son Ödeme (Teslim Öncesi)</option><option value="custom">4. Özel Ödeme Planı (Taksitli)</option></select></label>
+        {plan !== "custom" ? <label>İlk ödeme tarihi<input type="date" value={firstPaymentDate} onChange={(event) => setFirstPaymentDate(event.target.value)} /></label> : null}
+        <label>Tahmini teslim tarihi<input name="estimated_delivery_date" type="date" min={today()} required /></label>
+        <label>Geçerlilik tarihi<input name="valid_until" type="date" min={today()} /></label>
+        <label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={scope} /></label>
 
         {plan === "custom" ? (
           <section className="wide custom-plan-editor">
-            <div className="custom-plan-head">
-              <small>ÖZEL ÖDEME PLANI — TAKSİTLER</small>
-              <span
-                className={
-                  customPercentTotal === 100
-                    ? "custom-plan-total ok"
-                    : "custom-plan-total warn"
-                }
-              >
-                Toplam %{customPercentTotal.toFixed(0)}
-              </span>
-            </div>
+            <div className="custom-plan-head"><small>ÖZEL ÖDEME PLANI — TAKSİTLER</small><span className={customPercentTotal === 100 ? "custom-plan-total ok" : "custom-plan-total warn"}>Toplam %{customPercentTotal.toFixed(0)}</span></div>
             <div className="custom-plan-rows">
               {customRows.map((row, index) => (
                 <div className="custom-plan-row" key={row.id}>
                   <span className="custom-plan-index">{index + 1}</span>
-                  <input
-                    list="custom-plan-presets"
-                    value={row.label}
-                    onChange={(event) =>
-                      updateCustomRow(row.id, { label: event.target.value })
-                    }
-                    placeholder="Örn. Ön Ödeme"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={row.percentage}
-                    onChange={(event) =>
-                      updateCustomRow(row.id, {
-                        percentage: Number(event.target.value) || 0,
-                      })
-                    }
-                  />
+                  <input list="custom-plan-presets" value={row.label} onChange={(event) => updateCustomRow(row.id, { label: event.target.value })} placeholder="Örn. Ön Ödeme" />
+                  <input type="number" min="0" max="100" step="1" value={row.percentage} onChange={(event) => updateCustomRow(row.id, { percentage: Number(event.target.value) || 0 })} />
                   <span className="custom-plan-percent-sign">%</span>
-                  <input
-                    type="date"
-                    value={row.due_date}
-                    onChange={(event) =>
-                      updateCustomRow(row.id, {
-                        due_date: event.target.value,
-                      })
-                    }
-                  />
-                  <span className="custom-plan-amount">
-                    {money(
-                      Math.round(
-                        (calculation.gross *
-                          (Number(row.percentage) || 0)) /
-                          100,
-                      ),
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    className="custom-plan-remove"
-                    onClick={() => removeCustomRow(row.id)}
-                    disabled={customRows.length <= 1}
-                    aria-label="Taksiti sil"
-                  >
-                    ✕
-                  </button>
+                  <input type="date" value={row.due_date} onChange={(event) => updateCustomRow(row.id, { due_date: event.target.value })} />
+                  <span className="custom-plan-amount">{money(Math.round((calculation.gross * (Number(row.percentage) || 0)) / 100))}</span>
+                  <button type="button" className="custom-plan-remove" onClick={() => removeCustomRow(row.id)} disabled={customRows.length <= 1} aria-label="Taksiti sil">✕</button>
                 </div>
               ))}
             </div>
-            <datalist id="custom-plan-presets">
-              {customRowPresets.map((preset) => (
-                <option key={preset} value={preset} />
-              ))}
-            </datalist>
-            <button
-              type="button"
-              className="panel-secondary custom-plan-add"
-              onClick={addCustomRow}
-            >
-              + Taksit ekle
-            </button>
-            {customPercentTotal !== 100 ? (
-              <p className="custom-plan-hint">
-                Taksit yüzdeleri toplamı %100 olmalı (şu an %
-                {customPercentTotal.toFixed(0)}).
-              </p>
-            ) : null}
+            <datalist id="custom-plan-presets">{customRowPresets.map((preset) => <option key={preset} value={preset} />)}</datalist>
+            <button type="button" className="panel-secondary custom-plan-add" onClick={addCustomRow}>+ Taksit ekle</button>
+            {customPercentTotal !== 100 ? <p className="custom-plan-hint">Taksit yüzdeleri toplamı %100 olmalı (şu an %{customPercentTotal.toFixed(0)}).</p> : null}
           </section>
         ) : null}
 
         <section className="proposal-live-summary wide" aria-live="polite">
-          <header>
-            <span>TEKLİF ÖZETİ</span>
-            <strong>{money(calculation.gross)}</strong>
-          </header>
-          <div>
-            <span>Ara toplam</span>
-            <b>{money(calculation.net)}</b>
-          </div>
-          <div>
-            <span>KDV</span>
-            <b>{money(calculation.vat)}</b>
-          </div>
-          <div className="proposal-summary-total">
-            <span>Genel toplam</span>
-            <strong>{money(calculation.gross)}</strong>
-          </div>
+          <header><span>TEKLİF ÖZETİ</span><strong>{money(calculation.gross)}</strong></header>
+          <div><span>Ara toplam</span><b>{money(calculation.net)}</b></div>
+          <div><span>KDV</span><b>{money(calculation.vat)}</b></div>
+          <div className="proposal-summary-total"><span>Genel toplam</span><strong>{money(calculation.gross)}</strong></div>
           <section className="proposal-payment-breakdown">
-            <small>
-              {plan === "custom"
-                ? "ÖDEME PLANI (ÜCRETLER HESAPLANDI)"
-                : "OTOMATİK ÖDEME PLANI (ÜCRET HESAPLANDI)"}
-            </small>
-            {schedule.map((item) => (
-              <div key={`${item.sequence}-${item.due_date}`}>
-                <span>
-                  {item.sequence}. {item.label} ·{" "}
-                  {item.due_date
-                    ? new Date(
-                        `${item.due_date}T12:00:00`,
-                      ).toLocaleDateString("tr-TR")
-                    : "Tarih yok"}
-                </span>
-                <b>{money(item.amount)}</b>
-              </div>
-            ))}
+            <small>{plan === "custom" ? "ÖDEME PLANI (ÜCRETLER HESAPLANDI)" : "OTOMATİK ÖDEME PLANI (ÜCRET HESAPLANDI)"}</small>
+            {schedule.map((item) => <div key={`${item.sequence}-${item.due_date}`}><span>{item.sequence}. {item.label} · {item.due_date ? new Date(`${item.due_date}T12:00:00`).toLocaleDateString("tr-TR") : "Tarih yok"}</span><b>{money(item.amount)}</b></div>)}
           </section>
         </section>
 
-        <div className="wide panel-form-actions">
-          <SubmitButton customPlanValid={customPlanValid} />
-        </div>
+        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} /></div>
       </form>
     </div>
   );
