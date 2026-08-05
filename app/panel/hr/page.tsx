@@ -152,6 +152,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
               ) : (
                 <form className="team-member-form" action={updateTeamMemberAccess}>
                   <input type="hidden" name="user_id" value={member.user_id} />
+                  {!hrInfo ? <input name="full_name" defaultValue={profileMap.get(member.user_id) ?? ""} placeholder="Ad Soyad girin" className="team-name-fix" /> : null}
                   <select name="role" defaultValue={member.role}>
                     <option value="member">Üye</option>
                     <option value="manager">Ekip Lideri</option>

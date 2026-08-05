@@ -38,6 +38,7 @@ export async function updateTeamMemberAccess(formData: FormData) {
   const userId = String(formData.get("user_id") ?? "").trim();
   const role = String(formData.get("role") ?? "member");
   const isActive = formData.get("is_active") === "on";
+  const fullName = String(formData.get("full_name") ?? "").trim();
   if (!userId) throw new Error("Kullanıcı seçilmedi.");
   if (!["owner", "admin", "manager", "member"].includes(role)) throw new Error("Geçersiz rol.");
 
@@ -46,6 +47,16 @@ export async function updateTeamMemberAccess(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .eq("user_id", userId);
   if (error) throw new Error("Kullanıcı güncellenemedi: " + error.message);
+
+  if (fullName) {
+    const { error: nameError } = await supabase.rpc("update_member_display_name", {
+      p_organization_id: membership.organization_id,
+      p_user_id: userId,
+      p_full_name: fullName,
+    });
+    if (nameError) throw new Error("İsim güncellenemedi: " + nameError.message);
+  }
+
   revalidatePath("/panel/hr");
 }
 
