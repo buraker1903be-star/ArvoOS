@@ -13,8 +13,6 @@ export type CreateProposalState = {
   error: string | null;
 };
 
-export const initialCreateProposalState: CreateProposalState = { error: null };
-
 function proposalErrorMessage(message: string) {
   if (message.includes("invalid_payment_plan_type")) {
     return "Seçilen ödeme planı desteklenmiyor. Sayfayı yenileyip tekrar deneyin.";
