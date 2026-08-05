@@ -13,8 +13,6 @@ export type LookupState = {
   }[] | null;
 };
 
-export const initialLookupState: LookupState = { error: null, results: null };
-
 export async function lookupStatus(
   orgSlug: string,
   _previousState: LookupState,

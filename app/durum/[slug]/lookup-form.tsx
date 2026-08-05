@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { lookupStatus, initialLookupState } from "./actions";
+import { lookupStatus } from "./actions";
+import { initialLookupState } from "./lookup-state";
 
 const contractStatusNames: Record<string, string> = {
   signed: "İmzalandı",
