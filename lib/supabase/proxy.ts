@@ -27,16 +27,19 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const isAppHost = host === DEFAULT_APP_HOST;
-  const isProtected = pathname.startsWith("/panel") || (isAppHost && pathname === "/");
   const isLogin = pathname === "/login";
 
   // Kendi alan adından (özel domain) gelen istekler: hangi kuruma ait
   // olduğunu bulup çalışma alanı çerezini ona göre ayarla, böylece
-  // kullanıcı panele girdiğinde doğru kurumu görür.
-  if (!isAppHost && host && data?.claims && (pathname.startsWith("/panel") || pathname === "/")) {
-    const { data: organizationId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
-    if (organizationId) {
-      response.cookies.set(WORKSPACE_COOKIE, organizationId as string, {
+  // kullanıcı panele girdiğinde doğru kurumu görür. Giriş yapmamış
+  // ziyaretçiler için de kurumu çözüyoruz ki kök yol (/) genel ArvoOS
+  // tanıtım sayfasına değil, o kurumun markalı giriş ekranına gitsin.
+  let customDomainOrgId: string | null = null;
+  if (!isAppHost && host) {
+    const { data: resolvedOrgId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
+    customDomainOrgId = (resolvedOrgId as string | null) ?? null;
+    if (customDomainOrgId && data?.claims) {
+      response.cookies.set(WORKSPACE_COOKIE, customDomainOrgId, {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
@@ -44,6 +47,9 @@ export async function updateSession(request: NextRequest) {
       });
     }
   }
+
+  const isCustomDomainRoot = Boolean(customDomainOrgId) && pathname === "/";
+  const isProtected = pathname.startsWith("/panel") || (isAppHost && pathname === "/") || isCustomDomainRoot;
 
   if (!data?.claims && isProtected) {
     const url = request.nextUrl.clone();
@@ -57,7 +63,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (data?.claims && isAppHost && pathname === "/") {
+  if (data?.claims && (isAppHost || customDomainOrgId) && pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/panel";
     return NextResponse.redirect(url);
