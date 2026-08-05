@@ -26,3 +26,17 @@
   .status-lookup-card-wrap{padding:32px 22px}
   .status-lookup-form input{font-size:20px;letter-spacing:6px}
 }
+
+/* ---------- İlerleme çubuğu + bakiye özeti ---------- */
+.status-lookup-progress{margin:14px 0}
+.status-lookup-progress-track{height:8px;border-radius:999px;background:#eef1ec;overflow:hidden}
+.status-lookup-progress-track span{display:block;height:100%;background:var(--status-accent,#183f31);border-radius:999px;min-width:2px}
+.status-lookup-progress b{display:block;margin-top:6px;font-size:10px;font-weight:800;color:var(--status-accent,#183f31)}
+
+.status-lookup-balance{margin-top:14px;padding-top:14px;border-top:1px solid #e4e9e2;display:flex;flex-direction:column;gap:6px}
+.status-lookup-balance div{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.status-lookup-balance span{color:#5c6b60}
+.status-lookup-balance b{color:#1a251c;font-weight:700}
+.status-lookup-balance-remaining{margin-top:4px;padding-top:8px;border-top:1px dashed #e4e9e2}
+.status-lookup-balance-remaining span{font-weight:700;color:#1a251c}
+.status-lookup-balance-remaining b{font-size:14px;color:#b3261e}

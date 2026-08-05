@@ -16,6 +16,7 @@ const workflowStatusNames: Record<string, string> = {
   completed: "Tamamlandı",
   cancelled: "İptal Edildi",
 };
+const money = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format((cents ?? 0) / 100);
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -61,6 +62,18 @@ export function StatusLookupForm({ orgSlug }: { orgSlug: string }) {
                 </span>
               </div>
               <p className="status-lookup-title">{row.contract_title}</p>
+
+              <div className="status-lookup-progress">
+                <div className="status-lookup-progress-track"><span style={{ width: `${row.progress_percentage}%` }} /></div>
+                <b>%{row.progress_percentage} tamamlandı</b>
+              </div>
+
+              <div className="status-lookup-balance">
+                <div><span>Toplam Tutar</span><b>{money(row.total_amount)}</b></div>
+                <div><span>Ödenen</span><b>{money(row.paid_amount)}</b></div>
+                <div className="status-lookup-balance-remaining"><span>Kalan Bakiye</span><b>{money(row.remaining_amount)}</b></div>
+              </div>
+
               <small>Son güncelleme: {new Date(row.last_update).toLocaleDateString("tr-TR")}</small>
             </article>
           ))}

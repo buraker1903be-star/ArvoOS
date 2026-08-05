@@ -10,6 +10,10 @@ export type LookupState = {
     contract_status: string;
     workflow_status: string | null;
     last_update: string;
+    total_amount: number;
+    paid_amount: number;
+    remaining_amount: number;
+    progress_percentage: number;
   }[] | null;
 };
 
