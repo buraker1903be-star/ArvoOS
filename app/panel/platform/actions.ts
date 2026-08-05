@@ -69,15 +69,17 @@ export async function createCustomerOrganization(formData: FormData) {
 export async function updateOrganizationSettings(formData: FormData) {
   const { supabase, organizationId } = await requireFounderTarget(formData);
   const name = String(formData.get("name") ?? "").trim();
+  const displayName = String(formData.get("display_name") ?? "").trim();
   const sector = String(formData.get("sector") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();
   const customDomain = cleanDomain(String(formData.get("custom_domain") ?? ""));
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
+  if (displayName && (displayName.length < 2 || displayName.length > 80)) throw new Error("Tabela unvanı 2–80 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
 
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
-  const updates: Record<string, unknown> = { name, sector, plan_code: planCode, custom_domain: customDomain, updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, updated_at: new Date().toISOString() };
 
   if (customDomain !== (current?.custom_domain ?? null)) {
     const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");
