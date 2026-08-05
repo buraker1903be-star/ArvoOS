@@ -17,9 +17,12 @@ type BankTransaction = { bank_account_id: string; direction: "inflow" | "outflow
 type AccountEntry = { entry_type: "debit" | "credit"; amount: number; due_date: string | null; transaction_date: string; party_id: string };
 type Party = { id: string; name: string; party_type: string; tax_number: string | null; account_entries: AccountEntry[] };
 type DetailedBankTransaction = { id: string; bank_account_id: string; direction: "inflow" | "outflow"; amount: number; transaction_date: string; description: string; reference_no: string | null; reconciliation_status: string; matched_invoice_id: string | null; matched_party_id: string | null };
+type ContractOverviewRow = { id: string; contract_no: string; title: string; amount: number; status: string; opportunity_id: string | null; crm_opportunities: { customer_name: string } | null };
 
 function daysOverdue(date: string | null) { if (!date) return 0; const due = new Date(date.includes("T") ? date : `${date}T00:00:00`); return Math.max(0, Math.floor((Date.now() - due.getTime()) / 86400000)); }
 function contractNumberFromNotes(notes: string | null) { return notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null; }
+const monthNamesShort = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+const workflowStatusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam Ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; tur?: string }> }) {
   const params = await searchParams;
@@ -31,7 +34,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const organizationId = membership.organization_id;
   const canManage = ["owner", "admin"].includes(membership.role);
 
-  const [{ data: transactions, error }, { data: invoices }, { data: contracts }, { data: bankAccounts }, { data: bankTransactions }, { data: accountEntries }, { data: partyData, error: partyError }, { data: detailedBankTransactions }, { data: reconciliationInvoices }, { data: reconciliationParties }] = await Promise.all([
+  const [{ data: transactions, error }, { data: invoices }, { data: contracts }, { data: bankAccounts }, { data: bankTransactions }, { data: accountEntries }, { data: partyData, error: partyError }, { data: detailedBankTransactions }, { data: reconciliationInvoices }, { data: reconciliationParties }, { data: overviewContracts }, { data: overviewWorkflows }, { data: overviewPaidInstallments }, { data: trendTransactions }] = await Promise.all([
     supabase.from("finance_transactions").select("id,transaction_type,status,title,counterparty,category,amount,due_date,created_at,notes").eq("organization_id", organizationId).order("created_at", { ascending: false }),
     supabase.from("billing_invoices").select("id,status,total,due_at,paid_at,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }),
     supabase.from("crm_contracts").select("contract_no,invoice_id").eq("organization_id", organizationId).not("invoice_id", "is", null),
@@ -50,6 +53,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     tab === "banka"
       ? supabase.from("account_parties").select("id,name").eq("organization_id", organizationId).eq("is_active", true).order("name")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    tab === "genel"
+      ? supabase.from("crm_contracts").select("id,contract_no,title,amount,status,opportunity_id,crm_opportunities(customer_name)").eq("organization_id", organizationId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }).limit(8)
+      : Promise.resolve({ data: [] as ContractOverviewRow[] }),
+    tab === "genel"
+      ? supabase.from("operation_workflows").select("contract_id,status").eq("organization_id", organizationId).not("contract_id", "is", null)
+      : Promise.resolve({ data: [] as { contract_id: string; status: string }[] }),
+    tab === "genel"
+      ? supabase.from("payment_installments").select("amount,status,payment_plan_id,payment_plans(contract_id)").eq("organization_id", organizationId).eq("status", "paid")
+      : Promise.resolve({ data: [] as { amount: number; status: string; payment_plan_id: string; payment_plans: { contract_id: string } | { contract_id: string }[] | null }[] }),
+    tab === "genel"
+      ? supabase.from("finance_transactions").select("transaction_type,status,amount,created_at").eq("organization_id", organizationId).eq("status", "paid").gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1).toISOString())
+      : Promise.resolve({ data: [] as { transaction_type: "income" | "expense"; status: string; amount: number; created_at: string }[] }),
   ]);
   if (error) throw new Error("Finans kayıtları okunamadı: " + error.message);
   if (partyError) throw new Error("Cari hesaplar okunamadı: " + partyError.message);
@@ -109,6 +124,39 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const bankTxIncoming = bankTxRows.filter((item) => item.direction === "inflow").reduce((sum, item) => sum + Number(item.amount), 0);
   const bankTxOutgoing = bankTxRows.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + Number(item.amount), 0);
   const bankTxOpening = accountList.reduce((sum, item) => sum + Number(item.opening_balance ?? 0), 0);
+
+  // CRM/Operasyon entegrasyonu: her sözleşmenin kalan bakiyesini ve
+  // operasyondaki iş durumunu tek satırda birleştiriyoruz.
+  const workflowStatusByContract = new Map((overviewWorkflows ?? []).map((w) => [w.contract_id, w.status]));
+  const paidByContract = new Map<string, number>();
+  for (const installment of (overviewPaidInstallments ?? []) as { amount: number; payment_plan_id: string; payment_plans: { contract_id: string } | { contract_id: string }[] | null }[]) {
+    const plan = Array.isArray(installment.payment_plans) ? installment.payment_plans[0] : installment.payment_plans;
+    const contractId = plan?.contract_id;
+    if (!contractId) continue;
+    paidByContract.set(contractId, (paidByContract.get(contractId) ?? 0) + Number(installment.amount));
+  }
+  const contractOverview = ((overviewContracts ?? []) as ContractOverviewRow[]).map((contract) => {
+    const paid = paidByContract.get(contract.id) ?? 0;
+    return {
+      ...contract,
+      paid,
+      remaining: Math.max(0, Number(contract.amount) - paid),
+      workflowStatus: workflowStatusByContract.get(contract.id) ?? null,
+    };
+  });
+  const totalContractRemaining = contractOverview.reduce((sum, c) => sum + c.remaining, 0);
+
+  const trendMonths: { key: string; label: string; income: number; expense: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
+    trendMonths.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`, label: monthNamesShort[d.getMonth()], income: 0, expense: 0 });
+  }
+  for (const t of trendTransactions ?? []) {
+    const bucket = trendMonths.find((m) => m.key === t.created_at.slice(0, 7));
+    if (!bucket) continue;
+    if (t.transaction_type === "income") bucket.income += Number(t.amount); else bucket.expense += Number(t.amount);
+  }
+  const trendMax = Math.max(1, ...trendMonths.map((m) => Math.max(m.income, m.expense)));
 
   const tabHref = (target: string) => `/panel/finance?tab=${target}`;
 
@@ -186,11 +234,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
     <div className="finance-tab-panel">
     {tab === "genel" ? <>
-      <section className="finance-metrics">
-        <article><small>BANKA BAKİYESİ</small><strong>{money(bankBalance)}</strong><span>{accountList.length} aktif hesap</span></article>
-        <article><small>TAHSİL EDİLEN</small><strong>{money(paidIncome)}</strong><span>Gerçekleşen giriş</span></article>
-        <article><small>BEKLENEN TAHSİLAT</small><strong>{money(expectedIncome)}</strong><span>Tekilleştirilmiş açık alacaklar</span></article>
-        <article><small>TAHMİNİ NET NAKİT</small><strong>{money(projectedCash)}</strong><span>Planlananlar dahil</span></article>
+      <section className="finance-hero-metrics">
+        <article className="finance-hero-card accent"><small>BANKA BAKİYESİ</small><strong>{money(bankBalance)}</strong><span>{accountList.length} aktif hesap</span></article>
+        <article className="finance-hero-card"><small>TAHSİL EDİLEN</small><strong>{money(paidIncome)}</strong><span>Gerçekleşen giriş</span></article>
+        <article className="finance-hero-card"><small>BEKLENEN TAHSİLAT</small><strong>{money(expectedIncome)}</strong><span>Tekilleştirilmiş açık alacaklar</span></article>
+        <article className="finance-hero-card"><small>TAHMİNİ NET NAKİT</small><strong>{money(projectedCash)}</strong><span>Planlananlar dahil</span></article>
       </section>
       {(overdueTotal > 0 || nextDue) ? (
         <section className="finance-priority">
@@ -198,6 +246,47 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           {nextDue ? <div className="finance-priority-item"><span>→</span><div><b>{nextDue.label} · {money(Number(nextDue.amount))}</b><small>En yakın vade: {new Date(nextDue.date).toLocaleDateString("tr-TR")}</small></div></div> : null}
         </section>
       ) : null}
+
+      <section className="panel-card finance-trend-card">
+        <div className="section-heading compact"><div><small className="panel-kicker">SON 6 AY</small><h2>Gelir / Gider Trendi</h2></div></div>
+        <div className="finance-trend-chart">
+          {trendMonths.map((m) => (
+            <div className="finance-trend-col" key={m.key}>
+              <div className="finance-trend-bars">
+                <span className="income" style={{ height: `${(m.income / trendMax) * 100}%` }} title={money(m.income)} />
+                <span className="expense" style={{ height: `${(m.expense / trendMax) * 100}%` }} title={money(m.expense)} />
+              </div>
+              <small>{m.label}</small>
+            </div>
+          ))}
+        </div>
+        <div className="finance-trend-legend"><span className="income">Gelir</span><span className="expense">Gider</span></div>
+      </section>
+
+      {contractOverview.length ? (
+        <section className="panel-card finance-integration-card">
+          <div className="section-heading compact"><div><small className="panel-kicker">CRM & OPERASYON BAĞLANTISI</small><h2>Sözleşme Bazlı Finansal Durum</h2></div><span className="status-pill">{money(totalContractRemaining)} bekleyen</span></div>
+          <div className="finance-integration-list">
+            {contractOverview.map((contract) => (
+              <div className="finance-integration-row" key={contract.id}>
+                <div className="finance-integration-main">
+                  <b>{contract.crm_opportunities?.customer_name ?? "Müşteri"}</b>
+                  <small>{contract.contract_no} · {contract.title}</small>
+                </div>
+                <div className="finance-integration-ops">
+                  <span className="status-pill">{contract.workflowStatus ? workflowStatusNames[contract.workflowStatus] ?? contract.workflowStatus : "İş akışı yok"}</span>
+                </div>
+                <div className="finance-integration-money">
+                  <b className={contract.remaining > 0 ? "pending" : "settled"}>{contract.remaining > 0 ? money(contract.remaining) : "Tahsil edildi"}</b>
+                  <small>{money(Number(contract.amount))} toplam</small>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link className="panel-text-link finance-integration-cta" href="/panel/operations">Operasyon panosunu aç →</Link>
+        </section>
+      ) : null}
+
       <section className="finance-insights">
         <article className="panel-card aging-card"><div><small>CARİ YAŞLANDIRMA</small><h3>Alacakların vade dağılımı</h3></div><div className="aging-grid"><span><b>{money(aging.current)}</b><small>Vadesi gelmedi</small></span><span><b>{money(aging.d30)}</b><small>1–30 gün</small></span><span><b>{money(aging.d60)}</b><small>31–60 gün</small></span><span><b>{money(aging.d90)}</b><small>61–90 gün</small></span><span className="risk"><b>{money(aging.over90)}</b><small>90+ gün</small></span></div></article>
         <article className="panel-card due-card"><div><small>YAKLAŞAN VADELER</small><h3>Öncelikli hareketler</h3></div>{upcoming.map((item) => <div className="due-row" key={item.id}><div><b>{item.label}</b><small>{new Date(item.date).toLocaleDateString("tr-TR")}</small></div><strong className={item.type === "expense" ? "negative" : "positive"}>{item.type === "expense" ? "-" : "+"}{money(Number(item.amount))}</strong></div>)}{!upcoming.length ? <p className="finance-empty">Yaklaşan kayıt yok.</p> : null}</article>

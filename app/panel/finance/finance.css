@@ -168,3 +168,49 @@
 .finance-tabs-sub a{padding:7px 12px;font-size:9px}
 .finance-form-hint{margin:-4px 0 4px;color:var(--muted);font-size:9px;line-height:1.5}
 @media(max-width:620px){.finance-tab-panel>section,.finance-tab-panel>.section-heading{margin-left:12px;margin-right:12px}}
+
+/* ---------- Genel Bakış — yeni büyük, görsel KPI kartları ---------- */
+.finance-hero-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.finance-hero-card{position:relative;overflow:hidden;padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+.finance-hero-card.accent{background:linear-gradient(135deg,var(--brand-700),var(--brand-600));border-color:transparent}
+.finance-hero-card.accent small,.finance-hero-card.accent span{color:rgba(255,255,255,.75)}
+.finance-hero-card.accent strong{color:#fff}
+.finance-hero-card small{display:block;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.1em}
+.finance-hero-card strong{display:block;margin:12px 0 6px;color:var(--ink);font-size:26px;font-weight:800;letter-spacing:-.01em}
+.finance-hero-card span{color:var(--dim);font-size:10px}
+
+/* ---------- Gelir/Gider trend grafiği ---------- */
+.finance-trend-card{margin-bottom:20px}
+.finance-trend-chart{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:end;height:150px;margin-top:10px}
+.finance-trend-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.finance-trend-bars{flex:1;display:flex;align-items:flex-end;gap:4px;width:100%;justify-content:center}
+.finance-trend-bars span{width:14px;border-radius:4px 4px 0 0;min-height:2px}
+.finance-trend-bars span.income{background:var(--success)}
+.finance-trend-bars span.expense{background:var(--danger)}
+.finance-trend-col small{color:var(--dim);font-size:8px}
+.finance-trend-legend{display:flex;gap:16px;justify-content:center;margin-top:12px}
+.finance-trend-legend span{position:relative;padding-left:16px;font-size:9px;color:var(--muted);font-weight:700}
+.finance-trend-legend span:before{content:"";position:absolute;left:0;top:50%;width:9px;height:9px;border-radius:3px;transform:translateY(-50%)}
+.finance-trend-legend span.income:before{background:var(--success)}
+.finance-trend-legend span.expense:before{background:var(--danger)}
+
+/* ---------- CRM & Operasyon entegrasyon paneli ---------- */
+.finance-integration-card{margin-bottom:20px}
+.finance-integration-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.finance-integration-row{display:grid;grid-template-columns:minmax(0,1.6fr) auto auto;align-items:center;gap:16px;padding:13px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.finance-integration-main b{display:block;font-size:10px;color:var(--ink)}
+.finance-integration-main small{display:block;margin-top:3px;color:var(--muted);font-size:8px}
+.finance-integration-money{text-align:right}
+.finance-integration-money b{display:block;font-size:11px}
+.finance-integration-money b.pending{color:var(--danger)}
+.finance-integration-money b.settled{color:var(--success)}
+.finance-integration-money small{display:block;margin-top:2px;color:var(--dim);font-size:8px}
+.finance-integration-cta{display:inline-block;margin-top:14px}
+
+@media(max-width:1100px){.finance-hero-metrics{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){
+  .finance-hero-metrics{grid-template-columns:1fr}
+  .finance-integration-row{grid-template-columns:1fr;gap:8px}
+  .finance-integration-money{text-align:left}
+  .finance-trend-chart{height:120px}
+}
