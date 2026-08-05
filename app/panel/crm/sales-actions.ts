@@ -131,14 +131,38 @@ export async function createProposalRevision(formData: FormData) {
 }
 
 export async function issueProposalLink(formData: FormData) {
-  const { supabase } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
+  if (!proposalId) {
+    redirect("/panel/crm/proposals?share_error=missing_proposal");
+  }
+
+  const { supabase } = await getPanelContext();
   const { data, error } = await supabase.rpc("issue_crm_proposal_link", {
     target_proposal_id: proposalId,
   });
-  if (error) throw new Error("Teklif bağlantısı oluşturulamadı: " + error.message);
+
+  if (error) {
+    console.error("issue_crm_proposal_link failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      proposalId,
+    });
+    redirect("/panel/crm/proposals?share_error=link_failed");
+  }
+
+  const token = typeof data === "string" ? data.trim() : "";
+  if (!token) {
+    console.error("issue_crm_proposal_link returned an empty token", {
+      proposalId,
+      data,
+    });
+    redirect("/panel/crm/proposals?share_error=empty_token");
+  }
+
   revalidatePath("/panel/crm/proposals");
-  redirect(`/panel/crm/proposals?share=${encodeURIComponent(String(data ?? ""))}`);
+  redirect(`/panel/crm/proposals?share=${encodeURIComponent(token)}`);
 }
 
 export async function updateContract(formData: FormData) {
