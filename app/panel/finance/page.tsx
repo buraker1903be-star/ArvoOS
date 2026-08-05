@@ -17,7 +17,7 @@ type BankTransaction = { bank_account_id: string; direction: "inflow" | "outflow
 type AccountEntry = { entry_type: "debit" | "credit"; amount: number; due_date: string | null; transaction_date: string; party_id: string };
 type Party = { id: string; name: string; party_type: string; tax_number: string | null; account_entries: AccountEntry[] };
 type DetailedBankTransaction = { id: string; bank_account_id: string; direction: "inflow" | "outflow"; amount: number; transaction_date: string; description: string; reference_no: string | null; reconciliation_status: string; matched_invoice_id: string | null; matched_party_id: string | null };
-type ContractOverviewRow = { id: string; contract_no: string; title: string; amount: number; status: string; opportunity_id: string | null; crm_opportunities: { customer_name: string } | null };
+type ContractOverviewRow = { id: string; contract_no: string; title: string; amount: number; status: string; opportunity_id: string | null; party_id: string | null; crm_opportunities: { customer_name: string } | null };
 
 function daysOverdue(date: string | null) { if (!date) return 0; const due = new Date(date.includes("T") ? date : `${date}T00:00:00`); return Math.max(0, Math.floor((Date.now() - due.getTime()) / 86400000)); }
 function contractNumberFromNotes(notes: string | null) { return notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null; }
@@ -34,7 +34,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const organizationId = membership.organization_id;
   const canManage = ["owner", "admin"].includes(membership.role);
 
-  const [{ data: transactions, error }, { data: invoices }, { data: contracts }, { data: bankAccounts }, { data: bankTransactions }, { data: accountEntries }, { data: partyData, error: partyError }, { data: detailedBankTransactions }, { data: reconciliationInvoices }, { data: reconciliationParties }, { data: overviewContracts }, { data: overviewWorkflows }, { data: overviewPaidInstallments }, { data: trendTransactions }] = await Promise.all([
+  const [{ data: transactions, error }, { data: invoices }, { data: contracts }, { data: bankAccounts }, { data: bankTransactions }, { data: accountEntries }, { data: partyData, error: partyError }, { data: detailedBankTransactions }, { data: reconciliationInvoices }, { data: reconciliationParties }, { data: overviewContracts }, { data: overviewWorkflows }, { data: trendTransactions }] = await Promise.all([
     supabase.from("finance_transactions").select("id,transaction_type,status,title,counterparty,category,amount,due_date,created_at,notes").eq("organization_id", organizationId).order("created_at", { ascending: false }),
     supabase.from("billing_invoices").select("id,status,total,due_at,paid_at,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }),
     supabase.from("crm_contracts").select("contract_no,invoice_id").eq("organization_id", organizationId).not("invoice_id", "is", null),
@@ -54,14 +54,11 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       ? supabase.from("account_parties").select("id,name").eq("organization_id", organizationId).eq("is_active", true).order("name")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     tab === "genel"
-      ? supabase.from("crm_contracts").select("id,contract_no,title,amount,status,opportunity_id,crm_opportunities(customer_name)").eq("organization_id", organizationId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }).limit(8)
+      ? supabase.from("crm_contracts").select("id,contract_no,title,amount,status,opportunity_id,party_id,crm_opportunities(customer_name)").eq("organization_id", organizationId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }).limit(8)
       : Promise.resolve({ data: [] as ContractOverviewRow[] }),
     tab === "genel"
       ? supabase.from("operation_workflows").select("contract_id,status").eq("organization_id", organizationId).not("contract_id", "is", null)
       : Promise.resolve({ data: [] as { contract_id: string; status: string }[] }),
-    tab === "genel"
-      ? supabase.from("payment_installments").select("amount,status,payment_plan_id,payment_plans(contract_id)").eq("organization_id", organizationId).eq("status", "paid")
-      : Promise.resolve({ data: [] as { amount: number; status: string; payment_plan_id: string; payment_plans: { contract_id: string } | { contract_id: string }[] | null }[] }),
     tab === "genel"
       ? supabase.from("finance_transactions").select("transaction_type,status,amount,created_at").eq("organization_id", organizationId).eq("status", "paid").gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1).toISOString())
       : Promise.resolve({ data: [] as { transaction_type: "income" | "expense"; status: string; amount: number; created_at: string }[] }),
@@ -128,19 +125,18 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   // CRM/Operasyon entegrasyonu: her sözleşmenin kalan bakiyesini ve
   // operasyondaki iş durumunu tek satırda birleştiriyoruz.
   const workflowStatusByContract = new Map((overviewWorkflows ?? []).map((w) => [w.contract_id, w.status]));
-  const paidByContract = new Map<string, number>();
-  for (const installment of (overviewPaidInstallments ?? []) as { amount: number; payment_plan_id: string; payment_plans: { contract_id: string } | { contract_id: string }[] | null }[]) {
-    const plan = Array.isArray(installment.payment_plans) ? installment.payment_plans[0] : installment.payment_plans;
-    const contractId = plan?.contract_id;
-    if (!contractId) continue;
-    paidByContract.set(contractId, (paidByContract.get(contractId) ?? 0) + Number(installment.amount));
-  }
   const contractOverview = ((overviewContracts ?? []) as ContractOverviewRow[]).map((contract) => {
-    const paid = paidByContract.get(contract.id) ?? 0;
+    // Kalan bakiye taksit tablosundan değil, gerçek cari hesap
+    // bakiyesinden (aynı sayfadaki yaşlandırma hesabının kullandığı
+    // kaynak) okunuyor — "Ödendi" işaretlendiğinde her zaman güncel
+    // kalan tek yer burası.
+    const partyBalance = contract.party_id ? partyLedger.get(contract.party_id)?.net ?? Number(contract.amount) : Number(contract.amount);
+    const remaining = Math.max(0, partyBalance);
+    const paid = Math.max(0, Number(contract.amount) - remaining);
     return {
       ...contract,
       paid,
-      remaining: Math.max(0, Number(contract.amount) - paid),
+      remaining,
       workflowStatus: workflowStatusByContract.get(contract.id) ?? null,
     };
   });
