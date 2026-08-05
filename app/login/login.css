@@ -2,3 +2,6 @@
 .login-brand-name{display:inline-block;font:800 24px Montserrat,sans-serif;color:#fff}
 .mark{background:var(--login-accent,linear-gradient(135deg,#7ca64d,#5f8738))}
 .login-card button{background:var(--login-accent,linear-gradient(135deg,#7ca64d,#5f8738))}
+.login-card-brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-bottom:26px}
+.login-card-logo{max-width:210px;max-height:64px;width:auto;height:auto;object-fit:contain}
+.login-card-brand small{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.02em}

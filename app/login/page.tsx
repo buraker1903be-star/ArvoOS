@@ -61,9 +61,12 @@ export default async function LoginPage({
       </section>
       <section className="login-form-wrap">
         <form action={login} className="login-card">
-          <div className="mark">{orgBrand ? orgBrand.name.slice(0, 1).toUpperCase() : "A"}</div>
+          <div className="login-card-brand">
+            {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : null}
+            <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>
+          </div>
           <span>GÜVENLİ PANEL GİRİŞİ</span>
-          <h2>{orgBrand ? `${orgBrand.name}’a hoş geldiniz` : "ArvoOS’a hoş geldiniz"}</h2>
+          <h2>Panel’e Hoşgeldiniz</h2>
           <p>Size tanımlanan kurumsal e-posta adresiyle giriş yapın.</p>
           {error && <div className="login-error" role="alert">E-posta adresi veya parola hatalı.</div>}
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" /></label>
