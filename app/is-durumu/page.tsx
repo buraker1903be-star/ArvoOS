@@ -1,22 +1,22 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { StatusLookupForm } from "./lookup-form";
-import "./status-lookup.css";
+import { StatusLookupForm } from "../durum/[slug]/lookup-form";
+import "../durum/[slug]/status-lookup.css";
 
-type Params = { slug: string };
+export const metadata: Metadata = { title: "İş Durumu Sorgula" };
 
-export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { slug } = await params;
-  return { title: `İş Durumu Sorgula — ${slug}` };
-}
+export default async function CustomDomainStatusLookupPage() {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host")?.split(":")[0] ?? "";
 
-export default async function StatusLookupPage({ params }: { params: Promise<Params> }) {
-  const { slug } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_public_organization_branding", { p_slug: slug });
-  const org = Array.isArray(data) ? data[0] : data;
+  const { data: organizationId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
+  if (!organizationId) notFound();
 
+  const { data: orgData } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
+  const org = Array.isArray(orgData) ? orgData[0] : orgData;
   if (!org) notFound();
 
   const accentColor = org.primary_color || "#183f31";
@@ -31,7 +31,7 @@ export default async function StatusLookupPage({ params }: { params: Promise<Par
         )}
         <h2>İş Durumu Sorgulama</h2>
         <p>Sözleşmenizin güncel durumunu görmek için kayıtlı telefon numaranızın son 4 hanesini girin.</p>
-        <StatusLookupForm orgSlug={slug} />
+        <StatusLookupForm orgSlug={org.slug} />
       </div>
     </main>
   );
