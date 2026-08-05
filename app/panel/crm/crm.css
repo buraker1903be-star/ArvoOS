@@ -118,3 +118,21 @@
   .crm-page-stack .panel-drawer-body .request-entry-form label{font-size:10px}
   .crm-page-stack .panel-drawer-body .request-entry-form input,.crm-page-stack .panel-drawer-body .request-entry-form select,.crm-page-stack .panel-drawer-body .request-entry-form textarea{font-size:12px}
 }
+
+/* ---------- Excel benzeri veri tablosu (Talepler / Teklifler / Sözleşmeler) ---------- */
+.crm-table-wrap{padding:0;overflow-x:auto}
+.crm-data-table{width:100%;min-width:920px;border-collapse:collapse;font-size:10px}
+.crm-data-table thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+.crm-data-table tbody td{padding:12px 16px;border-bottom:1px solid var(--line-soft);color:var(--ink);vertical-align:middle}
+.crm-data-table tbody tr:last-child td{border-bottom:0}
+.crm-data-table tbody tr:hover{background:var(--surface-2)}
+.crm-data-table .crm-table-mono{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--muted);white-space:nowrap}
+.crm-data-table .crm-table-title{display:block;font-weight:700;color:var(--ink);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.crm-data-table .crm-table-sub{display:block;margin-top:2px;color:var(--muted);font-size:8px}
+.crm-table-actions{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end}
+.crm-table-actions form{margin:0}
+.crm-table-actions .panel-primary,.crm-table-actions .panel-secondary,.crm-table-actions .panel-danger{min-height:28px;padding:0 10px;font-size:8px;white-space:nowrap}
+
+@media(max-width:900px){
+  .crm-table-wrap{border-left:0;border-right:0;border-radius:0;margin-left:-16px;margin-right:-16px;width:calc(100% + 32px)}
+}

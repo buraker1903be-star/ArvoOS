@@ -176,10 +176,16 @@ export async function issueContractLink(formData: FormData) {
 export async function fastTrackProposalToContract(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
-  const accessToken = text(formData, "access_token", 200);
-  if (!accessToken) throw new Error("Teklif bağlantısı bulunamadı.");
+  const proposalId = text(formData, "proposal_id", 80);
+  if (!proposalId) throw new Error("Teklif seçilmedi.");
 
-  const { data, error } = await supabase.rpc("respond_to_crm_proposal", { public_token: accessToken, decision: "accept" });
+  // access_token yalnızca hash'lenmiş halde saklanıyor (güvenlik), bu yüzden
+  // müşteri linkini oluşturan aynı, kanıtlanmış RPC ile taze bir token
+  // üretip hemen kabul kararını da aynı işlemde kaydediyoruz.
+  const { data: freshToken, error: linkError } = await supabase.rpc("issue_crm_proposal_link", { target_proposal_id: proposalId });
+  if (linkError || !freshToken) throw new Error("Sözleşmeye dönüştürülemedi: " + (linkError?.message ?? "bağlantı oluşturulamadı"));
+
+  const { data, error } = await supabase.rpc("respond_to_crm_proposal", { public_token: String(freshToken), decision: "accept" });
   if (error) throw new Error("Sözleşmeye dönüştürülemedi: " + error.message);
   const row = Array.isArray(data) ? data[0] : data;
   if (row?.result_status !== "accepted") throw new Error("Teklif kabul edilemedi, durumunu kontrol edin.");

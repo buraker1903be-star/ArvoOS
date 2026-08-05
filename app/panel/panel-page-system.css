@@ -136,9 +136,8 @@
 .module-tabs a+a{border-left:1px solid var(--line)}
 .module-tabs a:hover{background:var(--surface-2);color:var(--ink)}
 .module-tabs a.active{background:var(--brand-700);color:#fff}
-.module-tab-panel{padding-top:18px;border:1px solid var(--line);border-top:0;border-radius:0 var(--r-md) var(--r-md) var(--r-md);background:var(--surface-2);margin-bottom:20px}
+.module-tab-panel{display:flex;flex-direction:column;gap:20px;padding-top:18px;border:1px solid var(--line);border-top:0;border-radius:0 var(--r-md) var(--r-md) var(--r-md);background:var(--surface-2);margin-bottom:20px}
 .module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:18px;margin-right:18px}
-.module-tab-panel>*:first-child{margin-top:18px}
 .module-tab-panel>*:last-child{margin-bottom:18px}
 @media(max-width:620px){
   .module-tabs{display:flex;width:100%}
