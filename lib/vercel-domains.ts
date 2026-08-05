@@ -10,6 +10,8 @@ type VercelDomainResponse = {
 
 type VercelDomainConfigResponse = {
   misconfigured?: boolean;
+  recommendedCNAME?: { rank: number; value: string }[];
+  recommendedIPv4?: { rank: number; value: string[] }[];
   error?: { code: string; message: string };
 };
 
@@ -63,8 +65,31 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
     }
   }
 
-  const challenges = (data.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
-  const records = challenges.length ? challenges : recordHintsFor(domain);
+  // Sahiplik kanıtı gereken durumlar (örn. alan adı başka bir Vercel
+  // hesabına bağlıysa) için TXT meydan okumaları.
+  const ownershipRecords = (data.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
+
+  // Asıl yönlendirme kaydı (CNAME/A) genel bir tahmin değil, bu alan adına
+  // özel Vercel'in önerdiği gerçek değer olmalı — bunu ayrı bir uçtan
+  // çekiyoruz, aksi halde yanlış/işe yaramaz bir değer gösterebiliriz.
+  let routingRecords: { type: string; name: string; value: string }[] = [];
+  try {
+    const configResponse = await fetch(apiUrl(`/v6/domains/${encodeURIComponent(domain)}/config`, teamId), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const config = (await configResponse.json().catch(() => ({}))) as VercelDomainConfigResponse;
+    const recommendedCname = config.recommendedCNAME?.[0]?.value;
+    const recommendedIp = config.recommendedIPv4?.[0]?.value?.[0];
+    if (recommendedCname) {
+      routingRecords = [{ type: "CNAME", name: isApexDomain(domain) ? "@" : domain.split(".")[0], value: recommendedCname }];
+    } else if (recommendedIp) {
+      routingRecords = [{ type: "A", name: "@", value: recommendedIp }];
+    }
+  } catch {
+    // config endpoint unreachable; fall through to the generic hint below
+  }
+
+  const records = [...ownershipRecords, ...(routingRecords.length ? routingRecords : recordHintsFor(domain))];
 
   return {
     ok: true,
