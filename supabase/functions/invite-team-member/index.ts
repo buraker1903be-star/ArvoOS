@@ -51,6 +51,7 @@ Deno.serve(async (request) => {
     const email = String(payload.email || "").trim().toLowerCase();
     const role = String(payload.role || "member");
     const fullName = String(payload.fullName || "").trim();
+    const employeeId = String(payload.employeeId || "").trim() || null;
 
     if (!organizationId) return json({ error: "organizationId zorunludur." }, 400);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Geçerli bir e-posta adresi girin." }, 400);
@@ -95,6 +96,7 @@ Deno.serve(async (request) => {
       data: {
         arvoos_invitation_id: invitationId,
         arvoos_organization_id: organizationId,
+        arvoos_employee_id: employeeId || undefined,
         full_name: fullName || undefined,
       },
     });
@@ -120,6 +122,14 @@ Deno.serve(async (request) => {
       const { error: membershipError } = await adminClient.from("organization_memberships")
         .upsert({ organization_id: organizationId, user_id: existingUserId, role, is_active: true }, { onConflict: "organization_id,user_id" });
       if (membershipError) return await fail(`Kullanıcı zaten kayıtlı, kuruma eklenemedi: ${membershipError.message}`);
+
+      if (employeeId) {
+        await adminClient.from("hr_employees").update({ user_id: existingUserId }).eq("id", employeeId).eq("organization_id", organizationId);
+      }
+      await adminClient.from("profiles").upsert(
+        { id: existingUserId, full_name: fullName || undefined, updated_at: new Date().toISOString() },
+        { onConflict: "id", ignoreDuplicates: false },
+      );
 
       await adminClient.from("organization_invitations").update({
         status: "accepted",

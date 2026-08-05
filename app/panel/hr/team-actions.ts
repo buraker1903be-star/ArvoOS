@@ -15,6 +15,7 @@ export async function inviteTeamMember(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "member");
   const fullName = String(formData.get("full_name") ?? "").trim();
+  const employeeId = String(formData.get("employee_id") ?? "").trim() || undefined;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Geçerli bir e-posta adresi girin.");
   if (!["owner", "admin", "manager", "member"].includes(role)) throw new Error("Geçersiz rol.");
 
@@ -22,7 +23,7 @@ export async function inviteTeamMember(formData: FormData) {
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
 
   const { data, error } = await supabase.functions.invoke("invite-team-member", {
-    body: { organizationId: membership.organization_id, email, role, fullName, redirectBase },
+    body: { organizationId: membership.organization_id, email, role, fullName, employeeId, redirectBase },
   });
   if (error || data?.error) {
     // The exact failure reason (even for early/permission failures) is always
