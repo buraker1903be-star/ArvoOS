@@ -142,12 +142,16 @@ export async function checkCustomDomainStatus() {
   const { data: org } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
   if (!org?.custom_domain) throw new Error("Tanımlı bir özel alan adı yok.");
 
-  const { checkVercelDomainStatus } = await import("@/lib/vercel-domains");
-  const result = await checkVercelDomainStatus(org.custom_domain);
+  // connectDomainToVercel, "zaten ekli" durumunu da düzgün ele alıp güncel
+  // doğrulama/DNS bilgisini tazeler — sadece durumu değil, gösterilen
+  // kayıtları da günceller.
+  const { connectDomainToVercel } = await import("@/lib/vercel-domains");
+  const result = await connectDomainToVercel(org.custom_domain);
   if (!result.ok) throw new Error(result.message);
 
   const { error } = await supabase.from("organizations").update({
     custom_domain_status: result.verified ? "verified" : "pending",
+    custom_domain_verification: result.records,
     custom_domain_updated_at: new Date().toISOString(),
   }).eq("id", membership.organization_id);
   if (error) throw new Error("Durum güncellenemedi: " + error.message);

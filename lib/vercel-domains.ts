@@ -51,23 +51,39 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
     return { ok: false, verified: false, message: "Vercel entegrasyonu yapılandırılmamış (VERCEL_TOKEN / VERCEL_PROJECT_ID eksik).", records: [] };
   }
 
-  const response = await fetch(apiUrl(`/v10/projects/${projectId}/domains`, teamId), {
+  const addResponse = await fetch(apiUrl(`/v10/projects/${projectId}/domains`, teamId), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name: domain }),
   });
-  const data = (await response.json().catch(() => ({}))) as VercelDomainResponse;
+  const addData = (await addResponse.json().catch(() => ({}))) as VercelDomainResponse;
 
-  if (!response.ok) {
-    // Domain already attached to this project: treat as success, fall through to a status check.
-    if (data?.error?.code !== "domain_already_in_use" && !(response.status === 400 && /already/i.test(data?.error?.message ?? ""))) {
-      return { ok: false, verified: false, message: data?.error?.message || "Alan adı Vercel'e eklenemedi.", records: recordHintsFor(domain) };
+  if (!addResponse.ok) {
+    // Domain already attached to this project: not a real failure — we'll
+    // fetch its current (authoritative) state below instead of trusting
+    // this error response, which never includes verification details.
+    const alreadyAttached = addData?.error?.code === "domain_already_in_use" || (addResponse.status === 400 && /already/i.test(addData?.error?.message ?? ""));
+    if (!alreadyAttached) {
+      return { ok: false, verified: false, message: addData?.error?.message || "Alan adı Vercel'e eklenemedi.", records: recordHintsFor(domain) };
     }
   }
 
-  // Sahiplik kanıtı gereken durumlar (örn. alan adı başka bir Vercel
-  // hesabına bağlıysa) için TXT meydan okumaları.
-  const ownershipRecords = (data.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
+  // Ekleme cevabı (özellikle "zaten ekli" durumunda) doğrulama bilgisini
+  // içermeyebilir — güncel, kesin durumu ayrı bir uçtan çekiyoruz.
+  let verified = Boolean(addData.verified);
+  let ownershipRecords: { type: string; name: string; value: string }[] = (addData.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
+  try {
+    const stateResponse = await fetch(apiUrl(`/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`, teamId), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const stateData = (await stateResponse.json().catch(() => ({}))) as VercelDomainResponse;
+    if (stateResponse.ok) {
+      verified = Boolean(stateData.verified);
+      ownershipRecords = (stateData.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
+    }
+  } catch {
+    // güncel durum çekilemezse, eklemeden gelen veriyle devam edilir
+  }
 
   // Asıl yönlendirme kaydı (CNAME/A) genel bir tahmin değil, bu alan adına
   // özel Vercel'in önerdiği gerçek değer olmalı — bunu ayrı bir uçtan
@@ -93,8 +109,8 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
 
   return {
     ok: true,
-    verified: Boolean(data.verified),
-    message: data.verified
+    verified,
+    message: verified
       ? "Alan adı doğrulandı."
       : "Alan adı eklendi, DNS kayıtlarının doğrulanması bekleniyor.",
     records,
