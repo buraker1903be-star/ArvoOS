@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { addWorkflowStep, createWorkflow, setWorkflowStatus, toggleWorkflowStep } from "./actions";
+import { addWorkflowStep, createWorkflow, setWorkflowStatus } from "./actions";
 import { OperationsTabs } from "./operations-tabs";
+import "../crm/crm.css";
 import "./operations.css";
 
 const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
@@ -11,7 +12,10 @@ const boardStatuses = ["planned", "in_progress", "blocked", "completed"] as cons
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
 type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; contract_id: string | null; operation_steps: Step[] };
 
-export default async function OperationsPage() {
+export default async function OperationsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string }> }) {
+  const { arama, durum } = await searchParams;
+  const search = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
+  const selectedStatus = boardStatuses.includes((durum ?? "") as typeof boardStatuses[number]) ? durum! : "";
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const { data, error } = await supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false });
@@ -23,6 +27,7 @@ export default async function OperationsPage() {
   // gerçek fatura durumuna göre her açılışta yeniden hesaplanır).
   const completedContractIds = [...new Set(allWorkflows.filter((wf) => wf.status === "completed" && wf.contract_id).map((wf) => wf.contract_id as string))];
   const settledContractIds = new Set<string>();
+  const invoicelessContractIds = new Set<string>();
   if (completedContractIds.length) {
     const { data: contracts } = await supabase.from("crm_contracts").select("id,invoice_id").in("id", completedContractIds);
     const invoiceIds = (contracts ?? []).map((c) => c.invoice_id).filter((value): value is string => Boolean(value));
@@ -33,11 +38,20 @@ export default async function OperationsPage() {
     }
     for (const contract of contracts ?? []) {
       if (contract.invoice_id && invoiceStatusById.get(contract.invoice_id) === "paid") settledContractIds.add(contract.id);
+      if (!contract.invoice_id) invoicelessContractIds.add(contract.id);
     }
   }
-  const isSettled = (wf: Workflow) => wf.status === "completed" && (!wf.contract_id || settledContractIds.has(wf.contract_id));
+  // Bir sözleşmeye hiç fatura bağlanmamışsa (bekleyecek bir şey yok — örn.
+  // eski/aktarılmış kayıtlar), tamamlanan iş sonsuza kadar panoda takılı
+  // kalmasın diye tamamlanır tamamlanmaz arşive düşer.
+  const isSettled = (wf: Workflow) => wf.status === "completed" && (!wf.contract_id || settledContractIds.has(wf.contract_id) || invoicelessContractIds.has(wf.contract_id));
   const workflows = allWorkflows.filter((wf) => !isSettled(wf));
   const archivedWorkflows = allWorkflows.filter(isSettled);
+
+  const filteredWorkflows = workflows.filter((workflow) => {
+    const hay = [workflow.title, workflow.customer_name].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR");
+    return (!search || hay.includes(search)) && (!selectedStatus || workflow.status === selectedStatus);
+  });
 
   const activeCount = workflows.filter((item) => item.status === "in_progress").length;
   const blockedCount = workflows.filter((item) => item.status === "blocked").length;
@@ -65,15 +79,27 @@ export default async function OperationsPage() {
       <article><small>TAMAMLANAN</small><strong>{completedCount}</strong><span>Kapanan iş</span></article>
       <article><small>İLERLEME</small><strong>%{progress}</strong><span>Tamamlanan adımlar</span></article>
     </section>
-    <section className="ops-board">{boardStatuses.map((status) => { const items = workflows.filter((workflow) => workflow.status === status); return <section className={"ops-column column-" + status} key={status}><header><div><small>{statusNames[status]}</small><strong>{items.length}</strong></div></header><div className="ops-column-list">
-      {items.map((workflow) => { const steps = [...(workflow.operation_steps ?? [])].sort((a,b) => a.sort_order - b.sort_order); const done = steps.filter((step) => step.is_completed).length; const percentage = steps.length ? Math.round(done / steps.length * 100) : 0; return <article className="panel-card ops-kanban-card" key={workflow.id}>
-        <div className="ops-card-top"><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span><small>{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "Termin yok"}</small></div><h3>{workflow.title}</h3><p>{workflow.customer_name || "Kurum içi iş"}</p>
-        <div className="ops-progress"><div><span style={{ width: percentage + "%" }} /></div><b>%{percentage}</b></div><small className="ops-step-count">{done}/{steps.length} adım</small>
-        <div className="ops-steps compact">{steps.map((step) => <form action={toggleWorkflowStep} key={step.id}><input type="hidden" name="step_id" value={step.id} /><input type="hidden" name="workflow_id" value={workflow.id} /><input type="hidden" name="is_completed" value={String(!step.is_completed)} /><button className={step.is_completed ? "completed" : ""} type="submit"><i>{step.is_completed ? "✓" : ""}</i><span>{step.title}</span></button></form>)}</div>
-        <Link className="panel-secondary ops-detail-link" href={`/panel/operations/${workflow.id}`}>İş detayını aç</Link>
-        <form className="ops-add-step" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id} /><input name="title" required minLength={2} maxLength={180} placeholder="Yeni adım" /><button type="submit">+</button></form>
-        <form className="ops-move" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id} /><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button type="submit">Güncelle</button></form>
-      </article>})}{!items.length ? <div className="ops-column-empty">Kayıt yok</div> : null}</div></section>})}</section>
+    <section className="panel-card"><form method="get" className="crm-filter-form"><label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} /></label><label><span>Durum</span><select name="durum" defaultValue={selectedStatus}><option value="">Tümü</option>{boardStatuses.map((status) => <option value={status} key={status}>{statusNames[status]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/operations">Temizle</Link></div></form></section>
+    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table"><thead><tr><th>İş</th><th>Müşteri</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th>Termin</th><th></th></tr></thead><tbody>{filteredWorkflows.map((workflow) => {
+      const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+      const done = steps.filter((step) => step.is_completed).length;
+      const percentage = steps.length ? Math.round(done / steps.length * 100) : 0;
+      const statusForm = <form className="panel-form" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id} /><label>Durum<select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select></label><div className="panel-form-actions"><button className="panel-primary" type="submit">Güncelle</button></div></form>;
+      const stepForm = <form className="panel-form" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id} /><label>Yeni adım<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Müşteri onayı" /></label><div className="panel-form-actions"><button className="panel-primary" type="submit">Ekle</button></div></form>;
+      return <tr key={workflow.id}>
+        <td><span className="crm-table-title">{workflow.title}</span><span className="crm-table-sub">{done}/{steps.length} adım</span></td>
+        <td>{workflow.customer_name || "Kurum içi iş"}</td>
+        <td><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
+        <td><span className="status-pill">{statusNames[workflow.status] ?? workflow.status}</span></td>
+        <td>%{percentage}</td>
+        <td>{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "—"}</td>
+        <td className="crm-table-actions">
+          <Link className="panel-secondary" href={`/panel/operations/${workflow.id}`}>Detay</Link>
+          <PanelDrawer triggerLabel="Adım Ekle" title={workflow.title} description="Bu işe yeni bir adım ekleyin.">{stepForm}</PanelDrawer>
+          <PanelDrawer triggerLabel="Durum" title={workflow.title} description="İşin durumunu güncelleyin.">{statusForm}</PanelDrawer>
+        </td>
+      </tr>;
+    })}</tbody></table></section> : <div className="panel-card crm-empty">Eşleşen iş bulunamadı.</div>}
     {archivedWorkflows.length ? (
       <details className="ops-archive">
         <summary><span>Arşivlenen işler</span><em>{archivedWorkflows.length}</em><small>Tamamlandı ve ödemesi kapandı, panoyu meşgul etmiyor</small></summary>
