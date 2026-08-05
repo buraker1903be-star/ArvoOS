@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
-import { createProposalRevision, issueProposalLink, updateProposal, fastTrackProposalToContract } from "../sales-actions";
+import { createProposalRevision, issueProposalLink, updateProposal, fastTrackProposalToContract, markProposalStatus, deleteProposal } from "../sales-actions";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
 import "../crm.css";
 
@@ -39,6 +40,9 @@ export default async function ProposalsPage({searchParams}:Props){
           {!locked?<PanelDrawer triggerLabel="Revizyon" title={`${row.proposal_no} revizyonu`} description="Yeni sürüm oluşturun; mevcut teklif arşivlenecektir.">{revision}</PanelDrawer>:null}
           {!locked?<form action={issueProposalLink}><input type="hidden" name="proposal_id" value={row.id}/><button className="panel-primary">Link</button></form>:null}
           {!locked?<form action={fastTrackProposalToContract}><input type="hidden" name="proposal_id" value={row.id}/><button className="panel-secondary" title="Müşteri zaten sözlü onay verdiyse, online onay beklemeden doğrudan sözleşmeye geçirin.">Sözleşmeye Dönüştür</button></form>:null}
+          {!locked?<form action={markProposalStatus}><input type="hidden" name="proposal_id" value={row.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form>:null}
+          {!locked?<form action={markProposalStatus}><input type="hidden" name="proposal_id" value={row.id}/><input type="hidden" name="status" value="expired"/><button className="panel-secondary">Süre Doldu</button></form>:null}
+          <form action={deleteProposal}><input type="hidden" name="proposal_id" value={row.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${row.proposal_no} teklifini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}/></form>
         </td>
       </tr>})}</tbody></table></section>:<div className="panel-card crm-empty">Teklif bulunamadı.</div>}</div></div>;
 }

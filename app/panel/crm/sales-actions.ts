@@ -274,3 +274,40 @@ export async function fastTrackProposalToContract(formData: FormData) {
   revalidatePath("/panel/crm/contracts");
   redirect(`/panel/crm/contracts${row?.contract_token ? `?share=${encodeURIComponent(row.contract_token)}` : ""}`);
 }
+
+// Teklifler tablosundan hızlıca "Reddedildi" veya "Süre Doldu" olarak
+// işaretlemek için — kabul edilmiş veya zaten kilitli tekliflerde
+// kullanılamaz.
+export async function markProposalStatus(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const proposalId = text(formData, "proposal_id", 80);
+  const status = text(formData, "status", 20);
+  if (!proposalId) throw new Error("Teklif seçilmedi.");
+  if (!["rejected", "expired"].includes(status)) throw new Error("Geçersiz durum.");
+
+  const { data: current } = await supabase.from("crm_proposals").select("status").eq("id", proposalId).maybeSingle();
+  if (current && ["accepted", "rejected", "archived"].includes(current.status)) {
+    throw new Error("Bu teklif zaten kesinleşmiş, durumu değiştirilemez.");
+  }
+
+  const { error } = await supabase.from("crm_proposals").update({ status, responded_at: new Date().toISOString() }).eq("id", proposalId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Teklif durumu güncellenemedi: " + error.message);
+  revalidatePath("/panel/crm/proposals");
+}
+
+// Teklifi kalıcı olarak siler. Kabul edilip gerçek bir sözleşmeye
+// dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
+export async function deleteProposal(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const proposalId = text(formData, "proposal_id", 80);
+  if (!proposalId) throw new Error("Teklif seçilmedi.");
+
+  const { data: linkedContract } = await supabase.from("crm_contracts").select("id").eq("proposal_id", proposalId).maybeSingle();
+  if (linkedContract) throw new Error("Bu teklife bağlı bir sözleşme var, önce sözleşmeyi silin veya bu teklifi silmeyin.");
+
+  const { error } = await supabase.from("crm_proposals").delete().eq("id", proposalId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Teklif silinemedi: " + error.message);
+  revalidatePath("/panel/crm/proposals");
+}
