@@ -159,3 +159,18 @@
 .domain-dns-table th,.domain-dns-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:9px;color:var(--ink)}
 .domain-dns-table th{color:var(--muted);font-size:7px;font-weight:800}
 .domain-dns-block>p{margin:8px 0;color:var(--dim);font-size:8px;line-height:1.5}
+
+/* ---------- Global panel loading skeleton (instant feedback while a page's data loads) ---------- */
+.panel-skeleton{display:flex;flex-direction:column;gap:20px}
+.skel{position:relative;overflow:hidden;border-radius:10px;background:var(--surface-2)}
+.skel:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb, var(--surface) 60%, transparent),transparent);animation:skelShimmer 1.4s ease-in-out infinite}
+@keyframes skelShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.skel-kicker{width:110px;height:9px}
+.skel-title{width:260px;height:28px;margin-top:6px}
+.skel-sub{width:340px;height:12px;margin-top:2px}
+.panel-skeleton-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:6px}
+.skel-card{height:96px;border-radius:14px}
+.skel-block{height:220px;border-radius:16px}
+@media(max-width:900px){.panel-skeleton-metrics{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.panel-skeleton-metrics{grid-template-columns:1fr}.skel-title{width:70%}.skel-sub{width:90%}}
+@media(prefers-reduced-motion:reduce){.skel:after{animation:none}}

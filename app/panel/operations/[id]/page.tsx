@@ -26,15 +26,21 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  const steps=[...(workflow.operation_steps??[])].sort((a,b)=>a.sort_order-b.sort_order);
  const completedCount=steps.filter(step=>step.is_completed).length;
  const progress=steps.length?Math.round(completedCount/steps.length*100):0;
- const {data:contractData}=await supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle();
+ const [{data:contractData},{data:commentsData,error:commentsError}]=await Promise.all([
+  supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle(),
+  supabase.from("operation_workflow_comments").select("id,body,created_at,created_by").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:false}),
+ ]);
+ if(commentsError)throw new Error("İş yorumları okunamadı: "+commentsError.message);
+ const comments=(commentsData??[]) as Comment[];
  const contract=contractData as Contract|null;
  let opportunity:Opportunity|null=null;
  let proposal:Proposal|null=null;
- if(contract?.opportunity_id){const {data}=await supabase.from("crm_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id",contract.opportunity_id).eq("organization_id",membership.organization_id).maybeSingle();opportunity=data as Opportunity|null;}
- if(contract?.proposal_id){const {data}=await supabase.from("crm_proposals").select("id,proposal_no,status").eq("id",contract.proposal_id).eq("organization_id",membership.organization_id).maybeSingle();proposal=data as Proposal|null;}
- const {data:commentsData,error:commentsError}=await supabase.from("operation_workflow_comments").select("id,body,created_at,created_by").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:false});
- if(commentsError)throw new Error("İş yorumları okunamadı: "+commentsError.message);
- const comments=(commentsData??[]) as Comment[];
+ const [opportunityResult,proposalResult]=await Promise.all([
+  contract?.opportunity_id?supabase.from("crm_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id",contract.opportunity_id).eq("organization_id",membership.organization_id).maybeSingle():Promise.resolve({data:null}),
+  contract?.proposal_id?supabase.from("crm_proposals").select("id,proposal_no,status").eq("id",contract.proposal_id).eq("organization_id",membership.organization_id).maybeSingle():Promise.resolve({data:null}),
+ ]);
+ opportunity=opportunityResult.data as Opportunity|null;
+ proposal=proposalResult.data as Proposal|null;
  const customerName=opportunity?.customer_name||workflow.customer_name||"Kurum içi iş";
  const activities:Activity[]=[
   {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created" as const},

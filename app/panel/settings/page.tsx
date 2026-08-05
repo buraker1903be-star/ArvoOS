@@ -11,8 +11,9 @@ export default async function SettingsPage() {
   const enabledCodes = new Set(modules.map((module) => module.code));
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
   const canManage = ["owner", "admin"].includes(membership.role);
-  const {data:branding}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url").eq("id",membership.organization_id).single();
-  const {data:domainInfo}=await supabase.from("organizations").select("custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
+  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
+  const branding=orgRow;
+  const domainInfo=orgRow;
   const dnsRecords = (domainInfo?.custom_domain_verification ?? []) as { type: string; name: string; value: string }[];
 
   return <>
