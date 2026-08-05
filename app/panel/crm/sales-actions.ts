@@ -249,6 +249,49 @@ export async function issueContractLink(formData: FormData) {
   redirect(`/panel/crm/contracts?share=${encodeURIComponent(String(data ?? ""))}`);
 }
 
+// Sözleşmeler tablosundan hızlıca "Reddedildi" veya "İptal" olarak
+// işaretlemek için — imzalanmış veya zaten kesinleşmiş sözleşmelerde
+// kullanılamaz (bu ikisinin gerçek finans/operasyon etkisi var, tek
+// tıkla değiştirilmemeli).
+export async function markContractStatus(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const contractId = text(formData, "contract_id", 80);
+  const status = text(formData, "status", 20);
+  if (!contractId) throw new Error("Sözleşme seçilmedi.");
+  if (!["rejected", "cancelled"].includes(status)) throw new Error("Geçersiz durum.");
+
+  const { data: current } = await supabase.from("crm_contracts").select("status").eq("id", contractId).maybeSingle();
+  if (current && ["signed", "completed", "rejected", "cancelled"].includes(current.status)) {
+    throw new Error("Bu sözleşme zaten kesinleşmiş, durumu değiştirilemez.");
+  }
+
+  const { error } = await supabase.from("crm_contracts").update({ status }).eq("id", contractId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Sözleşme durumu güncellenemedi: " + error.message);
+  revalidatePath("/panel/crm/contracts");
+}
+
+// Sözleşmeyi kalıcı olarak siler. Bağlı bir iş akışı (operasyon) veya
+// ödeme planı varsa, gerçek finans/operasyon verisi kaybolmasın diye
+// silinemez.
+export async function deleteContract(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const contractId = text(formData, "contract_id", 80);
+  if (!contractId) throw new Error("Sözleşme seçilmedi.");
+
+  const [{ data: linkedWorkflow }, { data: linkedPlan }] = await Promise.all([
+    supabase.from("operation_workflows").select("id").eq("contract_id", contractId).maybeSingle(),
+    supabase.from("payment_plans").select("id").eq("contract_id", contractId).maybeSingle(),
+  ]);
+  if (linkedWorkflow) throw new Error("Bu sözleşmeye bağlı bir iş akışı var, önce onu arşivleyin veya bu sözleşmeyi silmeyin.");
+  if (linkedPlan) throw new Error("Bu sözleşmeye bağlı bir ödeme planı var, önce onu silin veya bu sözleşmeyi silmeyin.");
+
+  const { error } = await supabase.from("crm_contracts").delete().eq("id", contractId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Sözleşme silinemedi: " + error.message);
+  revalidatePath("/panel/crm/contracts");
+}
+
 // Müşteri telefon/whatsapp üzerinden zaten sözlü onay verdiğinde, ayrı bir
 // "teklifi online onayla" beklemeden doğrudan sözleşmeye geçmek için.
 // Aynı, zaten kanıtlanmış kabul mantığını (respond_to_crm_proposal) müşteri

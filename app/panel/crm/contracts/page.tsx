@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
-import { issueContractLink, updateContract } from "../sales-actions";
+import { issueContractLink, updateContract, markContractStatus, deleteContract } from "../sales-actions";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
 import "../crm.css";
 
@@ -35,6 +36,9 @@ export default async function ContractsPage({searchParams}:Props){
           <PanelDrawer triggerLabel="Önizle" title={row.contract_no}>{detail}</PanelDrawer>
           {!["signed","completed","cancelled"].includes(row.status)?<><PanelDrawer triggerLabel="Düzenle" title={row.contract_no} description="Sözleşme bilgilerini kontrol edin.">{edit}</PanelDrawer><form action={issueContractLink}><input type="hidden" name="contract_id" value={row.id}/><button className="panel-primary">İmzaya gönder</button></form></>:null}
           {row.workflow_id?<Link className="panel-secondary" href="/panel/operations">İş akışı</Link>:null}
+          {!["signed","completed","rejected","cancelled"].includes(row.status)?<form action={markContractStatus}><input type="hidden" name="contract_id" value={row.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form>:null}
+          {!["signed","completed","rejected","cancelled"].includes(row.status)?<form action={markContractStatus}><input type="hidden" name="contract_id" value={row.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form>:null}
+          <form action={deleteContract}><input type="hidden" name="contract_id" value={row.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${row.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}/></form>
         </td>
       </tr>})}</tbody></table></section>:<div className="panel-card crm-empty">Sözleşme bulunamadı.</div>}</div></div>;
 }
