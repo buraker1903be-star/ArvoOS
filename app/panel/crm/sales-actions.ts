@@ -168,3 +168,23 @@ export async function issueContractLink(formData: FormData) {
   revalidatePath("/panel/crm/contracts");
   redirect(`/panel/crm/contracts?share=${encodeURIComponent(String(data ?? ""))}`);
 }
+
+// Müşteri telefon/whatsapp üzerinden zaten sözlü onay verdiğinde, ayrı bir
+// "teklifi online onayla" beklemeden doğrudan sözleşmeye geçmek için.
+// Aynı, zaten kanıtlanmış kabul mantığını (respond_to_crm_proposal) müşteri
+// linkine gitmeden, personel adına tetikler.
+export async function fastTrackProposalToContract(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const accessToken = text(formData, "access_token", 200);
+  if (!accessToken) throw new Error("Teklif bağlantısı bulunamadı.");
+
+  const { data, error } = await supabase.rpc("respond_to_crm_proposal", { public_token: accessToken, decision: "accept" });
+  if (error) throw new Error("Sözleşmeye dönüştürülemedi: " + error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row?.result_status !== "accepted") throw new Error("Teklif kabul edilemedi, durumunu kontrol edin.");
+
+  revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm/contracts");
+  redirect(`/panel/crm/contracts${row?.contract_token ? `?share=${encodeURIComponent(row.contract_token)}` : ""}`);
+}
