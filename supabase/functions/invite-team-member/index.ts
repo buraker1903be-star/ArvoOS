@@ -11,7 +11,7 @@ const json = (body: unknown, status = 200) => Response.json(body, {
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
-const allowedRoles = new Set(["owner", "admin", "manager", "member"]);
+const allowedRoles = new Set(["owner", "admin", "manager", "member", "operasyoncu"]);
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
