@@ -44,14 +44,18 @@ Deno.serve(async (request) => {
         .eq("id", invitationId);
     } else if (failContext.organizationId && failContext.email && failContext.invitedBy) {
       await adminClient.from("organization_invitations")
-        .insert({
-          organization_id: failContext.organizationId,
-          email: failContext.email,
-          role: allowedRoles.has(failContext.role ?? "") ? failContext.role : "member",
-          invited_by: failContext.invitedBy,
-          status: "failed",
-          error_message: message,
-        })
+        .upsert(
+          {
+            organization_id: failContext.organizationId,
+            email: failContext.email,
+            role: allowedRoles.has(failContext.role ?? "") ? failContext.role : "member",
+            invited_by: failContext.invitedBy,
+            status: "failed",
+            error_message: message,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "organization_id,email" },
+        )
         .select("id")
         .maybeSingle();
     }
@@ -77,21 +81,20 @@ Deno.serve(async (request) => {
 
     // Create the invitation row immediately (service-role, bypasses RLS) so
     // every subsequent failure — including the permission check below — is
-    // always recorded and queryable via SQL, even if this HTTP response
-    // never reaches the caller in a readable form.
-    await adminClient.from("organization_invitations")
-      .update({ status: "expired", updated_at: new Date().toISOString() })
-      .eq("organization_id", organizationId)
-      .eq("email", email)
-      .in("status", ["pending", "sent"]);
-
-    const { data: inserted, error: insertError } = await adminClient
+    // organization_invitations tablosunda (organization_id, email) için tek
+    // bir kayıt tutulabiliyor (durumdan bağımsız) — bu yüzden düz bir INSERT
+    // yerine upsert kullanıyoruz, aksi halde aynı e-postaya ikinci kez davet
+    // göndermek "duplicate key" hatasıyla başarısız oluyordu.
+    const { data: upserted, error: upsertError } = await adminClient
       .from("organization_invitations")
-      .insert({ organization_id: organizationId, email, role, invited_by: actor.user.id, status: "pending" })
+      .upsert(
+        { organization_id: organizationId, email, role, invited_by: actor.user.id, status: "pending", error_message: null, updated_at: new Date().toISOString() },
+        { onConflict: "organization_id,email" },
+      )
       .select("id")
       .single();
-    if (insertError || !inserted?.id) return json({ error: `Davet kaydı oluşturulamadı: ${insertError?.message ?? "bilinmeyen hata"}` }, 400);
-    invitationId = inserted.id as string;
+    if (upsertError || !upserted?.id) return json({ error: `Davet kaydı oluşturulamadı: ${upsertError?.message ?? "bilinmeyen hata"}` }, 400);
+    invitationId = upserted.id as string;
 
     // Only an active owner/admin of this organization may invite new members.
     const { data: callerMembership, error: callerError } = await adminClient
