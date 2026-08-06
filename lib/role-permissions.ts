@@ -7,7 +7,7 @@ export const OPERASYONCU_ROLE = "operasyoncu";
 
 // panel-navigation-config.ts'deki NavigationGroup.key değerleriyle eşleşir.
 const HIDDEN_GROUP_KEYS_BY_ROLE: Record<string, string[]> = {
-  [OPERASYONCU_ROLE]: ["crm", "finance", "hr", "reports"],
+  [OPERASYONCU_ROLE]: ["crm", "finance", "hr", "reports", "documents"],
 };
 
 export function isNavigationGroupHiddenForRole(role: string, groupKey: string): boolean {
@@ -28,6 +28,7 @@ const BLOCKED_PATH_PREFIXES_BY_ROLE: Record<string, string[]> = {
     "/panel/accounts",
     "/panel/banking",
     "/panel/billing",
+    "/panel/documents",
   ],
 };
 
