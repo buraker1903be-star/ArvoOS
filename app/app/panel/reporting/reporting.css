@@ -1,0 +1,79 @@
+/* ============================================================
+   ArvoOS Panel — Raporlar
+   ============================================================ */
+
+.report-range-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.report-range-tabs{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);overflow:hidden}
+.report-range-tabs a{padding:7px 13px;font-size:9px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
+.report-range-tabs a+a{border-left:1px solid var(--line)}
+.report-range-tabs a:hover{background:var(--surface);color:var(--ink)}
+.report-range-tabs a.active{background:var(--brand-700);color:#fff}
+.report-custom-range{display:flex;align-items:center;gap:8px}
+.report-custom-range input{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:10px}
+.report-custom-range span{color:var(--dim)}
+
+.report-columns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+.report-card{padding:22px;display:flex;flex-direction:column}
+.report-subheading{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.report-note{margin:14px 0 0;color:var(--muted);font-size:10px;line-height:1.6}
+.report-note .danger{color:var(--danger)}
+
+.report-bars{display:flex;flex-direction:column;gap:10px}
+.report-bar-row{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px}
+.report-bar-label{font-size:9px;font-weight:700;color:var(--muted)}
+.report-bar-track{height:10px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.report-bar-track span{display:block;height:100%;background:linear-gradient(90deg,var(--accent-600),var(--accent-400));border-radius:999px;min-width:2px}
+.report-bar-value{font-size:9px;font-weight:800;color:var(--ink);white-space:nowrap;text-align:right}
+
+.report-rep-table{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.report-rep-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.report-rep-name{font-size:9px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.report-rep-stat{font-size:8px;color:var(--muted);white-space:nowrap}
+.report-rep-row strong{font-size:10px;color:var(--accent-600);white-space:nowrap}
+
+.report-month-chart{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:end;height:140px;margin-top:8px}
+.report-month-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.report-month-bars{flex:1;display:flex;align-items:flex-end;gap:3px;width:100%;justify-content:center}
+.report-month-bars span{width:9px;border-radius:3px 3px 0 0;min-height:2px}
+.report-month-bars span.income{background:var(--success)}
+.report-month-bars span.expense{background:var(--danger)}
+.report-month-col small{color:var(--dim);font-size:8px}
+.report-legend{display:flex;gap:14px;justify-content:center;margin-top:10px}
+.report-legend span{position:relative;padding-left:14px;font-size:8px;color:var(--muted);font-weight:700}
+.report-legend span:before{content:"";position:absolute;left:0;top:50%;width:8px;height:8px;border-radius:2px;transform:translateY(-50%)}
+.report-legend span.income:before{background:var(--success)}
+.report-legend span.expense:before{background:var(--danger)}
+
+.report-stat-list{display:flex;flex-direction:column;gap:0;margin-top:10px}
+.report-stat-list>div{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line-soft)}
+.report-stat-list>div:first-child{border-top:0}
+.report-stat-list span{color:var(--muted);font-size:9px}
+.report-stat-list span.danger{color:var(--danger)}
+.report-stat-list b{font-size:10px;color:var(--ink)}
+.report-stat-list b.danger{color:var(--danger)}
+
+@media(max-width:1180px){.report-columns{grid-template-columns:1fr 1fr}.report-columns>.report-card:last-child{grid-column:1/-1}}
+@media(max-width:760px){
+  .report-columns{grid-template-columns:1fr}
+  .report-range-bar{flex-direction:column;align-items:stretch}
+  .report-custom-range{flex-wrap:wrap}
+  .report-bar-row{grid-template-columns:64px minmax(0,1fr) auto}
+}
+
+/* ---------- Prim Raporu / print output ---------- */
+.report-print-area{display:flex;flex-direction:column;gap:16px}
+.report-print-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.report-print-head h2{margin:0;font:750 20px var(--font-heading);color:var(--ink)}
+.report-print-head p{margin:5px 0 0;color:var(--muted);font-size:10px}
+.prim-row{grid-template-columns:minmax(0,1.3fr) auto auto auto auto}
+
+@media print{
+  .panel-sidebar,.panel-topbar,.panel-page-actions,.module-tabs,.report-range-bar,.report-print-button{display:none !important}
+  .panel-frame{display:block !important}
+  .panel-content{padding:0 !important;width:100% !important;margin:0 !important}
+  .panel-workspace{background:#fff !important}
+  .module-tab-panel{border:0 !important;background:#fff !important;padding:0 !important;margin:0 !important}
+  .report-print-area{gap:10px}
+  .panel-card{box-shadow:none !important;border:1px solid #ccc !important;break-inside:avoid}
+  body{background:#fff !important}
+}

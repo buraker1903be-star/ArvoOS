@@ -1,0 +1,23 @@
+/* ============================================================
+   ArvoOS Panel — Cari Detay (Hareket Dökümü)
+   ============================================================ */
+
+.party-entry-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.party-entry-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:16px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
+.party-entry-main{display:flex;align-items:center;gap:12px;min-width:0}
+.party-entry-main b{display:block;font-size:11px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.party-entry-main small{display:block;margin-top:3px;color:var(--muted);font-size:8px}
+.status-pill.pill-debit{background:var(--danger-soft);color:var(--danger)}
+.status-pill.pill-credit{background:var(--success-soft);color:var(--success)}
+.party-amount-debit{color:var(--danger);font-size:13px;white-space:nowrap}
+.party-amount-credit{color:var(--success);font-size:13px;white-space:nowrap}
+.party-entry-actions{display:flex;gap:8px;align-items:center}
+.party-entry-actions form{margin:0}
+.party-entry-actions .panel-danger{min-height:32px;padding:0 12px;font-size:9px}
+.entry-edit-trigger .panel-primary{min-height:32px;padding:0 12px;font-size:9px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.entry-edit-trigger .panel-primary:hover{border-color:var(--accent-500);color:var(--accent-600);filter:none;transform:none}
+
+@media(max-width:900px){
+  .party-entry-row{grid-template-columns:1fr;gap:10px}
+  .party-entry-actions{justify-content:flex-end}
+}

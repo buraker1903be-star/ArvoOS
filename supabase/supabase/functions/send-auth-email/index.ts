@@ -1,0 +1,220 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+import { Resend } from "npm:resend@4.7.0";
+
+type HookPayload = {
+  user: {
+    id: string;
+    email: string;
+    user_metadata?: Record<string, unknown>;
+    app_metadata?: Record<string, unknown>;
+  };
+  email_data: {
+    token?: string;
+    token_hash?: string;
+    redirect_to?: string;
+    email_action_type: string;
+    site_url?: string;
+  };
+};
+
+type Brand = {
+  name: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  websiteUrl: string | null;
+};
+
+const fallbackBrand: Brand = {
+  name: "ArvoOS",
+  logoUrl: "https://app.arvo-os.com/arvoos-logo.png",
+  primaryColor: "#6e9448",
+  contactEmail: "info@arvo-os.com",
+  contactPhone: null,
+  websiteUrl: "https://arvo-os.com",
+};
+
+const escapeHtml = (value: string) => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
+const safeColor = (value: string | null) =>
+  value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallbackBrand.primaryColor;
+
+function confirmationUrl(payload: HookPayload) {
+  const projectUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const tokenHash = payload.email_data.token_hash ?? "";
+  const type = payload.email_data.email_action_type;
+  const redirectTo = payload.email_data.redirect_to || payload.email_data.site_url ||
+    "https://app.arvo-os.com/auth/callback?next=/panel";
+  const params = new URLSearchParams({ token: tokenHash, type, redirect_to: redirectTo });
+  return `${projectUrl}/auth/v1/verify?${params.toString()}`;
+}
+
+function copyFor(type: string, brandName: string) {
+  const messages: Record<string, { subject: string; eyebrow: string; title: string; body: string; button: string }> = {
+    invite: {
+      subject: `${brandName} çalışma alanına davet edildiniz`,
+      eyebrow: "KURUMSAL DAVET",
+      title: `${brandName} ekibine hoş geldiniz`,
+      body: "Hesabınızı etkinleştirmek ve kendi şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın.",
+      button: "Daveti Kabul Et",
+    },
+    recovery: {
+      subject: `${brandName} şifre yenileme bağlantınız`,
+      eyebrow: "ŞİFRE YENİLEME",
+      title: "Şifrenizi güvenle yenileyin",
+      body: "Hesabınız için bir şifre yenileme talebi aldık. Yeni şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın.",
+      button: "Yeni Şifre Oluştur",
+    },
+    signup: {
+      subject: `${brandName} e-posta doğrulama`,
+      eyebrow: "E-POSTA DOĞRULAMA",
+      title: "E-posta adresinizi doğrulayın",
+      body: "Hesabınızı etkinleştirmek için aşağıdaki güvenli bağlantıyı kullanın.",
+      button: "E-postamı Doğrula",
+    },
+    magiclink: {
+      subject: `${brandName} güvenli giriş bağlantınız`,
+      eyebrow: "GÜVENLİ GİRİŞ",
+      title: "Tek kullanımlık giriş bağlantınız",
+      body: "Hesabınıza güvenli biçimde giriş yapmak için aşağıdaki bağlantıyı kullanın.",
+      button: "Güvenli Giriş Yap",
+    },
+    email_change: {
+      subject: `${brandName} e-posta değişikliği onayı`,
+      eyebrow: "E-POSTA DEĞİŞİKLİĞİ",
+      title: "Yeni e-posta adresinizi onaylayın",
+      body: "E-posta adresi değişikliğini tamamlamak için aşağıdaki güvenli bağlantıyı kullanın.",
+      button: "Değişikliği Onayla",
+    },
+    reauthentication: {
+      subject: `${brandName} doğrulama kodunuz`,
+      eyebrow: "GÜVENLİK DOĞRULAMASI",
+      title: "Doğrulama kodunuz",
+      body: "Hassas işlemi tamamlamak için aşağıdaki tek kullanımlık doğrulama kodunu kullanın.",
+      button: "",
+    },
+  };
+  return messages[type] ?? messages.magiclink;
+}
+
+function renderEmail(payload: HookPayload, brand: Brand) {
+  const type = payload.email_data.email_action_type;
+  const copy = copyFor(type, brand.name);
+  const link = confirmationUrl(payload);
+  const code = payload.email_data.token ?? "";
+  const logo = brand.logoUrl
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" height="70" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:180px;height:70px;object-fit:contain;">`
+    : `<p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:32px;color:#1f2d25;font-weight:700;letter-spacing:-0.3px;">${escapeHtml(brand.name)}</p>`;
+
+  const badgeGlyph = type === "recovery" ? "&#128274;" : type === "reauthentication" ? "&#128272;" : "&#10003;";
+  const badge = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 0 20px;"><tr><td width="44" height="44" align="center" valign="middle" bgcolor="${brand.primaryColor}" style="width:44px;height:44px;border-radius:12px;background-color:${brand.primaryColor};font-family:Arial,Helvetica,sans-serif;font-size:19px;line-height:44px;color:#ffffff;">${badgeGlyph}</td></tr></table>`;
+
+  const action = type === "reauthentication"
+    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-left:auto;margin-right:auto;"><tr><td bgcolor="#f4f6f2" style="background-color:#f4f6f2;border:1px solid #e4e9e2;border-radius:12px;padding-top:18px;padding-right:32px;padding-bottom:18px;padding-left:32px;font-family:'Courier New',monospace;font-size:30px;line-height:36px;color:#20291f;font-weight:700;letter-spacing:8px;">${escapeHtml(code)}</td></tr></table>`
+    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-left:auto;margin-right:auto;"><tr><td align="center" bgcolor="${brand.primaryColor}" style="background-color:${brand.primaryColor};border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.12);"><a href="${escapeHtml(link)}" style="display:inline-block;padding-top:16px;padding-right:34px;padding-bottom:16px;padding-left:34px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;color:#ffffff;text-decoration:none;font-weight:700;letter-spacing:0.2px;">${escapeHtml(copy.button)} &rarr;</a></td></tr></table>`;
+
+  const contactParts = [brand.contactEmail, brand.contactPhone, brand.websiteUrl]
+    .filter(Boolean)
+    .map((item) => escapeHtml(String(item)))
+    .join(" &middot; ");
+
+  const preheader = `${copy.title} — ${copy.body}`.slice(0, 140);
+
+  const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>${escapeHtml(copy.subject)}</title>
+<!--[if mso]><style type="text/css">table,td,div,h1,p{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+</head><body style="margin:0;padding:0;background-color:#eef1ec;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#eef1ec;opacity:0;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;background-color:#eef1ec;background-image:linear-gradient(180deg,#f4f6f2 0%,#eef1ec 220px);"><tr><td align="center" style="padding-top:48px;padding-right:16px;padding-bottom:48px;padding-left:16px;">
+<table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:600px;background-color:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e6ebe2;box-shadow:0 24px 60px rgba(20,40,25,0.08);">
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding-top:32px;padding-right:40px;padding-bottom:24px;padding-left:40px;border-top:5px solid ${brand.primaryColor};">${logo}<p style="margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:16px;color:${brand.primaryColor};font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">${escapeHtml(copy.eyebrow)}</p></td></tr>
+<tr><td style="padding-top:30px;padding-right:40px;padding-bottom:6px;padding-left:40px;border-top:1px solid #f0f2ee;">${badge}<h1 style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:34px;color:#1a251c;font-weight:700;letter-spacing:-0.4px;">${escapeHtml(copy.title)}</h1><p style="margin-top:14px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:25px;color:#5c6b60;">${escapeHtml(copy.body)}</p></td></tr>
+<tr><td align="center" style="padding-top:26px;padding-right:40px;padding-bottom:32px;padding-left:40px;">${action}</td></tr>
+<tr><td style="padding-top:0;padding-right:40px;padding-bottom:32px;padding-left:40px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%"><tr><td style="border-top:1px solid #f0f2ee;padding-top:22px;"><p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#8a948c;">Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz. Güvenliğiniz için bağlantıyı veya doğrulama kodunu kimseyle paylaşmayın.</p>${type === "reauthentication" ? "" : `<p style="margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:#a3aca5;word-break:break-all;">Buton çalışmazsa bağlantıyı tarayıcınıza yapıştırın:<br><a href="${escapeHtml(link)}" style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:${brand.primaryColor};text-decoration:underline;">${escapeHtml(link)}</a></p>`}</td></tr></table></td></tr>
+<tr><td bgcolor="#f7f8f6" style="background-color:#f7f8f6;padding-top:24px;padding-right:40px;padding-bottom:24px;padding-left:40px;border-top:1px solid #e9ece6;"><p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#6e786f;font-weight:600;">${escapeHtml(brand.name)}</p>${contactParts ? `<p style="margin-top:4px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:#8a948c;">${contactParts}</p>` : ""}<p style="margin-top:14px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;line-height:16px;color:#b3bab2;">Bu e-posta ArvoOS güvenli altyapısı üzerinden otomatik olarak gönderilmiştir.</p></td></tr>
+</table></td></tr></table></body></html>`;
+
+  const text = `${copy.title}\n\n${copy.body}\n\n${type === "reauthentication" ? `Kod: ${code}` : link}\n\n${brand.name} ${contactParts ? `· ${contactParts}` : ""}`;
+  return { subject: copy.subject, html, text };
+}
+
+async function resolveBrand(payload: HookPayload): Promise<Brand> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return fallbackBrand;
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+  const metadata = { ...(payload.user.user_metadata ?? {}), ...(payload.user.app_metadata ?? {}) };
+  let organizationId = String(metadata.arvoos_organization_id ?? metadata.organization_id ?? "").trim();
+
+  if (!organizationId) {
+    const { data: membership } = await admin
+      .from("organization_memberships")
+      .select("organization_id")
+      .eq("user_id", payload.user.id)
+      .eq("is_active", true)
+      .order("joined_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    organizationId = membership?.organization_id ?? "";
+  }
+
+  if (!organizationId) return fallbackBrand;
+
+  const { data: organization } = await admin
+    .from("organizations")
+    .select("name,logo_url,primary_color,contact_email,contact_phone,website_url")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (!organization) return fallbackBrand;
+
+  return {
+    name: organization.name || fallbackBrand.name,
+    logoUrl: organization.logo_url || null,
+    primaryColor: safeColor(organization.primary_color),
+    contactEmail: organization.contact_email || fallbackBrand.contactEmail,
+    contactPhone: organization.contact_phone || null,
+    websiteUrl: organization.website_url || null,
+  };
+}
+
+Deno.serve(async (request) => {
+  if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
+  if (!resendKey || !hookSecret) {
+    return Response.json({ error: "Email hook secrets are missing." }, { status: 500 });
+  }
+
+  try {
+    const rawBody = await request.text();
+    const headers = Object.fromEntries(request.headers);
+    const verifier = new Webhook(hookSecret.replace("v1,whsec_", ""));
+    const payload = verifier.verify(rawBody, headers) as HookPayload;
+    const brand = await resolveBrand(payload);
+    const email = renderEmail(payload, brand);
+    const resend = new Resend(resendKey);
+    const { error } = await resend.emails.send({
+      from: `${brand.name} <noreply@arvo-os.com>`,
+      to: [payload.user.email],
+      replyTo: brand.contactEmail,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+    });
+    if (error) throw new Error(error.message);
+    return Response.json({});
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Email could not be sent.";
+    return Response.json({ error: { message } }, { status: 401 });
+  }
+});
