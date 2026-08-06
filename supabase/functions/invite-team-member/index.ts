@@ -35,12 +35,25 @@ Deno.serve(async (request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   let invitationId: string | null = null;
+  let failContext: { organizationId?: string; email?: string; role?: string; invitedBy?: string } = {};
 
   async function fail(message: string, status = 400) {
     if (invitationId) {
       await adminClient.from("organization_invitations")
         .update({ status: "failed", error_message: message, updated_at: new Date().toISOString() })
         .eq("id", invitationId);
+    } else if (failContext.organizationId && failContext.email && failContext.invitedBy) {
+      await adminClient.from("organization_invitations")
+        .insert({
+          organization_id: failContext.organizationId,
+          email: failContext.email,
+          role: allowedRoles.has(failContext.role ?? "") ? failContext.role : "member",
+          invited_by: failContext.invitedBy,
+          status: "failed",
+          error_message: message,
+        })
+        .select("id")
+        .maybeSingle();
     }
     return json({ error: message }, status);
   }
@@ -52,13 +65,15 @@ Deno.serve(async (request) => {
     const role = String(payload.role || "member");
     const fullName = String(payload.fullName || "").trim();
     const employeeId = String(payload.employeeId || "").trim() || null;
+    failContext = { organizationId, email, role };
 
-    if (!organizationId) return json({ error: "organizationId zorunludur." }, 400);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Geçerli bir e-posta adresi girin." }, 400);
-    if (!allowedRoles.has(role)) return json({ error: "Geçersiz rol." }, 400);
+    if (!organizationId) return await fail("organizationId zorunludur.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return await fail("Geçerli bir e-posta adresi girin.");
+    if (!allowedRoles.has(role)) return await fail("Geçersiz rol.");
 
     const { data: actor, error: actorError } = await userClient.auth.getUser();
     if (actorError || !actor.user) return json({ error: `Oturum doğrulanamadı: ${actorError?.message ?? "kullanıcı bulunamadı"}` }, 401);
+    failContext.invitedBy = actor.user.id;
 
     // Create the invitation row immediately (service-role, bypasses RLS) so
     // every subsequent failure — including the permission check below — is

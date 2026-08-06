@@ -23,10 +23,10 @@ export const metadata: Metadata = {
 
 const roleNames: Record<string, string> = {
   owner: "Kurum Sahibi",
-  admin: "Kurum Yöneticisi",
-  manager: "Birim Yöneticisi",
-  member: "Ekip Üyesi",
-  operasyoncu: "Operasyoncu",
+  admin: "Yönetici",
+  manager: "Yönetici",
+  member: "Satış Personeli",
+  operasyoncu: "Operasyon Personeli",
 };
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {

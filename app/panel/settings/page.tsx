@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
 
-const roleNames: Record<string, string> = {owner:"Kurum Sahibi",admin:"Kurum Yöneticisi",manager:"Birim Yöneticisi",member:"Ekip Üyesi",operasyoncu:"Operasyoncu"};
+const roleNames: Record<string, string> = {owner:"Kurum Sahibi",admin:"Yönetici",manager:"Yönetici",member:"Satış Personeli",operasyoncu:"Operasyon Personeli"};
 const integrationCodes = new Set(["banking","payments","e_invoice","billing","integrations","domains"]);
 const domainStatusLabels: Record<string, string> = { pending: "Doğrulama bekleniyor", verified: "Doğrulandı", failed: "Doğrulanamadı" };
 

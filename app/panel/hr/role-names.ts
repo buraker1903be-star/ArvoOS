@@ -1,1 +1,1 @@
-export const roleNames: Record<string, string> = { owner: "Kurum Sahibi", admin: "Yönetici", manager: "Ekip Lideri", member: "Üye", operasyoncu: "Operasyoncu" };
+export const roleNames: Record<string, string> = { owner: "Kurum Sahibi", admin: "Yönetici", manager: "Yönetici", member: "Satış Personeli", operasyoncu: "Operasyon Personeli" };

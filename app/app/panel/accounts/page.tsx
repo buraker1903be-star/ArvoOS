@@ -1,5 +1,0 @@
-import { redirect } from "next/navigation";
-
-export default function AccountsRedirectPage() {
-  redirect("/panel/finance?tab=cari");
-}

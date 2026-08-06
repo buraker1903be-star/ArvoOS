@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createDepartment, createEmployee, updateEmployee } from "./actions";
-import { inviteTeamMember, updateTeamMemberAccess, cancelInvitation } from "./team-actions";
+import { updateTeamMemberAccess, cancelInvitation } from "./team-actions";
+import { InviteTeamForm } from "./invite-team-form";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "./documents-actions";
 import { roleNames } from "./role-names";
 import "./hr.css";
@@ -132,9 +133,8 @@ export default async function HrPage() {
                       <form className="hr-access-form" action={updateTeamMemberAccess}>
                         <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
                         <select name="role" defaultValue={member.role}>
-                          <option value="member">Üye</option>
-                          <option value="operasyoncu">Operasyoncu</option>
-                          <option value="manager">Ekip Lideri</option>
+                          <option value="member">Satış Personeli</option>
+                          <option value="operasyoncu">Operasyon Personeli</option>
                           <option value="admin">Yönetici</option>
                           <option value="owner">Kurum Sahibi</option>
                         </select>
@@ -149,19 +149,7 @@ export default async function HrPage() {
                     </div>
                   ) : (
                     <PanelDrawer triggerLabel="Panele Davet Et" title={`${employee.full_name} için panel erişimi`} description="Bu personele gerçek bir davet e-postası gönderilir.">
-                      <form className="panel-form" action={inviteTeamMember}>
-                        <input type="hidden" name="employee_id" value={employee.id} />
-                        <input type="hidden" name="full_name" value={employee.full_name} />
-                        <label className="wide">E-posta<input name="email" type="email" required defaultValue={employee.email ?? ""} /></label>
-                        <label>Rol<select name="role" defaultValue="member">
-                          <option value="member">Üye</option>
-                          <option value="operasyoncu">Operasyoncu</option>
-                          <option value="manager">Ekip Lideri</option>
-                          <option value="admin">Yönetici</option>
-                          <option value="owner">Kurum Sahibi</option>
-                        </select></label>
-                        <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Daveti Gönder</button></div>
-                      </form>
+                      <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
                     </PanelDrawer>
                   )}
                 </div>

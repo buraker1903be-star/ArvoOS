@@ -10,14 +10,44 @@ async function teamContext() {
   return context;
 }
 
-export async function inviteTeamMember(formData: FormData) {
-  const { supabase, membership } = await teamContext();
+export type InviteTeamMemberState = { error: string | null; success: boolean };
+
+// Supabase JS SDK'sı, Edge Function 2xx dışında bir kod döndürdüğünde
+// "error" alanını genel bir sarmalayıcıyla dolduruyor ("Edge Function
+// returned a non-2xx status code") — asıl gönderdiğimiz JSON mesajı
+// error.context (ham Response nesnesi) içinde kalıyor, onu okumamız
+// gerekiyor, yoksa gerçek sebep hiçbir zaman kullanıcıya ulaşmıyor.
+async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const context = (error as { context?: Response })?.context;
+  if (context && typeof context.json === "function") {
+    try {
+      const body = await context.clone().json();
+      if (body?.error) return String(body.error);
+    } catch {
+      // response body wasn't JSON; fall through to fallback
+    }
+  }
+  return (error as { message?: string })?.message || fallback;
+}
+
+export async function inviteTeamMember(
+  _previousState: InviteTeamMemberState,
+  formData: FormData,
+): Promise<InviteTeamMemberState> {
+  let membership;
+  let supabase;
+  try {
+    ({ supabase, membership } = await teamContext());
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Yetki kontrolü başarısız.", success: false };
+  }
+
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const role = String(formData.get("role") ?? "member");
   const fullName = String(formData.get("full_name") ?? "").trim();
   const employeeId = String(formData.get("employee_id") ?? "").trim() || undefined;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Geçerli bir e-posta adresi girin.");
-  if (!["owner", "admin", "manager", "member", "operasyoncu"].includes(role)) throw new Error("Geçersiz rol.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Geçerli bir e-posta adresi girin.", success: false };
+  if (!["owner", "admin", "manager", "member", "operasyoncu"].includes(role)) return { error: "Geçersiz rol.", success: false };
 
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
@@ -26,12 +56,11 @@ export async function inviteTeamMember(formData: FormData) {
     body: { organizationId: membership.organization_id, email, role, fullName, employeeId, redirectBase },
   });
   if (error || data?.error) {
-    // The exact failure reason (even for early/permission failures) is always
-    // written to organization_invitations by the function itself, so it can
-    // be looked up directly in SQL regardless of what this SDK error exposes.
-    throw new Error(data?.error || error?.message || "Davet gönderilemedi. En son hatayı 'organization_invitations' tablosundan kontrol edin.");
+    const message = data?.error || (await extractFunctionErrorMessage(error, "Davet gönderilemedi. En son hatayı 'organization_invitations' tablosundan kontrol edin."));
+    return { error: message, success: false };
   }
   revalidatePath("/panel/hr");
+  return { error: null, success: true };
 }
 
 export async function updateTeamMemberAccess(formData: FormData) {
