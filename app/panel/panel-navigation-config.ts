@@ -1,3 +1,5 @@
+import { isNavigationGroupHiddenForRole } from "@/lib/role-permissions";
+
 export type PanelModule = {
   code: string;
   name: string;
@@ -23,11 +25,13 @@ export const navigationGroups: NavigationGroup[] = [
 
 export const normalizeModuleCode = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
-export function resolveNavigationGroups(modules: PanelModule[]) {
-  return navigationGroups.map((group) => ({
-    ...group,
-    items: modules.filter((module) => group.codes.includes(normalizeModuleCode(module.code))),
-  }));
+export function resolveNavigationGroups(modules: PanelModule[], role?: string) {
+  return navigationGroups
+    .filter((group) => !role || !isNavigationGroupHiddenForRole(role, group.key))
+    .map((group) => ({
+      ...group,
+      items: modules.filter((module) => group.codes.includes(normalizeModuleCode(module.code))),
+    }));
 }
 
 export function resolveGroupHref(group: ReturnType<typeof resolveNavigationGroups>[number]) {

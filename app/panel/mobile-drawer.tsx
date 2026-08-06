@@ -16,18 +16,20 @@ export function MobileDrawer({
   organizationName,
   roleName,
   isPlatformOwner,
+  role,
 }: {
   modules: PanelModule[];
   organizationName: string;
   roleName: string;
   isPlatformOwner: boolean;
+  role?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const items = useMemo<MobileItem[]>(() => {
-    const groups = resolveNavigationGroups(modules)
+    const groups = resolveNavigationGroups(modules, role)
       .filter((group) => group.items.length > 0)
       .map((group) => ({
         href: resolveGroupHref(group),
@@ -47,7 +49,7 @@ export function MobileDrawer({
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
     if (isPlatformOwner) result.push({ href: "/panel/platform", label: "Platform Yönetimi", icon: "P" });
     return result;
-  }, [modules, isPlatformOwner]);
+  }, [modules, isPlatformOwner, role]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("mobile-drawer-open", open);

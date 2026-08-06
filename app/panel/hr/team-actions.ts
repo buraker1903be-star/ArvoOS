@@ -17,7 +17,7 @@ export async function inviteTeamMember(formData: FormData) {
   const fullName = String(formData.get("full_name") ?? "").trim();
   const employeeId = String(formData.get("employee_id") ?? "").trim() || undefined;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Geçerli bir e-posta adresi girin.");
-  if (!["owner", "admin", "manager", "member"].includes(role)) throw new Error("Geçersiz rol.");
+  if (!["owner", "admin", "manager", "member", "operasyoncu"].includes(role)) throw new Error("Geçersiz rol.");
 
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
@@ -41,7 +41,7 @@ export async function updateTeamMemberAccess(formData: FormData) {
   const isActive = formData.get("is_active") === "on";
   const fullName = String(formData.get("full_name") ?? "").trim();
   if (!userId) throw new Error("Kullanıcı seçilmedi.");
-  if (!["owner", "admin", "manager", "member"].includes(role)) throw new Error("Geçersiz rol.");
+  if (!["owner", "admin", "manager", "member", "operasyoncu"].includes(role)) throw new Error("Geçersiz rol.");
 
   const { error } = await supabase.from("organization_memberships")
     .update({ role, is_active: isActive })

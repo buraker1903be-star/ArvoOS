@@ -133,6 +133,7 @@ export default async function HrPage() {
                         <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
                         <select name="role" defaultValue={member.role}>
                           <option value="member">Üye</option>
+                          <option value="operasyoncu">Operasyoncu</option>
                           <option value="manager">Ekip Lideri</option>
                           <option value="admin">Yönetici</option>
                           <option value="owner">Kurum Sahibi</option>
@@ -154,6 +155,7 @@ export default async function HrPage() {
                         <label className="wide">E-posta<input name="email" type="email" required defaultValue={employee.email ?? ""} /></label>
                         <label>Rol<select name="role" defaultValue="member">
                           <option value="member">Üye</option>
+                          <option value="operasyoncu">Operasyoncu</option>
                           <option value="manager">Ekip Lideri</option>
                           <option value="admin">Yönetici</option>
                           <option value="owner">Kurum Sahibi</option>

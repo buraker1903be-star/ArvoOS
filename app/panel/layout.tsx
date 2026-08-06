@@ -26,6 +26,7 @@ const roleNames: Record<string, string> = {
   admin: "Kurum Yöneticisi",
   manager: "Birim Yöneticisi",
   member: "Ekip Üyesi",
+  operasyoncu: "Operasyoncu",
 };
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -35,13 +36,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
-    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} />
+    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
       <div className="panel-org panel-org-switchable">
         <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
       </div>
-      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} />
+      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} />
       <div className="panel-sidebar-footer">
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
         <form className="panel-logout" action={logout}><button type="submit">↪ <span>Çıkış yap</span></button></form>

@@ -9,9 +9,9 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 
-export function PanelNavigation({ modules, isPlatformOwner }: { modules: PanelModule[]; isPlatformOwner: boolean }) {
+export function PanelNavigation({ modules, isPlatformOwner, role }: { modules: PanelModule[]; isPlatformOwner: boolean; role?: string }) {
   const pathname = usePathname();
-  const resolved = resolveNavigationGroups(modules);
+  const resolved = resolveNavigationGroups(modules, role);
 
   return <nav className="panel-nav panel-nav-v2" aria-label="Ana menü">
     <Link className={pathname === "/panel" ? "panel-nav-home active" : "panel-nav-home"} href="/panel"><i>⌂</i><span>Ana Sayfa</span></Link>
