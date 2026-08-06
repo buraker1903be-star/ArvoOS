@@ -18,12 +18,6 @@ type Props = {
   mode?: "proposal" | "contract";
 };
 type Tax = "excluded" | "included" | "exempt";
-type CustomRow = {
-  id: string;
-  label: string;
-  percentage: number;
-  due_date: string;
-};
 
 const initialCreateProposalState: CreateProposalState = { error: null };
 const money = (value: number) =>
@@ -35,14 +29,6 @@ const money = (value: number) =>
   }).format(value / 100);
 
 const today = () => new Date().toISOString().slice(0, 10);
-let rowIdCounter = 0;
-const nextRowId = () => `row-${++rowIdCounter}`;
-const customRowPresets = [
-  "Peşin (Sözleşme Onayında)",
-  "Ön Ödeme",
-  "Ara Ödeme",
-  "Son Ödeme (Teslim Öncesi)",
-];
 
 function SubmitButton({ customPlanValid, mode }: { customPlanValid: boolean; mode: "proposal" | "contract" }) {
   const { pending } = useFormStatus();
@@ -76,14 +62,7 @@ export function ProposalBuilderForm({
   const [tax, setTax] = useState<Tax>("excluded");
   const [plan, setPlan] = useState<PaymentPlanType>("cash");
   const [firstPaymentDate, setFirstPaymentDate] = useState(today);
-  const [customRows, setCustomRows] = useState<CustomRow[]>(() => [
-    {
-      id: nextRowId(),
-      label: customRowPresets[0],
-      percentage: 100,
-      due_date: today(),
-    },
-  ]);
+  const [customText, setCustomText] = useState("");
 
   const calculation = useMemo(() => {
     const amountCents = Math.max(0, Math.round(amount * 100));
@@ -107,54 +86,22 @@ export function ProposalBuilderForm({
     return calculatePaymentSchedule(calculation.gross, plan, startDate);
   }, [calculation.gross, plan, firstPaymentDate]);
 
-  const customPercentTotal = customRows.reduce(
-    (sum, row) => sum + (Number(row.percentage) || 0),
-    0,
-  );
   const customSchedule: PaymentScheduleItem[] = useMemo(
-    () =>
-      customRows.map((row, index) => ({
-        sequence: index + 1,
-        label: row.label || `${index + 1}. Ödeme`,
-        due_date: row.due_date || today(),
-        amount: Math.round(
-          (calculation.gross * (Number(row.percentage) || 0)) / 100,
-        ),
-        percentage: Number(row.percentage) || 0,
-      })),
-    [customRows, calculation.gross],
+    () => [
+      {
+        sequence: 1,
+        label: customText.trim() || "Özel ödeme planı",
+        due_date: firstPaymentDate || today(),
+        amount: calculation.gross,
+        percentage: 100,
+      },
+    ],
+    [customText, calculation.gross, firstPaymentDate],
   );
 
   const schedule = plan === "custom" ? customSchedule : autoSchedule;
-  const planText = getPaymentPlanLabel(plan);
-  const customPlanValid = plan !== "custom" || customPercentTotal === 100;
-
-  function addCustomRow() {
-    setCustomRows((rows) => [
-      ...rows,
-      {
-        id: nextRowId(),
-        label:
-          customRowPresets[
-            Math.min(rows.length, customRowPresets.length - 1)
-          ] ?? `${rows.length + 1}. Ödeme`,
-        percentage: 0,
-        due_date: today(),
-      },
-    ]);
-  }
-
-  function removeCustomRow(id: string) {
-    setCustomRows((rows) =>
-      rows.length > 1 ? rows.filter((row) => row.id !== id) : rows,
-    );
-  }
-
-  function updateCustomRow(id: string, patch: Partial<CustomRow>) {
-    setCustomRows((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
-    );
-  }
+  const planText = plan === "custom" ? customText.trim() : getPaymentPlanLabel(plan);
+  const customPlanValid = plan !== "custom" || customText.trim().length >= 3;
 
   return (
     <div className="proposal-drawer-content">
@@ -201,23 +148,9 @@ export function ProposalBuilderForm({
 
         {plan === "custom" ? (
           <section className="wide custom-plan-editor">
-            <div className="custom-plan-head"><small>ÖZEL ÖDEME PLANI — TAKSİTLER</small><span className={customPercentTotal === 100 ? "custom-plan-total ok" : "custom-plan-total warn"}>Toplam %{customPercentTotal.toFixed(0)}</span></div>
-            <div className="custom-plan-rows">
-              {customRows.map((row, index) => (
-                <div className="custom-plan-row" key={row.id}>
-                  <span className="custom-plan-index">{index + 1}</span>
-                  <input list="custom-plan-presets" value={row.label} onChange={(event) => updateCustomRow(row.id, { label: event.target.value })} placeholder="Örn. Ön Ödeme" />
-                  <input type="number" min="0" max="100" step="1" value={row.percentage} onChange={(event) => updateCustomRow(row.id, { percentage: Number(event.target.value) || 0 })} />
-                  <span className="custom-plan-percent-sign">%</span>
-                  <input type="date" value={row.due_date} onChange={(event) => updateCustomRow(row.id, { due_date: event.target.value })} />
-                  <span className="custom-plan-amount">{money(Math.round((calculation.gross * (Number(row.percentage) || 0)) / 100))}</span>
-                  <button type="button" className="custom-plan-remove" onClick={() => removeCustomRow(row.id)} disabled={customRows.length <= 1} aria-label="Taksiti sil">✕</button>
-                </div>
-              ))}
-            </div>
-            <datalist id="custom-plan-presets">{customRowPresets.map((preset) => <option key={preset} value={preset} />)}</datalist>
-            <button type="button" className="panel-secondary custom-plan-add" onClick={addCustomRow}>+ Taksit ekle</button>
-            {customPercentTotal !== 100 ? <p className="custom-plan-hint">Taksit yüzdeleri toplamı %100 olmalı (şu an %{customPercentTotal.toFixed(0)}).</p> : null}
+            <div className="custom-plan-head"><small>ÖZEL ÖDEME PLANI</small></div>
+            <label className="wide">Ödeme koşullarını serbest metin olarak yazın<textarea name="custom_plan_text" value={customText} onChange={(event) => setCustomText(event.target.value)} placeholder="Örn. %50 sözleşme onayında, %50 teslimden önce ya da aylık taksitler halinde..." rows={4} required={plan === "custom"} /></label>
+            {plan === "custom" && customText.trim().length > 0 && customText.trim().length < 3 ? <p className="custom-plan-hint">Ödeme planını biraz daha ayrıntılı yazın.</p> : null}
           </section>
         ) : null}
 
