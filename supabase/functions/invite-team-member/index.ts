@@ -122,7 +122,7 @@ Deno.serve(async (request) => {
     if (inviteError) {
       // Email already belongs to an existing account: link them to this
       // organization directly instead of failing the whole invite.
-      const alreadyExists = /already registered|already exists|email_exists/i.test(inviteError.message || "");
+      const alreadyExists = /already.*registered|already exists|email_exists/i.test(inviteError.message || "");
       if (!alreadyExists) return await fail(`Davet e-postası gönderilemedi: ${inviteError.message}`);
 
       let existingUserId: string | null = null;
