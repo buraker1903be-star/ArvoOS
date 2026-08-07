@@ -9,7 +9,7 @@ import "../crm.css";
 
 type Props={searchParams:Promise<{search?:string;status?:string;share?:string}>};
 type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;payment_plan_type:string|null;start_date:string|null;due_date:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;customer_address:string|null;customer_tax_number:string|null;customer_tax_office:string|null;tracking_code:string;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;request_details:Record<string,unknown>|null}|null};
-const statuses=["draft","sent","signed","rejected","cancelled","completed"];
+const statuses=["draft","sent","signed","rejected","cancelled"];
 const labels:Record<string,string>={draft:"Taslak",sent:"İmza bekliyor",signed:"İmzalandı",rejected:"Reddedildi",cancelled:"İptal",completed:"Tamamlandı"};
 const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
 const dateTime=(v:string|null)=>v?new Date(v).toLocaleString("tr-TR"):"—";
@@ -21,7 +21,7 @@ export default async function ContractsPage({searchParams}:Props){
  const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const allRows=(data??[]) as unknown as Contract[];
  const workflowIds=[...new Set(allRows.filter(r=>r.workflow_id).map(r=>r.workflow_id as string))]; const completedWorkflowIds=new Set<string>();
  if(workflowIds.length){const {data:workflows}=await supabase.from("operation_workflows").select("id,status").in("id",workflowIds);for(const wf of workflows??[]) if(wf.status==="completed") completedWorkflowIds.add(wf.id);}
- const isArchived=(row:Contract)=>Boolean(row.workflow_id)&&completedWorkflowIds.has(row.workflow_id as string); const rows=allRows.filter(row=>!isArchived(row)); const archivedRows=allRows.filter(isArchived);
+ const isArchived=(row:Contract)=>row.status==="completed"||(Boolean(row.workflow_id)&&completedWorkflowIds.has(row.workflow_id as string)); const rows=allRows.filter(row=>!isArchived(row)); const archivedRows=allRows.filter(isArchived);
  const {data:domainOrg}=await supabase.from("organizations").select("custom_domain,custom_domain_status").eq("id",membership.organization_id).maybeSingle();
  const publicHost=domainOrg?.custom_domain_status==="verified"&&domainOrg.custom_domain?domainOrg.custom_domain:"app.arvo-os.com";
  const shareUrl=share?`https://${publicHost}/sozlesme/${share}`:""; const total=rows.reduce((s,r)=>s+Number(r.amount),0);
