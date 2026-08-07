@@ -222,7 +222,7 @@ export async function issueProposalLink(formData: FormData) {
 }
 
 export async function updateContract(formData: FormData) {
-  const { supabase } = await getPanelContext();
+  const { supabase, membership } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
   const { error } = await supabase.rpc("update_crm_contract", {
@@ -235,6 +235,20 @@ export async function updateContract(formData: FormData) {
     contract_due_date: text(formData, "due_date", 20) || null,
   });
   if (error) throw new Error("Sözleşme güncellenemedi: " + error.message);
+
+  // Kurumsal müşteri adres/vergi bilgisi — ayrı, basit bir güncelleme
+  // olarak tutuluyor ki mevcut, kanıtlanmış RPC'ye dokunmayalım.
+  const { error: partyInfoError } = await supabase
+    .from("crm_contracts")
+    .update({
+      customer_address: text(formData, "customer_address", 500) || null,
+      customer_tax_number: text(formData, "customer_tax_number", 40) || null,
+      customer_tax_office: text(formData, "customer_tax_office", 120) || null,
+    })
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id);
+  if (partyInfoError) throw new Error("Adres/vergi bilgisi kaydedilemedi: " + partyInfoError.message);
+
   revalidatePath("/panel/crm/contracts");
 }
 
