@@ -180,7 +180,7 @@ export async function createContractDirectly(
 }
 
 export async function updateProposal(formData: FormData) {
-  const { supabase } = await getPanelContext();
+  const { supabase, membership } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const proposalAmount = amount(formData, "amount");
   const { error } = await supabase.rpc("update_crm_proposal", {
@@ -192,7 +192,36 @@ export async function updateProposal(formData: FormData) {
     proposal_valid_until: text(formData, "valid_until", 20) || null,
   });
   if (error) throw new Error("Teklif güncellenemedi: " + error.message);
+
+  // Talep aşamasında girilen müşteri/hizmet bilgileri de aynı formdan
+  // düzenlenebilsin diye bağlı fırsat (crm_opportunities) kaydı da
+  // güncelleniyor — Talepler sayfasına geri dönmeye gerek kalmıyor.
+  const opportunityId = text(formData, "opportunity_id", 80);
+  if (opportunityId) {
+    const currentDetails = JSON.parse(text(formData, "current_details", 10000) || "{}");
+    const requestDetails = {
+      ...currentDetails,
+      service_type: text(formData, "service_type", 180),
+      academic_level: text(formData, "academic_level", 80),
+      university: text(formData, "university", 180),
+      department: text(formData, "department", 180),
+    };
+    const { error: opportunityError } = await supabase
+      .from("crm_opportunities")
+      .update({
+        customer_name: text(formData, "customer_name", 180),
+        contact_phone: text(formData, "contact_phone", 80) || null,
+        contact_email: text(formData, "contact_email", 240) || null,
+        request_details: requestDetails,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", opportunityId)
+      .eq("organization_id", membership.organization_id);
+    if (opportunityError) throw new Error("Müşteri bilgileri güncellenemedi: " + opportunityError.message);
+  }
+
   revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm");
 }
 
 export async function createProposalRevision(formData: FormData) {
@@ -249,7 +278,35 @@ export async function updateContract(formData: FormData) {
     .eq("organization_id", membership.organization_id);
   if (partyInfoError) throw new Error("Adres/vergi bilgisi kaydedilemedi: " + partyInfoError.message);
 
+  // Talep aşamasında girilen müşteri/hizmet bilgileri de aynı formdan
+  // düzenlenebilsin diye bağlı fırsat (crm_opportunities) kaydı da
+  // güncelleniyor — Talepler sayfasına geri dönmeye gerek kalmıyor.
+  const opportunityId = text(formData, "opportunity_id", 80);
+  if (opportunityId) {
+    const currentDetails = JSON.parse(text(formData, "current_details", 10000) || "{}");
+    const requestDetails = {
+      ...currentDetails,
+      service_type: text(formData, "service_type", 180),
+      academic_level: text(formData, "academic_level", 80),
+      university: text(formData, "university", 180),
+      department: text(formData, "department", 180),
+    };
+    const { error: opportunityError } = await supabase
+      .from("crm_opportunities")
+      .update({
+        customer_name: text(formData, "customer_name", 180),
+        contact_phone: text(formData, "contact_phone", 80) || null,
+        contact_email: text(formData, "contact_email", 240) || null,
+        request_details: requestDetails,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", opportunityId)
+      .eq("organization_id", membership.organization_id);
+    if (opportunityError) throw new Error("Müşteri bilgileri güncellenemedi: " + opportunityError.message);
+  }
+
   revalidatePath("/panel/crm/contracts");
+  revalidatePath("/panel/crm");
 }
 
 export async function issueContractLink(formData: FormData) {

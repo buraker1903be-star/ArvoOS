@@ -136,3 +136,7 @@
 @media(max-width:900px){
   .crm-table-wrap{border-left:0;border-right:0;border-radius:0;margin-left:-16px;margin-right:-16px;width:calc(100% + 32px)}
 }
+
+/* ---------- Düzenleme formunda müşteri/talep ve teklif/sözleşme bölümlerini ayıran başlık ---------- */
+.panel-form-note{width:100%;margin:4px 0 0;padding-top:10px;border-top:1px solid var(--line);color:var(--accent-600);font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.panel-form-note:first-child{margin-top:0;padding-top:0;border-top:0}
