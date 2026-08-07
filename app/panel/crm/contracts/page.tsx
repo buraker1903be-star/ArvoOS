@@ -8,15 +8,15 @@ import { CrmTabs } from "../crm-tabs";
 import "../crm.css";
 
 type Props={searchParams:Promise<{search?:string;status?:string;share?:string}>};
-type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;payment_plan_type:string|null;start_date:string|null;due_date:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;customer_address:string|null;customer_tax_number:string|null;customer_tax_office:string|null;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;request_details:Record<string,unknown>|null}|null};
+type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;payment_plan_type:string|null;start_date:string|null;due_date:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;customer_address:string|null;customer_tax_number:string|null;customer_tax_office:string|null;tracking_code:string;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;request_details:Record<string,unknown>|null}|null};
 const statuses=["draft","sent","signed","rejected","cancelled","completed"];
 const labels:Record<string,string>={draft:"Taslak",sent:"İmza bekliyor",signed:"İmzalandı",rejected:"Reddedildi",cancelled:"İptal",completed:"Tamamlandı"};
 const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
 const dateTime=(v:string|null)=>v?new Date(v).toLocaleString("tr-TR"):"—";
 export default async function ContractsPage({searchParams}:Props){
  const p=await searchParams; const search=(p.search??"").trim(); const status=statuses.includes(p.status??"")?p.status!:""; const share=p.share??"";
- const {supabase,membership,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
- let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,created_at,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,request_details)").eq("organization_id",membership.organization_id);
+ const {supabase,membership,organization,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
+ let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,created_at,customer_address,customer_tax_number,customer_tax_office,tracking_code,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,request_details)").eq("organization_id",membership.organization_id);
  if(status) q=q.eq("status",status); if(search) q=q.or(`contract_no.ilike.%${search}%,title.ilike.%${search}%`);
  const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const allRows=(data??[]) as unknown as Contract[];
 
@@ -48,6 +48,13 @@ export default async function ContractsPage({searchParams}:Props){
         <td>{row.due_date?new Date(row.due_date+"T00:00:00").toLocaleDateString("tr-TR"):"—"}</td>
         <td className="crm-table-actions">
           <PanelDrawer triggerLabel="Önizle" title={row.contract_no}>{detail}</PanelDrawer>
+          <PanelDrawer triggerLabel="Takip Kodu" title={row.contract_no} description="Müşteri bu kodla kendi iş durumunu görebilir.">
+            {(() => {
+              const trackingUrl=`https://app.arvo-os.com/durum/${organization.slug}?code=${row.tracking_code}`;
+              const waText=`Merhaba ${customer?.customer_name??""}, sözleşmenizin (${row.contract_no}) güncel durumunu şu bağlantıdan takip edebilirsiniz: ${trackingUrl}\n\nTakip Kodunuz: ${row.tracking_code}`;
+              return <div className="crm-request-preview"><p><b>Takip Kodu</b></p><p style={{fontSize:20,fontWeight:800,letterSpacing:3}}>{row.tracking_code}</p><p style={{wordBreak:"break-all"}}>{trackingUrl}</p><div className="panel-page-actions"><a className="panel-primary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(waText)}`}>WhatsApp ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={trackingUrl}>Önizle</a></div></div>;
+            })()}
+          </PanelDrawer>
           <PanelDrawer triggerLabel="Ödeme Planı" title={row.contract_no} description="Müşteri talebiyle ödeme planını revize edin (örn. 3 taksite bölme).">
             <ContractPaymentPlanForm contractId={row.id} amountCents={row.amount} currentPlanType={row.payment_plan_type} />
           </PanelDrawer>

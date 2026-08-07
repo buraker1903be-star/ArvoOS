@@ -7,7 +7,8 @@ import "../durum/[slug]/status-lookup.css";
 
 export const metadata: Metadata = { title: "İş Durumu Sorgula" };
 
-export default async function CustomDomainStatusLookupPage() {
+export default async function CustomDomainStatusLookupPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+  const { code } = await searchParams;
   const requestHeaders = await headers();
   const host = requestHeaders.get("host")?.split(":")[0] ?? "";
 
@@ -30,8 +31,8 @@ export default async function CustomDomainStatusLookupPage() {
           <h1 className="status-lookup-org-name">{org.name}</h1>
         )}
         <h2>İş Durumu Sorgulama</h2>
-        <p>Sözleşmenizin güncel durumunu görmek için kayıtlı telefon numaranızın son 4 hanesini girin.</p>
-        <StatusLookupForm orgSlug={org.slug} />
+        <p>Sözleşmenizin güncel durumunu görmek için size gönderilen takip kodunu girin.</p>
+        <StatusLookupForm orgSlug={org.slug} prefillCode={code} />
       </div>
     </main>
   );
