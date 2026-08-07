@@ -4,17 +4,13 @@ export type PaymentScheduleItem = {
   sequence: number;
   label: string;
   due_date: string;
+  trigger?: string;
   amount: number;
   percentage: number;
 };
 
-const addDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
-const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+const TRIGGER_CONTRACT = "Sözleşme Onayıyla Ödenecektir";
+const TRIGGER_BEFORE_DELIVERY = "Teslimden 1 İş Günü Öncesi Ödenecektir";
 
 const splitCents = (totalCents: number, count: number) => {
   const safeTotal = Math.max(0, Math.round(totalCents));
@@ -26,10 +22,46 @@ const splitCents = (totalCents: number, count: number) => {
 
 const percentOf = (amount: number, total: number) => (total ? Number(((amount / total) * 100).toFixed(2)) : 0);
 
+/**
+ * Belirli bir tutar dizisini (her taksitin nakit tutarı) otomatik olarak
+ * Ön Ödeme / Ara Ödeme / Son Ödeme şeklinde etiketler ve tetikleyici
+ * metnini (ne zaman ödeneceği — tarih değil, olay bazlı) belirler.
+ * Tek taksit varsa "Peşin Ödeme" olarak etiketlenir.
+ */
+export function buildLabeledSchedule(totalCents: number, amounts: number[]): PaymentScheduleItem[] {
+  const safeTotal = Math.max(0, Math.round(totalCents));
+  const middleCount = Math.max(0, amounts.length - 2);
+  return amounts.map((amount, index) => {
+    let label: string;
+    let trigger: string;
+    if (amounts.length === 1) {
+      label = "Peşin Ödeme";
+      trigger = TRIGGER_CONTRACT;
+    } else if (index === 0) {
+      label = "Ön Ödeme";
+      trigger = TRIGGER_CONTRACT;
+    } else if (index === amounts.length - 1) {
+      label = "Son Ödeme";
+      trigger = TRIGGER_BEFORE_DELIVERY;
+    } else {
+      label = middleCount > 1 ? `${index}. Ara Ödeme` : "Ara Ödeme";
+      trigger = "";
+    }
+    return {
+      sequence: index + 1,
+      label,
+      due_date: "",
+      trigger,
+      amount: Math.round(amount),
+      percentage: percentOf(amount, safeTotal),
+    };
+  });
+}
+
 export function getPaymentPlanLabel(type: PaymentPlanType) {
   if (type === "cash") return "Peşin Ödeme";
-  if (type === "half") return "%50 Peşin (Sözleşme Onayında) - %50 Teslim Öncesi";
-  if (type === "third") return "1/3 Peşin (Sözleşme Onayında) - Ara Ödeme - Son Ödeme (Teslim Öncesi)";
+  if (type === "half") return "Ön Ödeme (Sözleşme Onayıyla) - Son Ödeme (Teslimden Önce)";
+  if (type === "third") return "Ön Ödeme (Sözleşme Onayıyla) - Ara Ödeme - Son Ödeme (Teslimden Önce)";
   return "Özel Ödeme Planı";
 }
 
@@ -41,40 +73,21 @@ export function getPaymentPlanLabel(type: PaymentPlanType) {
 export function calculatePaymentSchedule(
   totalCents: number,
   type: PaymentPlanType,
-  startDate = new Date(),
 ): PaymentScheduleItem[] {
   const safeTotal = Math.max(0, Math.round(totalCents));
 
-  if (type === "cash") {
-    return [{ sequence: 1, label: "Peşin ödeme", due_date: isoDate(startDate), amount: safeTotal, percentage: 100 }];
-  }
+  if (type === "cash") return buildLabeledSchedule(safeTotal, [safeTotal]);
+  if (type === "half") return buildLabeledSchedule(safeTotal, splitCents(safeTotal, 2));
+  if (type === "third") return buildLabeledSchedule(safeTotal, splitCents(safeTotal, 3));
 
-  if (type === "half") {
-    const [first, second] = splitCents(safeTotal, 2);
-    return [
-      { sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: first, percentage: percentOf(first, safeTotal) },
-      { sequence: 2, label: "Teslim Öncesi", due_date: isoDate(addDays(startDate, 30)), amount: second, percentage: percentOf(second, safeTotal) },
-    ];
-  }
-
-  if (type === "third") {
-    const [first, second, third] = splitCents(safeTotal, 3);
-    return [
-      { sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: first, percentage: percentOf(first, safeTotal) },
-      { sequence: 2, label: "Ara Ödeme", due_date: isoDate(addDays(startDate, 20)), amount: second, percentage: percentOf(second, safeTotal) },
-      { sequence: 3, label: "Son Ödeme (Teslim Öncesi)", due_date: isoDate(addDays(startDate, 40)), amount: third, percentage: percentOf(third, safeTotal) },
-    ];
-  }
-
-  // custom: tek satırlık başlangıç noktası, kullanıcı formda satır ekler/çıkarır.
-  return [{ sequence: 1, label: "Peşin (Sözleşme Onayında)", due_date: isoDate(startDate), amount: safeTotal, percentage: 100 }];
+  // custom: tek satırlık başlangıç noktası, kullanıcı formda taksit sayısını belirler.
+  return buildLabeledSchedule(safeTotal, [safeTotal]);
 }
 
 export function normalizePaymentSchedule(
   value: unknown,
   expectedTotalCents?: number,
   fallbackType?: PaymentPlanType,
-  fallbackStartDate = new Date(),
 ): PaymentScheduleItem[] {
   const expectedTotal = Number.isFinite(expectedTotalCents)
     ? Math.max(0, Math.round(Number(expectedTotalCents)))
@@ -82,7 +95,7 @@ export function normalizePaymentSchedule(
 
   if (!Array.isArray(value) || value.length === 0) {
     return fallbackType && expectedTotal > 0
-      ? calculatePaymentSchedule(expectedTotal, fallbackType, fallbackStartDate)
+      ? calculatePaymentSchedule(expectedTotal, fallbackType)
       : [];
   }
 
@@ -92,6 +105,7 @@ export function normalizePaymentSchedule(
       sequence: Number(row.sequence ?? index + 1),
       label: String(row.label ?? `${index + 1}. Ödeme`),
       due_date: String(row.due_date ?? ""),
+      trigger: row.trigger ? String(row.trigger) : undefined,
       amount: Math.max(0, Math.round(Number(row.amount ?? 0))),
       percentage: Math.max(0, Number(row.percentage ?? 0)),
     };
@@ -111,13 +125,10 @@ export function normalizePaymentSchedule(
 
   // If the stored plan is stale or malformed, rebuild it from the selected plan type.
   if (fallbackType && fallbackType !== "custom") {
-    const firstDueDate = rows[0]?.due_date
-      ? new Date(`${rows[0].due_date}T12:00:00`)
-      : fallbackStartDate;
-    return calculatePaymentSchedule(expectedTotal, fallbackType, firstDueDate);
+    return calculatePaymentSchedule(expectedTotal, fallbackType);
   }
 
-  // Preserve custom labels/dates, but force installment amounts to reconcile exactly.
+  // Preserve custom labels/triggers, but force installment amounts to reconcile exactly.
   const weights = rows.map((item) => item.percentage > 0 ? item.percentage : item.amount);
   const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
   const amounts = weightTotal > 0

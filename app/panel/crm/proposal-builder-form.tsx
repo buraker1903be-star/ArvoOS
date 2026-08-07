@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProposal, createContractDirectly, type CreateProposalState } from "./sales-actions";
 import {
+  buildLabeledSchedule,
   calculatePaymentSchedule,
   getPaymentPlanLabel,
   type PaymentPlanType,
@@ -61,8 +62,8 @@ export function ProposalBuilderForm({
   const [amount, setAmount] = useState(0);
   const [tax, setTax] = useState<Tax>("excluded");
   const [plan, setPlan] = useState<PaymentPlanType>("cash");
-  const [firstPaymentDate, setFirstPaymentDate] = useState(today);
-  const [customText, setCustomText] = useState("");
+  const [customCount, setCustomCount] = useState(2);
+  const [customPercentages, setCustomPercentages] = useState<number[]>([50, 50]);
 
   const calculation = useMemo(() => {
     const amountCents = Math.max(0, Math.round(amount * 100));
@@ -79,29 +80,41 @@ export function ProposalBuilderForm({
     return { net: amountCents, vat: 0, gross: amountCents };
   }, [amount, tax]);
 
-  const autoSchedule = useMemo(() => {
-    const startDate = firstPaymentDate
-      ? new Date(`${firstPaymentDate}T12:00:00`)
-      : new Date();
-    return calculatePaymentSchedule(calculation.gross, plan, startDate);
-  }, [calculation.gross, plan, firstPaymentDate]);
+  const autoSchedule = useMemo(
+    () => calculatePaymentSchedule(calculation.gross, plan),
+    [calculation.gross, plan],
+  );
 
+  function evenSplit(count: number) {
+    const base = Math.floor(100 / count);
+    const remainder = 100 - base * count;
+    return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+  }
+
+  function setInstallmentCount(count: number) {
+    const safeCount = Math.min(8, Math.max(2, count));
+    setCustomCount(safeCount);
+    setCustomPercentages(evenSplit(safeCount));
+  }
+
+  function updatePercentage(index: number, value: number) {
+    setCustomPercentages((rows) => rows.map((row, rowIndex) => (rowIndex === index ? value : row)));
+  }
+
+  const customPercentTotal = customPercentages.reduce((sum, value) => sum + (Number(value) || 0), 0);
   const customSchedule: PaymentScheduleItem[] = useMemo(
-    () => [
-      {
-        sequence: 1,
-        label: customText.trim() || "Özel ödeme planı",
-        due_date: firstPaymentDate || today(),
-        amount: calculation.gross,
-        percentage: 100,
-      },
-    ],
-    [customText, calculation.gross, firstPaymentDate],
+    () => buildLabeledSchedule(
+      calculation.gross,
+      customPercentages.map((percentage) => Math.round((calculation.gross * (Number(percentage) || 0)) / 100)),
+    ),
+    [calculation.gross, customPercentages],
   );
 
   const schedule = plan === "custom" ? customSchedule : autoSchedule;
-  const planText = plan === "custom" ? customText.trim() : getPaymentPlanLabel(plan);
-  const customPlanValid = plan !== "custom" || customText.trim().length >= 3;
+  const planText = plan === "custom"
+    ? schedule.map((item) => `${item.label}: %${item.percentage.toFixed(0)}${item.trigger ? ` (${item.trigger})` : ""}`).join(" · ")
+    : getPaymentPlanLabel(plan);
+  const customPlanValid = plan !== "custom" || customPercentTotal === 100;
 
   return (
     <div className="proposal-drawer-content">
@@ -140,17 +153,27 @@ export function ProposalBuilderForm({
         <label className="wide">Teklif başlığı<input name="title" required defaultValue={title} /></label>
         <label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
         <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
-        <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">1. Peşin Ödeme</option><option value="half">2. %50 Peşin (Sözleşme Onayında) + %50 Teslim Öncesi</option><option value="third">3. 1/3 Peşin (Sözleşme Onayında) + Ara Ödeme + Son Ödeme (Teslim Öncesi)</option><option value="custom">4. Özel Ödeme Planı (Taksitli)</option></select></label>
-        {plan !== "custom" ? <label>İlk ödeme tarihi<input type="date" value={firstPaymentDate} onChange={(event) => setFirstPaymentDate(event.target.value)} /></label> : null}
+        <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">1. Peşin Ödeme</option><option value="half">2. Ön Ödeme (Sözleşme Onayında) + Son Ödeme (Teslim Öncesi)</option><option value="third">3. Ön Ödeme (Sözleşme Onayında) + Ara Ödeme + Son Ödeme (Teslim Öncesi)</option><option value="custom">4. Özel Ödeme Planı (Taksitli)</option></select></label>
         <label>Tahmini teslim tarihi<input name="estimated_delivery_date" type="date" min={today()} required /></label>
         <label>Geçerlilik tarihi<input name="valid_until" type="date" min={today()} /></label>
         <label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={scope} /></label>
 
         {plan === "custom" ? (
           <section className="wide custom-plan-editor">
-            <div className="custom-plan-head"><small>ÖZEL ÖDEME PLANI</small></div>
-            <label className="wide">Ödeme koşullarını serbest metin olarak yazın<textarea name="custom_plan_text" value={customText} onChange={(event) => setCustomText(event.target.value)} placeholder="Örn. %50 sözleşme onayında, %50 teslimden önce ya da aylık taksitler halinde..." rows={4} required={plan === "custom"} /></label>
-            {plan === "custom" && customText.trim().length > 0 && customText.trim().length < 3 ? <p className="custom-plan-hint">Ödeme planını biraz daha ayrıntılı yazın.</p> : null}
+            <div className="custom-plan-head"><small>ÖZEL ÖDEME PLANI — TAKSİT SAYISI</small><span className={customPercentTotal === 100 ? "custom-plan-total ok" : "custom-plan-total warn"}>Toplam %{customPercentTotal.toFixed(0)}</span></div>
+            <label className="custom-plan-count">Taksit sayısı<input type="number" min={2} max={8} value={customCount} onChange={(event) => setInstallmentCount(Number(event.target.value) || 2)} /></label>
+            <div className="custom-plan-rows">
+              {schedule.map((item, index) => (
+                <div className="custom-plan-row" key={item.sequence}>
+                  <span className="custom-plan-index">{item.sequence}</span>
+                  <span className="custom-plan-row-label">{item.label}{item.trigger ? <small> · {item.trigger}</small> : null}</span>
+                  <input type="number" min="0" max="100" step="1" value={customPercentages[index] ?? 0} onChange={(event) => updatePercentage(index, Number(event.target.value) || 0)} />
+                  <span className="custom-plan-percent-sign">%</span>
+                  <span className="custom-plan-amount">{money(item.amount)}</span>
+                </div>
+              ))}
+            </div>
+            {customPercentTotal !== 100 ? <p className="custom-plan-hint">Taksit yüzdeleri toplamı %100 olmalı (şu an %{customPercentTotal.toFixed(0)}).</p> : null}
           </section>
         ) : null}
 
@@ -160,8 +183,8 @@ export function ProposalBuilderForm({
           <div><span>KDV</span><b>{money(calculation.vat)}</b></div>
           <div className="proposal-summary-total"><span>Genel toplam</span><strong>{money(calculation.gross)}</strong></div>
           <section className="proposal-payment-breakdown">
-            <small>{plan === "custom" ? "ÖDEME PLANI (ÜCRETLER HESAPLANDI)" : "OTOMATİK ÖDEME PLANI (ÜCRET HESAPLANDI)"}</small>
-            {schedule.map((item) => <div key={`${item.sequence}-${item.due_date}`}><span>{item.sequence}. {item.label} · {item.due_date ? new Date(`${item.due_date}T12:00:00`).toLocaleDateString("tr-TR") : "Tarih yok"}</span><b>{money(item.amount)}</b></div>)}
+            <small>{plan === "custom" ? "ÖDEME PLANI" : "OTOMATİK ÖDEME PLANI"}</small>
+            {schedule.map((item) => <div key={item.sequence}><span>{item.sequence}. {item.label}{item.trigger ? ` · ${item.trigger}` : ""}</span><b>{money(item.amount)}</b></div>)}
           </section>
         </section>
 
