@@ -18,7 +18,20 @@ export default async function ContractsPage({searchParams}:Props){
  const {supabase,membership,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
  let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,created_at,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,request_details)").eq("organization_id",membership.organization_id);
  if(status) q=q.eq("status",status); if(search) q=q.or(`contract_no.ilike.%${search}%,title.ilike.%${search}%`);
- const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const rows=(data??[]) as unknown as Contract[];
+ const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const allRows=(data??[]) as unknown as Contract[];
+
+ // İşi tamamlanan sözleşmeler ana listeyi şişirmesin diye ayrı bir
+ // arşiv bölümüne taşınıyor (Operasyon panosundaki mantıkla aynı).
+ const workflowIds=[...new Set(allRows.filter(r=>r.workflow_id).map(r=>r.workflow_id as string))];
+ const completedWorkflowIds=new Set<string>();
+ if(workflowIds.length){
+  const {data:workflows}=await supabase.from("operation_workflows").select("id,status").in("id",workflowIds);
+  for(const wf of workflows??[]) if(wf.status==="completed") completedWorkflowIds.add(wf.id);
+ }
+ const isArchived=(row:Contract)=>Boolean(row.workflow_id) && completedWorkflowIds.has(row.workflow_id as string);
+ const rows=allRows.filter(row=>!isArchived(row));
+ const archivedRows=allRows.filter(isArchived);
+
  const shareUrl=share?`https://app.arvo-os.com/sozlesme/${share}`:""; const total=rows.reduce((s,r)=>s+Number(r.amount),0);
  return <div className="crm-page-stack"><div className="panel-pagehead"><div><small className="panel-kicker">CRM / SÖZLEŞMELER</small><h1>Sözleşmeler</h1><p>Tekliften oluşan sözleşmeleri kontrol edin, imzaya gönderin ve oluşan iş akışını takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{rows.length} kayıt</span><Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link></div></div><CrmTabs active="sozlesmeler" /><div className="module-tab-panel">
  {shareUrl?<section className="panel-card"><small className="panel-kicker">İMZA BAĞLANTISI HAZIR</small><h2>Sözleşme bağlantısı</h2><p style={{wordBreak:"break-all"}}>{shareUrl}</p><div className="panel-page-actions"><a className="panel-primary" href={`mailto:?subject=Sözleşmeniz&body=${encodeURIComponent("Sözleşmenizi inceleyip imzalamak için: "+shareUrl)}`}>E-posta ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent("Sözleşmenizi inceleyip imzalamak için: "+shareUrl)}`}>WhatsApp ile gönder</a><a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>Önizle</a></div></section>:null}
@@ -44,5 +57,7 @@ export default async function ContractsPage({searchParams}:Props){
           {!["signed","completed","rejected","cancelled"].includes(row.status)?<form action={markContractStatus}><input type="hidden" name="contract_id" value={row.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form>:null}
           <form action={deleteContract}><input type="hidden" name="contract_id" value={row.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${row.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}/></form>
         </td>
-      </tr>})}</tbody></table></section>:<div className="panel-card crm-empty">Sözleşme bulunamadı.</div>}</div></div>;
+      </tr>})}</tbody></table></section>:<div className="panel-card crm-empty">Sözleşme bulunamadı.</div>}
+ {archivedRows.length?<details className="ops-archive"><summary><span>Arşivlenen sözleşmeler</span><em>{archivedRows.length}</em><small>İşi tamamlanan sözleşmeler, panoyu meşgul etmiyor</small></summary><div className="ops-archive-list">{archivedRows.map(row=><Link key={row.id} href="/panel/operations" className="ops-archive-row"><div><b>{row.contract_no} · {row.crm_opportunities?.customer_name}</b><small>{row.title}</small></div><span className="status-pill">İş tamamlandı</span></Link>)}</div></details>:null}
+ </div></div>;
 }
