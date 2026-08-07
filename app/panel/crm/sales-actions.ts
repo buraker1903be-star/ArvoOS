@@ -309,6 +309,44 @@ export async function updateContract(formData: FormData) {
   revalidatePath("/panel/crm");
 }
 
+export type UpdateContractPlanState = { error: string | null; success: boolean };
+
+// İmzalanmış bir sözleşmenin ödeme planı, müşteri talebiyle (örn. "3 taksit
+// yapalım") değişebiliyor — bu artık teklife dokunmadan, doğrudan
+// sözleşme üzerinde, aynı hesaplama mantığıyla revize edilebiliyor.
+export async function updateContractPaymentPlan(
+  _previousState: UpdateContractPlanState,
+  formData: FormData,
+): Promise<UpdateContractPlanState> {
+  const { supabase, membership } = await getPanelContext();
+  const contractId = text(formData, "contract_id", 80);
+  const planType = text(formData, "payment_plan_type", 20);
+  const planText = text(formData, "payment_plan_text", 2000);
+  if (!["cash", "half", "third", "custom"].includes(planType)) return { error: "Geçersiz ödeme planı.", success: false };
+
+  let schedule: unknown;
+  try {
+    schedule = JSON.parse(text(formData, "payment_schedule", 10000) || "[]");
+  } catch {
+    return { error: "Ödeme planı okunamadı.", success: false };
+  }
+
+  const { error } = await supabase
+    .from("crm_contracts")
+    .update({
+      payment_plan_type: planType,
+      payment_plan: planText || null,
+      payment_schedule: schedule,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id);
+  if (error) return { error: "Ödeme planı kaydedilemedi: " + error.message, success: false };
+
+  revalidatePath("/panel/crm/contracts");
+  return { error: null, success: true };
+}
+
 export async function issueContractLink(formData: FormData) {
   const { supabase } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);

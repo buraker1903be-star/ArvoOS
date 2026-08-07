@@ -2,12 +2,13 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { issueContractLink, updateContract, markContractStatus, deleteContract } from "../sales-actions";
+import { ContractPaymentPlanForm } from "../contract-payment-plan-form";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
 import "../crm.css";
 
 type Props={searchParams:Promise<{search?:string;status?:string;share?:string}>};
-type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;start_date:string|null;due_date:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;customer_address:string|null;customer_tax_number:string|null;customer_tax_office:string|null;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;request_details:Record<string,unknown>|null}|null};
+type Contract={id:string;contract_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;payment_plan_type:string|null;start_date:string|null;due_date:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;signed_name:string|null;signed_at:string|null;workflow_id:string|null;created_at:string;customer_address:string|null;customer_tax_number:string|null;customer_tax_office:string|null;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;request_details:Record<string,unknown>|null}|null};
 const statuses=["draft","sent","signed","rejected","cancelled","completed"];
 const labels:Record<string,string>={draft:"Taslak",sent:"İmza bekliyor",signed:"İmzalandı",rejected:"Reddedildi",cancelled:"İptal",completed:"Tamamlandı"};
 const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
@@ -15,7 +16,7 @@ const dateTime=(v:string|null)=>v?new Date(v).toLocaleString("tr-TR"):"—";
 export default async function ContractsPage({searchParams}:Props){
  const p=await searchParams; const search=(p.search??"").trim(); const status=statuses.includes(p.status??"")?p.status!:""; const share=p.share??"";
  const {supabase,membership,modules}=await getPanelContext(); if(!modules.some(m=>m.code==="crm")) throw new Error("CRM modülüne erişiminiz yok.");
- let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,created_at,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,request_details)").eq("organization_id",membership.organization_id);
+ let q=supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,created_at,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,request_details)").eq("organization_id",membership.organization_id);
  if(status) q=q.eq("status",status); if(search) q=q.or(`contract_no.ilike.%${search}%,title.ilike.%${search}%`);
  const {data,error}=await q.order("created_at",{ascending:false}); if(error) throw new Error("Sözleşmeler okunamadı: "+error.message); const rows=(data??[]) as unknown as Contract[];
  const shareUrl=share?`https://app.arvo-os.com/sozlesme/${share}`:""; const total=rows.reduce((s,r)=>s+Number(r.amount),0);
@@ -34,6 +35,9 @@ export default async function ContractsPage({searchParams}:Props){
         <td>{row.due_date?new Date(row.due_date+"T00:00:00").toLocaleDateString("tr-TR"):"—"}</td>
         <td className="crm-table-actions">
           <PanelDrawer triggerLabel="Önizle" title={row.contract_no}>{detail}</PanelDrawer>
+          <PanelDrawer triggerLabel="Ödeme Planı" title={row.contract_no} description="Müşteri talebiyle ödeme planını revize edin (örn. 3 taksite bölme).">
+            <ContractPaymentPlanForm contractId={row.id} amountCents={row.amount} currentPlanType={row.payment_plan_type} />
+          </PanelDrawer>
           {!["signed","completed","cancelled"].includes(row.status)?<><PanelDrawer triggerLabel="Düzenle" title={row.contract_no} description="Sözleşme bilgilerini kontrol edin.">{edit}</PanelDrawer><form action={issueContractLink}><input type="hidden" name="contract_id" value={row.id}/><button className="panel-primary">İmzaya gönder</button></form></>:null}
           {row.workflow_id?<Link className="panel-secondary" href="/panel/operations">İş akışı</Link>:null}
           {!["signed","completed","rejected","cancelled"].includes(row.status)?<form action={markContractStatus}><input type="hidden" name="contract_id" value={row.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form>:null}
