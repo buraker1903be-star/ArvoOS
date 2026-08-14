@@ -156,3 +156,10 @@
 .ops-archive-row b{display:block;font-size:10px;color:var(--ink)}
 .ops-archive-row small{display:block;margin-top:2px;color:var(--muted);font-size:8px}
 .ops-archive-row .status-pill{background:var(--success-soft);color:var(--success);white-space:nowrap}
+
+/* ---------- İmza/Teklif bağlantısı hazır kartı (marka standardında) ---------- */
+.share-ready-card{display:flex;align-items:flex-start;gap:16px;border-color:var(--success);background:linear-gradient(180deg,var(--success-soft),var(--surface) 70%)}
+.share-ready-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--success);color:#fff;font-size:16px;font-weight:800}
+.share-ready-body{flex:1;min-width:0}
+.share-ready-body h2{margin:2px 0 10px;font:800 15px var(--font-heading)}
+.share-ready-link{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:10px;color:var(--muted);font-family:var(--font-body)}
