@@ -247,7 +247,14 @@ export async function issueProposalLink(formData: FormData) {
   });
   if (error) throw new Error("Teklif bağlantısı oluşturulamadı: " + error.message);
   revalidatePath("/panel/crm/proposals");
-  redirect(`/panel/crm/proposals?share=${encodeURIComponent(String(data ?? ""))}`);
+  const { data: info } = await supabase
+    .from("crm_proposals")
+    .select("proposal_no,crm_opportunities(customer_name)")
+    .eq("id", proposalId)
+    .maybeSingle();
+  const docNo = info?.proposal_no ?? "";
+  const customerName = (info?.crm_opportunities as { customer_name?: string } | null)?.customer_name ?? "";
+  redirect(`/panel/crm/proposals?share=${encodeURIComponent(String(data ?? ""))}&doc_no=${encodeURIComponent(docNo)}&customer_name=${encodeURIComponent(customerName)}`);
 }
 
 export async function updateContract(formData: FormData) {
@@ -355,7 +362,14 @@ export async function issueContractLink(formData: FormData) {
   });
   if (error) throw new Error("Sözleşme bağlantısı oluşturulamadı: " + error.message);
   revalidatePath("/panel/crm/contracts");
-  redirect(`/panel/crm/contracts?share=${encodeURIComponent(String(data ?? ""))}`);
+  const { data: info } = await supabase
+    .from("crm_contracts")
+    .select("contract_no,crm_opportunities(customer_name)")
+    .eq("id", contractId)
+    .maybeSingle();
+  const docNo = info?.contract_no ?? "";
+  const customerName = (info?.crm_opportunities as { customer_name?: string } | null)?.customer_name ?? "";
+  redirect(`/panel/crm/contracts?share=${encodeURIComponent(String(data ?? ""))}&doc_no=${encodeURIComponent(docNo)}&customer_name=${encodeURIComponent(customerName)}`);
 }
 
 // Sözleşmeler tablosundan hızlıca "Reddedildi" veya "İptal" olarak
