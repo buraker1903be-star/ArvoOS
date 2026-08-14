@@ -131,48 +131,50 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   // ---------- Prim Raporu (tahsilat başına) ----------
   let commissionRows: { installmentId: string; date: string; customerName: string; contractNo: string; amount: number; employeeId: string | null; employeeName: string; rate: number; commission: number }[] = [];
   if (tab === "prim") {
-    const { data: paidInstallments } = await supabase.from("payment_installments")
-      .select("id,payment_plan_id,amount,paid_at,installment_no")
-      .eq("organization_id", organizationId).eq("status", "paid")
-      .gte("paid_at", rangeStart.toISOString()).lte("paid_at", new Date(rangeEnd.getTime() + 86399000).toISOString())
-      .order("paid_at", { ascending: false });
-    const installmentRows = (paidInstallments ?? []) as { id: string; payment_plan_id: string; amount: number; paid_at: string; installment_no: number }[];
+    // Prim hesabı artık taksit tablosundan değil, doğrudan Cari Hesaplar'daki
+    // hareket dökümünden (account_entries, entry_type='credit') besleniyor —
+    // "Tahsil Et" işlemi zaten oraya işleniyor, aynı bilgiyi iki ayrı yerde
+    // ayrı ayrı işaretlemeye gerek kalmasın diye tek doğruluk kaynağı bu.
+    const { data: creditEntries } = await supabase.from("account_entries")
+      .select("id,party_id,amount,transaction_date,description")
+      .eq("organization_id", organizationId).eq("entry_type", "credit")
+      .gte("transaction_date", toDateKey(rangeStart)).lte("transaction_date", toDateKey(rangeEnd))
+      .order("transaction_date", { ascending: false });
+    const entryRows = (creditEntries ?? []) as { id: string; party_id: string | null; amount: number; transaction_date: string; description: string | null }[];
 
-    if (installmentRows.length) {
-      const planIds = [...new Set(installmentRows.map((i) => i.payment_plan_id))];
-      const { data: planData } = await supabase.from("payment_plans").select("id,contract_id,party_id").in("id", planIds);
-      const plans = (planData ?? []) as { id: string; contract_id: string; party_id: string }[];
+    if (entryRows.length) {
+      const partyIds = [...new Set(entryRows.map((e) => e.party_id).filter((v): v is string => Boolean(v)))];
 
-      const contractIds = [...new Set(plans.map((p) => p.contract_id))];
-      const { data: contractData } = contractIds.length ? await supabase.from("crm_contracts").select("id,contract_no,opportunity_id").in("id", contractIds) : { data: [] };
-      const contracts = (contractData ?? []) as { id: string; contract_no: string; opportunity_id: string | null }[];
+      const { data: partyData2 } = partyIds.length ? await supabase.from("account_parties").select("id,name").in("id", partyIds) : { data: [] };
+      const partyNameMap = new Map(((partyData2 ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
+
+      // Bir cari (müşteri) birden fazla sözleşmeye sahipse, en güncel
+      // imzalı/tamamlanan sözleşme prim atfı için esas alınır.
+      const { data: contractData } = partyIds.length ? await supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,created_at").in("party_id", partyIds).in("status", ["signed", "completed"]).order("created_at", { ascending: false }) : { data: [] };
+      const contracts = (contractData ?? []) as { id: string; contract_no: string; opportunity_id: string | null; party_id: string | null; created_at: string }[];
+      const contractByParty = new Map<string, { id: string; contract_no: string; opportunity_id: string | null }>();
+      for (const contract of contracts) {
+        if (contract.party_id && !contractByParty.has(contract.party_id)) contractByParty.set(contract.party_id, contract);
+      }
 
       const opportunityIds = [...new Set(contracts.map((c) => c.opportunity_id).filter((v): v is string => Boolean(v)))];
       const { data: oppData2 } = opportunityIds.length ? await supabase.from("crm_opportunities").select("id,assigned_employee_id").in("id", opportunityIds) : { data: [] };
       const opportunityEmployeeMap = new Map(((oppData2 ?? []) as { id: string; assigned_employee_id: string | null }[]).map((o) => [o.id, o.assigned_employee_id]));
 
-      const partyIds = [...new Set(plans.map((p) => p.party_id))];
-      const { data: partyData2 } = partyIds.length ? await supabase.from("account_parties").select("id,name").in("id", partyIds) : { data: [] };
-      const partyNameMap = new Map(((partyData2 ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
-
       const employeeIds = [...new Set([...opportunityEmployeeMap.values()].filter((v): v is string => Boolean(v)))];
       const { data: commissionEmployeeData } = employeeIds.length ? await supabase.from("hr_employees").select("id,full_name,commission_rate").in("id", employeeIds) : { data: [] };
       const commissionEmployeeMap = new Map(((commissionEmployeeData ?? []) as { id: string; full_name: string; commission_rate: number }[]).map((e) => [e.id, e]));
 
-      const planMap = new Map(plans.map((p) => [p.id, p]));
-      const contractMap = new Map(contracts.map((c) => [c.id, c]));
-
-      commissionRows = installmentRows.map((installment) => {
-        const plan = planMap.get(installment.payment_plan_id);
-        const contract = plan ? contractMap.get(plan.contract_id) : undefined;
+      commissionRows = entryRows.map((entry) => {
+        const contract = entry.party_id ? contractByParty.get(entry.party_id) : undefined;
         const employeeId = contract?.opportunity_id ? opportunityEmployeeMap.get(contract.opportunity_id) : null;
         const employee = employeeId ? commissionEmployeeMap.get(employeeId) : null;
         const rate = employee?.commission_rate ?? 0;
-        const amount = Number(installment.amount);
+        const amount = Number(entry.amount);
         return {
-          installmentId: installment.id,
-          date: installment.paid_at,
-          customerName: plan ? (partyNameMap.get(plan.party_id) ?? "Bilinmeyen") : "Bilinmeyen",
+          installmentId: entry.id,
+          date: entry.transaction_date,
+          customerName: entry.party_id ? (partyNameMap.get(entry.party_id) ?? "Bilinmeyen") : "Bilinmeyen",
           contractNo: contract?.contract_no ?? "—",
           amount,
           employeeId: employeeId ?? null,
