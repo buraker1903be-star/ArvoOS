@@ -39,7 +39,7 @@ type Transaction = { transaction_type: "income" | "expense"; status: string; amo
 type Invoice = { status: string; total: number; created_at: string; paid_at: string | null; due_at: string | null };
 type Workflow = { status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string };
 
-export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ tab?: string; aralik?: string; baslangic?: string; bitis?: string }> }) {
+export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ tab?: string; aralik?: string; baslangic?: string; bitis?: string; personel?: string }> }) {
   const params = await searchParams;
   const tab = params.tab === "prim" ? "prim" : "genel";
   const { supabase, membership, modules } = await getPanelContext();
@@ -129,7 +129,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const priorityBuckets = ["urgent", "high", "normal", "low"].map((priority) => ({ priority, count: workflows.filter((w) => w.priority === priority && !["completed", "cancelled"].includes(w.status)).length }));
 
   // ---------- Prim Raporu (tahsilat başına) ----------
-  let commissionRows: { installmentId: string; date: string; customerName: string; contractNo: string; amount: number; employeeName: string; rate: number; commission: number }[] = [];
+  let commissionRows: { installmentId: string; date: string; customerName: string; contractNo: string; amount: number; employeeId: string | null; employeeName: string; rate: number; commission: number }[] = [];
   if (tab === "prim") {
     const { data: paidInstallments } = await supabase.from("payment_installments")
       .select("id,payment_plan_id,amount,paid_at,installment_no")
@@ -175,13 +175,28 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
           customerName: plan ? (partyNameMap.get(plan.party_id) ?? "Bilinmeyen") : "Bilinmeyen",
           contractNo: contract?.contract_no ?? "—",
           amount,
+          employeeId: employeeId ?? null,
           employeeName: employee?.full_name ?? "Atanmadı",
           rate,
           commission: Math.round(amount * rate / 100),
         };
       });
     }
+
+    const selectedPersonnel = params.personel ?? "";
+    if (selectedPersonnel) {
+      commissionRows = selectedPersonnel === "atanmamis"
+        ? commissionRows.filter((row) => !row.employeeId)
+        : commissionRows.filter((row) => row.employeeId === selectedPersonnel);
+    }
   }
+
+  // Prim filtresindeki açılır liste — bu aralıkta tahsilatı olsun olmasın,
+  // satış yetkisi olan tüm aktif personeli gösterir.
+  const { data: salesPersonnelData } = tab === "prim"
+    ? await supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").eq("can_receive_sales_requests", true).order("full_name")
+    : { data: [] };
+  const salesPersonnel = (salesPersonnelData ?? []) as { id: string; full_name: string }[];
   const commissionByEmployee = new Map<string, { name: string; rate: number; collections: number; totalAmount: number; totalCommission: number }>();
   for (const row of commissionRows) {
     const current = commissionByEmployee.get(row.employeeName) ?? { name: row.employeeName, rate: row.rate, collections: 0, totalAmount: 0, totalCommission: 0 };
@@ -222,6 +237,21 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
         <input name="bitis" type="date" defaultValue={params.bitis} required />
         <button className="panel-secondary" type="submit">Özel aralık uygula</button>
       </form>
+
+      {tab === "prim" ? (
+        <form className="report-custom-range" method="get" style={{ marginTop: 10 }}>
+          <input type="hidden" name="tab" value="prim" />
+          <input type="hidden" name="aralik" value={rangeKey} />
+          {params.baslangic ? <input type="hidden" name="baslangic" value={params.baslangic} /> : null}
+          {params.bitis ? <input type="hidden" name="bitis" value={params.bitis} /> : null}
+          <select name="personel" defaultValue={params.personel ?? ""}>
+            <option value="">Tüm personel</option>
+            <option value="atanmamis">Atanmamış</option>
+            {salesPersonnel.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}
+          </select>
+          <button className="panel-secondary" type="submit">Personele göre filtrele</button>
+        </form>
+      ) : null}
     </div>
 
     {tab === "genel" ? <>
