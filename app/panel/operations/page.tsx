@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { addWorkflowStep, createWorkflow, setWorkflowStatus } from "./actions";
+import { addWorkflowStep, createWorkflow, setWorkflowStatus, deleteWorkflow } from "./actions";
+import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
 import { OperationsTabs } from "./operations-tabs";
 import "../crm/crm.css";
 import "./operations.css";
@@ -97,6 +98,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
           <Link className="panel-secondary" href={`/panel/operations/${workflow.id}`}>Detay</Link>
           <PanelDrawer triggerLabel="Adım Ekle" title={workflow.title} description="Bu işe yeni bir adım ekleyin.">{stepForm}</PanelDrawer>
           <PanelDrawer triggerLabel="Durum" title={workflow.title} description="İşin durumunu güncelleyin.">{statusForm}</PanelDrawer>
+          <form action={deleteWorkflow}><input type="hidden" name="workflow_id" value={workflow.id} /><ConfirmDeleteButton label="Sil" confirmMessage={`"${workflow.title}" iş akışını kalıcı olarak silmek istediğinize emin misiniz? Tüm adımlar ve yorumlar da silinecek. Bu işlem geri alınamaz.`} /></form>
         </td>
       </tr>;
     })}</tbody></table></section> : <div className="panel-card crm-empty">Eşleşen iş bulunamadı.</div>}

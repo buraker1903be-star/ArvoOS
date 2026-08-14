@@ -74,3 +74,28 @@ export async function addWorkflowComment(formData: FormData) {
   if (error) throw new Error("Yorum eklenemedi: " + error.message);
   revalidatePath(`/panel/operations/${workflowId}`);
 }
+
+// Yanlışlıkla oluşturulmuş bir iş akışını kalıcı olarak siler. Sadece
+// yönetici yetkisiyle kullanılabilir; adımlar ve yorumlar birlikte
+// silinir, bağlı bir sözleşme varsa o sözleşmenin iş akışı bağlantısı
+// (workflow_id) kopartılır ki sözleşme kaydı bozulmasın.
+export async function deleteWorkflow(formData: FormData) {
+  const { supabase, membership } = await operationContext();
+  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yönetici yetkisi gerekiyor.");
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  if (!workflowId) throw new Error("İş akışı seçilmedi.");
+
+  const { data: workflow } = await supabase.from("operation_workflows").select("id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+
+  await supabase.from("crm_contracts").update({ workflow_id: null }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  await supabase.from("operation_workflow_comments").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  await supabase.from("operation_steps").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+
+  const { error } = await supabase.from("operation_workflows").delete().eq("id", workflowId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("İş akışı silinemedi: " + error.message);
+
+  revalidatePath("/panel/operations");
+  revalidatePath("/panel");
+  revalidatePath("/panel/crm/contracts");
+}
