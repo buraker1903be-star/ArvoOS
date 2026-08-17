@@ -22,7 +22,7 @@ export default async function DocumentPreviewPage({params}:{params:Promise<{type
  if(type==="contract"){
   const [{data:organization,error:organizationError},{data:contract,error:contractError}]=await Promise.all([
    supabase.from("organizations").select("name,slug,logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url").eq("id",membership.organization_id).maybeSingle(),
-   supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,created_at,signed_name,signed_at,signed_signature_data,contract_template_key,contract_template_version,crm_opportunities(customer_name,contact_email,contact_phone),crm_proposals(payment_schedule)").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle(),
+   supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,created_at,signed_name,signed_at,signed_signature_data,signed_ip,contract_template_key,contract_template_version,crm_opportunities(customer_name,contact_email,contact_phone),crm_proposals(payment_schedule)").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle(),
   ]);
   if(organizationError)throw new Error(`Kurum bilgileri okunamadı: ${organizationError.message}`);
   if(contractError)throw new Error(`Sözleşme okunamadı: ${contractError.message}`);

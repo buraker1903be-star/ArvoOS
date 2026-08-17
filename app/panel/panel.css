@@ -227,3 +227,13 @@
 .compact-platform-grid{grid-template-columns:repeat(3,1fr)}
 @media(max-width:1100px){.management-grid{grid-template-columns:1fr}}
 @media(max-width:620px){.management-card{padding:20px}.management-submit{align-items:stretch;flex-direction:column}.compact-platform-grid{grid-template-columns:1fr}.module-control{align-items:flex-start}.module-control>div{min-width:0}}
+
+/* ---------- PDF/Yazdırma: panel çerçevesi (üst bar, kenar menü, mobil alt
+   navigasyon) tamamen gizlenir; sadece asıl belge içeriği kalır. ---------- */
+@media print{
+  .panel-sidebar,#panel-sidebar,.panel-topbar,.mobile-bottom-nav,.mobile-drawer,.mobile-drawer-trigger,.mobile-drawer-backdrop,#nav-progress-bar{display:none!important}
+  .panel-frame{display:block!important;min-height:0!important}
+  .panel-workspace{background:#fff!important}
+  .panel-content{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+  .panel-root{min-height:0!important}
+}
