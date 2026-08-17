@@ -136,7 +136,7 @@
 /* ---------- Mobilde: tablo satırları kart olarak gösterilir, butonlar altta ---------- */
 @media(max-width:760px){
   .crm-table-wrap{overflow-x:visible;padding:0;border:0;border-radius:0;margin-left:0;margin-right:0;width:100%;background:transparent;box-shadow:none}
-  .crm-data-table{display:block;width:100%;min-width:0;border-collapse:separate}
+  .crm-table-wrap .crm-data-table{display:block;width:100%;min-width:0!important;border-collapse:separate}
   .crm-data-table thead{display:none}
   .crm-data-table tbody{display:block}
   .crm-data-table tbody tr{display:block;margin-bottom:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm)}
@@ -147,6 +147,7 @@
   .crm-data-table td.crm-table-actions:before{content:none}
   .crm-table-actions form{flex:1 1 auto;margin:0}
   .crm-table-actions .panel-primary,.crm-table-actions .panel-secondary,.crm-table-actions .panel-danger{min-height:40px;padding:0 12px;font-size:10px;white-space:nowrap;width:100%}
+  .crm-table-actions .panel-primary{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:700}
   .crm-table-mono{font-size:11px;font-weight:800}
   .crm-data-table td .crm-table-title,.crm-data-table td .crm-table-sub{text-align:right;max-width:none;white-space:normal}
 }
