@@ -31,12 +31,12 @@ export default async function ProposalsPage({searchParams}:Props){
  const revision=<form className="panel-form" action={createProposalRevision}><input type="hidden" name="proposal_id" value={row.id}/><label className="wide">Revizyon nedeni<textarea name="revision_reason" required minLength={3} maxLength={1000} placeholder="Müşterinin talebi, kapsam değişikliği, fiyat güncellemesi..."/></label><div className="wide panel-card" style={{padding:14}}><strong>Yeni revizyon: {row.proposal_no.replace(/-R\d+$/,"")}-R{row.revision_no+1}</strong><p style={{margin:"8px 0 0"}}>Mevcut sürüm arşivlenecek ve müşterinin yalnızca yeni sürümü onaylamasına izin verilecek.</p></div><div className="wide panel-form-actions"><button className="panel-primary">Revizyonu Oluştur</button></div></form>;
  const detail=<div className="crm-request-preview"><span>{superseded?"Eski revizyon":labels[row.status]??row.status}</span><h3>{customer?.customer_name}</h3><h4>{row.title}</h4><dl><div><dt>Telefon</dt><dd>{customer?.contact_phone||"Belirtilmedi"}</dd></div><div><dt>E-posta</dt><dd>{customer?.contact_email||"Belirtilmedi"}</dd></div><div><dt>Ödeme planı</dt><dd>{row.payment_plan||"Belirtilmedi"}</dd></div><div><dt>Revizyon</dt><dd>{row.revision_no?`R${row.revision_no}`:"İlk sürüm"}</dd></div></dl>{row.scope?<p>{row.scope}</p>:null}{row.revision_note?<p><b>Revizyon nedeni:</b> {row.revision_note}</p>:null}<div className="crm-document-timeline"><span><b>Oluşturuldu</b>{dateTime(row.created_at)}</span><span><b>Gönderildi</b>{dateTime(row.sent_at)}</span><span><b>İlk görüntüleme</b>{dateTime(row.first_viewed_at)}</span><span><b>Son görüntüleme</b>{dateTime(row.last_viewed_at)}</span><span><b>Açılma</b>{row.view_count} kez</span></div></div>;
  return <tr key={row.id}>
-        <td className="crm-table-mono">{row.proposal_no}{row.revision_no>0?<span className="status-pill" style={{marginLeft:6}}>R{row.revision_no}</span>:null}</td>
-        <td><span className="crm-table-title">{customer?.customer_name}</span><span className="crm-table-sub">{customer?.contact_phone||customer?.contact_email||"İletişim yok"}</span></td>
-        <td>{row.title}</td>
-        <td>{money(row.amount,row.currency)}</td>
-        <td><span className="status-pill">{superseded?"Eski revizyon":labels[row.status]??row.status}</span></td>
-        <td>{row.valid_until?new Date(row.valid_until+"T00:00:00").toLocaleDateString("tr-TR"):"—"}</td>
+        <td className="crm-table-mono" data-label="Teklif No">{row.proposal_no}{row.revision_no>0?<span className="status-pill" style={{marginLeft:6}}>R{row.revision_no}</span>:null}</td>
+        <td data-label="Müşteri"><div><span className="crm-table-title">{customer?.customer_name}</span><span className="crm-table-sub">{customer?.contact_phone||customer?.contact_email||"İletişim yok"}</span></div></td>
+        <td data-label="Konu">{row.title}</td>
+        <td data-label="Tutar">{money(row.amount,row.currency)}</td>
+        <td data-label="Durum"><span className="status-pill">{superseded?"Eski revizyon":labels[row.status]??row.status}</span></td>
+        <td data-label="Geçerlilik">{row.valid_until?new Date(row.valid_until+"T00:00:00").toLocaleDateString("tr-TR"):"—"}</td>
         <td className="crm-table-actions">
           <PanelDrawer triggerLabel="Önizle" title={row.proposal_no}>{detail}</PanelDrawer>
           {!locked?<PanelDrawer triggerLabel="Düzenle" title={row.proposal_no} description="Teklif bilgilerini kontrol edin.">{edit}</PanelDrawer>:null}
