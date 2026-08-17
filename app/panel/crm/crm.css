@@ -136,13 +136,14 @@
 /* ---------- Mobilde: tablo satırları kart olarak gösterilir, butonlar altta ---------- */
 @media(max-width:760px){
   .crm-table-wrap{overflow-x:visible;padding:0;border:0;border-radius:0;margin-left:0;margin-right:0;width:100%;background:transparent;box-shadow:none}
-  .crm-table-wrap .crm-data-table{display:block;width:100%;min-width:0!important;border-collapse:separate}
+  .crm-table-wrap .crm-data-table{display:block;width:100%;min-width:0!important;max-width:100%;border-collapse:separate}
   .crm-data-table thead{display:none}
-  .crm-data-table tbody{display:block}
-  .crm-data-table tbody tr{display:block;margin-bottom:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm)}
+  .crm-data-table tbody{display:block;min-width:0}
+  .crm-data-table tbody tr{display:block;min-width:0;margin-bottom:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
   .crm-data-table tbody tr:hover{background:var(--surface)}
-  .crm-data-table td{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line-soft,#eef1ee);font-size:10px;text-align:right}
+  .crm-data-table td{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft,#eef1ee);font-size:10px;text-align:right;min-width:0;overflow-wrap:anywhere;word-break:break-word}
   .crm-data-table td:before{content:attr(data-label);flex:none;font-size:7.6px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left}
+  .crm-data-table td>*{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
   .crm-data-table td.crm-table-actions{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;gap:8px;border-bottom:0;padding:12px 0 0;margin-top:2px}
   .crm-data-table td.crm-table-actions:before{content:none}
   .crm-table-actions form{flex:1 1 auto;margin:0}

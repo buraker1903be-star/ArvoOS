@@ -2,7 +2,8 @@
    ArvoOS Panel — Base Shell
    ============================================================ */
 *{box-sizing:border-box}
-.panel-root{min-height:100vh;color:var(--ink);font-family:var(--font-body)}
+html,body{overflow-x:hidden;max-width:100vw}
+.panel-root{min-height:100vh;color:var(--ink);font-family:var(--font-body);overflow-x:hidden;max-width:100vw}
 .panel-frame{min-height:100vh;display:grid;grid-template-columns:276px minmax(0,1fr)}
 
 /* ---------- Sidebar ---------- */
