@@ -24,6 +24,8 @@ type PanelOrganization = {
   plan_code: string;
   sector: string;
   custom_domain: string | null;
+  logo_url: string | null;
+  display_name: string | null;
 };
 
 type WorkspaceRpcRow = PanelOrganization & {
@@ -57,6 +59,8 @@ export const getPanelContext = cache(async () => {
       plan_code: row.plan_code,
       sector: row.sector,
       custom_domain: row.custom_domain,
+      logo_url: row.logo_url,
+      display_name: row.display_name,
     },
   })) as PanelWorkspace[];
 

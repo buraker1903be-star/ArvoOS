@@ -19,6 +19,7 @@
   .mobile-drawer-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1);background:#0d2f53!important;position:relative;z-index:2;isolation:isolate}
   .mobile-drawer-brand{display:flex;align-items:center;gap:11px;min-width:0}
   .mobile-drawer-brand>i{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:12px;background:linear-gradient(145deg,#8eb957,#5f8f35);color:#fff;font-style:normal;font-weight:800}
+  .mobile-drawer-brand>img{width:42px;height:42px;flex:none;border-radius:12px;object-fit:contain;background:#fff;padding:4px}
   .mobile-drawer-brand span{display:grid;min-width:0}
   .mobile-drawer-brand b{font-size:16px;line-height:1.1}
   .mobile-drawer-brand small{margin-top:3px;color:rgba(255,255,255,.6);font-size:7px;letter-spacing:.12em}

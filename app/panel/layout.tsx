@@ -34,11 +34,19 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
+  // Beyaz etiket (white-label) deneyimi: platformun kendi kurumu (arvo-os)
+  // dışında, panel navigasyonu artık sabit "ArvoOS" markası yerine
+  // kurumun kendi logosunu ve tabela unvanını gösteriyor.
+  const isPlatformOrg = organization.slug === "arvo-os";
+  const brandName = isPlatformOrg ? "ArvoOS" : (organization.display_name || organization.name);
+  const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
+  const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
+
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
-    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} />
+    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} />
     <aside id="panel-sidebar" className="panel-sidebar">
-      <Link className="panel-brand" href="/panel"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></Link>
+      <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
       <div className="panel-org panel-org-switchable">
         <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
       </div>

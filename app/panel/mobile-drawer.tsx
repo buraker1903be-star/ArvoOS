@@ -17,12 +17,18 @@ export function MobileDrawer({
   roleName,
   isPlatformOwner,
   role,
+  brandName,
+  brandLogoUrl,
+  brandTagline,
 }: {
   modules: PanelModule[];
   organizationName: string;
   roleName: string;
   isPlatformOwner: boolean;
   role?: string;
+  brandName?: string;
+  brandLogoUrl?: string | null;
+  brandTagline?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -80,7 +86,7 @@ export function MobileDrawer({
 
       <aside id="mobile-drawer" className="mobile-drawer" aria-hidden={!open} aria-label="Mobil menü">
         <header className="mobile-drawer-header">
-          <div className="mobile-drawer-brand"><i>A</i><span><b>ArvoOS</b><small>BUSINESS OPERATING SYSTEM</small></span></div>
+            <div className="mobile-drawer-brand">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName??"Logo"}/>:<i>{(brandName??"ArvoOS").slice(0,1).toUpperCase()}</i>}<span><b>{brandName??"ArvoOS"}</b><small>{brandTagline??"BUSINESS OPERATING SYSTEM"}</small></span></div>
           <button ref={closeButtonRef} type="button" onClick={() => setOpen(false)} aria-label="Menüyü kapat" tabIndex={open ? 0 : -1}>×</button>
         </header>
 
