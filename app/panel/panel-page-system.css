@@ -179,3 +179,13 @@
 .confirm-delete-inline small{color:var(--danger,#b3261e);font-size:8px;font-weight:700;max-width:220px}
 .confirm-delete-inline span{display:flex;gap:6px;flex:none}
 .confirm-delete-inline .panel-danger,.confirm-delete-inline .panel-secondary{min-height:26px;padding:0 9px;font-size:8px;white-space:nowrap}
+
+/* ---------- Genel işlem geri bildirimi: her buton/link tıklamasında
+   dönen halka + "Lütfen bekleyiniz" mesajı, kullanıcıya tıklamanın
+   algılandığını hemen hissettirir ---------- */
+.panel-action-feedback{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-start;justify-content:center;padding-top:18vh;background:rgba(13,33,56,.12);backdrop-filter:blur(1px);animation:panel-feedback-fade .12s ease}
+.panel-action-feedback-card{display:flex;align-items:center;gap:12px;padding:14px 22px;border-radius:14px;background:var(--surface);box-shadow:0 12px 32px rgba(13,33,56,.22);font:700 12px var(--font-body);color:var(--ink)}
+.panel-action-feedback-ring{width:20px;height:20px;flex:none;border-radius:50%;border:2.5px solid var(--accent-100);border-top-color:var(--accent-600);animation:panel-feedback-spin .7s linear infinite}
+@keyframes panel-feedback-spin{to{transform:rotate(360deg)}}
+@keyframes panel-feedback-fade{from{opacity:0}to{opacity:1}}
+@media(max-width:760px){.panel-action-feedback{padding-top:12vh}.panel-action-feedback-card{padding:12px 18px;font-size:11px}}

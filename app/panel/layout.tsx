@@ -6,6 +6,7 @@ import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
+import { GlobalActionFeedback } from "./global-action-feedback";
 import { MobileDrawer } from "./mobile-drawer";
 import "./panel-tokens.css";
 import "./panel.css";
@@ -44,6 +45,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
+    <GlobalActionFeedback />
     <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
