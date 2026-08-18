@@ -25,9 +25,9 @@ export const navigationGroups: NavigationGroup[] = [
 
 export const normalizeModuleCode = (value: string) => value.replaceAll("-", "_").toLowerCase();
 
-export function resolveNavigationGroups(modules: PanelModule[], role?: string) {
+export function resolveNavigationGroups(modules: PanelModule[], role?: string, hiddenModuleKeys?: ReadonlySet<string>) {
   return navigationGroups
-    .filter((group) => !role || !isNavigationGroupHiddenForRole(role, group.key))
+    .filter((group) => !role || !isNavigationGroupHiddenForRole(role, group.key, hiddenModuleKeys ?? new Set()))
     .map((group) => ({
       ...group,
       items: modules.filter((module) => group.codes.includes(normalizeModuleCode(module.code))),

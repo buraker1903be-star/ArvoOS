@@ -30,7 +30,7 @@ const roleNames: Record<string, string> = {
 };
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { membership, organization, modules, isPlatformOwner, workspaces } = await getPanelContext();
+  const { membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
@@ -44,13 +44,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
   return <div className="panel-root"><main className="panel-frame">
     <NavProgress />
-    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} />
+    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
       <div className="panel-org panel-org-switchable">
         <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
       </div>
-      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} />
+      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />
       <div className="panel-sidebar-footer">
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
         <form className="panel-logout" action={logout}><button type="submit">↪ <span>Çıkış yap</span></button></form>

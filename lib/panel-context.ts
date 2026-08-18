@@ -93,5 +93,20 @@ export const getPanelContext = cache(async () => {
   }).sort((a, b) => a.sortOrder - b.sortOrder);
 
   const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
-  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces };
+
+  // Panelden ayarlanabilir, rol bazlı modül yetkilendirmesi. Kurum Sahibi
+  // hiçbir zaman kısıtlanamaz; diğer roller için açıkça can_access=false
+  // olarak işaretlenmiş modüller gizli kabul edilir.
+  let hiddenModuleKeys = new Set<string>();
+  if (membership.role !== "owner") {
+    const { data: permissionRows } = await supabase
+      .from("role_module_permissions")
+      .select("module_key,can_access")
+      .eq("organization_id", membership.organization_id)
+      .eq("role", membership.role)
+      .eq("can_access", false);
+    hiddenModuleKeys = new Set((permissionRows ?? []).map((row) => row.module_key as string));
+  }
+
+  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys };
 });

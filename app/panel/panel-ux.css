@@ -138,3 +138,18 @@
   .reconciliation-form{grid-template-columns:1fr}
   .panel-table{overflow-x:auto}
 }
+
+/* ---------- Ayarlar > Yetkilendirme (rol x modül izin matrisi) ---------- */
+.permissions-form{padding:22px;overflow-x:auto}
+.permissions-table{width:100%;min-width:520px;border-collapse:collapse}
+.permissions-table th,.permissions-table td{padding:12px 14px;text-align:center;border-bottom:1px solid var(--line)}
+.permissions-table thead th{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center}
+.permissions-table thead th:first-child{text-align:left}
+.permissions-module-name{text-align:left!important;font-weight:700;color:var(--ink)}
+.permissions-checkbox{display:inline-flex;cursor:pointer}
+.permissions-checkbox input{width:20px;height:20px;accent-color:var(--accent-600);cursor:pointer}
+.permissions-form .panel-form-actions{margin-top:18px;padding-top:0}
+@media(max-width:760px){
+  .permissions-table{min-width:420px}
+  .permissions-table th,.permissions-table td{padding:9px 8px;font-size:9px}
+}
