@@ -1,61 +1,10 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
 import "./globals.css";
-import "./hero-fix.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
-
 export const metadata: Metadata = {
-  metadataBase: new URL("https://arvo-os.com"),
-  title: {
-    default: "ArvoOS | Kurumsal İşletim Sistemi",
-    template: "%s | ArvoOS",
-  },
-  description:
-    "ArvoOS; satış, finans, operasyon, ekip ve müşteri süreçlerini tek merkezde birleştiren kurumsal işletim sistemidir.",
-  applicationName: "ArvoOS",
-  other: {
-    "codex-preview": "development",
-  },
-  icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
-  },
+  title: "Arvo | Akademik Çalışma Ekosistemi",
+  description: "ArvoOS, ArvoLab ve geleceğin kurumsal ve akademik çalışma ürünleri tek bir büyüyen ekosistemde.",
+  openGraph:{title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/og.png",width:1200,height:630,alt:"Arvo Akademik Çalışma Ekosistemi"}]},
+  twitter:{card:"summary_large_image",title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/og.png"]},
+  icons:{icon:"/favicon.svg",shortcut:"/favicon.svg"}
 };
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="tr">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <script
-          // Sets data-theme before paint to avoid a light/dark flash on the panel.
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{var t=localStorage.getItem('arvoos.theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();",
-          }}
-        />
-        {children}
-      </body>
-    </html>
-  );
-}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr"><body>{children}</body></html>}
