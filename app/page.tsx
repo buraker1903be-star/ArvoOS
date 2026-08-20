@@ -78,7 +78,7 @@ export default function Home() {
         <div className="references-heading"><div><p className="overline">REFERANSLAR</p><h2>Güvenle üreten<br/>markalar.</h2></div><p>Aynı kalite anlayışını paylaşan, birlikte değer ürettiğimiz marka ekosistemi.</p></div>
         <div className="reference-grid">
           <a className="reference-card arvoculture-reference" href="/hakkimizda" aria-label="ArvoCulture Group hakkında">
-            <span className="arvoculture-mark"><strong>ARVO</strong><em>CULTURE</em><small>GROUP</small></span>
+            <img src="/arvoculture-logo.png" alt="ArvoCulture" />
             <span className="reference-action">Markayı keşfedin <Arrow /></span>
           </a>
           <a className="reference-card akademik-reference" href="https://akademikmerkez.com" target="_blank" rel="noreferrer" aria-label="AkademikMerkez web sitesini ziyaret edin">
