@@ -2,7 +2,7 @@ const Arrow = () => <span aria-hidden="true">↗</span>;
 
 export const links = {
   arvoOSLogin: "https://app.arvo-os.com/login",
-  arvoLabLogin: "/urunler/arvolab#erisim",
+  arvoLabLogin: "https://lab.arvo-os.com",
 };
 
 export function Logo({ light = false }: { light?: boolean }) {
@@ -17,7 +17,7 @@ export function SiteHeader() {
         <a href="/urunler/arvoos">ArvoOS</a><a href="/urunler/arvolab">ArvoLab</a><a href="/hizmetler">Hizmetler</a><a href="/hakkimizda">Hakkımızda</a><a href="/iletisim">İletişim</a>
       </div>
       <div className="nav-actions">
-        <a className="login-link" href={links.arvoLabLogin}>ArvoLab Giriş</a>
+        <a className="login-link" href={links.arvoLabLogin} target="_blank" rel="noreferrer">ArvoLab Giriş</a>
         <a className="pill pill-dark" href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş <Arrow /></a>
       </div>
       <details className="mobile-menu">
@@ -32,7 +32,7 @@ export function SiteHeader() {
           <a href="/hakkimizda">Hakkımızda <Arrow /></a>
           <a href="/iletisim">İletişim <Arrow /></a>
           <div className="mobile-menu-actions">
-            <a className="pill pill-outline" href={links.arvoLabLogin}>ArvoLab Giriş</a>
+            <a className="pill pill-outline" href={links.arvoLabLogin} target="_blank" rel="noreferrer">ArvoLab Giriş</a>
             <a className="pill pill-dark" href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş <Arrow /></a>
           </div>
         </div>
@@ -48,7 +48,7 @@ export function SiteFooter() {
       <div><b>Ürünler</b><a href="/urunler/arvoos">ArvoOS</a><a href="/urunler/arvolab">ArvoLab</a></div>
       <div><b>Hizmetler</b><a href="/hizmetler">Tüm hizmetler</a><a href="/hizmetler/web-sitesi-tasarimi">Web sitesi tasarımı</a></div>
       <div><b>Kurumsal</b><a href="/hakkimizda">Hakkımızda</a><a href="/iletisim">İletişim</a></div>
-      <div><b>Panel</b><a href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş</a><a href={links.arvoLabLogin}>ArvoLab Giriş</a></div>
+      <div><b>Panel</b><a href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş</a><a href={links.arvoLabLogin} target="_blank" rel="noreferrer">ArvoLab Giriş</a></div>
     </div>
     <div className="shell footer-bottom"><p>ArvoCulture Group Teknoloji Sanayi ve Ticaret Limited Şirketi</p><a href="mailto:info@arvo-os.com">info@arvo-os.com</a><small>© 2026 ArvoCulture Group</small></div>
   </footer>;
