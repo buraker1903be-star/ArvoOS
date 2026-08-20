@@ -57,7 +57,7 @@ export default function Home() {
         <div className="product-grid">
           {products.map(product => <article className={"product-card "+product.tone} key={product.name}>
             <div className="card-top"><span>{product.id}</span><small>{product.label}</small></div>
-            <div className="card-brand">{product.name === "ArvoOS" ? <Logo light /> : <strong>ARVO<span>LAB</span></strong>}</div>
+            <div className="card-brand">{product.name === "ArvoOS" ? <Logo light /> : <span className="lab-logo"><img src="/arvolab-logo.png" alt="ArvoLab" /></span>}</div>
             <div className="card-content"><h3>{product.title}</h3><p>{product.text}</p><ul>{product.features.map(f=><li key={f}>{f}</li>)}</ul></div>
             <a href={product.href} target={product.href.startsWith("http")?"_blank":undefined} rel="noreferrer">{product.action} <Arrow /></a>
             <div className="card-glow" aria-hidden="true"/>
