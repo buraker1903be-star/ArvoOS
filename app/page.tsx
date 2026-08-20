@@ -1,98 +1,92 @@
+const Arrow = () => <span aria-hidden="true">↗</span>;
+const Logo = ({ light = false }: { light?: boolean }) => (
+  <span className={"logo" + (light ? " logo-light" : "")}>
+    <img src="/arvoos-logo.png" alt="ArvoOS" />
+  </span>
+);
+
 const products = [
   {
-    no: "01", name: "ARVO", suffix: "OS", tag: "AKTİF ÜRÜN", kind: "os",
-    title: <>Akademik operasyonlarınızı<br />tek merkezden yönetin.</>,
-    copy: "CRM, teklif, sözleşme, finans, ekip ve iş akışları için uçtan uca kurum yönetim paneli.",
-    items: ["CRM, talep ve teklif yönetimi", "Finans, sözleşme ve iş akışları", "Ekip ve kurum operasyonları"],
-    link: "https://app.arvo-os.com", cta: "ArvoOS’a git"
+    id: "01", name: "ArvoOS", label: "Kurumsal işletim sistemi", tone: "dark",
+    title: "İşletmenizin tamamı. Tek bir akışta.",
+    text: "CRM, teklifler, sözleşmeler, finans, ekipler ve operasyonlar için birbirine bağlı yönetim sistemi.",
+    features: ["CRM ve satış", "Finans ve sözleşmeler", "Ekip ve operasyon"],
+    href: "https://app.arvo-os.com", action: "ArvoOS’a giriş"
   },
   {
-    no: "02", name: "ARVO", suffix: "LAB", tag: "YENİ ÜRÜN", kind: "lab",
-    title: <>Araştırmayı veriden<br />bilimsel çıktıya taşıyın.</>,
-    copy: "Literatürden akademik yazıma, belge kontrolünden istatistiksel analize kadar bilimsel üretimi izlenebilir bir alanda buluşturan araştırma paneli.",
-    items: ["Literatür, atıf ve kılavuz kontrolü", "Nicel ve nitel analiz merkezi", "Akademik yazım ve özgünlük ön kontrolü"],
-    link: "#iletisim", cta: "ArvoLab’i keşfet"
+    id: "02", name: "ArvoLab", label: "Research operating system", tone: "light",
+    title: "Araştırma için daha güçlü bir çalışma alanı.",
+    text: "Literatürden akademik yazıma, belge kontrolünden veri analizine kadar bilimsel üretimin her aşaması.",
+    features: ["Literatür ve atıf", "Akademik yazım", "Nicel ve nitel analiz"],
+    href: "#iletisim", action: "ArvoLab’i keşfet"
   }
 ];
 
-const Arrow = () => <span aria-hidden="true">↗</span>;
-const Mark = () => <span className="mark" aria-hidden="true"><i /><i /><i /></span>;
-
 export default function Home() {
   return <main>
-    <nav className="nav shell" aria-label="Ana menü">
-      <a className="brand" href="#top" aria-label="Arvo ana sayfa"><Mark /><span>ARVO</span></a>
-      <div className="nav-links"><a href="#urunler">Ürünler</a><a href="#yaklasim">Yaklaşım</a><a href="#gelecek">Ekosistem</a><a href="#iletisim">İletişim</a></div>
-      <a className="nav-cta" href="#urunler">Ürünleri keşfet <Arrow /></a>
-    </nav>
+    <header className="topbar">
+      <nav className="shell nav" aria-label="Ana menü">
+        <a href="#top" aria-label="ArvoOS ana sayfa"><Logo /></a>
+        <div className="nav-links"><a href="#urunler">Ürünler</a><a href="#vizyon">Vizyon</a><a href="#ekosistem">Ekosistem</a></div>
+        <a className="pill pill-dark" href="#iletisim">Bize ulaşın <Arrow /></a>
+      </nav>
+    </header>
 
     <section className="hero shell" id="top">
-      <div className="eyebrow"><span>✦</span> ARVO AKADEMİK ÇALIŞMA EKOSİSTEMİ</div>
-      <div className="hero-grid">
-        <h1>Akademik çalışmanın<br />yeni ekosistemi.</h1>
-        <div className="hero-copy">
-          <p>Operasyondan araştırmaya, bugünün ve yarının akademik çalışma ihtiyaçlarını amaç odaklı ürünlerle tek bir çatı altında buluşturuyoruz.</p>
-          <a className="text-link" href="#urunler">Ekosistemi incele <span>↓</span></a>
-        </div>
+      <p className="overline">ARVO ÜRÜN EKOSİSTEMİ</p>
+      <h1>Daha iyi çalışmak için<br/><span>daha iyi sistemler.</span></h1>
+      <p className="hero-lead">Arvo; kurumların ve akademik ekiplerin karmaşık süreçlerini sakin, güçlü ve kusursuz çalışma deneyimlerine dönüştürür.</p>
+      <div className="hero-actions"><a className="pill pill-dark" href="#urunler">Ürünleri keşfedin <span>↓</span></a><span>ArvoOS · ArvoLab · ve daha fazlası</span></div>
+      <div className="hero-canvas" aria-label="Arvo ürün ailesi">
+        <div className="halo halo-a"/><div className="halo halo-b"/>
+        <div className="canvas-copy"><small>TEK VİZYON</small><strong>ARVO</strong><p>Bağlantılı ürünler.<br/>Sınırsız olasılık.</p></div>
+        <div className="device device-os"><div className="device-head"><b>ArvoOS</b><span>● ● ●</span></div><div className="device-grid"><i/><i/><i/></div><div className="device-chart">{[42,68,54,82,76,96].map(n=><i key={n} style={{height:n+"%"}}/>)}</div></div>
+        <div className="device device-lab"><div className="device-head"><b>ArvoLab</b><span>RESEARCH</span></div><div className="lab-lines"><i/><i/><i/><i/></div><div className="lab-score"><span>Analiz</span><b>98<small>%</small></b></div></div>
       </div>
-      <div className="hero-visual" aria-hidden="true">
-        <div className="orbit one" /><div className="orbit two" /><div className="hero-word">ARVO</div>
-        <div className="signal signal-a"><b>01</b><span>OPERASYON</span></div>
-        <div className="signal signal-b"><b>02</b><span>ARAŞTIRMA</span></div>
-        <div className="signal signal-c"><b>+</b><span>YENİ ÜRÜNLER</span></div>
-        <div className="core"><Mark /></div>
-      </div>
-      <div className="hero-foot"><span>BÜYÜYEN ÜRÜN AİLESİ</span><span>TEK EKOSİSTEM</span><span>AKADEMİK ODAK</span></div>
     </section>
 
-    <section className="intro shell" id="urunler">
-      <div className="section-index">01 / ÜRÜNLER</div>
-      <div><p className="kicker">ARVO ÜRÜN AİLESİ</p><h2>Her ihtiyaca özel bir ürün.<br />Hepsinde aynı Arvo yaklaşımı.</h2></div>
+    <section className="statement shell" id="vizyon">
+      <p className="overline">TEKNOLOJİ, İNSAN İÇİN</p>
+      <h2>Karmaşıklığı arka planda bırakır.<br/><span>Size yalnızca ilerlemek kalır.</span></h2>
+      <div className="statement-copy"><p>Her Arvo ürünü tek bir ilkeyle tasarlanır: en kapsamlı süreçleri bile doğal ve anlaşılır hissettirmek.</p><p>Kurumunuz büyürken ürün ailesi de sizinle birlikte genişler.</p></div>
     </section>
 
-    <section className="products shell">
-      {products.map((p) => <article className={"product product-" + p.kind} key={p.suffix}>
-        <div className="product-top"><span>{p.no}</span><span className="status">{p.tag}</span></div>
-        <div className="product-logo"><Mark /><span>{p.name}<em>{p.suffix}</em></span></div>
-        <h3>{p.title}</h3><p>{p.copy}</p>
-        <ul>{p.items.map(item => <li key={item}>{item}</li>)}</ul>
-        <a className="product-link" href={p.link} target={p.link.startsWith("http") ? "_blank" : undefined} rel={p.link.startsWith("http") ? "noreferrer" : undefined}>{p.cta} <Arrow /></a>
-        <div className={"pattern pattern-" + p.kind} aria-hidden="true"><span /><span /><span /><span /></div>
-      </article>)}
-      <article className="product future-card" id="gelecek">
-        <div className="product-top"><span>03 →</span><span className="status">EKOSİSTEM BÜYÜYOR</span></div>
-        <div className="future-plus">+</div>
-        <h3>Yeni ihtiyaçlar,<br />yeni Arvo ürünleri.</h3>
-        <p>Arvo ürün ailesi sabit değil. Gelecekte eklenecek her ürün; ortak tasarım dili, bağlantılı süreçler ve aynı akademik odakla bu ekosistemde yerini alacak.</p>
-        <a className="product-link" href="#iletisim">Gelişmelerden haberdar olun <Arrow /></a>
-      </article>
-    </section>
-
-    <section className="philosophy" id="yaklasim"><div className="shell philosophy-grid">
-      <div className="section-index light">02 / YAKLAŞIM</div>
-      <div><p className="kicker blue">NEDEN ARVO?</p><h2>Akademik süreçler karmaşık olabilir.<br />Kullandığınız sistem olmak zorunda değil.</h2>
-        <div className="principles">
-          <div><b>01</b><h3>Net</h3><p>Her rol için doğru bilgi, doğru anda.</p></div>
-          <div><b>02</b><h3>Kontrollü</h3><p>Süreçlerin her aşamasında görünürlük.</p></div>
-          <div><b>03</b><h3>Birlikte</h3><p>Ürünler ve çalışmalar arasında bütünlük.</p></div>
+    <section className="product-section" id="urunler">
+      <div className="shell">
+        <div className="section-heading"><div><p className="overline">ÜRÜN AİLESİ</p><h2>Bugün için güçlü.<br/>Yarın için hazır.</h2></div><p>Her biri kendi alanında uzman. Birlikte, çalışma biçiminizin tamamını dönüştüren bir ekosistem.</p></div>
+        <div className="product-grid">
+          {products.map(product => <article className={"product-card "+product.tone} key={product.name}>
+            <div className="card-top"><span>{product.id}</span><small>{product.label}</small></div>
+            <div className="card-brand">{product.name === "ArvoOS" ? <Logo light /> : <strong>ARVO<span>LAB</span></strong>}</div>
+            <div className="card-content"><h3>{product.title}</h3><p>{product.text}</p><ul>{product.features.map(f=><li key={f}>{f}</li>)}</ul></div>
+            <a href={product.href} target={product.href.startsWith("http")?"_blank":undefined} rel="noreferrer">{product.action} <Arrow /></a>
+            <div className="card-glow" aria-hidden="true"/>
+          </article>)}
         </div>
       </div>
-    </div></section>
+    </section>
 
-    <section className="ecosystem shell">
-      <div className="section-index">03 / EKOSİSTEM</div>
-      <div><p className="kicker">BÜTÜNSEL ÇALIŞMA MODELİ</p><h2>Her ürün kendi işini iyi yapar.<br />Arvo çatısı hepsini birleştirir.</h2>
-        <div className="eco-flow">
-          <div><small>KURUMSAL SÜREÇ</small><strong>ArvoOS</strong></div><span>+</span>
-          <div><small>ARAŞTIRMA SÜRECİ</small><strong>ArvoLab</strong></div><span>+</span>
-          <div className="eco-result"><small>GELECEK ÜRÜNLER</small><strong>Büyüyen<br />ekosistem</strong></div>
-        </div>
+    <section className="ecosystem shell" id="ekosistem">
+      <div className="eco-intro"><p className="overline">BÜYÜYEN EKOSİSTEM</p><h2>İki ürün.<br/>Tek başlangıç.</h2><p>Arvo ürün ailesi, geleceğin çalışma ihtiyaçlarına göre büyümek üzere tasarlandı.</p></div>
+      <div className="eco-map">
+        <div className="eco-center">ARVO</div>
+        <div className="eco-node node-one"><small>01</small><b>ArvoOS</b><span>Operasyon</span></div>
+        <div className="eco-node node-two"><small>02</small><b>ArvoLab</b><span>Araştırma</span></div>
+        <div className="eco-node node-three"><small>03+</small><b>Yeni ürünler</b><span>Yakında</span></div>
+      </div>
+    </section>
+
+    <section className="values">
+      <div className="shell value-grid">
+        <article><span>01</span><h3>Sade</h3><p>Gereksiz hiçbir şey yok. İhtiyacınız olan her şey tam yerinde.</p></article>
+        <article><span>02</span><h3>Güçlü</h3><p>Kritik süreçler için güvenilir, kontrollü ve ölçeklenebilir altyapı.</p></article>
+        <article><span>03</span><h3>Bütünsel</h3><p>Ürünler, ekipler ve veriler arasında kesintisiz bir çalışma düzeni.</p></article>
       </div>
     </section>
 
     <footer id="iletisim">
-      <div className="shell footer-top"><p className="kicker blue">ARVO İLE TANIŞIN</p><h2>Çalışma biçiminizi<br />birlikte dönüştürelim.</h2><a href="mailto:info@arvo-os.com" className="footer-cta">Bize ulaşın <Arrow /></a></div>
-      <div className="shell footer-bottom"><div className="brand"><Mark /><span>ARVO</span></div><p>Akademik çalışmanın büyüyen ürün ekosistemi.</p><div><a href="#urunler">Ürünler</a><a href="#yaklasim">Yaklaşım</a><a href="mailto:info@arvo-os.com">İletişim</a></div><small>© 2026 ArvoCulture Group. Tüm hakları saklıdır.</small></div>
+      <div className="shell footer-main"><Logo light/><h2>Geleceğin çalışma<br/>sistemlerini birlikte kuralım.</h2><a className="pill pill-light" href="mailto:info@arvo-os.com">İletişime geçin <Arrow /></a></div>
+      <div className="shell footer-bottom"><p>ArvoCulture Group Teknoloji Sanayi ve Ticaret Limited Şirketi</p><div><a href="#urunler">Ürünler</a><a href="#vizyon">Vizyon</a><a href="mailto:info@arvo-os.com">info@arvo-os.com</a></div><small>© 2026 ArvoCulture Group</small></div>
     </footer>
   </main>;
 }
