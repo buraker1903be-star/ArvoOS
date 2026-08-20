@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import "./corporate.css";
 
 const manrope = Manrope({
   subsets: ["latin", "latin-ext"],
@@ -8,8 +9,8 @@ const manrope = Manrope({
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "Arvo | Akademik Çalışma Ekosistemi",
-  description: "ArvoOS, ArvoLab ve geleceğin kurumsal ve akademik çalışma ürünleri tek bir büyüyen ekosistemde.",
+  title: "Arvo | Ürünler ve Dijital Hizmetler",
+  description: "ArvoOS, ArvoLab ve kurumlara özel dijital ürün, web tasarımı ve yazılım hizmetleri.",
   openGraph:{title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"Arvo Akademik Çalışma Ekosistemi"}]},
   twitter:{card:"summary_large_image",title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/arvoos-logo.png"]},
   icons:{icon:"/favicon.svg",shortcut:"/favicon.svg"}

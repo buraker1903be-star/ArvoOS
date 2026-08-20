@@ -1,9 +1,4 @@
-const Arrow = () => <span aria-hidden="true">↗</span>;
-const Logo = ({ light = false }: { light?: boolean }) => (
-  <span className={"logo" + (light ? " logo-light" : "")}>
-    <img src="/arvoos-logo.png" alt="ArvoOS" />
-  </span>
-);
+import { Arrow, Logo, SiteFooter, SiteHeader } from "./site-chrome";
 
 const products = [
   {
@@ -11,26 +6,20 @@ const products = [
     title: "İşletmenizin tamamı. Tek bir akışta.",
     text: "CRM, teklifler, sözleşmeler, finans, ekipler ve operasyonlar için birbirine bağlı yönetim sistemi.",
     features: ["CRM ve satış", "Finans ve sözleşmeler", "Ekip ve operasyon"],
-    href: "https://app.arvo-os.com", action: "ArvoOS’a giriş"
+    href: "/urunler/arvoos", action: "ArvoOS’u keşfet"
   },
   {
     id: "02", name: "ArvoLab", label: "Research operating system", tone: "light",
     title: "Araştırma için daha güçlü bir çalışma alanı.",
     text: "Literatürden akademik yazıma, belge kontrolünden veri analizine kadar bilimsel üretimin her aşaması.",
     features: ["Literatür ve atıf", "Akademik yazım", "Nicel ve nitel analiz"],
-    href: "#iletisim", action: "ArvoLab’i keşfet"
+    href: "/urunler/arvolab", action: "ArvoLab’i keşfet"
   }
 ];
 
 export default function Home() {
   return <main>
-    <header className="topbar">
-      <nav className="shell nav" aria-label="Ana menü">
-        <a href="#top" aria-label="ArvoOS ana sayfa"><Logo /></a>
-        <div className="nav-links"><a href="#urunler">Ürünler</a><a href="#vizyon">Vizyon</a><a href="#ekosistem">Ekosistem</a></div>
-        <a className="pill pill-dark" href="#iletisim">Bize ulaşın <Arrow /></a>
-      </nav>
-    </header>
+    <SiteHeader />
 
     <section className="hero shell" id="top">
       <p className="overline">ARVO ÜRÜN EKOSİSTEMİ</p>
@@ -84,9 +73,6 @@ export default function Home() {
       </div>
     </section>
 
-    <footer id="iletisim">
-      <div className="shell footer-main"><Logo light/><h2>Geleceğin çalışma<br/>sistemlerini birlikte kuralım.</h2><a className="pill pill-light" href="mailto:info@arvo-os.com">İletişime geçin <Arrow /></a></div>
-      <div className="shell footer-bottom"><p>ArvoCulture Group Teknoloji Sanayi ve Ticaret Limited Şirketi</p><div><a href="#urunler">Ürünler</a><a href="#vizyon">Vizyon</a><a href="mailto:info@arvo-os.com">info@arvo-os.com</a></div><small>© 2026 ArvoCulture Group</small></div>
-    </footer>
+    <SiteFooter />
   </main>;
 }
