@@ -12,3 +12,21 @@ footer{background:#050505;color:#fff;padding:130px 0 40px}.footer-main{position:
 @media(max-width:900px){.shell{width:calc(100% - 36px)}.nav{height:68px}.nav-links{display:none}.logo{width:125px}.logo img{width:125px;height:68px;transform:translateY(-12px)}.hero{padding-top:75px}.hero h1{font-size:55px}.hero-lead{font-size:17px}.hero-actions{align-items:flex-start;flex-direction:column;margin-bottom:50px}.hero-canvas{height:620px;border-radius:24px}.canvas-copy{left:8%;top:8%}.device-os{width:85%;right:-6%;height:45%}.device-lab{width:55%;right:32%;bottom:20%;height:38%}.statement{padding-block:110px}.statement-copy{width:100%;grid-template-columns:1fr;margin-top:50px;gap:10px}.product-section{padding:95px 0}.section-heading{display:block}.section-heading>p{width:auto;margin-top:30px}.product-grid{grid-template-columns:1fr}.product-card{min-height:690px;padding:32px}.ecosystem{grid-template-columns:1fr;padding-block:110px}.eco-map{height:520px}.eco-node{width:145px;padding:17px}.value-grid{grid-template-columns:1fr}.value-grid article,.value-grid article+article{padding:35px 0;border-right:0;border-bottom:1px solid #d1d2d4}.footer-main .pill{position:static;margin-top:50px}.footer-main{padding-bottom:80px}.footer-bottom{grid-template-columns:1fr}.footer-bottom div{flex-wrap:wrap}}
 @media(max-width:520px){.nav .pill{padding:0 14px}.hero h1{font-size:44px}.hero-canvas{height:500px}.canvas-copy strong{font-size:65px}.canvas-copy p{font-size:14px}.device-os{height:40%;bottom:0}.device-lab{width:62%;right:25%;height:38%;bottom:18%}.device-grid{display:none}.device-chart{height:115px}.product-card{min-height:650px}.eco-map{height:440px}.eco-center{width:105px;height:105px}.node-one{top:5%}.node-two{top:40%}.node-three{left:5%}.footer-main h2{font-size:48px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+
+/* Arvo brand palette */
+:root{--navy:#002b55;--navy-deep:#001b38;--ink:#092847;--muted:#667381;--green:#739d49;--green-dark:#5d8436;--green-pale:#eef4e8;--ice:#f4f7f2;--line:#dce4d7}
+.overline{color:var(--green-dark)}
+.pill-dark{background:var(--green);color:#fff;box-shadow:0 10px 28px rgba(115,157,73,.22)}
+.pill-dark:hover{background:var(--green-dark)}
+.pill-light{color:var(--navy)}
+.hero h1,.statement h2,.section-heading h2,.eco-intro h2{color:var(--navy)}
+.hero h1 span,.statement h2 span{color:var(--green)}
+.hero-canvas{background:linear-gradient(145deg,var(--navy) 0%,var(--navy-deep) 58%,#0a3d67 100%);box-shadow:0 40px 100px rgba(0,43,85,.22)}
+.halo-b{background:radial-gradient(circle,rgba(115,157,73,.22),transparent 65%)}
+.product-card.dark{background:linear-gradient(145deg,var(--navy),var(--navy-deep))}
+.light .card-glow{background:radial-gradient(circle,rgba(115,157,73,.25),transparent 65%)}
+.lab-logo{display:block;width:240px;height:64px;overflow:hidden}
+.lab-logo img{display:block;width:240px;height:135px;object-fit:contain;transform:translateY(-36px)}
+.eco-center{background:var(--navy);box-shadow:0 25px 60px rgba(0,43,85,.22)}
+.values{background:var(--green-pale)}
+footer{background:var(--navy-deep)}
