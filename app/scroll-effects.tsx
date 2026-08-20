@@ -9,7 +9,7 @@ export default function ScrollEffects() {
       ".page-hero > *", ".hero > .overline", ".hero > h1", ".hero-lead", ".hero-actions", ".hero-canvas",
       ".statement > *", ".section-heading > *", ".product-card", ".eco-intro > *", ".eco-map",
       ".value-grid article", ".split-heading > *", ".service-card", ".feature-card", ".contact-card",
-      ".content-section > *", ".two-col > *", ".process-step", ".cta-panel > *", ".footer-main > *", ".footer-links > div"
+      ".content-section > *", ".two-col > *", ".process-step", ".cta-panel > *", ".references-heading > *", ".reference-card", ".footer-main > *", ".footer-links > div"
     ].join(",");
     const targets = Array.from(document.querySelectorAll<HTMLElement>(selector));
     targets.forEach(element => {

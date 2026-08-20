@@ -73,6 +73,22 @@ export default function Home() {
       </div>
     </section>
 
+    <section className="references">
+      <div className="shell">
+        <div className="references-heading"><div><p className="overline">REFERANSLAR</p><h2>Güvenle üreten<br/>markalar.</h2></div><p>Aynı kalite anlayışını paylaşan, birlikte değer ürettiğimiz marka ekosistemi.</p></div>
+        <div className="reference-grid">
+          <a className="reference-card arvoculture-reference" href="/hakkimizda" aria-label="ArvoCulture Group hakkında">
+            <span className="arvoculture-mark"><strong>ARVO</strong><em>CULTURE</em><small>GROUP</small></span>
+            <span className="reference-action">Markayı keşfedin <Arrow /></span>
+          </a>
+          <a className="reference-card akademik-reference" href="https://akademikmerkez.com" target="_blank" rel="noreferrer" aria-label="AkademikMerkez web sitesini ziyaret edin">
+            <img src="https://akademikmerkez.com/logo-trimmed.png" alt="AkademikMerkez" />
+            <span className="reference-action">Web sitesini ziyaret edin <Arrow /></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <SiteFooter />
   </main>;
 }
