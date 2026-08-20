@@ -20,6 +20,23 @@ export function SiteHeader() {
         <a className="login-link" href={links.arvoLabLogin}>ArvoLab Giriş</a>
         <a className="pill pill-dark" href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş <Arrow /></a>
       </div>
+      <details className="mobile-menu">
+        <summary aria-label="Menüyü aç veya kapat"><span></span><span></span><span></span></summary>
+        <div className="mobile-menu-panel">
+          <div className="mobile-menu-label">Ürünler</div>
+          <a href="/urunler/arvoos">ArvoOS <Arrow /></a>
+          <a href="/urunler/arvolab">ArvoLab <Arrow /></a>
+          <div className="mobile-menu-label">Kurumsal</div>
+          <a href="/hizmetler">Hizmetler <Arrow /></a>
+          <a href="/hizmetler/web-sitesi-tasarimi">Web sitesi tasarımı <Arrow /></a>
+          <a href="/hakkimizda">Hakkımızda <Arrow /></a>
+          <a href="/iletisim">İletişim <Arrow /></a>
+          <div className="mobile-menu-actions">
+            <a className="pill pill-outline" href={links.arvoLabLogin}>ArvoLab Giriş</a>
+            <a className="pill pill-dark" href={links.arvoOSLogin} target="_blank" rel="noreferrer">ArvoOS Giriş <Arrow /></a>
+          </div>
+        </div>
+      </details>
     </nav>
   </header>;
 }
