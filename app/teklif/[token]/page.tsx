@@ -1,8 +1,34 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProposalDocument } from "@/app/_components/proposal-document";
 import { respondToProposal } from "./actions";
+
+export async function generateMetadata({params}:{params:Promise<{token:string}>}):Promise<Metadata>{
+ const {token}=await params;
+ const supabase=await createClient();
+ const {data}=await supabase.rpc("get_public_crm_proposal",{public_token:token});
+ const row=Array.isArray(data)?data[0]:data;
+ if(!row)return {title:"Teklif",robots:{index:false,follow:false}};
+ const h=await headers();
+ const host=h.get("x-forwarded-host")||h.get("host")||"app.arvo-os.com";
+ const protocol=h.get("x-forwarded-proto")||"https";
+ const origin=`${protocol}://${host}`;
+ const organizationName=String(row.organization_name||"ArvoOS");
+ const logo=row.organization_logo_url?new URL(String(row.organization_logo_url),origin).toString():new URL("/arvoos-logo.png",origin).toString();
+ const title=`${organizationName} | Teklif`;
+ const description=`${organizationName} tarafından hazırlanan teklif belgesini güvenli bağlantı üzerinden inceleyin.`;
+ const url=`${origin}/teklif/${token}`;
+ return {
+  title,
+  description,
+  alternates:{canonical:url},
+  openGraph:{title,description,type:"website",url,siteName:organizationName,images:[{url:logo,alt:`${organizationName} logosu`}]},
+  twitter:{card:"summary_large_image",title,description,images:[logo]},
+  robots:{index:false,follow:false},
+ };
+}
 
 const firstIp=(value:string|null)=>value?.split(",")[0]?.trim()||null;
 const statuses:Record<string,string>={draft:"Taslak",sent:"Gönderildi",accepted:"Kabul edildi",rejected:"Reddedildi",expired:"Süresi doldu",archived:"Arşivlendi"};
