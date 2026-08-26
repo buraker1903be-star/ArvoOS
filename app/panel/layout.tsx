@@ -9,6 +9,7 @@ import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
 import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
+import { MessagesDrawer } from "./messages-drawer";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -17,6 +18,7 @@ import "./panel-top-actions.css";
 import "./sidebar-workspace-switcher.css";
 import "./panel-mobile.css";
 import "./mobile-drawer.css";
+import "./messages-drawer.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -45,6 +47,14 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
   const { data: ownEmployee } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   const { data: pendingAgreement } = ownEmployee ? await supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : { data: null };
+  const [{data:messageEmployees},{data:messageChannels},{data:presenceRows}] = hasMessages ? await Promise.all([
+    supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id",membership.organization_id).eq("employment_status","active").not("user_id","is",null).order("full_name"),
+    supabase.from("message_channels").select("id,name,description,channel_type,direct_key").eq("organization_id",membership.organization_id).order("updated_at",{ascending:false}),
+    supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id",membership.organization_id),
+  ]) : [{data:[]},{data:[]},{data:[]}];
+  const presenceMap=new Map((presenceRows??[]).map((row)=>[row.user_id,row.last_seen_at]));
+  const drawerPeople=(messageEmployees??[]).map((employee)=>({userId:employee.user_id as string,name:employee.full_name,jobTitle:employee.job_title,lastSeenAt:presenceMap.get(employee.user_id as string)??null}));
+  const drawerChannels=(messageChannels??[]).map((channel)=>({id:channel.id,name:channel.name,description:channel.description,channelType:channel.channel_type??"group",directKey:channel.direct_key}));
 
   return <div className="panel-root"><main className="panel-frame">
     <PresenceHeartbeat />
@@ -67,7 +77,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            {hasMessages ? <Link className="panel-quick-action" href="/panel/messages" aria-label="Mesajlar"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b></Link> : null}
+            {hasMessages ? <MessagesDrawer organizationId={membership.organization_id} userId={userId} people={drawerPeople} initialChannels={drawerChannels}/> : null}
             <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
           </div>
           <ThemeToggle />
