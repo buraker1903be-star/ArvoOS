@@ -64,7 +64,7 @@ export default async function HrPage() {
   return <div className="hr-page">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Ekip ve Personel</h1><p>Personel bilgileri, panel erişimi, prim oranları ve özlük dosyaları tek yerden.</p></div>
-      <div className="panel-page-actions">{canManageTeam ? <Link className="panel-secondary" href="/panel/hr/activity">Personel Hareketleri</Link> : null}<PanelDrawer triggerLabel="+ Yeni Personel" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer></div>
+      <div className="panel-page-actions">{canManageTeam ? <><Link className="panel-secondary" href="/panel/hr/confidentiality">Gizlilik Sözleşmeleri</Link><Link className="panel-secondary" href="/panel/hr/activity">Personel Hareketleri</Link></> : null}<PanelDrawer triggerLabel="+ Yeni Personel" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer></div>
     </div>
 
     <section className="hr-metrics">
