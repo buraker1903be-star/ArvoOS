@@ -44,17 +44,23 @@ export async function logout() {
 
   if (userId && sessionId) {
     const now = new Date().toISOString();
+    const { data: trackedSession } = await supabase.from("user_session_logs")
+      .select("organization_id")
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .maybeSingle();
     await supabase.from("user_session_logs").update({
       logout_at: now,
       last_seen_at: now,
       logout_reason: "manual",
     }).eq("id", sessionId).eq("user_id", userId).is("logout_at", null);
 
-    if (organizationId) {
+    const trackedOrganizationId = trackedSession?.organization_id ?? organizationId;
+    if (trackedOrganizationId) {
       await supabase.from("user_presence").update({
         last_seen_at: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
         updated_at: now,
-      }).eq("organization_id", organizationId).eq("user_id", userId);
+      }).eq("organization_id", trackedOrganizationId).eq("user_id", userId);
     }
   }
 
