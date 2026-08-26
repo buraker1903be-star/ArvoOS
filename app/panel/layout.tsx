@@ -8,6 +8,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
 import { MobileDrawer } from "./mobile-drawer";
+import { PresenceHeartbeat } from "./presence-heartbeat";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -44,6 +45,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
 
   return <div className="panel-root"><main className="panel-frame">
+    <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
     <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} />
