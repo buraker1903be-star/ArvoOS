@@ -9,7 +9,7 @@ import { roleNames } from "./role-names";
 import "./hr.css";
 
 type Department = { id: string; name: string; code: string | null; is_active: boolean };
-type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean; commission_rate: number };
+type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean; commission_rate: number; operation_commission_rate: number };
 type Member = { user_id: string; role: string; is_active: boolean };
 type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string };
 type Doc = { id: string; employee_id: string; file_name: string; file_size: number | null; created_at: string };
@@ -24,7 +24,7 @@ export default async function HrPage() {
   const canManageTeam = ["owner", "admin"].includes(membership.role);
 
   const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData }, { data: invitationData }, { data: docData }] = await Promise.all([
-    supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate").eq("organization_id", membership.organization_id).order("full_name"),
+    supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate,operation_commission_rate").eq("organization_id", membership.organization_id).order("full_name"),
     supabase.from("hr_departments").select("id,name,code,is_active").eq("organization_id", membership.organization_id).order("name"),
     canManageTeam ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", membership.organization_id) : Promise.resolve({ data: [] as Member[] }),
     canManageTeam ? supabase.from("organization_invitations").select("id,email,role,status,created_at,expires_at").eq("organization_id", membership.organization_id).in("status", ["pending", "sent"]) : Promise.resolve({ data: [] as Invitation[] }),
@@ -55,7 +55,7 @@ export default async function HrPage() {
     <label>Çalışma tipi<select name="employment_type" defaultValue="full_time"><option value="full_time">Tam zamanlı</option><option value="part_time">Yarı zamanlı</option><option value="contractor">Sözleşmeli</option><option value="intern">Stajyer</option></select></label>
     <label>E-posta<input name="email" type="email" /></label><label>Telefon<input name="phone" /></label>
     <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
-    <label>Prim oranı (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
+    <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>\n    <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
     <label className="wide"><span>Satış yetkisi</span><span><input name="can_receive_sales_requests" type="checkbox" /> Satış talepleri atanabilir</span></label>
     <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Personeli Kaydet</button></div>
   </form>;
@@ -86,7 +86,7 @@ export default async function HrPage() {
               <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} /></label>
               <label>Telefon<input name="phone" defaultValue={employee.phone ?? ""} /></label>
               <label>Durum<select name="employment_status" defaultValue={employee.employment_status}><option value="active">Aktif</option><option value="on_leave">İzinli</option><option value="inactive">Pasif</option><option value="terminated">İşten ayrıldı</option></select></label>
-              <label>Prim oranı (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>
+              <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>\n              <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
               <label className="wide"><span><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /> Satış talepleri atanabilir</span></label>
               <div className="wide panel-form-actions"><button className="panel-primary">Kaydet</button></div>
             </form>;
@@ -120,7 +120,7 @@ export default async function HrPage() {
                 <div className="hr-tags">
                   <span>{statusNames[employee.employment_status] ?? employee.employment_status}</span>
                   {employee.can_receive_sales_requests ? <span>Satış atanabilir</span> : null}
-                  {employee.commission_rate > 0 ? <span>Prim %{employee.commission_rate}</span> : null}
+                  {employee.commission_rate > 0 ? <span>Satış primi %{employee.commission_rate}</span> : null}\n                  {employee.operation_commission_rate > 0 ? <span>Operasyon primi %{employee.operation_commission_rate}</span> : null}
                 </div>
               </div>
 
