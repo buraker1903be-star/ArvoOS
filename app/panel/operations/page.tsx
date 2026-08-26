@@ -21,9 +21,15 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
   const { supabase, membership, modules } = await getPanelContext();
   const canAssign = ["owner", "admin", "manager"].includes(membership.role);
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
-  const { data, error } = await supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false });
+  const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
+    supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false }),
+    supabase.from("hr_employees").select("id,full_name,job_title").eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
+  ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
+  if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   const allWorkflows = (data ?? []) as Workflow[];
+  const employees = (employeeData ?? []) as Employee[];
+  const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
 
   // Tamamlanan + ödemesi tam kapanan işler panoyu şişirmesin diye burada
   // canlı olarak arşive ayrılır (ayrı bir "arşivlendi" alanı tutmuyoruz,
