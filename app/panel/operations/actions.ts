@@ -21,13 +21,34 @@ export async function createWorkflow(formData: FormData) {
   const priority = String(formData.get("priority") ?? "normal");
   const startDate = String(formData.get("start_date") ?? "") || null;
   const dueDate = String(formData.get("due_date") ?? "") || null;
+  const assignedEmployeeId = String(formData.get("assigned_employee_id") ?? "") || null;
   if (title.length < 2 || title.length > 180) throw new Error("İş başlığı 2–180 karakter olmalı.");
   if (!statuses.has(status) || status === "completed" || status === "cancelled") throw new Error("Geçersiz başlangıç durumu.");
   if (!priorities.has(priority)) throw new Error("Geçersiz öncelik.");
   if (startDate && dueDate && dueDate < startDate) throw new Error("Termin başlangıç tarihinden önce olamaz.");
-  const { error } = await supabase.from("operation_workflows").insert({ organization_id: membership.organization_id, title, customer_name: customerName || null, description: description || null, status, priority, start_date: startDate, due_date: dueDate, created_by: userId });
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("İş oluşturmak için yönetici yetkisi gerekiyor.");
+  if (assignedEmployeeId) {
+    const { data: employee } = await supabase.from("hr_employees").select("id").eq("id", assignedEmployeeId).eq("organization_id", membership.organization_id).eq("employment_status", "active").maybeSingle();
+    if (!employee) throw new Error("Atanacak aktif personel bulunamadı.");
+  }
+  const { error } = await supabase.from("operation_workflows").insert({ organization_id: membership.organization_id, title, customer_name: customerName || null, description: description || null, status, priority, start_date: startDate, due_date: dueDate, assigned_employee_id: assignedEmployeeId, created_by: userId });
   if (error) throw new Error("İş akışı oluşturulamadı: " + error.message);
   revalidatePath("/panel/operations"); revalidatePath("/panel");
+}
+
+export async function assignWorkflow(formData: FormData) {
+  const { supabase, membership } = await operationContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Operasyon atamak için yönetici yetkisi gerekiyor.");
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const assignedEmployeeId = String(formData.get("assigned_employee_id") ?? "") || null;
+  if (assignedEmployeeId) {
+    const { data: employee } = await supabase.from("hr_employees").select("id").eq("id", assignedEmployeeId).eq("organization_id", membership.organization_id).eq("employment_status", "active").maybeSingle();
+    if (!employee) throw new Error("Atanacak aktif personel bulunamadı.");
+  }
+  const { data, error } = await supabase.from("operation_workflows").update({ assigned_employee_id: assignedEmployeeId, updated_at: new Date().toISOString() }).eq("id", workflowId).eq("organization_id", membership.organization_id).select("id").maybeSingle();
+  if (error) throw new Error("Operasyon sorumlusu güncellenemedi: " + error.message);
+  if (!data) throw new Error("İş akışı bulunamadı.");
+  revalidatePath("/panel/operations"); revalidatePath(`/panel/operations/${workflowId}`);
 }
 
 export async function addWorkflowStep(formData: FormData) {
