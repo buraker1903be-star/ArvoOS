@@ -37,6 +37,28 @@ export async function switchWorkspace(formData: FormData) {
 export async function logout() {
   const supabase = await createClient();
   const cookieStore = await cookies();
+  const { data: auth } = await supabase.auth.getClaims();
+  const userId = auth?.claims?.sub;
+  const sessionId = cookieStore.get("arvo_presence_session")?.value;
+  const organizationId = cookieStore.get(WORKSPACE_COOKIE)?.value;
+
+  if (userId && sessionId) {
+    const now = new Date().toISOString();
+    await supabase.from("user_session_logs").update({
+      logout_at: now,
+      last_seen_at: now,
+      logout_reason: "manual",
+    }).eq("id", sessionId).eq("user_id", userId).is("logout_at", null);
+
+    if (organizationId) {
+      await supabase.from("user_presence").update({
+        last_seen_at: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
+        updated_at: now,
+      }).eq("organization_id", organizationId).eq("user_id", userId);
+    }
+  }
+
+  cookieStore.delete("arvo_presence_session");
   cookieStore.delete(WORKSPACE_COOKIE);
   cookieStore.delete("arvo_workspace");
   await supabase.auth.signOut();
