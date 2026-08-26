@@ -8,14 +8,14 @@ import "../crm.css";
 
 type Props={searchParams:Promise<{search?:string;status?:string;share?:string;doc_no?:string;customer_name?:string}>};
 type Proposal={id:string;proposal_no:string;title:string;scope:string|null;amount:number;currency:string;payment_plan:string|null;valid_until:string|null;status:string;sent_at:string|null;first_viewed_at:string|null;last_viewed_at:string|null;view_count:number;responded_at:string|null;created_at:string;root_proposal_id:string|null;previous_revision_id:string|null;revision_no:number;revision_note:string|null;superseded_at:string|null;superseded_by:string|null;archived_at:string|null;archive_reason:string|null;opportunity_id:string;crm_opportunities:{id:string;customer_name:string;contact_email:string|null;contact_phone:string|null;title:string;assigned_employee_id:string|null;request_details:Record<string,unknown>|null}|null};
-const statuses=["draft","sent","accepted","rejected","expired","archived"];
+const statuses=["draft","sent","accepted","rejected"];
 const labels:Record<string,string>={draft:"Taslak",sent:"Gönderildi",accepted:"Kabul edildi",rejected:"Reddedildi",expired:"Süresi doldu",archived:"Arşiv"};
 const money=(v:number,c:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency:c}).format(v/100);
 const dateTime=(v:string|null)=>v?new Date(v).toLocaleString("tr-TR"):"—";
 export default async function ProposalsPage({searchParams}:Props){
  const p=await searchParams;const search=(p.search??"").trim();const status=statuses.includes(p.status??"")?p.status!:"";const share=p.share??"";const docNo=p.doc_no??"";const customerName=p.customer_name??"";
  const {supabase,membership,organization,modules}=await getPanelContext();if(!modules.some(m=>m.code==="crm"))throw new Error("CRM modülüne erişiminiz yok.");
- let q=supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,sent_at,first_viewed_at,last_viewed_at,view_count,responded_at,created_at,root_proposal_id,previous_revision_id,revision_no,revision_note,superseded_at,superseded_by,archived_at,archive_reason,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)").eq("organization_id",membership.organization_id);
+ let q=supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,sent_at,first_viewed_at,last_viewed_at,view_count,responded_at,created_at,root_proposal_id,previous_revision_id,revision_no,revision_note,superseded_at,superseded_by,archived_at,archive_reason,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)").eq("organization_id",membership.organization_id).neq("status","archived").neq("status","expired");
  if(status)q=q.eq("status",status);if(search)q=q.or(`proposal_no.ilike.%${search}%,title.ilike.%${search}%`);
  const {data,error}=await q.order("created_at",{ascending:false});if(error)throw new Error("Teklifler okunamadı: "+error.message);const rows=(data??[]) as unknown as Proposal[];
  const {data:employeeData,error:employeeError}=await supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id).eq("employment_status","active");
