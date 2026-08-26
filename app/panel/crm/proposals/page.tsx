@@ -23,7 +23,9 @@ export default async function ProposalsPage({searchParams}:Props){
  const {data:employeeData,error:employeeError}=await supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id).eq("employment_status","active");
  if(employeeError)throw new Error("Satış temsilcileri okunamadı: "+employeeError.message);
  const representativeMap=new Map((employeeData??[]).map(employee=>[employee.id,employee.full_name]));
- const shareUrl=share?`https://app.arvo-os.com/teklif/${share}`:"";const total=rows.reduce((s,r)=>s+Number(r.amount),0);
+ const {data:domainOrg}=await supabase.from("organizations").select("custom_domain,custom_domain_status").eq("id",membership.organization_id).maybeSingle();
+ const publicHost=domainOrg?.custom_domain_status==="verified"&&domainOrg.custom_domain?domainOrg.custom_domain:"app.arvo-os.com";
+ const shareUrl=share?`https://${publicHost}/teklif/${share}`:"";const total=rows.reduce((s,r)=>s+Number(r.amount),0);
  const greeting=customerName?`Merhaba ${customerName},`:"Merhaba,";
  const emailBody=`${greeting}\n\n${organization.name} olarak hazırladığımız teklifiniz${docNo?` (${docNo})`:""} incelemenize sunulmuştur.\n\nAşağıdaki bağlantıdan teklifi görüntüleyebilir ve kararınızı iletebilirsiniz:\n${shareUrl}\n\nHerhangi bir sorunuz olursa bize ulaşmaktan çekinmeyin.\n\nSaygılarımızla,\n${organization.name}`;
  const waText=`${greeting} 👋\n\n${organization.name} olarak hazırladığımız teklifinizi${docNo?` (${docNo})`:""} incelemeniz için gönderiyoruz:\n${shareUrl}\n\nİyi günler dileriz,\n${organization.name}`;
