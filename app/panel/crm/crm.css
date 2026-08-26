@@ -162,7 +162,7 @@
 .panel-form-note:first-child{margin-top:0;padding-top:0;border-top:0}
 
 /* ---------- Arşivlenen sözleşmeler (Operasyon panosuyla aynı görünüm) ---------- */
-.ops-archive{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.ops-archive{margin:16px 18px 0;box-sizing:border-box;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
 .ops-archive summary{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;list-style:none}
 .ops-archive summary::-webkit-details-marker{display:none}
 .ops-archive summary span{font:700 11px var(--font-heading);color:var(--ink)}
