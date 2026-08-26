@@ -11,6 +11,9 @@ export const metadata: Metadata = {
 const errorMessages: Record<string, string> = {
   invalid: "Geçerli bir e-posta adresi girin.",
   failed: "Şifre yenileme e-postası gönderilemedi. Lütfen tekrar deneyin.",
+  rate_limit: "Çok kısa sürede birden fazla bağlantı istendi. Birkaç dakika bekleyip yalnızca bir kez yeniden deneyin.",
+  service: "E-posta servisi şu anda yanıt vermedi. Birkaç dakika sonra yeniden deneyin.",
+  expired: "Bu bağlantı kullanılmış, süresi dolmuş veya daha yeni bir bağlantı tarafından geçersiz kılınmış. Lütfen yeni bağlantı isteyin.",
 };
 
 export default async function ForgotPasswordPage({
@@ -44,7 +47,7 @@ export default async function ForgotPasswordPage({
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" defaultValue={email ?? ""} /></label>
           <button type="submit">Yenileme Bağlantısı Gönder <b>→</b></button>
           <Link href="/login">← Giriş ekranına dön</Link>
-          <small>Bağlantı yalnızca kısa bir süre geçerlidir ve tek kullanımlıktır.</small>
+          <small>Bağlantı tek kullanımlıktır. Birden fazla e-posta aldıysanız yalnızca en son gelen bağlantıyı açın.</small>
         </form>
       </section>
     </main>
