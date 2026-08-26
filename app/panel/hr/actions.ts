@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { CONFIDENTIALITY_AGREEMENT_TEXT, CONFIDENTIALITY_AGREEMENT_VERSION, confidentialityAgreementNumber } from "@/lib/confidentiality-agreement";
 
 const text=(formData:FormData,key:string,max=300)=>String(formData.get(key)??"").trim().slice(0,max);
 const number=(formData:FormData,key:string)=>Number(String(formData.get(key)??"0").replace(",","."))||0;
@@ -28,7 +29,7 @@ export async function createEmployee(formData:FormData){
   const operationCommissionRate=number(formData,"operation_commission_rate");
   if(fullName.length<2) throw new Error("Personel adı en az 2 karakter olmalıdır.");
   if(commissionRate<0||commissionRate>100||operationCommissionRate<0||operationCommissionRate>100) throw new Error("Prim oranları 0 ile 100 arasında olmalıdır.");
-  const {error}=await supabase.from("hr_employees").insert({
+  const {data:employee,error}=await supabase.from("hr_employees").insert({
     organization_id:membership.organization_id,
     full_name:fullName,
     email:text(formData,"email",240)||null,
@@ -43,9 +44,19 @@ export async function createEmployee(formData:FormData){
     commission_rate:commissionRate,
     operation_commission_rate:operationCommissionRate,
     created_by:userId,
-  });
+  }).select("id").single();
   if(error) throw new Error("Personel oluşturulamadı: "+error.message);
+  const {error:agreementError}=await supabase.from("hr_confidentiality_agreements").insert({
+    organization_id:membership.organization_id,
+    employee_id:employee.id,
+    agreement_no:confidentialityAgreementNumber(employee.id),
+    agreement_version:CONFIDENTIALITY_AGREEMENT_VERSION,
+    content_snapshot:CONFIDENTIALITY_AGREEMENT_TEXT,
+    created_by:userId,
+  });
+  if(agreementError) throw new Error("Personel oluşturuldu ancak gizlilik sözleşmesi hazırlanamadı: "+agreementError.message);
   revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr/confidentiality");
   revalidatePath("/panel/crm");
 }
 

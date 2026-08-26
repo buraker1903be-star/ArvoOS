@@ -32,7 +32,7 @@ const roleNames: Record<string, string> = {
 };
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
+  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
@@ -43,6 +43,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const brandName = isPlatformOrg ? "ArvoOS" : (organization.display_name || organization.name);
   const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
+  const { data: ownEmployee } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
+  const { data: pendingAgreement } = ownEmployee ? await supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : { data: null };
 
   return <div className="panel-root"><main className="panel-frame">
     <PresenceHeartbeat />
@@ -72,7 +74,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
       </header>
-      <div className="panel-content">{children}</div>
+      <div className="panel-content">{pendingAgreement?<Link href={`/panel/confidentiality/${pendingAgreement.id}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:18,padding:"15px 18px",borderRadius:14,background:"#fff7e8",border:"1px solid #efd59c",color:"#6b4912",fontWeight:750,textDecoration:"none"}}><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>:null}{children}</div>
     </section>
   </main></div>;
 }
