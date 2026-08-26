@@ -15,6 +15,15 @@ export async function requestPasswordReset(formData: FormData) {
     redirectTo: `${origin}/auth/callback?next=/panel`,
   });
 
-  if (error) redirect("/auth/forgot-password?error=failed");
+  if (error) {
+    const code = error.code ?? "";
+    if (code === "over_email_send_rate_limit") {
+      redirect(`/auth/forgot-password?error=rate_limit&email=${encodeURIComponent(email)}`);
+    }
+    if (code === "hook_timeout" || error.status === 422) {
+      redirect(`/auth/forgot-password?error=service&email=${encodeURIComponent(email)}`);
+    }
+    redirect(`/auth/forgot-password?error=failed&email=${encodeURIComponent(email)}`);
+  }
   redirect(`/auth/forgot-password?sent=1&email=${encodeURIComponent(email)}`);
 }
