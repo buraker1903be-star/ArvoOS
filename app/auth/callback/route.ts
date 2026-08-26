@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const failure = new URL("/login", url.origin);
-  failure.searchParams.set("error", "invalid");
+  const failure = new URL("/auth/forgot-password", url.origin);
+  failure.searchParams.set("error", "expired");
   return NextResponse.redirect(failure);
 }
