@@ -55,7 +55,8 @@ export default async function HrPage() {
     <label>Çalışma tipi<select name="employment_type" defaultValue="full_time"><option value="full_time">Tam zamanlı</option><option value="part_time">Yarı zamanlı</option><option value="contractor">Sözleşmeli</option><option value="intern">Stajyer</option></select></label>
     <label>E-posta<input name="email" type="email" /></label><label>Telefon<input name="phone" /></label>
     <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
-    <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>\n    <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
+    <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
+    <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
     <label className="wide"><span>Satış yetkisi</span><span><input name="can_receive_sales_requests" type="checkbox" /> Satış talepleri atanabilir</span></label>
     <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Personeli Kaydet</button></div>
   </form>;
@@ -86,7 +87,8 @@ export default async function HrPage() {
               <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} /></label>
               <label>Telefon<input name="phone" defaultValue={employee.phone ?? ""} /></label>
               <label>Durum<select name="employment_status" defaultValue={employee.employment_status}><option value="active">Aktif</option><option value="on_leave">İzinli</option><option value="inactive">Pasif</option><option value="terminated">İşten ayrıldı</option></select></label>
-              <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>\n              <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
+              <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>
+              <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
               <label className="wide"><span><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /> Satış talepleri atanabilir</span></label>
               <div className="wide panel-form-actions"><button className="panel-primary">Kaydet</button></div>
             </form>;
@@ -120,7 +122,8 @@ export default async function HrPage() {
                 <div className="hr-tags">
                   <span>{statusNames[employee.employment_status] ?? employee.employment_status}</span>
                   {employee.can_receive_sales_requests ? <span>Satış atanabilir</span> : null}
-                  {employee.commission_rate > 0 ? <span>Satış primi %{employee.commission_rate}</span> : null}\n                  {employee.operation_commission_rate > 0 ? <span>Operasyon primi %{employee.operation_commission_rate}</span> : null}
+                  {employee.commission_rate > 0 ? <span>Satış primi %{employee.commission_rate}</span> : null}
+                  {employee.operation_commission_rate > 0 ? <span>Operasyon primi %{employee.operation_commission_rate}</span> : null}
                 </div>
               </div>
 
