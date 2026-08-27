@@ -9,7 +9,8 @@
   .panel-breadcrumb small{font-size:7px}
   .panel-breadcrumb b{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
   .panel-top-actions{gap:8px;flex:none}
-  .panel-quick-actions{display:none}
+  .panel-quick-actions{display:contents}
+  .panel-quick-actions>.panel-quick-action{display:none}
   .panel-user{padding-left:0;border-left:0}
   .panel-user p{display:none}
   .panel-user>span{width:34px;height:34px}
