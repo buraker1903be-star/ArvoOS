@@ -50,9 +50,6 @@ export function MobileDrawer({
       ...groups,
     ];
 
-    const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
-    if (hasMessages) result.push({ href: "/panel/messages", label: "Mesajlar", icon: "M" });
-
     result.push({ href: "/panel/notifications", label: "Bildirimler", icon: "B" });
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
     if (isPlatformOwner) result.push({ href: "/panel/platform", label: "Platform Yönetimi", icon: "P" });
@@ -77,6 +74,7 @@ export function MobileDrawer({
 
   const active = (href: string) => href === "/panel" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const initials = organizationName.trim().slice(0, 1).toUpperCase() || "A";
+  const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
   return (
     <>
@@ -98,6 +96,7 @@ export function MobileDrawer({
         </section>
 
         <nav className="mobile-drawer-nav" aria-label="Mobil ana menü">
+          {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span><b>›</b></button>:null}
           {items.map((item) => (
             <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href) ? "active" : ""} aria-current={active(item.href) ? "page" : undefined}>
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>
@@ -112,6 +111,7 @@ export function MobileDrawer({
 
       <nav className="mobile-bottom-nav" aria-label="Mobil hızlı erişim">
         <Link href="/panel" className={active("/panel") ? "active" : ""} aria-current={active("/panel") ? "page" : undefined}><i>⌂</i><span>Ana Sayfa</span></Link>
+        {hasMessages?<button type="button" onClick={()=>window.dispatchEvent(new Event("arvo:open-messages"))}><i>◇</i><span>Mesajlar</span></button>:null}
         <Link href="/panel/notifications" className={active("/panel/notifications") ? "active" : ""} aria-current={active("/panel/notifications") ? "page" : undefined}><i>♢</i><span>Bildirimler</span></Link>
         <button type="button" onClick={() => setOpen((value) => !value)} className={open ? "active" : ""} aria-expanded={open} aria-controls="mobile-drawer"><i>☰</i><span>Menü</span></button>
       </nav>

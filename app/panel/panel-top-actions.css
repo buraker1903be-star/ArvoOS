@@ -3,7 +3,7 @@
    ============================================================ */
 
 .panel-quick-actions{display:flex;align-items:center;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:var(--shadow-sm)}
-.panel-quick-action{position:relative;min-height:38px;display:flex;align-items:center;gap:8px;padding:0 13px;color:var(--ink);font-size:9px;font-weight:800;white-space:nowrap;text-decoration:none;transition:.18s ease}
+.panel-quick-action{position:relative;min-height:38px;display:flex;align-items:center;gap:8px;padding:0 13px;border:0;background:transparent;color:var(--ink);font-size:9px;font-weight:800;font-family:inherit;white-space:nowrap;text-decoration:none;cursor:pointer;transition:.18s ease}
 .panel-quick-action+.panel-quick-action{border-left:1px solid var(--line)}
 .panel-quick-action:hover{background:var(--surface-2);color:var(--accent-600)}
 .panel-quick-icon{width:20px;height:20px;display:grid;place-items:center;border-radius:7px;background:var(--accent-100);color:var(--accent-600);font-size:11px}
