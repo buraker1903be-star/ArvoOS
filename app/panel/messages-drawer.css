@@ -16,6 +16,7 @@
 .messages-channel-list{flex:1;padding-top:11px;border-top:1px solid var(--line,#dfe5ea)}.messages-channel-list>small{padding:0 8px 5px;font-size:9px;letter-spacing:.11em;font-weight:800;color:var(--muted,#708090)}
 .messages-thread{min-width:0;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;background:var(--surface,#fff)}
 .messages-thread>header{min-height:68px;display:flex;align-items:center;gap:10px;padding:12px 17px;border-bottom:1px solid var(--line,#dfe5ea);background:var(--surface,#fff)}
+.messages-mobile-back{display:none}
 .messages-thread>header>div:not(.messages-thread-avatar){display:grid;gap:2px}.messages-thread>header small{color:var(--muted,#708090);font-size:10px}
 .messages-thread-avatar{width:38px;height:38px;border-radius:12px;background:#e9f2df;color:#557a35;display:grid;place-items:center;font-size:10px;font-weight:850}
 .messages-thread-scroll{min-height:0;overflow-y:auto;padding:17px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,var(--surface-2,#f5f7f8),var(--surface,#fff))}
@@ -25,4 +26,21 @@
 .messages-composer{display:flex;align-items:flex-end;gap:9px;padding:12px 14px;border-top:1px solid var(--line,#dfe5ea);background:var(--surface,#fff)}
 .messages-composer textarea{box-sizing:border-box;flex:1;min-width:0;min-height:42px;max-height:110px;resize:vertical;border:1px solid var(--line,#dfe5ea);border-radius:12px;background:var(--surface-2,#f5f7f8);color:var(--ink,#102a43);padding:11px 12px;font:600 12px/1.4 Manrope,sans-serif;outline:none}.messages-composer textarea:focus{border-color:var(--accent-500,#739d49)}
 .messages-composer button{height:42px;flex:none;border:0;border-radius:11px;background:#0b3157;color:#fff;padding:0 15px;font-weight:800;cursor:pointer}.messages-composer button:disabled{opacity:.6}
-@media(max-width:680px){.messages-drawer{width:100vw;border-left:0}.messages-drawer-head{min-height:70px;padding:14px 15px}.messages-drawer-body{grid-template-columns:116px minmax(0,1fr)}.messages-people{padding:8px;gap:9px}.messages-people input{height:38px;padding-inline:9px;font-size:10px}.messages-person-list button{justify-content:center;padding:6px 3px}.messages-person-list span{display:none}.messages-person-list i{width:34px;height:34px}.messages-channel-list button{padding:8px 6px;font-size:10px;overflow-wrap:anywhere}.messages-thread>header{min-height:62px;padding:10px 12px}.messages-thread-scroll{padding:11px}.messages-thread-scroll article{max-width:90%}.messages-composer{padding:9px}.messages-composer button{padding-inline:11px}}
+@media(max-width:680px){
+  .messages-drawer{width:100vw;border-left:0;padding-top:env(safe-area-inset-top)}
+  .messages-drawer-head{min-height:64px;padding:10px 14px}.messages-drawer-head h2{font-size:21px}
+  .messages-drawer-body{position:relative;display:block;overflow:hidden}
+  .messages-people,.messages-thread{position:absolute;inset:0;width:100%;height:100%;transition:transform .24s ease,visibility .24s ease}
+  .messages-people{padding:12px 14px max(16px,env(safe-area-inset-bottom));gap:12px;border-right:0;transform:translateX(0);visibility:visible}
+  .messages-thread{transform:translateX(100%);visibility:hidden}
+  .messages-drawer.mobile-thread-open .messages-people{transform:translateX(-28%);visibility:hidden}
+  .messages-drawer.mobile-thread-open .messages-thread{transform:translateX(0);visibility:visible}
+  .messages-people input{height:46px;padding-inline:13px;font-size:16px}
+  .messages-person-list{max-height:50%;gap:5px}
+  .messages-person-list button{justify-content:flex-start;min-height:56px;padding:8px}.messages-person-list span{display:grid}.messages-person-list i{width:40px;height:40px}
+  .messages-channel-list button{min-height:48px;padding:9px 10px;font-size:13px;overflow-wrap:anywhere}
+  .messages-thread>header{min-height:62px;padding:9px 12px}
+  .messages-mobile-back{display:grid;width:38px;height:38px;flex:none;place-items:center;border:1px solid var(--line,#dfe5ea);border-radius:11px;background:var(--surface-2,#f5f7f8);color:var(--ink,#102a43);font-size:27px;line-height:1}
+  .messages-thread-scroll{padding:12px;overscroll-behavior:contain}.messages-thread-scroll article{max-width:88%}
+  .messages-composer{padding:9px 9px max(9px,env(safe-area-inset-bottom))}.messages-composer textarea{font-size:16px;resize:none}.messages-composer button{min-width:74px;padding-inline:11px}
+}

@@ -1,7 +1,10 @@
 @media (max-width:900px){
+  html{overscroll-behavior-y:none;background:var(--bg,#f3f5f2)}
+  body{min-height:100dvh;-webkit-tap-highlight-color:transparent}
+  .panel-root{min-height:100dvh}
   .panel-frame{display:block;min-height:100vh}
   .panel-workspace{min-width:0;width:100%}
-  .panel-topbar{min-height:64px;padding:10px 14px 10px 64px;gap:10px}
+  .panel-topbar{top:0;min-height:calc(64px + env(safe-area-inset-top));padding:max(10px,env(safe-area-inset-top)) 14px 10px 64px;gap:10px;box-shadow:0 1px 0 var(--line);backdrop-filter:blur(22px) saturate(170%)}
   .panel-breadcrumb{min-width:0}
   .panel-breadcrumb small{font-size:7px}
   .panel-breadcrumb b{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
@@ -10,7 +13,7 @@
   .panel-user{padding-left:0;border-left:0}
   .panel-user p{display:none}
   .panel-user>span{width:34px;height:34px}
-  .panel-content{padding:20px 14px max(112px,calc(92px + env(safe-area-inset-bottom)))}
+  .panel-content{padding:18px 14px max(112px,calc(92px + env(safe-area-inset-bottom)))}
   .panel-pagehead{align-items:stretch;flex-direction:column;gap:14px;margin-bottom:18px}
   .panel-pagehead>div{min-width:0}
   .panel-page-actions{width:100%;display:flex;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
@@ -39,6 +42,25 @@
   .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r-md)}
   .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"Tabloyu yatay kaydırabilirsiniz";display:block;padding:8px 2px 0;color:var(--muted);font-size:9px;text-align:right}
   dialog,.modal,.panel-modal{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+  .panel-content :is(.crm-page,.finance-page,.structure-page,.activity-page,.reporting-page,.operations-page,.team-page,.work-page){width:100%;max-width:100%;min-width:0}
+  .panel-content :is(.panel-grid,.crm-grid,.platform-grid,.management-grid,.structure-grid,.activity-grid,.report-columns,.finance-form-grid,.crm-form-grid){max-width:100%;min-width:0}
+  .panel-content :is(.panel-card,.panel-module,.management-card,.structure-card,.crm-card,.report-card){max-width:100%;min-width:0}
+  .panel-content :is(.finance-toolbar,.crm-toolbar,.section-heading,.management-heading,.domain-status-row){max-width:100%;min-width:0}
+  .panel-content :is(.finance-toolbar,.crm-toolbar) input{width:100%;min-width:0}
+  .panel-content img,.panel-content svg,.panel-content video{max-width:100%;height:auto}
+  .panel-content pre,.panel-content code{max-width:100%;overflow-wrap:anywhere}
+  .panel-content :is(button,a,input,select,textarea,summary){touch-action:manipulation}
+  .panel-content :is(input,select,textarea){font-size:16px!important}
+  .panel-content :is(button,.panel-primary,.panel-secondary,.panel-danger){min-height:44px}
+  .panel-content :is(input,select,textarea):focus{scroll-margin-bottom:180px}
+  .module-tabs{display:flex;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;border-bottom:1px solid var(--line);border-radius:12px}
+  .module-tabs::-webkit-scrollbar{display:none}
+  .module-tabs a{flex:0 0 auto;min-height:44px;display:grid;place-items:center;scroll-snap-align:start;white-space:nowrap}
+  .module-tab-panel{border-radius:14px;margin-top:10px;border-top:1px solid var(--line)}
+  .panel-drawer{height:100dvh}
+  .panel-drawer-header{padding-top:max(22px,env(safe-area-inset-top))}
+  .panel-drawer-body{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:max(30px,env(safe-area-inset-bottom))}
+  dialog,.modal,.panel-modal{width:calc(100vw - 16px);max-width:none;margin:8px;border-radius:18px}
 }
 
 @media (max-width:560px){
@@ -48,11 +70,22 @@
   .metric-strip article{border-right:0;min-height:88px}
   .hero-actions{flex-direction:column}
   .hero-actions a{width:100%;text-align:center}
-  .panel-pagehead h1{font-size:26px;line-height:1.12}
+  .panel-pagehead h1{font-size:26px;line-height:1.12;text-wrap:balance}
   .panel-pagehead p{font-size:11px}
   .panel-card,.panel-module{border-radius:14px}
   .executive-hero,.platform-overview{padding:20px;border-radius:16px}
   .panel-primary,.panel-secondary,.panel-danger{width:100%}
   .panel-page-actions{display:grid;grid-template-columns:1fr;overflow:visible}
   .panel-page-actions>*{width:100%}
+  .panel-pagehead{margin-bottom:16px}
+  .panel-kicker{font-size:9px}
+  .panel-card,.panel-module{padding:16px}
+  .panel-empty{padding:32px 16px}
+  .wizard-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wizard-steps li{min-width:0;white-space:normal}
+}
+
+@media (display-mode:standalone) and (max-width:900px){
+  .panel-topbar{padding-top:max(10px,env(safe-area-inset-top))}
+  .mobile-bottom-nav{bottom:max(8px,env(safe-area-inset-bottom))}
 }
