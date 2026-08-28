@@ -1,0 +1,116 @@
+.panel-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  pointer-events: none;
+  visibility: hidden;
+}
+.panel-sheet-root.open {
+  pointer-events: auto;
+  visibility: visible;
+}
+.panel-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(4, 25, 42, 0.42);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.panel-sheet-root.open .panel-sheet-backdrop {
+  opacity: 1;
+}
+.panel-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: min(78vh, 680px);
+  padding: 8px 24px 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -22px 70px rgba(4, 25, 42, 0.2);
+  transform: translateY(102%);
+  transition: transform 0.26s ease;
+  overflow: auto;
+}
+.panel-sheet-root.open .panel-sheet {
+  transform: none;
+}
+.panel-sheet-handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 15px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.panel-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto 18px;
+}
+.panel-sheet header h2 {
+  margin: 5px 0 0;
+  font-size: 18px;
+}
+.panel-sheet header > button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 20px;
+  cursor: pointer;
+}
+.panel-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.panel-sheet-actions > a,
+.panel-sheet-actions > button,
+.panel-sheet-actions > form > button,
+.panel-sheet-actions > form {
+  min-width: 0;
+}
+.panel-sheet-actions .panel-primary,
+.panel-sheet-actions .panel-secondary,
+.panel-sheet-actions .panel-danger {
+  min-height: 36px;
+  padding: 0 13px;
+  font-size: 9px;
+  text-decoration: none;
+}
+.panel-sheet-actions > form {
+  margin: 0;
+}
+.panel-sheet-actions .panel-danger {
+  border-radius: 8px;
+}
+@media (max-width: 620px) {
+  .panel-sheet {
+    padding: 8px 16px 18px;
+  }
+  .panel-sheet-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .panel-sheet-actions > * {
+    width: 100%;
+  }
+  .panel-sheet-actions .panel-primary,
+  .panel-sheet-actions .panel-secondary,
+  .panel-sheet-actions .panel-danger {
+    width: 100%;
+    min-height: 42px;
+  }
+}
