@@ -89,6 +89,7 @@ export default async function ContractsPage({ searchParams }: Props) {
   const customerEmail = p.customer_email ?? "";
   const { supabase, membership, organization, modules } =
     await getPanelContext();
+  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   let q = supabase
@@ -665,17 +666,19 @@ export default async function ContractsPage({ searchParams }: Props) {
                             <button className="panel-secondary">İptal</button>
                           </form>
                         ) : null}
-                        <form action={deleteContract}>
-                          <input
-                            type="hidden"
-                            name="contract_id"
-                            value={row.id}
-                          />
-                          <ConfirmDeleteButton
-                            label="Sil"
-                            confirmMessage={`${row.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
-                          />
-                        </form>
+                        {canDelete ? (
+                          <form action={deleteContract}>
+                            <input
+                              type="hidden"
+                              name="contract_id"
+                              value={row.id}
+                            />
+                            <ConfirmDeleteButton
+                              label="Sil"
+                              confirmMessage={`${row.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+                            />
+                          </form>
+                        ) : null}
                       </td>
                     </tr>
                   );
