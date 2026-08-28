@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { PanelBottomSheet } from "../../components/panel-bottom-sheet";
 import {
   createProposalRevision,
   issueProposalLink,
@@ -505,7 +506,9 @@ export default async function ProposalsPage({ searchParams }: Props) {
                   return (
                     <tr key={row.id}>
                       <td className="crm-table-mono" data-label="Teklif No">
-                        {row.proposal_no}
+                        <Link className="crm-row-link" href={`/panel/crm/proposals/${row.id}`}>
+                          {row.proposal_no}
+                        </Link>
                         {row.revision_no > 0 ? (
                           <span
                             className="status-pill"
@@ -518,7 +521,9 @@ export default async function ProposalsPage({ searchParams }: Props) {
                       <td data-label="Müşteri">
                         <div>
                           <span className="crm-table-title">
-                            {customer?.customer_name}
+                            <Link className="crm-row-link" href={`/panel/crm/proposals/${row.id}`}>
+                              {customer?.customer_name}
+                            </Link>
                           </span>
                           <span className="crm-table-sub">
                             {customer?.contact_phone ||
@@ -543,6 +548,13 @@ export default async function ProposalsPage({ searchParams }: Props) {
                           : "—"}
                       </td>
                       <td className="crm-table-actions">
+                        <PanelBottomSheet
+                          triggerLabel="Ayarlar"
+                          title={`${row.proposal_no} işlemleri`}
+                        >
+                        <Link className="panel-secondary" href={`/panel/crm/proposals/${row.id}`}>
+                          Detayları Aç
+                        </Link>
                         <PanelDrawer
                           triggerLabel="Önizle"
                           title={row.proposal_no}
@@ -639,6 +651,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                             />
                           </form>
                         ) : null}
+                        </PanelBottomSheet>
                       </td>
                     </tr>
                   );
