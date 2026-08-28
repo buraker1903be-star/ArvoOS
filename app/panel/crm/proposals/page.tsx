@@ -11,7 +11,10 @@ import {
 } from "../sales-actions";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
-import { proposalMessages } from "@/lib/customer-message-templates";
+import {
+  organizationBrandName,
+  proposalMessages,
+} from "@/lib/customer-message-templates";
 import "../crm.css";
 
 type Props = {
@@ -136,7 +139,11 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const shareUrl = share ? `https://${publicHost}/teklif/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
   const messages = proposalMessages({
-    organizationName: organization.name,
+    organizationName: organizationBrandName({
+      slug: organization.slug,
+      displayName: organization.display_name,
+      legalName: organization.name,
+    }),
     customerName,
     documentNo: docNo,
     title: p.title,
