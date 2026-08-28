@@ -4,6 +4,7 @@ import { PanelDrawer } from "../components/panel-drawer";
 import { createFinanceTransaction, updateFinanceTransactionStatus } from "./actions";
 import { createEntry, createParty } from "../accounts/actions";
 import { createBankAccount, createBankTransaction, reconcileBankTransaction } from "../banking/actions";
+import { FinanceNavigation } from "./finance-navigation";
 import "./finance.css";
 
 const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
@@ -24,7 +25,7 @@ function contractNumberFromNotes(notes: string | null) { return notes?.match(/S�
 const monthNamesShort = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 const workflowStatusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam Ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
 
-export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; tur?: string }> }) {
+export default async function FinancePage({ searchParams }: { searchParams: Promise<{ tab?: string; tur?: string; arama?: string }> }) {
   const params = await searchParams;
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "finance")) throw new Error("Finans modülüne erişiminiz yok.");
@@ -109,7 +110,9 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   });
   const receivable = partyTotals.filter((party) => party.balance > 0).reduce((sum, party) => sum + party.balance, 0);
   const payable = partyTotals.filter((party) => party.balance < 0).reduce((sum, party) => sum + Math.abs(party.balance), 0);
+  const accountSearch = (params.arama ?? "").trim().toLocaleLowerCase("tr-TR");
   const filteredParties = partyTotals.filter((party) => {
+    if (accountSearch && ![party.name, party.tax_number].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR").includes(accountSearch)) return false;
     if (!params.tur || params.tur === "tumu") return true;
     if (params.tur === "musteri") return ["customer", "both"].includes(party.party_type);
     if (params.tur === "tedarikci") return ["supplier", "both"].includes(party.party_type);
@@ -153,8 +156,6 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
     if (t.transaction_type === "income") bucket.income += Number(t.amount); else bucket.expense += Number(t.amount);
   }
   const trendMax = Math.max(1, ...trendMonths.map((m) => Math.max(m.income, m.expense)));
-
-  const tabHref = (target: string) => `/panel/finance?tab=${target}`;
 
   return <>
     <div className="panel-pagehead"><div><small className="panel-kicker">FİNANS</small><h1>Finans Merkezi</h1><p>Nakit durumu, cari bakiyeler ve vadeler tek ekranda.</p></div>
@@ -220,13 +221,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
     </div>
 
-    {(hasCari || hasBanking) ? (
-      <div className="finance-tabs">
-        <a className={tab === "genel" ? "active" : ""} href={tabHref("genel")}>Genel Bakış</a>
-        {hasCari ? <a className={tab === "cari" ? "active" : ""} href={tabHref("cari")}>Cari Hesaplar</a> : null}
-        {hasBanking ? <a className={tab === "banka" ? "active" : ""} href={tabHref("banka")}>Banka ve Mutabakat</a> : null}
-      </div>
-    ) : null}
+    <FinanceNavigation active={tab === "cari" ? "accounts" : tab === "banka" ? "banking" : "overview"} hasAccounts={hasCari} hasBanking={hasBanking} />
 
     <div className="finance-tab-panel">
     {tab === "genel" ? <>
@@ -328,11 +323,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <article><div><small>AKTİF CARİ</small><strong>{partyTotals.length}</strong><p>Müşteri ve tedarikçi</p></div></article>
       </section>
       <div className="section-heading"><div><small className="panel-kicker">CARİ LİSTESİ</small><h2>Bakiyeler</h2></div>
-        <div className="finance-tabs finance-tabs-sub">
-          <a className={!params.tur || params.tur === "tumu" ? "active" : ""} href={`${tabHref("cari")}&tur=tumu`}>Tümü</a>
-          <a className={params.tur === "musteri" ? "active" : ""} href={`${tabHref("cari")}&tur=musteri`}>Müşteriler</a>
-          <a className={params.tur === "tedarikci" ? "active" : ""} href={`${tabHref("cari")}&tur=tedarikci`}>Tedarikçiler</a>
-        </div>
+        <form className="finance-account-filter" method="get"><input type="hidden" name="tab" value="cari"/><input name="arama" defaultValue={params.arama ?? ""} placeholder="Cari adı veya vergi no"/><select name="tur" defaultValue={params.tur ?? "tumu"}><option value="tumu">Tüm cariler</option><option value="musteri">Müşteriler</option><option value="tedarikci">Tedarikçiler</option></select><button className="panel-secondary">Filtrele</button></form>
       </div>
       <section className="panel-modules">{filteredParties.map((party) => <article className="panel-card account-summary-card" key={party.id}>
         <small>{party.party_type === "supplier" ? "TEDARİKÇİ" : party.party_type === "both" ? "MÜŞTERİ / TEDARİKÇİ" : "MÜŞTERİ"}</small>
