@@ -29,7 +29,7 @@ export function organizationBrandName(input: {
 export function proposalMessages(input: DocumentMessageInput) {
   const label = documentLabel("proposal", input.documentNo);
   const subject = `${input.documentNo ? `${input.documentNo} — ` : ""}Teklifiniz — ${input.organizationName}`;
-  const message = `${salutation(input.customerName)}\n\n${input.title ? `${input.title} hizmetiniz için ` : ""}hazırlanan ${label} aşağıdadır.${input.formattedAmount ? `\n\nTeklif Tutarı: ${input.formattedAmount}` : ""}\n\nTeklifinizi incelemek ve onaylamak için:\n${input.url}\n\nSaygılarımızla,\n${input.organizationName}`;
+  const message = `${salutation(input.customerName)}\n\n${input.title ? `${input.title} hizmetiniz için ` : ""}hazırlanan ${label} aşağıdadır.\n\nTeklifinizi incelemek ve onaylamak için:\n${input.url}\n\nSaygılarımızla,\n${input.organizationName}`;
   return {
     subject,
     email: message,
@@ -40,7 +40,7 @@ export function proposalMessages(input: DocumentMessageInput) {
 export function contractMessages(input: DocumentMessageInput) {
   const label = documentLabel("contract", input.documentNo);
   const subject = `${input.documentNo ? `${input.documentNo} — ` : ""}Sözleşmeniz — ${input.organizationName}`;
-  const message = `${salutation(input.customerName)}\n\n${input.title ? `${input.title} hizmetiniz için ` : ""}hazırlanan ${label} aşağıdadır.${input.formattedAmount ? `\n\nSözleşme Tutarı: ${input.formattedAmount}` : ""}\n\nSözleşmenizi incelemek ve elektronik olarak imzalamak için:\n${input.url}\n\nSaygılarımızla,\n${input.organizationName}`;
+  const message = `${salutation(input.customerName)}\n\n${input.title ? `${input.title} hizmetiniz için ` : ""}hazırlanan ${label} aşağıdadır.\n\nSözleşmenizi incelemek ve elektronik olarak imzalamak için:\n${input.url}\n\nSaygılarımızla,\n${input.organizationName}`;
   return {
     subject,
     email: message,
