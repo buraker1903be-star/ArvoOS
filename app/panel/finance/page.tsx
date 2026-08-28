@@ -157,7 +157,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   }
   const trendMax = Math.max(1, ...trendMonths.map((m) => Math.max(m.income, m.expense)));
 
-  return <>
+  return <div className="finance-workspace">
     <div className="panel-pagehead"><div><small className="panel-kicker">FİNANS</small><h1>Finans Merkezi</h1><p>Nakit durumu, cari bakiyeler ve vadeler tek ekranda.</p></div>
       <div className="panel-page-actions">
         <span className="status-pill">{tab === "cari" ? `${partyTotals.length} cari` : tab === "banka" ? `${bankTxUnmatched} eşleşmeyen` : `${items.length + invoiceItems.length} kayıt`}</span>
@@ -333,5 +333,5 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </article>)}{!filteredParties.length ? <div className="panel-card panel-empty">{partyTotals.length ? "Bu filtreye uygun cari yok." : "Henüz cari kart yok."}</div> : null}</section>
     </> : null}
     </div>
-  </>;
+  </div>;
 }
