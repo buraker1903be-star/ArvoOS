@@ -5,7 +5,8 @@ import "./commissions.css";
 type SearchParams = Promise<{ donem?: string; baslangic?: string; bitis?: string; personel?: string }>;
 type Employee = { id: string; full_name: string; job_title: string | null; employment_status: string; commission_rate: number; operation_commission_rate: number };
 type Opportunity = { id: string; customer_name: string; assigned_employee_id: string | null };
-type Contract = { id: string; contract_no: string; opportunity_id: string; amount: number; currency: string; signed_at: string | null; status: string };
+type Contract = { id: string; contract_no: string; opportunity_id: string; party_id: string | null; amount: number; currency: string; signed_at: string | null; status: string; created_at: string };
+type Collection = { id: string; party_id: string | null; amount: number; transaction_date: string; description: string | null };
 type OperationCommission = { id: string; employee_id: string; workflow_id: string; contract_id: string | null; base_amount: number; commission_rate: number; commission_amount: number; status: string; accrued_at: string };
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value / 100);
@@ -31,32 +32,39 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   if (!isPlatformOwner && !["owner", "admin", "manager"].includes(membership.role)) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
 
   const orgId = membership.organization_id;
-  const [{ data: employeeData, error: employeeError }, { data: opportunityData, error: opportunityError }, { data: contractData, error: contractError }, { data: operationData, error: operationError }] = await Promise.all([
+  const [{ data: employeeData, error: employeeError }, { data: opportunityData, error: opportunityError }, { data: contractData, error: contractError }, { data: operationData, error: operationError }, { data: collectionData, error: collectionError }] = await Promise.all([
     supabase.from("hr_employees").select("id,full_name,job_title,employment_status,commission_rate,operation_commission_rate").eq("organization_id", orgId).order("full_name"),
     supabase.from("crm_opportunities").select("id,customer_name,assigned_employee_id").eq("organization_id", orgId),
-    supabase.from("crm_contracts").select("id,contract_no,opportunity_id,amount,currency,signed_at,status").eq("organization_id", orgId).not("signed_at", "is", null).gte("signed_at", start.toISOString()).lt("signed_at", end.toISOString()),
+    supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,amount,currency,signed_at,status,created_at").eq("organization_id", orgId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }),
     supabase.from("hr_operation_commissions").select("id,employee_id,workflow_id,contract_id,base_amount,commission_rate,commission_amount,status,accrued_at").eq("organization_id", orgId).gte("accrued_at", start.toISOString()).lt("accrued_at", end.toISOString()).neq("status", "cancelled"),
+    supabase.from("account_entries").select("id,party_id,amount,transaction_date,description").eq("organization_id", orgId).eq("entry_type", "credit").gte("transaction_date", start.toISOString().slice(0, 10)).lt("transaction_date", end.toISOString().slice(0, 10)).order("transaction_date", { ascending: false }),
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (opportunityError) throw new Error("Satış kayıtları okunamadı: " + opportunityError.message);
   if (contractError) throw new Error("Sözleşmeler okunamadı: " + contractError.message);
   if (operationError) throw new Error("Operasyon primleri okunamadı: " + operationError.message);
+  if (collectionError) throw new Error("Tahsilatlar okunamadı: " + collectionError.message);
 
   const employees = (employeeData ?? []) as Employee[];
   const opportunities = (opportunityData ?? []) as Opportunity[];
   const contracts = (contractData ?? []) as Contract[];
   const operations = (operationData ?? []) as OperationCommission[];
+  const collections = (collectionData ?? []) as Collection[];
   const employeeMap = new Map(employees.map((item) => [item.id, item]));
   const opportunityMap = new Map(opportunities.map((item) => [item.id, item]));
   const contractMap = new Map(contracts.map((item) => [item.id, item]));
+  const contractByParty = new Map<string, Contract>();
+  for (const contract of contracts) if (contract.party_id && !contractByParty.has(contract.party_id)) contractByParty.set(contract.party_id, contract);
   const selectedEmployee = params.personel || "";
 
-  const salesRows = contracts.flatMap((contract) => {
+  const salesRows = collections.flatMap((collection) => {
+    const contract = collection.party_id ? contractByParty.get(collection.party_id) : undefined;
+    if (!contract) return [];
     const opportunity = opportunityMap.get(contract.opportunity_id);
     const employee = opportunity?.assigned_employee_id ? employeeMap.get(opportunity.assigned_employee_id) : undefined;
     if (!employee || Number(employee.commission_rate) <= 0 || (selectedEmployee && employee.id !== selectedEmployee)) return [];
-    const amount = Math.round(Number(contract.amount) * Number(employee.commission_rate) / 100);
-    return [{ id: `sale-${contract.id}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: contract.contract_no, base: Number(contract.amount), rate: Number(employee.commission_rate), amount, date: contract.signed_at!, status: "accrued" }];
+    const amount = Math.round(Number(collection.amount) * Number(employee.commission_rate) / 100);
+    return [{ id: `sale-${collection.id}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: contract.contract_no, base: Number(collection.amount), rate: Number(employee.commission_rate), amount, date: collection.transaction_date, status: "accrued" }];
   });
   const operationRows = operations.flatMap((item) => {
     const employee = employeeMap.get(item.employee_id);
@@ -94,7 +102,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     </section>
 
     <section className="commission-metrics">
-      <article className="sales"><small>SATIŞ PRİMİ</small><strong>{money(salesTotal)}</strong><span>{salesRows.length} satış hak edişi</span></article>
+      <article className="sales"><small>SATIŞ PRİMİ</small><strong>{money(salesTotal)}</strong><span>{salesRows.length} tahsilat üzerinden</span></article>
       <article className="operations"><small>OPERASYON PRİMİ</small><strong>{money(operationTotal)}</strong><span>{operationRows.length} tamamlanan iş</span></article>
       <article><small>TOPLAM HAK EDİŞ</small><strong>{money(grandTotal)}</strong><span>Satış + operasyon</span></article>
       <article><small>BEKLEYEN ÖDEME</small><strong>{money(pendingTotal)}</strong><span>Ödenmemiş prim toplamı</span></article>
@@ -108,7 +116,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
       <aside className="panel-card commission-summary">
         <div className="panel-card-head"><div><small>YÖNETİCİ ÖZETİ</small><h2>Dönem Analizi</h2></div></div>
         <p><b>{personTotals.length}</b> personel bu dönemde prim hak etti.</p>
-        <p>Toplam primin <b>%{grandTotal ? Math.round(salesTotal / grandTotal * 100) : 0}</b> kadarı satıştan oluşuyor.</p>
+        <p>Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden hesaplanıyor.</p>
         <p>Ödenen prim <b>{money(paidTotal)}</b>, bekleyen prim <b>{money(pendingTotal)}</b>.</p>
         {personTotals[0] ? <p>En yüksek hak ediş <b>{personTotals[0].employee.full_name}</b>: {money(personTotals[0].sales + personTotals[0].operations)}.</p> : null}
       </aside>
