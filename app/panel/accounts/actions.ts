@@ -39,6 +39,8 @@ export async function createEntry(formData: FormData) {
   if (!["debit","credit"].includes(entryType)) throw new Error("Geçersiz hareket türü.");
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("Tutar sıfırdan büyük olmalı.");
   if (description.length < 2 || description.length > 500) throw new Error("Açıklama 2–500 karakter olmalı.");
+  const { data: party, error: partyError } = await supabase.from("account_parties").select("id").eq("id", partyId).eq("organization_id", membership.organization_id).eq("is_active", true).maybeSingle();
+  if (partyError || !party) throw new Error("Seçilen cari bu kuruma ait değil veya pasif.");
   const { error } = await supabase.from("account_entries").insert({
     organization_id: membership.organization_id,
     party_id: partyId,
@@ -51,7 +53,7 @@ export async function createEntry(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Cari hareket eklenemedi: " + error.message);
-  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
+  revalidatePath("/panel/finance"); revalidatePath("/panel/accounts"); revalidatePath("/panel/hr/commissions");
 }
 
 export async function updateEntry(formData: FormData) {
@@ -75,7 +77,7 @@ export async function updateEntry(formData: FormData) {
   }).eq("id", entryId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Cari hareket güncellenemedi: " + error.message);
   revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
-  revalidatePath(`/panel/accounts/${partyId}`);
+  revalidatePath(`/panel/accounts/${partyId}`); revalidatePath("/panel/hr/commissions");
 }
 
 export async function deleteEntry(formData: FormData) {
@@ -86,5 +88,5 @@ export async function deleteEntry(formData: FormData) {
   const { error } = await supabase.from("account_entries").delete().eq("id", entryId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Cari hareket silinemedi: " + error.message);
   revalidatePath("/panel/finance"); revalidatePath("/panel/accounts");
-  revalidatePath(`/panel/accounts/${partyId}`);
+  revalidatePath(`/panel/accounts/${partyId}`); revalidatePath("/panel/hr/commissions");
 }
