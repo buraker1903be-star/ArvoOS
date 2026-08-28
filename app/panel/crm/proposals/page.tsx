@@ -90,6 +90,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const customerEmail = p.customer_email ?? "";
   const { supabase, membership, organization, modules } =
     await getPanelContext();
+  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   let q = supabase
@@ -625,17 +626,19 @@ export default async function ProposalsPage({ searchParams }: Props) {
                             </button>
                           </form>
                         ) : null}
-                        <form action={deleteProposal}>
-                          <input
-                            type="hidden"
-                            name="proposal_id"
-                            value={row.id}
-                          />
-                          <ConfirmDeleteButton
-                            label="Sil"
-                            confirmMessage={`${row.proposal_no} teklifini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
-                          />
-                        </form>
+                        {canDelete ? (
+                          <form action={deleteProposal}>
+                            <input
+                              type="hidden"
+                              name="proposal_id"
+                              value={row.id}
+                            />
+                            <ConfirmDeleteButton
+                              label="Sil"
+                              confirmMessage={`${row.proposal_no} teklifini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+                            />
+                          </form>
+                        ) : null}
                       </td>
                     </tr>
                   );
