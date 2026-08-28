@@ -97,9 +97,9 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
     let partyId = transaction.party_id as string | null;
     const contractNo = transaction.notes?.match(/Sözleşme\s+(SOZ-[A-Z0-9-]+)/i)?.[1]?.toUpperCase() ?? null;
 
-    if (!partyId && contractNo) {
+    if (contractNo) {
       const { data: contract } = await supabase.from("crm_contracts").select("id,party_id,invoice_id").eq("organization_id", membership.organization_id).ilike("contract_no", contractNo).maybeSingle();
-      if (contract?.party_id) partyId = contract.party_id;
+      if (!partyId && contract?.party_id) partyId = contract.party_id;
       if (contract?.invoice_id) {
         await supabase.from("billing_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", contract.invoice_id).eq("organization_id", membership.organization_id);
       }
@@ -118,22 +118,29 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
     }
 
     if (partyId) {
-      const { error: entryError } = await supabase.from("account_entries").insert({
-        organization_id: membership.organization_id,
-        party_id: partyId,
-        entry_type: transaction.transaction_type === "income" ? "credit" : "debit",
-        source_type: "payment",
-        amount: transaction.amount,
-        description: `${transaction.title} tahsil edildi`,
-        transaction_date: new Date().toISOString().slice(0, 10),
-        created_by: userId,
-      });
-      if (entryError) throw new Error("Ödeme işaretlendi ama cari bakiyesi güncellenemedi: " + entryError.message);
+      const referenceNo = `FIN:${transactionId}`;
+      const { data: existingEntry } = await supabase.from("account_entries").select("id").eq("organization_id", membership.organization_id).eq("reference_no", referenceNo).maybeSingle();
+      if (!existingEntry) {
+        const { error: entryError } = await supabase.from("account_entries").insert({
+          organization_id: membership.organization_id,
+          party_id: partyId,
+          entry_type: transaction.transaction_type === "income" ? "credit" : "debit",
+          source_type: "payment",
+          amount: transaction.amount,
+          description: transaction.transaction_type === "income" ? `${transaction.title} tahsil edildi` : `${transaction.title} ödendi`,
+          reference_no: referenceNo,
+          transaction_date: new Date().toISOString().slice(0, 10),
+          created_by: userId,
+        });
+        if (entryError) throw new Error("Ödeme işaretlendi ama cari bakiyesi güncellenemedi: " + entryError.message);
+      }
     }
   }
+  if (status !== "paid" && alreadyPaid) await supabase.from("account_entries").delete().eq("organization_id", membership.organization_id).eq("reference_no", `FIN:${transactionId}`);
 
   revalidatePath("/panel/finance");
   revalidatePath("/panel/reporting");
+  revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel");
 }
 
@@ -148,6 +155,7 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel/finance/accounts");
   revalidatePath("/panel/finance/invoices");
   revalidatePath("/panel/reporting");
+  revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel");
 }
 
@@ -179,18 +187,37 @@ export async function rebuildPaymentPlan(formData: FormData) {
 }
 
 export async function updateInvoiceStatus(formData: FormData) {
-  const { supabase, membership } = await financeContext();
+  const { supabase, membership, userId } = await financeContext();
   const invoiceId = String(formData.get("invoice_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   if (!invoiceId) throw new Error("Fatura seçilemedi.");
   if (!invoiceStatuses.has(status)) throw new Error("Geçersiz fatura durumu.");
 
+  const { data: invoice, error: invoiceError } = await supabase.from("billing_invoices").select("id,status,total").eq("id", invoiceId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (invoiceError || !invoice) throw new Error("Fatura bulunamadı.");
+  const { data: contract } = await supabase.from("crm_contracts").select("id,party_id,contract_no").eq("organization_id", membership.organization_id).eq("invoice_id", invoiceId).maybeSingle();
   const { error } = await supabase.from("billing_invoices").update({
     status,
     paid_at: status === "paid" ? new Date().toISOString() : null,
   }).eq("id", invoiceId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Fatura durumu güncellenemedi: " + error.message);
+  const referenceNo = `INV:${invoiceId}`;
+  if (status === "paid" && invoice.status !== "paid" && contract?.party_id) {
+    const { data: existingEntry } = await supabase.from("account_entries").select("id").eq("organization_id", membership.organization_id).eq("reference_no", referenceNo).maybeSingle();
+    if (!existingEntry) {
+      const { error: entryError } = await supabase.from("account_entries").insert({ organization_id: membership.organization_id, party_id: contract.party_id, entry_type: "credit", source_type: "payment", amount: invoice.total, description: `${contract.contract_no} fatura tahsilatı`, reference_no: referenceNo, transaction_date: new Date().toISOString().slice(0, 10), created_by: userId });
+      if (entryError) throw new Error("Fatura güncellendi ancak cari tahsilat işlenemedi: " + entryError.message);
+    }
+    const { data: plan } = await supabase.from("payment_plans").select("id").eq("organization_id", membership.organization_id).eq("contract_id", contract.id).maybeSingle();
+    if (plan?.id) {
+      await supabase.from("payment_installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("organization_id", membership.organization_id).eq("payment_plan_id", plan.id).eq("status", "pending");
+      await supabase.from("payment_plans").update({ status: "completed" }).eq("organization_id", membership.organization_id).eq("id", plan.id);
+    }
+  }
+  if (status !== "paid" && invoice.status === "paid") await supabase.from("account_entries").delete().eq("organization_id", membership.organization_id).eq("reference_no", referenceNo);
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/invoices");
+  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/reporting");
   revalidatePath("/panel");
 }
