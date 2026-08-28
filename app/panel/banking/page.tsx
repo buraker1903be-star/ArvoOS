@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function BankingRedirectPage() {
-  redirect("/panel/finance?tab=banka");
+export default function FinanceRedirectPage() {
+  redirect("/panel/finance");
 }
