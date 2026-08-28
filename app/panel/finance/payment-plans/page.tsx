@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { collectPaymentInstallment, rebuildPaymentPlan } from "../actions";
+import { FinanceNavigation } from "../finance-navigation";
 import "../finance.css";
 
 type Plan = { id: string; contract_id: string; party_id: string; total_amount: number; currency: string; status: string; created_at: string };
@@ -43,8 +44,9 @@ export default async function PaymentPlansPage() {
   return <div className="finance-page-stack">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">FİNANS / TAHSİLAT</small><h1>Ödeme Planları</h1><p>İmzalı sözleşmelerden otomatik oluşan taksitleri takip edin, gerektiğinde planı yeniden yapılandırın ve tahsilatları cari hesaba işleyin.</p></div>
-      <div className="panel-page-actions"><span className="status-pill">{planRows.length} plan</span><Link className="panel-secondary" href="/panel/finance">Finans merkezine dön</Link><Link className="panel-primary" href="/panel/finance/accounts">Cari hesaplar</Link></div>
+      <div className="panel-page-actions"><span className="status-pill">{planRows.length} plan</span><Link className="panel-primary" href="/panel/finance?tab=cari">Cari Hesaplar</Link></div>
     </div>
+    <FinanceNavigation active="plans" hasAccounts={modules.some((module) => module.code === "accounts")} hasBanking={modules.some((module) => module.code === "banking")} />
 
     <section className="finance-metrics">
       <article><small>AKTİF PLAN</small><strong>{planRows.filter((plan) => plan.status === "active").length}</strong><span>Tahsilatı devam eden</span></article>
