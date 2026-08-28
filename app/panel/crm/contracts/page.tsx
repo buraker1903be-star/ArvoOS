@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { PanelBottomSheet } from "../../components/panel-bottom-sheet";
 import {
   issueContractLink,
   updateContract,
@@ -497,12 +498,16 @@ export default async function ContractsPage({ searchParams }: Props) {
                   return (
                     <tr key={row.id}>
                       <td className="crm-table-mono" data-label="Sözleşme No">
-                        {row.contract_no}
+                        <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`}>
+                          {row.contract_no}
+                        </Link>
                       </td>
                       <td data-label="Müşteri">
                         <div>
                           <span className="crm-table-title">
-                            {customer?.customer_name}
+                            <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`}>
+                              {customer?.customer_name}
+                            </Link>
                           </span>
                           <span className="crm-table-sub">
                             {customer?.contact_phone ||
@@ -529,6 +534,13 @@ export default async function ContractsPage({ searchParams }: Props) {
                           : "—"}
                       </td>
                       <td className="crm-table-actions">
+                        <PanelBottomSheet
+                          triggerLabel="Ayarlar"
+                          title={`${row.contract_no} işlemleri`}
+                        >
+                        <Link className="panel-secondary" href={`/panel/crm/contracts/${row.id}`}>
+                          Detayları Aç
+                        </Link>
                         <PanelDrawer
                           triggerLabel="Önizle"
                           title={row.contract_no}
@@ -679,6 +691,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                             />
                           </form>
                         ) : null}
+                        </PanelBottomSheet>
                       </td>
                     </tr>
                   );
