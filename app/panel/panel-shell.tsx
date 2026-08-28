@@ -14,7 +14,6 @@ const modules = [
   { name: "Sevkiyat", permission: "shipping.read", href: "/panel/sevkiyat" },
   { name: "Arvos İş Takibi", permission: "work.read", href: "/panel/isler" },
   { name: "Finans Merkezi", permission: "finance.read", href: "/panel/finance" },
-  { name: "Cari Hesaplar", permission: "finance.read", href: "/panel/finance/accounts" },
   { name: "Ödeme Planları", permission: "finance.read", href: "/panel/finance/payment-plans" },
   { name: "Faturalar", permission: "finance.read", href: "/panel/finance/invoices" },
   { name: "Tedarikçi Borçları", permission: "finance.read", href: "/panel/finans/tedarikci-borclari" },
