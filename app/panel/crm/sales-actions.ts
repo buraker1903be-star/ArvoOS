@@ -489,7 +489,7 @@ export async function markContractStatus(formData: FormData) {
 // silinemez.
 export async function deleteContract(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role))
+  if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   if (!contractId) throw new Error("Sözleşme seçilmedi.");
@@ -602,7 +602,7 @@ export async function markProposalStatus(formData: FormData) {
 // dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
 export async function deleteProposal(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role))
+  if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   if (!proposalId) throw new Error("Teklif seçilmedi.");
