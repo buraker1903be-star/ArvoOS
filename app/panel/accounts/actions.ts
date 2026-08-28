@@ -10,6 +10,60 @@ async function accountsContext() {
   return context;
 }
 
+async function getPartyLedger(partyId: string) {
+  const context = await accountsContext();
+  const { data: party, error } = await context.supabase.from("account_parties")
+    .select("id,account_entries(entry_type,amount,source_type)")
+    .eq("id", partyId).eq("organization_id", context.membership.organization_id).eq("is_active", true).maybeSingle();
+  if (error || !party) throw new Error("Seçilen müşteri carisi bulunamadı.");
+  const entries = party.account_entries ?? [];
+  const debit = entries.filter((entry) => entry.entry_type === "debit").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const credit = entries.filter((entry) => entry.entry_type === "credit").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const refunds = entries.filter((entry) => entry.entry_type === "debit" && entry.source_type === "adjustment").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  return { ...context, debit, credit, refunds };
+}
+
+function revalidateLedger() {
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/reporting");
+  revalidatePath("/panel");
+}
+
+export async function createCollection(formData: FormData) {
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  if (!partyId || !Number.isFinite(amount) || amount <= 0) throw new Error("Geçerli bir tahsilat tutarı girin.");
+  const { supabase, membership, userId, debit, credit } = await getPartyLedger(partyId);
+  if (amount > debit - credit) throw new Error("Tahsilat açık cari bakiyesini aşamaz.");
+  const { error } = await supabase.from("account_entries").insert({
+    organization_id: membership.organization_id, party_id: partyId, entry_type: "credit", amount,
+    source_type: "payment", reference_no: String(formData.get("reference_no") ?? "").trim() || `TAH:${crypto.randomUUID()}`,
+    transaction_date: String(formData.get("transaction_date") ?? "") || new Date().toISOString().slice(0,10),
+    description: String(formData.get("description") ?? "Müşteri tahsilatı").trim(), created_by: userId,
+  });
+  if (error) throw new Error("Tahsilat kaydedilemedi: " + error.message);
+  revalidateLedger();
+}
+
+export async function createRefund(formData: FormData) {
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  if (!partyId || !Number.isFinite(amount) || amount <= 0) throw new Error("Geçerli bir iade tutarı girin.");
+  const { supabase, membership, userId, credit, refunds } = await getPartyLedger(partyId);
+  if (amount > credit - refunds) throw new Error("İade tutarı net tahsilatı aşamaz.");
+  const reason = String(formData.get("description") ?? "").trim();
+  if (reason.length < 2 || reason.length > 500) throw new Error("İade nedeni 2–500 karakter olmalı.");
+  const { error } = await supabase.from("account_entries").insert({
+    organization_id: membership.organization_id, party_id: partyId, entry_type: "debit", amount,
+    source_type: "adjustment", reference_no: String(formData.get("reference_no") ?? "").trim() || `IADE:${crypto.randomUUID()}`,
+    transaction_date: String(formData.get("transaction_date") ?? "") || new Date().toISOString().slice(0,10),
+    description: `Müşteri iadesi · ${reason}`, created_by: userId,
+  });
+  if (error) throw new Error("İade kaydedilemedi: " + error.message);
+  revalidateLedger();
+}
+
 export async function createParty(formData: FormData) {
   const { supabase, userId, membership } = await accountsContext();
   const name = String(formData.get("name") ?? "").trim();
