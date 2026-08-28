@@ -12,14 +12,19 @@ async function accountsContext() {
 
 async function getPartyLedger(partyId: string) {
   const context = await accountsContext();
-  const { data: party, error } = await context.supabase.from("account_parties")
-    .select("id,account_entries(entry_type,amount,source_type)")
-    .eq("id", partyId).eq("organization_id", context.membership.organization_id).eq("is_active", true).maybeSingle();
+  const [{ data: party, error }, { data: contracts, error: contractError }] = await Promise.all([
+    context.supabase.from("account_parties").select("id,account_entries(entry_type,amount,source_type)").eq("id", partyId).eq("organization_id", context.membership.organization_id).eq("is_active", true).maybeSingle(),
+    context.supabase.from("crm_contracts").select("amount").eq("party_id", partyId).eq("organization_id", context.membership.organization_id).in("status", ["signed", "completed"]),
+  ]);
   if (error || !party) throw new Error("Seçilen müşteri carisi bulunamadı.");
+  if (contractError) throw new Error("Sözleşme bakiyesi okunamadı.");
   const entries = party.account_entries ?? [];
-  const debit = entries.filter((entry) => entry.entry_type === "debit").reduce((sum, entry) => sum + Number(entry.amount), 0);
-  const credit = entries.filter((entry) => entry.entry_type === "credit").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const ledgerDebit = entries.filter((entry) => entry.entry_type === "debit" && entry.source_type !== "adjustment").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const contractDebt = (contracts ?? []).reduce((sum, contract) => sum + Number(contract.amount), 0);
+  const debit = contractDebt || ledgerDebit;
+  const recordedCredit = entries.filter((entry) => entry.entry_type === "credit").reduce((sum, entry) => sum + Number(entry.amount), 0);
   const refunds = entries.filter((entry) => entry.entry_type === "debit" && entry.source_type === "adjustment").reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const credit = Math.min(recordedCredit, debit + refunds);
   return { ...context, debit, credit, refunds };
 }
 
