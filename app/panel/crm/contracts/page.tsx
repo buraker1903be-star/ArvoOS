@@ -10,7 +10,10 @@ import {
 import { ContractPaymentPlanForm } from "../contract-payment-plan-form";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
-import { contractMessages } from "@/lib/customer-message-templates";
+import {
+  contractMessages,
+  organizationBrandName,
+} from "@/lib/customer-message-templates";
 import "../crm.css";
 
 type Props = {
@@ -141,7 +144,11 @@ export default async function ContractsPage({ searchParams }: Props) {
   const shareUrl = share ? `https://${publicHost}/sozlesme/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
   const messages = contractMessages({
-    organizationName: organization.name,
+    organizationName: organizationBrandName({
+      slug: organization.slug,
+      displayName: organization.display_name,
+      legalName: organization.name,
+    }),
     customerName,
     documentNo: docNo,
     title: p.title,
