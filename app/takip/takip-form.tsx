@@ -16,6 +16,7 @@ const contractStatusNames: Record<string, string> = {
   completed: "Tamamlandı",
 };
 const money = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format((cents ?? 0) / 100);
+const dateTime = (value: string) => new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 
 const initialState: TakipState = { error: null, result: null };
 
@@ -64,29 +65,44 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
       {state.error ? <p className="status-lookup-error" role="alert">{state.error}</p> : null}
 
       {row ? (
-        <div className="status-lookup-results">
-          <article className="status-lookup-card">
+        <div className="status-lookup-results" aria-live="polite">
+          <article className="status-lookup-card status-lookup-product-view">
             <div className="status-lookup-card-head">
-              {row.organization_logo_url ? <img src={row.organization_logo_url} alt={row.organization_name} className="status-lookup-org-logo" /> : <span className="status-lookup-org-name-inline">{row.organization_name}</span>}
-              <span className="status-pill">
-                {row.workflow_status ? workflowStatusNames[row.workflow_status] ?? row.workflow_status : contractStatusNames[row.contract_status] ?? row.contract_status}
-              </span>
+              <div className="status-lookup-result-brand">
+                {row.organization_logo_url ? <img src={row.organization_logo_url} alt={row.organization_name} className="status-lookup-org-logo" /> : <span className="status-lookup-org-name-inline">{row.organization_name}</span>}
+                <span>Güvenli müşteri alanı</span>
+              </div>
+              <a className="status-lookup-new-query" href="/takip">Başka dosya sorgula</a>
             </div>
-            <p className="status-lookup-no">{row.contract_no}</p>
-            <p className="status-lookup-title">{row.contract_title}</p>
-
-            <div className="status-lookup-progress">
-              <div className="status-lookup-progress-track"><span style={{ width: `${row.progress_percentage}%` }} /></div>
-              <b>%{row.progress_percentage} tamamlandı</b>
+            <div className="status-lookup-result-hero">
+              <div>
+                <span className="status-lookup-no">{row.contract_no}</span>
+                <h2 className="status-lookup-title">{row.contract_title}</h2>
+                <p>Dosyanızın güncel operasyon ve ödeme bilgileri aşağıda yer almaktadır.</p>
+              </div>
+              <span className="status-pill status-pill-live"><i />{row.workflow_status ? workflowStatusNames[row.workflow_status] ?? row.workflow_status : contractStatusNames[row.contract_status] ?? row.contract_status}</span>
             </div>
-
-            <div className="status-lookup-balance">
-              <div><span>Toplam Tutar</span><b>{money(row.total_amount)}</b></div>
-              <div><span>Ödenen</span><b>{money(row.paid_amount)}</b></div>
-              <div className="status-lookup-balance-remaining"><span>Kalan Bakiye</span><b>{money(row.remaining_amount)}</b></div>
+            <div className="status-lookup-dashboard">
+              <section className="status-lookup-progress-panel">
+                <div className="status-lookup-section-head"><div><small>GENEL İLERLEME</small><h3>Çalışma durumu</h3></div><strong>%{row.progress_percentage}</strong></div>
+                <div className="status-lookup-progress"><div className="status-lookup-progress-track"><span style={{ width: `${row.progress_percentage}%` }} /></div></div>
+                <div className="status-lookup-steps">
+                  {["Sözleşme", "Planlama", "Çalışma", "Kontrol", "Teslim"].map((step, index) => {
+                    const active = row.progress_percentage >= index * 25;
+                    return <div className={active ? "is-complete" : ""} key={step}><span>{active ? "✓" : index + 1}</span><b>{step}</b></div>;
+                  })}
+                </div>
+              </section>
+              <section className="status-lookup-finance-panel">
+                <div className="status-lookup-section-head"><div><small>FİNANS ÖZETİ</small><h3>Ödeme durumu</h3></div></div>
+                <div className="status-lookup-balance">
+                  <div><span>Sözleşme tutarı</span><b>{money(row.total_amount)}</b></div>
+                  <div><span>Toplam tahsilat</span><b className="is-paid">{money(row.paid_amount)}</b></div>
+                  <div className="status-lookup-balance-remaining"><span>Kalan bakiye</span><b>{money(row.remaining_amount)}</b></div>
+                </div>
+              </section>
             </div>
-
-            <small>Son güncelleme: {new Date(row.last_update).toLocaleDateString("tr-TR")}</small>
+            <footer className="status-lookup-result-footer"><span><i /> Son güncelleme: {dateTime(row.last_update)}</span><span>Bilgiler yalnızca size özel takip koduyla görüntülenir.</span></footer>
           </article>
         </div>
       ) : null}
