@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { useFormStatus } from "react-dom";
+import { createPortal, useFormStatus } from "react-dom";
 import { lookupTracking, type TakipState } from "./actions";
 
 const workflowStatusNames: Record<string, string> = {
@@ -44,6 +44,15 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   const row = state.result;
   const accentColor = row?.organization_primary_color || "#183f31";
 
+  useEffect(() => {
+    if (!row) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [row]);
+
   return (
     <div className="status-lookup" style={{ "--status-accent": accentColor } as React.CSSProperties}>
       <form action={formAction} className="status-lookup-form" ref={formRef}>
@@ -64,7 +73,8 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
 
       {state.error ? <p className="status-lookup-error" role="alert">{state.error}</p> : null}
 
-      {row ? (
+      {row && typeof document !== "undefined" ? createPortal(
+        (
         <div className="status-lookup-results" aria-live="polite">
           <article className="status-lookup-card status-lookup-product-view">
             <div className="status-lookup-card-head">
@@ -105,6 +115,8 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
             <footer className="status-lookup-result-footer"><span><i /> Son güncelleme: {dateTime(row.last_update)}</span><span>Bilgiler yalnızca size özel takip koduyla görüntülenir.</span></footer>
           </article>
         </div>
+        ),
+        document.body,
       ) : null}
     </div>
   );
