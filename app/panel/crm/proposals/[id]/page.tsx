@@ -85,12 +85,15 @@ export default async function ProposalDetailPage({ params }: Props) {
         {data.scope ? <div className="crm-request-detail-note"><small>KAPSAM</small><p>{data.scope}</p></div> : null}
 
         <div className="crm-request-detail-actions">
+          <small className="panel-kicker">İŞLEMLER</small>
+          <div>
           <Link className="panel-secondary" href={`/panel/crm/proposals/${data.id}/revisions`}>Revizyon Geçmişi</Link>
           {!locked ? <form action={issueProposalLink}><input type="hidden" name="proposal_id" value={data.id}/><button className="panel-primary">Müşteriye Gönder</button></form> : null}
           {!locked ? <form action={fastTrackProposalToContract}><input type="hidden" name="proposal_id" value={data.id}/><button className="panel-secondary">Sözleşmeye Dönüştür</button></form> : null}
           {!locked ? <form action={markProposalStatus}><input type="hidden" name="proposal_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}
           {!locked ? <form action={markProposalStatus}><input type="hidden" name="proposal_id" value={data.id}/><input type="hidden" name="status" value="expired"/><button className="panel-secondary">Süre Doldu</button></form> : null}
           {canDelete ? <form action={deleteProposal}><input type="hidden" name="proposal_id" value={data.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${data.proposal_no} teklifini kalıcı olarak silmek istediğinize emin misiniz?`}/></form> : null}
+          </div>
         </div>
       </section>
     </div>
