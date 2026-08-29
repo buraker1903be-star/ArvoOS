@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { addWorkflowComment, addWorkflowStep, setWorkflowStatus, toggleWorkflowStep } from "../actions";
+import { addWorkflowComment, addWorkflowStep, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
 import "../operations.css";
 
 type Step={id:string;title:string;is_completed:boolean;sort_order:number;completed_at:string|null;completed_by:string|null};
@@ -10,6 +10,7 @@ type Contract={id:string;contract_no:string;proposal_id:string|null;opportunity_
 type Opportunity={customer_name:string;contact_email:string|null;contact_phone:string|null;title:string|null;stage:string|null};
 type Proposal={id:string;proposal_no:string;status:string};
 type Comment={id:string;body:string;created_at:string;created_by:string|null};
+type CustomerMessage={id:string;sender_type:"customer"|"staff";sender_name:string;body:string;created_at:string;read_at:string|null};
 type Activity={id:string;title:string;detail:string;at:string;kind:"created"|"step"|"comment"};
 
 const statusNames:Record<string,string>={planned:"Planlandı",in_progress:"Devam ediyor",blocked:"Beklemede",completed:"Tamamlandı",cancelled:"İptal"};
@@ -26,12 +27,16 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  const steps=[...(workflow.operation_steps??[])].sort((a,b)=>a.sort_order-b.sort_order);
  const completedCount=steps.filter(step=>step.is_completed).length;
  const progress=steps.length?Math.round(completedCount/steps.length*100):0;
- const [{data:contractData},{data:commentsData,error:commentsError}]=await Promise.all([
+ const [{data:contractData},{data:commentsData,error:commentsError},{data:customerMessagesData,error:customerMessagesError}]=await Promise.all([
   supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle(),
   supabase.from("operation_workflow_comments").select("id,body,created_at,created_by").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:false}),
+  supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:true}),
  ]);
  if(commentsError)throw new Error("İş yorumları okunamadı: "+commentsError.message);
+ if(customerMessagesError)throw new Error("Müşteri mesajları okunamadı: "+customerMessagesError.message);
  const comments=(commentsData??[]) as Comment[];
+ const customerMessages=(customerMessagesData??[]) as CustomerMessage[];
+ const unreadCustomerMessages=customerMessages.filter(message=>message.sender_type==="customer"&&!message.read_at).length;
  const contract=contractData as Contract|null;
  let opportunity:Opportunity|null=null;
  let proposal:Proposal|null=null;
@@ -79,6 +84,13 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
      <div className="ops-detail-section-head"><div><small className="panel-kicker">EKİP İLETİŞİMİ</small><h2>Yorumlar ve İş Günlüğü</h2></div><span className="status-pill">{comments.length} yorum</span></div>
      <form className="ops-detail-comment-form" action={addWorkflowComment}><input type="hidden" name="workflow_id" value={workflow.id}/><textarea name="body" required minLength={1} maxLength={2000} placeholder="Yapılan işlemi, müşteri görüşmesini veya ekip notunu yazın..."/><div><button className="panel-primary" type="submit">Yorum Ekle</button></div></form>
      <div className="ops-detail-comments">{comments.length?comments.map(comment=><article key={comment.id}><div className="ops-comment-avatar">E</div><div><header><strong>Ekip Üyesi</strong><time>{formatDate(comment.created_at,true)}</time></header><p>{comment.body}</p></div></article>):<div className="ops-column-empty">Henüz yorum eklenmemiş.</div>}</div>
+    </section>
+
+    <section className="panel-card ops-detail-card ops-customer-messages">
+     <div className="ops-detail-section-head"><div><small className="panel-kicker">MÜŞTERİ İLETİŞİMİ</small><h2>Dosya Mesajları</h2></div><span className="status-pill">{unreadCustomerMessages?`${unreadCustomerMessages} yeni mesaj`:`${customerMessages.length} mesaj`}</span></div>
+     <p className="ops-customer-message-note">Müşterinin takip ekranından gönderdiği sorular ve operasyon ekibinin yanıtları.</p>
+     <div className="ops-customer-message-list">{customerMessages.length?customerMessages.map(message=><article className={message.sender_type==="customer"?"customer-message":"staff-message"} key={message.id}><header><strong>{message.sender_type==="customer"?"Müşteri":message.sender_name}</strong><time>{formatDate(message.created_at,true)}</time></header><p>{message.body}</p></article>):<div className="ops-column-empty">Müşteriden henüz mesaj gelmemiş.</div>}</div>
+     {contract?<form className="ops-customer-reply-form" action={replyCustomerFileMessage}><input type="hidden" name="workflow_id" value={workflow.id}/><textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye dosyası hakkında yanıt yazın..."/><div><small>Yanıt müşterinin takip ekranında görünecektir.</small><button className="panel-primary" type="submit">Yanıtı Gönder</button></div></form>:null}
     </section>
    </div>
 
