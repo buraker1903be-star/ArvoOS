@@ -96,6 +96,30 @@ export async function addWorkflowComment(formData: FormData) {
   revalidatePath(`/panel/operations/${workflowId}`);
 }
 
+export async function replyCustomerFileMessage(formData: FormData) {
+  const { supabase, userId, membership } = await operationContext();
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  if (body.length < 2 || body.length > 2000) throw new Error("Yanıt 2–2000 karakter olmalı.");
+  const [{ data: workflow }, { data: employee }] = await Promise.all([
+    supabase.from("operation_workflows").select("id,contract_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle(),
+    supabase.from("hr_employees").select("full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
+  ]);
+  if (!workflow?.contract_id) throw new Error("Bu işe bağlı müşteri sözleşmesi bulunamadı.");
+  const { error } = await supabase.from("customer_file_messages").insert({
+    organization_id: membership.organization_id,
+    contract_id: workflow.contract_id,
+    workflow_id: workflowId,
+    sender_type: "staff",
+    sender_user_id: userId,
+    sender_name: employee?.full_name || "Operasyon Ekibi",
+    body,
+  });
+  if (error) throw new Error("Müşteriye yanıt gönderilemedi: " + error.message);
+  await supabase.from("customer_file_messages").update({ read_at: new Date().toISOString() }).eq("workflow_id", workflowId).eq("sender_type", "customer").is("read_at", null);
+  revalidatePath(`/panel/operations/${workflowId}`);
+}
+
 // Yanlışlıkla oluşturulmuş bir iş akışını kalıcı olarak siler. Sadece
 // yönetici yetkisiyle kullanılabilir; adımlar ve yorumlar birlikte
 // silinir, bağlı bir sözleşme varsa o sözleşmenin iş akışı bağlantısı
