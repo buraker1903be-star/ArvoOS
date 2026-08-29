@@ -205,8 +205,22 @@ export async function updateInvoiceStatus(formData: FormData) {
   if (status === "paid" && invoice.status !== "paid" && contract?.party_id) {
     const { data: existingEntry } = await supabase.from("account_entries").select("id").eq("organization_id", membership.organization_id).eq("reference_no", referenceNo).maybeSingle();
     if (!existingEntry) {
-      const { error: entryError } = await supabase.from("account_entries").insert({ organization_id: membership.organization_id, party_id: contract.party_id, entry_type: "credit", source_type: "payment", amount: invoice.total, description: `${contract.contract_no} fatura tahsilatı`, reference_no: referenceNo, transaction_date: new Date().toISOString().slice(0, 10), created_by: userId });
-      if (entryError) throw new Error("Fatura güncellendi ancak cari tahsilat işlenemedi: " + entryError.message);
+      const [{ data: partyContracts, error: contractsError }, { data: partyEntries, error: entriesError }] = await Promise.all([
+        supabase.from("crm_contracts").select("amount").eq("organization_id", membership.organization_id).eq("party_id", contract.party_id).in("status", ["signed", "completed"]),
+        supabase.from("account_entries").select("entry_type,amount").eq("organization_id", membership.organization_id).eq("party_id", contract.party_id),
+      ]);
+      if (contractsError || entriesError) throw new Error("Cari bakiye doğrulanamadı.");
+
+      const contractTotal = (partyContracts ?? []).reduce((sum, item) => sum + Number(item.amount), 0);
+      const debitTotal = (partyEntries ?? []).filter((item) => item.entry_type === "debit").reduce((sum, item) => sum + Number(item.amount), 0);
+      const creditTotal = (partyEntries ?? []).filter((item) => item.entry_type === "credit").reduce((sum, item) => sum + Number(item.amount), 0);
+      const outstanding = Math.max(0, Math.max(contractTotal, debitTotal) - creditTotal);
+      const collectionAmount = Math.min(Number(invoice.total), outstanding);
+
+      if (collectionAmount > 0) {
+        const { error: entryError } = await supabase.from("account_entries").insert({ organization_id: membership.organization_id, party_id: contract.party_id, entry_type: "credit", source_type: "payment", amount: collectionAmount, description: `${contract.contract_no} fatura tahsilatı`, reference_no: referenceNo, transaction_date: new Date().toISOString().slice(0, 10), created_by: userId });
+        if (entryError) throw new Error("Fatura güncellendi ancak cari tahsilat işlenemedi: " + entryError.message);
+      }
     }
     const { data: plan } = await supabase.from("payment_plans").select("id").eq("organization_id", membership.organization_id).eq("contract_id", contract.id).maybeSingle();
     if (plan?.id) {
