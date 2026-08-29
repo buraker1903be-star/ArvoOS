@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal, useFormStatus } from "react-dom";
-import { lookupTracking, type TakipState } from "./actions";
+import { lookupTracking, refreshCustomerFileMessages, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type TakipState } from "./actions";
 
 const workflowStatusNames: Record<string, string> = {
   planned: "Planlandı",
@@ -19,6 +19,7 @@ const money = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "curren
 const dateTime = (value: string) => new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 
 const initialState: TakipState = { error: null, result: null };
+const initialMessageState: CustomerMessageState = { error: null, success: null, messages: null };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -31,6 +32,8 @@ function SubmitButton() {
 
 export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   const [state, formAction] = useActionState(lookupTracking, initialState);
+  const [messageState, messageAction, messagePending] = useActionState(sendCustomerFileMessage, initialMessageState);
+  const [liveMessages, setLiveMessages] = useState<CustomerFileMessage[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const autoSubmitted = useRef(false);
 
@@ -42,6 +45,7 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   }, [prefillCode]);
 
   const row = state.result;
+  const messages = liveMessages;
   const accentColor = row?.organization_primary_color || "#183f31";
 
   useEffect(() => {
@@ -52,6 +56,23 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
       document.body.style.overflow = previousOverflow;
     };
   }, [row]);
+
+  useEffect(() => {
+    if (!row) {
+      setLiveMessages([]);
+      return;
+    }
+    setLiveMessages(row.messages);
+    const timer = window.setInterval(async () => {
+      const refreshed = await refreshCustomerFileMessages(row.tracking_code);
+      setLiveMessages(refreshed);
+    }, 20000);
+    return () => window.clearInterval(timer);
+  }, [row]);
+
+  useEffect(() => {
+    if (messageState.messages) setLiveMessages(messageState.messages);
+  }, [messageState.messages]);
 
   return (
     <div className="status-lookup" style={{ "--status-accent": accentColor } as React.CSSProperties}>
@@ -110,6 +131,31 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
                   <div><span>Toplam tahsilat</span><b className="is-paid">{money(row.paid_amount)}</b></div>
                   <div className="status-lookup-balance-remaining"><span>Kalan bakiye</span><b>{money(row.remaining_amount)}</b></div>
                 </div>
+              </section>
+              <section className="status-lookup-conversation">
+                <div className="status-lookup-section-head">
+                  <div><small>DOSYA İLETİŞİMİ</small><h3>Operasyon ekibine sorun</h3></div>
+                  <span className="status-lookup-message-count">{messages.length} mesaj</span>
+                </div>
+                <p className="status-lookup-conversation-note">Dosyanızla ilgili sorunuzu buradan iletebilirsiniz. Operasyon sorumlunuz panel üzerinden bilgilendirilir.</p>
+                <div className="status-lookup-message-list">
+                  {messages.length ? messages.map((message, index) => (
+                    <article className={message.sender_type === "customer" ? "from-customer" : "from-staff"} key={`${message.created_at}-${index}`}>
+                      <header><b>{message.sender_type === "customer" ? "Siz" : message.sender_name}</b><time>{dateTime(message.created_at)}</time></header>
+                      <p>{message.body}</p>
+                    </article>
+                  )) : <div className="status-lookup-message-empty">Henüz mesaj yok. İlk sorunuzu aşağıdan iletebilirsiniz.</div>}
+                </div>
+                <form action={messageAction} className="status-lookup-message-form">
+                  <input type="hidden" name="tracking_code" value={row.tracking_code}/>
+                  <label><span>Mesajınız</span><textarea name="body" required minLength={2} maxLength={2000} placeholder="Dosyanızla ilgili sormak istediğiniz konuyu yazın..."/></label>
+                  <div>
+                    <small>Yanıtınız bu ekranda görüntülenecektir.</small>
+                    <button type="submit" disabled={messagePending}>{messagePending ? "Gönderiliyor..." : "Mesajı Gönder"}</button>
+                  </div>
+                </form>
+                {messageState.error ? <p className="status-lookup-message-error" role="alert">{messageState.error}</p> : null}
+                {messageState.success ? <p className="status-lookup-message-success" role="status">{messageState.success}</p> : null}
               </section>
             </div>
             <footer className="status-lookup-result-footer"><span><i /> Son güncelleme: {dateTime(row.last_update)}</span><span>Bilgiler yalnızca size özel takip koduyla görüntülenir.</span></footer>
