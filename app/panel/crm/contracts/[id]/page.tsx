@@ -50,11 +50,14 @@ export default async function ContractDetailPage({ params }: Props) {
         </dl>
         {data.scope ? <div className="crm-request-detail-note"><small>KAPSAM</small><p>{data.scope}</p></div> : null}
         <div className="crm-request-detail-actions">
+          <small className="panel-kicker">İŞLEMLER</small>
+          <div>
           {!locked ? <form action={issueContractLink}><input type="hidden" name="contract_id" value={data.id}/><button className="panel-primary">İmzaya Gönder</button></form> : null}
           {data.workflow_id ? <Link className="panel-secondary" href={`/panel/operations/${data.workflow_id}`}>İş Akışını Aç</Link> : null}
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form> : null}
           {canDelete ? <form action={deleteContract}><input type="hidden" name="contract_id" value={data.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${data.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz?`}/></form> : null}
+          </div>
         </div>
       </section>
     </div>
