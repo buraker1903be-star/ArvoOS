@@ -441,6 +441,11 @@
 .crm-row-subject {
   font-weight: 650;
 }
+.crm-request-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 .crm-request-detail-card {
   padding: 20px;
 }
