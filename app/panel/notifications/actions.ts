@@ -30,3 +30,26 @@ export async function markAllNotificationsRead() {
   if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
   revalidatePath("/panel/notifications");
 }
+
+export async function deleteReadNotification(formData: FormData) {
+  const { supabase, userId } = await getPanelContext();
+  const notificationId = String(formData.get("notification_id") ?? "").trim();
+  if (!notificationId) throw new Error("Bildirim seçilmedi.");
+
+  const { data: notification, error: notificationError } = await supabase
+    .from("notifications")
+    .select("id,read_at")
+    .eq("id", notificationId)
+    .not("read_at", "is", null)
+    .maybeSingle();
+  if (notificationError) throw new Error(`Bildirim doğrulanamadı: ${notificationError.message}`);
+  if (!notification) throw new Error("Yalnızca okunmuş bildirimler silinebilir.");
+
+  const { error } = await supabase.from("notification_user_dismissals").insert({
+    notification_id: notificationId,
+    user_id: userId,
+  });
+  if (error && error.code !== "23505") throw new Error(`Bildirim silinemedi: ${error.message}`);
+  revalidatePath("/panel/notifications");
+  revalidatePath("/panel");
+}

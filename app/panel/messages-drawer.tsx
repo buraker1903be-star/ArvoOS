@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Person={userId:string;name:string;jobTitle:string|null;lastSeenAt:string|null};
@@ -46,6 +46,7 @@ export function MessagesDrawer({organizationId,userId,people,initialChannels,ini
 
   const startDirect=async(person:Person)=>{setError("");setLoading(true);const {data,error}=await supabase.rpc("create_direct_message_channel",{target_user_id:person.userId,target_organization_id:organizationId});if(error||!data){setError(error?.message??"Sohbet başlatılamadı.");setLoading(false);return}let channel=channels.find((item)=>item.id===data);if(!channel){channel={id:String(data),name:"Birebir Sohbet",description:"Kişiye özel ekip sohbeti",channelType:"direct",directKey:[userId,person.userId].sort().join(":")};setChannels((current)=>[channel!,...current])}setActiveId(channel.id);setMobileThreadOpen(true);setLoading(false)};
   const send=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!activeId||sending)return;const form=event.currentTarget;const field=form.elements.namedItem("body") as HTMLTextAreaElement;const body=field.value.trim();if(!body)return;setSending(true);setError("");const {error}=await supabase.from("internal_messages").insert({organization_id:organizationId,channel_id:activeId,sender_id:userId,body:body.slice(0,4000)});if(error)setError("Mesaj gönderilemedi: "+error.message);else field.value="";setSending(false)};
+  const handleComposerKeyDown=(event:ReactKeyboardEvent<HTMLTextAreaElement>)=>{if(event.key!=="Enter"||event.shiftKey||event.nativeEvent.isComposing)return;event.preventDefault();event.currentTarget.form?.requestSubmit()};
 
   return <>
     <button className="panel-quick-action" type="button" onClick={()=>{setLoading(true);setError("");setOpen(true)}} aria-label={`Mesajları aç${unreadCount?`, ${unreadCount} okunmamış`:""}`} aria-expanded={open} aria-controls="messages-drawer"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b>{unreadCount?<span className="panel-unread-badge">{unreadCount>99?"99+":unreadCount}</span>:null}</button>
@@ -57,7 +58,7 @@ export function MessagesDrawer({organizationId,userId,people,initialChannels,ini
         <section className="messages-thread"><header><button className="messages-mobile-back" type="button" onClick={()=>setMobileThreadOpen(false)} aria-label="Sohbet listesine dön">‹</button>{activeChannel?<><div className="messages-thread-avatar">{initials(channelTitle(activeChannel).replace("# ",""))}</div><div><b>{channelTitle(activeChannel)}</b><small>{activeChannel.channelType==="direct"?"Özel ekip sohbeti":"Kurum kanalı"}</small></div></>:<div><b>Sohbet seçin</b><small>Bir personel veya kanal seçerek başlayın.</small></div>}</header>
           <div className="messages-thread-scroll" ref={threadRef}>{loading?<p className="messages-empty">Mesajlar yükleniyor...</p>:messages.map((message)=>{const mine=message.sender_id===userId;return <article className={mine?"mine":""} key={message.id}>{!mine?<b>{peopleMap.get(message.sender_id)?.name??"Ekip Üyesi"}</b>:null}<p>{message.body}</p><small>{new Date(message.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</small></article>})}{!loading&&activeChannel&&!messages.length?<p className="messages-empty">Henüz mesaj yok. İlk mesajı siz gönderin.</p>:null}</div>
           {error?<p className="messages-error">{error}</p>:null}
-          {activeChannel?<form className="messages-composer" onSubmit={send}><textarea name="body" required maxLength={4000} rows={1} placeholder="Mesajınızı yazın..."/><button type="submit" disabled={sending}>{sending?"…":"Gönder"}</button></form>:null}
+          {activeChannel?<form className="messages-composer" onSubmit={send}><textarea name="body" required maxLength={4000} rows={1} placeholder="Mesajınızı yazın..." onKeyDown={handleComposerKeyDown}/><button type="submit" disabled={sending}>{sending?"…":"Gönder"}</button></form>:null}
         </section>
       </div>
     </aside>

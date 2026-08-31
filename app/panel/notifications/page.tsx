@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { markAllNotificationsRead, markNotificationRead } from "./actions";
+import { deleteReadNotification, markAllNotificationsRead, markNotificationRead } from "./actions";
 
 type NotificationRow = {
   id: string;
@@ -24,8 +24,12 @@ export default async function NotificationsPage() {
     ? query.eq("audience", "founder")
     : query.eq("audience", "organization").eq("organization_id", organization.id).or(`user_id.is.null,user_id.eq.${userId}`);
 
-  const { data } = await query;
-  const notifications = (data ?? []) as NotificationRow[];
+  const [{ data }, { data: dismissedRows }] = await Promise.all([
+    query,
+    supabase.from("notification_user_dismissals").select("notification_id").eq("user_id", userId),
+  ]);
+  const dismissedIds = new Set((dismissedRows ?? []).map((row) => row.notification_id));
+  const notifications = ((data ?? []) as NotificationRow[]).filter((item) => !dismissedIds.has(item.id));
   const unreadCount = notifications.filter((item) => !item.read_at).length;
 
   return <>
@@ -52,7 +56,7 @@ export default async function NotificationsPage() {
             <small>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</small>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-button" type="submit">Okundu</button></form> : <span className="status-pill">Okundu</span>}
+            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-button" type="submit">Okundu</button></form> : <><span className="status-pill">Okundu</span><form action={deleteReadNotification}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-danger" type="submit">Sil</button></form></>}
             {item.action_url ? <Link className="panel-button" href={item.action_url}>Aç</Link> : null}
           </div>
         </div>) : <div className="platform-note"><span>i</span><p>Henüz bildiriminiz yok.</p></div>}
