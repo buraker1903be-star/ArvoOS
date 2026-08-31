@@ -1,7 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { addInternalComment } from "./actions";
 
-type ContextType = "request" | "proposal" | "contract";
+type ContextType = "request" | "proposal" | "contract" | "operation";
 type Comment = {
   id: string;
   body: string;
@@ -14,6 +14,7 @@ const contextNames: Record<ContextType, string> = {
   request: "Talep",
   proposal: "Teklif",
   contract: "Sözleşme",
+  operation: "Operasyon",
 };
 
 export async function InternalComments({

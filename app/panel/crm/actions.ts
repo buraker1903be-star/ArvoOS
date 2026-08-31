@@ -245,7 +245,7 @@ export async function addInternalComment(formData: FormData) {
   const contextType = text(formData, "context_type", 20);
   const contextId = text(formData, "context_id", 80);
   const body = text(formData, "body", 4000);
-  if (!opportunityId || !contextId || !new Set(["request", "proposal", "contract"]).has(contextType))
+  if (!opportunityId || !contextId || !new Set(["request", "proposal", "contract", "operation"]).has(contextType))
     throw new Error("Yorumun bağlı olduğu CRM kaydı geçersiz.");
   if (!body) throw new Error("Yorum metni boş bırakılamaz.");
 
@@ -270,4 +270,5 @@ export async function addInternalComment(formData: FormData) {
   revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel/crm/contracts");
+  if (contextType === "operation") revalidatePath(`/panel/operations/${contextId}`);
 }

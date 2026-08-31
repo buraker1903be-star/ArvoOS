@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { addWorkflowComment, addWorkflowStep, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
+import { InternalComments } from "../../crm/internal-comments";
+import { addWorkflowStep, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
 import "../operations.css";
+import "../../crm/request-page.css";
 
 type Step={id:string;title:string;is_completed:boolean;sort_order:number;completed_at:string|null;completed_by:string|null};
 type Workflow={id:string;title:string;customer_name:string|null;description:string|null;status:string;priority:string;start_date:string|null;due_date:string|null;created_at:string;updated_at:string;operation_steps:Step[]};
 type Contract={id:string;contract_no:string;proposal_id:string|null;opportunity_id:string;status:string};
 type Opportunity={customer_name:string;contact_email:string|null;contact_phone:string|null;title:string|null;stage:string|null};
 type Proposal={id:string;proposal_no:string;status:string};
-type Comment={id:string;body:string;created_at:string;created_by:string|null};
+type Comment={id:string;body:string;created_at:string;created_by:string;context_type:"request"|"proposal"|"contract"|"operation"};
 type CustomerMessage={id:string;sender_type:"customer"|"staff";sender_name:string;body:string;created_at:string;read_at:string|null};
 type Activity={id:string;title:string;detail:string;at:string;kind:"created"|"step"|"comment"};
 
@@ -27,14 +29,11 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  const steps=[...(workflow.operation_steps??[])].sort((a,b)=>a.sort_order-b.sort_order);
  const completedCount=steps.filter(step=>step.is_completed).length;
  const progress=steps.length?Math.round(completedCount/steps.length*100):0;
- const [{data:contractData},{data:commentsData,error:commentsError},{data:customerMessagesData,error:customerMessagesError}]=await Promise.all([
+ const [{data:contractData},{data:customerMessagesData,error:customerMessagesError}]=await Promise.all([
   supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle(),
-  supabase.from("operation_workflow_comments").select("id,body,created_at,created_by").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:false}),
   supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:true}),
  ]);
- if(commentsError)throw new Error("İş yorumları okunamadı: "+commentsError.message);
  if(customerMessagesError)throw new Error("Müşteri mesajları okunamadı: "+customerMessagesError.message);
- const comments=(commentsData??[]) as Comment[];
  const customerMessages=(customerMessagesData??[]) as CustomerMessage[];
  const unreadCustomerMessages=customerMessages.filter(message=>message.sender_type==="customer"&&!message.read_at).length;
  const contract=contractData as Contract|null;
@@ -46,6 +45,11 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  ]);
  opportunity=opportunityResult.data as Opportunity|null;
  proposal=proposalResult.data as Proposal|null;
+ const {data:commentsData,error:commentsError}=contract?.opportunity_id
+  ?await supabase.from("crm_internal_comments").select("id,body,created_at,created_by,context_type").eq("organization_id",membership.organization_id).eq("opportunity_id",contract.opportunity_id).order("created_at",{ascending:false})
+  :{data:[],error:null};
+ if(commentsError)throw new Error("Kurum içi yorumlar okunamadı: "+commentsError.message);
+ const comments=(commentsData??[]) as Comment[];
  const customerName=opportunity?.customer_name||workflow.customer_name||"Kurum içi iş";
  const activities:Activity[]=[
   {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created" as const},
@@ -80,11 +84,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
      <form className="ops-detail-add" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id}/><input name="title" required minLength={2} maxLength={180} placeholder="Yeni görev ekle"/><button className="panel-primary" type="submit">Görev Ekle</button></form>
     </section>
 
-    <section className="panel-card ops-detail-card">
-     <div className="ops-detail-section-head"><div><small className="panel-kicker">EKİP İLETİŞİMİ</small><h2>Yorumlar ve İş Günlüğü</h2></div><span className="status-pill">{comments.length} yorum</span></div>
-     <form className="ops-detail-comment-form" action={addWorkflowComment}><input type="hidden" name="workflow_id" value={workflow.id}/><textarea name="body" required minLength={1} maxLength={2000} placeholder="Yapılan işlemi, müşteri görüşmesini veya ekip notunu yazın..."/><div><button className="panel-primary" type="submit">Yorum Ekle</button></div></form>
-     <div className="ops-detail-comments">{comments.length?comments.map(comment=><article key={comment.id}><div className="ops-comment-avatar">E</div><div><header><strong>Ekip Üyesi</strong><time>{formatDate(comment.created_at,true)}</time></header><p>{comment.body}</p></div></article>):<div className="ops-column-empty">Henüz yorum eklenmemiş.</div>}</div>
-    </section>
+    {contract?.opportunity_id?<InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id}/>:null}
 
     <section className="panel-card ops-detail-card ops-customer-messages">
      <div className="ops-detail-section-head"><div><small className="panel-kicker">MÜŞTERİ İLETİŞİMİ</small><h2>Dosya Mesajları</h2></div><span className="status-pill">{unreadCustomerMessages?`${unreadCustomerMessages} yeni mesaj`:`${customerMessages.length} mesaj`}</span></div>
