@@ -21,6 +21,8 @@ export function MobileDrawer({
   brandLogoUrl,
   brandTagline,
   hiddenModuleKeys,
+  notificationUnreadCount = 0,
+  messageUnreadCount: initialMessageUnreadCount = 0,
 }: {
   modules: PanelModule[];
   organizationName: string;
@@ -31,9 +33,12 @@ export function MobileDrawer({
   brandLogoUrl?: string | null;
   brandTagline?: string;
   hiddenModuleKeys?: string[];
+  notificationUnreadCount?: number;
+  messageUnreadCount?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [messageUnreadCount, setMessageUnreadCount] = useState(initialMessageUnreadCount);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const items = useMemo<MobileItem[]>(() => {
@@ -63,6 +68,7 @@ export function MobileDrawer({
   }, [open]);
 
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(()=>{const handler=(event:Event)=>setMessageUnreadCount((event as CustomEvent<number>).detail??0);window.addEventListener("arvo:message-unread-count",handler);return()=>window.removeEventListener("arvo:message-unread-count",handler)},[]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -96,7 +102,7 @@ export function MobileDrawer({
         </section>
 
         <nav className="mobile-drawer-nav" aria-label="Mobil ana menü">
-          {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span><b>›</b></button>:null}
+          {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-unread-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}<b>›</b></button>:null}
           {items.map((item) => (
             <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href) ? "active" : ""} aria-current={active(item.href) ? "page" : undefined}>
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>
@@ -111,8 +117,8 @@ export function MobileDrawer({
 
       <nav className="mobile-bottom-nav" aria-label="Mobil hızlı erişim">
         <Link href="/panel" className={active("/panel") ? "active" : ""} aria-current={active("/panel") ? "page" : undefined}><i>⌂</i><span>Ana Sayfa</span></Link>
-        {hasMessages?<button type="button" onClick={()=>window.dispatchEvent(new Event("arvo:open-messages"))}><i>◇</i><span>Mesajlar</span></button>:null}
-        <Link href="/panel/notifications" className={active("/panel/notifications") ? "active" : ""} aria-current={active("/panel/notifications") ? "page" : undefined}><i>♢</i><span>Bildirimler</span></Link>
+        {hasMessages?<button type="button" onClick={()=>window.dispatchEvent(new Event("arvo:open-messages"))}><i>◇</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-bottom-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}</button>:null}
+        <Link href="/panel/notifications" className={active("/panel/notifications") ? "active" : ""} aria-current={active("/panel/notifications") ? "page" : undefined}><i>♢</i><span>Bildirimler</span>{notificationUnreadCount?<em className="mobile-bottom-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</em>:null}</Link>
         <button type="button" onClick={() => setOpen((value) => !value)} className={open ? "active" : ""} aria-expanded={open} aria-controls="mobile-drawer"><i>☰</i><span>Menü</span></button>
       </nav>
     </>

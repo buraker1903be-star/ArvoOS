@@ -37,6 +37,11 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
+  let notificationQuery = supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null);
+  notificationQuery = isPlatformOwner
+    ? notificationQuery.eq("audience", "founder")
+    : notificationQuery.eq("audience", "organization").eq("organization_id", membership.organization_id).or(`user_id.is.null,user_id.eq.${userId}`);
+  const { count: notificationUnreadCount } = await notificationQuery;
 
   // Beyaz etiket (white-label) deneyimi: platformun kendi kurumu (arvo-os)
   // dışında, panel navigasyonu artık sabit "ArvoOS" markası yerine
@@ -47,20 +52,27 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
   const { data: ownEmployee } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   const { data: pendingAgreement } = ownEmployee ? await supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : { data: null };
-  const [{data:messageEmployees},{data:messageChannels},{data:presenceRows}] = hasMessages ? await Promise.all([
+  const [{data:messageEmployees},{data:messageChannels},{data:presenceRows},{data:messageReadRows}] = hasMessages ? await Promise.all([
     supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id",membership.organization_id).eq("employment_status","active").not("user_id","is",null).order("full_name"),
     supabase.from("message_channels").select("id,name,description,channel_type,direct_key").eq("organization_id",membership.organization_id).order("updated_at",{ascending:false}),
     supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id",membership.organization_id),
-  ]) : [{data:[]},{data:[]},{data:[]}];
+    supabase.from("message_read_states").select("channel_id,last_read_at").eq("organization_id",membership.organization_id).eq("user_id",userId),
+  ]) : [{data:[]},{data:[]},{data:[]},{data:[]}];
   const presenceMap=new Map((presenceRows??[]).map((row)=>[row.user_id,row.last_seen_at]));
   const drawerPeople=(messageEmployees??[]).map((employee)=>({userId:employee.user_id as string,name:employee.full_name,jobTitle:employee.job_title,lastSeenAt:presenceMap.get(employee.user_id as string)??null}));
   const drawerChannels=(messageChannels??[]).map((channel)=>({id:channel.id,name:channel.name,description:channel.description,channelType:channel.channel_type??"group",directKey:channel.direct_key}));
+  const readableChannelIds=drawerChannels.map((channel)=>channel.id);
+  const {data:unreadMessageRows}=hasMessages&&readableChannelIds.length?await supabase.from("internal_messages").select("id,channel_id,created_at,sender_id").eq("organization_id",membership.organization_id).in("channel_id",readableChannelIds).neq("sender_id",userId).order("created_at",{ascending:false}).limit(1000):{data:[]};
+  const lastReadByChannel=new Map((messageReadRows??[]).map((row)=>[row.channel_id,new Date(row.last_read_at).getTime()]));
+  const unreadByChannel:Record<string,number>={};
+  for(const message of unreadMessageRows??[]){if(new Date(message.created_at).getTime()>(lastReadByChannel.get(message.channel_id)??0))unreadByChannel[message.channel_id]=(unreadByChannel[message.channel_id]??0)+1;}
+  const messageUnreadCount=Object.values(unreadByChannel).reduce((total,count)=>total+count,0);
 
   return <div className="panel-root"><main className="panel-frame">
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
-    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} />
+    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
       <div className="panel-org panel-org-switchable">
@@ -77,8 +89,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            {hasMessages ? <MessagesDrawer organizationId={membership.organization_id} userId={userId} people={drawerPeople} initialChannels={drawerChannels}/> : null}
-            <Link className="panel-quick-action" href="/panel/notifications" aria-label="Bildirimler"><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b></Link>
+            {hasMessages ? <MessagesDrawer organizationId={membership.organization_id} userId={userId} people={drawerPeople} initialChannels={drawerChannels} initialUnreadByChannel={unreadByChannel}/> : null}
+            <Link className="panel-quick-action" href="/panel/notifications" aria-label={`Bildirimler${notificationUnreadCount?`, ${notificationUnreadCount} okunmamış`:""}`}><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b>{notificationUnreadCount?<span className="panel-unread-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</span>:null}</Link>
           </div>
           <ThemeToggle />
           <div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
