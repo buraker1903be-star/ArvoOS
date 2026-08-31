@@ -53,3 +53,23 @@ export async function deleteReadNotification(formData: FormData) {
   revalidatePath("/panel/notifications");
   revalidatePath("/panel");
 }
+
+export async function sendManagementAnnouncement(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Duyuru gönderme yetkiniz yok.");
+  const title = String(formData.get("title") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+  const recipient = String(formData.get("recipient_user_id") ?? "all");
+  if (title.length < 3 || title.length > 120) throw new Error("Duyuru başlığı 3–120 karakter olmalı.");
+  if (message.length < 3 || message.length > 2000) throw new Error("Duyuru metni 3–2000 karakter olmalı.");
+
+  const { error } = await supabase.rpc("send_management_announcement", {
+    p_organization_id: membership.organization_id,
+    p_title: title,
+    p_message: message,
+    p_target_user_id: recipient === "all" ? null : recipient,
+  });
+  if (error) throw new Error(`Duyuru gönderilemedi: ${error.message}`);
+  revalidatePath("/panel/notifications");
+  revalidatePath("/panel");
+}
