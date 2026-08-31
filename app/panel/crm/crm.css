@@ -129,6 +129,9 @@
 .crm-data-table .crm-table-mono{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--muted);white-space:nowrap}
 .crm-data-table .crm-table-title{display:block;font-weight:700;color:var(--ink);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .crm-data-table .crm-table-sub{display:block;margin-top:2px;color:var(--muted);font-size:8px}
+.crm-comment-count-badge{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:4px 9px;border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);border-radius:999px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent-strong,var(--accent));font-size:8px;font-weight:800;line-height:1;text-decoration:none;white-space:nowrap;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.crm-comment-count-badge:hover{background:color-mix(in srgb,var(--accent) 16%,var(--surface));border-color:color-mix(in srgb,var(--accent) 42%,transparent);transform:translateY(-1px)}
+.crm-comment-count-empty{color:var(--muted)}
 .crm-table-actions{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end}
 .crm-table-actions form{margin:0}
 .crm-table-actions .panel-primary,.crm-table-actions .panel-secondary,.crm-table-actions .panel-danger{min-height:28px;padding:0 10px;font-size:8px;white-space:nowrap}

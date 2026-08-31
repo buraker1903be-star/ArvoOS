@@ -119,6 +119,29 @@ export default async function ProposalsPage({ searchParams }: Props) {
   if (archivedError)
     throw new Error("Arşivlenen teklifler okunamadı: " + archivedError.message);
   const archivedRows = (archivedData ?? []) as unknown as Proposal[];
+  const visibleOpportunityIds = [
+    ...new Set(
+      [...rows, ...archivedRows]
+        .map((row) => row.opportunity_id)
+        .filter(Boolean),
+    ),
+  ];
+  const { data: commentData, error: commentError } = visibleOpportunityIds.length
+    ? await supabase
+        .from("crm_internal_comments")
+        .select("opportunity_id")
+        .eq("organization_id", membership.organization_id)
+        .in("opportunity_id", visibleOpportunityIds)
+    : { data: [], error: null };
+  if (commentError)
+    throw new Error("Yorum sayıları okunamadı: " + commentError.message);
+  const commentCounts = new Map<string, number>();
+  for (const comment of commentData ?? []) {
+    commentCounts.set(
+      comment.opportunity_id,
+      (commentCounts.get(comment.opportunity_id) ?? 0) + 1,
+    );
+  }
   const { data: employeeData, error: employeeError } = await supabase
     .from("hr_employees")
     .select("id,full_name")
@@ -272,6 +295,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                   <th>Tutar</th>
                   <th>Durum</th>
                   <th>Geçerlilik</th>
+                  <th>Yorumlar</th>
                   <th></th>
                 </tr>
               </thead>
@@ -546,6 +570,18 @@ export default async function ProposalsPage({ searchParams }: Props) {
                               row.valid_until + "T00:00:00",
                             ).toLocaleDateString("tr-TR")
                           : "—"}
+                      </td>
+                      <td data-label="Yorumlar">
+                        {commentCounts.get(row.opportunity_id) ? (
+                          <Link
+                            className="crm-comment-count-badge"
+                            href={`/panel/crm/proposals/${row.id}`}
+                          >
+                            {commentCounts.get(row.opportunity_id)} yorum
+                          </Link>
+                        ) : (
+                          <span className="crm-comment-count-empty">—</span>
+                        )}
                       </td>
                       <td className="crm-table-actions">
                         <PanelBottomSheet

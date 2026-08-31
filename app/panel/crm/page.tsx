@@ -125,6 +125,23 @@ export default async function RequestsPage({
       representativeMatches
     );
   });
+  const visibleOpportunityIds = rows.map((item) => item.id);
+  const { data: commentData, error: commentError } = visibleOpportunityIds.length
+    ? await supabase
+        .from("crm_internal_comments")
+        .select("opportunity_id")
+        .eq("organization_id", membership.organization_id)
+        .in("opportunity_id", visibleOpportunityIds)
+    : { data: [], error: null };
+  if (commentError)
+    throw new Error("Yorum sayıları okunamadı: " + commentError.message);
+  const commentCounts = new Map<string, number>();
+  for (const comment of commentData ?? []) {
+    commentCounts.set(
+      comment.opportunity_id,
+      (commentCounts.get(comment.opportunity_id) ?? 0) + 1,
+    );
+  }
   const counts = (code: string) => all.filter((i) => i.stage === code).length;
   return (
     <div className="crm-page-stack">
@@ -226,6 +243,7 @@ export default async function RequestsPage({
                   <th>Temsilci</th>
                   <th>Durum</th>
                   <th>Teslim</th>
+                  <th>Yorumlar</th>
                   <th></th>
                 </tr>
               </thead>
@@ -392,6 +410,18 @@ export default async function RequestsPage({
                               item.expected_close_date + "T00:00:00",
                             ).toLocaleDateString("tr-TR")
                           : "—"}
+                      </td>
+                      <td data-label="Yorumlar">
+                        {commentCounts.get(item.id) ? (
+                          <Link
+                            className="crm-comment-count-badge"
+                            href={`/panel/crm/requests/${item.id}`}
+                          >
+                            {commentCounts.get(item.id)} yorum
+                          </Link>
+                        ) : (
+                          <span className="crm-comment-count-empty">—</span>
+                        )}
                       </td>
                       <td className="crm-table-actions">
                         <PanelBottomSheet
