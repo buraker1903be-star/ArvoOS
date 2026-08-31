@@ -238,3 +238,36 @@ export async function moveOpportunity(formData: FormData) {
   revalidatePath("/panel/crm");
   revalidatePath("/panel");
 }
+
+export async function addInternalComment(formData: FormData) {
+  const { supabase, membership, userId } = await crmContext();
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const contextType = text(formData, "context_type", 20);
+  const contextId = text(formData, "context_id", 80);
+  const body = text(formData, "body", 4000);
+  if (!opportunityId || !contextId || !new Set(["request", "proposal", "contract"]).has(contextType))
+    throw new Error("Yorumun bağlı olduğu CRM kaydı geçersiz.");
+  if (!body) throw new Error("Yorum metni boş bırakılamaz.");
+
+  const { data: opportunity, error: opportunityError } = await supabase
+    .from("crm_opportunities")
+    .select("id")
+    .eq("id", opportunityId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (opportunityError || !opportunity) throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
+
+  const { error } = await supabase.from("crm_internal_comments").insert({
+    organization_id: membership.organization_id,
+    opportunity_id: opportunityId,
+    context_type: contextType,
+    context_id: contextId,
+    body,
+    created_by: userId,
+  });
+  if (error) throw new Error("Kurum içi yorum eklenemedi: " + error.message);
+
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
+  revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm/contracts");
+}

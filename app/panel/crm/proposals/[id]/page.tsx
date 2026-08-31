@@ -8,6 +8,7 @@ import {
   issueProposalLink,
   markProposalStatus,
 } from "../../sales-actions";
+import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
 
 type Props = { params: Promise<{ id: string }> };
@@ -96,6 +97,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
+      <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
 import { deleteContract, issueContractLink, markContractStatus } from "../../sales-actions";
+import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
 
 type Props = { params: Promise<{ id: string }> };
@@ -16,7 +17,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,crm_opportunities!inner(customer_name,contact_email,contact_phone,assigned_employee_id)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(customer_name,contact_email,contact_phone,assigned_employee_id)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -60,6 +61,7 @@ export default async function ContractDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
+      <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} />
     </div>
   );
 }

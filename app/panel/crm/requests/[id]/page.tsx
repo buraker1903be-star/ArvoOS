@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ProposalBuilderForm } from "../../proposal-builder-form";
+import { InternalComments } from "../../internal-comments";
 import {
   archiveOpportunity,
   moveOpportunity,
@@ -275,6 +276,7 @@ export default async function RequestDetailPage({
           </div>
         </div>
       </section>
+      <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
     </main>
   );
 }

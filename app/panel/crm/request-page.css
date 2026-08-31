@@ -520,6 +520,80 @@
 .crm-request-detail-actions form {
   margin: 0;
 }
+.crm-internal-comments {
+  padding: 20px;
+}
+.crm-internal-comments-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.crm-internal-comments-head h2 {
+  margin: 6px 0 4px;
+  font-size: 18px;
+}
+.crm-internal-comments-head p,
+.crm-internal-comments-head > span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+.crm-internal-comments-head > span {
+  white-space: nowrap;
+}
+.crm-internal-comment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.crm-internal-comment-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.crm-internal-comment-form button {
+  align-self: end;
+  min-height: 36px;
+}
+.crm-internal-comment-list article {
+  padding: 15px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.crm-internal-comment-list article:last-child {
+  border-bottom: 0;
+}
+.crm-internal-comment-list article > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.crm-internal-comment-list strong {
+  font-size: 10px;
+}
+.crm-internal-comment-list span {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-size: 7px;
+  font-weight: 800;
+}
+.crm-internal-comment-list time {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 8px;
+}
+.crm-internal-comment-list article > p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  color: var(--ink);
+  font-size: 10px;
+  line-height: 1.65;
+}
 @media (max-width: 620px) {
   .crm-request-detail-card {
     padding: 16px;
@@ -539,5 +613,20 @@
   .crm-request-detail-actions .panel-danger {
     width: 100%;
     min-height: 40px;
+  }
+  .crm-internal-comments {
+    padding: 16px;
+  }
+  .crm-internal-comments-head,
+  .crm-internal-comment-form {
+    display: flex;
+    flex-direction: column;
+  }
+  .crm-internal-comment-form button {
+    width: 100%;
+  }
+  .crm-internal-comment-list time {
+    width: 100%;
+    margin-left: 0;
   }
 }
