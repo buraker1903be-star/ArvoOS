@@ -21,6 +21,13 @@ const filters = [
   { key: "duyurular", label: "Yönetici Duyuruları", category: "management_announcement" },
 ] as const;
 
+const categoryLabels: Record<string, string> = {
+  sales_assignment: "Yeni Talep",
+  operation_assignment: "Operasyon",
+  customer_message: "Müşteri Mesajı",
+  management_announcement: "Yönetici Duyurusu",
+};
+
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ kategori?: string }> }) {
   const { kategori } = await searchParams;
   const selectedFilter = filters.find((filter) => filter.key === kategori) ?? null;
@@ -74,18 +81,23 @@ export default async function NotificationsPage({ searchParams }: { searchParams
         {unreadCount > 0 ? <form action={markAllNotificationsRead}><button className="panel-button" type="submit">Tümünü okundu işaretle</button></form> : null}
       </div>
 
-      <div className="module-control-list">
-        {notifications.length ? notifications.map((item) => <div className="module-control" key={item.id}>
-          <div>
-            <b>{item.title}</b>
-            <small>{item.message}</small>
-            <small>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</small>
+      <div className="notification-feed">
+        {notifications.length ? notifications.map((item) => <article className={`notification-item${item.read_at ? " is-read" : " is-unread"}`} key={item.id}>
+          <div className="notification-item-marker" aria-hidden="true" />
+          <div className="notification-item-body">
+            <div className="notification-item-meta">
+              <span className="notification-category">{categoryLabels[item.category] ?? "Bildirim"}</span>
+              {!item.read_at ? <span className="notification-new">Yeni</span> : null}
+              <time dateTime={item.created_at}>{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</time>
+            </div>
+            <h3>{item.title}</h3>
+            <p>{item.message}</p>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-button" type="submit">Okundu</button></form> : <><span className="status-pill">Okundu</span><form action={deleteReadNotification}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-danger" type="submit">Sil</button></form></>}
-            {item.action_url ? <Link className="panel-button" href={item.action_url}>Aç</Link> : null}
+          <div className="notification-item-actions">
+            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-button" type="submit">Okundu İşaretle</button></form> : <><span className="notification-read-state">Okundu</span><form action={deleteReadNotification}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-danger" type="submit">Sil</button></form></>}
+            {item.action_url ? <Link className="panel-button notification-open" href={item.action_url}>Detayı Aç</Link> : null}
           </div>
-        </div>) : <div className="platform-note"><span>i</span><p>Henüz bildiriminiz yok.</p></div>}
+        </article>) : <div className="platform-note"><span>i</span><p>Henüz bildiriminiz yok.</p></div>}
       </div>
     </section>
   </>;
