@@ -17,6 +17,7 @@ type NotificationRow = {
 const filters = [
   { key: "sales", label: "Yeni Atanan Talepler", category: "sales_assignment" },
   { key: "operations", label: "Operasyon Talepleri", category: "operation_assignment" },
+  { key: "musteri", label: "Müşteri Bildirimleri", category: "customer_message" },
   { key: "duyurular", label: "Yönetici Duyuruları", category: "management_announcement" },
 ] as const;
 
