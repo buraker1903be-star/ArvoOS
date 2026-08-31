@@ -94,8 +94,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             <p>{item.message}</p>
           </div>
           <div className="notification-item-actions">
-            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-button" type="submit">Okundu İşaretle</button></form> : <><span className="notification-read-state">Okundu</span><form action={deleteReadNotification}><input type="hidden" name="notification_id" value={item.id} /><button className="panel-danger" type="submit">Sil</button></form></>}
-            {item.action_url ? <Link className="panel-button notification-open" href={item.action_url}>Detayı Aç</Link> : null}
+            {!item.read_at ? <form action={markNotificationRead}><input type="hidden" name="notification_id" value={item.id} /><button className="notification-action notification-action-muted" type="submit">Okundu İşaretle</button></form> : <><span className="notification-read-state">Okundu</span><form action={deleteReadNotification}><input type="hidden" name="notification_id" value={item.id} /><button className="notification-action notification-action-danger" type="submit">Sil</button></form></>}
+            {item.action_url && item.category !== "management_announcement" ? <Link className="notification-action notification-action-primary" href={item.action_url}>Kaydı Aç <span aria-hidden="true">→</span></Link> : null}
           </div>
         </article>) : <div className="platform-note"><span>i</span><p>Henüz bildiriminiz yok.</p></div>}
       </div>
