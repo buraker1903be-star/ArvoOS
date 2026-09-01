@@ -319,3 +319,68 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,#1825
 }
 
 @media(max-width:380px){.panel-skeleton-metrics{grid-template-columns:1fr}}
+
+/* Phase 4 — CRM lists aligned with the Finance profitability table */
+.crm-page-stack .crm-filter-card{
+  padding:12px 14px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow-sm)
+}
+.crm-page-stack .crm-filter-form{gap:10px}
+.crm-page-stack .crm-filter-form label>span{font-size:12px;letter-spacing:.02em;color:var(--muted)}
+.crm-page-stack .crm-filter-form :is(input,select){min-height:42px;border-radius:11px;padding:9px 12px;font-size:14px;background:var(--surface-raised)}
+
+.crm-page-stack .crm-table-wrap{
+  padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:auto;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted) 30%,transparent) transparent
+}
+.crm-page-stack .crm-data-table{min-width:1060px;font-variant-numeric:tabular-nums}
+.crm-page-stack .crm-data-table thead th{
+  top:0;z-index:2;padding:13px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface-2) 94%,transparent);color:var(--muted);font-size:11px;letter-spacing:.055em;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)
+}
+.crm-page-stack .crm-data-table tbody td{height:68px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.4}
+.crm-page-stack .crm-data-table tbody tr{content-visibility:auto;contain-intrinsic-size:auto 68px;transition:background-color .14s ease,box-shadow .14s ease}
+.crm-page-stack .crm-data-table tbody tr:hover{background:color-mix(in srgb,var(--accent-100) 34%,var(--surface))}
+.crm-page-stack .crm-data-table .crm-table-mono{font-size:12px;font-weight:720;letter-spacing:-.01em;color:var(--muted)}
+.crm-page-stack .crm-data-table .crm-table-title{max-width:260px;font-size:14px;font-weight:780;letter-spacing:-.012em}
+.crm-page-stack .crm-data-table .crm-table-sub{margin-top:4px;font-size:12px;line-height:1.35}
+.crm-page-stack .crm-row-link{color:var(--ink);text-decoration:none}
+.crm-page-stack .crm-row-subject{display:block;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:680}
+.crm-page-stack .crm-comment-count-badge{min-height:28px;padding:6px 10px;border-color:color-mix(in srgb,var(--accent-500) 24%,var(--line));background:var(--accent-100);color:var(--accent-600);font-size:12px}
+.crm-page-stack .crm-table-actions{justify-content:flex-end}
+.crm-page-stack .crm-table-actions>.panel-secondary{min-width:76px;min-height:36px;padding:8px 12px;border-radius:10px;font-size:12px;background:linear-gradient(180deg,var(--surface-raised),var(--surface-2));box-shadow:0 1px 2px rgba(15,35,60,.04)}
+.crm-page-stack .crm-table-actions>.panel-secondary:after{content:"•••";margin-left:7px;color:var(--muted);font-size:10px;letter-spacing:1px}
+.crm-page-stack .crm-table-wrap::-webkit-scrollbar{height:9px}.crm-page-stack .crm-table-wrap::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:99px;background:color-mix(in srgb,var(--muted) 30%,transparent);background-clip:padding-box}
+
+.panel-sheet{border-radius:24px 24px 0 0;background:color-mix(in srgb,var(--surface) 97%,transparent);box-shadow:0 -30px 90px rgba(4,25,42,.24);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.panel-sheet-backdrop{background:rgba(4,20,38,.46);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.panel-sheet-handle{width:46px;height:5px;background:color-mix(in srgb,var(--muted) 34%,transparent)}
+.panel-sheet header h2{font-size:20px;letter-spacing:-.025em}.panel-sheet-actions{gap:10px}
+.panel-sheet-actions .panel-primary,.panel-sheet-actions .panel-secondary,.panel-sheet-actions .panel-danger{min-height:42px;padding:9px 14px;border-radius:11px;font-size:13px}
+
+@media(max-width:900px){
+  .crm-page-stack .crm-table-wrap{margin-inline:0;width:100%;border-radius:16px}
+}
+
+@media(max-width:760px){
+  .crm-page-stack .crm-filter-card{padding:12px}
+  .crm-page-stack .crm-filter-form{grid-template-columns:1fr}
+  .crm-page-stack .crm-filter-form>div{grid-column:auto;display:grid;grid-template-columns:1fr 1fr}
+  .crm-page-stack .crm-filter-form :is(button,a){min-height:44px}
+  .crm-page-stack .crm-table-wrap{overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none}
+  .crm-page-stack .crm-data-table{min-width:0}
+  .crm-page-stack .crm-data-table tbody{display:grid;gap:10px}
+  .crm-page-stack .crm-data-table tbody tr{margin:0;padding:0 14px;border:1px solid var(--line);border-radius:17px;background:var(--surface);box-shadow:var(--shadow-sm);contain-intrinsic-size:auto 390px}
+  .crm-page-stack .crm-data-table tbody tr:hover{background:var(--surface)}
+  .crm-page-stack .crm-data-table tbody td{height:auto;min-height:43px;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:14px;line-height:1.4}
+  .crm-page-stack .crm-data-table tbody td:before{font-size:11px;letter-spacing:.055em}
+  .crm-page-stack .crm-data-table tbody td:nth-child(2){padding-top:13px}
+  .crm-page-stack .crm-data-table .crm-table-title{font-size:15px}.crm-page-stack .crm-data-table .crm-table-sub{font-size:12px}
+  .crm-page-stack .crm-row-subject{max-width:62vw;white-space:normal;text-align:right;font-size:14px}
+  .crm-page-stack .crm-table-actions{padding:12px 0!important}
+  .crm-page-stack .crm-table-actions>.panel-secondary{width:100%;min-height:44px;font-size:14px;background:linear-gradient(180deg,#104775,#092f55);color:#fff;border:0;box-shadow:0 5px 14px rgba(9,47,85,.16)}
+  .crm-page-stack .crm-table-actions>.panel-secondary:after{color:rgba(255,255,255,.7)}
+  .panel-sheet-actions{display:grid;grid-template-columns:1fr 1fr}.panel-sheet-actions>*{width:100%}
+}
+
+@media(max-width:430px){
+  .crm-page-stack .crm-filter-form>div,.panel-sheet-actions{grid-template-columns:1fr}
+  .crm-page-stack .crm-row-subject{max-width:58vw}
+}
