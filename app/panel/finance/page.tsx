@@ -6,6 +6,7 @@ import {
   createCollection,
   createRefund,
 } from "../accounts/actions";
+import { saveContractServiceCost } from "./actions";
 import "./finance.css";
 
 const money = (n: number) =>
@@ -34,6 +35,14 @@ type Contract = {
   party_id: string | null;
   amount: number;
   status: string;
+  contract_no: string;
+  title: string;
+  currency: string;
+  service_cost: number;
+  service_cost_supplier: string | null;
+  service_cost_reference: string | null;
+  service_cost_status: string;
+  crm_opportunities: { customer_name: string } | { customer_name: string }[] | null;
 };
 
 export default async function FinancePage({
@@ -61,7 +70,7 @@ export default async function FinancePage({
         .order("name"),
       supabase
         .from("crm_contracts")
-        .select("id,party_id,amount,status")
+        .select("id,party_id,amount,status,contract_no,title,currency,service_cost,service_cost_supplier,service_cost_reference,service_cost_status,crm_opportunities(customer_name)")
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"]),
     ]);
@@ -69,7 +78,8 @@ export default async function FinancePage({
   if (contractError)
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   const contractTotals = new Map<string, number>();
-  for (const contract of (contractData ?? []) as Contract[])
+  const contracts = (contractData ?? []) as unknown as Contract[];
+  for (const contract of contracts)
     if (contract.party_id)
       contractTotals.set(
         contract.party_id,
@@ -134,6 +144,8 @@ export default async function FinancePage({
           ? a.balance === 0
           : true),
   );
+  const canManageCosts = ["owner", "admin"].includes(membership.role);
+  const totalServiceCost = contracts.reduce((sum, contract) => sum + Number(contract.service_cost || 0), 0);
 
   return (
     <main className="finance-ledger-page">
@@ -369,6 +381,10 @@ export default async function FinancePage({
           </div>
         ) : null}
       </section>
+      {canManageCosts ? <section className="panel-card finance-contract-costs">
+        <header><div><small className="panel-kicker">YÖNETİCİ FİNANSI</small><h2>İş Maliyetleri</h2><p>Sözleşmelere bağlı dış hizmet maliyetlerini yalnızca finans yöneticileri görür.</p></div><strong>{money(totalServiceCost)}</strong></header>
+        <div className="finance-cost-list">{contracts.map((contract) => { const relation = Array.isArray(contract.crm_opportunities) ? contract.crm_opportunities[0] : contract.crm_opportunities; return <article key={contract.id}><div><span>{contract.contract_no}</span><h3>{relation?.customer_name || contract.title}</h3><p>{contract.title}</p></div><div className="finance-cost-values"><small>Sözleşme</small><b>{money(contract.amount)}</b><small>Maliyet</small><strong>{money(contract.service_cost)}</strong></div><span className={`status-pill ${contract.service_cost_status === "paid" ? "is-paid" : ""}`}>{contract.service_cost ? contract.service_cost_status === "paid" ? "Ödendi" : "Planlandı" : "Maliyet girilmedi"}</span><PanelDrawer triggerLabel="Maliyeti Yönet" title={`${contract.contract_no} · İş Maliyeti`} description="Bu bilgi CRM personellerine gösterilmez."><form className="panel-form" action={saveContractServiceCost}><input type="hidden" name="contract_id" value={contract.id}/><label>Maliyet tutarı<input name="amount" type="number" min="0" step="0.01" defaultValue={contract.service_cost / 100}/></label><label>Hizmet sağlayıcı<input name="supplier" defaultValue={contract.service_cost_supplier ?? "AkademikMerkez"} maxLength={180}/></label><label>Belge / referans<input name="reference" defaultValue={contract.service_cost_reference ?? ""} maxLength={120}/></label><label>Durum<select name="cost_status" defaultValue={contract.service_cost_status}><option value="planned">Planlanan gider</option><option value="paid">Ödendi</option></select></label><div className="form-actions wide"><button className="panel-primary">Maliyeti Kaydet</button></div></form></PanelDrawer></article>; })}{!contracts.length ? <p className="panel-empty">İmzalanmış sözleşme bulunmuyor.</p> : null}</div>
+      </section> : null}
     </main>
   );
 }
