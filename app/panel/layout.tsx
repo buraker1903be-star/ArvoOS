@@ -68,7 +68,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const drawerChannels=(messageChannels??[]).map((channel)=>({id:channel.id,name:channel.name,description:channel.description,channelType:channel.channel_type??"group",directKey:channel.direct_key}));
   const readableChannelIds=drawerChannels.map((channel)=>channel.id);
   const pendingAgreementQuery = ownEmployee ? supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null });
-  const unreadMessagesQuery = hasMessages&&readableChannelIds.length?supabase.from("internal_messages").select("id,channel_id,created_at,sender_id").eq("organization_id",membership.organization_id).in("channel_id",readableChannelIds).neq("sender_id",userId).order("created_at",{ascending:false}).limit(1000):Promise.resolve({data:[]});
+  const unreadMessagesQuery = hasMessages&&readableChannelIds.length?supabase.from("internal_messages").select("channel_id,created_at").eq("organization_id",membership.organization_id).in("channel_id",readableChannelIds).neq("sender_id",userId).order("created_at",{ascending:false}).limit(1000):Promise.resolve({data:[]});
   const [{ data: pendingAgreement }, { data: unreadMessageRows }] = await Promise.all([pendingAgreementQuery, unreadMessagesQuery]);
   const lastReadByChannel=new Map((messageReadRows??[]).map((row)=>[row.channel_id,new Date(row.last_read_at).getTime()]));
   const unreadByChannel:Record<string,number>={};

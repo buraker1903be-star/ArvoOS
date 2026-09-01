@@ -267,3 +267,55 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,#1825
   .messages-thread-scroll article p{font-size:14px}
   .messages-composer textarea{font-size:16px}
 }
+
+/* Phase 3 — dense data surfaces and responsive finishing */
+.panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){
+  position:relative;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:auto;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted) 36%,transparent) transparent
+}
+.panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap) thead th{
+  position:sticky;top:0;z-index:2;background:color-mix(in srgb,var(--surface-2) 95%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)
+}
+.panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::-webkit-scrollbar{height:8px;width:8px}
+.panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:99px;background:color-mix(in srgb,var(--muted) 34%,transparent);background-clip:padding-box}
+.panel-table tbody tr:last-child td,.crm-data-table tbody tr:last-child td,.ops-table tbody tr:last-child td{border-bottom:0}
+.panel-table td:last-child,.crm-data-table td:last-child,.ops-table td:last-child{white-space:nowrap}
+
+.finance-filter-panel,.finance-payment-toolbar,.report-range-bar{border-radius:16px;padding:12px 14px}
+.finance-pagination{border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.finance-pagination button:disabled,.panel-root button:disabled{cursor:not-allowed;opacity:.52;filter:saturate(.65)}
+.finance-pagination button:not(:disabled):active{transform:scale(.97)}
+
+.panel-page-actions,.finance-head-actions{scrollbar-width:none}.panel-page-actions::-webkit-scrollbar,.finance-head-actions::-webkit-scrollbar{display:none}
+.panel-page-actions:after,.finance-head-actions:after{content:"";flex:0 0 1px}
+.panel-card>header,.report-card>header{gap:12px}
+.panel-card :is(ul,ol){padding-left:20px}.panel-card li{margin-block:5px;font-size:14px;line-height:1.5}
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-text-link,.panel-quick-action){-webkit-user-select:none;user-select:none}
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-text-link)[aria-busy="true"]{pointer-events:none;opacity:.72}
+
+.panel-skeleton{gap:16px}.panel-skeleton-metrics{gap:12px}.skel-card{height:106px;border-radius:16px}.skel-block{height:210px;border-radius:18px}
+.panel-error{border-radius:14px;font-size:14px;line-height:1.5;box-shadow:var(--shadow-sm)}
+
+@media(hover:hover) and (pointer:fine){
+  .panel-card:has(>a:hover),.notification-card:hover{border-color:color-mix(in srgb,var(--accent-500) 24%,var(--line));box-shadow:var(--shadow-md)}
+}
+
+@media(max-width:900px){
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){margin-inline:0;border-radius:14px;overscroll-behavior-x:contain;scroll-snap-type:x proximity}
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap):before{content:"";position:sticky;left:0;z-index:3;display:block;width:100%;height:3px;background:linear-gradient(90deg,var(--accent-500),color-mix(in srgb,var(--accent-500) 10%,transparent));pointer-events:none}
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"← Yatay kaydır →";position:sticky;left:0;display:block;width:max-content;margin-left:auto;padding:7px 10px;color:var(--muted);font-size:11px;font-weight:650}
+  .panel-content table th:first-child,.panel-content table td:first-child{scroll-snap-align:start}
+  .finance-filter-panel,.finance-payment-toolbar,.report-range-bar{padding:10px;border-radius:14px}
+}
+
+@media(max-width:620px){
+  .panel-pagehead{padding-inline:2px}
+  .panel-pagehead p{line-height:1.45}
+  .panel-card,.panel-module,.report-card,.notification-card{padding:14px}
+  .panel-card h2,.panel-module h2{font-size:18px}
+  .panel-card h3,.panel-module h3{font-size:16px}
+  .panel-card p,.panel-module p,.panel-card li{font-size:14px}
+  .status-pill,.live-badge,.owner-badge{min-height:28px;align-items:center}
+  .panel-skeleton-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.skel-card{height:98px}.skel-block{height:180px}
+}
+
+@media(max-width:380px){.panel-skeleton-metrics{grid-template-columns:1fr}}
