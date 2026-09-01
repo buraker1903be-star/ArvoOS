@@ -1,0 +1,86 @@
+/* ArvoOS shared compact/readable panel standard */
+.panel-content{padding:22px 26px 48px}
+.panel-content>main,.panel-content>.crm-page-stack,.panel-content>.finance-page-stack,.panel-content>.finance-ledger-page,.panel-content>.operations-page,.panel-content>.reporting-page{width:100%;max-width:1600px;margin-inline:auto}
+.panel-pagehead{min-height:54px;margin-bottom:14px;gap:14px}
+.panel-pagehead h1{margin:4px 0 3px;font-size:clamp(25px,2vw,30px);line-height:1.12;letter-spacing:-.035em}
+.panel-pagehead p{margin:0;max-width:760px;font-size:13px;line-height:1.5}
+.panel-kicker{font-size:10px;line-height:1.2;letter-spacing:.1em}
+.panel-page-actions,.finance-head-actions{gap:7px}
+.panel-primary,.panel-secondary,.panel-danger,.panel-text-link{min-height:34px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.15}
+.status-pill,.live-badge,.owner-badge{padding:5px 8px;border-radius:7px;font-size:11px;line-height:1.2}
+
+.panel-card,.panel-module{padding:16px;border-radius:12px}
+.panel-card h2,.panel-module h2{font-size:18px;line-height:1.25}
+.panel-card h3,.panel-module h3{font-size:15px;line-height:1.3}
+.panel-card p,.panel-module p{font-size:12px;line-height:1.5}
+.panel-grid,.panel-modules,.platform-grid,.crm-page-stack,.finance-page-stack,.operations-page,.finance-cost-workspace,.finance-cost-detail-page{gap:14px}
+.section-heading{margin:0 0 10px}.section-heading h2{font-size:20px}
+.module-tab-panel{gap:14px;padding-top:14px;margin-bottom:14px}.module-tab-panel>*:last-child{margin-bottom:14px}
+.module-tabs a{min-height:38px;display:grid;place-items:center;padding:8px 14px;font-size:12px}
+
+.metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{gap:10px}
+.metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{min-height:94px;padding:14px}
+.metric-strip small,.metric-strip-five small,.crm-metrics small,.finance-metrics small,.ops-metrics small,.report-kpi small,.finance-cost-kpis small,.finance-cost-detail-kpis small,.finance-payment-kpis small{font-size:10px;line-height:1.25;letter-spacing:.07em}
+.metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong{margin:7px 0 3px;font-size:21px;line-height:1.15}
+.metric-strip p,.metric-strip span,.crm-metrics span,.finance-metrics span,.ops-metrics span,.report-kpi p,.finance-cost-kpis span,.finance-cost-detail-kpis span,.finance-payment-kpis span{font-size:11px;line-height:1.35}
+
+.panel-table th,.crm-data-table thead th,.finance-cost-table-head,.finance-cost-movement-table .head{padding:10px 12px;font-size:11px;letter-spacing:.04em}
+.panel-table td,.crm-data-table tbody td{padding:10px 12px;font-size:12px;line-height:1.4}
+.crm-data-table .crm-table-mono,.crm-data-table .crm-table-sub,.finance-cost-table p,.finance-cost-table a span{font-size:11px}
+.crm-data-table .crm-table-title,.finance-cost-table h3{font-size:13px}
+.finance-cost-table>article{min-height:62px;padding:10px 12px}
+.finance-cost-table>article>strong,.finance-person-cell,.finance-margin{font-size:12px!important}
+.finance-cost-movement-table>article{padding:10px 12px;font-size:12px}.finance-cost-movement-table article small{font-size:11px}
+.finance-payment-list>article{padding:11px 12px}.finance-payment-list h3{font-size:13px}.finance-payment-list p,.finance-payment-list span{font-size:11px}.finance-payment-list>article>strong{font-size:14px}
+
+.panel-form{gap:10px}.panel-form label{font-size:12px;line-height:1.3}
+.panel-form input,.panel-form select,.panel-form textarea,.finance-filter-panel input,.finance-payment-toolbar input,.report-custom-range input{min-height:38px;margin-top:4px;padding:8px 10px;border-radius:8px;font-size:13px}
+.panel-form textarea{min-height:88px}
+.finance-filter-panel,.finance-payment-toolbar{gap:8px;padding:10px 12px}.finance-filter-panel label,.finance-payment-toolbar label{font-size:11px}
+.finance-pagination{padding:10px 12px}.finance-pagination button{font-size:11px}.finance-pagination span{font-size:11px}
+
+.report-pagehead{margin-bottom:14px}.report-range-bar{margin-bottom:12px;padding:10px 12px}
+.report-kpi-grid{margin-bottom:12px}.report-main-grid,.report-bottom-grid{gap:12px;margin-bottom:12px}
+.report-card{padding:16px}.report-card>header{margin-bottom:14px}.report-card h2{font-size:17px}
+.report-funnel article{min-height:50px;padding:7px 10px}.report-funnel b,.report-insights b{font-size:12px}.report-funnel span,.report-insights p{font-size:11px}.report-funnel strong{font-size:18px}
+.report-insights{gap:7px}.report-insights article{padding:10px}.report-trend{height:172px}
+
+.notifications-page,.ops-page-stack{gap:14px}
+.notification-filter-tabs{gap:8px}.notification-filter-tabs a{min-height:42px;padding:9px 12px;font-size:12px}
+.notification-card{padding:14px}.notification-card h3{font-size:14px}.notification-card p{font-size:12px;line-height:1.55}
+.ops-table th,.ops-table td{padding:10px 12px;font-size:12px}
+
+@media(max-width:1100px){
+  .panel-content{padding:20px 18px 48px}
+  .report-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .finance-cost-table,.finance-cost-movement-table{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media(max-width:760px){
+  .panel-content{padding:16px 12px max(108px,calc(88px + env(safe-area-inset-bottom)))}
+  .panel-pagehead{min-height:0;margin-bottom:12px;gap:10px}.panel-pagehead h1{font-size:25px}.panel-pagehead p{font-size:13px}
+  .panel-page-actions{display:flex;grid-template-columns:none;width:100%;overflow-x:auto}.panel-page-actions>*{flex:0 0 auto;width:auto}
+  .panel-card,.panel-module{padding:14px;border-radius:12px}
+  .panel-grid,.panel-modules,.platform-grid,.crm-page-stack,.finance-page-stack,.operations-page,.finance-cost-workspace,.finance-cost-detail-page{gap:12px}
+  .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{min-height:88px;padding:12px}
+  .metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong{font-size:19px}
+  .module-tab-panel{margin-top:8px;padding-top:12px;border-radius:12px}.module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:10px;margin-right:10px}.module-tab-panel>*:last-child{margin-bottom:10px}
+  .finance-filter-panel{grid-template-columns:1fr 1fr}.finance-payment-toolbar nav{width:100%;display:grid;grid-template-columns:repeat(4,minmax(max-content,1fr))}
+  .report-main-grid,.report-bottom-grid{grid-template-columns:1fr}.report-card{padding:14px}.report-funnel article{grid-template-columns:100px minmax(0,1fr) 34px}
+  .panel-form input,.panel-form select,.panel-form textarea,.finance-filter-panel input,.finance-payment-toolbar input,.report-custom-range input{font-size:16px}
+  .panel-primary,.panel-secondary,.panel-danger{min-height:44px;font-size:13px}
+  .status-pill,.live-badge,.owner-badge{font-size:12px}
+}
+@media(max-width:520px){
+  .panel-content{padding-left:10px;padding-right:10px}
+  .panel-card,.panel-module{padding:12px}
+  .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{grid-template-columns:1fr 1fr}
+  .finance-filter-panel{grid-template-columns:1fr}.finance-filter-panel button{width:100%}
+  .finance-payment-toolbar nav{overflow-x:auto;display:flex}.finance-payment-toolbar nav button{flex:0 0 auto;min-height:40px}
+  .report-range-tabs{width:100%}.report-range-tabs a{font-size:12px}.report-custom-range{grid-template-columns:1fr auto 1fr}
+  .report-funnel article{grid-template-columns:88px minmax(0,1fr) 30px}.report-funnel span{display:block;font-size:10px}
+  .crm-data-table tbody tr{margin-bottom:9px;padding:12px;border-radius:12px}.crm-data-table td{font-size:12px}.crm-data-table td:before{font-size:10px}
+}
+@media(max-width:380px){
+  .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{grid-template-columns:1fr}
+}

@@ -19,6 +19,7 @@ import "./sidebar-workspace-switcher.css";
 import "./panel-mobile.css";
 import "./mobile-drawer.css";
 import "./messages-drawer.css";
+import "./panel-compact.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
