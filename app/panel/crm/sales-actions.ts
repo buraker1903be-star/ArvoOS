@@ -278,6 +278,8 @@ export async function issueProposalLink(formData: FormData) {
   if (error)
     throw new Error("Teklif bağlantısı oluşturulamadı: " + error.message);
   revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
+  revalidatePath("/panel/crm");
   const { data: info } = await supabase
     .from("crm_proposals")
     .select(
@@ -424,6 +426,8 @@ export async function issueContractLink(formData: FormData) {
   if (error)
     throw new Error("Sözleşme bağlantısı oluşturulamadı: " + error.message);
   revalidatePath("/panel/crm/contracts");
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+  revalidatePath("/panel/crm");
   const { data: info } = await supabase
     .from("crm_contracts")
     .select(
