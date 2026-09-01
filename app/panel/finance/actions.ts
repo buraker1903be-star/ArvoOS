@@ -186,6 +186,93 @@ export async function rebuildPaymentPlan(formData: FormData) {
   revalidatePath("/panel");
 }
 
+export async function saveInstallmentPaymentLink(formData: FormData) {
+  const { supabase, membership } = await financeContext();
+  const installmentId = String(formData.get("installment_id") ?? "").trim();
+  const contractId = String(formData.get("contract_id") ?? "").trim();
+  const paymentUrl = String(formData.get("payment_url") ?? "").trim();
+  if (!installmentId || !contractId) throw new Error("Taksit seçilemedi.");
+  if (paymentUrl) {
+    let parsed: URL;
+    try { parsed = new URL(paymentUrl); } catch { throw new Error("Geçerli bir ödeme bağlantısı girin."); }
+    if (parsed.protocol !== "https:") throw new Error("Ödeme bağlantısı HTTPS olmalıdır.");
+  }
+  const { data: installment } = await supabase.from("payment_installments").select("id,payment_plan_id")
+    .eq("id", installmentId).eq("organization_id", membership.organization_id).maybeSingle();
+  const { data: plan } = installment ? await supabase.from("payment_plans").select("id,contract_id")
+    .eq("id", installment.payment_plan_id).eq("organization_id", membership.organization_id).eq("contract_id", contractId).maybeSingle() : { data: null };
+  if (!installment || !plan) throw new Error("Taksit bu sözleşmeye ait değil.");
+  const { error } = await supabase.from("payment_installments").update({ payment_url: paymentUrl || null })
+    .eq("id", installmentId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Ödeme bağlantısı kaydedilemedi: " + error.message);
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+}
+
+export async function recordInstallmentNotice(formData: FormData) {
+  const { supabase, membership, userId } = await financeContext();
+  const installmentId = String(formData.get("installment_id") ?? "").trim();
+  const contractId = String(formData.get("contract_id") ?? "").trim();
+  const kind = String(formData.get("kind") ?? "notice");
+  if (!installmentId || !contractId || !new Set(["notice", "reminder"]).has(kind)) throw new Error("Bildirim bilgisi geçersiz.");
+  const { data: installment } = await supabase.from("payment_installments").select("id,payment_url,payment_plan_id")
+    .eq("id", installmentId).eq("organization_id", membership.organization_id).maybeSingle();
+  const { data: plan } = installment ? await supabase.from("payment_plans").select("id")
+    .eq("id", installment.payment_plan_id).eq("contract_id", contractId).eq("organization_id", membership.organization_id).maybeSingle() : { data: null };
+  if (!installment?.payment_url || !plan) throw new Error("Ödeme bağlantısı bulunamadı.");
+  const now = new Date().toISOString();
+  const payload = kind === "reminder" ? { reminder_sent_at: now, notice_sent_by: userId } : { notice_sent_at: now, notice_sent_by: userId };
+  const { error } = await supabase.from("payment_installments").update(payload)
+    .eq("id", installmentId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Bildirim kaydedilemedi: " + error.message);
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+  return { success: true };
+}
+
+export async function saveContractServiceCost(formData: FormData) {
+  const { supabase, membership, userId } = await financeContext();
+  const contractId = String(formData.get("contract_id") ?? "").trim();
+  const supplier = String(formData.get("supplier") ?? "").trim();
+  const reference = String(formData.get("reference") ?? "").trim();
+  const status = String(formData.get("cost_status") ?? "planned");
+  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  if (!contractId || !Number.isFinite(amount) || amount < 0) throw new Error("Geçerli bir maliyet girin.");
+  if (!new Set(["planned", "paid"]).has(status)) throw new Error("Maliyet durumu geçersiz.");
+  const { data: contract, error: contractError } = await supabase.from("crm_contracts")
+    .select("id,contract_no,title,service_cost_transaction_id")
+    .eq("id", contractId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (contractError || !contract) throw new Error("Sözleşme bulunamadı.");
+  let transactionId = contract.service_cost_transaction_id as string | null;
+  const transactionPayload = {
+    organization_id: membership.organization_id, transaction_type: "expense", status,
+    title: `${contract.contract_no} hizmet maliyeti`, counterparty: supplier || null,
+    category: "Hizmet maliyeti", amount, currency: "TRY",
+    paid_at: status === "paid" ? new Date().toISOString() : null,
+    notes: [contract.title, reference ? `Belge: ${reference}` : ""].filter(Boolean).join(" · "),
+  };
+  if (amount > 0 && transactionId) {
+    const { error } = await supabase.from("finance_transactions").update(transactionPayload)
+      .eq("id", transactionId).eq("organization_id", membership.organization_id);
+    if (error) throw new Error("Maliyet gideri güncellenemedi: " + error.message);
+  } else if (amount > 0) {
+    const { data: transaction, error } = await supabase.from("finance_transactions")
+      .insert({ ...transactionPayload, created_by: userId }).select("id").single();
+    if (error) throw new Error("Maliyet gideri oluşturulamadı: " + error.message);
+    transactionId = transaction.id;
+  } else if (transactionId) {
+    await supabase.from("finance_transactions").delete().eq("id", transactionId).eq("organization_id", membership.organization_id);
+    transactionId = null;
+  }
+  const { error } = await supabase.from("crm_contracts").update({
+    service_cost: amount, service_cost_supplier: supplier || null,
+    service_cost_reference: reference || null, service_cost_status: status,
+    service_cost_transaction_id: transactionId,
+  }).eq("id", contractId).eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Sözleşme maliyeti kaydedilemedi: " + error.message);
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/reporting");
+}
+
 export async function updateInvoiceStatus(formData: FormData) {
   const { supabase, membership, userId } = await financeContext();
   const invoiceId = String(formData.get("invoice_id") ?? "").trim();
