@@ -6,7 +6,7 @@ import {
   createCollection,
   createRefund,
 } from "../accounts/actions";
-import { saveContractServiceCost, saveInstallmentPaymentLink } from "./actions";
+import { saveInstallmentPaymentLink } from "./actions";
 import { PaymentShareActions } from "./payment-share-actions";
 import "./finance.css";
 
@@ -47,6 +47,7 @@ type Contract = {
   crm_opportunities: { customer_name: string; contact_phone:string|null;contact_email:string|null } | { customer_name: string;contact_phone:string|null;contact_email:string|null }[] | null;
 };
 type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
+type CostItem={contract_id:string;amount:number;status:string};
 
 export default async function FinancePage({
   searchParams,
@@ -60,7 +61,7 @@ export default async function FinancePage({
     !modules.some((m) => m.code === "accounts")
   )
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
-  const [{ data, error }, { data: contractData, error: contractError }, { data: installmentData, error: installmentError }] =
+  const [{ data, error }, { data: contractData, error: contractError }, { data: installmentData, error: installmentError }, {data:costItemData,error:costItemError}] =
     await Promise.all([
       supabase
         .from("account_parties")
@@ -77,11 +78,13 @@ export default async function FinancePage({
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"]),
       supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,notice_sent_at,reminder_sent_at").eq("organization_id",membership.organization_id).order("due_date"),
+      supabase.from("contract_cost_items").select("contract_id,amount,status").eq("organization_id",membership.organization_id),
     ]);
   if (error) throw new Error("Cari hesaplar okunamadı: " + error.message);
   if (contractError)
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if(installmentError) throw new Error("Ödeme taksitleri okunamadı: "+installmentError.message);
+  if(costItemError&&["owner","admin"].includes(membership.role))throw new Error("İş maliyetleri okunamadı: "+costItemError.message);
   const contractTotals = new Map<string, number>();
   const contracts = (contractData ?? []) as unknown as Contract[];
   for (const contract of contracts)
@@ -151,6 +154,7 @@ export default async function FinancePage({
   );
   const canManageCosts = ["owner", "admin"].includes(membership.role);
   const totalServiceCost = contracts.reduce((sum, contract) => sum + Number(contract.service_cost || 0), 0);
+  const costItems=(costItemData??[]) as CostItem[];const costTotals=new Map<string,number>();for(const item of costItems)costTotals.set(item.contract_id,(costTotals.get(item.contract_id)??0)+Number(item.amount));
   const installments=(installmentData??[]) as Installment[];
   const mode=params.gorunum==="paytr"?"paytr":params.gorunum==="maliyet"&&canManageCosts?"maliyet":"cari";
   const today=new Date().toISOString().slice(0,10); const brandName=organization.display_name||organization.name||"ArvoOS";
@@ -392,10 +396,10 @@ export default async function FinancePage({
       </section>
       </>:null}
       {mode==="paytr"?<section className="panel-card finance-payment-center"><header><div><small className="panel-kicker">TAHSİLAT YÖNETİMİ</small><h2>PAYTR Ödeme Bağlantıları</h2><p>Taksit linklerini yönetin, ödeme bilgisi veya gecikme hatırlatması gönderin.</p></div><span className="status-pill">{installments.filter(item=>item.status!=="paid").length} bekleyen</span></header><div className="finance-payment-list">{contracts.flatMap(contract=>{const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;return installments.filter(item=>item.payment_plan_id===contract.payment_plan_id).map(item=>{const overdue=item.status!=="paid"&&Boolean(item.due_date&&item.due_date<today);const link=item.payment_url;const message=overdue?`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizin vadesi dolmuştur.\n\nÖdeme bağlantısı:\n${link||""}\n\nÖdeme yaptıysanız bu mesajı dikkate almayınız.\n\nSaygılarımızla,\n${brandName}`:`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizi aşağıdaki bağlantıdan tamamlayabilirsiniz:\n${link||""}\n\nSaygılarımızla,\n${brandName}`;const phone=String(customer?.contact_phone||"").replace(/\D/g,"").replace(/^0/,"90");const whatsapp=link&&phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null;const email=link&&customer?.contact_email?`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${contract.contract_no} ödeme bilgilendirmesi`)}&body=${encodeURIComponent(message)}`:null;return <article key={item.id} className={overdue?"is-overdue":""}><div><span>{contract.contract_no} · {item.installment_no}. ödeme</span><h3>{customer?.customer_name||contract.title}</h3><p>Vade: {item.due_date?new Date(item.due_date).toLocaleDateString("tr-TR"):"—"}</p></div><strong>{money(item.amount)}</strong><span className={`status-pill ${overdue?"is-late":""}`}>{item.status==="paid"?"Ödendi":overdue?"Gecikmiş":"Bekliyor"}</span>{item.status!=="paid"?<form action={saveInstallmentPaymentLink}><input type="hidden" name="installment_id" value={item.id}/><input type="hidden" name="contract_id" value={contract.id}/><input name="payment_url" type="url" defaultValue={link||""} placeholder="PAYTR linki"/><button className="panel-secondary">Kaydet</button></form>:null}{item.status!=="paid"?<PaymentShareActions installmentId={item.id} contractId={contract.id} whatsappUrl={whatsapp} emailUrl={email} overdue={overdue}/>:null}</article>})})}{!installments.length?<p className="panel-empty">Henüz ödeme taksiti bulunmuyor.</p>:null}</div></section>:null}
-      {mode==="maliyet"&&canManageCosts ? <section className="panel-card finance-contract-costs">
-        <header><div><small className="panel-kicker">YÖNETİCİ FİNANSI</small><h2>İş Maliyetleri</h2><p>Sözleşmelere bağlı dış hizmet maliyetlerini yalnızca finans yöneticileri görür.</p></div><strong>{money(totalServiceCost)}</strong></header>
-        <div className="finance-cost-list">{contracts.map((contract) => { const relation = Array.isArray(contract.crm_opportunities) ? contract.crm_opportunities[0] : contract.crm_opportunities; return <article key={contract.id}><div><span>{contract.contract_no}</span><h3>{relation?.customer_name || contract.title}</h3><p>{contract.title}</p></div><div className="finance-cost-values"><small>Sözleşme</small><b>{money(contract.amount)}</b><small>Maliyet</small><strong>{money(contract.service_cost)}</strong></div><span className={`status-pill ${contract.service_cost_status === "paid" ? "is-paid" : ""}`}>{contract.service_cost ? contract.service_cost_status === "paid" ? "Ödendi" : "Planlandı" : "Maliyet girilmedi"}</span><PanelDrawer triggerLabel="Maliyeti Yönet" title={`${contract.contract_no} · İş Maliyeti`} description="Bu bilgi CRM personellerine gösterilmez."><form className="panel-form" action={saveContractServiceCost}><input type="hidden" name="contract_id" value={contract.id}/><label>Maliyet tutarı<input name="amount" type="number" min="0" step="0.01" defaultValue={contract.service_cost / 100}/></label><label>Hizmet sağlayıcı<input name="supplier" defaultValue={contract.service_cost_supplier ?? "AkademikMerkez"} maxLength={180}/></label><label>Belge / referans<input name="reference" defaultValue={contract.service_cost_reference ?? ""} maxLength={120}/></label><label>Durum<select name="cost_status" defaultValue={contract.service_cost_status}><option value="planned">Planlanan gider</option><option value="paid">Ödendi</option></select></label><div className="form-actions wide"><button className="panel-primary">Maliyeti Kaydet</button></div></form></PanelDrawer></article>; })}{!contracts.length ? <p className="panel-empty">İmzalanmış sözleşme bulunmuyor.</p> : null}</div>
-      </section> : null}
+      {mode==="maliyet"&&canManageCosts ? <section className="finance-cost-workspace"><div className="finance-cost-kpis"><article><small>TOPLAM SÖZLEŞME</small><strong>{money(contracts.reduce((s,c)=>s+Number(c.amount),0))}</strong><span>{contracts.length} iş</span></article><article><small>MALİYET TOPLAMI</small><strong>{money(totalServiceCost)}</strong><span>İşlere bağlı giderler</span></article><article className="is-profit"><small>TOPLAM KÂR</small><strong>{money(contracts.reduce((s,c)=>s+Number(c.amount)-(costTotals.get(c.id)??Number(c.service_cost)),0))}</strong><span>Brüt iş kârlılığı</span></article><article><small>ORTALAMA KÂR ORANI</small><strong>%{Math.round(contracts.reduce((s,c)=>s+(Number(c.amount)?((Number(c.amount)-(costTotals.get(c.id)??Number(c.service_cost)))/Number(c.amount))*100:0),0)/(contracts.length||1))}</strong><span>Sözleşme bazında</span></article></div><section className="panel-card finance-contract-costs">
+        <header><div><small className="panel-kicker">YÖNETİCİ FİNANSI</small><h2>İş Kârlılık Tablosu</h2><p>Sözleşmeye tıklayarak ayrıntılı maliyet hareketlerini açın.</p></div></header>
+        <div className="finance-cost-table"><div className="finance-cost-table-head"><span>İş / Müşteri</span><span>Sözleşme</span><span>Maliyet</span><span>Toplam Kâr</span><span>Kâr Oranı</span><span></span></div>{contracts.map(contract=>{const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const cost=costTotals.get(contract.id)??Number(contract.service_cost);const profit=Number(contract.amount)-cost;const margin=Number(contract.amount)?(profit/Number(contract.amount))*100:0;return <article key={contract.id}><Link href={`/panel/finance/costs/${contract.id}`}><span>{contract.contract_no}</span><h3>{relation?.customer_name||contract.title}</h3><p>{contract.title}</p></Link><strong>{money(contract.amount)}</strong><strong className="is-cost">{money(cost)}</strong><strong className={profit>=0?"is-positive":"is-negative"}>{money(profit)}</strong><span className={`finance-margin ${margin>=30?"good":margin>=0?"medium":"bad"}`}>%{margin.toFixed(1)}</span><Link className="panel-secondary" href={`/panel/finance/costs/${contract.id}`}>Detay</Link></article>})}{!contracts.length?<p className="panel-empty">İmzalanmış sözleşme bulunmuyor.</p>:null}</div>
+      </section></section> : null}
     </main>
   );
 }

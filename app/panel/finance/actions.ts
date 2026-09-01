@@ -14,6 +14,25 @@ async function financeContext() {
   return context;
 }
 
+async function syncContractCostSummary(supabase: Awaited<ReturnType<typeof financeContext>>["supabase"], organizationId: string, userId: string, contractId: string) {
+  const [{ data: contract }, { data: items }] = await Promise.all([
+    supabase.from("crm_contracts").select("id,contract_no,title,service_cost_transaction_id").eq("id",contractId).eq("organization_id",organizationId).maybeSingle(),
+    supabase.from("contract_cost_items").select("amount,status").eq("contract_id",contractId).eq("organization_id",organizationId),
+  ]);
+  if(!contract) throw new Error("Sözleşme bulunamadı.");
+  const total=(items??[]).reduce((sum,item)=>sum+Number(item.amount),0);
+  const paid=(items??[]).filter(item=>item.status==="paid").reduce((sum,item)=>sum+Number(item.amount),0);
+  let transactionId=contract.service_cost_transaction_id as string|null;
+  if(total===0&&transactionId){await supabase.from("finance_transactions").delete().eq("id",transactionId).eq("organization_id",organizationId);transactionId=null}
+  else if(total>0){const payload={organization_id:organizationId,transaction_type:"expense",status:paid>0?"paid":"planned",title:`${contract.contract_no} hizmet maliyeti`,category:"Hizmet maliyeti",amount:paid||total,currency:"TRY",paid_at:paid>0?new Date().toISOString():null,notes:contract.title};if(transactionId){await supabase.from("finance_transactions").update(payload).eq("id",transactionId).eq("organization_id",organizationId)}else{const {data:transaction,error}=await supabase.from("finance_transactions").insert({...payload,created_by:userId}).select("id").single();if(error)throw new Error("Finans gideri oluşturulamadı: "+error.message);transactionId=transaction.id}}
+  const {error}=await supabase.from("crm_contracts").update({service_cost:total,service_cost_status:total>0&&(items??[]).every(item=>item.status==="paid")?"paid":"planned",service_cost_transaction_id:transactionId}).eq("id",contractId).eq("organization_id",organizationId);
+  if(error)throw new Error("Maliyet özeti güncellenemedi: "+error.message);
+}
+
+export async function addContractCostItem(formData:FormData){const {supabase,membership,userId}=await financeContext();const contractId=String(formData.get("contract_id")??"");const category=String(formData.get("category")??"").trim();const description=String(formData.get("description")??"").trim();const supplier=String(formData.get("supplier")??"").trim();const reference=String(formData.get("reference_no")??"").trim();const costDate=String(formData.get("cost_date")??"")||new Date().toISOString().slice(0,10);const status=String(formData.get("status")??"planned");const amount=Math.round(Number(formData.get("amount")??0)*100);if(!contractId||description.length<2||!Number.isFinite(amount)||amount<=0)throw new Error("Maliyet kalemi bilgileri eksik.");if(!new Set(["planned","paid"]).has(status))throw new Error("Maliyet durumu geçersiz.");const {data:contract}=await supabase.from("crm_contracts").select("id").eq("id",contractId).eq("organization_id",membership.organization_id).maybeSingle();if(!contract)throw new Error("Sözleşme bulunamadı.");const {error}=await supabase.from("contract_cost_items").insert({organization_id:membership.organization_id,contract_id:contractId,category:category||"Dış hizmet",description,supplier:supplier||null,amount,cost_date:costDate,status,reference_no:reference||null,created_by:userId});if(error)throw new Error("Maliyet kalemi eklenemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
+
+export async function deleteContractCostItem(formData:FormData){const {supabase,membership,userId}=await financeContext();const itemId=String(formData.get("item_id")??"");const contractId=String(formData.get("contract_id")??"");if(!itemId||!contractId)throw new Error("Maliyet kalemi seçilemedi.");const {error}=await supabase.from("contract_cost_items").delete().eq("id",itemId).eq("contract_id",contractId).eq("organization_id",membership.organization_id);if(error)throw new Error("Maliyet kalemi silinemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
+
 export async function createFinanceTransaction(formData: FormData) {
   const { supabase, userId, membership } = await financeContext();
   const transactionType = String(formData.get("transaction_type") ?? "");
