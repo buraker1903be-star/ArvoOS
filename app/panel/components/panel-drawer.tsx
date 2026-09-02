@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import "./panel-drawer.css";
 
 type PanelDrawerProps = {
@@ -13,6 +13,9 @@ type PanelDrawerProps = {
 export function PanelDrawer({ triggerLabel, title, description, children }: PanelDrawerProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const drawerId = useId();
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -21,20 +24,37 @@ export function PanelDrawer({ triggerLabel, title, description, children }: Pane
     };
     document.addEventListener("keydown", onKeyDown);
     document.body.style.overflow = "hidden";
+    // Açıldığında odağı kapatma butonuna ver (küçük timeout DOM render için)
+    setTimeout(() => closeRef.current?.focus(), 50);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) {
+      // drawer kapandığında trigger'a odağı geri ver
+      triggerRef.current?.focus();
+    }
+  }, [open]);
+
   return <>
-    <button className="panel-primary" type="button" onClick={() => setOpen(true)}>{triggerLabel}</button>
+    <button
+      ref={triggerRef}
+      className="panel-primary"
+      type="button"
+      aria-expanded={open}
+      aria-controls={drawerId}
+      onClick={() => setOpen(true)}
+    >{triggerLabel}</button>
+
     <div className={open ? "panel-drawer-root open" : "panel-drawer-root"} aria-hidden={!open}>
       <button className="panel-drawer-backdrop" type="button" aria-label="Çekmeceyi kapat" onClick={() => setOpen(false)} />
-      <aside className="panel-drawer" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <aside id={drawerId} className="panel-drawer" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="panel-drawer-header">
           <div><small className="panel-kicker">YENİ KAYIT</small><h2 id={titleId}>{title}</h2>{description ? <p>{description}</p> : null}</div>
-          <button className="panel-drawer-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
+          <button ref={closeRef} className="panel-drawer-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
         </header>
         <div className="panel-drawer-body">{children}</div>
       </aside>
