@@ -122,12 +122,22 @@ export default async function ContractsPage({ searchParams }: Props) {
     for (const wf of workflows ?? [])
       if (wf.status === "completed") completedWorkflowIds.add(wf.id);
   }
+  // Arşiv kuralı: iş bu ekrandan çıkmışsa listede durmasın.
+  //  - tamamlanmış sözleşme
+  //  - iş akışı tamamlanmış sözleşme
+  //  - imzalanmış VE iş akışına devredilmiş sözleşme (iş artık Operasyon'da)
+  // İmzalanmış ama iş akışı AÇILMAMIŞ sözleşme listede kalır: orada
+  // yapılacak bir iş var, gizlenirse unutulur.
   const isArchived = (row: Contract) =>
     row.status === "completed" ||
     (Boolean(row.workflow_id) &&
-      completedWorkflowIds.has(row.workflow_id as string));
+      (row.status === "signed" ||
+        completedWorkflowIds.has(row.workflow_id as string)));
   const rows = allRows.filter((row) => !isArchived(row));
   const archivedRows = allRows.filter(isArchived);
+  const lateCount = rows.filter(
+    (row) => row.status === "sent" && (daysSince(row.sent_at) ?? 0) >= 7,
+  ).length;
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = share ? `https://${publicHost}/sozlesme/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
@@ -213,14 +223,16 @@ export default async function ContractsPage({ searchParams }: Props) {
             <span>Sözleşme bedeli</span>
           </article>
           <article>
-            <small>GÖRÜNTÜLENEN</small>
-            <strong>{rows.filter((r) => r.view_count > 0).length}</strong>
-            <span>Müşteri tarafından açılan</span>
+            <small>AÇILMAYAN</small>
+            <strong>
+              {rows.filter((r) => r.status === "sent" && !r.view_count).length}
+            </strong>
+            <span>Gönderildi, müşteri henüz açmadı</span>
           </article>
-          <article>
-            <small>İMZALANAN</small>
-            <strong>{rows.filter((r) => r.status === "signed").length}</strong>
-            <span>İş akışı oluşturulan</span>
+          <article className={lateCount ? "is-alert" : undefined}>
+            <small>GECİKEN</small>
+            <strong>{lateCount}</strong>
+            <span>7 günden uzun süredir imza bekliyor</span>
           </article>
         </section>
         <section className="panel-card">
@@ -355,7 +367,7 @@ export default async function ContractsPage({ searchParams }: Props) {
             <summary>
               <span>Arşivlenen sözleşmeler</span>
               <em>{archivedRows.length}</em>
-              <small>İşi tamamlanan sözleşmeler, panoyu meşgul etmiyor</small>
+              <small>Operasyona devredilen ve tamamlanan sözleşmeler</small>
             </summary>
             <div className="ops-archive-list">
               {archivedRows.map((row) => (

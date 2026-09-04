@@ -238,3 +238,14 @@
   color: var(--danger);
   font-weight: 750;
 }
+
+/* Uyarı durumundaki metrik kartı — sıfırdan büyükse dikkat çeksin.
+   "3 sözleşme 7 günden uzun süredir imza bekliyor" bilgisi, bir sayı
+   olarak gösterilse bile eylem gerektiriyor. */
+.crm-metrics article.is-alert {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+  background: var(--danger-soft);
+}
+.crm-metrics article.is-alert strong {
+  color: var(--danger);
+}
