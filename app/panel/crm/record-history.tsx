@@ -11,10 +11,15 @@ import type { FieldChange } from "@/lib/activity-log";
  */
 
 const ACTION_LABELS: Record<string, string> = {
+  create: "oluşturdu",
   update: "güncelledi",
   assign: "temsilci atadı",
   status: "durumu değiştirdi",
-  create: "oluşturdu",
+  stage: "aşamasını değiştirdi",
+  send: "müşteriye gönderdi",
+  convert: "sözleşmeye dönüştürdü",
+  archive: "arşivledi",
+  delete: "sildi",
 };
 
 const ENTITY_LABELS: Record<string, string> = {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
+import { requestStageNames } from "./request-status";
 import { getPanelContext } from "@/lib/panel-context";
 
 const defaultProbability: Record<string, number> = {
@@ -108,7 +109,7 @@ export async function createOpportunity(formData: FormData) {
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };
-  const { error } = await supabase.from("crm_opportunities").insert({
+  const { data: created, error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
     title,
     customer_name: customerName,
@@ -124,8 +125,21 @@ export async function createOpportunity(formData: FormData) {
     assigned_employee_id: assignment.employeeId,
     owner_user_id: assignment.userId,
     created_by: userId,
-  });
+  }).select("id,title,customer_name").maybeSingle();
   if (error) throw new Error("Talep oluşturulamadı: " + error.message);
+
+  if (created?.id) {
+    await logActivity(supabase, {
+      organizationId: membership.organization_id,
+      actorUserId: userId,
+      action: "create",
+      entityType: "crm_opportunity",
+      entityId: created.id,
+      opportunityId: created.id,
+      note: `${created.customer_name} · ${created.title}`,
+    });
+  }
+
   revalidatePath("/panel/crm");
   revalidatePath("/panel");
 }
@@ -218,12 +232,21 @@ export async function updateOpportunity(formData: FormData) {
 }
 
 export async function archiveOpportunity(formData: FormData) {
-  const { supabase, membership } = await crmContext();
+  const { supabase, membership, userId } = await crmContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error(
       "Talep silme işlemi yalnızca yöneticiler tarafından yapılabilir.",
     );
   const opportunityId = text(formData, "opportunity_id", 80);
+  // Silinen kaydın adı geçmişte görünsün diye önceden okuyoruz;
+  // sonrasında satır artık okunamayacak.
+  const { data: archivedRow } = await supabase
+    .from("crm_opportunities")
+    .select("title,customer_name")
+    .eq("id", opportunityId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("crm_opportunities")
     .update({
@@ -240,12 +263,25 @@ export async function archiveOpportunity(formData: FormData) {
     .maybeSingle();
   if (error) throw new Error("Talep arşivlenemedi: " + error.message);
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "archive",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    note: archivedRow
+      ? `${archivedRow.customer_name} · ${archivedRow.title} arşivlendi`
+      : "Talep arşivlendi",
+  });
+
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel");
 }
 export async function moveOpportunity(formData: FormData) {
-  const { supabase, membership } = await crmContext();
+  const { supabase, membership, userId } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   const stage = text(formData, "stage", 80);
   if (!new Set(["lead", "qualified", "proposal", "lost"]).has(stage))
@@ -257,6 +293,13 @@ export async function moveOpportunity(formData: FormData) {
     supabase,
     membership.organization_id,
   );
+  const { data: beforeStage } = await supabase
+    .from("crm_opportunities")
+    .select("stage")
+    .eq("id", opportunityId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("crm_opportunities")
     .update({
@@ -272,7 +315,24 @@ export async function moveOpportunity(formData: FormData) {
   if (error) throw new Error("Talep durumu güncellenemedi: " + error.message);
   if (!data)
     throw new Error("Talep bulunamadı veya bu kaydı güncelleme yetkiniz yok.");
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "stage",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    changes: [{
+      field: "stage", label: "Aşama",
+      from: requestStageNames[beforeStage?.stage ?? ""] ?? (beforeStage?.stage ?? ""),
+      to: requestStageNames[stage] ?? stage,
+    }],
+    note: stage === "lost" && lostReason ? `Kayıp nedeni: ${lostReason}` : undefined,
+  });
+
   revalidatePath("/panel/crm");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel");
 }
 

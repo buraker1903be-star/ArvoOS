@@ -66,7 +66,7 @@ export async function createProposal(
     return { error: "Teklif bilgileri eksik veya geçersiz." };
   }
 
-  const { supabase } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const { data, error } = await supabase.rpc("create_crm_proposal_v2", {
     target_opportunity_id: opportunityId,
     proposal_title: title,
@@ -94,6 +94,16 @@ export async function createProposal(
   }
 
   const row = Array.isArray(data) ? data[0] : data;
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "create",
+    entityType: "crm_proposal",
+    entityId: String(row?.proposal_id ?? row?.id ?? ""),
+    opportunityId,
+    note: "Teklif oluşturuldu",
+  });
   if (!row?.access_token) {
     console.error("create_crm_proposal_v2 returned no access token", { data });
     return {
@@ -146,7 +156,7 @@ export async function createContractDirectly(
     return { error: "Sözleşme bilgileri eksik veya geçersiz." };
   }
 
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     return { error: "Bu işlem için yetkiniz yok." };
 
@@ -193,6 +203,16 @@ export async function createContractDirectly(
   if (acceptRow?.result_status !== "accepted") {
     return { error: "Sözleşmeye dönüştürülemedi, durumu kontrol edin." };
   }
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "create",
+    entityType: "crm_contract",
+    entityId: String(row?.contract_id ?? row?.id ?? ""),
+    opportunityId,
+    note: "Talepten doğrudan sözleşme oluşturuldu",
+  });
 
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
@@ -303,7 +323,7 @@ export async function createProposalRevision(formData: FormData) {
 }
 
 export async function issueProposalLink(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_proposal_link", {
     target_proposal_id: proposalId,
@@ -316,7 +336,7 @@ export async function issueProposalLink(formData: FormData) {
   const { data: info } = await supabase
     .from("crm_proposals")
     .select(
-      "proposal_no,title,amount,currency,crm_opportunities(customer_name,contact_email)",
+      "proposal_no,title,amount,currency,opportunity_id,crm_opportunities(customer_name,contact_email)",
     )
     .eq("id", proposalId)
     .eq("organization_id", membership.organization_id)
@@ -335,6 +355,16 @@ export async function issueProposalLink(formData: FormData) {
     amount: String(info?.amount ?? ""),
     currency: info?.currency ?? "TRY",
   });
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "send",
+    entityType: "crm_proposal",
+    entityId: proposalId,
+    opportunityId: String(info?.opportunity_id ?? ""),
+    note: "Müşteri bağlantısı oluşturuldu ve gönderime hazırlandı",
+  });
+
   // Detay sayfasından çağrıldıysa oraya dön; eskiden her durumda
   // listeye atıyordu ve kullanıcı bulunduğu sayfadan kopuyordu.
   const backTo = text(formData, "redirect_to", 200);
@@ -449,7 +479,7 @@ export async function updateContractPaymentPlan(
   _previousState: UpdateContractPlanState,
   formData: FormData,
 ): Promise<UpdateContractPlanState> {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const planType = text(formData, "payment_plan_type", 20);
   const planText = text(formData, "payment_plan_text", 2000);
@@ -479,12 +509,28 @@ export async function updateContractPaymentPlan(
       success: false,
     };
 
+  const { data: planned } = await supabase
+    .from("crm_contracts")
+    .select("contract_no,opportunity_id")
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "update",
+    entityType: "crm_contract",
+    entityId: contractId,
+    opportunityId: String(planned?.opportunity_id ?? ""),
+    changes: [{ field: "payment_plan", label: "Ödeme planı", from: "", to: "Güncellendi" }],
+  });
+
   revalidatePath("/panel/crm/contracts");
   return { error: null, success: true };
 }
 
 export async function issueContractLink(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_contract_link", {
     target_contract_id: contractId,
@@ -497,7 +543,7 @@ export async function issueContractLink(formData: FormData) {
   const { data: info } = await supabase
     .from("crm_contracts")
     .select(
-      "contract_no,title,amount,currency,crm_opportunities(customer_name,contact_email)",
+      "contract_no,title,amount,currency,opportunity_id,crm_opportunities(customer_name,contact_email)",
     )
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id)
@@ -516,6 +562,16 @@ export async function issueContractLink(formData: FormData) {
     amount: String(info?.amount ?? ""),
     currency: info?.currency ?? "TRY",
   });
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "send",
+    entityType: "crm_contract",
+    entityId: contractId,
+    opportunityId: String(info?.opportunity_id ?? ""),
+    note: "Sözleşme imzaya gönderildi",
+  });
+
   const backTo = text(formData, "redirect_to", 200);
   if (backTo.startsWith("/panel/crm/contracts/")) {
     redirect(`${backTo}?${params.toString()}`);
@@ -528,7 +584,7 @@ export async function issueContractLink(formData: FormData) {
 // kullanılamaz (bu ikisinin gerçek finans/operasyon etkisi var, tek
 // tıkla değiştirilmemeli).
 export async function markContractStatus(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
@@ -557,6 +613,18 @@ export async function markContractStatus(formData: FormData) {
     .eq("organization_id", membership.organization_id);
   if (error)
     throw new Error("Sözleşme durumu güncellenemedi: " + error.message);
+  const { data: mc } = await supabase
+    .from("crm_contracts").select("opportunity_id")
+    .eq("id", contractId).eq("organization_id", membership.organization_id).maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id, actorUserId: userId,
+    action: "status", entityType: "crm_contract", entityId: contractId,
+    opportunityId: String(mc?.opportunity_id ?? ""),
+    changes: [{ field: "status", label: "Durum",
+      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
+      to: STATUS_LABELS[status] ?? status }],
+  });
+
   revalidatePath("/panel/crm/contracts");
 }
 
@@ -564,7 +632,7 @@ export async function markContractStatus(formData: FormData) {
 // ödeme planı varsa, gerçek finans/operasyon verisi kaybolmasın diye
 // silinemez.
 export async function deleteContract(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
@@ -593,12 +661,31 @@ export async function deleteContract(formData: FormData) {
       "Bu sözleşmeye bağlı bir ödeme planı var, önce onu silin veya bu sözleşmeyi silmeyin.",
     );
 
-  const { error } = await supabase
+  const { data: doomedContract } = await supabase
+    .from("crm_contracts")
+    .select("contract_no,title,opportunity_id")
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
+  const { error: deleteError } = await supabase
     .from("crm_contracts")
     .delete()
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Sözleşme silinemedi: " + error.message);
+  if (deleteError) throw new Error("Sözleşme silinemedi: " + deleteError.message);
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "delete",
+    entityType: "crm_contract",
+    entityId: contractId,
+    opportunityId: String(doomedContract?.opportunity_id ?? ""),
+    note: doomedContract
+      ? `${doomedContract.contract_no} · ${doomedContract.title} silindi`
+      : "Sözleşme silindi",
+  });
   revalidatePath("/panel/crm/contracts");
 }
 
@@ -607,7 +694,7 @@ export async function deleteContract(formData: FormData) {
 // Aynı, zaten kanıtlanmış kabul mantığını (respond_to_crm_proposal) müşteri
 // linkine gitmeden, personel adına tetikler.
 export async function fastTrackProposalToContract(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
@@ -632,6 +719,24 @@ export async function fastTrackProposalToContract(formData: FormData) {
   });
   if (error) throw new Error("Sözleşmeye dönüştürülemedi: " + error.message);
   const row = Array.isArray(data) ? data[0] : data;
+
+  const { data: converted } = await supabase
+    .from("crm_proposals")
+    .select("proposal_no,opportunity_id")
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "convert",
+    entityType: "crm_proposal",
+    entityId: proposalId,
+    opportunityId: String(converted?.opportunity_id ?? ""),
+    note: converted
+      ? `${converted.proposal_no} sözleşmeye dönüştürüldü`
+      : "Teklif sözleşmeye dönüştürüldü",
+  });
   if (row?.result_status !== "accepted")
     throw new Error("Teklif kabul edilemedi, durumunu kontrol edin.");
 
@@ -646,7 +751,7 @@ export async function fastTrackProposalToContract(formData: FormData) {
 // işaretlemek için — kabul edilmiş veya zaten kilitli tekliflerde
 // kullanılamaz.
 export async function markProposalStatus(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
@@ -674,13 +779,25 @@ export async function markProposalStatus(formData: FormData) {
     .eq("id", proposalId)
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Teklif durumu güncellenemedi: " + error.message);
+
+  const { data: mp } = await supabase
+    .from("crm_proposals").select("opportunity_id")
+    .eq("id", proposalId).eq("organization_id", membership.organization_id).maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id, actorUserId: userId,
+    action: "status", entityType: "crm_proposal", entityId: proposalId,
+    opportunityId: String(mp?.opportunity_id ?? ""),
+    changes: [{ field: "status", label: "Durum",
+      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
+      to: STATUS_LABELS[status] ?? status }],
+  });
   revalidatePath("/panel/crm/proposals");
 }
 
 // Teklifi kalıcı olarak siler. Kabul edilip gerçek bir sözleşmeye
 // dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
 export async function deleteProposal(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
@@ -697,12 +814,31 @@ export async function deleteProposal(formData: FormData) {
       "Bu teklife bağlı bir sözleşme var, önce sözleşmeyi silin veya bu teklifi silmeyin.",
     );
 
+  // Silinen kaydın kimliği geçmişte kalsın diye önce okuyoruz.
+  const { data: doomed } = await supabase
+    .from("crm_proposals")
+    .select("proposal_no,title,amount,currency,opportunity_id")
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("crm_proposals")
     .delete()
     .eq("id", proposalId)
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Teklif silinemedi: " + error.message);
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "delete",
+    entityType: "crm_proposal",
+    entityId: proposalId,
+    opportunityId: String(doomed?.opportunity_id ?? ""),
+    note: doomed ? `${doomed.proposal_no} · ${doomed.title} silindi` : "Teklif silindi",
+  });
+
   revalidatePath("/panel/crm/proposals");
 }
 
