@@ -234,3 +234,58 @@
   }
   .ops-detail-metrics span { font-size: 12px; }
 }
+
+/* ============================================================
+   BAĞLI KAYITLAR — üstte yatay şerit.
+   Sözleşme no, takip kodu ve teklif no birer "kimlik" bilgisi;
+   sağ sütunda alt alta dururken aranıp bulunması gerekiyordu.
+   Üstte yan yana durunca bir bakışta okunuyor.
+   ============================================================ */
+.ops-records-strip {
+  margin-bottom: 14px;
+  padding: 16px 20px;
+}
+.ops-records-strip .ops-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px 22px;
+  margin: 12px 0 0;
+}
+.ops-records-strip .ops-detail-list > div {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+.ops-records-strip dt {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ops-records-strip dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* Sağ sütun: müşteri tarafı — bilgiler ve iki yazışma paneli.
+   İki uzun panel olduğu için sabitlemiyoruz; sayfayla birlikte kayıyor. */
+@media (min-width: 1180px) {
+  .ops-detail-side { position: static; }
+  .ops-detail-side .crm-internal-comments,
+  .ops-detail-side .ops-customer-messages { max-height: none; }
+}
+
+/* İş solda geniş, müşteri tarafı sağda — CRM detay sayfalarıyla
+   aynı oran. Adım listesi uzun olduğu için sol sütun daha geniş. */
+@media (min-width: 1180px) {
+  .ops-detail-layout {
+    grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
+    align-items: start;
+  }
+}

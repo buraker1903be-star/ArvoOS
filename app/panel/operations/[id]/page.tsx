@@ -77,13 +77,15 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
    <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/operations">← İşlere dön</Link><span className="status-pill">{statusNames[workflow.status]??workflow.status}</span><span className={`priority priority-${workflow.priority}`}>{priorityNames[workflow.priority]??workflow.priority}</span></div>
   </div>
 
-  <section className="ops-detail-metrics">
+  
+
+    <section className="ops-detail-metrics">
    <article className="panel-card"><small>MÜŞTERİ</small><strong>{customerName}</strong><span>{formatPhone(opportunity?.contact_phone)||"Telefon bilgisi yok"}</span></article>
    <article className="panel-card"><small>İLERLEME</small><strong>%{progress}</strong><span>{completedCount}/{steps.length} görev tamamlandı</span></article>
    <article className="panel-card"><small>BAŞLANGIÇ</small><strong>{formatDate(workflow.start_date)}</strong><span>İş başlangıç tarihi</span></article>
    <article className="panel-card"><small>TERMİN</small><strong>{formatDate(workflow.due_date)}</strong><span>Planlanan teslim tarihi</span></article>
   </section>
-
+<section className="panel-card ops-detail-card ops-records-strip"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Takip Kodu</dt><dd>{contract?.tracking_code?<code className="ops-tracking-code">{contract.tracking_code}</code>:"Henüz üretilmedi"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status?contractStatusLabel(contract.status):"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status?proposalStatusLabel(proposal.status):"—"}</dd></div></dl></section>
   <div className="ops-detail-layout">
    <div className="ops-detail-main">
     <section className="panel-card ops-detail-card ops-detail-workflow-card">
@@ -98,20 +100,10 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
      <form className="ops-detail-add" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id}/><input name="title" required minLength={2} maxLength={180} placeholder="Yeni görev ekle"/><button className="panel-primary" type="submit">Görev Ekle</button></form>
     </section>
 
-    {contract?.opportunity_id?<InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id}/>:null}
+    
 
-    <section className="panel-card ops-detail-card ops-customer-messages">
-     <div className="ops-detail-section-head"><div><small className="panel-kicker">MÜŞTERİ İLETİŞİMİ</small><h2>Dosya Mesajları</h2></div><span className="status-pill">{unreadCustomerMessages?`${unreadCustomerMessages} yeni mesaj`:`${customerMessages.length} mesaj`}</span></div>
-     <p className="ops-customer-message-note">Müşterinin takip ekranından gönderdiği sorular ve operasyon ekibinin yanıtları.</p>
-     <div className="ops-customer-message-list">{customerMessages.length?customerMessages.map(message=><article className={message.sender_type==="customer"?"customer-message":"staff-message"} key={message.id}><header><strong>{message.sender_type==="customer"?"Müşteri":message.sender_name}</strong><time>{formatDate(message.created_at,true)}</time></header><p>{message.body}</p></article>):<div className="ops-column-empty">Müşteriden henüz mesaj gelmemiş.</div>}</div>
-     {contract?<form className="ops-customer-reply-form" action={replyCustomerFileMessage}><input type="hidden" name="workflow_id" value={workflow.id}/><textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye dosyası hakkında yanıt yazın..."/><div><small>Yanıt müşterinin takip ekranında görünecektir.</small><button className="panel-primary" type="submit">Yanıtı Gönder</button></div></form>:null}
-    </section>
-   </div>
-
-   <aside className="ops-detail-side">
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone)||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage?(requestStageNames[opportunity.stage]??opportunity.stage):"—"}</dd></div></dl></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Takip Kodu</dt><dd>{contract?.tracking_code?<code className="ops-tracking-code">{contract.tracking_code}</code>:"Henüz üretilmedi"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status?contractStatusLabel(contract.status):"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status?proposalStatusLabel(proposal.status):"—"}</dd></div></dl></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form><div className="ops-detail-manage">
+    
+   <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form><div className="ops-detail-manage">
       {canAssign?<PanelDrawer triggerLabel="Sorumlu Ata" title={workflow.title} description="Bu işi yürütecek personeli seçin." triggerClassName="panel-secondary">
        <form className="panel-form" action={assignWorkflow}>
         <input type="hidden" name="workflow_id" value={workflow.id}/>
@@ -130,8 +122,23 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
       </form>:null}
      </div>
     </section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">AKTİVİTE</small><h2>Son Hareketler</h2><div className="ops-activity-list">{activities.map(activity=><article key={activity.id} className={`activity-${activity.kind}`}><i>{activity.kind==="created"?"＋":activity.kind==="step"?"✓":"•"}</i><div><strong>{activity.title}</strong><p>{activity.detail}</p><time>{formatDate(activity.at,true)}</time></div></article>)}</div></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">ZAMAN</small><h2>İş Bilgileri</h2><dl className="ops-detail-list"><div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at,true)}</dd></div><div><dt>Son Güncelleme</dt><dd>{formatDate(workflow.updated_at,true)}</dd></div></dl></section>
+   <section className="panel-card ops-detail-card"><small className="panel-kicker">AKTİVİTE</small><h2>Son Hareketler</h2><div className="ops-activity-list">{activities.map(activity=><article key={activity.id} className={`activity-${activity.kind}`}><i>{activity.kind==="created"?"＋":activity.kind==="step"?"✓":"•"}</i><div><strong>{activity.title}</strong><p>{activity.detail}</p><time>{formatDate(activity.at,true)}</time></div></article>)}</div></section>
+   <section className="panel-card ops-detail-card"><small className="panel-kicker">ZAMAN</small><h2>İş Bilgileri</h2><dl className="ops-detail-list"><div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at,true)}</dd></div><div><dt>Son Güncelleme</dt><dd>{formatDate(workflow.updated_at,true)}</dd></div></dl></section>
+   </div>
+
+   <aside className="ops-detail-side">
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone)||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage?(requestStageNames[opportunity.stage]??opportunity.stage):"—"}</dd></div></dl></section>
+    {contract?.opportunity_id?<InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id}/>:null}
+    <section className="panel-card ops-detail-card ops-customer-messages">
+     <div className="ops-detail-section-head"><div><small className="panel-kicker">MÜŞTERİ İLETİŞİMİ</small><h2>Dosya Mesajları</h2></div><span className="status-pill">{unreadCustomerMessages?`${unreadCustomerMessages} yeni mesaj`:`${customerMessages.length} mesaj`}</span></div>
+     <p className="ops-customer-message-note">Müşterinin takip ekranından gönderdiği sorular ve operasyon ekibinin yanıtları.</p>
+     <div className="ops-customer-message-list">{customerMessages.length?customerMessages.map(message=><article className={message.sender_type==="customer"?"customer-message":"staff-message"} key={message.id}><header><strong>{message.sender_type==="customer"?"Müşteri":message.sender_name}</strong><time>{formatDate(message.created_at,true)}</time></header><p>{message.body}</p></article>):<div className="ops-column-empty">Müşteriden henüz mesaj gelmemiş.</div>}</div>
+     {contract?<form className="ops-customer-reply-form" action={replyCustomerFileMessage}><input type="hidden" name="workflow_id" value={workflow.id}/><textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye dosyası hakkında yanıt yazın..."/><div><small>Yanıt müşterinin takip ekranında görünecektir.</small><button className="panel-primary" type="submit">Yanıtı Gönder</button></div></form>:null}
+    </section>
+    
+    
+    
+    
    </aside>
   </div>
  </div>;
