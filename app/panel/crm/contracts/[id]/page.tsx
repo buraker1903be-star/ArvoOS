@@ -7,9 +7,10 @@ import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
 import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../sales-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
-import { organizationBrandName } from "@/lib/customer-message-templates";
+import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
+import "../../crm.css";
 
 type Props = { params: Promise<{ id: string }> };
 const labels: Record<string, string> = { draft: "Taslak", sent: "İmza bekliyor", signed: "İmzalandı", rejected: "Reddedildi", cancelled: "İptal", completed: "Tamamlandı" };
@@ -22,7 +23,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -34,11 +35,26 @@ export default async function ContractDetailPage({ params }: Props) {
   }
   const locked = ["signed", "completed", "rejected", "cancelled"].includes(data.status);
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
+  // Sözleşme bağlantısı token'ı sabit; bir kez üretildikten sonra
+  // sayfanın üstünde kalıcı gösteriliyor (teklif detayıyla aynı davranış).
+  const shareUrl = data.share_token
+    ? `https://${publicHost}/sozlesme/${data.share_token}`
+    : "";
   const brandName = organizationBrandName({
     slug: organization.slug,
     displayName: organization.display_name,
     legalName: organization.name,
   });
+  const messages = shareUrl
+    ? contractMessages({
+        organizationName: brandName,
+        customerName: formatPersonName(customer?.customer_name),
+        documentNo: data.contract_no,
+        title: data.title,
+        formattedAmount: money(Number(data.amount), data.currency || "TRY"),
+        url: shareUrl,
+      })
+    : null;
   const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   return (
     <div className="crm-request-detail-page">
@@ -46,6 +62,33 @@ export default async function ContractDetailPage({ params }: Props) {
         <div><small className="panel-kicker">CRM / SÖZLEŞME DETAYI</small><h1>{data.contract_no}</h1><p>{formatPersonName(customer?.customer_name)} · {data.title}</p></div>
         <Link className="panel-secondary" href="/panel/crm/contracts">Sözleşmelere Dön</Link>
       </div>
+      {shareUrl ? (
+        <section className="panel-card share-ready-card">
+          <div className="share-ready-icon">✓</div>
+          <div className="share-ready-body">
+            <small className="panel-kicker">MÜŞTERİ BAĞLANTISI</small>
+            <h2>Sözleşme bağlantısı</h2>
+            <div className="share-ready-link">
+              <span style={{ wordBreak: "break-all" }}>{shareUrl}</span>
+            </div>
+            <div className="panel-page-actions">
+              {customer?.contact_email && messages ? (
+                <a className="panel-primary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
+                  ✉ E-posta ile gönder
+                </a>
+              ) : null}
+              {messages ? (
+                <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                  💬 WhatsApp ile gönder
+                </a>
+              ) : null}
+              <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
+                👁 Önizle
+              </a>
+            </div>
+          </div>
+        </section>
+      ) : null}
       <div className="crm-detail-split">
         <div className="crm-detail-main">
       <section className="panel-card crm-request-detail-card">
@@ -66,7 +109,7 @@ export default async function ContractDetailPage({ params }: Props) {
         <div className="crm-request-detail-actions">
           <small className="panel-kicker">İŞLEMLER</small>
           <div>
-          {!locked ? <form action={issueContractLink}><input type="hidden" name="contract_id" value={data.id}/><button className="panel-primary">İmzaya Gönder</button></form> : null}
+          {!locked ? <form action={issueContractLink}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`}/><button className="panel-primary">İmzaya Gönder</button></form> : null}
           {data.workflow_id ? <Link className="panel-secondary" href={`/panel/operations/${data.workflow_id}`}>İş Akışını Aç</Link> : null}
           {!locked ? (
             <PanelDrawer triggerLabel="Düzenle" title={data.contract_no} description="Sözleşme bilgilerini kontrol edin.">

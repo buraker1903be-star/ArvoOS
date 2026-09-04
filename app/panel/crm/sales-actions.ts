@@ -457,6 +457,10 @@ export async function issueContractLink(formData: FormData) {
     amount: String(info?.amount ?? ""),
     currency: info?.currency ?? "TRY",
   });
+  const backTo = text(formData, "redirect_to", 200);
+  if (backTo.startsWith("/panel/crm/contracts/")) {
+    redirect(`${backTo}?${params.toString()}`);
+  }
   redirect(`/panel/crm/contracts?${params.toString()}`);
 }
 

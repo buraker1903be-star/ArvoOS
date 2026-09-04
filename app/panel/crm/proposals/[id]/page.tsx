@@ -16,6 +16,7 @@ import {
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
+import "../../crm.css";
 
 type Props = { params: Promise<{ id: string }> };
 
