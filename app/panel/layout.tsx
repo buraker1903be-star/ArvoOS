@@ -5,6 +5,7 @@ import { tenantTheme } from "@/lib/tenant-theme";
 import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+import { PanelBreadcrumb } from "./panel-breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
@@ -99,7 +100,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     </aside>
     <section className="panel-workspace">
       <header className="panel-topbar">
-        <div className="panel-breadcrumb"><small>{isPlatformOwner ? "KURUCU MERKEZİ" : "KURUM PANELİ"}</small><b>{organization.name}</b></div>
+        <PanelBreadcrumb brandName={isPlatformOwner ? "Kurucu Merkezi" : brandName} />
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
             {hasMessages ? <MessagesDrawer organizationId={membership.organization_id} userId={userId} people={drawerPeople} initialChannels={drawerChannels} initialUnreadByChannel={unreadByChannel}/> : null}

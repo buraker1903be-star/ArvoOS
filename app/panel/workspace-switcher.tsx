@@ -9,8 +9,12 @@ type Props = {
   variant?: "topbar" | "card";
 };
 
-function getLabel(slug: string) {
-  return slug === "arvo-os" ? "ArvoOS Platform" : "AkademikMerkez";
+// Kurumun kendi markası. Eskiden burada iki kiracı varsayımı gömülüydü
+// ("arvo-os" değilse hep "AkademikMerkez"), bu yüzden üçüncü bir marka
+// eklendiğinde seçicide yanlış isim çıkıyordu.
+function getLabel(organization: PanelWorkspace["organization"]) {
+  if (organization.slug === "arvo-os") return "ArvoOS Platform";
+  return organization.display_name || organization.name;
 }
 
 export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = "topbar" }: Props) {
@@ -28,19 +32,18 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
     return <div className="workspace-card-select">
       <small>ÇALIŞMA ALANI</small>
       <div className="workspace-card-control">
-        <span>{getLabel(activeWorkspace.organization.slug).slice(0, 1)}</span>
+        <span>{getLabel(activeWorkspace.organization).slice(0, 1)}</span>
         <select
           aria-label="Çalışma alanını değiştir"
           value={activeOrganizationId}
           onChange={handleChange}
         >
           {workspaces.map((workspace) => <option key={workspace.organizationId} value={workspace.organizationId}>
-            {getLabel(workspace.organization.slug)}
+            {getLabel(workspace.organization)}
           </option>)}
         </select>
         <i aria-hidden="true">⌄</i>
       </div>
-      <b>{getLabel(activeWorkspace.organization.slug)}</b>
       <em>{activeWorkspace.organization.plan_code} paket</em>
     </div>;
   }
@@ -54,7 +57,7 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
       <small>ÇALIŞMA ALANLARI</small>
       {workspaces.map((workspace) => {
         const active = workspace.organizationId === activeOrganizationId;
-        const label = getLabel(workspace.organization.slug);
+        const label = getLabel(workspace.organization);
         return active
           ? <div className="workspace-switcher-item active" key={workspace.organizationId} aria-current="page"><span>{label.slice(0, 1)}</span><p><b>{label}</b><small>Aktif</small></p><i>✓</i></div>
           : <button className="workspace-switcher-item" key={workspace.organizationId} type="button" onClick={() => window.location.assign(`/panel/switch?organization_id=${encodeURIComponent(workspace.organizationId)}`)}><span>{label.slice(0, 1)}</span><p><b>{label}</b><small>Geçiş yap</small></p><i>→</i></button>;

@@ -435,3 +435,27 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .crm-page-stack .crm-data-table tbody td,.crm-page-stack .crm-data-table tbody td:nth-child(1),.crm-page-stack .crm-data-table tbody td:nth-child(2),.crm-page-stack .crm-table-actions{grid-column:1}
   .crm-page-stack .crm-data-table tbody td{min-height:52px}
 }
+
+/* ============================================================
+   Masaüstünde tablo başlığı — tek satır, satırlarla hizalı.
+   Satırlar zaten sabit sütun genişlikleriyle grid; her kartta
+   etiketi tekrarlamak 25 kayıtta 175 gereksiz metin demek.
+   901px altında dokunmuyoruz: orada kart görünümü doğru.
+   ============================================================ */
+@media(min-width:901px){
+  .crm-page-stack .crm-data-table thead{display:block;position:sticky;top:78px;z-index:2}
+  .crm-page-stack .crm-data-table thead tr{
+    display:grid;
+    grid-template-columns:110px minmax(220px,1.55fr) minmax(150px,1fr) minmax(120px,.8fr) minmax(100px,.65fr) minmax(100px,.65fr) minmax(95px,.58fr) minmax(90px,.55fr) 92px;
+    align-items:center;gap:12px;padding:10px 16px;margin-bottom:6px
+  }
+  .crm-page-stack .crm-data-table thead th{
+    position:static;padding:0;background:transparent;border:0;
+    color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.07em;
+    text-transform:uppercase;text-align:left;white-space:nowrap
+  }
+  /* satır içi etiket tekrarını kaldır — başlık yukarıda */
+  .crm-page-stack .crm-data-table tbody td:before{display:none}
+  .crm-page-stack .crm-data-table tbody td{min-height:40px;justify-content:center}
+  .crm-page-stack .crm-data-table tbody tr{min-height:68px}
+}
