@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import {
@@ -151,7 +152,7 @@ export default async function RequestsPage({
         <div className="panel-page-actions">
           <span className="status-pill">{rows.length} kayıt</span>
           <PanelDrawer
-            triggerLabel="+ Yeni talep"
+            triggerLabel="+ Yeni talep" kicker="YENİ KAYIT"
             title={academicMode ? "Talep Girişi" : "Yeni talep"}
             description="Müşteri ve talep bilgilerini kaydedin."
           >
@@ -254,7 +255,7 @@ export default async function RequestsPage({
                         <Link
                           className="crm-row-link"
                           href={`/panel/crm/requests/${item.id}`}
-                          aria-label={`${item.customer_name} talebini aç`}
+                          aria-label={`${formatPersonName(item.customer_name)} talebini aç`}
                         >
                           TLP-{item.id.slice(0, 8).toUpperCase()}
                         </Link>
@@ -265,7 +266,7 @@ export default async function RequestsPage({
                           href={`/panel/crm/requests/${item.id}`}
                         >
                           <span className="crm-table-title">
-                            {item.customer_name}
+                            {formatPersonName(item.customer_name)}
                           </span>
                           <span className="crm-table-sub">
                             {item.contact_phone ||

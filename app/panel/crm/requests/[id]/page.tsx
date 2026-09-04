@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
@@ -6,10 +7,10 @@ import { ProposalBuilderForm } from "../../proposal-builder-form";
 import { InternalComments } from "../../internal-comments";
 import {
   archiveOpportunity,
-  moveOpportunity,
+  assignOpportunity,
   updateOpportunity,
 } from "../../actions";
-import { requestStageNames, requestStages } from "../../request-status";
+import { requestStageNames } from "../../request-status";
 import "../../crm.css";
 import "../../request-page.css";
 
@@ -147,7 +148,7 @@ export default async function RequestDetailPage({
         <div className="crm-request-detail-heading">
           <div>
             <small className="panel-kicker">MÜŞTERİ VE İŞ BİLGİLERİ</small>
-            <h2>{item.customer_name}</h2>
+            <h2>{formatPersonName(item.customer_name)}</h2>
             <p>{item.title}</p>
           </div>
           <span className="status-pill">
@@ -209,12 +210,49 @@ export default async function RequestDetailPage({
         <div className="crm-request-detail-actions">
           <small className="panel-kicker">İŞLEMLER</small>
           <div>
+            <PanelDrawer triggerLabel="Düzenle" title="Talebi Düzenle">
+              {edit}
+            </PanelDrawer>
+            {canManage ? (
+              <PanelDrawer
+                triggerLabel="Temsilci Ata"
+                title="Satış Temsilcisi Ata"
+                description="Talebi yürütecek temsilciyi seçin."
+                triggerClassName="panel-secondary"
+              >
+                <form className="panel-form" action={assignOpportunity}>
+                  <input type="hidden" name="opportunity_id" value={item.id} />
+                  <label className="wide">
+                    Satış temsilcisi
+                    <select
+                      name="assigned_employee_id"
+                      defaultValue={item.assigned_employee_id ?? ""}
+                      required
+                    >
+                      <option value="">Seçiniz</option>
+                      {(employees ?? []).map((e) => (
+                        <option value={e.id} key={e.id}>
+                          {e.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="wide panel-form-actions">
+                    <button className="panel-primary">Temsilciyi Kaydet</button>
+                  </div>
+                </form>
+              </PanelDrawer>
+            ) : null}
             {item.stage === "proposal" ? (
               <Link className="panel-secondary" href="/panel/crm/proposals">
                 Tekliflere Git
               </Link>
             ) : (
-              <PanelDrawer triggerLabel="Teklif Oluştur" title="Teklif Oluştur">
+              <PanelDrawer
+                triggerLabel="Teklif Oluştur"
+                title="Teklif Oluştur"
+                triggerClassName="panel-secondary"
+              >
                 <ProposalBuilderForm
                   opportunityId={item.id}
                   customerName={item.customer_name}
@@ -225,8 +263,9 @@ export default async function RequestDetailPage({
             )}
             {item.stage !== "proposal" ? (
               <PanelDrawer
-                triggerLabel="Direkt Sözleşme"
+                triggerLabel="Direkt Sözleşme Oluştur"
                 title="Direkt Sözleşme Oluştur"
+                triggerClassName="panel-secondary"
               >
                 <ProposalBuilderForm
                   opportunityId={item.id}
@@ -237,31 +276,6 @@ export default async function RequestDetailPage({
                 />
               </PanelDrawer>
             ) : null}
-            <PanelDrawer triggerLabel="Düzenle" title="Talebi Düzenle">
-              {edit}
-            </PanelDrawer>
-            <PanelDrawer triggerLabel="Durum" title="Durumu Güncelle">
-              <form className="panel-form" action={moveOpportunity}>
-                <input type="hidden" name="opportunity_id" value={item.id} />
-                <label>
-                  Durum
-                  <select name="stage" defaultValue={item.stage}>
-                    {requestStages.map((s) => (
-                      <option value={s.code} key={s.code}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Arşiv nedeni
-                  <input name="lost_reason" />
-                </label>
-                <div className="panel-form-actions">
-                  <button className="panel-primary">Durumu Güncelle</button>
-                </div>
-              </form>
-            </PanelDrawer>
             {canManage ? (
               <form action={archiveOpportunity}>
                 <input type="hidden" name="opportunity_id" value={item.id} />

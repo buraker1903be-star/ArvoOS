@@ -142,7 +142,7 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
     }
   }
 
-  const drawer = <PanelDrawer triggerLabel="+ Yeni randevu" title="Yeni randevu" description="Randevu bilgilerini girin.">
+  const drawer = <PanelDrawer triggerLabel="+ Yeni randevu" kicker="YENİ KAYIT" title="Yeni randevu" description="Randevu bilgilerini girin.">
     <AppointmentForm isManager={isManager} employees={employees} defaultDate={selectedKey} returnTo={withParams({})} />
   </PanelDrawer>;
 

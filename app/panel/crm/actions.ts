@@ -272,3 +272,37 @@ export async function addInternalComment(formData: FormData) {
   revalidatePath("/panel/crm/contracts");
   if (contextType === "operation") revalidatePath(`/panel/operations/${contextId}`);
 }
+
+/**
+ * Yalnızca satış temsilcisini değiştirir.
+ *
+ * updateOpportunity tüm alanları birden yazdığı için "sadece atama yap"
+ * amacıyla kullanılamaz — başlık, müşteri adı ve iletişim bilgileri
+ * boşalırdı. Bu yüzden ayrı ve dar kapsamlı bir action.
+ */
+export async function assignOpportunity(formData: FormData) {
+  const { supabase, membership } = await crmContext();
+  if (!["owner", "admin", "manager"].includes(membership.role)) {
+    throw new Error("Temsilci atama yetkiniz yok.");
+  }
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const assignment = await validateSalesEmployee(
+    supabase,
+    membership.organization_id,
+    text(formData, "assigned_employee_id", 80),
+  );
+  const { data, error } = await supabase
+    .from("crm_opportunities")
+    .update({
+      assigned_employee_id: assignment.employeeId,
+      owner_user_id: assignment.userId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", opportunityId)
+    .eq("organization_id", membership.organization_id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error("Temsilci atanamadı: " + error.message);
+  if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+  revalidatePath("/panel/crm");
+}

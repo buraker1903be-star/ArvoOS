@@ -153,7 +153,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 
 /* Drawers and feedback */
 .panel-drawer-backdrop{background:rgba(4,14,28,.42);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-.panel-drawer{border-left:1px solid var(--line);box-shadow:-28px 0 80px rgba(3,14,28,.28)}
+.panel-drawer{box-shadow:0 32px 90px rgba(3,14,28,.34)}
 .panel-drawer-header{background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .panel-drawer-header h2{font-size:25px}.panel-drawer-header p{font-size:13px}
 .panel-action-feedback{background:rgba(8,25,45,.16);backdrop-filter:blur(4px)}
@@ -189,7 +189,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{min-height:100px;padding:13px}
   .metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong{font-size:20px}
   .module-tabs a{min-height:44px;font-size:13px}
-  .panel-drawer{width:100%;border-left:0;border-radius:20px 20px 0 0}
+  .panel-drawer{width:100%;border-radius:var(--r-lg)}
   .panel-drawer-header{padding-top:max(22px,env(safe-area-inset-top))}
 }
 

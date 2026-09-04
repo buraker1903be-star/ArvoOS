@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import {
 } from "../sales-actions";
@@ -304,7 +305,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                         <div>
                           <span className="crm-table-title">
                             <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`}>
-                              {customer?.customer_name}
+                              {formatPersonName(customer?.customer_name)}
                             </Link>
                           </span>
                           <span className="crm-table-sub">
@@ -371,7 +372,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                 >
                   <div>
                     <b>
-                      {row.contract_no} · {row.crm_opportunities?.customer_name}
+                      {row.contract_no} · {formatPersonName(row.crm_opportunities?.customer_name)}
                     </b>
                     <small>{row.title}</small>
                   </div>

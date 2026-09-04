@@ -58,7 +58,7 @@
   .module-tabs::-webkit-scrollbar{display:none}
   .module-tabs a{flex:0 0 auto;min-height:44px;display:grid;place-items:center;scroll-snap-align:start;white-space:nowrap}
   .module-tab-panel{border-radius:14px;margin-top:10px;border-top:1px solid var(--line)}
-  .panel-drawer{height:100dvh}
+  .panel-drawer{max-height:92dvh}
   .panel-drawer-header{padding-top:max(22px,env(safe-area-inset-top))}
   .panel-drawer-body{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:max(30px,env(safe-area-inset-bottom))}
   dialog,.modal,.panel-modal{width:calc(100vw - 16px);max-width:none;margin:8px;border-radius:18px}

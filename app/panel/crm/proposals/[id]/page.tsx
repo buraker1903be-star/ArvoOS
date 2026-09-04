@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
@@ -66,7 +67,7 @@ export default async function ProposalDetailPage({ params }: Props) {
         <div>
           <small className="panel-kicker">CRM / TEKLİF DETAYI</small>
           <h1>{data.proposal_no}</h1>
-          <p>{customer?.customer_name} · {data.title}</p>
+          <p>{formatPersonName(customer?.customer_name)} · {data.title}</p>
         </div>
         <Link className="panel-secondary" href="/panel/crm/proposals">Tekliflere Dön</Link>
       </div>

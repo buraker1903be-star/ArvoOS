@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
@@ -50,7 +51,7 @@ export default async function ContractDetailPage({ params }: Props) {
   return (
     <div className="crm-request-detail-page">
       <div className="panel-pagehead">
-        <div><small className="panel-kicker">CRM / SÖZLEŞME DETAYI</small><h1>{data.contract_no}</h1><p>{customer?.customer_name} · {data.title}</p></div>
+        <div><small className="panel-kicker">CRM / SÖZLEŞME DETAYI</small><h1>{data.contract_no}</h1><p>{formatPersonName(customer?.customer_name)} · {data.title}</p></div>
         <Link className="panel-secondary" href="/panel/crm/contracts">Sözleşmelere Dön</Link>
       </div>
       <section className="panel-card crm-request-detail-card">
