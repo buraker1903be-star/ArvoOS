@@ -42,6 +42,10 @@ export default async function PublicContractPage({params,searchParams}:{params:P
  const host=h.get("x-forwarded-host")||h.get("host")||"arvo-os.com";
  const protocol=h.get("x-forwarded-proto")||"https";
  const verificationUrl=`${protocol}://${host}/sozlesme/${token}`;
+ // Müşteri, sözleşmeden teklife de ulaşabilsin: iki belge ayrı ayrı
+ // erişilebilir kalmalı.
+ const {data:linkRows}=await supabase.rpc("arvo_public_contract_links",{public_token:token});
+ const links=Array.isArray(linkRows)?linkRows[0]:linkRows;
  const notice=query.created
   ?"Teklif kabul edildi. Sözleşme imzaya hazırlandı."
   :query.signed
@@ -52,6 +56,7 @@ export default async function PublicContractPage({params,searchParams}:{params:P
   verificationUrl={verificationUrl}
   notice={notice}
   errorMessage={query.error||null}
+  proposalLink={links?.proposal_share_token?{token:links.proposal_share_token,no:links.proposal_no}:null}
   signatureForm={<ContractSignatureForm token={token}/>}
  />;
 }

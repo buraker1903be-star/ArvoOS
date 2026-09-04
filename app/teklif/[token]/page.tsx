@@ -31,7 +31,18 @@ export async function generateMetadata({params}:{params:Promise<{token:string}>}
 }
 
 const firstIp=(value:string|null)=>value?.split(",")[0]?.trim()||null;
-const statuses:Record<string,string>={draft:"Taslak",sent:"Gönderildi",accepted:"Kabul edildi",rejected:"Reddedildi",expired:"Süresi doldu",archived:"Arşivlendi"};
+// Müşteriye görünen durum metinleri.
+// Panel içi etiketler ("Arşivlendi" gibi) burada kullanılamaz: müşteri
+// açısından bu "teklifiniz iptal oldu" demek. Oysa belge geçerli ve
+// görüntülenmeye devam ediyor; sadece karar aşaması kapanmış oluyor.
+const statuses:Record<string,string>={
+ draft:"Bu teklif henüz taslak aşamasında.",
+ sent:"Teklifiniz onayınızı bekliyor.",
+ accepted:"Bu teklifi onayladınız. Süreç sözleşme aşamasına geçti; belge kayıtlarınız için burada erişilebilir kalmaya devam edecek.",
+ rejected:"Bu teklif reddedildi. Belge kayıtlarınız için erişilebilir durumda.",
+ expired:"Bu teklifin geçerlilik süresi doldu. Belge görüntülenebilir; yeni bir teklif için bizimle iletişime geçebilirsiniz.",
+ archived:"Bu teklifin karar aşaması tamamlandı. Belge kayıtlarınız için erişilebilir kalmaya devam ediyor.",
+};
 
 export default async function PublicProposalPage({params,searchParams}:{params:Promise<{token:string}>;searchParams:Promise<{result?:string}>}){
  const {token}=await params;
@@ -54,15 +65,21 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const host=requestHeaders.get("x-forwarded-host")||requestHeaders.get("host")||"arvo-os.com";
  const protocol=requestHeaders.get("x-forwarded-proto")||"https";
  const verificationUrl=`${protocol}://${host}/teklif/${token}`;
+ // Karar bilgisi (tarih + IP) ve varsa sözleşme bağlantısı.
+ // Ayrı bir fonksiyondan geliyor: mevcut get_public_crm_proposal'a
+ // dokunmak istemedik, canlı şema repodakiyle ayrışmış durumda.
+ const {data:decisionRows}=await supabase.rpc("arvo_public_proposal_decision",{public_token:token});
+ const decision=Array.isArray(decisionRows)?decisionRows[0]:decisionRows;
  const locked=["accepted","rejected","expired","archived"].includes(row.status);
  const actions=!locked
   ?<form action={respondToProposal.bind(null,token)} className="print-hide" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginTop:"20px"}}>
     <button name="decision" value="accept" style={{height:42,border:0,borderRadius:9,background:"#15803d",color:"#fff",fontWeight:800}}>TEKLİFİ KABUL EDİYORUM</button>
     <button name="decision" value="reject" style={{height:42,border:0,borderRadius:9,background:"#b91c1c",color:"#fff",fontWeight:800}}>TEKLİFİ REDDEDİYORUM</button>
    </form>
-  :<div className="elite-notice print-hide">{statuses[row.status]||`Teklif durumu: ${row.status}`}</div>;
+  :<div className="elite-notice print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
  return <ProposalDocument
   row={row}
+  decision={decision??null}
   verificationUrl={verificationUrl}
   notice={result?`İşleminiz kaydedildi: ${result}`:null}
   actions={actions}

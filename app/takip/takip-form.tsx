@@ -113,6 +113,23 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
               </div>
               <span className="status-pill status-pill-live"><i />{row.workflow_status ? workflowStatusNames[row.workflow_status] ?? row.workflow_status : contractStatusNames[row.contract_status] ?? row.contract_status}</span>
             </div>
+            {row.documentLinks?.proposal_share_token || row.documentLinks?.contract_share_token ? (
+              <div className="status-lookup-documents">
+                <small>BELGELERİNİZ</small>
+                <div>
+                  {row.documentLinks?.proposal_share_token ? (
+                    <a href={`/teklif/${row.documentLinks.proposal_share_token}`} target="_blank" rel="noreferrer">
+                      Teklif belgesi{row.documentLinks.proposal_no ? ` · ${row.documentLinks.proposal_no}` : ""}
+                    </a>
+                  ) : null}
+                  {row.documentLinks?.contract_share_token ? (
+                    <a href={`/sozlesme/${row.documentLinks.contract_share_token}`} target="_blank" rel="noreferrer">
+                      Sözleşme belgesi{row.documentLinks.contract_no ? ` · ${row.documentLinks.contract_no}` : ""}
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div className="status-lookup-dashboard">
               <section className="status-lookup-progress-panel">
                 <div className="status-lookup-section-head"><div><small>GENEL İLERLEME</small><h3>Çalışma durumu</h3></div><strong>%{row.progress_percentage}</strong></div>

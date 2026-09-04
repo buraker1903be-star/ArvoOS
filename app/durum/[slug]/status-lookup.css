@@ -13,3 +13,49 @@
 @media(max-width:900px){.status-lookup-shell{padding:22px}.status-lookup-layout{grid-template-columns:1fr;padding:85px 0 28px}.status-lookup-intro{padding-top:0}.status-lookup-intro h1{font-size:42px}.status-lookup-card-wrap{max-width:600px}.status-lookup-dashboard{grid-template-columns:1fr}.status-lookup-results{padding:20px}}
 @media(max-width:560px){.status-lookup-shell{padding:16px}.status-lookup-layout{padding-top:76px;gap:28px}.status-lookup-brandbar .status-lookup-secure{display:none}.status-lookup-intro h1{font-size:34px}.status-lookup-intro>p{margin:18px 0 24px;font-size:13px}.status-lookup-trust-grid{grid-template-columns:1fr}.status-lookup-trust-grid div{padding:10px 4px}.status-lookup-card-wrap{padding:26px 22px;border-radius:22px}.status-lookup-results{padding:0}.status-lookup-card{min-height:100vh;border:0;border-radius:0}.status-lookup-card-head{padding:18px}.status-lookup-org-logo{max-width:145px;max-height:38px}.status-lookup-result-hero{align-items:flex-start;flex-direction:column;padding:28px 20px}.status-lookup-dashboard{padding:0 14px 18px}.status-lookup-progress-panel,.status-lookup-finance-panel,.status-lookup-conversation{padding:20px 17px}.status-lookup-steps{gap:2px}.status-lookup-steps b{font-size:7px}.status-lookup-result-footer{flex-direction:column;padding:16px 20px}.status-lookup-new-query{font-size:8px}.status-lookup-form input{font-size:18px;letter-spacing:4px}.status-lookup-message-list article{width:92%}.status-lookup-message-form{grid-template-columns:1fr}.status-lookup-message-form>div{align-items:stretch}.status-lookup-message-form button{width:100%}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Müşteri belgeleri — takip ekranından teklif ve sözleşmeye erişim.
+   Müşteri onayladığı teklifi ve imzaladığı sözleşmeyi sonradan da
+   görebilmeli; link e-postada kaybolmuş olabilir. */
+.status-lookup-documents {
+  margin: 18px 0 0;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.status-lookup-documents small {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
+}
+.status-lookup-documents > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.status-lookup-documents a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.status-lookup-documents a:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+@media (max-width: 620px) {
+  .status-lookup-documents > div { flex-direction: column; }
+  .status-lookup-documents a { width: 100%; justify-content: center; }
+}

@@ -26,6 +26,15 @@ export type TakipState = {
     organization_primary_color: string | null;
     tracking_code: string;
     messages: CustomerFileMessage[];
+    /** Müşterinin erişebileceği belge bağlantıları (teklif + sözleşme). */
+    documentLinks: {
+      proposal_share_token: string | null;
+      proposal_no: string | null;
+      proposal_status: string | null;
+      contract_share_token: string | null;
+      contract_no: string | null;
+      contract_status: string | null;
+    } | null;
   } | null;
 };
 
@@ -77,6 +86,12 @@ export async function lookupTracking(
     return { error: "Girdiğiniz takip koduyla eşleşen bir sözleşme bulunamadı.", result: null };
   }
 
+  // Müşteri, onayladığı teklife ve sözleşmeye buradan da ulaşabilmeli.
+  const { data: linkRows } = await supabase.rpc("arvo_tracking_document_links", {
+    p_tracking_code: code,
+  });
+  const documentLinks = (Array.isArray(linkRows) ? linkRows[0] : linkRows) ?? null;
+
   let messages: CustomerFileMessage[] = [];
   try {
     messages = await listMessages(code);
@@ -84,7 +99,7 @@ export async function lookupTracking(
     messages = [];
   }
 
-  return { error: null, result: { ...row, tracking_code: code, messages } };
+  return { error: null, result: { ...row, tracking_code: code, messages, documentLinks } };
 }
 
 export async function sendCustomerFileMessage(
