@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { daysSince, fetchLastContacts, relativeTime } from "../last-contact";
 import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -91,22 +92,11 @@ export default async function ContractsPage({ searchParams }: Props) {
   const visibleOpportunityIds = [
     ...new Set(allRows.map((row) => row.opportunity_id).filter(Boolean)),
   ];
-  const { data: commentData, error: commentError } = visibleOpportunityIds.length
-    ? await supabase
-        .from("crm_internal_comments")
-        .select("opportunity_id")
-        .eq("organization_id", membership.organization_id)
-        .in("opportunity_id", visibleOpportunityIds)
-    : { data: [], error: null };
-  if (commentError)
-    throw new Error("Yorum sayıları okunamadı: " + commentError.message);
-  const commentCounts = new Map<string, number>();
-  for (const comment of commentData ?? []) {
-    commentCounts.set(
-      comment.opportunity_id,
-      (commentCounts.get(comment.opportunity_id) ?? 0) + 1,
-    );
-  }
+  const lastContacts = await fetchLastContacts(
+    supabase,
+    membership.organization_id,
+    visibleOpportunityIds,
+  );
   const { data: employeeData, error: employeeError } = await supabase
     .from("hr_employees")
     .select("id,full_name")
@@ -270,7 +260,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                   <th>Tutar</th>
                   <th>Durum</th>
                   <th>Teslim</th>
-                  <th>Yorumlar</th>
+                  <th>Son temas</th>
                   <th></th>
                 </tr>
               </thead>
@@ -302,7 +292,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                           </span>
                         </div>
                       </td>
-                      <td data-label="Temsilci">{representativeName}</td>
+                      <td data-label="Temsilci">{formatPersonName(representativeName)}</td>
                       <td data-label="Konu">{row.title}</td>
                       <td data-label="Tutar">
                         {money(row.amount, row.currency)}
@@ -311,6 +301,17 @@ export default async function ContractsPage({ searchParams }: Props) {
                         <span className="status-pill">
                           {labels[row.status] ?? row.status}
                         </span>
+                        {row.status === "sent" && row.sent_at ? (
+                          <small
+                            className={
+                              (daysSince(row.sent_at) ?? 0) >= 7
+                                ? "crm-waiting is-late"
+                                : "crm-waiting"
+                            }
+                          >
+                            {daysSince(row.sent_at)} gündür
+                          </small>
+                        ) : null}
                       </td>
                       <td data-label="Teslim">
                         {row.due_date
@@ -319,16 +320,22 @@ export default async function ContractsPage({ searchParams }: Props) {
                             ).toLocaleDateString("tr-TR")
                           : "—"}
                       </td>
-                      <td data-label="Yorumlar">
-                        {commentCounts.get(row.opportunity_id) ? (
+                      <td data-label="Son temas">
+                        {lastContacts.get(row.opportunity_id) ? (
                           <Link
-                            className="crm-comment-count-badge"
+                            className="crm-last-contact"
                             href={`/panel/crm/contracts/${row.id}`}
+                            title={lastContacts.get(row.opportunity_id)!.preview}
                           >
-                            {commentCounts.get(row.opportunity_id)} yorum
+                            <span className="crm-last-contact-who">
+                              {lastContacts.get(row.opportunity_id)!.authorInitials}
+                            </span>
+                            <span className="crm-last-contact-when">
+                              {relativeTime(lastContacts.get(row.opportunity_id)!.at)}
+                            </span>
                           </Link>
                         ) : (
-                          <span className="crm-comment-count-empty">—</span>
+                          <span className="crm-last-contact-none">Not yok</span>
                         )}
                       </td>
                       <td className="crm-table-actions">

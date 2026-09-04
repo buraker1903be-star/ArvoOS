@@ -186,3 +186,55 @@
 .share-ready-body{flex:1;min-width:0}
 .share-ready-body h2{margin:2px 0 10px;font:800 15px var(--font-heading)}
 .share-ready-link{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13px;color:var(--muted);font-family:var(--font-body)}
+
+/* ============================================================
+   Son temas — "kaç yorum var" yerine "en son ne zaman konuşuldu".
+   Sayı, sorulan soruyu cevaplamıyordu: iki yorumun ikisi de bir ay
+   önce yazılmış olabilir. Asıl sinyal notun YOKLUĞU.
+   ============================================================ */
+.crm-last-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.crm-last-contact-who {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.crm-last-contact-when {
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.crm-last-contact:hover .crm-last-contact-when {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.crm-last-contact-none {
+  color: var(--dim);
+  font-size: 13px;
+}
+
+/* Bekleme süresi — durum rozetinin altında.
+   Yedi günü geçince renk değişiyor; takip edilmesi gereken kayıt bu. */
+.crm-waiting {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.crm-waiting.is-late {
+  color: var(--danger);
+  font-weight: 750;
+}

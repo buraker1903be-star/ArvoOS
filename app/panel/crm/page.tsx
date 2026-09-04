@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchLastContacts, relativeTime } from "./last-contact";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -121,22 +122,11 @@ export default async function RequestsPage({
     );
   });
   const visibleOpportunityIds = rows.map((item) => item.id);
-  const { data: commentData, error: commentError } = visibleOpportunityIds.length
-    ? await supabase
-        .from("crm_internal_comments")
-        .select("opportunity_id")
-        .eq("organization_id", membership.organization_id)
-        .in("opportunity_id", visibleOpportunityIds)
-    : { data: [], error: null };
-  if (commentError)
-    throw new Error("Yorum sayıları okunamadı: " + commentError.message);
-  const commentCounts = new Map<string, number>();
-  for (const comment of commentData ?? []) {
-    commentCounts.set(
-      comment.opportunity_id,
-      (commentCounts.get(comment.opportunity_id) ?? 0) + 1,
-    );
-  }
+  const lastContacts = await fetchLastContacts(
+    supabase,
+    membership.organization_id,
+    visibleOpportunityIds,
+  );
   const counts = (code: string) => all.filter((i) => i.stage === code).length;
   return (
     <div className="crm-page-stack">
@@ -238,7 +228,7 @@ export default async function RequestsPage({
                   <th>Temsilci</th>
                   <th>Durum</th>
                   <th>Teslim</th>
-                  <th>Yorumlar</th>
+                  <th>Son temas</th>
                   <th></th>
                 </tr>
               </thead>
@@ -284,7 +274,7 @@ export default async function RequestsPage({
                         </Link>
                       </td>
                       <td data-label="Hizmet">{d.service_type || "—"}</td>
-                      <td data-label="Temsilci">{ownerName}</td>
+                      <td data-label="Temsilci">{formatPersonName(ownerName)}</td>
                       <td data-label="Durum">
                         <span className="status-pill">
                           {requestStageNames[item.stage] ?? item.stage}
@@ -297,16 +287,22 @@ export default async function RequestsPage({
                             ).toLocaleDateString("tr-TR")
                           : "—"}
                       </td>
-                      <td data-label="Yorumlar">
-                        {commentCounts.get(item.id) ? (
+                      <td data-label="Son temas">
+                        {lastContacts.get(item.id) ? (
                           <Link
-                            className="crm-comment-count-badge"
+                            className="crm-last-contact"
                             href={`/panel/crm/requests/${item.id}`}
+                            title={lastContacts.get(item.id)!.preview}
                           >
-                            {commentCounts.get(item.id)} yorum
+                            <span className="crm-last-contact-who">
+                              {lastContacts.get(item.id)!.authorInitials}
+                            </span>
+                            <span className="crm-last-contact-when">
+                              {relativeTime(lastContacts.get(item.id)!.at)}
+                            </span>
                           </Link>
                         ) : (
-                          <span className="crm-comment-count-empty">—</span>
+                          <span className="crm-last-contact-none">Not yok</span>
                         )}
                       </td>
                       <td className="crm-table-actions">
