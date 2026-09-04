@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
+import { reportActionFailure } from "@/lib/action-diagnostics";
 import { requestStageNames } from "./request-status";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -127,18 +128,15 @@ export async function createOpportunity(formData: FormData) {
     created_by: userId,
   });
   if (error) {
-    // GEÇİCİ: RLS reddinin sebebini tek log satırında görebilmek için
-    // gönderilen değerleri hata mesajına ekliyoruz. Sorun çözülünce
-    // bu blok sade haline döndürülecek.
-    throw new Error(
-      "Talep oluşturulamadı: " + error.message +
-      " | GONDERILEN => org=" + membership.organization_id +
-      " rol=" + membership.role +
-      " created_by=" + userId +
-      " assigned_employee_id=" + String(assignment.employeeId) +
-      " owner_user_id=" + String(assignment.userId) +
-      " canAssign=" + String(canAssign),
-    );
+    reportActionFailure("createOpportunity", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      createdBy: userId,
+      assignedEmployeeId: assignment.employeeId,
+      ownerUserId: assignment.userId,
+      canAssign,
+    });
+    throw new Error("Talep oluşturulamadı: " + error.message);
   }
 
   // Kaydı ayrı bir sorguyla okuyoruz. insert(...).select(...) kullanmak
@@ -226,7 +224,15 @@ export async function updateOpportunity(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .select("id,title,customer_name,contact_email,contact_phone,source,notes,expected_close_date,assigned_employee_id,stage")
     .maybeSingle();
-  if (error) throw new Error("Talep güncellenemedi: " + error.message);
+  if (error) {
+    reportActionFailure("updateOpportunity", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      canAssign,
+    });
+    throw new Error("Talep güncellenemedi: " + error.message);
+  }
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
 
   // Geçmişte "a1b2c3… → d4e5f6…" yazmasın diye temsilci id'lerini
@@ -289,7 +295,14 @@ export async function archiveOpportunity(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .select("id")
     .maybeSingle();
-  if (error) throw new Error("Talep arşivlenemedi: " + error.message);
+  if (error) {
+    reportActionFailure("archiveOpportunity", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+    });
+    throw new Error("Talep arşivlenemedi: " + error.message);
+  }
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
 
   await logActivity(supabase, {
@@ -340,7 +353,15 @@ export async function moveOpportunity(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .select("id")
     .maybeSingle();
-  if (error) throw new Error("Talep durumu güncellenemedi: " + error.message);
+  if (error) {
+    reportActionFailure("moveOpportunity", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      stage,
+    });
+    throw new Error("Talep durumu güncellenemedi: " + error.message);
+  }
   if (!data)
     throw new Error("Talep bulunamadı veya bu kaydı güncelleme yetkiniz yok.");
 
@@ -390,7 +411,16 @@ export async function addInternalComment(formData: FormData) {
     body,
     created_by: userId,
   });
-  if (error) throw new Error("Kurum içi yorum eklenemedi: " + error.message);
+  if (error) {
+    reportActionFailure("addInternalComment", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      contextType,
+      contextId,
+    });
+    throw new Error("Kurum içi yorum eklenemedi: " + error.message);
+  }
 
   revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel/crm/proposals");
@@ -427,7 +457,15 @@ export async function assignOpportunity(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .select("id")
     .maybeSingle();
-  if (error) throw new Error("Temsilci atanamadı: " + error.message);
+  if (error) {
+    reportActionFailure("assignOpportunity", error, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      assignedEmployeeId: assignment.employeeId,
+    });
+    throw new Error("Temsilci atanamadı: " + error.message);
+  }
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
 
   const { data: assigned } = await supabase
