@@ -5,6 +5,10 @@ import { InternalComments } from "../../crm/internal-comments";
 import { addWorkflowStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
+import { formatPersonName } from "@/lib/format-name";
+import { formatPhone } from "@/lib/format-phone";
+import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
+import { requestStageNames } from "../../crm/request-status";
 import "../operations.css";
 import "../../crm/request-page.css";
 
@@ -60,7 +64,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
   :{data:[],error:null};
  if(commentsError)throw new Error("Kurum içi yorumlar okunamadı: "+commentsError.message);
  const comments=(commentsData??[]) as Comment[];
- const customerName=opportunity?.customer_name||workflow.customer_name||"Kurum içi iş";
+ const customerName=formatPersonName(opportunity?.customer_name||workflow.customer_name)||"Kurum içi iş";
  const activities:Activity[]=[
   {id:`created-${workflow.id}`,title:"İş akışı oluşturuldu",detail:customerName,at:workflow.created_at,kind:"created" as const},
   ...steps.filter(step=>step.completed_at).map(step=>({id:`step-${step.id}`,title:"Görev tamamlandı",detail:step.title,at:step.completed_at!,kind:"step" as const})),
@@ -74,7 +78,7 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
   </div>
 
   <section className="ops-detail-metrics">
-   <article className="panel-card"><small>MÜŞTERİ</small><strong>{customerName}</strong><span>{opportunity?.contact_phone||"Telefon bilgisi yok"}</span></article>
+   <article className="panel-card"><small>MÜŞTERİ</small><strong>{customerName}</strong><span>{formatPhone(opportunity?.contact_phone)||"Telefon bilgisi yok"}</span></article>
    <article className="panel-card"><small>İLERLEME</small><strong>%{progress}</strong><span>{completedCount}/{steps.length} görev tamamlandı</span></article>
    <article className="panel-card"><small>BAŞLANGIÇ</small><strong>{formatDate(workflow.start_date)}</strong><span>İş başlangıç tarihi</span></article>
    <article className="panel-card"><small>TERMİN</small><strong>{formatDate(workflow.due_date)}</strong><span>Planlanan teslim tarihi</span></article>
@@ -105,8 +109,8 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
    </div>
 
    <aside className="ops-detail-side">
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{opportunity?.contact_phone||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage||"—"}</dd></div></dl></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Takip Kodu</dt><dd>{contract?.tracking_code?<code className="ops-tracking-code">{contract.tracking_code}</code>:"Henüz üretilmedi"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status||"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status||"—"}</dd></div></dl></section>
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone)||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage?(requestStageNames[opportunity.stage]??opportunity.stage):"—"}</dd></div></dl></section>
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Takip Kodu</dt><dd>{contract?.tracking_code?<code className="ops-tracking-code">{contract.tracking_code}</code>:"Henüz üretilmedi"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status?contractStatusLabel(contract.status):"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status?proposalStatusLabel(proposal.status):"—"}</dd></div></dl></section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form><div className="ops-detail-manage">
       {canAssign?<PanelDrawer triggerLabel="Sorumlu Ata" title={workflow.title} description="Bu işi yürütecek personeli seçin." triggerClassName="panel-secondary">
        <form className="panel-form" action={assignWorkflow}>

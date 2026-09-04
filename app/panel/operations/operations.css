@@ -129,3 +129,108 @@
 .ops-archive-row small{display:block;margin-top:2px;color:var(--muted);font-size:11px}
 .ops-archive-row .status-pill{background:var(--success-soft);color:var(--success);white-space:nowrap}
 .ops-customer-message-note{margin:8px 0 16px;color:var(--muted);font-size:12px}.ops-customer-message-list{display:flex;flex-direction:column;gap:9px;max-height:380px;overflow:auto;padding:15px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2)}.ops-customer-message-list article{width:min(78%,680px);padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}.ops-customer-message-list article.staff-message{align-self:flex-end;background:var(--navy);color:#fff}.ops-customer-message-list header{display:flex;justify-content:space-between;gap:14px;margin-bottom:6px}.ops-customer-message-list strong{font-size:12px}.ops-customer-message-list time{font-size:11px;opacity:.62}.ops-customer-message-list p{margin:0;font-size:13px;line-height:1.6;white-space:pre-wrap}.ops-customer-reply-form{margin-top:14px}.ops-customer-reply-form textarea{box-sizing:border-box;width:100%;min-height:90px;resize:vertical;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:500 13px/1.6 var(--font-body)}.ops-customer-reply-form textarea:focus{outline:0;border-color:var(--navy)}.ops-customer-reply-form>div{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:9px}.ops-customer-reply-form small{color:var(--muted);font-size:11px}@media(max-width:620px){.ops-customer-message-list article{width:92%}.ops-customer-reply-form>div{align-items:stretch;flex-direction:column}.ops-customer-reply-form button{width:100%}}
+
+/* ============================================================
+   SON HAREKETLER
+   `.ops-activity-list` hiç tanımlanmamıştı: ikon kendi satırına
+   düşüyor, kayıtlar birbirine yapışıyordu. Kayıt geçmişiyle aynı
+   dili konuşan bir zaman çizelgesi haline getiriyoruz.
+   ============================================================ */
+.ops-activity-list {
+  display: grid;
+  gap: 2px;
+}
+.ops-activity-list article {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ops-activity-list article:last-child { border-bottom: 0; }
+
+.ops-activity-list article > i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.ops-activity-list .activity-step > i {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-strong);
+}
+.ops-activity-list .activity-created > i {
+  background: var(--brand-50);
+  border-color: transparent;
+  color: var(--brand-600);
+}
+
+.ops-activity-list article > div { min-width: 0; }
+.ops-activity-list strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.ops-activity-list p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.ops-activity-list time {
+  display: block;
+  margin-top: 4px;
+  color: var(--dim);
+  font-size: 12px;
+}
+
+/* İş akışı kartı — adım listesi ve ilerleme çubuğunu barındırıyor.
+   Sınıf kullanılıyordu ama tanımı yoktu; diğer kartlarla aynı
+   nefes alanını verelim. */
+.ops-detail-workflow-card { padding: 22px 24px; }
+
+/* Müşteri mesajları kartı */
+.ops-customer-messages { padding: 22px 24px; }
+.ops-customer-messages > p {
+  margin: 4px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Adım satırındaki sorumlu bilgisi — sağda, sessiz.
+   Her satırda tekrarlanan bir metin olduğu için öne çıkmamalı. */
+.ops-detail-timeline li > span:last-child,
+.ops-detail-timeline article > span:last-child {
+  color: var(--dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Üst kartlar CRM'deki yoğunluk düzenlemesinin dışında kalmıştı,
+   panelin geri kalanından iri duruyorlardı. Metin değer taşıdıkları
+   için (müşteri adı, tarih) CRM'deki yatay düzene çevirmiyoruz —
+   sadece nefes payını aynı ölçüye getiriyoruz. */
+@media (min-width: 901px) {
+  .ops-detail-metrics article {
+    min-height: 78px;
+    padding: 13px 16px;
+  }
+  .ops-detail-metrics strong {
+    margin: 5px 0 3px;
+    font-size: 18px;
+  }
+  .ops-detail-metrics span { font-size: 12px; }
+}
