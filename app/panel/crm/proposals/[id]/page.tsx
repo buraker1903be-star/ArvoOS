@@ -144,6 +144,13 @@ export default async function ProposalDetailPage({ params }: Props) {
 
         <div className="crm-request-detail-actions">
           <small className="panel-kicker">İŞLEMLER</small>
+          {locked ? (
+            <p className="crm-locked-note">
+              {data.status === "accepted"
+                ? "Bu teklif müşteri tarafından onaylandı. Tutar ve içerik artık değiştirilemez; değişiklik gerekiyorsa yeni bir teklif oluşturun."
+                : "Bu teklifin karar aşaması kapandı. Tutar ve içerik değiştirilemez."}
+            </p>
+          ) : null}
           <div>
 
           {!locked ? (

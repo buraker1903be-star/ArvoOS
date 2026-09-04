@@ -957,3 +957,17 @@
     display: none;
   }
 }
+
+/* Kilitli kayıt açıklaması — kullanıcı düzenleme butonunun neden
+   olmadığını anlamalı. Boş bir işlem satırı "bozuk" hissi veriyordu. */
+.crm-locked-note {
+  margin: 8px 0 14px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
