@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
+import { RecordHistory } from "../../crm/record-history";
 import { addWorkflowStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -124,6 +125,11 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
     </section>
    <section className="panel-card ops-detail-card"><small className="panel-kicker">AKTİVİTE</small><h2>Son Hareketler</h2><div className="ops-activity-list">{activities.map(activity=><article key={activity.id} className={`activity-${activity.kind}`}><i>{activity.kind==="created"?"＋":activity.kind==="step"?"✓":"•"}</i><div><strong>{activity.title}</strong><p>{activity.detail}</p><time>{formatDate(activity.at,true)}</time></div></article>)}</div></section>
    <section className="panel-card ops-detail-card"><small className="panel-kicker">ZAMAN</small><h2>İş Bilgileri</h2><dl className="ops-detail-list"><div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at,true)}</dd></div><div><dt>Son Güncelleme</dt><dd>{formatDate(workflow.updated_at,true)}</dd></div></dl></section>
+   {/* Yalnızca iş akışı olayları. CRM zinciri bilerek dışarıda:
+        teklif ve sözleşme güncellemeleri tutar bilgisi taşıyor,
+        operasyon ekibi fiyat görmemeli. Modülün geri kalanı da
+        (metrikler, bağlı kayıtlar) tutar göstermiyor. */}
+   <RecordHistory workflowId={workflow.id} />
    </div>
 
    <aside className="ops-detail-side">

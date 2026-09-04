@@ -10,6 +10,24 @@ import type { FieldChange } from "@/lib/activity-log";
  * hangi tutarla açılmıştı" sorusunun cevabı da burada.
  */
 
+/**
+ * Tutar alanları veritabanında kuruş cinsinden tutuluyor.
+ * Geçmişte ham haliyle "3600000 → 4200000" yazıyordu; okunmuyor.
+ * Gösterimde para birimine çeviriyoruz.
+ */
+const MONEY_FIELDS = new Set(["amount", "net_amount", "tax_amount", "gross_amount"]);
+
+function displayValue(field: string, value: string): string {
+  if (!value) return "boş";
+  if (!MONEY_FIELDS.has(field)) return value;
+  const kurus = Number(value);
+  if (!Number.isFinite(kurus)) return value;
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+  }).format(kurus / 100);
+}
+
 const ACTION_LABELS: Record<string, string> = {
   create: "oluşturdu",
   update: "güncelledi",
@@ -20,12 +38,15 @@ const ACTION_LABELS: Record<string, string> = {
   convert: "sözleşmeye dönüştürdü",
   archive: "arşivledi",
   delete: "sildi",
+  step: "adım ekledi",
+  comment: "not ekledi",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
   crm_opportunity: "Talep",
   crm_proposal: "Teklif",
   crm_contract: "Sözleşme",
+  operation_workflow: "İş akışı",
 };
 
 type LogRow = {
@@ -37,15 +58,44 @@ type LogRow = {
   metadata: { changes?: FieldChange[]; note?: string | null } | null;
 };
 
-export async function RecordHistory({ opportunityId }: { opportunityId: string }) {
+export async function RecordHistory({
+  opportunityId,
+  workflowId,
+}: {
+  opportunityId?: string;
+  /** İş akışı detayında: sözleşmeye bağlı olmayan işler için. */
+  workflowId?: string;
+}) {
   const { supabase, membership } = await getPanelContext();
 
-  const { data: rows } = await supabase
+  const entityTypes = workflowId && !opportunityId
+    ? ["operation_workflow"]
+    : ["crm_opportunity", "crm_proposal", "crm_contract", "operation_workflow"];
+
+  // CRM olayları metadata.opportunity_id ile, iş akışı olayları entity_id
+  // ile işaretleniyor. İş akışı bir sözleşmeye bağlıysa ikisini birden
+  // çekiyoruz: talebin açılışından işin bitişine kadar tek liste.
+  // Bu yüzden .contains değil .or kullanmak gerekiyor — .contains yalnızca
+  // tek bir eşleşme yapabildiği için iş akışı olayları listeden düşüyordu.
+  let query = supabase
     .from("activity_logs")
     .select("id,actor_user_id,action,entity_type,created_at,metadata")
     .eq("organization_id", membership.organization_id)
-    .in("entity_type", ["crm_opportunity", "crm_proposal", "crm_contract"])
-    .contains("metadata", { opportunity_id: opportunityId })
+    .in("entity_type", entityTypes);
+
+  if (opportunityId && workflowId) {
+    query = query.or(
+      `metadata->>opportunity_id.eq.${opportunityId},entity_id.eq.${workflowId}`,
+    );
+  } else if (opportunityId) {
+    query = query.eq("metadata->>opportunity_id", opportunityId);
+  } else if (workflowId) {
+    query = query.eq("entity_id", workflowId);
+  } else {
+    return null;
+  }
+
+  const { data: rows } = await query
     .order("created_at", { ascending: false })
     .limit(60);
 
@@ -110,9 +160,9 @@ export async function RecordHistory({ opportunityId }: { opportunityId: string }
                   {changes.map((change) => (
                     <li key={change.field}>
                       <b>{change.label}</b>
-                      <span className="from">{change.from || "boş"}</span>
+                      <span className="from">{displayValue(change.field, change.from)}</span>
                       <span aria-hidden="true">→</span>
-                      <span className="to">{change.to || "boş"}</span>
+                      <span className="to">{displayValue(change.field, change.to)}</span>
                     </li>
                   ))}
                 </ul>
