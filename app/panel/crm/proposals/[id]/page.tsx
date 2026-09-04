@@ -329,7 +329,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           {!locked ? (
             <form action={fastTrackProposalToContract}>
               <input type="hidden" name="proposal_id" value={data.id} />
-              <button className="panel-link">Sözleşmeye Dönüştür</button>
+              <button className="panel-primary">Sözleşmeye Dönüştür</button>
             </form>
           ) : null}
           {!locked ? (

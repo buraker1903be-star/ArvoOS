@@ -521,8 +521,7 @@
 }
 .crm-request-detail-actions .panel-primary,
 .crm-request-detail-actions .panel-secondary,
-.crm-request-detail-actions .panel-danger,
-.crm-request-detail-actions .panel-link {
+.crm-request-detail-actions .panel-danger {
   min-height: 34px;
   padding: 0 12px;
   font-size: 11px;
@@ -707,8 +706,7 @@
   }
   .crm-request-detail-actions .panel-primary,
   .crm-request-detail-actions .panel-secondary,
-  .crm-request-detail-actions .panel-danger,
-  .crm-request-detail-actions .panel-link {
+  .crm-request-detail-actions .panel-danger {
     width: 100%;
     min-height: 40px;
   }

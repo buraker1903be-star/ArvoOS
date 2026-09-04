@@ -10,7 +10,7 @@ type PanelDrawerProps = {
   /** Başlığın üstündeki küçük etiket. Varsayılan "YENİ KAYIT" idi ve
    *  "Düzenle" gibi pencerelerde yanlış görünüyordu; artık isteğe bağlı. */
   kicker?: string;
-  /** Tetikleyici butonun stili (panel-primary / panel-secondary / panel-link) */
+  /** Tetikleyici butonun stili (panel-primary / panel-secondary) */
   triggerClassName?: string;
   children: ReactNode;
 };
