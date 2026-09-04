@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROPOSAL_STATUS_LABELS as labels } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { organizationBrandName, proposalMessages } from "@/lib/customer-message-templates";
@@ -20,14 +21,6 @@ import "../../crm.css";
 
 type Props = { params: Promise<{ id: string }> };
 
-const labels: Record<string, string> = {
-  draft: "Taslak",
-  sent: "Gönderildi",
-  accepted: "Kabul edildi",
-  rejected: "Reddedildi",
-  expired: "Süresi doldu",
-  archived: "Arşiv",
-};
 const money = (value: number, currency: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 const date = (value: string | null) =>

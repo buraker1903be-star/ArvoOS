@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
@@ -60,14 +61,6 @@ type Proposal = {
   } | null;
 };
 const statuses = ["draft", "sent", "accepted", "rejected"];
-const labels: Record<string, string> = {
-  draft: "Taslak",
-  sent: "Gönderildi",
-  accepted: "Kabul edildi",
-  rejected: "Reddedildi",
-  expired: "Süresi doldu",
-  archived: "Arşiv",
-};
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(
     v / 100,

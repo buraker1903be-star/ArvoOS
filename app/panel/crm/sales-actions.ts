@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
+import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -221,12 +222,6 @@ export async function createContractDirectly(
     `/panel/crm/contracts${acceptRow?.contract_token ? `?share=${encodeURIComponent(acceptRow.contract_token)}` : ""}`,
   );
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Taslak", sent: "Gönderildi", accepted: "Kabul edildi",
-  rejected: "Reddedildi", expired: "Süresi doldu", archived: "Arşivlendi",
-  signed: "İmzalandı", awaiting_signature: "İmza bekliyor", cancelled: "İptal edildi",
-};
 
 export async function updateProposal(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
@@ -621,8 +616,8 @@ export async function markContractStatus(formData: FormData) {
     action: "status", entityType: "crm_contract", entityId: contractId,
     opportunityId: String(mc?.opportunity_id ?? ""),
     changes: [{ field: "status", label: "Durum",
-      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
-      to: STATUS_LABELS[status] ?? status }],
+      from: contractStatusLabel(current?.status),
+      to: contractStatusLabel(status) }],
   });
 
   revalidatePath("/panel/crm/contracts");
@@ -788,8 +783,8 @@ export async function markProposalStatus(formData: FormData) {
     action: "status", entityType: "crm_proposal", entityId: proposalId,
     opportunityId: String(mp?.opportunity_id ?? ""),
     changes: [{ field: "status", label: "Durum",
-      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
-      to: STATUS_LABELS[status] ?? status }],
+      from: proposalStatusLabel(current?.status),
+      to: proposalStatusLabel(status) }],
   });
   revalidatePath("/panel/crm/proposals");
 }
@@ -906,8 +901,8 @@ export async function resolveProposal(formData: FormData) {
     opportunityId: String(closed?.opportunity_id ?? ""),
     changes: [{
       field: "status", label: "Durum",
-      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
-      to: STATUS_LABELS[chosen.status] ?? chosen.status,
+      from: proposalStatusLabel(current?.status),
+      to: proposalStatusLabel(chosen.status),
     }],
   });
 

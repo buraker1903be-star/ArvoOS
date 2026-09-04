@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
@@ -60,14 +61,6 @@ type Contract = {
   } | null;
 };
 const statuses = ["draft", "sent", "signed", "rejected", "cancelled"];
-const labels: Record<string, string> = {
-  draft: "Taslak",
-  sent: "İmza bekliyor",
-  signed: "İmzalandı",
-  rejected: "Reddedildi",
-  cancelled: "İptal",
-  completed: "Tamamlandı",
-};
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(
     v / 100,

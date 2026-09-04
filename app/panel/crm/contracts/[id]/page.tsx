@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTRACT_STATUS_LABELS as labels } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
@@ -14,7 +15,6 @@ import "../../request-page.css";
 import "../../crm.css";
 
 type Props = { params: Promise<{ id: string }> };
-const labels: Record<string, string> = { draft: "Taslak", sent: "İmza bekliyor", signed: "İmzalandı", rejected: "Reddedildi", cancelled: "İptal", completed: "Tamamlandı" };
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR") : "—";
 
