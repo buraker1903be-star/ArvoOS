@@ -1,5 +1,5 @@
 @media (max-width:900px){
-  html{overscroll-behavior-y:none;background:var(--bg,#f3f5f2)}
+  html{overscroll-behavior-y:none;background:var(--bg,var(--n-100))}
   body{min-height:100dvh;-webkit-tap-highlight-color:transparent}
   .panel-root{min-height:100dvh}
   .panel-frame{display:block;min-height:100vh}

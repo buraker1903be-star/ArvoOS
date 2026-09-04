@@ -144,7 +144,7 @@
   .crm-data-table tbody{display:block;width:100%;min-width:0;max-width:100%}
   .crm-data-table tbody tr{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin-bottom:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
   .crm-data-table tbody tr:hover{background:var(--surface)}
-  .crm-data-table td{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft,#eef1ee);font-size:13px;text-align:right;min-width:0;overflow-wrap:anywhere;word-break:break-word}
+  .crm-data-table td{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft,var(--n-0));font-size:13px;text-align:right;min-width:0;overflow-wrap:anywhere;word-break:break-word}
   .crm-data-table td:before{content:attr(data-label);flex:none;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left}
   .crm-data-table td>*{min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
   .crm-data-table td.crm-table-actions{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:stretch;gap:8px;border-bottom:0;padding:12px 0 0;margin-top:2px}

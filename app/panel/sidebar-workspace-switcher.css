@@ -4,7 +4,7 @@
 
 .panel-org-switchable{padding:0;overflow:hidden}
 .workspace-card-select{padding:15px}
-.workspace-card-select>small{display:block;margin-bottom:8px;color:#7f97b1;font-size:11px;font-weight:800;letter-spacing:.13em}
+.workspace-card-select>small{display:block;margin-bottom:8px;color:var(--brand-300);font-size:11px;font-weight:800;letter-spacing:.13em}
 .workspace-card-control{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr) 16px;align-items:center;gap:8px}
 .workspace-card-control>span{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.06);color:var(--accent-400);font-size:13px;font-weight:800}
 .workspace-card-control select{width:100%;min-width:0;padding:9px 26px 9px 10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.05);color:#fff;font:700 13px var(--font-body);appearance:none;-webkit-appearance:none;cursor:pointer;outline:none}

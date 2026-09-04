@@ -25,6 +25,7 @@ type PanelOrganization = {
   sector: string;
   custom_domain: string | null;
   logo_url: string | null;
+  brand_color: string | null;
   display_name: string | null;
 };
 
@@ -60,6 +61,7 @@ export const getPanelContext = cache(async () => {
       sector: row.sector,
       custom_domain: row.custom_domain,
       logo_url: row.logo_url,
+      brand_color: row.brand_color ?? null,
       display_name: row.display_name,
     },
   })) as PanelWorkspace[];

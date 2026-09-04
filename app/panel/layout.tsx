@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { tenantTheme } from "@/lib/tenant-theme";
 import { logout } from "./actions";
 import { PanelNavigation } from "./panel-navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -75,7 +76,12 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   for(const message of unreadMessageRows??[]){if(new Date(message.created_at).getTime()>(lastReadByChannel.get(message.channel_id)??0))unreadByChannel[message.channel_id]=(unreadByChannel[message.channel_id]??0)+1;}
   const messageUnreadCount=Object.values(unreadByChannel).reduce((total,count)=>total+count,0);
 
-  return <div className="panel-root"><main className="panel-frame">
+  // Beyaz etiket: kurum kendi marka rengini seçtiyse tüm panel vurgusu
+  // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
+  // panel-tokens.css içindeki fallback ArvoOS yeşilini kullanır.
+  const tenantStyle = isPlatformOrg ? {} : tenantTheme(organization.brand_color);
+
+  return <div className="panel-root" style={tenantStyle}><main className="panel-frame">
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />

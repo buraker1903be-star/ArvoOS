@@ -175,8 +175,8 @@
 @media(prefers-reduced-motion:reduce){.skel:after{animation:none}}
 
 /* ---------- Satır içi silme onayı (tarayıcı confirm() yerine, daha güvenilir) ---------- */
-.confirm-delete-inline{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--danger-soft,#fdecec);flex-wrap:wrap}
-.confirm-delete-inline small{color:var(--danger,#b3261e);font-size:11px;font-weight:700;max-width:220px}
+.confirm-delete-inline{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--danger-soft,var(--danger-soft));flex-wrap:wrap}
+.confirm-delete-inline small{color:var(--danger,var(--danger));font-size:11px;font-weight:700;max-width:220px}
 .confirm-delete-inline span{display:flex;gap:6px;flex:none}
 .confirm-delete-inline .panel-danger,.confirm-delete-inline .panel-secondary{min-height:26px;padding:0 9px;font-size:11px;white-space:nowrap}
 
