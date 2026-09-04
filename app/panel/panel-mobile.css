@@ -6,7 +6,7 @@
   .panel-workspace{min-width:0;width:100%}
   .panel-topbar{top:0;min-height:calc(64px + env(safe-area-inset-top));padding:max(10px,env(safe-area-inset-top)) 14px 10px 64px;gap:10px;box-shadow:0 1px 0 var(--line);backdrop-filter:blur(22px) saturate(170%)}
   .panel-breadcrumb{min-width:0}
-  .panel-breadcrumb small{font-size:7px}
+  .panel-breadcrumb small{font-size:11px}
   .panel-breadcrumb b{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
   .panel-top-actions{gap:8px;flex:none}
   .panel-quick-actions{display:contents}
@@ -41,7 +41,7 @@
   .panel-content>*,.panel-content section,.panel-content article{min-width:0}
   .panel-content table{min-width:720px}
   .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r-md)}
-  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"Tabloyu yatay kaydırabilirsiniz";display:block;padding:8px 2px 0;color:var(--muted);font-size:9px;text-align:right}
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"Tabloyu yatay kaydırabilirsiniz";display:block;padding:8px 2px 0;color:var(--muted);font-size:12px;text-align:right}
   dialog,.modal,.panel-modal{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
   .panel-content :is(.crm-page,.finance-page,.structure-page,.activity-page,.reporting-page,.operations-page,.team-page,.work-page){width:100%;max-width:100%;min-width:0}
   .panel-content :is(.panel-grid,.crm-grid,.platform-grid,.management-grid,.structure-grid,.activity-grid,.report-columns,.finance-form-grid,.crm-form-grid){max-width:100%;min-width:0}
@@ -72,14 +72,14 @@
   .hero-actions{flex-direction:column}
   .hero-actions a{width:100%;text-align:center}
   .panel-pagehead h1{font-size:26px;line-height:1.12;text-wrap:balance}
-  .panel-pagehead p{font-size:11px}
+  .panel-pagehead p{font-size:13px}
   .panel-card,.panel-module{border-radius:14px}
   .executive-hero,.platform-overview{padding:20px;border-radius:16px}
   .panel-primary,.panel-secondary,.panel-danger{width:100%}
   .panel-page-actions{display:grid;grid-template-columns:1fr;overflow:visible}
   .panel-page-actions>*{width:100%}
   .panel-pagehead{margin-bottom:16px}
-  .panel-kicker{font-size:9px}
+  .panel-kicker{font-size:12px}
   .panel-card,.panel-module{padding:16px}
   .panel-empty{padding:32px 16px}
   .wizard-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}

@@ -23,11 +23,15 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width:"device-width",
   initialScale:1,
-  maximumScale:1,
   viewportFit:"cover",
   themeColor:[
     {media:"(prefers-color-scheme: light)",color:"#f3f5f2"},
     {media:"(prefers-color-scheme: dark)",color:"#0b1220"},
   ],
 };
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr"><body className={manrope.variable}><ScrollEffects/>{children}</body></html>}
+// Tema, ThemeToggle tarafından localStorage'a yazılıyordu ama hiçbir yerde
+// geri okunmuyordu; her sayfa yenilemesinde aydınlık moda dönüyordu.
+// Bu script render'dan önce çalışır, böylece "flash" da olmaz.
+const themeInit = `(function(){try{var t=localStorage.getItem("arvoos.theme");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
+
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={manrope.variable}><ScrollEffects/>{children}</body></html>}

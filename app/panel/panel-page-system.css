@@ -2,7 +2,7 @@
    ArvoOS Panel — Page System (dashboards, drawers, secondary UI)
    ============================================================ */
 
-.panel-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:10px;font-weight:800;cursor:pointer;transition:.18s ease}
+.panel-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:800;cursor:pointer;transition:.18s ease}
 .panel-secondary:hover{border-color:color-mix(in srgb, var(--accent-500) 45%, var(--line));background:var(--surface-2)}
 
 .metric-strip-five{grid-template-columns:repeat(5,minmax(0,1fr));margin-top:0}
@@ -12,11 +12,11 @@
 .section-heading.compact{margin-bottom:18px}
 .section-heading.compact h2{font-size:19px}
 .dashboard-actions{display:grid;gap:8px}
-.dashboard-actions a{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:10px;font-weight:750;text-decoration:none;transition:.18s ease}
+.dashboard-actions a{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:13px;font-weight:750;text-decoration:none;transition:.18s ease}
 .dashboard-actions a:hover{border-color:color-mix(in srgb, var(--accent-500) 40%, var(--line));background:var(--accent-100)}
-.dashboard-actions b{min-width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:var(--accent-100);color:var(--accent-600);font-size:10px}
+.dashboard-actions b{min-width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:var(--accent-100);color:var(--accent-600);font-size:13px}
 .dashboard-summary-number{margin:16px 0 8px;font:750 46px/1 var(--font-heading);letter-spacing:-.05em;color:var(--ink)}
-.panel-text-link{display:inline-flex;margin-top:12px;color:var(--accent-600);font-size:10px;font-weight:800;text-decoration:none}
+.panel-text-link{display:inline-flex;margin-top:12px;color:var(--accent-600);font-size:13px;font-weight:800;text-decoration:none}
 
 .panel-form-actions{display:flex;justify-content:flex-end;padding-top:2px}
 
@@ -24,7 +24,7 @@
 .crm-create summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;padding:20px 22px}
 .crm-create summary::-webkit-details-marker{display:none}
 .crm-create summary span{font:700 15px var(--font-heading);color:var(--ink)}
-.crm-create summary small{color:var(--muted);font-size:9px}
+.crm-create summary small{color:var(--muted);font-size:12px}
 .crm-create[open] summary{padding-bottom:18px;margin-bottom:0;border-bottom:1px solid var(--line)}
 .crm-create .panel-form{padding:0 22px 22px}
 
@@ -58,24 +58,24 @@
 /* ---------- New customer setup wizard ---------- */
 .wizard{display:flex;flex-direction:column;gap:22px}
 .wizard-steps{display:flex;list-style:none;margin:0;padding:0;gap:6px;counter-reset:none}
-.wizard-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--dim);font-size:9px;font-weight:800;white-space:nowrap;transition:.18s ease}
-.wizard-steps li span{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--line);color:var(--muted);font-size:9px}
+.wizard-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--dim);font-size:12px;font-weight:800;white-space:nowrap;transition:.18s ease}
+.wizard-steps li span{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--line);color:var(--muted);font-size:12px}
 .wizard-steps li.active{background:var(--accent-100);color:var(--accent-600)}
 .wizard-steps li.active span{background:var(--accent-500);color:#fff}
 .wizard-steps li.done{color:var(--muted)}
 .wizard-steps li.done span{background:var(--accent-500);color:#fff}
-.wizard-step-intro{margin:0 0 14px;color:var(--muted);font-size:10px;line-height:1.6}
+.wizard-step-intro{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.6}
 .wizard-check{display:flex!important;align-items:center;gap:8px;font-weight:700!important}
 .wizard-check input{width:16px;height:16px;margin:0}
 .wizard-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
 .wizard-summary div{padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2)}
-.wizard-summary dt{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}
-.wizard-summary dd{margin:5px 0 0;color:var(--ink);font-size:11px;font-weight:700;overflow-wrap:anywhere}
+.wizard-summary dt{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.08em}
+.wizard-summary dd{margin:5px 0 0;color:var(--ink);font-size:13px;font-weight:700;overflow-wrap:anywhere}
 .wizard-nav{display:flex;justify-content:space-between;align-items:center;padding-top:6px}
 .wizard-success{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;margin-bottom:16px;border:1px solid color-mix(in srgb, var(--success) 30%, var(--line));border-radius:var(--r-lg);background:var(--success-soft)}
 .wizard-success>span{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--success);color:#fff;font-weight:800}
 .wizard-success b{display:block;color:var(--ink);font-size:13px}
-.wizard-success p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+.wizard-success p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
 @media(max-width:620px){.wizard-steps{flex-wrap:wrap}.wizard-steps li{flex:1 1 calc(50% - 6px)}.wizard-summary{grid-template-columns:1fr}}
 
 /* ---------- Specificity guard: button-style links keep their own color
@@ -93,7 +93,7 @@
 .panel-drawer-root.open .panel-drawer{transform:translateX(0)}
 .panel-drawer-header{position:relative;z-index:5;flex:none;display:block;padding:28px 86px 22px 30px;border-bottom:1px solid var(--line);background:var(--surface)}
 .panel-drawer-header h2{margin:6px 0 0;font:750 26px var(--font-heading);letter-spacing:-.035em;color:var(--ink)}
-.panel-drawer-header p{margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+.panel-drawer-header p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
 .panel-drawer-close{position:absolute;top:26px;right:30px;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:22px;line-height:1;cursor:pointer;transition:.18s ease}
 .panel-drawer-close:hover{border-color:var(--accent-500);color:var(--accent-600)}
 .panel-drawer-body{flex:1;min-height:0;overflow-y:auto;padding:26px 30px 38px}
@@ -132,7 +132,7 @@
 
 /* ---------- Shared horizontal tab bar (CRM, Operasyon, and any future module) ---------- */
 .module-tabs{display:inline-flex;margin-bottom:0;border:1px solid var(--line);border-bottom:0;border-radius:var(--r-sm) var(--r-sm) 0 0;background:var(--surface);overflow:hidden;position:relative;z-index:1}
-.module-tabs a{padding:9px 16px;font-size:10px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
+.module-tabs a{padding:9px 16px;font-size:13px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
 .module-tabs a+a{border-left:1px solid var(--line)}
 .module-tabs a:hover{background:var(--surface-2);color:var(--ink)}
 .module-tabs a.active{background:var(--brand-700);color:#fff}
@@ -148,16 +148,16 @@
 /* ---------- Özel alan adı (Ayarlar) ---------- */
 .domain-status-block{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 .domain-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.domain-status-row>span:first-child{font-size:10px;font-weight:800;color:var(--ink)}
+.domain-status-row>span:first-child{font-size:13px;font-weight:800;color:var(--ink)}
 .status-pill.domain-status-verified{background:var(--success-soft);color:var(--success)}
 .status-pill.domain-status-pending{background:var(--warning-soft);color:var(--warning)}
 .status-pill.domain-status-failed{background:var(--danger-soft);color:var(--danger)}
 .domain-dns-block{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
-.domain-dns-block>small{display:block;margin-bottom:8px;color:var(--muted);font-size:7px;font-weight:800;letter-spacing:.1em}
+.domain-dns-block>small{display:block;margin-bottom:8px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.1em}
 .domain-dns-table{width:100%;border-collapse:collapse;margin-bottom:10px}
-.domain-dns-table th,.domain-dns-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:9px;color:var(--ink)}
-.domain-dns-table th{color:var(--muted);font-size:7px;font-weight:800}
-.domain-dns-block>p{margin:8px 0;color:var(--dim);font-size:8px;line-height:1.5}
+.domain-dns-table th,.domain-dns-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;color:var(--ink)}
+.domain-dns-table th{color:var(--muted);font-size:11px;font-weight:800}
+.domain-dns-block>p{margin:8px 0;color:var(--dim);font-size:11px;line-height:1.5}
 
 /* ---------- Global panel loading skeleton (instant feedback while a page's data loads) ---------- */
 .panel-skeleton{display:flex;flex-direction:column;gap:20px}
@@ -176,9 +176,9 @@
 
 /* ---------- Satır içi silme onayı (tarayıcı confirm() yerine, daha güvenilir) ---------- */
 .confirm-delete-inline{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--danger-soft,#fdecec);flex-wrap:wrap}
-.confirm-delete-inline small{color:var(--danger,#b3261e);font-size:8px;font-weight:700;max-width:220px}
+.confirm-delete-inline small{color:var(--danger,#b3261e);font-size:11px;font-weight:700;max-width:220px}
 .confirm-delete-inline span{display:flex;gap:6px;flex:none}
-.confirm-delete-inline .panel-danger,.confirm-delete-inline .panel-secondary{min-height:26px;padding:0 9px;font-size:8px;white-space:nowrap}
+.confirm-delete-inline .panel-danger,.confirm-delete-inline .panel-secondary{min-height:26px;padding:0 9px;font-size:11px;white-space:nowrap}
 
 /* ---------- Genel işlem geri bildirimi: her buton/link tıklamasında
    dönen halka + "Lütfen bekleyiniz" mesajı, kullanıcıya tıklamanın
@@ -188,4 +188,4 @@
 .panel-action-feedback-ring{width:20px;height:20px;flex:none;border-radius:50%;border:2.5px solid var(--accent-100);border-top-color:var(--accent-600);animation:panel-feedback-spin .7s linear infinite}
 @keyframes panel-feedback-spin{to{transform:rotate(360deg)}}
 @keyframes panel-feedback-fade{from{opacity:0}to{opacity:1}}
-@media(max-width:760px){.panel-action-feedback{padding-top:12vh}.panel-action-feedback-card{padding:12px 18px;font-size:11px}}
+@media(max-width:760px){.panel-action-feedback{padding-top:12vh}.panel-action-feedback-card{padding:12px 18px;font-size:13px}}

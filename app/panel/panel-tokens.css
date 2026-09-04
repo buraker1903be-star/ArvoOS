@@ -34,9 +34,28 @@
   /* radius */
   --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-pill:999px;
 
+  /* --- typography ---
+     ÖNEMLİ: --font-body ve --font-heading hiçbir yerde tanımlı değildi.
+     Tanımsız var() yüzünden `font:` kısayolu geçersiz sayılıyor ve tüm
+     panel varsayılan tarayıcı fontuna düşüyordu. */
+  --font-body:var(--font-manrope,"Manrope"),system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-heading:var(--font-body);
+
+  /* type scale — panelin okunabilir taban ölçeği */
+  --fs-micro:11px;   /* etiket / kicker */
+  --fs-sm:12px;      /* yardımcı metin */
+  --fs-base:13px;    /* gövde, tablo, nav */
+  --fs-md:15px;      /* kart başlığı */
+  --fs-lg:18px;      /* bölüm başlığı */
+
   /* legacy aliases kept for backward-compat with module CSS files */
   --navy:var(--brand-800); --green:var(--accent-500); --green-soft:var(--accent-100);
   --ink-legacy:var(--ink); --paper:var(--surface);
+  /* eski modül CSS'lerinin (crm/audit/team/work/structure) kullandığı ama
+     hiç tanımlanmamış olan kısa adlar */
+  --pline:var(--line); --pn:var(--ink); --pm:var(--muted); --pg:var(--accent-600);
+  --panel-border:var(--line); --panel-muted:var(--muted); --panel-text:var(--ink);
+  --panel-surface:var(--surface); --panel-soft:var(--surface-2);
   --ux-bg:var(--bg); --ux-surface:var(--surface); --ux-ink:var(--ink); --ux-muted:var(--muted);
   --ux-line:var(--line); --ux-primary:var(--brand-700); --ux-accent:var(--accent-500); --ux-soft:var(--accent-100);
 
