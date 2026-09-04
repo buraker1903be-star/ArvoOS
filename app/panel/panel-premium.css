@@ -482,6 +482,18 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 /* Satır sonundaki yön oku — tıklanabilirliğin görsel ipucu */
 .crm-row-chevron{display:block;width:100%;text-align:right;padding-right:4px;color:var(--dim);font-size:20px;line-height:1;transition:color .15s ease,transform .15s ease}
 .crm-page-stack .crm-data-table tbody tr:hover .crm-row-chevron{color:var(--accent);transform:translateX(2px)}
+<<<<<<< HEAD
+=======
+/* ============================================================
+   Mavi yazı butonu — dolgulu buton yerine bağlantı görünümü.
+   "Sözleşmeye Dönüştür" gibi ikincil ama yıkıcı olmayan
+   işlemler için; yeşil/dolu buton onları fazla öne çıkarıyordu.
+   ============================================================ */
+.panel-link{display:inline-flex;align-items:center;white-space:nowrap;min-height:38px;padding:0 10px;border:0;background:none;color:var(--brand-600);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:color .15s ease}
+.panel-link:hover{color:var(--brand-800);text-decoration:underline;text-underline-offset:3px}
+.panel-link:disabled{opacity:.5;cursor:not-allowed;text-decoration:none}
+
+>>>>>>> c9d4480e15ebfcb44f5ed9b55636e8a452b5b437
 /* Pencere içindeki kalıcı/yıkıcı işlem bölgesi */
 .panel-danger-zone{margin-top:22px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--danger) 28%,var(--line));border-radius:var(--r-md);background:var(--danger-soft)}
 .panel-danger-zone p{margin:8px 0 14px;color:var(--ink-soft);font-size:13px;line-height:1.55}
