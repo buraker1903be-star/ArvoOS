@@ -482,13 +482,12 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 /* Satır sonundaki yön oku — tıklanabilirliğin görsel ipucu */
 .crm-row-chevron{display:block;width:100%;text-align:right;padding-right:4px;color:var(--dim);font-size:20px;line-height:1;transition:color .15s ease,transform .15s ease}
 .crm-page-stack .crm-data-table tbody tr:hover .crm-row-chevron{color:var(--accent);transform:translateX(2px)}
-
 /* ============================================================
    Mavi yazı butonu — dolgulu buton yerine bağlantı görünümü.
    "Sözleşmeye Dönüştür" gibi ikincil ama yıkıcı olmayan
    işlemler için; yeşil/dolu buton onları fazla öne çıkarıyordu.
    ============================================================ */
-.panel-link{display:inline-flex;align-items:center;min-height:38px;padding:0 4px;border:0;background:none;color:var(--brand-600);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:color .15s ease}
+.panel-link{display:inline-flex;align-items:center;white-space:nowrap;min-height:38px;padding:0 10px;border:0;background:none;color:var(--brand-600);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:color .15s ease}
 .panel-link:hover{color:var(--brand-800);text-decoration:underline;text-underline-offset:3px}
 .panel-link:disabled{opacity:.5;cursor:not-allowed;text-decoration:none}
 
@@ -507,7 +506,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .crm-revision-history li.is-current .crm-revision-mark{color:var(--accent-strong);border-color:transparent}
 .crm-revision-body{min-width:0}
 .crm-revision-body b{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:14px}
-.crm-revision-body b em{padding:3px 8px;border-radius:var(--r-pill);background:var(--surface);color:var(--accent-strong);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.04em}
+.crm-revision-body b em{padding:3px 8px;border-radius:var(--r-pill);background:var(--surface);color:var(--accent-strong);font-size:13px;font-style:normal;font-weight:800;letter-spacing:.04em}
 .crm-revision-body span{display:block;margin-top:4px;color:var(--muted);font-size:13px}
 .crm-revision-body p{margin:8px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:620px){
