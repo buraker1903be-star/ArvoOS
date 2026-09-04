@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { PanelBottomSheet } from "../components/panel-bottom-sheet";
 import {
-  archiveOpportunity,
-  moveOpportunity,
-  updateOpportunity,
 } from "./actions";
 import { RequestEntryForm } from "./request-entry-form";
-import { ProposalBuilderForm } from "./proposal-builder-form";
 import { requestStageNames, requestStages } from "./request-status";
 import { CrmTabs } from "./crm-tabs";
 import "./crm.css";
@@ -59,7 +54,6 @@ export default async function RequestsPage({
   const selectedRepresentative = clean(temsilci);
   const { supabase, membership, modules } = await getPanelContext();
   const canAssign = ["owner", "admin", "manager"].includes(membership.role);
-  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   const [
@@ -254,125 +248,16 @@ export default async function RequestsPage({
                     ? (representativeMap.get(item.assigned_employee_id) ??
                       "Pasif personel")
                     : "Atanmamış";
-                  const preview = (
-                    <div className="crm-request-preview">
-                      <span>{requestStageNames[item.stage] ?? item.stage}</span>
-                      <h3>{item.customer_name}</h3>
-                      <h4>{item.title}</h4>
-                      <dl>
-                        <div>
-                          <dt>Hizmet</dt>
-                          <dd>{d.service_type || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>Satış temsilcisi</dt>
-                          <dd>{ownerName}</dd>
-                        </div>
-                        <div>
-                          <dt>Telefon</dt>
-                          <dd>{item.contact_phone || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>E-posta</dt>
-                          <dd>{item.contact_email || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>Üniversite</dt>
-                          <dd>{d.university || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>Teslim</dt>
-                          <dd>
-                            {item.expected_close_date
-                              ? new Date(
-                                  item.expected_close_date + "T00:00:00",
-                                ).toLocaleDateString("tr-TR")
-                              : "Belirtilmedi"}
-                          </dd>
-                        </div>
-                      </dl>
-                      {d.scope ? <p>{d.scope}</p> : null}
-                      {item.notes ? <p>{item.notes}</p> : null}
-                    </div>
-                  );
-                  const edit = (
-                    <form className="panel-form" action={updateOpportunity}>
-                      <input
-                        type="hidden"
-                        name="opportunity_id"
-                        value={item.id}
-                      />
-                      <input
-                        type="hidden"
-                        name="current_details"
-                        value={JSON.stringify(d)}
-                      />
-                      <label>
-                        Talep konusu
-                        <input
-                          name="title"
-                          required
-                          defaultValue={item.title}
-                        />
-                      </label>
-                      <label>
-                        Müşteri / kurum
-                        <input
-                          name="customer_name"
-                          required
-                          defaultValue={item.customer_name}
-                        />
-                      </label>
-                      <label>
-                        Hizmet türü
-                        <input
-                          name="service_type"
-                          defaultValue={d.service_type || ""}
-                        />
-                      </label>
-                      {canAssign ? (
-                        <label>
-                          Satış temsilcisi
-                          <select
-                            name="assigned_employee_id"
-                            defaultValue={item.assigned_employee_id ?? ""}
-                          >
-                            <option value="">Atanmamış</option>
-                            {representatives.map((employee) => (
-                              <option value={employee.id} key={employee.id}>
-                                {employee.full_name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
-                      <label>
-                        Telefon
-                        <input
-                          name="contact_phone"
-                          defaultValue={item.contact_phone || ""}
-                        />
-                      </label>
-                      <label>
-                        E-posta
-                        <input
-                          name="contact_email"
-                          defaultValue={item.contact_email || ""}
-                        />
-                      </label>
-                      <label className="wide">
-                        Kapsam
-                        <textarea name="scope" defaultValue={d.scope || ""} />
-                      </label>
-                      <div className="wide panel-form-actions">
-                        <button className="panel-primary">Kaydet</button>
-                      </div>
-                    </form>
-                  );
                   return (
                     <tr key={item.id}>
                       <td className="crm-table-mono" data-label="No">
-                        TLP-{item.id.slice(0, 8).toUpperCase()}
+                        <Link
+                          className="crm-row-link"
+                          href={`/panel/crm/requests/${item.id}`}
+                          aria-label={`${item.customer_name} talebini aç`}
+                        >
+                          TLP-{item.id.slice(0, 8).toUpperCase()}
+                        </Link>
                       </td>
                       <td data-label="Müşteri">
                         <Link
@@ -424,110 +309,7 @@ export default async function RequestsPage({
                         )}
                       </td>
                       <td className="crm-table-actions">
-                        <PanelBottomSheet
-                          triggerLabel="Ayarlar"
-                          title={`${item.customer_name} · ${item.title}`}
-                        >
-                          <Link
-                            className="panel-primary"
-                            href={`/panel/crm/requests/${item.id}`}
-                          >
-                            İş Detayını Aç
-                          </Link>
-                          {item.stage === "proposal" ? (
-                            <Link
-                              className="panel-secondary"
-                              href="/panel/crm/proposals"
-                            >
-                              Tekliflere Git
-                            </Link>
-                          ) : (
-                            <PanelDrawer
-                              triggerLabel="Teklif Oluştur"
-                              title="Teklif Oluştur"
-                            >
-                              <ProposalBuilderForm
-                                opportunityId={item.id}
-                                customerName={item.customer_name}
-                                title={item.title}
-                                scope={d.scope || item.notes || item.title}
-                              />
-                            </PanelDrawer>
-                          )}
-                          {item.stage !== "proposal" ? (
-                            <PanelDrawer
-                              triggerLabel="Direkt Sözleşme"
-                              title="Direkt Sözleşme Oluştur"
-                              description="Müşteri zaten sözlü onay verdiyse, teklif beklemeden doğrudan sözleşme oluşturun."
-                            >
-                              <ProposalBuilderForm
-                                opportunityId={item.id}
-                                customerName={item.customer_name}
-                                title={item.title}
-                                scope={d.scope || item.notes || item.title}
-                                mode="contract"
-                              />
-                            </PanelDrawer>
-                          ) : null}
-                          <PanelDrawer
-                            triggerLabel="Düzenle"
-                            title="Talebi Düzenle"
-                          >
-                            {edit}
-                          </PanelDrawer>
-                          <PanelDrawer
-                            triggerLabel="Durum"
-                            title="Durumu Güncelle"
-                          >
-                            <form
-                              className="crm-status-form panel-form"
-                              action={moveOpportunity}
-                            >
-                              <input
-                                type="hidden"
-                                name="opportunity_id"
-                                value={item.id}
-                              />
-                              <label>
-                                Durum
-                                <select name="stage" defaultValue={item.stage}>
-                                  {requestStages.map((s) => (
-                                    <option value={s.code} key={s.code}>
-                                      {s.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label>
-                                Arşiv nedeni (opsiyonel)
-                                <input
-                                  name="lost_reason"
-                                  placeholder="Arşiv nedeni"
-                                />
-                              </label>
-                              <div className="panel-form-actions">
-                                <button className="panel-primary">
-                                  Durumu Güncelle
-                                </button>
-                              </div>
-                            </form>
-                          </PanelDrawer>
-                          {canDelete ? (
-                            <form action={archiveOpportunity}>
-                              <input
-                                type="hidden"
-                                name="opportunity_id"
-                                value={item.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="archive_reason"
-                                value="Talep arşivlendi."
-                              />
-                              <button className="panel-danger">Sil</button>
-                            </form>
-                          ) : null}
-                        </PanelBottomSheet>
+                        <span className="crm-row-chevron" aria-hidden="true">›</span>
                       </td>
                     </tr>
                   );
