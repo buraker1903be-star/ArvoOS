@@ -13,7 +13,6 @@ type Props = {
 // ("arvo-os" değilse hep "AkademikMerkez"), bu yüzden üçüncü bir marka
 // eklendiğinde seçicide yanlış isim çıkıyordu.
 function getLabel(organization: PanelWorkspace["organization"]) {
-  if (organization.slug === "arvo-os") return "ArvoOS Platform";
   return organization.display_name || organization.name;
 }
 

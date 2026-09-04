@@ -49,7 +49,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // dışında, panel navigasyonu artık sabit "ArvoOS" markası yerine
   // kurumun kendi logosunu ve tabela unvanını gösteriyor.
   const isPlatformOrg = organization.slug === "arvo-os";
-  const brandName = isPlatformOrg ? "ArvoOS" : (organization.display_name || organization.name);
+  const brandName = organization.display_name || organization.name;
   const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
   const ownEmployeeQuery = supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
@@ -86,7 +86,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
-    <MobileDrawer modules={modules} organizationName={organization.name} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />
+    <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
       <div className="panel-org panel-org-switchable">
@@ -107,7 +107,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
             <Link className="panel-quick-action" href="/panel/notifications" aria-label={`Bildirimler${notificationUnreadCount?`, ${notificationUnreadCount} okunmamış`:""}`}><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b>{notificationUnreadCount?<span className="panel-unread-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</span>:null}</Link>
           </div>
           <ThemeToggle />
-          <div className="panel-user"><span>{organization.name[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
+          <div className="panel-user"><span>{brandName[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
       </header>
       <div className="panel-content">{pendingAgreement?<Link href={`/panel/confidentiality/${pendingAgreement.id}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:18,padding:"15px 18px",borderRadius:14,background:"#fff7e8",border:"1px solid #efd59c",color:"#6b4912",fontWeight:750,textDecoration:"none"}}><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>:null}{children}</div>
