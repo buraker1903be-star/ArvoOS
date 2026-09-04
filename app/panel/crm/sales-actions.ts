@@ -114,6 +114,21 @@ export async function createProposal(
 
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
+  // Oluşturma sırasında üretilen token'ı kalıcı olarak saklıyoruz.
+  // Aksi halde: bu token kullanıcıya gösteriliyor ve müşteriye
+  // gönderiliyor, ama yalnızca hash'i saklandığı için "Müşteriye Gönder"
+  // butonuna basıldığında issue_crm_proposal_link share_token'ı boş
+  // görüp YENİ bir token üretiyor ve gönderilmiş link ölüyor.
+  const newProposalId = String(row?.proposal_id ?? row?.id ?? "");
+  if (newProposalId) {
+    await supabase
+      .from("crm_proposals")
+      .update({ share_token: row.access_token })
+      .eq("id", newProposalId)
+      .eq("organization_id", membership.organization_id)
+      .is("share_token", null);
+  }
+
   redirect(
     `/panel/crm/proposals?share=${encodeURIComponent(row.access_token)}`,
   );
@@ -218,6 +233,18 @@ export async function createContractDirectly(
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel/crm/contracts");
+  // Teklifte olduğu gibi: dönüşümde üretilen sözleşme token'ı da
+  // kalıcı saklanmalı, yoksa "İmzaya Gönder" yeni token üretip
+  // müşteriye gönderilmiş linki geçersiz kılıyor.
+  if (acceptRow?.contract_id && acceptRow?.contract_token) {
+    await supabase
+      .from("crm_contracts")
+      .update({ share_token: acceptRow.contract_token })
+      .eq("id", acceptRow.contract_id)
+      .eq("organization_id", membership.organization_id)
+      .is("share_token", null);
+  }
+
   redirect(
     `/panel/crm/contracts${acceptRow?.contract_token ? `?share=${encodeURIComponent(acceptRow.contract_token)}` : ""}`,
   );
@@ -737,6 +764,15 @@ export async function fastTrackProposalToContract(formData: FormData) {
 
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel/crm/contracts");
+  if (row?.contract_id && row?.contract_token) {
+    await supabase
+      .from("crm_contracts")
+      .update({ share_token: row.contract_token })
+      .eq("id", row.contract_id)
+      .eq("organization_id", membership.organization_id)
+      .is("share_token", null);
+  }
+
   redirect(
     `/panel/crm/contracts${row?.contract_token ? `?share=${encodeURIComponent(row.contract_token)}` : ""}`,
   );
