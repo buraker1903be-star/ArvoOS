@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import {
@@ -141,15 +142,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const representativeMap = new Map(
     (employeeData ?? []).map((employee) => [employee.id, employee.full_name]),
   );
-  const { data: domainOrg } = await supabase
-    .from("organizations")
-    .select("custom_domain,custom_domain_status")
-    .eq("id", membership.organization_id)
-    .maybeSingle();
-  const publicHost =
-    domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
-      ? domainOrg.custom_domain
-      : "app.arvo-os.com";
+  const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = share ? `https://${publicHost}/teklif/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
   const messages = proposalMessages({

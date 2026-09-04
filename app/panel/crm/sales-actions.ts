@@ -270,7 +270,7 @@ export async function createProposalRevision(formData: FormData) {
 }
 
 export async function issueProposalLink(formData: FormData) {
-  const { supabase } = await getPanelContext();
+  const { supabase, membership } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_proposal_link", {
     target_proposal_id: proposalId,
@@ -286,6 +286,7 @@ export async function issueProposalLink(formData: FormData) {
       "proposal_no,title,amount,currency,crm_opportunities(customer_name,contact_email)",
     )
     .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   const docNo = info?.proposal_no ?? "";
   const customer = info?.crm_opportunities as {
@@ -424,7 +425,7 @@ export async function updateContractPaymentPlan(
 }
 
 export async function issueContractLink(formData: FormData) {
-  const { supabase } = await getPanelContext();
+  const { supabase, membership } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_contract_link", {
     target_contract_id: contractId,
@@ -440,6 +441,7 @@ export async function issueContractLink(formData: FormData) {
       "contract_no,title,amount,currency,crm_opportunities(customer_name,contact_email)",
     )
     .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   const docNo = info?.contract_no ?? "";
   const customer = info?.crm_opportunities as {
@@ -476,6 +478,7 @@ export async function markContractStatus(formData: FormData) {
     .from("crm_contracts")
     .select("status")
     .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   if (
     current &&
@@ -509,11 +512,13 @@ export async function deleteContract(formData: FormData) {
       .from("operation_workflows")
       .select("id")
       .eq("contract_id", contractId)
+      .eq("organization_id", membership.organization_id)
       .maybeSingle(),
     supabase
       .from("payment_plans")
       .select("id")
       .eq("contract_id", contractId)
+      .eq("organization_id", membership.organization_id)
       .maybeSingle(),
   ]);
   if (linkedWorkflow)
@@ -591,6 +596,7 @@ export async function markProposalStatus(formData: FormData) {
     .from("crm_proposals")
     .select("status")
     .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   if (
     current &&
@@ -621,6 +627,7 @@ export async function deleteProposal(formData: FormData) {
     .from("crm_contracts")
     .select("id")
     .eq("proposal_id", proposalId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   if (linkedContract)
     throw new Error(
@@ -666,6 +673,7 @@ export async function resolveProposal(formData: FormData) {
     .from("crm_proposals")
     .select("status")
     .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
     .maybeSingle();
   if (current && ["accepted", "rejected", "archived"].includes(current.status)) {
     throw new Error("Bu teklif zaten kesinleşmiş, durumu değiştirilemez.");

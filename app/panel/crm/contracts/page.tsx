@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import {
@@ -133,6 +134,7 @@ export default async function ContractsPage({ searchParams }: Props) {
     const { data: workflows } = await supabase
       .from("operation_workflows")
       .select("id,status")
+      .eq("organization_id", membership.organization_id)
       .in("id", workflowIds);
     for (const wf of workflows ?? [])
       if (wf.status === "completed") completedWorkflowIds.add(wf.id);
@@ -143,15 +145,7 @@ export default async function ContractsPage({ searchParams }: Props) {
       completedWorkflowIds.has(row.workflow_id as string));
   const rows = allRows.filter((row) => !isArchived(row));
   const archivedRows = allRows.filter(isArchived);
-  const { data: domainOrg } = await supabase
-    .from("organizations")
-    .select("custom_domain,custom_domain_status")
-    .eq("id", membership.organization_id)
-    .maybeSingle();
-  const publicHost =
-    domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
-      ? domainOrg.custom_domain
-      : "app.arvo-os.com";
+  const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = share ? `https://${publicHost}/sozlesme/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
   const messages = contractMessages({

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -32,15 +33,7 @@ export default async function ContractDetailPage({ params }: Props) {
     representative = employee?.full_name ?? "Pasif personel";
   }
   const locked = ["signed", "completed", "rejected", "cancelled"].includes(data.status);
-  const { data: domainOrg } = await supabase
-    .from("organizations")
-    .select("custom_domain,custom_domain_status")
-    .eq("id", membership.organization_id)
-    .maybeSingle();
-  const publicHost =
-    domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
-      ? domainOrg.custom_domain
-      : "app.arvo-os.com";
+  const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const brandName = organizationBrandName({
     slug: organization.slug,
     displayName: organization.display_name,

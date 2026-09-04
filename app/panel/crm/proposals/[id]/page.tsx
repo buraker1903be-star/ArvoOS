@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { organizationBrandName, proposalMessages } from "@/lib/customer-message-templates";
 import { notFound } from "next/navigation";
@@ -62,15 +63,7 @@ export default async function ProposalDetailPage({ params }: Props) {
   // Paylaşım bağlantısı: token sabit (issue_crm_proposal_link mevcut
   // token'ı koruyor), bu yüzden bir kez üretildikten sonra sayfanın
   // üstünde kalıcı olarak gösterilebilir.
-  const { data: domainOrg } = await supabase
-    .from("organizations")
-    .select("custom_domain,custom_domain_status")
-    .eq("id", membership.organization_id)
-    .maybeSingle();
-  const publicHost =
-    domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
-      ? domainOrg.custom_domain
-      : "app.arvo-os.com";
+  const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = data.share_token
     ? `https://${publicHost}/teklif/${data.share_token}`
     : "";

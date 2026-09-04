@@ -220,9 +220,9 @@ export default async function RequestsPage({
             </label>
             <div>
               <button className="panel-primary">Filtrele</button>
-              <a className="panel-secondary" href="/panel/crm">
+              <Link className="panel-secondary" href="/panel/crm">
                 Temizle
-              </a>
+              </Link>
             </div>
           </form>
         </section>

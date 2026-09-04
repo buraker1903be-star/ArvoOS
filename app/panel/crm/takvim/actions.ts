@@ -56,21 +56,21 @@ export async function createAppointment(formData: FormData) {
 }
 
 export async function updateAppointmentStatus(formData: FormData) {
-  const { supabase } = await resolveContext();
+  const { supabase, organizationId } = await resolveContext();
   const appointmentId = String(formData.get("appointment_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   if (!appointmentId) throw new Error("Randevu seçilmedi.");
   if (!["planned", "done", "cancelled"].includes(status)) throw new Error("Geçersiz durum.");
-  const { error } = await supabase.from("crm_appointments").update({ status, updated_at: new Date().toISOString() }).eq("id", appointmentId);
+  const { error } = await supabase.from("crm_appointments").update({ status, updated_at: new Date().toISOString() }).eq("id", appointmentId).eq("organization_id", organizationId);
   if (error) throw new Error("Randevu durumu güncellenemedi: " + error.message);
   revalidatePath("/panel/crm/takvim");
 }
 
 export async function deleteAppointment(formData: FormData) {
-  const { supabase } = await resolveContext();
+  const { supabase, organizationId } = await resolveContext();
   const appointmentId = String(formData.get("appointment_id") ?? "").trim();
   if (!appointmentId) throw new Error("Randevu seçilmedi.");
-  const { error } = await supabase.from("crm_appointments").delete().eq("id", appointmentId);
+  const { error } = await supabase.from("crm_appointments").delete().eq("id", appointmentId).eq("organization_id", organizationId);
   if (error) throw new Error("Randevu silinemedi: " + error.message);
   revalidatePath("/panel/crm/takvim");
 }

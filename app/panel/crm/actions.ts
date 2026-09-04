@@ -130,7 +130,7 @@ export async function createOpportunity(formData: FormData) {
 }
 
 export async function updateOpportunity(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
+  const { supabase, membership } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   const currentDetails = JSON.parse(
     text(formData, "current_details", 10000) || "{}",
@@ -325,7 +325,7 @@ function revalidateCommentChain(opportunityId: string, contextType: string, cont
  * eşleşmeyen satırı hiç döndürmüyor.
  */
 export async function updateInternalComment(formData: FormData) {
-  const { supabase, userId } = await crmContext();
+  const { supabase, membership, userId } = await crmContext();
   const commentId = text(formData, "comment_id", 80);
   const body = text(formData, "body", 4000);
   const opportunityId = text(formData, "opportunity_id", 80);
@@ -338,6 +338,7 @@ export async function updateInternalComment(formData: FormData) {
     .from("crm_internal_comments")
     .update({ body, edited_at: new Date().toISOString() })
     .eq("id", commentId)
+    .eq("organization_id", membership.organization_id)
     .eq("created_by", userId)
     .select("id")
     .maybeSingle();
@@ -352,7 +353,7 @@ export async function updateInternalComment(formData: FormData) {
  * ayrımı RLS politikası yapıyor.
  */
 export async function deleteInternalComment(formData: FormData) {
-  const { supabase } = await crmContext();
+  const { supabase, membership } = await crmContext();
   const commentId = text(formData, "comment_id", 80);
   const opportunityId = text(formData, "opportunity_id", 80);
   const contextType = text(formData, "context_type", 20);
@@ -363,6 +364,7 @@ export async function deleteInternalComment(formData: FormData) {
     .from("crm_internal_comments")
     .delete()
     .eq("id", commentId)
+    .eq("organization_id", membership.organization_id)
     .select("id")
     .maybeSingle();
   if (error) throw new Error("Yorum silinemedi: " + error.message);
