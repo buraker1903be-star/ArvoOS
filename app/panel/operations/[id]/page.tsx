@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
-import { addWorkflowStep, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
+import { addWorkflowStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowStatus, toggleWorkflowStep } from "../actions";
+import { PanelDrawer } from "../../components/panel-drawer";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import "../operations.css";
 import "../../crm/request-page.css";
 
 type Step={id:string;title:string;is_completed:boolean;sort_order:number;completed_at:string|null;completed_by:string|null};
-type Workflow={id:string;title:string;customer_name:string|null;description:string|null;status:string;priority:string;start_date:string|null;due_date:string|null;created_at:string;updated_at:string;operation_steps:Step[]};
-type Contract={id:string;contract_no:string;proposal_id:string|null;opportunity_id:string;status:string};
+type Workflow={id:string;title:string;assigned_employee_id:string|null;customer_name:string|null;description:string|null;status:string;priority:string;start_date:string|null;due_date:string|null;created_at:string;updated_at:string;operation_steps:Step[]};
+type Contract={id:string;contract_no:string;proposal_id:string|null;opportunity_id:string;status:string;tracking_code:string|null;share_token:string|null};
 type Opportunity={customer_name:string;contact_email:string|null;contact_phone:string|null;title:string|null;stage:string|null};
 type Proposal={id:string;proposal_no:string;status:string};
 type Comment={id:string;body:string;created_at:string;created_by:string;context_type:"request"|"proposal"|"contract"|"operation"};
@@ -23,20 +25,28 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
  const {id}=await params;
  const {supabase,membership,modules}=await getPanelContext();
  if(!modules.some(module=>module.code==="operations"))throw new Error("Operasyon modülüne erişiminiz yok.");
- const {data:workflowData,error:workflowError}=await supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by)").eq("id",id).eq("organization_id",membership.organization_id).single();
+ const {data:workflowData,error:workflowError}=await supabase.from("operation_workflows").select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by)").eq("id",id).eq("organization_id",membership.organization_id).single();
  if(workflowError||!workflowData)notFound();
  const workflow=workflowData as Workflow;
  const steps=[...(workflow.operation_steps??[])].sort((a,b)=>a.sort_order-b.sort_order);
  const completedCount=steps.filter(step=>step.is_completed).length;
  const progress=steps.length?Math.round(completedCount/steps.length*100):0;
  const [{data:contractData},{data:customerMessagesData,error:customerMessagesError}]=await Promise.all([
-  supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle(),
+  supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).maybeSingle(),
   supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id",workflow.id).eq("organization_id",membership.organization_id).order("created_at",{ascending:true}),
  ]);
  if(customerMessagesError)throw new Error("Müşteri mesajları okunamadı: "+customerMessagesError.message);
  const customerMessages=(customerMessagesData??[]) as CustomerMessage[];
  const unreadCustomerMessages=customerMessages.filter(message=>message.sender_type==="customer"&&!message.read_at).length;
  const contract=contractData as Contract|null;
+ const canAssign=["owner","admin","manager"].includes(membership.role);
+ const canDelete=["owner","admin"].includes(membership.role);
+ const {data:employeeData}=canAssign
+  ?await supabase.from("hr_employees").select("id,full_name")
+    .eq("organization_id",membership.organization_id)
+    .eq("employment_status","active").order("full_name")
+  :{data:[]};
+ const employees=(employeeData??[]) as {id:string;full_name:string}[];
  let opportunity:Opportunity|null=null;
  let proposal:Proposal|null=null;
  const [opportunityResult,proposalResult]=await Promise.all([
@@ -96,8 +106,26 @@ export default async function OperationDetailPage({params}:{params:Promise<{id:s
 
    <aside className="ops-detail-side">
     <section className="panel-card ops-detail-card"><small className="panel-kicker">MÜŞTERİ</small><h2>Müşteri Bilgileri</h2><dl className="ops-detail-list"><div><dt>Ad / Kurum</dt><dd>{customerName}</dd></div><div><dt>Telefon</dt><dd>{opportunity?.contact_phone||"—"}</dd></div><div><dt>E-posta</dt><dd>{opportunity?.contact_email||"—"}</dd></div><div><dt>CRM Aşaması</dt><dd>{opportunity?.stage||"—"}</dd></div></dl></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status||"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status||"—"}</dd></div></dl></section>
-    <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form></section>
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">KAYITLAR</small><h2>Bağlı Kayıtlar</h2><dl className="ops-detail-list"><div><dt>Sözleşme</dt><dd>{contract?.contract_no||"Bağlı değil"}</dd></div><div><dt>Takip Kodu</dt><dd>{contract?.tracking_code?<code className="ops-tracking-code">{contract.tracking_code}</code>:"Henüz üretilmedi"}</dd></div><div><dt>Sözleşme Durumu</dt><dd>{contract?.status||"—"}</dd></div><div><dt>Teklif</dt><dd>{proposal?.proposal_no||"Bağlı değil"}</dd></div><div><dt>Teklif Durumu</dt><dd>{proposal?.status||"—"}</dd></div></dl></section>
+    <section className="panel-card ops-detail-card"><small className="panel-kicker">YÖNETİM</small><h2>İş Durumu</h2><form className="ops-detail-status" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id}/><select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select><button className="panel-primary" type="submit">Güncelle</button></form><div className="ops-detail-manage">
+      {canAssign?<PanelDrawer triggerLabel="Sorumlu Ata" title={workflow.title} description="Bu işi yürütecek personeli seçin." triggerClassName="panel-secondary">
+       <form className="panel-form" action={assignWorkflow}>
+        <input type="hidden" name="workflow_id" value={workflow.id}/>
+        <label className="wide">Operasyon sorumlusu
+         <select name="assigned_employee_id" defaultValue={workflow.assigned_employee_id??""}>
+          <option value="">Atanmamış</option>
+          {employees.map((e)=><option value={e.id} key={e.id}>{e.full_name}</option>)}
+         </select>
+        </label>
+        <div className="wide panel-form-actions"><button className="panel-primary">Atamayı Kaydet</button></div>
+       </form>
+      </PanelDrawer>:null}
+      {canDelete?<form action={deleteWorkflow}>
+       <input type="hidden" name="workflow_id" value={workflow.id}/>
+       <ConfirmDeleteButton label="Sil" confirmMessage={`${workflow.title} işini kalıcı olarak silmek istediğinize emin misiniz?`}/>
+      </form>:null}
+     </div>
+    </section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">AKTİVİTE</small><h2>Son Hareketler</h2><div className="ops-activity-list">{activities.map(activity=><article key={activity.id} className={`activity-${activity.kind}`}><i>{activity.kind==="created"?"＋":activity.kind==="step"?"✓":"•"}</i><div><strong>{activity.title}</strong><p>{activity.detail}</p><time>{formatDate(activity.at,true)}</time></div></article>)}</div></section>
     <section className="panel-card ops-detail-card"><small className="panel-kicker">ZAMAN</small><h2>İş Bilgileri</h2><dl className="ops-detail-list"><div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at,true)}</dd></div><div><dt>Son Güncelleme</dt><dd>{formatDate(workflow.updated_at,true)}</dd></div></dl></section>
    </aside>

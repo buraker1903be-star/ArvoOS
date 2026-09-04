@@ -258,3 +258,30 @@
   color: var(--danger);
   font-weight: 800;
 }
+
+/* Takip kodu — operasyon detayında müşteriye verilecek kod.
+   Rakam ve harf karışık olduğu için tek aralıklı yazı tipiyle,
+   telefonda okunurken karışmasın. */
+.ops-tracking-code {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+/* Operasyon detayında yönetim işlemleri */
+.ops-detail-manage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.ops-detail-manage form { margin: 0; }

@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { PanelBottomSheet } from "../components/panel-bottom-sheet";
-import { addWorkflowStep, createWorkflow, setWorkflowStatus, assignWorkflow, deleteWorkflow } from "./actions";
-import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
+import { createWorkflow } from "./actions";
 import { OperationsTabs } from "./operations-tabs";
 import "../crm/crm.css";
 import "./operations.css";
@@ -20,8 +18,6 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
   const search = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
   const selectedStatus = boardStatuses.includes((durum ?? "") as typeof boardStatuses[number]) ? durum! : "";
   const { supabase, membership, modules } = await getPanelContext();
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
-  const canDelete = ["owner", "admin"].includes(membership.role);
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
     supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false }),
@@ -96,7 +92,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
     <div className="wide panel-form-actions"><button className="panel-primary" type="submit">İşi oluştur</button></div>
   </form>;
 
-  return <>
+  return <div className="crm-page-stack">
     <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
     <OperationsTabs active="is-akisi" />
     <div className="module-tab-panel">
@@ -113,11 +109,8 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
       const percentage = steps.length ? Math.round(done / steps.length * 100) : 0;
       const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
       const commentCount = opportunityId ? commentCounts.get(opportunityId) ?? 0 : 0;
-      const assignmentForm = <form className="panel-form" action={assignWorkflow}><input type="hidden" name="workflow_id" value={workflow.id} /><label className="wide">Operasyon sorumlusu<select name="assigned_employee_id" defaultValue={workflow.assigned_employee_id ?? ""}><option value="">Atanmamış</option>{employees.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}</select></label><div className="wide panel-form-actions"><button className="panel-primary" type="submit">Atamayı Kaydet</button></div></form>;
-      const statusForm = <form className="panel-form" action={setWorkflowStatus}><input type="hidden" name="workflow_id" value={workflow.id} /><label>Durum<select name="status" defaultValue={workflow.status}><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal</option></select></label><div className="panel-form-actions"><button className="panel-primary" type="submit">Güncelle</button></div></form>;
-      const stepForm = <form className="panel-form" action={addWorkflowStep}><input type="hidden" name="workflow_id" value={workflow.id} /><label>Yeni adım<input name="title" required minLength={2} maxLength={180} placeholder="Örn. Müşteri onayı" /></label><div className="panel-form-actions"><button className="panel-primary" type="submit">Ekle</button></div></form>;
       return <tr key={workflow.id}>
-        <td data-label="İş"><div><span className="crm-table-title"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.title}</Link></span><span className="crm-table-sub">{done}/{steps.length} adım</span></div></td>
+        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.title}</Link></span><span className="crm-table-sub">{done}/{steps.length} adım</span></div></Link></td>
         <td data-label="Müşteri"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.customer_name || "Kurum içi iş"}</Link></td>
         <td data-label="Sorumlu">{workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : "Atanmamış"}</td>
         <td data-label="Öncelik"><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
@@ -125,15 +118,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
         <td data-label="İlerleme">%{percentage}</td>
         <td data-label="Yorumlar">{commentCount ? <Link className="crm-comment-count-badge" href={`/panel/operations/${workflow.id}`}>{commentCount} yorum</Link> : <span className="crm-comment-count-empty">—</span>}</td>
         <td data-label="Termin">{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "—"}</td>
-        <td className="crm-table-actions">
-          <PanelBottomSheet triggerLabel="Ayarlar" title={`${workflow.title} işlemleri`}>
-            <Link className="panel-secondary" href={`/panel/operations/${workflow.id}`}>Detayları Aç</Link>
-            {canAssign ? <PanelDrawer triggerLabel="Sorumlu Ata" title={workflow.title} description="Bu operasyonu bir personele atayın.">{assignmentForm}</PanelDrawer> : null}
-            <PanelDrawer triggerLabel="Adım Ekle" title={workflow.title} description="Bu işe yeni bir adım ekleyin.">{stepForm}</PanelDrawer>
-            <PanelDrawer triggerLabel="Durum" title={workflow.title} description="İşin durumunu güncelleyin.">{statusForm}</PanelDrawer>
-            {canDelete ? <form action={deleteWorkflow}><input type="hidden" name="workflow_id" value={workflow.id} /><ConfirmDeleteButton label="Sil" confirmMessage={`"${workflow.title}" iş akışını kalıcı olarak silmek istediğinize emin misiniz? Tüm adımlar ve yorumlar da silinecek. Bu işlem geri alınamaz.`} /></form> : null}
-          </PanelBottomSheet>
-        </td>
+        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
       </tr>;
     })}</tbody></table></section> : <div className="panel-card crm-empty">Eşleşen iş bulunamadı.</div>}
     {archivedWorkflows.length ? (
@@ -150,5 +135,5 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
       </details>
     ) : null}
     </div>
-  </>;
+  </div>;
 }
