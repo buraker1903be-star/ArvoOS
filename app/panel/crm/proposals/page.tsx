@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
@@ -90,7 +91,24 @@ export default async function ProposalsPage({ searchParams }: Props) {
   if (search) q = q.or(`proposal_no.ilike.%${search}%,title.ilike.%${search}%`);
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error("Teklifler okunamadı: " + error.message);
-  const rows = (data ?? []) as unknown as Proposal[];
+  const fetchedRows = (data ?? []) as unknown as Proposal[];
+  const searchKey = search.toLocaleLowerCase("tr-TR");
+  const matchesSearch = (row: Proposal) => {
+    if (!searchKey) return true;
+    const customer = row.crm_opportunities;
+    return [
+      row.proposal_no,
+      row.title,
+      customer?.customer_name,
+      customer?.contact_email,
+      phoneSearchTerms(customer?.contact_phone),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("tr-TR")
+      .includes(searchKey);
+  };
+  const rows = fetchedRows.filter(matchesSearch);
   const { data: archivedData, error: archivedError } = await supabase
     .from("crm_proposals")
     .select(
@@ -301,7 +319,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                             </Link>
                           </span>
                           <span className="crm-table-sub">
-                            {customer?.contact_phone ||
+                            {formatPhone(customer?.contact_phone) ||
                               customer?.contact_email ||
                               "İletişim yok"}
                           </span>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -169,7 +170,7 @@ export default async function RequestDetailPage({
           </div>
           <div>
             <dt>Telefon</dt>
-            <dd>{item.contact_phone || "Belirtilmedi"}</dd>
+            <dd>{formatPhone(item.contact_phone) || "Belirtilmedi"}</dd>
           </div>
           <div>
             <dt>E-posta</dt>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone } from "@/lib/format-phone";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { AppointmentForm } from "./appointment-form";
@@ -74,7 +75,7 @@ function AppointmentRow({ appointment, canManageAll, employeeName }: { appointme
       <div className="appointment-time"><b>{time}</b>{endTime ? <small>– {endTime}</small> : null}</div>
       <div className="appointment-body">
         <div className="appointment-heading"><h4>{appointment.title}</h4><span className="status-pill">{statusLabels[appointment.status] ?? appointment.status}</span></div>
-        <p>{[appointment.contact_name, appointment.contact_phone].filter(Boolean).join(" · ") || "Kişi belirtilmedi"}{canManageAll && employeeName ? ` · ${employeeName}` : ""}</p>
+        <p>{[appointment.contact_name, formatPhone(appointment.contact_phone)].filter(Boolean).join(" · ") || "Kişi belirtilmedi"}{canManageAll && employeeName ? ` · ${employeeName}` : ""}</p>
         {appointment.note ? <p className="appointment-note">{appointment.note}</p> : null}
       </div>
       <div className="appointment-actions">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
@@ -85,10 +86,31 @@ export default async function ContractsPage({ searchParams }: Props) {
     )
     .eq("organization_id", membership.organization_id);
   if (status) q = q.eq("status", status);
-  if (search) q = q.or(`contract_no.ilike.%${search}%,title.ilike.%${search}%`);
+  // Arama sunucuda yalnızca numara ve konuda çalışıyordu; yer tutucu
+  // "müşteri ara" dediği halde müşteri adı hiç aranmıyordu. Müşteri
+  // bilgisi bağlı tabloda olduğu için filtreyi çekimden sonra
+  // uyguluyoruz. Kayıt sayısı arttığında bunun sunucuya taşınması gerekir.
+
   const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw new Error("Sözleşmeler okunamadı: " + error.message);
-  const allRows = (data ?? []) as unknown as Contract[];
+  const fetchedRows = (data ?? []) as unknown as Contract[];
+  const searchKey = search.toLocaleLowerCase("tr-TR");
+  const matchesSearch = (row: Contract) => {
+    if (!searchKey) return true;
+    const customer = row.crm_opportunities;
+    return [
+      row.contract_no,
+      row.title,
+      customer?.customer_name,
+      customer?.contact_email,
+      phoneSearchTerms(customer?.contact_phone),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("tr-TR")
+      .includes(searchKey);
+  };
+  const allRows = fetchedRows.filter(matchesSearch);
   const visibleOpportunityIds = [
     ...new Set(allRows.map((row) => row.opportunity_id).filter(Boolean)),
   ];
@@ -298,7 +320,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                             </Link>
                           </span>
                           <span className="crm-table-sub">
-                            {customer?.contact_phone ||
+                            {formatPhone(customer?.contact_phone) ||
                               customer?.contact_email ||
                               "İletişim yok"}
                           </span>

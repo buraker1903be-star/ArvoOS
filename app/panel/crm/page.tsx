@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { fetchLastContacts, relativeTime } from "./last-contact";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
@@ -99,7 +100,7 @@ export default async function RequestsPage({
       i.customer_name,
       i.title,
       i.contact_email,
-      i.contact_phone,
+      phoneSearchTerms(i.contact_phone),
       i.request_details?.service_type,
       representativeMap.get(i.assigned_employee_id ?? ""),
     ]
@@ -259,7 +260,7 @@ export default async function RequestsPage({
                             {formatPersonName(item.customer_name)}
                           </span>
                           <span className="crm-table-sub">
-                            {item.contact_phone ||
+                            {formatPhone(item.contact_phone) ||
                               item.contact_email ||
                               "İletişim yok"}
                           </span>

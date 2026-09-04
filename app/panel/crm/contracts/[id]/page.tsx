@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatPhone } from "@/lib/format-phone";
 import { CONTRACT_STATUS_LABELS as labels } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -97,7 +98,7 @@ export default async function ContractDetailPage({ params }: Props) {
         <dl className="crm-request-detail-grid">
           <div><dt>Müşteri</dt><dd>{customer?.customer_name || "—"}</dd></div>
           <div><dt>Temsilci</dt><dd>{representative}</dd></div>
-          <div><dt>Telefon</dt><dd>{customer?.contact_phone || "—"}</dd></div>
+          <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || "—"}</dd></div>
           <div><dt>E-posta</dt><dd>{customer?.contact_email || "—"}</dd></div>
           <div><dt>Ödeme planı</dt><dd>{data.payment_plan || "—"}</dd></div>
           <div><dt>Başlangıç</dt><dd>{date(data.start_date)}</dd></div>
