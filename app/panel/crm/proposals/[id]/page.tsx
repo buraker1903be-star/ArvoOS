@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
 import {
-  createProposalRevision,
   deleteProposal,
   fastTrackProposalToContract,
   issueProposalLink,
@@ -15,6 +14,7 @@ import {
 } from "../../sales-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
+import { RecordHistory } from "../../record-history";
 import "../../request-page.css";
 import "../../crm.css";
 
@@ -83,15 +83,6 @@ export default async function ProposalDetailPage({ params }: Props) {
       })
     : null;
 
-  // Revizyon geçmişi artık ayrı sayfada değil, sayfanın altında.
-  const rootId = data.root_proposal_id || data.id;
-  const { data: revisionRows } = await supabase
-    .from("crm_proposals")
-    .select("id,proposal_no,amount,currency,status,revision_no,revision_note,created_at,superseded_by")
-    .eq("organization_id", membership.organization_id)
-    .or(`id.eq.${rootId},root_proposal_id.eq.${rootId}`)
-    .order("revision_no", { ascending: false });
-  const revisions = revisionRows ?? [];
 
   const locked = ["accepted", "rejected", "archived"].includes(data.status);
   const canDelete = ["owner", "admin", "manager"].includes(membership.role);
@@ -280,42 +271,7 @@ export default async function ProposalDetailPage({ params }: Props) {
             </form>
             </PanelDrawer>
           ) : null}
-          {!locked ? (
-            <PanelDrawer triggerLabel="Revizyon" title={`${data.proposal_no} revizyonu`} description="Yeni sürüm oluşturun; mevcut teklif arşivlenecektir.">
-            <form
-              className="panel-form"
-              action={createProposalRevision}
-            >
-              <input type="hidden" name="proposal_id" value={data.id} />
-              <label className="wide">
-                Revizyon nedeni
-                <textarea
-                  name="revision_reason"
-                  required
-                  minLength={3}
-                  maxLength={1000}
-                  placeholder="Müşterinin talebi, kapsam değişikliği, fiyat güncellemesi..."
-                />
-              </label>
-              <div className="wide panel-card" style={{ padding: 14 }}>
-                <strong>
-                  Yeni revizyon: {data.proposal_no.replace(/-R\d+$/, "")}
-                  -R{data.revision_no + 1}
-                </strong>
-                <p style={{ margin: "8px 0 0" }}>
-                  Mevcut sürüm arşivlenecek ve müşterinin yalnızca yeni
-                  sürümü onaylamasına izin verilecek.
-                </p>
-              </div>
-              <div className="wide panel-form-actions">
-                <button className="panel-primary">
-                  Revizyonu Oluştur
-                </button>
-              </div>
-            </form>
-            </PanelDrawer>
-          ) : null}
-          {!locked ? (
+                    {!locked ? (
             <form action={issueProposalLink}>
               <input type="hidden" name="proposal_id" value={data.id} />
               <input type="hidden" name="redirect_to" value={`/panel/crm/proposals/${data.id}`} />
@@ -370,43 +326,7 @@ export default async function ProposalDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
-      {revisions.length > 1 ? (
-        <section className="panel-card crm-revision-history">
-          <header>
-            <small className="panel-kicker">REVİZYON GEÇMİŞİ</small>
-            <h2>{revisions.length} sürüm</h2>
-          </header>
-          <ol>
-            {revisions.map((r) => {
-              const isCurrent = r.id === data.id;
-              return (
-                <li key={r.id} className={isCurrent ? "is-current" : undefined}>
-                  <div className="crm-revision-mark">
-                    {r.revision_no > 0 ? `R${r.revision_no}` : "İlk"}
-                  </div>
-                  <div className="crm-revision-body">
-                    <b>
-                      {r.proposal_no}
-                      {isCurrent ? <em>Görüntülenen sürüm</em> : null}
-                    </b>
-                    <span>
-                      {money(Number(r.amount), r.currency || "TRY")} ·{" "}
-                      {labels[r.status] ?? r.status} ·{" "}
-                      {new Date(r.created_at).toLocaleString("tr-TR")}
-                    </span>
-                    {r.revision_note ? <p>{r.revision_note}</p> : null}
-                  </div>
-                  {!isCurrent ? (
-                    <Link className="panel-secondary" href={`/panel/crm/proposals/${r.id}`}>
-                      Aç
-                    </Link>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      ) : null}
+      <RecordHistory opportunityId={data.opportunity_id} />
         </div>
         <aside className="crm-detail-side">
   <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} />

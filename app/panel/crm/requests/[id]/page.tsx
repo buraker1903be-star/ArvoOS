@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ProposalBuilderForm } from "../../proposal-builder-form";
 import { InternalComments } from "../../internal-comments";
+import { RecordHistory } from "../../record-history";
 import {
   archiveOpportunity,
   assignOpportunity,
@@ -292,6 +293,7 @@ export default async function RequestDetailPage({
           </div>
         </div>
       </section>
+          <RecordHistory opportunityId={item.id} />
         </div>
         <aside className="crm-detail-side">
   <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />

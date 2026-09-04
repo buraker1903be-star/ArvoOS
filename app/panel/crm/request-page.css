@@ -864,3 +864,96 @@
   padding: 0 14px;
   font-size: 12px;
 }
+
+/* ============================================================
+   Kayıt geçmişi — kim neyi neyden neye değiştirdi.
+   Eski/yeni değerler yan yana; "güncellendi" demek yerine
+   farkın kendisini gösteriyoruz.
+   ============================================================ */
+.crm-record-history {
+  padding: 22px 24px;
+}
+.crm-record-history header {
+  margin-bottom: 16px;
+}
+.crm-record-history header h2 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 750;
+  color: var(--ink);
+}
+.crm-record-history > ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crm-record-history > ol > li {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.crm-record-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+.crm-record-history-meta strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+.crm-record-history-meta span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.crm-record-history-meta time {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.crm-record-history > ol > li > p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.crm-record-history-changes {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.crm-record-history-changes li {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+}
+.crm-record-history-changes b {
+  color: var(--muted);
+  font-weight: 750;
+}
+.crm-record-history-changes .from {
+  color: var(--dim);
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
+}
+.crm-record-history-changes .to {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .crm-record-history-changes li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding-bottom: 6px;
+  }
+  .crm-record-history-changes li span[aria-hidden] {
+    display: none;
+  }
+}

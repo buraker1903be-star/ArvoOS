@@ -9,6 +9,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
+import { RecordHistory } from "../../record-history";
 import "../../request-page.css";
 import "../../crm.css";
 
@@ -330,6 +331,7 @@ export default async function ContractDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
+          <RecordHistory opportunityId={data.opportunity_id} />
         </div>
         <aside className="crm-detail-side">
   <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} />

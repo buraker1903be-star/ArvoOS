@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { diffFields, logActivity } from "@/lib/activity-log";
 import { getPanelContext } from "@/lib/panel-context";
 
 const defaultProbability: Record<string, number> = {
@@ -130,7 +131,7 @@ export async function createOpportunity(formData: FormData) {
 }
 
 export async function updateOpportunity(formData: FormData) {
-  const { supabase, membership } = await crmContext();
+  const { supabase, membership, userId } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   const currentDetails = JSON.parse(
     text(formData, "current_details", 10000) || "{}",
@@ -152,6 +153,14 @@ export async function updateOpportunity(formData: FormData) {
         text(formData, "assigned_employee_id", 80),
       )
     : null;
+  // Değişikliği yazabilmek için önceki hali gerekiyor.
+  const { data: before } = await supabase
+    .from("crm_opportunities")
+    .select("title,customer_name,contact_email,contact_phone,source,notes,expected_close_date,assigned_employee_id,stage")
+    .eq("id", opportunityId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("crm_opportunities")
     .update({
@@ -173,11 +182,39 @@ export async function updateOpportunity(formData: FormData) {
     })
     .eq("id", opportunityId)
     .eq("organization_id", membership.organization_id)
-    .select("id")
+    .select("id,title,customer_name,contact_email,contact_phone,source,notes,expected_close_date,assigned_employee_id,stage")
     .maybeSingle();
   if (error) throw new Error("Talep güncellenemedi: " + error.message);
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+
+  // Geçmişte "a1b2c3… → d4e5f6…" yazmasın diye temsilci id'lerini
+  // okunabilir isme çeviriyoruz.
+  const employeeIds = [before?.assigned_employee_id, data.assigned_employee_id]
+    .filter((value): value is string => Boolean(value));
+  const { data: employeeRows } = employeeIds.length
+    ? await supabase
+        .from("hr_employees")
+        .select("id,full_name")
+        .eq("organization_id", membership.organization_id)
+        .in("id", employeeIds)
+    : { data: [] };
+  const employeeNames = new Map((employeeRows ?? []).map((e) => [e.id, e.full_name]));
+
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "update",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    changes: diffFields(before, data, [
+      "title", "customer_name", "contact_email", "contact_phone",
+      "source", "notes", "expected_close_date", "assigned_employee_id", "stage",
+    ], { assigned_employee_id: (v) => employeeNames.get(v) ?? (v ? "Atandı" : "Atanmadı") }),
+  });
+
   revalidatePath("/panel/crm");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
 }
 
 export async function archiveOpportunity(formData: FormData) {
@@ -281,7 +318,7 @@ export async function addInternalComment(formData: FormData) {
  * boşalırdı. Bu yüzden ayrı ve dar kapsamlı bir action.
  */
 export async function assignOpportunity(formData: FormData) {
-  const { supabase, membership } = await crmContext();
+  const { supabase, membership, userId } = await crmContext();
   if (!["owner", "admin", "manager"].includes(membership.role)) {
     throw new Error("Temsilci atama yetkiniz yok.");
   }
@@ -304,7 +341,24 @@ export async function assignOpportunity(formData: FormData) {
     .maybeSingle();
   if (error) throw new Error("Temsilci atanamadı: " + error.message);
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+
+  const { data: assigned } = await supabase
+    .from("hr_employees")
+    .select("full_name")
+    .eq("id", assignment.employeeId ?? "")
+    .maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "assign",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    note: assigned?.full_name ? `${assigned.full_name} atandı` : "Temsilci değiştirildi",
+  });
+
   revalidatePath("/panel/crm");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
 }
 
 /** Yorum sayfalarının tamamını tazeler; yorum zinciri dört yerde birden görünüyor. */

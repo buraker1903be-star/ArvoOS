@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { diffFields, logActivity } from "@/lib/activity-log";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -201,10 +202,24 @@ export async function createContractDirectly(
   );
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Taslak", sent: "Gönderildi", accepted: "Kabul edildi",
+  rejected: "Reddedildi", expired: "Süresi doldu", archived: "Arşivlendi",
+  signed: "İmzalandı", awaiting_signature: "İmza bekliyor", cancelled: "İptal edildi",
+};
+
 export async function updateProposal(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const proposalAmount = amount(formData, "amount");
+  // RPC'nin içine giremediğimiz için değişikliği burada çıkarıyoruz.
+  const { data: before } = await supabase
+    .from("crm_proposals")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,valid_until,status")
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { error } = await supabase.rpc("update_crm_proposal", {
     target_proposal_id: proposalId,
     proposal_title: text(formData, "title", 180),
@@ -214,6 +229,24 @@ export async function updateProposal(formData: FormData) {
     proposal_valid_until: text(formData, "valid_until", 20) || null,
   });
   if (error) throw new Error("Teklif güncellenemedi: " + error.message);
+
+  const { data: after } = await supabase
+    .from("crm_proposals")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,valid_until,status")
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (before && after) {
+    await logActivity(supabase, {
+      organizationId: membership.organization_id,
+      actorUserId: userId,
+      action: "update",
+      entityType: "crm_proposal",
+      entityId: proposalId,
+      opportunityId: String(after.opportunity_id ?? before.opportunity_id ?? ""),
+      changes: diffFields(before, after, ["title","scope","amount","currency","payment_plan","valid_until","status"]),
+    });
+  }
 
   // Talep aşamasında girilen müşteri/hizmet bilgileri de aynı formdan
   // düzenlenebilsin diye bağlı fırsat (crm_opportunities) kaydı da
@@ -312,9 +345,17 @@ export async function issueProposalLink(formData: FormData) {
 }
 
 export async function updateContract(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
+  // RPC'nin içine giremediğimiz için değişikliği burada çıkarıyoruz.
+  const { data: before } = await supabase
+    .from("crm_contracts")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,start_date,due_date,status")
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
   const { error } = await supabase.rpc("update_crm_contract", {
     target_contract_id: contractId,
     contract_title: text(formData, "title", 180),
@@ -325,6 +366,24 @@ export async function updateContract(formData: FormData) {
     contract_due_date: text(formData, "due_date", 20) || null,
   });
   if (error) throw new Error("Sözleşme güncellenemedi: " + error.message);
+
+  const { data: after } = await supabase
+    .from("crm_contracts")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,start_date,due_date,status")
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (before && after) {
+    await logActivity(supabase, {
+      organizationId: membership.organization_id,
+      actorUserId: userId,
+      action: "update",
+      entityType: "crm_contract",
+      entityId: contractId,
+      opportunityId: String(after.opportunity_id ?? before.opportunity_id ?? ""),
+      changes: diffFields(before, after, ["title","scope","amount","currency","payment_plan","start_date","due_date","status"]),
+    });
+  }
 
   // Kurumsal müşteri adres/vergi bilgisi — ayrı, basit bir güncelleme
   // olarak tutuluyor ki mevcut, kanıtlanmış RPC'ye dokunmayalım.
@@ -658,7 +717,7 @@ export async function deleteProposal(formData: FormData) {
  * olduğu için ayrı bir onay adımından geçmeli (deleteProposal).
  */
 export async function resolveProposal(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
@@ -695,6 +754,27 @@ export async function resolveProposal(formData: FormData) {
     .eq("id", proposalId)
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Teklif kapatılamadı: " + error.message);
+
+  const { data: closed } = await supabase
+    .from("crm_proposals")
+    .select("opportunity_id")
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "status",
+    entityType: "crm_proposal",
+    entityId: proposalId,
+    opportunityId: String(closed?.opportunity_id ?? ""),
+    changes: [{
+      field: "status", label: "Durum",
+      from: STATUS_LABELS[current?.status ?? ""] ?? (current?.status ?? ""),
+      to: STATUS_LABELS[chosen.status] ?? chosen.status,
+    }],
+  });
+
   revalidatePath("/panel/crm/proposals");
   revalidatePath(`/panel/crm/proposals/${proposalId}`);
 }
