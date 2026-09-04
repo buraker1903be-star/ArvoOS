@@ -126,7 +126,20 @@ export async function createOpportunity(formData: FormData) {
     owner_user_id: assignment.userId,
     created_by: userId,
   });
-  if (error) throw new Error("Talep oluşturulamadı: " + error.message);
+  if (error) {
+    // GEÇİCİ: RLS reddinin sebebini tek log satırında görebilmek için
+    // gönderilen değerleri hata mesajına ekliyoruz. Sorun çözülünce
+    // bu blok sade haline döndürülecek.
+    throw new Error(
+      "Talep oluşturulamadı: " + error.message +
+      " | GONDERILEN => org=" + membership.organization_id +
+      " rol=" + membership.role +
+      " created_by=" + userId +
+      " assigned_employee_id=" + String(assignment.employeeId) +
+      " owner_user_id=" + String(assignment.userId) +
+      " canAssign=" + String(canAssign),
+    );
+  }
 
   // Kaydı ayrı bir sorguyla okuyoruz. insert(...).select(...) kullanmak
   // insert'i "eklenen satırı geri döndür" moduna sokuyor ve SELECT
