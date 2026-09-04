@@ -144,6 +144,8 @@ export default async function RequestDetailPage({
           </span>
         </div>
       </header>
+      <div className="crm-detail-split">
+        <div className="crm-detail-main">
       <section className="panel-card crm-request-detail-card">
         <div className="crm-request-detail-heading">
           <div>
@@ -290,7 +292,11 @@ export default async function RequestDetailPage({
           </div>
         </div>
       </section>
-      <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
+        </div>
+        <aside className="crm-detail-side">
+  <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
+        </aside>
+      </div>
     </main>
   );
 }

@@ -140,6 +140,8 @@ export default async function ProposalDetailPage({ params }: Props) {
         </section>
       ) : null}
 
+      <div className="crm-detail-split">
+        <div className="crm-detail-main">
       <section className="panel-card crm-request-detail-card">
         <div className="crm-request-detail-heading">
           <div><span className="status-pill">{labels[data.status] ?? data.status}</span><h2>{data.title}</h2></div>
@@ -411,7 +413,11 @@ export default async function ProposalDetailPage({ params }: Props) {
           </ol>
         </section>
       ) : null}
-      <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} />
+        </div>
+        <aside className="crm-detail-side">
+  <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} />
+        </aside>
+      </div>
     </div>
   );
 }

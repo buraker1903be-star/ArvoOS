@@ -41,7 +41,6 @@ export default async function ContractDetailPage({ params }: Props) {
     domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
       ? domainOrg.custom_domain
       : "app.arvo-os.com";
-  const trackingUrl = `https://${publicHost}/takip`;
   const brandName = organizationBrandName({
     slug: organization.slug,
     displayName: organization.display_name,
@@ -54,6 +53,8 @@ export default async function ContractDetailPage({ params }: Props) {
         <div><small className="panel-kicker">CRM / SÖZLEŞME DETAYI</small><h1>{data.contract_no}</h1><p>{formatPersonName(customer?.customer_name)} · {data.title}</p></div>
         <Link className="panel-secondary" href="/panel/crm/contracts">Sözleşmelere Dön</Link>
       </div>
+      <div className="crm-detail-split">
+        <div className="crm-detail-main">
       <section className="panel-card crm-request-detail-card">
         <div className="crm-request-detail-heading"><div><span className="status-pill">{labels[data.status] ?? data.status}</span><h2>{data.title}</h2></div><strong>{money(data.amount, data.currency)}</strong></div>
         <dl className="crm-request-detail-grid">
@@ -293,7 +294,11 @@ export default async function ContractDetailPage({ params }: Props) {
           </div>
         </div>
       </section>
-      <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} />
+        </div>
+        <aside className="crm-detail-side">
+  <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} />
+        </aside>
+      </div>
     </div>
   );
 }
