@@ -109,6 +109,30 @@ export async function createOpportunity(formData: FormData) {
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };
+  // --- GEÇİCİ TEŞHİS ---
+  // RLS reddinin sebebini bulmak için eklendi. Politika şunu istiyor:
+  //   created_by = auth.uid()  VE  (yetkili üye  VEYA  kayıt bana atanmış)
+  // Aşağıdaki üç değer, bu koşulun neden sağlanmadığını gösterecek.
+  // Sorun çözülünce bu blok kaldırılacak.
+  const { data: probeUser } = await supabase.auth.getUser();
+  const { data: probeMembership } = await supabase
+    .from("organization_memberships")
+    .select("role,is_active")
+    .eq("organization_id", membership.organization_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  console.log("[TALEP-TESHIS]", JSON.stringify({
+    contextUserId: userId,
+    authUserId: probeUser?.user?.id ?? null,
+    esitMi: probeUser?.user?.id === userId,
+    organizationId: membership.organization_id,
+    contextRole: membership.role,
+    dbRole: probeMembership?.role ?? "UYELIK OKUNAMADI",
+    dbAktif: probeMembership?.is_active ?? null,
+    assignedEmployeeId: assignment.employeeId,
+  }));
+  // --- GEÇİCİ TEŞHİS SONU ---
+
   const { error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
     title,
