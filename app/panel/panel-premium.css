@@ -482,3 +482,36 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 /* Satır sonundaki yön oku — tıklanabilirliğin görsel ipucu */
 .crm-row-chevron{display:block;width:100%;text-align:right;padding-right:4px;color:var(--dim);font-size:20px;line-height:1;transition:color .15s ease,transform .15s ease}
 .crm-page-stack .crm-data-table tbody tr:hover .crm-row-chevron{color:var(--accent);transform:translateX(2px)}
+
+/* ============================================================
+   Mavi yazı butonu — dolgulu buton yerine bağlantı görünümü.
+   "Sözleşmeye Dönüştür" gibi ikincil ama yıkıcı olmayan
+   işlemler için; yeşil/dolu buton onları fazla öne çıkarıyordu.
+   ============================================================ */
+.panel-link{display:inline-flex;align-items:center;min-height:38px;padding:0 4px;border:0;background:none;color:var(--brand-600);font-size:13px;font-weight:750;text-decoration:none;cursor:pointer;transition:color .15s ease}
+.panel-link:hover{color:var(--brand-800);text-decoration:underline;text-underline-offset:3px}
+.panel-link:disabled{opacity:.5;cursor:not-allowed;text-decoration:none}
+
+/* Pencere içindeki kalıcı/yıkıcı işlem bölgesi */
+.panel-danger-zone{margin-top:22px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--danger) 28%,var(--line));border-radius:var(--r-md);background:var(--danger-soft)}
+.panel-danger-zone p{margin:8px 0 14px;color:var(--ink-soft);font-size:13px;line-height:1.55}
+
+/* Revizyon geçmişi — teklif detayının altında, yorumlar gibi gömülü */
+.crm-revision-history{margin-top:18px;padding:22px 24px}
+.crm-revision-history header{margin-bottom:16px}
+.crm-revision-history header h2{margin:6px 0 0;font:750 18px var(--font-heading);color:var(--ink)}
+.crm-revision-history ol{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.crm-revision-history li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
+.crm-revision-history li.is-current{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--accent-soft)}
+.crm-revision-mark{display:grid;place-items:center;height:36px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:13px;font-weight:800}
+.crm-revision-history li.is-current .crm-revision-mark{color:var(--accent-strong);border-color:transparent}
+.crm-revision-body{min-width:0}
+.crm-revision-body b{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:14px}
+.crm-revision-body b em{padding:3px 8px;border-radius:var(--r-pill);background:var(--surface);color:var(--accent-strong);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.04em}
+.crm-revision-body span{display:block;margin-top:4px;color:var(--muted);font-size:13px}
+.crm-revision-body p{margin:8px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:620px){
+  .crm-revision-history{padding:18px 16px}
+  .crm-revision-history li{grid-template-columns:44px minmax(0,1fr);row-gap:10px}
+  .crm-revision-history li>.panel-secondary{grid-column:1/-1;width:100%}
+}

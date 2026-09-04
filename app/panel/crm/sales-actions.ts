@@ -301,6 +301,12 @@ export async function issueProposalLink(formData: FormData) {
     amount: String(info?.amount ?? ""),
     currency: info?.currency ?? "TRY",
   });
+  // Detay sayfasından çağrıldıysa oraya dön; eskiden her durumda
+  // listeye atıyordu ve kullanıcı bulunduğu sayfadan kopuyordu.
+  const backTo = text(formData, "redirect_to", 200);
+  if (backTo.startsWith("/panel/crm/proposals/")) {
+    redirect(`${backTo}?${params.toString()}`);
+  }
   redirect(`/panel/crm/proposals?${params.toString()}`);
 }
 
@@ -628,4 +634,55 @@ export async function deleteProposal(formData: FormData) {
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Teklif silinemedi: " + error.message);
   revalidatePath("/panel/crm/proposals");
+}
+
+/**
+ * Teklifi bir sebeple kapatır.
+ *
+ * markProposalStatus yalnızca "rejected" ve "expired" kabul ediyordu;
+ * yanlışlıkla açılmış kayıtlar için bir yol yoktu. Burada üçüncü bir
+ * seçenek olarak "hatalı kayıt" da arşive alınıyor.
+ *
+ * Silme bilinçli olarak buraya dahil edilmedi: geri alınamaz bir işlem
+ * olduğu için ayrı bir onay adımından geçmeli (deleteProposal).
+ */
+export async function resolveProposal(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin", "manager"].includes(membership.role))
+    throw new Error("Bu işlem için yetkiniz yok.");
+  const proposalId = text(formData, "proposal_id", 80);
+  const resolution = text(formData, "resolution", 20);
+  if (!proposalId) throw new Error("Teklif seçilmedi.");
+
+  const plan: Record<string, { status: string; archiveReason: string | null }> = {
+    rejected: { status: "rejected", archiveReason: "rejected" },
+    expired: { status: "expired", archiveReason: "expired" },
+    invalid: { status: "archived", archiveReason: "manual" },
+  };
+  const chosen = plan[resolution];
+  if (!chosen) throw new Error("Geçersiz iptal sebebi.");
+
+  const { data: current } = await supabase
+    .from("crm_proposals")
+    .select("status")
+    .eq("id", proposalId)
+    .maybeSingle();
+  if (current && ["accepted", "rejected", "archived"].includes(current.status)) {
+    throw new Error("Bu teklif zaten kesinleşmiş, durumu değiştirilemez.");
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("crm_proposals")
+    .update({
+      status: chosen.status,
+      responded_at: now,
+      archived_at: now,
+      archive_reason: chosen.archiveReason,
+    })
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id);
+  if (error) throw new Error("Teklif kapatılamadı: " + error.message);
+  revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
 }
