@@ -249,3 +249,12 @@
 .crm-metrics article.is-alert strong {
   color: var(--danger);
 }
+
+/* Zorunlu alan işareti — hangi alanların şart olduğu belli değildi.
+   aria-hidden çünkü input'un kendisinde zaten required var; ekran
+   okuyucu bunu iki kez duyurmasın. */
+.panel-form label .req {
+  margin-left: 3px;
+  color: var(--danger);
+  font-weight: 800;
+}

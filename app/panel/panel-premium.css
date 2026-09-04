@@ -570,3 +570,33 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   /* Sayfa başlığı ile içerik arasındaki boşluk --- */
   .crm-page-stack .panel-pagehead{margin-bottom:14px}
 }
+
+/* ============================================================
+   PENCERE İÇİ FORMLAR
+   panel.css formu iki sütun olarak tasarlamıştı; çekmece sağdan
+   kayan 560px'lik bir panelken tek sütuna zorlanmış. Pencere artık
+   ortada ve daha geniş, iki sütun rahat sığıyor. 16 alanlı talep
+   formu böylece yarı yüksekliğe iniyor ve kaydırma neredeyse bitiyor.
+   ============================================================ */
+@media(min-width:761px){
+  .panel-drawer{width:min(760px,100%)}
+  .panel-drawer-body .panel-form{grid-template-columns:1fr 1fr}
+  .panel-drawer-body .panel-form .wide{grid-column:1/-1}
+}
+
+/* Kaydet çubuğu içeriğin üstüne biniyordu: sticky + bottom:-38px
+   kombinasyonu çubuğu kaydırma alanının dışına taşırıyor, son alan
+   arkasında kalıyordu. Çubuk artık tam altta duruyor ve gövdeye
+   kendi yüksekliği kadar boşluk bırakılıyor. */
+.panel-drawer-body{padding-bottom:0}
+.panel-drawer-body .panel-form-actions{
+  position:sticky;
+  bottom:0;
+  margin:18px -30px 0;
+  padding:16px 30px calc(16px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);
+  background:var(--surface)
+}
+@media(max-width:760px){
+  .panel-drawer-body .panel-form-actions{margin-inline:-20px;padding-inline:20px}
+}
