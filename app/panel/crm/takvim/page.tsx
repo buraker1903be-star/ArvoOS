@@ -88,7 +88,7 @@ function AppointmentRow({ appointment, canManageAll, employeeName }: { appointme
 
 export default async function CrmCalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; ay?: string; tarih?: string; calisan?: string }> }) {
   const params = await searchParams;
-  const view = params.view === "liste" ? "liste" : "ay";
+  const explicitView = params.view === "liste" ? "liste" : params.view === "ay" ? "ay" : null;
   const { supabase, membership, userId, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const isManager = managerRoles.has(membership.role);
@@ -101,8 +101,15 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
 
   const monthStart = parseMonthParam(params.ay);
   const selectedDate = parseDateParam(params.tarih);
-  const rangeStart = view === "ay" ? new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 25) : new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-  const rangeEnd = view === "ay" ? new Date(monthStart.getFullYear(), monthStart.getMonth() + 2, 5) : new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + 14);
+  // Görünüm randevu sayısına göre seçildiği için sorgu, iki görünümün
+  // aralığının birleşimini çekiyor; yoksa "önce hangi aralık" diye
+  // döngüsel bir bağımlılık oluşuyor.
+  const ayStart = new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 25);
+  const ayEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 2, 5);
+  const listeStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+  const listeEnd = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + 14);
+  const rangeStart = ayStart < listeStart ? ayStart : listeStart;
+  const rangeEnd = ayEnd > listeEnd ? ayEnd : listeEnd;
 
   let query = supabase.from("crm_appointments").select("id,employee_id,title,contact_name,contact_phone,note,starts_at,ends_at,status")
     .eq("organization_id", membership.organization_id)
@@ -113,6 +120,10 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
   const [{ data: appointmentData, error: appointmentError }, { data: employeeData }] = await Promise.all([query, employeesPromise]);
   if (appointmentError) throw new Error("Randevular okunamadı: " + appointmentError.message);
   const appointments = (appointmentData ?? []) as Appointment[];
+  // Kullanıcı bir görünüm seçmediyse randevu sayısına göre karar veriyoruz.
+  // Tek randevu için tam aylık ızgara ~700px boş kutu demek; liste hem
+  // daha okunur hem de saat/kişi bilgisini doğrudan gösteriyor.
+  const view = explicitView ?? (appointments.length <= 3 ? "liste" : "ay");
   const employees = (employeeData ?? []) as Employee[];
   const employeeNameMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   if (ownEmployee) employeeNameMap.set(ownEmployee.id, ownEmployee.full_name);

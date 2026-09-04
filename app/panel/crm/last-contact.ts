@@ -49,6 +49,18 @@ export function daysSince(value: string | null | undefined): number | null {
   return Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
 }
 
+/**
+ * Bekleme süresi etiketi. "0 gündür" hiçbir şey söylemiyordu;
+ * bugün gönderilmiş bir kayıtta "bugün" yazması daha doğru.
+ */
+export function waitingLabel(value: string | null | undefined): string | null {
+  const days = daysSince(value);
+  if (days === null) return null;
+  if (days <= 0) return "bugün gönderildi";
+  if (days === 1) return "1 gündür bekliyor";
+  return `${days} gündür bekliyor`;
+}
+
 export async function fetchLastContacts(
   supabase: SupabaseClient,
   organizationId: string,

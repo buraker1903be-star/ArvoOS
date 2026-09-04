@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { daysSince, fetchLastContacts, relativeTime } from "../last-contact";
+import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -322,7 +322,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                                 : "crm-waiting"
                             }
                           >
-                            {daysSince(row.sent_at)} gündür
+                            {waitingLabel(row.sent_at)}
                           </small>
                         ) : null}
                       </td>
