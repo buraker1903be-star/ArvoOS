@@ -105,6 +105,27 @@ for (const file of allCss) {
   }
 }
 
+// 5) okunamayacak kadar küçük yazı.
+// Bu iki kez kaçtı: ilk seferinde regex boşluksuz yazımı arıyordu
+// ("font-size: 8px" atlandı), ikincisinde de sadece bir dosyaya bakılmıştı.
+// Artık boşluklu/boşluksuz her iki yazım da taranıyor.
+const MIN_FONT_PX = 11;
+for (const file of allCss) {
+  const css = fs.readFileSync(file, "utf8");
+  for (const m of css.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) {
+    if (Number(m[1]) < MIN_FONT_PX) {
+      const line = css.slice(0, m.index).split("\n").length;
+      problems.push(`${file}:${line} — ${m[1]}px yazı boyutu okunamaz (alt sınır ${MIN_FONT_PX}px)`);
+    }
+  }
+  for (const m of css.matchAll(/font:[^;{}]*?\s(\d+(?:\.\d+)?)px/g)) {
+    if (Number(m[1]) < MIN_FONT_PX) {
+      const line = css.slice(0, m.index).split("\n").length;
+      problems.push(`${file}:${line} — font kısayolunda ${m[1]}px okunamaz`);
+    }
+  }
+}
+
 for (const [file, props] of paletteOffenders) {
   problems.push(
     `${file}: palet değişkeni tanımlıyor (${[...new Set(props)].join(", ")}). ` +
@@ -118,4 +139,4 @@ if (unique.length) {
   for (const p of unique) console.error("  • " + p);
   process.exit(1);
 }
-console.log(`✓ ${importOrder.length} dosya, ${vars.size} değişken — döngü yok, tanımsız yok, palet tek kaynakta.`);
+console.log(`✓ ${importOrder.length} dosya, ${vars.size} değişken — döngü yok, tanımsız yok, palet tek kaynakta, ${MIN_FONT_PX}px altı yazı yok.`);

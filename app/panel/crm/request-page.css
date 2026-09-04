@@ -21,7 +21,7 @@
 .crm-request-actions > small {
   margin-bottom: 3px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.11em;
 }
@@ -52,7 +52,7 @@
   flex-direction: column;
   gap: 6px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 .crm-status-form select,
@@ -78,7 +78,7 @@
   border-radius: 8px;
   background: var(--ux-soft);
   color: var(--accent-600);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 .crm-request-preview h3 {
@@ -106,7 +106,7 @@
 }
 .crm-request-preview dt {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 .crm-request-preview dd {
@@ -162,7 +162,7 @@
 .proposal-drawer-intro small {
   display: block;
   color: var(--accent-600);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.15em;
 }
@@ -181,7 +181,7 @@
   gap: 18px;
 }
 .proposal-builder label {
-  font-size: 10px;
+  font-size: 13px;
 }
 .proposal-builder input,
 .proposal-builder select,
@@ -213,7 +213,7 @@
 .proposal-live-summary > header span,
 .proposal-payment-breakdown > small {
   color: var(--accent-600);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -231,7 +231,7 @@
 }
 .proposal-live-summary span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 .proposal-live-summary b,
 .proposal-live-summary strong {
@@ -327,14 +327,14 @@
 }
 .custom-plan-head small {
   color: var(--accent-600);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
 .custom-plan-total {
   padding: 5px 9px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 .custom-plan-total.ok {
@@ -350,7 +350,7 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--ux-primary);
 }
@@ -361,7 +361,7 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--ux-primary);
-  font-size: 9px;
+  font-size: 12px;
 }
 .custom-plan-rows {
   display: flex;
@@ -382,11 +382,11 @@
   border-radius: 50%;
   background: var(--surface);
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 .custom-plan-row-label {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--ux-primary);
 }
@@ -394,7 +394,7 @@
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 7.5px;
+  font-size: 11px;
   font-weight: 600;
 }
 .custom-plan-row input {
@@ -405,15 +405,15 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--ux-primary);
-  font-size: 9px;
+  font-size: 12px;
 }
 .custom-plan-percent-sign {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   text-align: center;
 }
 .custom-plan-amount {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--ink);
   text-align: right;
@@ -422,7 +422,7 @@
 .custom-plan-hint {
   margin: 10px 0 0;
   color: var(--warning);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 @media (max-width: 760px) {
@@ -469,7 +469,7 @@
 .crm-request-detail-heading p {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 .crm-request-detail-grid {
   display: grid;
@@ -483,7 +483,7 @@
 }
 .crm-request-detail-grid dt {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -491,7 +491,7 @@
 .crm-request-detail-grid dd {
   margin: 6px 0 0;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 650;
 }
 .crm-request-detail-note {
@@ -499,14 +499,14 @@
   border-bottom: 1px solid var(--line-soft);
 }
 .crm-request-detail-note small {
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--muted);
 }
 .crm-request-detail-note p {
   margin: 7px 0 0;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .crm-request-detail-actions {
@@ -521,10 +521,11 @@
 }
 .crm-request-detail-actions .panel-primary,
 .crm-request-detail-actions .panel-secondary,
-.crm-request-detail-actions .panel-danger {
+.crm-request-detail-actions .panel-danger,
+.crm-request-detail-actions .panel-link {
   min-height: 34px;
   padding: 0 12px;
-  font-size: 8px;
+  font-size: 11px;
   text-decoration: none;
 }
 .crm-request-detail-actions form {
@@ -549,7 +550,7 @@
 .crm-internal-comments-head p {
   margin: 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
 }
 .crm-internal-comment-count {
   align-self: flex-start;
@@ -558,7 +559,7 @@
   border-radius: 999px;
   background: rgba(255,255,255,.75);
   color: var(--ink);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 750;
   white-space: nowrap;
 }
@@ -581,7 +582,7 @@
   border-radius: 12px;
   background: var(--brand-50);
   color: var(--brand-700);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: .03em;
 }
@@ -604,12 +605,12 @@
 }
 .crm-internal-comment-composer label strong {
   color: var(--ink);
-  font-size: 9px;
+  font-size: 12px;
 }
 .crm-internal-comment-composer label span,
 .crm-internal-comment-composer small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
 }
 .crm-internal-comment-composer textarea {
   width: 100%;
@@ -633,7 +634,7 @@
 .crm-internal-comment-composer button {
   min-height: 32px;
   padding: 0 12px;
-  font-size: 8px;
+  font-size: 11px;
 }
 .crm-internal-comment-list article {
   display: flex;
@@ -664,30 +665,30 @@
   gap: 2px;
 }
 .crm-internal-comment-meta strong {
-  font-size: 10px;
+  font-size: 13px;
 }
 .crm-internal-comment-meta small {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 11px;
 }
 .crm-internal-comment-meta > span {
   padding: 3px 7px;
   border-radius: 999px;
   background: var(--brand-50);
   color: var(--brand-700);
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 800;
 }
 .crm-internal-comment-meta time {
   margin-left: auto;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
 }
 .crm-internal-comment-content > p {
   margin: 8px 0 0;
   white-space: pre-wrap;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.65;
 }
 @media (max-width: 620px) {
@@ -706,7 +707,8 @@
   }
   .crm-request-detail-actions .panel-primary,
   .crm-request-detail-actions .panel-secondary,
-  .crm-request-detail-actions .panel-danger {
+  .crm-request-detail-actions .panel-danger,
+  .crm-request-detail-actions .panel-link {
     width: 100%;
     min-height: 40px;
   }
