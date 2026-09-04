@@ -30,6 +30,29 @@ const importOrder = [...fs.readFileSync(LAYOUT, "utf8").matchAll(/import\s+"\.\/
 );
 
 const problems = [];
+
+// 0) çözülmemiş birleştirme çakışması.
+// Bu bir kez canlıya kadar gitti: postcss "<<<<<<< HEAD" satırlarını
+// hata vermeden yutuyor, bu yüzden CSS "geçerli" görünüyordu ve hata
+// ancak Turbopack derlemesinde ortaya çıktı. Kaynak dosyaların hepsini
+// tarıyoruz; çakışma yalnızca CSS'te olmak zorunda değil.
+const SOURCE_DIRS = ["app", "lib", "scripts", "supabase"];
+const CONFLICT = /^(<{7} |={7}$|>{7} )/;
+function scanConflicts(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) { scanConflicts(full); continue; }
+    if (!/\.(css|ts|tsx|js|mjs|json|sql|md)$/.test(entry.name)) continue;
+    const text = fs.readFileSync(full, "utf8");
+    text.split("\n").forEach((line, idx) => {
+      if (CONFLICT.test(line)) {
+        problems.push(`${full}:${idx + 1} — çözülmemiş birleştirme çakışması ('${line.slice(0, 24)}')`);
+      }
+    });
+  }
+}
+for (const dir of SOURCE_DIRS) scanConflicts(dir);
 const vars = new Map(); // ad -> { value, file }
 const paletteOffenders = new Map();
 
