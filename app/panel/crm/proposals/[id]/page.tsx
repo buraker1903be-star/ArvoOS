@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
 import {
+  createProposalRevision,
   deleteProposal,
   fastTrackProposalToContract,
   issueProposalLink,
   markProposalStatus,
+  updateProposal,
 } from "../../sales-actions";
+import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
 
@@ -34,7 +37,7 @@ export default async function ProposalDetailPage({ params }: Props) {
 
   const { data, error } = await supabase
     .from("crm_proposals")
-    .select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,opportunity_id,crm_opportunities!inner(customer_name,contact_email,contact_phone,assigned_employee_id)")
+    .select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
@@ -82,6 +85,10 @@ export default async function ProposalDetailPage({ params }: Props) {
           <div><dt>Geçerlilik</dt><dd>{date(data.valid_until)}</dd></div>
           <div><dt>Oluşturulma</dt><dd>{date(data.created_at)}</dd></div>
           <div><dt>Görüntülenme</dt><dd>{data.view_count || 0} kez</dd></div>
+          <div><dt>Revizyon</dt><dd>{data.revision_no > 0 ? `R${data.revision_no}` : "İlk sürüm"}</dd></div>
+          <div><dt>Gönderim</dt><dd>{date(data.sent_at)}</dd></div>
+          <div><dt>İlk görüntüleme</dt><dd>{date(data.first_viewed_at)}</dd></div>
+          <div><dt>Son görüntüleme</dt><dd>{date(data.last_viewed_at)}</dd></div>
         </dl>
         {data.scope ? <div className="crm-request-detail-note"><small>KAPSAM</small><p>{data.scope}</p></div> : null}
 
@@ -89,6 +96,160 @@ export default async function ProposalDetailPage({ params }: Props) {
           <small className="panel-kicker">İŞLEMLER</small>
           <div>
           <Link className="panel-secondary" href={`/panel/crm/proposals/${data.id}/revisions`}>Revizyon Geçmişi</Link>
+          {!locked ? (
+            <PanelDrawer triggerLabel="Düzenle" title={data.proposal_no} description="Teklif bilgilerini kontrol edin.">
+            <form className="panel-form" action={updateProposal}>
+              <input type="hidden" name="proposal_id" value={data.id} />
+              <input
+                type="hidden"
+                name="opportunity_id"
+                value={customer?.id ?? ""}
+              />
+              <input
+                type="hidden"
+                name="current_details"
+                value={JSON.stringify(customer?.request_details ?? {})}
+              />
+              <p className="wide panel-form-note">
+                Müşteri / Talep Bilgileri
+              </p>
+              <label>
+                Müşteri adı
+                <input
+                  name="customer_name"
+                  defaultValue={customer?.customer_name ?? ""}
+                />
+              </label>
+              <label>
+                Telefon
+                <input
+                  name="contact_phone"
+                  defaultValue={customer?.contact_phone ?? ""}
+                />
+              </label>
+              <label>
+                E-posta
+                <input
+                  name="contact_email"
+                  defaultValue={customer?.contact_email ?? ""}
+                />
+              </label>
+              <label>
+                Hizmet türü
+                <input
+                  name="service_type"
+                  defaultValue={String(
+                    customer?.request_details?.service_type ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Akademik seviye
+                <input
+                  name="academic_level"
+                  defaultValue={String(
+                    customer?.request_details?.academic_level ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Üniversite
+                <input
+                  name="university"
+                  defaultValue={String(
+                    customer?.request_details?.university ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Bölüm
+                <input
+                  name="department"
+                  defaultValue={String(
+                    customer?.request_details?.department ?? "",
+                  )}
+                />
+              </label>
+              <p className="wide panel-form-note">Teklif Bilgileri</p>
+              <label>
+                Başlık
+                <input name="title" defaultValue={data.title} required />
+              </label>
+              <label>
+                Tutar
+                <input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={(data.amount / 100).toFixed(2)}
+                  required
+                />
+              </label>
+              <label className="wide">
+                Kapsam
+                <textarea
+                  name="scope"
+                  defaultValue={data.scope ?? ""}
+                  required
+                />
+              </label>
+              <label>
+                Ödeme planı
+                <input
+                  name="payment_plan"
+                  defaultValue={data.payment_plan ?? ""}
+                />
+              </label>
+              <label>
+                Geçerlilik
+                <input
+                  name="valid_until"
+                  type="date"
+                  defaultValue={data.valid_until ?? ""}
+                />
+              </label>
+              <div className="wide panel-form-actions">
+                <button className="panel-primary">Kaydet</button>
+              </div>
+            </form>
+            </PanelDrawer>
+          ) : null}
+          {!locked ? (
+            <PanelDrawer triggerLabel="Revizyon" title={`${data.proposal_no} revizyonu`} description="Yeni sürüm oluşturun; mevcut teklif arşivlenecektir.">
+            <form
+              className="panel-form"
+              action={createProposalRevision}
+            >
+              <input type="hidden" name="proposal_id" value={data.id} />
+              <label className="wide">
+                Revizyon nedeni
+                <textarea
+                  name="revision_reason"
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                  placeholder="Müşterinin talebi, kapsam değişikliği, fiyat güncellemesi..."
+                />
+              </label>
+              <div className="wide panel-card" style={{ padding: 14 }}>
+                <strong>
+                  Yeni revizyon: {data.proposal_no.replace(/-R\d+$/, "")}
+                  -R{data.revision_no + 1}
+                </strong>
+                <p style={{ margin: "8px 0 0" }}>
+                  Mevcut sürüm arşivlenecek ve müşterinin yalnızca yeni
+                  sürümü onaylamasına izin verilecek.
+                </p>
+              </div>
+              <div className="wide panel-form-actions">
+                <button className="panel-primary">
+                  Revizyonu Oluştur
+                </button>
+              </div>
+            </form>
+            </PanelDrawer>
+          ) : null}
           {!locked ? <form action={issueProposalLink}><input type="hidden" name="proposal_id" value={data.id}/><button className="panel-primary">Müşteriye Gönder</button></form> : null}
           {!locked ? <form action={fastTrackProposalToContract}><input type="hidden" name="proposal_id" value={data.id}/><button className="panel-secondary">Sözleşmeye Dönüştür</button></form> : null}
           {!locked ? <form action={markProposalStatus}><input type="hidden" name="proposal_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}

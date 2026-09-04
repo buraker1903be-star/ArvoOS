@@ -1,16 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { PanelDrawer } from "../../components/panel-drawer";
-import { PanelBottomSheet } from "../../components/panel-bottom-sheet";
 import {
-  createProposalRevision,
-  issueProposalLink,
-  updateProposal,
-  fastTrackProposalToContract,
-  markProposalStatus,
-  deleteProposal,
 } from "../sales-actions";
-import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { CrmTabs } from "../crm-tabs";
 import {
   organizationBrandName,
@@ -79,8 +70,6 @@ const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(
     v / 100,
   );
-const dateTime = (v: string | null) =>
-  v ? new Date(v).toLocaleString("tr-TR") : "—";
 export default async function ProposalsPage({ searchParams }: Props) {
   const p = await searchParams;
   const search = (p.search ?? "").trim();
@@ -91,7 +80,6 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const customerEmail = p.customer_email ?? "";
   const { supabase, membership, organization, modules } =
     await getPanelContext();
-  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   let q = supabase
@@ -313,220 +301,6 @@ export default async function ProposalsPage({ searchParams }: Props) {
                         row.archive_reason === "expired"
                       ? "Teklif Süresi Doldu"
                       : (labels[row.status] ?? row.status);
-                  const locked =
-                    ["accepted", "rejected", "archived"].includes(row.status) ||
-                    superseded;
-                  const edit = (
-                    <form className="panel-form" action={updateProposal}>
-                      <input type="hidden" name="proposal_id" value={row.id} />
-                      <input
-                        type="hidden"
-                        name="opportunity_id"
-                        value={customer?.id ?? ""}
-                      />
-                      <input
-                        type="hidden"
-                        name="current_details"
-                        value={JSON.stringify(customer?.request_details ?? {})}
-                      />
-                      <p className="wide panel-form-note">
-                        Müşteri / Talep Bilgileri
-                      </p>
-                      <label>
-                        Müşteri adı
-                        <input
-                          name="customer_name"
-                          defaultValue={customer?.customer_name ?? ""}
-                        />
-                      </label>
-                      <label>
-                        Telefon
-                        <input
-                          name="contact_phone"
-                          defaultValue={customer?.contact_phone ?? ""}
-                        />
-                      </label>
-                      <label>
-                        E-posta
-                        <input
-                          name="contact_email"
-                          defaultValue={customer?.contact_email ?? ""}
-                        />
-                      </label>
-                      <label>
-                        Hizmet türü
-                        <input
-                          name="service_type"
-                          defaultValue={String(
-                            customer?.request_details?.service_type ?? "",
-                          )}
-                        />
-                      </label>
-                      <label>
-                        Akademik seviye
-                        <input
-                          name="academic_level"
-                          defaultValue={String(
-                            customer?.request_details?.academic_level ?? "",
-                          )}
-                        />
-                      </label>
-                      <label>
-                        Üniversite
-                        <input
-                          name="university"
-                          defaultValue={String(
-                            customer?.request_details?.university ?? "",
-                          )}
-                        />
-                      </label>
-                      <label>
-                        Bölüm
-                        <input
-                          name="department"
-                          defaultValue={String(
-                            customer?.request_details?.department ?? "",
-                          )}
-                        />
-                      </label>
-                      <p className="wide panel-form-note">Teklif Bilgileri</p>
-                      <label>
-                        Başlık
-                        <input name="title" defaultValue={row.title} required />
-                      </label>
-                      <label>
-                        Tutar
-                        <input
-                          name="amount"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          defaultValue={(row.amount / 100).toFixed(2)}
-                          required
-                        />
-                      </label>
-                      <label className="wide">
-                        Kapsam
-                        <textarea
-                          name="scope"
-                          defaultValue={row.scope ?? ""}
-                          required
-                        />
-                      </label>
-                      <label>
-                        Ödeme planı
-                        <input
-                          name="payment_plan"
-                          defaultValue={row.payment_plan ?? ""}
-                        />
-                      </label>
-                      <label>
-                        Geçerlilik
-                        <input
-                          name="valid_until"
-                          type="date"
-                          defaultValue={row.valid_until ?? ""}
-                        />
-                      </label>
-                      <div className="wide panel-form-actions">
-                        <button className="panel-primary">Kaydet</button>
-                      </div>
-                    </form>
-                  );
-                  const revision = (
-                    <form
-                      className="panel-form"
-                      action={createProposalRevision}
-                    >
-                      <input type="hidden" name="proposal_id" value={row.id} />
-                      <label className="wide">
-                        Revizyon nedeni
-                        <textarea
-                          name="revision_reason"
-                          required
-                          minLength={3}
-                          maxLength={1000}
-                          placeholder="Müşterinin talebi, kapsam değişikliği, fiyat güncellemesi..."
-                        />
-                      </label>
-                      <div className="wide panel-card" style={{ padding: 14 }}>
-                        <strong>
-                          Yeni revizyon: {row.proposal_no.replace(/-R\d+$/, "")}
-                          -R{row.revision_no + 1}
-                        </strong>
-                        <p style={{ margin: "8px 0 0" }}>
-                          Mevcut sürüm arşivlenecek ve müşterinin yalnızca yeni
-                          sürümü onaylamasına izin verilecek.
-                        </p>
-                      </div>
-                      <div className="wide panel-form-actions">
-                        <button className="panel-primary">
-                          Revizyonu Oluştur
-                        </button>
-                      </div>
-                    </form>
-                  );
-                  const detail = (
-                    <div className="crm-request-preview">
-                      <span>{displayStatus}</span>
-                      <h3>{customer?.customer_name}</h3>
-                      <h4>{row.title}</h4>
-                      <dl>
-                        <div>
-                          <dt>Satış temsilcisi</dt>
-                          <dd>{representativeName}</dd>
-                        </div>
-                        <div>
-                          <dt>Telefon</dt>
-                          <dd>{customer?.contact_phone || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>E-posta</dt>
-                          <dd>{customer?.contact_email || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>Ödeme planı</dt>
-                          <dd>{row.payment_plan || "Belirtilmedi"}</dd>
-                        </div>
-                        <div>
-                          <dt>Revizyon</dt>
-                          <dd>
-                            {row.revision_no
-                              ? `R${row.revision_no}`
-                              : "İlk sürüm"}
-                          </dd>
-                        </div>
-                      </dl>
-                      {row.scope ? <p>{row.scope}</p> : null}
-                      {row.revision_note ? (
-                        <p>
-                          <b>Revizyon nedeni:</b> {row.revision_note}
-                        </p>
-                      ) : null}
-                      <div className="crm-document-timeline">
-                        <span>
-                          <b>Oluşturuldu</b>
-                          {dateTime(row.created_at)}
-                        </span>
-                        <span>
-                          <b>Gönderildi</b>
-                          {dateTime(row.sent_at)}
-                        </span>
-                        <span>
-                          <b>İlk görüntüleme</b>
-                          {dateTime(row.first_viewed_at)}
-                        </span>
-                        <span>
-                          <b>Son görüntüleme</b>
-                          {dateTime(row.last_viewed_at)}
-                        </span>
-                        <span>
-                          <b>Açılma</b>
-                          {row.view_count} kez
-                        </span>
-                      </div>
-                    </div>
-                  );
                   return (
                     <tr key={row.id}>
                       <td className="crm-table-mono" data-label="Teklif No">
@@ -584,110 +358,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                         )}
                       </td>
                       <td className="crm-table-actions">
-                        <PanelBottomSheet
-                          triggerLabel="Ayarlar"
-                          title={`${row.proposal_no} işlemleri`}
-                        >
-                        <Link className="panel-secondary" href={`/panel/crm/proposals/${row.id}`}>
-                          Detayları Aç
-                        </Link>
-                        <PanelDrawer
-                          triggerLabel="Önizle"
-                          title={row.proposal_no}
-                        >
-                          {detail}
-                        </PanelDrawer>
-                        {!locked ? (
-                          <PanelDrawer
-                            triggerLabel="Düzenle"
-                            title={row.proposal_no}
-                            description="Teklif bilgilerini kontrol edin."
-                          >
-                            {edit}
-                          </PanelDrawer>
-                        ) : null}
-                        {!locked ? (
-                          <PanelDrawer
-                            triggerLabel="Revizyon"
-                            title={`${row.proposal_no} revizyonu`}
-                            description="Yeni sürüm oluşturun; mevcut teklif arşivlenecektir."
-                          >
-                            {revision}
-                          </PanelDrawer>
-                        ) : null}
-                        {!locked ? (
-                          <form action={issueProposalLink}>
-                            <input
-                              type="hidden"
-                              name="proposal_id"
-                              value={row.id}
-                            />
-                            <button className="panel-primary">Link</button>
-                          </form>
-                        ) : null}
-                        {!locked ? (
-                          <form action={fastTrackProposalToContract}>
-                            <input
-                              type="hidden"
-                              name="proposal_id"
-                              value={row.id}
-                            />
-                            <button
-                              className="panel-secondary"
-                              title="Müşteri zaten sözlü onay verdiyse, online onay beklemeden doğrudan sözleşmeye geçirin."
-                            >
-                              Sözleşmeye Dönüştür
-                            </button>
-                          </form>
-                        ) : null}
-                        {!locked ? (
-                          <form action={markProposalStatus}>
-                            <input
-                              type="hidden"
-                              name="proposal_id"
-                              value={row.id}
-                            />
-                            <input
-                              type="hidden"
-                              name="status"
-                              value="rejected"
-                            />
-                            <button className="panel-secondary">
-                              Reddedildi
-                            </button>
-                          </form>
-                        ) : null}
-                        {!locked ? (
-                          <form action={markProposalStatus}>
-                            <input
-                              type="hidden"
-                              name="proposal_id"
-                              value={row.id}
-                            />
-                            <input
-                              type="hidden"
-                              name="status"
-                              value="expired"
-                            />
-                            <button className="panel-secondary">
-                              Süre Doldu
-                            </button>
-                          </form>
-                        ) : null}
-                        {canDelete ? (
-                          <form action={deleteProposal}>
-                            <input
-                              type="hidden"
-                              name="proposal_id"
-                              value={row.id}
-                            />
-                            <ConfirmDeleteButton
-                              label="Sil"
-                              confirmMessage={`${row.proposal_no} teklifini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
-                            />
-                          </form>
-                        ) : null}
-                        </PanelBottomSheet>
+                        <span className="crm-row-chevron" aria-hidden="true">›</span>
                       </td>
                     </tr>
                   );

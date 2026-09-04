@@ -2,7 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
-import { deleteContract, issueContractLink, markContractStatus } from "../../sales-actions";
+import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../sales-actions";
+import { PanelDrawer } from "../../../components/panel-drawer";
+import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
+import { organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import "../../request-page.css";
 
@@ -17,7 +20,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(customer_name,contact_email,contact_phone,assigned_employee_id)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -28,6 +31,21 @@ export default async function ContractDetailPage({ params }: Props) {
     representative = employee?.full_name ?? "Pasif personel";
   }
   const locked = ["signed", "completed", "rejected", "cancelled"].includes(data.status);
+  const { data: domainOrg } = await supabase
+    .from("organizations")
+    .select("custom_domain,custom_domain_status")
+    .eq("id", membership.organization_id)
+    .maybeSingle();
+  const publicHost =
+    domainOrg?.custom_domain_status === "verified" && domainOrg.custom_domain
+      ? domainOrg.custom_domain
+      : "app.arvo-os.com";
+  const trackingUrl = `https://${publicHost}/takip`;
+  const brandName = organizationBrandName({
+    slug: organization.slug,
+    displayName: organization.display_name,
+    legalName: organization.name,
+  });
   const canDelete = ["owner", "admin", "manager"].includes(membership.role);
   return (
     <div className="crm-request-detail-page">
@@ -55,6 +73,219 @@ export default async function ContractDetailPage({ params }: Props) {
           <div>
           {!locked ? <form action={issueContractLink}><input type="hidden" name="contract_id" value={data.id}/><button className="panel-primary">İmzaya Gönder</button></form> : null}
           {data.workflow_id ? <Link className="panel-secondary" href={`/panel/operations/${data.workflow_id}`}>İş Akışını Aç</Link> : null}
+          {!locked ? (
+            <PanelDrawer triggerLabel="Düzenle" title={data.contract_no} description="Sözleşme bilgilerini kontrol edin.">
+            <form className="panel-form" action={updateContract}>
+              <input type="hidden" name="contract_id" value={data.id} />
+              <input
+                type="hidden"
+                name="opportunity_id"
+                value={customer?.id ?? ""}
+              />
+              <input
+                type="hidden"
+                name="current_details"
+                value={JSON.stringify(customer?.request_details ?? {})}
+              />
+              <p className="wide panel-form-note">
+                Müşteri / Talep Bilgileri
+              </p>
+              <label>
+                Müşteri adı
+                <input
+                  name="customer_name"
+                  defaultValue={customer?.customer_name ?? ""}
+                />
+              </label>
+              <label>
+                Telefon
+                <input
+                  name="contact_phone"
+                  defaultValue={customer?.contact_phone ?? ""}
+                />
+              </label>
+              <label>
+                E-posta
+                <input
+                  name="contact_email"
+                  defaultValue={customer?.contact_email ?? ""}
+                />
+              </label>
+              <label>
+                Hizmet türü
+                <input
+                  name="service_type"
+                  defaultValue={String(
+                    customer?.request_details?.service_type ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Akademik seviye
+                <input
+                  name="academic_level"
+                  defaultValue={String(
+                    customer?.request_details?.academic_level ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Üniversite
+                <input
+                  name="university"
+                  defaultValue={String(
+                    customer?.request_details?.university ?? "",
+                  )}
+                />
+              </label>
+              <label>
+                Bölüm
+                <input
+                  name="department"
+                  defaultValue={String(
+                    customer?.request_details?.department ?? "",
+                  )}
+                />
+              </label>
+              <p className="wide panel-form-note">Sözleşme Bilgileri</p>
+              <label>
+                Başlık
+                <input name="title" defaultValue={data.title} required />
+              </label>
+              <label>
+                Tutar
+                <input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={(data.amount / 100).toFixed(2)}
+                  required
+                />
+              </label>
+              <label className="wide">
+                Kapsam
+                <textarea
+                  name="scope"
+                  defaultValue={data.scope ?? ""}
+                  required
+                />
+              </label>
+              <label>
+                Ödeme planı
+                <input
+                  name="payment_plan"
+                  defaultValue={data.payment_plan ?? ""}
+                />
+              </label>
+              <label>
+                Başlangıç
+                <input
+                  name="start_date"
+                  type="date"
+                  defaultValue={data.start_date ?? ""}
+                />
+              </label>
+              <label>
+                Teslim
+                <input
+                  name="due_date"
+                  type="date"
+                  defaultValue={data.due_date ?? ""}
+                />
+              </label>
+              <label className="wide">
+                Adres{" "}
+                <small
+                  style={{ fontWeight: 400, color: "var(--muted)" }}
+                >
+                  (kurumsal müşteri için)
+                </small>
+                <input
+                  name="customer_address"
+                  defaultValue={data.customer_address ?? ""}
+                  placeholder="Fatura/sözleşme adresi"
+                />
+              </label>
+              <label>
+                Vergi numarası
+                <input
+                  name="customer_tax_number"
+                  defaultValue={data.customer_tax_number ?? ""}
+                  placeholder="VKN / TCKN"
+                />
+              </label>
+              <label>
+                Vergi dairesi
+                <input
+                  name="customer_tax_office"
+                  defaultValue={data.customer_tax_office ?? ""}
+                />
+              </label>
+              <div className="wide panel-form-actions">
+                <button className="panel-primary">Kaydet</button>
+              </div>
+            </form>
+            </PanelDrawer>
+          ) : null}
+            <PanelDrawer
+                                      triggerLabel="Takip Kodu"
+                                      title={data.contract_no}
+                                      description="Müşteri bu kodla kendi iş durumunu görebilir."
+                                    >
+                                      {(() => {
+                                        const trackingUrl = `https://${publicHost}/takip`;
+                                        const waText = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
+                                        return (
+                                          <div className="crm-request-preview">
+                                            <p>
+                                              <b>Takip Kodu</b>
+                                            </p>
+                                            <p
+                                              style={{
+                                                fontSize: 20,
+                                                fontWeight: 800,
+                                                letterSpacing: 3,
+                                              }}
+                                            >
+                                              {data.tracking_code}
+                                            </p>
+                                            <p style={{ wordBreak: "break-all" }}>
+                                              {trackingUrl}
+                                            </p>
+                                            <div className="panel-page-actions">
+                                              <a
+                                                className="panel-primary"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://wa.me/?text=${encodeURIComponent(waText)}`}
+                                              >
+                                                WhatsApp ile gönder
+                                              </a>
+                                              <a
+                                                className="panel-secondary"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`${trackingUrl}?code=${encodeURIComponent(data.tracking_code)}`}
+                                              >
+                                                Önizle
+                                              </a>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
+                                    </PanelDrawer>
+            <PanelDrawer
+                                      triggerLabel="Ödeme Planı"
+                                      title={data.contract_no}
+                                      description="Müşteri talebiyle ödeme planını revize edin (örn. 3 taksite bölme)."
+                                    >
+                                      <ContractPaymentPlanForm
+                                        contractId={data.id}
+                                        amountCents={data.amount}
+                                        currentPlanType={data.payment_plan_type}
+                                      />
+                                    </PanelDrawer>
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form> : null}
           {canDelete ? <form action={deleteContract}><input type="hidden" name="contract_id" value={data.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${data.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz?`}/></form> : null}
