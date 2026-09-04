@@ -109,7 +109,7 @@ export async function createOpportunity(formData: FormData) {
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };
-  const { data: created, error } = await supabase.from("crm_opportunities").insert({
+  const { error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
     title,
     customer_name: customerName,
@@ -125,8 +125,23 @@ export async function createOpportunity(formData: FormData) {
     assigned_employee_id: assignment.employeeId,
     owner_user_id: assignment.userId,
     created_by: userId,
-  }).select("id,title,customer_name").maybeSingle();
+  });
   if (error) throw new Error("Talep oluşturulamadı: " + error.message);
+
+  // Kaydı ayrı bir sorguyla okuyoruz. insert(...).select(...) kullanmak
+  // insert'i "eklenen satırı geri döndür" moduna sokuyor ve SELECT
+  // politikasının da geçmesini şart koşuyordu; o politika atama kısıtlı
+  // olduğu için kayıt oluşturmayı riske atıyordu. Geçmiş kaydı, talebin
+  // kendisinden daha az önemli: okunamazsa sessizce atlanıyor.
+  const { data: created } = await supabase
+    .from("crm_opportunities")
+    .select("id,title,customer_name")
+    .eq("organization_id", membership.organization_id)
+    .eq("created_by", userId)
+    .eq("title", title)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (created?.id) {
     await logActivity(supabase, {
