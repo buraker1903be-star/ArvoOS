@@ -1,5 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { addInternalComment } from "./actions";
+import { InternalCommentItem } from "./internal-comment-item";
 
 type ContextType = "request" | "proposal" | "contract" | "operation";
 type Comment = {
@@ -8,6 +9,7 @@ type Comment = {
   context_type: ContextType;
   created_by: string;
   created_at: string;
+  edited_at: string | null;
 };
 
 const contextNames: Record<ContextType, string> = {
@@ -29,7 +31,7 @@ export async function InternalComments({
   const { supabase, membership, userId } = await getPanelContext();
   const { data, error } = await supabase
     .from("crm_internal_comments")
-    .select("id,body,context_type,created_by,created_at")
+    .select("id,body,context_type,created_by,created_at,edited_at")
     .eq("organization_id", membership.organization_id)
     .eq("opportunity_id", opportunityId)
     .order("created_at", { ascending: false });
@@ -51,6 +53,8 @@ export async function InternalComments({
   const authorName = (authorId: string) => employeeNames.get(authorId) || profileNames.get(authorId) || "Ad soyad bilgisi eksik";
   const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "--";
   const currentAuthorName = authorName(userId);
+  // Yönetici başkasının yorumunu silebilir ama düzenleyemez.
+  const isManager = ["owner", "admin", "manager"].includes(membership.role);
 
   return (
     <section className="panel-card crm-internal-comments">
@@ -95,7 +99,16 @@ export async function InternalComments({
                 <span>{contextNames[comment.context_type]}</span>
                 <time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}</time>
               </div>
-              <p>{comment.body}</p>
+              <InternalCommentItem
+                commentId={comment.id}
+                body={comment.body}
+                opportunityId={opportunityId}
+                contextType={contextType}
+                contextId={contextId}
+                editedAt={comment.edited_at}
+                canEdit={comment.created_by === userId}
+                canDelete={comment.created_by === userId || isManager}
+              />
             </div>
           </article>;
         })}

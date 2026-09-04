@@ -789,3 +789,78 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ============================================================
+   Yorum işlemleri — düzenle / sil.
+   Butonlar sürekli görünmüyor: her nota iki buton koymak listeyi
+   gürültülü yapıyor. Karta gelince ya da klavyeyle odaklanınca
+   beliriyorlar. Dokunmatik cihazda hover olmadığı için orada
+   her zaman açık.
+   ============================================================ */
+.crm-internal-comment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.crm-internal-comment-list article:hover .crm-internal-comment-actions,
+.crm-internal-comment-list article:focus-within .crm-internal-comment-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .crm-internal-comment-actions {
+    opacity: 1;
+  }
+}
+.crm-internal-comment-actions .panel-secondary,
+.crm-internal-comment-actions .panel-danger {
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.crm-internal-comment-actions form {
+  margin: 0;
+}
+
+/* "düzenlendi" etiketi — notun sonunda, araya girmeyecek kadar soluk */
+.crm-internal-comment-edited {
+  margin-left: 8px;
+  color: var(--dim);
+  font-size: 12px;
+  font-style: normal;
+}
+.crm-internal-comment-edited::before {
+  content: "· ";
+}
+
+/* Yerinde düzenleme formu */
+.crm-internal-comment-edit textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+}
+.crm-internal-comment-edit textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.crm-internal-comment-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.crm-internal-comment-edit-actions .panel-primary,
+.crm-internal-comment-edit-actions .panel-secondary {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+}

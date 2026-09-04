@@ -306,3 +306,67 @@ export async function assignOpportunity(formData: FormData) {
   if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
   revalidatePath("/panel/crm");
 }
+
+/** Yorum sayfalarının tamamını tazeler; yorum zinciri dört yerde birden görünüyor. */
+function revalidateCommentChain(opportunityId: string, contextType: string, contextId: string) {
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
+  revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm/contracts");
+  if (contextType === "proposal") revalidatePath(`/panel/crm/proposals/${contextId}`);
+  if (contextType === "contract") revalidatePath(`/panel/crm/contracts/${contextId}`);
+  if (contextType === "operation") revalidatePath(`/panel/operations/${contextId}`);
+}
+
+/**
+ * Kendi yorumunu düzenler.
+ *
+ * Yetki kontrolünü burada da yapıyoruz ama asıl güvence RLS'te:
+ * "authors edit own crm internal comments" politikası created_by
+ * eşleşmeyen satırı hiç döndürmüyor.
+ */
+export async function updateInternalComment(formData: FormData) {
+  const { supabase, userId } = await crmContext();
+  const commentId = text(formData, "comment_id", 80);
+  const body = text(formData, "body", 4000);
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const contextType = text(formData, "context_type", 20);
+  const contextId = text(formData, "context_id", 80);
+  if (!commentId) throw new Error("Yorum seçilmedi.");
+  if (!body) throw new Error("Yorum metni boş bırakılamaz.");
+
+  const { data, error } = await supabase
+    .from("crm_internal_comments")
+    .update({ body, edited_at: new Date().toISOString() })
+    .eq("id", commentId)
+    .eq("created_by", userId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error("Yorum güncellenemedi: " + error.message);
+  if (!data) throw new Error("Yorum bulunamadı veya yalnızca kendi yorumunuzu düzenleyebilirsiniz.");
+
+  revalidateCommentChain(opportunityId, contextType, contextId);
+}
+
+/**
+ * Yorumu siler. Kendi yorumu herkes, başkasınınkini yönetici silebilir;
+ * ayrımı RLS politikası yapıyor.
+ */
+export async function deleteInternalComment(formData: FormData) {
+  const { supabase } = await crmContext();
+  const commentId = text(formData, "comment_id", 80);
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const contextType = text(formData, "context_type", 20);
+  const contextId = text(formData, "context_id", 80);
+  if (!commentId) throw new Error("Yorum seçilmedi.");
+
+  const { data, error } = await supabase
+    .from("crm_internal_comments")
+    .delete()
+    .eq("id", commentId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error("Yorum silinemedi: " + error.message);
+  if (!data) throw new Error("Yorum bulunamadı veya silme yetkiniz yok.");
+
+  revalidateCommentChain(opportunityId, contextType, contextId);
+}
