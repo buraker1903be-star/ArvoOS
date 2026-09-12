@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import "./corporate.css";
 import "./motion.css";
@@ -8,6 +8,13 @@ import ScrollEffects from "./scroll-effects";
 const manrope = Manrope({
   subsets: ["latin", "latin-ext"],
   variable: "--font-manrope",
+  display: "swap",
+});
+// Panel başlıkları ve büyük rakamlar için serif (--font-display).
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600", "700"],
+  variable: "--font-cormorant",
   display: "swap",
 });
 export const metadata: Metadata = {
@@ -25,8 +32,8 @@ export const viewport: Viewport = {
   initialScale:1,
   viewportFit:"cover",
   themeColor:[
-    {media:"(prefers-color-scheme: light)",color:"#f3f5f2"},
-    {media:"(prefers-color-scheme: dark)",color:"#0b1220"},
+    {media:"(prefers-color-scheme: light)",color:"#f7f4ee"},
+    {media:"(prefers-color-scheme: dark)",color:"#050c1a"},
   ],
 };
 // Tema, ThemeToggle tarafından localStorage'a yazılıyordu ama hiçbir yerde
@@ -34,4 +41,4 @@ export const viewport: Viewport = {
 // Bu script render'dan önce çalışır, böylece "flash" da olmaz.
 const themeInit = `(function(){try{var t=localStorage.getItem("arvoos.theme");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={manrope.variable}><ScrollEffects/>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={`${manrope.variable} ${cormorant.variable}`}><ScrollEffects/>{children}</body></html>}

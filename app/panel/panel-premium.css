@@ -2,25 +2,25 @@
 /* Palet artık YALNIZCA panel-tokens.css'te. Buraya renk tanımı eklemeyin:
    son yüklenen dosya olduğu için sessizce token'ları ezer. */
 .panel-root{
-  --bg:var(--brand-50);
-  --surface:rgba(255,255,255,.96);
-  --surface-2:var(--brand-50);
+  --bg:var(--n-100);
+  --surface:rgba(255,255,255,.97);
+  --surface-2:var(--n-50);
   --surface-raised:#fff;
   --ink:var(--n-900);
   --muted:var(--n-500);
   --dim:var(--n-400);
-  --line:var(--brand-100);
-  --line-soft:var(--brand-50);
-  --shadow-sm:0 1px 2px rgba(15,35,60,.04),0 4px 12px rgba(15,35,60,.035);
-  --shadow-md:0 2px 6px rgba(15,35,60,.04),0 14px 34px rgba(15,35,60,.075);
-  --shadow-lg:0 28px 70px rgba(6,26,50,.16);
+  --line:var(--n-200);
+  --line-soft:var(--n-50);
+  --shadow-sm:0 1px 2px rgba(11,27,46,.04),0 4px 14px rgba(11,27,46,.035);
+  --shadow-md:0 2px 6px rgba(11,27,46,.04),0 16px 38px rgba(11,27,46,.08);
+  --shadow-lg:0 28px 70px rgba(5,12,26,.18);
   --r-sm:10px;
   --r-md:14px;
   --r-lg:18px;
   --r-xl:24px;
   min-height:100dvh;
   background:
-    radial-gradient(circle at 70% -15%,rgba(111,152,73,.08),transparent 28rem),
+    radial-gradient(circle at 70% -15%,rgba(178,138,73,.08),transparent 28rem),
     var(--bg);
   font-synthesis:none;
   text-rendering:optimizeLegibility;
@@ -29,10 +29,10 @@
 
 html[data-theme="dark"] .panel-root{
   --bg:var(--brand-950);
-  --surface:rgba(18,28,44,.96);
+  --surface:rgba(14,24,41,.96);
   --surface-2:var(--brand-950);
   --surface-raised:var(--n-900);
-  --ink:var(--brand-50);
+  --ink:var(--n-100);
   --muted:var(--n-400);
   --dim:var(--n-500);
   --line:var(--n-800);
@@ -46,9 +46,9 @@ html[data-theme="dark"] .panel-root{
   width:264px;
   padding:20px 14px 14px;
   background:
-    radial-gradient(circle at 20% 0,rgba(87,140,191,.22),transparent 34%),
-    linear-gradient(180deg,var(--brand-700) 0%,var(--brand-900) 50%,var(--brand-900) 100%);
-  border-right:1px solid rgba(255,255,255,.08);
+    radial-gradient(120% 48% at 0% 0%,color-mix(in srgb,var(--accent-bright) 15%,transparent),transparent 60%),
+    linear-gradient(180deg,var(--sidebar-from) 0%,var(--brand-900) 58%,var(--sidebar-to) 100%);
+  border-right:1px solid color-mix(in srgb,var(--accent-bright) 20%,transparent);
   box-shadow:8px 0 32px rgba(6,25,48,.09);
 }
 .panel-workspace{margin-left:264px;min-height:100dvh;background:transparent}
@@ -80,7 +80,7 @@ html[data-theme="dark"] .panel-root{
 .panel-quick-actions{border-radius:13px}
 .panel-quick-action{min-height:40px;padding-inline:12px;font-size:12px}
 .panel-quick-icon{width:23px;height:23px;border-radius:8px}
-.panel-user>span{width:40px;height:40px;border-radius:13px;box-shadow:inset 0 0 0 1px rgba(85,127,49,.08)}
+.panel-user>span{width:40px;height:40px;border-radius:13px;box-shadow:inset 0 0 0 1px rgba(178,138,73,.22)}
 .panel-user b{font-size:12px}.panel-user small{font-size:12px}
 
 /* Content rhythm */
@@ -212,13 +212,13 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 }
 .panel-nav-v2 .panel-nav-group-link,.panel-nav-v2 .panel-nav-home,.panel-nav-v2 summary{position:relative}
 .panel-nav-v2 :is(.panel-nav-group-link,.panel-nav-home).active:before,.panel-nav-v2 .panel-nav-group.active>summary:before{
-  content:"";position:absolute;left:-7px;top:50%;width:3px;height:22px;border-radius:99px;background:var(--accent-400);transform:translateY(-50%);box-shadow:0 0 14px rgba(145,180,109,.48)
+  content:"";position:absolute;left:-7px;top:50%;width:3px;height:22px;border-radius:99px;background:var(--accent-bright);transform:translateY(-50%);box-shadow:0 0 14px rgba(201,166,106,.5)
 }
 .panel-nav-v2 .panel-nav-children{margin:3px 0 5px 19px;padding-left:15px;border-left:1px solid rgba(255,255,255,.1)}
 .panel-nav-v2 .panel-nav-children a{min-height:36px;padding:7px 10px;font-size:12px}
 .panel-nav-v2 .panel-nav-children a.active{color:#fff;background:rgba(255,255,255,.075)}
 
-.nav-progress{position:fixed!important;top:0!important;left:0!important;z-index:3000!important;height:3px!important;background:linear-gradient(90deg,var(--accent-400),var(--accent-300))!important;box-shadow:0 0 12px rgba(145,180,109,.65)!important}
+.nav-progress{position:fixed!important;top:0!important;left:0!important;z-index:3000!important;height:3px!important;background:linear-gradient(90deg,var(--accent-400),var(--accent-300))!important;box-shadow:0 0 12px rgba(201,166,106,.65)!important}
 .panel-empty{min-height:180px;display:grid;place-items:center;padding:36px 20px;border:1px dashed var(--line);border-radius:16px;background:color-mix(in srgb,var(--surface-2) 72%,transparent);font-size:14px;line-height:1.55}
 
 .messages-drawer{border-radius:22px 0 0 22px;box-shadow:-36px 0 90px rgba(4,20,38,.28)}
@@ -230,7 +230,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .messages-person-list button,.messages-channel-list button{min-height:46px;border-radius:12px;font-size:13px;transition:background-color .14s ease,box-shadow .14s ease,transform .14s ease}
 .messages-person-list button:active,.messages-channel-list button:active{transform:scale(.985)}
 .messages-thread>header{min-height:66px;background:color-mix(in srgb,var(--surface) 94%,transparent)}
-.messages-thread-scroll{gap:10px;padding:18px;background:radial-gradient(circle at 100% 0,rgba(111,152,73,.07),transparent 20rem),var(--surface-2)}
+.messages-thread-scroll{gap:10px;padding:18px;background:radial-gradient(circle at 100% 0,rgba(178,138,73,.07),transparent 20rem),var(--surface-2)}
 .messages-thread-scroll article{padding:10px 12px;border-radius:7px 16px 16px;box-shadow:var(--shadow-sm)}
 .messages-thread-scroll article.mine{border-radius:16px 7px 16px 16px;background:var(--accent-100)}
 .messages-thread-scroll article p{font-size:14px;line-height:1.5}.messages-thread-scroll article small{font-size:13px}
@@ -600,3 +600,83 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 @media(max-width:760px){
   .panel-drawer-body .panel-form-actions{margin-inline:-20px;padding-inline:20px}
 }
+
+/* ============================================================
+   GECE MAVİSİ VE ŞAMPANYA (2026-09)
+   Teklif ve sözleşme belgeleriyle aynı lüks dil: serif başlıklar,
+   gece mavisi derinlik, şampanya altını ince çizgiler. Renkler
+   yalnızca panel-tokens.css'ten gelir; kurum kendi marka rengini
+   seçtiyse --accent / --accent-bright altının yerini alır.
+   Düzen, yoğunluk ve mobil kurallarına dokunmaz; yalnızca görünüm.
+   ============================================================ */
+.panel-root ::selection{background:color-mix(in srgb,var(--accent-500) 26%,transparent)}
+
+/* --- Menü --- */
+.panel-brand>i{background:linear-gradient(150deg,var(--accent-300),var(--accent-500));color:var(--brand-900);font-family:var(--font-display);font-size:22px;font-weight:700}
+.panel-brand b{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:.005em;color:var(--n-0)}
+.panel-brand small{letter-spacing:.2em;color:color-mix(in srgb,var(--accent-bright) 72%,var(--n-400))}
+.panel-org{background:rgba(255,255,255,.04);border-color:color-mix(in srgb,var(--accent-bright) 16%,transparent)}
+/* Menü her iki temada da koyu: --info-soft koyu temada koyu laciverte
+   döndüğü için "Güvenli oturum" yazısı kayboluyordu. */
+.panel-security b{color:var(--n-100)}
+/* Grup sayacı: panel-ux.css rengini gri-maviye çeviriyor, altın zeminde
+   rakam kayboluyordu. */
+.panel-nav-group summary em{background:var(--accent-bright);color:var(--brand-900);border-radius:5px;padding:3px 7px;font-weight:800}
+.panel-nav a i{background:rgba(255,255,255,.05);color:var(--accent-bright)}
+.panel-nav a:hover{background:rgba(255,255,255,.06);color:var(--n-0)}
+.panel-nav a[aria-current="page"],.panel-nav a.active,.panel-nav-v2 .panel-nav-group.active>summary{
+  color:var(--n-0);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--accent-bright) 20%,transparent),color-mix(in srgb,var(--accent-bright) 3%,transparent));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-bright) 22%,transparent)
+}
+.panel-nav a.active i{background:color-mix(in srgb,var(--accent-bright) 24%,transparent);color:var(--n-0)}
+.panel-nav-v2 .panel-nav-children{border-left-color:color-mix(in srgb,var(--accent-bright) 22%,transparent)}
+.panel-nav-v2 .panel-nav-children a.active{color:var(--n-0);background:color-mix(in srgb,var(--accent-bright) 12%,transparent)}
+
+/* --- Üst çubuk --- */
+.panel-topbar{border-bottom:1px solid color-mix(in srgb,var(--accent-500) 18%,var(--line))}
+.panel-breadcrumb b{font-family:var(--font-display);font-size:21px;font-weight:600;letter-spacing:0}
+.panel-user>span{background:linear-gradient(150deg,var(--accent-100),var(--accent-200));color:var(--accent-800)}
+
+/* --- Başlıklar: serif, ferah --- */
+.panel-kicker,.panel-breadcrumb small{color:var(--accent);font-weight:700;letter-spacing:.2em}
+.panel-pagehead h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,2.8vw,44px);line-height:1.02;letter-spacing:-.005em;color:var(--ink)}
+.panel-card h2,.panel-module h2,.section-heading h2,.panel-drawer-header h2,.messages-drawer-head h2,.panel-sheet header h2,.crm-revision-history header h2{
+  font-family:var(--font-display);font-weight:600;font-size:25px;line-height:1.12;letter-spacing:0
+}
+
+/* --- Özet kartları: serif rakam + ince altın imleç --- */
+.metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{
+  background-image:linear-gradient(var(--accent-bright),var(--accent-bright));
+  background-size:28px 2px;background-repeat:no-repeat;background-position:16px 0
+}
+.metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong,.dashboard-summary-number{
+  font-family:var(--font-display);font-weight:600;font-size:30px;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums;color:var(--ink)
+}
+.metric-strip small,.metric-strip-five small,.crm-metrics small,.finance-metrics small,.ops-metrics small,.report-kpi small,.finance-cost-kpis small,.finance-cost-detail-kpis small,.finance-payment-kpis small{letter-spacing:.16em}
+.metric-icon{color:var(--accent);background:var(--accent-soft)}
+
+/* --- Kartlar --- */
+.panel-card,.panel-module,.report-card,.notification-card{border-color:var(--line)}
+@media(hover:hover) and (pointer:fine){
+  .panel-card:hover,.panel-module:hover,.metric-strip article:hover,.metric-strip-five article:hover{border-color:color-mix(in srgb,var(--accent-500) 34%,var(--line))}
+}
+
+/* --- Düğmeler --- */
+.panel-primary{
+  color:var(--n-0);
+  background:linear-gradient(180deg,var(--brand-600),var(--brand-800));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px color-mix(in srgb,var(--accent-bright) 30%,transparent),0 6px 16px rgba(11,27,46,.16)
+}
+.panel-primary:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px color-mix(in srgb,var(--accent-bright) 55%,transparent),0 12px 26px rgba(11,27,46,.22)}
+.panel-secondary{border-color:var(--line);color:var(--ink)}
+.panel-secondary:hover{border-color:color-mix(in srgb,var(--accent-500) 45%,var(--line))}
+.module-tabs a.active{box-shadow:inset 0 -2px 0 var(--accent-bright)}
+
+/* --- Tablo başlıkları --- */
+.panel-table th,.crm-data-table thead th,.ops-table th{letter-spacing:.12em}
+
+/* --- Koyu tema: vurgu parlak altın, başlıklar fildişi --- */
+html[data-theme="dark"] .panel-kicker,html[data-theme="dark"] .panel-breadcrumb small{color:var(--accent-bright)}
+html[data-theme="dark"] .panel-user>span{background:color-mix(in srgb,var(--accent-bright) 18%,transparent);color:var(--accent-bright)}
+html[data-theme="dark"] .panel-secondary{color:var(--ink)}

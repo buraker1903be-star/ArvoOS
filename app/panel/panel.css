@@ -27,11 +27,11 @@ html,body{overflow-x:hidden;max-width:100vw}
 .panel-nav a{position:relative;display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-sm);color:var(--brand-200);font-size:13px;font-weight:650;text-decoration:none;transition:background-color .18s ease,color .18s ease}
 .panel-nav a:hover{background:rgba(255,255,255,.06);color:#fff}
 .panel-nav a i{width:28px;height:28px;flex:none;border-radius:8px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--accent-400);font-size:12px;font-style:normal;font-weight:800}
-.panel-nav .owner-link{border:1px solid rgba(143,179,106,.25);background:rgba(113,150,75,.1)}
-.panel-nav em{margin-left:auto;padding:4px 6px;border-radius:5px;background:var(--accent-500);color:#fff;font-size:11px;font-style:normal;letter-spacing:.1em;font-weight:800}
+.panel-nav .owner-link{border:1px solid rgba(201,166,106,.28);background:rgba(178,138,73,.1)}
+.panel-nav em{margin-left:auto;padding:4px 6px;border-radius:5px;background:var(--accent-bright);color:var(--brand-900);font-size:11px;font-style:normal;letter-spacing:.1em;font-weight:800}
 .panel-sidebar-footer{margin-top:auto}
 .panel-security{display:flex;gap:9px;align-items:center;padding:12px}
-.panel-security>i{width:24px;height:24px;flex:none;display:grid;place-items:center;border:1px solid rgba(113,150,75,.45);border-radius:50%;color:var(--accent-400);font-style:normal;font-size:13px}
+.panel-security>i{width:24px;height:24px;flex:none;display:grid;place-items:center;border:1px solid rgba(201,166,106,.45);border-radius:50%;color:var(--accent-400);font-style:normal;font-size:13px}
 .panel-security b{font-size:12px;color:var(--info-soft)}
 .panel-security small{display:block;margin-top:2px;font-size:11px;color:var(--n-500)}
 .panel-logout button{width:100%;padding:11px;margin-top:6px;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-sm);background:transparent;color:var(--n-400);cursor:pointer;text-align:left;font:inherit;transition:.18s ease}
