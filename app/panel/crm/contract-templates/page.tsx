@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { akademikMerkezTemplate, arvoOSGeneralTemplate } from "@/lib/contract-templates";
+import { LEGAL_TEXT_VERSION } from "@/app/_components/legal/format";
 import "../crm.css";
 
 type ContractRow = {
@@ -47,7 +48,7 @@ export default async function ContractTemplatesPage() {
       <article><small>ŞABLON</small><strong>{templates.length}</strong><span>Aktif sistem şablonu</span></article>
       <article><small>KULLANIM</small><strong>{rows.filter((row) => row.contract_template_key).length}</strong><span>Şablon kaydı bulunan sözleşme</span></article>
       <article><small>İMZALI</small><strong>{rows.filter((row) => row.status === "signed").length}</strong><span>Elektronik onayı tamamlanan</span></article>
-      <article><small>SÜRÜM</small><strong>1.0</strong><span>Yayındaki sözleşme sürümü</span></article>
+      <article><small>SÜRÜM</small><strong>v{LEGAL_TEXT_VERSION}</strong><span>Yayındaki yasal metin sürümü</span></article>
     </section>
 
     <section className="crm-record-list">
@@ -79,6 +80,12 @@ export default async function ContractTemplatesPage() {
           </aside>
         </article>;
       })}
+    </section>
+
+    <section className="panel-card">
+      <small className="panel-kicker">YASAL İSKELET · v{LEGAL_TEXT_VERSION}</small>
+      <h2>Hizmet Sözleşmesi yapısı</h2>
+      <p>Müşteriye giden her sözleşme; taraflar, tanımlar, konu ve kapsam, süre ve teslim, hak ve yükümlülükler, ayrıntılı ücret ve ödeme koşulları (KDV dökümü, ödeme planı, ödeme yöntemleri, fatura, temerrüt), cayma hakkı, gizlilik, kişisel verilerin korunması, fikri mülkiyet, mücbir sebep, fesih, sorumluluk, tebligat, delil ve elektronik onay, uyuşmazlık çözümü ve yürürlük maddelerinden oluşur. Tüketici müşterilerde Ön Bilgilendirme Formu ek olarak eklenir. Şablona özgü maddeler “Hizmete Özgü Özel Hükümler” maddesi olarak korunur.</p>
     </section>
 
     <section className="panel-card">

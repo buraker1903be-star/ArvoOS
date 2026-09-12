@@ -1,0 +1,117 @@
+/* ============================================================
+   OPERASYON GENEL BAKIŞ (page.tsx) — ana sayfanın widget diliyle aynı.
+   Renkler yalnızca panel-tokens.css'teki değişkenlerden.
+   ============================================================ */
+
+.opsov{--opsov-ease:cubic-bezier(.22,1,.36,1)}
+
+/* Tonlar */
+.opsov [data-tone]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.opsov [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.opsov [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
+.opsov [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.opsov [data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:var(--warning)}
+.opsov [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.opsov [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
+html[data-theme="dark"] .opsov [data-tone="brand"]{--tone-fg:var(--brand-200)}
+
+/* ---------- KPI widget'ları ---------- */
+.opsov-widgets{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.opsov-widget{
+  position:relative;display:flex;flex-direction:column;gap:2px;min-width:0;min-height:132px;padding:16px 16px 14px;
+  border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);
+  color:var(--ink);text-decoration:none;overflow:hidden;
+  transition:transform .45s var(--opsov-ease),box-shadow .3s ease,border-color .2s ease
+}
+.opsov-widget::after{content:"";position:absolute;inset:auto -30% -60% auto;width:140px;height:140px;border-radius:50%;background:var(--tone-bg);opacity:.55;pointer-events:none}
+.opsov-widget-icon{display:grid;place-items:center;width:34px;height:34px;margin-bottom:12px;border-radius:11px;background:var(--tone-bg);color:var(--tone-fg)}
+.opsov-widget small{position:relative;z-index:1;color:var(--muted);font-size:13px;font-weight:600}
+.opsov-widget strong{position:relative;z-index:1;font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.opsov-widget[data-tone="danger"] strong{color:var(--danger)}
+.opsov-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:12.5px}
+@media(hover:hover) and (pointer:fine){
+  .opsov-widget:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--tone-fg) 30%,var(--line));box-shadow:var(--shadow-md)}
+}
+.opsov-widget:active{transform:scale(.97)}
+
+/* ---------- Kartlar ---------- */
+.opsov-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.opsov-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.opsov-card-head{display:flex;align-items:center;gap:12px}
+.opsov-card-head>div{flex:1;min-width:0}
+.opsov-card-head h2{margin:0;color:var(--ink);font-size:17px;font-weight:700;letter-spacing:-.015em}
+.opsov-card-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.opsov-card-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--tone-bg);color:var(--tone-fg)}
+.opsov-count{flex:none;min-width:38px;height:32px;padding:0 11px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:16px;font-weight:750;line-height:32px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* iOS gruplanmış liste */
+.opsov-list{display:flex;flex-direction:column;flex:1;margin:0 -8px;padding:0;list-style:none}
+.opsov-list li{position:relative}
+.opsov-list li+li::before{content:"";position:absolute;top:0;left:8px;right:8px;height:1px;background:var(--line-soft)}
+.opsov-list li.is-flagged::after{content:"";position:absolute;top:10px;bottom:10px;left:0;width:3px;border-radius:0 3px 3px 0;background:var(--flag,var(--accent))}
+.opsov-list li[data-flag="gold"]{--flag:var(--accent-500)}
+.opsov-list li[data-flag="warning"]{--flag:var(--warning)}
+.opsov-list li[data-flag="danger"]{--flag:var(--danger)}
+.opsov-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:9px 8px 9px 12px;border-radius:12px;color:var(--ink);text-decoration:none;transition:background-color .18s ease,transform .3s var(--opsov-ease)}
+.opsov-row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.opsov-row:active{transform:scale(.985)}
+.opsov-row>svg{flex:none;color:var(--dim)}
+.opsov-row:hover>svg{color:var(--accent)}
+.opsov-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.opsov-row-main b{overflow:hidden;font-size:14px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.opsov-row-main small{overflow:hidden;color:var(--muted);font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}
+.opsov-row-side{flex:none;display:flex;align-items:center;gap:8px;max-width:48%;min-width:0}
+
+.opsov-person{display:inline-flex;align-items:center;gap:7px;min-width:0;color:var(--ink-soft);font-size:12.5px}
+.opsov-person i{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 30%,transparent);font-size:11px;font-style:normal;font-weight:800}
+.opsov-person span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.opsov-progress em{min-width:38px;color:var(--ink);font-size:12.5px;font-style:normal;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.opsov-bar{width:84px;height:6px;border-radius:999px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);overflow:hidden}
+.opsov-bar i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--success) 70%,var(--n-0)),var(--success));transform-origin:left;animation:opsov-fill .9s var(--opsov-ease) both}
+@keyframes opsov-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+.opsov-due{flex-direction:column;align-items:flex-end;gap:4px}
+.opsov-due time{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+
+.opsov-message{align-items:flex-start}
+.opsov-avatar{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--danger-soft);color:var(--danger);font-size:12px;font-weight:800;letter-spacing:.02em}
+.opsov-message .opsov-row-main b small{color:var(--muted);font-size:12.5px;font-weight:500}
+.opsov-excerpt{display:-webkit-box;overflow:hidden;color:var(--ink-soft);font-size:13px;line-height:1.45;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.opsov-message-side{flex-direction:column;align-items:flex-end;gap:5px}
+.opsov-message-side time{color:var(--muted);font-size:12px;white-space:nowrap}
+.opsov-badge{padding:1px 8px;border-radius:999px;background:var(--danger);color:var(--n-0);font-size:11px;font-style:normal;font-weight:750}
+
+.opsov-empty{display:flex;align-items:center;gap:10px;flex:1;margin:0;padding:18px 14px;border:1px dashed var(--line);border-radius:14px;background:var(--surface-2);color:var(--muted);font-size:13.5px;line-height:1.5}
+.opsov-empty svg{flex:none;color:var(--success)}
+.opsov-more{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;color:var(--accent);font-size:14px;font-weight:600;text-decoration:none}
+.opsov-more:hover{text-decoration:underline;text-underline-offset:3px}
+
+.opsov-foot{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 18px;color:var(--muted);font-size:13px}
+.opsov-foot a{color:var(--accent);font-weight:600;text-decoration:none}
+
+@media(max-width:1280px){
+  .opsov-widgets{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+  .opsov-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:760px){
+  .opsov-widgets{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .opsov-widget{min-height:118px;padding:14px;border-radius:20px}
+  .opsov-widget strong{font-size:24px}
+  .opsov-widget:last-child:nth-child(odd){grid-column:1/-1}
+  .opsov-card{padding:16px;border-radius:20px}
+  .opsov-row-side{max-width:44%}
+  .opsov-bar{width:56px}
+  .opsov-person span{display:none}
+  .opsov-foot{margin:0 12px}
+}
+@media(max-width:420px){
+  .opsov-row{flex-wrap:wrap}
+  .opsov-row-side{order:3;max-width:none;width:100%;justify-content:flex-start;padding-left:0}
+  .opsov-message .opsov-row-side{padding-left:46px}
+  .opsov-due,.opsov-message-side{flex-direction:row;align-items:center}
+  .opsov-row>svg{display:none}
+}
+@media(prefers-reduced-motion:reduce){.opsov-bar i{animation:none}.opsov-widget,.opsov-row{transition:none}}

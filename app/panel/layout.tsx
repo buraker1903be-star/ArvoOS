@@ -13,6 +13,7 @@ import { FlashToast } from "./flash-toast";
 import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
+import { NotificationsDrawer } from "./notifications-drawer";
 import { loadMessagesInit } from "./messages/load-messages";
 import { SidebarToggle } from "./sidebar-toggle";
 import { cookies } from "next/headers";
@@ -103,7 +104,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
             {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
-            <Link className="panel-quick-action" href="/panel/notifications" aria-label={`Bildirimler${notificationUnreadCount?`, ${notificationUnreadCount} okunmamış`:""}`}><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b>{notificationUnreadCount?<span className="panel-unread-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</span>:null}</Link>
+            <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
           </div>
           <ThemeToggle />
           <div className="panel-user"><span>{brandName[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>

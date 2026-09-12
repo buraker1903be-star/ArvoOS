@@ -64,7 +64,7 @@
 }
 /* Mobilde üst bar marka adını kapatmasın: kapsül barın hemen altında */
 @media(max-width:900px){
-  .panel-root .panel-action-feedback-card{top:calc(72px + env(safe-area-inset-top))}
+  .panel-root .panel-action-feedback-card{top:calc(64px + env(safe-area-inset-top))}
 }
 .panel-root .panel-action-feedback-ring{width:16px;height:16px;border-width:2px;border-color:color-mix(in srgb,var(--accent-bright) 25%,transparent);border-top-color:var(--accent-bright)}
 
@@ -88,9 +88,12 @@
 }
 /* Sekmeler artık panele yapışık "klasör" değil: panel dört köşesi yuvarlak */
 .panel-root .module-tab-panel{border-top:1px solid var(--line);border-radius:18px}
+/* Telefonda yatay kayan bölümlü seçici: parmakla kaydırılır, sekme
+   başına oturur, kaydırma sayfaya zincirlenmez; 44px dokunma hedefi. */
 @media(max-width:760px){
-  .panel-root .module-tabs{display:flex;width:100%;overflow-x:auto;scrollbar-width:none}
-  .panel-root .module-tabs a{flex:1 0 auto;min-height:40px}
+  .panel-root .module-tabs{display:flex;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .panel-root .module-tabs::-webkit-scrollbar{display:none}
+  .panel-root .module-tabs a{flex:1 0 auto;min-height:44px;padding-inline:14px;scroll-snap-align:start}
 }
 
 /* ---------- Dokunma hissi: yaylı basma ---------- */
@@ -113,6 +116,8 @@
 /* ---------- Pencereler: iOS sayfa eğrisi ---------- */
 .panel-root .panel-drawer{transition:opacity .28s ease,transform .55s var(--ease-sheet)}
 .panel-root .panel-drawer-backdrop{-webkit-backdrop-filter:blur(10px) saturate(120%);backdrop-filter:blur(10px) saturate(120%);transition:opacity .35s ease}
+/* Telefonda tam ekran bulanıklık zayıf cihazda kasıyor: düz karartma */
+@media(max-width:760px){.panel-root .panel-drawer-backdrop{background:rgba(4,12,24,.46);-webkit-backdrop-filter:none;backdrop-filter:none}}
 
 /* ---------- Bildirim (işlem tamamlanamadı) ---------- */
 @keyframes panel-toast-in{from{opacity:0;transform:translate(-50%,-20px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
@@ -128,8 +133,14 @@
 .panel-root .panel-toast-body{flex:1;min-width:0;padding-top:4px}
 .panel-root .panel-toast-body strong{display:block;margin-bottom:2px;color:var(--danger);font-size:14px}
 .panel-root .panel-toast-close{flex:none;display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:50%;background:var(--surface-2);color:var(--muted);font-size:17px;line-height:1;cursor:pointer}
-/* Mobilde üst barın altında (marka adını ve menüyü kapatmasın) */
-@media(max-width:900px){.panel-root .panel-toast{top:calc(72px + env(safe-area-inset-top))}}
+/* Mobilde iOS gibi altta: sekme çubuğunun ve ev çubuğu payının hemen
+   üstünde, aşağıdan kayarak gelir (üstte başlığı ve düğmeleri kapatıyordu). */
+@keyframes panel-toast-up{from{opacity:0;transform:translate(-50%,18px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@media(max-width:900px){
+  .panel-root .panel-toast{top:auto;bottom:calc(68px + env(safe-area-inset-bottom));width:min(440px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));animation-name:panel-toast-up}
+  .panel-root .panel-toast-close{position:relative}
+  .panel-root .panel-toast-close::after{content:"";position:absolute;inset:-8px}
+}
 /* Başarı bildirimi: yeşil tik açılıp çizilir ("Talep sisteme girildi") */
 .panel-root .panel-toast.is-success{border-color:color-mix(in srgb,var(--success) 28%,var(--line))}
 .panel-root .panel-toast.is-success .panel-toast-icon{background:var(--success);color:var(--n-0);box-shadow:0 6px 16px color-mix(in srgb,var(--success) 35%,transparent);animation:panel-check-pop .55s var(--ease-spring) both}
@@ -150,7 +161,7 @@
 
 /* ---------- Mobil alt menü okunmamış rozeti (işaretlemede vardı, stili yoktu) ---------- */
 .panel-root .mobile-bottom-nav>:is(a,button){position:relative}
-.panel-root .mobile-bottom-badge{position:absolute;top:5px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);box-shadow:0 0 0 2px var(--surface);color:var(--n-0);font-size:11px;font-style:normal;font-weight:700;line-height:18px;text-align:center}
+.panel-root .mobile-bottom-badge{position:absolute;top:2px;left:calc(50% + 5px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);box-shadow:0 0 0 2px var(--surface);color:var(--n-0);font-size:11px;font-style:normal;font-weight:700;line-height:18px;text-align:center}
 
 /* ---------- İnce kaydırma çubukları ---------- */
 .panel-root ::-webkit-scrollbar{width:10px;height:10px}

@@ -41,7 +41,8 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   const { data, error } = await supabase.from("operation_workflows")
     .select("id,title,customer_name,status,priority,start_date,due_date")
     .eq("organization_id", membership.organization_id)
-    .neq("status", "cancelled")
+    // İptal edilen ve arşive gönderilen işler çizelgeyi doldurmasın
+    .not("status", "in", "(cancelled,archived)")
     .order("start_date", { ascending: true, nullsFirst: false });
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   const all = (data ?? []) as Workflow[];

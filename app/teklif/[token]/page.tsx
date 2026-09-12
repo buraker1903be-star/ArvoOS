@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { ProposalDocument } from "@/app/_components/proposal-document";
+import { requestAudit, requestOrigin } from "@/app/_components/request-origin";
 import { respondToProposal } from "./actions";
+import { loadPublicProposal } from "./load";
 
 export async function generateMetadata({params}:{params:Promise<{token:string}>}):Promise<Metadata>{
  const {token}=await params;
- const supabase=await createClient();
- const {data}=await supabase.rpc("get_public_crm_proposal",{public_token:token});
- const row=Array.isArray(data)?data[0]:data;
+ const loaded=await loadPublicProposal(token);
+ const row=loaded?.row;
  if(!row)return {title:"Teklif",robots:{index:false,follow:false}};
- const h=await headers();
- const host=h.get("x-forwarded-host")||h.get("host")||"app.arvo-os.com";
- const protocol=h.get("x-forwarded-proto")||"https";
- const origin=`${protocol}://${host}`;
+ const origin=await requestOrigin();
  const organizationName=String(row.organization_name||"ArvoOS");
  const logo=row.organization_logo_url?new URL(String(row.organization_logo_url),origin).toString():new URL("/arvoos-logo.png",origin).toString();
  const title=`${organizationName} | Teklif`;
@@ -30,7 +26,6 @@ export async function generateMetadata({params}:{params:Promise<{token:string}>}
  };
 }
 
-const firstIp=(value:string|null)=>value?.split(",")[0]?.trim()||null;
 // Müşteriye görünen durum metinleri.
 // Panel içi etiketler ("Arşivlendi" gibi) burada kullanılamaz: müşteri
 // açısından bu "teklifiniz iptal oldu" demek. Oysa belge geçerli ve
@@ -54,40 +49,36 @@ const resultNotices:Record<string,string>={
 export default async function PublicProposalPage({params,searchParams}:{params:Promise<{token:string}>;searchParams:Promise<{result?:string}>}){
  const {token}=await params;
  const {result}=await searchParams;
- const supabase=await createClient();
- const {data,error}=await supabase.rpc("get_public_crm_proposal",{public_token:token});
- const row=Array.isArray(data)?data[0]:data;
- if(error||!row)notFound();
+ const loaded=await loadPublicProposal(token);
+ if(!loaded)notFound();
+ const {supabase,row,decision}=loaded;
  await supabase.rpc("mark_crm_proposal_viewed",{public_token:token});
- const requestHeaders=await headers();
+ const audit=await requestAudit();
  await supabase.rpc("log_public_document_access",{
   public_token:token,
   target_document_type:"proposal",
   target_access_type:"public_view",
-  target_ip:firstIp(requestHeaders.get("x-forwarded-for"))||requestHeaders.get("x-real-ip")||requestHeaders.get("cf-connecting-ip")||null,
-  target_user_agent:requestHeaders.get("user-agent")?.slice(0,1000)||null,
-  target_referrer:requestHeaders.get("referer")?.slice(0,1000)||null,
+  target_ip:audit.ip,
+  target_user_agent:audit.userAgent,
+  target_referrer:audit.referrer,
   target_metadata:{number:row.proposal_no,source:"public_proposal_shared_renderer"},
  });
- const host=requestHeaders.get("x-forwarded-host")||requestHeaders.get("host")||"arvo-os.com";
- const protocol=requestHeaders.get("x-forwarded-proto")||"https";
- const verificationUrl=`${protocol}://${host}/teklif/${token}`;
- // Karar bilgisi (tarih + IP) ve varsa sözleşme bağlantısı.
- // Ayrı bir fonksiyondan geliyor: mevcut get_public_crm_proposal'a
- // dokunmak istemedik, canlı şema repodakiyle ayrışmış durumda.
- const {data:decisionRows}=await supabase.rpc("arvo_public_proposal_decision",{public_token:token});
- const decision=Array.isArray(decisionRows)?decisionRows[0]:decisionRows;
+ const origin=await requestOrigin();
  const locked=["accepted","rejected","expired","archived"].includes(row.status);
  const actions=!locked
-  ?<form action={respondToProposal.bind(null,token)} className="print-hide" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginTop:"20px"}}>
-    <button name="decision" value="accept" style={{height:46,border:0,borderRadius:10,background:"linear-gradient(180deg,#1b3050,#0b1b2e)",color:"#fff",fontWeight:800,letterSpacing:".04em",boxShadow:"0 0 0 1px rgba(201,166,106,.5),0 10px 22px rgba(11,27,46,.18)",cursor:"pointer"}}>TEKLİFİ KABUL EDİYORUM</button>
-    <button name="decision" value="reject" style={{height:46,border:"1px solid #d9b4ae",borderRadius:10,background:"#fff",color:"#8c2f2b",fontWeight:800,letterSpacing:".04em",cursor:"pointer"}}>TEKLİFİ REDDEDİYORUM</button>
-   </form>
-  :<div className="elite-notice print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
+  ?<div className="ad-actions print-hide">
+    <form action={respondToProposal.bind(null,token)}>
+     <button className="ad-accept" name="decision" value="accept">TEKLİFİ KABUL EDİYORUM</button>
+     <button className="ad-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>
+    </form>
+    <p>Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır. Kabul ettiğinizde aynı kapsam ve bedelle hazırlanan sözleşme onayınıza sunulur.</p>
+   </div>
+  :<div className="ad-status print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
  return <ProposalDocument
   row={row}
-  decision={decision??null}
-  verificationUrl={verificationUrl}
+  decision={decision}
+  verificationUrl={`${origin}/teklif/${token}`}
+  pdfHref={`/teklif/${encodeURIComponent(token)}/pdf`}
   notice={result?resultNotices[result]??null:null}
   actions={actions}
  />;

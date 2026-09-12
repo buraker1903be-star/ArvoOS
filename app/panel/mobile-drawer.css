@@ -60,3 +60,59 @@
   .mobile-bottom-nav{left:8px;right:8px;border-radius:16px}
 }
 .mobile-unread-badge,.mobile-bottom-badge{display:grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#dc2626;color:#fff;font:850 11px/1 var(--font-body);font-style:normal}.mobile-unread-badge{margin-left:auto}.mobile-bottom-nav>a,.mobile-bottom-nav>button{position:relative}.mobile-bottom-badge{position:absolute;top:3px;left:calc(50% + 7px);border:2px solid var(--surface)}
+
+/* ============================================================
+   iOS SEKME ÇUBUĞU VE MENÜ (2026-09)
+   panel-premium.css bu dosyadan sonra yüklenir; kurallar bu yüzden
+   .panel-root önekli. Rozet ölçüsü panel-motion.css'te.
+   ============================================================ */
+@media (max-width:900px){
+  /* Menü alt çubuktaki "Menü" sekmesinde. Üstteki ikinci (sabit) düğme
+     gereksizdi ve üst çubuktaki kurum adının üstüne biniyordu. */
+  .panel-root .mobile-drawer-trigger{display:none}
+
+  /* Kapalı menü görünmez: gölgesi ekranın sağ kenarına sızıyordu ve
+     klavyeyle kapalı menünün bağlantılarına odaklanılabiliyordu. */
+  .panel-root .mobile-drawer{
+    width:min(86vw,380px);height:100dvh;visibility:hidden;box-shadow:none;
+    padding-right:env(safe-area-inset-right);
+    transition:transform .45s cubic-bezier(.32,.72,0,1),visibility 0s linear .45s,box-shadow .3s ease
+  }
+  html.mobile-drawer-open .panel-root .mobile-drawer{visibility:visible;box-shadow:-34px 0 80px rgba(0,0,0,.4);transition:transform .45s cubic-bezier(.32,.72,0,1),visibility 0s,box-shadow .3s ease}
+  .panel-root .mobile-drawer-backdrop{background:rgba(4,12,24,.46);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .panel-root .mobile-drawer-header>button{width:44px;height:44px;border-radius:50%}
+  .panel-root .mobile-drawer-nav{flex:1;min-height:0;overscroll-behavior:contain}
+  /* Rozetli satırda (Mesajlar, Bildirimler) dördüncü öğe ızgaraya sığmıyor,
+     "›" oku alt satıra düşüyordu. */
+  .panel-root .mobile-drawer-nav>:is(a,button):has(>em){grid-template-columns:38px minmax(0,1fr) auto 18px}
+  /* Etkin satır: menü her iki temada koyu. Eski beyaz zemin koyu temada
+     koyu zemin + koyu yazıya dönüp okunmuyordu. */
+  .panel-root .mobile-drawer-nav a.active{background:color-mix(in srgb,var(--accent-bright) 16%,transparent);color:var(--n-0);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-bright) 28%,transparent)}
+  .panel-root .mobile-drawer-nav a.active i{background:color-mix(in srgb,var(--accent-bright) 26%,transparent);color:var(--n-0)}
+  .panel-root .mobile-drawer-nav a.active>b{color:var(--accent-bright)}
+
+  /* Sekme çubuğu: ekranın altına yapışık, buzlu, ev çubuğu payı kadar
+     yüksek; etkin sekme vurgu rengiyle (iOS gibi zemin kapsülü yok). */
+  .panel-root .mobile-bottom-nav{
+    left:0;right:0;bottom:0;z-index:210;
+    display:grid;grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+    min-height:0;padding:4px max(6px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));
+    border:0;border-top:1px solid color-mix(in srgb,var(--line) 90%,transparent);border-radius:0;
+    background:color-mix(in srgb,var(--surface) 80%,transparent);box-shadow:none;
+    -webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);
+    transition:transform .3s cubic-bezier(.32,.72,0,1)
+  }
+  .panel-root .mobile-bottom-nav>:is(a,button){
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    min-width:0;min-height:48px;padding:4px 2px 2px;border:0;border-radius:12px;
+    background:transparent;box-shadow:none;color:var(--muted);font:inherit;cursor:pointer
+  }
+  .panel-root .mobile-bottom-nav i{display:grid;place-items:center;height:24px;font-size:22px;line-height:1}
+  .panel-root .mobile-bottom-nav span{font-size:11px;font-weight:600;letter-spacing:.01em}
+  .panel-root .mobile-bottom-nav>:is(.active,[aria-current="page"],[aria-expanded="true"]){background:transparent;box-shadow:none;color:var(--accent)}
+  .panel-root .mobile-bottom-nav>:is(.active,[aria-current="page"]) span{font-weight:700}
+  /* Klavye açıkken (metin alanı odaktayken) sekme çubuğu aşağı çekilir;
+     alanın ve kaydet düğmesinin üstüne binmesin. */
+  html:has(.panel-content :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus) .panel-root .mobile-bottom-nav{transform:translateY(110%)}
+}
+@media (prefers-reduced-motion:reduce){.panel-root .mobile-bottom-nav,.panel-root .mobile-drawer{transition:none}}

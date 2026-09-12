@@ -113,6 +113,20 @@
 @media(max-width:1100px){.ops-metrics{grid-template-columns:1fr 1fr}.ops-create-form{grid-template-columns:1fr 1fr}.ops-create-form .wide{grid-column:span 2}.ops-board{grid-template-columns:repeat(4,280px)}}
 @media(max-width:620px){.ops-metrics,.ops-detail-metrics,.ops-detail-side{grid-template-columns:1fr}.ops-create-form{grid-template-columns:1fr}.ops-create-form .wide{grid-column:span 1}.ops-board{grid-template-columns:repeat(4,260px)}.ops-detail-pagehead .panel-page-actions{align-items:flex-start}.ops-detail-step button{grid-template-columns:34px minmax(0,1fr)}.ops-detail-step em{grid-column:2;white-space:normal}.ops-detail-add,.ops-detail-status{grid-template-columns:1fr}.ops-detail-add button,.ops-detail-status button{min-height:38px}.ops-detail-list>div{grid-template-columns:1fr}.ops-detail-list dd{text-align:left}}
 
+/* ---------- İşler filtresi (4 alan) ve arşiv araması ---------- */
+.crm-page-stack .crm-filter-form.ops-filter-form{grid-template-columns:minmax(0,1fr) repeat(3,minmax(150px,.3fr)) auto}
+.crm-page-stack .crm-filter-form.ops-archive-filter{grid-template-columns:minmax(0,1fr) auto}
+.ops-archive-note{margin:0 18px;color:var(--muted);font-size:13px}
+@media(max-width:1100px){
+  .crm-page-stack .crm-filter-form.ops-filter-form{grid-template-columns:1fr 1fr}
+  .crm-page-stack .crm-filter-form.ops-filter-form>div{grid-column:1/-1}
+}
+@media(max-width:760px){
+  .crm-page-stack .crm-filter-form:is(.ops-filter-form,.ops-archive-filter){grid-template-columns:1fr}
+  .crm-page-stack .crm-filter-form:is(.ops-filter-form,.ops-archive-filter)>div{grid-column:auto}
+  .ops-archive-note{margin:0 12px}
+}
+
 /* ---------- Ödemesi kapanan, tamamlanan işler (arşiv) ---------- */
 .ops-archive{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
 .ops-archive summary{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;list-style:none}

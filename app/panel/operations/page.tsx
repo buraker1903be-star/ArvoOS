@@ -1,164 +1,287 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { statusTone } from "@/lib/status-tone";
-import { formatSubject } from "@/lib/table-format";
-import { fetchLastContacts } from "../crm/last-contact";
-import { CustomerCell, LastContactCell, RepresentativeCell } from "../crm/table-cells";
+import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { formatPersonName } from "@/lib/format-name";
+import { formatSubject, initials } from "@/lib/table-format";
+import { statusTone } from "@/lib/status-tone";
+import { relativeTime } from "../crm/last-contact";
 import { PanelDrawer } from "../components/panel-drawer";
-import { createWorkflow } from "./actions";
 import { OperationsTabs } from "./operations-tabs";
+import { WorkflowCreateForm } from "./workflow-create-form";
+import { OpsIcon, activeStatuses, addDaysKey, dueBadge, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
 import "./operations.css";
+import "./overview.css";
 
-const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
-const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
-const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
-// Termin gecikmesi İstanbul gününe göre (bileşen gövdesinde saat okunmaz)
-const todayIstanbul = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
-const boardStatuses = ["planned", "in_progress", "blocked", "completed"] as const;
-type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
-type Employee = { id: string; full_name: string; job_title: string | null; user_id: string | null };
-type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; contract_id: string | null; assigned_employee_id: string | null; operation_steps: Step[] };
+// Operasyon genel bakış: operasyoncunun günlük ekranı. Yeni gelen işler,
+// devam eden işler, termini yaklaşan işler ve müşteriden gelen okunmamış
+// mesajlar kartlar halinde; her kartta ilk 5 kayıt ve "Tümünü gör".
+// Veri, işler tablosuyla aynı kapsamda: kurum filtresi + RLS (yönetici
+// değilse yalnızca sorumlusu olduğu işler).
 
-export default async function OperationsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string }> }) {
-  const { arama, durum } = await searchParams;
-  const search = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
-  const selectedStatus = boardStatuses.includes((durum ?? "") as typeof boardStatuses[number]) ? durum! : "";
-  const { supabase, membership, modules, userId } = await getPanelContext();
+type Workflow = {
+  id: string;
+  title: string;
+  customer_name: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+  assigned_employee_id: string | null;
+  operation_steps: { is_completed: boolean }[] | null;
+};
+type MessageRow = {
+  id: string;
+  workflow_id: string;
+  sender_name: string | null;
+  body: string;
+  created_at: string;
+  operation_workflows: { id: string; title: string; customer_name: string | null; status: string } | { id: string; title: string; customer_name: string | null; status: string }[] | null;
+};
+type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
+
+const LIST_LIMIT = 5;
+const ISLER = "/panel/operations/isler";
+
+export default async function OperationsOverviewPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string }> }) {
+  // Eski bağlantılar (/panel/operations?arama=…&durum=…) işler tablosuna gider
+  const params = await searchParams;
+  const legacy = new URLSearchParams();
+  if (params.arama) legacy.set("arama", params.arama);
+  if (params.durum) legacy.set("durum", params.durum);
+  if (legacy.size) redirect(`${ISLER}?${legacy.toString()}`);
+
+  const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
-  const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
-    supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false }),
-    supabase.from("hr_employees").select("id,full_name,job_title,user_id").eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
+  const organizationId = membership.organization_id;
+  const today = todayIstanbul();
+  const weekEnd = addDaysKey(today, 7);
+
+  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }] = await Promise.all([
+    supabase.from("operation_workflows")
+      .select("id,title,customer_name,status,priority,due_date,created_at,updated_at,assigned_employee_id,operation_steps(is_completed)")
+      .eq("organization_id", organizationId)
+      .in("status", [...activeStatuses])
+      .order("created_at", { ascending: false }),
+    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active"),
+    // !inner: mesajın işi RLS'te görünmüyorsa (başkasının işi) mesaj da gelmez
+    supabase.from("customer_file_messages")
+      .select("id,workflow_id,sender_name,body,created_at,operation_workflows!inner(id,title,customer_name,status)")
+      .eq("organization_id", organizationId)
+      .eq("sender_type", "customer")
+      .is("read_at", null)
+      .neq("operation_workflows.status", "cancelled")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "archived"),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
-  const allWorkflows = (data ?? []) as Workflow[];
-  const employees = (employeeData ?? []) as Employee[];
-  const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
-  const contractIds = [...new Set(allWorkflows.map((workflow) => workflow.contract_id).filter((value): value is string => Boolean(value)))];
-  const { data: workflowContracts, error: workflowContractsError } = contractIds.length
-    ? await supabase.from("crm_contracts").select("id,opportunity_id,crm_opportunities(contact_phone,contact_email)").in("id", contractIds)
-    : { data: [], error: null };
-  if (workflowContractsError) throw new Error("İşlerin CRM bağlantıları okunamadı: " + workflowContractsError.message);
-  const opportunityByContract = new Map((workflowContracts ?? []).map((contract) => [contract.id, contract.opportunity_id]));
-  const operationOpportunityIds = [...new Set((workflowContracts ?? []).map((contract) => contract.opportunity_id))];
-  // Müşteri iletişimi ve son temas: CRM tablolarıyla aynı hücreler
-  const contactByContract = new Map((workflowContracts ?? []).map((contract) => {
-    const raw = (contract as { crm_opportunities?: unknown }).crm_opportunities;
-    const opportunity = (Array.isArray(raw) ? raw[0] : raw) as { contact_phone?: string | null; contact_email?: string | null } | null | undefined;
-    return [contract.id, { phone: opportunity?.contact_phone ?? null, email: opportunity?.contact_email ?? null }];
-  }));
-  const lastContacts = await fetchLastContacts(supabase, membership.organization_id, operationOpportunityIds);
-  const today = todayIstanbul();
-  // Müşteriden gelen, henüz okunmamış mesajlar: ilgili iş satırında kırmızı belirteç
-  const workflowIdsForMessages = allWorkflows.map((workflow) => workflow.id);
-  const { data: unreadMessageRows } = workflowIdsForMessages.length
-    ? await supabase.from("customer_file_messages").select("workflow_id").eq("organization_id", membership.organization_id).eq("sender_type", "customer").is("read_at", null).in("workflow_id", workflowIdsForMessages)
-    : { data: [] as { workflow_id: string }[] };
-  const unreadByWorkflow = new Map<string, number>();
-  for (const row of (unreadMessageRows ?? []) as { workflow_id: string | null }[]) {
-    if (row.workflow_id) unreadByWorkflow.set(row.workflow_id, (unreadByWorkflow.get(row.workflow_id) ?? 0) + 1);
-  }
-  const totalUnreadMessages = [...unreadByWorkflow.values()].reduce((sum, count) => sum + count, 0);
-  // Termini yöneticiler ve işin sorumlusu girebilir (actions.ts setWorkflowDueDate)
+  if (messageError) throw new Error("Müşteri mesajları okunamadı: " + messageError.message);
+
+  const workflows = (data ?? []) as Workflow[];
+  const employeeName = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((row) => [row.id, formatPersonName(row.full_name)]));
+  const assigneeOf = (workflow: Workflow) => (workflow.assigned_employee_id ? employeeName.get(workflow.assigned_employee_id) ?? "Pasif personel" : null);
   const canManage = ["owner", "admin", "manager"].includes(membership.role);
-  const myEmployeeId = employees.find((employee) => employee.user_id === userId)?.id ?? null;
 
-  // Tamamlanan + ödemesi tam kapanan işler panoyu şişirmesin diye burada
-  // canlı olarak arşive ayrılır (ayrı bir "arşivlendi" alanı tutmuyoruz,
-  // gerçek fatura durumuna göre her açılışta yeniden hesaplanır).
-  const completedContractIds = [...new Set(allWorkflows.filter((wf) => wf.status === "completed" && wf.contract_id).map((wf) => wf.contract_id as string))];
-  const settledContractIds = new Set<string>();
-  const invoicelessContractIds = new Set<string>();
-  if (completedContractIds.length) {
-    const { data: contracts } = await supabase.from("crm_contracts").select("id,invoice_id").in("id", completedContractIds);
-    const invoiceIds = (contracts ?? []).map((c) => c.invoice_id).filter((value): value is string => Boolean(value));
-    const invoiceStatusById = new Map<string, string>();
-    if (invoiceIds.length) {
-      const { data: invoices } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
-      for (const invoice of invoices ?? []) invoiceStatusById.set(invoice.id, invoice.status);
-    }
-    for (const contract of contracts ?? []) {
-      if (contract.invoice_id && invoiceStatusById.get(contract.invoice_id) === "paid") settledContractIds.add(contract.id);
-      if (!contract.invoice_id) invoicelessContractIds.add(contract.id);
-    }
+  // Kartlar
+  const planned = workflows.filter((workflow) => workflow.status === "planned");
+  const unassignedPlanned = planned.filter((workflow) => !workflow.assigned_employee_id).length;
+  // Atanmamış yeni işler üstte, sonra en yeni
+  const plannedList = [...planned].sort((a, b) => Number(Boolean(a.assigned_employee_id)) - Number(Boolean(b.assigned_employee_id)) || b.created_at.localeCompare(a.created_at));
+
+  const ongoing = workflows.filter((workflow) => workflow.status === "in_progress" || workflow.status === "blocked");
+  const blockedCount = ongoing.filter((workflow) => workflow.status === "blocked").length;
+  const ongoingList = [...ongoing].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || b.updated_at.localeCompare(a.updated_at));
+
+  const dueList = workflows.filter((workflow) => workflow.due_date && workflow.due_date <= weekEnd).sort((a, b) => a.due_date!.localeCompare(b.due_date!));
+  const overdueCount = dueList.filter((workflow) => workflow.due_date! < today).length;
+  const dueSoonCount = dueList.length - overdueCount;
+
+  const messages = ((messageData ?? []) as unknown as MessageRow[]).map((row) => ({ ...row, workflow: Array.isArray(row.operation_workflows) ? row.operation_workflows[0] : row.operation_workflows }));
+  // İş başına tek satır: en son mesaj + okunmamış sayısı
+  const threads = new Map<string, { latest: (typeof messages)[number]; count: number }>();
+  for (const message of messages) {
+    const thread = threads.get(message.workflow_id);
+    if (thread) thread.count += 1;
+    else threads.set(message.workflow_id, { latest: message, count: 1 });
   }
-  // Bir sözleşmeye hiç fatura bağlanmamışsa (bekleyecek bir şey yok — örn.
-  // eski/aktarılmış kayıtlar), tamamlanan iş sonsuza kadar panoda takılı
-  // kalmasın diye tamamlanır tamamlanmaz arşive düşer.
-  const isSettled = (wf: Workflow) => wf.status === "completed" && (!wf.contract_id || settledContractIds.has(wf.contract_id) || invoicelessContractIds.has(wf.contract_id));
-  const workflows = allWorkflows.filter((wf) => !isSettled(wf));
-  const archivedWorkflows = allWorkflows.filter(isSettled);
+  const threadList = [...threads.values()];
+  const unreadTotal = messages.length;
 
-  const filteredWorkflows = workflows.filter((workflow) => {
-    const hay = [workflow.title, workflow.customer_name].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR");
-    return (!search || hay.includes(search)) && (!selectedStatus || workflow.status === selectedStatus);
-  });
+  const withSteps = workflows.filter((workflow) => (workflow.operation_steps ?? []).length);
+  const averageProgress = withSteps.length ? Math.round(withSteps.reduce((sum, workflow) => sum + stepProgress(workflow.operation_steps).percentage, 0) / withSteps.length) : 0;
+  const unassignedTotal = workflows.filter((workflow) => !workflow.assigned_employee_id).length;
 
-  const activeCount = workflows.filter((item) => item.status === "in_progress").length;
-  const blockedCount = workflows.filter((item) => item.status === "blocked").length;
-  const completedCount = workflows.filter((item) => item.status === "completed").length;
-  const allSteps = workflows.flatMap((item) => item.operation_steps ?? []);
-  const progress = allSteps.length ? Math.round(allSteps.filter((step) => step.is_completed).length / allSteps.length * 100) : 0;
+  const widgets: { label: string; value: string | number; note: string; href: string; icon: string; tone: Tone }[] = [
+    { label: "Aktif iş", value: workflows.length, note: unassignedTotal ? `${unassignedTotal} iş atanmamış` : "Hepsinin sorumlusu var", href: ISLER, icon: "briefcase", tone: "brand" },
+    { label: "Bu hafta teslim", value: dueSoonCount, note: "Önümüzdeki 7 gün", href: `${ISLER}?termin=yaklasan`, icon: "clock", tone: "gold" },
+    { label: "Geciken teslim", value: overdueCount, note: overdueCount ? "Termini geçti" : "Geciken iş yok", href: `${ISLER}?termin=geciken`, icon: "alert", tone: overdueCount ? "danger" : "success" },
+    { label: "Müşteri mesajı", value: unreadTotal, note: unreadTotal ? `${threads.size} işte okunmamış` : "Hepsi okundu", href: `${ISLER}?mesaj=yeni`, icon: "message", tone: unreadTotal ? "danger" : "info" },
+    { label: "Ortalama ilerleme", value: `%${averageProgress}`, note: "Aktif işlerin görevleri", href: `${ISLER}?durum=devam`, icon: "progress", tone: "success" },
+  ];
 
-  const workflowForm = <form className="panel-form" action={createWorkflow}>
-    <label>İş başlığı<input name="title" required minLength={2} maxLength={180} placeholder="Müşteri teslimat süreci" /></label>
-    <label>Müşteri / kurum<input name="customer_name" maxLength={160} /></label>
-    <label>Öncelik<select name="priority" defaultValue="normal"><option value="low">Düşük</option><option value="normal">Normal</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></label>
-    <label>Başlangıç durumu<select name="status" defaultValue="planned"><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option></select></label>
-    <label>Termin<input name="due_date" type="date" /></label>
-    <label>Operasyon sorumlusu<select name="assigned_employee_id" defaultValue=""><option value="">Atanmamış</option>{employees.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}</select></label>
-    <p className="wide panel-form-note">Yeni işler standart 8 aşamalı görev planıyla otomatik oluşturulur.</p>
-    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">İşi oluştur</button></div>
-  </form>;
+  const parts = [
+    planned.length ? `${planned.length} yeni iş` : null,
+    overdueCount ? `${overdueCount} geciken teslim` : null,
+    dueSoonCount ? `bu hafta ${dueSoonCount} teslim` : null,
+    unreadTotal ? `${unreadTotal} okunmamış müşteri mesajı` : null,
+  ].filter(Boolean);
+  const summary = parts.length ? `Şu an ${parts.join(", ")} var.` : "Bekleyen acil bir iş yok, her şey yolunda.";
 
-  return <div className="crm-page-stack">
-    <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span>{totalUnreadMessages ? <span className="status-pill" data-tone="danger">{totalUnreadMessages} yeni müşteri mesajı</span> : null}<PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
-    <OperationsTabs active="is-akisi" />
-    <div className="module-tab-panel">
-    <section className="crm-metrics">
-      <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>
-      <article><small>AKSİYON BEKLEYEN</small><strong>{blockedCount}</strong><span>Beklemede</span></article>
-      <article><small>TAMAMLANAN</small><strong>{completedCount}</strong><span>Kapanan iş</span></article>
-      <article><small>İLERLEME</small><strong>%{progress}</strong><span>Tamamlanan adımlar</span></article>
-    </section>
-    <section className="panel-card crm-filter-card"><form method="get" className="crm-filter-form"><label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} /></label><label><span>Durum</span><select name="durum" defaultValue={selectedStatus}><option value="">Tümü</option>{boardStatuses.map((status) => <option value={status} key={status}>{statusNames[status]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/operations">Temizle</Link></div></form></section>
-    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table" data-cols="operations"><thead><tr><th>İş</th><th>Müşteri</th><th className="crm-col-rep">Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th className="crm-col-date">Termin</th><th className="crm-col-contact">Son temas</th><th></th></tr></thead><tbody>{[...filteredWorkflows].sort((a, b) => Number((unreadByWorkflow.get(b.id) ?? 0) > 0) - Number((unreadByWorkflow.get(a.id) ?? 0) > 0)).map((workflow) => {
-      const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-      const done = steps.filter((step) => step.is_completed).length;
-      const percentage = steps.length ? Math.round(done / steps.length * 100) : 0;
-      const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
-      const contact = workflow.contract_id ? contactByContract.get(workflow.contract_id) : null;
-      const late = Boolean(workflow.due_date && workflow.due_date < today && workflow.status !== "completed");
-      const unreadMessages = unreadByWorkflow.get(workflow.id) ?? 0;
-      const canSetDue = canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
-      return <tr key={workflow.id} className={unreadMessages ? "has-alert" : undefined}>
-        {/* Satırın tamamı bu bağlantıyla tıklanır (panel-premium.css, ilk hücre) */}
-        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{steps.length ? `${done}/${steps.length} adım tamamlandı` : "Adım yok"}</span>{unreadMessages ? <span className="crm-alert-chip">{unreadMessages} yeni müşteri mesajı</span> : null}</div></Link></td>
-        <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} />
-        <RepresentativeCell label="Sorumlu" name={workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null} />
-        <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
-        <td data-label="Durum"><span className="status-pill" data-tone={statusTone(workflow.status)}>{statusNames[workflow.status] ?? workflow.status}</span></td>
-        <td data-label="İlerleme" className="crm-col-progress"><span className="ops-progress-mini" aria-hidden="true"><i style={{ "--p": `${percentage}%` } as CSSProperties} /></span><b>%{percentage}</b></td>
-        <td data-label="Termin" className={`crm-col-date${late ? " is-late" : ""}`}>{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : canSetDue ? <Link className="crm-inline-action" href={`/panel/operations/${workflow.id}#termin`}>+ Termin ekle</Link> : "—"}{late ? <small>Gecikti</small> : null}</td>
-        <LastContactCell contact={opportunityId ? lastContacts.get(opportunityId) : null} />
-        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
-      </tr>;
-    })}</tbody></table></section> : <div className="panel-card crm-empty">Eşleşen iş bulunamadı.</div>}
-    {archivedWorkflows.length ? (
-      <details className="ops-archive">
-        <summary><span>Arşivlenen işler</span><em>{archivedWorkflows.length}</em><small>Tamamlandı ve ödemesi kapandı, panoyu meşgul etmiyor</small></summary>
-        <div className="ops-archive-list">
-          {archivedWorkflows.map((workflow) => (
-            <Link key={workflow.id} href={`/panel/operations/${workflow.id}`} className="ops-archive-row">
-              <div><b>{workflow.title}</b><small>{workflow.customer_name || "Kurum içi iş"}</small></div>
-              <span className="status-pill">Ödendi ve tamamlandı</span>
+  return (
+    <div className="crm-page-stack">
+      <div className="panel-pagehead">
+        <div><small className="panel-kicker">OPERASYON / GENEL BAKIŞ</small><h1>Genel bakış</h1><p>{summary}</p></div>
+        <div className="panel-page-actions">
+          <Link className="panel-secondary" href={ISLER}>Tüm işler</Link>
+          {canManage ? <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin."><WorkflowCreateForm /></PanelDrawer> : null}
+        </div>
+      </div>
+      <OperationsTabs active="genel-bakis" />
+      <div className="module-tab-panel opsov">
+        <section className="opsov-widgets" aria-label="Özet">
+          {widgets.map((widget) => (
+            <Link className="opsov-widget" data-tone={widget.tone} href={widget.href} key={widget.label}>
+              <span className="opsov-widget-icon"><OpsIcon name={widget.icon} /></span>
+              <small>{widget.label}</small>
+              <strong>{widget.value}</strong>
+              <span className="opsov-widget-note">{widget.note}</span>
             </Link>
           ))}
-        </div>
-      </details>
-    ) : null}
+        </section>
+
+        <section className="opsov-grid">
+          {/* Yeni gelen işler */}
+          <article className="opsov-card" data-tone="info">
+            <header className="opsov-card-head">
+              <span className="opsov-card-icon"><OpsIcon name="inbox" /></span>
+              <div><h2>Yeni gelen işler</h2><p>{unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"}</p></div>
+              <b className="opsov-count">{planned.length}</b>
+            </header>
+            {plannedList.length ? (
+              <ul className="opsov-list">
+                {plannedList.slice(0, LIST_LIMIT).map((workflow) => {
+                  const assignee = assigneeOf(workflow);
+                  return (
+                    <li key={workflow.id} className={assignee ? undefined : "is-flagged"} data-flag="gold">
+                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
+                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {relativeTime(workflow.created_at)}</small></span>
+                        <span className="opsov-row-side">
+                          {assignee ? <span className="opsov-person" title={assignee}><i aria-hidden="true">{initials(assignee)}</i><span>{assignee}</span></span> : <span className="status-pill" data-tone="gold">Atanmamış</span>}
+                        </span>
+                        <OpsIcon name="chevron" size={14} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Yeni iş yok. Sözleşmesi onaylanan işler burada belirir.</p>}
+            <Link className="opsov-more" href={`${ISLER}?durum=planned`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
+          </article>
+
+          {/* Devam eden işler */}
+          <article className="opsov-card" data-tone="success">
+            <header className="opsov-card-head">
+              <span className="opsov-card-icon"><OpsIcon name="progress" /></span>
+              <div><h2>Devam eden işler</h2><p>{blockedCount ? `${blockedCount} iş beklemede` : "Üzerinde çalışılan işler"}</p></div>
+              <b className="opsov-count">{ongoing.length}</b>
+            </header>
+            {ongoingList.length ? (
+              <ul className="opsov-list">
+                {ongoingList.slice(0, LIST_LIMIT).map((workflow) => {
+                  const progress = stepProgress(workflow.operation_steps);
+                  const assignee = assigneeOf(workflow);
+                  return (
+                    <li key={workflow.id} className={workflow.status === "blocked" ? "is-flagged" : undefined} data-flag="warning">
+                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
+                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {assignee ?? "Atanmamış"}</small></span>
+                        <span className="opsov-row-side opsov-progress">
+                          {workflow.status === "blocked" ? <span className="status-pill" data-tone={statusTone(workflow.status)}>{workflowStatusNames[workflow.status]}</span> : null}
+                          <span className="opsov-bar" aria-hidden="true"><i style={{ "--p": `${progress.percentage}%` } as CSSProperties} /></span>
+                          <em>%{progress.percentage}</em>
+                        </span>
+                        <OpsIcon name="chevron" size={14} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Şu an devam eden iş yok.</p>}
+            <Link className="opsov-more" href={`${ISLER}?durum=devam`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
+          </article>
+
+          {/* Teslim tarihi yaklaşan */}
+          <article className="opsov-card" data-tone={overdueCount ? "danger" : "gold"}>
+            <header className="opsov-card-head">
+              <span className="opsov-card-icon"><OpsIcon name="clock" /></span>
+              <div><h2>Teslim tarihi yaklaşan</h2><p>{overdueCount ? `${overdueCount} gecikmiş · ${dueSoonCount} bu hafta` : "Önümüzdeki 7 gün içinde teslim"}</p></div>
+              <b className="opsov-count">{dueList.length}</b>
+            </header>
+            {dueList.length ? (
+              <ul className="opsov-list">
+                {dueList.slice(0, LIST_LIMIT).map((workflow) => {
+                  const badge = dueBadge(workflow.due_date!, today);
+                  return (
+                    <li key={workflow.id} className={badge.late ? "is-flagged" : undefined} data-flag="danger">
+                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
+                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {assigneeOf(workflow) ?? "Atanmamış"}</small></span>
+                        <span className="opsov-row-side opsov-due">
+                          <time dateTime={workflow.due_date!}>{shortDate(workflow.due_date)}</time>
+                          <span className="status-pill" data-tone={badge.tone}>{badge.label}</span>
+                        </span>
+                        <OpsIcon name="chevron" size={14} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Bu hafta teslimi olan ya da geciken iş yok.</p>}
+            <Link className="opsov-more" href={`${ISLER}?termin=yaklasan`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
+          </article>
+
+          {/* Müşteriden gelen mesajlar */}
+          <article className="opsov-card" data-tone={unreadTotal ? "danger" : "brand"}>
+            <header className="opsov-card-head">
+              <span className="opsov-card-icon"><OpsIcon name="message" /></span>
+              <div><h2>Müşteriden gelen mesajlar</h2><p>{unreadTotal ? `${threads.size} işte okunmamış mesaj` : "Takip ekranından yazılanlar"}</p></div>
+              <b className="opsov-count">{unreadTotal}</b>
+            </header>
+            {threadList.length ? (
+              <ul className="opsov-list">
+                {threadList.slice(0, LIST_LIMIT).map(({ latest, count }) => {
+                  const sender = formatPersonName(latest.sender_name || latest.workflow?.customer_name) || "Müşteri";
+                  return (
+                    <li key={latest.workflow_id} className="is-flagged" data-flag="danger">
+                      <Link className="opsov-row opsov-message" href={`/panel/operations/${latest.workflow_id}#musteri-mesajlari`}>
+                        <span className="opsov-avatar" aria-hidden="true">{initials(sender)}</span>
+                        <span className="opsov-row-main">
+                          <b>{sender}<small> · {formatSubject(latest.workflow?.title ?? "İş")}</small></b>
+                          <span className="opsov-excerpt">{latest.body}</span>
+                        </span>
+                        <span className="opsov-row-side opsov-message-side">
+                          <time dateTime={latest.created_at}>{relativeTime(latest.created_at)}</time>
+                          {count > 1 ? <em className="opsov-badge">{count}</em> : <em className="opsov-badge">Yeni</em>}
+                        </span>
+                        <OpsIcon name="chevron" size={14} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Okunmamış müşteri mesajı yok.</p>}
+            <Link className="opsov-more" href={`${ISLER}?mesaj=yeni`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
+          </article>
+        </section>
+
+        <p className="opsov-foot">
+          <OpsIcon name="archive" size={16} />
+          <span>Tamamlanan işleri “Arşivle” ile aktif listeden kaldırabilirsiniz.</span>
+          <Link href="/panel/operations/arsiv">Arşiv ({archivedCount ?? 0})</Link>
+        </p>
+      </div>
     </div>
-  </div>;
+  );
 }

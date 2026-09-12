@@ -1,39 +1,36 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { Fragment, startTransition, useActionState, useEffect, useLayoutEffect, useOptimistic, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal, useFormStatus } from "react-dom";
 import { lookupTracking, refreshCustomerFileMessages, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type TakipState } from "./actions";
+import { LookupSubmitButton } from "../durum/[slug]/lookup-controls";
+import {
+  describeStatus, FinanceSummary, formatDateTime, formatDay, formatTime,
+  IconArrowUp, IconChat, IconChevron, IconClock, IconDoc, IconLock, IconSearch, IconShield,
+  LookupAlert, LookupSkeleton, PhaseTimeline, ProgressOverview, StatusPill,
+} from "../durum/[slug]/status-view";
 
-const workflowStatusNames: Record<string, string> = {
-  planned: "Planlandı",
-  in_progress: "Devam Ediyor",
-  blocked: "Beklemede",
-  completed: "Tamamlandı",
-  cancelled: "İptal Edildi",
-};
-const contractStatusNames: Record<string, string> = {
-  signed: "İmzalandı",
-  completed: "Tamamlandı",
-};
-const money = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format((cents ?? 0) / 100);
-const dateTime = (value: string) => new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+type TrackingResult = NonNullable<TakipState["result"]>;
+type ThreadMessage = CustomerFileMessage & { pending?: boolean };
 
 const initialState: TakipState = { error: null, result: null };
 const initialMessageState: CustomerMessageState = { error: null, success: null, messages: null };
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button className="status-lookup-submit" type="submit" disabled={pending}>
-      {pending ? "Sorgulanıyor..." : "Sorgula"}
-    </button>
-  );
-}
+const POLL_MS = 20000;
 
 export function TakipForm({ prefillCode }: { prefillCode?: string }) {
+  // "Yeni sorgu" sayfayı yeniden yüklemeden baştan başlatır: anahtar
+  // değişince form ve sonuç ekranı sıfırdan kurulur, ?code= adresten düşer
+  // (yoksa kod yeniden otomatik sorgulanırdı).
+  const [session, setSession] = useState({ key: 0, prefill: prefillCode });
+  const startOver = () => {
+    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
+    setSession((current) => ({ key: current.key + 1, prefill: undefined }));
+  };
+  return <TrackingLookup key={session.key} prefillCode={session.prefill} autoFocus={session.key > 0} onStartOver={startOver} />;
+}
+
+function TrackingLookup({ prefillCode, autoFocus, onStartOver }: { prefillCode?: string; autoFocus: boolean; onStartOver: () => void }) {
   const [state, formAction] = useActionState(lookupTracking, initialState);
-  const [messageState, messageAction, messagePending] = useActionState(sendCustomerFileMessage, initialMessageState);
-  const [liveMessages, setLiveMessages] = useState<CustomerFileMessage[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const autoSubmitted = useRef(false);
 
@@ -45,142 +42,284 @@ export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   }, [prefillCode]);
 
   const row = state.result;
-  const messages = liveMessages;
-  const accentColor = row?.organization_primary_color || "#183f31";
-
-  useEffect(() => {
-    if (!row) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [row]);
-
-  useEffect(() => {
-    if (!row) {
-      setLiveMessages([]);
-      return;
-    }
-    setLiveMessages(row.messages);
-    const timer = window.setInterval(async () => {
-      const refreshed = await refreshCustomerFileMessages(row.tracking_code);
-      setLiveMessages(refreshed);
-    }, 20000);
-    return () => window.clearInterval(timer);
-  }, [row]);
-
-  useEffect(() => {
-    if (messageState.messages) setLiveMessages(messageState.messages);
-  }, [messageState.messages]);
+  const isFirstQuery = !state.result && !state.error;
 
   return (
-    <div className="status-lookup" style={{ "--status-accent": accentColor } as React.CSSProperties}>
-      <form action={formAction} className="status-lookup-form" ref={formRef}>
-        <label>
-          Takip Kodu
+    <div className="status-lookup">
+      <form action={formAction} className="trk-form" ref={formRef}>
+        <label className="trk-field">
+          <span className="trk-field-label">Takip kodu</span>
           <input
+            className="trk-code-input"
             name="tracking_code"
             inputMode="text"
             maxLength={9}
             placeholder="ABCD-1234"
             required
             autoComplete="off"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            autoFocus={autoFocus}
+            aria-describedby="trk-code-hint"
+            aria-invalid={state.error ? true : undefined}
             defaultValue={prefillCode ?? ""}
           />
         </label>
-        <SubmitButton />
+        <p id="trk-code-hint" className="trk-field-hint">Büyük/küçük harf fark etmez; tire isteğe bağlıdır.</p>
+        <LookupSubmitButton />
+        {/* Bağlantıdaki kodla açılışta form yerine dosya iskeleti görünür. */}
+        {prefillCode && isFirstQuery ? <PendingScreen /> : null}
       </form>
 
-      {state.error ? <p className="status-lookup-error" role="alert">{state.error}</p> : null}
+      {state.error ? <LookupAlert>{state.error}</LookupAlert> : null}
 
-      {row && typeof document !== "undefined" ? createPortal(
-        (
-        <div className="status-lookup-results" aria-live="polite">
-          <article className="status-lookup-card status-lookup-product-view">
-            <div className="status-lookup-card-head">
-              <div className="status-lookup-result-brand">
-                {row.organization_logo_url ? <img src={row.organization_logo_url} alt={row.organization_name} className="status-lookup-org-logo" /> : <span className="status-lookup-org-name-inline">{row.organization_name}</span>}
-                <span>Güvenli müşteri alanı</span>
-              </div>
-              <a className="status-lookup-new-query" href="/takip">Başka dosya sorgula</a>
-            </div>
-            <div className="status-lookup-result-hero">
-              <div>
-                <span className="status-lookup-no">{row.contract_no}</span>
-                <h2 className="status-lookup-title">{row.contract_title}</h2>
-                <p>Dosyanızın güncel operasyon ve ödeme bilgileri aşağıda yer almaktadır.</p>
-              </div>
-              <span className="status-pill status-pill-live"><i />{row.workflow_status ? workflowStatusNames[row.workflow_status] ?? row.workflow_status : contractStatusNames[row.contract_status] ?? row.contract_status}</span>
-            </div>
-            {row.documentLinks?.proposal_share_token || row.documentLinks?.contract_share_token ? (
-              <div className="status-lookup-documents">
-                <small>BELGELERİNİZ</small>
-                <div>
-                  {row.documentLinks?.proposal_share_token ? (
-                    <a href={`/teklif/${row.documentLinks.proposal_share_token}`} target="_blank" rel="noreferrer">
-                      Teklif belgesi{row.documentLinks.proposal_no ? ` · ${row.documentLinks.proposal_no}` : ""}
-                    </a>
-                  ) : null}
-                  {row.documentLinks?.contract_share_token ? (
-                    <a href={`/sozlesme/${row.documentLinks.contract_share_token}`} target="_blank" rel="noreferrer">
-                      Sözleşme belgesi{row.documentLinks.contract_no ? ` · ${row.documentLinks.contract_no}` : ""}
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            <div className="status-lookup-dashboard">
-              <section className="status-lookup-progress-panel">
-                <div className="status-lookup-section-head"><div><small>GENEL İLERLEME</small><h3>Çalışma durumu</h3></div><strong>%{row.progress_percentage}</strong></div>
-                <div className="status-lookup-progress"><div className="status-lookup-progress-track"><span style={{ width: `${row.progress_percentage}%` }} /></div></div>
-                <div className="status-lookup-steps">
-                  {["Sözleşme", "Planlama", "Çalışma", "Kontrol", "Teslim"].map((step, index) => {
-                    const active = row.progress_percentage >= index * 25;
-                    return <div className={active ? "is-complete" : ""} key={step}><span>{active ? "✓" : index + 1}</span><b>{step}</b></div>;
-                  })}
-                </div>
-              </section>
-              <section className="status-lookup-finance-panel">
-                <div className="status-lookup-section-head"><div><small>FİNANS ÖZETİ</small><h3>Ödeme durumu</h3></div></div>
-                <div className="status-lookup-balance">
-                  <div><span>Sözleşme tutarı</span><b>{money(row.total_amount)}</b></div>
-                  <div><span>Toplam tahsilat</span><b className="is-paid">{money(row.paid_amount)}</b></div>
-                  <div className="status-lookup-balance-remaining"><span>Kalan bakiye</span><b>{money(row.remaining_amount)}</b></div>
-                </div>
-              </section>
-              <section className="status-lookup-conversation">
-                <div className="status-lookup-section-head">
-                  <div><small>DOSYA İLETİŞİMİ</small><h3>Operasyon ekibine sorun</h3></div>
-                  <span className="status-lookup-message-count">{messages.length} mesaj</span>
-                </div>
-                <p className="status-lookup-conversation-note">Dosyanızla ilgili sorunuzu buradan iletebilirsiniz. Operasyon sorumlunuz panel üzerinden bilgilendirilir.</p>
-                <div className="status-lookup-message-list">
-                  {messages.length ? messages.map((message, index) => (
-                    <article className={message.sender_type === "customer" ? "from-customer" : "from-staff"} key={`${message.created_at}-${index}`}>
-                      <header><b>{message.sender_type === "customer" ? "Siz" : message.sender_name}</b><time>{dateTime(message.created_at)}</time></header>
-                      <p>{message.body}</p>
-                    </article>
-                  )) : <div className="status-lookup-message-empty">Henüz mesaj yok. İlk sorunuzu aşağıdan iletebilirsiniz.</div>}
-                </div>
-                <form action={messageAction} className="status-lookup-message-form">
-                  <input type="hidden" name="tracking_code" value={row.tracking_code}/>
-                  <label><span>Mesajınız</span><textarea name="body" required minLength={2} maxLength={2000} placeholder="Dosyanızla ilgili sormak istediğiniz konuyu yazın..."/></label>
-                  <div>
-                    <small>Yanıtınız bu ekranda görüntülenecektir.</small>
-                    <button type="submit" disabled={messagePending}>{messagePending ? "Gönderiliyor..." : "Mesajı Gönder"}</button>
-                  </div>
-                </form>
-                {messageState.error ? <p className="status-lookup-message-error" role="alert">{messageState.error}</p> : null}
-                {messageState.success ? <p className="status-lookup-message-success" role="status">{messageState.success}</p> : null}
-              </section>
-            </div>
-            <footer className="status-lookup-result-footer"><span><i /> Son güncelleme: {dateTime(row.last_update)}</span><span>Bilgiler yalnızca size özel takip koduyla görüntülenir.</span></footer>
-          </article>
+      {row && typeof document !== "undefined" ? createPortal(<ResultScreen row={row} onStartOver={onStartOver} />, document.body) : null}
+    </div>
+  );
+}
+
+function PendingScreen() {
+  const { pending } = useFormStatus();
+  if (!pending || typeof document === "undefined") return null;
+  return createPortal(
+    <div className="status-lookup-results">
+      <div className="trk-topbar">
+        <div className="trk-topbar-inner"><span className="trk-skel" style={{ width: 132, height: 24 }} /></div>
+      </div>
+      <div className="trk-screen">
+        <span className="trk-sr" role="status">Dosyanız yükleniyor…</span>
+        <LookupSkeleton />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: () => void }) {
+  const [liveMessages, setLiveMessages] = useState<ThreadMessage[]>(row.messages);
+  const [messages, addOptimisticMessage] = useOptimistic(liveMessages, (current: ThreadMessage[], next: ThreadMessage) => [...current, next]);
+  const [messageState, messageAction, messagePending] = useActionState(async (previous: CustomerMessageState, formData: FormData) => {
+    const body = String(formData.get("body") ?? "").trim();
+    if (body.length >= 2 && body.length <= 2000) {
+      // Mesaj anında balon olarak görünür; sunucu yanıtıyla gerçeğiyle değişir.
+      addOptimisticMessage({ sender_type: "customer", sender_name: "Siz", body, created_at: new Date().toISOString(), pending: true });
+    }
+    const next = await sendCustomerFileMessage(previous, formData);
+    const fresh = next.messages;
+    if (fresh) startTransition(() => setLiveMessages(fresh));
+    return next;
+  }, initialMessageState);
+
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const didInitialScroll = useRef(false);
+
+  // Tam ekran katman: arkadaki sayfa kaymaz, klavye ve ekran okuyucu için
+  // devre dışı kalır (inert). Layout efekti: "Yeni sorgu"da inert, yeni
+  // formun autoFocus'undan önce kalkar.
+  useLayoutEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const background = document.querySelector<HTMLElement>(".status-lookup-shell");
+    document.body.style.overflow = "hidden";
+    background?.setAttribute("inert", "");
+    titleRef.current?.focus({ preventScroll: true });
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      background?.removeAttribute("inert");
+    };
+  }, []);
+
+  useEffect(() => {
+    const code = row.tracking_code;
+    const timer = window.setInterval(async () => {
+      if (document.hidden) return;
+      const refreshed = await refreshCustomerFileMessages(code);
+      // Geçici bir hata boş liste döndürür; yazışmayı silmek yerine son hal korunur.
+      setLiveMessages((current) => (refreshed.length || !current.length ? refreshed : current));
+    }, POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [row.tracking_code]);
+
+  useEffect(() => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    const smooth = didInitialScroll.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    thread.scrollTo({ top: thread.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    didInitialScroll.current = true;
+  }, [messages.length]);
+
+  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
+
+  const status = describeStatus(row.workflow_status, row.contract_status);
+  const accentStyle = row.organization_primary_color ? ({ "--status-accent": row.organization_primary_color } as CSSProperties) : undefined;
+  const links = row.documentLinks;
+  const documents = [
+    ...(links?.proposal_share_token ? [{ href: `/teklif/${links.proposal_share_token}`, title: "Teklif belgesi", meta: links.proposal_no }] : []),
+    ...(links?.contract_share_token ? [{ href: `/sozlesme/${links.contract_share_token}`, title: "Sözleşme belgesi", meta: links.contract_no }] : []),
+  ];
+
+  const thread = messages.map((message, index) => {
+    const day = formatDay(message.created_at);
+    const sameGroup = (other?: ThreadMessage) =>
+      !!other && other.sender_type === message.sender_type && other.sender_name === message.sender_name && formatDay(other.created_at) === day;
+    const previous = messages[index - 1];
+    return {
+      message,
+      day,
+      showDay: !previous || formatDay(previous.created_at) !== day,
+      isFirst: !sameGroup(previous),
+      isLast: !sameGroup(messages[index + 1]),
+    };
+  });
+
+  return (
+    <div className="status-lookup-results" style={accentStyle} role="dialog" aria-modal="true" aria-labelledby="trk-result-title">
+      <div className="trk-topbar">
+        <div className="trk-topbar-inner">
+          <div className="trk-org">
+            {row.organization_logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- kurum logosu harici, boyutu bilinmeyen bir URL
+              <img src={row.organization_logo_url} alt={row.organization_name} className="trk-org-logo" />
+            ) : (
+              <span className="trk-org-name">{row.organization_name}</span>
+            )}
+            <span className="trk-org-sub"><IconLock size={12} />Güvenli müşteri alanı</span>
+          </div>
+          <button type="button" className="trk-topbar-action" onClick={onStartOver}>
+            <IconSearch size={17} />
+            <span>Yeni sorgu</span>
+          </button>
         </div>
-        ),
-        document.body,
-      ) : null}
+      </div>
+
+      <div className="trk-screen">
+        <div className="trk-hero">
+          <p className="trk-contract-no">{row.contract_no}</p>
+          <h1 id="trk-result-title" ref={titleRef} tabIndex={-1}>{row.contract_title}</h1>
+          <div className="trk-hero-meta">
+            <StatusPill status={status} />
+            <span className="trk-updated"><IconClock />Son güncelleme {formatDateTime(row.last_update)}</span>
+          </div>
+        </div>
+
+        <div className="trk-layout">
+          <div className="trk-col">
+            <section className="trk-card trk-progress-card" aria-labelledby="trk-progress-title">
+              <div className="trk-card-head">
+                <h2 id="trk-progress-title">İlerleme</h2>
+                <span>Genel çalışma durumu</span>
+              </div>
+              <ProgressOverview progress={row.progress_percentage} status={status} />
+              <PhaseTimeline progress={row.progress_percentage} tone={status.tone} />
+            </section>
+
+            <section className="trk-card trk-chat" aria-labelledby="trk-chat-title">
+              <div className="trk-chat-head">
+                <span className="trk-chat-avatar" aria-hidden="true"><IconChat /></span>
+                <div>
+                  <h2 id="trk-chat-title">Operasyon ekibine sorun</h2>
+                  <p>Operasyon sorumlunuz panel üzerinden bilgilendirilir.</p>
+                </div>
+                <span className="trk-count">{liveMessages.length} mesaj</span>
+              </div>
+
+              <div className="trk-thread" ref={threadRef} role="log" aria-live="polite" aria-label="Dosya mesajları" tabIndex={0}>
+                {thread.length ? thread.map(({ message, day, showDay, isFirst, isLast }, index) => {
+                  const mine = message.sender_type === "customer";
+                  const className = ["trk-msg", mine && "is-mine", isFirst && "is-first", isLast && "is-last", message.pending && "is-pending"].filter(Boolean).join(" ");
+                  return (
+                    <Fragment key={`${message.created_at}-${index}`}>
+                      {showDay ? <p className="trk-day">{day}</p> : null}
+                      <div className={className}>
+                        {!mine && isFirst ? <span className="trk-msg-sender" aria-hidden="true">{message.sender_name}</span> : null}
+                        <p className="trk-bubble"><span className="trk-sr">{mine ? "Siz" : message.sender_name}: </span>{message.body}</p>
+                        {isLast ? (
+                          <time className="trk-msg-time" dateTime={message.created_at}>{message.pending ? "Gönderiliyor…" : formatTime(message.created_at)}</time>
+                        ) : null}
+                      </div>
+                    </Fragment>
+                  );
+                }) : (
+                  <div className="trk-thread-empty">
+                    <span aria-hidden="true"><IconChat size={24} /></span>
+                    <b>Henüz mesaj yok</b>
+                    <p>Dosyanızla ilgili ilk sorunuzu aşağıdan iletebilirsiniz.</p>
+                  </div>
+                )}
+              </div>
+
+              <form action={messageAction} className="trk-composer">
+                <input type="hidden" name="tracking_code" value={row.tracking_code} />
+                <label className="trk-sr" htmlFor="trk-message">Mesajınız</label>
+                <div className="trk-composer-row">
+                  <div className="trk-composer-input">
+                    <textarea
+                      id="trk-message"
+                      name="body"
+                      rows={1}
+                      required
+                      minLength={2}
+                      maxLength={2000}
+                      placeholder="Mesajınızı yazın…"
+                      aria-describedby="trk-composer-note"
+                      onKeyDown={onComposerKeyDown}
+                    />
+                  </div>
+                  <button type="submit" className="trk-send" disabled={messagePending} aria-label={messagePending ? "Gönderiliyor" : "Mesajı gönder"}>
+                    {messagePending ? <span className="trk-spinner" aria-hidden="true" /> : <IconArrowUp />}
+                  </button>
+                </div>
+                <p id="trk-composer-note" className="trk-composer-note">Yanıtınız bu ekranda görüntülenecektir.</p>
+                {messageState.error ? <p className="trk-inline-error" role="alert">{messageState.error}</p> : null}
+                {messageState.success && !messagePending ? <p className="trk-inline-success" role="status">{messageState.success}</p> : null}
+              </form>
+            </section>
+          </div>
+
+          <aside className="trk-col" aria-label="Özet">
+            <section className="trk-card trk-finance-card" aria-labelledby="trk-finance-title">
+              <div className="trk-card-head">
+                <h2 id="trk-finance-title">Ödeme özeti</h2>
+              </div>
+              <FinanceSummary total={row.total_amount} paid={row.paid_amount} remaining={row.remaining_amount} />
+            </section>
+
+            {documents.length ? (
+              <section className="trk-card trk-docs-card" aria-labelledby="trk-docs-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-docs-title">Belgeleriniz</h2>
+                </div>
+                <ul className="trk-list">
+                  {documents.map((document) => (
+                    <li key={document.href}>
+                      <a href={document.href} target="_blank" rel="noreferrer">
+                        <span className="trk-doc-icon" aria-hidden="true"><IconDoc /></span>
+                        <span className="trk-doc-text">
+                          <b>{document.title}</b>
+                          {document.meta ? <small>{document.meta}</small> : null}
+                        </span>
+                        <span className="trk-sr">(yeni sekmede açılır)</span>
+                        <span className="trk-chevron" aria-hidden="true"><IconChevron /></span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            <p className="trk-note">
+              <IconShield />
+              <span>Bu bilgiler yalnızca size özel takip koduyla görüntülenir. Kodunuzu kimseyle paylaşmayın.</span>
+            </p>
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,18 @@
+/* Pencere panelin köküne (.panel-root) portal ile çizilir: sayfa
+   içindeki animasyonlu/transform'lu bir üst öğe fixed konumu kendine
+   hapsediyor, sayfa sekme çubuğunun altında kalıyordu. */
 .panel-sheet-root {
   position: fixed;
   inset: 0;
-  z-index: 250;
+  z-index: 1000;
   pointer-events: none;
   visibility: hidden;
+  transition: visibility 0s linear 0.4s;
 }
 .panel-sheet-root.open {
   pointer-events: auto;
   visibility: visible;
+  transition: visibility 0s;
 }
 .panel-sheet-backdrop {
   position: absolute;
@@ -25,15 +30,18 @@
   right: 0;
   bottom: 0;
   left: 0;
-  max-height: min(78vh, 680px);
-  padding: 8px 24px 24px;
+  max-height: min(85dvh, 680px);
+  padding: 8px max(24px, env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
   border: 1px solid var(--line);
+  border-bottom: 0;
   border-radius: 20px 20px 0 0;
   background: var(--surface);
   box-shadow: 0 -22px 70px rgba(4, 25, 42, 0.2);
   transform: translateY(102%);
-  transition: transform 0.26s ease;
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .panel-sheet-root.open .panel-sheet {
   transform: none;
@@ -58,8 +66,10 @@
   font-size: 18px;
 }
 .panel-sheet header > button {
+  position: relative;
   display: grid;
   place-items: center;
+  flex: none;
   width: 34px;
   height: 34px;
   border: 1px solid var(--line);
@@ -97,8 +107,28 @@
   border-radius: 8px;
 }
 @media (max-width: 620px) {
-  .panel-sheet {
-    padding: 8px 16px 18px;
+  .panel-root .panel-sheet {
+    padding: 8px max(16px, env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    border-inline: 0;
+    border-radius: 22px 22px 0 0;
+  }
+  .panel-root .panel-sheet-backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .panel-sheet header > button {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  /* 32px görünür, 44px dokunma alanı */
+  .panel-sheet header > button::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
   }
   .panel-sheet-actions {
     display: grid;
@@ -107,10 +137,17 @@
   .panel-sheet-actions > * {
     width: 100%;
   }
-  .panel-sheet-actions .panel-primary,
-  .panel-sheet-actions .panel-secondary,
-  .panel-sheet-actions .panel-danger {
+  .panel-root .panel-sheet-actions .panel-primary,
+  .panel-root .panel-sheet-actions .panel-secondary,
+  .panel-root .panel-sheet-actions .panel-danger {
     width: 100%;
-    min-height: 42px;
+    min-height: 48px;
+    font-size: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-sheet,
+  .panel-sheet-backdrop {
+    transition: none;
   }
 }

@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
-import { addWorkflowStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep } from "../actions";
+import { addWorkflowStep, archiveWorkflow, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { OpsIcon } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
@@ -19,7 +20,7 @@ import "../../crm/request-page.css";
 import "./detail.css";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null };
-type Workflow = { id: string; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; operation_steps: Step[] };
+type Workflow = { id: string; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
 type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
 type Proposal = { id: string; proposal_no: string; status: string };
@@ -35,7 +36,8 @@ const statusOptions = [
   ["completed", "Tamamlandı"],
   ["cancelled", "İptal"],
 ] as const;
-const statusNames: Record<string, string> = Object.fromEntries(statusOptions);
+// "Arşivlendi" seçicide yok: arşive yalnızca tamamlanan iş "Arşivle" ile gider
+const statusNames: Record<string, string> = { ...Object.fromEntries(statusOptions), archived: "Arşivlendi" };
 const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
 const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
 
@@ -49,7 +51,7 @@ const formatDate = (value?: string | null, withTime = false) =>
 /** Termin durumu: kalan / geciken gün (İstanbul gününe göre) */
 function dueInfo(due: string | null, status: string) {
   if (!due) return { tone: "neutral", hint: "Teslim tarihi girilmemiş", late: false };
-  if (status === "completed") return { tone: "success", hint: "İş tamamlandı", late: false };
+  if (status === "completed" || status === "archived") return { tone: "success", hint: "İş tamamlandı", late: false };
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
   const days = Math.round((Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
   if (days < 0) return { tone: "danger", hint: `${-days} gün gecikti`, late: true };
@@ -69,7 +71,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -81,7 +83,8 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const canAssign = ["owner", "admin", "manager"].includes(membership.role);
   const canDelete = ["owner", "admin"].includes(membership.role);
 
-  const [{ data: contractData }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }] = await Promise.all([
+  const isArchived = workflow.status === "archived";
+  const [{ data: contractData }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([
     supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
     workflow.assigned_employee_id
@@ -89,6 +92,9 @@ export default async function OperationDetailPage({ params }: { params: Promise<
       : Promise.resolve({ data: null }),
     supabase.from("hr_employees").select("id").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
     canAssign ? supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name") : Promise.resolve({ data: [] }),
+    isArchived && workflow.archived_by
+      ? supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", workflow.archived_by).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   if (customerMessagesError) throw new Error("Müşteri mesajları okunamadı: " + customerMessagesError.message);
   const customerMessages = (customerMessagesData ?? []) as CustomerMessage[];
@@ -98,6 +104,9 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const assigneeRow = assignee as { id: string; full_name: string; job_title: string | null } | null;
   // Termini yöneticiler ve işin sorumlusu girebilir (actions.ts ile aynı kural)
   const canEditDue = canAssign || Boolean((me as { id?: string } | null)?.id && (me as { id: string }).id === workflow.assigned_employee_id);
+  // Arşivleme de aynı kural (actions.ts isManagerOrAssignee)
+  const canArchive = canEditDue;
+  const archiverName = isArchived ? (workflow.archived_by ? formatPersonName((archiver as { full_name?: string } | null)?.full_name) || "Ekip üyesi" : "Otomatik (ödeme kapandı)") : null;
 
   const [opportunityResult, proposalResult, commentsResult] = await Promise.all([
     contract?.opportunity_id
@@ -131,7 +140,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
 
       <header className="opd-hero">
         <div className="opd-hero-main">
-          <Link className="opd-back" href="/panel/operations">‹ İşler</Link>
+          <Link className="opd-back" href={isArchived ? "/panel/operations/arsiv" : "/panel/operations/isler"}>{isArchived ? "‹ Arşiv" : "‹ İşler"}</Link>
           <small className="panel-kicker">OPERASYON · İŞ DETAYI</small>
           <h1>{formatSubject(workflow.title)}</h1>
           <p>{customerName}{contract?.contract_no ? ` · ${contract.contract_no}` : ""}{workflow.description ? ` — ${workflow.description}` : ""}</p>
@@ -156,6 +165,18 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               </form>
             </PanelDrawer>
           ) : null}
+          {canArchive && workflow.status === "completed" ? (
+            <form action={archiveWorkflow}>
+              <input type="hidden" name="workflow_id" value={workflow.id} />
+              <button type="submit" className="panel-secondary opd-archive-action"><OpsIcon name="archive" size={16} />Arşivle</button>
+            </form>
+          ) : null}
+          {canArchive && isArchived ? (
+            <form action={unarchiveWorkflow}>
+              <input type="hidden" name="workflow_id" value={workflow.id} />
+              <button type="submit" className="panel-secondary opd-archive-action"><OpsIcon name="unarchive" size={16} />Arşivden çıkar</button>
+            </form>
+          ) : null}
           {canDelete ? (
             <form action={deleteWorkflow}>
               <input type="hidden" name="workflow_id" value={workflow.id} />
@@ -171,6 +192,13 @@ export default async function OperationDetailPage({ params }: { params: Promise<
           <span><b>Müşteriden {unreadCustomerMessages} yeni mesaj var</b><small>Okuyup yanıtlamak için mesajlara gidin</small></span>
           <span aria-hidden="true">›</span>
         </a>
+      ) : null}
+
+      {isArchived ? (
+        <div className="opd-archived" role="status">
+          <span className="opd-archived-icon"><OpsIcon name="archive" /></span>
+          <span><b>Bu iş arşivde</b><small>{formatDate(workflow.archived_at, true)} · {archiverName} · Aktif işler tablosunda görünmez.</small></span>
+        </div>
       ) : null}
 
       <section className="opd-widgets">
@@ -238,7 +266,10 @@ export default async function OperationDetailPage({ params }: { params: Promise<
           </section>
 
           <section className="opd-card">
-            <header className="opd-card-head"><div><h2>İş durumu</h2><p>Durumu tek dokunuşla değiştirin</p></div></header>
+            <header className="opd-card-head"><div><h2>İş durumu</h2><p>{isArchived ? "Arşivdeki işin durumu değiştirilemez" : workflow.status === "completed" ? "İş tamamlandı; arşive gönderip aktif listeden kaldırabilirsiniz" : "Durumu tek dokunuşla değiştirin"}</p></div></header>
+            {isArchived ? (
+              <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
+            ) : (
             <div className="opd-segment" role="group" aria-label="İş durumu">
               {statusOptions.map(([value, label]) => (
                 <form action={setWorkflowStatus} key={value}>
@@ -248,6 +279,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                 </form>
               ))}
             </div>
+            )}
           </section>
 
           <section className="opd-card opd-messages" id="musteri-mesajlari">

@@ -62,7 +62,8 @@ export default async function OperationsCalendarPage({ searchParams }: { searchP
   const { data, error } = await supabase.from("operation_workflows")
     .select("id,title,customer_name,status,priority,start_date,due_date")
     .eq("organization_id", membership.organization_id)
-    .neq("status", "cancelled")
+    // İptal edilen ve arşive gönderilen işler takvimde görünmez
+    .not("status", "in", "(cancelled,archived)")
     .not("due_date", "is", null)
     .gte("due_date", toDateKey(rangeStart)).lte("due_date", toDateKey(rangeEnd))
     .order("due_date", { ascending: true });

@@ -1,31 +1,96 @@
+/* ============================================================
+   MOBİL UYGULAMA KABUĞU (2026-09)
+   Telefonda (≤900px) panel yerel bir iOS uygulaması gibi davranır:
+   buzlu üst çubuk (çentik/Dynamic Island payı), iOS sekme çubuğu
+   (mobile-drawer.css), alttan açılan pencereler (components/),
+   16px form alanları (iOS yakınlaştırmasın), 44px dokunma hedefleri.
+   Bu dosya panel-compact/premium'dan ÖNCE yüklenir; çakışan kurallar
+   bu yüzden .panel-root önekli (daha belirgin seçici).
+   ============================================================ */
+
+/* Yatay taşma kırpılır ama kaydırma kabı oluşmaz. panel.css'teki
+   overflow-x:hidden, .panel-root/body'yi kaydırma kabına çeviriyordu:
+   üst çubuğun position:sticky'si pencereyle değil o kapla ölçülüyor,
+   çubuk sayfayla birlikte yukarı kayıp kayboluyordu. clip'i
+   desteklemeyen eski tarayıcı hidden'da kalır. */
+html,body{overflow-x:hidden;overflow-x:clip}
+.panel-root{overflow-x:hidden;overflow-x:clip}
+
+/* Pencere/çekmece açıkken arkadaki sayfa kaymasın. Bileşenler body'ye
+   overflow:hidden yazıyordu; kaydırıcı html olduğu için etkisizdi. */
+html:has(.panel-drawer-root.open,.panel-sheet-root.open,.msg-drawer-root.is-open,.ntd-root.is-open){overflow:hidden}
+
+/* Dokunma hissi: gri vurgu kutusu yok, çift dokunma yakınlaştırması
+   yok (tıklama 300ms beklemez), iOS yazıyı kendi büyütmez. */
+.panel-root{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.panel-root :is(a,button,summary,label,select,[role="button"]){-webkit-tap-highlight-color:transparent}
+.panel-root :is(a,button,summary,label,input,select,textarea,[role="button"]){touch-action:manipulation}
+
 @media (max-width:900px){
-  html{overscroll-behavior-y:none;background:var(--bg,var(--n-100))}
-  body{min-height:100dvh;-webkit-tap-highlight-color:transparent}
-  .panel-root{min-height:100dvh}
-  .panel-frame{display:block;min-height:100vh}
-  .panel-workspace{min-width:0;width:100%}
-  .panel-topbar{top:0;min-height:calc(64px + env(safe-area-inset-top));padding:max(10px,env(safe-area-inset-top)) 14px 10px 64px;gap:10px;box-shadow:0 1px 0 var(--line);backdrop-filter:blur(22px) saturate(170%)}
-  .panel-breadcrumb{min-width:0}
-  .panel-breadcrumb small{font-size:11px}
-  .panel-breadcrumb b{max-width:42vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
-  .panel-top-actions{gap:8px;flex:none}
+  html{overscroll-behavior-y:none}
+  body{min-height:100dvh}
+  .panel-root,.panel-frame{min-height:100dvh}
+  .panel-frame{display:block}
+  .panel-workspace{min-width:0;width:100%;margin-left:0}
+
+  /* ---------- Üst çubuk: iOS gezinme çubuğu ----------
+     Çentik payı kadar içeri, 56px yükseklik, ortada bölüm adı yerine
+     solda (kurum adı + bölüm). Menü düğmesi alt sekme çubuğunda. */
+  .panel-root .panel-topbar{
+    position:sticky;top:0;z-index:50;
+    min-height:calc(56px + env(safe-area-inset-top));
+    padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));
+    gap:10px;
+    border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent);
+    background:color-mix(in srgb,var(--surface) 80%,transparent);
+    box-shadow:none;
+    -webkit-backdrop-filter:saturate(170%) blur(16px);backdrop-filter:saturate(170%) blur(16px)
+  }
+  .panel-root .panel-breadcrumb{min-width:0}
+  .panel-root .panel-breadcrumb small{font-size:11px;letter-spacing:.14em}
+  .panel-root .panel-breadcrumb b{max-width:58vw;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px;font-weight:650;letter-spacing:-.01em}
+  .panel-root .panel-top-actions{flex:none;gap:6px}
   .panel-quick-actions{display:contents}
   .panel-quick-actions>.panel-quick-action{display:none}
-  .panel-user{padding-left:0;border-left:0}
-  .panel-user p{display:none}
-  .panel-user>span{width:34px;height:34px}
-  .panel-content{padding:18px 14px max(112px,calc(92px + env(safe-area-inset-bottom)))}
-  .panel-pagehead{align-items:stretch;flex-direction:column;gap:14px;margin-bottom:18px}
-  .panel-pagehead>div{min-width:0}
-  .panel-page-actions{width:100%;display:flex;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
-  .panel-page-actions::-webkit-scrollbar{display:none}
-  .panel-page-actions>*{flex:none}
-  .panel-primary,.panel-secondary,.panel-danger,button,input,select,textarea{font-size:16px}
-  .panel-primary,.panel-secondary,.panel-danger{min-height:44px}
-  input,select,textarea{max-width:100%;min-height:44px}
-  textarea{min-height:120px}
+  .panel-root .panel-top-actions .panel-icon-button{display:inline-flex;width:44px;height:44px;border-radius:14px}
+  .panel-root .panel-user{padding-left:0;border-left:0}
+  .panel-root .panel-user p{display:none}
+  .panel-root .panel-user>span{width:36px;height:36px;border-radius:50%}
+
+  /* ---------- İçerik: kenar ve sekme çubuğu payı ---------- */
+  .panel-root .panel-content{
+    width:100%;
+    padding:16px max(14px,env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))
+  }
+  .panel-content>*,.panel-content section,.panel-content article{min-width:0}
+
+  /* ---------- Sayfa başlığı: iOS büyük başlık ---------- */
+  .panel-root .panel-pagehead{min-height:0;align-items:stretch;flex-direction:column;gap:12px;margin-bottom:16px;padding-inline:2px}
+  .panel-root .panel-pagehead>div{min-width:0}
+  .panel-root .panel-pagehead h1{margin-top:4px;font-size:30px;line-height:1.1;font-weight:700;letter-spacing:-.025em;text-wrap:balance}
+  .panel-root .panel-pagehead p{font-size:14px;line-height:1.45}
+  /* İşlemler alt alta taşar (yatay kaydırmada ikinci düğme görünmüyordu);
+     düğmeler satırı paylaşır, sayaç rozeti kendi boyunda kalır. */
+  .panel-root .panel-page-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%;overflow:visible;padding-bottom:0}
+  .panel-root .panel-page-actions::after{display:none}
+  .panel-root .panel-page-actions>*{flex:1 1 auto;width:auto;justify-content:center;scroll-snap-align:none}
+  .panel-root .panel-page-actions>:is(.status-pill,.live-badge,.owner-badge,small,span:not([class])){flex:0 0 auto}
+
+  /* ---------- Dokunma hedefleri ve form alanları ---------- */
+  .panel-root :is(.panel-primary,.panel-secondary,.panel-danger){min-height:44px}
+  .panel-content :is(button,.panel-primary,.panel-secondary,.panel-danger){min-height:44px}
+  /* iOS 16px altındaki alana odaklanınca sayfayı yakınlaştırıyor.
+     Pencereler .panel-content dışına (panel köküne) taşındığı için kural
+     tüm panele uygulanır; modül CSS'lerindeki 12–14px'i ezer. */
+  .panel-root :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select,textarea){font-size:16px!important}
+  .panel-root :is(.panel-content,.panel-drawer,.panel-sheet) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),select){min-height:44px}
+  .panel-root :is(.panel-content,.panel-drawer,.panel-sheet) :is(input,select,textarea){max-width:100%}
+  .panel-root :is(.panel-content,.panel-drawer,.panel-sheet) textarea{min-height:112px}
+  .panel-root :is(.panel-content,.panel-drawer) :is(input,select,textarea):focus{scroll-margin-block:96px 140px}
   form,form label{min-width:0}
-  .executive-hero,.platform-overview{grid-template-columns:1fr;padding:24px;gap:22px}
+
+  /* ---------- Kartlar, ızgaralar ---------- */
+  .executive-hero,.platform-overview{grid-template-columns:1fr;padding:22px;gap:20px}
   .metric-strip,.metric-strip-five{grid-template-columns:repeat(2,minmax(0,1fr))}
   .metric-strip article{min-width:0;border-bottom:1px solid var(--line)}
   .metric-strip strong{font-size:18px;overflow-wrap:anywhere}
@@ -36,57 +101,65 @@
   .dashboard-actions a{min-height:52px;padding:13px 14px;border-radius:12px}
   .dashboard-summary-number{font-size:42px}
   .panel-modules,.platform-grid{grid-template-columns:1fr}
-  .panel-card,.panel-module{min-width:0;padding:18px}
+  .panel-card,.panel-module{min-width:0}
   .panel-card h2,.panel-card h3,.panel-card p{overflow-wrap:anywhere}
-  .panel-content>*,.panel-content section,.panel-content article{min-width:0}
-  .panel-content table{min-width:720px}
-  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r-md)}
-  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"Tabloyu yatay kaydırabilirsiniz";display:block;padding:8px 2px 0;color:var(--muted);font-size:12px;text-align:right}
-  dialog,.modal,.panel-modal{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
   .panel-content :is(.crm-page,.finance-page,.structure-page,.activity-page,.reporting-page,.operations-page,.team-page,.work-page){width:100%;max-width:100%;min-width:0}
   .panel-content :is(.panel-grid,.crm-grid,.platform-grid,.management-grid,.structure-grid,.activity-grid,.report-columns,.finance-form-grid,.crm-form-grid){max-width:100%;min-width:0}
   .panel-content :is(.panel-card,.panel-module,.management-card,.structure-card,.crm-card,.report-card){max-width:100%;min-width:0}
   .panel-content :is(.finance-toolbar,.crm-toolbar,.section-heading,.management-heading,.domain-status-row){max-width:100%;min-width:0}
   .panel-content :is(.finance-toolbar,.crm-toolbar) input{width:100%;min-width:0}
-  .panel-content img,.panel-content svg,.panel-content video{max-width:100%;height:auto}
+  .panel-content img,.panel-content video{max-width:100%;height:auto}
+  .panel-content svg{max-width:100%}
   .panel-content pre,.panel-content code{max-width:100%;overflow-wrap:anywhere}
-  .panel-content :is(button,a,input,select,textarea,summary){touch-action:manipulation}
-  .panel-content :is(input,select,textarea){font-size:16px!important}
-  .panel-content :is(button,.panel-primary,.panel-secondary,.panel-danger){min-height:44px}
-  .panel-content :is(input,select,textarea):focus{scroll-margin-bottom:180px}
-  .module-tabs{display:flex;width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none;border-bottom:1px solid var(--line);border-radius:12px}
-  .module-tabs::-webkit-scrollbar{display:none}
-  .module-tabs a{flex:0 0 auto;min-height:44px;display:grid;place-items:center;scroll-snap-align:start;white-space:nowrap}
-  .module-tab-panel{border-radius:14px;margin-top:10px;border-top:1px solid var(--line)}
-  .panel-drawer{max-height:92dvh}
-  .panel-drawer-header{padding-top:max(22px,env(safe-area-inset-top))}
-  .panel-drawer-body{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:max(30px,env(safe-area-inset-bottom))}
-  dialog,.modal,.panel-modal{width:calc(100vw - 16px);max-width:none;margin:8px;border-radius:18px}
+
+  /* ---------- Sekmeli modül paneli: kutu içinde kutu yok ----------
+     Telefonda sekme panelinin kendi zemini/çerçevesi ve iç kenar boşluğu
+     kartları 20px daraltıyordu; içerik doğrudan sayfaya oturur. */
+  .panel-root .module-tab-panel{gap:12px;margin:0 0 12px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+  /* panel-compact.css (sonra yüklenir) ".module-tab-panel>.panel-card" ile
+     10px iç pay veriyordu; filtre kartı metrik kartlarından içeride kalıyordu. */
+  .panel-root .panel-content .module-tab-panel>*{margin-inline:0}
+  .panel-root .panel-content .module-tab-panel>*:last-child{margin-bottom:0}
+
+  /* ---------- Yatay kaydırılan tablolar ---------- */
+  .panel-content table{min-width:720px}
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;border-radius:var(--r-md)}
+
+  /* ---------- Diyaloglar ---------- */
+  dialog,.modal,.panel-modal{width:calc(100vw - 16px);max-width:none;max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin:8px;border-radius:18px}
+}
+
+/* ---------- Kaydırınca beliren çubuk (iOS "scroll edge") ----------
+   Sayfanın en üstünde çubuk zeminle bir; içerik altına girince buzlu
+   zemin ve ince çizgi belirir. Yalnızca renk canlandırılır: transform/
+   filter canlandırması fixed konumlu çocukları çubuğa hapsederdi. */
+@supports (animation-timeline:scroll()){
+  @media (max-width:900px){
+    .panel-root .panel-topbar{animation:panel-bar-edge linear both;animation-timeline:scroll(root block);animation-range:0 56px}
+  }
+}
+@keyframes panel-bar-edge{
+  from{border-bottom-color:transparent;background-color:color-mix(in srgb,var(--bg) 0%,transparent)}
+  to{border-bottom-color:color-mix(in srgb,var(--line) 80%,transparent);background-color:color-mix(in srgb,var(--surface) 80%,transparent)}
 }
 
 @media (max-width:560px){
-  .panel-topbar{padding-right:10px}
-  .panel-content{padding-left:10px;padding-right:10px}
+  .panel-root .panel-content{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+  .panel-root .panel-pagehead h1{font-size:28px}
   .metric-strip,.metric-strip-five{grid-template-columns:1fr}
   .metric-strip article{border-right:0;min-height:88px}
   .hero-actions{flex-direction:column}
   .hero-actions a{width:100%;text-align:center}
-  .panel-pagehead h1{font-size:26px;line-height:1.12;text-wrap:balance}
-  .panel-pagehead p{font-size:13px}
-  .panel-card,.panel-module{border-radius:14px}
+  .panel-card,.panel-module{border-radius:16px}
   .executive-hero,.platform-overview{padding:20px;border-radius:16px}
-  .panel-primary,.panel-secondary,.panel-danger{width:100%}
-  .panel-page-actions{display:grid;grid-template-columns:1fr;overflow:visible}
-  .panel-page-actions>*{width:100%}
-  .panel-pagehead{margin-bottom:16px}
   .panel-kicker{font-size:12px}
-  .panel-card,.panel-module{padding:16px}
   .panel-empty{padding:32px 16px}
   .wizard-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .wizard-steps li{min-width:0;white-space:normal}
 }
 
-@media (display-mode:standalone) and (max-width:900px){
-  .panel-topbar{padding-top:max(10px,env(safe-area-inset-top))}
-  .mobile-bottom-nav{bottom:max(8px,env(safe-area-inset-bottom))}
+/* Şeffaflığı azaltmayı seçen kullanıcıda (ve bulanıklığı çizemeyen
+   cihazda) çubuklar düz zemin; bulanıklık GPU'yu yormasın. */
+@media (prefers-reduced-transparency:reduce){
+  .panel-root :is(.panel-topbar,.mobile-bottom-nav,.panel-drawer-header,.panel-sheet,.panel-toast){background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
 }

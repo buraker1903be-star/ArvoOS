@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { LEGAL_TEXT_VERSION, detectCustomerKind } from "@/app/_components/legal/format";
 
 const firstForwardedIp = (value: string | null) => value?.split(",")[0]?.trim() || null;
 
@@ -14,12 +15,13 @@ const contractUrl = (token: string, params: Record<string, string>) => {
   return `/sozlesme/${encodeURIComponent(token)}?${query.toString()}`;
 };
 
+const checked = (formData: FormData, key: string) => String(formData.get(key) ?? "") === "on";
+
 export async function signContract(token: string, formData: FormData) {
   const signerName = String(formData.get("signer_name") ?? "").trim().slice(0, 180);
   const signatureData = String(formData.get("signature_data") ?? "").trim();
-  const accepted = String(formData.get("accepted") ?? "") === "on";
 
-  if (signerName.length < 2 || !accepted) {
+  if (signerName.length < 2) {
     redirect(contractUrl(token, { error: "missing" }));
   }
 
@@ -36,6 +38,22 @@ export async function signContract(token: string, formData: FormData) {
   const contract = Array.isArray(current) ? current[0] : current;
   if (!contract || contract.signed_at || !["draft", "sent"].includes(contract.status)) {
     redirect(contractUrl(token, { error: "closed" }));
+  }
+
+  // Zorunlu onay beyanları sunucuda doğrulanır (tarayıcıdaki "required"
+  // tek başına yeterli değil). Tüketicide Ön Bilgilendirme Formu, tacirde
+  // ticari işlem beyanı zorunludur; cayma süresinde ifaya başlama isteğe bağlı.
+  const consumer = detectCustomerKind({ name: contract.customer_name, taxNumber: contract.customer_tax_number, taxOffice: contract.customer_tax_office }) === "consumer";
+  const consents = {
+    contract: checked(formData, "consent_contract"),
+    kvkk: checked(formData, "consent_kvkk"),
+    preinfo: consumer && checked(formData, "consent_preinfo"),
+    commercial: !consumer && checked(formData, "consent_commercial"),
+    early_start: consumer && checked(formData, "consent_early_start"),
+    consumer,
+  };
+  if (!consents.contract || !consents.kvkk || (consumer ? !consents.preinfo : !consents.commercial)) {
+    redirect(contractUrl(token, { error: "consent" }));
   }
 
   const requestHeaders = await headers();
@@ -56,6 +74,17 @@ export async function signContract(token: string, formData: FormData) {
   if (error) {
     console.error("sign_crm_contract_v2 failed", { code: error.code, message: error.message });
     redirect(contractUrl(token, { error: "failed" }));
+  }
+
+  // Hangi yasal metin sürümünün ve hangi beyanların onaylandığı kaydedilir;
+  // imzalı belge bu kayda göre onaylandığı metinle gösterilir.
+  const { error: consentError } = await supabase.rpc("arvo_record_contract_consents", {
+    public_token: token,
+    p_legal_version: LEGAL_TEXT_VERSION,
+    p_consents: consents,
+  });
+  if (consentError) {
+    console.error("arvo_record_contract_consents failed", { code: consentError.code, message: consentError.message });
   }
 
   const row = Array.isArray(data) ? data[0] : data;

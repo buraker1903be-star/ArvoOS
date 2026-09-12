@@ -9,6 +9,7 @@ import { reportActionFailure } from "@/lib/action-diagnostics";
 import { requestStageNames } from "./request-status";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { noteReturningCustomer } from "./customer-history-query";
 
 const defaultProbability: Record<string, number> = {
   lead: 10,
@@ -63,7 +64,8 @@ async function validateSalesEmployee(
 }
 
 async function createOpportunity__impl(formData: FormData) {
-  const { supabase, userId, membership } = await crmContext();
+  const context = await crmContext();
+  const { supabase, userId, membership } = context;
   const title = text(formData, "title", 180);
   const customerName = text(formData, "customer_name", 180);
   const selectedServiceType = text(formData, "service_type", 120);
@@ -168,6 +170,13 @@ async function createOpportunity__impl(formData: FormData) {
       entityId: created.id,
       opportunityId: created.id,
       note: `${created.customer_name} · ${created.title}`,
+    });
+    // Geri dönen müşteri: telefon geçmiş kayıtlarla eşleşiyorsa talebe kurum
+    // içi not düşer; yorum tetikleyicisi atanan temsilciye ve yöneticilere
+    // bildirim gönderir. Hata talebin kaydını bozmaz.
+    await noteReturningCustomer(context, {
+      opportunityId: created.id,
+      phone: text(formData, "contact_phone", 80) || null,
     });
   }
 

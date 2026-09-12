@@ -4,6 +4,8 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { toFeedItem, type NotificationFeedResult } from "./feed";
+import { countUnreadNotifications, loadNotifications } from "./load-notifications";
 
 // Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel ve
 // notification_user_reads tablosunda tutulur; eskiden bildirimin kendi
@@ -122,6 +124,45 @@ async function sendManagementAnnouncement__impl(formData: FormData) {
   });
   if (error) throw new Error(`Duyuru gönderilemedi: ${error.message}`);
   revalidateNotifications();
+}
+
+// ---------- Bildirim çekmecesi (app/panel/notifications-drawer.tsx) ----------
+// Çekmece işlemleri form göndermez; FlashToast çerez bildirimini ancak form
+// gönderiminde ya da sayfa değişiminde okuyor. Bu yüzden sonuç çağırana
+// döner ve hata çekmecenin içinde gösterilir. Okundu işlemleri yukarıdaki
+// aynı kodu çalıştırır (kişiye özel okundu bilgisi dahil).
+
+const errorText = (error: unknown) => (error instanceof Error && error.message ? error.message : "İşlem tamamlanamadı. Lütfen tekrar deneyin.");
+
+export async function fetchNotificationFeed(): Promise<NotificationFeedResult> {
+  try {
+    const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
+    const scope = { supabase, userId, organizationId: organization.id, isPlatformOwner };
+    const [items, unread] = await Promise.all([loadNotifications(scope, 60), countUnreadNotifications(scope)]);
+    return { ok: true, items: items.map(toFeedItem), unread };
+  } catch (error) {
+    return { ok: false, error: errorText(error) };
+  }
+}
+
+export async function markNotificationReadFromDrawer(notificationId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const formData = new FormData();
+    formData.set("notification_id", notificationId);
+    await markNotificationRead__impl(formData);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorText(error) };
+  }
+}
+
+export async function markAllNotificationsReadFromDrawer(): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await markAllNotificationsRead__impl();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorText(error) };
+  }
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

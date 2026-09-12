@@ -21,9 +21,15 @@ export const metadata: Metadata = {
   description: "ArvoOS, ArvoLab ve kurumlara özel dijital ürün, web tasarımı ve yazılım hizmetleri.",
   openGraph:{title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"Arvo Akademik Çalışma Ekosistemi"}]},
   twitter:{card:"summary_large_image",title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",images:["/arvoos-logo.png"]},
-  icons:{icon:"/favicon.svg",shortcut:"/favicon.svg",apple:"/favicon.svg"},
+  // iOS ana ekran ikonu SVG kabul etmez: 180px opak PNG (köşeleri iOS yuvarlar)
+  icons:{icon:"/favicon.svg",shortcut:"/favicon.svg",apple:{url:"/apple-touch-icon.png",sizes:"180x180",type:"image/png"}},
   manifest:"/manifest.webmanifest",
+  applicationName:"ArvoOS",
+  // Ana ekrandan açılınca tarayıcı çubuğu olmadan (iOS + Android/Chrome).
+  // Durum çubuğu "default": açık temada koyu yazı; "black-translucent"
+  // yazıyı beyaza zorlayıp açık üst çubukta okunmaz yapıyordu.
   appleWebApp:{capable:true,statusBarStyle:"default",title:"ArvoOS"},
+  other:{"mobile-web-app-capable":"yes"},
   formatDetection:{telephone:false}
 };
 export const viewport: Viewport = {

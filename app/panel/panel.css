@@ -2,8 +2,10 @@
    ArvoOS Panel — Base Shell
    ============================================================ */
 *{box-sizing:border-box}
-html,body{overflow-x:hidden;max-width:100vw}
-.panel-root{min-height:100vh;color:var(--ink);font-family:var(--font-body);overflow-x:hidden;max-width:100vw}
+/* clip: taşmayı kırpar ama kaydırma kabı oluşturmaz (hidden, üst çubuğun
+   sticky'sini bozuyordu). Desteklemeyen tarayıcı hidden'da kalır. */
+html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
+.panel-root{min-height:100vh;color:var(--ink);font-family:var(--font-body);overflow-x:hidden;overflow-x:clip;max-width:100vw}
 .panel-frame{min-height:100vh;display:block}
 
 /* ---------- Sidebar ---------- */

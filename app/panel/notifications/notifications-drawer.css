@@ -1,0 +1,172 @@
+/* ============================================================
+   BİLDİRİM ÇEKMECESİ — sağdan açılan iOS Bildirim Merkezi
+   (app/panel/notifications-drawer.tsx). Kabuk, Mesajlar çekmecesiyle
+   (messages.css .msg-drawer) aynı: yüzen kart, aynı yay eğrisi ve
+   buzlu arka plan. Mobilde tam ekran sayfa (safe-area dahil).
+   Renkler yalnızca panel-tokens.css'teki değişkenlerden.
+   ============================================================ */
+
+html.notifications-drawer-open body{overflow:hidden}
+
+.ntd-root{--ntd-spring:cubic-bezier(.32,.72,0,1);--ntd-ease:cubic-bezier(.22,1,.36,1);position:fixed;inset:0;z-index:1500;pointer-events:none}
+.ntd-root.is-open{pointer-events:auto}
+.ntd-backdrop{position:absolute;inset:0;padding:0;border:0;background:rgba(4,12,24,.3);opacity:0;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .35s ease;cursor:default}
+.ntd-root.is-open .ntd-backdrop{opacity:1}
+
+.ntd{
+  position:absolute;top:10px;right:10px;bottom:10px;width:min(440px,calc(100vw - 20px));
+  display:flex;flex-direction:column;min-height:0;
+  border:1px solid var(--line);border-radius:24px;overflow:hidden;
+  background:var(--surface);color:var(--ink);font-family:var(--font-body);-webkit-font-smoothing:antialiased;
+  box-shadow:0 30px 90px rgba(4,12,24,.35);
+  transform:translateX(calc(100% + 24px));visibility:hidden;
+  transition:transform .55s var(--ntd-spring),visibility 0s linear .55s
+}
+.ntd-root.is-open .ntd{transform:none;visibility:visible;transition:transform .55s var(--ntd-spring),visibility 0s}
+
+/* Ton: simge kutusu ve etiket rengi (sayfadakiyle aynı eşleme) */
+.ntd [data-tone]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.ntd [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.ntd [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
+.ntd [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.ntd [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.ntd [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
+html[data-theme="dark"] .ntd [data-tone="brand"]{--tone-fg:var(--brand-200)}
+
+/* ---------- Başlık ---------- */
+.ntd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 14px 10px 20px}
+.ntd-title{min-width:0}
+.ntd-head h2{margin:0;font-family:var(--font-body);font-size:26px;font-weight:700;line-height:1.1;letter-spacing:-.025em;color:var(--ink)}
+.ntd-sub{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;margin:5px 0 0;color:var(--muted);font-size:13.5px;font-variant-numeric:tabular-nums}
+.ntd-link{min-height:28px;padding:0;border:0;background:none;color:var(--accent);font:inherit;font-weight:650;cursor:pointer;touch-action:manipulation}
+.ntd-link:hover{text-decoration:underline;text-underline-offset:3px}
+.ntd-link:disabled{opacity:.6;cursor:progress;text-decoration:none}
+.ntd-head-actions{flex:none;display:flex;gap:6px}
+.ntd-icon-btn{
+  display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
+  background:var(--surface-2);color:var(--ink-soft);text-decoration:none;cursor:pointer;touch-action:manipulation;
+  transition:background-color .2s ease,color .2s ease,transform .3s var(--ntd-ease)
+}
+.ntd-icon-btn:hover{background:color-mix(in srgb,var(--ink) 9%,var(--surface-2));color:var(--ink)}
+.ntd-icon-btn:active{transform:scale(.92)}
+.ntd :focus-visible{outline:2px solid var(--accent-500);outline-offset:2px}
+
+/* ---------- Filtre çipleri ---------- */
+.ntd-chips{
+  flex:none;display:flex;gap:7px;overflow-x:auto;padding:4px 16px 10px;scrollbar-width:none;overscroll-behavior-x:contain;
+  /* Sağda taşan çipler kesik değil, yumuşak solarak kaybolur (kaydırılabilir olduğu belli olur) */
+  -webkit-mask-image:linear-gradient(90deg,black calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,black calc(100% - 28px),transparent)
+}
+.ntd-chips::-webkit-scrollbar{display:none}
+.ntd-chip{
+  flex:none;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 6px 0 12px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;
+  transition:background-color .25s var(--ntd-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntd-ease)
+}
+.ntd-chip:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntd-chip:active{transform:scale(.95)}
+.ntd-chip.is-active{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
+.ntd-chip b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
+.ntd-chip.is-active b{background:color-mix(in srgb,var(--n-0) 18%,transparent);color:var(--n-0)}
+html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,var(--brand-400),var(--brand-600))}
+
+/* ---------- Uyarı ---------- */
+.ntd-notice{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 16px 8px;padding:8px 6px 8px 12px;border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px;font-weight:600;line-height:1.4;animation:ntd-fade .3s var(--ntd-ease) both}
+.ntd-notice button{flex:none;display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
+
+/* ---------- Liste ---------- */
+.ntd-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:0 8px 10px;border-top:1px solid var(--line-soft)}
+.ntd-group+.ntd-group{margin-top:2px}
+.ntd-day{
+  position:sticky;top:0;z-index:1;margin:0;padding:12px 12px 6px;
+  background:color-mix(in srgb,var(--surface) 90%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  color:var(--muted);font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase
+}
+.ntd-list{margin:0;padding:0;list-style:none}
+.ntd-item{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 36px;border-radius:16px;transition:background-color .2s ease;animation:ntd-in .45s var(--ntd-ease) both}
+.ntd-item+.ntd-item::before{content:"";position:absolute;top:0;left:62px;right:12px;height:1px;background:var(--line-soft)}
+.ntd-item:hover{background:color-mix(in srgb,var(--ink) 3.5%,transparent)}
+.ntd-item.is-unread{background:color-mix(in srgb,var(--info) 5%,transparent)}
+.ntd-item.is-unread:hover{background:color-mix(in srgb,var(--info) 8%,transparent)}
+.ntd-item:has(.ntd-main:active){background:color-mix(in srgb,var(--ink) 6%,transparent)}
+
+.ntd-main{
+  display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:start;min-width:0;
+  padding:12px 2px 12px 12px;border:0;border-radius:16px;background:none;color:inherit;
+  font:inherit;text-align:left;text-decoration:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent
+}
+.ntd-main:focus-visible{outline-offset:-2px}
+.ntd-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--tone-bg);color:var(--tone-fg)}
+.ntd-body{display:flex;flex-direction:column;min-width:0}
+.ntd-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:1px}
+.ntd-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tone-fg);font-size:12px;font-weight:700;letter-spacing:.02em}
+.ntd-top time{flex:none;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.ntd-headline{color:var(--ink);font-size:14.5px;font-weight:650;line-height:1.35;letter-spacing:-.01em;overflow-wrap:anywhere}
+.ntd-item.is-unread .ntd-headline{font-weight:700}
+.ntd-detail{margin-top:2px;color:var(--ink-soft);font-size:13.5px;line-height:1.45;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ntd-detail.is-expanded{display:block;white-space:pre-wrap;-webkit-line-clamp:unset}
+.ntd-context{margin-top:3px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ntd-cta{display:inline-flex;align-items:center;gap:2px;margin-top:6px;color:var(--accent);font-size:12.5px;font-weight:650}
+.ntd-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+.ntd-read,.ntd-read-slot{display:flex;justify-content:center;width:36px}
+.ntd-read{align-items:flex-start;padding:19px 0 0;border:0;border-radius:14px;background:none;cursor:pointer;touch-action:manipulation}
+.ntd-dot{width:10px;height:10px;border-radius:50%;background:var(--info);box-shadow:0 0 0 3px color-mix(in srgb,var(--info) 18%,transparent);transition:transform .3s var(--ntd-ease),box-shadow .2s ease}
+.ntd-read:hover .ntd-dot{transform:scale(1.25);box-shadow:0 0 0 5px color-mix(in srgb,var(--info) 20%,transparent)}
+.ntd-read:active .ntd-dot{transform:scale(.8)}
+
+/* ---------- Yükleniyor / boş / hata ---------- */
+.ntd-skeleton{display:grid;gap:4px;padding:12px 4px}
+.ntd-skel-row{display:grid;grid-template-columns:38px minmax(0,1fr);gap:12px;padding:10px 8px}
+.ntd-skel-row>span,.ntd-skel-row i{display:block;border-radius:11px;background:linear-gradient(90deg,var(--surface-2) 25%,color-mix(in srgb,var(--surface-2) 55%,var(--surface)) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:ntd-shimmer 1.3s ease-in-out infinite}
+.ntd-skel-row>span{width:38px;height:38px}
+.ntd-skel-row div{display:grid;gap:7px;padding-top:2px}
+.ntd-skel-row i{height:10px;border-radius:6px}
+.ntd-skel-row i:nth-child(1){width:34%}
+.ntd-skel-row i:nth-child(2){width:78%;height:12px}
+.ntd-skel-row i:nth-child(3){width:58%}
+
+.ntd-empty{display:grid;justify-items:center;gap:8px;padding:56px 24px 64px;text-align:center;animation:ntd-fade .35s ease both}
+.ntd-empty .ntd-icon{width:52px;height:52px;border-radius:16px}
+.ntd-empty h3{margin:6px 0 0;color:var(--ink);font-size:17px;font-weight:700}
+.ntd-empty p{max-width:320px;margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.ntd-retry{margin-top:8px;min-height:40px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.ntd-retry:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+
+/* ---------- Alt bilgi ---------- */
+.ntd-foot{flex:none;padding:10px 14px 12px;border-top:1px solid var(--line-soft);background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
+.ntd-all{
+  display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px;border-radius:14px;
+  color:var(--accent);font-size:14.5px;font-weight:650;text-decoration:none;touch-action:manipulation;
+  transition:background-color .2s ease,transform .3s var(--ntd-ease)
+}
+.ntd-all:hover{background:color-mix(in srgb,var(--accent-500) 9%,transparent)}
+.ntd-all:active{transform:scale(.97)}
+
+/* ---------- Mobil: tam ekran sayfa ---------- */
+@media(max-width:680px){
+  .ntd{inset:0;width:100vw;border:0;border-radius:0;padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);box-shadow:none}
+  .ntd-head{padding:14px 12px 10px 18px}
+  .ntd-head h2{font-size:30px}
+  .ntd-icon-btn{width:44px;height:44px}
+  .ntd-link{min-height:44px}
+  .ntd-chips{padding:2px 16px 12px}
+  .ntd-chip{min-height:40px;font-size:14px}
+  .ntd-scroll{padding:0 6px 10px}
+  .ntd-item{grid-template-columns:minmax(0,1fr) 44px}
+  .ntd-main{min-height:64px;padding:14px 2px 14px 10px}
+  .ntd-read,.ntd-read-slot{width:44px}
+  .ntd-read{padding-top:21px}
+  .ntd-headline{font-size:15.5px}
+  .ntd-detail{font-size:14.5px}
+  .ntd-foot{padding:8px 14px calc(10px + env(safe-area-inset-bottom))}
+  .ntd-all{min-height:48px;font-size:15.5px}
+}
+
+@keyframes ntd-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes ntd-fade{from{opacity:0}to{opacity:1}}
+@keyframes ntd-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+@media(prefers-reduced-motion:reduce){
+  .ntd,.ntd-backdrop,.ntd *{animation:none!important;transition:none!important}
+}

@@ -8,6 +8,7 @@ import {
   resolveGroupHref,
   resolveNavigationGroups,
 } from "./panel-navigation-config";
+import { NotificationsNavButton } from "./notifications-drawer";
 
 type MobileItem = { href: string; label: string; icon: string };
 
@@ -37,7 +38,12 @@ export function MobileDrawer({
   messageUnreadCount?: number;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  // Menü açıldığı sayfaya bağlı: başka sayfaya geçilince kendiliğinden
+  // kapanır. Eskiden pathname değişince efektte setOpen(false) çağrılıyordu
+  // (react-hooks/set-state-in-effect, fazladan bir çizim).
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = openPath === pathname;
+  const setOpen = (value: boolean) => setOpenPath(value ? pathname : null);
   const [messageUnreadCount, setMessageUnreadCount] = useState(initialMessageUnreadCount);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -55,7 +61,6 @@ export function MobileDrawer({
       ...groups,
     ];
 
-    result.push({ href: "/panel/notifications", label: "Bildirimler", icon: "B" });
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
     if (isPlatformOwner) result.push({ href: "/panel/platform", label: "Platform Yönetimi", icon: "P" });
     return result;
@@ -67,12 +72,11 @@ export function MobileDrawer({
     return () => document.documentElement.classList.remove("mobile-drawer-open");
   }, [open]);
 
-  useEffect(() => setOpen(false), [pathname]);
   useEffect(()=>{const handler=(event:Event)=>setMessageUnreadCount((event as CustomEvent<number>).detail??0);window.addEventListener("arvo:message-unread-count",handler);return()=>window.removeEventListener("arvo:message-unread-count",handler)},[]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") setOpenPath(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -103,6 +107,7 @@ export function MobileDrawer({
 
         <nav className="mobile-drawer-nav" aria-label="Mobil ana menü">
           {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-unread-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}<b>›</b></button>:null}
+          <NotificationsNavButton variant="menu" initialCount={notificationUnreadCount} onOpen={() => setOpen(false)} />
           {items.map((item) => (
             <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href) ? "active" : ""} aria-current={active(item.href) ? "page" : undefined}>
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>
@@ -118,8 +123,8 @@ export function MobileDrawer({
       <nav className="mobile-bottom-nav" aria-label="Mobil hızlı erişim">
         <Link href="/panel" className={active("/panel") ? "active" : ""} aria-current={active("/panel") ? "page" : undefined}><i>⌂</i><span>Ana Sayfa</span></Link>
         {hasMessages?<button type="button" onClick={()=>window.dispatchEvent(new Event("arvo:open-messages"))}><i>◇</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-bottom-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}</button>:null}
-        <Link href="/panel/notifications" className={active("/panel/notifications") ? "active" : ""} aria-current={active("/panel/notifications") ? "page" : undefined}><i>♢</i><span>Bildirimler</span>{notificationUnreadCount?<em className="mobile-bottom-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</em>:null}</Link>
-        <button type="button" onClick={() => setOpen((value) => !value)} className={open ? "active" : ""} aria-expanded={open} aria-controls="mobile-drawer"><i>☰</i><span>Menü</span></button>
+        <NotificationsNavButton variant="bottom" initialCount={notificationUnreadCount} />
+        <button type="button" onClick={() => setOpen(!open)} className={open ? "active" : ""} aria-expanded={open} aria-controls="mobile-drawer"><i>☰</i><span>Menü</span></button>
       </nav>
     </>
   );

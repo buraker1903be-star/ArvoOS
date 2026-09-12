@@ -836,7 +836,7 @@ async function deleteContract__impl(formData: FormData) {
   ]);
   if (linkedWorkflow?.length)
     throw new Error(
-      "Bu sözleşmeye bağlı bir iş akışı var, önce onu arşivleyin veya bu sözleşmeyi silmeyin.",
+      "Bu sözleşmeye bağlı bir operasyon işi var; iş, prim ve tahsilat kayıtları sözleşmeye dayandığı için sözleşme silinemez.",
     );
   if (linkedPlan?.length)
     throw new Error(

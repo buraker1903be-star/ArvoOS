@@ -140,3 +140,11 @@ html[data-theme="dark"] .opd [data-tone="brand"]{--tone-fg:var(--brand-200)}
   .opd-bubble{max-width:92%}
 }
 @media(prefers-reduced-motion:reduce){.opd-alert-dot,.opd-bar i,.opd-widget:target{animation:none}}
+
+/* ---------- Arşiv ---------- */
+.opd-archive-action{display:inline-flex;align-items:center;gap:7px}
+.opd-archived{display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--line);border-radius:18px;background:var(--surface-2);color:var(--ink)}
+.opd-archived-icon{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--surface);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.opd-archived>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.opd-archived b{font-size:15px}
+.opd-archived small{color:var(--muted);font-size:13px;line-height:1.45}

@@ -14,10 +14,18 @@ export async function respondToProposal(token: string, formData: FormData) {
     || requestHeaders.get("x-real-ip")
     || requestHeaders.get("cf-connecting-ip")
     || null;
+  const responderUserAgent = requestHeaders.get("user-agent")?.slice(0, 1000) || null;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("respond_to_crm_proposal", { public_token: token, decision, p_ip: responderIp });
   if (error) throw new Error("Teklif kararı kaydedilemedi.");
   const row = Array.isArray(data) ? data[0] : data;
+  // Karar tarihi ve IP'nin yanına cihaz/tarayıcı bilgisi de yazılır
+  // (belgedeki "Karar ve doğrulama" alanı). Kayıt başarısız olsa bile
+  // karar geçerlidir; yalnızca loglanır.
+  if (row?.result_status === "accepted" || row?.result_status === "rejected") {
+    const { error: agentError } = await supabase.rpc("arvo_record_proposal_response_agent", { public_token: token, p_user_agent: responderUserAgent });
+    if (agentError) console.error("arvo_record_proposal_response_agent failed", { code: agentError.code, message: agentError.message });
+  }
   if (row?.result_status === "accepted" && row?.contract_token) redirect(`/sozlesme/${encodeURIComponent(row.contract_token)}?created=1`);
   redirect(`/teklif/${encodeURIComponent(token)}?result=${encodeURIComponent(row?.result_status ?? decision)}`);
 }

@@ -1,42 +1,206 @@
 import type { CSSProperties, ReactNode } from "react";
 import { PrintDocumentButton } from "@/app/_components/print-document-button";
+import { PrintAutorun } from "@/app/_components/print-autorun";
 import { getContractTemplate } from "@/lib/contract-templates";
-import { normalizePaymentSchedule } from "@/lib/payment-schedule";
+import { DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerRows, type Customer, type Provider } from "@/app/_components/legal/blocks";
+import { ContractArticles, LegacyArticles, PreInformationAnnex, specialClausesFor, type ContractContext } from "@/app/_components/legal/contract-clauses";
+import { documentCss } from "@/app/_components/legal/document-styles";
+import {
+  LEGAL_TEXT_VERSION, LEGAL_V3_FALLBACK_CUTOFF, amountInWords, computeTaxBreakdown, detectCity, detectCustomerKind, formatDate, formatDateTime,
+  formatMoney, groupHash, isBefore, pdfFileName, safeBrandColor, splitScope, summarizeUserAgent, taxIdLabel, type DocumentRow,
+} from "@/app/_components/legal/format";
+import { buildSchedule, type InstallmentRecord } from "@/app/_components/legal/schedule";
 
-const money=(value:number,currency:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency}).format(Number(value||0)/100);
-const date=(value?:string|null)=>value?new Date(`${value.slice(0,10)}T12:00:00`).toLocaleDateString("tr-TR"):"—";
+export type ContractAudit = {
+  signed_user_agent?: string | null;
+  legal_text_version?: string | null;
+  signed_consents?: Record<string, unknown> | null;
+  proposal_no?: string | null;
+  tax_status?: string | null;
+  tax_rate?: number | null;
+  net_amount?: number | null;
+  tax_amount?: number | null;
+  gross_amount?: number | null;
+  estimated_delivery_date?: string | null;
+  installments?: InstallmentRecord[] | null;
+};
 
-export function ContractDocument({row,verificationUrl,toolbarLeft,signatureForm,notice,errorMessage,proposalLink}:{row:any;verificationUrl?:string|null;toolbarLeft?:ReactNode;signatureForm?:ReactNode;notice?:string|null;errorMessage?:string|null;proposalLink?:{token:string;no:string|null}|null}){
- const brand=/^#[0-9a-fA-F]{6}$/.test(row.organization_primary_color||"")?row.organization_primary_color:"#b28a49";
- const signed=Boolean(row.signed_at)||["signed","completed"].includes(row.status);
- const template=getContractTemplate(row.organization_slug);
- // İmzasız sözleşmede taksitler her zaman güncel toplam bedelle uzlaştırılır
- // (tutar sonradan değiştiyse eski taksitler müşteriye gitmesin). İmzalı
- // belge dondurulmuş haliyle gösterilir.
- const normalized=signed?normalizePaymentSchedule(row.payment_schedule):normalizePaymentSchedule(row.payment_schedule,Number(row.amount||0));
- const paymentRows=normalized.length?normalized:[{sequence:1,label:row.payment_plan||"Ödeme",due_date:row.due_date||"",amount:Number(row.amount||0),percentage:100}];
- const contact=[row.organization_contact_phone,row.organization_contact_email,row.organization_website_url].filter(Boolean).join(" · ");
- const qrUrl=verificationUrl?`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(verificationUrl)}`:null;
- return <main className="ct-root" style={{"--ct-brand":brand} as CSSProperties}>
-  <style>{`*{box-sizing:border-box}html,body{margin:0;background:#efe9de;color:#0b1b2e;font-family:var(--font-manrope,"Manrope"),-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}.ct-root{--ct-display:var(--font-cormorant,"Cormorant Garamond"),"Iowan Old Style",Georgia,serif;min-height:100vh;padding:24px 12px 48px}.ct-toolbar{width:210mm;max-width:100%;margin:0 auto 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}.ct-document{width:210mm;max-width:100%;margin:0 auto;background:#fff;box-shadow:0 24px 60px rgba(11,27,46,.12);padding:15mm 16mm 0;position:relative}.ct-document:before{content:'';position:absolute;left:0;top:0;width:100%;height:2.6mm;background:linear-gradient(90deg,#0b1b2e 0 78%,var(--ct-brand) 78% 100%)}.ct-header{position:relative;width:100%;min-height:24mm;padding:5mm 0 6mm;border-bottom:1.5px solid #e7dfd0}.ct-brand{position:relative;width:76mm;min-height:20mm;display:flex;align-items:flex-start;justify-content:flex-start;overflow:visible}.ct-logo{display:block;width:auto;max-width:76mm;height:auto;max-height:20mm;object-fit:contain;object-position:left top}.ct-logo-text{font-family:var(--ct-display);font-size:27px;font-weight:600;color:#0b1b2e;letter-spacing:0}.ct-meta{position:absolute;right:0;top:5mm;width:64mm;text-align:right;font-size:8.6px;color:#7a7266;line-height:1.7}.ct-meta strong,.ct-meta span{display:block;text-align:right}.ct-meta strong{font-family:var(--ct-display);font-size:21px;font-weight:600;color:#0b1b2e;margin-bottom:.8mm}.ct-title{padding:7mm 0 6mm}.ct-title h1{margin:0;color:#0b1b2e;font-family:var(--ct-display);font-weight:600;font-size:30px;line-height:1.15;letter-spacing:0}.ct-title p{margin:2.5mm 0 0;color:#7a7266;font-size:9.6px}.ct-notice{padding:3.2mm;margin:0 0 4mm;text-align:center;border-radius:8px;background:#eef7f1;color:#20613e;font-size:9.5px;font-weight:700}.ct-error{padding:3.2mm;margin:0 0 4mm;border:1px solid #fecaca;border-radius:8px;background:#fef2f2;color:#991b1b;font-size:9.5px;font-weight:700}.ct-section{width:100%;margin:0 0 6mm}.ct-section-title{display:flex;align-items:center;gap:2.4mm;margin:0 0 3mm;font-size:9px;font-weight:800;letter-spacing:.18em;color:#0b1b2e}.ct-section-title:before{content:'';flex:none;width:1.6mm;height:1.6mm;border-radius:50%;background:var(--ct-brand)}.ct-section-title:after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#e7dfd0,transparent)}.ct-card{width:100%;border:1px solid #e7dfd0;border-radius:9px;background:#fbf9f5;padding:4.2mm}.ct-parties{display:grid;grid-template-columns:1fr 1fr;gap:5mm}.ct-party{position:relative;border-left:2.6px solid var(--ct-brand);padding-left:4mm!important}.ct-party h3{font-size:8.6px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 0 2.2mm;color:#8f877b}.ct-party p{font-size:9.6px;line-height:1.62;margin:0;color:#3b3732}.ct-party p strong{display:block;font-family:var(--ct-display);font-size:15px;font-weight:600;color:#0b1b2e;margin-bottom:1mm}.ct-summary{display:table;width:100%;table-layout:fixed;border-spacing:0}.ct-summary-item{display:table-cell;padding:0 4mm;border-left:1px solid #ece5d8;vertical-align:top}.ct-summary-item:first-child{border-left:0;padding-left:0}.ct-summary-item:first-child{border-left:0;padding-left:0}.ct-summary-item small{display:block;font-size:7.6px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#948b7e;margin-bottom:1.6mm}.ct-summary-item strong{font-family:var(--ct-display);font-size:17px;font-weight:600;color:#0b1b2e}.ct-scope{white-space:pre-wrap;font-size:9.6px;line-height:1.68;color:#3b3732}.ct-payment{width:100%;border-collapse:collapse;table-layout:fixed}.ct-payment th{background:#f7f4ee;color:#0b1b2e;text-align:left;font-size:7.6px;font-weight:800;letter-spacing:.02em;white-space:nowrap;padding:2.8mm 2.6mm;border-bottom:1.5px solid #e7dfd0}.ct-payment td{font-size:9.4px;padding:2.8mm 2.6mm;border-bottom:1px solid #f0eadf;color:#2b2a2e;word-break:break-word;overflow-wrap:break-word}.ct-payment tr:last-child td{border-bottom:0;font-weight:700}.ct-payment th:last-child,.ct-payment td:last-child{text-align:right;font-variant-numeric:tabular-nums}.ct-clauses{counter-reset:clause}.ct-clause{counter-increment:clause;padding:4.4mm 0;border-bottom:1px solid #f0eadf;break-inside:avoid}.ct-clause:last-child{border-bottom:0}.ct-clause h2{display:flex;align-items:baseline;gap:2mm;font-size:11px;font-weight:700;color:#0b1b2e;margin:0 0 2.2mm}.ct-clause h2:before{content:counter(clause);flex:none;display:grid;place-items:center;width:5mm;height:5mm;border-radius:50%;background:#0b1b2e;color:#fff;box-shadow:0 0 0 .5mm var(--ct-brand);font-family:var(--font-manrope,"Manrope"),-apple-system,Arial,sans-serif;font-size:7.5px;font-weight:800}.ct-clause p{font-size:9.1px;line-height:1.68;color:#4a453e;margin:0 0 2mm}.ct-signatures{display:grid;grid-template-columns:1fr 1fr;gap:5mm}.ct-provider,.ct-customer{min-height:44mm;text-align:center}.ct-stamp{width:100%;height:27mm;object-fit:contain}.ct-stamp-empty{height:25mm;border:1px dashed #ddd3c3;border-radius:7px;display:grid;place-items:center;font-size:8px;color:#a39a8c}.ct-sign-title{font-size:9px;font-weight:800;color:#0b1b2e;margin-top:1mm}.ct-customer p{font-size:9px;color:#6f685e;line-height:1.5}.ct-verify{display:grid;grid-template-columns:24mm 1fr;gap:4mm;align-items:center;text-align:left}.ct-verify img{width:22mm;height:22mm;border:1px solid #ece5d8;border-radius:4px;padding:1mm;background:#fff}.ct-verify strong{font-size:9px;color:#0b1b2e}.ct-verify small{display:block;font-size:7.3px;word-break:break-all;color:#8f877b;margin-top:1mm}.ct-signed{margin-top:4mm;padding:4.5mm 4mm;border-radius:10px;background:linear-gradient(180deg,#eef8f1,#e7f4ea);border:1px solid #cfe8d6;color:#1d5a3a;font-size:9.3px;line-height:1.55}.ct-signed-badge{display:flex;align-items:center;justify-content:center;gap:1.8mm;margin-bottom:2mm}.ct-signed-check{display:grid;place-items:center;width:5mm;height:5mm;border-radius:50%;background:#1d8a4f;color:#fff;font-size:8px;font-weight:900}.ct-signed strong{font-size:9.8px;letter-spacing:.02em}.ct-customer-signature{display:block;width:100%;height:22mm;margin:1mm auto 2mm;object-fit:contain}.ct-legal{font-size:7.6px;line-height:1.5;color:#8f877b;margin-top:5mm;padding-top:3mm;border-top:1px dashed #e7dfd0}.ct-footer{display:grid;grid-template-columns:1.2fr 1.4fr 1fr;gap:7mm;margin:9mm -16mm 0;padding:5.5mm 16mm;background:#f7f4ee;border-top:1px solid #e7dfd0;color:#7a7266;font-size:8px;line-height:1.5}.ct-footer strong{display:block;color:#0b1b2e;font-weight:800;margin-bottom:1.2mm}.ct-form{width:100%;margin:6mm 0 0;padding:5mm;border:1px solid #e7dfd0;border-radius:10px;background:#fbf9f5}.ct-form label{display:block;margin:0 0 4mm;font-size:9.5px;font-weight:700;color:#3b3732}.ct-form label input[type=text]{display:block;width:100%;margin-top:2mm;padding:3mm;border:1px solid #ddd3c3;border-radius:8px;font-size:11px;color:#0b1b2e;background:#fff}.ct-form label input[type=text]:focus{outline:none;border-color:var(--ct-brand)}.ct-signature-field{margin:0 0 4mm}.ct-signature-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 2mm}.ct-signature-head strong{font-size:9.5px;color:#0b1b2e}.ct-signature-head button{border:1px solid #ddd3c3;background:#fff;color:#585248;font-size:8.5px;font-weight:700;padding:1.6mm 3mm;border-radius:6px;cursor:pointer}.ct-signature-head button:hover{background:#f7f4ee}.ct-signature-canvas{display:block;width:100%;height:38mm;border:1.5px dashed #cfc3ae;border-radius:9px;background:repeating-linear-gradient(-45deg,#fbf9f5,#fbf9f5 10px,#f7f4ee 10px,#f7f4ee 20px);cursor:crosshair;touch-action:none}.ct-signature-field small{display:block;margin-top:2mm;font-size:8px;color:#8f877b}.ct-form-error{margin:0 0 4mm;padding:2.5mm 3mm;border-radius:7px;background:#fef2f2;color:#991b1b;font-size:9px;font-weight:700}.ct-accept{display:flex;align-items:flex-start;gap:2.5mm;margin:0 0 4mm;cursor:pointer}.ct-accept input{margin-top:.6mm;width:14px;height:14px;flex:none;accent-color:var(--ct-brand)}.ct-accept span{font-size:8.8px;line-height:1.5;color:#585248;font-weight:400}.ct-form>button[type=submit]{display:block;width:100%;padding:3.6mm;border:0;border-radius:9px;background:linear-gradient(180deg,#1b3050,#0b1b2e);box-shadow:0 0 0 1px rgba(201,166,106,.45),0 8px 20px rgba(11,27,46,.18);color:#fff;font-size:11px;font-weight:800;cursor:pointer;letter-spacing:.02em}.ct-form>button[type=submit]:hover{filter:brightness(1.08)}@media(max-width:760px){.ct-signature-canvas{height:44mm}}@media(max-width:760px){.ct-document{width:100%;padding:20px}.ct-header{min-height:29mm}.ct-brand{width:58%}.ct-meta{width:42%;top:0}.ct-parties,.ct-signatures,.ct-footer{grid-template-columns:1fr}.ct-summary{display:block}.ct-summary-item{display:block}.ct-summary-item{border-left:0;border-top:1px solid #ece5d8;padding:3mm 0 0;margin-top:3mm}.ct-summary-item:first-child{border-top:0;margin-top:0;padding-top:0}.ct-footer{margin-left:-20px;margin-right:-20px}}.ct-related{margin:5mm 0 0;text-align:center}.ct-related a{display:inline-block;padding:2.6mm 4mm;border:1px solid #e7dfd0;border-radius:8px;background:#fff;color:#0b1b2e;font-size:9.2px;font-weight:800;text-decoration:none}.ct-related a:hover{background:#f7f4ee}@page{size:A4;margin:14mm 12mm 16mm}@media print{body{background:#fff}.print-hide{display:none!important}.ct-root{padding:0}.ct-document{width:auto;max-width:none;box-shadow:none;margin:0;padding:15mm 16mm 0}.ct-document:before{top:0}.ct-header,.ct-party,.ct-clause,.ct-provider,.ct-customer{break-inside:avoid}.ct-clauses{break-inside:auto}.ct-footer{margin-left:0;margin-right:0}.ct-summary{display:table!important}.ct-summary-item{display:table-cell!important}}`}</style>
-  <div className="ct-toolbar print-hide"><div>{toolbarLeft}</div><PrintDocumentButton documentType="contract" documentId={row.id} documentNumber={row.contract_no}/></div>
-  <article className="ct-document">
-   <header className="ct-header"><div className="ct-brand">{row.organization_logo_url?<img className="ct-logo" src={row.organization_logo_url} alt={`${row.organization_name} logosu`}/>:<div className="ct-logo-text">{row.organization_name}</div>}</div><div className="ct-meta"><strong>{row.contract_no}</strong><span>Düzenleme: {date(row.created_at)}</span><span>Şablon: {template.name}</span><span>Sürüm: {row.contract_template_version||template.version}</span></div></header>
-   <section className="ct-title"><h1>{template.name}</h1><p>{row.customer_name} ile {row.organization_name} arasında düzenlenmiştir.</p></section>
-   {notice?<div className="ct-notice">{notice}</div>:null}{errorMessage?<div className="ct-error">{errorMessage}</div>:null}
-   <section className="ct-section"><h2 className="ct-section-title">TARAFLAR</h2><div className="ct-parties"><div className="ct-card ct-party"><h3>Hizmet Sağlayıcı</h3><p><strong>{row.organization_name}</strong><br/>{contact||"Kurum iletişim bilgileri"}</p></div><div className="ct-card ct-party"><h3>Müşteri</h3><p><strong>{row.customer_name}</strong>{row.contact_phone?<>{row.contact_phone}<br/></>:null}{row.contact_email?<>{row.contact_email}<br/></>:null}{row.customer_address?<>{row.customer_address}<br/></>:null}{row.customer_tax_number?<>Vergi No: {row.customer_tax_number}{row.customer_tax_office?` · ${row.customer_tax_office} V.D.`:""}</>:null}</p></div></div></section>
-   <section className="ct-section"><h2 className="ct-section-title">SÖZLEŞME ÖZETİ</h2><div className="ct-card ct-summary"><div className="ct-summary-item"><small>Konu</small><strong>{row.title}</strong></div><div className="ct-summary-item"><small>Toplam Bedel</small><strong>{money(row.amount,row.currency)}</strong></div><div className="ct-summary-item"><small>{row.start_date?"Süre":"Teslim Tarihi"}</small><strong>{row.start_date?`${date(row.start_date)} – ${date(row.due_date)}`:(row.due_date?date(row.due_date):"—")}</strong></div></div></section>
-   <section className="ct-section"><h2 className="ct-section-title">HİZMET KAPSAMI</h2><div className="ct-card ct-scope">{row.scope||"Kapsam belirtilmedi."}</div></section>
-   <section className="ct-section"><h2 className="ct-section-title">ÖDEME PLANI</h2><div className="ct-card"><table className="ct-payment"><thead><tr><th style={{width:"9%"}}>No</th><th style={{width:"46%"}}>Açıklama</th><th style={{width:"24%"}}>Ne Zaman</th><th style={{width:"21%"}}>Tutar</th></tr></thead><tbody>{paymentRows.map((item:any)=>{
-    const segments=String(item.label||"").split(/(?=(?:ÖN|ARA|SON|\d+\.)\s*ÖDEME\s*:)/gi).map((part:string)=>part.trim()).filter(Boolean);
-    return <tr key={item.sequence}><td>{item.sequence}</td><td>{segments.length>1?segments.map((part:string,index:number)=><span key={index} style={{display:"block",marginBottom:index<segments.length-1?"1.4mm":0}}>{part}</span>):item.label}</td><td>{item.trigger||"—"}</td><td>{money(item.amount,row.currency)}</td></tr>;
-   })}</tbody></table></div></section>
-   <section className="ct-section"><h2 className="ct-section-title">SÖZLEŞME HÜKÜMLERİ</h2><div className="ct-card ct-clauses">{template.clauses.map(clause=><section className="ct-clause" key={clause.title}><h2>{clause.title}</h2>{clause.paragraphs.map((paragraph,index)=><p key={`${clause.title}-${index}`}>{paragraph}</p>)}</section>)}</div></section>
-   <section className="ct-section"><h2 className="ct-section-title">ONAY VE DOĞRULAMA</h2><div className="ct-signatures"><div className="ct-card ct-provider"><div className="ct-section-title">HİZMET SAĞLAYICI KAŞE VE İMZASI</div>{row.organization_signature_stamp_url?<img className="ct-stamp" src={row.organization_signature_stamp_url} alt="Firma kaşe ve imzası"/>:<div className="ct-stamp-empty">KAŞE / İMZA</div>}<div className="ct-sign-title">{row.organization_name}</div></div><div className="ct-card ct-customer"><div className="ct-section-title">MÜŞTERİ İMZASI</div>{qrUrl?<div className="ct-verify"><img src={qrUrl} alt="Sözleşme doğrulama QR kodu"/><div><strong>Sözleşmeyi doğrula</strong><small>{verificationUrl}</small></div></div>:null}{signed?<div className="ct-signed">{row.signed_signature_data?<img className="ct-customer-signature" src={row.signed_signature_data} alt="Müşteri imzası"/>:null}<div className="ct-signed-badge"><span className="ct-signed-check">✓</span><strong>Elektronik olarak onaylandı</strong></div>{row.signed_name}<br/>{row.signed_at?new Date(row.signed_at).toLocaleString("tr-TR"):""}{row.signed_ip?<><br/>IP Adresi: {row.signed_ip}</>:null}</div>:<p>Müşteri aşağıdaki alana imzasını atarak sözleşmeyi onaylar.</p>}</div></div></section>
-   {!signed&&["draft","sent"].includes(row.status)?signatureForm:null}
-   {proposalLink?<p className="ct-related print-hide"><a href={`/teklif/${proposalLink.token}`}>Bu sözleşmenin dayandığı teklifi görüntüle{proposalLink.no?` · ${proposalLink.no}`:""}</a></p>:null}
-   <p className="ct-legal">Bu elektronik onay işlemi, 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza olduğu iddiasını taşımaz. Çizilen imza, ad-soyad, tarih-saat, IP ve işlem kaydıyla birlikte taraf iradesini gösteren elektronik kayıt olarak saklanır. Emredici mevzuat ve tüketici hakları saklıdır.</p>
-   <footer className="ct-footer"><div><strong>{row.organization_name}</strong>{row.organization_document_footer||"Profesyonel hizmetler"}</div><div><strong>İletişim</strong>{contact||"Kurum iletişim bilgileri"}</div><div><strong>Belge Bilgisi</strong>{row.contract_no} · {row.contract_template_version||template.version}</div></footer>
-  </article>
- </main>;
+type Props = {
+  row: DocumentRow;
+  audit?: ContractAudit | null;
+  /** arvo_public_contract_audit / ek sütunlar okunabildi mi (migration uygulandı mı) */
+  auditAvailable?: boolean;
+  verificationUrl?: string | null;
+  verificationHash?: string | null;
+  mode?: "screen" | "print";
+  overlay?: boolean;
+  toolbarLeft?: ReactNode;
+  pdfHref?: string | null;
+  backHref?: string | null;
+  logDocumentId?: string | null;
+  signatureForm?: ReactNode;
+  notice?: string | null;
+  errorMessage?: string | null;
+  proposalLink?: { token: string; no: string | null } | null;
+};
+
+const consentLabels: [string, string][] = [
+  ["contract", "Sözleşmeyi okudum ve kabul ediyorum"],
+  ["preinfo", "Ön Bilgilendirme Formu’nu okudum"],
+  ["commercial", "Ticari / mesleki amaçla akdettiğimi beyan ederim"],
+  ["kvkk", "KVKK Aydınlatma Metni’ni okudum"],
+  ["early_start", "Hizmete cayma süresi dolmadan başlanmasını talep ediyorum"],
+];
+
+export function isContractSigned(row: DocumentRow) {
+  return Boolean(row?.signed_at) || ["signed", "completed"].includes(row?.status);
+}
+
+export function contractCustomerKind(row: DocumentRow) {
+  return detectCustomerKind({ name: row?.customer_name, taxNumber: row?.customer_tax_number, taxOffice: row?.customer_tax_office });
+}
+
+export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink }: Props) {
+  const signed = isContractSigned(row);
+  const template = getContractTemplate(row.organization_slug);
+  // İmzalanmış sözleşme, imzalandığı metinle gösterilir: yeni yasal metin
+  // yalnızca onu onaylayan (legal_text_version kaydı olan) sözleşmelerde.
+  const legacy = signed && !audit?.legal_text_version && (auditAvailable || isBefore(row.signed_at, LEGAL_V3_FALLBACK_CUTOFF));
+  const provider: Provider = {
+    name: String(row.organization_name || "Hizmet Sağlayıcı"),
+    info: row.organization_document_footer || null,
+    email: row.organization_contact_email || null,
+    phone: row.organization_contact_phone || null,
+    website: row.organization_website_url || null,
+    logoUrl: row.organization_logo_url || null,
+    stampUrl: row.organization_signature_stamp_url || null,
+  };
+  const customer: Customer = {
+    name: String(row.customer_name || "Müşteri"),
+    address: row.customer_address || null,
+    taxNumber: row.customer_tax_number || null,
+    taxOffice: row.customer_tax_office || null,
+    email: row.contact_email || null,
+    phone: row.contact_phone || null,
+  };
+  const kind = contractCustomerKind(row);
+  const total = Number(row.amount || 0);
+  const currency = String(row.currency || "TRY");
+  const tax = computeTaxBreakdown({ amount: total, tax_status: audit?.tax_status, net_amount: audit?.net_amount, tax_amount: audit?.tax_amount, gross_amount: audit?.gross_amount, tax_rate: audit?.tax_rate });
+  const schedule = buildSchedule({ schedule: row.payment_schedule, total, planType: row.payment_plan_type, planLabel: row.payment_plan, fallbackDueDate: row.due_date, frozen: signed, installments: audit?.installments });
+  const consents = audit?.signed_consents && typeof audit.signed_consents === "object" ? audit.signed_consents : null;
+  const ctx: ContractContext = {
+    kind,
+    contractNo: String(row.contract_no || ""),
+    title: String(row.title || "Hizmet"),
+    provider,
+    customer,
+    scopeItems: splitScope(row.scope, row.title),
+    proposalNo: audit?.proposal_no || proposalLink?.no || null,
+    startDate: row.start_date || null,
+    dueDate: row.due_date || audit?.estimated_delivery_date || null,
+    createdAt: row.created_at || null,
+    signedAt: signed ? row.signed_at || null : null,
+    currency,
+    tax,
+    schedule,
+    specialClauses: specialClausesFor(template),
+    earlyStart: consents ? consents.early_start === true : null,
+    city: detectCity(provider.info),
+  };
+  const userAgent = summarizeUserAgent(row.signed_user_agent || audit?.signed_user_agent);
+  const signerName = String(row.signed_name || customer.name);
+  const taxId = taxIdLabel(customer.taxNumber);
+  const fileName = pdfFileName("Sozlesme", row.contract_no);
+  const css = documentCss({ footerLeft: `${row.contract_no || ""} · Hizmet Sözleşmesi · ${provider.name}` });
+  const print = mode === "print";
+  const rootClass = ["ad-root", print ? "ad-print" : "", print && overlay ? "ad-print-overlay" : ""].filter(Boolean).join(" ");
+
+  return <main className={rootClass} style={{ "--ad-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
+    <style>{css}</style>
+    {print
+      ? <PrintAutorun fileName={fileName} backHref={backHref} />
+      : <div className="ad-toolbar print-hide"><div>{toolbarLeft}</div><div className="ad-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="contract" documentId={logDocumentId ?? undefined} documentNumber={row.contract_no} /> : null}</div></div>}
+    <article className="ad-sheet">
+      <div className="ad-band" />
+      <DocHeader provider={provider} kicker="Hizmet Sözleşmesi" number={String(row.contract_no || "")} meta={[
+        ["Düzenleme", formatDate(row.created_at)],
+        ["Durum", signed ? "İmzalandı" : row.status === "cancelled" ? "İptal edildi" : row.status === "rejected" ? "Reddedildi" : "İmza bekliyor"],
+        ["Metin sürümü", legacy ? `Şablon v${row.contract_template_version || template.version}` : `v${LEGAL_TEXT_VERSION}`],
+      ]} />
+      <section className="ad-title">
+        <div className="ad-kicker">{legacy ? template.name : "Hizmet Sözleşmesi"}</div>
+        <h1>{ctx.title}</h1>
+        <p>{customer.name} ile {provider.name} arasında, aşağıdaki hüküm ve koşullarla elektronik ortamda düzenlenmiştir.</p>
+      </section>
+      {notice && !print ? <div className="ad-notice print-hide">{notice}</div> : null}
+      {errorMessage && !print ? <div className="ad-error print-hide">{errorMessage}</div> : null}
+
+      <section className="ad-sec">
+        <div className="ad-facts">
+          <div className="ad-fact ad-fact-dark"><small>Sözleşme bedeli</small><strong>{formatMoney(tax.gross, currency)}</strong></div>
+          <div className="ad-fact"><small>{row.start_date ? "Başlangıç" : "Düzenleme"}</small><strong>{formatDate(row.start_date || row.created_at)}</strong></div>
+          <div className="ad-fact"><small>Teslim</small><strong>{formatDate(ctx.dueDate, "Teklif takvimine göre")}</strong></div>
+          <div className="ad-fact"><small>Ödeme planı</small><strong>{schedule.length === 1 ? "Tek ödeme" : `${schedule.length} taksit`}</strong></div>
+        </div>
+      </section>
+
+      {legacy ? <>
+        <section className="ad-sec"><SectionHeading>Taraflar</SectionHeading><div className="ad-grid-2">
+          <PartyCard role="Hizmet Sağlayıcı" name={provider.name} rows={providerRows(provider)} />
+          <PartyCard role="Müşteri" name={customer.name} rows={customerRows(customer)} />
+        </div></section>
+        <section className="ad-sec"><SectionHeading>Hizmet Kapsamı</SectionHeading><div className="ad-box"><ul className="ad-list">{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div></section>
+        <section className="ad-sec"><SectionHeading>Ücret ve Ödeme Planı</SectionHeading><PaymentPlanTable rows={schedule} currency={currency} /><TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} /></section>
+        <section className="ad-sec"><SectionHeading>Sözleşme Hükümleri</SectionHeading><LegacyArticles clauses={template.clauses} /></section>
+      </> : <section className="ad-sec"><ContractArticles ctx={ctx} /></section>}
+
+      <section className="ad-sec ad-sign-block">
+        <SectionHeading>İmzalar ve Elektronik Onay Kaydı</SectionHeading>
+        <div className="ad-sign">
+          <div className="ad-sign-card">
+            <h3>Hizmet Sağlayıcı</h3>
+            <div className="ad-sign-name">{provider.name}</div>
+            <div className="ad-sign-sub">Yetkili imza ve kaşe</div>
+            <div className="ad-sign-art">{provider.stampUrl ? <img src={provider.stampUrl} alt="Hizmet Sağlayıcı kaşe ve imzası" /> : <span className="ad-sign-empty">Kaşe / İmza</span>}</div>
+            <dl className="ad-audit">
+              <dt>Düzenleme tarihi</dt><dd>{formatDateTime(row.created_at)}</dd>
+              <dt>Belge referansı</dt><dd>{row.contract_no}</dd>
+            </dl>
+          </div>
+          <div className="ad-sign-card">
+            <h3>{kind === "consumer" ? "Müşteri / Tüketici" : "Müşteri / Alıcı"}</h3>
+            <div className="ad-sign-name">{signed ? signerName : customer.name}</div>
+            <div className="ad-sign-sub">{signed && signerName !== customer.name ? `${customer.name} adına` : null}{signed && signerName !== customer.name && taxId ? " · " : null}{taxId ? `${taxId.label}: ${taxId.value}` : null}</div>
+            <div className="ad-sign-art">{signed && row.signed_signature_data ? <img src={row.signed_signature_data} alt="Müşteri imzası" /> : <span className="ad-sign-empty">{signed ? "Elektronik onay" : "İmza bekleniyor"}</span>}</div>
+            {signed ? <>
+              <div className="ad-esign"><i>✓</i>Elektronik olarak imzalanmıştır</div>
+              <dl className="ad-audit">
+                <dt>İmza tarihi ve saati</dt><dd>{formatDateTime(row.signed_at)}</dd>
+                <dt>IP adresi</dt><dd>{row.signed_ip || "Kayıt bulunamadı"}</dd>
+                <dt>Cihaz / tarayıcı</dt><dd>{userAgent || "Kayıt bulunamadı"}</dd>
+                <dt>Belge referansı</dt><dd>{row.contract_no}</dd>
+                {verificationHash ? <><dt>Doğrulama özeti</dt><dd className="ad-hash">SHA-256 · {groupHash(verificationHash)}</dd></> : null}
+              </dl>
+            </> : <>
+              <div className="ad-esign ad-esign-pending">İmza bekleniyor</div>
+              <div className="ad-blank"><span>Ad Soyad</span><span>Tarih / Saat</span></div>
+            </>}
+          </div>
+        </div>
+        {consents ? <ul className="ad-consents">{consentLabels.filter(([key]) => consents[key] === true).map(([key, label]) => <li key={key}>{label}</li>)}</ul> : null}
+        <p className="ad-legal-note">{signed
+          ? "Bu belge elektronik ortamda düzenlenmiş ve Müşteri tarafından elektronik olarak onaylanmıştır. Elektronik onay 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; onaya ilişkin tarih-saat, IP adresi, cihaz bilgisi ve doğrulama özeti HMK m.193 kapsamında delil olarak saklanır."
+          : "Müşteri, belgenin sonundaki elektronik imza alanında ad soyadını yazıp imzasını çizerek ve onay beyanlarını işaretleyerek Sözleşme’yi onaylar. Onay tarihi-saati, IP adresi ve cihaz bilgisi bu bölümde gösterilir."}</p>
+      </section>
+
+      {!legacy && kind === "consumer" ? <PreInformationAnnex ctx={ctx} /> : null}
+
+      {!print && !signed && ["draft", "sent"].includes(row.status) ? signatureForm : null}
+      {!print && proposalLink ? <p className="ad-related print-hide"><a className="ad-btn" href={`/teklif/${proposalLink.token}`}>Bu sözleşmenin dayandığı teklifi görüntüle{proposalLink.no ? ` · ${proposalLink.no}` : ""}</a></p> : null}
+
+      <DocFooter provider={provider} reference={<>{row.contract_no} · Metin v{legacy ? row.contract_template_version || template.version : LEGAL_TEXT_VERSION}</>} verificationUrl={signed ? verificationUrl : null} />
+      <div className="ad-confidential">Gizlidir · Yalnızca sözleşme tarafları içindir</div>
+    </article>
+  </main>;
 }

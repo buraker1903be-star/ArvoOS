@@ -151,7 +151,8 @@ export default async function ContractsPage({ searchParams }: Props) {
       .eq("organization_id", membership.organization_id)
       .in("id", workflowIds);
     for (const wf of workflows ?? [])
-      if (wf.status === "completed") completedWorkflowIds.add(wf.id);
+      // Arşivlenen iş de tamamlanmış sayılır (tamamlandı → arşivlendi)
+      if (wf.status === "completed" || wf.status === "archived") completedWorkflowIds.add(wf.id);
   }
   // Arşiv kuralı: iş bu ekrandan çıkmışsa listede durmasın.
   //  - tamamlanmış sözleşme
