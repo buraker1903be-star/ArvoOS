@@ -85,7 +85,9 @@ html[data-theme="dark"] .fin [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .panel-root .fin .fin-table{display:block;width:100%;min-width:0;margin:0;border-collapse:collapse;font-variant-numeric:tabular-nums}
 /* Her satır kendi ızgarası: başlıktaki boş işlem hücresi "auto" ile
    daralıp sütunları kaydırmasın diye işlem sütunları sabit genişlikte. */
-.fin-table[data-cols="ledger"]{--cols:minmax(0,1.7fr) repeat(3,minmax(92px,.75fr)) minmax(140px,.9fr) 312px}
+/* Cari satırında dört işlem var (+ Tahsilat, Ek hizmet, İade, Hareketler);
+   312px'e sığmayıp sola, bakiye sütununun üstüne taşıyordu. */
+.fin-table[data-cols="ledger"]{--cols:minmax(0,1.7fr) repeat(3,minmax(92px,.75fr)) minmax(160px,.9fr) 380px}
 .fin-table[data-cols="payments"]{--cols:minmax(0,1.25fr) 96px 120px 112px minmax(220px,1.35fr) 184px}
 .fin-table[data-cols="profit"]{--cols:minmax(0,1.5fr) minmax(0,.85fr) minmax(0,.85fr) 112px 112px 112px 80px 20px}
 .fin-table[data-cols="movements"]{--cols:96px minmax(0,1.5fr) minmax(0,1fr) minmax(0,.8fr) 104px 120px 136px}
@@ -134,7 +136,8 @@ a.fin-entity:hover b{color:var(--accent)}
 .fin-person.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 
 /* Satır işlemleri */
-.panel-root .fin .fin-col-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:nowrap}
+/* Sığmazsa taşımak yerine alt satıra geçer; komşu hücrenin üstüne binmez */
+.panel-root .fin .fin-col-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
 .panel-root .fin .fin-col-actions form{margin:0}
 .panel-root .fin .fin-col-actions :is(.panel-primary,.panel-secondary,.panel-danger){width:auto;min-height:34px;padding:0 12px;border-radius:10px;font-size:13px;white-space:nowrap}
 .fin-link{display:inline-flex;align-items:center;gap:2px;padding:6px 4px 6px 8px;border-radius:8px;color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
@@ -172,7 +175,7 @@ a.fin-entity:hover b{color:var(--accent)}
 .fin-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 /* ---------- Kart görünümü (dar kap) ---------- */
-@container fin-table (max-width:980px){
+@container fin-table (max-width:1080px){
   .panel-root .fin .fin-table thead{display:none}
   .panel-root .fin .fin-table tbody tr{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px;min-height:0;padding:16px 18px}
   .panel-root .fin .fin-table tbody td{flex:1 1 128px}
