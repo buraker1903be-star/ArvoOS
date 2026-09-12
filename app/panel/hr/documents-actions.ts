@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 const maxFileSize = 15 * 1024 * 1024; // 15 MB
 
 async function hrDocContext() {
   const context = await getPanelContext();
   if (!["owner", "admin"].includes(context.membership.role)) throw new Error("Özlük dosyalarını yönetme yetkiniz yok.");
+  assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
   return context;
 }
 

@@ -6,6 +6,7 @@ import { diffFields, logActivity } from "@/lib/activity-log";
 import { reportActionFailure } from "@/lib/action-diagnostics";
 import { requestStageNames } from "./request-status";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 const defaultProbability: Record<string, number> = {
   lead: 10,
@@ -21,6 +22,7 @@ async function crmContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
+  assertModuleKeyAccess(context.membership.role, "crm", context.hiddenModuleKeys);
   return context;
 }
 async function getStageConfiguration(

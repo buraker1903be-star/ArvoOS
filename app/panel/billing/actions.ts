@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 const plans = new Set(["starter", "professional", "enterprise"]);
 const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -13,10 +14,11 @@ function sanitizeFileName(name: string) {
 }
 
 export async function submitBankTransferPayment(formData: FormData) {
-  const { supabase, organization, membership } = await getPanelContext();
+  const { supabase, organization, membership, hiddenModuleKeys } = await getPanelContext();
   if (!membership || !["owner", "admin"].includes(membership.role)) {
     throw new Error("Ödeme bildirimi yalnızca kurum sahibi veya yöneticisi tarafından gönderilebilir.");
   }
+  assertModuleKeyAccess(membership.role, "finance", hiddenModuleKeys);
 
   const bankAccountId = String(formData.get("bank_account_id") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();

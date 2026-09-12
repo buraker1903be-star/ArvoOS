@@ -4,10 +4,12 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 async function teamContext() {
   const context = await getPanelContext();
   if (!["owner", "admin"].includes(context.membership.role)) throw new Error("Ekip yönetimi için yönetici yetkisi gerekiyor.");
+  assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
   return context;
 }
 

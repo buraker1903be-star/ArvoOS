@@ -72,7 +72,7 @@ export default async function HrPage() {
   return <div className="hr-page">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Ekip ve Personel</h1><p>Personel bilgileri, panel erişimi, prim oranları ve özlük dosyaları tek yerden.</p></div>
-      <div className="panel-page-actions">{canViewCommissions ? <Link className="panel-secondary" href="/panel/hr/commissions">Prim Hesaplama</Link> : null}{canManageTeam ? <><Link className="panel-secondary" href="/panel/hr/confidentiality">Gizlilik Sözleşmeleri</Link><Link className="panel-secondary" href="/panel/hr/activity">Personel Hareketleri</Link></> : null}<PanelDrawer triggerLabel="+ Yeni Personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer></div>
+      <div className="panel-page-actions">{canViewCommissions ? <Link className="panel-secondary" href="/panel/hr/commissions">Prim Hesaplama</Link> : null}{canManageTeam ? <><Link className="panel-secondary" href="/panel/hr/confidentiality">Gizlilik Sözleşmeleri</Link><Link className="panel-secondary" href="/panel/hr/activity">Personel Hareketleri</Link></> : null}{canManageTeam ? <PanelDrawer triggerLabel="+ Yeni Personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}</div>
     </div>
 
     <section className="hr-metrics">
@@ -173,7 +173,7 @@ export default async function HrPage() {
               ) : null}
 
               <div className="hr-employee-actions">
-                <PanelDrawer triggerLabel="Düzenle" title="Personeli Düzenle">{editForm}</PanelDrawer>
+                {canManageTeam ? <PanelDrawer triggerLabel="Düzenle" title="Personeli Düzenle">{editForm}</PanelDrawer> : null}
                 {canManageTeam ? <PanelDrawer triggerLabel={`Özlük Dosyaları${employeeDocs.length ? ` (${employeeDocs.length})` : ""}`} title="Özlük Dosyaları" description={employee.full_name}>{docsPanel}</PanelDrawer> : null}
               </div>
             </article>;
@@ -184,7 +184,7 @@ export default async function HrPage() {
 
       <aside className="hr-side">
         <section className="panel-card">
-          <div className="panel-card-head"><div><small>ORGANİZASYON</small><h2>Departmanlar</h2></div><PanelDrawer triggerLabel="+ Ekle" title="Yeni Departman"><form className="panel-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required /></label><label className="wide">Kısa kod<input name="code" maxLength={30} /></label><div className="wide panel-form-actions"><button className="panel-primary">Departmanı Kaydet</button></div></form></PanelDrawer></div>
+          <div className="panel-card-head"><div><small>ORGANİZASYON</small><h2>Departmanlar</h2></div>{canManageTeam ? <PanelDrawer triggerLabel="+ Ekle" title="Yeni Departman"><form className="panel-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required /></label><label className="wide">Kısa kod<input name="code" maxLength={30} /></label><div className="wide panel-form-actions"><button className="panel-primary">Departmanı Kaydet</button></div></form></PanelDrawer> : null}</div>
           <div className="hr-department-list">{departments.map((department) => <div key={department.id}><b>{department.name}</b><span>{employees.filter((employee) => employee.department_id === department.id).length} kişi</span></div>)}{!departments.length ? <p>Henüz departman yok.</p> : null}</div>
         </section>
       </aside>

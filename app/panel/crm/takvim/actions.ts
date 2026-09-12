@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 const managerRoles = new Set(["owner", "admin", "manager"]);
 
 async function resolveContext() {
-  const { supabase, membership, userId, modules } = await getPanelContext();
+  const { supabase, membership, userId, modules, hiddenModuleKeys } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  assertModuleKeyAccess(membership.role, "crm", hiddenModuleKeys);
   const isManager = managerRoles.has(membership.role);
   const { data: ownEmployee } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   return { supabase, organizationId: membership.organization_id, isManager, ownEmployeeId: ownEmployee?.id ?? null, userId };

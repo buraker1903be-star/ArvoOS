@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 const statuses = new Set(["planned", "in_progress", "blocked", "completed", "cancelled"]);
 const priorities = new Set(["low", "normal", "high", "urgent"]);
@@ -10,6 +11,7 @@ const priorities = new Set(["low", "normal", "high", "urgent"]);
 async function operationContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  assertModuleKeyAccess(context.membership.role, "operations", context.hiddenModuleKeys);
   return context;
 }
 

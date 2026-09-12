@@ -17,6 +17,10 @@ export const PERMISSION_MODULES = [
 
 export const PERMISSION_ROLES = [
   { key: "admin", label: "Yönetici" },
+  // manager gerçek bir rol (CRM işlemleri ve RLS'te kullanılıyor) ama bu
+  // listede olmadığı için hiç kısıtlanamıyordu; "Yönetici" sütunundaki
+  // değişiklikler onu kapsamıyordu.
+  { key: "manager", label: "Yönetici (sınırlı)" },
   { key: "member", label: "Satış Personeli" },
   { key: OPERASYONCU_ROLE, label: "Operasyon Personeli" },
 ] as const;
@@ -43,6 +47,16 @@ export function modulesKeyForPath(pathname: string): string | null {
 export function isNavigationGroupHiddenForRole(role: string, groupKey: string, hiddenModuleKeys: ReadonlySet<string>): boolean {
   if (role === "owner") return false;
   return hiddenModuleKeys.has(groupKey);
+}
+
+// Sunucu işlemleri (server action) için. assertModuleAccess yalnızca sayfa
+// düzeninde çalışıyordu; kapatılmış bir modülün işlemleri arka planda yine
+// çağrılabiliyordu. Her modülün işlem giriş noktası bunu çağırır.
+export function assertModuleKeyAccess(role: string, moduleKey: string, hiddenModuleKeys: ReadonlySet<string>) {
+  if (role === "owner") return;
+  if (hiddenModuleKeys.has(moduleKey)) {
+    throw new Error("Bu modüle erişim yetkiniz yok.");
+  }
 }
 
 export function assertModuleAccess(role: string, pathname: string, hiddenModuleKeys: ReadonlySet<string>) {

@@ -1,8 +1,5 @@
-import { getPanelContext } from "@/lib/panel-context";
-import { assertModuleAccess } from "@/lib/role-permissions";
+import { FinanceAccessGate } from "../components/finance-access-gate";
 
 export default async function FinanceLayout({ children }: { children: React.ReactNode }) {
-  const { membership, hiddenModuleKeys } = await getPanelContext();
-  assertModuleAccess(membership.role, "/panel/finance", hiddenModuleKeys);
-  return children;
+  return <FinanceAccessGate pathname="/panel/finance">{children}</FinanceAccessGate>;
 }

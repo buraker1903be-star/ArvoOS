@@ -4,7 +4,16 @@ import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
 import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
 import { redirect } from "next/navigation";
-import { getPanelContext } from "@/lib/panel-context";
+import { getPanelContext as getBasePanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
+
+// Teklif ve sözleşme işlemleri CRM modülüne bağlı; Yetkilendirme'den CRM'i
+// kapatılmış bir rol bu işlemleri arka planda da çağıramasın.
+async function getPanelContext() {
+  const context = await getBasePanelContext();
+  assertModuleKeyAccess(context.membership.role, "crm", context.hiddenModuleKeys);
+  return context;
+}
 import {
   calculatePaymentSchedule,
   normalizePaymentSchedule,

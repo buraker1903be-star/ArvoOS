@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 async function accountsContext() {
   const context = await getPanelContext();
@@ -12,6 +13,7 @@ async function accountsContext() {
     !["owner", "admin"].includes(context.membership.role)
   )
     throw new Error("Bu işlem için yönetici yetkisi gerekli.");
+  assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);
   return context;
 }
 
