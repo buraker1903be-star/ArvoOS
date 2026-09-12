@@ -3,7 +3,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
 
-export type { CustomerPortalFile };
+// DİKKAT: "use server" dosyasında `export type { X }` (yeniden dışa aktarma)
+// YAZMAYIN. Next derleyicisi bunu sunucu işlemi sanıp çalışma anında var
+// olmayan X'e başvuruyor; modül yüklenirken çöküyor ve buradaki TÜM işlemler
+// 500 veriyordu (takip kodu hiçbir kodla açılmıyordu). Tipi doğrudan
+// ./portal-files-data'dan içe aktarın. `export type X = {...}` tanımları sorunsuz.
 
 export type CustomerFileMessage = {
   sender_type: "customer" | "staff";
