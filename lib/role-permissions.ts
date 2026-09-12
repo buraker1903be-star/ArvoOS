@@ -29,7 +29,6 @@ const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
   "/panel/crm": "crm",
   "/panel/operations": "operations",
   "/panel/finance": "finance",
-  "/panel/finans": "finance",
   "/panel/accounts": "finance",
   "/panel/banking": "finance",
   "/panel/billing": "finance",
