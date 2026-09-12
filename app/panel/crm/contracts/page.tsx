@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { statusTone } from "@/lib/status-tone";
 import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
@@ -284,7 +285,7 @@ export default async function ContractsPage({ searchParams }: Props) {
         </section>
         {rows.length ? (
           <section className="panel-card crm-table-wrap">
-            <table className="crm-data-table">
+            <table className="crm-data-table" data-cols="contracts">
               <thead>
                 <tr>
                   <th>Sözleşme No</th>
@@ -332,7 +333,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                         {money(row.amount, row.currency)}
                       </td>
                       <td data-label="Durum">
-                        <span className="status-pill">
+                        <span className="status-pill" data-tone={statusTone(row.status)}>
                           {labels[row.status] ?? row.status}
                         </span>
                         {row.status === "sent" && row.sent_at ? (

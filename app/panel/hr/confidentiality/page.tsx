@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { statusTone } from "@/lib/status-tone";
 import "../hr.css";
 import "./style.css";
 
@@ -22,6 +23,6 @@ export default async function ConfidentialityArchivePage() {
   return <div className="hr-page">
     <div className="panel-pagehead"><div><small className="panel-kicker">İNSAN KAYNAKLARI / GİZLİ ARŞİV</small><h1>Gizlilik Sözleşmeleri</h1><p>Personel sözleşmeleri yalnızca yetkili yöneticilere gösterilir.</p></div><div className="panel-page-actions"><Link className="panel-secondary" href="/panel/hr">← Personellere Dön</Link></div></div>
     <section className="hr-metrics"><article><small>TOPLAM</small><strong>{agreements.length}</strong><span>Hazırlanan sözleşme</span></article><article><small>İMZALANDI</small><strong>{signed}</strong><span>Güvenli arşivde</span></article><article><small>BEKLİYOR</small><strong>{agreements.length-signed}</strong><span>Personel onayı bekleniyor</span></article></section>
-    <section className="panel-card confidentiality-table"><table><thead><tr><th>Belge No</th><th>Personel</th><th>Durum</th><th>Hazırlanma</th><th>İmza</th><th></th></tr></thead><tbody>{agreements.map((agreement)=>{const employee=employees.get(agreement.employee_id);return <tr key={agreement.id}><td><b>{agreement.agreement_no}</b></td><td><b>{employee?.full_name||"Personel"}</b><br/><small>{employee?.job_title||employee?.email||""}</small></td><td><span className="status-pill">{agreement.status==="signed"?"İmzalandı":agreement.status==="revoked"?"İptal":"İmza Bekliyor"}</span></td><td>{date(agreement.created_at)}</td><td>{date(agreement.signed_at)}</td><td><Link className="panel-secondary" href={`/panel/confidentiality/${agreement.id}`}>Belgeyi Aç</Link></td></tr>})}</tbody></table>{!agreements.length?<p className="panel-empty">Henüz gizlilik sözleşmesi oluşturulmadı. Yeni personel kaydıyla otomatik hazırlanır.</p>:null}</section>
+    <section className="panel-card confidentiality-table"><table><thead><tr><th>Belge No</th><th>Personel</th><th>Durum</th><th>Hazırlanma</th><th>İmza</th><th></th></tr></thead><tbody>{agreements.map((agreement)=>{const employee=employees.get(agreement.employee_id);return <tr key={agreement.id}><td><b>{agreement.agreement_no}</b></td><td><b>{employee?.full_name||"Personel"}</b><br/><small>{employee?.job_title||employee?.email||""}</small></td><td><span className="status-pill" data-tone={statusTone(agreement.status)}>{agreement.status==="signed"?"İmzalandı":agreement.status==="revoked"?"İptal":"İmza Bekliyor"}</span></td><td>{date(agreement.created_at)}</td><td>{date(agreement.signed_at)}</td><td><Link className="panel-secondary" href={`/panel/confidentiality/${agreement.id}`}>Belgeyi Aç</Link></td></tr>})}</tbody></table>{!agreements.length?<p className="panel-empty">Henüz gizlilik sözleşmesi oluşturulmadı. Yeni personel kaydıyla otomatik hazırlanır.</p>:null}</section>
   </div>;
 }

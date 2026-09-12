@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { statusTone } from "@/lib/status-tone";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createWorkflow } from "./actions";
@@ -103,18 +104,19 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
       <article><small>İLERLEME</small><strong>%{progress}</strong><span>Tamamlanan adımlar</span></article>
     </section>
     <section className="panel-card"><form method="get" className="crm-filter-form"><label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} /></label><label><span>Durum</span><select name="durum" defaultValue={selectedStatus}><option value="">Tümü</option>{boardStatuses.map((status) => <option value={status} key={status}>{statusNames[status]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/operations">Temizle</Link></div></form></section>
-    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table"><thead><tr><th>İş</th><th>Müşteri</th><th>Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th>Yorumlar</th><th>Termin</th><th></th></tr></thead><tbody>{filteredWorkflows.map((workflow) => {
+    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table" data-cols="operations"><thead><tr><th>İş</th><th>Müşteri</th><th>Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th>Yorumlar</th><th>Termin</th><th></th></tr></thead><tbody>{filteredWorkflows.map((workflow) => {
       const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
       const done = steps.filter((step) => step.is_completed).length;
       const percentage = steps.length ? Math.round(done / steps.length * 100) : 0;
       const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
       const commentCount = opportunityId ? commentCounts.get(opportunityId) ?? 0 : 0;
       return <tr key={workflow.id}>
-        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.title}</Link></span><span className="crm-table-sub">{done}/{steps.length} adım</span></div></Link></td>
+        {/* Eskiden başlığın etrafında ikinci bir <a> vardı (a içinde a geçersiz HTML). */}
+        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title">{workflow.title}</span><span className="crm-table-sub">{done}/{steps.length} adım</span></div></Link></td>
         <td data-label="Müşteri"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.customer_name || "Kurum içi iş"}</Link></td>
         <td data-label="Sorumlu">{workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : "Atanmamış"}</td>
         <td data-label="Öncelik"><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
-        <td data-label="Durum"><span className="status-pill">{statusNames[workflow.status] ?? workflow.status}</span></td>
+        <td data-label="Durum"><span className="status-pill" data-tone={statusTone(workflow.status)}>{statusNames[workflow.status] ?? workflow.status}</span></td>
         <td data-label="İlerleme">%{percentage}</td>
         <td data-label="Yorumlar">{commentCount ? <Link className="crm-comment-count-badge" href={`/panel/operations/${workflow.id}`}>{commentCount} yorum</Link> : <span className="crm-comment-count-empty">—</span>}</td>
         <td data-label="Termin">{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "—"}</td>

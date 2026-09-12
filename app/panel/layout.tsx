@@ -24,6 +24,7 @@ import "./mobile-drawer.css";
 import "./messages-drawer.css";
 import "./panel-compact.css";
 import "./panel-premium.css";
+import "./panel-tables.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",

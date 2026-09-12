@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { statusTone } from "@/lib/status-tone";
 import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { fetchLastContacts, relativeTime } from "./last-contact";
 import { formatPersonName } from "@/lib/format-name";
@@ -219,7 +220,7 @@ export default async function RequestsPage({
         </section>
         {rows.length ? (
           <section className="panel-card crm-table-wrap">
-            <table className="crm-data-table">
+            <table className="crm-data-table" data-cols="requests">
               <thead>
                 <tr>
                   <th>No</th>
@@ -277,7 +278,7 @@ export default async function RequestsPage({
                       <td data-label="Hizmet">{d.service_type || "—"}</td>
                       <td data-label="Temsilci">{formatPersonName(ownerName)}</td>
                       <td data-label="Durum">
-                        <span className="status-pill">
+                        <span className="status-pill" data-tone={statusTone(item.stage)}>
                           {requestStageNames[item.stage] ?? item.stage}
                         </span>
                       </td>

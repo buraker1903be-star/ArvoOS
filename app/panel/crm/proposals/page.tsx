@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { statusTone } from "@/lib/status-tone";
 import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
@@ -268,7 +269,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
         </section>
         {rows.length ? (
           <section className="panel-card crm-table-wrap">
-            <table className="crm-data-table">
+            <table className="crm-data-table" data-cols="proposals">
               <thead>
                 <tr>
                   <th>Teklif No</th>
@@ -305,6 +306,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                         {row.revision_no > 0 ? (
                           <span
                             className="status-pill"
+                            data-tone="gold"
                             style={{ marginLeft: 6 }}
                           >
                             R{row.revision_no}
@@ -331,7 +333,18 @@ export default async function ProposalsPage({ searchParams }: Props) {
                         {money(row.amount, row.currency)}
                       </td>
                       <td data-label="Durum">
-                        <span className="status-pill">{displayStatus}</span>
+                        <span
+                          className="status-pill"
+                          data-tone={
+                            superseded
+                              ? "neutral"
+                              : row.status === "archived" && row.archive_reason === "expired"
+                                ? "warning"
+                                : statusTone(row.status)
+                          }
+                        >
+                          {displayStatus}
+                        </span>
                         {row.status === "sent" && row.sent_at ? (
                           <small
                             className={
