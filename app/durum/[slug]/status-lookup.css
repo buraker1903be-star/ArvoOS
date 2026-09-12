@@ -1,61 +1,191 @@
-:root{--status-ink:#082846;--status-muted:#718092;--status-line:#dfe6e4;--status-surface:#fff;--status-soft:#f3f6f4}
-*{box-sizing:border-box}
-.status-lookup-shell{position:relative;min-height:100vh;overflow:hidden;padding:34px;background:radial-gradient(circle at 12% 10%,rgba(115,157,73,.13),transparent 28%),linear-gradient(145deg,#f7f9f7 0%,#edf2ef 100%);font-family:Manrope,"Segoe UI",Arial,sans-serif;color:var(--status-ink)}
-.status-lookup-ambient{position:absolute;border-radius:999px;filter:blur(6px);pointer-events:none}.status-lookup-ambient-one{width:420px;height:420px;right:-160px;top:-180px;background:rgba(0,43,85,.07)}.status-lookup-ambient-two{width:300px;height:300px;left:-140px;bottom:-170px;background:rgba(115,157,73,.12)}
-.status-lookup-layout{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,520px);gap:clamp(38px,7vw,110px);align-items:center;width:min(1400px,100%);min-height:calc(100vh - 68px);margin:auto}
-.status-lookup-brandbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px}.status-lookup-brandmark{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:var(--status-ink);color:#fff;font-size:18px;font-weight:900}.status-lookup-brandbar div:nth-child(2){display:flex;flex-direction:column}.status-lookup-brandbar strong{font-size:13px}.status-lookup-brandbar span{font-size:10px;color:var(--status-muted)}.status-lookup-brandbar .status-lookup-secure{margin-left:auto;padding:8px 12px;border:1px solid rgba(0,43,85,.1);border-radius:999px;background:rgba(255,255,255,.7);color:#547061;font-weight:800}
-.status-lookup-intro{max-width:720px;padding-top:60px}.status-lookup-eyebrow,.status-lookup-card-kicker{display:block;margin-bottom:16px;color:var(--status-accent,#739d49);font-size:10px;font-weight:900;letter-spacing:.18em}.status-lookup-intro h1{max-width:760px;margin:0;font-size:clamp(38px,5vw,70px);line-height:1.04;letter-spacing:-.045em}.status-lookup-intro>p{max-width:630px;margin:26px 0 38px;color:#596b7d;font-size:15px;line-height:1.8}.status-lookup-trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.status-lookup-trust-grid div{display:flex;align-items:center;gap:12px;padding:15px;border-top:1px solid rgba(0,43,85,.12)}.status-lookup-trust-grid b{color:var(--status-accent,#739d49);font-size:11px}.status-lookup-trust-grid span{font-size:11px;font-weight:700}
-.status-lookup-card-wrap{width:100%;padding:42px;border:1px solid rgba(0,43,85,.1);border-radius:28px;background:rgba(255,255,255,.92);box-shadow:0 35px 90px rgba(0,43,85,.12);backdrop-filter:blur(18px)}.status-lookup-card-icon{display:grid;place-items:center;width:48px;height:48px;margin-bottom:26px;border-radius:15px;background:#edf4e8;color:var(--status-accent,#739d49);font-size:24px;font-weight:900}.status-lookup-card-wrap h2{margin:0 0 10px;font-size:27px;letter-spacing:-.025em}.status-lookup-card-wrap>p:not(.status-lookup-card-kicker){margin:0 0 26px;color:var(--status-muted);font-size:12px;line-height:1.65}.status-lookup-privacy{display:flex;align-items:center;gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--status-line);color:#708078;font-size:10px}.status-lookup-privacy span{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#edf4e8;color:#5f893d;font-weight:900}
-.status-lookup-form{display:flex;flex-direction:column;gap:14px}.status-lookup-form label{display:flex;flex-direction:column;gap:8px;color:#405368;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.status-lookup-form input{width:100%;min-height:62px;padding:0 18px;border:1px solid #d5dfdc;border-radius:14px;background:#fbfcfb;color:var(--status-ink);font-size:22px;font-weight:800;letter-spacing:6px;text-align:center;text-transform:uppercase;transition:.2s ease}.status-lookup-form input:focus{outline:0;border-color:var(--status-accent,#739d49);box-shadow:0 0 0 4px color-mix(in srgb,var(--status-accent,#739d49) 14%,transparent);background:#fff}.status-lookup-submit{min-height:56px;border:0;border-radius:14px;background:var(--status-ink);box-shadow:0 12px 28px rgba(0,43,85,.18);color:#fff;font:800 12px Manrope,sans-serif;cursor:pointer;transition:.2s ease}.status-lookup-submit:hover{transform:translateY(-1px);background:#0d3b62}.status-lookup-submit:disabled{opacity:.55;cursor:wait;transform:none}.status-lookup-error{margin:14px 0 0;padding:13px 15px;border:1px solid #f3c9c5;border-radius:12px;background:#fff2f0;color:#a52b22;font-size:11px;font-weight:700}
-.status-lookup-results{position:fixed;z-index:10;inset:0;overflow:auto;padding:34px;background:linear-gradient(145deg,#f7f9f7,#edf2ef)}.status-lookup-card{width:min(1400px,100%);margin:auto;border:1px solid rgba(0,43,85,.1);border-radius:26px;background:#fff;box-shadow:0 30px 80px rgba(0,43,85,.1)}.status-lookup-product-view{padding:0;overflow:hidden}.status-lookup-card-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 30px;border-bottom:1px solid var(--status-line)}.status-lookup-result-brand{display:flex;flex-direction:column;gap:5px}.status-lookup-result-brand>span{color:var(--status-muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em}.status-lookup-org-logo{display:block;max-width:210px;max-height:48px;object-fit:contain;object-position:left center}.status-lookup-org-name-inline{font-size:17px;font-weight:900}.status-lookup-new-query{padding:10px 14px;border:1px solid var(--status-line);border-radius:10px;color:var(--status-ink);font-size:10px;font-weight:800;text-decoration:none}.status-lookup-result-hero{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:38px 42px;background:linear-gradient(120deg,#fff,#f7faf8)}.status-lookup-no{display:block;margin-bottom:9px;color:var(--status-accent,#739d49);font:800 10px ui-monospace,monospace;letter-spacing:.08em}.status-lookup-title{margin:0;color:var(--status-ink);font-size:clamp(24px,3vw,38px);line-height:1.2;letter-spacing:-.03em}.status-lookup-result-hero p{margin:10px 0 0;color:var(--status-muted);font-size:11px}.status-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;background:#edf4e8;color:#567f35;font-size:10px;font-weight:900;white-space:nowrap}.status-pill i{width:7px;height:7px;border-radius:50%;background:#739d49;box-shadow:0 0 0 5px rgba(115,157,73,.12)}
-.status-lookup-dashboard{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.75fr);gap:18px;padding:0 30px 30px}.status-lookup-progress-panel,.status-lookup-finance-panel{padding:28px;border:1px solid var(--status-line);border-radius:19px;background:#fff}.status-lookup-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.status-lookup-section-head small{color:var(--status-muted);font-size:9px;font-weight:900;letter-spacing:.12em}.status-lookup-section-head h3{margin:6px 0 0;font-size:17px}.status-lookup-section-head>strong{color:var(--status-accent,#739d49);font-size:30px;letter-spacing:-.04em}.status-lookup-progress{margin:24px 0}.status-lookup-progress-track{height:9px;overflow:hidden;border-radius:999px;background:#e9eeeb}.status-lookup-progress-track span{display:block;min-width:2px;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--status-accent,#739d49),#8db763);transition:width .6s ease}.status-lookup-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.status-lookup-steps div{display:flex;flex-direction:column;align-items:center;gap:8px;color:#9aa5af;text-align:center}.status-lookup-steps span{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--status-line);border-radius:50%;background:#fff;font-size:10px;font-weight:900}.status-lookup-steps b{font-size:9px}.status-lookup-steps .is-complete{color:var(--status-ink)}.status-lookup-steps .is-complete span{border-color:var(--status-accent,#739d49);background:#edf4e8;color:#5e893b}.status-lookup-balance{display:flex;flex-direction:column;margin-top:20px}.status-lookup-balance div{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 0;border-bottom:1px solid #edf0ef}.status-lookup-balance span{color:var(--status-muted);font-size:10px}.status-lookup-balance b{font-size:13px}.status-lookup-balance b.is-paid{color:#5c8839}.status-lookup-balance .status-lookup-balance-remaining{margin-top:7px;padding:17px 16px;border:0;border-radius:12px;background:#f3f6f4}.status-lookup-balance-remaining span{color:var(--status-ink);font-weight:800}.status-lookup-balance-remaining b{color:var(--status-ink);font-size:18px}.status-lookup-result-footer{display:flex;justify-content:space-between;gap:24px;padding:18px 30px;border-top:1px solid var(--status-line);background:#fbfcfb;color:var(--status-muted);font-size:9px}.status-lookup-result-footer span:first-child{color:#536c5e;font-weight:800}.status-lookup-result-footer i{display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:50%;background:#739d49}
-.status-lookup-conversation{grid-column:1/-1;padding:28px;border:1px solid var(--status-line);border-radius:19px;background:#fff}.status-lookup-message-count{padding:7px 10px;border-radius:999px;background:#f0f4f1;color:#5d7064;font-size:9px;font-weight:800}.status-lookup-conversation-note{margin:10px 0 20px;color:var(--status-muted);font-size:10px}.status-lookup-message-list{display:flex;flex-direction:column;gap:10px;max-height:330px;overflow:auto;padding:18px;border:1px solid #e8edeb;border-radius:15px;background:#f8faf9}.status-lookup-message-list article{width:min(76%,680px);padding:13px 15px;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(0,43,85,.05)}.status-lookup-message-list article.from-customer{align-self:flex-end;background:var(--status-ink);color:#fff}.status-lookup-message-list header{display:flex;justify-content:space-between;gap:15px;margin-bottom:7px}.status-lookup-message-list header b{font-size:9px}.status-lookup-message-list time{font-size:8px;opacity:.65}.status-lookup-message-list p{margin:0;font-size:11px;line-height:1.6;white-space:pre-wrap}.status-lookup-message-empty{padding:24px;color:var(--status-muted);font-size:10px;text-align:center}.status-lookup-message-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;margin-top:15px}.status-lookup-message-form label{display:flex;flex-direction:column;gap:7px}.status-lookup-message-form label>span{color:#526273;font-size:9px;font-weight:800}.status-lookup-message-form textarea{width:100%;min-height:88px;resize:vertical;padding:13px 15px;border:1px solid #d8e1de;border-radius:13px;background:#fbfcfb;color:var(--status-ink);font:500 11px/1.6 Manrope,sans-serif}.status-lookup-message-form textarea:focus{outline:0;border-color:var(--status-accent,#739d49);box-shadow:0 0 0 3px rgba(115,157,73,.11)}.status-lookup-message-form>div{display:flex;flex-direction:column;align-items:flex-end;gap:9px}.status-lookup-message-form small{color:var(--status-muted);font-size:8px}.status-lookup-message-form button{min-height:42px;padding:0 18px;border:0;border-radius:11px;background:var(--status-ink);color:#fff;font:800 10px Manrope,sans-serif;cursor:pointer}.status-lookup-message-form button:disabled{opacity:.55}.status-lookup-message-error,.status-lookup-message-success{margin:12px 0 0;padding:11px 13px;border-radius:10px;font-size:9px;font-weight:700}.status-lookup-message-error{background:#fff0ee;color:#a7352d}.status-lookup-message-success{background:#edf6e8;color:#567e38}
-@media(max-width:900px){.status-lookup-shell{padding:22px}.status-lookup-layout{grid-template-columns:1fr;padding:85px 0 28px}.status-lookup-intro{padding-top:0}.status-lookup-intro h1{font-size:42px}.status-lookup-card-wrap{max-width:600px}.status-lookup-dashboard{grid-template-columns:1fr}.status-lookup-results{padding:20px}}
-@media(max-width:560px){.status-lookup-shell{padding:16px}.status-lookup-layout{padding-top:76px;gap:28px}.status-lookup-brandbar .status-lookup-secure{display:none}.status-lookup-intro h1{font-size:34px}.status-lookup-intro>p{margin:18px 0 24px;font-size:13px}.status-lookup-trust-grid{grid-template-columns:1fr}.status-lookup-trust-grid div{padding:10px 4px}.status-lookup-card-wrap{padding:26px 22px;border-radius:22px}.status-lookup-results{padding:0}.status-lookup-card{min-height:100vh;border:0;border-radius:0}.status-lookup-card-head{padding:18px}.status-lookup-org-logo{max-width:145px;max-height:38px}.status-lookup-result-hero{align-items:flex-start;flex-direction:column;padding:28px 20px}.status-lookup-dashboard{padding:0 14px 18px}.status-lookup-progress-panel,.status-lookup-finance-panel,.status-lookup-conversation{padding:20px 17px}.status-lookup-steps{gap:2px}.status-lookup-steps b{font-size:7px}.status-lookup-result-footer{flex-direction:column;padding:16px 20px}.status-lookup-new-query{font-size:8px}.status-lookup-form input{font-size:18px;letter-spacing:4px}.status-lookup-message-list article{width:92%}.status-lookup-message-form{grid-template-columns:1fr}.status-lookup-message-form>div{align-items:stretch}.status-lookup-message-form button{width:100%}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+/* Müşteri takip (/takip) ve kuruma özel durum sorgulama (/durum/[slug],
+   /is-durumu) sayfaları. Görsel dil: "Gece mavisi ve şampanya" — panel,
+   giriş ve teklif/sözleşme belgeleriyle aynı.
 
-/* Müşteri belgeleri — takip ekranından teklif ve sözleşmeye erişim.
-   Müşteri onayladığı teklifi ve imzaladığı sözleşmeyi sonradan da
-   görebilmeli; link e-postada kaybolmuş olabilir. */
-.status-lookup-documents {
-  margin: 18px 0 0;
-  padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
+   Değişkenler sayfa kapsamında (eskiden :root'a yazılıyordu). Kurum rengi
+   --status-accent ile gelir; gelmezse şampanya altını. Tüm yazılar en az
+   11px (eskiden 7–10px'lik okunmayan etiketler vardı). */
+
+:is(.status-lookup-shell,.status-lookup,.status-lookup-results){
+  --status-ink:#0b1b2e; --status-ink-2:#13243f; --status-soft-ink:#3b3732;
+  --status-muted:#7a7266; --status-dim:#a39a8c;
+  --status-line:#e7dfd0; --status-line-soft:#f0eadf;
+  --status-surface:#ffffff; --status-soft:#f7f4ee; --status-ivory:#fbf9f5;
+  --status-gold:#b28a49; --status-gold-bright:#c9a66a; --status-gold-soft:#f5eddb; --status-gold-deep:#8e6d33;
+  --status-display:var(--font-cormorant,"Cormorant Garamond"),"Iowan Old Style",Georgia,serif;
+  --status-body:var(--font-manrope,"Manrope"),"Segoe UI",Arial,sans-serif;
+  /* vurgu: kurum rengi ya da altın (dekor); metin vurgusu için koyu altın */
+  --status-accent-color:var(--status-accent,var(--status-gold));
+  --status-accent-text:var(--status-accent,var(--status-gold-deep));
 }
-.status-lookup-documents small {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  opacity: 0.7;
+:is(.status-lookup-shell,.status-lookup,.status-lookup-results) *{box-sizing:border-box}
+
+/* --- Giriş ekranı --- */
+.status-lookup-shell{
+  position:relative;min-height:100vh;overflow:hidden;padding:34px;color:var(--status-ink);font-family:var(--status-body);
+  -webkit-font-smoothing:antialiased;
+  background:radial-gradient(circle at 12% 8%,rgba(178,138,73,.12),transparent 30%),linear-gradient(145deg,#faf7f1 0%,#f1ebe0 100%)
 }
-.status-lookup-documents > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.status-lookup-ambient{position:absolute;border-radius:999px;filter:blur(6px);pointer-events:none}
+.status-lookup-ambient-one{width:440px;height:440px;right:-170px;top:-190px;background:rgba(11,27,46,.07)}
+.status-lookup-ambient-two{width:320px;height:320px;left:-150px;bottom:-180px;background:rgba(178,138,73,.12)}
+.status-lookup-layout{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,520px);gap:clamp(38px,7vw,110px);align-items:center;width:min(1400px,100%);min-height:calc(100vh - 68px);margin:auto}
+.status-lookup-brandbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px}
+.status-lookup-brandmark{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:linear-gradient(150deg,#dcc28c,var(--status-gold));color:var(--status-ink);font:700 22px var(--status-display)}
+.status-lookup-brandbar div:nth-child(2){display:flex;flex-direction:column}
+.status-lookup-brandbar strong{font-size:14px}
+.status-lookup-brandbar span{font-size:12px;color:var(--status-muted)}
+.status-lookup-brandbar .status-lookup-secure{margin-left:auto;padding:8px 14px;border:1px solid rgba(178,138,73,.35);border-radius:999px;background:rgba(255,255,255,.75);color:var(--status-gold-deep);font-size:12px;font-weight:800;letter-spacing:.04em}
+
+.status-lookup-intro{max-width:720px;padding-top:60px}
+.status-lookup-eyebrow,.status-lookup-card-kicker{display:flex;align-items:center;gap:12px;margin:0 0 16px;color:var(--status-accent-text);font-size:12px;font-weight:800;letter-spacing:.2em}
+.status-lookup-eyebrow::before{content:"";width:34px;height:1px;background:var(--status-accent-color)}
+.status-lookup-intro h1{max-width:760px;margin:0;font:600 clamp(42px,5vw,74px)/1.04 var(--status-display);letter-spacing:-.005em;color:var(--status-ink)}
+.status-lookup-intro>p{max-width:630px;margin:26px 0 38px;color:var(--status-muted);font-size:16px;line-height:1.8}
+.status-lookup-trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.status-lookup-trust-grid div{display:flex;align-items:center;gap:12px;padding:15px 4px;border-top:1px solid rgba(178,138,73,.3)}
+.status-lookup-trust-grid b{color:var(--status-accent-text);font:600 18px var(--status-display)}
+.status-lookup-trust-grid span{font-size:13px;font-weight:700}
+
+.status-lookup-card-wrap{position:relative;width:100%;padding:44px;border:1px solid var(--status-line);border-radius:26px;background:rgba(255,255,255,.95);box-shadow:0 1px 2px rgba(11,27,46,.04),0 34px 90px rgba(11,27,46,.12);backdrop-filter:blur(18px)}
+.status-lookup-card-wrap::before{content:"";position:absolute;top:0;left:44px;width:44px;height:2px;background:var(--status-accent-color)}
+.status-lookup-card-icon{display:grid;place-items:center;width:48px;height:48px;margin-bottom:24px;border-radius:15px;background:var(--status-gold-soft);color:var(--status-accent-text);font-size:24px;font-weight:900}
+.status-lookup-card-wrap h2{margin:0 0 10px;font:600 34px/1.1 var(--status-display);letter-spacing:0}
+.status-lookup-card-wrap>p:not(.status-lookup-card-kicker){margin:0 0 26px;color:var(--status-muted);font-size:14px;line-height:1.65}
+.status-lookup-privacy{display:flex;align-items:center;gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--status-line);color:var(--status-muted);font-size:12px}
+.status-lookup-privacy span{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--status-gold-soft);color:var(--status-gold-deep);font-weight:900}
+
+.status-lookup-form{display:flex;flex-direction:column;gap:14px}
+.status-lookup-form label{display:flex;flex-direction:column;gap:8px;color:var(--status-soft-ink);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.status-lookup-form input{width:100%;min-height:62px;padding:0 18px;border:1px solid var(--status-line);border-radius:14px;background:var(--status-ivory);color:var(--status-ink);font:700 22px var(--status-body);letter-spacing:6px;text-align:center;text-transform:uppercase;transition:.2s ease}
+.status-lookup-form input:focus{outline:0;border-color:var(--status-accent-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--status-accent-color) 16%,transparent);background:#fff}
+.status-lookup-submit{min-height:56px;border:0;border-radius:14px;background:linear-gradient(180deg,#1b3050,var(--status-ink));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px rgba(201,166,106,.4),0 12px 28px rgba(11,27,46,.18);color:#fff;font:800 14px var(--status-body);letter-spacing:.04em;cursor:pointer;transition:.2s ease}
+.status-lookup-submit:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px rgba(201,166,106,.65),0 16px 32px rgba(11,27,46,.24)}
+.status-lookup-submit:disabled{opacity:.55;cursor:wait;transform:none}
+.status-lookup-error{margin:14px 0 0;padding:13px 15px;border:1px solid #efcdc8;border-radius:12px;background:#f9e9e7;color:#8c2f2b;font-size:13px;font-weight:700}
+
+/* --- Sonuç ekranı --- */
+.status-lookup-results{position:fixed;z-index:10;inset:0;overflow:auto;padding:34px;font-family:var(--status-body);color:var(--status-ink);background:radial-gradient(circle at 90% 0%,rgba(178,138,73,.1),transparent 30%),linear-gradient(145deg,#faf7f1,#f1ebe0)}
+.status-lookup-card{width:min(1400px,100%);margin:auto;border:1px solid var(--status-line);border-radius:26px;background:#fff;box-shadow:0 30px 80px rgba(11,27,46,.1)}
+.status-lookup-product-view{padding:0;overflow:hidden}
+.status-lookup-card-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 30px;border-bottom:1px solid var(--status-line)}
+.status-lookup-result-brand{display:flex;flex-direction:column;gap:5px}
+.status-lookup-result-brand>span{color:var(--status-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em}
+.status-lookup-org-logo{display:block;max-width:210px;max-height:48px;object-fit:contain;object-position:left center}
+/* Kurum adı da bir span; üstteki etiket kuralı onu küçük büyük harfe
+   çeviriyordu. Daha özgül seçiciyle serif ve büyük kalır. */
+.status-lookup-result-brand>.status-lookup-org-name-inline{font:600 22px var(--status-display);letter-spacing:0;text-transform:none;color:var(--status-ink)}
+.status-lookup-new-query{padding:10px 14px;border:1px solid var(--status-line);border-radius:10px;color:var(--status-ink);font-size:12px;font-weight:800;text-decoration:none}
+.status-lookup-new-query:hover{border-color:var(--status-gold)}
+.status-lookup-result-hero{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;padding:38px 42px;background:linear-gradient(120deg,#fff,var(--status-ivory))}
+.status-lookup-no{display:block;margin-bottom:9px;color:var(--status-accent-text);font:800 12px ui-monospace,monospace;letter-spacing:.1em}
+.status-lookup-title{margin:0;color:var(--status-ink);font:600 clamp(28px,3.2vw,42px)/1.15 var(--status-display);letter-spacing:0}
+.status-lookup-result-hero p{margin:10px 0 0;color:var(--status-muted);font-size:13px}
+:is(.status-lookup-shell,.status-lookup,.status-lookup-results) .status-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:var(--status-gold-soft);color:var(--status-gold-deep);font-size:12px;font-weight:800;white-space:nowrap}
+:is(.status-lookup-shell,.status-lookup,.status-lookup-results) .status-pill i{width:7px;height:7px;border-radius:50%;background:var(--status-accent-color);box-shadow:0 0 0 5px rgba(178,138,73,.16)}
+
+.status-lookup-dashboard{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.75fr);gap:18px;padding:0 30px 30px}
+.status-lookup-progress-panel,.status-lookup-finance-panel{padding:28px;border:1px solid var(--status-line);border-radius:19px;background:#fff}
+.status-lookup-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.status-lookup-section-head small{color:var(--status-muted);font-size:11px;font-weight:800;letter-spacing:.14em}
+.status-lookup-section-head h3{margin:6px 0 0;font:600 22px var(--status-display)}
+.status-lookup-section-head>strong{color:var(--status-accent-text);font:600 36px var(--status-display);letter-spacing:0}
+.status-lookup-progress{margin:24px 0}
+.status-lookup-progress-track{height:9px;overflow:hidden;border-radius:999px;background:var(--status-line-soft)}
+.status-lookup-progress-track span{display:block;min-width:2px;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--status-accent-color),var(--status-gold-bright));transition:width .6s ease}
+.status-lookup-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.status-lookup-steps div{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--status-dim);text-align:center}
+.status-lookup-steps span{display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--status-line);border-radius:50%;background:#fff;font-size:12px;font-weight:800}
+.status-lookup-steps b{font-size:11px}
+.status-lookup-steps .is-complete{color:var(--status-ink)}
+.status-lookup-steps .is-complete span{border-color:var(--status-accent-color);background:var(--status-gold-soft);color:var(--status-gold-deep)}
+.status-lookup-balance{display:flex;flex-direction:column;margin-top:20px}
+.status-lookup-balance div{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 0;border-bottom:1px solid var(--status-line-soft)}
+.status-lookup-balance span{color:var(--status-muted);font-size:13px}
+.status-lookup-balance b{font-size:14px}
+.status-lookup-balance b.is-paid{color:#2f7d57}
+.status-lookup-balance .status-lookup-balance-remaining{margin-top:7px;padding:17px 16px;border:0;border-radius:12px;background:var(--status-soft)}
+.status-lookup-balance-remaining span{color:var(--status-ink);font-weight:800}
+.status-lookup-balance-remaining b{color:var(--status-ink);font:600 24px var(--status-display)}
+.status-lookup-result-footer{display:flex;justify-content:space-between;gap:24px;padding:18px 30px;border-top:1px solid var(--status-line);background:var(--status-ivory);color:var(--status-muted);font-size:12px}
+.status-lookup-result-footer span:first-child{color:var(--status-soft-ink);font-weight:800}
+.status-lookup-result-footer i{display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:50%;background:var(--status-accent-color)}
+
+/* Belgeleriniz: eskiden beyaz kart üzerinde beyaz kenarlık ve yarı saydam
+   beyaz zemin kullandığı için görünmüyordu; müşteri teklif ve sözleşme
+   linklerini göremiyordu. */
+.status-lookup-documents{margin:0 30px 18px;padding:16px 18px;border:1px solid rgba(178,138,73,.35);border-radius:14px;background:var(--status-ivory)}
+.status-lookup-documents small{display:block;margin-bottom:10px;color:var(--status-gold-deep);font-size:12px;font-weight:800;letter-spacing:.14em}
+.status-lookup-documents>div{display:flex;flex-wrap:wrap;gap:10px}
+.status-lookup-documents a{display:inline-flex;align-items:center;min-height:42px;padding:0 16px;border:1px solid var(--status-line);border-radius:10px;background:#fff;color:var(--status-ink);font-size:13px;font-weight:700;text-decoration:none;transition:border-color .15s ease,box-shadow .15s ease}
+.status-lookup-documents a:hover{border-color:var(--status-gold);box-shadow:0 6px 16px rgba(11,27,46,.08)}
+
+/* --- Mesajlaşma --- */
+.status-lookup-conversation{grid-column:1/-1;padding:28px;border:1px solid var(--status-line);border-radius:19px;background:#fff}
+.status-lookup-message-count{padding:7px 12px;border-radius:999px;background:var(--status-soft);color:var(--status-soft-ink);font-size:12px;font-weight:800}
+.status-lookup-conversation-note{margin:10px 0 20px;color:var(--status-muted);font-size:13px}
+.status-lookup-message-list{display:flex;flex-direction:column;gap:10px;max-height:330px;overflow:auto;padding:18px;border:1px solid var(--status-line-soft);border-radius:15px;background:var(--status-ivory)}
+.status-lookup-message-list article{width:min(76%,680px);padding:13px 15px;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(11,27,46,.05)}
+.status-lookup-message-list article.from-customer{align-self:flex-end;background:var(--status-ink);color:#fff}
+.status-lookup-message-list header{display:flex;justify-content:space-between;gap:15px;margin-bottom:7px}
+.status-lookup-message-list header b{font-size:12px}
+.status-lookup-message-list time{font-size:11px;opacity:.7}
+.status-lookup-message-list p{margin:0;font-size:14px;line-height:1.6;white-space:pre-wrap}
+.status-lookup-message-empty{padding:24px;color:var(--status-muted);font-size:13px;text-align:center}
+.status-lookup-message-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;margin-top:15px}
+.status-lookup-message-form label{display:flex;flex-direction:column;gap:7px}
+.status-lookup-message-form label>span{color:var(--status-soft-ink);font-size:12px;font-weight:800}
+.status-lookup-message-form textarea{width:100%;min-height:88px;resize:vertical;padding:13px 15px;border:1px solid var(--status-line);border-radius:13px;background:var(--status-ivory);color:var(--status-ink);font:500 14px/1.6 var(--status-body)}
+.status-lookup-message-form textarea:focus{outline:0;border-color:var(--status-accent-color);box-shadow:0 0 0 3px color-mix(in srgb,var(--status-accent-color) 16%,transparent);background:#fff}
+.status-lookup-message-form>div{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+.status-lookup-message-form small{color:var(--status-muted);font-size:11px}
+.status-lookup-message-form button{min-height:44px;padding:0 20px;border:0;border-radius:11px;background:linear-gradient(180deg,#1b3050,var(--status-ink));box-shadow:0 0 0 1px rgba(201,166,106,.4);color:#fff;font:800 13px var(--status-body);cursor:pointer}
+.status-lookup-message-form button:disabled{opacity:.55}
+.status-lookup-message-error,.status-lookup-message-success{margin:12px 0 0;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:700}
+.status-lookup-message-error{background:#f9e9e7;color:#8c2f2b}
+.status-lookup-message-success{background:#e7f3ec;color:#1f5c3f}
+
+:is(.status-lookup-shell,.status-lookup,.status-lookup-results) :is(a,button,input,textarea):focus-visible{outline:2px solid var(--status-gold);outline-offset:2px}
+
+@media(max-width:900px){
+  .status-lookup-shell{padding:22px}
+  .status-lookup-layout{grid-template-columns:1fr;padding:85px 0 28px}
+  .status-lookup-intro{padding-top:0}
+  .status-lookup-intro h1{font-size:44px}
+  .status-lookup-card-wrap{max-width:600px}
+  .status-lookup-dashboard{grid-template-columns:1fr}
+  .status-lookup-results{padding:20px}
 }
-.status-lookup-documents a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  color: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.15s ease, border-color 0.15s ease;
+@media(max-width:560px){
+  .status-lookup-shell{padding:16px}
+  .status-lookup-layout{padding-top:76px;gap:28px}
+  .status-lookup-brandbar .status-lookup-secure{display:none}
+  .status-lookup-intro h1{font-size:36px}
+  .status-lookup-intro>p{margin:18px 0 24px;font-size:14px}
+  .status-lookup-trust-grid{grid-template-columns:1fr}
+  .status-lookup-trust-grid div{padding:10px 4px}
+  .status-lookup-card-wrap{padding:28px 22px;border-radius:22px}
+  .status-lookup-card-wrap::before{left:22px}
+  .status-lookup-results{padding:0}
+  .status-lookup-card{min-height:100vh;border:0;border-radius:0}
+  .status-lookup-card-head{padding:18px}
+  .status-lookup-org-logo{max-width:145px;max-height:38px}
+  .status-lookup-result-hero{align-items:flex-start;flex-direction:column;padding:28px 20px}
+  .status-lookup-dashboard{padding:0 14px 18px}
+  .status-lookup-progress-panel,.status-lookup-finance-panel,.status-lookup-conversation{padding:20px 17px}
+  .status-lookup-steps{gap:2px}
+  .status-lookup-steps b{font-size:11px}
+  .status-lookup-result-footer{flex-direction:column;padding:16px 20px}
+  .status-lookup-new-query{font-size:12px}
+  .status-lookup-form input{font-size:18px;letter-spacing:4px}
+  .status-lookup-message-list article{width:92%}
+  .status-lookup-message-form{grid-template-columns:1fr}
+  .status-lookup-message-form>div{align-items:stretch}
+  .status-lookup-message-form button{width:100%}
+  .status-lookup-documents{margin:0 14px 16px}
+  .status-lookup-documents>div{flex-direction:column}
+  .status-lookup-documents a{width:100%;justify-content:center}
 }
-.status-lookup-documents a:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.34);
-}
-@media (max-width: 620px) {
-  .status-lookup-documents > div { flex-direction: column; }
-  .status-lookup-documents a { width: 100%; justify-content: center; }
+@media(prefers-reduced-motion:reduce){
+  :is(.status-lookup-shell,.status-lookup,.status-lookup-results) *{scroll-behavior:auto!important;transition:none!important}
 }

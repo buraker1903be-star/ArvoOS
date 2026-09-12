@@ -80,8 +80,8 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const locked=["accepted","rejected","expired","archived"].includes(row.status);
  const actions=!locked
   ?<form action={respondToProposal.bind(null,token)} className="print-hide" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginTop:"20px"}}>
-    <button name="decision" value="accept" style={{height:42,border:0,borderRadius:9,background:"#15803d",color:"#fff",fontWeight:800}}>TEKLİFİ KABUL EDİYORUM</button>
-    <button name="decision" value="reject" style={{height:42,border:0,borderRadius:9,background:"#b91c1c",color:"#fff",fontWeight:800}}>TEKLİFİ REDDEDİYORUM</button>
+    <button name="decision" value="accept" style={{height:46,border:0,borderRadius:10,background:"linear-gradient(180deg,#1b3050,#0b1b2e)",color:"#fff",fontWeight:800,letterSpacing:".04em",boxShadow:"0 0 0 1px rgba(201,166,106,.5),0 10px 22px rgba(11,27,46,.18)",cursor:"pointer"}}>TEKLİFİ KABUL EDİYORUM</button>
+    <button name="decision" value="reject" style={{height:46,border:"1px solid #d9b4ae",borderRadius:10,background:"#fff",color:"#8c2f2b",fontWeight:800,letterSpacing:".04em",cursor:"pointer"}}>TEKLİFİ REDDEDİYORUM</button>
    </form>
   :<div className="elite-notice print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
  return <ProposalDocument
