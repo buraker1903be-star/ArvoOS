@@ -6,6 +6,7 @@ import { updateTeamMemberAccess, cancelInvitation } from "./team-actions";
 import { InviteTeamForm } from "./invite-team-form";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "./documents-actions";
 import { roleNames } from "./role-names";
+import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import "./hr.css";
 
 type Department = { id: string; name: string; code: string | null; is_active: boolean };
@@ -37,6 +38,12 @@ export default async function HrPage() {
   const employees = (employeeData ?? []) as Employee[];
   const departments = (departmentData ?? []) as Department[];
   const departmentMap = new Map(departments.map((item) => [item.id, item.name]));
+  const isOwner = membership.role === "owner";
+  // Yönetici departmanındaki aktif/izinli çalışanın rolü departmandan gelir
+  // (Kurum Sahibi); Ekip ekranından elle değiştirilemez.
+  const managedByDepartment = (employee: Employee) =>
+    MANAGEMENT_EMPLOYMENT_STATUSES.includes(employee.employment_status) &&
+    isManagementDepartmentName(departmentMap.get(employee.department_id ?? ""));
   const memberMap = new Map(((memberData ?? []) as Member[]).map((member) => [member.user_id, member]));
   const invitations = ((invitationData ?? []) as Invitation[]).filter((invite) => new Date(invite.expires_at) > new Date());
   const invitationByEmail = new Map(invitations.map((invite) => [invite.email.toLowerCase(), invite]));
@@ -133,6 +140,10 @@ export default async function HrPage() {
                   {member ? (
                     employee.user_id === userId ? (
                       <span className="status-pill">{roleNames[member.role] ?? member.role} · Siz</span>
+                    ) : managedByDepartment(employee) ? (
+                      <span className="status-pill">Kurum Sahibi · Yönetici departmanı</span>
+                    ) : member.role === "owner" && !isOwner ? (
+                      <span className="status-pill">{roleNames.owner}</span>
                     ) : (
                       <form className="hr-access-form" action={updateTeamMemberAccess}>
                         <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
@@ -140,7 +151,9 @@ export default async function HrPage() {
                           <option value="member">Satış Personeli</option>
                           <option value="operasyoncu">Operasyon Personeli</option>
                           <option value="admin">Yönetici</option>
-                          <option value="owner">Kurum Sahibi</option>
+                          {/* manager seçenekte yoktu; kaydedince sessizce Satış Personeli'ne düşüyordu. */}
+                          {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
+                          {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
                         </select>
                         <label className="team-active-toggle"><input type="checkbox" name="is_active" defaultChecked={member.is_active} /> Aktif</label>
                         <button className="panel-secondary" type="submit">Kaydet</button>
