@@ -40,50 +40,84 @@
 .panel-root .commission-status.accrued{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 32%,transparent)}
 
 /* ------------------------------------------------------------
-   CRM VE OPERASYON LİSTELERİ (table.crm-data-table, kart satırlar)
-   Sorun: başlık satırı ile satırlar farklı sütun şablonları
-   kullanıyordu (1101–1320px arası kayıyordu, 901–1100px arası
-   satırlar iki sıraya inerken 9 sütunlu başlık duruyordu); operasyon
-   listesi CRM'in numara sütununa iş başlığını sıkıştırıyordu.
-   Artık her liste kendi şablonunu (data-cols) başlık ve satırlarda
-   birlikte kullanır; geniş ekranda hizalı tablo, dar ekranda etiketli kart.
+   CRM VE OPERASYON LİSTELERİ (table.crm-data-table)
+   Talepler, Teklifler ve Sözleşmeler aynı sırayı izler (crm/table-cells.tsx):
+   No · Müşteri · Konu · Temsilci · [Tutar] · Durum · Tarih · Son temas.
+   Geniş ekranda tek yüzeyli, ince çizgilerle ayrılmış bir tablo (satırlar
+   eskiden ayrı ayrı gölgeli kartlardı). Başlık ve satırlar aynı sütun
+   şablonunu (--cols) paylaşır. Ekran daraldıkça önce "Son temas", sonra
+   tarih gizlenir ve temsilci baş harf rozetine iner; 1100px altında
+   etiketli kart görünümü.
    ------------------------------------------------------------ */
-.panel-root .crm-data-table{--cols:118px minmax(200px,1.4fr) minmax(130px,.85fr) minmax(170px,1.1fr) minmax(110px,.7fr) minmax(140px,.8fr) minmax(96px,.55fr) minmax(110px,.65fr) 32px}
-.panel-root .crm-data-table[data-cols="requests"]{--cols:118px minmax(190px,1.25fr) minmax(190px,1.35fr) minmax(120px,.8fr) minmax(120px,.8fr) minmax(140px,.8fr) minmax(96px,.55fr) minmax(110px,.65fr) 32px}
-.panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:128px minmax(190px,1.35fr) minmax(120px,.8fr) minmax(170px,1.15fr) minmax(112px,.7fr) minmax(150px,.85fr) minmax(96px,.55fr) minmax(110px,.65fr) 32px}
-.panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(220px,1.6fr) minmax(150px,1fr) minmax(120px,.8fr) 96px minmax(130px,.75fr) 84px 100px 100px 32px}
+.panel-root .crm-data-table{--cols:128px minmax(0,1.25fr) minmax(0,1.6fr) minmax(0,1fr) 156px 104px 112px 16px}
+.panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:128px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr) 128px 156px 104px 112px 16px}
+.panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(0,1.7fr) minmax(0,1fr) minmax(0,.9fr) 88px 144px 76px 84px 100px 16px}
+
+/* Temsilci: baş harf rozeti + ad (her genişlikte) */
+.panel-root .crm-rep{display:inline-flex;align-items:center;gap:9px;min-width:0;max-width:100%;color:var(--ink);font-size:13px}
+.panel-root .crm-rep>i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 30%,transparent);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
+.panel-root .crm-rep>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-rep.is-empty{color:var(--muted)}
+.panel-root .crm-rep.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
 
 @media(min-width:1101px){
-  .panel-root .crm-page-stack .crm-data-table thead{display:block;position:sticky;top:72px;z-index:2;background:var(--bg)}
-  .panel-root .crm-page-stack .crm-data-table :is(thead,tbody) tr{display:grid;grid-template-columns:var(--cols);column-gap:14px;align-items:center;padding-inline:18px}
-  .panel-root .crm-page-stack .crm-data-table thead tr{min-height:0;margin:0 0 6px;padding-block:6px 10px;border-bottom:1px solid var(--line)}
-  .panel-root .crm-page-stack .crm-data-table thead th{position:static;padding:0;border:0;background:transparent;color:var(--tbl-head-ink);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap}
-  .panel-root .crm-page-stack .crm-data-table tbody{gap:6px}
-  .panel-root .crm-page-stack .crm-data-table tbody tr{min-height:58px;padding-block:9px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm)}
-  .panel-root .crm-page-stack .crm-data-table tbody td{min-height:0;gap:3px;font-size:13px;line-height:1.35}
+  .panel-root .crm-page-stack .crm-table-wrap{padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:clip}
+  .panel-root .crm-page-stack .crm-data-table{display:block;width:100%}
+  .panel-root .crm-page-stack .crm-data-table thead{display:block;position:sticky;top:72px;z-index:3;background:var(--surface-2);border-bottom:1px solid var(--line)}
+  .panel-root .crm-page-stack .crm-data-table :is(thead,tbody) tr{display:grid;grid-template-columns:var(--cols);column-gap:14px;align-items:center;padding-inline:20px}
+  .panel-root .crm-page-stack .crm-data-table thead tr{min-height:44px;margin:0;padding-block:0;border:0;background:transparent}
+  .panel-root .crm-page-stack .crm-data-table thead th{position:static;min-width:0;padding:0;border:0;background:transparent;color:var(--tbl-head-ink);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .panel-root .crm-page-stack .crm-data-table tbody{display:block}
+  .panel-root .crm-page-stack .crm-data-table tbody tr{min-height:66px;margin:0;padding-block:11px;border:0;border-top:1px solid var(--tbl-line);border-radius:0;background:transparent;box-shadow:none;transform:none;contain-intrinsic-size:auto 66px}
+  .panel-root .crm-page-stack .crm-data-table tbody tr:first-child{border-top:0}
+  .panel-root .crm-page-stack .crm-data-table tbody tr:hover{transform:none;border-color:var(--tbl-line);background:var(--tbl-row-hover);box-shadow:inset 3px 0 0 var(--accent-500)}
+  .panel-root .crm-page-stack .crm-data-table tbody tr:focus-within{outline:2px solid var(--accent);outline-offset:-2px}
+  .panel-root .crm-page-stack .crm-data-table tbody td{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:3px;min-width:0;min-height:0;padding:0;border:0;background:transparent;color:var(--ink);font-size:13px;line-height:1.35}
   .panel-root .crm-page-stack .crm-data-table tbody td::before{display:none}
-  /* Tutar sağa, tablo rakamlarıyla */
-  .panel-root .crm-page-stack .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]) :is(th,td):nth-child(5){text-align:right;align-items:flex-end;justify-content:center}
-  .panel-root .crm-page-stack .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]) td:nth-child(5){font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+  /* Uzun ad/konu tek satırda kalır, taşarsa üç noktayla kısalır (tamamı ipucunda) */
+  .panel-root .crm-page-stack .crm-data-table tbody td :is(.crm-table-title,.crm-table-sub){display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .panel-root .crm-page-stack .crm-data-table .crm-table-title{color:var(--ink);font-size:14px;font-weight:650;letter-spacing:-.005em}
+  .panel-root .crm-page-stack .crm-data-table .crm-table-sub{color:var(--muted);font-size:12px;font-weight:500}
+  .panel-root .crm-page-stack .crm-data-table td.crm-table-mono{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px;color:var(--ink);font-size:12px;font-weight:700;letter-spacing:.02em}
+  .panel-root .crm-page-stack .crm-data-table td[data-label="Durum"]{align-items:flex-start}
+  /* Tutar sağa, tablo rakamlarıyla; tarih eşit genişlikte rakamlarla */
+  .panel-root .crm-page-stack .crm-data-table th.crm-col-amount{text-align:right}
+  .panel-root .crm-page-stack .crm-data-table td.crm-col-amount{align-items:flex-end;text-align:right;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .panel-root .crm-page-stack .crm-data-table td.crm-col-date{font-variant-numeric:tabular-nums;white-space:nowrap}
   .panel-root .crm-page-stack .crm-data-table[data-cols="operations"] td:is(:nth-child(6),:nth-child(7)){font-variant-numeric:tabular-nums}
+  .panel-root .crm-page-stack .crm-data-table td.crm-table-actions{align-items:flex-end}
+  .panel-root .crm-page-stack .crm-data-table .crm-row-chevron{color:var(--dim);font-size:18px;transition:transform .15s ease,color .15s ease}
+  .panel-root .crm-page-stack .crm-data-table tbody tr:hover .crm-row-chevron{color:var(--accent);transform:translateX(2px)}
+}
+/* 1101–1599px: "Son temas" gizlenir */
+@media(min-width:1101px) and (max-width:1599px){
+  .panel-root .crm-data-table{--cols:124px minmax(0,1.25fr) minmax(0,1.6fr) minmax(0,1fr) 150px 100px 16px}
+  .panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:124px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr) 124px 150px 100px 16px}
+  .panel-root .crm-page-stack .crm-data-table:not([data-cols="operations"]) .crm-col-contact{display:none}
+}
+/* 1101–1359px: tarih de gizlenir, temsilci yalnızca rozet (ad ipucunda) */
+@media(min-width:1101px) and (max-width:1359px){
+  .panel-root .crm-data-table{--cols:116px minmax(0,1.2fr) minmax(0,1.5fr) 34px 148px 16px}
+  .panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:116px minmax(0,1.2fr) minmax(0,1.5fr) 34px 120px 148px 16px}
+  .panel-root .crm-page-stack .crm-data-table:not([data-cols="operations"]) .crm-col-date{display:none}
+  .panel-root .crm-page-stack .crm-data-table th.crm-col-rep{visibility:hidden}
+  .panel-root .crm-page-stack .crm-data-table .crm-rep>span{display:none}
 }
 @media(max-width:1100px){
-  /* Satırlar karta dönünce 9 sütunlu başlık gizlenir, hücre etiketleri görünür. */
+  /* Satırlar karta dönünce başlık gizlenir, hücre etiketleri görünür. */
   .panel-root .crm-page-stack .crm-data-table thead{display:none}
   .panel-root .crm-page-stack .crm-data-table tbody td[data-label]:not(:nth-child(2))::before{display:block}
   .panel-root .crm-page-stack .crm-data-table[data-cols="operations"] tbody td[data-label]:nth-child(2)::before{display:block}
-  /* Kart hücreleri dar: uzun rozet ("Teklif Süresi Doldu") yan hücreye taşmasın;
-     numara hücresinin etiketi de kod yazı tipini devralmasın. */
+  /* Kart hücreleri dar: uzun rozet yan hücreye taşmasın; numara hücresinin
+     etiketi kod yazı tipini devralmasın; ad ve iletişim alt alta dursun. */
   .panel-root .crm-page-stack .crm-data-table tbody td{min-width:0}
   .panel-root .crm-page-stack .crm-data-table tbody td .crm-row-link{align-items:flex-start;justify-items:start;text-align:left}
+  .panel-root .crm-page-stack .crm-data-table tbody td :is(.crm-table-title,.crm-table-sub){display:block}
   .panel-root .crm-page-stack .crm-data-table tbody .status-pill{max-width:100%;white-space:normal}
   .panel-root .crm-page-stack .crm-data-table tbody td[data-label]::before{font-family:var(--font-body);letter-spacing:.02em}
 }
 @media(min-width:761px) and (max-width:1100px){
   .panel-root .crm-page-stack .crm-data-table[data-cols="operations"] tbody tr{grid-template-columns:minmax(200px,1.4fr) minmax(150px,1fr) repeat(3,minmax(100px,.7fr))}
-}
-@media(hover:hover) and (pointer:fine){
-  .panel-root .crm-page-stack .crm-data-table tbody tr:hover{background:var(--surface);border-color:color-mix(in srgb,var(--accent-500) 38%,var(--line));box-shadow:var(--shadow-md)}
 }
 
 /* ------------------------------------------------------------

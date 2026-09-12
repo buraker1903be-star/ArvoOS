@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
-import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
-import { fetchLastContacts, relativeTime } from "./last-contact";
+import { phoneSearchTerms } from "@/lib/format-phone";
+import { fetchLastContacts } from "./last-contact";
+import {
+  CustomerCell,
+  DateCell,
+  LastContactCell,
+  RepresentativeCell,
+  SubjectCell,
+} from "./table-cells";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -225,12 +232,11 @@ export default async function RequestsPage({
                 <tr>
                   <th>No</th>
                   <th>Müşteri</th>
-                  <th>Talep Konusu</th>
-                  <th>Hizmet</th>
-                  <th>Temsilci</th>
+                  <th>Konu</th>
+                  <th className="crm-col-rep">Temsilci</th>
                   <th>Durum</th>
-                  <th>Teslim</th>
-                  <th>Son temas</th>
+                  <th className="crm-col-date">Teslim</th>
+                  <th className="crm-col-contact">Son temas</th>
                   <th></th>
                 </tr>
               </thead>
@@ -240,7 +246,7 @@ export default async function RequestsPage({
                   const ownerName = item.assigned_employee_id
                     ? (representativeMap.get(item.assigned_employee_id) ??
                       "Pasif personel")
-                    : "Atanmamış";
+                    : null;
                   return (
                     <tr key={item.id}>
                       <td className="crm-table-mono" data-label="No">
@@ -252,61 +258,20 @@ export default async function RequestsPage({
                           TLP-{item.id.slice(0, 8).toUpperCase()}
                         </Link>
                       </td>
-                      <td data-label="Müşteri">
-                        <Link
-                          className="crm-row-link"
-                          href={`/panel/crm/requests/${item.id}`}
-                        >
-                          <span className="crm-table-title">
-                            {formatPersonName(item.customer_name)}
-                          </span>
-                          <span className="crm-table-sub">
-                            {formatPhone(item.contact_phone) ||
-                              item.contact_email ||
-                              "İletişim yok"}
-                          </span>
-                        </Link>
-                      </td>
-                      <td data-label="Talep Konusu">
-                        <Link
-                          className="crm-row-link crm-row-subject"
-                          href={`/panel/crm/requests/${item.id}`}
-                        >
-                          {item.title}
-                        </Link>
-                      </td>
-                      <td data-label="Hizmet">{d.service_type || "—"}</td>
-                      <td data-label="Temsilci">{formatPersonName(ownerName)}</td>
+                      <CustomerCell
+                        name={item.customer_name}
+                        phone={item.contact_phone}
+                        email={item.contact_email}
+                      />
+                      <SubjectCell title={item.title} service={d.service_type} />
+                      <RepresentativeCell name={ownerName} />
                       <td data-label="Durum">
                         <span className="status-pill" data-tone={statusTone(item.stage)}>
                           {requestStageNames[item.stage] ?? item.stage}
                         </span>
                       </td>
-                      <td data-label="Teslim">
-                        {item.expected_close_date
-                          ? new Date(
-                              item.expected_close_date + "T00:00:00",
-                            ).toLocaleDateString("tr-TR")
-                          : "—"}
-                      </td>
-                      <td data-label="Son temas">
-                        {lastContacts.get(item.id) ? (
-                          <Link
-                            className="crm-last-contact"
-                            href={`/panel/crm/requests/${item.id}`}
-                            title={lastContacts.get(item.id)!.preview}
-                          >
-                            <span className="crm-last-contact-who">
-                              {lastContacts.get(item.id)!.authorInitials}
-                            </span>
-                            <span className="crm-last-contact-when">
-                              {relativeTime(lastContacts.get(item.id)!.at)}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span className="crm-last-contact-none">Not yok</span>
-                        )}
-                      </td>
+                      <DateCell label="Teslim" value={item.expected_close_date} />
+                      <LastContactCell contact={lastContacts.get(item.id)} />
                       <td className="crm-table-actions">
                         <span className="crm-row-chevron" aria-hidden="true">›</span>
                       </td>

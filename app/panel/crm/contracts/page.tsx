@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
 import { ShareSendLink } from "../share-send-link";
-import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
-import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
+import { phoneSearchTerms } from "@/lib/format-phone";
+import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
+import {
+  CustomerCell,
+  DateCell,
+  LastContactCell,
+  RepresentativeCell,
+  SubjectCell,
+} from "../table-cells";
 import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -292,14 +299,14 @@ export default async function ContractsPage({ searchParams }: Props) {
             <table className="crm-data-table" data-cols="contracts">
               <thead>
                 <tr>
-                  <th>Sözleşme No</th>
+                  <th>No</th>
                   <th>Müşteri</th>
-                  <th>Temsilci</th>
                   <th>Konu</th>
-                  <th>Tutar</th>
+                  <th className="crm-col-rep">Temsilci</th>
+                  <th className="crm-col-amount">Tutar</th>
                   <th>Durum</th>
-                  <th>Teslim</th>
-                  <th>Son temas</th>
+                  <th className="crm-col-date">Teslim</th>
+                  <th className="crm-col-contact">Son temas</th>
                   <th></th>
                 </tr>
               </thead>
@@ -309,31 +316,29 @@ export default async function ContractsPage({ searchParams }: Props) {
                   const representativeName = customer?.assigned_employee_id
                     ? (representativeMap.get(customer.assigned_employee_id) ??
                       "Pasif personel")
-                    : "Atanmamış";
+                    : null;
                   return (
                     <tr key={row.id}>
                       <td className="crm-table-mono" data-label="Sözleşme No">
-                        <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`}>
+                        <Link
+                          className="crm-row-link"
+                          href={`/panel/crm/contracts/${row.id}`}
+                          aria-label={`${row.contract_no} sözleşmesini aç`}
+                        >
                           {row.contract_no}
                         </Link>
                       </td>
-                      <td data-label="Müşteri">
-                        <div>
-                          <span className="crm-table-title">
-                            <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`}>
-                              {formatPersonName(customer?.customer_name)}
-                            </Link>
-                          </span>
-                          <span className="crm-table-sub">
-                            {formatPhone(customer?.contact_phone) ||
-                              customer?.contact_email ||
-                              "İletişim yok"}
-                          </span>
-                        </div>
-                      </td>
-                      <td data-label="Temsilci">{formatPersonName(representativeName)}</td>
-                      <td data-label="Konu">{row.title}</td>
-                      <td data-label="Tutar">
+                      <CustomerCell
+                        name={customer?.customer_name}
+                        phone={customer?.contact_phone}
+                        email={customer?.contact_email}
+                      />
+                      <SubjectCell
+                        title={row.title}
+                        service={String(customer?.request_details?.service_type ?? "")}
+                      />
+                      <RepresentativeCell name={representativeName} />
+                      <td data-label="Tutar" className="crm-col-amount">
                         {money(row.amount, row.currency)}
                       </td>
                       <td data-label="Durum">
@@ -352,31 +357,8 @@ export default async function ContractsPage({ searchParams }: Props) {
                           </small>
                         ) : null}
                       </td>
-                      <td data-label="Teslim">
-                        {row.due_date
-                          ? new Date(
-                              row.due_date + "T00:00:00",
-                            ).toLocaleDateString("tr-TR")
-                          : "—"}
-                      </td>
-                      <td data-label="Son temas">
-                        {lastContacts.get(row.opportunity_id) ? (
-                          <Link
-                            className="crm-last-contact"
-                            href={`/panel/crm/contracts/${row.id}`}
-                            title={lastContacts.get(row.opportunity_id)!.preview}
-                          >
-                            <span className="crm-last-contact-who">
-                              {lastContacts.get(row.opportunity_id)!.authorInitials}
-                            </span>
-                            <span className="crm-last-contact-when">
-                              {relativeTime(lastContacts.get(row.opportunity_id)!.at)}
-                            </span>
-                          </Link>
-                        ) : (
-                          <span className="crm-last-contact-none">Not yok</span>
-                        )}
-                      </td>
+                      <DateCell label="Teslim" value={row.due_date} />
+                      <LastContactCell contact={lastContacts.get(row.opportunity_id)} />
                       <td className="crm-table-actions">
                         <span className="crm-row-chevron" aria-hidden="true">›</span>
                       </td>
