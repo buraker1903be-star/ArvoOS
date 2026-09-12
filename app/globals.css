@@ -30,3 +30,15 @@ footer{background:#050505;color:#fff;padding:130px 0 40px}.footer-main{position:
 .eco-center{background:var(--navy);box-shadow:0 25px 60px rgba(0,43,85,.22)}
 .values{background:var(--green-pale)}
 footer{background:var(--navy-deep)}
+
+/* Tek yazı tipi (2026-09): Apple cihazlarında SF Pro, diğerlerinde Inter
+   (app/layout.tsx). Eski --font-manrope / --font-cormorant adları hâlâ
+   login, durum sorgulama, belge ve mesaj stillerinde kullanılıyor; ikisi
+   de aynı yığına bağlanır, böylece her yerde tek yazı tipi görünür.
+   body üzerinde tanımlı: --font-inter next/font tarafından body'ye verilir. */
+body{
+  --font-system:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",var(--font-inter),"Inter","Helvetica Neue",system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-manrope:var(--font-system);
+  --font-cormorant:var(--font-system);
+  font-family:var(--font-system);
+}

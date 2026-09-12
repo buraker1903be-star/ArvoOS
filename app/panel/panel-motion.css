@@ -141,6 +141,32 @@
 .panel-root ::-webkit-scrollbar-track{background:transparent}
 .panel-root ::-webkit-scrollbar-thumb{border:3px solid transparent;border-radius:999px;background:color-mix(in srgb,var(--ink) 20%,transparent) padding-box}
 
+/* ---------- Daraltılabilir kenar çubuğu (masaüstü, sidebar-toggle.tsx) ----------
+   Daraltılmışken yalnızca simgeler kalır (adlar fareyle üzerine gelince
+   ipucunda); genişlik iOS sayfa eğrisiyle değişir. 900px altında mevcut
+   tablet/mobil düzen geçerli, düğme gizli. */
+.panel-root .panel-sidebar-toggle{
+  display:flex;align-items:center;gap:10px;width:100%;min-height:40px;margin:0 0 6px;padding:8px 10px;
+  border:1px solid rgba(255,255,255,.08);border-radius:12px;background:transparent;
+  color:var(--n-400);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;
+  transition:background-color .2s ease,color .2s ease,transform .34s var(--ease-spring)
+}
+.panel-root .panel-sidebar-toggle:hover{background:rgba(255,255,255,.06);color:var(--n-0)}
+.panel-root .panel-sidebar-toggle:active{transform:scale(.96)}
+.panel-root .panel-sidebar-toggle>i{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--accent-bright);font-size:15px;font-style:normal;line-height:1}
+@media(max-width:900px){.panel-root .panel-sidebar-toggle{display:none}}
+@media(min-width:901px){
+  .panel-root .panel-sidebar{transition:width .5s var(--ease-sheet),padding .5s var(--ease-sheet)}
+  .panel-root .panel-workspace{transition:margin-left .5s var(--ease-sheet)}
+  .panel-root.is-nav-collapsed .panel-sidebar{width:84px;padding-inline:12px}
+  .panel-root.is-nav-collapsed .panel-workspace{margin-left:84px}
+  .panel-root.is-nav-collapsed :is(.panel-brand>span,.panel-org,.panel-nav-title,.panel-nav em,.panel-nav-group-link b,.panel-nav-children,.panel-security>span){display:none}
+  /* Adlar görsel olarak gizli ama ekran okuyucuda kalır */
+  .panel-root.is-nav-collapsed :is(.panel-nav a,.panel-nav summary,.panel-sidebar-toggle,.panel-logout button)>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .panel-root.is-nav-collapsed :is(.panel-nav a,.panel-nav summary,.panel-brand,.panel-security,.panel-sidebar-toggle){justify-content:center;padding-inline:0}
+  .panel-root.is-nav-collapsed .panel-logout button{text-align:center;padding-inline:0}
+}
+
 /* ---------- Hareketi azaltma: gecikmeler de kalksın ---------- */
 @media(prefers-reduced-motion:reduce){
   .panel-root *,.panel-root *::before,.panel-root *::after{animation-delay:0s!important}

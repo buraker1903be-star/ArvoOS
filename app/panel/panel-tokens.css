@@ -71,11 +71,12 @@
      ÖNEMLİ: --font-body ve --font-heading hiçbir yerde tanımlı değildi.
      Tanımsız var() yüzünden `font:` kısayolu geçersiz sayılıyor ve tüm
      panel varsayılan tarayıcı fontuna düşüyordu.
-     --font-display: sayfa başlıkları ve büyük rakamlar için serif. Küçük
-     arayüz başlıkları (--font-heading) okunaklılık için sans kalır. */
-  --font-body:var(--font-manrope,"Manrope"),system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+     Tek yazı tipi (2026-09): Apple cihazlarında SF Pro, diğerlerinde Inter.
+     Yığın app/globals.css'te (body --font-system). --font-display artık
+     ayrı bir serif değil; başlık ağırlık ve aralıkları panel-premium.css'te. */
+  --font-body:var(--font-system,-apple-system,BlinkMacSystemFont,"Inter",system-ui,"Segoe UI",Roboto,sans-serif);
   --font-heading:var(--font-body);
-  --font-display:var(--font-cormorant,"Cormorant Garamond"),"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --font-display:var(--font-body);
 
   /* type scale — panelin okunabilir taban ölçeği */
   --fs-micro:11px;   /* etiket / kicker */

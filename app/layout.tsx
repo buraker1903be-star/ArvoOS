@@ -1,21 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import "./corporate.css";
 import "./motion.css";
 import ScrollEffects from "./scroll-effects";
 
-const manrope = Manrope({
+// Tek yazı tipi: Apple cihazlarında sistemin kendi SF Pro'su (-apple-system),
+// diğerlerinde ona en yakın açık yazı tipi Inter. SF Pro'nun lisansı web
+// fontu olarak dağıtılmasına izin vermiyor. preload kapalı: Apple
+// cihazları SF'yi bulduğu için Inter dosyasını hiç indirmez.
+// Yığın globals.css'te (body --font-system).
+const inter = Inter({
   subsets: ["latin", "latin-ext"],
-  variable: "--font-manrope",
+  variable: "--font-inter",
   display: "swap",
-});
-// Panel başlıkları ve büyük rakamlar için serif (--font-display).
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin", "latin-ext"],
-  weight: ["500", "600", "700"],
-  variable: "--font-cormorant",
-  display: "swap",
+  preload: false,
 });
 export const metadata: Metadata = {
   title: "Arvo | Ürünler ve Dijital Hizmetler",
@@ -41,4 +40,4 @@ export const viewport: Viewport = {
 // Bu script render'dan önce çalışır, böylece "flash" da olmaz.
 const themeInit = `(function(){try{var t=localStorage.getItem("arvoos.theme");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={`${manrope.variable} ${cormorant.variable}`}><ScrollEffects/>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={inter.variable}><ScrollEffects/>{children}</body></html>}

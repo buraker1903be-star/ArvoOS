@@ -613,7 +613,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 
 /* --- Menü --- */
 .panel-brand>i{background:linear-gradient(150deg,var(--accent-300),var(--accent-500));color:var(--brand-900);font-family:var(--font-display);font-size:22px;font-weight:700}
-.panel-brand b{font-family:var(--font-display);font-size:23px;font-weight:600;letter-spacing:.005em;color:var(--n-0)}
+.panel-brand b{font-family:var(--font-display);font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--n-0)}
 .panel-brand small{letter-spacing:.2em;color:color-mix(in srgb,var(--accent-bright) 72%,var(--n-400))}
 .panel-org{background:rgba(255,255,255,.04);border-color:color-mix(in srgb,var(--accent-bright) 16%,transparent)}
 /* Menü her iki temada da koyu: --info-soft koyu temada koyu laciverte
@@ -635,23 +635,23 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 
 /* --- Üst çubuk --- */
 .panel-topbar{border-bottom:1px solid color-mix(in srgb,var(--accent-500) 18%,var(--line))}
-.panel-breadcrumb b{font-family:var(--font-display);font-size:21px;font-weight:600;letter-spacing:0}
+.panel-breadcrumb b{font-family:var(--font-display);font-size:17px;font-weight:650;letter-spacing:-.01em}
 .panel-user>span{background:linear-gradient(150deg,var(--accent-100),var(--accent-200));color:var(--accent-800)}
 
-/* --- Başlıklar: serif, ferah --- */
+/* --- Başlıklar: tek yazı tipi (SF Pro / Inter), iOS büyük başlık ölçüsü --- */
 .panel-kicker,.panel-breadcrumb small{color:var(--accent);font-weight:700;letter-spacing:.2em}
-.panel-pagehead h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,2.8vw,44px);line-height:1.02;letter-spacing:-.005em;color:var(--ink)}
+.panel-pagehead h1{font-family:var(--font-display);font-weight:700;font-size:clamp(28px,2.3vw,34px);line-height:1.12;letter-spacing:-.025em;color:var(--ink)}
 .panel-card h2,.panel-module h2,.section-heading h2,.panel-drawer-header h2,.messages-drawer-head h2,.panel-sheet header h2,.crm-revision-history header h2{
-  font-family:var(--font-display);font-weight:600;font-size:25px;line-height:1.12;letter-spacing:0
+  font-family:var(--font-display);font-weight:650;font-size:20px;line-height:1.25;letter-spacing:-.015em
 }
 
-/* --- Özet kartları: serif rakam + ince altın imleç --- */
+/* --- Özet kartları: büyük rakam + ince altın imleç --- */
 .metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{
   background-image:linear-gradient(var(--accent-bright),var(--accent-bright));
   background-size:28px 2px;background-repeat:no-repeat;background-position:16px 0
 }
 .metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong,.dashboard-summary-number{
-  font-family:var(--font-display);font-weight:600;font-size:30px;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums;color:var(--ink)
+  font-family:var(--font-display);font-weight:650;font-size:28px;letter-spacing:-.02em;font-variant-numeric:lining-nums tabular-nums;color:var(--ink)
 }
 .metric-strip small,.metric-strip-five small,.crm-metrics small,.finance-metrics small,.ops-metrics small,.report-kpi small,.finance-cost-kpis small,.finance-cost-detail-kpis small,.finance-payment-kpis small{letter-spacing:.16em}
 .metric-icon{color:var(--accent);background:var(--accent-soft)}

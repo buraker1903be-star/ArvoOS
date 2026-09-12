@@ -59,6 +59,8 @@
 .panel-root .crm-rep>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel-root .crm-rep.is-empty{color:var(--muted)}
 .panel-root .crm-rep.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
+/* Kayıt numaraları da tek yazı tipinde (eskiden kod yazı tipi); rakamlar eşit genişlikte */
+.panel-root .crm-data-table .crm-table-mono{font-family:var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 
 @media(min-width:1101px){
   .panel-root .crm-page-stack .crm-table-wrap{padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:clip}

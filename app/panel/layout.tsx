@@ -13,6 +13,8 @@ import { FlashToast } from "./flash-toast";
 import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
+import { SidebarToggle } from "./sidebar-toggle";
+import { cookies } from "next/headers";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -86,8 +88,10 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
   // panel-tokens.css içindeki fallback ArvoOS yeşilini kullanır.
   const tenantStyle = isPlatformOrg ? {} : tenantTheme(organization.brand_color);
+  // Daraltılmış menü tercihi (sidebar-toggle.tsx yazar): ilk çizimde doğru genişlik.
+  const navCollapsed = (await cookies()).get("arvo_nav")?.value === "collapsed";
 
-  return <div className="panel-root" style={tenantStyle}><main className="panel-frame">
+  return <div className={navCollapsed ? "panel-root is-nav-collapsed" : "panel-root"} style={tenantStyle}><main className="panel-frame">
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
@@ -100,6 +104,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       </div>
       <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />
       <div className="panel-sidebar-footer">
+        <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
         <form className="panel-logout" action={logout}><button type="submit">↪ <span>Çıkış yap</span></button></form>
       </div>
