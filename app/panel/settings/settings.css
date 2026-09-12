@@ -1,0 +1,164 @@
+/* ============================================================
+   Ayarlar (2026-09) — finans/İK ile aynı iOS dili: widget şeridi,
+   bölüm kartları, gruplanmış listeler, iOS anahtarları.
+   Renkler yalnızca panel token'larından; .stg kapsamında.
+   ============================================================ */
+.stg{display:grid;gap:18px;min-width:0}
+
+/* Ton: simge kutusu ve widget halkası aynı çifti kullanır */
+.stg [data-tone="neutral"]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.stg [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.stg [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.stg [data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:color-mix(in srgb,var(--warning) 80%,var(--ink))}
+.stg [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.stg [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
+
+/* ---------- Widget şeridi ---------- */
+.stg-widgets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stg-widget{position:relative;display:flex;flex-direction:column;min-width:0;min-height:132px;padding:16px 18px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden;transition:border-color .2s ease,box-shadow .2s ease}
+.stg-widget::after{content:"";position:absolute;inset:auto -30% -60% auto;width:140px;height:140px;border-radius:50%;background:var(--tone-bg,var(--surface-2));opacity:.55;pointer-events:none}
+.stg-widget-icon{position:relative;z-index:1;display:grid;place-items:center;width:34px;height:34px;margin-bottom:12px;border-radius:11px;background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted))}
+.stg-widget small{position:relative;z-index:1;color:var(--muted);font-size:13px;font-weight:600}
+.stg-widget strong{position:relative;z-index:1;color:var(--ink);font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stg-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:12.5px}
+@media (hover:hover) and (pointer:fine){.stg-widget:hover{border-color:color-mix(in srgb,var(--tone-fg,var(--muted)) 26%,var(--line));box-shadow:var(--shadow-md)}}
+
+/* ---------- Bölüm kısayolları ---------- */
+.stg-nav{display:flex;gap:8px;margin:0 -2px;padding:2px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none}
+.stg-nav::-webkit-scrollbar{display:none}
+.stg-nav a{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;text-decoration:none;scroll-snap-align:start;transition:border-color .18s ease,background-color .18s ease}
+.stg-nav a svg{color:var(--muted)}
+.stg-nav a:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--surface-2)}
+.stg-nav a:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+
+/* ---------- Bölüm kartları ---------- */
+.stg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.stg-card{scroll-margin-top:96px;min-width:0;display:flex;flex-direction:column;gap:18px;padding:22px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.stg-card.is-wide{grid-column:1/-1}
+.stg-card-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.stg-card-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted))}
+.stg-card-title{flex:1 1 260px;min-width:0}
+.stg-card-title small{display:block;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.stg-card-title h2{margin:3px 0 0;color:var(--ink);font-size:18px;font-weight:700;line-height:1.25;letter-spacing:-.015em}
+.stg-card-title p{max-width:640px;margin:5px 0 0;color:var(--muted);font-size:13.5px;line-height:1.5}
+.stg-card-aside{flex:none;display:flex;align-items:center;gap:8px;margin-left:auto}
+.stg-muted{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13.5px}
+
+/* Resmi bilgiler formu kendi başlığını taşımaz; kart başlığı yeter */
+.stg-card .slg-layout{margin-top:0}
+
+/* ---------- iOS gruplanmış liste ---------- */
+.stg-list{margin:0;padding:0;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);overflow:hidden}
+.stg-list>div,.stg-list>a{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:50px;padding:10px 16px}
+.stg-list>*+*{border-top:1px solid var(--line-soft)}
+.stg-list dt{flex:none;color:var(--muted);font-size:13px}
+.stg-list dd{min-width:0;margin:0;color:var(--ink);font-size:14px;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.stg-list dd.is-empty{color:var(--dim);font-weight:500}
+.stg-list dd.is-mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;letter-spacing:.02em}
+.stg-link-row{color:var(--ink);text-decoration:none;transition:background-color .15s ease}
+.stg-link-row:hover{background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface-2))}
+.stg-link-row:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+.stg-row-main{display:flex;align-items:center;gap:12px;min-width:0}
+.stg-row-main b{display:block;color:var(--ink);font-size:14px;font-weight:600}
+.stg-row-main small{display:block;margin-top:1px;color:var(--muted);font-size:12.5px}
+.stg-row-icon{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--tone-bg,var(--surface));color:var(--tone-fg,var(--muted))}
+.stg-link-row>svg{flex:none;color:var(--dim);transition:transform .15s ease,color .15s ease}
+.stg-link-row:hover>svg{color:var(--accent);transform:translateX(2px)}
+
+.stg-empty{display:grid;justify-items:center;gap:8px;padding:26px 16px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center}
+.stg-empty p{margin:0;font-size:13.5px}
+
+/* Salt okunur rozeti */
+.stg-readonly{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap}
+
+/* Modül etiketleri */
+.stg-tags{display:flex;flex-wrap:wrap;gap:8px}
+.stg-tags span{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent-strong);font-size:13px;font-weight:600}
+
+/* ---------- Kurumsal kimlik formu ---------- */
+.stg-logo-preview{display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
+.stg-logo-preview b{display:block;color:var(--ink);font-size:14px;font-weight:650}
+.stg-logo-preview small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px}
+/* Logo ve kaşe belgedeki gibi beyaz kâğıt üzerinde gösterilir (koyu temada da) */
+.stg-paper{flex:none;display:grid;place-items:center;min-width:120px;min-height:64px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.stg-paper img{display:block;max-width:200px;max-height:56px;object-fit:contain}
+.stg-color{display:flex;align-items:center;gap:10px;margin-top:6px}
+.panel-root .stg .stg-color input[type="color"]{flex:none;width:52px;height:40px;min-height:40px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
+.stg-color small{color:var(--muted);font-size:12.5px;font-weight:500}
+.stg-signature{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.8fr);gap:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
+.stg-signature>label{margin:0}
+.stg-signature>label small{display:block;margin-top:8px;color:var(--muted);font-size:12.5px;font-weight:500}
+.stg-signature-preview{display:grid;place-items:center;min-height:150px;padding:14px;border:1px dashed var(--line);border-radius:12px;background:#fff;text-align:center}
+.stg-signature-preview img{max-width:100%;max-height:132px;object-fit:contain}
+.stg-signature-preview span{color:var(--muted);font-size:13px}
+.panel-root .stg .stg-check{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:0;color:var(--ink);font-size:13.5px;font-weight:600}
+.panel-root .stg .stg-check input{flex:none;width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--danger)}
+
+/* ---------- Yetkilendirme matrisi ---------- */
+.stg-roles{display:flex;flex-wrap:wrap;gap:8px}
+.stg-roles span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink);font-size:12.5px;font-weight:600}
+.stg-roles span.is-owner{border-color:color-mix(in srgb,var(--accent-500) 35%,var(--line));background:var(--accent-soft);color:var(--accent-strong)}
+.stg-perm-scroll{margin:0 -4px;padding:0 4px;overflow-x:auto}
+.stg-perm{width:100%;min-width:680px;border-collapse:separate;border-spacing:0}
+.stg-perm thead th{padding:0 12px 12px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-align:center;text-transform:uppercase;white-space:nowrap}
+.stg-perm thead th:first-child{padding-left:8px;text-align:left}
+.stg-perm tbody th,.stg-perm tbody td{padding:12px;border-top:1px solid var(--line-soft);vertical-align:middle}
+.stg-perm tbody th{padding-left:8px;font-weight:inherit;text-align:left}
+.stg-perm tbody td{text-align:center}
+.stg-perm tbody tr{transition:background-color .15s ease}
+.stg-perm tbody tr:hover{background:color-mix(in srgb,var(--accent-soft) 30%,transparent)}
+.stg-perm-module{display:flex;align-items:center;gap:12px}
+.stg-perm-module b{display:block;color:var(--ink);font-size:14px;font-weight:650}
+.stg-perm-module small{display:block;margin-top:1px;color:var(--muted);font-size:12.5px;font-weight:500}
+
+/* iOS anahtarı (onay kutusu; form adı ve davranışı değişmez) */
+.stg-switch{position:relative;display:inline-flex;vertical-align:middle;cursor:pointer}
+.panel-root .stg .stg-switch input{position:absolute;inset:0;z-index:1;width:100%;height:100%;min-height:0;margin:0;opacity:0;cursor:pointer}
+.stg-switch>span{position:relative;display:block;width:46px;height:28px;border-radius:var(--r-pill);background:var(--line);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);transition:background-color .22s ease}
+.stg-switch>span::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+.stg-switch input:checked+span{background:var(--success)}
+.stg-switch input:checked+span::after{transform:translateX(18px)}
+.stg-switch input:focus-visible+span{box-shadow:0 0 0 3px var(--focus)}
+
+.stg-savebar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--line-soft)}
+.stg-savebar p{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted);font-size:13px}
+
+/* ---------- Duyarlı ---------- */
+@media (max-width:1100px){
+  .stg-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .stg-grid{grid-template-columns:minmax(0,1fr)}
+  .stg-signature{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  /* panel-premium/panel-mobile telefonda her tabloya 680-720px en az genişlik
+     verir (.panel-content table); matris karta dönüştüğü için sıfırlanır,
+     yoksa anahtarlar ekranın dışında kalıyordu. */
+  .panel-root .stg .stg-perm{min-width:0;width:100%}
+  .stg-perm thead{display:none}
+  .stg-perm,.stg-perm tbody,.stg-perm tr,.stg-perm tbody th,.stg-perm tbody td{display:block}
+  .stg-perm tbody tr{padding:14px 0;border-top:1px solid var(--line-soft)}
+  .stg-perm tbody tr:first-child{border-top:0;padding-top:4px}
+  .stg-perm tbody tr:hover{background:none}
+  .stg-perm tbody th,.stg-perm tbody td{padding:0;border:0}
+  .stg-perm tbody th{margin-bottom:6px}
+  .stg-perm tbody td{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding-left:42px;text-align:left}
+  .stg-perm tbody td::before{content:attr(data-label);color:var(--ink);font-size:14px}
+}
+@media (max-width:560px){
+  .stg-widgets{gap:10px}
+  .stg-widget{min-height:112px;padding:14px;border-radius:20px}
+  .stg-widget-icon{width:30px;height:30px;margin-bottom:10px;border-radius:10px}
+  .stg-widget strong{font-size:18px}
+  .stg-card{gap:16px;padding:16px;border-radius:20px}
+  .stg-card-icon{width:36px;height:36px;border-radius:11px}
+  .stg-card-title h2{font-size:17px}
+  .stg-card-aside{margin-left:50px}
+  .stg-list>div,.stg-list>a{padding:10px 14px}
+  .stg-logo-preview{flex-direction:column;align-items:flex-start}
+  .stg-savebar .panel-primary{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .stg-widget,.stg-nav a,.stg-link-row,.stg-link-row>svg,.stg-perm tbody tr,.stg-switch>span,.stg-switch>span::after{transition:none}
+}

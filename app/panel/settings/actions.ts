@@ -22,7 +22,8 @@ async function updateDocumentBranding__impl(formData: FormData) {
     throw new Error("Kurumsal kimlik ayarlarını değiştirme yetkiniz yok.");
   }
 
-  const primaryColor = text(formData, "primary_color", 20) || "#183f31";
+  // Varsayılan: panelin şampanya vurgusu (eskiden yeşil #183f31 yazılıyordu)
+  const primaryColor = text(formData, "primary_color", 20) || "#8e6d33";
   if (!/^#[0-9a-fA-F]{6}$/.test(primaryColor)) {
     throw new Error("Kurumsal renk geçersiz.");
   }
