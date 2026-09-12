@@ -119,6 +119,10 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
 .ad-hash{font-family:var(--ad-mono);font-size:6.3pt;font-weight:500!important;letter-spacing:.02em;word-break:break-all;color:var(--ad-ink-2)!important}
 .ad-blank{display:grid;gap:4.5mm;margin-top:3mm;font-size:7pt;color:var(--ad-soft)}
 .ad-blank span{display:block;padding-top:1mm;border-top:.2mm solid #cfc7b8}
+.ad-await{display:flex;align-items:flex-start;gap:3mm;margin:3.4mm 0 3mm;padding:3.6mm 4mm;border:.2mm solid var(--ad-line-2);border-radius:2mm;background:var(--ad-cream)}
+.ad-await-dot{flex:none;width:2.6mm;height:2.6mm;margin-top:1.1mm;border-radius:50%;background:var(--ad-gold);box-shadow:0 0 0 1mm rgba(184,149,90,.22)}
+.ad-await b{display:block;font-size:9pt;color:var(--ad-ink)}
+.ad-await p{margin:1mm 0 0;font-size:7.4pt;line-height:1.5;color:var(--ad-muted)}
 .ad-consents{margin:3mm 0 0;padding:0;list-style:none;font-size:7.2pt;color:var(--ad-text);display:grid;gap:.8mm}
 .ad-consents li:before{content:"✓";margin-right:1.6mm;color:var(--ad-ok);font-weight:700}
 .ad-legal-note{margin:4mm 0 0;padding-top:2.6mm;border-top:.2mm dashed var(--ad-line);font-size:6.9pt;line-height:1.55;color:var(--ad-soft)}

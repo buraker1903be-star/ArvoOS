@@ -131,7 +131,7 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
       </section>
 
       <section className="ad-sec ad-sign-block">
-        <SectionHeading index="06">Onay</SectionHeading>
+        <SectionHeading index="06">Karar</SectionHeading>
         <div className="ad-sign">
           <div className="ad-sign-card">
             <h3>Teklif Veren</h3>
@@ -151,11 +151,18 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
             </dl>
             {decided.status === "accepted" && decided.contract_share_token && !print ? <a className="ad-decision-link print-hide" href={`/sozlesme/${decided.contract_share_token}`}>Bu tekliften oluşan sözleşmeyi görüntüle{decided.contract_no ? ` · ${decided.contract_no}` : ""}</a> : null}
           </div> : <div className="ad-sign-card">
-            <h3>Müşteri Onayı</h3>
+            {/* Teklifte müşteri imzası yok: karar "Teklifi kabul ediyorum /
+                reddediyorum" butonlarıyla verilir. İmza yalnızca sözleşmede. */}
+            <h3>Müşteri Kararı</h3>
             <div className="ad-sign-name">{customer.name}</div>
-            <div className="ad-sign-sub">Teklifi kabul ediyorum</div>
-            <div className="ad-sign-art"><span className="ad-sign-empty">İmza</span></div>
-            <div className="ad-blank"><span>Ad Soyad</span><span>Tarih</span></div>
+            <div className="ad-await">
+              <span className="ad-await-dot" aria-hidden="true" />
+              {row.status === "expired" ? <div><b>Teklifin geçerlilik süresi doldu</b></div> : <div>
+                <b>Karar bekleniyor</b>
+                <p>Teklif, bu belgenin çevrimiçi sürümündeki “Teklifi kabul ediyorum” veya “Teklifi reddediyorum” butonuyla tek adımda yanıtlanır; imza gerekmez.</p>
+              </div>}
+            </div>
+            <dl className="ad-audit"><dt>Durum</dt><dd>{statuses[row.status] ?? "Onay bekliyor"}</dd><dt>Belge no</dt><dd>{row.proposal_no}</dd></dl>
           </div>}
         </div>
         <p className="ad-legal-note">Teklifin bu sayfa üzerinden elektronik olarak kabulü; karar tarihi-saati, IP adresi ve cihaz bilgisiyle birlikte kayıt altına alınır. Bu elektronik onay, 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; taraf iradesini gösteren elektronik kayıt olarak saklanır.</p>
