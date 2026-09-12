@@ -44,6 +44,13 @@ const statuses:Record<string,string>={
  archived:"Bu teklifin karar aşaması tamamlandı. Belge kayıtlarınız için erişilebilir kalmaya devam ediyor.",
 };
 
+// URL'deki sonuç kodu sabit mesaja çevrilir. Eskiden "?result=..." içindeki
+// her metin kurum logolu teklifin içinde gösteriliyordu.
+const resultNotices:Record<string,string>={
+ accepted:"İşleminiz kaydedildi: teklifi kabul ettiniz.",
+ rejected:"İşleminiz kaydedildi: teklifi reddettiniz.",
+};
+
 export default async function PublicProposalPage({params,searchParams}:{params:Promise<{token:string}>;searchParams:Promise<{result?:string}>}){
  const {token}=await params;
  const {result}=await searchParams;
@@ -81,7 +88,7 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
   row={row}
   decision={decision??null}
   verificationUrl={verificationUrl}
-  notice={result?`İşleminiz kaydedildi: ${result}`:null}
+  notice={result?resultNotices[result]??null:null}
   actions={actions}
  />;
 }

@@ -13,6 +13,31 @@ const json = (body: unknown, status = 200) => Response.json(body, {
 
 const allowedRoles = new Set(["owner", "admin", "manager", "member", "operasyoncu"]);
 
+// lib/management-department.ts ve private.arvo_is_management_name ile aynı
+// kural: Yönetim/Yönetici departmanındaki aktif veya izinli çalışanın hesabı
+// veritabanında otomatik olarak Kurum Sahibi yapılır.
+const isManagementDepartmentName = (name: string | null | undefined) =>
+  /^y[oö]net[iı](c[iı]|m)/.test((name ?? "").trim().toLocaleLowerCase("tr-TR"));
+
+async function isManagementEmployee(
+  client: ReturnType<typeof createClient>,
+  organizationId: string,
+  employeeId: string,
+) {
+  const { data: employee } = await client.from("hr_employees")
+    .select("department_id,employment_status")
+    .eq("id", employeeId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!employee?.department_id || !["active", "on_leave"].includes(employee.employment_status)) return false;
+  const { data: department } = await client.from("hr_departments")
+    .select("name")
+    .eq("id", employee.department_id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  return isManagementDepartmentName(department?.name);
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -79,8 +104,31 @@ Deno.serve(async (request) => {
     if (actorError || !actor.user) return json({ error: `Oturum doğrulanamadı: ${actorError?.message ?? "kullanıcı bulunamadı"}` }, 401);
     failContext.invitedBy = actor.user.id;
 
-    // Create the invitation row immediately (service-role, bypasses RLS) so
-    // every subsequent failure — including the permission check below — is
+    // Yetki kontrolü, davet kaydına HİÇBİR şey yazılmadan önce yapılır.
+    // Eskiden kayıt önce yazılıyordu; herhangi bir kurumdan herhangi bir
+    // kullanıcı başka bir kurumun bekleyen davetini ezip "failed" yapabiliyordu.
+    // Yetkisiz çağrılar fail() yerine düz json ile döner (kayıt yazmaz).
+    const { data: callerMembership, error: callerError } = await adminClient
+      .from("organization_memberships")
+      .select("role,is_active")
+      .eq("organization_id", organizationId)
+      .eq("user_id", actor.user.id)
+      .maybeSingle();
+    if (callerError) return json({ error: `Yetki kontrolü başarısız: ${callerError.message}` }, 400);
+    if (!callerMembership) return json({ error: "Bu kurumda üyeliğiniz bulunamadı." }, 403);
+    if (!callerMembership.is_active) return json({ error: "Hesabınız bu kurumda pasif durumda." }, 403);
+    if (!["owner", "admin"].includes(callerMembership.role)) return json({ error: `Bu kuruma kullanıcı davet etme yetkiniz yok (rolünüz: ${callerMembership.role}).` }, 403);
+    const callerIsOwner = callerMembership.role === "owner";
+
+    // Kurum Sahibi yetkisi veren davetler yalnızca bir Kurum Sahibi'ne açık:
+    // doğrudan owner rolü ya da Yönetim departmanındaki bir çalışanın
+    // hesabını bağlamak (veritabanı onu otomatik owner yapar).
+    if (!callerIsOwner) {
+      if (role === "owner") return json({ error: "Kurum Sahibi rolüyle yalnızca bir Kurum Sahibi davet edebilir." }, 403);
+      if (employeeId && await isManagementEmployee(adminClient, organizationId, employeeId))
+        return json({ error: "Yönetim departmanındaki çalışanlar Kurum Sahibi yetkisi alır; bu daveti yalnızca bir Kurum Sahibi gönderebilir." }, 403);
+    }
+
     // organization_invitations tablosunda (organization_id, email) için tek
     // bir kayıt tutulabiliyor (durumdan bağımsız) — bu yüzden düz bir INSERT
     // yerine upsert kullanıyoruz, aksi halde aynı e-postaya ikinci kez davet
@@ -95,18 +143,6 @@ Deno.serve(async (request) => {
       .single();
     if (upsertError || !upserted?.id) return json({ error: `Davet kaydı oluşturulamadı: ${upsertError?.message ?? "bilinmeyen hata"}` }, 400);
     invitationId = upserted.id as string;
-
-    // Only an active owner/admin of this organization may invite new members.
-    const { data: callerMembership, error: callerError } = await adminClient
-      .from("organization_memberships")
-      .select("role,is_active")
-      .eq("organization_id", organizationId)
-      .eq("user_id", actor.user.id)
-      .maybeSingle();
-    if (callerError) return await fail(`Yetki kontrolü başarısız: ${callerError.message}`);
-    if (!callerMembership) return await fail("Bu kurumda üyeliğiniz bulunamadı.");
-    if (!callerMembership.is_active) return await fail("Hesabınız bu kurumda pasif durumda.");
-    if (!["owner", "admin"].includes(callerMembership.role)) return await fail(`Bu kuruma kullanıcı davet etme yetkiniz yok (rolünüz: ${callerMembership.role}).`);
 
     const redirectBase = String(payload.redirectBase || "https://app.arvo-os.com").replace(/\/$/, "");
     const { data: invited, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
@@ -137,12 +173,38 @@ Deno.serve(async (request) => {
       }
       if (!existingUserId) return await fail("Bu e-posta zaten kayıtlı görünüyor ama kullanıcı bulunamadı. Lütfen Supabase Authentication panelinden kontrol edin.");
 
-      const { error: membershipError } = await adminClient.from("organization_memberships")
-        .upsert({ organization_id: organizationId, user_id: existingUserId, role, is_active: true }, { onConflict: "organization_id,user_id" });
-      if (membershipError) return await fail(`Kullanıcı zaten kayıtlı, kuruma eklenemedi: ${membershipError.message}`);
+      // Mevcut üyeliğin rolü ve aktifliği ASLA ezilmez. Eskiden upsert
+      // kullanılıyordu; bir Yönetici, sahibin e-postasını herhangi bir
+      // personel kartından davet ederek onu Satış Personeli'ne düşürebiliyordu.
+      const { data: existingMembership } = await adminClient.from("organization_memberships")
+        .select("role")
+        .eq("organization_id", organizationId)
+        .eq("user_id", existingUserId)
+        .maybeSingle();
+      if (!existingMembership) {
+        // Veritabanı owner yetkisini yalnızca bir Kurum Sahibi oturumuyla
+        // verir; servis rolü veremez. Bu yüzden önce sıradan rolle eklenir,
+        // sonra çağıranın kendi oturumuyla yükseltilir.
+        const { error: membershipError } = await adminClient.from("organization_memberships")
+          .insert({ organization_id: organizationId, user_id: existingUserId, role: role === "owner" ? "member" : role, is_active: true });
+        if (membershipError) return await fail(`Kullanıcı zaten kayıtlı, kuruma eklenemedi: ${membershipError.message}`);
+        if (role === "owner") {
+          const { error: promoteError } = await userClient.from("organization_memberships")
+            .update({ role: "owner" })
+            .eq("organization_id", organizationId)
+            .eq("user_id", existingUserId);
+          if (promoteError) return await fail(`Kullanıcı kuruma eklendi ancak Kurum Sahibi yapılamadı: ${promoteError.message}`);
+        }
+      }
 
       if (employeeId) {
-        await adminClient.from("hr_employees").update({ user_id: existingUserId }).eq("id", employeeId).eq("organization_id", organizationId);
+        // Çağıranın oturumuyla: Yönetim departmanındaki bir çalışanı bağlamak
+        // owner yetkisi verir ve veritabanı bunu yalnızca Kurum Sahibi'ne açar.
+        const { error: linkError } = await userClient.from("hr_employees")
+          .update({ user_id: existingUserId })
+          .eq("id", employeeId)
+          .eq("organization_id", organizationId);
+        if (linkError) return await fail(`Kullanıcı kuruma eklendi ancak personel kaydına bağlanamadı: ${linkError.message}`);
       }
       await adminClient.from("profiles").upsert(
         { id: existingUserId, full_name: fullName || undefined, updated_at: new Date().toISOString() },

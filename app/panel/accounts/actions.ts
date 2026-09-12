@@ -80,9 +80,12 @@ export async function createCollection(formData: FormData) {
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
     throw new Error("Geçerli bir tahsilat tutarı girin.");
-  const { supabase, membership, userId, debit, credit } =
+  const { supabase, membership, userId, debit, credit, refunds } =
     await getPartyLedger(partyId);
-  if (amount > debit - credit)
+  // Sayfadaki açık bakiye ile aynı formül (borç + iade − tahsilat). Eskiden
+  // iade hesaba katılmadığı için iade sonrası kalan bakiyenin tahsilatı
+  // reddediliyordu.
+  if (amount > debit + refunds - credit)
     throw new Error("Tahsilat açık cari bakiyesini aşamaz.");
   const { error } = await supabase.from("account_entries").insert({
     organization_id: membership.organization_id,

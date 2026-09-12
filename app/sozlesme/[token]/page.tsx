@@ -30,6 +30,18 @@ export async function generateMetadata({params}:{params:Promise<{token:string}>}
  };
 }
 
+// URL'deki hata kodları sabit mesajlara çevrilir; bilinmeyen kod gösterilmez.
+const contractErrors:Record<string,string>={
+ missing:"Ad soyad ve açık onay gereklidir.",
+ signature:"Lütfen mavi imza alanına imzanızı çiziniz.",
+ closed:"Bu sözleşme artık imzaya açık değil. Sorunuz varsa bizimle iletişime geçin.",
+ failed:"Sözleşme imzalanamadı. Lütfen tekrar deneyin; sorun devam ederse bizimle iletişime geçin.",
+};
+const closedNotices:Record<string,string>={
+ cancelled:"Bu sözleşme iptal edildi ve imzaya kapalıdır.",
+ rejected:"Bu sözleşme reddedildi ve imzaya kapalıdır.",
+};
+
 export default async function PublicContractPage({params,searchParams}:{params:Promise<{token:string}>;searchParams:Promise<{signed?:string;workflow?:string;created?:string;error?:string}>}){
  const {token}=await params;
  const query=await searchParams;
@@ -46,17 +58,19 @@ export default async function PublicContractPage({params,searchParams}:{params:P
  // erişilebilir kalmalı.
  const {data:linkRows}=await supabase.rpc("arvo_public_contract_links",{public_token:token});
  const links=Array.isArray(linkRows)?linkRows[0]:linkRows;
+ // Yalnızca taslak/gönderilmiş ve imzalanmamış sözleşme imzaya açık.
+ const signable=!row.signed_at&&["draft","sent"].includes(row.status);
  const notice=query.created
   ?"Teklif kabul edildi. Sözleşme imzaya hazırlandı."
   :query.signed
    ?"Sözleşme imzalandı ve iş akışı oluşturuldu."
-   :null;
+   :closedNotices[row.status]??null;
  return <ContractDocument
   row={row}
   verificationUrl={verificationUrl}
   notice={notice}
-  errorMessage={query.error||null}
+  errorMessage={query.error?contractErrors[query.error]??null:null}
   proposalLink={links?.proposal_share_token?{token:links.proposal_share_token,no:links.proposal_no}:null}
-  signatureForm={<ContractSignatureForm token={token}/>}
+  signatureForm={signable?<ContractSignatureForm token={token}/>:null}
  />;
 }

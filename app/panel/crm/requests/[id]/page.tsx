@@ -68,9 +68,24 @@ export default async function RequestDetailPage({
   const item = data as Opportunity;
   const d = item.request_details ?? {};
   const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
+  // okuyup seçenek olarak ekliyoruz, yoksa form kaydı atamayı sessizce siliyordu.
+  const listedAssignee = (employees ?? []).find(
+    (e) => e.id === item.assigned_employee_id,
+  );
+  const unlistedAssignee =
+    item.assigned_employee_id && !listedAssignee
+      ? ((
+          await supabase
+            .from("hr_employees")
+            .select("full_name")
+            .eq("id", item.assigned_employee_id)
+            .eq("organization_id", membership.organization_id)
+            .maybeSingle()
+        ).data?.full_name ?? "Pasif personel")
+      : null;
   const representative =
-    (employees ?? []).find((e) => e.id === item.assigned_employee_id)
-      ?.full_name ?? "Atanmamış";
+    listedAssignee?.full_name ?? unlistedAssignee ?? "Atanmamış";
   const edit = (
     <form className="panel-form" action={updateOpportunity}>
       <input type="hidden" name="opportunity_id" value={item.id} />
@@ -99,6 +114,11 @@ export default async function RequestDetailPage({
             defaultValue={item.assigned_employee_id ?? ""}
           >
             <option value="">Atanmamış</option>
+            {unlistedAssignee ? (
+              <option value={item.assigned_employee_id ?? ""}>
+                {unlistedAssignee} (atamaya kapalı)
+              </option>
+            ) : null}
             {(employees ?? []).map((e) => (
               <option value={e.id} key={e.id}>
                 {e.full_name}

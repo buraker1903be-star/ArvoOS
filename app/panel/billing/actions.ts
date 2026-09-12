@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
 
 const plans = new Set(["starter", "professional", "enterprise"]);
 const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -19,7 +20,7 @@ export async function submitBankTransferPayment(formData: FormData) {
 
   const bankAccountId = String(formData.get("bank_account_id") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();
-  const amountTl = Number(String(formData.get("amount") ?? "").replace(",", "."));
+  const amountTl = parseTurkishAmount(String(formData.get("amount") ?? ""));
   const referenceNo = String(formData.get("reference_no") ?? "").trim().slice(0, 120);
   const customerNote = String(formData.get("customer_note") ?? "").trim().slice(0, 1000);
   const receipt = formData.get("receipt");

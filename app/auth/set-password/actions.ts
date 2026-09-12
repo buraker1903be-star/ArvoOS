@@ -2,11 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 export async function setInitialPassword(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
-  const next = String(formData.get("next") ?? "/panel");
+  const next = safeNextPath(formData.get("next"));
 
   if (password.length < 8) redirect(`/auth/set-password?error=short&next=${encodeURIComponent(next)}`);
   if (password !== confirmPassword) redirect(`/auth/set-password?error=mismatch&next=${encodeURIComponent(next)}`);

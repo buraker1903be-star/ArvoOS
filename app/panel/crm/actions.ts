@@ -174,26 +174,6 @@ export async function createOpportunity(formData: FormData) {
 export async function updateOpportunity(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
-  const currentDetails = JSON.parse(
-    text(formData, "current_details", 10000) || "{}",
-  );
-  const requestDetails = {
-    ...currentDetails,
-    service_type: text(formData, "service_type", 180),
-    academic_level: text(formData, "academic_level", 80),
-    university: text(formData, "university", 180),
-    department: text(formData, "department", 180),
-    language: text(formData, "language", 80),
-    scope: text(formData, "scope", 4000),
-  };
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
-  const assignment = canAssign
-    ? await validateSalesEmployee(
-        supabase,
-        membership.organization_id,
-        text(formData, "assigned_employee_id", 80),
-      )
-    : null;
   // Değişikliği yazabilmek için önceki hali gerekiyor.
   const { data: before } = await supabase
     .from("crm_opportunities")
@@ -201,26 +181,55 @@ export async function updateOpportunity(formData: FormData) {
     .eq("id", opportunityId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
+  if (!before) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+
+  // Yalnızca formda gönderilen alanlar yazılır. Eskiden düzenleme formunda
+  // olmayan notlar, kaynak, teslim tarihi ve akademik bilgiler her kayıtta
+  // boşaltılıyordu.
+  const currentDetails = JSON.parse(
+    text(formData, "current_details", 10000) || "{}",
+  );
+  const requestDetails: Record<string, unknown> = { ...currentDetails };
+  for (const [key, max] of [
+    ["service_type", 180], ["academic_level", 80], ["university", 180],
+    ["department", 180], ["language", 80], ["scope", 4000],
+  ] as const) {
+    if (formData.has(key)) requestDetails[key] = text(formData, key, max);
+  }
+  const updates: Record<string, unknown> = {
+    request_details: requestDetails,
+    updated_at: new Date().toISOString(),
+  };
+  for (const [key, max, nullable] of [
+    ["title", 180, false], ["customer_name", 180, false],
+    ["contact_email", 240, true], ["contact_phone", 80, true],
+    ["source", 160, true], ["notes", 4000, true], ["expected_close_date", 20, true],
+  ] as const) {
+    if (formData.has(key)) updates[key] = nullable ? text(formData, key, max) || null : text(formData, key, max);
+  }
+
+  // Temsilci yalnızca gerçekten değiştiyse güncellenir. Eskiden atanmış
+  // temsilci listede yoksa (pasif / satışa kapalı) açılır liste boş değer
+  // gönderiyor ve alakasız her kayıtta talep sessizce atamasız kalıyordu.
+  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
+  const requestedAssignee = text(formData, "assigned_employee_id", 80);
+  if (
+    canAssign &&
+    formData.has("assigned_employee_id") &&
+    requestedAssignee !== (before.assigned_employee_id ?? "")
+  ) {
+    const assignment = await validateSalesEmployee(
+      supabase,
+      membership.organization_id,
+      requestedAssignee,
+    );
+    updates.assigned_employee_id = assignment.employeeId;
+    updates.owner_user_id = assignment.userId;
+  }
 
   const { data, error } = await supabase
     .from("crm_opportunities")
-    .update({
-      title: text(formData, "title", 180),
-      customer_name: text(formData, "customer_name", 180),
-      contact_email: text(formData, "contact_email", 240) || null,
-      contact_phone: text(formData, "contact_phone", 80) || null,
-      source: text(formData, "source", 160) || null,
-      notes: text(formData, "notes", 4000) || null,
-      expected_close_date: text(formData, "expected_close_date", 20) || null,
-      request_details: requestDetails,
-      ...(canAssign
-        ? {
-            assigned_employee_id: assignment!.employeeId,
-            owner_user_id: assignment!.userId,
-          }
-        : {}),
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", opportunityId)
     .eq("organization_id", membership.organization_id)
     .select("id,title,customer_name,contact_email,contact_phone,source,notes,expected_close_date,assigned_employee_id,stage")
