@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -13,7 +15,7 @@ const extensionByType: Record<string, string> = {
   "image/webp": "webp",
 };
 
-export async function updateDocumentBranding(formData: FormData) {
+async function updateDocumentBranding__impl(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) {
     throw new Error("Kurumsal kimlik ayarlarını değiştirme yetkiniz yok.");
@@ -100,7 +102,7 @@ function cleanDomain(value: string) {
   return domain;
 }
 
-export async function updateCustomDomain(formData: FormData) {
+async function updateCustomDomain__impl(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) throw new Error("Alan adı ayarlarını değiştirme yetkiniz yok.");
 
@@ -153,7 +155,7 @@ export async function updateCustomDomain(formData: FormData) {
   revalidatePath("/panel/settings");
 }
 
-export async function checkCustomDomainStatus() {
+async function checkCustomDomainStatus__impl() {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
 
@@ -176,4 +178,15 @@ export async function checkCustomDomainStatus() {
   if (!updated?.length) throw new Error("Durum güncellenemedi: bu işlem için yetkiniz yok.");
 
   revalidatePath("/panel/settings");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateDocumentBranding(...args: Parameters<typeof updateDocumentBranding__impl>) {
+  return runPanelAction(() => updateDocumentBranding__impl(...args));
+}
+export async function updateCustomDomain(...args: Parameters<typeof updateCustomDomain__impl>) {
+  return runPanelAction(() => updateCustomDomain__impl(...args));
+}
+export async function checkCustomDomainStatus(...args: Parameters<typeof checkCustomDomainStatus__impl>) {
+  return runPanelAction(() => checkCustomDomainStatus__impl(...args));
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -15,7 +17,7 @@ async function operationContext() {
   return context;
 }
 
-export async function createWorkflow(formData: FormData) {
+async function createWorkflow__impl(formData: FormData) {
   const { supabase, userId, membership } = await operationContext();
   const title = String(formData.get("title") ?? "").trim();
   const customerName = String(formData.get("customer_name") ?? "").trim();
@@ -39,7 +41,7 @@ export async function createWorkflow(formData: FormData) {
   revalidatePath("/panel/operations"); revalidatePath("/panel");
 }
 
-export async function assignWorkflow(formData: FormData) {
+async function assignWorkflow__impl(formData: FormData) {
   const { supabase, membership } = await operationContext();
   if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Operasyon atamak için yönetici yetkisi gerekiyor.");
   const workflowId = String(formData.get("workflow_id") ?? "");
@@ -54,7 +56,7 @@ export async function assignWorkflow(formData: FormData) {
   revalidatePath("/panel/operations"); revalidatePath(`/panel/operations/${workflowId}`);
 }
 
-export async function addWorkflowStep(formData: FormData) {
+async function addWorkflowStep__impl(formData: FormData) {
   const { supabase, membership } = await operationContext();
   const workflowId = String(formData.get("workflow_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
@@ -67,7 +69,7 @@ export async function addWorkflowStep(formData: FormData) {
   revalidatePath("/panel/operations"); revalidatePath(`/panel/operations/${workflowId}`);
 }
 
-export async function toggleWorkflowStep(formData: FormData) {
+async function toggleWorkflowStep__impl(formData: FormData) {
   const { supabase, userId, membership } = await operationContext();
   const stepId = String(formData.get("step_id") ?? "");
   const workflowId = String(formData.get("workflow_id") ?? "");
@@ -77,7 +79,7 @@ export async function toggleWorkflowStep(formData: FormData) {
   revalidatePath("/panel/operations"); revalidatePath("/panel"); if (workflowId) revalidatePath(`/panel/operations/${workflowId}`);
 }
 
-export async function setWorkflowStatus(formData: FormData) {
+async function setWorkflowStatus__impl(formData: FormData) {
   const { supabase, membership } = await operationContext();
   const workflowId = String(formData.get("workflow_id") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -99,7 +101,7 @@ export async function addWorkflowComment(formData: FormData) {
   revalidatePath(`/panel/operations/${workflowId}`);
 }
 
-export async function replyCustomerFileMessage(formData: FormData) {
+async function replyCustomerFileMessage__impl(formData: FormData) {
   const { supabase, userId, membership } = await operationContext();
   const workflowId = String(formData.get("workflow_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -127,7 +129,7 @@ export async function replyCustomerFileMessage(formData: FormData) {
 // yönetici yetkisiyle kullanılabilir; adımlar ve yorumlar birlikte
 // silinir, bağlı bir sözleşme varsa o sözleşmenin iş akışı bağlantısı
 // (workflow_id) kopartılır ki sözleşme kaydı bozulmasın.
-export async function deleteWorkflow(formData: FormData) {
+async function deleteWorkflow__impl(formData: FormData) {
   const { supabase, membership } = await operationContext();
   if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yönetici yetkisi gerekiyor.");
   const workflowId = String(formData.get("workflow_id") ?? "");
@@ -149,4 +151,27 @@ export async function deleteWorkflow(formData: FormData) {
   revalidatePath("/panel/crm/contracts");
   // Detay sayfasında kalırsak silinen kayıt yeniden okunur ve 404 döner.
   redirect("/panel/operations");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createWorkflow(...args: Parameters<typeof createWorkflow__impl>) {
+  return runPanelAction(() => createWorkflow__impl(...args));
+}
+export async function assignWorkflow(...args: Parameters<typeof assignWorkflow__impl>) {
+  return runPanelAction(() => assignWorkflow__impl(...args));
+}
+export async function addWorkflowStep(...args: Parameters<typeof addWorkflowStep__impl>) {
+  return runPanelAction(() => addWorkflowStep__impl(...args));
+}
+export async function toggleWorkflowStep(...args: Parameters<typeof toggleWorkflowStep__impl>) {
+  return runPanelAction(() => toggleWorkflowStep__impl(...args));
+}
+export async function setWorkflowStatus(...args: Parameters<typeof setWorkflowStatus__impl>) {
+  return runPanelAction(() => setWorkflowStatus__impl(...args));
+}
+export async function replyCustomerFileMessage(...args: Parameters<typeof replyCustomerFileMessage__impl>) {
+  return runPanelAction(() => replyCustomerFileMessage__impl(...args));
+}
+export async function deleteWorkflow(...args: Parameters<typeof deleteWorkflow__impl>) {
+  return runPanelAction(() => deleteWorkflow__impl(...args));
 }

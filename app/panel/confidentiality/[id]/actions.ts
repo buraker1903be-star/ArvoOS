@@ -1,10 +1,12 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
-export async function signConfidentialityAgreement(agreementId: string, formData: FormData) {
+async function signConfidentialityAgreement__impl(agreementId: string, formData: FormData) {
   const { supabase, userId } = await getPanelContext();
   const signerName = String(formData.get("signer_name") ?? "").trim().slice(0, 180);
   const signatureData = String(formData.get("signature_data") ?? "");
@@ -37,4 +39,9 @@ export async function signConfidentialityAgreement(agreementId: string, formData
     throw new Error("Sözleşme imzalanamadı: " + (updateError?.message || "Kayıt değişti."));
   }
   redirect(`/panel/confidentiality/${agreement.id}?signed=1`);
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function signConfidentialityAgreement(...args: Parameters<typeof signConfidentialityAgreement__impl>) {
+  return runPanelAction(() => signConfidentialityAgreement__impl(...args));
 }

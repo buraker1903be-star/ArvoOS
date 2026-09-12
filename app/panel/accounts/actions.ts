@@ -1,8 +1,11 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 async function accountsContext() {
   const context = await getPanelContext();
@@ -77,7 +80,7 @@ function revalidateLedger() {
   revalidatePath("/panel");
 }
 
-export async function createCollection(formData: FormData) {
+async function createCollection__impl(formData: FormData) {
   const partyId = String(formData.get("party_id") ?? "").trim();
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
@@ -100,7 +103,7 @@ export async function createCollection(formData: FormData) {
       `TAH:${crypto.randomUUID()}`,
     transaction_date:
       String(formData.get("transaction_date") ?? "") ||
-      new Date().toISOString().slice(0, 10),
+      todayInIstanbul(),
     description: String(
       formData.get("description") ?? "Müşteri tahsilatı",
     ).trim(),
@@ -110,7 +113,7 @@ export async function createCollection(formData: FormData) {
   revalidateLedger();
 }
 
-export async function createRefund(formData: FormData) {
+async function createRefund__impl(formData: FormData) {
   const partyId = String(formData.get("party_id") ?? "").trim();
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
@@ -133,7 +136,7 @@ export async function createRefund(formData: FormData) {
       `IADE:${crypto.randomUUID()}`,
     transaction_date:
       String(formData.get("transaction_date") ?? "") ||
-      new Date().toISOString().slice(0, 10),
+      todayInIstanbul(),
     description: `Müşteri iadesi · ${reason}`,
     created_by: userId,
   });
@@ -141,7 +144,7 @@ export async function createRefund(formData: FormData) {
   revalidateLedger();
 }
 
-export async function createAdditionalService(formData: FormData) {
+async function createAdditionalService__impl(formData: FormData) {
   const { supabase, membership, userId } = await accountsContext();
   const partyId = String(formData.get("party_id") ?? "").trim();
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
@@ -170,7 +173,7 @@ export async function createAdditionalService(formData: FormData) {
       `EKH:${crypto.randomUUID()}`,
     transaction_date:
       String(formData.get("transaction_date") ?? "") ||
-      new Date().toISOString().slice(0, 10),
+      todayInIstanbul(),
     due_date: String(formData.get("due_date") ?? "") || null,
     description: `Ek hizmet · ${description}`,
     created_by: userId,
@@ -232,7 +235,7 @@ export async function createEntry(formData: FormData) {
     reference_no: String(formData.get("reference_no") ?? "").trim() || null,
     transaction_date:
       String(formData.get("transaction_date") ?? "") ||
-      new Date().toISOString().slice(0, 10),
+      todayInIstanbul(),
     due_date: String(formData.get("due_date") ?? "") || null,
     created_by: userId,
   });
@@ -291,4 +294,15 @@ export async function deleteEntry(formData: FormData) {
   revalidatePath("/panel/accounts");
   revalidatePath(`/panel/accounts/${partyId}`);
   revalidatePath("/panel/hr/commissions");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createCollection(...args: Parameters<typeof createCollection__impl>) {
+  return runPanelAction(() => createCollection__impl(...args));
+}
+export async function createRefund(...args: Parameters<typeof createRefund__impl>) {
+  return runPanelAction(() => createRefund__impl(...args));
+}
+export async function createAdditionalService(...args: Parameters<typeof createAdditionalService__impl>) {
+  return runPanelAction(() => createAdditionalService__impl(...args));
 }

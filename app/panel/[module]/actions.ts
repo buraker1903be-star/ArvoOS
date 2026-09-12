@@ -1,9 +1,11 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
-export async function createCrmRequest(formData: FormData) {
+async function createCrmRequest__impl(formData: FormData) {
   const { supabase, userId, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
 
@@ -26,4 +28,9 @@ export async function createCrmRequest(formData: FormData) {
   if (error) throw new Error("Talep kaydedilemedi: " + error.message);
   revalidatePath("/panel");
   revalidatePath("/panel/crm");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createCrmRequest(...args: Parameters<typeof createCrmRequest__impl>) {
+  return runPanelAction(() => createCrmRequest__impl(...args));
 }

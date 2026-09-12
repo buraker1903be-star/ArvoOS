@@ -1,8 +1,11 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 const types = new Set(["income", "expense"]);
 const statuses = new Set(["planned", "paid", "canceled"]);
@@ -31,11 +34,11 @@ async function syncContractCostSummary(supabase: Awaited<ReturnType<typeof finan
   if(error)throw new Error("Maliyet özeti güncellenemedi: "+error.message);
 }
 
-export async function addContractCostItem(formData:FormData){const {supabase,membership,userId}=await financeContext();const contractId=String(formData.get("contract_id")??"");const category=String(formData.get("category")??"").trim();const description=String(formData.get("description")??"").trim();const supplier=String(formData.get("supplier")??"").trim();const reference=String(formData.get("reference_no")??"").trim();const costDate=String(formData.get("cost_date")??"")||new Date().toISOString().slice(0,10);const status=String(formData.get("status")??"planned");const amount=Math.round(Number(formData.get("amount")??0)*100);if(!contractId||description.length<2||!Number.isFinite(amount)||amount<=0)throw new Error("Maliyet kalemi bilgileri eksik.");if(!new Set(["planned","paid"]).has(status))throw new Error("Maliyet durumu geçersiz.");const {data:contract}=await supabase.from("crm_contracts").select("id").eq("id",contractId).eq("organization_id",membership.organization_id).maybeSingle();if(!contract)throw new Error("Sözleşme bulunamadı.");const {error}=await supabase.from("contract_cost_items").insert({organization_id:membership.organization_id,contract_id:contractId,category:category||"Dış hizmet",description,supplier:supplier||null,amount,cost_date:costDate,status,reference_no:reference||null,created_by:userId});if(error)throw new Error("Maliyet kalemi eklenemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
+async function addContractCostItem__impl(formData:FormData){const {supabase,membership,userId}=await financeContext();const contractId=String(formData.get("contract_id")??"");const category=String(formData.get("category")??"").trim();const description=String(formData.get("description")??"").trim();const supplier=String(formData.get("supplier")??"").trim();const reference=String(formData.get("reference_no")??"").trim();const costDate=String(formData.get("cost_date")??"")||todayInIstanbul();const status=String(formData.get("status")??"planned");const amount=Math.round(Number(formData.get("amount")??0)*100);if(!contractId||description.length<2||!Number.isFinite(amount)||amount<=0)throw new Error("Maliyet kalemi bilgileri eksik.");if(!new Set(["planned","paid"]).has(status))throw new Error("Maliyet durumu geçersiz.");const {data:contract}=await supabase.from("crm_contracts").select("id").eq("id",contractId).eq("organization_id",membership.organization_id).maybeSingle();if(!contract)throw new Error("Sözleşme bulunamadı.");const {error}=await supabase.from("contract_cost_items").insert({organization_id:membership.organization_id,contract_id:contractId,category:category||"Dış hizmet",description,supplier:supplier||null,amount,cost_date:costDate,status,reference_no:reference||null,created_by:userId});if(error)throw new Error("Maliyet kalemi eklenemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
 
-export async function deleteContractCostItem(formData:FormData){const {supabase,membership,userId}=await financeContext();const itemId=String(formData.get("item_id")??"");const contractId=String(formData.get("contract_id")??"");if(!itemId||!contractId)throw new Error("Maliyet kalemi seçilemedi.");const {error}=await supabase.from("contract_cost_items").delete().eq("id",itemId).eq("contract_id",contractId).eq("organization_id",membership.organization_id);if(error)throw new Error("Maliyet kalemi silinemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
+async function deleteContractCostItem__impl(formData:FormData){const {supabase,membership,userId}=await financeContext();const itemId=String(formData.get("item_id")??"");const contractId=String(formData.get("contract_id")??"");if(!itemId||!contractId)throw new Error("Maliyet kalemi seçilemedi.");const {error}=await supabase.from("contract_cost_items").delete().eq("id",itemId).eq("contract_id",contractId).eq("organization_id",membership.organization_id);if(error)throw new Error("Maliyet kalemi silinemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
 
-export async function updateContractCostItem(formData:FormData){const {supabase,membership,userId}=await financeContext();const itemId=String(formData.get("item_id")??"");const contractId=String(formData.get("contract_id")??"");const category=String(formData.get("category")??"").trim();const description=String(formData.get("description")??"").trim();const supplier=String(formData.get("supplier")??"").trim();const reference=String(formData.get("reference_no")??"").trim();const costDate=String(formData.get("cost_date")??"");const status=String(formData.get("status")??"planned");const amount=Math.round(Number(formData.get("amount")??0)*100);if(!itemId||!contractId||description.length<2||!costDate||!Number.isFinite(amount)||amount<=0)throw new Error("Maliyet kalemi bilgileri eksik.");if(!new Set(["planned","paid"]).has(status))throw new Error("Maliyet durumu geçersiz.");const {error}=await supabase.from("contract_cost_items").update({category:category||"Dış hizmet",description,supplier:supplier||null,amount,cost_date:costDate,status,reference_no:reference||null,updated_at:new Date().toISOString()}).eq("id",itemId).eq("contract_id",contractId).eq("organization_id",membership.organization_id);if(error)throw new Error("Maliyet kalemi güncellenemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
+async function updateContractCostItem__impl(formData:FormData){const {supabase,membership,userId}=await financeContext();const itemId=String(formData.get("item_id")??"");const contractId=String(formData.get("contract_id")??"");const category=String(formData.get("category")??"").trim();const description=String(formData.get("description")??"").trim();const supplier=String(formData.get("supplier")??"").trim();const reference=String(formData.get("reference_no")??"").trim();const costDate=String(formData.get("cost_date")??"");const status=String(formData.get("status")??"planned");const amount=Math.round(Number(formData.get("amount")??0)*100);if(!itemId||!contractId||description.length<2||!costDate||!Number.isFinite(amount)||amount<=0)throw new Error("Maliyet kalemi bilgileri eksik.");if(!new Set(["planned","paid"]).has(status))throw new Error("Maliyet durumu geçersiz.");const {error}=await supabase.from("contract_cost_items").update({category:category||"Dış hizmet",description,supplier:supplier||null,amount,cost_date:costDate,status,reference_no:reference||null,updated_at:new Date().toISOString()}).eq("id",itemId).eq("contract_id",contractId).eq("organization_id",membership.organization_id);if(error)throw new Error("Maliyet kalemi güncellenemedi: "+error.message);await syncContractCostSummary(supabase,membership.organization_id,userId,contractId);revalidatePath(`/panel/finance/costs/${contractId}`);revalidatePath("/panel/finance");revalidatePath("/panel/reporting")}
 
 export async function createFinanceTransaction(formData: FormData) {
   const { supabase, userId, membership } = await financeContext();
@@ -82,7 +85,7 @@ export async function createFinanceTransaction(formData: FormData) {
       source_type: "manual",
       amount,
       description: title,
-      transaction_date: new Date().toISOString().slice(0, 10),
+      transaction_date: todayInIstanbul(),
       due_date: dueDate,
       created_by: userId,
     });
@@ -152,7 +155,7 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
           amount: transaction.amount,
           description: transaction.transaction_type === "income" ? `${transaction.title} tahsil edildi` : `${transaction.title} ödendi`,
           reference_no: referenceNo,
-          transaction_date: new Date().toISOString().slice(0, 10),
+          transaction_date: todayInIstanbul(),
           created_by: userId,
         });
         if (entryError) throw new Error("Ödeme işaretlendi ama cari bakiyesi güncellenemedi: " + entryError.message);
@@ -209,7 +212,7 @@ export async function rebuildPaymentPlan(formData: FormData) {
   revalidatePath("/panel");
 }
 
-export async function saveInstallmentPaymentLink(formData: FormData) {
+async function saveInstallmentPaymentLink__impl(formData: FormData) {
   const { supabase, membership } = await financeContext();
   const installmentId = String(formData.get("installment_id") ?? "").trim();
   const contractId = String(formData.get("contract_id") ?? "").trim();
@@ -328,7 +331,7 @@ export async function updateInvoiceStatus(formData: FormData) {
       const collectionAmount = Math.min(Number(invoice.total), outstanding);
 
       if (collectionAmount > 0) {
-        const { error: entryError } = await supabase.from("account_entries").insert({ organization_id: membership.organization_id, party_id: contract.party_id, entry_type: "credit", source_type: "payment", amount: collectionAmount, description: `${contract.contract_no} fatura tahsilatı`, reference_no: referenceNo, transaction_date: new Date().toISOString().slice(0, 10), created_by: userId });
+        const { error: entryError } = await supabase.from("account_entries").insert({ organization_id: membership.organization_id, party_id: contract.party_id, entry_type: "credit", source_type: "payment", amount: collectionAmount, description: `${contract.contract_no} fatura tahsilatı`, reference_no: referenceNo, transaction_date: todayInIstanbul(), created_by: userId });
         if (entryError) throw new Error("Fatura güncellendi ancak cari tahsilat işlenemedi: " + entryError.message);
       }
     }
@@ -344,4 +347,18 @@ export async function updateInvoiceStatus(formData: FormData) {
   revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel/reporting");
   revalidatePath("/panel");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function addContractCostItem(...args: Parameters<typeof addContractCostItem__impl>) {
+  return runPanelAction(() => addContractCostItem__impl(...args));
+}
+export async function deleteContractCostItem(...args: Parameters<typeof deleteContractCostItem__impl>) {
+  return runPanelAction(() => deleteContractCostItem__impl(...args));
+}
+export async function updateContractCostItem(...args: Parameters<typeof updateContractCostItem__impl>) {
+  return runPanelAction(() => updateContractCostItem__impl(...args));
+}
+export async function saveInstallmentPaymentLink(...args: Parameters<typeof saveInstallmentPaymentLink__impl>) {
+  return runPanelAction(() => saveInstallmentPaymentLink__impl(...args));
 }

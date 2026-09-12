@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
@@ -96,7 +98,7 @@ export async function inviteTeamMember(
   return { error: null, success: true };
 }
 
-export async function updateTeamMemberAccess(formData: FormData) {
+async function updateTeamMemberAccess__impl(formData: FormData) {
   const { supabase, membership } = await teamContext();
   const userId = String(formData.get("user_id") ?? "").trim();
   const role = String(formData.get("role") ?? "member");
@@ -138,7 +140,7 @@ export async function updateTeamMemberAccess(formData: FormData) {
   revalidatePath("/panel/hr");
 }
 
-export async function cancelInvitation(formData: FormData) {
+async function cancelInvitation__impl(formData: FormData) {
   const { supabase, membership } = await teamContext();
   const invitationId = String(formData.get("invitation_id") ?? "").trim();
   if (!invitationId) throw new Error("Davet seçilmedi.");
@@ -148,4 +150,12 @@ export async function cancelInvitation(formData: FormData) {
     .eq("organization_id", membership.organization_id);
   if (error) throw new Error("Davet iptal edilemedi: " + error.message);
   revalidatePath("/panel/hr");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateTeamMemberAccess(...args: Parameters<typeof updateTeamMemberAccess__impl>) {
+  return runPanelAction(() => updateTeamMemberAccess__impl(...args));
+}
+export async function cancelInvitation(...args: Parameters<typeof cancelInvitation__impl>) {
+  return runPanelAction(() => cancelInvitation__impl(...args));
 }

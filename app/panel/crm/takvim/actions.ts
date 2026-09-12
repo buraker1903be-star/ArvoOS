@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -24,7 +26,7 @@ function toTimestamp(dateValue: string, timeValue: string) {
   return iso.toISOString();
 }
 
-export async function createAppointment(formData: FormData) {
+async function createAppointment__impl(formData: FormData) {
   const { supabase, organizationId, isManager, ownEmployeeId, userId } = await resolveContext();
   const requestedEmployeeId = String(formData.get("employee_id") ?? "").trim();
   const employeeId = isManager && requestedEmployeeId ? requestedEmployeeId : ownEmployeeId;
@@ -57,7 +59,7 @@ export async function createAppointment(formData: FormData) {
   redirect(String(formData.get("return_to") ?? "/panel/crm/takvim"));
 }
 
-export async function updateAppointmentStatus(formData: FormData) {
+async function updateAppointmentStatus__impl(formData: FormData) {
   const { supabase, organizationId } = await resolveContext();
   const appointmentId = String(formData.get("appointment_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
@@ -68,11 +70,22 @@ export async function updateAppointmentStatus(formData: FormData) {
   revalidatePath("/panel/crm/takvim");
 }
 
-export async function deleteAppointment(formData: FormData) {
+async function deleteAppointment__impl(formData: FormData) {
   const { supabase, organizationId } = await resolveContext();
   const appointmentId = String(formData.get("appointment_id") ?? "").trim();
   if (!appointmentId) throw new Error("Randevu seçilmedi.");
   const { error } = await supabase.from("crm_appointments").delete().eq("id", appointmentId).eq("organization_id", organizationId);
   if (error) throw new Error("Randevu silinemedi: " + error.message);
   revalidatePath("/panel/crm/takvim");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createAppointment(...args: Parameters<typeof createAppointment__impl>) {
+  return runPanelAction(() => createAppointment__impl(...args));
+}
+export async function updateAppointmentStatus(...args: Parameters<typeof updateAppointmentStatus__impl>) {
+  return runPanelAction(() => updateAppointmentStatus__impl(...args));
+}
+export async function deleteAppointment(...args: Parameters<typeof deleteAppointment__impl>) {
+  return runPanelAction(() => deleteAppointment__impl(...args));
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -32,7 +34,7 @@ async function requireFounderTarget(formData: FormData) {
   return { supabase, organizationId, target };
 }
 
-export async function createCustomerOrganization(formData: FormData) {
+async function createCustomerOrganization__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
@@ -66,7 +68,7 @@ export async function createCustomerOrganization(formData: FormData) {
   redirect(`/panel/platform?organization=${data.organization_id}&provisioned=1`);
 }
 
-export async function updateOrganizationSettings(formData: FormData) {
+async function updateOrganizationSettings__impl(formData: FormData) {
   const { supabase, organizationId } = await requireFounderTarget(formData);
   const name = String(formData.get("name") ?? "").trim();
   const displayName = String(formData.get("display_name") ?? "").trim();
@@ -101,7 +103,7 @@ export async function updateOrganizationSettings(formData: FormData) {
   revalidatePath(`/panel/platform?organization=${organizationId}`);
 }
 
-export async function toggleOrganizationModule(formData: FormData) {
+async function toggleOrganizationModule__impl(formData: FormData) {
   const { supabase, organizationId } = await requireFounderTarget(formData);
   const moduleCode = String(formData.get("module_code") ?? "");
   const isEnabled = String(formData.get("is_enabled") ?? "") === "true";
@@ -110,4 +112,15 @@ export async function toggleOrganizationModule(formData: FormData) {
   if (error) throw new Error("Modül durumu değiştirilemedi.");
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform?organization=${organizationId}`);
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createCustomerOrganization(...args: Parameters<typeof createCustomerOrganization__impl>) {
+  return runPanelAction(() => createCustomerOrganization__impl(...args));
+}
+export async function updateOrganizationSettings(...args: Parameters<typeof updateOrganizationSettings__impl>) {
+  return runPanelAction(() => updateOrganizationSettings__impl(...args));
+}
+export async function toggleOrganizationModule(...args: Parameters<typeof toggleOrganizationModule__impl>) {
+  return runPanelAction(() => toggleOrganizationModule__impl(...args));
 }

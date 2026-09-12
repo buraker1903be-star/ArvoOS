@@ -1,9 +1,11 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
-export async function reviewBankTransferPayment(formData: FormData) {
+async function reviewBankTransferPayment__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
@@ -25,4 +27,9 @@ export async function reviewBankTransferPayment(formData: FormData) {
   revalidatePath("/panel/platform/payments");
   revalidatePath("/panel/platform/licenses");
   revalidatePath("/panel/platform/billing");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function reviewBankTransferPayment(...args: Parameters<typeof reviewBankTransferPayment__impl>) {
+  return runPanelAction(() => reviewBankTransferPayment__impl(...args));
 }

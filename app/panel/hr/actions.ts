@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
@@ -19,7 +21,7 @@ async function hrContext(){
   return context;
 }
 
-export async function createDepartment(formData:FormData){
+async function createDepartment__impl(formData:FormData){
   const {supabase,membership}=await hrContext();
   const name=text(formData,"name",120);
   if(name.length<2) throw new Error("Departman adı en az 2 karakter olmalıdır.");
@@ -28,7 +30,7 @@ export async function createDepartment(formData:FormData){
   revalidatePath("/panel/hr");
 }
 
-export async function createEmployee(formData:FormData){
+async function createEmployee__impl(formData:FormData){
   const {supabase,membership,userId}=await hrContext();
   const fullName=text(formData,"full_name",180);
   const commissionRate=number(formData,"commission_rate");
@@ -66,7 +68,7 @@ export async function createEmployee(formData:FormData){
   revalidatePath("/panel/crm");
 }
 
-export async function updateEmployee(formData:FormData){
+async function updateEmployee__impl(formData:FormData){
   const {supabase,membership}=await hrContext();
   const employeeId=text(formData,"employee_id",80);
   const commissionRate=number(formData,"commission_rate");
@@ -88,4 +90,15 @@ export async function updateEmployee(formData:FormData){
   if(!data) throw new Error("Personel bulunamadı.");
   revalidatePath("/panel/hr");
   revalidatePath("/panel/crm");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createDepartment(...args: Parameters<typeof createDepartment__impl>) {
+  return runPanelAction(() => createDepartment__impl(...args));
+}
+export async function createEmployee(...args: Parameters<typeof createEmployee__impl>) {
+  return runPanelAction(() => createEmployee__impl(...args));
+}
+export async function updateEmployee(...args: Parameters<typeof updateEmployee__impl>) {
+  return runPanelAction(() => updateEmployee__impl(...args));
 }

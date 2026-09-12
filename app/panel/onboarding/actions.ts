@@ -1,10 +1,12 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
-export async function completeOnboarding(formData: FormData) {
+async function completeOnboarding__impl(formData: FormData) {
   const { supabase, organization, membership } = await getPanelContext();
   if (!membership || !["owner", "admin"].includes(membership.role)) {
     throw new Error("Onboarding işlemini yalnızca kurum sahibi veya yöneticisi tamamlayabilir.");
@@ -36,4 +38,9 @@ export async function completeOnboarding(formData: FormData) {
 
   revalidatePath("/panel", "layout");
   redirect("/panel?onboarding=completed");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function completeOnboarding(...args: Parameters<typeof completeOnboarding__impl>) {
+  return runPanelAction(() => completeOnboarding__impl(...args));
 }

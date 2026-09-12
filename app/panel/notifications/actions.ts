@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -13,7 +15,7 @@ function revalidateNotifications() {
   revalidatePath("/panel");
 }
 
-export async function markNotificationRead(formData: FormData) {
+async function markNotificationRead__impl(formData: FormData) {
   const { supabase, userId } = await getPanelContext();
   const notificationId = String(formData.get("notification_id") ?? "").trim();
   if (!notificationId) throw new Error("Bildirim seçilmedi.");
@@ -41,7 +43,7 @@ export async function markNotificationRead(formData: FormData) {
   revalidateNotifications();
 }
 
-export async function markAllNotificationsRead() {
+async function markAllNotificationsRead__impl() {
   const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
   const now = new Date().toISOString();
 
@@ -81,7 +83,7 @@ export async function markAllNotificationsRead() {
   revalidateNotifications();
 }
 
-export async function deleteReadNotification(formData: FormData) {
+async function deleteReadNotification__impl(formData: FormData) {
   const { supabase, userId } = await getPanelContext();
   const notificationId = String(formData.get("notification_id") ?? "").trim();
   if (!notificationId) throw new Error("Bildirim seçilmedi.");
@@ -103,7 +105,7 @@ export async function deleteReadNotification(formData: FormData) {
   revalidateNotifications();
 }
 
-export async function sendManagementAnnouncement(formData: FormData) {
+async function sendManagementAnnouncement__impl(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Duyuru gönderme yetkiniz yok.");
   const title = String(formData.get("title") ?? "").trim();
@@ -120,4 +122,18 @@ export async function sendManagementAnnouncement(formData: FormData) {
   });
   if (error) throw new Error(`Duyuru gönderilemedi: ${error.message}`);
   revalidateNotifications();
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function markNotificationRead(...args: Parameters<typeof markNotificationRead__impl>) {
+  return runPanelAction(() => markNotificationRead__impl(...args));
+}
+export async function markAllNotificationsRead(...args: Parameters<typeof markAllNotificationsRead__impl>) {
+  return runPanelAction(() => markAllNotificationsRead__impl(...args));
+}
+export async function deleteReadNotification(...args: Parameters<typeof deleteReadNotification__impl>) {
+  return runPanelAction(() => deleteReadNotification__impl(...args));
+}
+export async function sendManagementAnnouncement(...args: Parameters<typeof sendManagementAnnouncement__impl>) {
+  return runPanelAction(() => sendManagementAnnouncement__impl(...args));
 }

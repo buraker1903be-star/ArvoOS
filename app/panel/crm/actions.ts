@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { diffFields, logActivity } from "@/lib/activity-log";
@@ -60,7 +62,7 @@ async function validateSalesEmployee(
   return { employeeId: data.id, userId: data.user_id ?? null };
 }
 
-export async function createOpportunity(formData: FormData) {
+async function createOpportunity__impl(formData: FormData) {
   const { supabase, userId, membership } = await crmContext();
   const title = text(formData, "title", 180);
   const customerName = text(formData, "customer_name", 180);
@@ -173,7 +175,7 @@ export async function createOpportunity(formData: FormData) {
   revalidatePath("/panel");
 }
 
-export async function updateOpportunity(formData: FormData) {
+async function updateOpportunity__impl(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   // Değişikliği yazabilmek için önceki hali gerekiyor.
@@ -277,7 +279,7 @@ export async function updateOpportunity(formData: FormData) {
   revalidatePath(`/panel/crm/requests/${opportunityId}`);
 }
 
-export async function archiveOpportunity(formData: FormData) {
+async function archiveOpportunity__impl(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error(
@@ -400,7 +402,7 @@ export async function moveOpportunity(formData: FormData) {
   revalidatePath("/panel");
 }
 
-export async function addInternalComment(formData: FormData) {
+async function addInternalComment__impl(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   const contextType = text(formData, "context_type", 20);
@@ -450,7 +452,7 @@ export async function addInternalComment(formData: FormData) {
  * amacıyla kullanılamaz — başlık, müşteri adı ve iletişim bilgileri
  * boşalırdı. Bu yüzden ayrı ve dar kapsamlı bir action.
  */
-export async function assignOpportunity(formData: FormData) {
+async function assignOpportunity__impl(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();
   if (!["owner", "admin", "manager"].includes(membership.role)) {
     throw new Error("Temsilci atama yetkiniz yok.");
@@ -547,7 +549,7 @@ export async function updateInternalComment(formData: FormData) {
  * Yorumu siler. Kendi yorumu herkes, başkasınınkini yönetici silebilir;
  * ayrımı RLS politikası yapıyor.
  */
-export async function deleteInternalComment(formData: FormData) {
+async function deleteInternalComment__impl(formData: FormData) {
   const { supabase, membership } = await crmContext();
   const commentId = text(formData, "comment_id", 80);
   const opportunityId = text(formData, "opportunity_id", 80);
@@ -566,4 +568,24 @@ export async function deleteInternalComment(formData: FormData) {
   if (!data) throw new Error("Yorum bulunamadı veya silme yetkiniz yok.");
 
   revalidateCommentChain(opportunityId, contextType, contextId);
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function createOpportunity(...args: Parameters<typeof createOpportunity__impl>) {
+  return runPanelAction(() => createOpportunity__impl(...args));
+}
+export async function updateOpportunity(...args: Parameters<typeof updateOpportunity__impl>) {
+  return runPanelAction(() => updateOpportunity__impl(...args));
+}
+export async function archiveOpportunity(...args: Parameters<typeof archiveOpportunity__impl>) {
+  return runPanelAction(() => archiveOpportunity__impl(...args));
+}
+export async function addInternalComment(...args: Parameters<typeof addInternalComment__impl>) {
+  return runPanelAction(() => addInternalComment__impl(...args));
+}
+export async function assignOpportunity(...args: Parameters<typeof assignOpportunity__impl>) {
+  return runPanelAction(() => assignOpportunity__impl(...args));
+}
+export async function deleteInternalComment(...args: Parameters<typeof deleteInternalComment__impl>) {
+  return runPanelAction(() => deleteInternalComment__impl(...args));
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
@@ -18,7 +20,7 @@ function readNonNegativeInteger(formData: FormData, key: string) {
   return value;
 }
 
-export async function updateOrganizationLicense(formData: FormData) {
+async function updateOrganizationLicense__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
@@ -69,7 +71,7 @@ export async function updateOrganizationLicense(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
 }
 
-export async function resetOrganizationAiCredits(formData: FormData) {
+async function resetOrganizationAiCredits__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   const organizationId = String(formData.get("organization_id") ?? "").trim();
@@ -77,4 +79,12 @@ export async function resetOrganizationAiCredits(formData: FormData) {
   const { error } = await supabase.from("organization_licenses").update({ ai_credits_used: 0, updated_at: new Date().toISOString() }).eq("organization_id", organizationId);
   if (error) throw new Error(`AI kredileri sıfırlanamadı: ${error.message}`);
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateOrganizationLicense(...args: Parameters<typeof updateOrganizationLicense__impl>) {
+  return runPanelAction(() => updateOrganizationLicense__impl(...args));
+}
+export async function resetOrganizationAiCredits(...args: Parameters<typeof resetOrganizationAiCredits__impl>) {
+  return runPanelAction(() => resetOrganizationAiCredits__impl(...args));
 }

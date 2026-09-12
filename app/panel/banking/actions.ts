@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 async function bankingContext() {
   const context = await getPanelContext();
@@ -34,7 +35,7 @@ export async function createBankTransaction(formData: FormData) {
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   const description = String(formData.get("description") ?? "").trim();
   const referenceNo = String(formData.get("reference_no") ?? "").trim();
-  const transactionDate = String(formData.get("transaction_date") ?? "") || new Date().toISOString().slice(0,10);
+  const transactionDate = String(formData.get("transaction_date") ?? "") || todayInIstanbul();
   if (!['inflow','outflow'].includes(direction) || !Number.isFinite(amount) || amount <= 0 || description.length < 2) throw new Error("Hareket bilgileri geçersiz.");
   const { error } = await supabase.from("bank_transactions").insert({
     organization_id: membership.organization_id, bank_account_id: bankAccountId, direction, amount,

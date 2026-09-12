@@ -1,10 +1,12 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
 
-export async function updateModulePermissions(formData: FormData) {
+async function updateModulePermissions__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) {
     throw new Error("Yetkilendirme ayarlarını değiştirme yetkiniz yok.");
@@ -28,4 +30,9 @@ export async function updateModulePermissions(formData: FormData) {
 
   revalidatePath("/panel/settings/permissions");
   revalidatePath("/panel");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateModulePermissions(...args: Parameters<typeof updateModulePermissions__impl>) {
+  return runPanelAction(() => updateModulePermissions__impl(...args));
 }

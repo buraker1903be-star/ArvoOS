@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -13,7 +15,7 @@ function sanitizeFileName(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-120) || "dekont";
 }
 
-export async function submitBankTransferPayment(formData: FormData) {
+async function submitBankTransferPayment__impl(formData: FormData) {
   const { supabase, organization, membership, hiddenModuleKeys } = await getPanelContext();
   if (!membership || !["owner", "admin"].includes(membership.role)) {
     throw new Error("Ödeme bildirimi yalnızca kurum sahibi veya yöneticisi tarafından gönderilebilir.");
@@ -73,4 +75,9 @@ export async function submitBankTransferPayment(formData: FormData) {
 
   revalidatePath("/panel/billing");
   redirect("/panel/billing?submitted=1");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function submitBankTransferPayment(...args: Parameters<typeof submitBankTransferPayment__impl>) {
+  return runPanelAction(() => submitBankTransferPayment__impl(...args));
 }

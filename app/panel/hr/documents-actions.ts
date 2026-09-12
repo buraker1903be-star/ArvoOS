@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
@@ -13,7 +15,7 @@ async function hrDocContext() {
   return context;
 }
 
-export async function uploadEmployeeDocument(formData: FormData) {
+async function uploadEmployeeDocument__impl(formData: FormData) {
   const { supabase, membership, userId } = await hrDocContext();
   const employeeId = String(formData.get("employee_id") ?? "").trim();
   if (!employeeId) throw new Error("Personel seçilmedi.");
@@ -49,7 +51,7 @@ export async function uploadEmployeeDocument(formData: FormData) {
   revalidatePath("/panel/hr");
 }
 
-export async function deleteEmployeeDocument(formData: FormData) {
+async function deleteEmployeeDocument__impl(formData: FormData) {
   const { supabase, membership } = await hrDocContext();
   const documentId = String(formData.get("document_id") ?? "").trim();
   if (!documentId) throw new Error("Dosya seçilmedi.");
@@ -63,4 +65,12 @@ export async function deleteEmployeeDocument(formData: FormData) {
 
   await supabase.storage.from("hr-documents").remove([doc.storage_path]);
   revalidatePath("/panel/hr");
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function uploadEmployeeDocument(...args: Parameters<typeof uploadEmployeeDocument__impl>) {
+  return runPanelAction(() => uploadEmployeeDocument__impl(...args));
+}
+export async function deleteEmployeeDocument(...args: Parameters<typeof deleteEmployeeDocument__impl>) {
+  return runPanelAction(() => deleteEmployeeDocument__impl(...args));
 }

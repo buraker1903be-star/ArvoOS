@@ -1,5 +1,7 @@
 "use server";
 
+import { runPanelAction } from "@/lib/panel-action";
+
 import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
 import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
@@ -299,7 +301,7 @@ export async function createContractDirectly(
   );
 }
 
-export async function updateProposal(formData: FormData) {
+async function updateProposal__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const enteredAmount = amount(formData, "amount");
@@ -430,7 +432,7 @@ export async function createProposalRevision(formData: FormData) {
   );
 }
 
-export async function issueProposalLink(formData: FormData) {
+async function issueProposalLink__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_proposal_link", {
@@ -482,7 +484,7 @@ export async function issueProposalLink(formData: FormData) {
   redirect(`/panel/crm/proposals?${params.toString()}`);
 }
 
-export async function updateContract(formData: FormData) {
+async function updateContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
@@ -662,7 +664,7 @@ export async function updateContractPaymentPlan(
   return { error: null, success: true };
 }
 
-export async function issueContractLink(formData: FormData) {
+async function issueContractLink__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_contract_link", {
@@ -716,7 +718,7 @@ export async function issueContractLink(formData: FormData) {
 // işaretlemek için — imzalanmış veya zaten kesinleşmiş sözleşmelerde
 // kullanılamaz (bu ikisinin gerçek finans/operasyon etkisi var, tek
 // tıkla değiştirilmemeli).
-export async function markContractStatus(formData: FormData) {
+async function markContractStatus__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
@@ -764,7 +766,7 @@ export async function markContractStatus(formData: FormData) {
 // Sözleşmeyi kalıcı olarak siler. Bağlı bir iş akışı (operasyon) veya
 // ödeme planı varsa, gerçek finans/operasyon verisi kaybolmasın diye
 // silinemez.
-export async function deleteContract(formData: FormData) {
+async function deleteContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!DELETE_ROLES.includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
@@ -836,7 +838,7 @@ export async function deleteContract(formData: FormData) {
 // "teklifi online onayla" beklemeden doğrudan sözleşmeye geçmek için.
 // Aynı, zaten kanıtlanmış kabul mantığını (respond_to_crm_proposal) müşteri
 // linkine gitmeden, personel adına tetikler.
-export async function fastTrackProposalToContract(formData: FormData) {
+async function fastTrackProposalToContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
@@ -948,7 +950,7 @@ export async function markProposalStatus(formData: FormData) {
 
 // Teklifi kalıcı olarak siler. Kabul edilip gerçek bir sözleşmeye
 // dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
-export async function deleteProposal(formData: FormData) {
+async function deleteProposal__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!DELETE_ROLES.includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
@@ -1011,7 +1013,7 @@ export async function deleteProposal(formData: FormData) {
  * Silme bilinçli olarak buraya dahil edilmedi: geri alınamaz bir işlem
  * olduğu için ayrı bir onay adımından geçmeli (deleteProposal).
  */
-export async function resolveProposal(formData: FormData) {
+async function resolveProposal__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
@@ -1072,4 +1074,33 @@ export async function resolveProposal(formData: FormData) {
 
   revalidatePath("/panel/crm/proposals");
   revalidatePath(`/panel/crm/proposals/${proposalId}`);
+}
+
+// Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateProposal(...args: Parameters<typeof updateProposal__impl>) {
+  return runPanelAction(() => updateProposal__impl(...args));
+}
+export async function issueProposalLink(...args: Parameters<typeof issueProposalLink__impl>) {
+  return runPanelAction(() => issueProposalLink__impl(...args));
+}
+export async function updateContract(...args: Parameters<typeof updateContract__impl>) {
+  return runPanelAction(() => updateContract__impl(...args));
+}
+export async function issueContractLink(...args: Parameters<typeof issueContractLink__impl>) {
+  return runPanelAction(() => issueContractLink__impl(...args));
+}
+export async function markContractStatus(...args: Parameters<typeof markContractStatus__impl>) {
+  return runPanelAction(() => markContractStatus__impl(...args));
+}
+export async function deleteContract(...args: Parameters<typeof deleteContract__impl>) {
+  return runPanelAction(() => deleteContract__impl(...args));
+}
+export async function fastTrackProposalToContract(...args: Parameters<typeof fastTrackProposalToContract__impl>) {
+  return runPanelAction(() => fastTrackProposalToContract__impl(...args));
+}
+export async function deleteProposal(...args: Parameters<typeof deleteProposal__impl>) {
+  return runPanelAction(() => deleteProposal__impl(...args));
+}
+export async function resolveProposal(...args: Parameters<typeof resolveProposal__impl>) {
+  return runPanelAction(() => resolveProposal__impl(...args));
 }

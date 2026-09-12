@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { allocateCollections } from "@/lib/commission-allocation";
+import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import "./commissions.css";
 
 type SearchParams = Promise<{ donem?: string; baslangic?: string; bitis?: string; personel?: string }>;
@@ -14,20 +15,27 @@ const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "curren
 const shortMoney = (value: number) => new Intl.NumberFormat("tr-TR", { notation: "compact", maximumFractionDigits: 1 }).format(value / 100) + " ₺";
 const dateText = (value: string) => new Date(value).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" });
 
+// Dönem sınırları Türkiye takvimine göre ("YYYY-MM-DD", bitiş hariç).
+// Eskiden sunucu (UTC) saatiyle hesaplanıyordu; ayın 1'inde 00:00–03:00
+// arasında hak edilen prim önceki aya düşüyordu.
 function dateRange(period: string, customStart?: string, customEnd?: string) {
-  const now = new Date();
-  let start = new Date(now.getFullYear(), now.getMonth(), 1);
-  let end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  if (period === "gecen-ay") { start = new Date(now.getFullYear(), now.getMonth() - 1, 1); end = new Date(now.getFullYear(), now.getMonth(), 1); }
-  if (period === "bu-yil") { start = new Date(now.getFullYear(), 0, 1); end = new Date(now.getFullYear() + 1, 0, 1); }
-  if (period === "ozel" && customStart && customEnd) { start = new Date(`${customStart}T00:00:00`); end = new Date(`${customEnd}T00:00:00`); end.setDate(end.getDate() + 1); }
-  return { start, end };
+  const [year, month] = todayInIstanbul().split("-").map(Number);
+  let startKey = monthStartKey(year, month);
+  let endKey = monthStartKey(year, month + 1);
+  if (period === "gecen-ay") { startKey = monthStartKey(year, month - 1); endKey = monthStartKey(year, month); }
+  if (period === "bu-yil") { startKey = monthStartKey(year, 1); endKey = monthStartKey(year + 1, 1); }
+  const validKey = (value?: string) => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+  if (period === "ozel" && validKey(customStart) && validKey(customEnd) && customStart! <= customEnd!) {
+    startKey = customStart!;
+    endKey = new Date(Date.parse(`${customEnd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  }
+  return { startKey, endKey, start: istanbulMidnight(startKey), end: istanbulMidnight(endKey) };
 }
 
 export default async function CommissionsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const period = params.donem || "bu-ay";
-  const { start, end } = dateRange(period, params.baslangic, params.bitis);
+  const { start, end, startKey, endKey } = dateRange(period, params.baslangic, params.bitis);
   const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   if (!isPlatformOwner && !["owner", "admin", "manager"].includes(membership.role)) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
@@ -58,8 +66,8 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   const opportunityMap = new Map(opportunities.map((item) => [item.id, item]));
   const contractMap = new Map(contracts.map((item) => [item.id, item]));
   const selectedEmployee = params.personel || "";
-  const periodStart = start.toISOString().slice(0, 10);
-  const periodEnd = end.toISOString().slice(0, 10);
+  const periodStart = startKey;
+  const periodEnd = endKey;
 
   // Her müşterinin ödemeleri sözleşmelerine eskiden yeniye dağıtılır ve her
   // parça o sözleşmenin satışçısına yazılır (lib/commission-allocation).

@@ -9,6 +9,7 @@ import { PanelBreadcrumb } from "./panel-breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
+import { FlashToast } from "./flash-toast";
 import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
@@ -88,6 +89,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
+    <FlashToast />
     <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />
     <aside id="panel-sidebar" className="panel-sidebar">
       <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
