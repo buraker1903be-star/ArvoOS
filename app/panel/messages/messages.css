@@ -40,6 +40,10 @@ html[data-theme="dark"] .msg-search{background:var(--surface-raised)}
 .msg-search button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:var(--n-400);color:var(--n-0);cursor:pointer}
 
 .msg-list{flex:1;min-height:0;overflow-y:auto;padding:2px 8px 14px;overscroll-behavior:contain}
+.msg-notify-hint{display:flex;align-items:center;gap:10px;margin:0 14px 8px;padding:9px 12px;border:1px solid color-mix(in srgb,var(--accent-500) 30%,var(--line));border-radius:14px;background:var(--accent-soft);color:var(--accent-strong);font:inherit;text-align:left;cursor:pointer;transition:transform .3s var(--msg-ease)}
+.msg-notify-hint:active{transform:scale(.98)}
+.msg-notify-hint b{display:block;font-size:13.5px}
+.msg-notify-hint small{display:block;margin-top:1px;color:color-mix(in srgb,var(--accent-strong) 75%,var(--muted));font-size:12px}
 .msg-list-label{margin:14px 12px 4px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .msg-list-note{margin:18px 12px;color:var(--muted);font-size:13.5px;text-align:center}
 .msg-list-empty{display:grid;justify-items:center;gap:10px;padding:48px 16px;color:var(--muted);text-align:center}

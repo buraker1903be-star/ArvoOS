@@ -7,10 +7,10 @@
    11px (eskiden 7–10px'lik okunmayan etiketler vardı). */
 
 :is(.status-lookup-shell,.status-lookup,.status-lookup-results){
-  --status-ink:#0b1b2e; --status-ink-2:#13243f; --status-soft-ink:#3b3732;
-  --status-muted:#7a7266; --status-dim:#a39a8c;
-  --status-line:#e7dfd0; --status-line-soft:#f0eadf;
-  --status-surface:#ffffff; --status-soft:#f7f4ee; --status-ivory:#fbf9f5;
+  --status-ink:#0b1b2e; --status-ink-2:#13243f; --status-soft-ink:#3a3a3c;
+  --status-muted:#6e6e73; --status-dim:#a1a1a6;
+  --status-line:#e3e3e8; --status-line-soft:#eeeef2;
+  --status-surface:#ffffff; --status-soft:#f2f2f7; --status-ivory:#f7f7fa;
   --status-gold:#b28a49; --status-gold-bright:#c9a66a; --status-gold-soft:#f5eddb; --status-gold-deep:#8e6d33;
   --status-display:var(--font-cormorant,"Cormorant Garamond"),"Iowan Old Style",Georgia,serif;
   --status-body:var(--font-manrope,"Manrope"),"Segoe UI",Arial,sans-serif;
@@ -24,11 +24,11 @@
 .status-lookup-shell{
   position:relative;min-height:100vh;overflow:hidden;padding:34px;color:var(--status-ink);font-family:var(--status-body);
   -webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 8%,rgba(178,138,73,.12),transparent 30%),linear-gradient(145deg,#faf7f1 0%,#f1ebe0 100%)
+  background:radial-gradient(circle at 12% 8%,rgba(255,255,255,.9),transparent 30%),linear-gradient(145deg,#f7f7fa 0%,#ececf1 100%)
 }
 .status-lookup-ambient{position:absolute;border-radius:999px;filter:blur(6px);pointer-events:none}
 .status-lookup-ambient-one{width:440px;height:440px;right:-170px;top:-190px;background:rgba(11,27,46,.07)}
-.status-lookup-ambient-two{width:320px;height:320px;left:-150px;bottom:-180px;background:rgba(178,138,73,.12)}
+.status-lookup-ambient-two{width:320px;height:320px;left:-150px;bottom:-180px;background:rgba(27,48,80,.06)}
 .status-lookup-layout{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(390px,520px);gap:clamp(38px,7vw,110px);align-items:center;width:min(1400px,100%);min-height:calc(100vh - 68px);margin:auto}
 .status-lookup-brandbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:12px}
 .status-lookup-brandmark{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:linear-gradient(150deg,#dcc28c,var(--status-gold));color:var(--status-ink);font:700 22px var(--status-display)}
@@ -65,7 +65,7 @@
 .status-lookup-error{margin:14px 0 0;padding:13px 15px;border:1px solid #efcdc8;border-radius:12px;background:#f9e9e7;color:#8c2f2b;font-size:13px;font-weight:700}
 
 /* --- Sonuç ekranı --- */
-.status-lookup-results{position:fixed;z-index:10;inset:0;overflow:auto;padding:34px;font-family:var(--status-body);color:var(--status-ink);background:radial-gradient(circle at 90% 0%,rgba(178,138,73,.1),transparent 30%),linear-gradient(145deg,#faf7f1,#f1ebe0)}
+.status-lookup-results{position:fixed;z-index:10;inset:0;overflow:auto;padding:34px;font-family:var(--status-body);color:var(--status-ink);background:radial-gradient(circle at 90% 0%,rgba(255,255,255,.9),transparent 30%),linear-gradient(145deg,#f7f7fa,#ececf1)}
 .status-lookup-card{width:min(1400px,100%);margin:auto;border:1px solid var(--status-line);border-radius:26px;background:#fff;box-shadow:0 30px 80px rgba(11,27,46,.1)}
 .status-lookup-product-view{padding:0;overflow:hidden}
 .status-lookup-card-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 30px;border-bottom:1px solid var(--status-line)}

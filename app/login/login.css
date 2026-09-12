@@ -6,7 +6,7 @@
    üzerindeki yazı rengi (--login-accent-on) kontrasta göre seçilir. */
 
 .login-shell{
-  --ink:#0b1b2e; --muted:#7a7266; --dim:#a39a8c; --line:#e7dfd0; --ivory:#f7f4ee; --ivory-2:#fbf9f5;
+  --ink:#0b1b2e; --muted:#6e6e73; --dim:#a1a1a6; --line:#e3e3e8; --ivory:#f2f2f7; --ivory-2:#f7f7fa;
   --gold:#b28a49; --gold-bright:#c9a66a; --gold-soft:#dcc28c; --gold-deep:#8e6d33;
   --midnight:#0b1b2e; --midnight-hi:#0e2139; --midnight-lo:#050c1a;
   --display:var(--font-cormorant,"Cormorant Garamond"),"Iowan Old Style","Palatino Linotype",Georgia,serif;
@@ -42,7 +42,7 @@
 .login-brand>small{color:#8f9ab0;font-size:11px;letter-spacing:.14em}
 
 /* --- Sağ: form --- */
-.login-form-wrap{display:grid;place-items:center;padding:40px;background:radial-gradient(60% 40% at 50% 0%,rgba(178,138,73,.08),transparent 70%),var(--ivory)}
+.login-form-wrap{display:grid;place-items:center;padding:40px;background:radial-gradient(60% 40% at 50% 0%,rgba(255,255,255,.85),transparent 70%),var(--ivory)}
 .login-card{
   position:relative;width:min(460px,100%);padding:48px 46px 40px;
   background:#fff;border:1px solid var(--line);border-radius:22px;

@@ -1,245 +1,97 @@
-.notification-filters {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 9px;
-  margin-bottom: 16px;
+/* ============================================================
+   BİLDİRİM MERKEZİ — iOS Bildirim Merkezi tarzı (page.tsx)
+   Günlere göre gruplanmış liste; her tür kendi renginde simgeyle.
+   Renkler yalnızca panel-tokens.css'teki değişkenlerden.
+   ============================================================ */
+
+.ntf-page{
+  --ntf-ease:cubic-bezier(.22,1,.36,1);
+  display:flex;flex-direction:column;gap:16px
 }
 
-.notification-filters a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-  transition: .18s ease;
+/* Ton: simge kutusu rengi */
+.ntf-page [data-tone]{--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.ntf-page [data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.ntf-page [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
+.ntf-page [data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.ntf-page [data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.ntf-page [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
+html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
+
+/* ---------- Filtre çipleri ---------- */
+.ntf-filters{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+.ntf-filters::-webkit-scrollbar{display:none}
+.ntf-filters a{
+  flex:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 8px 0 14px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
+  font-size:13.5px;font-weight:600;text-decoration:none;
+  transition:background-color .25s var(--ntf-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntf-ease)
 }
+.ntf-filters a:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntf-filters a:active{transform:scale(.96)}
+.ntf-filters a.is-active{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
+.ntf-filters b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
+.ntf-filters a.is-active b{background:color-mix(in srgb,var(--n-0) 18%,transparent);color:var(--n-0)}
 
-.notification-filters a:hover,
-.notification-filters a.active {
-  border-color: var(--brand-700);
-  background: var(--brand-700);
-  color: #fff;
+/* ---------- Liste kartı ---------- */
+.ntf-card{border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
+.ntf-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px 6px}
+.ntf-card-head h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+.ntf-link{padding:6px 2px;border:0;background:none;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.ntf-link:hover{text-decoration:underline;text-underline-offset:3px}
+
+.ntf-group{padding:0 10px 10px}
+.ntf-day{margin:14px 12px 6px;color:var(--muted);font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+
+.ntf-item{
+  position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 10px;gap:14px;align-items:start;
+  padding:14px 12px;border-radius:16px;transition:background-color .2s ease
 }
+.ntf-item+.ntf-item::before{content:"";position:absolute;top:0;left:66px;right:12px;height:1px;background:var(--line-soft)}
+.ntf-item:hover{background:color-mix(in srgb,var(--ink) 3.5%,transparent)}
+.ntf-item.is-unread{background:color-mix(in srgb,var(--info) 5%,transparent)}
+.ntf-item.is-unread:hover{background:color-mix(in srgb,var(--info) 8%,transparent)}
 
-.notification-filters b {
-  display: grid;
-  place-items: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 12px;
+.ntf-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--tone-bg);color:var(--tone-fg)}
+.ntf-body{min-width:0}
+.ntf-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:2px}
+.ntf-label{color:var(--tone-fg);font-size:12px;font-weight:700;letter-spacing:.02em}
+.ntf-top time{flex:none;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ntf-item h3{margin:0;color:var(--ink);font-size:15px;font-weight:650;line-height:1.35;letter-spacing:-.01em}
+.ntf-item.is-unread h3{font-weight:700}
+.ntf-detail{margin:3px 0 0;color:var(--ink-soft);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ntf-item[data-tone="gold"] .ntf-detail{-webkit-line-clamp:6}
+.ntf-context{margin:4px 0 0;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.ntf-dot{width:10px;height:10px;margin-top:6px;border-radius:50%;background:var(--info);box-shadow:0 0 0 3px color-mix(in srgb,var(--info) 18%,transparent)}
+
+.ntf-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.ntf-actions form{margin:0}
+.ntf-btn{
+  display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 12px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
+  font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;
+  transition:background-color .2s ease,border-color .2s ease,transform .3s var(--ntf-ease)
 }
+.ntf-btn:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntf-btn:active{transform:scale(.95)}
+.ntf-btn.is-primary{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 4px 12px rgba(11,27,46,.14)}
+.ntf-btn.is-primary:hover{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-bright) 55%,transparent),0 6px 16px rgba(11,27,46,.2)}
+.ntf-btn.is-danger{color:var(--danger)}
+.ntf-btn.is-danger:hover{border-color:color-mix(in srgb,var(--danger) 35%,var(--line));background:var(--danger-soft)}
 
-.notification-filters a.active b,
-.notification-filters a:hover b {
-  background: rgba(255, 255, 255, .18);
-  color: #fff;
-}
+.ntf-empty{display:grid;justify-items:center;gap:8px;padding:56px 20px 64px;text-align:center}
+.ntf-empty .ntf-icon{width:52px;height:52px;border-radius:16px;--tone-bg:var(--surface-2);--tone-fg:var(--muted)}
+.ntf-empty h3{margin:6px 0 0;color:var(--ink);font-size:17px;font-weight:700}
+.ntf-empty p{max-width:380px;margin:0;color:var(--muted);font-size:14px;line-height:1.55}
 
-.notification-compose-form textarea {
-  min-height: 180px;
-  resize: vertical;
-}
+/* Duyuru formu */
+.notification-compose-form textarea{min-height:180px;resize:vertical}
 
-.notification-feed {
-  display: grid;
-  gap: 12px;
-}
-
-.notification-item {
-  position: relative;
-  display: grid;
-  grid-template-columns: 5px minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: start;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 8px 28px rgba(17, 42, 70, .045);
-}
-
-.notification-item.is-unread {
-  border-color: color-mix(in srgb, var(--brand-700) 24%, var(--line));
-  background: color-mix(in srgb, var(--brand-700) 3%, var(--surface));
-}
-
-.notification-item-marker {
-  width: 5px;
-  min-height: 100%;
-  border-radius: 999px;
-  background: var(--line);
-}
-
-.notification-item.is-unread .notification-item-marker {
-  background: var(--brand-700);
-}
-
-.notification-item-body {
-  min-width: 0;
-  max-width: 900px;
-}
-
-.notification-item-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 9px;
-}
-
-.notification-category,
-.notification-new,
-.notification-read-state {
-  display: inline-flex;
-  align-items: center;
-  min-height: 23px;
-  padding: 0 8px;
-  border-radius: 7px;
-  background: var(--surface-2);
-  color: var(--ink-soft);
-  font-size: 11px;
-  font-weight: 850;
-}
-
-.notification-new {
-  background: var(--accent-100);
-  color: var(--accent-600);
-}
-
-.notification-item-meta time {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.notification-item h3 {
-  margin: 0;
-  color: var(--ink);
-  font: 750 15px/1.35 var(--font-heading);
-  letter-spacing: -.015em;
-}
-
-.notification-item p {
-  margin: 9px 0 0;
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.75;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.notification-item-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: 260px;
-}
-
-.notification-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 13px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  font: 800 12px/1 var(--font-body);
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: .18s ease;
-}
-
-.notification-action:hover {
-  transform: translateY(-1px);
-  border-color: var(--brand-700);
-}
-
-.notification-action-primary {
-  border-color: var(--brand-700);
-  background: var(--brand-700);
-  color: #fff;
-  box-shadow: 0 5px 14px rgba(10, 49, 88, .16);
-}
-
-.notification-action-primary:hover {
-  color: #fff;
-  box-shadow: 0 7px 18px rgba(10, 49, 88, .22);
-}
-
-.notification-action-primary span {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.notification-action-danger {
-  border-color: color-mix(in srgb, var(--danger) 28%, var(--line));
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-
-@media (max-width: 1000px) {
-  .notification-filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .notification-item {
-    grid-template-columns: 5px minmax(0, 1fr);
-  }
-
-  .notification-item-actions {
-    grid-column: 2;
-    justify-content: flex-start;
-    max-width: none;
-  }
-}
-
-@media (max-width: 620px) {
-  .notification-filters {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .notification-item {
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .notification-item h3 {
-    font-size: 14px;
-  }
-
-  .notification-item p {
-    font-size: 12px;
-    line-height: 1.65;
-  }
-
-  .notification-item-actions,
-  .notification-item-actions form,
-  .notification-item-actions .notification-action {
-    width: 100%;
-  }
-}
-
-@media (max-width: 420px) {
-  .notification-filters {
-    grid-template-columns: 1fr;
-  }
+@media(max-width:620px){
+  .ntf-card{border-radius:18px}
+  .ntf-card-head{padding:16px 16px 4px}
+  .ntf-group{padding:0 4px 8px}
+  .ntf-item{grid-template-columns:36px minmax(0,1fr) 10px;gap:12px;padding:12px 10px}
+  .ntf-item+.ntf-item::before{left:58px}
+  .ntf-icon{width:36px;height:36px;border-radius:11px}
 }

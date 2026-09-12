@@ -14,6 +14,7 @@
 import { useSyncExternalStore } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { alertIncoming } from "./message-alerts";
 import {
   CHANNEL_COLUMNS,
   MAX_FILE_BYTES,
@@ -283,9 +284,25 @@ function receiveMessage(message: Message, isInsert: boolean) {
     bumpChannel(message);
     if (!state.channels.some((channel) => channel.id === message.channel_id)) void refreshChannel(message.channel_id);
     if (message.sender_id !== userId && !countAsUnread) scheduleRead(message.channel_id);
-    if (countAsUnread) publishUnread();
+    if (countAsUnread) {
+      publishUnread();
+      alertFor(message);
+    }
   }
   if (message.attachment_path) void signUrls([message.attachment_path]);
+}
+
+/** Ekranda olmayan sohbete gelen mesaj: ses ve (arka plandaysa) bildirim */
+function alertFor(message: Message) {
+  const channel = state.channels.find((item) => item.id === message.channel_id);
+  const sender = state.people.find((person) => person.userId === message.sender_id)?.name ?? "Ekip üyesi";
+  const text = message.body?.trim() || (message.attachment_name ? `Ek gönderdi: ${message.attachment_name}` : "Yeni mesaj");
+  const isDirect = !channel || channel.channelType === "direct";
+  alertIncoming({
+    title: isDirect ? sender : channel.name,
+    body: isDirect ? text : `${sender.split(" ")[0]}: ${text}`,
+    tag: message.channel_id,
+  });
 }
 
 function bumpChannel(message: Message) {

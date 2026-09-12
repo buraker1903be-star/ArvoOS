@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ClipboardEvent,
   type DragEvent,
   type FormEvent,
@@ -38,6 +39,13 @@ import {
   type MessagesState,
 } from "./messages-store";
 import { isOnline, MAX_FILE_BYTES, timeOf, type Channel, type Message, type MessagesInit, type Person } from "./messages-shared";
+import {
+  notificationPermission,
+  requestNotificationPermission,
+  setSoundEnabled,
+  soundEnabled,
+  subscribeAlertSettings,
+} from "./message-alerts";
 import "./messages.css";
 
 // iMessage tarzı kurum içi mesajlaşma. Aynı bileşen çekmecede (variant
@@ -102,6 +110,9 @@ const paths: Record<string, ReactNode> = {
   down: <path d="m6 9 6 6 6-6" />,
   group: <><circle cx="9" cy="8" r="3.2" /><path d="M3 20c.6-3.3 3-5 6-5s5.4 1.7 6 5" /><circle cx="17" cy="9" r="2.6" /><path d="M16 14.2c2.6.2 4.4 1.8 5 4.8" /></>,
   bubble: <path d="M21 12a8.5 8.5 0 0 1-12.4 7.5L3 21l1.6-5.1A8.5 8.5 0 1 1 21 12Z" />,
+  bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></>,
+  sound: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></>,
+  mute: <><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></>,
 };
 function Icon({ name, size = 18 }: { name: keyof typeof paths; size?: number }) {
   return (
@@ -198,6 +209,8 @@ export function MessagesApp({
   const [results, setResults] = useState<Message[]>([]);
   const [sheet, setSheet] = useState<null | "new" | "info">(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const sound = useSyncExternalStore(subscribeAlertSettings, soundEnabled, () => true);
+  const permission = useSyncExternalStore(subscribeAlertSettings, notificationPermission, () => "unsupported" as const);
 
   useEffect(() => {
     initMessages(init);
@@ -270,6 +283,16 @@ export function MessagesApp({
         <header className="msg-sidebar-head">
           <h2>Mesajlar</h2>
           <div className="msg-head-actions">
+            <button
+              type="button"
+              className="msg-icon-btn"
+              onClick={() => setSoundEnabled(!sound)}
+              aria-pressed={sound}
+              aria-label={sound ? "Mesaj sesini kapat" : "Mesaj sesini aç"}
+              title={sound ? "Mesaj sesi açık" : "Mesaj sesi kapalı"}
+            >
+              <Icon name={sound ? "sound" : "mute"} size={17} />
+            </button>
             <button type="button" className="msg-icon-btn" onClick={() => setSheet("new")} aria-label="Yeni sohbet" title="Yeni sohbet">
               <Icon name="compose" />
             </button>
@@ -295,6 +318,15 @@ export function MessagesApp({
             </button>
           ) : null}
         </label>
+        {permission === "default" ? (
+          <button type="button" className="msg-notify-hint" onClick={() => void requestNotificationPermission()}>
+            <Icon name="bell" size={16} />
+            <span>
+              <b>Bildirimleri aç</b>
+              <small>Panel arka plandayken yeni mesajları kaçırmayın</small>
+            </span>
+          </button>
+        ) : null}
         <div className="msg-list" role="list">
           {text && matchingPeople.length ? <p className="msg-list-label">Kişiler</p> : null}
           {matchingPeople.map((person) => (

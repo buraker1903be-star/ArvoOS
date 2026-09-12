@@ -136,6 +136,10 @@
 }
 .panel-root .panel-agreement-banner b{white-space:nowrap}
 
+/* ---------- Mobil alt menü okunmamış rozeti (işaretlemede vardı, stili yoktu) ---------- */
+.panel-root .mobile-bottom-nav>:is(a,button){position:relative}
+.panel-root .mobile-bottom-badge{position:absolute;top:5px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);box-shadow:0 0 0 2px var(--surface);color:var(--n-0);font-size:11px;font-style:normal;font-weight:700;line-height:18px;text-align:center}
+
 /* ---------- İnce kaydırma çubukları ---------- */
 .panel-root ::-webkit-scrollbar{width:10px;height:10px}
 .panel-root ::-webkit-scrollbar-track{background:transparent}

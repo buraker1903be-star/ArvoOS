@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { MessagesApp } from "./messages/messages-app";
 import { createInitialState, initMessages, useMessagesState } from "./messages/messages-store";
@@ -45,6 +46,13 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
     };
   }, [open]);
 
+  // Pencere üst çubuğun içinde çizilirse, çubuğun buzlu cam efekti
+  // (backdrop-filter) fixed konumu çubuğa hapsediyor ve pencere ince bir
+  // şerit olarak açılıyordu. Bu yüzden panelin köküne (.panel-root: tema
+  // değişkenleri orada) portal ile taşınır. Yalnızca tarayıcıda, ilk
+  // etkileşimden sonra (mounted) kurulur.
+  const portalTarget = mounted ? document.querySelector(".panel-root") : null;
+
   const badge = unread ? <span className="panel-unread-badge">{unread > 99 ? "99+" : unread}</span> : null;
   const label = `Mesajlar${unread ? `, ${unread} okunmamış` : ""}`;
 
@@ -60,6 +68,10 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
         <button
           className="panel-quick-action"
           type="button"
+          // Fareyle üzerine gelince/odaklanınca pencere önceden kurulur;
+          // böylece ilk açılışta da kayarak gelir.
+          onPointerEnter={() => setMounted(true)}
+          onFocus={() => setMounted(true)}
           onClick={() => {
             setMounted(true);
             setOpen(true);
@@ -73,14 +85,17 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
           {badge}
         </button>
       )}
-      {!onPage ? (
-        <div className={`msg-drawer-root${open ? " is-open" : ""}`}>
-          <button className="msg-drawer-backdrop" type="button" aria-label="Mesajları kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
-          <div id="messages-drawer" className="msg-drawer" role="dialog" aria-modal="true" aria-label="Mesajlar" inert={!open}>
-            {mounted ? <MessagesApp init={init} variant="drawer" active={open} onClose={() => setOpen(false)} /> : null}
-          </div>
-        </div>
-      ) : null}
+      {!onPage && portalTarget
+        ? createPortal(
+            <div className={`msg-drawer-root${open ? " is-open" : ""}`}>
+              <button className="msg-drawer-backdrop" type="button" aria-label="Mesajları kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
+              <div id="messages-drawer" className="msg-drawer" role="dialog" aria-modal="true" aria-label="Mesajlar" inert={!open}>
+                <MessagesApp init={init} variant="drawer" active={open} onClose={() => setOpen(false)} />
+              </div>
+            </div>,
+            portalTarget,
+          )
+        : null}
     </>
   );
 }
