@@ -68,6 +68,14 @@
 .panel-root .crm-data-table td.crm-col-progress b{min-width:38px;color:var(--ink);font-size:12.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .panel-root .crm-data-table td.crm-col-date.is-late{color:var(--danger);font-weight:650}
 .panel-root .crm-data-table td.crm-col-date.is-late small{color:var(--danger);font-size:11.5px;font-weight:600}
+/* Müşteriden okunmamış mesajı olan iş: kırmızı işaret (operasyon listesi) */
+.panel-root .crm-page-stack .crm-data-table tbody tr.has-alert{border-color:color-mix(in srgb,var(--danger) 40%,var(--line));background:color-mix(in srgb,var(--danger) 4%,var(--surface));box-shadow:inset 3px 0 0 var(--danger)}
+.panel-root .crm-page-stack .crm-data-table tbody tr.has-alert:hover{background:color-mix(in srgb,var(--danger) 7%,var(--surface));box-shadow:inset 3px 0 0 var(--danger),inset 0 0 0 1px color-mix(in srgb,var(--danger) 28%,transparent)}
+.panel-root .crm-alert-chip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:5px;padding:2px 9px 2px 7px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-size:11.5px;font-weight:700;white-space:nowrap}
+.panel-root .crm-alert-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;animation:crm-alert-pulse 1.8s ease-in-out infinite}
+@keyframes crm-alert-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+.panel-root .crm-inline-action{display:inline-flex;align-self:flex-start;padding:3px 10px;border:1px dashed color-mix(in srgb,var(--accent-500) 55%,var(--line));border-radius:999px;color:var(--accent-strong);font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap;transition:background-color .2s ease}
+.panel-root .crm-inline-action:hover{border-style:solid;background:var(--accent-soft)}
 /* Kayıt numaraları da tek yazı tipinde (eskiden kod yazı tipi); rakamlar eşit genişlikte */
 .panel-root .crm-data-table .crm-table-mono{font-family:var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 

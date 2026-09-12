@@ -89,6 +89,48 @@ async function setWorkflowStatus__impl(formData: FormData) {
   revalidatePath("/panel/operations"); revalidatePath("/panel"); revalidatePath(`/panel/operations/${workflowId}`);
 }
 
+// Termin (teslim tarihi): termini girilmemiş işlere tarih girilebilsin diye.
+// Yöneticiler ve işin atanmış sorumlusu belirleyebilir; veritabanı
+// (members_update_assigned_operation_workflows) da aynı kuralı uygular.
+async function setWorkflowDueDate__impl(formData: FormData) {
+  const { supabase, userId, membership } = await operationContext();
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const dueDate = String(formData.get("due_date") ?? "").trim() || null;
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error("Geçerli bir termin tarihi seçin.");
+  const { data: workflow } = await supabase.from("operation_workflows").select("id,start_date,assigned_employee_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  let allowed = ["owner", "admin", "manager"].includes(membership.role);
+  if (!allowed && workflow.assigned_employee_id) {
+    const { data: me } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle();
+    allowed = Boolean(me?.id && me.id === workflow.assigned_employee_id);
+  }
+  if (!allowed) throw new Error("Termini yalnızca yöneticiler ve işin sorumlusu belirleyebilir.");
+  if (dueDate && workflow.start_date && dueDate < workflow.start_date) throw new Error("Termin başlangıç tarihinden önce olamaz.");
+  const { data, error } = await supabase.from("operation_workflows").update({ due_date: dueDate, updated_at: new Date().toISOString() }).eq("id", workflowId).eq("organization_id", membership.organization_id).select("id");
+  if (error) throw new Error("Termin kaydedilemedi: " + error.message);
+  // RLS engellediğinde güncelleme sessizce 0 satır döner
+  if (!data?.length) throw new Error("Termin kaydedilemedi: bu iş için yetkiniz yok.");
+  revalidatePath("/panel/operations");
+  revalidatePath(`/panel/operations/${workflowId}`);
+  revalidatePath("/panel/operations/gantt");
+  revalidatePath("/panel/operations/takvim");
+  revalidatePath("/panel");
+}
+
+// İş detayı açılınca müşterinin okunmamış mesajları okundu sayılır; işler
+// listesindeki kırmızı belirteç böylece söner. Sayfayı yeniden çizdirmemek
+// için revalidate edilmez (liste her açılışta taze okunur).
+export async function markCustomerMessagesRead(workflowId: string) {
+  const { supabase, membership } = await operationContext();
+  await supabase
+    .from("customer_file_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("workflow_id", String(workflowId).slice(0, 80))
+    .eq("organization_id", membership.organization_id)
+    .eq("sender_type", "customer")
+    .is("read_at", null);
+}
+
 export async function addWorkflowComment(formData: FormData) {
   const { supabase, userId, membership } = await operationContext();
   const workflowId = String(formData.get("workflow_id") ?? "");
@@ -171,6 +213,9 @@ export async function setWorkflowStatus(...args: Parameters<typeof setWorkflowSt
 }
 export async function replyCustomerFileMessage(...args: Parameters<typeof replyCustomerFileMessage__impl>) {
   return runPanelAction(() => replyCustomerFileMessage__impl(...args));
+}
+export async function setWorkflowDueDate(...args: Parameters<typeof setWorkflowDueDate__impl>) {
+  return runPanelAction(() => setWorkflowDueDate__impl(...args));
 }
 export async function deleteWorkflow(...args: Parameters<typeof deleteWorkflow__impl>) {
   return runPanelAction(() => deleteWorkflow__impl(...args));
