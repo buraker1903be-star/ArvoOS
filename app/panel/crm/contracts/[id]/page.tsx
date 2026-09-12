@@ -57,7 +57,8 @@ export default async function ContractDetailPage({ params }: Props) {
         url: shareUrl,
       })
     : null;
-  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
+  // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
+  const canDelete = ["owner", "admin"].includes(membership.role);
   return (
     <div className="crm-request-detail-page">
       <div className="panel-pagehead">

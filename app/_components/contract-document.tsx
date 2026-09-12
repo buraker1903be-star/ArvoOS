@@ -10,7 +10,10 @@ export function ContractDocument({row,verificationUrl,toolbarLeft,signatureForm,
  const brand=/^#[0-9a-fA-F]{6}$/.test(row.organization_primary_color||"")?row.organization_primary_color:"#173f35";
  const signed=Boolean(row.signed_at)||["signed","completed"].includes(row.status);
  const template=getContractTemplate(row.organization_slug);
- const normalized=normalizePaymentSchedule(row.payment_schedule);
+ // İmzasız sözleşmede taksitler her zaman güncel toplam bedelle uzlaştırılır
+ // (tutar sonradan değiştiyse eski taksitler müşteriye gitmesin). İmzalı
+ // belge dondurulmuş haliyle gösterilir.
+ const normalized=signed?normalizePaymentSchedule(row.payment_schedule):normalizePaymentSchedule(row.payment_schedule,Number(row.amount||0));
  const paymentRows=normalized.length?normalized:[{sequence:1,label:row.payment_plan||"Ödeme",due_date:row.due_date||"",amount:Number(row.amount||0),percentage:100}];
  const contact=[row.organization_contact_phone,row.organization_contact_email,row.organization_website_url].filter(Boolean).join(" · ");
  const qrUrl=verificationUrl?`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(verificationUrl)}`:null;

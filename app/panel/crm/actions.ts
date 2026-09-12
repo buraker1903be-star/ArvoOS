@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { diffFields, logActivity } from "@/lib/activity-log";
 import { reportActionFailure } from "@/lib/action-diagnostics";
 import { requestStageNames } from "./request-status";
@@ -320,6 +321,9 @@ export async function archiveOpportunity(formData: FormData) {
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel");
+  // "Sil" talep detayından çağrılıyor; arşivlenen talepte kalmak yerine
+  // listeye dönülür.
+  redirect("/panel/crm");
 }
 export async function moveOpportunity(formData: FormData) {
   const { supabase, membership, userId } = await crmContext();

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 
 const statuses = new Set(["planned", "in_progress", "blocked", "completed", "cancelled"]);
@@ -137,10 +138,13 @@ export async function deleteWorkflow(formData: FormData) {
   await supabase.from("operation_workflow_comments").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
   await supabase.from("operation_steps").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
 
-  const { error } = await supabase.from("operation_workflows").delete().eq("id", workflowId).eq("organization_id", membership.organization_id);
+  const { data: deleted, error } = await supabase.from("operation_workflows").delete().eq("id", workflowId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("İş akışı silinemedi: " + error.message);
+  if (!deleted?.length) throw new Error("İş akışı silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
 
   revalidatePath("/panel/operations");
   revalidatePath("/panel");
   revalidatePath("/panel/crm/contracts");
+  // Detay sayfasında kalırsak silinen kayıt yeniden okunur ve 404 döner.
+  redirect("/panel/operations");
 }

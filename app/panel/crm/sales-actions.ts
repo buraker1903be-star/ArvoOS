@@ -5,6 +5,11 @@ import { diffFields, logActivity } from "@/lib/activity-log";
 import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import {
+  calculatePaymentSchedule,
+  normalizePaymentSchedule,
+  type PaymentPlanType,
+} from "@/lib/payment-schedule";
 
 const text = (formData: FormData, key: string, max = 4000) =>
   String(formData.get(key) ?? "")
@@ -12,6 +17,41 @@ const text = (formData: FormData, key: string, max = 4000) =>
     .slice(0, max);
 const amount = (formData: FormData, key: string) =>
   Math.round(Number(formData.get(key) ?? 0) * 100);
+
+// Silme RLS politikası (crm_delete_policies) yalnızca owner/admin'e izin
+// veriyor. Uygulama tarafı da aynı listeyi kullanmalı; aksi halde manager
+// "Sil"e basıyor, RLS satırı sessizce eliyor ve kayıt silinmemiş oluyor.
+const DELETE_ROLES = ["owner", "admin"];
+
+const TAX_STATUSES = new Set(["excluded", "included", "exempt"]);
+const PLAN_TYPES = new Set<PaymentPlanType>(["cash", "half", "third", "custom"]);
+
+// create_crm_proposal_v2 ile birebir aynı hesap. Girilen tutar KDV
+// durumuna göre net (hariç/istisna) ya da brüt (dahil) kabul edilir;
+// crm_proposals.amount her zaman brüt tutarı tutar.
+function splitTax(enteredCents: number, taxStatus: string) {
+  if (taxStatus === "included") {
+    const net = Math.round(enteredCents / 1.2);
+    return { net, tax: enteredCents - net, gross: enteredCents };
+  }
+  if (taxStatus === "excluded") {
+    const tax = Math.round(enteredCents * 0.2);
+    return { net: enteredCents, tax, gross: enteredCents + tax };
+  }
+  return { net: enteredCents, tax: 0, gross: enteredCents };
+}
+
+// Tutar değiştiğinde ödeme planı da yeni toplama göre yeniden
+// hesaplanmalı; yoksa müşteri belgesinde eski taksit tutarları kalıyor.
+// Özel planlarda etiketler ve yüzdeler korunur, tutarlar ölçeklenir.
+function rescaleSchedule(stored: unknown, totalCents: number, planType: unknown) {
+  const type = PLAN_TYPES.has(planType as PaymentPlanType)
+    ? (planType as PaymentPlanType)
+    : undefined;
+  if (type && type !== "custom") return calculatePaymentSchedule(totalCents, type);
+  const rows = normalizePaymentSchedule(stored, totalCents, type);
+  return rows.length ? rows : calculatePaymentSchedule(totalCents, "cash");
+}
 
 export type CreateProposalState = {
   error: string | null;
@@ -253,24 +293,61 @@ export async function createContractDirectly(
 export async function updateProposal(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const proposalId = text(formData, "proposal_id", 80);
-  const proposalAmount = amount(formData, "amount");
+  const enteredAmount = amount(formData, "amount");
+  if (!Number.isFinite(enteredAmount) || enteredAmount < 0)
+    throw new Error("Teklif tutarı geçersiz.");
   // RPC'nin içine giremediğimiz için değişikliği burada çıkarıyoruz.
   const { data: before } = await supabase
     .from("crm_proposals")
-    .select("opportunity_id,title,scope,amount,currency,payment_plan,valid_until,status")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,valid_until,status,tax_status,payment_plan_type,payment_schedule")
     .eq("id", proposalId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
+  if (!before) throw new Error("Teklif bulunamadı veya erişiminiz yok.");
+
+  // KDV durumu bilinmeyen eski kayıtlarda tutar olduğu gibi (brüt) alınır
+  // ve KDV durumu yazılmaz; aksi halde fiyat sessizce %20 artardı.
+  const requestedTax = text(formData, "tax_status", 20);
+  const taxStatus: string | null = TAX_STATUSES.has(requestedTax)
+    ? requestedTax
+    : TAX_STATUSES.has(before.tax_status)
+      ? before.tax_status
+      : null;
+  const totals = splitTax(enteredAmount, taxStatus ?? "exempt");
 
   const { error } = await supabase.rpc("update_crm_proposal", {
     target_proposal_id: proposalId,
     proposal_title: text(formData, "title", 180),
     proposal_scope: text(formData, "scope"),
-    proposal_amount: proposalAmount,
+    proposal_amount: totals.gross,
     proposal_payment_plan: text(formData, "payment_plan", 500) || null,
     proposal_valid_until: text(formData, "valid_until", 20) || null,
   });
   if (error) throw new Error("Teklif güncellenemedi: " + error.message);
+
+  // update_crm_proposal yalnızca amount'u güncelliyor. Müşteri belgesi
+  // ise gross_amount / net_amount ve payment_schedule'dan okuyor; bunlar
+  // eski kalınca müşteriye eski tutar gidiyordu.
+  const { error: totalsError } = await supabase
+    .from("crm_proposals")
+    .update({
+      amount: totals.gross,
+      net_amount: totals.net,
+      tax_amount: totals.tax,
+      gross_amount: totals.gross,
+      payment_schedule: rescaleSchedule(
+        before.payment_schedule,
+        totals.gross,
+        before.payment_plan_type,
+      ),
+      ...(taxStatus
+        ? { tax_status: taxStatus, tax_rate: taxStatus === "exempt" ? 0 : 20 }
+        : {}),
+    })
+    .eq("id", proposalId)
+    .eq("organization_id", membership.organization_id);
+  if (totalsError)
+    throw new Error("Teklif tutarları güncellenemedi: " + totalsError.message);
 
   const { data: after } = await supabase
     .from("crm_proposals")
@@ -400,10 +477,12 @@ export async function updateContract(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
+  if (!Number.isFinite(contractAmount) || contractAmount < 0)
+    throw new Error("Sözleşme tutarı geçersiz.");
   // RPC'nin içine giremediğimiz için değişikliği burada çıkarıyoruz.
   const { data: before } = await supabase
     .from("crm_contracts")
-    .select("opportunity_id,title,scope,amount,currency,payment_plan,start_date,due_date,status")
+    .select("opportunity_id,title,scope,amount,currency,payment_plan,start_date,due_date,status,proposal_id,payment_plan_type,payment_schedule")
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
@@ -437,6 +516,28 @@ export async function updateContract(formData: FormData) {
     });
   }
 
+  // Tutar değiştiyse taksitler de yeni toplama göre ölçeklenmeli; aksi
+  // halde imza linkindeki ödeme planı eski tutarlarla kalıyor. Sözleşmenin
+  // kendi planı yoksa (eski kayıt) teklifteki plan esas alınır.
+  let rescaledSchedule: unknown = null;
+  if (before && Number(before.amount) !== contractAmount) {
+    let baseSchedule: unknown = before.payment_schedule;
+    if (!baseSchedule && before.proposal_id) {
+      const { data: proposal } = await supabase
+        .from("crm_proposals")
+        .select("payment_schedule")
+        .eq("id", before.proposal_id)
+        .eq("organization_id", membership.organization_id)
+        .maybeSingle();
+      baseSchedule = proposal?.payment_schedule;
+    }
+    rescaledSchedule = rescaleSchedule(
+      baseSchedule,
+      contractAmount,
+      before.payment_plan_type,
+    );
+  }
+
   // Kurumsal müşteri adres/vergi bilgisi — ayrı, basit bir güncelleme
   // olarak tutuluyor ki mevcut, kanıtlanmış RPC'ye dokunmayalım.
   const { error: partyInfoError } = await supabase
@@ -445,6 +546,7 @@ export async function updateContract(formData: FormData) {
       customer_address: text(formData, "customer_address", 500) || null,
       customer_tax_number: text(formData, "customer_tax_number", 40) || null,
       customer_tax_office: text(formData, "customer_tax_office", 120) || null,
+      ...(rescaledSchedule ? { payment_schedule: rescaledSchedule } : {}),
     })
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id);
@@ -655,30 +757,32 @@ export async function markContractStatus(formData: FormData) {
 // silinemez.
 export async function deleteContract(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  if (!DELETE_ROLES.includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   if (!contractId) throw new Error("Sözleşme seçilmedi.");
 
+  // maybeSingle() birden fazla satırda hata döner ve data null olur;
+  // bu da kontrolü atlatırdı. limit(1) ile yalnızca varlığa bakıyoruz.
   const [{ data: linkedWorkflow }, { data: linkedPlan }] = await Promise.all([
     supabase
       .from("operation_workflows")
       .select("id")
       .eq("contract_id", contractId)
       .eq("organization_id", membership.organization_id)
-      .maybeSingle(),
+      .limit(1),
     supabase
       .from("payment_plans")
       .select("id")
       .eq("contract_id", contractId)
       .eq("organization_id", membership.organization_id)
-      .maybeSingle(),
+      .limit(1),
   ]);
-  if (linkedWorkflow)
+  if (linkedWorkflow?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir iş akışı var, önce onu arşivleyin veya bu sözleşmeyi silmeyin.",
     );
-  if (linkedPlan)
+  if (linkedPlan?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir ödeme planı var, önce onu silin veya bu sözleşmeyi silmeyin.",
     );
@@ -690,12 +794,17 @@ export async function deleteContract(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
 
-  const { error: deleteError } = await supabase
+  // RLS izin vermezse delete hata döndürmez, sadece 0 satır siler.
+  // Silinen satırı geri isteyip gerçekten silindiğini doğruluyoruz.
+  const { data: deletedContract, error: deleteError } = await supabase
     .from("crm_contracts")
     .delete()
     .eq("id", contractId)
-    .eq("organization_id", membership.organization_id);
+    .eq("organization_id", membership.organization_id)
+    .select("id");
   if (deleteError) throw new Error("Sözleşme silinemedi: " + deleteError.message);
+  if (!deletedContract?.length)
+    throw new Error("Sözleşme silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
 
   await logActivity(supabase, {
     organizationId: membership.organization_id,
@@ -709,6 +818,9 @@ export async function deleteContract(formData: FormData) {
       : "Sözleşme silindi",
   });
   revalidatePath("/panel/crm/contracts");
+  revalidatePath("/panel/crm");
+  // Detay sayfasında kalırsak silinen kayıt yeniden okunur ve 404 döner.
+  redirect("/panel/crm/contracts");
 }
 
 // Müşteri telefon/whatsapp üzerinden zaten sözlü onay verdiğinde, ayrı bir
@@ -829,7 +941,7 @@ export async function markProposalStatus(formData: FormData) {
 // dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
 export async function deleteProposal(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  if (!DELETE_ROLES.includes(membership.role))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   if (!proposalId) throw new Error("Teklif seçilmedi.");
@@ -839,8 +951,8 @@ export async function deleteProposal(formData: FormData) {
     .select("id")
     .eq("proposal_id", proposalId)
     .eq("organization_id", membership.organization_id)
-    .maybeSingle();
-  if (linkedContract)
+    .limit(1);
+  if (linkedContract?.length)
     throw new Error(
       "Bu teklife bağlı bir sözleşme var, önce sözleşmeyi silin veya bu teklifi silmeyin.",
     );
@@ -853,12 +965,16 @@ export async function deleteProposal(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
 
-  const { error } = await supabase
+  // RLS izin vermezse delete hata döndürmez, sadece 0 satır siler.
+  const { data: deleted, error } = await supabase
     .from("crm_proposals")
     .delete()
     .eq("id", proposalId)
-    .eq("organization_id", membership.organization_id);
+    .eq("organization_id", membership.organization_id)
+    .select("id");
   if (error) throw new Error("Teklif silinemedi: " + error.message);
+  if (!deleted?.length)
+    throw new Error("Teklif silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
 
   await logActivity(supabase, {
     organizationId: membership.organization_id,
@@ -871,6 +987,9 @@ export async function deleteProposal(formData: FormData) {
   });
 
   revalidatePath("/panel/crm/proposals");
+  revalidatePath("/panel/crm");
+  // Detay sayfasında kalırsak silinen kayıt yeniden okunur ve 404 döner.
+  redirect("/panel/crm/proposals");
 }
 
 /**

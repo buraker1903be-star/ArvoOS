@@ -35,7 +35,7 @@ export default async function ProposalDetailPage({ params }: Props) {
 
   const { data, error } = await supabase
     .from("crm_proposals")
-    .select("id,proposal_no,title,scope,amount,currency,payment_plan,valid_until,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,root_proposal_id,share_token,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,proposal_no,title,scope,amount,net_amount,gross_amount,tax_status,currency,payment_plan,valid_until,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,root_proposal_id,share_token,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
@@ -79,7 +79,18 @@ export default async function ProposalDetailPage({ params }: Props) {
 
 
   const locked = ["accepted", "rejected", "archived"].includes(data.status);
-  const canDelete = ["owner", "admin", "manager"].includes(membership.role);
+  // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
+  const canDelete = ["owner", "admin"].includes(membership.role);
+  // Formdaki tutar, teklif oluşturulurken girildiği anlamda gösterilir:
+  // KDV dahilse brüt, hariç/istisnaysa net. KDV durumu olmayan eski
+  // kayıtlarda tutar olduğu gibi (brüt) düzenlenir.
+  const taxStatus = ["excluded", "included", "exempt"].includes(data.tax_status)
+    ? (data.tax_status as string)
+    : null;
+  const editableAmount =
+    taxStatus && taxStatus !== "included"
+      ? Number(data.net_amount ?? data.amount)
+      : Number(data.amount);
 
   return (
     <div className="crm-request-detail-page">
@@ -233,16 +244,30 @@ export default async function ProposalDetailPage({ params }: Props) {
                 <input name="title" defaultValue={data.title} required />
               </label>
               <label>
-                Tutar
+                {taxStatus === "included"
+                  ? "Tutar (KDV dahil)"
+                  : taxStatus
+                    ? "Tutar (KDV hariç)"
+                    : "Tutar"}
                 <input
                   name="amount"
                   type="number"
                   step="0.01"
                   min="0"
-                  defaultValue={(data.amount / 100).toFixed(2)}
+                  defaultValue={(editableAmount / 100).toFixed(2)}
                   required
                 />
               </label>
+              {taxStatus ? (
+                <label>
+                  KDV durumu
+                  <select name="tax_status" defaultValue={taxStatus}>
+                    <option value="excluded">KDV Hariç</option>
+                    <option value="included">KDV Dahil</option>
+                    <option value="exempt">KDV İstisna</option>
+                  </select>
+                </label>
+              ) : null}
               <label className="wide">
                 Kapsam
                 <textarea
