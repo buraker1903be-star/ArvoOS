@@ -10,6 +10,24 @@
 // sözleşmeleri aşan fazla ödeme en yeni sözleşmeye yazılır. İade, en son
 // dağıtılan parçadan geriye doğru düşülür ve negatif parça olarak döner.
 
+export type RateHistoryRow = { employee_id: string; commission_rate: number | string; valid_from: string };
+
+// Bir tahsilat gününde geçerli olan satış primi oranı. O gün içinde yapılan
+// oran değişikliği o günün tahsilatlarına uygulanır (geçerlilik, Türkiye
+// saatiyle ertesi gün 00:00'dan önce başlamış olmalı). Geçmiş kaydı yoksa
+// (ör. migration henüz çalışmadıysa) çalışanın bugünkü oranı kullanılır.
+export function rateAt(history: RateHistoryRow[], employeeId: string, dateKey: string, fallback: number) {
+  const dayEnd = Date.parse(`${dateKey}T00:00:00+03:00`) + 86_400_000;
+  let best: { at: number; rate: number } | null = null;
+  for (const row of history) {
+    if (row.employee_id !== employeeId) continue;
+    const at = row.valid_from === "-infinity" ? -Infinity : Date.parse(row.valid_from);
+    if (Number.isNaN(at) || at >= dayEnd) continue;
+    if (!best || at > best.at) best = { at, rate: Number(row.commission_rate) };
+  }
+  return best ? best.rate : fallback;
+}
+
 export type AllocationContract = { id: string; amount: number; order: string };
 export type AllocationEvent = { id: string; kind: "payment" | "refund"; amount: number; date: string };
 export type AllocationPiece = { eventId: string; contractId: string; amount: number; date: string };

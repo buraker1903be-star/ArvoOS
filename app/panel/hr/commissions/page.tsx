@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { allocateCollections } from "@/lib/commission-allocation";
+import { allocateCollections, rateAt, type RateHistoryRow } from "@/lib/commission-allocation";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import "./commissions.css";
 
@@ -41,7 +41,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   if (!isPlatformOwner && !["owner", "admin", "manager"].includes(membership.role)) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
 
   const orgId = membership.organization_id;
-  const [{ data: employeeData, error: employeeError }, { data: opportunityData, error: opportunityError }, { data: contractData, error: contractError }, { data: operationData, error: operationError }, { data: collectionData, error: collectionError }] = await Promise.all([
+  const [{ data: employeeData, error: employeeError }, { data: opportunityData, error: opportunityError }, { data: contractData, error: contractError }, { data: operationData, error: operationError }, { data: collectionData, error: collectionError }, { data: rateHistoryData }] = await Promise.all([
     supabase.from("hr_employees").select("id,full_name,job_title,employment_status,commission_rate,operation_commission_rate").eq("organization_id", orgId).order("full_name"),
     supabase.from("crm_opportunities").select("id,customer_name,assigned_employee_id").eq("organization_id", orgId),
     supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,amount,currency,signed_at,status,created_at").eq("organization_id", orgId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }),
@@ -50,7 +50,10 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     // uygulanıyor. Yalnızca gerçek ödemeler (payment) ve iadeler (adjustment
     // borç kaydı) sayılır; manuel/düzeltme alacakları prim matrahı değildir.
     supabase.from("account_entries").select("id,party_id,entry_type,amount,transaction_date").eq("organization_id", orgId).or("and(entry_type.eq.credit,source_type.eq.payment),and(entry_type.eq.debit,source_type.eq.adjustment)"),
+    // Oran geçmişi okunamazsa (tablo henüz yoksa) bugünkü oranla devam edilir.
+    supabase.from("hr_employee_commission_rates").select("employee_id,commission_rate,valid_from").eq("organization_id", orgId),
   ]);
+  const rateHistory = (rateHistoryData ?? []) as RateHistoryRow[];
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (opportunityError) throw new Error("Satış kayıtları okunamadı: " + opportunityError.message);
   if (contractError) throw new Error("Sözleşmeler okunamadı: " + contractError.message);
@@ -92,9 +95,13 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
       if (!contract) return [];
       const opportunity = opportunityMap.get(contract.opportunity_id);
       const employee = opportunity?.assigned_employee_id ? employeeMap.get(opportunity.assigned_employee_id) : undefined;
-      if (!employee || Number(employee.commission_rate) <= 0 || (selectedEmployee && employee.id !== selectedEmployee)) return [];
-      const amount = Math.round(piece.amount * Number(employee.commission_rate) / 100);
-      return [{ id: `sale-${piece.eventId}-${piece.contractId}-${piece.amount < 0 ? "iade" : "odeme"}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no, base: piece.amount, rate: Number(employee.commission_rate), amount, date: piece.date, status: "accrued" }];
+      if (!employee || (selectedEmployee && employee.id !== selectedEmployee)) return [];
+      // Tahsilat tarihinde geçerli oran; sonradan yapılan oran değişikliği
+      // geçmiş tahsilatları etkilemez.
+      const rate = rateAt(rateHistory, employee.id, piece.date, Number(employee.commission_rate));
+      if (rate <= 0) return [];
+      const amount = Math.round(piece.amount * rate / 100);
+      return [{ id: `sale-${piece.eventId}-${piece.contractId}-${piece.amount < 0 ? "iade" : "odeme"}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no, base: piece.amount, rate, amount, date: piece.date, status: "accrued" }];
     });
   });
   const operationRows = operations.flatMap((item) => {
