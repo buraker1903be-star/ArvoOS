@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { statusTone } from "@/lib/status-tone";
+import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
 import { CONTRACT_STATUS_LABELS as labels } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
@@ -76,14 +78,14 @@ export default async function ContractDetailPage({ params }: Props) {
             </div>
             <div className="panel-page-actions">
               {customer?.contact_email && messages ? (
-                <a className="panel-primary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
+                <ShareSendLink kind="contract" token={data.share_token} className="panel-primary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
                   ✉ E-posta ile gönder
-                </a>
+                </ShareSendLink>
               ) : null}
               {messages ? (
-                <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
                   💬 WhatsApp ile gönder
-                </a>
+                </ShareSendLink>
               ) : null}
               <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
                 👁 Önizle
@@ -95,7 +97,7 @@ export default async function ContractDetailPage({ params }: Props) {
       <div className="crm-detail-split">
         <div className="crm-detail-main">
       <section className="panel-card crm-request-detail-card">
-        <div className="crm-request-detail-heading"><div><span className="status-pill">{labels[data.status] ?? data.status}</span><h2>{data.title}</h2></div><strong>{money(data.amount, data.currency)}</strong></div>
+        <div className="crm-request-detail-heading"><div><span className="status-pill" data-tone={statusTone(data.status)}>{labels[data.status] ?? data.status}</span><h2>{data.title}</h2></div><strong>{money(data.amount, data.currency)}</strong></div>
         <dl className="crm-request-detail-grid">
           <div><dt>Müşteri</dt><dd>{customer?.customer_name || "—"}</dd></div>
           <div><dt>Temsilci</dt><dd>{representative}</dd></div>

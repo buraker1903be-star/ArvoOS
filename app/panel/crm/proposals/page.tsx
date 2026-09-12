@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { ShareSendLink } from "../share-send-link";
 import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
 import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
@@ -192,20 +193,23 @@ export default async function ProposalsPage({ searchParams }: Props) {
                 <span style={{ wordBreak: "break-all" }}>{shareUrl}</span>
               </div>
               <div className="panel-page-actions">
-                <a
+                <ShareSendLink
+                  kind="proposal"
+                  token={share}
                   className="panel-primary"
                   href={`mailto:${encodeURIComponent(customerEmail)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}
                 >
                   ✉ E-posta ile gönder
-                </a>
-                <a
+                </ShareSendLink>
+                <ShareSendLink
+                  kind="proposal"
+                  token={share}
                   className="panel-secondary"
-                  target="_blank"
-                  rel="noreferrer"
+                  newTab
                   href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}
                 >
                   💬 WhatsApp ile gönder
-                </a>
+                </ShareSendLink>
                 <a
                   className="panel-secondary"
                   target="_blank"
