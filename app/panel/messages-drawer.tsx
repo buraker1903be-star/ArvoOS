@@ -1,70 +1,86 @@
 "use client";
 
-import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { MessagesApp } from "./messages/messages-app";
+import { createInitialState, initMessages, useMessagesState } from "./messages/messages-store";
+import type { MessagesInit } from "./messages/messages-shared";
 
-type Person={userId:string;name:string;jobTitle:string|null;lastSeenAt:string|null};
-type Channel={id:string;name:string;description:string|null;channelType:string;directKey:string|null};
-type Message={id:string;channel_id:string;sender_id:string;body:string|null;created_at:string;attachment_path:string|null;attachment_name:string|null;attachment_mime:string|null;attachment_size:number|null};
+// Üst çubuktaki "Mesajlar" düğmesi ve sağdan açılan mesaj penceresi.
+// Depo pencere hiç açılmasa da başlar: okunmamış rozeti canlı kalır.
+// Pencere içeriği ilk açılışta yüklenir; kapalıyken klavyeyle erişilmez (inert).
+export function MessagesDrawer({ init }: { init: MessagesInit }) {
+  const pathname = usePathname();
+  const onPage = pathname.startsWith("/panel/messages");
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const fallback = useMemo(() => createInitialState(init), [init]);
+  const s = useMessagesState(fallback);
+  const unread = Object.values(s.unread).reduce((total, count) => total + (count || 0), 0);
 
-const initials=(name:string)=>name.split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]).join("").toLocaleUpperCase("tr-TR");
-const online=(lastSeen:string|null)=>Boolean(lastSeen&&Date.now()-new Date(lastSeen).getTime()<120000);
-const fileSize=(size:number|null)=>size?size>=1048576?`${(size/1048576).toFixed(1)} MB`:`${Math.ceil(size/1024)} KB`:"";
+  useEffect(() => {
+    initMessages(init);
+  }, [init]);
 
-export function MessagesDrawer({organizationId,userId,people,initialChannels,initialUnreadByChannel}:{organizationId:string;userId:string;people:Person[];initialChannels:Channel[];initialUnreadByChannel:Record<string,number>}){
-  const [open,setOpen]=useState(false);
-  const [channels,setChannels]=useState(initialChannels);
-  const [activeId,setActiveId]=useState(initialChannels[0]?.id??null);
-  const [messages,setMessages]=useState<Message[]>([]);
-  const [presence,setPresence]=useState<Record<string,string|null>>(()=>Object.fromEntries(people.map((person)=>[person.userId,person.lastSeenAt])));
-  const [loading,setLoading]=useState(false);
-  const [sending,setSending]=useState(false);
-  const [error,setError]=useState("");
-  const [search,setSearch]=useState("");
-  const [mobileThreadOpen,setMobileThreadOpen]=useState(false);
-  const [unreadByChannel,setUnreadByChannel]=useState(initialUnreadByChannel);
-  const [selectedFile,setSelectedFile]=useState<File|null>(null);
-  const [attachmentUrls,setAttachmentUrls]=useState<Record<string,string>>({});
-  const closeRef=useRef<HTMLButtonElement>(null);
-  const threadRef=useRef<HTMLDivElement>(null);
-  const fileRef=useRef<HTMLInputElement>(null);
-  const supabase=useMemo(()=>createClient(),[]);
-  const peopleMap=useMemo(()=>new Map(people.map((person)=>[person.userId,person])),[people]);
-  const filteredPeople=people.filter((person)=>person.userId!==userId&&person.name.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
-  const channelTitle=(channel:Channel)=>{if(channel.channelType!=="direct")return `# ${channel.name}`;const target=channel.directKey?.split(":").find((id)=>id!==userId);return target?peopleMap.get(target)?.name??"Ekip Üyesi":"Ekip Üyesi";};
-  const activeChannel=channels.find((channel)=>channel.id===activeId)??null;
-  const unreadCount=Object.values(unreadByChannel).reduce((total,count)=>total+count,0);
+  useEffect(() => {
+    const show = () => {
+      setMounted(true);
+      setOpen(true);
+    };
+    window.addEventListener("arvo:open-messages", show);
+    return () => window.removeEventListener("arvo:open-messages", show);
+  }, []);
 
-  const publishUnread=useCallback((next:Record<string,number>)=>window.dispatchEvent(new CustomEvent("arvo:message-unread-count",{detail:Object.values(next).reduce((total,count)=>total+count,0)})),[]);
-  const markChannelRead=useCallback(async(channelId:string)=>{const now=new Date().toISOString();await supabase.from("message_read_states").upsert({organization_id:organizationId,channel_id:channelId,user_id:userId,last_read_at:now,updated_at:now},{onConflict:"channel_id,user_id"});setUnreadByChannel((current)=>{if(!current[channelId])return current;const next={...current,[channelId]:0};publishUnread(next);return next})},[organizationId,publishUnread,supabase,userId]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("messages-drawer-open", open);
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !document.querySelector(".msg-sheet, .msg-lightbox")) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("messages-drawer-open");
+    };
+  }, [open]);
 
-  useEffect(()=>{const handler=()=>{setLoading(true);setError("");setMobileThreadOpen(false);setOpen(true)};window.addEventListener("arvo:open-messages",handler);return()=>window.removeEventListener("arvo:open-messages",handler);},[]);
-  useEffect(()=>{document.documentElement.classList.toggle("messages-drawer-open",open);if(open)requestAnimationFrame(()=>closeRef.current?.focus());return()=>document.documentElement.classList.remove("messages-drawer-open");},[open]);
-  useEffect(()=>{const handler=(event:KeyboardEvent)=>{if(event.key==="Escape")setOpen(false)};window.addEventListener("keydown",handler);return()=>window.removeEventListener("keydown",handler);},[]);
-  useEffect(()=>{if(!open||!activeId)return;let cancelled=false;supabase.from("internal_messages").select("id,channel_id,sender_id,body,created_at,attachment_path,attachment_name,attachment_mime,attachment_size").eq("organization_id",organizationId).eq("channel_id",activeId).order("created_at",{ascending:false}).limit(80).then(async({data,error})=>{if(cancelled)return;if(error)setError("Mesajlar yüklenemedi.");else{const rows=[...((data??[]) as Message[])].reverse();setMessages(rows);const paths=rows.flatMap((message)=>message.attachment_path?[message.attachment_path]:[]);if(paths.length){const {data:signed}=await supabase.storage.from("internal-message-files").createSignedUrls(paths,3600);if(!cancelled)setAttachmentUrls(Object.fromEntries((signed??[]).filter((item)=>item.signedUrl).map((item)=>[item.path,item.signedUrl])))}else setAttachmentUrls({});void markChannelRead(activeId)}setLoading(false)});return()=>{cancelled=true};},[open,activeId,organizationId,supabase,markChannelRead]);
-  useEffect(()=>{const subscription=supabase.channel(`team-chat-${organizationId}`)
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"internal_messages",filter:`organization_id=eq.${organizationId}`},(payload)=>{const message=payload.new as Message;if(message.channel_id===activeId){setMessages((current)=>current.some((item)=>item.id===message.id)?current:[...current,message]);if(message.attachment_path)void supabase.storage.from("internal-message-files").createSignedUrl(message.attachment_path,3600).then(({data})=>{if(data?.signedUrl)setAttachmentUrls((current)=>({...current,[message.attachment_path!]:data.signedUrl}))})}if(message.sender_id!==userId){if(open&&message.channel_id===activeId)void markChannelRead(message.channel_id);else setUnreadByChannel((current)=>{const next={...current,[message.channel_id]:(current[message.channel_id]??0)+1};publishUnread(next);return next})}})
-    .on("postgres_changes",{event:"*",schema:"public",table:"user_presence",filter:`organization_id=eq.${organizationId}`},(payload)=>{const row=(payload.new||payload.old) as {user_id?:string;last_seen_at?:string};if(row.user_id)setPresence((current)=>({...current,[row.user_id!]:row.last_seen_at??null}));})
-    .subscribe();return()=>{void supabase.removeChannel(subscription)};},[activeId,open,organizationId,publishUnread,supabase,userId,markChannelRead]);
-  useEffect(()=>{threadRef.current?.scrollTo({top:threadRef.current.scrollHeight,behavior:"smooth"})},[messages]);
+  const badge = unread ? <span className="panel-unread-badge">{unread > 99 ? "99+" : unread}</span> : null;
+  const label = `Mesajlar${unread ? `, ${unread} okunmamış` : ""}`;
 
-  const startDirect=async(person:Person)=>{setError("");setLoading(true);const {data,error}=await supabase.rpc("create_direct_message_channel",{target_user_id:person.userId,target_organization_id:organizationId});if(error||!data){setError(error?.message??"Sohbet başlatılamadı.");setLoading(false);return}let channel=channels.find((item)=>item.id===data);if(!channel){channel={id:String(data),name:"Birebir Sohbet",description:"Kişiye özel ekip sohbeti",channelType:"direct",directKey:[userId,person.userId].sort().join(":")};setChannels((current)=>[channel!,...current])}setActiveId(channel.id);setMobileThreadOpen(true);setLoading(false)};
-  const send=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();if(!activeId||sending)return;const form=event.currentTarget;const field=form.elements.namedItem("body") as HTMLTextAreaElement;const body=field.value.trim();if(!body&&!selectedFile)return;if(selectedFile&&selectedFile.size>10485760){setError("Dosya en fazla 10 MB olabilir.");return}setSending(true);setError("");let attachmentPath:string|null=null;if(selectedFile){const safeName=selectedFile.name.replace(/[^a-zA-Z0-9._-]+/g,"-");attachmentPath=`${organizationId}/${activeId}/${crypto.randomUUID()}-${safeName}`;const {error:uploadError}=await supabase.storage.from("internal-message-files").upload(attachmentPath,selectedFile,{cacheControl:"3600",upsert:false});if(uploadError){setError("Dosya yüklenemedi: "+uploadError.message);setSending(false);return}}const {error}=await supabase.from("internal_messages").insert({organization_id:organizationId,channel_id:activeId,sender_id:userId,body:body?body.slice(0,4000):null,attachment_path:attachmentPath,attachment_name:selectedFile?.name??null,attachment_mime:selectedFile?.type??null,attachment_size:selectedFile?.size??null});if(error){if(attachmentPath)void supabase.storage.from("internal-message-files").remove([attachmentPath]);setError("Mesaj gönderilemedi: "+error.message)}else{field.value="";setSelectedFile(null);if(fileRef.current)fileRef.current.value=""}setSending(false)};
-  const handleComposerKeyDown=(event:ReactKeyboardEvent<HTMLTextAreaElement>)=>{if(event.key!=="Enter"||event.shiftKey||event.nativeEvent.isComposing)return;event.preventDefault();event.currentTarget.form?.requestSubmit()};
-
-  return <>
-    <button className="panel-quick-action" type="button" onClick={()=>{setLoading(true);setError("");setOpen(true)}} aria-label={`Mesajları aç${unreadCount?`, ${unreadCount} okunmamış`:""}`} aria-expanded={open} aria-controls="messages-drawer"><span className="panel-quick-icon" aria-hidden="true">◇</span><b>Mesajlar</b>{unreadCount?<span className="panel-unread-badge">{unreadCount>99?"99+":unreadCount}</span>:null}</button>
-    <button className="messages-drawer-backdrop" type="button" aria-label="Mesajları kapat" onClick={()=>setOpen(false)} tabIndex={open?0:-1}/>
-    <aside id="messages-drawer" className={`messages-drawer${mobileThreadOpen?" mobile-thread-open":""}`} aria-hidden={!open}>
-      <header className="messages-drawer-head"><div><small>KURUM İÇİ İLETİŞİM</small><h2>Mesajlar</h2></div><button ref={closeRef} type="button" onClick={()=>setOpen(false)} aria-label="Mesajları kapat">×</button></header>
-      <div className="messages-drawer-body">
-        <aside className="messages-people"><label><span className="sr-only">Personel ara</span><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Personel ara..."/></label><div className="messages-person-list">{filteredPeople.map((person)=><button type="button" key={person.userId} onClick={()=>void startDirect(person)}><i>{initials(person.name)}<em className={online(presence[person.userId])?"online":""}/></i><span><b>{person.name}</b><small>{online(presence[person.userId])?"Çevrimiçi":presence[person.userId]?`Son görülme ${new Date(presence[person.userId]!).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}`:"Çevrimdışı"}</small></span></button>)}</div><div className="messages-channel-list"><small>SOHBETLER</small>{channels.map((channel)=><button className={channel.id===activeId?"active":""} type="button" key={channel.id} onClick={()=>{setLoading(true);setError("");setActiveId(channel.id);setMobileThreadOpen(true)}}><span>{channelTitle(channel)}</span>{unreadByChannel[channel.id]?<b className="message-channel-badge">{unreadByChannel[channel.id]>99?"99+":unreadByChannel[channel.id]}</b>:null}</button>)}</div></aside>
-        <section className="messages-thread"><header><button className="messages-mobile-back" type="button" onClick={()=>setMobileThreadOpen(false)} aria-label="Sohbet listesine dön">‹</button>{activeChannel?<><div className="messages-thread-avatar">{initials(channelTitle(activeChannel).replace("# ",""))}</div><div><b>{channelTitle(activeChannel)}</b><small>{activeChannel.channelType==="direct"?"Özel ekip sohbeti":"Kurum kanalı"}</small></div></>:<div><b>Sohbet seçin</b><small>Bir personel veya kanal seçerek başlayın.</small></div>}</header>
-          <div className="messages-thread-scroll" ref={threadRef}>{loading?<p className="messages-empty">Mesajlar yükleniyor...</p>:messages.map((message)=>{const mine=message.sender_id===userId;const attachmentUrl=message.attachment_path?attachmentUrls[message.attachment_path]:null;const isImage=message.attachment_mime?.startsWith("image/");return <article className={mine?"mine":""} key={message.id}>{!mine?<b>{peopleMap.get(message.sender_id)?.name??"Ekip Üyesi"}</b>:null}{message.body?<p>{message.body}</p>:null}{message.attachment_path?<a className={isImage?"message-image-attachment":"message-file-attachment"} href={attachmentUrl??"#"} target="_blank" rel="noreferrer" aria-disabled={!attachmentUrl}>{isImage&&attachmentUrl?<img src={attachmentUrl} alt={message.attachment_name??"Mesaj görseli"}/>:<><i aria-hidden="true">↧</i><span><b>{message.attachment_name??"Dosya"}</b><small>{fileSize(message.attachment_size)}</small></span></>}</a>:null}<small>{new Date(message.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</small></article>})}{!loading&&activeChannel&&!messages.length?<p className="messages-empty">Henüz mesaj yok. İlk mesajı siz gönderin.</p>:null}</div>
-          {error?<p className="messages-error">{error}</p>:null}
-          {activeChannel?<form className="messages-composer" onSubmit={send}><input ref={fileRef} className="messages-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(event)=>{const file=event.target.files?.[0]??null;if(file&&file.size>10485760){setError("Dosya en fazla 10 MB olabilir.");event.target.value="";setSelectedFile(null);return}setError("");setSelectedFile(file)}}/><button className="messages-attach-button" type="button" onClick={()=>fileRef.current?.click()} aria-label="Fotoğraf veya dosya ekle" title="Fotoğraf veya dosya ekle">＋</button><div className="messages-compose-field">{selectedFile?<div className="messages-selected-file"><span>Ek: {selectedFile.name} · {fileSize(selectedFile.size)}</span><button type="button" onClick={()=>{setSelectedFile(null);if(fileRef.current)fileRef.current.value=""}} aria-label="Dosyayı kaldır">×</button></div>:null}<textarea name="body" maxLength={4000} rows={1} placeholder={selectedFile?"Dosyaya bir not ekleyin...":"Mesajınızı yazın..."} onKeyDown={handleComposerKeyDown}/></div><button className="messages-send-button" type="submit" disabled={sending}>{sending?"…":"Gönder"}</button></form>:null}
-        </section>
-      </div>
-    </aside>
-  </>;
+  return (
+    <>
+      {onPage ? (
+        <Link className="panel-quick-action" href="/panel/messages" aria-current="page" aria-label={label}>
+          <span className="panel-quick-icon" aria-hidden="true">◇</span>
+          <b>Mesajlar</b>
+          {badge}
+        </Link>
+      ) : (
+        <button
+          className="panel-quick-action"
+          type="button"
+          onClick={() => {
+            setMounted(true);
+            setOpen(true);
+          }}
+          aria-label={label}
+          aria-expanded={open}
+          aria-controls="messages-drawer"
+        >
+          <span className="panel-quick-icon" aria-hidden="true">◇</span>
+          <b>Mesajlar</b>
+          {badge}
+        </button>
+      )}
+      {!onPage ? (
+        <div className={`msg-drawer-root${open ? " is-open" : ""}`}>
+          <button className="msg-drawer-backdrop" type="button" aria-label="Mesajları kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
+          <div id="messages-drawer" className="msg-drawer" role="dialog" aria-modal="true" aria-label="Mesajlar" inert={!open}>
+            {mounted ? <MessagesApp init={init} variant="drawer" active={open} onClose={() => setOpen(false)} /> : null}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
 }

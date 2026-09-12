@@ -13,6 +13,7 @@ import { FlashToast } from "./flash-toast";
 import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
+import { loadMessagesInit } from "./messages/load-messages";
 import { SidebarToggle } from "./sidebar-toggle";
 import { cookies } from "next/headers";
 import "./panel-tokens.css";
@@ -23,7 +24,6 @@ import "./panel-top-actions.css";
 import "./sidebar-workspace-switcher.css";
 import "./panel-mobile.css";
 import "./mobile-drawer.css";
-import "./messages-drawer.css";
 import "./panel-compact.css";
 import "./panel-premium.css";
 import "./panel-tables.css";
@@ -60,29 +60,17 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
   const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
   const ownEmployeeQuery = supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
-  const messageQueries = hasMessages ? Promise.all([
-    supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id",membership.organization_id).eq("employment_status","active").not("user_id","is",null).order("full_name"),
-    supabase.from("message_channels").select("id,name,description,channel_type,direct_key").eq("organization_id",membership.organization_id).order("updated_at",{ascending:false}),
-    supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id",membership.organization_id),
-    supabase.from("message_read_states").select("channel_id,last_read_at").eq("organization_id",membership.organization_id).eq("user_id",userId),
-  ]) : Promise.resolve([{data:[]},{data:[]},{data:[]},{data:[]}]);
-  const [{ count: notificationUnreadCount }, { data: ownEmployee }, messageResults] = await Promise.all([
+  // Mesaj çekmecesi ve /panel/messages aynı yükleyiciyi kullanır; okunmamış
+  // sayısı sunucuda hesaplanır (eskiden son 1000 mesaj tarayıcıya çekiliyordu).
+  const messagesQuery = hasMessages ? loadMessagesInit(supabase, membership.organization_id, userId) : Promise.resolve(null);
+  const [{ count: notificationUnreadCount }, { data: ownEmployee }, messagesInit] = await Promise.all([
     notificationQuery,
     ownEmployeeQuery,
-    messageQueries,
+    messagesQuery,
   ]);
-  const [{data:messageEmployees},{data:messageChannels},{data:presenceRows},{data:messageReadRows}] = messageResults;
-  const presenceMap=new Map((presenceRows??[]).map((row)=>[row.user_id,row.last_seen_at]));
-  const drawerPeople=(messageEmployees??[]).map((employee)=>({userId:employee.user_id as string,name:employee.full_name,jobTitle:employee.job_title,lastSeenAt:presenceMap.get(employee.user_id as string)??null}));
-  const drawerChannels=(messageChannels??[]).map((channel)=>({id:channel.id,name:channel.name,description:channel.description,channelType:channel.channel_type??"group",directKey:channel.direct_key}));
-  const readableChannelIds=drawerChannels.map((channel)=>channel.id);
   const pendingAgreementQuery = ownEmployee ? supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null });
-  const unreadMessagesQuery = hasMessages&&readableChannelIds.length?supabase.from("internal_messages").select("channel_id,created_at").eq("organization_id",membership.organization_id).in("channel_id",readableChannelIds).neq("sender_id",userId).order("created_at",{ascending:false}).limit(1000):Promise.resolve({data:[]});
-  const [{ data: pendingAgreement }, { data: unreadMessageRows }] = await Promise.all([pendingAgreementQuery, unreadMessagesQuery]);
-  const lastReadByChannel=new Map((messageReadRows??[]).map((row)=>[row.channel_id,new Date(row.last_read_at).getTime()]));
-  const unreadByChannel:Record<string,number>={};
-  for(const message of unreadMessageRows??[]){if(new Date(message.created_at).getTime()>(lastReadByChannel.get(message.channel_id)??0))unreadByChannel[message.channel_id]=(unreadByChannel[message.channel_id]??0)+1;}
-  const messageUnreadCount=Object.values(unreadByChannel).reduce((total,count)=>total+count,0);
+  const { data: pendingAgreement } = await pendingAgreementQuery;
+  const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
   // Beyaz etiket: kurum kendi marka rengini seçtiyse tüm panel vurgusu
   // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
@@ -114,7 +102,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <PanelBreadcrumb brandName={isPlatformOwner ? "Kurucu Merkezi" : brandName} />
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            {hasMessages ? <MessagesDrawer organizationId={membership.organization_id} userId={userId} people={drawerPeople} initialChannels={drawerChannels} initialUnreadByChannel={unreadByChannel}/> : null}
+            {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
             <Link className="panel-quick-action" href="/panel/notifications" aria-label={`Bildirimler${notificationUnreadCount?`, ${notificationUnreadCount} okunmamış`:""}`}><span className="panel-quick-icon" aria-hidden="true">♢</span><b>Bildirimler</b>{notificationUnreadCount?<span className="panel-unread-badge">{notificationUnreadCount>99?"99+":notificationUnreadCount}</span>:null}</Link>
           </div>
           <ThemeToggle />

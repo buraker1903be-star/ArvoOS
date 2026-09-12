@@ -20,7 +20,7 @@
   --r-xl:24px;
   min-height:100dvh;
   background:
-    radial-gradient(circle at 70% -15%,rgba(178,138,73,.08),transparent 28rem),
+    radial-gradient(circle at 70% -15%,rgba(255,255,255,.75),transparent 30rem),
     var(--bg);
   font-synthesis:none;
   text-rendering:optimizeLegibility;

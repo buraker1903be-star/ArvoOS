@@ -34,12 +34,13 @@ export async function recordPresence(currentPath: string) {
     cookieStore.set(SESSION_COOKIE, sessionId, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 });
   }
 
+  // Hangi sayfada olunduğu yalnızca oturum kaydında tutulur (yönetici görür).
+  // user_presence tüm ekibe açık: orada sadece son görülme var
+  // (20260912180000_messages_privacy_and_features.sql).
   const safePath = String(currentPath || "/panel").slice(0, 300);
-  const userAgent = requestHeaders.get("user-agent")?.slice(0, 500) || null;
   const { error: presenceError } = await supabase.from("user_presence").upsert({
-    organization_id: organizationId, user_id: userId, session_id: sessionId, last_seen_at: now,
-    current_path: safePath, user_agent: userAgent, updated_at: now,
+    organization_id: organizationId, user_id: userId, session_id: sessionId, last_seen_at: now, updated_at: now,
   }, { onConflict: "organization_id,user_id" });
   if (presenceError) throw new Error("Çevrimiçi durumu güncellenemedi: " + presenceError.message);
-  await supabase.from("user_session_logs").update({ last_seen_at: now }).eq("id", sessionId).eq("user_id", userId).is("logout_at", null);
+  await supabase.from("user_session_logs").update({ last_seen_at: now, current_path: safePath }).eq("id", sessionId).eq("user_id", userId).is("logout_at", null);
 }

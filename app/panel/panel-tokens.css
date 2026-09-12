@@ -25,18 +25,22 @@
   --accent-400:#c9a66a; --accent-500:#b28a49; --accent-600:#8e6d33; --accent-700:#74582a;
   --accent-800:#5a4421; --accent-900:#3f3017;
 
-  /* --- neutral (sıcak fildişi → gece mavisi mürekkep) --- */
-  --n-0:#ffffff;   --n-50:#fbf9f5;  --n-100:#f7f4ee; --n-200:#ece5d8; --n-300:#dcd3c3;
-  --n-400:#a39a8c; --n-500:#7a7266; --n-600:#585248; --n-700:#3b3732; --n-800:#1f2433;
+  /* --- neutral (iOS nötr gri → gece mavisi mürekkep) ---
+     2026-09: zemin sıcak fildişiydi (şampanya tonlu). Apple'ın kendi
+     arayüzlerindeki gibi nötr, hafif serin grilere geçti: zemin iOS
+     "gruplanmış arka plan" (#f2f2f7), kartlar saf beyaz. Altın yalnızca
+     vurguda kalır; böylece daha modern ve daha "lüks" durur. */
+  --n-0:#ffffff;   --n-50:#f9f9fb;  --n-100:#f2f2f7; --n-200:#e5e5ea; --n-300:#d1d1d6;
+  --n-400:#a1a1a6; --n-500:#6e6e73; --n-600:#515154; --n-700:#3a3a3c; --n-800:#1f2433;
   --n-900:#0b1b2e;
 
   /* --- surfaces & text (light defaults) --- */
-  --bg:#f7f4ee;
+  --bg:#f2f2f7;
   --surface:#ffffff;
-  --surface-2:#fbf9f5;
+  --surface-2:#f7f7fa;
   --surface-raised:#ffffff;
   --sidebar-from:#0e2139; --sidebar-to:#050c1a; --sidebar-glow:#2c4368;
-  --ink:#0b1b2e; --muted:#7a7266; --dim:#a39a8c; --ink-soft:#3b3732;
+  --ink:#0b1b2e; --muted:#6e6e73; --dim:#a1a1a6; --ink-soft:#3a3a3c;
 
   /* ==========================================================
      ÇOK KİRACILI MARKA
@@ -49,7 +53,7 @@
   --accent-soft:   var(--tenant-accent-soft,   var(--accent-100));
   /* koyu zeminlerde (menü, koyu kartlar) parlayan vurgu */
   --accent-bright: var(--tenant-accent,        var(--accent-400));
-  --line:#e7dfd0; --line-soft:#f0eadf;
+  --line:#e3e3e8; --line-soft:#eeeef2;
   --focus:#b28a4966;
 
   /* semantic */
