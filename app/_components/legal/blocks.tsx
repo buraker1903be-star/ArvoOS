@@ -182,10 +182,13 @@ export function TaxTotals({ tax, currency, words }: { tax: TaxBreakdown; currenc
 export function DocFooter({ provider, reference, verificationUrl }: { provider: Provider; reference: ReactNode; verificationUrl?: string | null }) {
   const contact = [provider.phone, provider.email, provider.website].filter(Boolean).join("\n");
   const identity = [provider.address || provider.info || "Profesyonel hizmetler", providerTaxLine(provider), provider.mersisNo ? `MERSİS ${provider.mersisNo}` : null].filter(Boolean).join("\n");
-  return <footer className="ad-foot">
+  // <footer> değil <div>: app/globals.css'teki site alt bilgisi kuralları
+  // (footer{background:#050505;color:#fff;padding:130px 0 40px}) belgeye
+  // sızıyor, alt bilgiyi lacivert zemin üzerinde koyu metne çeviriyordu.
+  return <div className="ad-foot" role="contentinfo">
     <div><strong>{provider.name}</strong>{identity}</div>
     <div><strong>İletişim</strong>{contact || "Kurum iletişim bilgileri"}</div>
     <div className="ad-right"><strong>Belge</strong>{reference}{verificationUrl ? <><br /><span style={{ wordBreak: "break-all" }}>{verificationUrl}</span></> : null}</div>
     {provider.address && provider.info ? <p className="ad-foot-note">{provider.info}</p> : null}
-  </footer>;
+  </div>;
 }
