@@ -3,32 +3,82 @@
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 
+// Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel ve
+// notification_user_reads tablosunda tutulur; eskiden bildirimin kendi
+// read_at alanı güncelleniyor ve bir kişi okuyunca herkes için okunmuş
+// oluyordu. Kişisel ve kurucu bildirimleri kendi read_at alanını kullanır.
+
+function revalidateNotifications() {
+  revalidatePath("/panel/notifications");
+  revalidatePath("/panel");
+}
+
 export async function markNotificationRead(formData: FormData) {
   const { supabase, userId } = await getPanelContext();
   const notificationId = String(formData.get("notification_id") ?? "").trim();
   if (!notificationId) throw new Error("Bildirim seçilmedi.");
 
-  const { error } = await supabase
+  const { data: notification, error: readError } = await supabase
     .from("notifications")
-    .update({ read_at: new Date().toISOString() })
+    .select("id,audience,user_id")
     .eq("id", notificationId)
-    .or(`user_id.is.null,user_id.eq.${userId}`);
+    .maybeSingle();
+  if (readError) throw new Error(`Bildirim okunamadı: ${readError.message}`);
+  if (!notification) throw new Error("Bildirim bulunamadı.");
 
-  if (error) throw new Error(`Bildirim güncellenemedi: ${error.message}`);
-  revalidatePath("/panel/notifications");
+  if (notification.audience === "organization" && !notification.user_id) {
+    const { error } = await supabase
+      .from("notification_user_reads")
+      .insert({ notification_id: notificationId, user_id: userId });
+    if (error && error.code !== "23505") throw new Error(`Bildirim güncellenemedi: ${error.message}`);
+  } else {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", notificationId);
+    if (error) throw new Error(`Bildirim güncellenemedi: ${error.message}`);
+  }
+  revalidateNotifications();
 }
 
 export async function markAllNotificationsRead() {
   const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
-  let query = supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  const now = new Date().toISOString();
 
-  query = isPlatformOwner
-    ? query.eq("audience", "founder")
-    : query.eq("audience", "organization").eq("organization_id", organization.id).or(`user_id.is.null,user_id.eq.${userId}`);
+  if (isPlatformOwner) {
+    const { error } = await supabase.from("notifications")
+      .update({ read_at: now })
+      .is("read_at", null)
+      .eq("audience", "founder");
+    if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
+    revalidateNotifications();
+    return;
+  }
 
-  const { error } = await query;
-  if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
-  revalidatePath("/panel/notifications");
+  const { error: personalError } = await supabase.from("notifications")
+    .update({ read_at: now })
+    .is("read_at", null)
+    .eq("audience", "organization")
+    .eq("organization_id", organization.id)
+    .eq("user_id", userId);
+  if (personalError) throw new Error(`Bildirimler güncellenemedi: ${personalError.message}`);
+
+  const { data: broadcasts, error: broadcastError } = await supabase.from("notifications")
+    .select("id")
+    .eq("audience", "organization")
+    .eq("organization_id", organization.id)
+    .is("user_id", null)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (broadcastError) throw new Error(`Bildirimler okunamadı: ${broadcastError.message}`);
+  if (broadcasts?.length) {
+    const { error } = await supabase.from("notification_user_reads").upsert(
+      broadcasts.map((item) => ({ notification_id: item.id, user_id: userId, read_at: now })),
+      { onConflict: "notification_id,user_id", ignoreDuplicates: true },
+    );
+    if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
+  }
+  revalidateNotifications();
 }
 
 export async function deleteReadNotification(formData: FormData) {
@@ -36,22 +86,21 @@ export async function deleteReadNotification(formData: FormData) {
   const notificationId = String(formData.get("notification_id") ?? "").trim();
   if (!notificationId) throw new Error("Bildirim seçilmedi.");
 
-  const { data: notification, error: notificationError } = await supabase
-    .from("notifications")
-    .select("id,read_at")
-    .eq("id", notificationId)
-    .not("read_at", "is", null)
-    .maybeSingle();
+  const [{ data: notification, error: notificationError }, { data: ownRead }] = await Promise.all([
+    supabase.from("notifications").select("id,audience,user_id,read_at").eq("id", notificationId).maybeSingle(),
+    supabase.from("notification_user_reads").select("notification_id").eq("notification_id", notificationId).eq("user_id", userId).maybeSingle(),
+  ]);
   if (notificationError) throw new Error(`Bildirim doğrulanamadı: ${notificationError.message}`);
-  if (!notification) throw new Error("Yalnızca okunmuş bildirimler silinebilir.");
+  const isBroadcast = notification?.audience === "organization" && !notification.user_id;
+  const isRead = isBroadcast ? Boolean(ownRead) : Boolean(notification?.read_at);
+  if (!notification || !isRead) throw new Error("Yalnızca okunmuş bildirimler silinebilir.");
 
   const { error } = await supabase.from("notification_user_dismissals").insert({
     notification_id: notificationId,
     user_id: userId,
   });
   if (error && error.code !== "23505") throw new Error(`Bildirim silinemedi: ${error.message}`);
-  revalidatePath("/panel/notifications");
-  revalidatePath("/panel");
+  revalidateNotifications();
 }
 
 export async function sendManagementAnnouncement(formData: FormData) {
@@ -70,6 +119,5 @@ export async function sendManagementAnnouncement(formData: FormData) {
     p_target_user_id: recipient === "all" ? null : recipient,
   });
   if (error) throw new Error(`Duyuru gönderilemedi: ${error.message}`);
-  revalidatePath("/panel/notifications");
-  revalidatePath("/panel");
+  revalidateNotifications();
 }

@@ -10,6 +10,7 @@ type NotificationRow = {
   message: string;
   category: string;
   action_url: string | null;
+  user_id: string | null;
   read_at: string | null;
   created_at: string;
 };
@@ -35,7 +36,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const canAnnounce = ["owner", "admin", "manager"].includes(membership.role) && !isPlatformOwner;
   let query = supabase
     .from("notifications")
-    .select("id,title,message,category,action_url,read_at,created_at")
+    .select("id,title,message,category,action_url,user_id,read_at,created_at")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -43,13 +44,18 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     ? query.eq("audience", "founder")
     : query.eq("audience", "organization").eq("organization_id", organization.id).or(`user_id.is.null,user_id.eq.${userId}`);
 
-  const [{ data }, { data: dismissedRows }, { data: employeeRows }] = await Promise.all([
+  const [{ data }, { data: dismissedRows }, { data: employeeRows }, { data: readRows }] = await Promise.all([
     query,
     supabase.from("notification_user_dismissals").select("notification_id").eq("user_id", userId),
     canAnnounce ? supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id", organization.id).eq("employment_status", "active").not("user_id", "is", null).order("full_name") : Promise.resolve({ data: [] }),
+    supabase.from("notification_user_reads").select("notification_id,read_at").eq("user_id", userId),
   ]);
   const dismissedIds = new Set((dismissedRows ?? []).map((row) => row.notification_id));
-  const allNotifications = ((data ?? []) as NotificationRow[]).filter((item) => !dismissedIds.has(item.id));
+  // Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel.
+  const ownReadAt = new Map((readRows ?? []).map((row) => [row.notification_id as string, row.read_at as string]));
+  const allNotifications = ((data ?? []) as NotificationRow[])
+    .map((item) => (!isPlatformOwner && !item.user_id ? { ...item, read_at: ownReadAt.get(item.id) ?? null } : item))
+    .filter((item) => !dismissedIds.has(item.id));
   const notifications = selectedFilter ? allNotifications.filter((item) => item.category === selectedFilter.category) : allNotifications;
   const unreadCount = notifications.filter((item) => !item.read_at).length;
   const categoryCounts = new Map(filters.map((filter) => [filter.key, allNotifications.filter((item) => item.category === filter.category).length]));

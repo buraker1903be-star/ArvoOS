@@ -48,7 +48,8 @@ export default async function PanelPage() {
       : supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "pending"),
     isPlatformOwner
       ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "founder").is("read_at", null)
-      : supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "organization").eq("organization_id", organizationId).is("read_at", null),
+      : supabase.rpc("arvo_unread_notification_count", { p_organization_id: organizationId })
+          .then(({ data }) => ({ count: Number(data ?? 0) })),
     isPlatformOwner
       ? supabase.from("billing_invoices").select("total").eq("status", "paid").gte("paid_at", monthStart.toISOString())
       : supabase.from("billing_invoices").select("total").eq("organization_id", organizationId).eq("status", "paid").gte("paid_at", monthStart.toISOString()),

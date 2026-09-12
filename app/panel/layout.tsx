@@ -41,10 +41,12 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
-  let notificationQuery = supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null);
-  notificationQuery = isPlatformOwner
-    ? notificationQuery.eq("audience", "founder")
-    : notificationQuery.eq("audience", "organization").eq("organization_id", membership.organization_id).or(`user_id.is.null,user_id.eq.${userId}`);
+  // Toplu bildirimlerde okundu bilgisi kişiye özel; kurum sayacı veritabanı
+  // fonksiyonunda hesaplanıyor (arvo_unread_notification_count).
+  const notificationQuery = isPlatformOwner
+    ? supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null).eq("audience", "founder")
+    : supabase.rpc("arvo_unread_notification_count", { p_organization_id: membership.organization_id })
+        .then(({ data }) => ({ count: Number(data ?? 0) }));
   // Beyaz etiket (white-label) deneyimi: platformun kendi kurumu (arvo-os)
   // dışında, panel navigasyonu artık sabit "ArvoOS" markası yerine
   // kurumun kendi logosunu ve tabela unvanını gösteriyor.
