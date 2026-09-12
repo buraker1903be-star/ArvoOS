@@ -39,12 +39,5 @@ export async function loadNotifications({ supabase, userId, organizationId, isPl
   return describeNotifications(supabase, organizationId, rows);
 }
 
-/** Üst çubuk rozetiyle aynı hesap (layout.tsx): liste sınırından bağımsız. */
-export async function countUnreadNotifications({ supabase, organizationId, isPlatformOwner }: NotificationScope): Promise<number> {
-  if (isPlatformOwner) {
-    const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null).eq("audience", "founder");
-    return count ?? 0;
-  }
-  const { data } = await supabase.rpc("arvo_unread_notification_count", { p_organization_id: organizationId });
-  return Number(data ?? 0);
-}
+/** Üst çubuk rozetiyle aynı hesap (layout.tsx) — tarayıcı da kullandığı için ayrı modülde. */
+export { countUnreadNotifications } from "./count";

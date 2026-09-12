@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
+import { LegalDetailsForm } from "./legal-details-form";
+import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
+import "./settings-legal.css";
 
 const roleNames: Record<string, string> = {owner:"Kurum Sahibi",admin:"Yönetici",manager:"Yönetici",member:"Satış Personeli",operasyoncu:"Operasyon Personeli"};
 const integrationCodes = new Set(["banking","payments","e_invoice","billing","integrations","domains"]);
@@ -12,6 +16,12 @@ export default async function SettingsPage() {
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
   const canManage = ["owner", "admin"].includes(membership.role);
   const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
+  // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
+  const {data:legalRow,error:legalError}=await supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id",membership.organization_id).maybeSingle();
+  const legalAvailable=!legalError;
+  const legal=legalDetailsFrom(legalAvailable?(legalRow as Record<string,unknown>|null):null);
+  const legalFilled=[legal.legal_address,legal.legal_city,legal.tax_office,legal.tax_number,legal.iban].filter(Boolean).length;
+  const legalComplete=legalFilled===5&&!Object.keys(validateLegalDetails(legal)).length;
   const branding=orgRow;
   const domainInfo=orgRow;
   const dnsRecords = (domainInfo?.custom_domain_verification ?? []) as { type: string; name: string; value: string }[];
@@ -21,7 +31,7 @@ export default async function SettingsPage() {
     <section className="metric-strip"><article><div><small>PAKET</small><strong>{organization.plan_code.toUpperCase()}</strong><p>Aktif kurum paketi</p></div></article><article><div><small>MODÜL</small><strong>{modules.length}</strong><p>Etkin çalışma alanı</p></div></article><article><div><small>ENTEGRASYON</small><strong>{integrations.length}</strong><p>Etkin bağlantı alanı</p></div></article><article><div><small>DURUM</small><strong>{organization.status === "active" ? "Aktif" : organization.status}</strong><p>Kurum erişimi</p></div></article></section>
 
     <section className="settings-grid">
-      <article className="panel-card settings-card"><div><small>KURUM</small><h3>Kurum bilgileri</h3><p>Temel çalışma alanı ve alan adı bilgileri.</p></div><dl className="settings-list"><div><dt>Kurum</dt><dd>{organization.name}</dd></div><div><dt>Sektör</dt><dd>{organization.sector || "Belirtilmedi"}</dd></div><div><dt>Çalışma alanı</dt><dd>{organization.slug}</dd></div></dl></article>
+      <article className="panel-card settings-card"><div><small>KURUM</small><h3>Kurum bilgileri</h3><p>Temel çalışma alanı ve alan adı bilgileri.</p></div><dl className="settings-list"><div><dt>Kurum</dt><dd>{organization.name}</dd></div><div><dt>Sektör</dt><dd>{organization.sector || "Belirtilmedi"}</dd></div><div><dt>Çalışma alanı</dt><dd>{organization.slug}</dd></div><div><dt>Ticari unvan</dt><dd>{legal.legal_name||"Belirtilmedi"}</dd></div><div><dt>Vergi no</dt><dd>{legal.tax_number||"Belirtilmedi"}</dd></div></dl></article>
 
       <article className="panel-card settings-card">
         <div><small>ÖZEL ALAN ADI</small><h3>Kendi domain&apos;inizle çalışın</h3><p>Panelinize kendi alan adınızdan (örn. panel.firmaniz.com) erişilebilir hale getirin.</p></div>
@@ -51,6 +61,11 @@ export default async function SettingsPage() {
         ) : null}
       </article>
 
+      <article className="panel-card settings-card slg-card" style={{gridColumn:"1 / -1"}}>
+        <div><div className="slg-card-head"><small>RESMİ BİLGİLER VE BANKA</small><h3>Teklif ve sözleşmedeki kurum kimliği</h3><p>Ticari unvan, adres, vergi kimliği ve banka hesabı; teklif ve sözleşmelerde taraf bilgisi, havale/EFT ödeme maddesi, tebligat adresi ve yetkili mahkeme olarak kullanılır.</p></div><span className={legalComplete?"slg-status is-complete":"slg-status"}><i/>{legalComplete?"Belgeler için tamam":`${legalFilled}/5 zorunlu alan dolu`}</span></div>
+        <LegalDetailsForm initial={legal} canManage={canManage} available={legalAvailable} organizationName={organization.name} contactEmail={branding?.contact_email??null} contactPhone={branding?.contact_phone??null}/>
+      </article>
+
       <article className="panel-card settings-card" style={{gridColumn:"1 / -1"}}>
         <div><small>KURUMSAL KİMLİK</small><h3>Belge ve teklif görünümü</h3><p>Logo, renk, iletişim bilgileri ve kaşe-imza görseli A4 belgelerde otomatik kullanılır.</p></div>
         <form className="panel-form" action={updateDocumentBranding} encType="multipart/form-data">
@@ -72,7 +87,7 @@ export default async function SettingsPage() {
             {branding?.signature_stamp_url?<label style={{gridColumn:"1 / -1",display:"flex",alignItems:"center",gap:8,margin:0,fontWeight:600}}><input name="remove_signature" type="checkbox" disabled={!canManage} style={{width:18,height:18}}/>Mevcut kaşe-imza görselini kaldır</label>:null}
           </div>
 
-          <label className="wide">Belge alt bilgisi<textarea name="document_footer" defaultValue={branding?.document_footer??""} placeholder="Kurum adresi, yasal bilgi veya kısa kurumsal açıklama" disabled={!canManage}/></label>
+          <label className="wide">Belge alt bilgisi<textarea name="document_footer" defaultValue={branding?.document_footer??""} placeholder="Kısa kurumsal açıklama veya yasal not. Adres ve vergi bilgileri “Resmi bilgiler ve banka” bölümünden gelir; o bölüm boşsa bu metin adres yerine kullanılır." disabled={!canManage}/></label>
           {canManage?<div className="wide panel-form-actions"><button className="panel-primary">Kurumsal Kimliği Kaydet</button></div>:<small className="wide">Değişiklikler owner veya admin yetkisi gerektirir.</small>}
         </form>
       </article>

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { PrintDocumentButton } from "@/app/_components/print-document-button";
 import { PrintAutorun } from "@/app/_components/print-autorun";
-import { DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerRows, type Customer, type Provider } from "@/app/_components/legal/blocks";
+import { BankAccountBox, DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerFromRow, providerRows, type Customer } from "@/app/_components/legal/blocks";
 import { documentCss } from "@/app/_components/legal/document-styles";
 import { amountInWords, computeTaxBreakdown, formatDate, formatDateTime, formatMoney, pdfFileName, safeBrandColor, splitScope, summarizeUserAgent, type DocumentRow } from "@/app/_components/legal/format";
 import { buildSchedule } from "@/app/_components/legal/schedule";
@@ -32,15 +32,7 @@ type Props = {
 };
 
 export function ProposalDocument({ row, decision, verificationUrl, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, actions, notice }: Props) {
-  const provider: Provider = {
-    name: String(row.organization_name || "Teklif Veren"),
-    info: row.organization_document_footer || null,
-    email: row.organization_contact_email || null,
-    phone: row.organization_contact_phone || null,
-    website: row.organization_website_url || null,
-    logoUrl: row.organization_logo_url || null,
-    stampUrl: row.organization_signature_stamp_url || null,
-  };
+  const provider = providerFromRow(row, "Teklif Veren");
   const customer: Customer = { name: String(row.customer_name || "Müşteri"), email: row.contact_email || null, phone: row.contact_phone || null, address: row.customer_address || null };
   const currency = String(row.currency || "TRY");
   const tax = computeTaxBreakdown(row);
@@ -111,10 +103,12 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
         <PaymentPlanTable rows={schedule} currency={currency} />
         <div className="ad-box" style={{ marginTop: "3mm" }}><ul className="ad-list">
           <li>Ödemeler, teklifin kabulüyle oluşturulan Hizmet Sözleşmesi’ndeki ödeme planına göre, aynı tutarlarla yapılır.</li>
-          <li><b>Havale / EFT:</b> yalnızca {provider.name} unvanına kayıtlı banka hesabına; hesap bilgileri fatura ve yazılı bildirimle iletilir. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.</li>
+          {provider.iban
+            ? <li><b>Havale / EFT:</b> yalnızca aşağıda bilgileri gösterilen, {provider.accountHolder || provider.name} adına kayıtlı banka hesabına; ödeme açıklamasına {row.proposal_no || "belge"} numarası yazılmalıdır. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.</li>
+            : <li><b>Havale / EFT:</b> yalnızca {provider.name} unvanına kayıtlı banka hesabına; hesap bilgileri fatura ve yazılı bildirimle iletilir. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.</li>}
           <li><b>Kredi / banka kartı:</b> güvenli ödeme bağlantısı üzerinden; kart bilgileri tarafımızca görülmez ve saklanmaz.</li>
           <li>Her ödeme için 213 sayılı Vergi Usul Kanunu uyarınca e-Fatura / e-Arşiv Fatura düzenlenir.</li>
-        </ul></div>
+        </ul>{provider.iban ? <div style={{ marginTop: "3mm" }}><BankAccountBox provider={provider} /></div> : null}</div>
       </section>
 
       <section className="ad-sec">

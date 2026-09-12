@@ -18,9 +18,10 @@
 .ntf-page [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
 html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
-/* ---------- Filtre çipleri ---------- */
-.ntf-filters{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
-.ntf-filters::-webkit-scrollbar{display:none}
+/* ---------- Filtre çipleri ----------
+   Satırlara sarılır: gizli kaydırma çubuklu tek satırda sağdaki başlıklar
+   görünmüyor ve fareyle ulaşılamıyordu. */
+.ntf-filters{display:flex;flex-wrap:wrap;gap:8px;padding:2px 2px 4px}
 .ntf-filters a{
   flex:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 8px 0 14px;
   border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);

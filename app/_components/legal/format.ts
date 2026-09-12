@@ -2,7 +2,18 @@
 // Tümü saf fonksiyonlardır; bileşen gövdesinde Date.now()/new Date()
 // çağrılmasın diye tarih işlemleri burada toplanır (react-hooks/purity).
 
-export const LEGAL_TEXT_VERSION = "3.0";
+// 3.1: Tebligat ve KVKK başvuru maddelerinden KEP ifadesi çıkarıldı; ödeme
+// maddesi ve Ön Bilgilendirme Formu kurumun banka hesabını (IBAN) gösterir.
+// 3.0 ile imzalanmış sözleşmeler 3.0 metniyle gösterilmeye devam eder.
+export const LEGAL_TEXT_VERSION = "3.1";
+export const LEGAL_TEXT_VERSIONS = ["3.0", "3.1"] as const;
+export type LegalTextVersion = (typeof LEGAL_TEXT_VERSIONS)[number];
+
+/** Kayıtlı metin sürümünü bilinen bir sürüme çevirir; bilinmeyen/boş değer güncel sürümdür. */
+export function resolveLegalTextVersion(value?: string | null): LegalTextVersion {
+  const text = String(value ?? "").trim();
+  return (LEGAL_TEXT_VERSIONS as readonly string[]).includes(text) ? (text as LegalTextVersion) : LEGAL_TEXT_VERSION;
+}
 
 // Belge satırları farklı kaynaklardan gelir (herkese açık RPC'ler, panel
 // sorguları) ve canlı şema repodaki tanımlardan ayrışabildiği için tipleri
@@ -224,14 +235,14 @@ export function installmentStatusLabel(status?: string | null) {
   return installmentStatuses[status] ?? status;
 }
 
-const cities = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa","Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
+export const TURKISH_CITIES = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Aksaray","Amasya","Ankara","Antalya","Ardahan","Artvin","Aydın","Balıkesir","Bartın","Batman","Bayburt","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Düzce","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Iğdır","Isparta","İstanbul","İzmir","Kahramanmaraş","Karabük","Karaman","Kars","Kastamonu","Kayseri","Kırıkkale","Kırklareli","Kırşehir","Kilis","Kocaeli","Konya","Kütahya","Malatya","Manisa","Mardin","Mersin","Muğla","Muş","Nevşehir","Niğde","Ordu","Osmaniye","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Şanlıurfa","Şırnak","Tekirdağ","Tokat","Trabzon","Tunceli","Uşak","Van","Yalova","Yozgat","Zonguldak"];
 
-/** Kurum adres/alt bilgi metninden il adını bulur (yetkili mahkeme için). */
+/** Serbest metinden (eski kurumlarda alt bilgi) il adını bulur; il alanı doluysa o kullanılır. */
 export function detectCity(text?: string | null) {
   const haystack = String(text || "").toLocaleLowerCase("tr-TR");
   if (!haystack) return null;
   let found: { city: string; index: number } | null = null;
-  for (const city of cities) {
+  for (const city of TURKISH_CITIES) {
     const index = haystack.lastIndexOf(city.toLocaleLowerCase("tr-TR"));
     if (index >= 0 && (!found || index > found.index)) found = { city, index };
   }

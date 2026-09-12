@@ -78,6 +78,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       {filters.map((filter) => {
         const count = allNotifications.filter((item) => inNotificationFilter(item.category, filter)).length;
         const active = selectedFilter?.key === filter.key;
+        if (!count && !active) return null; // boş başlık gösterilmez (çekmeceyle aynı)
         return (
           <Link className={active ? "is-active" : ""} href={`/panel/notifications?kategori=${filter.key}`} key={filter.key} aria-current={active ? "page" : undefined}>
             {filter.label}<b>{count}</b>

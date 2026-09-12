@@ -2,6 +2,7 @@ import { cache } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { resolvePublicHost } from "@/lib/public-host";
 import { contractVerificationHash, type DocumentRow } from "@/app/_components/legal/format";
+import { ORGANIZATION_LEGAL_COLUMNS, organizationLegalFields } from "@/app/_components/legal/organization";
 import type { InstallmentRecord } from "@/app/_components/legal/schedule";
 import type { ContractAudit } from "@/app/_components/contract-document";
 import type { ProposalDecision } from "@/app/_components/proposal-document";
@@ -24,7 +25,12 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
   const organizationId = membership.organization_id;
   const organizationQuery = supabase.from("organizations").select("name,slug,logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url").eq("id", organizationId).maybeSingle();
   const hostQuery = resolvePublicHost(supabase, organizationId).catch(() => null);
-  const organizationFields = (organization: DocumentRow) => ({
+  // Resmi/banka bilgileri ayrı okunur: migration uygulanmadıysa belge alt
+  // bilgi metniyle (eski davranış) açılmaya devam eder.
+  const legalQuery = Promise.resolve(supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", organizationId).maybeSingle())
+    .then(({ data, error }) => (error ? null : (data as DocumentRow | null)), () => null);
+  const organizationFields = (organization: DocumentRow, legal: DocumentRow | null) => ({
+    ...organizationLegalFields(legal),
     organization_name: organization.name,
     organization_slug: organization.slug,
     organization_logo_url: organization.logo_url,
@@ -37,11 +43,12 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
   });
 
   if (type === "contract") {
-    const [{ data: organization, error: organizationError }, { data: contract, error: contractError }, { data: extra, error: extraError }, host] = await Promise.all([
+    const [{ data: organization, error: organizationError }, { data: contract, error: contractError }, { data: extra, error: extraError }, host, legal] = await Promise.all([
       organizationQuery,
       supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,start_date,due_date,status,created_at,share_token,payment_plan_id,customer_address,customer_tax_number,customer_tax_office,signed_name,signed_at,signed_signature_data,signed_ip,signed_user_agent,contract_template_key,contract_template_version,crm_opportunities(customer_name,contact_email,contact_phone),crm_proposals(proposal_no,payment_schedule,tax_status,tax_rate,net_amount,tax_amount,gross_amount,estimated_delivery_date)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
       supabase.from("crm_contracts").select("legal_text_version,signed_consents").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
       hostQuery,
+      legalQuery,
     ]);
     if (organizationError) throw new Error(`Kurum bilgileri okunamadı: ${organizationError.message}`);
     if (contractError) throw new Error(`Sözleşme okunamadı: ${contractError.message}`);
@@ -57,7 +64,7 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
       contact_phone: customer?.contact_phone || null,
       contact_email: customer?.contact_email || null,
       payment_schedule: contract.payment_schedule ?? proposal?.payment_schedule ?? [],
-      ...organizationFields(organization),
+      ...organizationFields(organization, legal),
     };
     const audit: ContractAudit = {
       signed_user_agent: contract.signed_user_agent,
@@ -83,11 +90,12 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
     };
   }
 
-  const [{ data: organization, error: organizationError }, { data: proposal, error: proposalError }, { data: extra, error: extraError }, host] = await Promise.all([
+  const [{ data: organization, error: organizationError }, { data: proposal, error: proposalError }, { data: extra, error: extraError }, host, legal] = await Promise.all([
     organizationQuery,
     supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,created_at,valid_until,estimated_delivery_date,net_amount,tax_amount,gross_amount,tax_rate,tax_status,status,revision_no,share_token,responded_at,response_ip,crm_opportunities(customer_name,contact_email,contact_phone)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("crm_proposals").select("response_user_agent").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
     hostQuery,
+    legalQuery,
   ]);
   if (organizationError) throw new Error(`Kurum bilgileri okunamadı: ${organizationError.message}`);
   if (proposalError) throw new Error(`Teklif okunamadı: ${proposalError.message}`);
@@ -98,7 +106,7 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
     customer_name: customer?.customer_name || "Müşteri",
     contact_phone: customer?.contact_phone || null,
     contact_email: customer?.contact_email || null,
-    ...organizationFields(organization),
+    ...organizationFields(organization, legal),
   };
   const decision: ProposalDecision | null = ["accepted", "rejected"].includes(proposal.status)
     ? { status: proposal.status, responded_at: proposal.responded_at, response_ip: proposal.response_ip, response_user_agent: extraError ? null : (extra as DocumentRow | null)?.response_user_agent ?? null, contract_share_token: null, contract_no: null }

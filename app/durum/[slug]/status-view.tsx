@@ -193,4 +193,5 @@ export const IconChevron = ({ size = 16 }: IconProps) => <svg {...svgProps(size)
 export const IconArrowUp = ({ size = 18 }: IconProps) => <svg {...svgProps(size)} strokeWidth={2.4}><path d="M12 19V5M6 11l6-6 6 6" /></svg>;
 export const IconChat = ({ size = 20 }: IconProps) => <svg {...svgProps(size)}><path d="M20 11.5c0 4.1-3.6 7.5-8 7.5a8.7 8.7 0 0 1-3.2-.6L4 20l1.3-3.9A7.2 7.2 0 0 1 4 11.5C4 7.4 7.6 4 12 4s8 3.4 8 7.5Z" /></svg>;
 export const IconAlert = ({ size = 18 }: IconProps) => <svg {...svgProps(size)}><circle cx="12" cy="12" r="8.5" /><path d="M12 7.8v5M12 16.2v.01" strokeWidth={2.2} /></svg>;
-export const IconShield = ({ size = 16 }: IconProps) => <svg {...svgProps(size)}><path d="M12 3.5 5 6.3v5.2c0 4.3 3 7.7 7 9 4-1.3 7-4.7 7-9V6.3Z" /><path d="m9 12 2.2 2.2L15.3 10" /></svg>;
+export const IconDownload = ({ size = 16 }: IconProps) => <svg {...svgProps(size)} strokeWidth={2.1}><path d="M12 4.5v10.5M7.5 10.5 12 15l4.5-4.5" /><path d="M5.5 19.5h13" /></svg>;
+export const IconShield =({ size = 16 }: IconProps) => <svg {...svgProps(size)}><path d="M12 3.5 5 6.3v5.2c0 4.3 3 7.7 7 9 4-1.3 7-4.7 7-9V6.3Z" /><path d="m9 12 2.2 2.2L15.3 10" /></svg>;

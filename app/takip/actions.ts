@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
+
+export type { CustomerPortalFile };
 
 export type CustomerFileMessage = {
   sender_type: "customer" | "staff";
@@ -26,6 +29,8 @@ export type TakipState = {
     organization_primary_color: string | null;
     tracking_code: string;
     messages: CustomerFileMessage[];
+    /** Müşteri portalı dosyaları; null → bölüm gösterilmez (okunamadı). */
+    files: CustomerPortalFile[] | null;
     /** Müşterinin erişebileceği belge bağlantıları (teklif + sözleşme). */
     documentLinks: {
       proposal_share_token: string | null;
@@ -99,7 +104,24 @@ export async function lookupTracking(
     messages = [];
   }
 
-  return { error: null, result: { ...row, tracking_code: code, messages, documentLinks } };
+  let files: CustomerPortalFile[] | null = null;
+  try {
+    files = await fetchCustomerPortalFiles(code);
+  } catch (error) {
+    console.error("[takip] müşteri portalı dosyaları okunamadı", error);
+    files = null;
+  }
+
+  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks } };
+}
+
+/** Sekmeye dönüldüğünde (ör. PAYTR ödemesinden sonra) dosya kilitlerini tazeler. */
+export async function refreshCustomerPortalFiles(code: string): Promise<CustomerPortalFile[] | null> {
+  try {
+    return await fetchCustomerPortalFiles(code);
+  } catch {
+    return null;
+  }
 }
 
 export async function sendCustomerFileMessage(

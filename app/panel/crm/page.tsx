@@ -15,6 +15,7 @@ import { PanelDrawer } from "../components/panel-drawer";
 import {
 } from "./actions";
 import { RequestEntryForm } from "./request-entry-form";
+import { CustomerLookupButton } from "./customer-lookup";
 import { requestStageNames, requestStages } from "./request-status";
 import { CrmTabs } from "./crm-tabs";
 import "./crm.css";
@@ -150,8 +151,11 @@ export default async function RequestsPage({
         </div>
         <div className="panel-page-actions">
           <span className="status-pill">{rows.length} kayıt</span>
+          <CustomerLookupButton />
           <PanelDrawer
             triggerLabel="+ Yeni talep" kicker="YENİ KAYIT"
+            // Müşteri sorgulamadaki "+ Bu müşteri için yeni talep" bu düğmeyi bulur
+            triggerClassName="panel-primary crm-new-request-trigger"
             title={academicMode ? "Talep Girişi" : "Yeni talep"}
             description="Müşteri ve talep bilgilerini kaydedin."
           >

@@ -2,8 +2,9 @@
 
 import { Fragment, startTransition, useActionState, useEffect, useLayoutEffect, useOptimistic, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal, useFormStatus } from "react-dom";
-import { lookupTracking, refreshCustomerFileMessages, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type TakipState } from "./actions";
+import { lookupTracking, refreshCustomerFileMessages, refreshCustomerPortalFiles, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type TakipState } from "./actions";
 import { LookupSubmitButton } from "../durum/[slug]/lookup-controls";
+import { CustomerFiles } from "../durum/[slug]/customer-files";
 import {
   describeStatus, FinanceSummary, formatDateTime, formatDay, formatTime,
   IconArrowUp, IconChat, IconChevron, IconClock, IconDoc, IconLock, IconSearch, IconShield,
@@ -218,6 +219,8 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
               <ProgressOverview progress={row.progress_percentage} status={status} />
               <PhaseTimeline progress={row.progress_percentage} tone={status.tone} />
             </section>
+
+            {row.files ? <CustomerFiles code={row.tracking_code} initialFiles={row.files} onRefresh={refreshCustomerPortalFiles} /> : null}
 
             <section className="trk-card trk-chat" aria-labelledby="trk-chat-title">
               <div className="trk-chat-head">

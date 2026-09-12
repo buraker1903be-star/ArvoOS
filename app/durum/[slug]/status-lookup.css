@@ -233,7 +233,7 @@ html[data-theme="dark"] .trk-primary{background:linear-gradient(180deg,var(--trk
 
 .trk-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:16px;align-items:start}
 .trk-col{display:flex;flex-direction:column;gap:16px;min-width:0}
-.trk-progress-card{order:1}.trk-finance-card{order:2}.trk-docs-card{order:3}.trk-chat{order:4}.trk-note{order:5}
+.trk-progress-card{order:1}.trk-files-card{order:2}.trk-finance-card{order:3}.trk-docs-card{order:4}.trk-chat{order:5}.trk-note{order:6}
 .trk-layout .trk-card{animation:trk-rise .5s var(--trk-ease) both}
 .trk-layout .trk-col:last-child .trk-card{animation-delay:.06s}
 
@@ -298,6 +298,52 @@ html[data-theme="dark"] .trk-primary{background:linear-gradient(180deg,var(--trk
 .trk-doc-text b{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .trk-doc-text small{overflow:hidden;color:var(--trk-muted);font:500 12.5px var(--trk-mono);text-overflow:ellipsis;white-space:nowrap}
 .trk-chevron{color:var(--trk-dim)}
+
+/* --- Dosyalarınız (müşteri portalı) --- */
+.trk-files-card{padding-bottom:10px}
+.trk-files-card .trk-card-head{margin-bottom:10px}
+.trk-files-locked{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:8px;padding:14px;border:.5px solid color-mix(in srgb,var(--trk-warning) 28%,transparent);border-radius:16px;background:linear-gradient(135deg,var(--trk-warning-soft),color-mix(in srgb,var(--trk-warning-soft) 35%,var(--trk-surface)))}
+.trk-files-locked-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--trk-surface);box-shadow:var(--trk-shadow-sm);color:var(--trk-warning)}
+.trk-files-locked b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em}
+.trk-files-locked p{margin-top:2px!important;color:var(--trk-ink-soft);font-size:14px;line-height:1.45}
+.trk-files-locked strong{color:var(--trk-ink);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.trk-pay{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:12px;background:linear-gradient(180deg,var(--trk-brand-600),var(--trk-brand-800));box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px color-mix(in srgb,var(--trk-gold-400) 45%,transparent),0 8px 18px rgba(11,27,46,.16);color:#fff;font-size:15px;font-weight:650;letter-spacing:-.01em;text-decoration:none;white-space:nowrap;transition:transform .35s var(--trk-ease)}
+.trk-pay:active{transform:scale(.97)}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) .trk-pay{background:linear-gradient(180deg,var(--trk-brand-500),var(--trk-brand-700))}}
+html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-brand-500),var(--trk-brand-700))}
+
+.trk-files{margin:0 -8px!important;padding:0;list-style:none}
+.trk-files li{position:relative;padding:8px}
+.trk-files li+li::before{content:"";position:absolute;top:0;right:8px;left:60px;border-top:.5px solid var(--trk-line)}
+.trk-file{display:flex;align-items:center;gap:12px;min-height:48px}
+.trk-file-type{position:relative;flex:none;display:grid;place-items:center;width:40px;height:44px;border-radius:10px;background:var(--trk-fill-2);color:var(--trk-muted);font-size:11px;font-weight:800;letter-spacing:.03em}
+.trk-file-type[data-kind="pdf"]{background:var(--trk-danger-soft);color:var(--trk-danger)}
+.trk-file-type[data-kind="doc"]{background:var(--trk-info-soft);color:var(--trk-info)}
+.trk-file-type[data-kind="sheet"]{background:var(--trk-success-soft);color:var(--trk-success)}
+.trk-file-type[data-kind="slide"]{background:var(--trk-warning-soft);color:var(--trk-warning)}
+.trk-file-type[data-kind="image"]{background:var(--trk-accent-soft);color:var(--trk-accent-text)}
+.trk-file-lock{position:absolute;right:-5px;bottom:-5px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--trk-surface);box-shadow:var(--trk-shadow-sm);color:var(--trk-warning);font-style:normal}
+.trk-file-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.trk-file-text b{overflow:hidden;font-size:15px;font-weight:600;letter-spacing:-.01em;text-overflow:ellipsis;white-space:nowrap}
+.trk-file-text small{color:var(--trk-muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.trk-download{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:0;border-radius:999px;background:var(--trk-accent-soft);color:var(--trk-accent-text);font:600 14px var(--trk-font);cursor:pointer;transition:transform .3s var(--trk-ease),background-color .2s ease}
+.trk-download:active{transform:scale(.94)}
+.trk-download:disabled{cursor:progress;opacity:.8}
+@media (hover:hover){.trk-download:not(:disabled):hover{background:color-mix(in srgb,var(--trk-accent) 22%,var(--trk-surface))}}
+.trk-download .trk-spinner{width:15px;height:15px;border-color:color-mix(in srgb,var(--trk-accent-text) 30%,transparent);border-top-color:var(--trk-accent-text)}
+.trk-file-badge{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 11px;border-radius:999px;background:var(--trk-fill-2);color:var(--trk-muted);font-size:12.5px;font-weight:600}
+.trk-files .is-locked .trk-file-type{filter:blur(.5px) saturate(.35);opacity:.75}
+.trk-files .is-locked .trk-file-text{opacity:.6}
+.trk-file-note{margin:4px 0 0 52px!important;color:var(--trk-muted);font-size:13.5px;line-height:1.45;white-space:pre-wrap}
+.trk-files .is-locked .trk-file-note{opacity:.7}
+.trk-file-error{display:flex;align-items:flex-start;gap:6px;margin:6px 0 0 52px!important;line-height:1.4}
+.trk-file-error svg{flex:none;margin-top:1px}
+.trk-files-empty{display:grid;justify-items:center;gap:4px;padding:18px 12px 14px;color:var(--trk-muted);text-align:center}
+.trk-files-empty>span{display:grid;place-items:center;width:48px;height:48px;margin-bottom:4px;border-radius:50%;background:var(--trk-fill-2);color:var(--trk-dim)}
+.trk-files-empty b{color:var(--trk-ink);font-size:15px;font-weight:650}
+.trk-files-empty p{max-width:300px;font-size:14px;line-height:1.45}
+/* Kuruma özel sorgu: sonuç kartlarının altında aynı dil */
+.trk-results .trk-files-card{padding:18px 16px 10px;border-color:var(--trk-line);border-radius:18px;background:var(--trk-surface-2);box-shadow:none;animation:trk-rise .45s var(--trk-ease) both}
 
 .trk-note{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:16px;background:var(--trk-fill-2);color:var(--trk-muted);font-size:13px;line-height:1.45}
 .trk-note svg{margin-top:1px;color:var(--trk-success)}
@@ -417,6 +463,10 @@ html[data-theme="dark"] .trk-primary{background:linear-gradient(180deg,var(--trk
   .trk-phases li{font-size:11.5px}
   .trk-thread{height:clamp(280px,56vh,440px)}
   .trk-topbar-action{padding:0 14px}
+  .trk-files-locked{grid-template-columns:auto minmax(0,1fr)}
+  .trk-pay{grid-column:1/-1;width:100%}
+  .trk-download{min-height:44px;padding:0 14px}
+  .trk-file-note,.trk-file-error{margin-left:0!important}
 }
 @media (max-width:380px){
   .trk-topbar-title span{display:none}

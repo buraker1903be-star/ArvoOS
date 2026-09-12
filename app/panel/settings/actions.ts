@@ -4,6 +4,7 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { LEGAL_FIELDS, firstLegalError, legalDetailsFrom, normalizeLegalDetails, validateLegalDetails } from "./legal-details";
 
 const text = (formData: FormData, key: string, max = 500) =>
   String(formData.get(key) ?? "").trim().slice(0, max);
@@ -91,6 +92,42 @@ async function updateDocumentBranding__impl(formData: FormData) {
   if (error) {
     throw new Error("Kurumsal kimlik kaydedilemedi: " + error.message);
   }
+
+  revalidatePath("/panel/settings");
+}
+
+async function updateLegalDetails__impl(formData: FormData) {
+  const { supabase, membership } = await getPanelContext();
+  if (!["owner", "admin"].includes(membership.role)) {
+    throw new Error("Kurumun resmi bilgilerini değiştirme yetkiniz yok.");
+  }
+
+  const raw = legalDetailsFrom(Object.fromEntries(LEGAL_FIELDS.map((field) => [field, String(formData.get(field) ?? "").slice(0, 1000)])));
+  const invalid = firstLegalError(validateLegalDetails(raw));
+  if (invalid) throw new Error(invalid);
+  const values = normalizeLegalDetails(raw);
+
+  // RLS engellediğinde update hata vermez, 0 satır döner; bu yüzden
+  // etkilenen satır ayrıca kontrol edilir.
+  const { data: saved, error } = await supabase
+    .from("organizations")
+    .update({
+      ...Object.fromEntries(LEGAL_FIELDS.map((field) => [field, values[field] || null])),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", membership.organization_id)
+    .select("id");
+
+  if (error) {
+    if (error.code === "42703" || error.code === "PGRST204") {
+      throw new Error("Kurum bilgileri kaydedilemedi: veritabanı güncellemesi henüz uygulanmamış.");
+    }
+    if (error.code === "23514") {
+      throw new Error("Kurum bilgileri kaydedilemedi: alanlardan biri geçerli biçimde değil (IBAN, vergi numarası veya MERSİS).");
+    }
+    throw new Error("Kurum bilgileri kaydedilemedi: " + error.message);
+  }
+  if (!saved?.length) throw new Error("Kurum bilgileri kaydedilemedi: bu işlem için yetkiniz yok.");
 
   revalidatePath("/panel/settings");
 }
@@ -183,6 +220,9 @@ async function checkCustomDomainStatus__impl() {
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateDocumentBranding(...args: Parameters<typeof updateDocumentBranding__impl>) {
   return runPanelAction(() => updateDocumentBranding__impl(...args), "Belge ayarları kaydedildi");
+}
+export async function updateLegalDetails(...args: Parameters<typeof updateLegalDetails__impl>) {
+  return runPanelAction(() => updateLegalDetails__impl(...args), "Kurum bilgileri kaydedildi");
 }
 export async function updateCustomDomain(...args: Parameters<typeof updateCustomDomain__impl>) {
   return runPanelAction(() => updateCustomDomain__impl(...args), "Alan adı kaydedildi");

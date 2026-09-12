@@ -1,0 +1,148 @@
+/* ==========================================================================
+   Müşteri sorgulama penceresi (customer-lookup.tsx). Pencere .panel-root
+   içine portal ile çizilir; renkler yalnızca panel-tokens.css
+   değişkenlerinden gelir (koyu tema kendiliğinden).
+   ========================================================================== */
+
+/* Sayfa başlığındaki düğme */
+.panel-root .crm-lookup-trigger{gap:7px}
+.panel-root .crm-lookup-trigger svg{flex:none;width:15px;height:15px}
+
+/* Kök — talep penceresiyle (1000) aynı katmanda, geçmiş penceresinin (1100) altında değil */
+.panel-root .crm-lookup-root{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-start;justify-content:center;padding:max(48px,8vh) 20px 24px}
+.panel-root .crm-lookup-backdrop{position:absolute;inset:0;border:0;padding:0;background:color-mix(in srgb,var(--brand-950) 52%,transparent);-webkit-backdrop-filter:blur(6px) saturate(115%);backdrop-filter:blur(6px) saturate(115%);cursor:pointer;animation:crm-lookup-fade .18s ease both}
+.panel-root .crm-lookup-dialog{position:relative;display:flex;flex-direction:column;width:min(760px,100%);height:min(80dvh,760px);overflow:hidden;border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);animation:crm-lookup-pop .22s cubic-bezier(.2,.8,.3,1) both}
+.panel-root .crm-lookup-dialog::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 20%,transparent))}
+
+/* Başlık ve arama alanı */
+.panel-root .crm-lookup-head{flex:none;padding:20px 22px 12px;border-bottom:1px solid var(--line-soft)}
+.panel-root .crm-lookup-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.panel-root .crm-lookup-title .panel-kicker{display:block;margin:0 0 4px}
+.panel-root .crm-lookup-title h2{margin:0;color:var(--ink);font-size:20px;font-weight:800;line-height:1.25;letter-spacing:-.01em}
+.panel-root .crm-lookup-close{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:var(--surface-2);color:var(--muted);font:inherit;font-size:20px;line-height:1;cursor:pointer}
+.panel-root .crm-lookup-close:hover{color:var(--ink);border-color:color-mix(in srgb,var(--ink) 20%,var(--line))}
+.panel-root .crm-lookup-close:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+
+.panel-root .crm-lookup-field{display:flex;align-items:center;gap:10px;height:56px;margin:0;padding:0 8px 0 16px;border:1.5px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2);cursor:text;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.panel-root .crm-lookup-field:focus-within{border-color:color-mix(in srgb,var(--accent) 70%,var(--line));background:var(--surface);box-shadow:var(--shadow-glow)}
+.panel-root .crm-lookup-field-icon{flex:none;display:grid;place-items:center;color:var(--muted)}
+.panel-root .crm-lookup-field-icon svg{width:20px;height:20px}
+.panel-root .crm-lookup-field input{flex:1;min-width:0;height:100%;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--ink);font:inherit;font-size:18px;font-weight:650;letter-spacing:-.005em;outline:none;-webkit-appearance:none;appearance:none}
+.panel-root .crm-lookup-field input::placeholder{color:var(--dim);font-weight:500}
+.panel-root .crm-lookup-field input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.panel-root .crm-lookup-clear{flex:none;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--muted);font:inherit;font-size:20px;line-height:1;cursor:pointer}
+.panel-root .crm-lookup-clear:hover{background:var(--surface-2);color:var(--ink)}
+.panel-root .crm-lookup-clear:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.panel-root .crm-lookup-spinner{flex:none;display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:crm-lookup-spin .8s linear infinite}
+.panel-root .crm-lookup-mode{margin:8px 2px 0;color:var(--muted);font-size:12px;font-weight:600}
+
+.panel-root .crm-lookup-back{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:6px 12px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2);color:var(--ink);font:inherit;font-size:14px;font-weight:700;text-align:left;cursor:pointer}
+.panel-root .crm-lookup-back:hover{border-color:color-mix(in srgb,var(--accent) 42%,var(--line))}
+.panel-root .crm-lookup-back:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.panel-root .crm-lookup-back svg{flex:none;width:18px;height:18px;color:var(--muted)}
+.panel-root .crm-lookup-back span{display:flex;align-items:baseline;gap:8px;min-width:0}
+.panel-root .crm-lookup-back small{overflow:hidden;color:var(--muted);font-size:12px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+
+/* Gövde */
+.panel-root .crm-lookup-body{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:10px 12px 14px}
+.panel-root .crm-lookup-banner{margin:4px 10px 10px;padding:9px 12px;border:1px solid color-mix(in srgb,var(--warning) 38%,var(--line));border-radius:var(--r-lg);background:var(--warning-soft);color:var(--ink-soft);font-size:12px;font-weight:600;line-height:1.45}
+
+/* Sonuç listesi */
+.panel-root .crm-lookup-results{margin:0;padding:0;list-style:none;transition:opacity .15s ease}
+.panel-root .crm-lookup-results.is-stale{opacity:.55}
+.panel-root .crm-lookup-sep{margin:12px 10px 6px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.panel-root .crm-lookup-option{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid transparent;border-radius:var(--r-lg);cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.panel-root .crm-lookup-option+.crm-lookup-option{margin-top:2px}
+.panel-root .crm-lookup-option[aria-selected="true"]{border-color:color-mix(in srgb,var(--accent) 34%,var(--line));background:var(--accent-soft)}
+.panel-root .crm-lookup-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--surface-2);color:var(--ink-soft);font-size:13px;font-weight:800;letter-spacing:.02em;box-shadow:inset 0 0 0 1px var(--line)}
+.panel-root .crm-lookup-option[aria-selected="true"] .crm-lookup-avatar{background:var(--surface);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 36%,transparent)}
+.panel-root .crm-lookup-avatar.is-large{width:52px;height:52px;font-size:16px}
+.panel-root .crm-lookup-option-main{min-width:0}
+.panel-root .crm-lookup-option-main strong{display:block;overflow:hidden;color:var(--ink);font-size:15px;font-weight:750;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-lookup-option-main small{display:block;margin-top:2px;overflow:hidden;color:var(--muted);font-size:12px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-lookup-option-main small:nth-of-type(1){color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.panel-root .crm-lookup-reps{color:var(--muted)}
+.panel-root .crm-lookup-option mark{padding:0 1px;border-radius:3px;background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;font-weight:800}
+.panel-root .crm-lookup-option-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.panel-root .crm-lookup-amount{color:var(--ink);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel-root .crm-lookup-chevron{display:none}
+
+/* İskelet */
+.panel-root .crm-lookup-option.is-skeleton{cursor:default}
+.panel-root .crm-lookup-bone{display:block;width:62%;height:12px;margin:5px 0;border-radius:var(--r-pill);background:linear-gradient(90deg,var(--surface-2),color-mix(in srgb,var(--line) 70%,var(--surface-2)),var(--surface-2));background-size:200% 100%;animation:crm-lookup-shimmer 1.2s ease-in-out infinite}
+.panel-root .crm-lookup-bone.is-short{width:38%}
+
+/* Boş / yönlendirme / hata durumları */
+.panel-root .crm-lookup-state{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:440px;margin:40px auto;padding:0 16px;text-align:center}
+.panel-root .crm-lookup-state strong{color:var(--ink);font-size:15px;font-weight:800}
+.panel-root .crm-lookup-state p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.panel-root .crm-lookup-state .panel-secondary{margin-top:8px}
+.panel-root .crm-lookup-state.is-error strong{color:var(--danger)}
+.panel-root .crm-lookup-state-icon{display:grid;place-items:center;width:48px;height:48px;margin-bottom:6px;border-radius:14px;background:var(--accent-soft);color:var(--accent-strong)}
+.panel-root .crm-lookup-state-icon svg{width:22px;height:22px}
+.panel-root .crm-lookup-examples{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin-top:6px!important}
+.panel-root .crm-lookup-examples span{padding:2px 8px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface-2);color:var(--ink-soft);font-size:12px;font-weight:700}
+
+/* Müşteri ayrıntısı */
+.panel-root .crm-lookup-detail{padding:6px 10px 4px}
+.panel-root .crm-lookup-profile{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center}
+.panel-root .crm-lookup-profile-main{min-width:0}
+.panel-root .crm-lookup-profile h3{margin:0;overflow:hidden;color:var(--ink);font-size:19px;font-weight:800;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-lookup-profile p{margin:3px 0 0;overflow:hidden;color:var(--ink-soft);font-size:13px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-lookup-profile p a{color:inherit;font-variant-numeric:tabular-nums;text-decoration:none}
+.panel-root .crm-lookup-profile p a:hover{color:var(--accent-strong);text-decoration:underline}
+.panel-root .crm-lookup-profile .crm-lookup-reps{color:var(--muted);font-size:12px}
+.panel-root .crm-lookup-new{flex:none}
+.panel-root .crm-lookup-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0 0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2);overflow:hidden}
+.panel-root .crm-lookup-stats>div{min-width:0;padding:11px 13px}
+.panel-root .crm-lookup-stats>div+div{border-left:1px solid var(--line)}
+.panel-root .crm-lookup-stats dt{margin:0 0 4px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.panel-root .crm-lookup-stats dd{margin:0;overflow:hidden;color:var(--ink);font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .crm-lookup-counts{margin:10px 2px 0;color:var(--muted);font-size:12px;font-weight:600}
+/* Geçmiş listesi (customer-history.css) burada pencerenin gövdesiyle kayar */
+.panel-root .crm-lookup-detail .crm-history-list{overflow:visible;padding:12px 0 4px}
+.panel-root .crm-lookup-notes{margin:8px 2px 4px;color:var(--muted);font-size:12px;line-height:1.5}
+.panel-root .crm-lookup-history-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:36px 0;color:var(--muted);font-size:13px;font-weight:600}
+
+/* Alt çubuk: klavye kısayolları */
+.panel-root .crm-lookup-foot{flex:none;display:flex;align-items:center;gap:16px;padding:10px 22px;border-top:1px solid var(--line-soft);background:var(--surface-2);color:var(--muted);font-size:12px}
+.panel-root .crm-lookup-foot kbd{display:inline-grid;place-items:center;min-width:22px;height:20px;margin-right:4px;padding:0 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--surface);color:var(--ink-soft);font:inherit;font-size:11px;font-weight:700}
+
+@keyframes crm-lookup-fade{from{opacity:0}to{opacity:1}}
+@keyframes crm-lookup-pop{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes crm-lookup-rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes crm-lookup-spin{to{transform:rotate(360deg)}}
+@keyframes crm-lookup-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+
+/* Mobil: tam ekran sayfa */
+@media (max-width:759px){
+  .panel-root .crm-lookup-root{align-items:stretch;padding:0}
+  .panel-root .crm-lookup-dialog{width:100%;height:100dvh;max-height:none;border:0;border-radius:0;animation:crm-lookup-rise .24s cubic-bezier(.2,.8,.3,1) both}
+  .panel-root .crm-lookup-dialog::before{display:none}
+  .panel-root .crm-lookup-head{padding:calc(12px + env(safe-area-inset-top,0px)) 14px 10px}
+  .panel-root .crm-lookup-title{margin-bottom:10px}
+  .panel-root .crm-lookup-title h2{font-size:18px}
+  .panel-root .crm-lookup-field{height:52px;padding-left:12px}
+  /* 16px altı iOS'ta sayfayı yakınlaştırır */
+  .panel-root .crm-lookup-field input{font-size:17px}
+  .panel-root .crm-lookup-body{padding:8px 6px calc(16px + env(safe-area-inset-bottom,0px))}
+  .panel-root .crm-lookup-option{grid-template-columns:auto minmax(0,1fr) auto;gap:10px;padding:11px 10px}
+  .panel-root .crm-lookup-avatar{width:36px;height:36px;font-size:12px}
+  .panel-root .crm-lookup-option-side .status-pill{display:none}
+  .panel-root .crm-lookup-option-side .crm-lookup-amount{display:none}
+  .panel-root .crm-lookup-chevron{display:block;color:var(--dim);font-size:22px;line-height:1}
+  .panel-root .crm-lookup-option-main strong{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .panel-root .crm-lookup-detail{padding:4px 8px}
+  .panel-root .crm-lookup-profile{grid-template-columns:auto minmax(0,1fr)}
+  .panel-root .crm-lookup-avatar.is-large{width:44px;height:44px;font-size:14px}
+  .panel-root .crm-lookup-profile h3{font-size:17px;white-space:normal}
+  .panel-root .crm-lookup-new{grid-column:1/-1;width:100%}
+  .panel-root .crm-lookup-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .panel-root .crm-lookup-stats>div:nth-child(3){border-left:0}
+  .panel-root .crm-lookup-stats>div:nth-child(n+3){border-top:1px solid var(--line)}
+  .panel-root .crm-lookup-foot{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .panel-root .crm-lookup-dialog,.panel-root .crm-lookup-backdrop{animation-duration:.01ms}
+  .panel-root .crm-lookup-spinner,.panel-root .crm-lookup-bone{animation:none}
+}

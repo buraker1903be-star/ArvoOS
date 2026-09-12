@@ -138,10 +138,21 @@ export async function fetchNotificationFeed(): Promise<NotificationFeedResult> {
   try {
     const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
     const scope = { supabase, userId, organizationId: organization.id, isPlatformOwner };
-    const [items, unread] = await Promise.all([loadNotifications(scope, 60), countUnreadNotifications(scope)]);
+    // Sayı okunamazsa liste yine gösterilir; rozet eski değerinde kalır (0'a düşmez)
+    const [items, unread] = await Promise.all([loadNotifications(scope, 60), countUnreadNotifications(scope).catch(() => null)]);
     return { ok: true, items: items.map(toFeedItem), unread };
   } catch (error) {
     return { ok: false, error: errorText(error) };
+  }
+}
+
+/** Canlı bildirim aboneliğinin kapsamı (live.ts): etkin çalışma alanı ve kullanıcı. */
+export async function fetchNotificationLiveScope(): Promise<{ ok: true; userId: string; organizationId: string; isPlatformOwner: boolean } | { ok: false }> {
+  try {
+    const { userId, organization, isPlatformOwner } = await getPanelContext();
+    return { ok: true, userId, organizationId: organization.id, isPlatformOwner };
+  } catch {
+    return { ok: false };
   }
 }
 

@@ -1,20 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { fetchNotificationFeed, markAllNotificationsReadFromDrawer, markNotificationReadFromDrawer } from "./notifications/actions";
 import { fullTime, groupFeedByDay, relativeTime, type NotificationFeedItem } from "./notifications/feed";
 import { inNotificationFilter, notificationFilters } from "./notifications/filters";
+import { notifyNotificationTabs, useLiveNotifications } from "./notifications/live";
 import { NotificationIcon } from "./notifications/notification-icon";
-import { OPEN_NOTIFICATIONS_EVENT, getNotificationUnread, openNotificationsDrawer, setNotificationUnread, useNotificationUnread } from "./notifications/unread-store";
+import {
+  OPEN_NOTIFICATIONS_EVENT,
+  getNotificationUnread,
+  openNotificationsDrawer,
+  setNotificationUnread,
+  useNotificationArrivals,
+  useNotificationUnread,
+} from "./notifications/unread-store";
 import "./notifications/notifications-drawer.css";
 
 // Üst çubuktaki "Bildirimler" düğmesi ve sağdan açılan bildirim çekmecesi
 // (Mesajlar çekmecesiyle aynı davranış: messages-drawer.tsx).
 // - Liste ilk açılışta, sonra her açılışta sunucu işlemiyle yüklenir
 //   (fetchNotificationFeed → sayfayla ortak load-notifications.ts + describe.ts).
+// - Yeni bildirim canlı gelir (notifications/live.ts): rozet anında artar ve
+//   zıplar; çekmece açıksa liste yenilenir, bildirim sayfasındaysa sayfa.
 // - Okundu işaretleme anında yansır; sunucu işlemi revalidatePath ile
 //   layout'taki sayacı yeniler, gelen kesin sayı rozetlere yazılır.
 // - Başka bileşenler "arvo:open-notifications" olayıyla açabilir.
@@ -25,6 +35,8 @@ const PAGE = "/panel/notifications";
 const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
 const currentTime = () => Date.now();
 const isOnPage = (pathname: string) => pathname === PAGE || pathname.startsWith(`${PAGE}/`);
+/** Yeni bildirimde rozet yeniden çizilir ve bir kez zıplar (ilk çizimde değil). */
+const popClass = (arrivals: number) => (arrivals ? " ntd-badge-pop" : "");
 
 type FilterKey = "all" | "unread" | (typeof notificationFilters)[number]["key"];
 type Feed = { status: "idle" | "loading" | "ready" | "error"; items: NotificationFeedItem[]; error: string | null; loadedAt: number };
@@ -39,10 +51,50 @@ function Chevron() {
   return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>;
 }
 
+/**
+ * Filtre çipleri. Masaüstünde satırlara sarılır (hepsi görünür); mobilde tek
+ * satır kayar: yalnızca gizli çip olan kenar solar, seçilen çip ortaya kayar.
+ * Kenar bilgisi DOM özniteliğiyle yazılır (kaydırırken yeniden çizim yok).
+ */
+function ChipRail({ active, signature, children }: { active: string; signature: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const rail = ref.current;
+    if (!rail) return;
+    const update = () => {
+      const max = rail.scrollWidth - rail.clientWidth;
+      rail.toggleAttribute("data-fade-start", max > 1 && rail.scrollLeft > 1);
+      rail.toggleAttribute("data-fade-end", max > 1 && rail.scrollLeft < max - 1);
+    };
+    update();
+    rail.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(rail);
+    return () => {
+      rail.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [signature]);
+
+  useEffect(() => {
+    const rail = ref.current;
+    const chip = rail?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!rail || !chip || rail.scrollWidth <= rail.clientWidth + 1) return;
+    const left = Math.max(0, chip.offsetLeft - (rail.clientWidth - chip.offsetWidth) / 2);
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    rail.scrollTo({ left, behavior: reduce ? "auto" : "smooth" });
+  }, [active]);
+
+  return <div ref={ref} className="ntd-chips" role="group" aria-label="Bildirim filtreleri">{children}</div>;
+}
+
 export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
   const pathname = usePathname();
+  const router = useRouter();
   const onPage = isOnPage(pathname);
   const unread = useNotificationUnread(unreadCount);
+  const arrivals = useNotificationArrivals();
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -56,12 +108,17 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
   const loadedOnceRef = useRef(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const liveRef = useRef({ open, onPage });
 
   // Sayfa değişince çekmece kapanır (render sırasında durum ayarı)
   if (lastPath !== pathname) {
     setLastPath(pathname);
     setOpen(false);
   }
+
+  useEffect(() => {
+    liveRef.current = { open, onPage };
+  }, [open, onPage]);
 
   // Sunucudan gelen sayı (ilk çizim ve her revalidate) rozetlerin kaynağı
   useEffect(() => {
@@ -76,7 +133,7 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
     if (result.ok) {
       loadedOnceRef.current = true;
       setFeed({ status: "ready", items: result.items, error: null, loadedAt: currentTime() });
-      setNotificationUnread(result.unread);
+      if (result.unread !== null) setNotificationUnread(result.unread);
     } else if (loadedOnceRef.current) {
       // Liste zaten gösteriliyor: silme, üstte uyarı göster
       setNotice(result.error);
@@ -84,6 +141,22 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
       setFeed((prev) => ({ ...prev, status: "error", error: result.error }));
     }
   }, []);
+
+  // Canlı bildirimler: çekmece açıksa liste (sayıyla birlikte) yenilenir;
+  // bildirim sayfasındaysa yeni bildirimle sayfa yenilenir. Diğer durumlarda
+  // live.ts kesin sayıyı kendisi sorar.
+  useLiveNotifications(({ inserted }) => {
+    const { open: isOpen, onPage: isPage } = liveRef.current;
+    if (isOpen) {
+      void load();
+      return true;
+    }
+    if (isPage && inserted) {
+      router.refresh();
+      return true;
+    }
+    return false;
+  });
 
   const show = useCallback(() => {
     const active = document.activeElement;
@@ -132,6 +205,8 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
       setRead(new Set([item.id]), false);
       setNotificationUnread(getNotificationUnread(unreadCount) + 1);
       setNotice(result.error);
+    } else {
+      notifyNotificationTabs();
     }
   }
 
@@ -148,19 +223,23 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
       setRead(unreadIds, false);
       setNotificationUnread(before);
       setNotice(result.error);
+    } else {
+      notifyNotificationTabs();
     }
   }
 
   const portalTarget = mounted ? document.querySelector(".panel-root") : null;
   const label = `Bildirimler${unread ? `, ${unread} okunmamış` : ""}`;
-  const badge = unread ? <span className="panel-unread-badge">{badgeText(unread)}</span> : null;
+  const badge = unread ? <span key={arrivals} className={`panel-unread-badge${popClass(arrivals)}`}>{badgeText(unread)}</span> : null;
 
-  // Filtreler: Tümü, Okunmamış ve listede karşılığı olan kategoriler
+  // Filtreler: Tümü, Okunmamış ve yalnızca listede karşılığı olan başlıklar
+  // (seçili başlık boşalsa da görünür kalır, geri dönülebilsin)
   const items = feed.items;
   const listUnread = items.filter((item) => !item.read).length;
   const categoryChips = notificationFilters
     .map((entry) => ({ ...entry, count: items.filter((item) => inNotificationFilter(item.category, entry)).length }))
     .filter((entry) => entry.count > 0 || filter === entry.key);
+  const chipSignature = categoryChips.map((entry) => `${entry.key}:${entry.count}`).join(",") + `|${items.length}|${listUnread}`;
   const visible = items.filter((item) => {
     if (filter === "all") return true;
     if (filter === "unread") return !item.read;
@@ -169,9 +248,17 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
   });
   const groups = groupFeedByDay(visible, feed.loadedAt);
 
-  const chip = (key: FilterKey, text: string, count: number) => (
-    <button key={key} type="button" className={`ntd-chip${filter === key ? " is-active" : ""}`} aria-pressed={filter === key} onClick={() => setFilter(key)}>
-      {text}<b>{count}</b>
+  const chip = (key: FilterKey, text: string, count: number, highlight = false) => (
+    <button
+      key={key}
+      type="button"
+      className={`ntd-chip${filter === key ? " is-active" : ""}`}
+      data-unread={highlight && count > 0 ? "" : undefined}
+      aria-pressed={filter === key}
+      aria-label={`${text}, ${count} bildirim`}
+      onClick={() => setFilter(key)}
+    >
+      {text}<b aria-hidden="true">{count}</b>
     </button>
   );
 
@@ -315,11 +402,11 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
                 </header>
 
                 {feed.status === "ready" && items.length ? (
-                  <div className="ntd-chips" role="group" aria-label="Bildirim filtreleri">
+                  <ChipRail active={filter} signature={chipSignature}>
                     {chip("all", "Tümü", items.length)}
-                    {chip("unread", "Okunmamış", listUnread)}
+                    {chip("unread", "Okunmamış", listUnread, true)}
                     {categoryChips.map((entry) => chip(entry.key, entry.label, entry.count))}
-                  </div>
+                  </ChipRail>
                 ) : null}
 
                 {notice ? (
@@ -344,15 +431,17 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
 }
 
 // Mobil alt menü ve menü çekmecesindeki "Bildirimler" girişi (mobile-drawer.tsx).
-// Rozet, üst çubuktaki düğmeyle aynı sayıyı gösterir (unread-store.ts).
+// Rozet, üst çubuktaki düğmeyle aynı sayıyı gösterir ve yeni bildirimde
+// onunla birlikte zıplar (unread-store.ts).
 export function NotificationsNavButton({ variant, initialCount = 0, onOpen }: { variant: "bottom" | "menu"; initialCount?: number; onOpen?: () => void }) {
   const pathname = usePathname();
   const onPage = isOnPage(pathname);
   const count = useNotificationUnread(initialCount);
+  const arrivals = useNotificationArrivals();
   const label = `Bildirimler${count ? `, ${count} okunmamış` : ""}`;
 
   if (variant === "bottom") {
-    const badge = count ? <em className="mobile-bottom-badge">{badgeText(count)}</em> : null;
+    const badge = count ? <em key={arrivals} className={`mobile-bottom-badge${popClass(arrivals)}`}>{badgeText(count)}</em> : null;
     return onPage ? (
       <Link href={PAGE} className="active" aria-current="page" aria-label={label}><i>♢</i><span>Bildirimler</span>{badge}</Link>
     ) : (
@@ -360,7 +449,7 @@ export function NotificationsNavButton({ variant, initialCount = 0, onOpen }: { 
     );
   }
 
-  const badge = count ? <em className="mobile-unread-badge">{badgeText(count)}</em> : null;
+  const badge = count ? <em key={arrivals} className={`mobile-unread-badge${popClass(arrivals)}`}>{badgeText(count)}</em> : null;
   return onPage ? (
     <Link href={PAGE} className="active" aria-current="page" onClick={onOpen} aria-label={label}><i>B</i><span>Bildirimler</span>{badge}<b>›</b></Link>
   ) : (

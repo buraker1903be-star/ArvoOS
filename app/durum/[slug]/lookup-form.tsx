@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { lookupStatus } from "./actions";
+import { lookupStatus, refreshLookupPortalFiles } from "./actions";
 import { initialLookupState } from "./lookup-state";
 import { LookupSubmitButton } from "./lookup-controls";
+import { CustomerFiles } from "./customer-files";
 import { describeStatus, FinanceSummary, formatDateTime, IconClock, LookupAlert, PhaseTimeline, ProgressOverview, StatusPill } from "./status-view";
 
 export function StatusLookupForm({ orgSlug, prefillCode }: { orgSlug: string; prefillCode?: string }) {
@@ -57,6 +58,17 @@ export function StatusLookupForm({ orgSlug, prefillCode }: { orgSlug: string; pr
               </article>
             );
           })}
+          {/* Bu sayfanın ödeme kartı kuruma özel sorgudan gelir; iki kaynak
+              arasında tutar farkı görünmesin diye kilit metni tutar yazmaz. */}
+          {state.code && state.files ? (
+            <CustomerFiles
+              key={`${state.code}:${state.files.map((file) => `${file.id}${file.locked ? "L" : ""}`).join(",")}`}
+              code={state.code}
+              initialFiles={state.files}
+              onRefresh={refreshLookupPortalFiles}
+              showAmount={false}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

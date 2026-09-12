@@ -2,12 +2,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { PrintDocumentButton } from "@/app/_components/print-document-button";
 import { PrintAutorun } from "@/app/_components/print-autorun";
 import { getContractTemplate } from "@/lib/contract-templates";
-import { DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerRows, type Customer, type Provider } from "@/app/_components/legal/blocks";
+import { DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerFromRow, providerRows, type Customer } from "@/app/_components/legal/blocks";
 import { ContractArticles, LegacyArticles, PreInformationAnnex, specialClausesFor, type ContractContext } from "@/app/_components/legal/contract-clauses";
 import { documentCss } from "@/app/_components/legal/document-styles";
 import {
-  LEGAL_TEXT_VERSION, LEGAL_V3_FALLBACK_CUTOFF, amountInWords, computeTaxBreakdown, detectCity, detectCustomerKind, formatDate, formatDateTime,
-  formatMoney, groupHash, isBefore, pdfFileName, safeBrandColor, splitScope, summarizeUserAgent, taxIdLabel, type DocumentRow,
+  LEGAL_TEXT_VERSION, LEGAL_V3_FALLBACK_CUTOFF, amountInWords, computeTaxBreakdown, detectCustomerKind, formatDate, formatDateTime,
+  formatMoney, groupHash, isBefore, pdfFileName, resolveLegalTextVersion, safeBrandColor, splitScope, summarizeUserAgent, taxIdLabel, type DocumentRow,
 } from "@/app/_components/legal/format";
 import { buildSchedule, type InstallmentRecord } from "@/app/_components/legal/schedule";
 
@@ -66,15 +66,11 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
   // İmzalanmış sözleşme, imzalandığı metinle gösterilir: yeni yasal metin
   // yalnızca onu onaylayan (legal_text_version kaydı olan) sözleşmelerde.
   const legacy = signed && !audit?.legal_text_version && (auditAvailable || isBefore(row.signed_at, LEGAL_V3_FALLBACK_CUTOFF));
-  const provider: Provider = {
-    name: String(row.organization_name || "Hizmet Sağlayıcı"),
-    info: row.organization_document_footer || null,
-    email: row.organization_contact_email || null,
-    phone: row.organization_contact_phone || null,
-    website: row.organization_website_url || null,
-    logoUrl: row.organization_logo_url || null,
-    stampUrl: row.organization_signature_stamp_url || null,
-  };
+  // İmzalı sözleşme onaylandığı sürümle (3.0 / 3.1) çizilir; imzasız her
+  // zaman güncel sürümdür. Kurum bilgileri (adres, IBAN) veri olduğu için
+  // metin sürümünü değiştirmez.
+  const textVersion = signed ? resolveLegalTextVersion(audit?.legal_text_version) : LEGAL_TEXT_VERSION;
+  const provider = providerFromRow(row, "Hizmet Sağlayıcı");
   const customer: Customer = {
     name: String(row.customer_name || "Müşteri"),
     address: row.customer_address || null,
@@ -106,7 +102,8 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
     schedule,
     specialClauses: specialClausesFor(template),
     earlyStart: consents ? consents.early_start === true : null,
-    city: detectCity(provider.info),
+    city: provider.city ?? null,
+    textVersion,
   };
   const userAgent = summarizeUserAgent(row.signed_user_agent || audit?.signed_user_agent);
   const signerName = String(row.signed_name || customer.name);
@@ -126,7 +123,7 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
       <DocHeader provider={provider} kicker="Hizmet Sözleşmesi" number={String(row.contract_no || "")} meta={[
         ["Düzenleme", formatDate(row.created_at)],
         ["Durum", signed ? "İmzalandı" : row.status === "cancelled" ? "İptal edildi" : row.status === "rejected" ? "Reddedildi" : "İmza bekliyor"],
-        ["Metin sürümü", legacy ? `Şablon v${row.contract_template_version || template.version}` : `v${LEGAL_TEXT_VERSION}`],
+        ["Metin sürümü", legacy ? `Şablon v${row.contract_template_version || template.version}` : `v${textVersion}`],
       ]} />
       <section className="ad-title">
         <div className="ad-kicker">{legacy ? template.name : "Hizmet Sözleşmesi"}</div>
@@ -199,7 +196,7 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
       {!print && !signed && ["draft", "sent"].includes(row.status) ? signatureForm : null}
       {!print && proposalLink ? <p className="ad-related print-hide"><a className="ad-btn" href={`/teklif/${proposalLink.token}`}>Bu sözleşmenin dayandığı teklifi görüntüle{proposalLink.no ? ` · ${proposalLink.no}` : ""}</a></p> : null}
 
-      <DocFooter provider={provider} reference={<>{row.contract_no} · Metin v{legacy ? row.contract_template_version || template.version : LEGAL_TEXT_VERSION}</>} verificationUrl={signed ? verificationUrl : null} />
+      <DocFooter provider={provider} reference={<>{row.contract_no} · Metin v{legacy ? row.contract_template_version || template.version : textVersion}</>} verificationUrl={signed ? verificationUrl : null} />
       <div className="ad-confidential">Gizlidir · Yalnızca sözleşme tarafları içindir</div>
     </article>
   </main>;

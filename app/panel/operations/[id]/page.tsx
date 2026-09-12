@@ -15,6 +15,8 @@ import { statusTone } from "@/lib/status-tone";
 import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
+import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
+import type { PortalAccessRule } from "../portal-files-shared";
 import "../operations.css";
 import "../../crm/request-page.css";
 import "./detail.css";
@@ -40,6 +42,7 @@ const statusOptions = [
 const statusNames: Record<string, string> = { ...Object.fromEntries(statusOptions), archived: "Arşivlendi" };
 const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
 const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
+const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 });
 
 const formatDate = (value?: string | null, withTime = false) =>
   value
@@ -108,7 +111,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const canArchive = canEditDue;
   const archiverName = isArchived ? (workflow.archived_by ? formatPersonName((archiver as { full_name?: string } | null)?.full_name) || "Ekip üyesi" : "Otomatik (ödeme kapandı)") : null;
 
-  const [opportunityResult, proposalResult, commentsResult] = await Promise.all([
+  const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult] = await Promise.all([
     contract?.opportunity_id
       ? supabase.from("crm_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -118,8 +121,51 @@ export default async function OperationDetailPage({ params }: { params: Promise<
     contract?.opportunity_id
       ? supabase.from("crm_internal_comments").select("id,body,created_at,created_by,context_type").eq("organization_id", organizationId).eq("opportunity_id", contract.opportunity_id).order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
+    supabase.from("operation_customer_files").select("id,file_name,mime_type,size_bytes,note,access_rule,created_at,uploaded_by").eq("workflow_id", workflow.id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
+    supabase.rpc("portal_workflow_payment_status", { p_workflow_id: workflow.id }),
+    supabase.from("operation_customer_file_downloads").select("file_id").eq("workflow_id", workflow.id).eq("outcome", "granted").limit(5000),
   ]);
   if ("error" in commentsResult && commentsResult.error) throw new Error("Kurum içi yorumlar okunamadı: " + commentsResult.error.message);
+
+  // Müşteri portalı dosyaları. Migration (20260912203000) henüz çalışmadıysa
+  // sayfa kırılmaz; kart kurulum uyarısı gösterir.
+  const isMissingSchema = (error: { code?: string; message?: string } | null) =>
+    Boolean(error && (["42P01", "42883", "PGRST202", "PGRST205"].includes(error.code ?? "") || /does not exist|schema cache/i.test(error.message ?? "")));
+  const portalSetupMissing = isMissingSchema(portalFilesResult.error) || isMissingSchema(portalPaymentResult.error);
+  if (!portalSetupMissing && portalFilesResult.error) throw new Error("Müşteri portalı dosyaları okunamadı: " + portalFilesResult.error.message);
+  if (!portalSetupMissing && portalPaymentResult.error) throw new Error("Ödeme durumu okunamadı: " + portalPaymentResult.error.message);
+  type PortalFileRow = { id: string; file_name: string; mime_type: string; size_bytes: number; note: string | null; access_rule: PortalAccessRule; created_at: string; uploaded_by: string | null };
+  const portalFileRows = (portalSetupMissing ? [] : portalFilesResult.data ?? []) as PortalFileRow[];
+  const uploaderIds = [...new Set(portalFileRows.map((file) => file.uploaded_by).filter((value): value is string => Boolean(value)))];
+  const { data: uploaderData } = uploaderIds.length
+    ? await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
+    : { data: [] };
+  const uploaderNames = new Map(((uploaderData ?? []) as { user_id: string; full_name: string }[]).map((row) => [row.user_id, formatPersonName(row.full_name)]));
+  const downloadCounts = new Map<string, number>();
+  for (const row of (portalDownloadsResult.data ?? []) as { file_id: string | null }[]) {
+    if (row.file_id) downloadCounts.set(row.file_id, (downloadCounts.get(row.file_id) ?? 0) + 1);
+  }
+  const portalFiles: StaffPortalFile[] = portalFileRows.map((file) => ({
+    id: file.id,
+    fileName: file.file_name,
+    mimeType: file.mime_type,
+    sizeBytes: Number(file.size_bytes),
+    note: file.note,
+    accessRule: file.access_rule,
+    createdLabel: formatDate(file.created_at, true),
+    uploaderName: (file.uploaded_by && uploaderNames.get(file.uploaded_by)) || "Ekip üyesi",
+    downloads: downloadCounts.get(file.id) ?? 0,
+  }));
+  const paymentRow = (Array.isArray(portalPaymentResult.data) ? portalPaymentResult.data[0] : portalPaymentResult.data) as
+    { has_contract: boolean; settled: boolean; total_amount: number | null; paid_amount: number | null; remaining_amount: number | null } | undefined;
+  const portalPayment: StaffPortalPayment = {
+    hasContract: Boolean(paymentRow?.has_contract ?? contract),
+    settled: Boolean(paymentRow?.settled),
+    // Tutarlar yalnızca yöneticilere döner (SQL de aynı kuralı uygular).
+    remainingLabel: paymentRow?.remaining_amount != null ? moneyFormat.format(Number(paymentRow.remaining_amount) / 100) : null,
+    paidPercent: paymentRow?.total_amount ? Math.min(100, Math.max(0, Math.round((Number(paymentRow.paid_amount ?? 0) / Number(paymentRow.total_amount)) * 100))) : null,
+  };
+  const portalDownloadsConfigured = Boolean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
   const opportunity = opportunityResult.data as Opportunity | null;
   const proposal = proposalResult.data as Proposal | null;
   const comments = (commentsResult.data ?? []) as Comment[];
@@ -281,6 +327,15 @@ export default async function OperationDetailPage({ params }: { params: Promise<
             </div>
             )}
           </section>
+
+          {portalSetupMissing ? (
+            <section className="opd-card opd-pf" id="musteri-dosyalari">
+              <header className="opd-card-head"><div><h2>Müşteri portalı dosyaları</h2><p>Müşterinin takip ekranındaki “Dosyalarınız” bölümü</p></div></header>
+              <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+            </section>
+          ) : (
+            <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+          )}
 
           <section className="opd-card opd-messages" id="musteri-mesajlari">
             <header className="opd-card-head">

@@ -146,6 +146,14 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
 .ad-foot strong{display:block;margin-bottom:.8mm;font-size:6.4pt;letter-spacing:.18em;text-transform:uppercase;color:var(--ad-ink)}
 .ad-foot div{min-width:0;overflow-wrap:anywhere;white-space:pre-line}
 .ad-foot .ad-right{text-align:right}
+.ad-foot .ad-foot-note{grid-column:1/-1;margin:0;padding-top:2.4mm;border-top:.2mm dashed var(--ad-line-2);font-size:6.8pt;line-height:1.5;color:var(--ad-soft);white-space:pre-line}
+.ad-bank{display:grid;grid-template-columns:repeat(auto-fit,minmax(38mm,1fr));border:.2mm solid var(--ad-line);border-radius:2.4mm;background:var(--ad-cream);overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.ad-bank>div{min-width:0;padding:2.8mm 4mm;border-left:.2mm solid var(--ad-line)}
+.ad-bank>div:first-child{border-left:0}
+.ad-bank small{display:block;font-size:6.2pt;letter-spacing:.16em;text-transform:uppercase;color:var(--ad-soft);font-weight:700}
+.ad-bank strong{display:block;margin-top:.8mm;font-size:8.6pt;font-weight:700;line-height:1.35;color:var(--ad-ink);overflow-wrap:anywhere}
+.ad-bank-iban{grid-column:span 2}
+.ad-bank-iban strong{font-family:var(--ad-mono);font-size:8.8pt;letter-spacing:.04em;white-space:nowrap;overflow-wrap:normal}
 .ad-confidential{margin-top:3mm;text-align:center;font-size:6.6pt;letter-spacing:.12em;text-transform:uppercase;color:var(--ad-soft)}
 .ad-form{margin:7mm 0 0;padding:6mm;border:.3mm solid var(--ad-brand);border-radius:3mm;background:linear-gradient(180deg,#fffdf9,#faf6ee);box-shadow:0 12px 30px rgba(11,27,46,.08)}
 .ad-form-head h3{margin:1.2mm 0 1mm;font-size:13pt;color:var(--ad-ink)}
@@ -185,6 +193,11 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
  .ad-meta{justify-content:start}.ad-meta dt,.ad-meta dd{text-align:left}
  .ad-grid-2,.ad-sign,.ad-foot{grid-template-columns:1fr}
  .ad-foot .ad-right{text-align:left}
+ .ad-bank{grid-template-columns:1fr}
+ .ad-bank>div{border-left:0;border-top:.2mm solid var(--ad-line)}
+ .ad-bank>div:first-child{border-top:0}
+ .ad-bank-iban{grid-column:auto}
+ .ad-bank-iban strong{white-space:normal}
  .ad-facts{grid-template-columns:1fr 1fr}
  .ad-fact:nth-child(3){border-left:0}
  .ad-fact:nth-child(n+3){border-top:.2mm solid var(--ad-line)}

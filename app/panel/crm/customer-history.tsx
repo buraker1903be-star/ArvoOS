@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom";
 import { lookupCustomerHistory } from "./customer-history-actions";
 import { lookupReady, nameKey, phoneKey } from "./customer-history-keys";
-import type { CustomerHistoryResult, HistoryMatch } from "./customer-history-query";
+import type { CustomerHistoryItem, CustomerHistoryResult, HistoryMatch } from "./customer-history-query";
 import "./customer-history.css";
 
 const DEBOUNCE_MS = 600;
@@ -24,9 +24,10 @@ type Response = { key: string; result: CustomerHistoryResult | null };
  * Telefon ya da ad soyad yazıldıkça (gecikmeli) geçmiş kayıtları sorar.
  * Eşleşme varsa kullanıcı iki alandan da çıktığında pencere bir kez
  * kendiliğinden açılır; kapatınca alanların altında kalıcı bir çip kalır.
- * Kaydı engellemez.
+ * Kaydı engellemez. autoOpen=false: alanlar "Müşteri sorgula"dan
+ * doldurulduysa kullanıcı geçmişi zaten gördü; yalnızca çip gösterilir.
  */
-export function CustomerHistoryNotice({ name, phone, editing }: { name: string; phone: string; editing: boolean }) {
+export function CustomerHistoryNotice({ name, phone, editing, autoOpen = true }: { name: string; phone: string; editing: boolean; autoOpen?: boolean }) {
   const queryKey = lookupReady(phone, name) ? `${phoneKey(phone)}|${nameKey(name)}` : null;
   const [response, setResponse] = useState<Response | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export function CustomerHistoryNotice({ name, phone, editing }: { name: string; 
   const result = queryKey && response?.result?.total ? response.result : null;
   const fresh = Boolean(result) && response?.key === queryKey;
   const unseen = fresh && Boolean(result?.items.some((item) => !seen.has(item.key)));
-  const open = Boolean(result) && (manualOpen || (unseen && !editing));
+  const open = Boolean(result) && (manualOpen || (autoOpen && unseen && !editing));
   const searching = Boolean(queryKey) && pendingKey === queryKey;
 
   const close = () => {
@@ -95,6 +96,96 @@ function HistoryIcon() {
       <path d="M12 7.5V12l3 2" />
     </svg>
   );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+/** "2 teklif · 1 sözleşme · 3 iş (1 arşivde) · 1 talep" */
+export function historyCountLine(result: CustomerHistoryResult) {
+  const { counts } = result;
+  return [
+    counts.proposal ? `${counts.proposal} teklif` : null,
+    counts.contract ? `${counts.contract} sözleşme` : null,
+    counts.job ? `${counts.job} iş${result.archivedJobs ? ` (${result.archivedJobs} arşivde)` : ""}` : null,
+    counts.request ? `${counts.request} talep` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * Geçmiş kayıt listesi (talep formu penceresi ve müşteri sorgulama ortak).
+ * Ayrıntısını açma yetkisi olmayan kayıt (başka temsilcinin teklifi gibi)
+ * bilgi olarak gösterilir ama bağlantı olmaz; kullanıcı açılmayan bir
+ * sayfaya gönderilmez.
+ */
+export function CustomerHistoryList({ items, flagNameOnly }: { items: CustomerHistoryItem[]; flagNameOnly: boolean }) {
+  return (
+    <ul className="crm-history-list">
+      {items.map((item) => {
+        const body = (
+          <>
+            <span className="crm-history-kind" data-kind={item.kind}>{item.kindLabel}</span>
+            <span className="crm-history-main">
+              <strong>{item.title || "Başlıksız kayıt"}</strong>
+              <small>{[item.detail, item.customerName].filter(Boolean).join(" · ")}</small>
+              <small>
+                {item.dateLabel}
+                {item.person ? ` · ${item.personRole === "Operasyon" ? "Operasyon" : "Temsilci"}: ${item.person}` : ""}
+                {flagNameOnly && item.match === "name" ? <> · <span className="crm-history-name-only">Yalnızca ad eşleşti</span></> : null}
+                {item.canOpen ? (
+                  <span className="crm-history-open" aria-hidden="true">↗</span>
+                ) : (
+                  <span className="crm-history-locked" title="Bu kaydın ayrıntısını açma yetkiniz yok">
+                    <LockIcon />
+                    Yalnızca özet
+                  </span>
+                )}
+              </small>
+            </span>
+            <span className="crm-history-side">
+              <span className={item.amountLabel ? "crm-history-amount" : "crm-history-amount is-empty"}>{item.amountLabel ?? "—"}</span>
+              <span className="status-pill" data-tone={item.tone}>{item.statusLabel}</span>
+            </span>
+          </>
+        );
+        return (
+          <li key={item.key}>
+            {item.canOpen ? (
+              <a
+                className="crm-history-item"
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${item.kindLabel}: ${item.title} — yeni sekmede açılır`}
+              >
+                {body}
+              </a>
+            ) : (
+              <div className="crm-history-item is-locked">{body}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Liste altı açıklaması: kısıt / kilit / sınır notları. */
+export function historyNotes(result: CustomerHistoryResult) {
+  return [
+    result.limited ? `En yeni ${result.items.length} kayıt gösteriliyor (toplam ${result.total}).` : null,
+    result.scopedToAssigned ? "Yalnızca erişiminiz olan kayıtlar listelenir." : null,
+    result.items.some((item) => !item.canOpen) ? "“Yalnızca özet” kayıtların ayrıntısını açma yetkiniz yok." : null,
+    "Kayıtlar yeni sekmede açılır.",
+  ].filter((note): note is string => Boolean(note));
 }
 
 export function CustomerHistoryDialog({ result, onClose }: { result: CustomerHistoryResult; onClose: () => void }) {
@@ -139,21 +230,8 @@ export function CustomerHistoryDialog({ result, onClose }: { result: CustomerHis
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
-  const { counts } = result;
-  const countLine = [
-    counts.proposal ? `${counts.proposal} teklif` : null,
-    counts.contract ? `${counts.contract} sözleşme` : null,
-    counts.job ? `${counts.job} iş${result.archivedJobs ? ` (${result.archivedJobs} arşivde)` : ""}` : null,
-    counts.request ? `${counts.request} talep` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const mixedMatch = result.matchedBy !== "name";
-  const notes = [
-    result.limited ? `En yeni ${result.items.length} kayıt gösteriliyor.` : null,
-    result.scopedToAssigned ? "Yalnızca erişiminiz olan kayıtlar listelenir." : null,
-    "Kayıtlar yeni sekmede açılır; formunuz korunur.",
-  ].filter(Boolean);
+  const countLine = historyCountLine(result);
+  const notes = historyNotes(result).map((note) => (note === "Kayıtlar yeni sekmede açılır." ? "Kayıtlar yeni sekmede açılır; formunuz korunur." : note));
 
   return (
     <div className="crm-history-root">
@@ -180,37 +258,7 @@ export function CustomerHistoryDialog({ result, onClose }: { result: CustomerHis
         </dl>
         {countLine ? <p className="crm-history-counts">{countLine}</p> : null}
 
-        <ul className="crm-history-list">
-          {result.items.map((item) => (
-            <li key={item.key}>
-              <a
-                className="crm-history-item"
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${item.kindLabel}: ${item.title} — yeni sekmede açılır`}
-              >
-                <span className="crm-history-kind" data-kind={item.kind}>{item.kindLabel}</span>
-                <span className="crm-history-main">
-                  <strong>{item.title || "Başlıksız kayıt"}</strong>
-                  <small>
-                    {[item.detail, item.customerName].filter(Boolean).join(" · ")}
-                  </small>
-                  <small>
-                    {item.dateLabel}
-                    {item.person ? ` · ${item.personRole === "Operasyon" ? "Operasyon" : "Temsilci"}: ${item.person}` : ""}
-                    {mixedMatch && item.match === "name" ? <> · <span className="crm-history-name-only">Yalnızca ad eşleşti</span></> : null}
-                    <span className="crm-history-open" aria-hidden="true">↗</span>
-                  </small>
-                </span>
-                <span className="crm-history-side">
-                  <span className={item.amountLabel ? "crm-history-amount" : "crm-history-amount is-empty"}>{item.amountLabel ?? "—"}</span>
-                  <span className="status-pill" data-tone={item.tone}>{item.statusLabel}</span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <CustomerHistoryList items={result.items} flagNameOnly={result.matchedBy !== "name"} />
 
         <footer className="crm-history-foot">
           <p>{notes.join(" ")}</p>

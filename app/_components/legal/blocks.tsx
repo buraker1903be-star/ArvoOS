@@ -1,9 +1,24 @@
 import type { ReactNode } from "react";
-import { formatMoney, formatDate, installmentStatusLabel, taxIdLabel, type ScheduleRow, type TaxBreakdown } from "./format";
+import { detectCity, formatMoney, formatDate, installmentStatusLabel, taxIdLabel, type DocumentRow, type ScheduleRow, type TaxBreakdown } from "./format";
+import { formatIban } from "./identifiers";
 
 export type Provider = {
+  /** Taraf adı: ticari unvan girilmişse o, yoksa kurum adı. */
   name: string;
+  /** Başlıktaki marka/kurum adı (logo yoksa). */
+  brandName?: string | null;
+  /** "Belge alt bilgisi" serbest metni. Resmi adres yoksa adres yerine kullanılır (eski davranış). */
   info?: string | null;
+  /** Resmi adres: sokak/no satırı + "İlçe / İl". */
+  address?: string | null;
+  /** Yetkili mahkeme için il: il alanı, yoksa adres/alt bilgi metninden. */
+  city?: string | null;
+  taxOffice?: string | null;
+  taxNumber?: string | null;
+  mersisNo?: string | null;
+  bankName?: string | null;
+  accountHolder?: string | null;
+  iban?: string | null;
   email?: string | null;
   phone?: string | null;
   website?: string | null;
@@ -22,9 +37,49 @@ export type Customer = {
 
 type Row = [string, ReactNode | null | undefined];
 
+const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+
+/** Belge satırındaki organization_* alanlarından Hizmet Sağlayıcı / Teklif Veren bilgisi. */
+export function providerFromRow(row: DocumentRow, fallbackName: string): Provider {
+  const brandName = text(row.organization_name) ?? fallbackName;
+  const street = text(row.organization_legal_address);
+  const city = text(row.organization_legal_city);
+  const locality = [text(row.organization_legal_district), city].filter(Boolean).join(" / ");
+  const info = text(row.organization_document_footer);
+  return {
+    name: text(row.organization_legal_name) ?? brandName,
+    brandName,
+    info,
+    address: street ? [street, locality].filter(Boolean).join("\n") : null,
+    city: city ?? detectCity(street ?? info),
+    taxOffice: text(row.organization_tax_office),
+    taxNumber: text(row.organization_tax_number),
+    mersisNo: text(row.organization_mersis_no),
+    bankName: text(row.organization_bank_name),
+    accountHolder: text(row.organization_bank_account_holder),
+    iban: text(row.organization_iban),
+    email: text(row.organization_contact_email),
+    phone: text(row.organization_contact_phone),
+    website: text(row.organization_website_url),
+    logoUrl: text(row.organization_logo_url),
+    stampUrl: text(row.organization_signature_stamp_url),
+  };
+}
+
+/** "Kadıköy V.D. · VKN 1234567890" */
+export function providerTaxLine(provider: Provider) {
+  const digits = String(provider.taxNumber || "").replace(/\D/g, "");
+  const id = digits.length === 10 ? `VKN ${digits}` : digits.length === 11 ? `TCKN ${digits}` : provider.taxNumber ? `Vergi No ${provider.taxNumber}` : null;
+  return [provider.taxOffice ? `${provider.taxOffice} V.D.` : null, id].filter(Boolean).join(" · ") || null;
+}
+
 export function providerRows(provider: Provider): Row[] {
+  const taxId = taxIdLabel(provider.taxNumber);
   return [
-    ["Adres / Bilgi", provider.info || "Ticaret siciline kayıtlı merkez adresi"],
+    [provider.address ? "Adres" : "Adres / Bilgi", provider.address || provider.info || "Ticaret siciline kayıtlı merkez adresi"],
+    ["Vergi Dairesi", provider.taxOffice],
+    [taxId?.label ?? "Vergi No", taxId?.value ?? null],
+    ["MERSİS No", provider.mersisNo],
     ["E-posta", provider.email],
     ["Telefon", provider.phone],
     ["Web", provider.website],
@@ -51,11 +106,23 @@ export function PartyCard({ role, name, rows }: { role: string; name: string; ro
   </div>;
 }
 
+/** Havale/EFT için kurumun banka hesabı; IBAN yoksa hiçbir şey çizmez. */
+export function BankAccountBox({ provider }: { provider: Provider }) {
+  if (!provider.iban) return null;
+  return <div className="ad-bank">
+    {provider.bankName ? <div><small>Banka</small><strong>{provider.bankName}</strong></div> : null}
+    <div><small>Hesap sahibi</small><strong>{provider.accountHolder || provider.name}</strong></div>
+    <div className="ad-bank-iban"><small>IBAN</small><strong>{formatIban(provider.iban)}</strong></div>
+  </div>;
+}
+
 export function DocHeader({ provider, kicker, number, meta }: { provider: Provider; kicker: string; number: string; meta: [string, string][] }) {
+  const brand = provider.brandName || provider.name;
+  const detail = provider.address || provider.info;
   return <header className="ad-head">
     <div className="ad-head-brand">
-      {provider.logoUrl ? <img src={provider.logoUrl} alt={`${provider.name} logosu`} /> : <div className="ad-wordmark">{provider.name}</div>}
-      {provider.info ? <p>{provider.info}</p> : null}
+      {provider.logoUrl ? <img src={provider.logoUrl} alt={`${brand} logosu`} /> : <div className="ad-wordmark">{brand}</div>}
+      {detail ? <p>{detail}</p> : null}
     </div>
     <div className="ad-head-meta">
       <div className="ad-kicker">{kicker}</div>
@@ -114,9 +181,11 @@ export function TaxTotals({ tax, currency, words }: { tax: TaxBreakdown; currenc
 
 export function DocFooter({ provider, reference, verificationUrl }: { provider: Provider; reference: ReactNode; verificationUrl?: string | null }) {
   const contact = [provider.phone, provider.email, provider.website].filter(Boolean).join("\n");
+  const identity = [provider.address || provider.info || "Profesyonel hizmetler", providerTaxLine(provider), provider.mersisNo ? `MERSİS ${provider.mersisNo}` : null].filter(Boolean).join("\n");
   return <footer className="ad-foot">
-    <div><strong>{provider.name}</strong>{provider.info || "Profesyonel hizmetler"}</div>
+    <div><strong>{provider.name}</strong>{identity}</div>
     <div><strong>İletişim</strong>{contact || "Kurum iletişim bilgileri"}</div>
     <div className="ad-right"><strong>Belge</strong>{reference}{verificationUrl ? <><br /><span style={{ wordBreak: "break-all" }}>{verificationUrl}</span></> : null}</div>
+    {provider.address && provider.info ? <p className="ad-foot-note">{provider.info}</p> : null}
   </footer>;
 }

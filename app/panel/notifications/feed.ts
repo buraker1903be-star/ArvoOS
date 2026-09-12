@@ -20,7 +20,7 @@ export type NotificationFeedItem = {
 };
 
 export type NotificationFeedResult =
-  | { ok: true; items: NotificationFeedItem[]; unread: number }
+  | { ok: true; items: NotificationFeedItem[]; unread: number | null }
   | { ok: false; error: string };
 
 export function toFeedItem(item: DescribedNotification): NotificationFeedItem {

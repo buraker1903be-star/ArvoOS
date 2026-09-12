@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
 import { akademikMerkezTemplate, arvoOSGeneralTemplate, type ContractClause, type ContractTemplate } from "@/lib/contract-templates";
-import { PartyCard, PaymentPlanTable, TaxTotals, customerRows, providerRows, type Customer, type Provider } from "./blocks";
-import { amountInWords, formatDate, formatDateTime, formatMoney, numberToTurkishWords, type PartyKind, type ScheduleRow, type TaxBreakdown } from "./format";
+import { BankAccountBox, PartyCard, PaymentPlanTable, TaxTotals, customerRows, providerRows, providerTaxLine, type Customer, type Provider } from "./blocks";
+import { amountInWords, formatDate, formatDateTime, formatMoney, numberToTurkishWords, type LegalTextVersion, type PartyKind, type ScheduleRow, type TaxBreakdown } from "./format";
+import { formatIban } from "./identifiers";
 
 /**
- * Hizmet Sözleşmesi'nin yapılandırılmış yasal iskeleti (metin sürümü 3.0).
+ * Hizmet Sözleşmesi'nin yapılandırılmış yasal iskeleti (metin sürümü 3.1).
+ *
+ * Sürüm farkları (imzalı sözleşme, onayladığı sürümle gösterilir):
+ *  - 3.0: tebligat ve KVKK başvuru maddelerinde KEP geçer; havale/EFT
+ *    hesabı "faturada bildirilir".
+ *  - 3.1: KEP ifadeleri çıkarıldı (bildirim: adres + e-posta); kurumun
+ *    IBAN'ı girilmişse ödeme maddesinde ve Ön Bilgilendirme Formu'nda
+ *    banka hesabı gösterilir.
  *
  * Kurumun şablonuna özgü hükümler (ör. akademik etik, yazılım hizmet
  * seviyesi) silinmez; "Hizmete Özgü Özel Hükümler" maddesi olarak bu
@@ -32,6 +40,8 @@ export type ContractContext = {
   specialClauses: ContractClause[];
   earlyStart: boolean | null;
   city: string | null;
+  /** Gösterilecek yasal metin sürümü (imzalıysa onaylanan sürüm). */
+  textVersion: LegalTextVersion;
 };
 
 const commonTitles = new Set(
@@ -73,6 +83,13 @@ function buildArticles(ctx: ContractContext): Article[] {
   const court = ctx.city ? `${ctx.city} Mahkemeleri ve İcra Daireleri` : "Hizmet Sağlayıcı’nın merkezinin bulunduğu yer mahkemeleri ve icra daireleri";
   const count = keys.length;
   const letters = "abcçdefgğhıijklmnoöprsştuüvyz";
+  const v30 = ctx.textVersion === "3.0";
+  const bank = !v30 && ctx.provider.iban ? ctx.provider : null;
+  const holder = ctx.provider.accountHolder || sp;
+  const noticeParts = [
+    ctx.provider.address ? `bildirim adresi: ${ctx.provider.address.replace(/\s*\n+\s*/g, ", ")}` : null,
+    ctx.provider.email ? `elektronik posta adresi: ${ctx.provider.email}` : null,
+  ].filter(Boolean);
 
   const articles: Record<string, Article> = {
     parties: {
@@ -156,9 +173,12 @@ function buildArticles(ctx: ContractContext): Article[] {
         N(<PaymentPlanTable rows={ctx.schedule} currency={ctx.currency} />),
         P("Ödemeler aşağıdaki yöntemlerle yapılabilir:"),
         UL(
-          <><b>Banka havalesi / EFT:</b> Ödemeler yalnızca {sp} unvanına kayıtlı banka hesabına yapılır. Hesap bilgileri (IBAN) faturada ve Hizmet Sağlayıcı’nın {no("parties")}. maddedeki kayıtlı iletişim kanalları üzerinden yazılı olarak bildirilir. Ödeme açıklamasına {ctx.contractNo} sözleşme numarası yazılır.</>,
+          bank
+            ? <><b>Banka havalesi / EFT:</b> Ödemeler yalnızca aşağıda bilgileri gösterilen, {holder} adına kayıtlı banka hesabına yapılır. Ödeme açıklamasına {ctx.contractNo} sözleşme numarası yazılır; hesap bilgileri faturada da gösterilir.</>
+            : <><b>Banka havalesi / EFT:</b> Ödemeler yalnızca {sp} unvanına kayıtlı banka hesabına yapılır. Hesap bilgileri (IBAN) faturada ve Hizmet Sağlayıcı’nın {no("parties")}. maddedeki kayıtlı iletişim kanalları üzerinden yazılı olarak bildirilir. Ödeme açıklamasına {ctx.contractNo} sözleşme numarası yazılır.</>,
           <><b>Kredi kartı / banka kartı:</b> Hizmet Sağlayıcı’nın ilettiği güvenli ödeme bağlantısı üzerinden, 6493 sayılı Kanun kapsamında faaliyet gösteren yetkili ödeme kuruluşu veya banka altyapısı aracılığıyla ödeme yapılabilir. Kart bilgileri Hizmet Sağlayıcı tarafından görülmez ve saklanmaz; taksitlendirme ve buna bağlı maliyetler ilgili bankanın koşullarına tabidir.</>,
         ),
+        ...(bank ? [N(<BankAccountBox provider={bank} />)] : []),
         P(`Hesap bilgisi değişikliğine ilişkin bildirimler, Hizmet Sağlayıcı’nın ${no("parties")}. maddede yer alan kayıtlı iletişim bilgileri üzerinden teyit edilmedikçe geçerli değildir. Müşteri, ödeme öncesinde alıcı hesabın ${sp} adına kayıtlı olduğunu kontrol etmekle yükümlüdür; üçüncü kişiler adına açılmış hesaplara yapılan ödemeler Hizmet Sağlayıcı’ya karşı ifa sonucunu doğurmaz.`),
         P(`Hizmet Sağlayıcı, her ödeme veya hizmet ifası için 213 sayılı Vergi Usul Kanunu (“VUK”) ve ilgili mevzuat uyarınca fatura (e-Fatura veya e-Arşiv Fatura) düzenler ve Müşteri’nin ${no("parties")}. maddedeki elektronik posta adresine iletir.${consumer ? "" : " Müşteri, faturanın içeriğine 6102 sayılı Türk Ticaret Kanunu (“TTK”) m.21/2 uyarınca faturayı aldığı tarihten itibaren 8 (sekiz) gün içinde itiraz edebilir."}`),
         P("Vadesi belirli bir günde kararlaştırılan ödemelerde Müşteri, bu günün geçmesiyle ihtara gerek kalmaksızın temerrüde düşer (TBK m.117/2). Vadesi bir olaya bağlanan ödemelerde temerrüt, olayın gerçekleştiğinin Müşteri’ye Yazılı Bildirimi ve ödemeye çağrılmasıyla gerçekleşir (TBK m.117/1)."),
@@ -214,7 +234,7 @@ function buildArticles(ctx: ContractContext): Article[] {
         P("Hizmet için zorunlu olmadıkça özel nitelikli kişisel veri işlenmez; işlenmesinin gerekmesi halinde KVKK m.6’da öngörülen şartlara uyulur."),
         P("Kişisel veriler, yukarıdaki amaçlarla sınırlı olarak barındırma, bulut, elektronik posta ve yazılım hizmeti sağlayıcılarına, ödeme kuruluşları ve bankalara, mali müşavir ve hukuk danışmanlarına ve kanunen yetkili kamu kurum ve kuruluşlarına KVKK m.8 ve m.9 hükümlerine uygun olarak aktarılabilir."),
         P("Kişisel veriler, ilgili mevzuatta öngörülen saklama süreleri (ör. VUK m.253 ve TTK m.82) ve olası uyuşmazlıklar bakımından kanuni zamanaşımı süreleri boyunca saklanır; sürenin sona ermesiyle KVKK m.7 uyarınca silinir, yok edilir veya anonim hale getirilir."),
-        P(`İlgili kişi, KVKK m.11 uyarınca; kişisel verilerinin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini ve KVKK m.7 çerçevesinde silinmesini veya yok edilmesini isteme, bu işlemlerin aktarıldığı üçüncü kişilere bildirilmesini isteme, münhasıran otomatik sistemler vasıtasıyla analiz edilmesi suretiyle aleyhine bir sonucun ortaya çıkmasına itiraz etme ve kanuna aykırı işleme sebebiyle zarara uğraması halinde zararın giderilmesini talep etme haklarına sahiptir. Başvurular Hizmet Sağlayıcı’nın ${no("parties")}. maddedeki iletişim adreslerine yazılı olarak veya kayıtlı elektronik posta ile yapılabilir ve KVKK m.13 uyarınca en geç 30 (otuz) gün içinde sonuçlandırılır.`),
+        P(`İlgili kişi, KVKK m.11 uyarınca; kişisel verilerinin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini ve KVKK m.7 çerçevesinde silinmesini veya yok edilmesini isteme, bu işlemlerin aktarıldığı üçüncü kişilere bildirilmesini isteme, münhasıran otomatik sistemler vasıtasıyla analiz edilmesi suretiyle aleyhine bir sonucun ortaya çıkmasına itiraz etme ve kanuna aykırı işleme sebebiyle zarara uğraması halinde zararın giderilmesini talep etme haklarına sahiptir. Başvurular Hizmet Sağlayıcı’nın ${no("parties")}. maddedeki iletişim adreslerine ${v30 ? "yazılı olarak veya kayıtlı elektronik posta ile" : "yazılı olarak, Hizmet Sağlayıcı’ya önceden bildirilmiş ve kayıtlarında bulunan elektronik posta adresinden gönderilecek elektronik posta ile ya da ilgili mevzuatta öngörülen diğer yöntemlerle"} yapılabilir ve KVKK m.13 uyarınca en geç 30 (otuz) gün içinde sonuçlandırılır.`),
         P("İşbu madde, KVKK m.10 kapsamındaki aydınlatma yükümlülüğünün yerine getirilmesine ilişkin olup Hizmet Sağlayıcı’nın ayrıca yayımladığı aydınlatma metinleriyle birlikte değerlendirilir. Müşteri, Hizmet kapsamında Hizmet Sağlayıcı ile paylaştığı üçüncü kişilere ait kişisel veriler bakımından gerekli aydınlatmayı yaptığını ve işleme şartlarını sağladığını beyan eder."),
         P("Taraflar, KVKK m.12 uyarınca kişisel verilerin hukuka aykırı olarak işlenmesini ve erişilmesini önlemek ve muhafazasını sağlamak amacıyla uygun güvenlik düzeyini temin etmeye yönelik gerekli her türlü teknik ve idari tedbiri alır; veri ihlali halinde mevzuatta öngörülen bildirim yükümlülüklerine uyar."),
       ],
@@ -266,10 +286,14 @@ function buildArticles(ctx: ContractContext): Article[] {
     notices: {
       key: "notices", title: "Tebligat ve Bildirimler", blocks: [
         P(`Taraflar, ${no("parties")}. maddede belirtilen adres ve elektronik posta adreslerini Sözleşme’den doğan her türlü bildirim için geçerli adres olarak kabul eder. Adres değişiklikleri, değişiklikten itibaren 7 (yedi) gün içinde karşı Taraf’a Yazılı Bildirimle bildirilmedikçe eski adrese yapılan bildirimler geçerli sayılır.`),
+        ...(!v30 && noticeParts.length ? [P(`Hizmet Sağlayıcı’nın ${noticeParts.join("; ")}.`)] : []),
         P("Günlük iletişim ve operasyonel bildirimler elektronik posta veya Elektronik Belge Sistemi üzerinden yapılabilir."),
-        P(consumer
+        P(v30 ? (consumer
           ? "Temerrüt ve fesih gibi hukuki sonuç doğuran bildirimler; noter, iadeli taahhütlü posta, 7201 sayılı Tebligat Kanunu m.7/a kapsamında kayıtlı elektronik posta (KEP) veya karşı Taraf’ın elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile yapılır. Müşteri’nin cayma bildirimine ilişkin Yönetmelik hükümleri saklıdır."
-          : "Taraflar tacir olduğu ölçüde, temerrüde düşürmeye, fesih ve sözleşmeden dönmeye ilişkin ihbar ve ihtarlar TTK m.18/3 uyarınca noter aracılığıyla, taahhütlü mektupla, telgrafla veya güvenli elektronik imza kullanılarak kayıtlı elektronik posta (KEP) sistemiyle yapılır. Diğer hukuki bildirimler, karşı Taraf’ın elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile de yapılabilir."),
+          : "Taraflar tacir olduğu ölçüde, temerrüde düşürmeye, fesih ve sözleşmeden dönmeye ilişkin ihbar ve ihtarlar TTK m.18/3 uyarınca noter aracılığıyla, taahhütlü mektupla, telgrafla veya güvenli elektronik imza kullanılarak kayıtlı elektronik posta (KEP) sistemiyle yapılır. Diğer hukuki bildirimler, karşı Taraf’ın elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile de yapılabilir.")
+          : consumer
+            ? `Temerrüt ve fesih gibi hukuki sonuç doğuran bildirimler; noter aracılığıyla, iadeli taahhütlü posta ile veya karşı Taraf’ın ${no("parties")}. maddede belirtilen elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile yapılır. Müşteri’nin cayma bildirimine ilişkin Yönetmelik hükümleri saklıdır.`
+            : `Taraflar tacir olduğu ölçüde, temerrüde düşürmeye, fesih ve sözleşmeden dönmeye ilişkin ihbar ve ihtarlar TTK m.18/3’te öngörülen usullerden biriyle, özellikle noter aracılığıyla veya taahhütlü mektupla, karşı Taraf’ın ${no("parties")}. maddede belirtilen adresine yapılır. Diğer hukuki bildirimler, karşı Taraf’ın elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile de yapılabilir.`),
       ],
     },
     evidence: {
@@ -334,12 +358,14 @@ export function LegacyArticles({ clauses }: { clauses: ContractClause[] }) {
 /** Tüketici işlemlerinde Ek-1: Mesafeli Sözleşmeler Yönetmeliği m.5 kapsamındaki bilgiler. */
 export function PreInformationAnnex({ ctx }: { ctx: ContractContext }) {
   const money = (value: number) => formatMoney(value, ctx.currency);
+  const taxLine = providerTaxLine(ctx.provider);
+  const bank = ctx.textVersion !== "3.0" && ctx.provider.iban ? ctx.provider : null;
   const plan = ctx.schedule.map((row) => `${row.label}: ${money(row.amount)}${row.dueDate ? ` (${formatDate(row.dueDate)})` : row.trigger ? ` (${row.trigger})` : ""}`);
   const rows: [string, ReactNode][] = [
-    ["Hizmet Sağlayıcı", <>{ctx.provider.name}<br />{ctx.provider.info || "Ticaret siciline kayıtlı merkez adresi"}{ctx.provider.phone ? <><br />Tel: {ctx.provider.phone}</> : null}{ctx.provider.email ? <><br />E-posta: {ctx.provider.email}</> : null}</>],
+    ["Hizmet Sağlayıcı", <>{ctx.provider.name}<br />{ctx.provider.address ? ctx.provider.address.replace(/\s*\n+\s*/g, ", ") : ctx.provider.info || "Ticaret siciline kayıtlı merkez adresi"}{taxLine ? <><br />{taxLine}</> : null}{ctx.provider.mersisNo ? <><br />MERSİS No: {ctx.provider.mersisNo}</> : null}{ctx.provider.phone ? <><br />Tel: {ctx.provider.phone}</> : null}{ctx.provider.email ? <><br />E-posta: {ctx.provider.email}</> : null}</>],
     ["Hizmetin temel nitelikleri", <><strong>{ctx.title}</strong><ul>{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></>],
     ["Toplam fiyat (vergiler dahil)", <>{money(ctx.tax.gross)}{ctx.tax.status === "included" || ctx.tax.status === "excluded" ? ` — ${money(ctx.tax.net)} + %${ctx.tax.rate.toLocaleString("tr-TR")} KDV (${money(ctx.tax.tax)})` : ctx.tax.status === "exempt" ? " — KDV istisnası uygulanır" : ""}. Bunun dışında Müşteri’den ek ücret, teslim veya kargo bedeli talep edilmez.</>],
-    ["Ödeme şekli ve planı", <>{plan.map((line, index) => <span key={index} style={{ display: "block" }}>{line}</span>)}Havale/EFT ({ctx.provider.name} adına kayıtlı hesaba) veya güvenli ödeme bağlantısı ile kredi/banka kartı.</>],
+    ["Ödeme şekli ve planı", <>{plan.map((line, index) => <span key={index} style={{ display: "block" }}>{line}</span>)}{bank ? <>Havale/EFT: {bank.bankName ? `${bank.bankName}, ` : ""}IBAN {formatIban(bank.iban)} ({bank.accountHolder || bank.name} adına kayıtlı hesap) veya güvenli ödeme bağlantısı ile kredi/banka kartı.</> : <>Havale/EFT ({ctx.provider.name} adına kayıtlı hesaba) veya güvenli ödeme bağlantısı ile kredi/banka kartı.</>}</>],
     ["İfa ve teslim", <>{ctx.startDate ? `Başlangıç: ${formatDate(ctx.startDate)}. ` : "Sözleşme’nin kurulmasını ve ön ödemeyi müteakip başlanır. "}{ctx.dueDate ? `Teslim: ${formatDate(ctx.dueDate)}.` : "Teslim takvimi Teklif’te belirtilmiştir."} Teslim elektronik ortamda yapılır.</>],
     ["Cayma hakkı", <>Sözleşme’nin kurulduğu günden itibaren 14 (on dört) gün içinde gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkı kullanılabilir. Bildirim, Hizmet Sağlayıcı’nın yukarıdaki elektronik posta veya posta adresine yazılı olarak ya da kalıcı veri saklayıcısı ile yapılır. Ödemeler bildirimin ulaşmasından itibaren 14 gün içinde iade edilir. Cayma süresi dolmadan Müşteri’nin onayıyla ifasına başlanan hizmetlerde cayma hakkı kullanılamaz (Yönetmelik m.15/1-ğ).</>],
     ["Şikâyet ve başvurular", <>Şikâyetler Hizmet Sağlayıcı’nın yukarıdaki iletişim adreslerine iletilebilir. Uyuşmazlıklarda Ticaret Bakanlığı’nca her yıl belirlenen parasal sınırlar dahilinde tüketici hakem heyetlerine, bu sınırları aşan uyuşmazlıklarda arabuluculuk şartı saklı kalmak üzere tüketici mahkemelerine başvurulabilir.</>],

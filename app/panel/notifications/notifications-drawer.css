@@ -51,15 +51,19 @@ html[data-theme="dark"] .ntd [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .ntd-icon-btn:active{transform:scale(.92)}
 .ntd :focus-visible{outline:2px solid var(--accent-500);outline-offset:2px}
 
-/* ---------- Filtre çipleri ---------- */
-.ntd-chips{
-  flex:none;display:flex;gap:7px;overflow-x:auto;padding:4px 16px 10px;scrollbar-width:none;overscroll-behavior-x:contain;
-  /* Sağda taşan çipler kesik değil, yumuşak solarak kaybolur (kaydırılabilir olduğu belli olur) */
-  -webkit-mask-image:linear-gradient(90deg,black calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,black calc(100% - 28px),transparent)
-}
-.ntd-chips::-webkit-scrollbar{display:none}
+/* ---------- Filtre çipleri ----------
+   Eskiden tek satırda gizli kaydırma çubuğuyla kayıyor ve sağ kenar hep
+   soluk kalıyordu: fareyle yana kaydırılamadığı için sağdaki başlıklar
+   hiç görünmüyordu, sona gelince bile son çip soluktu.
+   Masaüstü: satırlara sarılır, her başlık görünür.
+   Mobil (≤680px): tek satır, parmakla kayar ve çipe oturur (scroll-snap);
+   yalnızca gizli çip olan kenar solar (data-fade-*, çekmece bileşeni
+   ayarlar), seçilen çip ortaya kayar. */
+@property --ntd-fade-s{syntax:"<length>";inherits:false;initial-value:0px}
+@property --ntd-fade-e{syntax:"<length>";inherits:false;initial-value:0px}
+.ntd-chips{flex:none;position:relative;display:flex;flex-wrap:wrap;gap:7px;padding:4px 16px 12px}
 .ntd-chip{
-  flex:none;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 6px 0 12px;
+  flex:none;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 6px 0 12px;white-space:nowrap;
   border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
   font:inherit;font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;
   transition:background-color .25s var(--ntd-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntd-ease)
@@ -68,8 +72,19 @@ html[data-theme="dark"] .ntd [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .ntd-chip:active{transform:scale(.95)}
 .ntd-chip.is-active{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
 .ntd-chip b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
+/* Okunmamış varsa sayısı mavi (listedeki okunmamış noktasıyla aynı renk) */
+.ntd-chip[data-unread] b{background:var(--info-soft);color:var(--info)}
 .ntd-chip.is-active b{background:color-mix(in srgb,var(--n-0) 18%,transparent);color:var(--n-0)}
 html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,var(--brand-400),var(--brand-600))}
+
+/* ---------- Rozet: yeni bildirim gelince "pop" ----------
+   Rozetler (üst çubuk, mobil alt menü, menü çekmecesi) yeni bildirimde
+   yeniden çizilir ve bu sınıfla bir kez zıplar; çevresinde halka yayılır. */
+.ntd-badge-pop{animation:ntd-badge-pop .62s cubic-bezier(.34,1.56,.64,1) both}
+.ntd-badge-pop::after{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;animation:ntd-badge-ring .9s ease-out both}
+.mobile-unread-badge.ntd-badge-pop{position:relative}
+@keyframes ntd-badge-pop{0%{transform:scale(.35);opacity:0}45%{transform:scale(1.28);opacity:1}72%{transform:scale(.92)}100%{transform:scale(1)}}
+@keyframes ntd-badge-ring{from{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 55%,transparent)}to{box-shadow:0 0 0 9px color-mix(in srgb,var(--danger) 0%,transparent)}}
 
 /* ---------- Uyarı ---------- */
 .ntd-notice{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 16px 8px;padding:8px 6px 8px 12px;border-radius:12px;background:var(--danger-soft);color:var(--danger);font-size:13px;font-weight:600;line-height:1.4;animation:ntd-fade .3s var(--ntd-ease) both}
@@ -151,8 +166,18 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
   .ntd-head h2{font-size:30px}
   .ntd-icon-btn{width:44px;height:44px}
   .ntd-link{min-height:44px}
-  .ntd-chips{padding:2px 16px 12px}
-  .ntd-chip{min-height:40px;font-size:14px}
+  .ntd-chips{
+    flex-wrap:nowrap;overflow-x:auto;padding:2px 16px 12px;
+    scrollbar-width:none;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-inline:16px;-webkit-overflow-scrolling:touch;
+    --ntd-fade-s:0px;--ntd-fade-e:0px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,black var(--ntd-fade-s),black calc(100% - var(--ntd-fade-e)),transparent);
+    mask-image:linear-gradient(90deg,transparent,black var(--ntd-fade-s),black calc(100% - var(--ntd-fade-e)),transparent);
+    transition:--ntd-fade-s .25s ease,--ntd-fade-e .25s ease
+  }
+  .ntd-chips::-webkit-scrollbar{display:none}
+  .ntd-chips[data-fade-start]{--ntd-fade-s:36px}
+  .ntd-chips[data-fade-end]{--ntd-fade-e:36px}
+  .ntd-chip{min-height:40px;font-size:14px;scroll-snap-align:start}
   .ntd-scroll{padding:0 6px 10px}
   .ntd-item{grid-template-columns:minmax(0,1fr) 44px}
   .ntd-main{min-height:64px;padding:14px 2px 14px 10px}
@@ -169,4 +194,5 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
 @keyframes ntd-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 @media(prefers-reduced-motion:reduce){
   .ntd,.ntd-backdrop,.ntd *{animation:none!important;transition:none!important}
+  .ntd-badge-pop,.ntd-badge-pop::after{animation:none}
 }
