@@ -25,6 +25,7 @@ import "./messages-drawer.css";
 import "./panel-compact.css";
 import "./panel-premium.css";
 import "./panel-tables.css";
+import "./panel-motion.css";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -115,7 +116,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <div className="panel-user"><span>{brandName[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
       </header>
-      <div className="panel-content">{pendingAgreement?<Link href={`/panel/confidentiality/${pendingAgreement.id}`} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:18,padding:"15px 18px",borderRadius:14,background:"#fff7e8",border:"1px solid #efd59c",color:"#6b4912",fontWeight:750,textDecoration:"none"}}><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>:null}{children}</div>
+      <div className="panel-content">{pendingAgreement?<Link href={`/panel/confidentiality/${pendingAgreement.id}`} className="panel-agreement-banner"><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>:null}{children}</div>
     </section>
   </main></div>;
 }

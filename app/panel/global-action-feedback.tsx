@@ -92,7 +92,7 @@ function ActionFeedbackInner() {
     <div className="panel-action-feedback" role="status" aria-live="polite">
       <div className="panel-action-feedback-card">
         <span className="panel-action-feedback-ring" aria-hidden="true" />
-        <span>Yükleniyor... Lütfen bekleyiniz</span>
+        <span>Yükleniyor…</span>
       </div>
     </div>
   );

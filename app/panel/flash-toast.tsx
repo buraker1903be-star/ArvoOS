@@ -64,27 +64,15 @@ export function FlashToast() {
   if (!message) return null;
 
   return (
-    <div
-      role="alert"
-      aria-live="assertive"
-      style={{
-        position: "fixed", right: 20, bottom: 20, zIndex: 1000, maxWidth: 420,
-        display: "flex", gap: 12, alignItems: "flex-start",
-        padding: "14px 16px", borderRadius: 12,
-        background: "#fff5f5", color: "#8c2f2b", border: "1px solid #f0c9c6",
-        boxShadow: "0 18px 40px rgba(20, 30, 40, .18)", fontSize: 14, lineHeight: 1.5,
-      }}
-    >
-      <div style={{ flex: 1 }}>
-        <strong style={{ display: "block", marginBottom: 2 }}>İşlem tamamlanamadı</strong>
+    // Görünüm panel-motion.css'te: üstten kayan, temaya uyan cam bildirim
+    // (eskiden sabit renkli, koyu temada da açık kırmızı bir kutuydu).
+    <div className="panel-toast" role="alert" aria-live="assertive">
+      <span className="panel-toast-icon" aria-hidden="true">!</span>
+      <div className="panel-toast-body">
+        <strong>İşlem tamamlanamadı</strong>
         <span>{message}</span>
       </div>
-      <button
-        type="button"
-        onClick={() => setMessage(null)}
-        aria-label="Kapat"
-        style={{ border: 0, background: "transparent", color: "inherit", fontSize: 18, lineHeight: 1, cursor: "pointer" }}
-      >
+      <button className="panel-toast-close" type="button" onClick={() => setMessage(null)} aria-label="Kapat">
         ×
       </button>
     </div>
