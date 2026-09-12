@@ -43,7 +43,7 @@ export default async function ForgotPasswordPage({
           <h2>E-posta adresinizi girin</h2>
           <p>Hesabınız sistemde kayıtlıysa şifre oluşturma bağlantısı e-posta adresinize gönderilecektir.</p>
           {error && <div className="login-error" role="alert">{errorMessages[error] ?? "Bir hata oluştu."}</div>}
-          {sent === "1" && <div className="login-error" role="status">Şifre yenileme bağlantısı {email ? `${email} adresine ` : ""}gönderildi. Gelen kutunuzu ve spam klasörünüzü kontrol edin.</div>}
+          {sent === "1" && <div className="login-success" role="status">Şifre yenileme bağlantısı {email ? `${email} adresine ` : ""}gönderildi. Gelen kutunuzu ve spam klasörünüzü kontrol edin.</div>}
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" defaultValue={email ?? ""} /></label>
           <button type="submit">Yenileme Bağlantısı Gönder <b>→</b></button>
           <Link href="/login">← Giriş ekranına dön</Link>

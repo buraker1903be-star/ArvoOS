@@ -3,6 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { login } from "./actions";
 import { createClient } from "@/lib/supabase/server";
+import { readableOn } from "@/lib/tenant-theme";
 import "./login.css";
 
 export const metadata: Metadata = {
@@ -32,10 +33,12 @@ export default async function LoginPage({
     }
   }
 
-  const accentColor = orgBrand?.primary_color || undefined;
+  // Kurumun rengi düğmeye geçer; açık bir renkte beyaz yazı kaybolmasın diye
+  // yazı rengi kontrasta göre seçilir. Geçersiz renk kodu yok sayılır.
+  const accentColor = /^#[0-9a-fA-F]{6}$/.test(orgBrand?.primary_color ?? "") ? orgBrand!.primary_color! : undefined;
 
   return (
-    <main className="login-shell" style={accentColor ? ({ "--login-accent": accentColor } as React.CSSProperties) : undefined}>
+    <main className="login-shell" style={accentColor ? ({ "--login-accent": accentColor, "--login-accent-on": readableOn(accentColor) } as React.CSSProperties) : undefined}>
       <section className="login-brand">
         {orgBrand ? (
           orgBrand.website_url ? (
@@ -65,7 +68,7 @@ export default async function LoginPage({
             {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : <small>{orgBrand ? orgBrand.name : "ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ."}</small>}
           </div>
           <span>GÜVENLİ PANEL GİRİŞİ</span>
-          <h2>Panel’e Hoşgeldiniz</h2>
+          <h2>Panele hoş geldiniz</h2>
           <p>Size tanımlanan kurumsal e-posta adresiyle giriş yapın.</p>
           {error && <div className="login-error" role="alert">E-posta adresi veya parola hatalı.</div>}
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" /></label>
