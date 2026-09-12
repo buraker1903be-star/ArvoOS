@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { allocateCollections } from "@/lib/commission-allocation";
 import "./commissions.css";
 
 type SearchParams = Promise<{ donem?: string; baslangic?: string; bitis?: string; personel?: string }>;
 type Employee = { id: string; full_name: string; job_title: string | null; employment_status: string; commission_rate: number; operation_commission_rate: number };
 type Opportunity = { id: string; customer_name: string; assigned_employee_id: string | null };
 type Contract = { id: string; contract_no: string; opportunity_id: string; party_id: string | null; amount: number; currency: string; signed_at: string | null; status: string; created_at: string };
-type Collection = { id: string; party_id: string | null; amount: number; transaction_date: string; description: string | null };
+type Collection = { id: string; party_id: string | null; entry_type: string; amount: number; transaction_date: string };
 type OperationCommission = { id: string; employee_id: string; workflow_id: string; contract_id: string | null; base_amount: number; commission_rate: number; commission_amount: number; status: string; accrued_at: string };
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value / 100);
@@ -37,7 +38,10 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     supabase.from("crm_opportunities").select("id,customer_name,assigned_employee_id").eq("organization_id", orgId),
     supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,amount,currency,signed_at,status,created_at").eq("organization_id", orgId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }),
     supabase.from("hr_operation_commissions").select("id,employee_id,workflow_id,contract_id,base_amount,commission_rate,commission_amount,status,accrued_at").eq("organization_id", orgId).gte("accrued_at", start.toISOString()).lt("accrued_at", end.toISOString()).neq("status", "cancelled"),
-    supabase.from("account_entries").select("id,party_id,amount,transaction_date,description").eq("organization_id", orgId).eq("entry_type", "credit").gte("transaction_date", start.toISOString().slice(0, 10)).lt("transaction_date", end.toISOString().slice(0, 10)).order("transaction_date", { ascending: false }),
+    // Dağıtım tüm geçmişe göre yapıldığı için dönem filtresi dağıtımdan sonra
+    // uygulanıyor. Yalnızca gerçek ödemeler (payment) ve iadeler (adjustment
+    // borç kaydı) sayılır; manuel/düzeltme alacakları prim matrahı değildir.
+    supabase.from("account_entries").select("id,party_id,entry_type,amount,transaction_date").eq("organization_id", orgId).or("and(entry_type.eq.credit,source_type.eq.payment),and(entry_type.eq.debit,source_type.eq.adjustment)"),
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (opportunityError) throw new Error("Satış kayıtları okunamadı: " + opportunityError.message);
@@ -53,18 +57,37 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   const employeeMap = new Map(employees.map((item) => [item.id, item]));
   const opportunityMap = new Map(opportunities.map((item) => [item.id, item]));
   const contractMap = new Map(contracts.map((item) => [item.id, item]));
-  const contractByParty = new Map<string, Contract>();
-  for (const contract of contracts) if (contract.party_id && !contractByParty.has(contract.party_id)) contractByParty.set(contract.party_id, contract);
   const selectedEmployee = params.personel || "";
+  const periodStart = start.toISOString().slice(0, 10);
+  const periodEnd = end.toISOString().slice(0, 10);
 
-  const salesRows = collections.flatMap((collection) => {
-    const contract = collection.party_id ? contractByParty.get(collection.party_id) : undefined;
-    if (!contract) return [];
-    const opportunity = opportunityMap.get(contract.opportunity_id);
-    const employee = opportunity?.assigned_employee_id ? employeeMap.get(opportunity.assigned_employee_id) : undefined;
-    if (!employee || Number(employee.commission_rate) <= 0 || (selectedEmployee && employee.id !== selectedEmployee)) return [];
-    const amount = Math.round(Number(collection.amount) * Number(employee.commission_rate) / 100);
-    return [{ id: `sale-${collection.id}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: contract.contract_no, base: Number(collection.amount), rate: Number(employee.commission_rate), amount, date: collection.transaction_date, status: "accrued" }];
+  // Her müşterinin ödemeleri sözleşmelerine eskiden yeniye dağıtılır ve her
+  // parça o sözleşmenin satışçısına yazılır (lib/commission-allocation).
+  const contractsByParty = new Map<string, Contract[]>();
+  for (const contract of contracts) {
+    if (!contract.party_id) continue;
+    contractsByParty.set(contract.party_id, [...(contractsByParty.get(contract.party_id) ?? []), contract]);
+  }
+  const collectionsByParty = new Map<string, Collection[]>();
+  for (const collection of collections) {
+    if (!collection.party_id) continue;
+    collectionsByParty.set(collection.party_id, [...(collectionsByParty.get(collection.party_id) ?? []), collection]);
+  }
+
+  const salesRows = [...collectionsByParty].flatMap(([partyId, partyCollections]) => {
+    const pieces = allocateCollections(
+      (contractsByParty.get(partyId) ?? []).map((contract) => ({ id: contract.id, amount: Number(contract.amount), order: contract.signed_at ?? contract.created_at })),
+      partyCollections.map((collection) => ({ id: collection.id, kind: collection.entry_type === "credit" ? "payment" as const : "refund" as const, amount: Number(collection.amount), date: collection.transaction_date })),
+    );
+    return pieces.filter((piece) => piece.date >= periodStart && piece.date < periodEnd).flatMap((piece) => {
+      const contract = contractMap.get(piece.contractId);
+      if (!contract) return [];
+      const opportunity = opportunityMap.get(contract.opportunity_id);
+      const employee = opportunity?.assigned_employee_id ? employeeMap.get(opportunity.assigned_employee_id) : undefined;
+      if (!employee || Number(employee.commission_rate) <= 0 || (selectedEmployee && employee.id !== selectedEmployee)) return [];
+      const amount = Math.round(piece.amount * Number(employee.commission_rate) / 100);
+      return [{ id: `sale-${piece.eventId}-${piece.contractId}-${piece.amount < 0 ? "iade" : "odeme"}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no, base: piece.amount, rate: Number(employee.commission_rate), amount, date: piece.date, status: "accrued" }];
+    });
   });
   const operationRows = operations.flatMap((item) => {
     const employee = employeeMap.get(item.employee_id);

@@ -22,6 +22,17 @@ export type DomainConnectResult = {
   records: { type: string; name: string; value: string }[];
 };
 
+// Platformun kendi alan adları hiçbir kuruma bağlanamaz ve asla Vercel
+// projesinden kaldırılmaz. Eskiden bir müşteri yöneticisi ör.
+// www.arvo-os.com'u kendi kurumuna kaydedip sonra alanı temizleyerek
+// platform alan adını projeden sildirebiliyordu.
+const PLATFORM_DOMAINS = ["arvo-os.com", "vercel.app"];
+
+export function isPlatformDomain(domain: string) {
+  const name = domain.trim().toLowerCase().replace(/\.$/, "");
+  return PLATFORM_DOMAINS.some((root) => name === root || name.endsWith(`.${root}`));
+}
+
 function vercelConfig() {
   const token = process.env.VERCEL_TOKEN;
   const projectId = process.env.VERCEL_PROJECT_ID;
@@ -44,8 +55,21 @@ function recordHintsFor(domain: string): { type: string; name: string; value: st
     : [{ type: "CNAME", name: domain.split(".")[0], value: "cname.vercel-dns.com" }];
 }
 
-/** Adds a domain to the Vercel project. Safe to call again for an existing domain. */
-export async function connectDomainToVercel(domain: string): Promise<DomainConnectResult> {
+/**
+ * Adds a domain to the Vercel project.
+ *
+ * allowExisting: yalnızca kurumun ZATEN kayıtlı alan adının durumunu
+ * tazelerken true. Eskiden Vercel "zaten ekli" dediğinde bu başarı
+ * sayılıyordu; projede bağlı ama hiçbir kuruma ait olmayan (ör. platformun
+ * kendi) alan adları bu yolla sahiplenilebiliyordu.
+ */
+export async function connectDomainToVercel(
+  domain: string,
+  { allowExisting = false }: { allowExisting?: boolean } = {},
+): Promise<DomainConnectResult> {
+  if (isPlatformDomain(domain)) {
+    return { ok: false, verified: false, message: "Bu alan adı platforma ait; kendi alan adınızı girin (örn. panel.firma.com).", records: [] };
+  }
   const { token, projectId, teamId } = vercelConfig();
   if (!token || !projectId) {
     return { ok: false, verified: false, message: "Vercel entegrasyonu yapılandırılmamış (VERCEL_TOKEN / VERCEL_PROJECT_ID eksik).", records: [] };
@@ -59,18 +83,18 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
   const addData = (await addResponse.json().catch(() => ({}))) as VercelDomainResponse;
 
   if (!addResponse.ok) {
-    // Domain already attached to this project: not a real failure — we'll
-    // fetch its current (authoritative) state below instead of trusting
-    // this error response, which never includes verification details.
     const alreadyAttached = addData?.error?.code === "domain_already_in_use" || (addResponse.status === 400 && /already/i.test(addData?.error?.message ?? ""));
     if (!alreadyAttached) {
       return { ok: false, verified: false, message: addData?.error?.message || "Alan adı Vercel'e eklenemedi.", records: recordHintsFor(domain) };
+    }
+    if (!allowExisting) {
+      return { ok: false, verified: false, message: "Bu alan adı zaten kullanımda (başka bir kuruma veya projeye bağlı).", records: [] };
     }
   }
 
   // Ekleme cevabı (özellikle "zaten ekli" durumunda) doğrulama bilgisini
   // içermeyebilir — güncel, kesin durumu ayrı bir uçtan çekiyoruz.
-  let verified = Boolean(addData.verified);
+  let ownershipVerified = Boolean(addData.verified);
   let ownershipRecords: { type: string; name: string; value: string }[] = (addData.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
   try {
     const stateResponse = await fetch(apiUrl(`/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`, teamId), {
@@ -78,22 +102,24 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
     });
     const stateData = (await stateResponse.json().catch(() => ({}))) as VercelDomainResponse;
     if (stateResponse.ok) {
-      verified = Boolean(stateData.verified);
+      ownershipVerified = Boolean(stateData.verified);
       ownershipRecords = (stateData.verification ?? []).map((item) => ({ type: item.type.toUpperCase(), name: item.domain, value: item.value }));
     }
   } catch {
     // güncel durum çekilemezse, eklemeden gelen veriyle devam edilir
   }
 
-  // Asıl yönlendirme kaydı (CNAME/A) genel bir tahmin değil, bu alan adına
-  // özel Vercel'in önerdiği gerçek değer olmalı — bunu ayrı bir uçtan
-  // çekiyoruz, aksi halde yanlış/işe yaramaz bir değer gösterebiliriz.
+  // Asıl yönlendirme kaydı (CNAME/A) bu alan adına özel Vercel önerisi
+  // olmalı. Aynı uç DNS'in doğru yapılandırılıp yapılandırılmadığını da
+  // söylüyor (misconfigured).
   let routingRecords: { type: string; name: string; value: string }[] = [];
+  let misconfigured: boolean | undefined;
   try {
     const configResponse = await fetch(apiUrl(`/v6/domains/${encodeURIComponent(domain)}/config`, teamId), {
       headers: { Authorization: `Bearer ${token}` },
     });
     const config = (await configResponse.json().catch(() => ({}))) as VercelDomainConfigResponse;
+    if (configResponse.ok) misconfigured = config.misconfigured;
     const recommendedCname = config.recommendedCNAME?.[0]?.value;
     const recommendedIp = config.recommendedIPv4?.[0]?.value?.[0];
     if (recommendedCname) {
@@ -106,6 +132,10 @@ export async function connectDomainToVercel(domain: string): Promise<DomainConne
   }
 
   const records = [...ownershipRecords, ...(routingRecords.length ? routingRecords : recordHintsFor(domain))];
+  // "Doğrulandı" yalnızca sahiplik doğrulanmış VE DNS doğru yönlendiriyorsa.
+  // Eskiden yalnızca sahiplik bayrağına bakılıyordu; DNS'i hiç ayarlanmamış
+  // alan adı hemen "doğrulandı" görünüyordu.
+  const verified = ownershipVerified && misconfigured === false;
 
   return {
     ok: true,
@@ -134,6 +164,7 @@ export async function checkVercelDomainStatus(domain: string): Promise<{ ok: boo
 
 /** Removes a domain from the Vercel project (used when a customer changes/clears their custom domain). */
 export async function disconnectDomainFromVercel(domain: string): Promise<void> {
+  if (isPlatformDomain(domain)) return;
   const { token, projectId, teamId } = vercelConfig();
   if (!token || !projectId) return;
   await fetch(apiUrl(`/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`, teamId), {

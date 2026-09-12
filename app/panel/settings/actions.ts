@@ -104,33 +104,51 @@ export async function updateCustomDomain(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) throw new Error("Alan adı ayarlarını değiştirme yetkiniz yok.");
 
-  const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");
+  const { connectDomainToVercel, disconnectDomainFromVercel, isPlatformDomain } = await import("@/lib/vercel-domains");
   const domain = cleanDomain(String(formData.get("custom_domain") ?? ""));
+  if (domain && isPlatformDomain(domain)) throw new Error("Bu alan adı platforma ait; kendi alan adınızı girin (örn. panel.firma.com).");
 
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
-  if (current?.custom_domain && current.custom_domain !== domain) {
-    await disconnectDomainFromVercel(current.custom_domain);
-  }
+  const previous: string | null = current?.custom_domain ?? null;
 
+  // Sıra önemli: veritabanı önce güncellenir, eski alan adı Vercel'den ancak
+  // kayıt başarılı olursa kaldırılır. Eskiden eski alan adı önce siliniyor,
+  // kayıt başarısız olursa kurumun çalışan alan adı da kapanıyordu.
   if (!domain) {
-    const { error } = await supabase.from("organizations").update({
+    const { data: cleared, error } = await supabase.from("organizations").update({
       custom_domain: null, custom_domain_status: null, custom_domain_verification: null, custom_domain_updated_at: new Date().toISOString(),
-    }).eq("id", membership.organization_id);
+    }).eq("id", membership.organization_id).select("id");
     if (error) throw new Error("Alan adı kaldırılamadı: " + error.message);
+    if (!cleared?.length) throw new Error("Alan adı kaldırılamadı: bu işlem için yetkiniz yok.");
+    if (previous) await disconnectDomainFromVercel(previous);
     revalidatePath("/panel/settings");
     return;
   }
 
-  const result = await connectDomainToVercel(domain);
+  if (domain !== previous) {
+    const { data: available, error: availabilityError } = await supabase.rpc("arvo_custom_domain_available", {
+      p_domain: domain,
+      p_organization_id: membership.organization_id,
+    });
+    if (availabilityError) throw new Error("Alan adı kontrol edilemedi: " + availabilityError.message);
+    if (!available) throw new Error("Bu alan adı başka bir kurum tarafından kullanılıyor.");
+  }
+
+  const result = await connectDomainToVercel(domain, { allowExisting: domain === previous });
   if (!result.ok) throw new Error(result.message);
 
-  const { error } = await supabase.from("organizations").update({
+  const { data: saved, error } = await supabase.from("organizations").update({
     custom_domain: domain,
     custom_domain_status: result.verified ? "verified" : "pending",
     custom_domain_verification: result.records,
     custom_domain_updated_at: new Date().toISOString(),
-  }).eq("id", membership.organization_id);
-  if (error) throw new Error("Alan adı kaydedilemedi: " + error.message);
+  }).eq("id", membership.organization_id).select("id");
+  if (error || !saved?.length) {
+    // Az önce eklediğimiz alan adını geri al; kurumun eski alan adı çalışmaya devam eder.
+    if (domain !== previous) await disconnectDomainFromVercel(domain);
+    throw new Error(error ? "Alan adı kaydedilemedi: " + error.message : "Alan adı kaydedilemedi: bu işlem için yetkiniz yok.");
+  }
+  if (previous && previous !== domain) await disconnectDomainFromVercel(previous);
 
   revalidatePath("/panel/settings");
 }
@@ -146,15 +164,16 @@ export async function checkCustomDomainStatus() {
   // doğrulama/DNS bilgisini tazeler — sadece durumu değil, gösterilen
   // kayıtları da günceller.
   const { connectDomainToVercel } = await import("@/lib/vercel-domains");
-  const result = await connectDomainToVercel(org.custom_domain);
+  const result = await connectDomainToVercel(org.custom_domain, { allowExisting: true });
   if (!result.ok) throw new Error(result.message);
 
-  const { error } = await supabase.from("organizations").update({
+  const { data: updated, error } = await supabase.from("organizations").update({
     custom_domain_status: result.verified ? "verified" : "pending",
     custom_domain_verification: result.records,
     custom_domain_updated_at: new Date().toISOString(),
-  }).eq("id", membership.organization_id);
+  }).eq("id", membership.organization_id).select("id");
   if (error) throw new Error("Durum güncellenemedi: " + error.message);
+  if (!updated?.length) throw new Error("Durum güncellenemedi: bu işlem için yetkiniz yok.");
 
   revalidatePath("/panel/settings");
 }

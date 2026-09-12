@@ -30,23 +30,34 @@ export async function updateSession(request: NextRequest) {
   const isLogin = pathname === "/login";
 
   // Kendi alan adından (özel domain) gelen istekler: hangi kuruma ait
-  // olduğunu bulup çalışma alanı çerezini ona göre ayarla, böylece
-  // kullanıcı panele girdiğinde doğru kurumu görür. Giriş yapmamış
-  // ziyaretçiler için de kurumu çözüyoruz ki kök yol (/) genel ArvoOS
-  // tanıtım sayfasına değil, o kurumun markalı giriş ekranına gitsin.
+  // olduğunu bulup kullanıcının o kurumun paneline düşmesini sağla. Giriş
+  // yapmamış ziyaretçiler için de kurumu çözüyoruz ki kök yol (/) genel
+  // ArvoOS tanıtım sayfasına değil, o kurumun markalı giriş ekranına gitsin.
   let customDomainOrgId: string | null = null;
   if (!isAppHost && host) {
     const { data: resolvedOrgId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
     customDomainOrgId = (resolvedOrgId as string | null) ?? null;
-    if (customDomainOrgId && data?.claims) {
-      response.cookies.set(WORKSPACE_COOKIE, customDomainOrgId, {
+  }
+
+  // Çalışma alanı çerezi yalnızca alan adına giriş anında (kök yol) veya
+  // hiç seçim yokken ayarlanır. Eskiden HER istekte alan adının kurumuna
+  // sıfırlanıyordu: kullanıcı başka kuruma geçse bile bir sonraki istekte
+  // seçim geri dönüyor, form gönderimleri yanlış kuruma kaydedilebiliyordu.
+  // Kök yol çoğunlukla /panel'e yönlendirildiği için çerez, dönen yanıt
+  // hangisi olursa olsun ona eklenir.
+  const shouldSetWorkspace = Boolean(customDomainOrgId && data?.claims)
+    && (pathname === "/" || !request.cookies.get(WORKSPACE_COOKIE)?.value);
+  const withWorkspace = (result: NextResponse) => {
+    if (shouldSetWorkspace && customDomainOrgId) {
+      result.cookies.set(WORKSPACE_COOKIE, customDomainOrgId, {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
         path: "/",
       });
     }
-  }
+    return result;
+  };
 
   const isCustomDomainRoot = Boolean(customDomainOrgId) && pathname === "/";
   const isProtected = pathname.startsWith("/panel") || (isAppHost && pathname === "/") || isCustomDomainRoot;
@@ -60,14 +71,14 @@ export async function updateSession(request: NextRequest) {
   if (data?.claims && isLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/panel";
-    return NextResponse.redirect(url);
+    return withWorkspace(NextResponse.redirect(url));
   }
 
   if (data?.claims && (isAppHost || customDomainOrgId) && pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/panel";
-    return NextResponse.redirect(url);
+    return withWorkspace(NextResponse.redirect(url));
   }
 
-  return response;
+  return withWorkspace(response);
 }
