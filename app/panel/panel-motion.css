@@ -25,18 +25,22 @@
   scrollbar-color:color-mix(in srgb,var(--ink) 20%,transparent) transparent;
 }
 
-/* ---------- İçerik girişi ---------- */
+/* ---------- İçerik girişi ----------
+   fill-mode "backwards": animasyon bitince etkisi tamamen kalkar. "both"
+   ile transform animasyonu bitse de uygulanmış sayılıyor ve Chrome öğeyi
+   fixed konumlu çocukları için kapsayıcı yapıyordu; "+ Yeni talep" gibi
+   pencereler düğmenin kutusuna hapsolup görünmez oluyordu. */
 @keyframes panel-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes panel-fade{from{opacity:0}to{opacity:1}}
-.panel-root .panel-content>*{animation:panel-rise .55s var(--ease-spring) both}
-.panel-root :is(.crm-page-stack,.module-tab-panel)>*{animation:panel-rise .6s var(--ease-spring) both}
+.panel-root .panel-content>*{animation:panel-rise .55s var(--ease-spring) backwards}
+.panel-root :is(.crm-page-stack,.module-tab-panel)>*{animation:panel-rise .6s var(--ease-spring) backwards}
 .panel-root :is(.crm-page-stack,.module-tab-panel)>:nth-child(2){animation-delay:.04s}
 .panel-root :is(.crm-page-stack,.module-tab-panel)>:nth-child(3){animation-delay:.08s}
 .panel-root :is(.crm-page-stack,.module-tab-panel)>:nth-child(4){animation-delay:.12s}
 .panel-root :is(.crm-page-stack,.module-tab-panel)>:nth-child(5){animation-delay:.16s}
 .panel-root :is(.crm-page-stack,.module-tab-panel)>:nth-child(n+6){animation-delay:.2s}
 /* Hızlı açılan sayfada iskelet bir anlık yanıp sönmesin */
-.panel-root .panel-content>.panel-skeleton{animation:panel-fade .3s ease .15s both}
+.panel-root .panel-content>.panel-skeleton{animation:panel-fade .3s ease .15s backwards}
 
 /* ---------- Buzlu cam üst bar ---------- */
 @media(min-width:901px){

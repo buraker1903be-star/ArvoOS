@@ -1,5 +1,9 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { statusTone } from "@/lib/status-tone";
+import { formatSubject } from "@/lib/table-format";
+import { fetchLastContacts } from "../crm/last-contact";
+import { CustomerCell, LastContactCell, RepresentativeCell } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createWorkflow } from "./actions";
@@ -9,6 +13,9 @@ import "./operations.css";
 
 const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
 const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
+const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
+// Termin gecikmesi İstanbul gününe göre (bileşen gövdesinde saat okunmaz)
+const todayIstanbul = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
 const boardStatuses = ["planned", "in_progress", "blocked", "completed"] as const;
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
 type Employee = { id: string; full_name: string; job_title: string | null };
@@ -31,19 +38,19 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   const contractIds = [...new Set(allWorkflows.map((workflow) => workflow.contract_id).filter((value): value is string => Boolean(value)))];
   const { data: workflowContracts, error: workflowContractsError } = contractIds.length
-    ? await supabase.from("crm_contracts").select("id,opportunity_id").in("id", contractIds)
+    ? await supabase.from("crm_contracts").select("id,opportunity_id,crm_opportunities(contact_phone,contact_email)").in("id", contractIds)
     : { data: [], error: null };
   if (workflowContractsError) throw new Error("İşlerin CRM bağlantıları okunamadı: " + workflowContractsError.message);
   const opportunityByContract = new Map((workflowContracts ?? []).map((contract) => [contract.id, contract.opportunity_id]));
   const operationOpportunityIds = [...new Set((workflowContracts ?? []).map((contract) => contract.opportunity_id))];
-  const { data: operationCommentData, error: operationCommentError } = operationOpportunityIds.length
-    ? await supabase.from("crm_internal_comments").select("opportunity_id").in("opportunity_id", operationOpportunityIds)
-    : { data: [], error: null };
-  if (operationCommentError) throw new Error("Operasyon yorum sayıları okunamadı: " + operationCommentError.message);
-  const commentCounts = new Map<string, number>();
-  for (const comment of operationCommentData ?? []) {
-    commentCounts.set(comment.opportunity_id, (commentCounts.get(comment.opportunity_id) ?? 0) + 1);
-  }
+  // Müşteri iletişimi ve son temas: CRM tablolarıyla aynı hücreler
+  const contactByContract = new Map((workflowContracts ?? []).map((contract) => {
+    const raw = (contract as { crm_opportunities?: unknown }).crm_opportunities;
+    const opportunity = (Array.isArray(raw) ? raw[0] : raw) as { contact_phone?: string | null; contact_email?: string | null } | null | undefined;
+    return [contract.id, { phone: opportunity?.contact_phone ?? null, email: opportunity?.contact_email ?? null }];
+  }));
+  const lastContacts = await fetchLastContacts(supabase, membership.organization_id, operationOpportunityIds);
+  const today = todayIstanbul();
 
   // Tamamlanan + ödemesi tam kapanan işler panoyu şişirmesin diye burada
   // canlı olarak arşive ayrılır (ayrı bir "arşivlendi" alanı tutmuyoruz,
@@ -97,29 +104,30 @@ export default async function OperationsPage({ searchParams }: { searchParams: P
     <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Devam eden işleri, adımları ve terminleri tek yerden takip edin.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span><PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">{workflowForm}</PanelDrawer></div></div>
     <OperationsTabs active="is-akisi" />
     <div className="module-tab-panel">
-    <section className="ops-metrics">
+    <section className="crm-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>
       <article><small>AKSİYON BEKLEYEN</small><strong>{blockedCount}</strong><span>Beklemede</span></article>
       <article><small>TAMAMLANAN</small><strong>{completedCount}</strong><span>Kapanan iş</span></article>
       <article><small>İLERLEME</small><strong>%{progress}</strong><span>Tamamlanan adımlar</span></article>
     </section>
-    <section className="panel-card"><form method="get" className="crm-filter-form"><label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} /></label><label><span>Durum</span><select name="durum" defaultValue={selectedStatus}><option value="">Tümü</option>{boardStatuses.map((status) => <option value={status} key={status}>{statusNames[status]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/operations">Temizle</Link></div></form></section>
-    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table" data-cols="operations"><thead><tr><th>İş</th><th>Müşteri</th><th>Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th>Yorumlar</th><th>Termin</th><th></th></tr></thead><tbody>{filteredWorkflows.map((workflow) => {
+    <section className="panel-card crm-filter-card"><form method="get" className="crm-filter-form"><label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} /></label><label><span>Durum</span><select name="durum" defaultValue={selectedStatus}><option value="">Tümü</option>{boardStatuses.map((status) => <option value={status} key={status}>{statusNames[status]}</option>)}</select></label><div><button className="panel-primary">Filtrele</button><Link className="panel-secondary" href="/panel/operations">Temizle</Link></div></form></section>
+    {filteredWorkflows.length ? <section className="panel-card crm-table-wrap"><table className="crm-data-table" data-cols="operations"><thead><tr><th>İş</th><th>Müşteri</th><th className="crm-col-rep">Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th className="crm-col-date">Termin</th><th className="crm-col-contact">Son temas</th><th></th></tr></thead><tbody>{filteredWorkflows.map((workflow) => {
       const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
       const done = steps.filter((step) => step.is_completed).length;
       const percentage = steps.length ? Math.round(done / steps.length * 100) : 0;
       const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
-      const commentCount = opportunityId ? commentCounts.get(opportunityId) ?? 0 : 0;
+      const contact = workflow.contract_id ? contactByContract.get(workflow.contract_id) : null;
+      const late = Boolean(workflow.due_date && workflow.due_date < today && workflow.status !== "completed");
       return <tr key={workflow.id}>
-        {/* Eskiden başlığın etrafında ikinci bir <a> vardı (a içinde a geçersiz HTML). */}
-        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title">{workflow.title}</span><span className="crm-table-sub">{done}/{steps.length} adım</span></div></Link></td>
-        <td data-label="Müşteri"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`}>{workflow.customer_name || "Kurum içi iş"}</Link></td>
-        <td data-label="Sorumlu">{workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : "Atanmamış"}</td>
-        <td data-label="Öncelik"><span className={"priority priority-" + workflow.priority}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
+        {/* Satırın tamamı bu bağlantıyla tıklanır (panel-premium.css, ilk hücre) */}
+        <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><div><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{steps.length ? `${done}/${steps.length} adım tamamlandı` : "Adım yok"}</span></div></Link></td>
+        <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} />
+        <RepresentativeCell label="Sorumlu" name={workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null} />
+        <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
         <td data-label="Durum"><span className="status-pill" data-tone={statusTone(workflow.status)}>{statusNames[workflow.status] ?? workflow.status}</span></td>
-        <td data-label="İlerleme">%{percentage}</td>
-        <td data-label="Yorumlar">{commentCount ? <Link className="crm-comment-count-badge" href={`/panel/operations/${workflow.id}`}>{commentCount} yorum</Link> : <span className="crm-comment-count-empty">—</span>}</td>
-        <td data-label="Termin">{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "—"}</td>
+        <td data-label="İlerleme" className="crm-col-progress"><span className="ops-progress-mini" aria-hidden="true"><i style={{ "--p": `${percentage}%` } as CSSProperties} /></span><b>%{percentage}</b></td>
+        <td data-label="Termin" className={`crm-col-date${late ? " is-late" : ""}`}>{workflow.due_date ? new Date(workflow.due_date + "T00:00:00").toLocaleDateString("tr-TR") : "—"}{late ? <small>Gecikti</small> : null}</td>
+        <LastContactCell contact={opportunityId ? lastContacts.get(opportunityId) : null} />
         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
       </tr>;
     })}</tbody></table></section> : <div className="panel-card crm-empty">Eşleşen iş bulunamadı.</div>}

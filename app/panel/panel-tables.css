@@ -51,7 +51,7 @@
    ------------------------------------------------------------ */
 .panel-root .crm-data-table{--cols:128px minmax(0,1.25fr) minmax(0,1.6fr) minmax(0,1fr) 156px 104px 112px 16px}
 .panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:128px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr) 128px 156px 104px 112px 16px}
-.panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(0,1.7fr) minmax(0,1fr) minmax(0,.9fr) 88px 144px 76px 84px 100px 16px}
+.panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(0,1.5fr) minmax(0,1.15fr) minmax(0,.95fr) 96px 140px 120px 104px 112px 16px}
 
 /* Temsilci: baş harf rozeti + ad (her genişlikte) */
 .panel-root .crm-rep{display:inline-flex;align-items:center;gap:9px;min-width:0;max-width:100%;color:var(--ink);font-size:13px}
@@ -59,6 +59,15 @@
 .panel-root .crm-rep>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel-root .crm-rep.is-empty{color:var(--muted)}
 .panel-root .crm-rep.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
+/* Operasyon: ilerleme çubuğu ve geciken termin */
+/* Genel hücre kuralı (.crm-page-stack … tbody td) dikey düzene zorluyor; çubuk
+   yüksekliği sıfıra iniyordu. Aynı ağırlıkta, daha belirgin seçici. */
+.panel-root .crm-page-stack .crm-data-table tbody td.crm-col-progress{flex-direction:row;align-items:center;justify-content:flex-start;gap:8px}
+.panel-root .ops-progress-mini{flex:1;min-width:36px;height:6px;border-radius:999px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);overflow:hidden}
+.panel-root .ops-progress-mini i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--success) 70%,var(--n-0)),var(--success))}
+.panel-root .crm-data-table td.crm-col-progress b{min-width:38px;color:var(--ink);font-size:12.5px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.panel-root .crm-data-table td.crm-col-date.is-late{color:var(--danger);font-weight:650}
+.panel-root .crm-data-table td.crm-col-date.is-late small{color:var(--danger);font-size:11.5px;font-weight:600}
 /* Kayıt numaraları da tek yazı tipinde (eskiden kod yazı tipi); rakamlar eşit genişlikte */
 .panel-root .crm-data-table .crm-table-mono{font-family:var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 
@@ -95,13 +104,15 @@
 @media(min-width:1101px) and (max-width:1599px){
   .panel-root .crm-data-table{--cols:124px minmax(0,1.25fr) minmax(0,1.6fr) minmax(0,1fr) 150px 100px 16px}
   .panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:124px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1fr) 124px 150px 100px 16px}
-  .panel-root .crm-page-stack .crm-data-table:not([data-cols="operations"]) .crm-col-contact{display:none}
+  .panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(0,1.5fr) minmax(0,1.15fr) minmax(0,.95fr) 92px 136px 110px 100px 16px}
+  .panel-root .crm-page-stack .crm-data-table .crm-col-contact{display:none}
 }
 /* 1101–1359px: tarih de gizlenir, temsilci yalnızca rozet (ad ipucunda) */
 @media(min-width:1101px) and (max-width:1359px){
   .panel-root .crm-data-table{--cols:116px minmax(0,1.2fr) minmax(0,1.5fr) 34px 148px 16px}
   .panel-root .crm-data-table:is([data-cols="proposals"],[data-cols="contracts"]){--cols:116px minmax(0,1.2fr) minmax(0,1.5fr) 34px 120px 148px 16px}
-  .panel-root .crm-page-stack .crm-data-table:not([data-cols="operations"]) .crm-col-date{display:none}
+  .panel-root .crm-data-table[data-cols="operations"]{--cols:minmax(0,1.5fr) minmax(0,1.2fr) 34px 88px 132px 100px 16px}
+  .panel-root .crm-page-stack .crm-data-table .crm-col-date{display:none}
   .panel-root .crm-page-stack .crm-data-table th.crm-col-rep{visibility:hidden}
   .panel-root .crm-page-stack .crm-data-table .crm-rep>span{display:none}
 }
@@ -114,6 +125,7 @@
      etiketi kod yazı tipini devralmasın; ad ve iletişim alt alta dursun. */
   .panel-root .crm-page-stack .crm-data-table tbody td{min-width:0}
   .panel-root .crm-page-stack .crm-data-table tbody td .crm-row-link{align-items:flex-start;justify-items:start;text-align:left}
+  .panel-root .crm-page-stack .crm-data-table tbody td .crm-row-link>div{display:flex;flex-direction:column;align-items:flex-start;text-align:left}
   .panel-root .crm-page-stack .crm-data-table tbody td :is(.crm-table-title,.crm-table-sub){display:block}
   .panel-root .crm-page-stack .crm-data-table tbody .status-pill{max-width:100%;white-space:normal}
   .panel-root .crm-page-stack .crm-data-table tbody td[data-label]::before{font-family:var(--font-body);letter-spacing:.02em}

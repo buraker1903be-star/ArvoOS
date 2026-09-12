@@ -37,11 +37,11 @@ export function SubjectCell({ title, service }: { title?: string | null; service
   );
 }
 
-/** name: null ise temsilci atanmamış */
-export function RepresentativeCell({ name }: { name: string | null }) {
+/** name: null ise atanmamış. label: kart görünümündeki etiket (operasyonda "Sorumlu") */
+export function RepresentativeCell({ name, label = "Temsilci" }: { name: string | null; label?: string }) {
   if (!name) {
     return (
-      <td data-label="Temsilci" className="crm-col-rep">
+      <td data-label={label} className="crm-col-rep">
         <span className="crm-rep is-empty" title="Temsilci atanmamış">
           <i aria-hidden="true">—</i>
           <span>Atanmamış</span>
@@ -51,7 +51,7 @@ export function RepresentativeCell({ name }: { name: string | null }) {
   }
   const display = formatPersonName(name);
   return (
-    <td data-label="Temsilci" className="crm-col-rep">
+    <td data-label={label} className="crm-col-rep">
       <span className="crm-rep" title={display}>
         <i aria-hidden="true">{initials(display)}</i>
         <span>{display}</span>

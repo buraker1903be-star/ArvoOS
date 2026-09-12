@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import "./panel-drawer.css";
 
 type PanelDrawerProps = {
@@ -15,9 +16,17 @@ type PanelDrawerProps = {
   children: ReactNode;
 };
 
+const subscribeNothing = () => () => undefined;
+
+// Pencere, düğmenin bulunduğu yerde değil panelin kökünde (.panel-root;
+// tema değişkenleri orada) çizilir. Düğmenin üst öğelerinden biri transform,
+// filter ya da backdrop-filter taşıyınca position:fixed o öğeye hapsoluyor
+// ve pencere görünmez oluyordu ("+ Yeni talep" açılmıyordu).
 export function PanelDrawer({ triggerLabel, title, description, kicker, triggerClassName = "panel-primary", children }: PanelDrawerProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -32,11 +41,10 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
     };
   }, [open]);
 
-  return <>
-    <button className={triggerClassName} type="button" onClick={() => setOpen(true)}>{triggerLabel}</button>
+  const drawer = (
     <div className={open ? "panel-drawer-root open" : "panel-drawer-root"} aria-hidden={!open}>
-      <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" onClick={() => setOpen(false)} />
-      <aside className="panel-drawer" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
+      <aside className="panel-drawer" role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>
         <header className="panel-drawer-header">
           <div>{kicker ? <small className="panel-kicker">{kicker}</small> : null}<h2 id={titleId}>{title}</h2>{description ? <p>{description}</p> : null}</div>
           <button className="panel-drawer-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
@@ -44,5 +52,10 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
         <div className="panel-drawer-body">{children}</div>
       </aside>
     </div>
+  );
+
+  return <>
+    <button className={triggerClassName} type="button" onClick={() => setOpen(true)}>{triggerLabel}</button>
+    {portalTarget ? createPortal(drawer, portalTarget) : null}
   </>;
 }
