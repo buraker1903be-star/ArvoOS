@@ -1,6 +1,6 @@
 "use server";
 
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { diffFields, logActivity } from "@/lib/activity-log";
@@ -64,6 +64,44 @@ function rescaleSchedule(stored: unknown, totalCents: number, planType: unknown)
   return rows.length ? rows : calculatePaymentSchedule(totalCents, "cash");
 }
 
+// Teklif / direkt sözleşme oluşturmadan önce talebin satış temsilcisi
+// olmalı. Atanmamışsa formdaki seçim zorunlu; seçilen temsilci talebe atanır
+// (atama bildirimi tetikleyiciyle gider). Hata metni döner, sorun yoksa null.
+async function ensureRepresentative(
+  supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
+  organizationId: string,
+  opportunityId: string,
+  selectedEmployeeId: string,
+): Promise<string | null> {
+  const { data: opportunity } = await supabase
+    .from("crm_opportunities")
+    .select("id,assigned_employee_id")
+    .eq("id", opportunityId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!opportunity) return "Talep bulunamadı veya bu talebe erişiminiz yok.";
+  if (opportunity.assigned_employee_id) return null;
+  if (!selectedEmployeeId) return "Bu talebe henüz satış temsilcisi atanmamış. Devam etmeden önce bir satış temsilcisi seçin.";
+  const { data: employee } = await supabase
+    .from("hr_employees")
+    .select("id")
+    .eq("id", selectedEmployeeId)
+    .eq("organization_id", organizationId)
+    .eq("employment_status", "active")
+    .eq("can_receive_sales_requests", true)
+    .maybeSingle();
+  if (!employee) return "Seçilen satış temsilcisi aktif değil veya satış talebi alamıyor.";
+  const { data: updated, error } = await supabase
+    .from("crm_opportunities")
+    .update({ assigned_employee_id: selectedEmployeeId, updated_at: new Date().toISOString() })
+    .eq("id", opportunityId)
+    .eq("organization_id", organizationId)
+    .select("id");
+  // RLS engellediğinde güncelleme sessizce 0 satır döner
+  if (error || !updated?.length) return "Satış temsilcisi atanamadı. Bu işlem için yetkinizi kontrol edin.";
+  return null;
+}
+
 export type CreateProposalState = {
   error: string | null;
 };
@@ -119,6 +157,8 @@ export async function createProposal(
   }
 
   const { supabase, membership, userId } = await getPanelContext();
+  const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
+  if (representativeError) return { error: representativeError };
   const { data, error } = await supabase.rpc("create_crm_proposal_v2", {
     target_opportunity_id: opportunityId,
     proposal_title: title,
@@ -180,6 +220,7 @@ export async function createProposal(
       .is("share_token", null);
   }
 
+  await flashSuccess("Teklif oluşturuldu");
   redirect(
     `/panel/crm/proposals?share=${encodeURIComponent(row.access_token)}`,
   );
@@ -226,6 +267,9 @@ export async function createContractDirectly(
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
     return { error: "Bu işlem için yetkiniz yok." };
+
+  const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
+  if (representativeError) return { error: representativeError };
 
   const { data, error } = await supabase.rpc("create_crm_proposal_v2", {
     target_opportunity_id: opportunityId,
@@ -296,6 +340,7 @@ export async function createContractDirectly(
       .is("share_token", null);
   }
 
+  await flashSuccess("Sözleşme oluşturuldu");
   redirect(
     `/panel/crm/contracts${acceptRow?.contract_token ? `?share=${encodeURIComponent(acceptRow.contract_token)}` : ""}`,
   );
@@ -1078,13 +1123,13 @@ async function resolveProposal__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateProposal(...args: Parameters<typeof updateProposal__impl>) {
-  return runPanelAction(() => updateProposal__impl(...args));
+  return runPanelAction(() => updateProposal__impl(...args), "Teklif güncellendi");
 }
 export async function issueProposalLink(...args: Parameters<typeof issueProposalLink__impl>) {
   return runPanelAction(() => issueProposalLink__impl(...args));
 }
 export async function updateContract(...args: Parameters<typeof updateContract__impl>) {
-  return runPanelAction(() => updateContract__impl(...args));
+  return runPanelAction(() => updateContract__impl(...args), "Sözleşme güncellendi");
 }
 export async function issueContractLink(...args: Parameters<typeof issueContractLink__impl>) {
   return runPanelAction(() => issueContractLink__impl(...args));
@@ -1096,7 +1141,7 @@ export async function deleteContract(...args: Parameters<typeof deleteContract__
   return runPanelAction(() => deleteContract__impl(...args));
 }
 export async function fastTrackProposalToContract(...args: Parameters<typeof fastTrackProposalToContract__impl>) {
-  return runPanelAction(() => fastTrackProposalToContract__impl(...args));
+  return runPanelAction(() => fastTrackProposalToContract__impl(...args), "Sözleşme oluşturuldu");
 }
 export async function deleteProposal(...args: Parameters<typeof deleteProposal__impl>) {
   return runPanelAction(() => deleteProposal__impl(...args));

@@ -182,10 +182,10 @@ async function checkCustomDomainStatus__impl() {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateDocumentBranding(...args: Parameters<typeof updateDocumentBranding__impl>) {
-  return runPanelAction(() => updateDocumentBranding__impl(...args));
+  return runPanelAction(() => updateDocumentBranding__impl(...args), "Belge ayarları kaydedildi");
 }
 export async function updateCustomDomain(...args: Parameters<typeof updateCustomDomain__impl>) {
-  return runPanelAction(() => updateCustomDomain__impl(...args));
+  return runPanelAction(() => updateCustomDomain__impl(...args), "Alan adı kaydedildi");
 }
 export async function checkCustomDomainStatus(...args: Parameters<typeof checkCustomDomainStatus__impl>) {
   return runPanelAction(() => checkCustomDomainStatus__impl(...args));

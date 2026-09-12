@@ -9,7 +9,7 @@ const initialState: InviteTeamMemberState = { error: null, success: false };
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button className="panel-primary" type="submit" disabled={pending}>
+    <button className="panel-primary" type="submit" disabled={pending} aria-busy={pending}>
       {pending ? "Gönderiliyor..." : "Daveti Gönder"}
     </button>
   );
@@ -27,14 +27,14 @@ export function InviteTeamForm({
   const [state, formAction] = useActionState(inviteTeamMember, initialState);
 
   return (
-    <form className="panel-form" action={formAction}>
+    <form className="panel-form hr-form" action={formAction}>
       <input type="hidden" name="employee_id" value={employeeId} />
       <input type="hidden" name="full_name" value={fullName} />
       <label className="wide">
         E-posta
-        <input name="email" type="email" required defaultValue={defaultEmail} />
+        <input name="email" type="email" required defaultValue={defaultEmail} placeholder="ad@kurum.com" />
       </label>
-      <label>
+      <label className="wide">
         Rol
         <select name="role" defaultValue="member">
           <option value="member">Satış Personeli</option>
@@ -44,13 +44,13 @@ export function InviteTeamForm({
         </select>
       </label>
       {state.error ? (
-        <div className="wide panel-form-error" role="alert" aria-live="assertive" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>
+        <div className="wide panel-form-error hr-form-alert is-danger" role="alert" aria-live="assertive">
           <strong>Davet gönderilemedi</strong>
-          <p style={{ margin: "6px 0 0" }}>{state.error}</p>
+          <p>{state.error}</p>
         </div>
       ) : null}
       {state.success ? (
-        <div className="wide panel-form-success" role="status" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>
+        <div className="wide panel-form-success hr-form-alert is-success" role="status">
           Davet gönderildi.
         </div>
       ) : null}

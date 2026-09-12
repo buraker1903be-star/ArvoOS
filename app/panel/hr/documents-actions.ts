@@ -69,7 +69,7 @@ async function deleteEmployeeDocument__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function uploadEmployeeDocument(...args: Parameters<typeof uploadEmployeeDocument__impl>) {
-  return runPanelAction(() => uploadEmployeeDocument__impl(...args));
+  return runPanelAction(() => uploadEmployeeDocument__impl(...args), "Belge yüklendi");
 }
 export async function deleteEmployeeDocument(...args: Parameters<typeof deleteEmployeeDocument__impl>) {
   return runPanelAction(() => deleteEmployeeDocument__impl(...args));

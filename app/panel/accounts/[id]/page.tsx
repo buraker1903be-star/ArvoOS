@@ -7,6 +7,7 @@ import {
   createCollection,
   createRefund,
 } from "../actions";
+import { FinEmpty, FinIcon, FinWidget, type FinTone } from "../../finance/finance-ui";
 import "../../finance/finance.css";
 
 const money = (n: number) =>
@@ -46,6 +47,15 @@ type Contract = {
   status: string;
   signed_at: string | null;
 };
+
+// Hareketin türü ve rozet tonu (etiket kuralı öncekiyle aynı)
+function entryKind(e: Entry): { label: string; tone: FinTone } {
+  if (e.source_type === "adjustment") return { label: "İade", tone: "warning" };
+  if (e.entry_type === "credit") return { label: "Tahsilat", tone: "success" };
+  if (e.source_type === "manual" && e.description.startsWith("Ek hizmet ·"))
+    return { label: "Ek Hizmet", tone: "gold" };
+  return { label: "Sözleşme", tone: "info" };
+}
 
 export default async function AccountDetailPage({
   params,
@@ -107,8 +117,9 @@ export default async function AccountDetailPage({
     .reduce((s, e) => s + Number(e.amount), 0);
   const collections = Math.min(recorded, debt + refunds);
   const balance = Math.max(0, debt + refunds - collections);
+  const refundable = Math.max(0, collections - refunds);
   return (
-    <main className="finance-ledger-page finance-account-detail">
+    <main className="fin">
       <header className="panel-pagehead">
         <div>
           <small className="panel-kicker">CARİ HESAP</small>
@@ -121,88 +132,20 @@ export default async function AccountDetailPage({
         </div>
         <div className="panel-page-actions">
           <Link className="panel-secondary" href="/panel/finance">
-            ← Cari hesaplar
+            <FinIcon name="back" size={16} />
+            Cari hesaplar
           </Link>
-        </div>
-      </header>
-      <section className="finance-ledger-summary">
-        <article>
-          <span>Sözleşme toplamı</span>
-          <strong>{money(debt)}</strong>
-          <small>{contracts?.length ?? 0} imzalı sözleşme</small>
-        </article>
-        <article>
-          <span>Toplam tahsilat</span>
-          <strong>{money(collections)}</strong>
-          <small>Bakiyeye uygulanan</small>
-        </article>
-        <article>
-          <span>Toplam iade</span>
-          <strong>{money(refunds)}</strong>
-          <small>Müşteriye geri ödenen</small>
-        </article>
-        <article className="is-primary">
-          <span>Açık bakiye</span>
-          <strong>{money(balance)}</strong>
-          <small>{balance > 0 ? "Tahsilat bekliyor" : "Cari kapandı"}</small>
-        </article>
-      </section>
-      <section className="panel-card finance-account-toolbar">
-        <div>
-          <small className="panel-kicker">İŞLEMLER</small>
-          <h2>Cari işlemleri</h2>
-        </div>
-        <div className="finance-ledger-actions">
           <PanelDrawer
-            triggerLabel="+ Tahsilat Ekle"
-            title={`${current.name} · Tahsilat`}
-            description={`Açık bakiye: ${money(balance)}`}
-          >
-            <form className="panel-form" action={createCollection}>
-              <input type="hidden" name="party_id" value={id} />
-              <label>
-                Tahsilat tutarı
-                <input
-                  name="amount"
-                  type="number"
-                  min="0.01"
-                  max={balance / 100}
-                  step="0.01"
-                  required
-                />
-              </label>
-              <label>
-                Tarih
-                <input name="transaction_date" type="date" />
-              </label>
-              <label>
-                Referans / dekont no
-                <input name="reference_no" />
-              </label>
-              <label className="wide">
-                Açıklama
-                <input
-                  name="description"
-                  defaultValue="Müşteri tahsilatı"
-                  required
-                />
-              </label>
-              <div className="form-actions wide">
-                <button className="panel-primary" disabled={!balance}>
-                  Tahsilatı kaydet
-                </button>
-              </div>
-            </form>
-          </PanelDrawer>
-          <PanelDrawer
-            triggerLabel="Ek Hizmet"
+            triggerLabel="Ek hizmet"
+            triggerClassName="panel-secondary"
+            kicker="EK HİZMET"
             title={`${current.name} · Ek Hizmet`}
             description="Yeni hizmeti cari bakiyeye ekleyin."
           >
-            <form className="panel-form" action={createAdditionalService}>
+            <form className="panel-form fin-form" action={createAdditionalService}>
               <input type="hidden" name="party_id" value={id} />
               <label>
-                Hizmet tutarı
+                Hizmet tutarı (₺)
                 <input
                   name="amount"
                   type="number"
@@ -232,25 +175,27 @@ export default async function AccountDetailPage({
                   required
                 />
               </label>
-              <div className="form-actions wide">
+              <div className="panel-form-actions wide">
                 <button className="panel-primary">Cari hesaba ekle</button>
               </div>
             </form>
           </PanelDrawer>
           <PanelDrawer
-            triggerLabel="İade İşlemi"
+            triggerLabel="İade"
+            triggerClassName="panel-secondary"
+            kicker="İADE"
             title={`${current.name} · İade`}
-            description={`İade edilebilir: ${money(Math.max(0, collections - refunds))}`}
+            description={`İade edilebilir: ${money(refundable)}`}
           >
-            <form className="panel-form" action={createRefund}>
+            <form className="panel-form fin-form" action={createRefund}>
               <input type="hidden" name="party_id" value={id} />
               <label>
-                İade tutarı
+                İade tutarı (₺)
                 <input
                   name="amount"
                   type="number"
                   min="0.01"
-                  max={Math.max(0, collections - refunds) / 100}
+                  max={refundable / 100}
                   step="0.01"
                   required
                 />
@@ -267,7 +212,10 @@ export default async function AccountDetailPage({
                 İade nedeni
                 <input name="description" required />
               </label>
-              <div className="form-actions wide">
+              {collections <= refunds ? (
+                <p className="fin-form-note">İade edilebilecek tahsilat yok.</p>
+              ) : null}
+              <div className="panel-form-actions wide">
                 <button
                   className="panel-primary"
                   disabled={collections <= refunds}
@@ -277,89 +225,137 @@ export default async function AccountDetailPage({
               </div>
             </form>
           </PanelDrawer>
+          <PanelDrawer
+            triggerLabel="+ Tahsilat"
+            kicker="TAHSİLAT"
+            title={`${current.name} · Tahsilat`}
+            description={`Açık bakiye: ${money(balance)}`}
+          >
+            <form className="panel-form fin-form" action={createCollection}>
+              <input type="hidden" name="party_id" value={id} />
+              <label>
+                Tahsilat tutarı (₺)
+                <input
+                  name="amount"
+                  type="number"
+                  min="0.01"
+                  max={balance / 100}
+                  step="0.01"
+                  required
+                />
+              </label>
+              <label>
+                Tarih
+                <input name="transaction_date" type="date" />
+              </label>
+              <label>
+                Referans / dekont no
+                <input name="reference_no" />
+              </label>
+              <label className="wide">
+                Açıklama
+                <input
+                  name="description"
+                  defaultValue="Müşteri tahsilatı"
+                  required
+                />
+              </label>
+              <p className="fin-form-note">
+                {balance
+                  ? `En fazla açık bakiye kadar (${money(balance)}) tahsilat kaydedebilirsiniz.`
+                  : "Bu carinin açık bakiyesi yok; yeni tahsilat kaydedilemez."}
+              </p>
+              <div className="panel-form-actions wide">
+                <button className="panel-primary" disabled={!balance}>
+                  Tahsilatı kaydet
+                </button>
+              </div>
+            </form>
+          </PanelDrawer>
         </div>
+      </header>
+
+      <section className="fin-widgets" aria-label="Cari özeti">
+        <FinWidget tone="brand" icon="doc" label="Sözleşme toplamı" value={money(debt)} note={`${contracts?.length ?? 0} imzalı sözleşme`} />
+        <FinWidget tone="success" icon="wallet" label="Toplam tahsilat" value={money(collections)} note="Bakiyeye uygulanan" />
+        <FinWidget tone="warning" icon="refund" label="Toplam iade" value={money(refunds)} note="Müşteriye geri ödenen" />
+        <FinWidget tone={balance > 0 ? "gold" : "success"} icon="scale" label="Açık bakiye" value={money(balance)} note={balance > 0 ? "Tahsilat bekliyor" : "Cari kapandı"} emphasis />
       </section>
-      <section className="panel-card finance-account-statement">
-        <div className="section-heading">
+
+      <section className="fin-card" aria-label="Hareket dökümü">
+        <header className="fin-card-head">
           <div>
-            <small className="panel-kicker">HAREKET DÖKÜMÜ</small>
-            <h2>Tüm cari hareketler</h2>
+            <h2>Hareket dökümü</h2>
+            <p>Bu cariye ait tüm borç, tahsilat ve iade hareketleri.</p>
           </div>
           <span className="status-pill">{entries.length} hareket</span>
-        </div>
-        <div className="panel-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Tarih</th>
-                <th>İşlem</th>
-                <th>Açıklama</th>
-                <th>Referans</th>
-                <th>Tutar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td>{date(e.transaction_date)}</td>
-                  <td>
-                    <span className="status-pill">
-                      {e.source_type === "adjustment"
-                        ? "İade"
-                        : e.entry_type === "credit"
-                          ? "Tahsilat"
-                          : e.source_type === "manual" &&
-                              e.description.startsWith("Ek hizmet ·")
-                            ? "Ek Hizmet"
-                            : "Sözleşme"}
-                    </span>
-                  </td>
-                  <td>{e.description}</td>
-                  <td>{e.reference_no || "—"}</td>
-                  <td>
-                    <strong
-                      className={
-                        e.entry_type === "credit"
-                          ? "statement-credit"
-                          : "statement-debit"
-                      }
-                    >
-                      {e.entry_type === "credit" ? "−" : "+"}
-                      {money(Number(e.amount))}
-                    </strong>
-                  </td>
-                </tr>
-              ))}
-              {!entries.length ? (
+        </header>
+        {entries.length ? (
+          <div className="fin-table-wrap">
+            <table className="fin-table" data-cols="statement">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="panel-empty">
-                    Henüz cari hareket bulunmuyor.
-                  </td>
+                  <th scope="col">Tarih</th>
+                  <th scope="col">İşlem</th>
+                  <th scope="col">Açıklama</th>
+                  <th scope="col">Referans</th>
+                  <th scope="col" className="fin-num">Tutar</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      {(contracts ?? []).length ? (
-        <section className="panel-card finance-contract-list">
-          <div className="section-heading">
-            <div>
-              <small className="panel-kicker">SÖZLEŞMELER</small>
-              <h2>Bakiyeyi oluşturan sözleşmeler</h2>
-            </div>
+              </thead>
+              <tbody>
+                {entries.map((e) => {
+                  const kind = entryKind(e);
+                  return (
+                    <tr key={e.id}>
+                      <td data-label="Tarih">{date(e.transaction_date)}</td>
+                      <td data-label="İşlem">
+                        <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
+                      </td>
+                      <td className="fin-col-wide" data-label="Açıklama">{e.description}</td>
+                      <td className={e.reference_no ? undefined : "fin-muted"} data-label="Referans">{e.reference_no || "—"}</td>
+                      <td
+                        className={e.entry_type === "credit" ? "fin-num fin-pos" : "fin-num"}
+                        data-label="Tutar"
+                      >
+                        {e.entry_type === "credit" ? "−" : "+"}
+                        {money(Number(e.amount))}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          {(contracts as Contract[]).map((c) => (
-            <div key={c.id}>
-              <span>
-                <b>{c.contract_no}</b>
-                <small>
-                  {c.title} · {c.signed_at ? date(c.signed_at) : "İmzalı"}
-                </small>
-              </span>
-              <strong>{money(Number(c.amount))}</strong>
+        ) : (
+          <FinEmpty icon="receipt" title="Henüz cari hareket yok">
+            Tahsilat, ek hizmet ve iade kayıtları burada tarih sırasıyla görünür.
+          </FinEmpty>
+        )}
+      </section>
+
+      {(contracts ?? []).length ? (
+        <section className="fin-card" aria-label="Sözleşmeler">
+          <header className="fin-card-head">
+            <div>
+              <h2>Bakiyeyi oluşturan sözleşmeler</h2>
+              <p>İmzalı ve tamamlanan sözleşmeler.</p>
             </div>
-          ))}
+            <span className="status-pill">{money(contractDebt)}</span>
+          </header>
+          <ul className="fin-rows">
+            {(contracts as Contract[]).map((c) => (
+              <li className="fin-row" key={c.id}>
+                <span className="fin-row-icon" data-tone="info"><FinIcon name="doc" size={17} /></span>
+                <span className="fin-entity-text">
+                  <b>{c.contract_no}</b>
+                  <small>
+                    {c.title} · {c.signed_at ? date(c.signed_at) : "İmzalı"}
+                  </small>
+                </span>
+                <strong>{money(Number(c.amount))}</strong>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
     </main>

@@ -8,6 +8,7 @@ import {
   createRefund,
 } from "../accounts/actions";
 import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow } from "./finance-workspaces";
+import { FinEmpty, FinIcon, FinWidget } from "./finance-ui";
 import "./finance.css";
 
 const money = (n: number) =>
@@ -51,6 +52,12 @@ type Contract = {
 };
 type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
 type CostItem={contract_id:string;amount:number;status:string};
+
+const pageCopy = {
+  cari: { title: "Cari Hesaplar", text: "Sözleşme borçları, tahsilatlar ve iadeler tek ekranda." },
+  paytr: { title: "PAYTR Tahsilatları", text: "Ödeme bağlantılarını yönetin, müşteriye iletin ve gecikmeleri takip edin." },
+  maliyet: { title: "İş Maliyetleri", text: "Sözleşme bazında maliyet, kâr ve kâr oranı." },
+} as const;
 
 export default async function FinancePage({
   searchParams,
@@ -167,246 +174,291 @@ export default async function FinancePage({
   const profitRows:ProfitRow[]=contracts.map(contract=>{const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const cost=costTotals.get(contract.id)??Number(contract.service_cost);const profit=Number(contract.amount)-cost;const operationEmployeeId=contract.workflow_id?workflowMap.get(contract.workflow_id):null;return{id:contract.id,contractNo:contract.contract_no,customer:relation?.customer_name||contract.title,title:contract.title,sales:relation?.assigned_employee_id?employeeMap.get(relation.assigned_employee_id)||"Pasif personel":"Atanmamış",operation:operationEmployeeId?employeeMap.get(operationEmployeeId)||"Pasif personel":"Atanmamış",amount:Number(contract.amount),cost,profit,margin:Number(contract.amount)?profit/Number(contract.amount)*100:0,date:(contract.signed_at||contract.created_at).slice(0,10)}});
   const paymentRows:PaymentRow[]=contracts.flatMap(contract=>{const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;return installments.filter(item=>item.payment_plan_id===contract.payment_plan_id).map(item=>{const overdue=item.status!=="paid"&&Boolean(item.due_date&&item.due_date<today);const link=item.payment_url;const message=overdue?`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizin vadesi dolmuştur.\n\nÖdeme bağlantısı:\n${link||""}\n\nÖdeme yaptıysanız bu mesajı dikkate almayınız.\n\nSaygılarımızla,\n${brandName}`:`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizi aşağıdaki bağlantıdan tamamlayabilirsiniz:\n${link||""}\n\nSaygılarımızla,\n${brandName}`;const phone=String(customer?.contact_phone||"").replace(/\D/g,"").replace(/^0/,"90");return{id:item.id,contractId:contract.id,contractNo:contract.contract_no,installmentNo:item.installment_no,customer:customer?.customer_name||contract.title,amount:Number(item.amount),dueDate:item.due_date,status:item.status,paymentUrl:link,overdue,whatsappUrl:link&&phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null,emailUrl:link&&customer?.contact_email?`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${contract.contract_no} ödeme bilgilendirmesi`)}&body=${encodeURIComponent(message)}`:null}})});
 
+  // İş maliyetleri özeti (yalnızca gösterim; değerler tablodakiyle aynı kuralla)
+  const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
+  const profitSum = contracts.reduce((s, c) => s + Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost)), 0);
+  const averageMargin = Math.round(contracts.reduce((s, c) => s + (Number(c.amount) ? ((Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost))) / Number(c.amount)) * 100 : 0), 0) / (contracts.length || 1));
+  const openCount = accounts.filter((a) => a.balance > 0).length;
+  const isFiltered = Boolean(query) || params.durum === "acik" || params.durum === "kapali";
+  const copy = pageCopy[mode];
+
   return (
-    <main className="finance-ledger-page">
-      <header className="panel-pagehead finance-ledger-head">
+    <main className="fin">
+      <header className="panel-pagehead">
         <div>
           <small className="panel-kicker">FİNANS</small>
-          <h1>Cari Hesaplar</h1>
-          <p>Sözleşme borçları, tahsilatlar ve iadeler tek ekranda.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.text}</p>
         </div>
-        <nav className="finance-head-actions"><Link className={mode==="cari"?"active":""} href="/panel/finance">Cari Hesaplar</Link><Link className={mode==="paytr"?"active":""} href="/panel/finance?gorunum=paytr">PAYTR Tahsilatları</Link>{canManageCosts?<Link className={mode==="maliyet"?"active":""} href="/panel/finance?gorunum=maliyet">İş Maliyetleri</Link>:null}</nav>
       </header>
-      {mode==="cari"?<>
-      <section className="finance-ledger-summary" aria-label="Cari hesap özeti">
-        <article>
-          <span>Sözleşme toplamı</span>
-          <strong>{money(totals.debt)}</strong>
-          <small>Otomatik oluşan borç</small>
-        </article>
-        <article>
-          <span>Toplam tahsilat</span>
-          <strong>{money(totals.collections)}</strong>
-          <small>Müşterilerden alınan</small>
-        </article>
-        <article>
-          <span>Toplam iade</span>
-          <strong>{money(totals.refunds)}</strong>
-          <small>Müşteriye geri ödenen</small>
-        </article>
-        <article className="is-primary">
-          <span>Açık bakiye</span>
-          <strong>{money(totals.balance)}</strong>
-          <small>Tahsil edilecek toplam</small>
-        </article>
-      </section>
-      <form className="finance-ledger-filter">
-        <input
-          name="arama"
-          defaultValue={params.arama}
-          placeholder="Müşteri, telefon veya vergi no ara…"
-        />
-        <select name="durum" defaultValue={params.durum ?? "tumu"}>
-          <option value="tumu">Tüm cariler</option>
-          <option value="acik">Açık bakiyesi olanlar</option>
-          <option value="kapali">Bakiyesi kapananlar</option>
-        </select>
-        <button>Filtrele</button>
-      </form>
-      <section className="finance-ledger-list">
-        {filtered.map((a) => (
-          <article className="finance-ledger-account" key={a.id}>
-            <Link
-              className="finance-ledger-customer"
-              href={`/panel/accounts/${a.id}`}
-            >
-              <span className="finance-ledger-avatar">
-                {a.name.slice(0, 2).toLocaleUpperCase("tr-TR")}
-              </span>
+      <nav className="module-tabs fin-tabs" aria-label="Finans görünümleri">
+        <Link className={mode === "cari" ? "active" : ""} aria-current={mode === "cari" ? "page" : undefined} href="/panel/finance">Cari Hesaplar</Link>
+        <Link className={mode === "paytr" ? "active" : ""} aria-current={mode === "paytr" ? "page" : undefined} href="/panel/finance?gorunum=paytr">PAYTR Tahsilatları</Link>
+        {canManageCosts ? <Link className={mode === "maliyet" ? "active" : ""} aria-current={mode === "maliyet" ? "page" : undefined} href="/panel/finance?gorunum=maliyet">İş Maliyetleri</Link> : null}
+      </nav>
+
+      {mode === "cari" ? (
+        <>
+          <section className="fin-widgets" aria-label="Cari hesap özeti">
+            <FinWidget tone="brand" icon="doc" label="Sözleşme toplamı" value={money(totals.debt)} note="İmzalı sözleşmelerden oluşan borç" />
+            <FinWidget tone="success" icon="wallet" label="Toplam tahsilat" value={money(totals.collections)} note="Müşterilerden alınan" />
+            <FinWidget tone="warning" icon="refund" label="Toplam iade" value={money(totals.refunds)} note="Müşteriye geri ödenen" />
+            <FinWidget tone="gold" icon="scale" label="Açık bakiye" value={money(totals.balance)} note={openCount ? `${openCount} caride tahsilat bekliyor` : "Tüm cariler kapalı"} emphasis />
+          </section>
+
+          <section className="fin-card" aria-label="Müşteri carileri">
+            <header className="fin-card-head">
               <div>
-                <h2>{a.name}</h2>
-                <p>
-                  {a.phone || a.email || a.tax_number || "Müşteri cari hesabı"}
-                </p>
+                <h2>Müşteri carileri</h2>
+                <p>Müşteri adına dokunarak hareket dökümünü açın.</p>
               </div>
-            </Link>
-            <div className="finance-ledger-numbers">
-              <span>
-                <small>Sözleşme</small>
-                <b>{money(a.debt)}</b>
-              </span>
-              <span>
-                <small>Tahsilat</small>
-                <b>{money(a.collections)}</b>
-              </span>
-              <span>
-                <small>İade</small>
-                <b>{money(a.refunds)}</b>
-              </span>
-            </div>
-            <div className="finance-ledger-balance">
-              <small>Kalan bakiye</small>
-              <strong>{money(a.balance)}</strong>
-              <span className={a.balance > 0 ? "is-open" : "is-closed"}>
-                {a.balance > 0 ? "Tahsilat bekliyor" : "Kapandı"}
-              </span>
-            </div>
-            <div className="finance-ledger-actions">
-              <PanelDrawer
-                triggerLabel="+ Tahsilat Ekle"
-                title={`${a.name} · Tahsilat`}
-                description={`Açık bakiye: ${money(a.balance)}`}
-              >
-                <form className="panel-form" action={createCollection}>
-                  <input type="hidden" name="party_id" value={a.id} />
-                  <label>
-                    Tahsilat tutarı
-                    <input
-                      name="amount"
-                      type="number"
-                      min="0.01"
-                      max={a.balance / 100}
-                      step="0.01"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Tarih
-                    <input name="transaction_date" type="date" />
-                  </label>
-                  <label>
-                    Referans / dekont no
-                    <input name="reference_no" maxLength={100} />
-                  </label>
-                  <label className="wide">
-                    Açıklama
-                    <input
-                      name="description"
-                      defaultValue="Müşteri tahsilatı"
-                      minLength={2}
-                      maxLength={500}
-                      required
-                    />
-                  </label>
-                  <div className="form-actions wide">
-                    <button
-                      className="panel-primary"
-                      disabled={a.balance === 0}
-                    >
-                      Tahsilatı kaydet
-                    </button>
-                  </div>
-                </form>
-              </PanelDrawer>
-              <PanelDrawer
-                triggerLabel="Ek Hizmet"
-                title={`${a.name} · Ek Hizmet`}
-                description="Yeni hizmeti cari bakiyeye ekleyin."
-              >
-                <form className="panel-form" action={createAdditionalService}>
-                  <input type="hidden" name="party_id" value={a.id} />
-                  <label>
-                    Hizmet tutarı
-                    <input
-                      name="amount"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      required
-                    />
-                  </label>
-                  <label>
-                    İşlem tarihi
-                    <input name="transaction_date" type="date" />
-                  </label>
-                  <label>
-                    Vade tarihi
-                    <input name="due_date" type="date" />
-                  </label>
-                  <label>
-                    Referans
-                    <input name="reference_no" maxLength={100} />
-                  </label>
-                  <label className="wide">
-                    Hizmet açıklaması
-                    <input
-                      name="description"
-                      minLength={2}
-                      maxLength={500}
-                      required
-                    />
-                  </label>
-                  <div className="form-actions wide">
-                    <button className="panel-primary">Cari hesaba ekle</button>
-                  </div>
-                </form>
-              </PanelDrawer>
-              <PanelDrawer
-                triggerLabel="İade İşlemi"
-                title={`${a.name} · İade`}
-                description={`İade edilebilir: ${money(Math.max(0, a.collections - a.refunds))}`}
-              >
-                <form className="panel-form" action={createRefund}>
-                  <input type="hidden" name="party_id" value={a.id} />
-                  <label>
-                    İade tutarı
-                    <input
-                      name="amount"
-                      type="number"
-                      min="0.01"
-                      max={Math.max(0, a.collections - a.refunds) / 100}
-                      step="0.01"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Tarih
-                    <input name="transaction_date" type="date" />
-                  </label>
-                  <label>
-                    Referans / dekont no
-                    <input name="reference_no" maxLength={100} />
-                  </label>
-                  <label className="wide">
-                    İade nedeni
-                    <input
-                      name="description"
-                      minLength={2}
-                      maxLength={500}
-                      required
-                    />
-                  </label>
-                  <div className="form-actions wide">
-                    <button
-                      className="panel-primary"
-                      disabled={a.collections <= a.refunds}
-                    >
-                      İadeyi kaydet
-                    </button>
-                  </div>
-                </form>
-              </PanelDrawer>
-              <Link
-                className="panel-secondary"
-                href={`/panel/accounts/${a.id}`}
-              >
-                Hareketler
-              </Link>
-            </div>
-          </article>
-        ))}
-        {!filtered.length ? (
-          <div className="panel-empty">
-            <h2>Cari hesap bulunamadı</h2>
-            <p>Arama veya filtre ölçütünü değiştirin.</p>
-          </div>
-        ) : null}
-      </section>
-      </>:null}
-      {mode==="paytr"?<PaytrWorkspace rows={paymentRows}/>:null}
-      {mode==="maliyet"&&canManageCosts ? <section className="finance-cost-workspace"><div className="finance-cost-kpis"><article><small>TOPLAM SÖZLEŞME</small><strong>{money(contracts.reduce((s,c)=>s+Number(c.amount),0))}</strong><span>{contracts.length} iş</span></article><article><small>MALİYET TOPLAMI</small><strong>{money(totalServiceCost)}</strong><span>İşlere bağlı giderler</span></article><article className="is-profit"><small>TOPLAM KÂR</small><strong>{money(contracts.reduce((s,c)=>s+Number(c.amount)-(costTotals.get(c.id)??Number(c.service_cost)),0))}</strong><span>Brüt iş kârlılığı</span></article><article><small>ORTALAMA KÂR ORANI</small><strong>%{Math.round(contracts.reduce((s,c)=>s+(Number(c.amount)?((Number(c.amount)-(costTotals.get(c.id)??Number(c.service_cost)))/Number(c.amount))*100:0),0)/(contracts.length||1))}</strong><span>Sözleşme bazında</span></article></div>
-        <ProfitabilityWorkspace rows={profitRows}/>
-      </section> : null}
+              <span className="status-pill">{filtered.length} cari</span>
+            </header>
+            <form className="fin-toolbar" role="search">
+              <label className="fin-field is-grow">
+                <span>Ara</span>
+                <span className="fin-search">
+                  <FinIcon name="search" size={16} />
+                  <input
+                    name="arama"
+                    defaultValue={params.arama}
+                    placeholder="Müşteri, telefon veya vergi no"
+                  />
+                </span>
+              </label>
+              <label className="fin-field is-fixed">
+                <span>Durum</span>
+                <select name="durum" defaultValue={params.durum ?? "tumu"}>
+                  <option value="tumu">Tüm cariler</option>
+                  <option value="acik">Açık bakiyesi olanlar</option>
+                  <option value="kapali">Bakiyesi kapananlar</option>
+                </select>
+              </label>
+              <button className="panel-secondary">Filtrele</button>
+            </form>
+            {filtered.length ? (
+              <div className="fin-table-wrap">
+                <table className="fin-table" data-cols="ledger">
+                  <thead>
+                    <tr>
+                      <th scope="col">Müşteri</th>
+                      <th scope="col" className="fin-num">Sözleşme</th>
+                      <th scope="col" className="fin-num">Tahsilat</th>
+                      <th scope="col" className="fin-num">İade</th>
+                      <th scope="col" className="fin-num">Kalan bakiye</th>
+                      <th scope="col"><span className="fin-sr">İşlemler</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((a) => (
+                      <tr key={a.id}>
+                        <td className="fin-col-main">
+                          <Link className="fin-entity" href={`/panel/accounts/${a.id}`}>
+                            <span className="fin-avatar" aria-hidden="true">
+                              {a.name.slice(0, 2).toLocaleUpperCase("tr-TR")}
+                            </span>
+                            <span className="fin-entity-text">
+                              <b>{a.name}</b>
+                              <small>{a.phone || a.email || a.tax_number || "Müşteri cari hesabı"}</small>
+                            </span>
+                          </Link>
+                        </td>
+                        <td className={a.debt ? "fin-num" : "fin-num is-zero"} data-label="Sözleşme">{money(a.debt)}</td>
+                        <td className={a.collections ? "fin-num fin-pos" : "fin-num is-zero"} data-label="Tahsilat">{money(a.collections)}</td>
+                        <td className={a.refunds ? "fin-num fin-warn" : "fin-num is-zero"} data-label="İade">{money(a.refunds)}</td>
+                        <td className="fin-num" data-label="Kalan bakiye">
+                          <span className="fin-balance">
+                            <strong>{money(a.balance)}</strong>
+                            <span className="status-pill" data-tone={a.balance > 0 ? "warning" : "success"}>
+                              {a.balance > 0 ? "Tahsilat bekliyor" : "Kapandı"}
+                            </span>
+                          </span>
+                        </td>
+                        <td className="fin-col-actions">
+                          <PanelDrawer
+                            triggerLabel="+ Tahsilat"
+                            kicker="TAHSİLAT"
+                            title={`${a.name} · Tahsilat`}
+                            description={`Açık bakiye: ${money(a.balance)}`}
+                          >
+                            <form className="panel-form fin-form" action={createCollection}>
+                              <input type="hidden" name="party_id" value={a.id} />
+                              <label>
+                                Tahsilat tutarı (₺)
+                                <input
+                                  name="amount"
+                                  type="number"
+                                  min="0.01"
+                                  max={a.balance / 100}
+                                  step="0.01"
+                                  required
+                                />
+                              </label>
+                              <label>
+                                Tarih
+                                <input name="transaction_date" type="date" />
+                              </label>
+                              <label>
+                                Referans / dekont no
+                                <input name="reference_no" maxLength={100} />
+                              </label>
+                              <label className="wide">
+                                Açıklama
+                                <input
+                                  name="description"
+                                  defaultValue="Müşteri tahsilatı"
+                                  minLength={2}
+                                  maxLength={500}
+                                  required
+                                />
+                              </label>
+                              <p className="fin-form-note">
+                                {a.balance === 0
+                                  ? "Bu carinin açık bakiyesi yok; yeni tahsilat kaydedilemez."
+                                  : `En fazla açık bakiye kadar (${money(a.balance)}) tahsilat kaydedebilirsiniz.`}
+                              </p>
+                              <div className="panel-form-actions wide">
+                                <button
+                                  className="panel-primary"
+                                  disabled={a.balance === 0}
+                                >
+                                  Tahsilatı kaydet
+                                </button>
+                              </div>
+                            </form>
+                          </PanelDrawer>
+                          <PanelDrawer
+                            triggerLabel="Ek hizmet"
+                            triggerClassName="panel-secondary"
+                            kicker="EK HİZMET"
+                            title={`${a.name} · Ek Hizmet`}
+                            description="Yeni hizmeti cari bakiyeye ekleyin."
+                          >
+                            <form className="panel-form fin-form" action={createAdditionalService}>
+                              <input type="hidden" name="party_id" value={a.id} />
+                              <label>
+                                Hizmet tutarı (₺)
+                                <input
+                                  name="amount"
+                                  type="number"
+                                  min="0.01"
+                                  step="0.01"
+                                  required
+                                />
+                              </label>
+                              <label>
+                                İşlem tarihi
+                                <input name="transaction_date" type="date" />
+                              </label>
+                              <label>
+                                Vade tarihi
+                                <input name="due_date" type="date" />
+                              </label>
+                              <label>
+                                Referans
+                                <input name="reference_no" maxLength={100} />
+                              </label>
+                              <label className="wide">
+                                Hizmet açıklaması
+                                <input
+                                  name="description"
+                                  minLength={2}
+                                  maxLength={500}
+                                  required
+                                />
+                              </label>
+                              <div className="panel-form-actions wide">
+                                <button className="panel-primary">Cari hesaba ekle</button>
+                              </div>
+                            </form>
+                          </PanelDrawer>
+                          <PanelDrawer
+                            triggerLabel="İade"
+                            triggerClassName="panel-secondary"
+                            kicker="İADE"
+                            title={`${a.name} · İade`}
+                            description={`İade edilebilir: ${money(Math.max(0, a.collections - a.refunds))}`}
+                          >
+                            <form className="panel-form fin-form" action={createRefund}>
+                              <input type="hidden" name="party_id" value={a.id} />
+                              <label>
+                                İade tutarı (₺)
+                                <input
+                                  name="amount"
+                                  type="number"
+                                  min="0.01"
+                                  max={Math.max(0, a.collections - a.refunds) / 100}
+                                  step="0.01"
+                                  required
+                                />
+                              </label>
+                              <label>
+                                Tarih
+                                <input name="transaction_date" type="date" />
+                              </label>
+                              <label>
+                                Referans / dekont no
+                                <input name="reference_no" maxLength={100} />
+                              </label>
+                              <label className="wide">
+                                İade nedeni
+                                <input
+                                  name="description"
+                                  minLength={2}
+                                  maxLength={500}
+                                  required
+                                />
+                              </label>
+                              {a.collections <= a.refunds ? (
+                                <p className="fin-form-note">İade edilebilecek tahsilat yok.</p>
+                              ) : null}
+                              <div className="panel-form-actions wide">
+                                <button
+                                  className="panel-primary"
+                                  disabled={a.collections <= a.refunds}
+                                >
+                                  İadeyi kaydet
+                                </button>
+                              </div>
+                            </form>
+                          </PanelDrawer>
+                          <Link
+                            className="fin-link"
+                            href={`/panel/accounts/${a.id}`}
+                          >
+                            Hareketler
+                            <FinIcon name="chevron" size={15} />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <FinEmpty icon={isFiltered ? "search" : "users"} title={isFiltered ? "Aramaya uygun cari yok" : "Henüz müşteri carisi yok"}>
+                {isFiltered
+                  ? "Arama veya durum filtresini değiştirip yeniden deneyin."
+                  : "Bir sözleşme imzalandığında müşterinin cari hesabı burada oluşur."}
+              </FinEmpty>
+            )}
+          </section>
+        </>
+      ) : null}
+
+      {mode === "paytr" ? <PaytrWorkspace rows={paymentRows} /> : null}
+
+      {mode === "maliyet" && canManageCosts ? (
+        <>
+          <section className="fin-widgets" aria-label="İş maliyetleri özeti">
+            <FinWidget tone="brand" icon="briefcase" label="Toplam sözleşme" value={money(contractSum)} note={`${contracts.length} iş`} />
+            <FinWidget tone="warning" icon="receipt" label="Maliyet toplamı" value={money(totalServiceCost)} note="İşlere bağlı giderler" />
+            <FinWidget tone={profitSum >= 0 ? "success" : "danger"} icon="trend" label="Toplam kâr" value={money(profitSum)} note="Brüt iş kârlılığı" emphasis />
+            <FinWidget tone="gold" icon="percent" label="Ortalama kâr oranı" value={`%${averageMargin}`} note="Sözleşme bazında" />
+          </section>
+          <ProfitabilityWorkspace rows={profitRows} />
+        </>
+      ) : null}
     </main>
   );
 }

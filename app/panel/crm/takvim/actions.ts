@@ -81,7 +81,7 @@ async function deleteAppointment__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createAppointment(...args: Parameters<typeof createAppointment__impl>) {
-  return runPanelAction(() => createAppointment__impl(...args));
+  return runPanelAction(() => createAppointment__impl(...args), "Randevu oluşturuldu");
 }
 export async function updateAppointmentStatus(...args: Parameters<typeof updateAppointmentStatus__impl>) {
   return runPanelAction(() => updateAppointmentStatus__impl(...args));

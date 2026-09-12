@@ -34,5 +34,5 @@ async function updateModulePermissions__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateModulePermissions(...args: Parameters<typeof updateModulePermissions__impl>) {
-  return runPanelAction(() => updateModulePermissions__impl(...args));
+  return runPanelAction(() => updateModulePermissions__impl(...args), "Yetkiler kaydedildi");
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
@@ -92,6 +92,7 @@ export async function createFinanceTransaction(formData: FormData) {
     if (entryError) throw new Error("Finans kaydı oluşturuldu ama cari hareketi eklenemedi: " + entryError.message);
   }
 
+  await flashSuccess("Finans kaydı eklendi");
   revalidatePath("/panel/finance");
   revalidatePath("/panel");
 }
@@ -176,6 +177,7 @@ export async function collectPaymentInstallment(formData: FormData) {
   if (!installmentId) throw new Error("Taksit seçilemedi.");
   const { error } = await supabase.rpc("collect_payment_installment", { target_installment_id: installmentId });
   if (error) throw new Error("Tahsilat kaydedilemedi: " + error.message);
+  await flashSuccess("Tahsilat kaydedildi");
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/payment-plans");
   revalidatePath("/panel/finance/accounts");
@@ -294,6 +296,7 @@ export async function saveContractServiceCost(formData: FormData) {
     service_cost_transaction_id: transactionId,
   }).eq("id", contractId).eq("organization_id", membership.organization_id);
   if (error) throw new Error("Sözleşme maliyeti kaydedilemedi: " + error.message);
+  await flashSuccess("Sözleşme maliyeti kaydedildi");
   revalidatePath(`/panel/crm/contracts/${contractId}`);
   revalidatePath("/panel/finance");
   revalidatePath("/panel/reporting");
@@ -351,14 +354,14 @@ export async function updateInvoiceStatus(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function addContractCostItem(...args: Parameters<typeof addContractCostItem__impl>) {
-  return runPanelAction(() => addContractCostItem__impl(...args));
+  return runPanelAction(() => addContractCostItem__impl(...args), "Maliyet kalemi eklendi");
 }
 export async function deleteContractCostItem(...args: Parameters<typeof deleteContractCostItem__impl>) {
   return runPanelAction(() => deleteContractCostItem__impl(...args));
 }
 export async function updateContractCostItem(...args: Parameters<typeof updateContractCostItem__impl>) {
-  return runPanelAction(() => updateContractCostItem__impl(...args));
+  return runPanelAction(() => updateContractCostItem__impl(...args), "Maliyet kalemi güncellendi");
 }
 export async function saveInstallmentPaymentLink(...args: Parameters<typeof saveInstallmentPaymentLink__impl>) {
-  return runPanelAction(() => saveInstallmentPaymentLink__impl(...args));
+  return runPanelAction(() => saveInstallmentPaymentLink__impl(...args), "Ödeme bağlantısı kaydedildi");
 }

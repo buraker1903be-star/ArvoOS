@@ -116,10 +116,10 @@ async function toggleOrganizationModule__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createCustomerOrganization(...args: Parameters<typeof createCustomerOrganization__impl>) {
-  return runPanelAction(() => createCustomerOrganization__impl(...args));
+  return runPanelAction(() => createCustomerOrganization__impl(...args), "Kurum oluşturuldu");
 }
 export async function updateOrganizationSettings(...args: Parameters<typeof updateOrganizationSettings__impl>) {
-  return runPanelAction(() => updateOrganizationSettings__impl(...args));
+  return runPanelAction(() => updateOrganizationSettings__impl(...args), "Kurum ayarları kaydedildi");
 }
 export async function toggleOrganizationModule(...args: Parameters<typeof toggleOrganizationModule__impl>) {
   return runPanelAction(() => toggleOrganizationModule__impl(...args));

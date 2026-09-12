@@ -2,6 +2,7 @@ import Link from "next/link";
 
 export type FinanceSection = "overview" | "accounts" | "plans" | "invoices" | "banking";
 
+// Finans ana sayfasındaki görünüm sekmeleriyle aynı bölümlü seçici (module-tabs).
 export function FinanceNavigation({ active, hasAccounts = true, hasBanking = true }: { active: FinanceSection; hasAccounts?: boolean; hasBanking?: boolean }) {
   const items = [
     { key: "overview" as const, label: "Özet", href: "/panel/finance" },
@@ -10,5 +11,5 @@ export function FinanceNavigation({ active, hasAccounts = true, hasBanking = tru
     { key: "invoices" as const, label: "Faturalar", href: "/panel/finance/invoices" },
     ...(hasBanking ? [{ key: "banking" as const, label: "Banka", href: "/panel/finance?tab=banka" }] : []),
   ];
-  return <nav className="finance-tabs" aria-label="Finans bölümleri">{items.map((item) => <Link className={active === item.key ? "active" : ""} href={item.href} key={item.key}>{item.label}</Link>)}</nav>;
+  return <nav className="module-tabs fin-tabs" aria-label="Finans bölümleri">{items.map((item) => <Link className={active === item.key ? "active" : ""} aria-current={active === item.key ? "page" : undefined} href={item.href} key={item.key}>{item.label}</Link>)}</nav>;
 }

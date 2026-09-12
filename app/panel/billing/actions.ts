@@ -79,5 +79,5 @@ async function submitBankTransferPayment__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function submitBankTransferPayment(...args: Parameters<typeof submitBankTransferPayment__impl>) {
-  return runPanelAction(() => submitBankTransferPayment__impl(...args));
+  return runPanelAction(() => submitBankTransferPayment__impl(...args), "Ödeme bildiriminiz alındı");
 }

@@ -32,5 +32,5 @@ async function createCrmRequest__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createCrmRequest(...args: Parameters<typeof createCrmRequest__impl>) {
-  return runPanelAction(() => createCrmRequest__impl(...args));
+  return runPanelAction(() => createCrmRequest__impl(...args), "Talep sisteme girildi");
 }

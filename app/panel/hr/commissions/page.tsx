@@ -1,7 +1,11 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { getPanelContext } from "@/lib/panel-context";
+import { statusTone } from "@/lib/status-tone";
 import { allocateCollections, rateAt, type RateHistoryRow } from "@/lib/commission-allocation";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
+import { HrIcon, initials } from "../hr-icons";
+import "../hr.css";
 import "./commissions.css";
 
 type SearchParams = Promise<{ donem?: string; baslangic?: string; bitis?: string; personel?: string }>;
@@ -10,10 +14,13 @@ type Opportunity = { id: string; customer_name: string; assigned_employee_id: st
 type Contract = { id: string; contract_no: string; opportunity_id: string; party_id: string | null; amount: number; currency: string; signed_at: string | null; status: string; created_at: string };
 type Collection = { id: string; party_id: string | null; entry_type: string; amount: number; transaction_date: string };
 type OperationCommission = { id: string; employee_id: string; workflow_id: string; contract_id: string | null; base_amount: number; commission_rate: number; commission_amount: number; status: string; accrued_at: string };
+type Tone = "info" | "gold" | "success" | "warning" | "brand";
 
 const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value / 100);
-const shortMoney = (value: number) => new Intl.NumberFormat("tr-TR", { notation: "compact", maximumFractionDigits: 1 }).format(value / 100) + " ₺";
-const dateText = (value: string) => new Date(value).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "numeric" });
+const percent = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value);
+const dateText = (value: string) => new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "short", year: "numeric" });
+const periodNames: Record<string, string> = { "bu-ay": "Bu ay", "gecen-ay": "Geçen ay", "bu-yil": "Bu yıl", ozel: "Özel tarih" };
+const statusNames: Record<string, string> = { paid: "Ödendi", approved: "Onaylandı" };
 
 // Dönem sınırları Türkiye takvimine göre ("YYYY-MM-DD", bitiş hariç).
 // Eskiden sunucu (UTC) saatiyle hesaplanıyordu; ayın 1'inde 00:00–03:00
@@ -30,6 +37,14 @@ function dateRange(period: string, customStart?: string, customEnd?: string) {
     endKey = new Date(Date.parse(`${customEnd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   }
   return { startKey, endKey, start: istanbulMidnight(startKey), end: istanbulMidnight(endKey) };
+}
+
+// "1 Eylül 2026 – 30 Eylül 2026" (bitiş anahtarı hariç olduğu için bir gün geri)
+function periodLabel(startKey: string, endKey: string) {
+  const format = (ms: number) => new Intl.DateTimeFormat("tr-TR", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" }).format(new Date(ms));
+  const first = Date.parse(`${startKey}T00:00:00Z`);
+  const last = Date.parse(`${endKey}T00:00:00Z`) - 86_400_000;
+  return first >= last ? format(first) : `${format(first)} – ${format(last)}`;
 }
 
 export default async function CommissionsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -122,48 +137,108 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     return { employee, sales: personRows.filter((item) => item.type === "Satış").reduce((sum, item) => sum + item.amount, 0), operations: personRows.filter((item) => item.type === "Operasyon").reduce((sum, item) => sum + item.amount, 0), count: personRows.length };
   }).filter((item) => item.count > 0).sort((a, b) => (b.sales + b.operations) - (a.sales + a.operations));
   const chartMax = Math.max(1, ...personTotals.map((item) => item.sales + item.operations));
+  const selectedName = selectedEmployee ? employeeMap.get(selectedEmployee)?.full_name : undefined;
 
-  return <div className="commission-page">
+  const widgets: { label: string; value: string; note: string; icon: string; tone: Tone }[] = [
+    { label: "Satış primi", value: money(salesTotal), note: `${salesRows.length} tahsilat üzerinden`, icon: "spark", tone: "gold" },
+    { label: "Operasyon primi", value: money(operationTotal), note: `${operationRows.length} tamamlanan iş`, icon: "briefcase", tone: "info" },
+    { label: "Toplam hak ediş", value: money(grandTotal), note: "Satış + operasyon", icon: "sum", tone: "brand" },
+    { label: "Bekleyen ödeme", value: money(pendingTotal), note: "Henüz ödenmemiş prim", icon: "hourglass", tone: "warning" },
+  ];
+  const barWidth = (value: number) => ({ "--w": `${Math.max(0, value) / chartMax * 100}%` } as CSSProperties);
+
+  return <div className="hr-page hr-cm">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Prim Hesaplama</h1><p>Satış ve operasyon hak edişlerini personel ve dönem bazında takip edin.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/hr">← Personellere dön</Link></div>
+      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/hr">← Personellere Dön</Link></div>
     </div>
 
-    <section className="panel-card commission-filter">
-      <form method="get">
+    <section className="hr-card hr-cm-filter" aria-label="Dönem ve personel filtresi">
+      <div className="hr-cm-filter-head">
+        <span className="hr-cm-period"><i><HrIcon name="clock" size={16} /></i><span><b>{periodNames[period] ?? "Dönem"}</b><small>{periodLabel(startKey, endKey)}{selectedName ? ` · ${selectedName}` : " · Tüm personeller"}</small></span></span>
+      </div>
+      <form className="hr-form hr-cm-filter-form" method="get">
         <label><span>Dönem</span><select name="donem" defaultValue={period}><option value="bu-ay">Bu Ay</option><option value="gecen-ay">Geçen Ay</option><option value="bu-yil">Bu Yıl</option><option value="ozel">Özel Tarih</option></select></label>
-        <label><span>Başlangıç</span><input type="date" name="baslangic" defaultValue={params.baslangic || ""} /></label>
-        <label><span>Bitiş</span><input type="date" name="bitis" defaultValue={params.bitis || ""} /></label>
+        <label><span>Başlangıç <small>(özel tarih)</small></span><input type="date" name="baslangic" defaultValue={params.baslangic || ""} /></label>
+        <label><span>Bitiş <small>(özel tarih)</small></span><input type="date" name="bitis" defaultValue={params.bitis || ""} /></label>
         <label><span>Personel</span><select name="personel" defaultValue={selectedEmployee}><option value="">Tüm personeller</option>{employees.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></label>
-        <div><button className="panel-primary">Hesapla</button><Link className="panel-secondary" href="/panel/hr/commissions">Temizle</Link></div>
+        <div className="hr-cm-filter-actions"><button className="panel-primary" type="submit">Hesapla</button><Link className="panel-secondary" href="/panel/hr/commissions">Temizle</Link></div>
       </form>
     </section>
 
-    <section className="commission-metrics">
-      <article className="sales"><small>SATIŞ PRİMİ</small><strong>{money(salesTotal)}</strong><span>{salesRows.length} tahsilat üzerinden</span></article>
-      <article className="operations"><small>OPERASYON PRİMİ</small><strong>{money(operationTotal)}</strong><span>{operationRows.length} tamamlanan iş</span></article>
-      <article><small>TOPLAM HAK EDİŞ</small><strong>{money(grandTotal)}</strong><span>Satış + operasyon</span></article>
-      <article><small>BEKLEYEN ÖDEME</small><strong>{money(pendingTotal)}</strong><span>Ödenmemiş prim toplamı</span></article>
+    <section className="hr-widgets" aria-label="Dönem özeti">
+      {widgets.map((widget) => (
+        <article className="hr-widget is-money" data-tone={widget.tone} key={widget.label}>
+          <span className="hr-widget-icon"><HrIcon name={widget.icon} /></span>
+          <small>{widget.label}</small>
+          <strong>{widget.value}</strong>
+          <span className="hr-widget-note">{widget.note}</span>
+        </article>
+      ))}
     </section>
 
-    <section className="commission-grid">
-      <article className="panel-card commission-chart">
-        <div className="panel-card-head"><div><small>PERSONEL KARŞILAŞTIRMASI</small><h2>Prim Dağılımı</h2></div><span className="commission-legend"><i /> Satış <i /> Operasyon</span></div>
-        <div className="commission-bars">{personTotals.map(({ employee, sales, operations }) => <div className="commission-bar-row" key={employee.id}><div><b>{employee.full_name}</b><small>{money(sales + operations)}</small></div><div className="commission-track"><span className="sale-bar" style={{ width: `${sales / chartMax * 100}%` }} /><span className="operation-bar" style={{ width: `${operations / chartMax * 100}%` }} /></div></div>)}{!personTotals.length ? <p className="panel-empty">Seçilen dönemde hesaplanmış prim bulunmuyor.</p> : null}</div>
+    <section className="hr-cm-grid">
+      <article className="hr-card">
+        <header className="hr-card-head">
+          <div><h2>Prim dağılımı</h2><p>Personel karşılaştırması</p></div>
+          <span className="hr-cm-legend"><span><i className="is-sale" />Satış</span><span><i className="is-op" />Operasyon</span></span>
+        </header>
+        {personTotals.length ? <ul className="hr-cm-bars">
+          {personTotals.map(({ employee, sales, operations }) => (
+            <li className="hr-cm-bar" key={employee.id}>
+              <span className="hr-avatar is-sm" aria-hidden="true">{initials(employee.full_name)}</span>
+              <div className="hr-cm-bar-body">
+                <div className="hr-cm-bar-top"><b>{employee.full_name}</b><span>{money(sales + operations)}</span></div>
+                <div className="hr-cm-track" role="img" aria-label={`Satış primi ${money(sales)}, operasyon primi ${money(operations)}`}>
+                  <span className="is-sale" style={barWidth(sales)} />
+                  <span className="is-op" style={barWidth(operations)} />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul> : <div className="hr-empty-state is-compact">
+          <span className="hr-empty-icon"><HrIcon name="wallet" size={20} /></span>
+          <p>Seçilen dönemde hesaplanmış prim bulunmuyor.</p>
+        </div>}
       </article>
-      <aside className="panel-card commission-summary">
-        <div className="panel-card-head"><div><small>YÖNETİCİ ÖZETİ</small><h2>Dönem Analizi</h2></div></div>
-        <p><b>{personTotals.length}</b> personel bu dönemde prim hak etti.</p>
-        <p>Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden hesaplanıyor.</p>
-        <p>Ödenen prim <b>{money(paidTotal)}</b>, bekleyen prim <b>{money(pendingTotal)}</b>.</p>
-        {personTotals[0] ? <p>En yüksek hak ediş <b>{personTotals[0].employee.full_name}</b>: {money(personTotals[0].sales + personTotals[0].operations)}.</p> : null}
+
+      <aside className="hr-card">
+        <header className="hr-card-head"><div><h2>Dönem analizi</h2><p>Yönetici özeti</p></div></header>
+        <dl className="hr-info-list">
+          <div><dt>Prim alan personel</dt><dd>{personTotals.length} kişi</dd></div>
+          <div><dt>Ödenen prim</dt><dd>{money(paidTotal)}</dd></div>
+          <div><dt>Bekleyen prim</dt><dd>{money(pendingTotal)}</dd></div>
+          {personTotals[0] ? <div><dt>En yüksek hak ediş</dt><dd>{personTotals[0].employee.full_name}<small>{money(personTotals[0].sales + personTotals[0].operations)}</small></dd></div> : null}
+        </dl>
+        <p className="hr-note">Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden, tahsilat tarihindeki oranla hesaplanır.</p>
       </aside>
     </section>
 
-    <section className="panel-card commission-table-card">
-      <div className="panel-card-head"><div><small>HAK EDİŞ DETAYI</small><h2>Prim Hareketleri</h2></div><span>{rows.length} kayıt</span></div>
-      <div className="commission-table-wrap"><table><thead><tr><th>Tarih</th><th>Personel</th><th>Prim Türü</th><th>Müşteri / İş</th><th>Matrah</th><th>Oran</th><th>Hak Ediş</th><th>Durum</th></tr></thead><tbody>{rows.map((item) => <tr key={item.id}><td>{dateText(item.date)}</td><td><b>{item.employee.full_name}</b><small>{item.employee.job_title || "Personel"}</small></td><td><span className={`commission-type ${item.type === "Satış" ? "sale" : "operation"}`}>{item.type}</span></td><td><b>{item.customer}</b><small>{item.reference}</small></td><td>{money(item.base)}</td><td>%{item.rate}</td><td><strong>{money(item.amount)}</strong></td><td><span className={`commission-status ${item.status}`}>{item.status === "paid" ? "Ödendi" : item.status === "approved" ? "Onaylandı" : "Hak edildi"}</span></td></tr>)}{!rows.length ? <tr><td colSpan={8} className="panel-empty">Seçilen dönemde prim hareketi bulunmuyor.</td></tr> : null}</tbody></table></div>
-      {rows.length ? <div className="commission-mobile-total"><span>Dönem toplamı</span><strong>{shortMoney(grandTotal)}</strong></div> : null}
+    <section className="hr-card is-table">
+      <header className="hr-card-head"><div><h2>Prim hareketleri</h2><p>Hak ediş detayı</p></div><span className="hr-count">{rows.length}</span></header>
+      <div className="hr-table-wrap">
+        <table className="hr-table hr-cm-table">
+          <thead><tr><th>Tarih</th><th>Personel</th><th>Prim türü</th><th>Müşteri / İş</th><th className="is-num">Matrah</th><th className="is-num">Oran</th><th className="is-num">Hak ediş</th><th>Durum</th></tr></thead>
+          <tbody>
+            {rows.map((item) => <tr key={item.id}>
+              <td data-label="Tarih" className="is-nowrap">{dateText(item.date)}</td>
+              <td className="is-lead"><span className="hr-table-person"><span className="hr-avatar is-sm" aria-hidden="true">{initials(item.employee.full_name)}</span><span><b>{item.employee.full_name}</b><small>{item.employee.job_title || "Personel"}</small></span></span></td>
+              <td data-label="Prim türü"><span className="status-pill" data-tone={item.type === "Satış" ? "gold" : "info"}>{item.type}</span></td>
+              <td data-label="Müşteri / İş"><span><b>{item.customer}</b><small>{item.reference}</small></span></td>
+              <td data-label="Matrah" className="is-num">{money(item.base)}</td>
+              <td data-label="Oran" className="is-num">%{percent(item.rate)}</td>
+              <td data-label="Hak ediş" className="is-num"><strong>{money(item.amount)}</strong></td>
+              <td data-label="Durum"><span className="status-pill" data-tone={statusTone(item.status)}>{statusNames[item.status] ?? "Hak edildi"}</span></td>
+            </tr>)}
+            {!rows.length ? <tr><td colSpan={8} className="hr-table-empty"><div className="hr-empty-state">
+              <span className="hr-empty-icon"><HrIcon name="wallet" size={24} /></span>
+              <h3>Prim hareketi yok</h3>
+              <p>Seçilen dönemde prim hareketi bulunmuyor. Farklı bir dönem ya da personel seçmeyi deneyin.</p>
+            </div></td></tr> : null}
+          </tbody>
+          {rows.length ? <tfoot><tr><td colSpan={6}>Dönem toplamı · {rows.length} kayıt</td><td className="is-num"><strong>{money(grandTotal)}</strong></td><td /></tr></tfoot> : null}
+        </table>
+      </div>
     </section>
   </div>;
 }

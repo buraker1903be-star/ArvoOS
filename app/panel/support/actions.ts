@@ -60,10 +60,10 @@ async function updateSupportTicketStatus__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createSupportTicket(...args: Parameters<typeof createSupportTicket__impl>) {
-  return runPanelAction(() => createSupportTicket__impl(...args));
+  return runPanelAction(() => createSupportTicket__impl(...args), "Destek talebi oluşturuldu");
 }
 export async function replySupportTicket(...args: Parameters<typeof replySupportTicket__impl>) {
-  return runPanelAction(() => replySupportTicket__impl(...args));
+  return runPanelAction(() => replySupportTicket__impl(...args), "Yanıtınız gönderildi");
 }
 export async function updateSupportTicketStatus(...args: Parameters<typeof updateSupportTicketStatus__impl>) {
   return runPanelAction(() => updateSupportTicketStatus__impl(...args));

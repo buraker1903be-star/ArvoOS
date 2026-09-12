@@ -1,1 +1,18 @@
-.confidentiality-table{overflow-x:auto}.confidentiality-table table{width:100%;border-collapse:collapse}.confidentiality-table th,.confidentiality-table td{padding:14px 16px;text-align:left;border-bottom:1px solid var(--panel-border);vertical-align:middle}.confidentiality-table th{font-size:13px;letter-spacing:.07em;color:var(--panel-muted)}.confidentiality-table td small{color:var(--panel-muted)}
+/* ============================================================
+   GİZLİLİK SÖZLEŞMELERİ ARŞİVİ (page.tsx) — ortak dil hr.css'te.
+   Renkler yalnızca panel-tokens.css'teki değişkenlerden.
+   ============================================================ */
+
+@media(min-width:701px){.panel-root .hr-conf-table{min-width:820px}}
+.hr-conf-no{display:inline-flex;padding:3px 8px;border-radius:8px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);color:var(--ink);font-family:var(--font-body);font-size:12.5px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel-root .hr-conf-table td.hr-conf-action{text-align:right}
+.panel-root .hr-conf-action .panel-secondary{display:inline-flex;align-items:center;gap:4px;width:auto;min-height:34px;padding:0 10px 0 12px;border-radius:10px;font-size:12.5px}
+.panel-root .hr-conf-action .panel-secondary .hr-chevron{transition:transform .2s ease,color .2s ease}
+.panel-root .hr-conf-table tbody tr:hover .hr-conf-action .hr-chevron{color:var(--accent);transform:translateX(2px)}
+.hr-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+@media(max-width:700px){
+  .panel-root .hr-conf-table td.hr-conf-action{padding-top:10px}
+  .panel-root .hr-conf-action .panel-secondary{width:100%;justify-content:center;min-height:42px}
+}
+@media(prefers-reduced-motion:reduce){.panel-root .hr-conf-action .panel-secondary .hr-chevron{transition:none}}

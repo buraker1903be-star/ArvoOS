@@ -282,6 +282,8 @@ export default async function RequestDetailPage({
                   customerName={item.customer_name}
                   title={item.title}
                   scope={d.scope || item.notes || item.title}
+                  representatives={(employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }))}
+                  needsRepresentative={!item.assigned_employee_id}
                 />
               </PanelDrawer>
             )}
@@ -296,6 +298,8 @@ export default async function RequestDetailPage({
                   customerName={item.customer_name}
                   title={item.title}
                   scope={d.scope || item.notes || item.title}
+                  representatives={(employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }))}
+                  needsRepresentative={!item.assigned_employee_id}
                   mode="contract"
                 />
               </PanelDrawer>

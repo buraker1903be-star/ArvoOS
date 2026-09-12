@@ -17,6 +17,9 @@ type Props = {
   title: string;
   scope: string;
   mode?: "proposal" | "contract";
+  /** Talebe atanabilecek satış temsilcileri (talepte temsilci yoksa seçim zorunlu) */
+  representatives?: { id: string; full_name: string }[];
+  needsRepresentative?: boolean;
 };
 type Tax = "excluded" | "included" | "exempt";
 
@@ -31,7 +34,7 @@ const money = (value: number) =>
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function SubmitButton({ customPlanValid, mode }: { customPlanValid: boolean; mode: "proposal" | "contract" }) {
+function SubmitButton({ customPlanValid, mode, blocked = false }: { customPlanValid: boolean; mode: "proposal" | "contract"; blocked?: boolean }) {
   const { pending } = useFormStatus();
   const idleLabel = mode === "contract" ? "Sözleşmeyi Oluştur" : "Teklifi Oluştur";
   const pendingLabel = mode === "contract" ? "Sözleşme Oluşturuluyor..." : "Teklif Oluşturuluyor...";
@@ -40,8 +43,8 @@ function SubmitButton({ customPlanValid, mode }: { customPlanValid: boolean; mod
     <button
       className="panel-primary"
       type="submit"
-      disabled={pending || !customPlanValid}
-      aria-disabled={pending || !customPlanValid}
+      disabled={pending || !customPlanValid || blocked}
+      aria-disabled={pending || !customPlanValid || blocked}
     >
       {pending ? pendingLabel : idleLabel}
     </button>
@@ -54,6 +57,8 @@ export function ProposalBuilderForm({
   title,
   scope,
   mode = "proposal",
+  representatives = [],
+  needsRepresentative = false,
 }: Props) {
   const [state, formAction] = useActionState(
     mode === "contract" ? createContractDirectly : createProposal,
@@ -150,6 +155,30 @@ export function ProposalBuilderForm({
           </div>
         ) : null}
 
+        {needsRepresentative ? (
+          <>
+            <div className="wide proposal-rep-required" role="note">
+              <span aria-hidden="true">!</span>
+              <div>
+                <strong>Satış temsilcisi atanmamış</strong>
+                <p>
+                  {representatives.length
+                    ? `Bu talebe henüz satış temsilcisi atanmadı. ${mode === "contract" ? "Sözleşme" : "Teklif"} oluşturmak için bir temsilci seçin; seçtiğiniz kişi talebe atanır ve bilgilendirilir.`
+                    : "Satış talebi alabilen aktif personel yok. Önce İnsan Kaynakları'ndan bir personeli satış temsilcisi olarak işaretleyin."}
+                </p>
+              </div>
+            </div>
+            {representatives.length ? (
+              <label className="wide proposal-rep-select">Satış temsilcisi<b className="req" aria-hidden="true">*</b>
+                <select name="assigned_employee_id" required defaultValue="">
+                  <option value="" disabled>Temsilci seçin</option>
+                  {representatives.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </>
+        ) : null}
+
         <label className="wide">Teklif başlığı<input name="title" required defaultValue={title} /></label>
         <label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
         <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
@@ -188,7 +217,7 @@ export function ProposalBuilderForm({
           </section>
         </section>
 
-        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} mode={mode} /></div>
+        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} mode={mode} blocked={needsRepresentative && !representatives.length} /></div>
       </form>
     </div>
   );

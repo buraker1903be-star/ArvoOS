@@ -285,3 +285,10 @@
   border-top: 1px solid var(--line);
 }
 .ops-detail-manage form { margin: 0; }
+
+/* Teklif / direkt sözleşme: talepte satış temsilcisi yoksa zorunlu seçim */
+.panel-root .proposal-rep-required{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid color-mix(in srgb,var(--warning) 38%,var(--line));border-radius:14px;background:var(--warning-soft)}
+.panel-root .proposal-rep-required>span{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--warning);color:var(--n-0);font-weight:800}
+.panel-root .proposal-rep-required strong{display:block;color:var(--ink);font-size:14px}
+.panel-root .proposal-rep-required p{margin:3px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5}
+.panel-root .proposal-rep-select select:invalid{border-color:color-mix(in srgb,var(--warning) 55%,var(--line))}

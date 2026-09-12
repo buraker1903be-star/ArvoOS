@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createDepartment, createEmployee, updateEmployee } from "./actions";
 import { updateTeamMemberAccess, cancelInvitation } from "./team-actions";
 import { InviteTeamForm } from "./invite-team-form";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "./documents-actions";
 import { roleNames } from "./role-names";
+import { HrIcon, initials } from "./hr-icons";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import "./hr.css";
 
@@ -14,10 +16,22 @@ type Employee = { id: string; user_id: string | null; department_id: string | nu
 type Member = { user_id: string; role: string; is_active: boolean };
 type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string };
 type Doc = { id: string; employee_id: string; file_name: string; file_size: number | null; created_at: string };
+type Tone = "info" | "gold" | "success" | "warning" | "danger" | "brand" | "neutral";
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("tr-TR");
+const TZ = "Europe/Istanbul";
 const statusNames: Record<string, string> = { active: "Aktif", on_leave: "İzinli", inactive: "Pasif", terminated: "İşten ayrıldı" };
+const statusTones: Record<string, Tone> = { active: "success", on_leave: "warning", inactive: "neutral", terminated: "danger" };
+const typeNames: Record<string, string> = { full_time: "Tam zamanlı", part_time: "Yarı zamanlı", contractor: "Sözleşmeli", intern: "Stajyer" };
+const inviteStatusNames: Record<string, string> = { sent: "Gönderildi", pending: "Gönderiliyor" };
 const fileSize = (bytes: number | null) => { if (!bytes) return ""; const kb = bytes / 1024; return kb < 1024 ? `${kb.toFixed(0)} KB` : `${(kb / 1024).toFixed(1)} MB`; };
+const shortDate = (value: string) => new Date(value).toLocaleDateString("tr-TR", { timeZone: TZ, day: "numeric", month: "short", year: "numeric" });
+const percent = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value);
+
+// Süresi dolmamış davetler (saat bileşen gövdesinde okunmaz).
+function liveInvitations(rows: Invitation[]) {
+  const now = Date.now();
+  return rows.filter((invite) => Date.parse(invite.expires_at) > now);
+}
 
 export default async function HrPage() {
   const { supabase, membership, userId, modules } = await getPanelContext();
@@ -45,7 +59,7 @@ export default async function HrPage() {
     MANAGEMENT_EMPLOYMENT_STATUSES.includes(employee.employment_status) &&
     isManagementDepartmentName(departmentMap.get(employee.department_id ?? ""));
   const memberMap = new Map(((memberData ?? []) as Member[]).map((member) => [member.user_id, member]));
-  const invitations = ((invitationData ?? []) as Invitation[]).filter((invite) => new Date(invite.expires_at) > new Date());
+  const invitations = liveInvitations((invitationData ?? []) as Invitation[]);
   const invitationByEmail = new Map(invitations.map((invite) => [invite.email.toLowerCase(), invite]));
   const docs = (docData ?? []) as Doc[];
   const docsByEmployee = new Map<string, Doc[]>();
@@ -55,138 +69,218 @@ export default async function HrPage() {
   const salesCount = employees.filter((item) => item.employment_status === "active" && item.can_receive_sales_requests).length;
   const accessCount = employees.filter((item) => item.user_id && memberMap.get(item.user_id)?.is_active).length;
 
-  const employeeForm = <form className="panel-form" action={createEmployee}>
-    <label className="wide">Ad soyad<input name="full_name" required minLength={2} /></label>
+  const widgets: { label: string; value: number; note: string; icon: string; tone: Tone }[] = [
+    { label: "Toplam personel", value: employees.length, note: "Tüm personel kayıtları", icon: "users", tone: "brand" },
+    { label: "Aktif personel", value: activeCount, note: "Çalışmaya devam eden", icon: "check", tone: "success" },
+    { label: "Satış temsilcisi", value: salesCount, note: "Talep atanabilen personel", icon: "spark", tone: "gold" },
+    { label: "Panel erişimi", value: accessCount, note: "Giriş yapabilen personel", icon: "key", tone: "info" },
+  ];
+
+  const employeeForm = <form className="panel-form hr-form" action={createEmployee}>
+    <p className="wide hr-form-section">Kimlik</p>
+    <label className="wide">Ad soyad<input name="full_name" required minLength={2} placeholder="Örn. Ayşe Yılmaz" /></label>
     <label>Personel numarası<input name="employee_no" /></label>
-    <label>Pozisyon<input name="job_title" /></label>
+    <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
+    <p className="wide hr-form-section">Görev</p>
+    <label>Pozisyon<input name="job_title" placeholder="Örn. Satış Uzmanı" /></label>
     <label>Departman<select name="department_id" defaultValue=""><option value="">Departman seçin</option>{departments.filter((item) => item.is_active).map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
     <label>Çalışma tipi<select name="employment_type" defaultValue="full_time"><option value="full_time">Tam zamanlı</option><option value="part_time">Yarı zamanlı</option><option value="contractor">Sözleşmeli</option><option value="intern">Stajyer</option></select></label>
-    <label>E-posta<input name="email" type="email" /></label><label>Telefon<input name="phone" /></label>
-    <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
+    <p className="wide hr-form-section">İletişim</p>
+    <label>E-posta<input name="email" type="email" placeholder="ad@kurum.com" /></label><label>Telefon<input name="phone" placeholder="05xx xxx xx xx" /></label>
+    <p className="wide hr-form-section">Prim ve satış</p>
     <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
     <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
-    <label className="wide"><span>Satış yetkisi</span><span><input name="can_receive_sales_requests" type="checkbox" /> Satış talepleri atanabilir</span></label>
+    <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
     <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Personeli Kaydet</button></div>
   </form>;
 
   return <div className="hr-page">
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Ekip ve Personel</h1><p>Personel bilgileri, panel erişimi, prim oranları ve özlük dosyaları tek yerden.</p></div>
+      <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Ekip ve Personel</h1><p>Personel bilgileri, panel erişimi, prim oranları ve özlük dosyaları tek yerde.</p></div>
       <div className="panel-page-actions">{canViewCommissions ? <Link className="panel-secondary" href="/panel/hr/commissions">Prim Hesaplama</Link> : null}{canManageTeam ? <><Link className="panel-secondary" href="/panel/hr/confidentiality">Gizlilik Sözleşmeleri</Link><Link className="panel-secondary" href="/panel/hr/activity">Personel Hareketleri</Link></> : null}{canManageTeam ? <PanelDrawer triggerLabel="+ Yeni Personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}</div>
     </div>
 
-    <section className="hr-metrics">
-      <article><small>TOPLAM PERSONEL</small><strong>{employees.length}</strong><span>Tüm personel kayıtları</span></article>
-      <article><small>AKTİF PERSONEL</small><strong>{activeCount}</strong><span>Çalışmaya devam eden</span></article>
-      <article><small>SATIŞ TEMSİLCİSİ</small><strong>{salesCount}</strong><span>Talep atanabilir personel</span></article>
-      <article><small>PANEL ERİŞİMİ OLAN</small><strong>{accessCount}</strong><span>Giriş yapabilen personel</span></article>
+    <section className="hr-widgets" aria-label="Özet">
+      {widgets.map((widget) => (
+        <article className="hr-widget" data-tone={widget.tone} key={widget.label}>
+          <span className="hr-widget-icon"><HrIcon name={widget.icon} /></span>
+          <small>{widget.label}</small>
+          <strong>{widget.value}</strong>
+          <span className="hr-widget-note">{widget.note}</span>
+        </article>
+      ))}
     </section>
 
     <section className="hr-layout">
-      <div className="panel-card">
-        <div className="panel-card-head"><div><small>PERSONELLER</small><h2>Ekip Listesi</h2></div></div>
-        <div className="hr-employee-list">
+      <article className="hr-card">
+        <header className="hr-card-head">
+          <div><h2>Ekip listesi</h2><p>{employees.length ? `${activeCount} aktif · ${employees.length - activeCount} diğer durumda` : "Personel kayıtları burada listelenir"}</p></div>
+          <span className="hr-count">{employees.length}</span>
+        </header>
+
+        {employees.length ? <ul className="hr-people">
           {employees.map((employee) => {
-            const editForm = <form className="panel-form" action={updateEmployee}>
+            const editForm = <form className="panel-form hr-form" action={updateEmployee}>
               <input type="hidden" name="employee_id" value={employee.id} />
+              <p className="wide hr-form-section">Kimlik ve görev</p>
               <label className="wide">Ad soyad<input name="full_name" required defaultValue={employee.full_name} /></label>
               <label>Pozisyon<input name="job_title" defaultValue={employee.job_title ?? ""} /></label>
               <label>Departman<select name="department_id" defaultValue={employee.department_id ?? ""}><option value="">Departman seçin</option>{departments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+              <label>Durum<select name="employment_status" defaultValue={employee.employment_status}><option value="active">Aktif</option><option value="on_leave">İzinli</option><option value="inactive">Pasif</option><option value="terminated">İşten ayrıldı</option></select></label>
+              <p className="wide hr-form-section">İletişim</p>
               <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} /></label>
               <label>Telefon<input name="phone" defaultValue={employee.phone ?? ""} /></label>
-              <label>Durum<select name="employment_status" defaultValue={employee.employment_status}><option value="active">Aktif</option><option value="on_leave">İzinli</option><option value="inactive">Pasif</option><option value="terminated">İşten ayrıldı</option></select></label>
+              <p className="wide hr-form-section">Prim ve satış</p>
               <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>
               <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
-              <label className="wide"><span><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /> Satış talepleri atanabilir</span></label>
-              <div className="wide panel-form-actions"><button className="panel-primary">Kaydet</button></div>
+              <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
+              <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet</button></div>
             </form>;
 
             const member = employee.user_id ? memberMap.get(employee.user_id) : undefined;
             const pendingInvite = !employee.user_id && employee.email ? invitationByEmail.get(employee.email.toLowerCase()) : undefined;
             const employeeDocs = docsByEmployee.get(employee.id) ?? [];
+            const departmentName = employee.department_id ? departmentMap.get(employee.department_id) ?? "Departman" : null;
+            const isDormant = employee.employment_status === "inactive" || employee.employment_status === "terminated";
 
-            const docsPanel = <div className="hr-docs-drawer">
-              <form className="hr-doc-upload" action={uploadEmployeeDocument}>
+            const docsPanel = <div className="hr-docs">
+              <form className="hr-upload" action={uploadEmployeeDocument}>
                 <input type="hidden" name="employee_id" value={employee.id} />
-                <input type="file" name="file" required />
-                <button className="panel-primary" type="submit">Yükle</button>
+                <div className="hr-upload-head">
+                  <span className="hr-upload-icon"><HrIcon name="upload" /></span>
+                  <span><b>Yeni dosya yükle</b><small>Sözleşme, kimlik ve diploma gibi özlük belgeleri bu personelin klasöründe saklanır.</small></span>
+                </div>
+                <div className="hr-upload-row">
+                  <input type="file" name="file" required />
+                  <button className="panel-primary" type="submit">Yükle</button>
+                </div>
               </form>
-              <div className="hr-doc-list">
+              {employeeDocs.length ? <ul className="hr-doc-list">
                 {employeeDocs.map((doc) => (
-                  <div className="hr-doc-row" key={doc.id}>
-                    <Link href={`/panel/hr/documents/${doc.id}`} target="_blank"><b>{doc.file_name}</b><small>{fileSize(doc.file_size)} · {new Date(doc.created_at).toLocaleDateString("tr-TR")}</small></Link>
+                  <li className="hr-doc" key={doc.id}>
+                    <Link href={`/panel/hr/documents/${doc.id}`} target="_blank">
+                      <span className="hr-doc-icon"><HrIcon name="doc" size={17} /></span>
+                      <span className="hr-doc-text"><b>{doc.file_name}</b><small>{[fileSize(doc.file_size), shortDate(doc.created_at)].filter(Boolean).join(" · ")}</small></span>
+                    </Link>
                     <form action={deleteEmployeeDocument}><input type="hidden" name="document_id" value={doc.id} /><button className="panel-danger" type="submit">Sil</button></form>
-                  </div>
+                  </li>
                 ))}
-                {!employeeDocs.length ? <p className="panel-empty">Henüz dosya yüklenmedi.</p> : null}
-              </div>
+              </ul> : <p className="hr-doc-empty">Henüz dosya yüklenmedi.</p>}
             </div>;
 
-            return <article className="hr-employee-card" key={employee.id}>
-              <div className="hr-avatar">{initials(employee.full_name)}</div>
-              <div className="hr-employee-main">
-                <h3>{employee.full_name}</h3>
-                <p>{employee.job_title || "Pozisyon belirtilmedi"}{employee.department_id ? ` · ${departmentMap.get(employee.department_id) ?? "Departman"}` : ""}</p>
-                <div className="hr-tags">
-                  <span>{statusNames[employee.employment_status] ?? employee.employment_status}</span>
-                  {employee.can_receive_sales_requests ? <span>Satış atanabilir</span> : null}
-                  {employee.commission_rate > 0 ? <span>Satış primi %{employee.commission_rate}</span> : null}
-                  {employee.operation_commission_rate > 0 ? <span>Operasyon primi %{employee.operation_commission_rate}</span> : null}
+            return <li className="hr-person" key={employee.id}>
+              <span className={`hr-avatar is-lg${isDormant ? " is-muted" : ""}`} aria-hidden="true">{initials(employee.full_name)}</span>
+              <div className="hr-person-main">
+                <div className="hr-person-title">
+                  <h3>{employee.full_name}</h3>
+                  <span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span>
                 </div>
+                <p className="hr-person-role">{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</p>
+                {employee.email || employee.phone || employee.employee_no || employee.start_date ? <div className="hr-person-meta">
+                  {employee.email ? <a href={`mailto:${employee.email}`}><HrIcon name="mail" size={14} />{employee.email}</a> : null}
+                  {employee.phone ? <a href={`tel:${employee.phone.replace(/\s+/g, "")}`}><HrIcon name="phone" size={14} />{employee.phone}</a> : null}
+                  {employee.employee_no ? <span>No {employee.employee_no}</span> : null}
+                  {employee.start_date ? <span>{typeNames[employee.employment_type] ?? "Personel"} · {shortDate(employee.start_date)} tarihinden beri</span> : null}
+                </div> : null}
+                {employee.can_receive_sales_requests || employee.commission_rate > 0 || employee.operation_commission_rate > 0 ? <div className="hr-chips">
+                  {employee.can_receive_sales_requests ? <span className="hr-chip" data-tone="info">Satış atanabilir</span> : null}
+                  {employee.commission_rate > 0 ? <span className="hr-chip" data-tone="gold">Satış primi %{percent(employee.commission_rate)}</span> : null}
+                  {employee.operation_commission_rate > 0 ? <span className="hr-chip" data-tone="gold">Operasyon primi %{percent(employee.operation_commission_rate)}</span> : null}
+                </div> : null}
               </div>
+
+              {canManageTeam ? <div className="hr-person-actions">
+                <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker="PERSONEL" title="Personeli Düzenle" description={employee.full_name}>{editForm}</PanelDrawer>
+                <PanelDrawer triggerLabel={`Özlük Dosyaları${employeeDocs.length ? ` (${employeeDocs.length})` : ""}`} triggerClassName="panel-secondary" kicker="GİZLİ" title="Özlük Dosyaları" description={employee.full_name}>{docsPanel}</PanelDrawer>
+              </div> : null}
 
               {canManageTeam ? (
-                <div className="hr-access-block">
-                  {member ? (
-                    employee.user_id === userId ? (
-                      <span className="status-pill">{roleNames[member.role] ?? member.role} · Siz</span>
-                    ) : managedByDepartment(employee) ? (
-                      <span className="status-pill">Kurum Sahibi · Yönetici departmanı</span>
-                    ) : member.role === "owner" && !isOwner ? (
-                      <span className="status-pill">{roleNames.owner}</span>
+                <div className="hr-access">
+                  <span className="hr-access-label"><HrIcon name="key" size={14} />Panel erişimi</span>
+                  <div className="hr-access-body">
+                    {member ? (
+                      employee.user_id === userId ? (
+                        <span className="status-pill" data-tone="gold">{roleNames[member.role] ?? member.role} · Siz</span>
+                      ) : managedByDepartment(employee) ? (
+                        <span className="status-pill" data-tone="gold">Kurum Sahibi · Yönetici departmanı</span>
+                      ) : member.role === "owner" && !isOwner ? (
+                        <span className="status-pill" data-tone="gold">{roleNames.owner}</span>
+                      ) : (
+                        <form className="hr-access-form" action={updateTeamMemberAccess}>
+                          <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                          <select name="role" defaultValue={member.role} aria-label="Rol">
+                            <option value="member">Satış Personeli</option>
+                            <option value="operasyoncu">Operasyon Personeli</option>
+                            <option value="admin">Yönetici</option>
+                            {/* manager seçenekte yoktu; kaydedince sessizce Satış Personeli'ne düşüyordu. */}
+                            {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
+                            {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
+                          </select>
+                          <label className="hr-toggle"><input type="checkbox" name="is_active" defaultChecked={member.is_active} /> Aktif</label>
+                          <button className="panel-secondary" type="submit">Kaydet</button>
+                        </form>
+                      )
+                    ) : pendingInvite ? (
+                      <>
+                        <span className="status-pill" data-tone={statusTone(pendingInvite.status)}>{pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}</span>
+                        <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">Daveti İptal Et</button></form>
+                      </>
                     ) : (
-                      <form className="hr-access-form" action={updateTeamMemberAccess}>
-                        <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
-                        <select name="role" defaultValue={member.role}>
-                          <option value="member">Satış Personeli</option>
-                          <option value="operasyoncu">Operasyon Personeli</option>
-                          <option value="admin">Yönetici</option>
-                          {/* manager seçenekte yoktu; kaydedince sessizce Satış Personeli'ne düşüyordu. */}
-                          {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
-                          {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
-                        </select>
-                        <label className="team-active-toggle"><input type="checkbox" name="is_active" defaultChecked={member.is_active} /> Aktif</label>
-                        <button className="panel-secondary" type="submit">Kaydet</button>
-                      </form>
-                    )
-                  ) : pendingInvite ? (
-                    <div className="hr-invite-pending">
-                      <span className="status-pill">{pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}</span>
-                      <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">İptal Et</button></form>
-                    </div>
-                  ) : (
-                    <PanelDrawer triggerLabel="Panele Davet Et" title={`${employee.full_name} için panel erişimi`} description="Bu personele gerçek bir davet e-postası gönderilir.">
-                      <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
-                    </PanelDrawer>
-                  )}
+                      <PanelDrawer triggerLabel="Panele Davet Et" triggerClassName="panel-secondary hr-invite-btn" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Bu personele gerçek bir davet e-postası gönderilir.">
+                        <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
+                      </PanelDrawer>
+                    )}
+                  </div>
                 </div>
               ) : null}
-
-              <div className="hr-employee-actions">
-                {canManageTeam ? <PanelDrawer triggerLabel="Düzenle" title="Personeli Düzenle">{editForm}</PanelDrawer> : null}
-                {canManageTeam ? <PanelDrawer triggerLabel={`Özlük Dosyaları${employeeDocs.length ? ` (${employeeDocs.length})` : ""}`} title="Özlük Dosyaları" description={employee.full_name}>{docsPanel}</PanelDrawer> : null}
-              </div>
-            </article>;
+            </li>;
           })}
-          {!employees.length ? <div className="hr-empty">Henüz personel kaydı yok.</div> : null}
-        </div>
-      </div>
+        </ul> : <div className="hr-empty-state">
+          <span className="hr-empty-icon"><HrIcon name="users" size={24} /></span>
+          <h3>Henüz personel kaydı yok</h3>
+          <p>{canManageTeam ? "“+ Yeni Personel” ile ilk kaydı ekleyin; ardından panele davet edebilirsiniz." : "Yöneticiniz personel ekledikçe burada görünecek."}</p>
+        </div>}
+      </article>
 
       <aside className="hr-side">
-        <section className="panel-card">
-          <div className="panel-card-head"><div><small>ORGANİZASYON</small><h2>Departmanlar</h2></div>{canManageTeam ? <PanelDrawer triggerLabel="+ Ekle" title="Yeni Departman"><form className="panel-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required /></label><label className="wide">Kısa kod<input name="code" maxLength={30} /></label><div className="wide panel-form-actions"><button className="panel-primary">Departmanı Kaydet</button></div></form></PanelDrawer> : null}</div>
-          <div className="hr-department-list">{departments.map((department) => <div key={department.id}><b>{department.name}</b><span>{employees.filter((employee) => employee.department_id === department.id).length} kişi</span></div>)}{!departments.length ? <p>Henüz departman yok.</p> : null}</div>
+        <section className="hr-card">
+          <header className="hr-card-head">
+            <div><h2>Departmanlar</h2><p>{departments.length ? `${departments.filter((item) => item.is_active).length} aktif departman` : "Organizasyon yapısı"}</p></div>
+            {canManageTeam ? <PanelDrawer triggerLabel="+ Ekle" triggerClassName="panel-secondary" kicker="ORGANİZASYON" title="Yeni Departman"><form className="panel-form hr-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required placeholder="Örn. Satış" /></label><label className="wide">Kısa kod<input name="code" maxLength={30} placeholder="Örn. SAT" /></label><div className="wide panel-form-actions"><button className="panel-primary" type="submit">Departmanı Kaydet</button></div></form></PanelDrawer> : null}
+          </header>
+          {departments.length ? <ul className="hr-list">
+            {departments.map((department) => {
+              const count = employees.filter((employee) => employee.department_id === department.id).length;
+              return <li className={`hr-list-row${department.is_active ? "" : " is-inactive"}`} key={department.id}>
+                <span className="hr-list-icon" data-tone={department.is_active ? "brand" : "neutral"}>{(department.code || initials(department.name)).slice(0, 3).toLocaleUpperCase("tr-TR")}</span>
+                <span className="hr-list-body"><b>{department.name}</b><small>{department.is_active ? `${count} kişi` : `${count} kişi · Pasif`}</small></span>
+                <span className="hr-list-count" data-tone={count ? "brand" : "neutral"}>{count}</span>
+              </li>;
+            })}
+          </ul> : <div className="hr-empty-state is-compact">
+            <span className="hr-empty-icon"><HrIcon name="building" size={20} /></span>
+            <p>Henüz departman yok.</p>
+          </div>}
         </section>
+
+        {canManageTeam ? <section className="hr-card">
+          <header className="hr-card-head">
+            <div><h2>Bekleyen davetler</h2><p>Henüz kabul edilmemiş panel davetleri</p></div>
+            <span className="hr-count">{invitations.length}</span>
+          </header>
+          {invitations.length ? <ul className="hr-list">
+            {invitations.map((invite) => (
+              <li className="hr-list-row" key={invite.id}>
+                <span className="hr-list-icon" data-tone={statusTone(invite.status)}><HrIcon name="send" size={15} /></span>
+                <span className="hr-list-body"><b title={invite.email}>{invite.email}</b><small>{roleNames[invite.role] ?? invite.role}</small><small>Son gün {shortDate(invite.expires_at)}</small></span>
+                <span className="status-pill" data-tone={statusTone(invite.status)}>{inviteStatusNames[invite.status] ?? invite.status}</span>
+              </li>
+            ))}
+          </ul> : <div className="hr-empty-state is-compact">
+            <span className="hr-empty-icon"><HrIcon name="mail" size={20} /></span>
+            <p>Bekleyen davet yok.</p>
+          </div>}
+        </section> : null}
       </aside>
     </section>
   </div>;

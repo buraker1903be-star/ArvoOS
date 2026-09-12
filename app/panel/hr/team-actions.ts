@@ -1,6 +1,6 @@
 "use server";
 
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -94,6 +94,7 @@ export async function inviteTeamMember(
     const message = data?.error || (await extractFunctionErrorMessage(error, "Davet gönderilemedi. En son hatayı 'organization_invitations' tablosundan kontrol edin."));
     return { error: message, success: false };
   }
+  await flashSuccess("Davet gönderildi");
   revalidatePath("/panel/hr");
   return { error: null, success: true };
 }

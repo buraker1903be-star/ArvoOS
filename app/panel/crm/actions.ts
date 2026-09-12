@@ -572,19 +572,19 @@ async function deleteInternalComment__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createOpportunity(...args: Parameters<typeof createOpportunity__impl>) {
-  return runPanelAction(() => createOpportunity__impl(...args));
+  return runPanelAction(() => createOpportunity__impl(...args), "Talep sisteme girildi");
 }
 export async function updateOpportunity(...args: Parameters<typeof updateOpportunity__impl>) {
-  return runPanelAction(() => updateOpportunity__impl(...args));
+  return runPanelAction(() => updateOpportunity__impl(...args), "Talep güncellendi");
 }
 export async function archiveOpportunity(...args: Parameters<typeof archiveOpportunity__impl>) {
   return runPanelAction(() => archiveOpportunity__impl(...args));
 }
 export async function addInternalComment(...args: Parameters<typeof addInternalComment__impl>) {
-  return runPanelAction(() => addInternalComment__impl(...args));
+  return runPanelAction(() => addInternalComment__impl(...args), "Yorum kaydedildi");
 }
 export async function assignOpportunity(...args: Parameters<typeof assignOpportunity__impl>) {
-  return runPanelAction(() => assignOpportunity__impl(...args));
+  return runPanelAction(() => assignOpportunity__impl(...args), "Satış temsilcisi atandı");
 }
 export async function deleteInternalComment(...args: Parameters<typeof deleteInternalComment__impl>) {
   return runPanelAction(() => deleteInternalComment__impl(...args));

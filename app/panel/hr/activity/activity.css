@@ -1,1 +1,39 @@
-.activity-page{display:grid;gap:22px}.activity-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.activity-metrics article{padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-sm)}.activity-metrics small{display:block;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.12em}.activity-metrics strong{display:block;margin-top:9px;color:var(--ink);font-size:30px}.activity-metrics span{display:block;margin-top:4px;color:var(--muted);font-size:13px}.activity-grid{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:18px}.activity-list{display:grid;gap:10px}.activity-person{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:13px;background:var(--surface-2)}.activity-avatar{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-700);font-size:13px;font-weight:850}.activity-person b,.activity-person small{display:block}.activity-person b{font-size:12px;color:var(--ink)}.activity-person small{margin-top:3px;color:var(--muted);font-size:12px}.activity-status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:var(--brand-50);color:#66727d;font-size:12px;font-weight:800}.activity-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#9aa5ae}.activity-status.online{background:var(--success-soft);color:var(--success)}.activity-status.online:before{background:var(--success);box-shadow:0 0 0 4px rgba(34,164,90,.12)}.activity-table-wrap{overflow:auto}.activity-table{width:100%;border-collapse:collapse;min-width:720px}.activity-table th,.activity-table td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.activity-table th{color:var(--muted);font-size:11px;letter-spacing:.1em}.activity-table td{color:var(--ink)}.activity-table small{display:block;margin-top:3px;color:var(--muted)}.activity-empty{padding:28px;text-align:center;color:var(--muted);font-size:13px}@media(max-width:1050px){.activity-metrics{grid-template-columns:1fr 1fr}.activity-grid{grid-template-columns:1fr}}@media(max-width:620px){.activity-metrics{grid-template-columns:1fr}.activity-person{grid-template-columns:auto 1fr}.activity-status{grid-column:2;justify-self:start}}
+/* ============================================================
+   PERSONEL HAREKETLERİ (page.tsx) — ortak dil hr.css'te.
+   Renkler yalnızca panel-tokens.css'teki değişkenlerden.
+   ============================================================ */
+
+.hr-act-grid{display:grid;grid-template-columns:minmax(300px,.8fr) minmax(0,1.7fr);gap:16px;align-items:start}
+
+/* Canlı yenileme göstergesi */
+.hr-live{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--hr-ink-2,var(--ink));font-size:13px;font-weight:600;white-space:nowrap}
+.hr-live i{width:8px;height:8px;border-radius:50%;background:var(--success);animation:hr-act-blink 1.8s ease-in-out infinite}
+@keyframes hr-act-blink{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+
+/* Anlık durum: gruplanmış kişi listesi */
+.hr-act-group+.hr-act-group{margin-top:4px}
+.hr-act-group h3{display:flex;align-items:center;gap:6px;margin:4px 0 4px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.hr-act-group h3 span{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--surface-2);color:var(--hr-ink-2,var(--ink));font-size:11.5px;line-height:20px;letter-spacing:0;text-align:center;font-variant-numeric:tabular-nums}
+.hr-act-people{display:flex;flex-direction:column;margin:0 -8px;padding:0;list-style:none}
+.hr-act-person{position:relative;display:flex;align-items:center;gap:12px;margin:0;padding:10px 8px;border-radius:12px;transition:background-color .18s ease}
+.hr-act-person+.hr-act-person::before{content:"";position:absolute;top:0;left:60px;right:8px;height:1px;background:var(--line-soft)}
+.hr-act-person:hover{background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.hr-act-body{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.hr-act-body b{max-width:100%;overflow:hidden;color:var(--ink);font-size:14px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
+.hr-act-body small{max-width:100%;overflow:hidden;color:var(--muted);font-size:12.5px;text-overflow:ellipsis;white-space:nowrap}
+.hr-act-path{max-width:100%;margin-top:2px;padding:1px 8px;border-radius:7px;background:var(--success-soft);color:var(--success);font-size:11.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hr-act-when{flex:none;color:var(--muted);font-size:12px;line-height:1.35;text-align:right;font-variant-numeric:tabular-nums}
+.hr-act-none{margin:0 0 6px;padding:12px 14px;border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:13px}
+
+@media(min-width:701px){.panel-root .hr-act-table{min-width:640px}}
+
+@media(max-width:1180px){
+  .hr-act-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:560px){
+  .hr-live{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  .hr-live i{animation:none}
+  .hr-act-person{transition:none}
+}

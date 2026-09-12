@@ -28,6 +28,14 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
 
+  // İşlem başarıyla bitince (FlashToast "arvo:action-success" yayar) pencere kapanır
+  useEffect(() => {
+    if (!open) return;
+    const onSuccess = () => setOpen(false);
+    window.addEventListener("arvo:action-success", onSuccess);
+    return () => window.removeEventListener("arvo:action-success", onSuccess);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {

@@ -197,13 +197,13 @@ async function deleteWorkflow__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createWorkflow(...args: Parameters<typeof createWorkflow__impl>) {
-  return runPanelAction(() => createWorkflow__impl(...args));
+  return runPanelAction(() => createWorkflow__impl(...args), "İş oluşturuldu");
 }
 export async function assignWorkflow(...args: Parameters<typeof assignWorkflow__impl>) {
-  return runPanelAction(() => assignWorkflow__impl(...args));
+  return runPanelAction(() => assignWorkflow__impl(...args), "Sorumlu atandı");
 }
 export async function addWorkflowStep(...args: Parameters<typeof addWorkflowStep__impl>) {
-  return runPanelAction(() => addWorkflowStep__impl(...args));
+  return runPanelAction(() => addWorkflowStep__impl(...args), "Görev eklendi");
 }
 export async function toggleWorkflowStep(...args: Parameters<typeof toggleWorkflowStep__impl>) {
   return runPanelAction(() => toggleWorkflowStep__impl(...args));
@@ -212,10 +212,10 @@ export async function setWorkflowStatus(...args: Parameters<typeof setWorkflowSt
   return runPanelAction(() => setWorkflowStatus__impl(...args));
 }
 export async function replyCustomerFileMessage(...args: Parameters<typeof replyCustomerFileMessage__impl>) {
-  return runPanelAction(() => replyCustomerFileMessage__impl(...args));
+  return runPanelAction(() => replyCustomerFileMessage__impl(...args), "Yanıt müşteriye gönderildi");
 }
 export async function setWorkflowDueDate(...args: Parameters<typeof setWorkflowDueDate__impl>) {
-  return runPanelAction(() => setWorkflowDueDate__impl(...args));
+  return runPanelAction(() => setWorkflowDueDate__impl(...args), "Termin kaydedildi");
 }
 export async function deleteWorkflow(...args: Parameters<typeof deleteWorkflow__impl>) {
   return runPanelAction(() => deleteWorkflow__impl(...args));

@@ -112,6 +112,9 @@ html[data-theme="dark"] .panel-root{
   --surface-raised:#122036;
   --sidebar-from:#08142a; --sidebar-to:#03070f; --sidebar-glow:#1b3050;
   --ink:#f3eee4; --muted:#a39a8c; --dim:#6f685e;
+  /* --ink-soft koyu temada tanımsızdı: açık temanın koyu grisi koyu zeminde
+     okunmuyordu (ikincil metinler, ana sayfa, İK, finans). */
+  --ink-soft:#d2ccc2;
   --line:#1f2b40; --line-soft:#172234;
   --focus:#c9a66a66;
 

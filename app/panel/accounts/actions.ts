@@ -1,6 +1,6 @@
 "use server";
 
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
@@ -201,6 +201,7 @@ export async function createParty(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Cari kart oluşturulamadı: " + error.message);
+  await flashSuccess("Cari hesap oluşturuldu");
   revalidatePath("/panel/finance");
   revalidatePath("/panel/accounts");
 }
@@ -240,6 +241,7 @@ export async function createEntry(formData: FormData) {
     created_by: userId,
   });
   if (error) throw new Error("Cari hareket eklenemedi: " + error.message);
+  await flashSuccess("Cari hareket kaydedildi");
   revalidatePath("/panel/finance");
   revalidatePath("/panel/accounts");
   revalidatePath("/panel/hr/commissions");
@@ -298,11 +300,11 @@ export async function deleteEntry(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createCollection(...args: Parameters<typeof createCollection__impl>) {
-  return runPanelAction(() => createCollection__impl(...args));
+  return runPanelAction(() => createCollection__impl(...args), "Tahsilat kaydedildi");
 }
 export async function createRefund(...args: Parameters<typeof createRefund__impl>) {
-  return runPanelAction(() => createRefund__impl(...args));
+  return runPanelAction(() => createRefund__impl(...args), "İade kaydedildi");
 }
 export async function createAdditionalService(...args: Parameters<typeof createAdditionalService__impl>) {
-  return runPanelAction(() => createAdditionalService__impl(...args));
+  return runPanelAction(() => createAdditionalService__impl(...args), "Ek hizmet eklendi");
 }

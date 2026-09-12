@@ -94,11 +94,11 @@ async function updateEmployee__impl(formData:FormData){
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createDepartment(...args: Parameters<typeof createDepartment__impl>) {
-  return runPanelAction(() => createDepartment__impl(...args));
+  return runPanelAction(() => createDepartment__impl(...args), "Departman oluşturuldu");
 }
 export async function createEmployee(...args: Parameters<typeof createEmployee__impl>) {
-  return runPanelAction(() => createEmployee__impl(...args));
+  return runPanelAction(() => createEmployee__impl(...args), "Personel eklendi");
 }
 export async function updateEmployee(...args: Parameters<typeof updateEmployee__impl>) {
-  return runPanelAction(() => updateEmployee__impl(...args));
+  return runPanelAction(() => updateEmployee__impl(...args), "Personel bilgileri güncellendi");
 }

@@ -135,5 +135,5 @@ export async function deleteReadNotification(...args: Parameters<typeof deleteRe
   return runPanelAction(() => deleteReadNotification__impl(...args));
 }
 export async function sendManagementAnnouncement(...args: Parameters<typeof sendManagementAnnouncement__impl>) {
-  return runPanelAction(() => sendManagementAnnouncement__impl(...args));
+  return runPanelAction(() => sendManagementAnnouncement__impl(...args), "Duyuru gönderildi");
 }
