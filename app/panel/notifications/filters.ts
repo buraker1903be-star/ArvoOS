@@ -4,7 +4,7 @@
 // başlıkta yoktu (yalnızca "Tümü"nde görünüyordu). Listede olmayan yeni bir
 // kategori de "Diğer" altında görünür. Boş başlıklar arayüzde gösterilmez.
 export const notificationFilters = [
-  { key: "sales", label: "Talepler", categories: ["sales_assignment"] },
+  { key: "sales", label: "Talepler", categories: ["sales_assignment", "site_lead"] },
   { key: "operations", label: "Operasyon", categories: ["operation_assignment", "crm_won_automation"] },
   { key: "musteri", label: "Müşteri", categories: ["customer_message"] },
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },

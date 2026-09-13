@@ -1,0 +1,94 @@
+/* ============================================================
+   Arayüz maketleri (HTML/CSS) — ArvoOS, ArvoLab, Arc
+   ============================================================ */
+.site .mock{container-type:inline-size;margin:0}
+.site .mock-win{overflow:hidden;border-radius:clamp(14px,2.2cqi,22px);background:#f2f2f7;color:#0b1b2e;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 50px 120px rgba(5,12,26,.45),0 12px 30px rgba(5,12,26,.2);font-size:13px;letter-spacing:-.005em;text-align:left}
+.site .mock-chrome{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;background:linear-gradient(#fbfbfd,#f0f0f4);border-bottom:1px solid #e3e3e8}
+.site .mock-chrome i{width:10px;height:10px;border-radius:50%;background:#ff5f57}
+.site .mock-chrome i:nth-child(2){background:#febc2e}.site .mock-chrome i:nth-child(3){background:#28c840}
+.site .mock-url{margin:0 auto;padding:4px 14px;border-radius:8px;background:#e7e7ec;color:#6e6e73;font-size:11.5px}
+.site .mock-cap{margin-top:14px;color:rgba(235,235,245,.5);font-size:12px;text-align:center}
+.site .tint .mock-cap,.site .tile-lab .mock-cap,.site .section .mock-cap{color:#86868b}
+.site [data-tone="info"]{--tb:#e6f0fb;--tf:#1f5fa8}
+.site [data-tone="gold"]{--tb:#f5eddb;--tf:#74582a}
+.site [data-tone="brand"]{--tb:#e4e9f1;--tf:#1b3050}
+.site [data-tone="success"]{--tb:#e7f3ec;--tf:#2f7d57}
+.site [data-tone="neutral"]{--tb:#eeeef2;--tf:#515154}
+
+/* ArvoOS */
+.site .mo-body{display:grid;grid-template-columns:clamp(150px,22cqi,210px) 1fr;min-height:clamp(300px,52cqi,560px)}
+.site .mo-side{padding:14px 10px;background:linear-gradient(180deg,#0e2139,#050c1a);color:rgba(255,255,255,.72)}
+.site .mo-brand{display:flex;align-items:center;gap:8px;padding:4px 8px 16px;color:#fff}
+.site .mo-brand svg{width:24px;height:auto}.site .mo-brand b{font-size:14px}
+.site .mo-nav{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;font-size:12.5px;white-space:nowrap}
+.site .mo-nav span{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.08);font-size:10.5px;font-weight:700}
+.site .mo-nav.on{background:rgba(255,255,255,.1);color:#fff}
+.site .mo-nav.on span{background:linear-gradient(180deg,#dcc28c,#b28a49);color:#050c1a}
+.site .mo-main{padding:clamp(14px,2.4cqi,26px);display:flex;flex-direction:column;gap:14px}
+.site .mo-top{display:flex;align-items:center;gap:10px}
+.site .mo-top small{display:block;color:#6e6e73;font-size:11.5px}
+.site .mo-top b{display:block;font-size:clamp(16px,2.4cqi,24px);font-weight:700;letter-spacing:-.03em}
+.site .mo-search{margin-left:auto;width:clamp(80px,18cqi,180px);height:30px;border-radius:10px;background:#fff;box-shadow:inset 0 0 0 1px #e3e3e8}
+.site .mo-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#dcc28c,#8e6d33)}
+.site .mo-widgets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.site .mo-w{position:relative;overflow:hidden;padding:12px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(11,27,46,.05),inset 0 0 0 1px #ececf0}
+.site .mo-w::after{content:"";position:absolute;right:-24px;bottom:-30px;width:80px;height:80px;border-radius:50%;background:var(--tb);opacity:.8}
+.site .mo-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tf,#2f7d57)}
+.site .mo-w small{display:block;margin-top:8px;color:#6e6e73;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site .mo-w strong{position:relative;z-index:1;display:block;font-size:clamp(18px,3cqi,26px);font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.site .mo-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;flex:1}
+.site .mo-card{padding:14px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(11,27,46,.05),inset 0 0 0 1px #ececf0}
+.site .mo-h{margin-bottom:8px;font-size:12.5px;font-weight:650}
+.site .mo-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #f0f0f3}
+.site .mo-av{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:#eef1f6;color:#2c4368;font-size:11px;font-weight:700}
+.site .mo-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.site .mo-pill{padding:3px 9px;border-radius:999px;background:var(--tb);color:var(--tf);font-size:10.5px;font-weight:600;white-space:nowrap}
+.site .mo-prog{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:8px;margin:7px 0;font-size:11.5px;color:#3a3a3c}
+.site .mo-prog i{height:6px;border-radius:6px;background:#eeeef2;overflow:hidden}
+.site .mo-prog b{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#2c4368,#8497b5)}
+.site .mo-bars{display:flex;align-items:flex-end;gap:5px;height:56px;margin-top:12px}
+.site .mo-bars i{flex:1;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,#dcc28c,#c9a66a)}
+.site .mo-portal{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11.5px;color:#3a3a3c}
+@container (max-width:620px){
+  .site .mo-body{grid-template-columns:52px 1fr}
+  .site .mo-nav{font-size:0;gap:0}
+  .site .mo-nav span{font-size:10.5px}
+  .site .mo-brand{display:none}
+  .site .mo-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .site .mo-grid{grid-template-columns:1fr}
+  .site .mo-grid .mo-card:last-child{display:none}
+  .site .mo-search{display:none}
+}
+
+/* ArvoLab */
+.site .mock-lab .mock-win{background:#fbfbfd}
+.site .ml-body{display:grid;grid-template-columns:.9fr 1.5fr 1fr;min-height:clamp(260px,50cqi,440px)}
+.site .ml-col{padding:16px;border-right:1px solid #ececf0}
+.site .ml-col:last-child{border-right:0}
+.site .ml-h{margin-bottom:10px;color:#6e6e73;font-size:11px;font-weight:600}
+.site .ml-ref{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site .ml-ref i{flex:none;width:14px;height:18px;border-radius:3px;background:#e4e9f1;box-shadow:inset 0 -5px 0 #cfd6e2}
+.site .ml-ref.on{background:#f5eddb;color:#5a4421}
+.site .ml-doc{background:#fff;display:flex;flex-direction:column;gap:9px}
+.site .ml-title{margin-bottom:6px;font-size:clamp(15px,2.4cqi,20px);font-weight:700;letter-spacing:-.02em}
+.site .ml-line{display:block;height:7px;border-radius:6px;background:#ececf0}
+.site .ml-cite{align-self:flex-start;padding:3px 8px;border-radius:6px;background:#f5eddb;color:#74582a;font-size:10.5px;font-weight:600}
+.site .ml-check{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:11.5px}
+.site .ml-check i{flex:none;width:14px;height:14px;border-radius:50%;background:#2f7d57;box-shadow:inset 0 0 0 3px #e7f3ec}
+.site .ml-check[data-s="warn"] i{background:#b28a49;box-shadow:inset 0 0 0 3px #f5eddb}
+.site .ml-chart{width:100%;height:56px}
+@container (max-width:560px){
+  .site .ml-body{grid-template-columns:1fr 1fr}
+  .site .ml-src{display:none}
+}
+
+/* Arc */
+.site .ma-body{padding:16px;background:#fbfbfd}
+.site .ma-h{margin:4px 0 10px;color:#6e6e73;font-size:11px;font-weight:600}
+.site .ma-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.site .ma-prod{padding:8px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #ececf0}
+.site .ma-prod span{display:block;aspect-ratio:1;border-radius:8px;margin-bottom:8px}
+.site .ma-prod b{display:block;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site .ma-prod small{color:#86868b;font-size:10px}
+.site .ma-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;margin-top:6px;border-radius:10px;background:#fff;box-shadow:inset 0 0 0 1px #ececf0;font-size:12px}
+@container (max-width:420px){ .site .ma-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }

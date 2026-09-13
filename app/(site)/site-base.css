@@ -1,0 +1,111 @@
+/* ============================================================
+   arvo-os.com — temel katman (token, tipografi, düğmeler)
+   Yalnızca app/(site)/layout.tsx içe aktarır; her kural .site altında.
+   Panel/giriş/belge sayfalarına sızmaz.
+   ============================================================ */
+
+.site{
+  /* gece mavisi */
+  --mid-950:#050c1a; --mid-900:#08142a; --mid-800:#0b1b2e; --mid-700:#13243f; --mid-600:#1b3050; --mid-500:#2c4368; --mid-300:#8497b5;
+  /* şampanya altını (600+ açık zeminde metin için AA) */
+  --gold-600:#8e6d33; --gold-500:#b28a49; --gold-400:#c9a66a; --gold-300:#dcc28c; --gold-100:#f5eddb;
+  /* iOS nötr */
+  --g-0:#ffffff; --g-50:#f9f9fb; --g-100:#f2f2f7; --g-200:#e5e5ea; --g-300:#d1d1d6; --g-500:#6e6e73; --g-600:#515154;
+  --ink:#0b1b2e; --ink-soft:#3a3a3c; --muted:#6e6e73; --line:rgba(11,27,46,.1); --line-strong:rgba(11,27,46,.16);
+  --on-dark:#f5f5f7; --on-dark-muted:rgba(235,235,245,.68); --line-dark:rgba(255,255,255,.12);
+  --radius-s:14px; --radius-m:22px; --radius-l:32px; --radius-xl:40px;
+  --shadow-s:0 1px 2px rgba(11,27,46,.05),0 4px 14px rgba(11,27,46,.05);
+  --shadow-m:0 2px 6px rgba(11,27,46,.04),0 24px 60px rgba(11,27,46,.1);
+  --shadow-l:0 40px 120px rgba(5,12,26,.35);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --page:1200px; --page-wide:1440px; --gutter:clamp(20px,5vw,48px);
+  --header-h:64px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",var(--font-inter),"Inter","Helvetica Neue",system-ui,sans-serif;
+
+  /* Demo formu (app/_site/lead-form) bu değişkenlerle temalanır */
+  --site-ink:var(--ink); --site-muted:var(--muted); --site-line:var(--line-strong); --site-surface:#fff;
+  --site-accent:var(--mid-700); --site-radius:14px;
+  --site-ink-dark:var(--on-dark); --site-muted-dark:var(--on-dark-muted); --site-line-dark:rgba(255,255,255,.18);
+  --site-surface-dark:rgba(255,255,255,.06); --site-accent-dark:var(--gold-300);
+
+  color-scheme:light;
+  min-height:100vh;
+  background:var(--g-0);
+  color:var(--ink);
+  font-family:var(--font);
+  font-size:17px; line-height:1.5; letter-spacing:-.01em;
+  font-feature-settings:"kern","liga","calt";
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  overflow-x:clip;
+}
+.site *,.site *::before,.site *::after{box-sizing:border-box}
+.site img,.site svg{display:block;max-width:100%}
+.site a{color:inherit;text-decoration:none}
+.site :where(h1,h2,h3,h4,p,ul,ol,dl,figure,blockquote){margin:0}
+.site :where(ul,ol){padding:0;list-style:none}
+.site button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.site ::selection{background:var(--gold-300);color:var(--mid-950)}
+.site :focus-visible{outline:2px solid var(--gold-500);outline-offset:3px;border-radius:8px}
+.site .dark :focus-visible,.site .on-dark :focus-visible{outline-color:var(--gold-300)}
+
+.site .skip{position:absolute;left:12px;top:-60px;z-index:200;padding:12px 18px;border-radius:12px;background:#fff;color:var(--ink);font-weight:600;box-shadow:var(--shadow-m);transition:top .2s}
+.site .skip:focus{top:12px}
+.site .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- düzen ---------- */
+.site .wrap{width:min(var(--page),100% - 2*var(--gutter));margin-inline:auto}
+.site .wrap-wide{width:min(var(--page-wide),100% - 2*var(--gutter));margin-inline:auto}
+.site .wrap-narrow{width:min(820px,100% - 2*var(--gutter));margin-inline:auto}
+.site .section{padding-block:clamp(88px,12vw,168px)}
+.site .section-s{padding-block:clamp(64px,8vw,112px)}
+.site .tint{background:var(--g-100)}
+.site .dark{background:var(--mid-950);color:var(--on-dark)}
+
+/* ---------- tipografi ---------- */
+.site .eyebrow{display:inline-flex;align-items:center;gap:10px;color:var(--gold-600);font-size:13px;font-weight:600;letter-spacing:.02em}
+.site .dark .eyebrow,.site .on-dark .eyebrow{color:var(--gold-300)}
+.site .display{font-size:clamp(44px,7.4vw,112px);line-height:.98;font-weight:700;letter-spacing:-.045em}
+.site .h1{font-size:clamp(40px,6vw,84px);line-height:1.02;font-weight:700;letter-spacing:-.04em}
+.site .h2{font-size:clamp(34px,4.6vw,64px);line-height:1.05;font-weight:700;letter-spacing:-.035em}
+.site .h3{font-size:clamp(24px,2.4vw,32px);line-height:1.15;font-weight:650;letter-spacing:-.025em}
+.site .h4{font-size:19px;line-height:1.3;font-weight:650;letter-spacing:-.015em}
+.site .lead{font-size:clamp(19px,1.7vw,23px);line-height:1.45;letter-spacing:-.018em;color:var(--muted)}
+.site .dark .lead,.site .on-dark .lead{color:var(--on-dark-muted)}
+.site .body{color:var(--muted);line-height:1.6}
+.site .dark .body,.site .on-dark .body{color:var(--on-dark-muted)}
+.site .muted-2{color:#a1a1a6}
+.site .gold-text{background:linear-gradient(100deg,var(--gold-300),#f3e3bf 45%,var(--gold-400));-webkit-background-clip:text;background-clip:text;color:transparent}
+.site .grey-text{color:#86868b}
+.site .dark .grey-text{color:rgba(235,235,245,.42)}
+.site .center{text-align:center}
+.site .measure{max-width:680px}
+.site .center .measure,.site .measure.center{margin-inline:auto}
+.site .stack-s>*+*{margin-top:12px}
+.site .stack>*+*{margin-top:20px}
+.site .stack-l>*+*{margin-top:32px}
+
+/* ---------- düğmeler ---------- */
+.site .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;font-size:16px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;transition:transform .35s var(--ease),background-color .25s,color .25s,box-shadow .35s,border-color .25s}
+.site .btn:active{transform:scale(.97)}
+.site .btn-primary{background:var(--mid-800);color:#fff;box-shadow:0 8px 24px rgba(11,27,46,.18)}
+.site .btn-primary:hover{background:var(--mid-600)}
+.site .btn-gold{background:linear-gradient(180deg,#e7d3a6,var(--gold-400));color:var(--mid-950);box-shadow:0 10px 30px rgba(201,166,106,.28),inset 0 1px 0 rgba(255,255,255,.5)}
+.site .btn-gold:hover{box-shadow:0 14px 40px rgba(201,166,106,.4),inset 0 1px 0 rgba(255,255,255,.6)}
+.site .btn-ghost{border:1px solid var(--line-strong);color:var(--ink);background:rgba(255,255,255,.6)}
+.site .btn-ghost:hover{border-color:var(--ink)}
+.site .dark .btn-ghost,.site .on-dark .btn-ghost{border-color:rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.04)}
+.site .dark .btn-ghost:hover,.site .on-dark .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+.site .btn-s{min-height:40px;padding:0 18px;font-size:14px}
+.site .actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.site .center .actions,.site .actions.center{justify-content:center}
+.site .link{display:inline-flex;align-items:center;gap:6px;min-height:44px;color:var(--mid-600);font-weight:600}
+.site .link:hover{text-decoration:underline;text-underline-offset:4px}
+.site .dark .link,.site .on-dark .link{color:var(--gold-300)}
+.site .arrow{display:inline-block;transition:transform .35s var(--ease)}
+.site a:hover>.arrow,.site button:hover>.arrow{transform:translateX(3px)}
+
+/* ---------- çip / etiket ---------- */
+.site .chips{display:flex;flex-wrap:wrap;gap:8px}
+.site .chip{display:inline-flex;align-items:center;min-height:32px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink-soft);font-size:14px}
+.site .dark .chip,.site .on-dark .chip{border-color:var(--line-dark);background:rgba(255,255,255,.05);color:var(--on-dark)}

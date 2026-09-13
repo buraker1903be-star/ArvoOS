@@ -1,0 +1,42 @@
+/* ============================================================
+   Marka logoları — boyut yalnızca yükseklikle; genişlik orandan.
+   Süzgeç / yeniden renklendirme YOK.
+   ============================================================ */
+.site .brand-logo{display:block;height:var(--h,28px);width:auto;max-width:none}
+
+/* üst menü: koyu açılışta on-dark, katı (açık) durumda özgün renk */
+.site .hdr-logo .brand-logo{--h:28px}
+.site .hdr-logo .logo-light,.site .hdr[data-solid] .hdr-logo .logo-dark{display:none}
+.site .hdr[data-solid] .hdr-logo .logo-light{display:block}
+@media (max-width:767px){ .site .hdr-logo .brand-logo{--h:24px} }
+
+/* açılır menü ürünleri */
+.site .pop-product{flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px}
+.site .pop-product .brand-logo{--h:22px}
+
+/* açılış ürün satırı */
+.site .family a{padding:10px 20px}
+.site .family a>span{display:grid;gap:6px}
+
+/* bento başlıkları */
+.site .tile-head{flex-direction:column;align-items:flex-start;gap:10px}
+
+/* ekosistem */
+.site .orbit-core .brand-logo{--h:auto;width:62%;height:auto}
+.site .orbit-node{padding:12px 16px}
+.site .orbit-node>span{display:grid;gap:4px}
+
+/* alt sayfa açılışı logo */
+.site .phero-logo{margin-bottom:22px}
+
+/* alt bilgi */
+.site .ftr-logo .brand-logo{--h:30px}
+.site .ftr-group{display:inline-flex;align-items:center;gap:10px;margin-top:16px;color:var(--on-dark-muted);font-size:13px}
+.site .ftr-group .brand-logo{--h:14px}
+
+/* referans */
+.site .ref .brand-logo{--h:auto;width:min(78%,440px);height:auto;transition:transform .6s var(--ease)}
+.site .ref:hover .brand-logo{transform:scale(1.03)}
+
+/* panel maketi kenar çubuğu */
+.site .mo-brand .brand-logo{--h:16px}

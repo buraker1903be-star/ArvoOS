@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import "./corporate.css";
-import "./motion.css";
-import ScrollEffects from "./scroll-effects";
+// Pazarlama sitesinin stilleri ve hareketleri app/(site)/layout.tsx'te;
+// kök yerleşim yalnızca uygulama geneli temeli yükler.
 
 // Tek yazı tipi: Apple cihazlarında sistemin kendi SF Pro'su (-apple-system),
 // diğerlerinde ona en yakın açık yazı tipi Inter. SF Pro'nun lisansı web
@@ -17,6 +16,9 @@ const inter = Inter({
   preload: false,
 });
 export const metadata: Metadata = {
+  // Göreli paylaşım görseli yolları arvo-os.com'a göre çözülür (panel ve
+  // belge sayfaları zaten dizine kapalı; site sayfaları kendi görselini verir).
+  metadataBase: new URL("https://arvo-os.com"),
   title: "Arvo | Ürünler ve Dijital Hizmetler",
   description: "ArvoOS, ArvoLab ve kurumlara özel dijital ürün, web tasarımı ve yazılım hizmetleri.",
   openGraph:{title:"Arvo | Akademik Çalışma Ekosistemi",description:"Akademik çalışmanın büyüyen ürün ekosistemi.",type:"website",images:[{url:"/arvoos-logo.png",alt:"Arvo Akademik Çalışma Ekosistemi"}]},
@@ -46,4 +48,4 @@ export const viewport: Viewport = {
 // Bu script render'dan önce çalışır, böylece "flash" da olmaz.
 const themeInit = `(function(){try{var t=localStorage.getItem("arvoos.theme");if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`;
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={inter.variable}><ScrollEffects/>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="tr" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeInit}}/></head><body className={inter.variable}>{children}</body></html>}

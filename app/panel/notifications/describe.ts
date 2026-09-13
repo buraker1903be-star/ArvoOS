@@ -60,7 +60,7 @@ export async function describeNotifications(
   const idsFor = (categories: string[], key: string) => unique(rows.filter((row) => categories.includes(row.category)).map((row) => meta(row, key)));
   const contractIds = idsFor(["customer_message"], "contract_id");
   const commentIds = idsFor(["internal_comment"], "comment_id");
-  const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation"], "opportunity_id");
+  const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation", "site_lead"], "opportunity_id");
   const workflowIds = idsFor(["operation_assignment"], "workflow_id");
 
   const [contractResult, messageResult, commentResult, opportunityResult, workflowResult] = await Promise.all([
@@ -150,6 +150,21 @@ export async function describeNotifications(
           headline: "Size yeni bir talep atandı",
           detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Müşteri"} — ${formatSubject(opportunity.title) || "Yeni talep"}` : row.message,
           context: assigner ? `Atayan: ${assigner}` : null,
+          actionLabel: "Talebi aç",
+        };
+      }
+      case "site_lead": {
+        // arvo-os.com formundan gelen talep (submit_site_lead). Henüz atanmamış.
+        const opportunity = opportunities.get(meta(row, "opportunity_id") ?? "");
+        const reference = meta(row, "reference");
+        return {
+          ...base,
+          label: "Web sitesi talebi",
+          tone: "brand",
+          icon: "person",
+          headline: "Web sitesinden yeni talep geldi",
+          detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Ziyaretçi"} — ${formatSubject(opportunity.title) || "Yeni talep"}` : row.message,
+          context: join(reference ? `Ref ${reference}` : null, meta(row, "locale") === "en" ? "İngilizce form" : null, "Temsilci atanmadı"),
           actionLabel: "Talebi aç",
         };
       }

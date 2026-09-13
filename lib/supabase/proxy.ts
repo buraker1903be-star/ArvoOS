@@ -1,10 +1,42 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isMarketingHost, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
+import { resolvePath } from "@/lib/site/routes";
+
+// arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
+// sayfaları (ROUTES) ve SEO dosyaları. Bunlar için Supabase'e gidilmez.
+const SITE_FILE_PATHS = new Set(["/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"]);
+function isStaticSitePath(pathname: string): boolean {
+  return pathname === "/" || SITE_FILE_PATHS.has(pathname) || pathname.startsWith("/og/") || resolvePath(pathname) !== null;
+}
 
 const WORKSPACE_COOKIE = "arvo_workspace_v2";
 const DEFAULT_APP_HOST = "app.arvo-os.com";
 
 export async function updateSession(request: NextRequest) {
+  // SEO: Arvo pazarlama sayfaları (lib/site/routes.ts ROUTES) yalnızca
+  // arvo-os.com'da yayınlanır. app.arvo-os.com veya bir kurum alan adından
+  // (ör. app.akademikmerkez.com/urunler/arvoos) istenirse yinelenen içerik
+  // olmasın diye kanonik adrese 308 ile yönlendirilir. Kök yol (/), panel,
+  // belge, giriş ve API yolları, GET/HEAD dışı istekler, localhost ve
+  // *.vercel.app etkilenmez. Karar: lib/site/host-rules.ts (birim testli).
+  const marketingTarget = marketingRedirectTarget({
+    host: request.headers.get("host") ?? "",
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    method: request.method,
+  });
+  if (marketingTarget) return NextResponse.redirect(marketingTarget, 308);
+
+  // Hız: arvo-os.com pazarlama sayfalarında oturum ve kurum alan adı
+  // sorgusu hiçbir şeyi değiştirmez (bu alan adı bir kuruma ait değil,
+  // sayfalar korumalı değil, panel çerezleri buraya gelmez). Her ziyarette
+  // iki Supabase çağrısı yapmak yerine doğrudan geçilir. Aynı alan adındaki
+  // /login, /panel ve belge yolları aşağıdaki tam akıştan geçmeye devam eder.
+  if (isMarketingHost(normalizeHost(request.headers.get("host"))) && isStaticSitePath(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

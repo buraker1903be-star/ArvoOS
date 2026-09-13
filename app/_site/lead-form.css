@@ -1,0 +1,569 @@
+/* arvo-os.com demo / iletişim formu. Tamamı .lead-form altında.
+   Tema değişkenleri (sayfa tarafında geçersiz kılınabilir):
+   --site-ink, --site-muted, --site-line, --site-surface, --site-accent, --site-radius */
+
+.lead-form {
+  --lf-ink: var(--site-ink, #0b1b2e);
+  --lf-muted: var(--site-muted, #6e6e73);
+  --lf-line: var(--site-line, #e3e3e8);
+  --lf-surface: var(--site-surface, #ffffff);
+  --lf-accent: var(--site-accent, #8e6d33);
+  --lf-radius: var(--site-radius, 18px);
+  --lf-field: color-mix(in srgb, var(--lf-ink) 4%, var(--lf-surface));
+  --lf-field-hover: color-mix(in srgb, var(--lf-ink) 6.5%, var(--lf-surface));
+  --lf-danger: #c4302b;
+  --lf-success: #1f8a4c;
+  --lf-ring: color-mix(in srgb, var(--lf-accent) 28%, transparent);
+
+  box-sizing: border-box;
+  width: 100%;
+  color: var(--lf-ink);
+  background: var(--lf-surface);
+  border: 1px solid var(--lf-line);
+  border-radius: calc(var(--lf-radius) + 6px);
+  padding: clamp(20px, 4vw, 36px);
+  box-shadow: 0 1px 2px rgba(11, 27, 46, 0.04), 0 18px 48px -24px rgba(11, 27, 46, 0.18);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lead-form *,
+.lead-form *::before,
+.lead-form *::after {
+  box-sizing: border-box;
+}
+
+.lead-form[data-theme="dark"],
+[data-theme="dark"] .lead-form:not([data-theme="light"]) {
+  --lf-ink: var(--site-ink-dark, #f5f5f7);
+  --lf-muted: var(--site-muted-dark, #a1a1a6);
+  --lf-line: var(--site-line-dark, rgba(255, 255, 255, 0.14));
+  --lf-surface: var(--site-surface-dark, #111b29);
+  --lf-accent: var(--site-accent-dark, #d2b074);
+  --lf-field: rgba(255, 255, 255, 0.06);
+  --lf-field-hover: rgba(255, 255, 255, 0.09);
+  --lf-danger: #ff7b72;
+  --lf-success: #4cd98a;
+  box-shadow: none;
+}
+
+.lead-form--compact {
+  padding: clamp(18px, 3vw, 24px);
+}
+
+.lead-form__form {
+  display: grid;
+  gap: 22px;
+  margin: 0;
+}
+
+.lead-form--compact .lead-form__form {
+  gap: 16px;
+}
+
+.lead-form__label {
+  display: block;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--lf-ink);
+}
+
+.lead-form__optional {
+  font-weight: 400;
+  color: var(--lf-muted);
+}
+
+/* Konu: segment kontrol */
+.lead-form__interest {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.lead-form__segments {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--lf-field);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lead-form__segments::-webkit-scrollbar {
+  display: none;
+}
+
+.lead-form__segment {
+  position: relative;
+  flex: 1 1 0;
+  min-width: max-content;
+}
+
+.lead-form__segment input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.lead-form__segment span {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 9px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lf-muted);
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: none;
+}
+
+/* Dar ekran: beş seçenek tek satıra sığsın (sığmazsa yatay kaydırma kalır) */
+@media (max-width: 420px) {
+  .lead-form__segment {
+    flex: 1 1 auto;
+  }
+  .lead-form__segment span {
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+}
+
+.lead-form__segment:hover span {
+  color: var(--lf-ink);
+}
+
+.lead-form__segment input:checked + span {
+  background: var(--lf-surface);
+  color: var(--lf-ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(11, 27, 46, 0.08), 0 2px 8px -2px rgba(11, 27, 46, 0.12);
+}
+
+.lead-form[data-theme="dark"] .lead-form__segment input:checked + span,
+[data-theme="dark"] .lead-form:not([data-theme="light"]) .lead-form__segment input:checked + span {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+.lead-form__segment input:focus-visible + span {
+  box-shadow: 0 0 0 3px var(--lf-ring);
+}
+
+/* Alanlar */
+.lead-form__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 640px) {
+  .lead-form:not(.lead-form--compact) .lead-form__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 16px;
+  }
+  .lead-form__field--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.lead-form--compact .lead-form__grid {
+  gap: 14px;
+}
+
+.lead-form__field {
+  min-width: 0;
+}
+
+.lead-form__input {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--lf-field);
+  color: var(--lf-ink);
+  font: inherit;
+  font-size: 16px; /* iOS yakınlaştırmasın */
+  line-height: 1.35;
+  outline: none;
+  appearance: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lead-form__input:hover {
+  background: var(--lf-field-hover);
+}
+
+.lead-form__input:focus {
+  background: var(--lf-surface);
+  border-color: var(--lf-accent);
+  box-shadow: 0 0 0 4px var(--lf-ring);
+}
+
+.lead-form__input::placeholder {
+  color: var(--lf-muted);
+  opacity: 0.8;
+}
+
+.lead-form__input[aria-invalid="true"] {
+  border-color: var(--lf-danger);
+  background: color-mix(in srgb, var(--lf-danger) 5%, var(--lf-surface));
+}
+
+.lead-form__input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--lf-danger) 20%, transparent);
+}
+
+.lead-form__textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.lead-form--compact .lead-form__textarea {
+  min-height: 96px;
+}
+
+.lead-form__error {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--lf-danger);
+  animation: lead-form-fade 0.2s ease;
+}
+
+.lead-form__counter {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--lf-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bal küpü */
+.lead-form__hp {
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+/* KVKK onayı */
+.lead-form__consent {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--lf-muted);
+}
+
+.lead-form__consent input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lead-form__box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+  border: 1.5px solid color-mix(in srgb, var(--lf-ink) 28%, transparent);
+  border-radius: 7px;
+  background: var(--lf-surface);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.lead-form__box svg {
+  width: 14px;
+  height: 14px;
+  stroke: #fff;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  transition: stroke-dashoffset 0.25s ease 0.05s;
+}
+
+.lead-form__consent input:checked + .lead-form__box {
+  background: var(--lf-accent);
+  border-color: var(--lf-accent);
+}
+
+.lead-form__consent input:checked + .lead-form__box svg {
+  stroke-dashoffset: 0;
+}
+
+.lead-form__consent input:focus-visible + .lead-form__box {
+  box-shadow: 0 0 0 4px var(--lf-ring);
+}
+
+.lead-form__consent input[aria-invalid="true"] + .lead-form__box {
+  border-color: var(--lf-danger);
+}
+
+.lead-form__consent-text a {
+  color: var(--lf-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--lf-ink) 30%, transparent);
+  text-underline-offset: 3px;
+}
+
+.lead-form__consent-text a:hover {
+  text-decoration-color: currentColor;
+}
+
+.lead-form__consent-wrap .lead-form__error {
+  padding-left: 34px;
+}
+
+/* Genel uyarı */
+.lead-form__alert {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--lf-danger) 9%, var(--lf-surface));
+  color: var(--lf-danger);
+  font-size: 14px;
+  line-height: 1.45;
+  outline: none;
+  animation: lead-form-fade 0.2s ease;
+}
+
+.lead-form__alert:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lf-danger) 25%, transparent);
+}
+
+/* Gönder */
+.lead-form__actions {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .lead-form:not(.lead-form--compact) .lead-form__actions {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 18px;
+  }
+}
+
+/* .lead-form önekiyle: sitenin ".site button{background:none;padding:0…}"
+   sıfırlaması (0,1,1) tek sınıflı seçiciyi eziyordu; buton şeffaf kalıyordu. */
+.lead-form .lead-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lf-ink);
+  color: var(--lf-surface);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .lead-form:not(.lead-form--compact) .lead-form__submit {
+    width: auto;
+  }
+}
+
+.lead-form__submit:hover:not(:disabled) {
+  box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--lf-ink) 70%, transparent);
+}
+
+.lead-form__submit:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.lead-form__submit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--lf-ring);
+}
+
+.lead-form__submit:disabled {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.lead-form__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--lf-surface) 35%, transparent);
+  border-top-color: var(--lf-surface);
+  border-radius: 50%;
+  animation: lead-form-spin 0.7s linear infinite;
+}
+
+.lead-form__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--lf-muted);
+}
+
+/* Başarı */
+.lead-form__success {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: clamp(16px, 4vw, 32px) 8px;
+  text-align: center;
+  animation: lead-form-fade 0.3s ease;
+}
+
+.lead-form__check {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+}
+
+.lead-form__check-circle {
+  stroke: var(--lf-success);
+  stroke-width: 2.5;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: lead-form-draw 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.lead-form__check-mark {
+  stroke: var(--lf-success);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 36;
+  stroke-dashoffset: 36;
+  animation: lead-form-draw 0.35s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+.lead-form__success-title {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--lf-ink);
+  outline: none;
+}
+
+.lead-form__success-body {
+  margin: 0;
+  max-width: 34ch;
+  color: var(--lf-muted);
+}
+
+.lead-form__reference {
+  display: inline-grid;
+  gap: 2px;
+  margin: 10px 0 4px;
+  padding: 12px 22px;
+  border-radius: 14px;
+  background: var(--lf-field);
+}
+
+.lead-form__reference span {
+  font-size: 12px;
+  color: var(--lf-muted);
+}
+
+.lead-form__reference strong {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--lf-ink);
+  user-select: all;
+}
+
+.lead-form .lead-form__link-button {
+  margin-top: 4px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--lf-accent);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lead-form__link-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lead-form__link-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--lf-ring);
+}
+
+@keyframes lead-form-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes lead-form-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lead-form-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lead-form *,
+  .lead-form *::before,
+  .lead-form *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001ms !important;
+  }
+  .lead-form__check-circle,
+  .lead-form__check-mark {
+    stroke-dashoffset: 0;
+  }
+}
