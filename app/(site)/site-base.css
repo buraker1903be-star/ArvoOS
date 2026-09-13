@@ -18,7 +18,9 @@
   --shadow-m:0 2px 6px rgba(11,27,46,.04),0 24px 60px rgba(11,27,46,.1);
   --shadow-l:0 40px 120px rgba(5,12,26,.35);
   --ease:cubic-bezier(.22,1,.36,1);
-  --page:1200px; --page-wide:1440px; --gutter:clamp(20px,5vw,48px);
+  /* Site içerik genişliği 1600px (kullanıcı isteği, 2026-09-13). Metin
+     satırları ayrıca ch/px sınırlarıyla okunur uzunlukta tutulur. */
+  --page:1600px; --page-wide:1600px; --gutter:clamp(20px,5vw,48px);
   --header-h:64px;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",var(--font-inter),"Inter","Helvetica Neue",system-ui,sans-serif;
 
