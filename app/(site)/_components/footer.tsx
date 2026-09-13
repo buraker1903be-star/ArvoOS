@@ -45,6 +45,9 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <div className="ftr-meta">
             <span>© {year} ArvoCulture Group. {t.rights}</span>
             <LangLink locale={locale} className="ftr-lang" label={t.langName} />
+            <Link href={ROUTES.arvoos[locale]} className="ftr-credit" aria-label="Designed by ArvoOS">
+              <span>Designed by</span><BrandLogo brand="arvoos" />
+            </Link>
           </div>
         </div>
       </div>
