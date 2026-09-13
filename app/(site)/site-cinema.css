@@ -1,69 +1,36 @@
 /* ============================================================
-   Sinematik katman — tipografi ölçeği, sahne ritmi (koyu sahne /
-   sıcak kâğıt), mikro etkileşimler, kaydırmayla düzleşen 3B sahne.
-   Yalnızca transform / opacity canlandırılır.
+   "Vay" anı — açık zeminde kaydırmayla 3B açılış: panel geriye
+   yatık ve küçük başlar, kaydırdıkça doğrulup büyür; e-imza kartı
+   ve telefon farklı hızlarda katmanlanır. Yalnızca transform/opacity.
+   Desteklemeyen tarayıcıda sahne düz ve durağandır.
    ============================================================ */
-.site{--paper:#fbfbfd;background:var(--paper)}
-.site .tint{background:#f5f5f7}
+.site .hero-stage{position:relative;width:min(1320px,100% - 2*var(--gutter));margin:clamp(44px,5.5vw,80px) auto 0;perspective:1800px;perspective-origin:50% 0%}
+.site .tilt{transform-origin:50% 0%;transform-style:preserve-3d}
+.site .hero-stage::after{content:"";position:absolute;z-index:-1;left:10%;right:10%;bottom:-5%;height:10%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.14),transparent);filter:blur(18px)}
 
-/* ---------- tipografi: ağırlık karşıtlığı ---------- */
-.site .display{font-size:clamp(50px,8.8vw,144px);line-height:.93;letter-spacing:-.052em;font-weight:700}
-.site .h1{font-size:clamp(44px,6.8vw,116px);line-height:.96;letter-spacing:-.048em}
-.site .h2{font-size:clamp(38px,5.2vw,84px);line-height:1;letter-spacing:-.042em}
-.site .thin{display:block;font-weight:300;letter-spacing:-.04em}
-.site .phero .h1 .grey-text{font-weight:300;letter-spacing:-.04em}
-.site .hero-copy .display{max-width:none}
-.site .hero-copy .lead,.site .phero .lead{font-size:clamp(19px,1.6vw,24px);max-width:720px}
-.site .eyebrow{letter-spacing:.04em;font-size:12.5px;text-transform:none}
-.site .eyebrow::before{content:"";width:18px;height:1px;background:currentColor;opacity:.7}
-.site .center .eyebrow::before,.site .shead.center .eyebrow::before{display:none}
+@supports (animation-timeline:scroll()){
+  .site .tilt{animation:site-reveal3d linear both;animation-timeline:scroll(root);animation-range:0 70vh}
+  .site .hero-stage .layer-sign{animation:site-par-sign linear both;animation-timeline:scroll(root);animation-range:5vh 75vh}
+  .site .hero-stage .layer-phone{animation:site-par-phone linear both;animation-timeline:scroll(root);animation-range:5vh 85vh}
+  .site .hero-stage .layer-card{animation:site-par-sign linear both;animation-timeline:scroll(root);animation-range:10vh 80vh}
+}
+@keyframes site-reveal3d{from{transform:translateY(24px) rotateX(30deg) scale(.74)}to{transform:none}}
+@keyframes site-par-sign{0%{opacity:0;transform:translate3d(0,70%,90px)}12%{opacity:1}100%{opacity:1;transform:translateZ(90px)}}
+@keyframes site-par-phone{0%{opacity:0;transform:translate3d(0,110%,140px)}12%{opacity:1}100%{opacity:1;transform:translateZ(140px)}}
 
-/* ---------- ritim ---------- */
-.site .section{padding-block:clamp(112px,13vw,212px)}
-.site .section-s{padding-block:clamp(72px,8vw,128px)}
-.site .shead{margin-bottom:clamp(48px,6vw,96px)}
-
-/* ---------- koyu sahneler kâğıda yumuşak geçer ---------- */
-.site .hero,.site .phero{background:transparent}
-.site .hero .hero-bg,.site .phero .hero-bg{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 180px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 180px),transparent)}
-.site .phero{padding-bottom:clamp(140px,14vw,220px)}
-.site .phero.has-stage{padding-bottom:0}
-.site .cta{padding-top:clamp(160px,16vw,240px);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 140px);mask-image:linear-gradient(to bottom,transparent,#000 140px)}
-.site .scene-dark{position:relative;isolation:isolate;color:var(--on-dark);background:transparent}
-.site .scene-dark>.hero-bg{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 160px,#000 calc(100% - 160px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 160px,#000 calc(100% - 160px),transparent)}
-
-/* ---------- düğmeler ve bağlantılar ---------- */
-.site .btn:hover{transform:translateY(-1px)}
-.site .btn:active{transform:translateY(0) scale(.98)}
-.site .btn-primary{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 28px rgba(11,27,46,.18)}
-.site .btn-gold{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 12px 34px rgba(201,166,106,.26)}
-.site .on-dark .btn-ghost,.site .dark .btn-ghost{border-color:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-.site .link,.site .ftr-cols a,.site .pop-sublink{background:linear-gradient(currentColor,currentColor) 0 calc(100% - 8px)/0 1px no-repeat;transition:background-size .5s var(--ease),color .2s}
-.site .ftr-cols a{background-position:0 calc(100% - 6px)}
-.site .link:hover,.site .ftr-cols a:hover{text-decoration:none;background-size:100% 1px}
+/* ürün kutusu maketleri görünüme girerken hafifçe yükselir */
+@supports (animation-timeline:view()){
+  .site .ptile-visual>.lift{animation:site-lift linear both;animation-timeline:view();animation-range:entry 0% cover 35%}
+}
+@keyframes site-lift{from{transform:translateY(56px) scale(.95)}to{transform:none}}
 
 /* ---------- kademeli belirme (40–60 ms) ---------- */
 .site [data-reveal]{--i:0}
 @supports (animation-timeline:view()){
-  .site [data-reveal]{animation-range:entry calc(var(--i) * 3%) entry calc(52% + var(--i) * 3%)}
+  .site [data-reveal]{animation-range:entry calc(var(--i) * 3%) entry calc(45% + var(--i) * 3%)}
 }
 .reveal-js .site [data-reveal]{transition-delay:calc(var(--i) * 50ms)}
 
-/* ---------- 3B sahne: eğik başlar, kaydırdıkça düzleşir ---------- */
-.site .hero-stage{perspective:2200px;perspective-origin:50% 0%;animation:site-stage-in 1.4s var(--ease) .35s both}
-.site .tilt{transform-origin:50% 0%;transform:none;animation:none;transform-style:preserve-3d}
-@supports (animation-timeline:scroll()){
-  .site .tilt{animation:site-straighten linear both;animation-timeline:scroll(root);animation-range:0 75vh}
-}
-@keyframes site-straighten{from{transform:rotateX(22deg) scale(.86)}to{transform:rotateX(0) scale(1)}}
-@keyframes site-stage-in{from{opacity:0;transform:translateY(64px)}to{opacity:1;transform:none}}
-
-/* camın üzerinden yavaş ışık geçişi + zemin gölgesi */
-.site .hero-stage .layer-main .mock-win{position:relative}
-.site .hero-stage .layer-main .mock-win::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.28) 50%,transparent 62%);transform:translateX(-110%);animation:site-sweep 9s ease-in-out 2.2s infinite}
-@keyframes site-sweep{0%{transform:translateX(-110%)}28%,100%{transform:translateX(110%)}}
-.site .hero-stage::after{content:"";position:absolute;z-index:-1;left:12%;right:12%;bottom:-7%;height:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(11,27,46,.32),transparent);filter:blur(22px)}
-
-/* ---------- işaretçiye göre hafif eğim (yalnız masaüstü) ---------- */
+/* ---------- işaretçiye göre çok hafif eğim (yalnızca masaüstü) ---------- */
 .site [data-tilt]{transform:perspective(1400px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .7s var(--ease)}
 @media (hover:none),(pointer:coarse){.site [data-tilt]{transform:none}}

@@ -1,124 +1,75 @@
 /* ============================================================
-   Bölümler: sinematik açılış, beyan, ürün bento, akış anlatısı,
-   ekosistem, değerler, referanslar, SSS, kapanış çağrısı
+   Açık açılışlar, ürün kutuları (apple.com), bölüm başlıkları,
+   eski adım anlatısı (ArvoLab / Arc), kaydırmayla belirme
    ============================================================ */
-.site{--overlap:clamp(72px,13vw,220px)}
 
-/* ---------- koyu açılış ---------- */
-.site .hero,.site .phero{position:relative;isolation:isolate;background:var(--mid-950);color:#fff}
-.site .hero{padding-top:calc(var(--header-h) + clamp(64px,11vh,128px))}
-.site .hero-bg{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:radial-gradient(120% 80% at 50% 0%,#13243f 0%,rgba(8,20,42,.6) 45%,transparent 75%),linear-gradient(180deg,#050c1a,#08142a 60%,#050c1a)}
-.site .aurora{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;will-change:transform}
-.site .a1{width:60vw;height:44vw;left:-12vw;top:-14vw;background:radial-gradient(circle,#2c4368,transparent 65%);animation:site-drift 18s ease-in-out infinite alternate}
-.site .a2{width:48vw;height:36vw;right:-10vw;top:4vw;background:radial-gradient(circle,rgba(201,166,106,.42),transparent 65%);animation:site-drift 22s ease-in-out -6s infinite alternate-reverse}
-.site .a3{width:70vw;height:30vw;left:15vw;bottom:-18vw;background:radial-gradient(circle,rgba(132,151,181,.35),transparent 65%);animation:site-drift 26s ease-in-out -3s infinite alternate}
-.site .grain{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.site .hero-bg::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:72px 72px;mask-image:radial-gradient(70% 60% at 50% 30%,#000,transparent)}
-@keyframes site-drift{to{transform:translate3d(6vw,3vw,0) scale(1.12)}}
+/* ---------- ana sayfa açılışı ---------- */
+.site .lhero{position:relative;background:#fff;padding-top:calc(var(--header-h) + clamp(48px,7vw,104px));padding-bottom:clamp(56px,7vw,112px);overflow:hidden}
+.site .lhero-copy{text-align:center}
+.site .lhero-copy .display{margin:14px auto 0;max-width:15ch}
+.site .lhero-copy .lead{margin:22px auto 0;max-width:720px}
+.site .lhero-copy .actions{margin-top:30px;justify-content:center}
+.site .rise{animation:site-rise .9s var(--ease) both;animation-delay:calc(var(--d,0) * 70ms + 60ms)}
+@keyframes site-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 
-.site .hero-copy{text-align:center}
-.site .hero-copy .display{margin:20px auto 0;max-width:13ch;background:linear-gradient(180deg,#fff 30%,#c3cad6);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.06em}
-.site .hero-copy .lead{margin:28px auto 0;max-width:640px}
-.site .hero-copy .actions{margin-top:36px;justify-content:center}
-.site .rise{animation:site-rise 1s var(--ease) both;animation-delay:calc(var(--d,0) * 90ms + 80ms)}
-@keyframes site-rise{from{opacity:0;transform:translateY(22px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
-
-.site .family{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:56px}
-.site .family a{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 20px 8px 8px;border-radius:20px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transition:background-color .3s,transform .5s var(--ease)}
-.site .family a:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
-.site .family b{display:block;font-size:16px;font-weight:650;letter-spacing:-.015em}
-.site .family small{display:block;color:var(--on-dark-muted);font-size:12.5px}
-
-.site .hero-stage{position:relative;margin:clamp(56px,8vw,96px) auto calc(-1 * var(--overlap));width:min(1120px,100% - 2*var(--gutter));perspective:1600px}
-.site .hero-stage::before{content:"";position:absolute;inset:8% 6% -4%;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,rgba(201,166,106,.28),transparent);filter:blur(40px)}
-.site .hero+*,.site .phero.has-stage+*{padding-top:calc(var(--overlap) + clamp(72px,9vw,128px))}
-/* .tilt (kaydırmayla düzleşen sahne) → site-cinema.css */
-
-/* alt sayfa açılışı */
-.site .phero{padding:calc(var(--header-h) + clamp(64px,9vw,120px)) 0 clamp(72px,9vw,120px)}
-.site .phero.has-stage{padding-bottom:0}
-.site .phero .h1{max-width:16ch;margin-top:18px}
+/* ---------- alt sayfa açılışı ---------- */
+.site .phero{position:relative;background:#fff;padding:calc(var(--header-h) + clamp(40px,6vw,96px)) 0 clamp(56px,7vw,112px);overflow:hidden}
+.site .phero .h1{max-width:18ch;margin-top:10px}
 .site .phero .h1 .grey-text{display:block}
-.site .phero .lead{margin-top:24px;max-width:680px}
-.site .phero .actions{margin-top:32px}
+.site .phero .lead{margin-top:20px;max-width:720px}
+.site .phero .actions{margin-top:28px}
 .site .phero.center .h1,.site .phero.center .lead{margin-inline:auto}
-.site .phero.center .actions{justify-content:center}
-.site .crumbs ol{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:var(--on-dark-muted)}
-.site .crumbs li+li::before{content:"/";margin-right:6px;opacity:.5}
-.site .crumbs a:hover{color:#fff}
-.site .phero.center .crumbs ol{justify-content:center}
+.site .phero.center .actions,.site .phero.center .crumbs ol{justify-content:center}
+.site .phero-logo{margin-bottom:18px}
+.site .crumbs{margin-bottom:28px}
+.site .crumbs ol{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;color:var(--muted)}
+.site .crumbs li+li::before{content:"›";margin-right:6px;opacity:.6}
+.site .crumbs a:hover{color:var(--ink);text-decoration:underline}
 
 /* ---------- kaydırmayla belirme ---------- */
 @supports (animation-timeline:view()){
-  .site [data-reveal]{animation:site-reveal linear both;animation-timeline:view();animation-range:entry 0% entry 55%}
+  .site [data-reveal]{animation:site-reveal linear both;animation-timeline:view();animation-range:entry 0% entry 45%}
 }
-@keyframes site-reveal{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
-.reveal-js .site [data-reveal]{opacity:0;transform:translateY(32px);transition:opacity .9s var(--ease),transform 1s var(--ease)}
+@keyframes site-reveal{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+.reveal-js .site [data-reveal]{opacity:0;transform:translateY(24px);transition:opacity .8s var(--ease),transform .9s var(--ease)}
 .reveal-js .site [data-reveal].is-in{opacity:1;transform:none}
 
-/* ---------- beyan (kelime kelime koyulaşan metin) ---------- */
-.site .statement p{font-size:clamp(30px,4.4vw,60px);line-height:1.12;font-weight:650;letter-spacing:-.035em}
-.site .statement .st{color:var(--ink)}
-@supports (animation-timeline:view()){
-  .site .statement .st{color:#d2d2d7;animation:site-ink linear both;animation-timeline:view();animation-range:entry 30% cover 50%}
-}
-@keyframes site-ink{to{color:var(--ink)}}
-
 /* ---------- bölüm başlığı ---------- */
-.site .shead{margin-bottom:clamp(40px,6vw,72px)}
-.site .shead .h2{margin-top:14px}
-.site .shead .lead{margin-top:20px}
+.site .shead{margin-bottom:clamp(32px,4vw,64px)}
+.site .shead .h2{margin-top:8px}
+.site .shead .lead{margin-top:16px;max-width:680px}
 .site .shead.center{text-align:center}
-.site .shead.center .h2,.site .shead.center .lead{margin-inline:auto;max-width:18ch}
-.site .shead.center .lead{max-width:680px}
-.site .shead.split{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end}
+.site .shead.center .h2,.site .shead.center .lead{margin-inline:auto}
+.site .shead.split{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:end}
 .site .shead.split .lead{margin:0}
 
-/* ---------- ürün bento ---------- */
-.site .bento{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px}
-.site .tile{position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:560px;padding:clamp(28px,4vw,56px);border-radius:var(--radius-xl);background:var(--g-100);isolation:isolate}
-.site .tile-os{grid-column:span 12;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:40px;align-items:center;background:radial-gradient(90% 90% at 100% 0%,#1b3050,transparent 60%),linear-gradient(160deg,#0b1b2e,#050c1a);color:#fff}
-.site .tile-lab{grid-column:span 7;background:linear-gradient(180deg,#fbf8f1,#f5eddb)}
-.site .tile-arc{grid-column:span 5;background:radial-gradient(80% 70% at 80% 100%,rgba(201,166,106,.35),transparent 60%),linear-gradient(170deg,#13243f,#050c1a);color:#fff}
-.site .tile-head{display:flex;align-items:center;gap:14px}
-.site .tile-head small{display:block;font-size:13px;opacity:.7}
-.site .tile-head b{display:block;font-size:22px;font-weight:700;letter-spacing:-.03em}
-.site .tile .h3{margin-top:28px;max-width:16ch}
-.site .tile .body{margin-top:14px;max-width:46ch}
-.site .tile .chips{margin-top:24px}
-.site .tile .actions{margin-top:28px}
-.site .tile-visual{margin-top:auto;padding-top:36px}
-.site .tile-os .tile-visual{margin:0;padding:0}
+/* ---------- ürün kutuları: tam genişlik, ortalı, büyük maket ---------- */
+.site .ptile{padding-top:clamp(56px,7vw,104px);padding-bottom:clamp(40px,5vw,80px);text-align:center;overflow:hidden}
+.site .ptile-copy{display:flex;flex-direction:column;align-items:center;gap:10px}
+.site .ptile-copy .brand-logo{--h:clamp(28px,2.8vw,40px);margin-bottom:6px}
+.site .ptile-kicker{color:var(--muted);font-size:clamp(15px,1.2vw,17px)}
+.site .ptile-title{max-width:20ch;font-size:clamp(34px,4vw,56px);font-weight:600;line-height:1.07;letter-spacing:-.028em}
+.site .ptile-sub{max-width:640px;color:var(--ink-soft);font-size:clamp(17px,1.5vw,21px);line-height:1.4}
+.site .ptile-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 28px;margin-top:4px}
+.site .ptile-visual{width:min(1240px,100% - 2*var(--gutter));margin:clamp(36px,4.5vw,64px) auto 0}
+.site .ptile-visual.narrow{width:min(980px,100% - 2*var(--gutter))}
 
-/* ---------- akış anlatısı (yapışkan) ---------- */
-.site .story{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,7vw,112px);view-timeline-name:--story}
-.site .story-pin{position:sticky;top:calc(var(--header-h) + 48px);align-self:start}
-.site .story-pin .lead{margin-top:20px}
-.site .rail{position:relative;height:2px;margin-top:40px;border-radius:2px;background:var(--g-200);overflow:hidden}
-.site .rail i{position:absolute;inset:0;background:linear-gradient(90deg,var(--gold-400),var(--mid-500));transform-origin:left}
-@supports (animation-timeline:view()){.site .rail i{animation:site-rail linear both;animation-timeline:--story;animation-range:contain 0% contain 100%}}
-@keyframes site-rail{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-.site .steps{display:grid;gap:16px}
-.site .step{display:grid;grid-template-columns:48px 1fr;gap:20px;padding:28px;border-radius:var(--radius-m);background:#fff;box-shadow:var(--shadow-s),inset 0 0 0 1px var(--line)}
-.site .step-n{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--g-100);color:var(--mid-600);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
-.site .step h3{font-size:21px;font-weight:650;letter-spacing:-.02em}
-.site .step p{margin-top:6px;color:var(--muted);line-height:1.55}
-@supports (animation-timeline:view()){.site .step{animation:site-step linear both;animation-timeline:view();animation-range:entry 10% cover 40%}}
-@keyframes site-step{from{opacity:.35;transform:scale(.97)}to{opacity:1;transform:none}}
+/* ---------- ArvoLab / Arc adım anlatısı (açık) ---------- */
+.site .story{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,6vw,96px)}
+.site .story-pin{position:sticky;top:calc(var(--header-h) + 40px);align-self:start}
+.site .story-pin .lead{margin-top:16px}
+.site .rail{display:none}
+.site .steps{display:grid;gap:12px}
+.site .step{display:grid;grid-template-columns:44px 1fr;gap:18px;padding:26px;border-radius:var(--radius-m);background:var(--card);box-shadow:var(--hair)}
+.site .step-n{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--grey);color:var(--navy);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.site .step h3{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.site .step p{margin-top:6px;color:var(--muted)}
 
-/* ---------- ekosistem ---------- */
-.site .eco{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(40px,6vw,96px);align-items:center}
-.site .orbit{position:relative;aspect-ratio:1;max-width:520px;width:100%;margin-inline:auto}
-.site .orbit::before,.site .orbit::after{content:"";position:absolute;border-radius:50%;border:1px solid var(--line-strong)}
-.site .orbit::before{inset:0}
-.site .orbit::after{inset:18%;border-style:dashed}
-.site .orbit-core{position:absolute;inset:36%;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 25%,#2c4368,#050c1a);color:#fff;box-shadow:0 30px 80px rgba(5,12,26,.3)}
-.site .orbit-core svg{width:52%;height:auto}
-.site .orbit-node{position:absolute;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:18px;background:#fff;box-shadow:var(--shadow-m);transform:translate(-50%,-50%);white-space:nowrap}
-.site .orbit-node b{display:block;font-size:15px;font-weight:650}
-.site .orbit-node small{display:block;font-size:12px;color:var(--muted)}
-.site .n1{left:50%;top:2%}.site .n2{left:92%;top:70%}.site .n3{left:10%;top:74%}
-.site .principles{display:grid;gap:24px;margin-top:40px}
-.site .principles div{padding-top:20px;border-top:1px solid var(--line)}
-.site .principles h3{font-size:19px;font-weight:650;letter-spacing:-.015em}
-.site .principles p{margin-top:6px;color:var(--muted);line-height:1.55}
+@media (max-width:980px){
+  .site .story,.site .shead.split{grid-template-columns:1fr}
+  .site .story-pin{position:static}
+}
+@media (max-width:640px){
+  .site .step{grid-template-columns:1fr;gap:12px;padding:22px}
+  .site .ptile-links{gap:0 20px}
+}

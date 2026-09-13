@@ -75,20 +75,3 @@
   .site .flowx-steps li{min-height:0;opacity:1}
   .site .flowx-inline{display:block;margin-top:24px;padding:20px;background:#fbfbfd}
 }
-
-/* ---------- imza anı: dev, soluk modül adları akışı ---------- */
-.site .band-mq{position:relative;overflow:hidden;padding-block:clamp(120px,14vw,220px)}
-.site .mq{display:flex;width:max-content;animation:site-mq 60s linear infinite}
-.site .mq+.mq{margin-top:clamp(8px,1.5vw,20px);animation-direction:reverse;animation-duration:75s}
-.site .mq span{padding-right:.6em;font-size:clamp(64px,11vw,184px);font-weight:700;line-height:1;letter-spacing:-.05em;white-space:nowrap;color:rgba(235,235,245,.07)}
-.site .mq span:nth-child(3n+2){color:transparent;-webkit-text-stroke:1px rgba(220,194,140,.28)}
-.site .band-mq .band-caption{position:relative;margin-top:clamp(40px,5vw,72px);text-align:center;color:var(--on-dark-muted);font-size:clamp(17px,1.4vw,20px)}
-@keyframes site-mq{to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.site .mq{animation:none}}
-
-/* ---------- alt bilgi: büyük marka imzası ---------- */
-.site .ftr-sign{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:clamp(24px,4vw,64px);padding-block:clamp(56px,7vw,112px);border-top:1px solid var(--line-dark)}
-.site .ftr-sign a{display:block;transition:transform .6s var(--ease)}
-.site .ftr-sign a:hover{transform:translateY(-3px)}
-.site .ftr-sign .brand-logo{--h:clamp(34px,5.4vw,84px)}
-@media (max-width:640px){.site .ftr-sign{justify-content:flex-start;gap:28px}.site .ftr-sign .brand-logo{--h:30px}}

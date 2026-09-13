@@ -39,13 +39,13 @@
 .site .aud .link{margin-top:auto}
 
 /* koyu vurgu kartı */
-.site .band{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,5vw,80px);padding:clamp(32px,6vw,80px);border-radius:var(--radius-xl);background:radial-gradient(70% 90% at 100% 0%,rgba(201,166,106,.25),transparent 60%),linear-gradient(160deg,#13243f,#050c1a);color:var(--on-dark)}
+/* .band (açık vurgu kartı) → site-polish.css */
 .site .band .h2{margin-top:14px}
 .site .band .lead{margin-top:18px}
 .site .checks{display:grid;gap:4px;align-content:center}
-.site .checks li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--line-dark);font-size:17px;line-height:1.4}
+.site .checks li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--line-soft);font-size:17px;line-height:1.4}
 .site .checks li:last-child{border-bottom:0}
-.site .checks svg{flex:none;margin-top:3px;color:var(--gold-300)}
+.site .checks svg{flex:none;margin-top:3px;color:var(--green)}
 .site .note{margin-top:24px;color:var(--muted);font-size:15px;line-height:1.55}
 
 /* süreç listesi (hizmetler / paketler) */

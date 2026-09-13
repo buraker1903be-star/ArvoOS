@@ -71,8 +71,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
     <header ref={ref} className="hdr" data-solid={scrolled || sheet || undefined} data-sheet={sheet || undefined}>
       <div className="hdr-bar wrap-wide">
         <Link className="hdr-logo" href={ROUTES.home[locale]} aria-label={t.home}>
-          <BrandLogo brand="arvoos" tone="dark" className="logo-dark" priority />
-          <BrandLogo brand="arvoos" tone="light" className="logo-light" />
+          <BrandLogo brand="arvoos" priority />
         </Link>
 
         <nav className="hdr-nav" aria-label={t.nav}>

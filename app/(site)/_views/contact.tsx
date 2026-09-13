@@ -24,7 +24,8 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
-      <section className="section flush" aria-labelledby="form-title">
+      <div className="scenes">
+      <section className="section" aria-labelledby="form-title">
         <div className="wrap contact">
           <div>
             <h2 id="form-title" className="h2">{c.formTitle}</h2>
@@ -45,6 +46,7 @@ export function ContactView({ locale, c, interest }: { locale: Locale; c: Contac
         </div>
       </section>
       <Faq eyebrow={c.faq.eyebrow} title={c.faq.title} items={c.faq.items} />
+      </div>
       <JsonLd data={[webPageLd({ name: c.meta.title, description: c.meta.description, path, locale }), breadcrumbLd(crumbs.map((x) => ({ name: x.name, path: x.href }))), faqLd(c.faq.items)]} />
     </>
   );

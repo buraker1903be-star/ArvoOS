@@ -9,7 +9,8 @@ export function PrivacyView({ locale, c }: { locale: Locale; c: PrivacyContent }
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} />
-      <section className="section flush">
+      <div className="scenes">
+      <section className="section">
         <article className="wrap-narrow prose">
           <p className="meta">{c.updated}</p>
           {c.sections.map((s) => (
@@ -21,6 +22,7 @@ export function PrivacyView({ locale, c }: { locale: Locale; c: PrivacyContent }
           ))}
         </article>
       </section>
+      </div>
       <JsonLd data={[webPageLd({ name: c.meta.title, description: c.meta.description, path, locale }), breadcrumbLd(crumbs.map((x) => ({ name: x.name, path: x.href })))]} />
     </>
   );

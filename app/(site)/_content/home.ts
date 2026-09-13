@@ -12,7 +12,7 @@ export type HomeContent = {
   story: { eyebrow: string; title: string; lead: string; cta: Cta; steps: { title: string; text: string }[] };
   eco: { eyebrow: string; title: string; lead: string; roles: [string, string, string]; principles: { title: string; text: string }[] };
   values: { eyebrow: string; title: string; items: { title: string; text: string }[] };
-  services: { eyebrow: string; title: string; lead: string; items: { tag: string; title: string; text: string; href: string }[]; more: string; cta: Cta };
+  services: { eyebrow: string; title: string; lead: string; items: { tag: string; title: string; text: string; href: string }[]; more: string; cta: Cta; all: { title: string; text: string; items: string[] } };
   refs: { eyebrow: string; title: string; lead: string; culture: string; akademik: string };
   faq: { eyebrow: string; title: string; items: QA[] };
   cta: { eyebrow: string; title: string; lead: string; actions: Cta[]; note: string };
@@ -107,6 +107,7 @@ export const HOME_TR: HomeContent = {
     ],
     more: "Detaylar",
     cta: { label: "Tüm hizmetler", href: R("services"), variant: "ghost" },
+    all: { title: "Ve dahası", text: "Stratejiden yayına, uçtan uca dijital hizmetler.", items: ["Süreç ve deneyim tasarımı", "Kurumsal dijital sistemler", "Sürekli geliştirme desteği"] },
   },
   refs: { eyebrow: "Referanslar", title: "Güvenle üreten markalar.", lead: "Aynı kalite anlayışını paylaşan, birlikte değer ürettiğimiz marka ekosistemi.", culture: "Markayı keşfedin", akademik: "Web sitesini ziyaret edin" },
   faq: {

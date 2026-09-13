@@ -1,78 +1,61 @@
 /* ============================================================
-   Değerler, hizmet vitrini, referanslar, SSS, kapanış çağrısı,
-   duyarlı düzen ve azaltılmış hareket
+   Yarım genişlik kutular (hizmetler), referans satırı, SSS,
+   açık kapanış çağrısı, azaltılmış hareket
    ============================================================ */
 
-/* ---------- değerler ---------- */
-.site .values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(24px,4vw,56px)}
-.site .values article{padding-top:28px;border-top:1px solid var(--line-strong)}
-.site .values h3{font-size:clamp(34px,4vw,56px);font-weight:700;line-height:1;letter-spacing:-.04em}
-.site .values p{margin-top:16px;max-width:32ch;color:var(--muted);line-height:1.6}
+/* ---------- yarım genişlik kutular (apple.com) ---------- */
+.site .halves{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.site .half{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:clamp(420px,40vw,600px);padding:clamp(40px,4vw,56px) clamp(24px,3vw,48px) 0;border-radius:var(--radius-l);background:var(--card);text-align:center}
+.site .half small{color:var(--gold-600);font-size:14px;font-weight:600}
+.site .half h3{font-size:clamp(28px,2.8vw,40px);font-weight:600;letter-spacing:-.025em;line-height:1.1}
+.site .half p{max-width:40ch;color:var(--ink-soft);font-size:clamp(16px,1.3vw,19px)}
+.site .half .alink{font-size:17px}
+.site .half-visual{width:100%;max-width:520px;margin-top:auto;padding:22px;border-radius:18px 18px 0 0;background:#fff;box-shadow:0 0 0 1px var(--line-soft),0 -10px 40px rgba(0,0,0,.05);text-align:left}
+.site .half-list{display:grid;gap:10px;width:100%;max-width:440px;margin:24px 0 clamp(32px,4vw,48px);text-align:left}
+.site .half-list a{display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 18px;border-radius:14px;background:#fff;box-shadow:var(--hair);font-size:16px;transition:box-shadow .2s}
+.site .half-list a:hover{box-shadow:inset 0 0 0 1px var(--navy)}
+.site .half-list a::after{content:"›";color:var(--muted);font-size:20px}
 
-/* ---------- hizmet vitrini ---------- */
-.site .svc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.site .svc a{display:flex;flex-direction:column;gap:12px;min-height:260px;padding:32px;border-radius:var(--radius-l);background:#fff;box-shadow:var(--shadow-s),inset 0 0 0 1px var(--line);transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
-.site .svc a:hover{transform:translateY(-4px);box-shadow:var(--shadow-m),inset 0 0 0 1px var(--line)}
-.site .svc small{color:var(--gold-600);font-size:13px;font-weight:600}
-.site .svc h3{font-size:24px;font-weight:650;letter-spacing:-.025em;line-height:1.15}
-.site .svc p{color:var(--muted);line-height:1.55}
-.site .svc .link{margin-top:auto}
-.site .after-grid{margin-top:32px}
-
-/* ---------- referanslar ---------- */
-.site .refs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-.site .ref{position:relative;display:grid;place-items:center;min-height:280px;padding:40px;border-radius:var(--radius-l);background:var(--g-100);overflow:hidden;transition:background-color .4s,box-shadow .5s var(--ease)}
-/* Harici (üçüncü taraf) referans logoları gri başlar; Arvo marka logoları
-   (.brand-logo) ASLA süzgeçlenmez / soluklaştırılmaz. */
-.site .ref img:not(.brand-logo){width:min(80%,420px);height:auto;aspect-ratio:16/5;object-fit:contain;filter:grayscale(1);opacity:.6;transition:filter .5s,opacity .5s,transform .6s var(--ease)}
-.site .ref:hover{background:#fff;box-shadow:var(--shadow-m),inset 0 0 0 1px var(--line)}
-.site .ref:hover img:not(.brand-logo){filter:none;opacity:1;transform:scale(1.03)}
-.site .ref span{position:absolute;left:28px;bottom:22px;color:var(--mid-600);font-size:14px;font-weight:600}
+/* ---------- referans satırı ---------- */
+.site .refs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.site .ref{position:relative;display:grid;place-items:center;min-height:200px;padding:32px;border-radius:var(--radius-l);background:var(--card);transition:box-shadow .3s}
+.site .ref:hover{box-shadow:var(--shadow-s)}
+.site .ref img:not(.brand-logo){width:min(78%,380px);height:auto;aspect-ratio:16/5;object-fit:contain;filter:grayscale(1);opacity:.7;transition:filter .4s,opacity .4s}
+.site .ref:hover img:not(.brand-logo){filter:none;opacity:1}
+.site .ref span{position:absolute;left:24px;bottom:16px;color:var(--link);font-size:14px}
 
 /* ---------- SSS ---------- */
-.site .faq{border-bottom:1px solid var(--line-strong)}
-.site .faq details{border-top:1px solid var(--line-strong)}
-.site .faq summary{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:76px;padding:18px 0;cursor:pointer;list-style:none}
+.site .faq{border-bottom:1px solid var(--line)}
+.site .faq details{border-top:1px solid var(--line)}
+.site .faq summary{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:68px;padding:16px 0;cursor:pointer;list-style:none}
 .site .faq summary::-webkit-details-marker{display:none}
-.site .faq summary h3{font-size:clamp(18px,1.6vw,21px);font-weight:600;letter-spacing:-.018em;line-height:1.3}
-.site .faq-icon{position:relative;flex:none;width:28px;height:28px;border-radius:50%;background:var(--g-100);transition:transform .4s var(--ease),background-color .3s}
-.site .faq-icon::before,.site .faq-icon::after{content:"";position:absolute;left:50%;top:50%;width:11px;height:1.6px;border-radius:2px;background:var(--ink);transform:translate(-50%,-50%)}
+.site .faq summary h3{font-size:clamp(17px,1.5vw,21px);font-weight:600;letter-spacing:-.02em;line-height:1.3}
+.site .faq-icon{position:relative;flex:none;width:24px;height:24px;transition:transform .35s var(--ease)}
+.site .faq-icon::before,.site .faq-icon::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:1.5px;border-radius:2px;background:var(--ink);transform:translate(-50%,-50%)}
 .site .faq-icon::after{transform:translate(-50%,-50%) rotate(90deg)}
-.site .faq details[open] .faq-icon{transform:rotate(45deg);background:var(--gold-100)}
-.site .faq details p{padding:0 56px 28px 0;color:var(--muted);font-size:17px;line-height:1.6}
-.site .faq summary:hover h3{color:var(--mid-600)}
+.site .faq details[open] .faq-icon{transform:rotate(45deg)}
+.site .faq details p{padding:0 48px 24px 0;color:var(--ink-soft);font-size:17px;line-height:1.55}
+.site .faq summary:hover h3{color:var(--link)}
 
-/* ---------- kapanış çağrısı ---------- */
-.site .cta{position:relative;isolation:isolate;overflow:hidden;padding:clamp(112px,14vw,200px) 0}
-.site .cta-title{max-width:16ch;margin:16px auto 0;background:linear-gradient(180deg,#fff 30%,#c3cad6);-webkit-background-clip:text;background-clip:text;color:transparent;padding-bottom:.06em}
-.site .cta-actions{margin-top:40px}
-.site .cta-note{margin-top:28px;color:var(--on-dark-muted);font-size:15px}
-.site .cta-note a{display:inline-flex;align-items:center;min-height:44px;color:#fff;text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(255,255,255,.35)}
+/* ---------- kapanış çağrısı (açık) ---------- */
+.site .cta{padding-block:clamp(72px,9vw,128px)}
+.site .cta-title{max-width:18ch;margin:8px auto 0}
+.site .cta-actions{margin-top:28px}
+.site .cta-note{margin-top:20px;color:var(--muted);font-size:15px}
+.site .cta-note a{display:inline-flex;align-items:center;min-height:44px;color:var(--link)}
+.site .cta-note a:hover{text-decoration:underline}
 
 /* ---------- duyarlı ---------- */
-@media (max-width:980px){
-  .site .tile-os{grid-template-columns:1fr}
-  .site .tile-lab,.site .tile-arc{grid-column:span 12}
-  .site .story,.site .eco,.site .shead.split{grid-template-columns:1fr}
-  .site .story-pin{position:static}
-  .site .values,.site .svc{grid-template-columns:1fr}
-}
+@media (max-width:980px){ .site .halves{grid-template-columns:1fr} }
 @media (max-width:640px){
   .site .refs{grid-template-columns:1fr}
-  .site .tile{min-height:0;border-radius:28px}
-  .site .step{grid-template-columns:1fr;gap:14px;padding:24px}
+  .site .half{min-height:0;border-radius:24px}
   .site .faq details p{padding-right:0}
-  .site .family{gap:8px}
-  .site .family a{min-height:52px;padding-right:14px}
-  .site .orbit-node{padding:8px 12px}
-  .site .orbit-node small{display:none}
-  .site .n2{left:78%}.site .n3{left:22%}
 }
 
 /* ---------- azaltılmış hareket ---------- */
 @media (prefers-reduced-motion:reduce){
   .site *,.site *::before,.site *::after{animation:none!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
-  .site .tilt{transform:none}
-  .site .statement .st{color:var(--ink)}
-  .site [data-reveal],.site .step{opacity:1;transform:none}
+  .site .tilt,.site .layer-float{transform:none;opacity:1}
+  .site [data-reveal]{opacity:1;transform:none}
 }
