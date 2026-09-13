@@ -3,7 +3,15 @@ import type { PageId } from "@/lib/site/routes";
 import type { Cta, QA } from "../_components/ui";
 
 export type Meta = { title: string; description: string };
-export type Card = { title: string; text: string; items?: string[]; href?: string };
+export type Card = {
+  title: string; text: string; items?: string[]; href?: string;
+  /** Bento: "hero" (2×2, arayüz parçasıyla) veya "wide" (2×1); yoksa küçük kutu */
+  size?: "hero" | "wide";
+  /** hero kutusu sağa yaslı */
+  alt?: boolean;
+  /** Kutudaki arayüz parçası (_components/frags.tsx) */
+  visual?: "s0" | "s1" | "s2" | "s3" | "s4" | "s5" | "s6" | "web" | "seo" | "software";
+};
 export type Hero = { eyebrow: string; title: string; subtitle?: string; lead: string; actions: Cta[] };
 export type Block = { eyebrow?: string; title: string; lead?: string };
 

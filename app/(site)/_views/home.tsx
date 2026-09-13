@@ -8,6 +8,10 @@ import { BrandLogo, ProductLogo, type ProductName } from "../_components/marks";
 import { ArcMock } from "../_components/mock-arc";
 import { LabMock } from "../_components/mock-lab";
 import { OsPanelMock } from "../_components/mock-os";
+import { HeroStage } from "../_components/hero-stage";
+import { SignatureBand } from "../_components/signature-band";
+import { SignCard } from "../_components/float-card";
+import { StoryStage } from "../_components/story-stage";
 import { Actions, CtaBand, Faq, HeroBackdrop, SectionHead } from "../_components/ui";
 
 const d = (n: number) => ({ ["--d" as string]: n });
@@ -22,7 +26,7 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
         <HeroBackdrop />
         <div className="wrap hero-copy">
           <p className="eyebrow rise" style={d(0)}>{c.hero.eyebrow}</p>
-          <h1 id="hero-title" className="display rise" style={d(1)}>{c.hero.title}</h1>
+          <h1 id="hero-title" className="display rise" style={d(1)}>{c.hero.title}{c.hero.subtitle ? <span className="thin"> {c.hero.subtitle}</span> : null}</h1>
           <p className="lead rise" style={d(2)}>{c.hero.lead}</p>
           <Actions items={c.hero.actions} className="rise" />
           <nav className="family rise" style={d(4)} aria-label={c.hero.familyLabel}>
@@ -33,7 +37,7 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
             ))}
           </nav>
         </div>
-        <div className="hero-stage"><div className="tilt"><OsPanelMock locale={locale} /></div></div>
+        <HeroStage locale={locale} />
       </section>
 
       <section className="section statement">
@@ -44,7 +48,8 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
         <div className="wrap-wide">
           <SectionHead eyebrow={c.products.eyebrow} title={c.products.title} lead={c.products.lead} center id="products-title" />
           <div className="bento">
-            <article className="tile tile-os on-dark" data-reveal>
+            <div className="tcell tcell-os" data-reveal>
+            <article className="tile tile-os on-dark" data-tilt>
               <div>
                 <div className="tile-head"><ProductLogo name="ArvoOS" tone="dark" height={36} /><small>{os.label}</small></div>
                 <h3 className="h3">{os.title}</h3>
@@ -52,9 +57,16 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
                 <div className="chips">{os.chips.map((x) => <span key={x} className="chip">{x}</span>)}</div>
                 <Actions items={[os.cta, os.signIn]} />
               </div>
-              <div className="tile-visual"><OsPanelMock locale={locale} /></div>
+              <div className="tile-visual">
+                <div className="layers">
+                  <div className="layer-main"><OsPanelMock locale={locale} /></div>
+                  <div className="layer-float layer-sign"><SignCard locale={locale} /></div>
+                </div>
+              </div>
             </article>
-            <article className="tile tile-lab" data-reveal>
+            </div>
+            <div className="tcell tcell-lab" data-reveal style={d(1)}>
+            <article className="tile tile-lab" data-tilt>
               <div className="tile-head"><ProductLogo name="ArvoLab" height={36} /><small>{lab.label}</small></div>
               <h3 className="h3">{lab.title}</h3>
               <p className="body">{lab.text}</p>
@@ -62,7 +74,9 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
               <Actions items={[lab.cta, lab.signIn]} />
               <div className="tile-visual"><LabMock locale={locale} /></div>
             </article>
-            <article className="tile tile-arc on-dark" data-reveal>
+            </div>
+            <div className="tcell tcell-arc" data-reveal style={d(2)}>
+            <article className="tile tile-arc on-dark" data-tilt>
               <div className="tile-head"><ProductLogo name="Arc" tone="dark" height={36} /><small>{arc.category}</small></div>
               <h3 className="h3">{arc.title} <span className="grey-text">{arc.subtitle}</span></h3>
               <p className="body">{arc.short}</p>
@@ -70,26 +84,14 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
               <Actions items={[c.products.arcCta, c.products.arcSignIn]} />
               <div className="tile-visual"><ArcMock locale={locale} /></div>
             </article>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="section" aria-labelledby="story-title">
-        <div className="wrap story">
-          <div className="story-pin">
-            <p className="eyebrow">{c.story.eyebrow}</p>
-            <h2 id="story-title" className="h2" style={{ marginTop: 14 }}>{c.story.title}</h2>
-            <p className="lead">{c.story.lead}</p>
-            <div className="rail" aria-hidden="true"><i /></div>
-            <Actions items={[c.story.cta]} className="after-grid" />
-          </div>
-          <ol className="steps">
-            {c.story.steps.map((s, i) => (
-              <li key={s.title} className="step"><span className="step-n">{String(i + 1).padStart(2, "0")}</span><div><h3>{s.title}</h3><p>{s.text}</p></div></li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <SignatureBand words={c.band.words} caption={c.band.caption} />
+
+      <StoryStage locale={locale} eyebrow={c.story.eyebrow} title={c.story.title} lead={c.story.lead} steps={c.story.steps} footer={<Actions items={[c.story.cta]} />} />
 
       <section className="section tint" aria-labelledby="eco-title">
         <div className="wrap eco">

@@ -51,7 +51,7 @@ export function PageHero({
         <p className="lead rise" style={{ ["--d" as string]: 3 }}>{lead}</p>
         {actions.length ? <Actions items={actions} className="rise" /> : null}
       </div>
-      {children ? <div className="hero-stage"><div className="tilt">{children}</div></div> : null}
+      {children ?? null}
     </section>
   );
 }

@@ -23,11 +23,11 @@ export const MODULES_TR: SubContent = {
     lead: "İhtiyacınız olan modüllerle başlayın; ekibiniz ve süreçleriniz büyüdükçe sistemi genişletin.",
     cols: "two", numbered: true,
     items: [
-      { title: "CRM ve satış", text: "Talebi müşteriye, müşteriyi gelire dönüştüren satış akışı.", items: ["Aşamalı satış hattı ve kayıp nedenleri", "Yeni talepte otomatik müşteri geçmişi", "Telefon veya isimle anlık müşteri sorgulama", "Satış temsilcisi ataması ve satış takvimi"] },
+      { title: "CRM ve satış", size: "hero", visual: "s0", text: "Talebi müşteriye, müşteriyi gelire dönüştüren satış akışı.", items: ["Aşamalı satış hattı ve kayıp nedenleri", "Yeni talepte otomatik müşteri geçmişi", "Telefon veya isimle anlık müşteri sorgulama", "Satış temsilcisi ataması ve satış takvimi"] },
       { title: "Teklifler", text: "Hazırlamaktan onaya kadar ticari süreç.", items: ["Revizyonlar; KDV dahil, hariç veya muaf", "Tek ödeme ya da taksitli ödeme planı", "WhatsApp ve e-posta ile paylaşım bağlantısı", "Tarih-saat, IP ve cihaz kaydıyla çevrim içi onay"] },
       { title: "Sözleşmeler", text: "Tekliften tek adımda, imzaya hazır sözleşme.", items: ["Sözleşme şablonları", "Çizilen imza ve onay beyanlarıyla e-imza", "IP, zaman damgası, cihaz ve doğrulama özeti", "İmzadan sonra kilitlenen içerik, A4 PDF"] },
       { title: "Belge merkezi", text: "Her işin belgeleri tek zaman çizelgesinde.", items: ["Talep → teklif → sözleşme → operasyon → tahsilat", "Belge erişim kayıtları", "Önizleme ve PDF"] },
-      { title: "Operasyon", text: "Satılan işi ekiplerin uygulayabileceği akışa dönüştürün.", items: ["Yeni, devam eden ve termini yaklaşan işler", "İş tablosu, Gantt şeması ve iş takvimi", "Görev, adım, sorumlu ve ilerleme yüzdesi", "İmzayla otomatik başlayan iş akışı ve arşiv"] },
+      { title: "Operasyon", size: "hero", alt: true, visual: "s3", text: "Satılan işi ekiplerin uygulayabileceği akışa dönüştürün.", items: ["Yeni, devam eden ve termini yaklaşan işler", "İş tablosu, Gantt şeması ve iş takvimi", "Görev, adım, sorumlu ve ilerleme yüzdesi", "İmzayla otomatik başlayan iş akışı ve arşiv"] },
       { title: "Müşteri takip portalı", text: "Müşterinize kendi işini izleyebileceği markalı bir sayfa.", items: ["Takip koduyla ilerleme ve aşamalar", "Ödeme özeti, teklif ve sözleşme belgeleri", "Operasyon ekibiyle mesajlaşma", "Ödemeye bağlı dosya teslimi, kısa ömürlü güvenli bağlantılar"] },
       { title: "Finans", text: "Satış ve operasyonla bağlantılı güncel finansal tablo.", items: ["Cari hesaplar ve hesap hareketleri", "Tahsilat, iade ve ek hizmetler", "Taksit planı ve taksit başına çevrim içi ödeme bağlantısı", "Faturalar, iş bazında maliyet ve gerçek kârlılık"] },
       { title: "İnsan kaynakları", text: "Ekip yapısı ve personel süreçleri ortak düzende.", items: ["Personel, departmanlar ve e-posta ile davet", "Roller ve oran geçmişli prim hesabı", "Personel etkinlik ve oturum kayıtları", "E-imzalı personel gizlilik sözleşmesi (NDA)"] },
@@ -35,7 +35,7 @@ export const MODULES_TR: SubContent = {
       { title: "İletişim", text: "Ekip içi iletişim, işin hemen yanında.", items: ["Dosya ekli birebir mesajlaşma", "Anlık sayaçlı bildirim merkezi", "Yönetim duyuruları", "Destek merkezi"] },
       { title: "Yetki ve güvenlik", text: "Kim neyi görür, net ve denetlenebilir.", items: ["Rol × modül yetki matrisi", "Kayıt düzeyinde erişim", "Veritabanında satır düzeyinde güvenlik", "Denetim geçmişi"] },
       { title: "Çok kiracılı yapı ve markalama", text: "Her kurum kendi alanında, kendi markasıyla.", items: ["Kuruma ait yalıtılmış çalışma alanı", "DNS doğrulamalı özel alan adı", "Logo, marka rengi, kaşe ve imza", "Belgelerde otomatik yasal ve banka bilgileri"] },
-      { title: "Deneyim", text: "Masaüstünde güçlü, cepte bir uygulama kadar rahat.", items: ["Yüklenebilir PWA", "Alt sekme çubuğu ve alt paneller", "Koyu ve açık tema", "Türkçe arayüz"] },
+      { title: "Deneyim", size: "wide", text: "Masaüstünde güçlü, cepte bir uygulama kadar rahat.", items: ["Yüklenebilir PWA", "Alt sekme çubuğu ve alt paneller", "Koyu ve açık tema", "Türkçe arayüz"] },
     ],
   },
   faq: {

@@ -17,12 +17,12 @@ export const SERVICES_EN: SubContent = {
     eyebrow: "Expertise", title: "Expertise shaped around your needs.",
     lead: "Instead of templates, we build around your organization’s goals, users and operations.",
     items: [
-      { title: "Web design & development", text: "Strategy, design, development and launch that turn your brand into a premium digital experience.", href: R("web-design") },
-      { title: "SEO & GEO content", text: "Content and technical foundations that search engines and AI answer engines understand — and can cite.", href: R("seo-geo") },
-      { title: "Custom software", text: "Panels, portals and workflow software designed around how your organization really works.", href: R("custom-software") },
+      { title: "Web design & development", text: "Strategy, design, development and launch that turn your brand into a premium digital experience.", href: R("web-design"), size: "hero", visual: "web" },
+      { title: "SEO & GEO content", text: "Content and technical foundations that search engines and AI answer engines understand — and can cite.", href: R("seo-geo"), size: "wide", visual: "seo" },
+      { title: "Custom software", text: "Panels, portals and workflow software designed around how your organization really works.", href: R("custom-software"), size: "wide", visual: "software" },
       { title: "Process & experience design", text: "Analysing scattered operations and turning them into simpler, measurable, manageable systems." },
       { title: "Corporate digital systems", text: "End-to-end product development for panels, portals, customer areas and management screens." },
-      { title: "Ongoing development", text: "Regular improvements to live products in performance, security, content and experience." },
+      { title: "Ongoing development", text: "Regular improvements to live products in performance, security, content and experience.", size: "wide" },
     ],
   },
   steps: {

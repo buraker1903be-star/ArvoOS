@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, faqLd, organizationLd, serviceLd, webPageLd } from "@/lib/site/structured-data";
 import type { SubContent } from "../_content/types";
+import { Bento, hasBento } from "../_components/bento";
 import { Check } from "../_components/marks";
 import { ArvoosSubnav } from "../_components/subnav";
 import { CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
@@ -24,7 +25,7 @@ export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: S
         <section className="section flush" aria-labelledby="cards-title">
           <div className="wrap">
             <SectionHead eyebrow={c.cards.eyebrow} title={c.cards.title} lead={c.cards.lead} split={Boolean(c.cards.lead)} id="cards-title" />
-            <div className={`fgrid${cols === "three" ? "" : ` ${cols}`}`}>
+            {hasBento(c.cards.items) ? <Bento items={c.cards.items} locale={locale} numbered={c.cards.numbered} /> : <div className={`fgrid${cols === "three" ? "" : ` ${cols}`}`}>
               {c.cards.items.map((card, i) => {
                 const body = (
                   <>
@@ -35,11 +36,12 @@ export function SubView({ locale, c, homeName = "Arvo" }: { locale: Locale; c: S
                     {card.href ? <span className="link">{locale === "tr" ? "Detaylar" : "Learn more"} <span className="arrow" aria-hidden="true">→</span></span> : null}
                   </>
                 );
+                const st = { ["--i" as string]: i % 3 };
                 return card.href
-                  ? <Link key={card.title} href={card.href} className="fcard" data-reveal>{body}</Link>
-                  : <article key={card.title} className="fcard" data-reveal>{body}</article>;
+                  ? <Link key={card.title} href={card.href} className="fcard" data-reveal style={st}>{body}</Link>
+                  : <article key={card.title} className="fcard" data-reveal style={st}>{body}</article>;
               })}
-            </div>
+            </div>}
             {c.note && !c.steps ? <p className="note">{c.note}</p> : null}
           </div>
         </section>

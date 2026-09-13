@@ -17,12 +17,12 @@ export const SERVICES_TR: SubContent = {
     eyebrow: "Uzmanlık alanları", title: "İhtiyacınıza göre şekillenen uzmanlık.",
     lead: "Hazır kalıplar yerine kurumunuzun hedeflerini, kullanıcılarını ve operasyonlarını temel alan çözümler üretiyoruz.",
     items: [
-      { title: "Web sitesi tasarımı ve yapımı", text: "Markanızı premium bir dijital deneyime dönüştüren strateji, tasarım, geliştirme ve yayın süreci.", href: R("web-design") },
-      { title: "SEO ve GEO içerik düzenleme", text: "Arama motorlarında ve yapay zekâ yanıtlarında doğru anlaşılan, alıntılanabilir içerik ve teknik altyapı.", href: R("seo-geo") },
-      { title: "Özel yazılım", text: "Kurumunuzun gerçek iş akışlarına göre tasarlanan panel, portal ve iş akışı yazılımları.", href: R("custom-software") },
+      { title: "Web sitesi tasarımı ve yapımı", text: "Markanızı premium bir dijital deneyime dönüştüren strateji, tasarım, geliştirme ve yayın süreci.", href: R("web-design"), size: "hero", visual: "web" },
+      { title: "SEO ve GEO içerik düzenleme", text: "Arama motorlarında ve yapay zekâ yanıtlarında doğru anlaşılan, alıntılanabilir içerik ve teknik altyapı.", href: R("seo-geo"), size: "wide", visual: "seo" },
+      { title: "Özel yazılım", text: "Kurumunuzun gerçek iş akışlarına göre tasarlanan panel, portal ve iş akışı yazılımları.", href: R("custom-software"), size: "wide", visual: "software" },
       { title: "Süreç ve deneyim tasarımı", text: "Dağınık operasyonları analiz ederek daha sade, ölçülebilir ve yönetilebilir sistemlere dönüştürme." },
       { title: "Kurumsal dijital sistemler", text: "Panel, portal, müşteri alanı ve yönetim ekranları için uçtan uca ürün geliştirme." },
-      { title: "Sürekli geliştirme desteği", text: "Yayındaki ürünlerin performans, güvenlik, içerik ve deneyim bakımından düzenli geliştirilmesi." },
+      { title: "Sürekli geliştirme desteği", text: "Yayındaki ürünlerin performans, güvenlik, içerik ve deneyim bakımından düzenli geliştirilmesi.", size: "wide" },
     ],
   },
   steps: {

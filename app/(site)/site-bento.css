@@ -1,0 +1,65 @@
+/* ============================================================
+   Asimetrik bento — ince çizgiler, büyük yarıçap, iç ışık,
+   ağır gölge yok. Altın yalnızca ince vurgularda.
+   ============================================================ */
+.site .bento-x{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;gap:16px}
+.site .b-cell{min-width:0}
+.site .b-hero{grid-column:span 2;grid-row:span 2}
+.site .b-hero.alt{grid-column:3 / span 2}
+.site .b-wide{grid-column:span 2}
+.site .b-tile{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;height:100%;min-height:240px;padding:clamp(24px,2.4vw,36px);border-radius:32px;background:#fff;box-shadow:inset 0 0 0 .5px rgba(11,27,46,.14)}
+.site .b-tile::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:radial-gradient(120% 70% at 0% 0%,rgba(255,255,255,1),rgba(255,255,255,0) 55%),linear-gradient(180deg,#fff,#fafafc)}
+.site .b-tile::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.site .b-copy{display:flex;flex-direction:column;gap:10px}
+.site .b-tile h3{font-size:clamp(20px,1.7vw,24px);font-weight:650;letter-spacing:-.024em;line-height:1.18}
+.site .b-tile.is-hero h3{font-size:clamp(28px,2.8vw,44px);font-weight:700;letter-spacing:-.035em;line-height:1.04;max-width:16ch}
+.site .b-tile p{color:var(--muted);line-height:1.55}
+.site .b-tile.is-hero p{font-size:clamp(17px,1.3vw,19px);max-width:44ch}
+.site .b-tile ul{display:grid;gap:7px;margin-top:6px;padding-top:14px;border-top:.5px solid rgba(11,27,46,.12)}
+.site .b-tile li{display:flex;gap:10px;color:var(--ink-soft);font-size:14.5px;line-height:1.45}
+.site .b-tile li svg{flex:none;margin-top:2px;color:var(--gold-500)}
+.site .b-tile .link{margin-top:auto;padding-top:10px}
+.site a.b-tile:hover .link{background-size:100% 1px}
+
+/* arayüz parçası: kutunun sağ-alt köşesinden taşar gibi */
+.site .b-visual{margin:28px calc(-1 * clamp(24px,2.4vw,36px)) calc(-1 * clamp(24px,2.4vw,36px)) clamp(12px,3vw,48px);margin-top:auto;padding:clamp(18px,2vw,26px);border-radius:18px 0 0 0;background:#fbfbfd;box-shadow:inset 0 0 0 .5px rgba(11,27,46,.12),0 -8px 40px rgba(11,27,46,.06)}
+.site .b-tile.is-hero .b-copy{margin-bottom:28px}
+.site .b-tile.is-wide.has-visual{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px}
+.site .b-tile.is-wide .b-visual{margin:0 calc(-1 * clamp(24px,2.4vw,36px)) calc(-1 * clamp(24px,2.4vw,36px)) 0;align-self:end}
+
+/* hizmet parçaları */
+.site .fg-web,.site .fg-seo,.site .fg-soft{font-size:12px;color:var(--ink)}
+.site .fg-nav{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid #ececf0}
+.site .fg-nav b{margin-right:auto;font-size:12px}
+.site .fg-nav i{width:34px;height:6px;border-radius:6px;background:#e5e5ea}
+.site .fg-hero{display:grid;gap:8px;padding:18px 0}
+.site .fg-hero i{height:14px;border-radius:6px;background:var(--mid-800)}
+.site .fg-hero i+i{height:10px;background:#d1d1d6}
+.site .fg-hero span{height:clamp(60px,9vw,120px);margin-top:6px;border-radius:12px;background:linear-gradient(135deg,#13243f,#2c4368 60%,#c9a66a)}
+.site .fg-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.site .fg-cols i{height:44px;border-radius:10px;background:#f2f2f7}
+.site .fg-result,.site .fg-ai{display:grid;gap:6px;padding:12px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #ececf0}
+.site .fg-result small{color:#2f7d57;font-size:11px}
+.site .fg-result b{color:#1f5fa8;font-size:14px;font-weight:600}
+.site .fg-result i,.site .fg-ai i{height:6px;border-radius:6px;background:#ececf0}
+.site .fg-ai{margin-top:10px;background:linear-gradient(180deg,#fbf8f1,#fff)}
+.site .fg-ai small{color:var(--gold-600);font-weight:600;font-size:11px}
+.site .fg-ai .chip{justify-self:start;min-height:26px;font-size:11px}
+.site .fg-code{display:inline-block;margin-top:10px;padding:6px 10px;border-radius:8px;background:var(--mid-900);color:var(--gold-300);font:500 11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.site .fg-soft{display:grid;grid-template-columns:44px 1fr;gap:12px}
+.site .fg-side{display:grid;align-content:start;gap:8px;padding:10px 8px;border-radius:12px;background:linear-gradient(180deg,#0e2139,#050c1a)}
+.site .fg-side i{height:22px;border-radius:7px;background:rgba(255,255,255,.1)}
+.site .fg-side i:first-child{background:linear-gradient(180deg,#dcc28c,#b28a49)}
+.site .fg-main b{display:block;margin-bottom:4px;font-size:14px}
+
+@media (max-width:1100px){
+  .site .bento-x{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .site .b-hero,.site .b-hero.alt{grid-column:span 2;grid-row:auto}
+}
+@media (max-width:640px){
+  .site .bento-x{grid-template-columns:1fr}
+  .site .b-hero,.site .b-hero.alt,.site .b-wide{grid-column:auto}
+  .site .b-tile{border-radius:26px}
+  .site .b-tile.is-wide.has-visual{display:flex}
+  .site .b-tile.is-wide .b-visual{margin:24px calc(-1 * clamp(24px,2.4vw,36px)) calc(-1 * clamp(24px,2.4vw,36px)) 12px}
+}

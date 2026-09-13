@@ -11,7 +11,7 @@ export const HOME_EN: HomeContent = {
   },
   hero: {
     eyebrow: "The Arvo product family",
-    title: "Better systems for better work.",
+    title: "Better systems", subtitle: "for better work.",
     lead: "Arvo is a software brand that builds ArvoOS for businesses, ArvoLab for researchers and Arc for stores. It turns complex work into calm, powerful and connected experiences.",
     actions: [
       { label: "Request a demo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
@@ -41,6 +41,10 @@ export const HOME_EN: HomeContent = {
     arcCta: { label: "Explore Arc", href: R("arc"), variant: "gold" },
     arcSignIn: { label: "Sign in", href: PRODUCT_APPS.arc.url, external: true, variant: "ghost" },
   },
+  band: {
+    words: ["CRM", "Proposals", "E-signature", "Operations", "Customer portal", "Finance", "People", "Reports"],
+    caption: "One core. Thirteen connected capability areas.",
+  },
   story: {
     eyebrow: "ArvoOS",
     title: "From request to payment. One flow.",
@@ -49,10 +53,11 @@ export const HOME_EN: HomeContent = {
     steps: [
       { title: "Request", text: "A request lands in the CRM pipeline; the customer’s history appears automatically and a sales rep is assigned." },
       { title: "Proposal", text: "A proposal with VAT options and a payment plan is shared via WhatsApp or e-mail; the customer accepts it online in one click." },
-      { title: "Contract", text: "The proposal becomes a contract in one step. The customer signs electronically; the content locks and an A4 PDF is ready." },
-      { title: "Operations", text: "Signing starts the job workflow automatically: tasks, owners, due dates, a Gantt chart and a calendar." },
-      { title: "Customer portal", text: "With a tracking code, the customer follows progress, documents and a payment summary on a branded page." },
-      { title: "Payment & reports", text: "Instalments are collected through online payment links; reports show conversion and real profitability." },
+      { title: "E-signature", text: "The accepted proposal becomes a contract in one step; the customer signs with a drawn signature. The content locks with a timestamp and verification hash." },
+      { title: "Workflow", text: "Signing starts the job workflow automatically: tasks, owners, due dates, a Gantt chart and a calendar." },
+      { title: "Tracking portal", text: "With a tracking code, the customer follows progress and documents on a branded page, and messages your team." },
+      { title: "Online payment", text: "Instalments are collected through online payment links; deliverables stay locked until payment." },
+      { title: "Reports", text: "Sales funnel, the weakest step and real profitability per job — on one screen." },
     ],
   },
   eco: {

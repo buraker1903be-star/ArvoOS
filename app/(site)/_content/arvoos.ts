@@ -30,15 +30,15 @@ export const ARVOOS_TR: ProductContent = {
     title: "Kontrol sizde. Karmaşa geride.",
     lead: "Dağınık tabloları, kopuk araçları ve görünmeyen sorumlulukları tek bir kurumsal çalışma düzeninde birleştirin.",
     items: [
+      { title: "Teklifler", text: "Revizyon, KDV seçenekleri ve ödeme planı; müşteri tek tıkla çevrim içi onaylar.", size: "hero", visual: "s1" },
       { title: "CRM ve satış", text: "Satış hattı aşamaları, otomatik müşteri geçmişi, anlık müşteri sorgulama ve satış takvimi." },
-      { title: "Teklifler", text: "Revizyon, KDV seçenekleri ve ödeme planı; müşteri tek tıkla çevrim içi onaylar." },
       { title: "E-imzalı sözleşmeler", text: "Şablonlar, çizilen imza ve onay beyanları; imzadan sonra kilitlenen içerik ve A4 PDF." },
       { title: "Operasyon", text: "İş tablosu, Gantt şeması, takvim, görevler ve sorumlular. İmza, iş akışını otomatik başlatır." },
-      { title: "Müşteri takip portalı", text: "Müşteri, takip koduyla ilerlemeyi, belgelerini ve ödeme özetini markalı bir sayfada izler." },
       { title: "Finans", text: "Cari hesaplar, taksit planları, çevrim içi ödeme bağlantıları, faturalar ve iş bazında kârlılık." },
+      { title: "Müşteri takip portalı", text: "Müşteri, takip koduyla ilerlemeyi, belgelerini ve ödeme özetini markalı bir sayfada izler.", size: "hero", alt: true, visual: "s4" },
       { title: "İnsan kaynakları", text: "Personel, roller, prim hesabı, etkinlik kayıtları ve e-imzalı gizlilik sözleşmeleri." },
       { title: "Raporlar", text: "Satış hunisi, en zayıf adım, gerçek kârlılık, eğilimler ve kayıp nedenleri." },
-      { title: "İletişim", text: "Ekip içi mesajlaşma, bildirim merkezi, yönetim duyuruları ve destek talepleri." },
+      { title: "İletişim", text: "Ekip içi mesajlaşma, bildirim merkezi, yönetim duyuruları ve destek talepleri.", size: "wide" },
     ],
   },
   flow: {

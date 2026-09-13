@@ -3,22 +3,19 @@ import { ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, faqLd, productLd, webPageLd } from "@/lib/site/structured-data";
 import type { ProductContent } from "../_content/types";
 import { Check, ProductLogo, type ProductName } from "../_components/marks";
-import { ArcMock } from "../_components/mock-arc";
-import { LabMock } from "../_components/mock-lab";
-import { OsPanelMock } from "../_components/mock-os";
+import { Bento, hasBento } from "../_components/bento";
+import { HeroStage } from "../_components/hero-stage";
+import { StoryStage } from "../_components/story-stage";
 import { ArvoosSubnav } from "../_components/subnav";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
-
-const VISUAL = { arvoos: OsPanelMock, arvolab: LabMock, arc: ArcMock };
 
 export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }) {
   const path = ROUTES[c.id][locale];
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.name, href: path }];
-  const Visual = VISUAL[c.id];
   return (
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} logo={<ProductLogo name={c.name as ProductName} tone="dark" height={40} />}>
-        <Visual locale={locale} />
+        <HeroStage locale={locale} product={c.id} />
       </PageHero>
       <div>
         {c.id === "arvoos" ? <ArvoosSubnav locale={locale} current="arvoos" /> : null}
@@ -26,15 +23,19 @@ export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }
         <section className="section flush" aria-labelledby="features-title">
           <div className="wrap">
             <SectionHead eyebrow={c.features.eyebrow} title={c.features.title} lead={c.features.lead} split id="features-title" />
-            <div className="fgrid">
-              {c.features.items.map((f, i) => (
-                <article key={f.title} className="fcard" data-reveal><span className="fcard-n">{String(i + 1).padStart(2, "0")}</span><h3>{f.title}</h3><p>{f.text}</p></article>
-              ))}
-            </div>
+            {hasBento(c.features.items) ? <Bento items={c.features.items} locale={locale} /> : (
+              <div className="fgrid">
+                {c.features.items.map((f, i) => (
+                  <article key={f.title} className="fcard" data-reveal style={{ ["--i" as string]: i % 3 }}><span className="fcard-n">{String(i + 1).padStart(2, "0")}</span><h3>{f.title}</h3><p>{f.text}</p></article>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
-        {c.flow ? (
+        {c.flow && c.id === "arvoos" ? (
+          <StoryStage locale={locale} eyebrow={c.flow.eyebrow} title={c.flow.title} lead={c.flow.lead} steps={c.flow.steps} id="flow-title" footer={c.flow.cta ? <Actions items={[c.flow.cta]} /> : null} />
+        ) : c.flow ? (
           <section className="section tint" aria-labelledby="flow-title">
             <div className="wrap story">
               <div className="story-pin">

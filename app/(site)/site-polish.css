@@ -1,0 +1,50 @@
+/* ============================================================
+   Tutarlılık cilası — ince çizgili büyük yarıçaplı yüzeyler,
+   altın yalnızca vurguda, sessiz "concierge" iletişim masası,
+   ana sayfa ürün ailesi asimetrik bento.
+   ============================================================ */
+.site{--hair:inset 0 0 0 .5px rgba(11,27,46,.14)}
+
+/* eşit ızgaralarda kalan kartlar da aynı dili konuşur */
+.site .fcard,.site .tint .fcard{border-radius:32px;background:linear-gradient(180deg,#fff,#fafafc);box-shadow:var(--hair)}
+.site .fcard ul{border-top-width:.5px}
+.site .aud>*{border-radius:32px;background:#fff;box-shadow:var(--hair)}
+.site .aud a:hover{background:#fff;box-shadow:var(--hair),0 18px 40px rgba(11,27,46,.06)}
+.site .svc a{border-radius:32px;box-shadow:var(--hair)}
+.site .svc a:hover{box-shadow:var(--hair),0 18px 40px rgba(11,27,46,.06)}
+.site .ref{border-radius:32px;background:#fff;box-shadow:var(--hair)}
+.site .step{border-radius:28px;box-shadow:var(--hair)}
+.site .band{border-radius:40px;background:radial-gradient(70% 90% at 100% 0%,rgba(201,166,106,.12),transparent 60%),linear-gradient(160deg,#13243f,#050c1a)}
+.site .checks li{border-bottom-width:.5px}
+.site .faq,.site .faq details{border-color:rgba(11,27,46,.14)}
+
+/* altın: dolgu değil, mücevher */
+.site .tile-arc{background:radial-gradient(80% 70% at 80% 100%,rgba(201,166,106,.12),transparent 60%),linear-gradient(170deg,#13243f,#050c1a)}
+.site .tile-lab{background:linear-gradient(180deg,#fff,#f7f7fa);box-shadow:var(--hair)}
+.site .a2{opacity:.32}
+.site .fg-hero span{background:linear-gradient(135deg,#13243f,#2c4368 60%,#8497b5)}
+
+/* ---------- ana sayfa ürün ailesi: asimetrik bento ---------- */
+.site .bento{grid-template-columns:repeat(12,minmax(0,1fr))}
+.site .tcell{min-width:0}
+.site .tcell-os{grid-column:span 7;grid-row:span 2}
+.site .tcell-lab,.site .tcell-arc{grid-column:span 5}
+.site .tcell>.tile{height:100%;border-radius:36px}
+.site .tile-os{display:flex;flex-direction:column;gap:0;align-items:stretch}
+.site .tile-os .tile-visual{margin-top:auto;padding-top:48px}
+.site .tile-os .layer-sign{top:auto;bottom:-6%;right:-4%}
+.site .tcell-lab .tile,.site .tcell-arc .tile{min-height:0}
+.site .tcell-lab .chips,.site .tcell-arc .chips{display:none}
+.site .tcell-lab .h3,.site .tcell-arc .h3{font-size:clamp(24px,2.2vw,32px)}
+.site .tcell-lab .tile-visual,.site .tcell-arc .tile-visual{padding-top:28px}
+@media (max-width:980px){
+  .site .tcell-os,.site .tcell-lab,.site .tcell-arc{grid-column:span 12;grid-row:auto}
+}
+
+/* ---------- iletişim: sessiz concierge masası ---------- */
+.site .contact{gap:clamp(56px,8vw,160px)}
+.site .contact-aside{gap:0;margin-top:56px !important}
+.site .contact-aside>div{padding:22px 0;border-radius:0;background:none;border-top:.5px solid rgba(11,27,46,.16)}
+.site .contact-aside>div:last-child{border-bottom:.5px solid rgba(11,27,46,.16)}
+.site .contact-aside small{letter-spacing:.02em}
+.site .contact .h2{max-width:12ch}

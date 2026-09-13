@@ -32,12 +32,7 @@
 .site .hero-stage{position:relative;margin:clamp(56px,8vw,96px) auto calc(-1 * var(--overlap));width:min(1120px,100% - 2*var(--gutter));perspective:1600px}
 .site .hero-stage::before{content:"";position:absolute;inset:8% 6% -4%;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,rgba(201,166,106,.28),transparent);filter:blur(40px)}
 .site .hero+*,.site .phero.has-stage+*{padding-top:calc(var(--overlap) + clamp(72px,9vw,128px))}
-.site .tilt{transform-origin:50% 100%;transform:rotateX(14deg) scale(.94);animation:site-settle 1.4s var(--ease) .35s both}
-@keyframes site-settle{from{opacity:0;transform:rotateX(24deg) translateY(60px) scale(.9)}to{opacity:1;transform:rotateX(14deg) scale(.94)}}
-@supports (animation-timeline:view()){
-  .site .tilt{animation:site-rise 1s var(--ease) .3s both,site-flatten linear both;animation-timeline:auto,view();animation-range:normal,entry 20% cover 55%}
-}
-@keyframes site-flatten{to{transform:rotateX(0) scale(1)}}
+/* .tilt (kaydırmayla düzleşen sahne) → site-cinema.css */
 
 /* alt sayfa açılışı */
 .site .phero{padding:calc(var(--header-h) + clamp(64px,9vw,120px)) 0 clamp(72px,9vw,120px)}

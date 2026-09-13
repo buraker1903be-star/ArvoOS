@@ -5,9 +5,10 @@ import type { Cta, QA } from "../_components/ui";
 type Product = { label: string; title: string; text: string; chips: string[]; cta: Cta; signIn: Cta };
 export type HomeContent = {
   meta: { title: string; description: string };
-  hero: { eyebrow: string; title: string; lead: string; actions: Cta[]; familyLabel: string };
+  hero: { eyebrow: string; title: string; subtitle?: string; lead: string; actions: Cta[]; familyLabel: string };
   statement: string[];
   products: { eyebrow: string; title: string; lead: string; os: Product; lab: Product; arcCta: Cta; arcSignIn: Cta };
+  band: { words: string[]; caption: string };
   story: { eyebrow: string; title: string; lead: string; cta: Cta; steps: { title: string; text: string }[] };
   eco: { eyebrow: string; title: string; lead: string; roles: [string, string, string]; principles: { title: string; text: string }[] };
   values: { eyebrow: string; title: string; items: { title: string; text: string }[] };
@@ -26,7 +27,7 @@ export const HOME_TR: HomeContent = {
   },
   hero: {
     eyebrow: "Arvo ürün ailesi",
-    title: "Daha iyi çalışmak için daha iyi sistemler.",
+    title: "Daha iyi çalışmak için", subtitle: "daha iyi sistemler.",
     lead: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için Arc’ı geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
@@ -56,6 +57,10 @@ export const HOME_TR: HomeContent = {
     arcCta: { label: "Arc’ı keşfedin", href: R("arc"), variant: "gold" },
     arcSignIn: { label: "Giriş", href: PRODUCT_APPS.arc.url, external: true, variant: "ghost" },
   },
+  band: {
+    words: ["CRM", "Teklif", "E-imza", "Operasyon", "Müşteri portalı", "Finans", "İnsan kaynakları", "Raporlar"],
+    caption: "Tek çekirdek. Birbirine bağlı on üç yetenek alanı.",
+  },
   story: {
     eyebrow: "ArvoOS",
     title: "Talepten tahsilata. Tek akış.",
@@ -64,10 +69,11 @@ export const HOME_TR: HomeContent = {
     steps: [
       { title: "Talep", text: "Talep CRM satış hattına düşer; müşterinin geçmişi otomatik görünür ve bir satış temsilcisine atanır." },
       { title: "Teklif", text: "KDV seçenekli ve ödeme planlı teklif WhatsApp veya e-postayla paylaşılır; müşteri tek tıkla çevrim içi onaylar." },
-      { title: "Sözleşme", text: "Teklif tek adımda sözleşmeye dönüşür. Müşteri elektronik olarak imzalar; içerik kilitlenir, A4 PDF hazırdır." },
-      { title: "Operasyon", text: "İmza, iş akışını otomatik başlatır: görevler, sorumlular, terminler, Gantt şeması ve takvim." },
-      { title: "Müşteri portalı", text: "Müşteri, takip koduyla işinin ilerlemesini, belgelerini ve ödeme özetini markalı bir sayfada izler." },
-      { title: "Tahsilat ve rapor", text: "Taksitler çevrim içi ödeme bağlantılarıyla tahsil edilir; raporlar dönüşümü ve gerçek kârlılığı gösterir." },
+      { title: "E-imza", text: "Onaylanan teklif tek adımda sözleşmeye dönüşür; müşteri çizdiği imzayla onaylar. İçerik zaman damgası ve doğrulama özetiyle kilitlenir." },
+      { title: "İş akışı", text: "İmza, iş akışını otomatik başlatır: görevler, sorumlular, terminler, Gantt şeması ve takvim." },
+      { title: "Takip portalı", text: "Müşteri, takip koduyla işinin ilerlemesini ve belgelerini markalı bir sayfada izler; ekibinizle mesajlaşır." },
+      { title: "Online tahsilat", text: "Taksitler çevrim içi ödeme bağlantılarıyla tahsil edilir; teslim dosyaları ödeme yapılana kadar kilitli kalır." },
+      { title: "Rapor", text: "Satış hunisi, en zayıf adım ve iş bazında gerçek kârlılık tek ekranda." },
     ],
   },
   eco: {

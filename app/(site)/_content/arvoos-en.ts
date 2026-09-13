@@ -30,15 +30,15 @@ export const ARVOOS_EN: ProductContent = {
     title: "You’re in control. Chaos stays behind.",
     lead: "Bring scattered spreadsheets, disconnected tools and invisible responsibilities into one organized way of working.",
     items: [
+      { title: "Proposals", text: "Revisions, VAT options and payment plans; customers accept online in one click.", size: "hero", visual: "s1" },
       { title: "CRM & sales", text: "Pipeline stages, automatic customer history, instant customer lookup and a sales calendar." },
-      { title: "Proposals", text: "Revisions, VAT options and payment plans; customers accept online in one click." },
       { title: "E-signed contracts", text: "Templates, drawn signatures and consent statements; content locks after signing, with A4 PDF output." },
       { title: "Operations", text: "Jobs table, Gantt chart, calendar, tasks and owners. Signing starts the workflow automatically." },
-      { title: "Customer tracking portal", text: "Customers follow progress, documents and a payment summary on a branded page with a tracking code." },
       { title: "Finance", text: "Current accounts, instalment plans, online payment links, invoices and per-job profitability." },
+      { title: "Customer tracking portal", text: "Customers follow progress, documents and a payment summary on a branded page with a tracking code.", size: "hero", alt: true, visual: "s4" },
       { title: "Human resources", text: "Staff, roles, commission calculation, activity logs and e-signed confidentiality agreements." },
       { title: "Reports", text: "Sales funnel with the weakest step flagged, real profitability, trends and lost reasons." },
-      { title: "Communication", text: "Team messaging, a notification centre, management announcements and support tickets." },
+      { title: "Communication", text: "Team messaging, a notification centre, management announcements and support tickets.", size: "wide" },
     ],
   },
   flow: {

@@ -39,6 +39,11 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <Col title={t.company} links={[{ label: t.about, href: ROUTES.about[locale] }, { label: t.contact, href: ROUTES.contact[locale] }, { label: t.privacy, href: ROUTES.privacy[locale] }]} />
           <Col title={t.signIn} links={t.signInLinks} />
         </div>
+        <nav className="ftr-sign" aria-label={t.products}>
+          <Link href={ROUTES.arvoos[locale]}><BrandLogo brand="arvoos" tone="dark" alt="ArvoOS" /></Link>
+          <Link href={ROUTES.arvolab[locale]}><BrandLogo brand="arvolab" tone="dark" alt="ArvoLab" /></Link>
+          <Link href={ROUTES.arc[locale]}><BrandLogo brand="arc" tone="dark" alt="Arvo Arc" /></Link>
+        </nav>
         <div className="ftr-bottom">
           <address className="ftr-address">
             <strong>{COMPANY.legalName}</strong>

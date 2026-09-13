@@ -1,0 +1,94 @@
+/* ============================================================
+   Sabitlenmiş anlatı sahnesi (StoryStage) + imza anları
+   ============================================================ */
+.site .flowx-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,7vw,120px)}
+.site .flowx-head .h2{margin-top:14px}
+.site .flowx-head .lead{margin-top:20px}
+.site .flowx-steps{margin-top:clamp(48px,8vh,96px)}
+.site .flowx-steps li{display:flex;flex-direction:column;justify-content:center;min-height:62vh;padding:24px 0;opacity:.28;transition:opacity .6s var(--ease)}
+.site .flowx-steps li[data-on]{opacity:1}
+.site .flowx-n{color:var(--gold-600);font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+.site .flowx-n::after{content:"";display:block;width:32px;height:1px;margin-top:12px;background:var(--gold-400)}
+.site .flowx-steps h3{margin-top:18px;font-size:clamp(28px,3vw,44px);font-weight:700;letter-spacing:-.035em;line-height:1.05}
+.site .flowx-steps p{margin-top:14px;max-width:44ch;color:var(--muted);font-size:clamp(17px,1.4vw,20px);line-height:1.5}
+.site .flowx-inline{display:none}
+.site .flowx-foot{margin-top:24px}
+.site .flowx-stage{position:relative}
+.site .flowx-sticky{position:sticky;top:calc(var(--header-h) + 8vh);padding-top:clamp(40px,8vh,96px)}
+.site .flowx-win{position:relative}
+.site .flowx-screens{position:relative;height:clamp(380px,48vh,480px);background:#fbfbfd}
+/* Temiz geçiş: gelen ekran opak zeminle üstte belirir; giden ekran altta,
+   üzeri örtülene kadar bekler (metinler hiç üst üste binmez). */
+.site .fx-screen{position:absolute;inset:0;padding:clamp(20px,2.4vw,32px);background:#fbfbfd;opacity:0;transform:translateY(14px) scale(.985);transition:opacity 0s linear .6s,transform 0s linear .6s;pointer-events:none}
+.site .fx-screen[data-on]{z-index:1;opacity:1;transform:none;transition:opacity .55s var(--ease),transform .7s var(--ease)}
+.site .flowx-dots{display:flex;justify-content:center;gap:8px;margin-top:20px}
+.site .flowx-dots i{width:6px;height:6px;border-radius:50%;background:var(--g-300);transition:transform .4s var(--ease),background-color .4s}
+.site .flowx-dots i[data-on]{background:var(--gold-500);transform:scale(1.4)}
+
+/* ekran parçaları */
+.site .fx-screen-in{display:flex;flex-direction:column;gap:12px;font-size:13px;color:var(--ink)}
+.site .fx-h{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.site .fx-row{display:flex;align-items:center;gap:12px}
+.site .fx-row b,.site .fx-row small{display:block}
+.site .fx-row small,.site .fx-kv small,.site .fx-meta,.site .fx-foot small{color:var(--muted);font-size:12px}
+.site .fx-row .mo-pill{margin-left:auto}
+.site .fx-av{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#eef1f6;color:var(--mid-500);font-weight:700}
+.site .fx-pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.site .fx-pipe span{padding:8px 6px;border-radius:10px;background:#f2f2f7;color:var(--muted);font-size:11.5px;text-align:center}
+.site .fx-pipe span[data-on]{background:var(--mid-800);color:#fff}
+.site .fx-kv{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-top:1px solid #ececf0}
+.site .fx-line{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid #ececf0;font-variant-numeric:tabular-nums}
+.site .fx-muted{color:var(--muted)}
+.site .fx-total{font-size:15px;font-weight:700;border-top:1px solid var(--ink)}
+.site .fx-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+.site .fx-doc{display:grid;gap:7px;padding:14px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #ececf0}
+.site .fx-doc i{height:6px;border-radius:6px;background:#ececf0}
+.site .fx-check{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.site .fx-check i{width:16px;height:16px;border-radius:5px;background:var(--mid-800);box-shadow:inset 0 0 0 4px var(--mid-800),inset 0 0 0 6px #fff}
+.site .fx-sign{width:62%;height:auto;border-bottom:1px solid #d1d1d6}
+.site .fx-gantt{display:grid;gap:10px}
+.site .fx-g{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:12px}
+.site .fx-g small{display:block;color:var(--muted);font-size:11px}
+.site .fx-g i{position:relative;height:18px;border-radius:6px;background:repeating-linear-gradient(90deg,#f2f2f7 0 calc(10% - 1px),#e5e5ea calc(10% - 1px) 10%)}
+.site .fx-g b{position:absolute;top:0;bottom:0;border-radius:6px;background:linear-gradient(90deg,#2c4368,#8497b5)}
+.site .fx-note{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:#f2f2f7;font-size:12.5px}
+.site .fx-stages{display:flex;gap:16px}
+.site .fx-msg{display:grid;gap:8px;margin-top:4px}
+.site .fx-msg p{max-width:78%;padding:9px 12px;border-radius:14px 14px 14px 4px;background:#f2f2f7;font-size:12.5px}
+.site .fx-msg p.me{justify-self:end;border-radius:14px 14px 4px 14px;background:var(--mid-800);color:#fff}
+.site .fx-funnel{display:grid;gap:10px}
+.site .fx-funnel div{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:12px;font-size:12.5px}
+.site .fx-funnel i{height:14px;border-radius:6px;background:#f2f2f7;overflow:hidden}
+.site .fx-funnel b{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#2c4368,#8497b5)}
+.site .fx-funnel b[data-weak]{background:linear-gradient(90deg,#b28a49,#dcc28c)}
+
+/* mobil ve azaltılmış hareket: adımlar alt alta, her biri kendi ekranıyla */
+@media (max-width:980px){
+  .site .flowx-grid{grid-template-columns:1fr}
+  .site .flowx-stage{display:none}
+  .site .flowx-steps li{min-height:0;opacity:1;padding:36px 0;border-top:1px solid var(--line)}
+  .site .flowx-inline{display:block;margin-top:24px;padding:20px;background:#fbfbfd}
+}
+@media (prefers-reduced-motion:reduce){
+  .site .flowx-grid{grid-template-columns:1fr}
+  .site .flowx-stage{display:none}
+  .site .flowx-steps li{min-height:0;opacity:1}
+  .site .flowx-inline{display:block;margin-top:24px;padding:20px;background:#fbfbfd}
+}
+
+/* ---------- imza anı: dev, soluk modül adları akışı ---------- */
+.site .band-mq{position:relative;overflow:hidden;padding-block:clamp(120px,14vw,220px)}
+.site .mq{display:flex;width:max-content;animation:site-mq 60s linear infinite}
+.site .mq+.mq{margin-top:clamp(8px,1.5vw,20px);animation-direction:reverse;animation-duration:75s}
+.site .mq span{padding-right:.6em;font-size:clamp(64px,11vw,184px);font-weight:700;line-height:1;letter-spacing:-.05em;white-space:nowrap;color:rgba(235,235,245,.07)}
+.site .mq span:nth-child(3n+2){color:transparent;-webkit-text-stroke:1px rgba(220,194,140,.28)}
+.site .band-mq .band-caption{position:relative;margin-top:clamp(40px,5vw,72px);text-align:center;color:var(--on-dark-muted);font-size:clamp(17px,1.4vw,20px)}
+@keyframes site-mq{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.site .mq{animation:none}}
+
+/* ---------- alt bilgi: büyük marka imzası ---------- */
+.site .ftr-sign{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:clamp(24px,4vw,64px);padding-block:clamp(56px,7vw,112px);border-top:1px solid var(--line-dark)}
+.site .ftr-sign a{display:block;transition:transform .6s var(--ease)}
+.site .ftr-sign a:hover{transform:translateY(-3px)}
+.site .ftr-sign .brand-logo{--h:clamp(34px,5.4vw,84px)}
+@media (max-width:640px){.site .ftr-sign{justify-content:flex-start;gap:28px}.site .ftr-sign .brand-logo{--h:30px}}
