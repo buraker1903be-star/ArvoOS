@@ -547,6 +547,24 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.tracking-toggle {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ux-line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.tracking-toggle p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.tracking-toggle b {
+  color: var(--ux-primary);
+}
 .contract-chat {
   display: grid;
   gap: 10px;

@@ -166,6 +166,42 @@ export async function replyContractMessage(formData: FormData) {
   }, "Yanıt müşteriye gönderildi");
 }
 
+/**
+ * İmza öncesi takibi sözleşme bazında açar/kapatır. Varsayılan kapalı:
+ * müşteri takip ekranına imzadan sonra girer. İmzalı sözleşmede her zaman açık.
+ */
+export async function setTrackingBeforeSignature(formData: FormData) {
+  const open = text(formData, "open", 2) === "1";
+  await runPanelAction(async () => {
+    const contractId = text(formData, "contract_id", 80);
+    const { supabase, membership, userId } = await getPanelContext();
+    const { data, error } = await supabase
+      .from("crm_contracts")
+      .update({ tracking_open_before_signature: open, updated_at: new Date().toISOString() })
+      .eq("id", contractId)
+      .eq("organization_id", membership.organization_id)
+      .in("status", ["draft", "sent"])
+      .select("id,opportunity_id")
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message.includes("tracking_open_before_signature")
+        ? "Takip ayarı kaydedilemedi. Veritabanı güncellemesi (20260914170000_tracking_open_toggle) uygulanmış mı kontrol edin."
+        : `Takip ayarı kaydedilemedi: ${error.message}`);
+    }
+    if (!data) throw new Error("Takip ayarı yalnızca imza bekleyen sözleşmede değiştirilir veya bu sözleşmeyi düzenleme yetkiniz yok.");
+    await logActivity(supabase, {
+      organizationId: membership.organization_id,
+      actorUserId: userId,
+      action: "update",
+      entityType: "crm_contract",
+      entityId: data.id,
+      opportunityId: data.opportunity_id,
+      note: open ? "İmza öncesi takip açıldı" : "İmza öncesi takip kapatıldı",
+    });
+    revalidatePath(`/panel/crm/contracts/${contractId}`);
+  }, open ? "İmza öncesi takip açıldı" : "İmza öncesi takip kapatıldı");
+}
+
 /** Onay bekleyen ek protokolü geri çeker. */
 export async function cancelContractAddendum(formData: FormData) {
   await runPanelAction(async () => {

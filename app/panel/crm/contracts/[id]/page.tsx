@@ -13,7 +13,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { ContractWorkPlanForm } from "../../contract-work-plan-form";
 import { ContractAddendumForm, type AddendumInstallment } from "../../contract-addendum-form";
-import { cancelContractAddendum, replyContractMessage } from "../../contract-plan-actions";
+import { cancelContractAddendum, replyContractMessage, setTrackingBeforeSignature } from "../../contract-plan-actions";
 import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedule";
 import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/lib/work-plan";
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
@@ -51,17 +51,22 @@ export default async function ContractDetailPage({ params }: Props) {
 
   // İş planı ve ek protokoller ayrı okunur: migration (20260914090000)
   // uygulanmadıysa sayfa eskisi gibi açılır, yalnızca bu bölüm gizlenir.
-  const [workPlanResult, addendaResult, installmentResult, messagesResult] = await Promise.all([
+  const [workPlanResult, addendaResult, installmentResult, messagesResult, trackingFlagResult] = await Promise.all([
     supabase.from("crm_contracts").select("work_plan").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle(),
     supabase.from("crm_contract_addenda").select("id,addendum_no,work_plan,payment_dates,note,status,created_at,responded_at,responder_name,responder_ip,responder_user_agent,response_note").eq("contract_id", id).eq("organization_id", membership.organization_id).order("addendum_no", { ascending: true }),
     data.payment_plan_id
       ? supabase.from("payment_installments").select("installment_no,due_date,amount,status").eq("payment_plan_id", data.payment_plan_id).eq("organization_id", membership.organization_id).order("installment_no", { ascending: true })
       : Promise.resolve({ data: [] as { installment_no: number; due_date: string | null; amount: number; status: string | null }[] }),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("contract_id", id).eq("organization_id", membership.organization_id).order("created_at", { ascending: true }).limit(200),
+    supabase.from("crm_contracts").select("tracking_open_before_signature").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle(),
   ]);
   const customerMessages = (messagesResult.data ?? []) as { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null }[];
   const unreadMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
   const messagingOpen = !["rejected", "cancelled"].includes(data.status);
+  // İmza öncesi takip sözleşme bazında açılır (varsayılan kapalı); imzalıda hep açık.
+  // Ayar okunamazsa (migration yok) eski davranış: düğme gösterilmez.
+  const trackingToggleable = !trackingFlagResult.error && ["draft", "sent"].includes(data.status);
+  const trackingOpen = signed || Boolean((trackingFlagResult.data as { tracking_open_before_signature?: boolean } | null)?.tracking_open_before_signature);
   const planFeature = !workPlanResult.error && !addendaResult.error;
   const proposalJoin = Array.isArray(data.crm_proposals) ? data.crm_proposals[0] : data.crm_proposals;
   const storedSchedule = normalizePaymentSchedule(data.payment_schedule ?? proposalJoin?.payment_schedule ?? []);
@@ -335,6 +340,23 @@ export default async function ContractDetailPage({ params }: Props) {
                                             <p style={{ wordBreak: "break-all" }}>
                                               {trackingUrl}
                                             </p>
+                                            {trackingToggleable ? (
+                                              <div className="tracking-toggle">
+                                                <p>
+                                                  <b>İmza öncesi takip: {trackingOpen ? "Açık" : "Kapalı"}</b>
+                                                  <br />
+                                                  {trackingOpen
+                                                    ? "Müşteri sözleşmeyi imzalamadan takip ekranına girebilir; teklifi onaylayabilir, soru sorabilir ve sözleşmeyi oradan imzalamaya gidebilir."
+                                                    : "Müşteri takip ekranına sözleşmeyi imzaladıktan sonra girebilir. Bu müşteriye imzadan önce açmak için takibi açın."}
+                                                </p>
+                                                <form action={setTrackingBeforeSignature}>
+                                                  <input type="hidden" name="contract_id" value={data.id} />
+                                                  <input type="hidden" name="open" value={trackingOpen ? "0" : "1"} />
+                                                  <button className={trackingOpen ? "panel-secondary" : "panel-primary"} type="submit">{trackingOpen ? "Takibi kapat" : "Takibi aç"}</button>
+                                                </form>
+                                              </div>
+                                            ) : null}
+                                            {trackingOpen || !trackingToggleable ? (
                                             <div className="panel-page-actions">
                                               <a
                                                 className="panel-primary"
@@ -353,6 +375,7 @@ export default async function ContractDetailPage({ params }: Props) {
                                                 Önizle
                                               </a>
                                             </div>
+                                            ) : null}
                                           </div>
                                         );
                                       })()}
