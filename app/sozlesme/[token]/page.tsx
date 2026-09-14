@@ -50,7 +50,7 @@ export default async function PublicContractPage({params,searchParams}:{params:P
  const query=await searchParams;
  const loaded=await loadPublicContract(token);
  if(!loaded)notFound();
- const {supabase,row,audit,auditAvailable,links,verificationHash,workPlan,addenda}=loaded;
+ const {supabase,row,audit,auditAvailable,links,verificationHash,workPlan,addenda,trackingCode}=loaded;
  await supabase.rpc("mark_crm_contract_viewed",{public_token:token});
  const origin=await requestOrigin();
  // Yalnızca taslak/gönderilmiş ve imzalanmamış sözleşme imzaya açık.
@@ -69,6 +69,7 @@ export default async function PublicContractPage({params,searchParams}:{params:P
   row={row}
   workPlan={workPlan}
   addenda={addenda}
+  trackingCode={trackingCode}
   addendumActions={(addendum)=><AddendumDecisionForm token={token} addendum={addendum}/>}
   audit={audit}
   auditAvailable={auditAvailable}

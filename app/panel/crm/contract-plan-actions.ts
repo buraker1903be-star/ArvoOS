@@ -128,6 +128,44 @@ export async function createContractAddendum(_previousState: ContractPlanState, 
   return { error: null, success: `${label} müşterinin onayına sunuldu. Sözleşme bağlantısını müşteriye iletin; onay sözleşme sayfasından verilir.` };
 }
 
+/**
+ * Müşterinin takip ekranından yazdığı mesaja sözleşme sayfasından yanıt.
+ * İmzadan önce iş akışı olmadığı için yanıt yalnızca sözleşmeye bağlanır;
+ * iş oluşunca mesajlar veritabanında işe bağlanır.
+ */
+export async function replyContractMessage(formData: FormData) {
+  await runPanelAction(async () => {
+    const contractId = text(formData, "contract_id", 80);
+    const body = text(formData, "body", 2000);
+    if (body.length < 2) throw new Error("Yanıt 2–2000 karakter olmalı.");
+    const { supabase, membership, userId } = await getPanelContext();
+    const [{ data: contract }, { data: employee }] = await Promise.all([
+      supabase.from("crm_contracts").select("id,workflow_id,status").eq("id", contractId).eq("organization_id", membership.organization_id).maybeSingle(),
+      supabase.from("hr_employees").select("full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
+    ]);
+    if (!contract) throw new Error("Sözleşme bulunamadı veya bu sözleşmeye erişiminiz yok.");
+    if (["rejected", "cancelled"].includes(contract.status)) throw new Error("Reddedilen veya iptal edilen sözleşmede mesajlaşma kapalı.");
+    const { error } = await supabase.from("customer_file_messages").insert({
+      organization_id: membership.organization_id,
+      contract_id: contract.id,
+      workflow_id: contract.workflow_id,
+      sender_type: "staff",
+      sender_user_id: userId,
+      sender_name: employee?.full_name || "Müşteri Temsilcisi",
+      body,
+    });
+    if (error) throw new Error("Müşteriye yanıt gönderilemedi: " + error.message);
+    await supabase
+      .from("customer_file_messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("contract_id", contract.id)
+      .eq("organization_id", membership.organization_id)
+      .eq("sender_type", "customer")
+      .is("read_at", null);
+    revalidatePath(`/panel/crm/contracts/${contract.id}`);
+  }, "Yanıt müşteriye gönderildi");
+}
+
 /** Onay bekleyen ek protokolü geri çeker. */
 export async function cancelContractAddendum(formData: FormData) {
   await runPanelAction(async () => {

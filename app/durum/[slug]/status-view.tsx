@@ -24,6 +24,8 @@ const workflowStatuses: Record<string, StatusInfo> = {
 };
 
 const contractStatuses: Record<string, StatusInfo> = {
+  draft: { label: "Hazırlanıyor", tone: "planned", note: "Sözleşmeniz hazırlanıyor; hazır olduğunda buradan inceleyip imzalayabileceksiniz." },
+  sent: { label: "İmza Bekliyor", tone: "waiting", note: "Sözleşmeniz onayınıza sunuldu. İnceleyip imzaladığınızda çalışma planlanır ve başlar." },
   signed: { label: "İmzalandı", tone: "planned", note: "Sözleşmeniz imzalandı; iş planınız hazırlanıyor." },
   completed: DONE,
   archived: DONE,

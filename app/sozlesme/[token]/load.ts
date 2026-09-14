@@ -25,7 +25,7 @@ export const loadPublicContract = cache(async (token: string) => {
   ]);
   // İş planı / ek protokoller okunamazsa (migration uygulanmadıysa) belge onlarsız açılır.
   if (planResult.error) console.error("arvo_public_contract_plan failed", { code: planResult.error.code, message: planResult.error.message });
-  const plan = planResult.error ? null : (planResult.data as { work_plan?: unknown; addenda?: unknown } | null);
+  const plan = planResult.error ? null : (planResult.data as { work_plan?: unknown; addenda?: unknown; tracking_code?: unknown } | null);
   // Resmi/banka bilgisi okunamazsa belge alt bilgi metniyle çizilir (eski davranış).
   if (legalResult.error) console.error("arvo_public_organization_legal failed", { code: legalResult.error.code, message: legalResult.error.message });
   const row: DocumentRow = { ...base, ...organizationLegalFields(legalResult.error ? null : first(legalResult.data as DocumentRow | DocumentRow[] | null)) };
@@ -33,5 +33,5 @@ export const loadPublicContract = cache(async (token: string) => {
   const audit = auditResult.error ? null : (first(auditResult.data as DocumentRow | DocumentRow[] | null) as ContractAudit | null);
   const links = linkResult.error ? null : (first(linkResult.data as DocumentRow | DocumentRow[] | null) as { proposal_share_token: string | null; proposal_no: string | null } | null);
   const verificationHash = await contractVerificationHash(row);
-  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda) };
+  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda), trackingCode: typeof plan?.tracking_code === "string" && plan.tracking_code ? plan.tracking_code : null };
 });

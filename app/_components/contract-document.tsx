@@ -50,6 +50,8 @@ type Props = {
   addenda?: ContractAddendum[] | null;
   /** Onay bekleyen ek protokolün altında gösterilecek müşteri formu (herkese açık sayfa) */
   addendumActions?: (addendum: ContractAddendum) => ReactNode;
+  /** Müşterinin takip kodu (yalnızca herkese açık sayfada; takip ekranına kısayol) */
+  trackingCode?: string | null;
 };
 
 const consentLabels: [string, string][] = [
@@ -68,7 +70,7 @@ export function contractCustomerKind(row: DocumentRow) {
   return detectCustomerKind({ name: row?.customer_name, taxNumber: row?.customer_tax_number, taxOffice: row?.customer_tax_office });
 }
 
-export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions }: Props) {
+export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions, trackingCode }: Props) {
   const signed = isContractSigned(row);
   const template = getContractTemplate(row.organization_slug);
   // İmzalanmış sözleşme, imzalandığı metinle gösterilir: yeni yasal metin
@@ -141,6 +143,12 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
       </section>
       {notice && !print ? <div className="ad-notice print-hide">{notice}</div> : null}
       {errorMessage && !print ? <div className="ad-error print-hide">{errorMessage}</div> : null}
+      {trackingCode && !print ? (
+        <div className="ad-track print-hide">
+          <div><b>Dosyanızı takip edin</b><span>Takip kodunuz: <code>{trackingCode}</code> · İlerlemeyi görün, sorularınızı iletin.</span></div>
+          <a className="ad-btn" href={`/takip?code=${encodeURIComponent(trackingCode)}`}>Takip ekranını aç</a>
+        </div>
+      ) : null}
 
       <section className="ad-sec">
         <div className="ad-facts">

@@ -145,6 +145,12 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
 .ad-reject{border:1px solid #d9b4ae;background:#fff;color:var(--ad-bad)}
 .ad-actions p{margin:3mm 0 0;font-size:7.6pt;color:var(--ad-muted);text-align:center}
 .ad-status{margin-top:6mm;padding:3mm 4mm;border-radius:2mm;background:var(--ad-cream);border:.2mm solid var(--ad-line);font-size:8.4pt;color:var(--ad-text);text-align:center}
+.ad-track{display:flex;align-items:center;justify-content:space-between;gap:4mm;margin:0 0 5mm;padding:3.4mm 4mm;border:.2mm solid var(--ad-line);border-radius:2.4mm;background:var(--ad-cream)}
+.ad-track div{display:flex;flex-direction:column;gap:1mm;min-width:0}
+.ad-track b{font-size:9.4pt;color:var(--ad-ink)}
+.ad-track span{font-size:8.4pt;color:var(--ad-muted)}
+.ad-track code{font:700 9.4pt var(--ad-mono);letter-spacing:.08em;color:var(--ad-ink)}
+@media (max-width:640px){.ad-track{flex-direction:column;align-items:stretch}.ad-track .ad-btn{width:100%}}
 .ad-addendum{margin:0 0 5mm;padding:5mm;border:.2mm solid var(--ad-line);border-radius:2.4mm;background:#fff}
 .ad-addendum.is-sent{border-color:var(--ad-gold-2);background:linear-gradient(180deg,#fffdf9,#fbf8f1)}
 .ad-addendum-head{display:flex;align-items:flex-start;justify-content:space-between;gap:4mm;margin:0 0 3mm;break-after:avoid}

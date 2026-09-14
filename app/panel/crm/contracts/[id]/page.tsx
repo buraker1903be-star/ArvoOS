@@ -13,7 +13,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { ContractWorkPlanForm } from "../../contract-work-plan-form";
 import { ContractAddendumForm, type AddendumInstallment } from "../../contract-addendum-form";
-import { cancelContractAddendum } from "../../contract-plan-actions";
+import { cancelContractAddendum, replyContractMessage } from "../../contract-plan-actions";
 import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedule";
 import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/lib/work-plan";
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
@@ -51,13 +51,17 @@ export default async function ContractDetailPage({ params }: Props) {
 
   // İş planı ve ek protokoller ayrı okunur: migration (20260914090000)
   // uygulanmadıysa sayfa eskisi gibi açılır, yalnızca bu bölüm gizlenir.
-  const [workPlanResult, addendaResult, installmentResult] = await Promise.all([
+  const [workPlanResult, addendaResult, installmentResult, messagesResult] = await Promise.all([
     supabase.from("crm_contracts").select("work_plan").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle(),
     supabase.from("crm_contract_addenda").select("id,addendum_no,work_plan,payment_dates,note,status,created_at,responded_at,responder_name,responder_ip,responder_user_agent,response_note").eq("contract_id", id).eq("organization_id", membership.organization_id).order("addendum_no", { ascending: true }),
     data.payment_plan_id
       ? supabase.from("payment_installments").select("installment_no,due_date,amount,status").eq("payment_plan_id", data.payment_plan_id).eq("organization_id", membership.organization_id).order("installment_no", { ascending: true })
       : Promise.resolve({ data: [] as { installment_no: number; due_date: string | null; amount: number; status: string | null }[] }),
+    supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("contract_id", id).eq("organization_id", membership.organization_id).order("created_at", { ascending: true }).limit(200),
   ]);
+  const customerMessages = (messagesResult.data ?? []) as { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null }[];
+  const unreadMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
+  const messagingOpen = !["rejected", "cancelled"].includes(data.status);
   const planFeature = !workPlanResult.error && !addendaResult.error;
   const proposalJoin = Array.isArray(data.crm_proposals) ? data.crm_proposals[0] : data.crm_proposals;
   const storedSchedule = normalizePaymentSchedule(data.payment_schedule ?? proposalJoin?.payment_schedule ?? []);
@@ -452,6 +456,38 @@ export default async function ContractDetailPage({ params }: Props) {
               );
             })}
           </ul>
+        ) : null}
+      </section>
+      <section className="panel-card crm-request-detail-card" id="musteri-mesajlari" aria-labelledby="contract-messages-title">
+        <div className="crm-request-detail-heading">
+          <div><small className="panel-kicker">TAKİP EKRANI</small><h2 id="contract-messages-title">Müşteri mesajları</h2></div>
+          {unreadMessages ? <span className="status-pill" data-tone="danger">{unreadMessages} yeni</span> : <span className="status-pill">{customerMessages.length} mesaj</span>}
+        </div>
+        {customerMessages.length ? (
+          <div className="contract-chat">
+            {customerMessages.map((message) => {
+              const fromCustomer = message.sender_type === "customer";
+              return (
+                <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
+                  <header>
+                    <b>{fromCustomer ? formatPersonName(customer?.customer_name) || "Müşteri" : formatPersonName(message.sender_name)}</b>
+                    <time>{dateTime(message.created_at)}</time>
+                    {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
+                  </header>
+                  <p>{message.body}</p>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="plan-form-hint">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri, sözleşmeyi imzalamadan önce de takip ekranından soru sorabilir.</p>
+        )}
+        {messagingOpen ? (
+          <form className="contract-reply" action={replyContractMessage}>
+            <input type="hidden" name="contract_id" value={data.id} />
+            <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+            <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
+          </form>
         ) : null}
       </section>
           <RecordHistory opportunityId={data.opportunity_id} />

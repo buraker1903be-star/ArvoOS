@@ -167,6 +167,9 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
   const links = row.documentLinks;
   const plan = row.workPlan;
   const today = todayIso();
+  // İmza öncesi: iş akışı yok, ilerleme/dosya/ödeme yerine sözleşme onayı gösterilir.
+  const awaitingSignature = !row.workflow_status && ["draft", "sent"].includes(row.contract_status);
+  const signUrl = row.contract_status === "sent" && links?.contract_share_token ? `/sozlesme/${links.contract_share_token}#imza` : null;
   const documents = [
     ...(links?.proposal_share_token ? [{ href: `/teklif/${links.proposal_share_token}`, title: "Teklif belgesi", meta: links.proposal_no }] : []),
     ...(links?.contract_share_token ? [{ href: `/sozlesme/${links.contract_share_token}`, title: "Sözleşme belgesi", meta: links.contract_no }] : []),
@@ -218,23 +221,46 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
 
         <div className="trk-layout">
           <div className="trk-col">
-            <section className="trk-card trk-progress-card" aria-labelledby="trk-progress-title">
-              <div className="trk-card-head">
-                <h2 id="trk-progress-title">İlerleme</h2>
-                <span>Genel çalışma durumu</span>
-              </div>
-              <ProgressOverview progress={row.progress_percentage} status={status} />
-              <PhaseTimeline progress={row.progress_percentage} tone={status.tone} />
-            </section>
+            {awaitingSignature ? (
+              <section className="trk-card trk-sign-card" aria-labelledby="trk-sign-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-sign-title">Sözleşme onayı</h2>
+                  <span>{row.contract_status === "sent" ? "İmzanızı bekliyor" : "Hazırlanıyor"}</span>
+                </div>
+                <ol className="trk-sign-steps">
+                  {links?.proposal_no ? <li className={links.proposal_status === "accepted" ? "is-done" : undefined}><span>Teklif onayı</span></li> : null}
+                  <li className="is-current"><span>Sözleşme imzası</span></li>
+                  <li><span>Çalışma başlar</span></li>
+                </ol>
+                <p className="trk-sign-note">{status.note}</p>
+                <div className="trk-sign-amount"><span>Sözleşme bedeli</span><b>{planMoney(row.total_amount)}</b></div>
+                {signUrl ? (
+                  <a className="trk-sign-cta" href={signUrl} target="_blank" rel="noreferrer">
+                    Sözleşmeyi incele ve imzala<IconChevron />
+                    <span className="trk-sr">(yeni sekmede açılır)</span>
+                  </a>
+                ) : null}
+                <p className="trk-sign-foot">Sorunuz varsa aşağıdaki mesaj alanından yazabilirsiniz; ekibimiz yanıtlar.</p>
+              </section>
+            ) : (
+              <section className="trk-card trk-progress-card" aria-labelledby="trk-progress-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-progress-title">İlerleme</h2>
+                  <span>Genel çalışma durumu</span>
+                </div>
+                <ProgressOverview progress={row.progress_percentage} status={status} />
+                <PhaseTimeline progress={row.progress_percentage} tone={status.tone} />
+              </section>
+            )}
 
-            {row.files ? <CustomerFiles code={row.tracking_code} initialFiles={row.files} onRefresh={refreshCustomerPortalFiles} /> : null}
+            {row.files && !awaitingSignature ? <CustomerFiles code={row.tracking_code} initialFiles={row.files} onRefresh={refreshCustomerPortalFiles} /> : null}
 
             <section className="trk-card trk-chat" aria-labelledby="trk-chat-title">
               <div className="trk-chat-head">
                 <span className="trk-chat-avatar" aria-hidden="true"><IconChat /></span>
                 <div>
-                  <h2 id="trk-chat-title">Operasyon ekibine sorun</h2>
-                  <p>Operasyon sorumlunuz panel üzerinden bilgilendirilir.</p>
+                  <h2 id="trk-chat-title">{awaitingSignature ? "Ekibimize sorun" : "Operasyon ekibine sorun"}</h2>
+                  <p>{awaitingSignature ? "Müşteri temsilciniz panel üzerinden bilgilendirilir." : "Operasyon sorumlunuz panel üzerinden bilgilendirilir."}</p>
                 </div>
                 <span className="trk-count">{liveMessages.length} mesaj</span>
               </div>
@@ -293,12 +319,14 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
           </div>
 
           <aside className="trk-col" aria-label="Özet">
-            <section className="trk-card trk-finance-card" aria-labelledby="trk-finance-title">
-              <div className="trk-card-head">
-                <h2 id="trk-finance-title">Ödeme özeti</h2>
-              </div>
-              <FinanceSummary total={row.total_amount} paid={row.paid_amount} remaining={row.remaining_amount} />
-            </section>
+            {!awaitingSignature ? (
+              <section className="trk-card trk-finance-card" aria-labelledby="trk-finance-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-finance-title">Ödeme özeti</h2>
+                </div>
+                <FinanceSummary total={row.total_amount} paid={row.paid_amount} remaining={row.remaining_amount} />
+              </section>
+            ) : null}
 
             {plan && (plan.items.length || plan.payments.length || plan.pendingAddendum) ? (
               <section className="trk-card trk-plan-card" aria-labelledby="trk-plan-title">
@@ -313,7 +341,7 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                       <span>Güncel takvimi inceleyip onaylayın →</span>
                     </a>
                   ) : (
-                    <p className="trk-plan-alert"><b>Onayınızı bekleyen bir ek protokol var</b><span>Sözleşme bağlantınızdan inceleyip onaylayabilirsiniz.</span></p>
+                    <div className="trk-plan-alert"><b>Onayınızı bekleyen bir ek protokol var</b><span>Sözleşme bağlantınızdan inceleyip onaylayabilirsiniz.</span></div>
                   )
                 ) : null}
                 {plan.items.length ? (
