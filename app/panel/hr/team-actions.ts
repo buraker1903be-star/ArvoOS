@@ -5,6 +5,7 @@ import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
@@ -97,6 +98,72 @@ export async function inviteTeamMember(
   await flashSuccess("Davet gönderildi");
   revalidatePath("/panel/hr");
   return { error: null, success: true };
+}
+
+export type TeamInviteLinkState = { error: string | null; link: string | null; email: string | null };
+
+// Davet e-postası ulaşmadığında yönetici tek kullanımlık bağlantıyı WhatsApp
+// ya da kendi e-postasıyla gönderir. Bağlantı saklanmaz, yalnızca ekranda
+// gösterilir; kişi açınca e-postası doğrulanır ve mevcut tetikleyici
+// (activate_organization_owner_invitation) daveti kabul eder.
+export async function createTeamInviteLink(_previous: TeamInviteLinkState, formData: FormData): Promise<TeamInviteLinkState> {
+  const empty: TeamInviteLinkState = { error: null, link: null, email: null };
+  let context;
+  try {
+    context = await teamContext();
+  } catch (error) {
+    return { ...empty, error: error instanceof Error ? error.message : "Yetki kontrolü başarısız." };
+  }
+  const { supabase, membership } = context;
+
+  const invitationId = String(formData.get("invitation_id") ?? "").trim();
+  if (!invitationId) return { ...empty, error: "Davet seçilmedi." };
+
+  const { data: invitation } = await supabase.from("organization_invitations")
+    .select("id,email,role,status,auth_user_id,expires_at")
+    .eq("id", invitationId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (!invitation) return { ...empty, error: "Davet bulunamadı." };
+  if (!["pending", "sent"].includes(invitation.status) || Date.parse(invitation.expires_at) <= Date.now()) {
+    return { ...empty, error: "Bu davet artık geçerli değil. Personel kartından yeniden davet gönderin." };
+  }
+  if (invitation.role === "owner" && membership.role !== "owner") {
+    return { ...empty, error: "Kurum Sahibi davetinin bağlantısını yalnızca bir Kurum Sahibi oluşturabilir." };
+  }
+  if (!invitation.auth_user_id) {
+    return { ...empty, error: "Davet henüz tamamlanmamış görünüyor. Daveti iptal edip yeniden gönderin." };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { ...empty, error: "Sunucu anahtarı tanımlı olmadığı için bağlantı oluşturulamadı." };
+
+  // Yalnızca davet bağlantısı üretilir. Hesap zaten açılmışsa şifre yenileme
+  // bağlantısına DÜŞÜLMEZ: aksi halde bir kurum yöneticisi, başka bir kurumda
+  // da kullanılan mevcut bir hesaba giriş bağlantısı alabilirdi.
+  const origin = (await headers()).get("origin") ?? "https://app.arvo-os.com";
+  const generated = await admin.auth.admin.generateLink({
+    type: "invite",
+    email: invitation.email,
+    options: { redirectTo: `${origin}/auth/callback?next=/panel` },
+  });
+  const hashedToken = generated.data?.properties?.hashed_token;
+  if (generated.error || !hashedToken) {
+    const exists = /already|registered|exists/i.test(generated.error?.message ?? "");
+    return {
+      ...empty,
+      error: exists
+        ? "Bu kişinin hesabı zaten açılmış. Mevcut şifresiyle giriş yapabilir; şifresini unuttuysa giriş ekranındaki “Şifremi unuttum” bağlantısını kullanabilir."
+        : `Giriş bağlantısı oluşturulamadı: ${generated.error?.message ?? "bilinmeyen hata"}`,
+    };
+  }
+  // Bağlantı, davet sırasında oluşturulan hesaba ait olmalı.
+  if (generated.data.user?.id !== invitation.auth_user_id) {
+    return { ...empty, error: "Bağlantı davet edilen hesapla eşleşmedi; güvenlik nedeniyle oluşturulmadı. Daveti iptal edip yeniden gönderin." };
+  }
+
+  const link = `${origin}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=invite&next=${encodeURIComponent("/panel")}`;
+  return { error: null, link, email: invitation.email };
 }
 
 async function updateTeamMemberAccess__impl(formData: FormData) {

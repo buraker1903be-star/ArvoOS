@@ -130,6 +130,14 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .panel-root .hr-form-alert{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:14px;font-size:13.5px;line-height:1.45}
 .panel-root .hr-form-alert p{margin:0;color:var(--hr-ink-2);font-size:13px}
 .panel-root .hr-form-alert.is-danger{background:var(--danger-soft);color:var(--danger);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 24%,transparent)}
+/* Davet giriş bağlantısı (çekmece içeriği .panel-root'a taşınır) */
+.panel-root .hr-invite-link{display:flex;flex-direction:column;gap:12px}
+.panel-root .hr-invite-link-hint{margin:0;color:var(--hr-ink-2);font-size:13.5px;line-height:1.5}
+.panel-root .hr-invite-link-result{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
+.panel-root .hr-invite-link-result small{color:var(--muted);font-size:12.5px}
+.panel-root .hr-invite-link-result code{display:block;padding:10px 12px;border-radius:10px;background:var(--surface);color:var(--ink);font-size:12px;line-height:1.45;word-break:break-all;user-select:all}
+.panel-root .hr-invite-link-actions{display:flex;flex-wrap:wrap;gap:8px}
+.panel-root .hr-link-btn{flex:none;min-height:30px;padding:4px 10px;font-size:12.5px}
 .panel-root .hr-form-alert.is-success{background:var(--success-soft);color:var(--success);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--success) 24%,transparent);font-weight:650}
 
 /* ============================================================

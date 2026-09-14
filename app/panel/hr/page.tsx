@@ -5,6 +5,7 @@ import { PanelDrawer } from "../components/panel-drawer";
 import { createDepartment, createEmployee, updateEmployee } from "./actions";
 import { updateTeamMemberAccess, cancelInvitation } from "./team-actions";
 import { InviteTeamForm } from "./invite-team-form";
+import { TeamInviteLink } from "./invite-link";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "./documents-actions";
 import { roleNames } from "./role-names";
 import { HrIcon, initials } from "./hr-icons";
@@ -34,7 +35,8 @@ function liveInvitations(rows: Invitation[]) {
 }
 
 export default async function HrPage() {
-  const { supabase, membership, userId, modules } = await getPanelContext();
+  const { supabase, membership, userId, modules, organization } = await getPanelContext();
+  const organizationName = organization.display_name || organization.name;
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = ["owner", "admin"].includes(membership.role);
   const canViewCommissions = ["owner", "admin", "manager"].includes(membership.role);
@@ -223,6 +225,9 @@ export default async function HrPage() {
                     ) : pendingInvite ? (
                       <>
                         <span className="status-pill" data-tone={statusTone(pendingInvite.status)}>{pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}</span>
+                        <PanelDrawer triggerLabel="Giriş Bağlantısı" triggerClassName="panel-secondary hr-invite-btn" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
+                          <TeamInviteLink invitationId={pendingInvite.id} organizationName={organizationName} personName={employee.full_name} email={pendingInvite.email} />
+                        </PanelDrawer>
                         <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">Daveti İptal Et</button></form>
                       </>
                     ) : (
@@ -274,6 +279,9 @@ export default async function HrPage() {
                 <span className="hr-list-icon" data-tone={statusTone(invite.status)}><HrIcon name="send" size={15} /></span>
                 <span className="hr-list-body"><b title={invite.email}>{invite.email}</b><small>{roleNames[invite.role] ?? invite.role}</small><small>Son gün {shortDate(invite.expires_at)}</small></span>
                 <span className="status-pill" data-tone={statusTone(invite.status)}>{inviteStatusNames[invite.status] ?? invite.status}</span>
+                <PanelDrawer triggerLabel="Bağlantı" triggerClassName="panel-secondary hr-link-btn" kicker="PANEL ERİŞİMİ" title={`${invite.email} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
+                  <TeamInviteLink invitationId={invite.id} organizationName={organizationName} personName={null} email={invite.email} />
+                </PanelDrawer>
               </li>
             ))}
           </ul> : <div className="hr-empty-state is-compact">
