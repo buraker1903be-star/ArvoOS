@@ -4,6 +4,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { requestStageNames } from "./crm/request-status";
 import { relativeTime } from "./crm/last-contact";
+import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
+import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import "./dashboard.css";
 
 // Ana sayfa: günün özeti. iOS widget'ları gibi dokunulabilir kartlar, son
@@ -127,6 +129,7 @@ const iconPaths: Record<string, ReactNode> = {
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   alert: <><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" /><path d="M12 9.5v4" /><path d="M12 17h.01" /></>,
   doc: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h4" /></>,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return (
@@ -155,6 +158,8 @@ export default async function PanelPage() {
   const canSeeOperations = canSee("operations");
   const canSeeReports = canSee("reports");
   const canSeeFinance = isPlatformOwner || (["owner", "admin"].includes(membership.role) && canSee("finance"));
+  // Kurulum kartı yalnızca kurum sahibi/yöneticisine; platform kurucusu görmez.
+  const canSetup = !isPlatformOwner && ["owner", "admin"].includes(membership.role);
   const none = Promise.resolve({ data: null, count: 0 });
 
   const { data: verticalProfile } = await supabase
@@ -174,6 +179,9 @@ export default async function PanelPage() {
     { data: paidInvoices },
     { data: logRows },
     { data: me },
+    { data: onboardingRow },
+    { data: setupOrganization },
+    { count: memberCount },
   ] = await Promise.all([
     canSeeCrm ? supabase.from("crm_opportunities").select("stage,estimated_value,probability,created_at").eq("organization_id", organizationId) : none,
     canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", ["planned", "in_progress", "blocked"]) : none,
@@ -196,6 +204,9 @@ export default async function PanelPage() {
       ? supabase.from("activity_logs").select("id,actor_user_id,action,entity_type,entity_id,created_at,metadata").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(7)
       : none,
     supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
+    canSetup ? supabase.from("organization_onboarding").select("completed_at").eq("organization_id", organizationId).maybeSingle() : none,
+    canSetup ? supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},logo_url,signature_stamp_url`).eq("id", organizationId).maybeSingle() : none,
+    canSetup ? supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("is_active", true) : none,
   ]);
 
   // Son hareketler için kişi ve müşteri adları
@@ -218,6 +229,30 @@ export default async function PanelPage() {
   const trend = requestTrend(items.map((item) => item.created_at).filter(Boolean));
   const overdue = overdueWorkflowCount ?? 0;
   const unread = unreadNotificationCount ?? 0;
+
+  // Kurulum adımları: belgeler ve müşteri ekranı eksiksiz görünene kadar
+  // gösterilir; hepsi tamamlanınca kart kendiliğinden kaybolur. Ölçütler
+  // Ayarlar'daki "Belge kimliği" ile aynıdır.
+  type SetupStep = { key: string; title: string; note: string; href: string; done: boolean };
+  const setupSteps: SetupStep[] = [];
+  if (canSetup && setupOrganization) {
+    const row = setupOrganization as Record<string, unknown> & { logo_url?: string | null; signature_stamp_url?: string | null };
+    const legal = legalDetailsFrom(row);
+    const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
+    const legalComplete = legalFilled === 5 && !Object.keys(validateLegalDetails(legal)).length;
+    const hasLogo = Boolean(row.logo_url);
+    const hasSignature = Boolean(row.signature_stamp_url);
+    const members = memberCount ?? 0;
+    setupSteps.push(
+      { key: "kurum", title: "Kurum ve marka", note: "Resmi ad, iletişim, logo ve marka rengi", href: "/panel/onboarding", done: Boolean((onboardingRow as { completed_at?: string | null } | null)?.completed_at) },
+      { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings#resmi-bilgiler", done: legalComplete },
+      { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings#kurumsal-kimlik", done: hasLogo && hasSignature },
+      { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1 },
+    );
+    if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: items.length ? `${items.length} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: items.length > 0 });
+  }
+  const setupDone = setupSteps.filter((step) => step.done).length;
+  const showSetup = setupSteps.length > 0 && setupDone < setupSteps.length;
 
   // Widget'lar ve odak listesi (kurum türüne göre)
   const proposalWaiting = stageCount("proposal_ready") + stageCount("proposal_approved");
@@ -301,6 +336,42 @@ export default async function PanelPage() {
           </Link>
         ))}
       </section>
+
+      {showSetup ? (
+        <section className="dash-card dash-setup" aria-label="Kurulum">
+          <header className="dash-card-head">
+            <div>
+              <h2>Kurulumu tamamlayın</h2>
+              <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {setupSteps.length - setupDone} adım kaldı.</p>
+            </div>
+            <div className="dash-setup-progress" aria-label={`${setupSteps.length} adımdan ${setupDone} tamamlandı`}>
+              <b>{setupDone}/{setupSteps.length}</b>
+              <span><i style={{ "--w": `${Math.round((setupDone / setupSteps.length) * 100)}%` } as CSSProperties} /></span>
+            </div>
+          </header>
+          <ol className="dash-setup-list">
+            {setupSteps.map((step, index) => {
+              const content = (
+                <>
+                  <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : index + 1}</span>
+                  <span className="dash-setup-text">
+                    <b>{step.title}</b>
+                    <small>{step.note}</small>
+                    {step.done ? <span className="dash-setup-state">Tamamlandı</span> : <span className="dash-setup-go">Tamamla <Chevron /></span>}
+                  </span>
+                </>
+              );
+              return (
+                <li key={step.key}>
+                  {step.done
+                    ? <div className="dash-setup-step is-done">{content}</div>
+                    : <Link className="dash-setup-step" href={step.href}>{content}</Link>}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ) : null}
 
       <section className="dash-grid">
         {canSeeCrm ? (

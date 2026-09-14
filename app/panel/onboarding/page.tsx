@@ -12,15 +12,19 @@ export default async function OnboardingPage() {
   const { supabase, organization, membership } = await getPanelContext();
   if (!membership || !["owner", "admin"].includes(membership.role)) redirect("/panel");
 
-  const { data: onboarding } = await supabase
-    .from("organization_onboarding")
-    .select("legal_name,phone,website,logo_url,primary_color,completed_at")
-    .eq("organization_id", organization.id)
-    .maybeSingle();
+  const [{ data: onboarding }, { data: current }] = await Promise.all([
+    supabase.from("organization_onboarding").select("legal_name,phone,website,logo_url,primary_color,completed_at").eq("organization_id", organization.id).maybeSingle(),
+    // Kurulumu hiç görmemiş, zaten kullanılan kurumlar için mevcut bilgiler
+    // önceden doldurulur; aksi halde form marka rengini varsayılana çekerdi.
+    supabase.from("organizations").select("legal_name,contact_phone,website_url,logo_url,primary_color").eq("id", organization.id).maybeSingle(),
+  ]);
 
   if (onboarding?.completed_at) redirect("/panel");
 
   const brandName = organization.display_name || organization.name;
+  const savedColor = onboarding?.primary_color && onboarding.primary_color !== "#111827" ? onboarding.primary_color : null;
+  const currentColor = /^#[0-9a-fA-F]{6}$/.test(current?.primary_color ?? "") ? current?.primary_color : null;
+  const logoUrl = onboarding?.logo_url || current?.logo_url || "";
 
   return <div className="stg plt">
     <div className="panel-pagehead">
@@ -35,21 +39,21 @@ export default async function OnboardingPage() {
       <StgSection id="kurum" wide icon="building" tone="gold" kicker="1 · KURUM VE MARKA" title="Temel bilgiler" description="Teklif ve sözleşmelerinizde, müşteri takip ekranında bu bilgiler kullanılır.">
         <form className="panel-form" action={completeOnboarding}>
           <label className="wide">Resmi kurum adı
-            <input name="legal_name" defaultValue={onboarding?.legal_name ?? organization.name} minLength={2} maxLength={180} required autoComplete="organization" />
+            <input name="legal_name" defaultValue={onboarding?.legal_name || current?.legal_name || organization.name} minLength={2} maxLength={180} required autoComplete="organization" />
           </label>
           <label>Telefon
-            <input name="phone" defaultValue={onboarding?.phone ?? ""} placeholder="+90 212 000 00 00" autoComplete="tel" />
+            <input name="phone" defaultValue={onboarding?.phone || current?.contact_phone || ""} placeholder="+90 212 000 00 00" autoComplete="tel" />
           </label>
           <label>Web sitesi
-            <input name="website" defaultValue={onboarding?.website ?? ""} placeholder="https://firma.com" inputMode="url" />
+            <input name="website" defaultValue={onboarding?.website || current?.website_url || ""} placeholder="https://firma.com" inputMode="url" />
           </label>
           <label className="wide">Logo <small className="plt-optional">isteğe bağlı</small>
             <input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp" />
-            <small className="plt-field-note">PNG, JPG veya WEBP, en fazla 5 MB. Şeffaf arka planlı yatay logo en iyi sonucu verir.{onboarding?.logo_url ? " Seçmezseniz mevcut logo kullanılır." : ""}</small>
+            <small className="plt-field-note">PNG, JPG veya WEBP, en fazla 5 MB. Şeffaf arka planlı yatay logo en iyi sonucu verir.{logoUrl ? " Seçmezseniz mevcut logo kullanılır." : ""}</small>
           </label>
-          <input type="hidden" name="logo_url" value={onboarding?.logo_url ?? ""} />
+          <input type="hidden" name="logo_url" value={logoUrl} />
           <label>Marka rengi
-            <span className="stg-color"><input name="primary_color" type="color" defaultValue={onboarding?.primary_color && onboarding.primary_color !== "#111827" ? onboarding.primary_color : DEFAULT_BRAND_COLOR} /><small>Belge başlıkları ve vurgular</small></span>
+            <span className="stg-color"><input name="primary_color" type="color" defaultValue={savedColor ?? currentColor ?? DEFAULT_BRAND_COLOR} /><small>Belge başlıkları ve vurgular</small></span>
           </label>
           <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kurulumu tamamla ve panele geç</button></div>
         </form>
