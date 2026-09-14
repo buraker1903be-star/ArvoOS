@@ -100,10 +100,10 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
           <div className="wrap">
             <SectionHead eyebrow={c.refs.eyebrow} title={c.refs.title} center id="refs-title" />
             <div className="refs">
-              <Link className="ref" href={ROUTES.about[locale]} data-reveal>
+              <a className="ref" href="https://arvoculture.com" target="_blank" rel="noopener" data-reveal>
                 <BrandLogo brand="arvoculture" alt="ArvoCulture Group" />
-                <span>{c.refs.culture} ›</span>
-              </Link>
+                <span>{c.refs.culture} ↗</span>
+              </a>
               <a className="ref" href="https://akademikmerkez.com" target="_blank" rel="noopener" data-reveal>
                 {/* Harici logo: next/image uzak kaynak yapılandırması olmadığı için düz img (boyutlu, tembel yükleme). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
