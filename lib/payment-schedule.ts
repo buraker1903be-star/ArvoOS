@@ -102,6 +102,16 @@ export function scheduleDateIssue(schedule: unknown): string | null {
   return null;
 }
 
+/**
+ * Taksit adı. Eski kayıtlarda tek satırlık planın adı bütün plan metni
+ * ("ÖN ÖDEME: 16.000 TL (...) ARA ÖDEME: ...") olabiliyor; uzun adlar
+ * "1. Ödeme" biçimine kısaltılır.
+ */
+export function installmentLabel(label: unknown, sequence: number) {
+  const text = String(label ?? "").trim().replace(/\s+/g, " ");
+  return text && text.length <= 40 ? text : `${sequence}. Ödeme`;
+}
+
 export function getPaymentPlanLabel(type: PaymentPlanType) {
   if (type === "cash") return "Peşin Ödeme";
   if (type === "half") return "Ön Ödeme (Sözleşme Onayıyla) - Son Ödeme (Teslimden Önce)";

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
 import { normalizeWorkPlan } from "@/lib/work-plan";
+import { installmentLabel } from "@/lib/payment-schedule";
 
 // DİKKAT: "use server" dosyasında `export type { X }` (yeniden dışa aktarma)
 // YAZMAYIN. Next derleyicisi bunu sunucu işlemi sanıp çalışma anında var
@@ -76,17 +77,22 @@ export type CustomerMessageState = {
 function readWorkPlan(value: unknown): TrackingWorkPlan | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as { work_plan?: unknown; source?: unknown; payments?: unknown; pending_addendum?: unknown };
-  const payments = (Array.isArray(raw.payments) ? raw.payments : []).map((item, index) => {
+  const rows = (Array.isArray(raw.payments) ? raw.payments : []).map((item, index) => {
     const row = (item ?? {}) as Record<string, unknown>;
+    const sequence = Number(row.sequence) || index + 1;
     return {
-      sequence: Number(row.sequence) || index + 1,
-      label: String(row.label ?? `${index + 1}. Ödeme`),
+      sequence,
+      label: installmentLabel(row.label, sequence),
       amount: Number(row.amount) || 0,
       due_date: typeof row.due_date === "string" && row.due_date ? row.due_date : null,
       trigger: typeof row.trigger === "string" && row.trigger ? row.trigger : null,
       status: typeof row.status === "string" && row.status ? row.status : null,
     };
   });
+  // Tek satırlık (peşin ya da eski biçimli) plan takvim bilgisi taşımaz ve
+  // kısmi ödemelerde "Ödeme özeti" ile çelişir (tek taksit ödenmemiş görünür);
+  // ödeme takvimi yalnızca gerçek taksitli planda gösterilir.
+  const payments = rows.length >= 2 ? rows : [];
   return {
     items: normalizeWorkPlan(raw.work_plan),
     source: raw.source === "addendum" ? "addendum" : "contract",

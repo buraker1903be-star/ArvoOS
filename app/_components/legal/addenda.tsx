@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ADDENDUM_STATUS_LABELS, type ContractAddendum } from "@/lib/work-plan";
+import { installmentLabel } from "@/lib/payment-schedule";
 import { SectionHeading, WorkPlanTable } from "./blocks";
 import { formatDate, formatDateTime, formatMoney, summarizeUserAgent, type ScheduleRow } from "./format";
 
@@ -61,7 +62,7 @@ export function ContractAddenda({
               const row = rows.get(item.sequence);
               return <tr key={item.sequence}>
                 <td>{item.sequence}</td>
-                <td><strong>{row?.label ?? `${item.sequence}. Ödeme`}</strong></td>
+                <td><strong>{installmentLabel(row?.label, item.sequence)}</strong></td>
                 <td className="ad-num">{row ? formatMoney(row.amount, currency) : "—"}</td>
                 <td><strong>{formatDate(item.due_date)}</strong></td>
               </tr>;

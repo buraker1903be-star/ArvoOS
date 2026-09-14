@@ -14,7 +14,7 @@ import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { ContractWorkPlanForm } from "../../contract-work-plan-form";
 import { ContractAddendumForm, type AddendumInstallment } from "../../contract-addendum-form";
 import { cancelContractAddendum } from "../../contract-plan-actions";
-import { normalizePaymentSchedule } from "@/lib/payment-schedule";
+import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedule";
 import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/lib/work-plan";
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
@@ -68,7 +68,7 @@ export default async function ContractDetailPage({ params }: Props) {
   const pendingAddendum = addenda.find((addendum) => addendum.status === "sent");
   const installments: AddendumInstallment[] = ((installmentResult.data ?? []) as { installment_no: number; due_date: string | null; amount: number; status: string | null }[]).map((row) => {
     const item = storedSchedule.find((scheduleItem) => scheduleItem.sequence === row.installment_no);
-    return { sequence: row.installment_no, label: item?.label ?? `${row.installment_no}. Ödeme`, amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
+    return { sequence: row.installment_no, label: installmentLabel(item?.label, row.installment_no), amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
   });
   const paymentRows = installments.length
     ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: INSTALLMENT_LABELS[row.status ?? ""] ?? null, missing: false }))
