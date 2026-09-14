@@ -257,7 +257,9 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                 ) : (
                   <>
                     <p className="trk-sign-note">
-                      {offer.no ? `${offer.no} numaralı teklifinize` : "Teklifinize"} göre sözleşmeniz hazırlandı. Teklifi inceleyip kabul ettiğinizi bildirin{docs?.contract && !docs.contract.signed ? "; ardından sözleşmenizi imzalayabilirsiniz" : ""}.
+                      {docs?.contract?.signed
+                        ? `Sözleşmeniz ${offer.no ? `${offer.no} numaralı teklifinize` : "teklifinize"} göre imzalandı; teklifi de onaylamanız kayıtlarınızı tamamlar.`
+                        : `${offer.no ? `${offer.no} numaralı teklifinize` : "Teklifinize"} göre sözleşmeniz hazırlandı. Teklifi inceleyip kabul ettiğinizi bildirin; ardından sözleşmenizi imzalayabilirsiniz.`}
                     </p>
                     {links?.proposal_share_token ? (
                       <a className="trk-offer-view" href={`/teklif/${links.proposal_share_token}`} target="_blank" rel="noreferrer">

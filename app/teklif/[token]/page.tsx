@@ -74,7 +74,9 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
      {canReject?<button className="ad-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>:null}
     </form>
     <p>{awaitingCustomer
-     ?"Sözleşmeniz bu teklife göre hazırlandı. Teklifi kabul ettiğinizi bildirdikten sonra sözleşmenizi inceleyip imzalayabilirsiniz. Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır."
+     ?(canReject
+      ?"Sözleşmeniz bu teklife göre hazırlandı. Teklifi kabul ettiğinizi bildirdikten sonra sözleşmenizi inceleyip imzalayabilirsiniz. Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır."
+      :"Sözleşmeniz bu teklife göre imzalandı; teklifi de onaylamanız kayıtlarınızı tamamlar. Onayınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır.")
      :"Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır. Kabul ettiğinizde aynı kapsam ve bedelle hazırlanan sözleşme onayınıza sunulur."}</p>
    </div>
   :<div className="ad-status print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
