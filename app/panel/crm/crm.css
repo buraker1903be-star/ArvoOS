@@ -80,6 +80,13 @@
 .crm-empty-state{text-align:center;padding:48px 20px}
 .crm-empty-state h2{margin:0 0 6px;font-size:16px;color:var(--ink)}
 .crm-empty-state p{margin:0;color:var(--muted);font-size:12px}
+/* Boş liste: açıklama, süreç adımları ve eylemler */
+.panel-root .crm-empty-state p{max-width:520px;font-size:14px;line-height:1.55}
+.panel-root .crm-empty-steps{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px 0 4px;padding:0;list-style:none}
+.panel-root .crm-empty-steps li{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:13px;font-weight:600}
+.panel-root .crm-empty-steps b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);font-size:12px;font-weight:700}
+.panel-root .crm-empty-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}
+.panel-root .crm-empty-actions:empty{display:none}
 
 .crm-page-stack .panel-drawer-header{position:sticky;top:0;z-index:3;background:var(--surface);align-items:flex-start}
 .crm-page-stack .panel-drawer-header>div{min-width:0;flex:1}

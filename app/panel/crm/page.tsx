@@ -18,6 +18,7 @@ import { RequestEntryForm } from "./request-entry-form";
 import { CustomerLookupButton } from "./customer-lookup";
 import { requestStageNames, requestStages } from "./request-status";
 import { CrmTabs } from "./crm-tabs";
+import { EmptyNewRequestButton } from "./empty-new-request";
 import "./crm.css";
 import "./request-page.css";
 
@@ -138,6 +139,8 @@ export default async function RequestsPage({
     visibleOpportunityIds,
   );
   const counts = (code: string) => all.filter((i) => i.stage === code).length;
+  // Boş liste: hiç kayıt yok mu, yoksa arama/filtre mi eşleşmedi?
+  const filtered = Boolean(search || selectedRepresentative || (selected && selected !== "tumu"));
   return (
     <div className="crm-page-stack">
       <div className="panel-pagehead">
@@ -285,9 +288,38 @@ export default async function RequestsPage({
               </tbody>
             </table>
           </section>
+        ) : all.length === 0 ? (
+          // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine
+          // sürecin nereden başladığı anlatılır.
+          <section className="panel-card crm-empty-state">
+            <h2>İlk talebinizi girin</h2>
+            <p>
+              Müşteriden gelen her iş buradan başlar. Talebi kaydedin, teklif
+              hazırlayın, sözleşmeyi gönderin; müşteriniz süreci takip
+              ekranından izlesin.
+            </p>
+            <ol className="crm-empty-steps" aria-label="Süreç">
+              <li><b>1</b>Talep</li>
+              <li><b>2</b>Teklif</li>
+              <li><b>3</b>Sözleşme</li>
+              <li><b>4</b>Müşteri takibi</li>
+            </ol>
+            <div className="crm-empty-actions">
+              <EmptyNewRequestButton />
+            </div>
+          </section>
         ) : (
           <section className="panel-card crm-empty-state">
-            <h2>Eşleşen talep bulunamadı</h2>
+            <h2>{filtered ? "Eşleşen talep bulunamadı" : "Aktif talep yok"}</h2>
+            <p>
+              {filtered
+                ? "Aramayı veya filtreleri değiştirip yeniden deneyin."
+                : "Yeni ve incelenen talepler burada görünür. Teklif ve sonraki aşamalardaki kayıtlar için tüm kayıtları açın."}
+            </p>
+            <div className="crm-empty-actions">
+              {filtered ? <Link className="panel-secondary" href="/panel/crm">Filtreleri temizle</Link> : null}
+              {selected !== "tumu" ? <Link className="panel-secondary" href="/panel/crm?durum=tumu">Tüm kayıtları göster</Link> : null}
+            </div>
           </section>
         )}
       </div>
