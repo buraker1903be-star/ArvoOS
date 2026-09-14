@@ -43,9 +43,11 @@ export default async function OnboardingPage() {
           <label>Web sitesi
             <input name="website" defaultValue={onboarding?.website ?? ""} placeholder="https://firma.com" inputMode="url" />
           </label>
-          <label className="wide">Logo adresi <small className="plt-optional">isteğe bağlı</small>
-            <input name="logo_url" defaultValue={onboarding?.logo_url ?? ""} placeholder="https://.../logo.png" inputMode="url" />
+          <label className="wide">Logo <small className="plt-optional">isteğe bağlı</small>
+            <input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp" />
+            <small className="plt-field-note">PNG, JPG veya WEBP, en fazla 5 MB. Şeffaf arka planlı yatay logo en iyi sonucu verir.{onboarding?.logo_url ? " Seçmezseniz mevcut logo kullanılır." : ""}</small>
           </label>
+          <input type="hidden" name="logo_url" value={onboarding?.logo_url ?? ""} />
           <label>Marka rengi
             <span className="stg-color"><input name="primary_color" type="color" defaultValue={onboarding?.primary_color && onboarding.primary_color !== "#111827" ? onboarding.primary_color : DEFAULT_BRAND_COLOR} /><small>Belge başlıkları ve vurgular</small></span>
           </label>

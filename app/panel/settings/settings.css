@@ -87,6 +87,10 @@
 .stg-color small{color:var(--muted);font-size:12.5px;font-weight:500}
 .stg-signature{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.8fr);gap:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
 .stg-signature>label{margin:0}
+.panel-root .stg .panel-form input[type="file"]{padding:7px 8px;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer}
+.panel-root .stg .panel-form input[type="file"]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}
+.panel-root .stg .panel-form input[type="file"]:hover::file-selector-button{border-color:var(--muted);background:var(--surface)}
+.stg .panel-form .stg-optional{display:inline;margin-left:6px;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0;text-transform:none}
 .stg-signature>label small{display:block;margin-top:8px;color:var(--muted);font-size:12.5px;font-weight:500}
 .stg-signature-preview{display:grid;place-items:center;min-height:150px;padding:14px;border:1px dashed var(--line);border-radius:12px;background:#fff;text-align:center}
 .stg-signature-preview img{max-width:100%;max-height:132px;object-fit:contain}

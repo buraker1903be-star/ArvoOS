@@ -100,13 +100,16 @@ export default async function SettingsPage() {
         aside={canManage ? null : <StgReadOnly />}
       >
         <form className="panel-form" action={updateDocumentBranding}>
-          <label className="wide">Logo URL<input name="logo_url" type="url" defaultValue={branding?.logo_url ?? ""} placeholder="https://.../logo.png" disabled={!canManage} /></label>
-          {branding?.logo_url ? (
-            <div className="wide stg-logo-preview">
-              <span className="stg-paper"><img src={branding.logo_url} alt="Kurum logosu" /></span>
-              <div><b>Logo önizleme</b><small>Teklif ve sözleşmelerin üst bilgisinde bu şekilde görünür.</small></div>
+          <div className="wide stg-signature">
+            <label>Logo
+              <input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp" disabled={!canManage} />
+              <small>PNG, JPG veya WEBP, en fazla 5 MB. Şeffaf arka planlı yatay logo önerilir. Teklif ve sözleşmelerin üst bilgisinde görünür.</small>
+            </label>
+            <div className="stg-signature-preview">
+              {branding?.logo_url ? <img src={branding.logo_url} alt="Kurum logosu" /> : <span>Henüz logo yüklenmedi.</span>}
             </div>
-          ) : null}
+          </div>
+          <label className="wide">Logo adresi (URL) <small className="stg-optional">dosya yüklemek yerine</small><input name="logo_url" type="url" defaultValue={branding?.logo_url ?? ""} placeholder="https://.../logo.png" disabled={!canManage} /></label>
           <label>Kurumsal renk<span className="stg-color"><input name="primary_color" type="color" defaultValue={branding?.primary_color ?? DEFAULT_BRAND_COLOR} disabled={!canManage} /><small>Belge başlıkları ve vurgular</small></span></label>
           <label>E-posta<input name="contact_email" type="email" defaultValue={branding?.contact_email ?? ""} disabled={!canManage} /></label>
           <label>Telefon<input name="contact_phone" defaultValue={branding?.contact_phone ?? ""} disabled={!canManage} /></label>

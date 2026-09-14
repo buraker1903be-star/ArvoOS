@@ -5,16 +5,10 @@ import { runPanelAction } from "@/lib/panel-action";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { LEGAL_FIELDS, firstLegalError, legalDetailsFrom, normalizeLegalDetails, validateLegalDetails } from "./legal-details";
+import { uploadOrganizationImage } from "@/lib/organization-assets";
 
 const text = (formData: FormData, key: string, max = 500) =>
   String(formData.get(key) ?? "").trim().slice(0, max);
-
-const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
-const extensionByType: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
 
 async function updateDocumentBranding__impl(formData: FormData) {
   const { supabase, membership } = await getPanelContext();
@@ -46,40 +40,16 @@ async function updateDocumentBranding__impl(formData: FormData) {
     signatureStampUrl = null;
   }
 
-  if (signatureFile instanceof File && signatureFile.size > 0) {
-    if (!allowedTypes.has(signatureFile.type)) {
-      throw new Error("Kaşe ve imza görseli PNG, JPG veya WEBP olmalıdır.");
-    }
-    if (signatureFile.size > 5 * 1024 * 1024) {
-      throw new Error("Kaşe ve imza görseli en fazla 5 MB olabilir.");
-    }
+  const uploadedSignature = await uploadOrganizationImage(supabase, membership.organization_id, signatureFile, "signature-stamp", "Kaşe ve imza görseli");
+  if (uploadedSignature) signatureStampUrl = uploadedSignature;
 
-    const extension = extensionByType[signatureFile.type];
-    const objectPath = `${membership.organization_id}/signature-stamp.${extension}`;
-    const fileBuffer = await signatureFile.arrayBuffer();
-    const { error: uploadError } = await supabase.storage
-      .from("organization-assets")
-      .upload(objectPath, fileBuffer, {
-        contentType: signatureFile.type,
-        upsert: true,
-        cacheControl: "3600",
-      });
+  // Logo dosyası yüklendiyse adres alanının yerine geçer
+  const uploadedLogo = await uploadOrganizationImage(supabase, membership.organization_id, formData.get("logo_file"), "logo", "Logo");
 
-    if (uploadError) {
-      throw new Error("Kaşe ve imza görseli yüklenemedi: " + uploadError.message);
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("organization-assets")
-      .getPublicUrl(objectPath);
-
-    signatureStampUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-  }
-
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("organizations")
     .update({
-      logo_url: text(formData, "logo_url", 1000) || null,
+      logo_url: uploadedLogo ?? (text(formData, "logo_url", 1000) || null),
       primary_color: primaryColor,
       document_footer: text(formData, "document_footer", 500) || null,
       contact_email: text(formData, "contact_email", 240) || null,
@@ -88,11 +58,13 @@ async function updateDocumentBranding__impl(formData: FormData) {
       signature_stamp_url: signatureStampUrl,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", membership.organization_id);
+    .eq("id", membership.organization_id)
+    .select("id");
 
   if (error) {
     throw new Error("Kurumsal kimlik kaydedilemedi: " + error.message);
   }
+  if (!saved?.length) throw new Error("Kurumsal kimlik kaydedilemedi: bu işlem için yetkiniz yok.");
 
   revalidatePath("/panel/settings");
 }
