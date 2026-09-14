@@ -373,8 +373,27 @@ export default async function ProposalsPage({ searchParams }: Props) {
               </tbody>
             </table>
           </section>
+        ) : search ? (
+          <section className="panel-card crm-empty-state">
+            <h2>Aramaya uygun teklif yok</h2>
+            <p>“{search}” için aktif teklif bulunamadı. Farklı bir müşteri adı, teklif numarası veya konu deneyin.</p>
+            <div className="crm-empty-actions">
+              <Link className="panel-secondary" href="/panel/crm/proposals">Aramayı temizle</Link>
+            </div>
+          </section>
         ) : (
-          <div className="panel-card crm-empty">Aktif teklif bulunamadı.</div>
+          // Yeni kurum teklifin nereden oluşturulduğunu bilmiyor; yol gösterilir.
+          <section className="panel-card crm-empty-state">
+            <h2>{archivedRows.length ? "Aktif teklif yok" : "Henüz teklif yok"}</h2>
+            <p>
+              {archivedRows.length
+                ? "Kabul edilen, reddedilen ve süresi dolan teklifler aşağıdaki arşivde."
+                : "Teklifler bir talepten hazırlanır: talebi açın ve “Teklif Oluştur” düğmesini kullanın. Hazırladığınız teklifler burada listelenir."}
+            </p>
+            <div className="crm-empty-actions">
+              <Link className="panel-primary" href="/panel/crm">Taleplere git</Link>
+            </div>
+          </section>
         )}
         {archivedRows.length ? (
           <details className="ops-archive">

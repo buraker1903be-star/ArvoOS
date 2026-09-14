@@ -369,8 +369,27 @@ export default async function ContractsPage({ searchParams }: Props) {
               </tbody>
             </table>
           </section>
+        ) : search ? (
+          <section className="panel-card crm-empty-state">
+            <h2>Aramaya uygun sözleşme yok</h2>
+            <p>“{search}” için aktif sözleşme bulunamadı. Farklı bir müşteri adı, sözleşme numarası veya konu deneyin.</p>
+            <div className="crm-empty-actions">
+              <Link className="panel-secondary" href="/panel/crm/contracts">Aramayı temizle</Link>
+            </div>
+          </section>
         ) : (
-          <div className="panel-card crm-empty">Sözleşme bulunamadı.</div>
+          // Yeni kurum sözleşmenin nereden oluşturulduğunu bilmiyor; yol gösterilir.
+          <section className="panel-card crm-empty-state">
+            <h2>{archivedRows.length ? "Aktif sözleşme yok" : "Henüz sözleşme yok"}</h2>
+            <p>
+              {archivedRows.length
+                ? "Operasyona devredilen ve tamamlanan sözleşmeler aşağıdaki arşivde."
+                : "Sözleşmeler kabul edilen bir tekliften “Sözleşmeye Dönüştür” ile ya da talep sayfasındaki “Direkt Sözleşme Oluştur” ile hazırlanır."}
+            </p>
+            <div className="crm-empty-actions">
+              <Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link>
+            </div>
+          </section>
         )}
         {archivedRows.length ? (
           <details className="ops-archive">
