@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { login } from "./actions";
-import { createClient } from "@/lib/supabase/server";
-import { readableOn } from "@/lib/tenant-theme";
+import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import "./login.css";
 
 export const metadata: Metadata = {
   title: "Giriş",
   description: "ArvoOS güvenli kurum paneli girişi.",
 };
-
-const DEFAULT_APP_HOST = "app.arvo-os.com";
 
 export default async function LoginPage({
   searchParams,
@@ -20,25 +16,10 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
 
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("host")?.split(":")[0] ?? "";
-  let orgBrand: { name: string; logo_url: string | null; primary_color: string | null; website_url: string | null } | null = null;
-  if (host && host !== DEFAULT_APP_HOST) {
-    const supabase = await createClient();
-    const { data: organizationId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
-    if (organizationId) {
-      const { data } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
-      const org = Array.isArray(data) ? data[0] : data;
-      if (org) orgBrand = { name: org.name, logo_url: org.logo_url, primary_color: org.primary_color, website_url: org.website_url ?? null };
-    }
-  }
-
-  // Kurumun rengi düğmeye geçer; açık bir renkte beyaz yazı kaybolmasın diye
-  // yazı rengi kontrasta göre seçilir. Geçersiz renk kodu yok sayılır.
-  const accentColor = /^#[0-9a-fA-F]{6}$/.test(orgBrand?.primary_color ?? "") ? orgBrand!.primary_color! : undefined;
+  const orgBrand = await getLoginBrand();
 
   return (
-    <main className="login-shell" style={accentColor ? ({ "--login-accent": accentColor, "--login-accent-on": readableOn(accentColor) } as React.CSSProperties) : undefined}>
+    <main className="login-shell" style={loginAccentStyle(orgBrand?.primary_color)}>
       <section className="login-brand">
         {orgBrand ? (
           orgBrand.website_url ? (

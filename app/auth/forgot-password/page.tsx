@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { requestPasswordReset } from "./actions";
 import "../../login/login.css";
 
@@ -22,23 +23,31 @@ export default async function ForgotPasswordPage({
   searchParams: Promise<{ error?: string; sent?: string; email?: string }>;
 }) {
   const { error, sent, email } = await searchParams;
+  // Kurumun kendi alan adında giriş ekranıyla aynı marka görünür.
+  const orgBrand = await getLoginBrand();
 
   return (
-    <main className="login-shell">
+    <main className="login-shell" style={loginAccentStyle(orgBrand?.primary_color)}>
       <section className="login-brand">
-        <Link href="https://arvo-os.com" aria-label="ArvoOS ana sayfa">
-          <img src="/arvoos-logo.png" alt="ArvoOS" />
-        </Link>
+        {orgBrand ? (
+          orgBrand.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} /> : <span className="login-brand-name">{orgBrand.name}</span>
+        ) : (
+          <Link href="https://arvo-os.com" aria-label="ArvoOS ana sayfa">
+            <img src="/arvoos-logo.png" alt="ArvoOS" />
+          </Link>
+        )}
         <div>
           <span>GÜVENLİ HESAP ERİŞİMİ</span>
           <h1>Şifrenizi birkaç adımda güvenle yenileyin.</h1>
-          <p>Kurumsal e-posta adresinize tek kullanımlık bir yenileme bağlantısı gönderilecektir.</p>
+          <p>{orgBrand ? `${orgBrand.name} panelinde kullandığınız e-posta adresine tek kullanımlık bir yenileme bağlantısı gönderilecektir.` : "Kurumsal e-posta adresinize tek kullanımlık bir yenileme bağlantısı gönderilecektir."}</p>
         </div>
-        <small>ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ.</small>
+        {!orgBrand ? <small>ARVOCULTURE GROUP TEKNOLOJİ SANAYİ VE TİCARET LTD. ŞTİ.</small> : null}
       </section>
       <section className="login-form-wrap">
         <form action={requestPasswordReset} className="login-card">
-          <div className="mark">A</div>
+          <div className="login-card-brand">
+            {orgBrand?.logo_url ? <img src={orgBrand.logo_url} alt={orgBrand.name} className="login-card-logo" /> : <small>{orgBrand ? orgBrand.name : "ARVOOS"}</small>}
+          </div>
           <span>ŞİFRE YENİLEME</span>
           <h2>E-posta adresinizi girin</h2>
           <p>Hesabınız sistemde kayıtlıysa şifre oluşturma bağlantısı e-posta adresinize gönderilecektir.</p>

@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { readableOn } from "@/lib/tenant-theme";
+import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { setInitialPassword } from "./actions";
 import "../../login/login.css";
 
@@ -40,10 +39,14 @@ export default async function SetPasswordPage({
     const row = Array.isArray(rows) ? (rows[0] as WorkspaceRow | undefined) : undefined;
     if (row) organization = { name: row.display_name || row.name, logo_url: row.logo_url ?? null, color: row.brand_color ?? null };
   }
-  const accentColor = /^#[0-9a-fA-F]{6}$/.test(organization?.color ?? "") ? organization!.color! : undefined;
+  // Oturum yoksa (geçersiz bağlantı) kurumun alan adındaki marka kullanılır.
+  if (!organization) {
+    const hostBrand = await getLoginBrand();
+    if (hostBrand) organization = { name: hostBrand.name, logo_url: hostBrand.logo_url, color: hostBrand.primary_color };
+  }
 
   return (
-    <main className="login-shell" style={accentColor ? ({ "--login-accent": accentColor, "--login-accent-on": readableOn(accentColor) } as CSSProperties) : undefined}>
+    <main className="login-shell" style={loginAccentStyle(organization?.color)}>
       <section className="login-brand">
         {organization ? (
           organization.logo_url ? <img src={organization.logo_url} alt={organization.name} /> : <span className="login-brand-name">{organization.name}</span>
@@ -83,7 +86,9 @@ export default async function SetPasswordPage({
           </form>
         ) : (
           <div className="login-card">
-            <div className="login-card-brand"><small>ARVOOS</small></div>
+            <div className="login-card-brand">
+              {organization?.logo_url ? <img src={organization.logo_url} alt={organization.name} className="login-card-logo" /> : <small>{organization ? organization.name : "ARVOOS"}</small>}
+            </div>
             <span>BAĞLANTI GEÇERSİZ</span>
             <h2>Bu bağlantı artık kullanılamıyor</h2>
             <p>Davet veya şifre bağlantınızın süresi dolmuş ya da daha önce kullanılmış olabilir. E-posta adresinizle yeni bir bağlantı isteyebilir veya sizi davet eden yöneticiden yeni bir giriş bağlantısı gönderilmesini isteyebilirsiniz.</p>
