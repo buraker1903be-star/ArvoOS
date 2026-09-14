@@ -83,8 +83,8 @@ async function resetOrganizationAiCredits__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateOrganizationLicense(...args: Parameters<typeof updateOrganizationLicense__impl>) {
-  return runPanelAction(() => updateOrganizationLicense__impl(...args));
+  return runPanelAction(() => updateOrganizationLicense__impl(...args), "Lisans kaydedildi");
 }
 export async function resetOrganizationAiCredits(...args: Parameters<typeof resetOrganizationAiCredits__impl>) {
-  return runPanelAction(() => resetOrganizationAiCredits__impl(...args));
+  return runPanelAction(() => resetOrganizationAiCredits__impl(...args), "AI kullanımı sıfırlandı");
 }

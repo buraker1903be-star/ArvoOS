@@ -93,7 +93,7 @@ export const HOME_EN: HomeContent = {
     cta: { label: "All services", href: R("services"), variant: "ghost" },
     all: { title: "And more", text: "End-to-end digital services, from strategy to launch.", items: ["Process & experience design", "Corporate digital systems", "Ongoing development"] },
   },
-  refs: { eyebrow: "References", title: "Brands we build with.", lead: "A family of brands that share the same standard of quality, and create value together.", culture: "About the group", akademik: "Visit the website" },
+  refs: { eyebrow: "References", title: "Brands we build with.", lead: "A family of brands that share the same standard of quality, and create value together.", culture: "Visit the website", akademik: "Visit the website" },
   faq: {
     eyebrow: "FAQ",
     title: "Questions about Arvo",

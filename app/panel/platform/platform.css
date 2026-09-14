@@ -84,6 +84,18 @@
 /* Telefonda panel her düğmeye en az 44px yükseklik veriyor; anahtar ölçüsü korunur */
 .panel-root .stg.plt .plt-switch{width:46px;min-width:46px;height:28px;min-height:28px;padding:0}
 
+/* ---------- Alt sayfalar: kullanım çubuğu, satırlar, alıntılar ---------- */
+.plt-meter{position:relative;display:block;width:100%;height:6px;margin-top:6px;border-radius:var(--r-pill);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);overflow:hidden}
+.plt-meter i{position:absolute;inset:0 auto 0 0;border-radius:var(--r-pill);background:var(--tone-fg,var(--success))}
+.plt-meter.is-wide{height:10px;margin:0}
+.plt-usage{display:grid;gap:8px}
+.plt-usage small{color:var(--muted);font-size:12.5px}
+.plt .stg-list>.plt-row{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:56px;padding:10px 16px}
+.plt-row .stg-row-main small{overflow-wrap:anywhere}
+.plt-quote{margin:0;padding:12px 14px;border-left:3px solid var(--line);border-radius:0 12px 12px 0;background:var(--surface-2);color:var(--ink);font-size:13.5px;line-height:1.5}
+.plt-receipt{justify-self:start;display:inline-flex;align-items:center;gap:8px}
+.plt-onboard{display:grid;gap:16px;max-width:980px}
+
 /* ---------- Kurulum geçmişi ---------- */
 .plt-audit{position:relative;margin:0;padding:0;list-style:none}
 .plt-audit li{position:relative;display:flex;gap:12px;padding:0 0 14px}

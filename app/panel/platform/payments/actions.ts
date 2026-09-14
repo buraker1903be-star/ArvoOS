@@ -31,5 +31,5 @@ async function reviewBankTransferPayment__impl(formData: FormData) {
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function reviewBankTransferPayment(...args: Parameters<typeof reviewBankTransferPayment__impl>) {
-  return runPanelAction(() => reviewBankTransferPayment__impl(...args));
+  return runPanelAction(() => reviewBankTransferPayment__impl(...args), "Ödeme kararı kaydedildi");
 }
