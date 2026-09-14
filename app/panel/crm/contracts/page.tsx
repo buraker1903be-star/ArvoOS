@@ -160,7 +160,13 @@ export default async function ContractsPage({ searchParams }: Props) {
   //  - imzalanmış VE iş akışına devredilmiş sözleşme (iş artık Operasyon'da)
   // İmzalanmış ama iş akışı AÇILMAMIŞ sözleşme listede kalır: orada
   // yapılacak bir iş var, gizlenirse unutulur.
+  //  - reddedilen veya iptal edilen sözleşme (eskiden aktif listede kalıp
+  //    toplam değere ekleniyordu); durum filtresiyle özellikle seçildiyse
+  //    ana listede gösterilir
+  const isClosed = (row: Contract) =>
+    (row.status === "rejected" || row.status === "cancelled") && status !== row.status;
   const isArchived = (row: Contract) =>
+    isClosed(row) ||
     row.status === "completed" ||
     (Boolean(row.workflow_id) &&
       (row.status === "signed" ||
@@ -383,7 +389,7 @@ export default async function ContractsPage({ searchParams }: Props) {
             <h2>{archivedRows.length ? "Aktif sözleşme yok" : "Henüz sözleşme yok"}</h2>
             <p>
               {archivedRows.length
-                ? "Operasyona devredilen ve tamamlanan sözleşmeler aşağıdaki arşivde."
+                ? "Reddedilen, iptal edilen, operasyona devredilen ve tamamlanan sözleşmeler aşağıdaki arşivde."
                 : "Sözleşmeler kabul edilen bir tekliften “Sözleşmeye Dönüştür” ile ya da talep sayfasındaki “Direkt Sözleşme Oluştur” ile hazırlanır."}
             </p>
             <div className="crm-empty-actions">
@@ -396,24 +402,31 @@ export default async function ContractsPage({ searchParams }: Props) {
             <summary>
               <span>Arşivlenen sözleşmeler</span>
               <em>{archivedRows.length}</em>
-              <small>Operasyona devredilen ve tamamlanan sözleşmeler</small>
+              <small>Reddedilen, iptal edilen, operasyona devredilen ve tamamlanan sözleşmeler</small>
             </summary>
             <div className="ops-archive-list">
-              {archivedRows.map((row) => (
-                <Link
-                  key={row.id}
-                  href="/panel/operations"
-                  className="ops-archive-row"
-                >
-                  <div>
-                    <b>
-                      {row.contract_no} · {formatPersonName(row.crm_opportunities?.customer_name)}
-                    </b>
-                    <small>{row.title}</small>
-                  </div>
-                  <span className="status-pill">İş tamamlandı</span>
-                </Link>
-              ))}
+              {archivedRows.map((row) => {
+                // Reddedilen/iptal edilen sözleşme operasyona hiç geçmedi:
+                // kendi sayfasına gider ve gerçek durumunu gösterir.
+                const closed = row.status === "rejected" || row.status === "cancelled";
+                return (
+                  <Link
+                    key={row.id}
+                    href={closed ? `/panel/crm/contracts/${row.id}` : "/panel/operations"}
+                    className="ops-archive-row"
+                  >
+                    <div>
+                      <b>
+                        {row.contract_no} · {formatPersonName(row.crm_opportunities?.customer_name)}
+                      </b>
+                      <small>{row.title}</small>
+                    </div>
+                    {closed
+                      ? <span className="status-pill" data-tone={statusTone(row.status)}>{labels[row.status] ?? row.status}</span>
+                      : <span className="status-pill">İş tamamlandı</span>}
+                  </Link>
+                );
+              })}
             </div>
           </details>
         ) : null}
