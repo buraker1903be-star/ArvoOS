@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { detectCity, formatMoney, formatDate, installmentStatusLabel, taxIdLabel, type DocumentRow, type ScheduleRow, type TaxBreakdown } from "./format";
 import { formatIban } from "./identifiers";
+import type { WorkPlanItem } from "@/lib/work-plan";
 
 export type Provider = {
   /** Taraf adı: ticari unvan girilmişse o, yoksa kurum adı. */
@@ -158,6 +159,22 @@ export function PaymentPlanTable({ rows, currency }: { rows: ScheduleRow[]; curr
       {showStatus ? <td className="ad-center">{row.status ? <span className={row.status === "paid" ? "ad-pill ad-pill-ok" : row.status === "overdue" ? "ad-pill ad-pill-bad" : "ad-pill"}>{installmentStatusLabel(row.status)}</span> : "—"}</td> : null}
     </tr>)}</tbody>
     <tfoot><tr><td colSpan={4}>Plan toplamı</td><td className="ad-num">{formatMoney(total, currency)}</td>{showStatus ? <td /> : null}</tr></tfoot>
+  </table></div>;
+}
+
+/** Ara teslim takvimi (sözleşme madde 4 ve ek protokoller). */
+export function WorkPlanTable({ items }: { items: WorkPlanItem[] }) {
+  return <div className="ad-table-wrap"><table className="ad-table ad-table-compact">
+    <thead><tr>
+      <th style={{ width: "8%" }}>No</th>
+      <th>Ara teslim / iş adımı</th>
+      <th style={{ width: "24%" }}>Teslim tarihi</th>
+    </tr></thead>
+    <tbody>{items.map((item) => <tr key={item.sequence}>
+      <td>{item.sequence}</td>
+      <td><strong>{item.title}</strong></td>
+      <td>{formatDate(item.due_date)}</td>
+    </tr>)}</tbody>
   </table></div>;
 }
 

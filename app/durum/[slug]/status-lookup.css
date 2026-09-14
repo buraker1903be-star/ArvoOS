@@ -348,6 +348,30 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
 .trk-note{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-radius:16px;background:var(--trk-fill-2);color:var(--trk-muted);font-size:13px;line-height:1.45}
 .trk-note svg{margin-top:1px;color:var(--trk-success)}
 
+/* İş planı (ara teslimler) ve ödeme takvimi */
+.trk-plan-alert{display:flex;flex-direction:column;gap:2px;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:var(--trk-accent-soft);color:var(--trk-accent-text);text-decoration:none}
+.trk-plan-alert b{font-size:14px;font-weight:650}
+.trk-plan-alert span{font-size:13px}
+.trk-plan-list{margin:0;padding:0;list-style:none}
+.trk-plan-list li{position:relative;display:flex;gap:12px;padding:0 0 14px}
+.trk-plan-list li:last-child{padding-bottom:0}
+.trk-plan-list li:not(:last-child)::after{content:"";position:absolute;top:18px;bottom:2px;left:5px;width:1.5px;background:var(--trk-line)}
+.trk-plan-dot{flex:none;width:12px;height:12px;margin-top:5px;border:2px solid var(--trk-dim);border-radius:50%;background:var(--trk-surface)}
+.trk-plan-list li.is-past .trk-plan-dot{border-color:var(--trk-success);background:var(--trk-success)}
+.trk-plan-list div{display:flex;flex-direction:column;min-width:0}
+.trk-plan-list b{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.trk-plan-list time{color:var(--trk-muted);font-size:13px}
+.trk-plan-empty{margin:0;color:var(--trk-muted);font-size:14px}
+.trk-plan-sub{margin:18px 0 6px;color:var(--trk-muted);font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase}
+.trk-plan-pay{margin:0;padding:0;list-style:none}
+.trk-plan-pay li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+.trk-plan-pay li+li{border-top:.5px solid var(--trk-line)}
+.trk-plan-pay div{display:flex;flex-direction:column;min-width:0}
+.trk-plan-pay b{font-size:14px;font-weight:600}
+.trk-plan-pay small{color:var(--trk-muted);font-size:12.5px}
+.trk-plan-amount{display:flex;flex-direction:column;align-items:flex-end;font:600 14px var(--trk-mono);white-space:nowrap}
+.trk-plan-amount.is-paid{color:var(--trk-success)}
+
 /* ============================================================
    Mesajlaşma (panel mesajlarıyla aynı iMessage dili)
    ============================================================ */

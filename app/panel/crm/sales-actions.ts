@@ -18,7 +18,9 @@ async function getPanelContext() {
 }
 import {
   calculatePaymentSchedule,
+  carryDueDates,
   normalizePaymentSchedule,
+  scheduleDateIssue,
   type PaymentPlanType,
 } from "@/lib/payment-schedule";
 
@@ -59,9 +61,10 @@ function rescaleSchedule(stored: unknown, totalCents: number, planType: unknown)
   const type = PLAN_TYPES.has(planType as PaymentPlanType)
     ? (planType as PaymentPlanType)
     : undefined;
-  if (type && type !== "custom") return calculatePaymentSchedule(totalCents, type);
+  // Girilmiş vade tarihleri aynı sıra numaralı taksitlere taşınır.
+  if (type && type !== "custom") return carryDueDates(calculatePaymentSchedule(totalCents, type), stored);
   const rows = normalizePaymentSchedule(stored, totalCents, type);
-  return rows.length ? rows : calculatePaymentSchedule(totalCents, "cash");
+  return carryDueDates(rows.length ? rows : calculatePaymentSchedule(totalCents, "cash"), stored);
 }
 
 // Teklif / direkt sözleşme oluşturmadan önce talebin satış temsilcisi
@@ -155,6 +158,8 @@ export async function createProposal(
   ) {
     return { error: "Teklif bilgileri eksik veya geçersiz." };
   }
+  const scheduleIssue = scheduleDateIssue(paymentSchedule);
+  if (scheduleIssue) return { error: scheduleIssue };
 
   const { supabase, membership, userId } = await getPanelContext();
   const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
@@ -263,6 +268,8 @@ export async function createContractDirectly(
   ) {
     return { error: "Sözleşme bilgileri eksik veya geçersiz." };
   }
+  const scheduleIssue = scheduleDateIssue(paymentSchedule);
+  if (scheduleIssue) return { error: scheduleIssue };
 
   const { supabase, membership, userId } = await getPanelContext();
   if (!["owner", "admin", "manager"].includes(membership.role))
@@ -652,9 +659,11 @@ export type UpdateContractPlanState = {
   success: boolean;
 };
 
-// İmzalanmış bir sözleşmenin ödeme planı, müşteri talebiyle (örn. "3 taksit
-// yapalım") değişebiliyor — bu artık teklife dokunmadan, doğrudan
-// sözleşme üzerinde, aynı hesaplama mantığıyla revize edilebiliyor.
+// İmza öncesi sözleşmenin ödeme planı, müşteri talebiyle (örn. "3 taksit
+// yapalım") teklife dokunmadan, doğrudan sözleşme üzerinde, aynı hesaplama
+// mantığıyla revize edilebiliyor. İmzalı sözleşme veritabanında donmuş
+// (arvo_freeze_signed_contract); vade değişikliği ek protokolle yapılır
+// (contract-plan-actions.ts).
 export async function updateContractPaymentPlan(
   _previousState: UpdateContractPlanState,
   formData: FormData,
@@ -672,6 +681,19 @@ export async function updateContractPaymentPlan(
   } catch {
     return { error: "Ödeme planı okunamadı.", success: false };
   }
+  const scheduleIssue = scheduleDateIssue(schedule);
+  if (scheduleIssue) return { error: scheduleIssue, success: false };
+
+  const { data: current } = await supabase
+    .from("crm_contracts")
+    .select("status")
+    .eq("id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (!current)
+    return { error: "Sözleşme bulunamadı veya bu sözleşmeye erişiminiz yok.", success: false };
+  if (["signed", "completed"].includes(current.status))
+    return { error: "Bu sözleşme imzalandı; ödeme planı değiştirilemez. Vade tarihlerini değiştirmek için Ek Protokol oluşturun.", success: false };
 
   const { error } = await supabase
     .from("crm_contracts")

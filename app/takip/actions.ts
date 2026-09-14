@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
+import { normalizeWorkPlan } from "@/lib/work-plan";
 
 // DİKKAT: "use server" dosyasında `export type { X }` (yeniden dışa aktarma)
 // YAZMAYIN. Next derleyicisi bunu sunucu işlemi sanıp çalışma anında var
@@ -44,7 +45,26 @@ export type TakipState = {
       contract_no: string | null;
       contract_status: string | null;
     } | null;
+    /** null → bölüm gösterilmez (okunamadı ya da migration yok). */
+    workPlan: TrackingWorkPlan | null;
   } | null;
+};
+
+export type TrackingPayment = {
+  sequence: number;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  trigger: string | null;
+  status: string | null;
+};
+
+/** İş planı (ara teslimler) ve ödeme takvimi — arvo_tracking_work_plan. */
+export type TrackingWorkPlan = {
+  items: { sequence: number; title: string; due_date: string }[];
+  source: "contract" | "addendum";
+  payments: TrackingPayment[];
+  pendingAddendum: boolean;
 };
 
 export type CustomerMessageState = {
@@ -52,6 +72,28 @@ export type CustomerMessageState = {
   success: string | null;
   messages: CustomerFileMessage[] | null;
 };
+
+function readWorkPlan(value: unknown): TrackingWorkPlan | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as { work_plan?: unknown; source?: unknown; payments?: unknown; pending_addendum?: unknown };
+  const payments = (Array.isArray(raw.payments) ? raw.payments : []).map((item, index) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    return {
+      sequence: Number(row.sequence) || index + 1,
+      label: String(row.label ?? `${index + 1}. Ödeme`),
+      amount: Number(row.amount) || 0,
+      due_date: typeof row.due_date === "string" && row.due_date ? row.due_date : null,
+      trigger: typeof row.trigger === "string" && row.trigger ? row.trigger : null,
+      status: typeof row.status === "string" && row.status ? row.status : null,
+    };
+  });
+  return {
+    items: normalizeWorkPlan(raw.work_plan),
+    source: raw.source === "addendum" ? "addendum" : "contract",
+    payments,
+    pendingAddendum: raw.pending_addendum === true,
+  };
+}
 
 async function listMessages(code: string) {
   const supabase = await createClient();
@@ -101,6 +143,13 @@ export async function lookupTracking(
   });
   const documentLinks = (Array.isArray(linkRows) ? linkRows[0] : linkRows) ?? null;
 
+  // İş planı ve ödeme takvimi; okunamazsa bölüm gösterilmez.
+  const { data: planData, error: planError } = await supabase.rpc("arvo_tracking_work_plan", {
+    p_tracking_code: code,
+  });
+  if (planError) console.error("[takip] iş planı okunamadı", { code: planError.code, message: planError.message });
+  const workPlan = planError ? null : readWorkPlan(planData);
+
   let messages: CustomerFileMessage[] = [];
   try {
     messages = await listMessages(code);
@@ -116,7 +165,7 @@ export async function lookupTracking(
     files = null;
   }
 
-  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks } };
+  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks, workPlan } };
 }
 
 /** Sekmeye dönüldüğünde (ör. PAYTR ödemesinden sonra) dosya kilitlerini tazeler. */

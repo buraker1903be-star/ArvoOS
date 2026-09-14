@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { akademikMerkezTemplate, arvoOSGeneralTemplate, type ContractClause, type ContractTemplate } from "@/lib/contract-templates";
-import { BankAccountBox, PartyCard, PaymentPlanTable, TaxTotals, customerRows, providerRows, providerTaxLine, type Customer, type Provider } from "./blocks";
+import type { WorkPlanItem } from "@/lib/work-plan";
+import { BankAccountBox, PartyCard, PaymentPlanTable, TaxTotals, WorkPlanTable, customerRows, providerRows, providerTaxLine, type Customer, type Provider } from "./blocks";
 import { amountInWords, formatDate, formatDateTime, formatMoney, numberToTurkishWords, type LegalTextVersion, type PartyKind, type ScheduleRow, type TaxBreakdown } from "./format";
 import { formatIban } from "./identifiers";
 
@@ -37,6 +38,8 @@ export type ContractContext = {
   currency: string;
   tax: TaxBreakdown;
   schedule: ScheduleRow[];
+  /** Ara teslim takvimi (crm_contracts.work_plan); boşsa 4.3 eski metinle kalır. */
+  workPlan: WorkPlanItem[];
   specialClauses: ContractClause[];
   earlyStart: boolean | null;
   city: string | null;
@@ -137,7 +140,10 @@ function buildArticles(ctx: ContractContext): Article[] {
       key: "term", title: "Hizmet Süresi, Teslim ve Termin", blocks: [
         P("Sözleşme, Müşteri’nin elektronik onayı ile kurulur ve Hizmet’in eksiksiz ifası ile Taraflar’ın Sözleşme’den doğan tüm edimlerini yerine getirmesine kadar yürürlükte kalır."),
         P(`${ctx.startDate ? `Hizmet’e ${formatDate(ctx.startDate)} tarihinde başlanması planlanmıştır.` : "Hizmet’e, Sözleşme’nin kurulmasını ve varsa ön ödemenin Hizmet Sağlayıcı’nın hesabına geçmesini müteakip başlanır."}${consumer ? ` Cayma süresi içinde ifaya başlanması, ${no("withdrawal")}. madde uyarınca Müşteri’nin açık talebine bağlıdır.` : ""}`),
-        P(`${ctx.dueDate ? `Hizmet’in teslim tarihi ${formatDate(ctx.dueDate)} olarak belirlenmiştir.` : "Teslim tarihi, Teklif’te belirtilen takvime göre belirlenir."} Ara teslimler ve iş planı Taraflar’ın yazılı mutabakatıyla belirlenebilir.`),
+        P(`${ctx.dueDate ? `Hizmet’in teslim tarihi ${formatDate(ctx.dueDate)} olarak belirlenmiştir.` : "Teslim tarihi, Teklif’te belirtilen takvime göre belirlenir."} ${ctx.workPlan.length
+          ? "Ara teslimler ve iş planı aşağıdaki takvimde gösterilmiştir. Takvimde yapılacak değişiklikler Taraflar’ın yazılı veya doğrulanabilir elektronik mutabakatıyla (ek protokol) geçerli olur."
+          : "Ara teslimler ve iş planı Taraflar’ın yazılı mutabakatıyla belirlenebilir."}`),
+        ...(ctx.workPlan.length ? [N(<WorkPlanTable items={ctx.workPlan} />)] : []),
         P("Müşteri’den kaynaklanan gecikmeler (bilgi, belge, erişim, onay veya ödeme gecikmeleri dahil) ile mücbir sebep halleri, teslim süresini gecikme süresi kadar uzatır. Hizmet Sağlayıcı bu durumu Müşteri’ye makul süre içinde bildirir."),
         P(consumer
           ? "Teslim; Elektronik Belge Sistemi, elektronik posta veya Taraflar’ca kararlaştırılan başka bir kanal üzerinden yapılır. Müşteri, teslim edilen hizmetteki eksiklik ve ayıpları Hizmet Sağlayıcı’ya bildirebilir; ayıplı hizmete ilişkin TKHK m.13 ve m.15’te düzenlenen seçimlik haklar ile m.16’daki zamanaşımı hükümleri saklıdır ve bu madde Müşteri’nin kanuni haklarını sınırlandırmaz."
@@ -366,7 +372,7 @@ export function PreInformationAnnex({ ctx }: { ctx: ContractContext }) {
     ["Hizmetin temel nitelikleri", <><strong>{ctx.title}</strong><ul>{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></>],
     ["Toplam fiyat (vergiler dahil)", <>{money(ctx.tax.gross)}{ctx.tax.status === "included" || ctx.tax.status === "excluded" ? ` — ${money(ctx.tax.net)} + %${ctx.tax.rate.toLocaleString("tr-TR")} KDV (${money(ctx.tax.tax)})` : ctx.tax.status === "exempt" ? " — KDV istisnası uygulanır" : ""}. Bunun dışında Müşteri’den ek ücret, teslim veya kargo bedeli talep edilmez.</>],
     ["Ödeme şekli ve planı", <>{plan.map((line, index) => <span key={index} style={{ display: "block" }}>{line}</span>)}{bank ? <>Havale/EFT: {bank.bankName ? `${bank.bankName}, ` : ""}IBAN {formatIban(bank.iban)} ({bank.accountHolder || bank.name} adına kayıtlı hesap) veya güvenli ödeme bağlantısı ile kredi/banka kartı.</> : <>Havale/EFT ({ctx.provider.name} adına kayıtlı hesaba) veya güvenli ödeme bağlantısı ile kredi/banka kartı.</>}</>],
-    ["İfa ve teslim", <>{ctx.startDate ? `Başlangıç: ${formatDate(ctx.startDate)}. ` : "Sözleşme’nin kurulmasını ve ön ödemeyi müteakip başlanır. "}{ctx.dueDate ? `Teslim: ${formatDate(ctx.dueDate)}.` : "Teslim takvimi Teklif’te belirtilmiştir."} Teslim elektronik ortamda yapılır.</>],
+    ["İfa ve teslim", <>{ctx.startDate ? `Başlangıç: ${formatDate(ctx.startDate)}. ` : "Sözleşme’nin kurulmasını ve ön ödemeyi müteakip başlanır. "}{ctx.dueDate ? `Teslim: ${formatDate(ctx.dueDate)}.` : "Teslim takvimi Teklif’te belirtilmiştir."}{ctx.workPlan.length ? ` Ara teslimler: ${ctx.workPlan.map((item) => `${item.title} (${formatDate(item.due_date)})`).join("; ")}.` : ""} Teslim elektronik ortamda yapılır.</>],
     ["Cayma hakkı", <>Sözleşme’nin kurulduğu günden itibaren 14 (on dört) gün içinde gerekçe göstermeksizin ve cezai şart ödemeksizin cayma hakkı kullanılabilir. Bildirim, Hizmet Sağlayıcı’nın yukarıdaki elektronik posta veya posta adresine yazılı olarak ya da kalıcı veri saklayıcısı ile yapılır. Ödemeler bildirimin ulaşmasından itibaren 14 gün içinde iade edilir. Cayma süresi dolmadan Müşteri’nin onayıyla ifasına başlanan hizmetlerde cayma hakkı kullanılamaz (Yönetmelik m.15/1-ğ).</>],
     ["Şikâyet ve başvurular", <>Şikâyetler Hizmet Sağlayıcı’nın yukarıdaki iletişim adreslerine iletilebilir. Uyuşmazlıklarda Ticaret Bakanlığı’nca her yıl belirlenen parasal sınırlar dahilinde tüketici hakem heyetlerine, bu sınırları aşan uyuşmazlıklarda arabuluculuk şartı saklı kalmak üzere tüketici mahkemelerine başvurulabilir.</>],
     ["Sözleşmenin saklanması", <>Sözleşme ve bu form Elektronik Belge Sistemi’nde saklanır; Müşteri her ikisini de dilediği zaman PDF olarak indirebilir.</>],

@@ -145,6 +145,23 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
 .ad-reject{border:1px solid #d9b4ae;background:#fff;color:var(--ad-bad)}
 .ad-actions p{margin:3mm 0 0;font-size:7.6pt;color:var(--ad-muted);text-align:center}
 .ad-status{margin-top:6mm;padding:3mm 4mm;border-radius:2mm;background:var(--ad-cream);border:.2mm solid var(--ad-line);font-size:8.4pt;color:var(--ad-text);text-align:center}
+.ad-addendum{margin:0 0 5mm;padding:5mm;border:.2mm solid var(--ad-line);border-radius:2.4mm;background:#fff}
+.ad-addendum.is-sent{border-color:var(--ad-gold-2);background:linear-gradient(180deg,#fffdf9,#fbf8f1)}
+.ad-addendum-head{display:flex;align-items:flex-start;justify-content:space-between;gap:4mm;margin:0 0 3mm;break-after:avoid}
+.ad-addendum-head h3{margin:1mm 0 .6mm;font-size:12pt;line-height:1.25;color:var(--ad-ink)}
+.ad-addendum-head small{color:var(--ad-soft);font-size:7.4pt}
+.ad-addendum>p,.ad-addendum-note{margin:0 0 3mm;font-size:8.6pt;line-height:1.55;color:var(--ad-text)}
+.ad-addendum h4{margin:4mm 0 2mm;font-size:7pt;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ad-ink);break-after:avoid}
+.ad-addendum .ad-decision{margin-top:4mm}
+.ad-addendum .ad-form{margin-top:5mm}
+.ad-addendum .ad-field textarea{display:block;width:100%;min-height:84px;margin-top:2mm;padding:10px 12px;border:1px solid #d8d0c2;border-radius:10px;background:#fff;color:var(--ad-ink);font:500 14px/1.45 var(--ad-font);resize:vertical}
+.ad-addendum .ad-field small{font-weight:500;color:var(--ad-muted)}
+.ad-addendum .ad-actions-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ad-addendum .ad-actions .ad-accept,.ad-addendum .ad-actions .ad-reject{width:100%;min-height:48px;margin:0;border-radius:10px;font:700 13px/1.2 var(--ad-font);letter-spacing:.06em;cursor:pointer}
+.ad-addendum .ad-actions .ad-accept{border:0;background:linear-gradient(180deg,#1d3354,#0b1b2e);color:#fff;box-shadow:0 0 0 1px rgba(201,166,106,.55),0 10px 22px rgba(11,27,46,.18)}
+.ad-addendum .ad-actions .ad-reject{border:1px solid #d9b4ae;background:#fff;color:var(--ad-bad);box-shadow:none}
+@media (max-width:760px){.ad-table-wrap .ad-table.ad-table-compact{min-width:0}.ad-table-compact th,.ad-table-compact td{white-space:normal}.ad-table-compact td.ad-num{white-space:nowrap}}
+@media (max-width:640px){.ad-addendum{padding:16px}.ad-addendum-head{flex-direction:column}.ad-addendum .ad-actions-row{grid-template-columns:1fr}}
 .ad-related{margin:5mm 0 0;text-align:center}
 .ad-foot{display:grid;grid-template-columns:1.2fr 1.4fr 1fr;gap:6mm;margin-top:9mm;padding-top:4mm;border-top:.2mm solid var(--ad-line);font-size:7pt;line-height:1.5;color:var(--ad-muted);break-inside:avoid}
 .ad-foot strong{display:block;margin-bottom:.8mm;font-size:6.4pt;letter-spacing:.18em;text-transform:uppercase;color:var(--ad-ink)}

@@ -6,9 +6,10 @@ import { ORGANIZATION_LEGAL_COLUMNS, organizationLegalFields } from "@/app/_comp
 import type { InstallmentRecord } from "@/app/_components/legal/schedule";
 import type { ContractAudit } from "@/app/_components/contract-document";
 import type { ProposalDecision } from "@/app/_components/proposal-document";
+import { normalizeAddenda, type ContractAddendum } from "@/lib/work-plan";
 
 export type PanelDocument =
-  | { type: "contract"; row: DocumentRow; audit: ContractAudit; auditAvailable: boolean; verificationUrl: string | null; verificationHash: string | null; number: string }
+  | { type: "contract"; row: DocumentRow; audit: ContractAudit; auditAvailable: boolean; verificationUrl: string | null; verificationHash: string | null; number: string; workPlan: unknown; addenda: ContractAddendum[] }
   | { type: "proposal"; row: DocumentRow; decision: ProposalDecision | null; verificationUrl: string | null; number: string };
 
 const one = <T,>(value: T | T[] | null | undefined): T | null => (Array.isArray(value) ? value[0] ?? null : value ?? null);
@@ -58,6 +59,11 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
     const { data: installments } = contract.payment_plan_id
       ? await supabase.from("payment_installments").select("installment_no,due_date,amount,status,payment_url").eq("payment_plan_id", contract.payment_plan_id).eq("organization_id", organizationId).order("installment_no", { ascending: true })
       : { data: null };
+    // İş planı ve ek protokoller ayrı okunur: migration uygulanmadıysa belge onlarsız açılır.
+    const [{ data: planRow, error: planError }, { data: addendaRows, error: addendaError }] = await Promise.all([
+      supabase.from("crm_contracts").select("work_plan").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
+      supabase.from("crm_contract_addenda").select("id,addendum_no,work_plan,payment_dates,note,status,created_at,responded_at,responder_name,responder_ip,responder_user_agent,response_note").eq("contract_id", id).eq("organization_id", organizationId).order("addendum_no", { ascending: true }),
+    ]);
     const row = {
       ...contract,
       customer_name: customer?.customer_name || "Müşteri",
@@ -87,6 +93,8 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
       verificationUrl: contract.share_token && host ? `https://${host}/sozlesme/${contract.share_token}` : null,
       verificationHash: await contractVerificationHash(row),
       number: contract.contract_no,
+      workPlan: planError ? null : (planRow as DocumentRow | null)?.work_plan ?? null,
+      addenda: addendaError ? [] : normalizeAddenda(addendaRows),
     };
   }
 

@@ -10,6 +10,8 @@ import {
   formatMoney, groupHash, isBefore, pdfFileName, resolveLegalTextVersion, safeBrandColor, splitScope, summarizeUserAgent, taxIdLabel, type DocumentRow,
 } from "@/app/_components/legal/format";
 import { buildSchedule, type InstallmentRecord } from "@/app/_components/legal/schedule";
+import { ContractAddenda } from "@/app/_components/legal/addenda";
+import { normalizeWorkPlan, type ContractAddendum } from "@/lib/work-plan";
 
 export type ContractAudit = {
   signed_user_agent?: string | null;
@@ -42,6 +44,12 @@ type Props = {
   notice?: string | null;
   errorMessage?: string | null;
   proposalLink?: { token: string; no: string | null } | null;
+  /** crm_contracts.work_plan — doğrulama özeti etkilenmesin diye row'dan ayrı taşınır. */
+  workPlan?: unknown;
+  /** Gönderilmiş/sonuçlanmış ek protokoller */
+  addenda?: ContractAddendum[] | null;
+  /** Onay bekleyen ek protokolün altında gösterilecek müşteri formu (herkese açık sayfa) */
+  addendumActions?: (addendum: ContractAddendum) => ReactNode;
 };
 
 const consentLabels: [string, string][] = [
@@ -60,7 +68,7 @@ export function contractCustomerKind(row: DocumentRow) {
   return detectCustomerKind({ name: row?.customer_name, taxNumber: row?.customer_tax_number, taxOffice: row?.customer_tax_office });
 }
 
-export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink }: Props) {
+export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions }: Props) {
   const signed = isContractSigned(row);
   const template = getContractTemplate(row.organization_slug);
   // İmzalanmış sözleşme, imzalandığı metinle gösterilir: yeni yasal metin
@@ -100,6 +108,7 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
     currency,
     tax,
     schedule,
+    workPlan: normalizeWorkPlan(workPlan),
     specialClauses: specialClausesFor(template),
     earlyStart: consents ? consents.early_start === true : null,
     city: provider.city ?? null,
@@ -190,6 +199,8 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
           ? "Bu belge elektronik ortamda düzenlenmiş ve Müşteri tarafından elektronik olarak onaylanmıştır. Elektronik onay 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; onaya ilişkin tarih-saat, IP adresi, cihaz bilgisi ve doğrulama özeti HMK m.193 kapsamında delil olarak saklanır."
           : "Müşteri, belgenin sonundaki elektronik imza alanında ad soyadını yazıp imzasını çizerek ve onay beyanlarını işaretleyerek Sözleşme’yi onaylar. Onay tarihi-saati, IP adresi ve cihaz bilgisi bu bölümde gösterilir."}</p>
       </section>
+
+      {addenda?.length ? <ContractAddenda addenda={addenda} schedule={schedule} currency={currency} contractNo={String(row.contract_no || "")} print={print} renderActions={addendumActions} /> : null}
 
       {!legacy && kind === "consumer" ? <PreInformationAnnex ctx={ctx} /> : null}
 

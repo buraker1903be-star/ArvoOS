@@ -6,7 +6,7 @@
 export const notificationFilters = [
   { key: "sales", label: "Talepler", categories: ["sales_assignment", "site_lead"] },
   { key: "operations", label: "Operasyon", categories: ["operation_assignment", "crm_won_automation"] },
-  { key: "musteri", label: "Müşteri", categories: ["customer_message"] },
+  { key: "musteri", label: "Müşteri", categories: ["customer_message", "contract_addendum_accepted", "contract_addendum_rejected"] },
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },
   { key: "duyurular", label: "Duyurular", categories: ["management_announcement"] },
   { key: "odemeler", label: "Ödemeler", categories: ["payment_submitted", "payment_approved", "payment_rejected"] },

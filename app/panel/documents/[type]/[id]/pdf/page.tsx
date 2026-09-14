@@ -21,7 +21,7 @@ export default async function DocumentPdfPage({ params }: { params: Promise<{ ty
   if (!document) notFound();
   const backHref = `/panel/documents/${type}/${id}/preview`;
   if (document.type === "contract") {
-    return <ContractDocument row={document.row} audit={document.audit} auditAvailable={document.auditAvailable} verificationUrl={document.verificationUrl} verificationHash={document.verificationHash} mode="print" overlay backHref={backHref} />;
+    return <ContractDocument workPlan={document.workPlan} addenda={document.addenda} row={document.row} audit={document.audit} auditAvailable={document.auditAvailable} verificationUrl={document.verificationUrl} verificationHash={document.verificationHash} mode="print" overlay backHref={backHref} />;
   }
   return <ProposalDocument row={document.row} decision={document.decision} verificationUrl={document.verificationUrl} mode="print" overlay backHref={backHref} />;
 }

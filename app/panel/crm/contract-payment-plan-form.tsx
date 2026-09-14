@@ -3,13 +3,16 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
+  applyDueDates,
   buildLabeledSchedule,
   calculatePaymentSchedule,
   getPaymentPlanLabel,
+  scheduleDateIssue,
   type PaymentPlanType,
   type PaymentScheduleItem,
 } from "@/lib/payment-schedule";
 import { updateContractPaymentPlan, type UpdateContractPlanState } from "./sales-actions";
+import { ScheduleDateRows } from "./schedule-date-rows";
 
 const money = (value: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100);
@@ -21,14 +24,28 @@ function SubmitButton({ valid }: { valid: boolean }) {
   return <button className="panel-primary" type="submit" disabled={pending || !valid} aria-disabled={pending || !valid}>{pending ? "Kaydediliyor..." : "Ödeme Planını Kaydet"}</button>;
 }
 
+/** Kayıtlı plandaki vade tarihleri (sıra numarasına göre) */
+function storedDueDates(value: unknown) {
+  const dates: Record<number, string> = {};
+  if (!Array.isArray(value)) return dates;
+  value.forEach((item, index) => {
+    const row = (item ?? {}) as Partial<PaymentScheduleItem>;
+    const due = String(row.due_date ?? "");
+    if (due) dates[Number(row.sequence ?? index + 1)] = due;
+  });
+  return dates;
+}
+
 export function ContractPaymentPlanForm({
   contractId,
   amountCents,
   currentPlanType,
+  currentSchedule,
 }: {
   contractId: string;
   amountCents: number;
   currentPlanType: string | null;
+  currentSchedule?: unknown;
 }) {
   const [state, formAction] = useActionState(updateContractPaymentPlan, initialState);
   const initialPlan: PaymentPlanType = (["cash", "half", "third", "custom"] as const).includes(currentPlanType as PaymentPlanType)
@@ -37,6 +54,7 @@ export function ContractPaymentPlanForm({
   const [plan, setPlan] = useState<PaymentPlanType>(initialPlan);
   const [customCount, setCustomCount] = useState(2);
   const [customPercentages, setCustomPercentages] = useState<number[]>([50, 50]);
+  const [dueDates, setDueDates] = useState<Record<number, string>>(() => storedDueDates(currentSchedule));
 
   const autoSchedule = useMemo(() => calculatePaymentSchedule(amountCents, plan), [amountCents, plan]);
 
@@ -59,9 +77,14 @@ export function ContractPaymentPlanForm({
     [amountCents, customPercentages],
   );
 
-  const schedule = plan === "custom" ? customSchedule : autoSchedule;
+  const schedule = useMemo(
+    () => applyDueDates(plan === "custom" ? customSchedule : autoSchedule, dueDates),
+    [plan, customSchedule, autoSchedule, dueDates],
+  );
   const planText = plan === "custom" ? schedule.map((item) => `${item.label}: %${item.percentage.toFixed(0)}${item.trigger ? ` (${item.trigger})` : ""}`).join(" · ") : getPaymentPlanLabel(plan);
-  const valid = plan !== "custom" || customPercentTotal === 100;
+  const dateIssue = scheduleDateIssue(schedule);
+  const percentValid = plan !== "custom" || customPercentTotal === 100;
+  const valid = percentValid && !dateIssue;
 
   return (
     <form className="panel-form" action={formAction}>
@@ -93,18 +116,15 @@ export function ContractPaymentPlanForm({
           </div>
           {customPercentTotal !== 100 ? <p className="custom-plan-hint">Taksit yüzdeleri toplamı %100 olmalı (şu an %{customPercentTotal.toFixed(0)}).</p> : null}
         </section>
-      ) : (
-        <section className="wide proposal-payment-breakdown">
-          <small>ÖDEME PLANI ÖNİZLEME</small>
-          {schedule.map((item) => <div key={item.sequence}><span>{item.sequence}. {item.label}{item.trigger ? ` · ${item.trigger}` : ""}</span><b>{money(item.amount)}</b></div>)}
-        </section>
-      )}
+      ) : null}
+
+      <ScheduleDateRows schedule={schedule} dates={dueDates} onChange={(sequence, value) => setDueDates((current) => ({ ...current, [sequence]: value }))} />
 
       {state.error ? <div className="wide panel-form-error" role="alert" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}><strong>Kaydedilemedi</strong><p style={{ margin: "6px 0 0" }}>{state.error}</p></div> : null}
       {state.success ? <div className="wide panel-form-success" role="status" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>Ödeme planı güncellendi.</div> : null}
 
       <div className="wide panel-form-actions"><SubmitButton valid={valid} /></div>
-      {!valid ? <p className="wide custom-plan-hint">Kaydetmeden önce taksit yüzdelerini %100&apos;e tamamlayın.</p> : null}
+      {!percentValid ? <p className="wide custom-plan-hint">Kaydetmeden önce taksit yüzdelerini %100&apos;e tamamlayın.</p> : dateIssue ? <p className="wide custom-plan-hint">{dateIssue}</p> : null}
     </form>
   );
 }

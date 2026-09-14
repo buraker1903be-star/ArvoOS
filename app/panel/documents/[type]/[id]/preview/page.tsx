@@ -17,7 +17,7 @@ export default async function DocumentPreviewPage({params}:{params:Promise<{type
  const backLink=<Link className="ad-btn" href={`/panel/documents/${type}/${id}`}>← Yaşam döngüsüne dön</Link>;
  const pdfHref=`/panel/documents/${type}/${id}/pdf`;
  if(document.type==="contract"){
-  return <ContractDocument row={document.row} audit={document.audit} auditAvailable={document.auditAvailable} verificationUrl={document.verificationUrl} verificationHash={document.verificationHash} toolbarLeft={backLink} pdfHref={pdfHref} logDocumentId={id}/>;
+  return <ContractDocument workPlan={document.workPlan} addenda={document.addenda} row={document.row} audit={document.audit} auditAvailable={document.auditAvailable} verificationUrl={document.verificationUrl} verificationHash={document.verificationHash} toolbarLeft={backLink} pdfHref={pdfHref} logDocumentId={id}/>;
  }
  return <ProposalDocument row={document.row} decision={document.decision} verificationUrl={document.verificationUrl} toolbarLeft={backLink} pdfHref={pdfHref} logDocumentId={id}/>;
 }

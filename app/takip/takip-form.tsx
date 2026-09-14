@@ -18,6 +18,11 @@ const initialState: TakipState = { error: null, result: null };
 const initialMessageState: CustomerMessageState = { error: null, success: null, messages: null };
 const POLL_MS = 20000;
 
+// İş planı tarihleri "YYYY-AA-GG"; öğlen saatiyle okunur ki saat dilimi günü kaydırmasın.
+const planDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+const planMoney = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(cents / 100);
+const todayIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+
 export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   // "Yeni sorgu" sayfayı yeniden yüklemeden baştan başlatır: anahtar
   // değişince form ve sonuç ekranı sıfırdan kurulur, ?code= adresten düşer
@@ -160,6 +165,8 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
   const status = describeStatus(row.workflow_status, row.contract_status);
   const accentStyle = row.organization_primary_color ? ({ "--status-accent": row.organization_primary_color } as CSSProperties) : undefined;
   const links = row.documentLinks;
+  const plan = row.workPlan;
+  const today = todayIso();
   const documents = [
     ...(links?.proposal_share_token ? [{ href: `/teklif/${links.proposal_share_token}`, title: "Teklif belgesi", meta: links.proposal_no }] : []),
     ...(links?.contract_share_token ? [{ href: `/sozlesme/${links.contract_share_token}`, title: "Sözleşme belgesi", meta: links.contract_no }] : []),
@@ -292,6 +299,53 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
               </div>
               <FinanceSummary total={row.total_amount} paid={row.paid_amount} remaining={row.remaining_amount} />
             </section>
+
+            {plan && (plan.items.length || plan.payments.length || plan.pendingAddendum) ? (
+              <section className="trk-card trk-plan-card" aria-labelledby="trk-plan-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-plan-title">İş planı</h2>
+                  <span>{plan.source === "addendum" ? "Onaylı ek protokole göre" : "Sözleşmenize göre"}</span>
+                </div>
+                {plan.pendingAddendum ? (
+                  links?.contract_share_token ? (
+                    <a className="trk-plan-alert" href={`/sozlesme/${links.contract_share_token}#ek-protokoller`} target="_blank" rel="noreferrer">
+                      <b>Onayınızı bekleyen bir ek protokol var</b>
+                      <span>Güncel takvimi inceleyip onaylayın →</span>
+                    </a>
+                  ) : (
+                    <p className="trk-plan-alert"><b>Onayınızı bekleyen bir ek protokol var</b><span>Sözleşme bağlantınızdan inceleyip onaylayabilirsiniz.</span></p>
+                  )
+                ) : null}
+                {plan.items.length ? (
+                  <ol className="trk-plan-list">
+                    {plan.items.map((item) => (
+                      <li key={item.sequence} className={item.due_date < today ? "is-past" : undefined}>
+                        <span className="trk-plan-dot" aria-hidden="true" />
+                        <div><b>{item.title}</b><time dateTime={item.due_date}>{planDate(item.due_date)}</time></div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="trk-plan-empty">Ara teslim takvimi henüz paylaşılmadı.</p>
+                )}
+                {plan.payments.length ? (
+                  <>
+                    <h3 className="trk-plan-sub">Ödeme takvimi</h3>
+                    <ul className="trk-plan-pay">
+                      {plan.payments.map((payment) => (
+                        <li key={payment.sequence}>
+                          <div><b>{payment.label}</b><small>{payment.due_date ? planDate(payment.due_date) : payment.trigger ?? "Tarih bildirilecek"}</small></div>
+                          <span className={payment.status === "paid" ? "trk-plan-amount is-paid" : "trk-plan-amount"}>
+                            {planMoney(payment.amount)}
+                            {payment.status === "paid" ? <small>Ödendi</small> : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
 
             {documents.length ? (
               <section className="trk-card trk-docs-card" aria-labelledby="trk-docs-title">

@@ -194,6 +194,26 @@ export async function describeNotifications(
           actionLabel: "İş akışını aç",
         };
       }
+      case "contract_addendum_accepted":
+      case "contract_addendum_rejected": {
+        // arvo_respond_contract_addendum: müşteri ek protokolü onayladı / değişiklik istedi.
+        const accepted = row.category === "contract_addendum_accepted";
+        const responder = formatPersonName(meta(row, "responder_name")) || "Müşteri";
+        const addendumNo = row.metadata?.addendum_no;
+        const note = meta(row, "note");
+        return {
+          ...base,
+          label: "Ek protokol",
+          tone: accepted ? "success" : "gold",
+          icon: accepted ? "check" : "bubble",
+          headline: accepted ? `${responder} ek protokolü onayladı` : `${responder} ek protokolde değişiklik istedi`,
+          detail: accepted
+            ? "Ara teslim takvimi ve taksit vadeleri yürürlüğe girdi; vadeler finans kaydına işlendi."
+            : note ? quote(note) : row.message,
+          context: join(meta(row, "contract_no"), typeof addendumNo === "number" || typeof addendumNo === "string" ? `Ek Protokol ${addendumNo}` : null),
+          actionLabel: "Sözleşmeyi aç",
+        };
+      }
       case "payment_submitted":
         return { ...base, label: "Ödeme", tone: "gold", icon: "card", headline: "Yeni ödeme bildirimi", detail: row.message, actionLabel: "Ödemeyi incele" };
       case "payment_approved":

@@ -11,6 +11,11 @@ import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
 import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../sales-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
+import { ContractWorkPlanForm } from "../../contract-work-plan-form";
+import { ContractAddendumForm, type AddendumInstallment } from "../../contract-addendum-form";
+import { cancelContractAddendum } from "../../contract-plan-actions";
+import { normalizePaymentSchedule } from "@/lib/payment-schedule";
+import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/lib/work-plan";
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
@@ -20,6 +25,10 @@ import "../../crm.css";
 type Props = { params: Promise<{ id: string }> };
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR") : "—";
+const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" }) : "—";
+// Ek protokol rozet tonu: bekleyen sarı, onaylı yeşil, değişiklik talebi turuncu, geri çekilen gri.
+const ADDENDUM_TONES: Record<string, string> = { sent: "pending", accepted: "accepted", rejected: "blocked", cancelled: "archived" };
+const INSTALLMENT_LABELS: Record<string, string> = { paid: "Ödendi", pending: "Bekliyor", cancelled: "İptal" };
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
@@ -27,7 +36,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -38,6 +47,32 @@ export default async function ContractDetailPage({ params }: Props) {
     representative = employee?.full_name ?? "Pasif personel";
   }
   const locked = ["signed", "completed", "rejected", "cancelled"].includes(data.status);
+  const signed = ["signed", "completed"].includes(data.status);
+
+  // İş planı ve ek protokoller ayrı okunur: migration (20260914090000)
+  // uygulanmadıysa sayfa eskisi gibi açılır, yalnızca bu bölüm gizlenir.
+  const [workPlanResult, addendaResult, installmentResult] = await Promise.all([
+    supabase.from("crm_contracts").select("work_plan").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle(),
+    supabase.from("crm_contract_addenda").select("id,addendum_no,work_plan,payment_dates,note,status,created_at,responded_at,responder_name,responder_ip,responder_user_agent,response_note").eq("contract_id", id).eq("organization_id", membership.organization_id).order("addendum_no", { ascending: true }),
+    data.payment_plan_id
+      ? supabase.from("payment_installments").select("installment_no,due_date,amount,status").eq("payment_plan_id", data.payment_plan_id).eq("organization_id", membership.organization_id).order("installment_no", { ascending: true })
+      : Promise.resolve({ data: [] as { installment_no: number; due_date: string | null; amount: number; status: string | null }[] }),
+  ]);
+  const planFeature = !workPlanResult.error && !addendaResult.error;
+  const proposalJoin = Array.isArray(data.crm_proposals) ? data.crm_proposals[0] : data.crm_proposals;
+  const storedSchedule = normalizePaymentSchedule(data.payment_schedule ?? proposalJoin?.payment_schedule ?? []);
+  const contractWorkPlan = normalizeWorkPlan(workPlanResult.data?.work_plan);
+  const addenda = normalizeAddenda(addendaResult.data);
+  const acceptedPlan = [...addenda].reverse().find((addendum) => addendum.status === "accepted" && addendum.work_plan.length);
+  const currentPlan = acceptedPlan?.work_plan ?? contractWorkPlan;
+  const pendingAddendum = addenda.find((addendum) => addendum.status === "sent");
+  const installments: AddendumInstallment[] = ((installmentResult.data ?? []) as { installment_no: number; due_date: string | null; amount: number; status: string | null }[]).map((row) => {
+    const item = storedSchedule.find((scheduleItem) => scheduleItem.sequence === row.installment_no);
+    return { sequence: row.installment_no, label: item?.label ?? `${row.installment_no}. Ödeme`, amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
+  });
+  const paymentRows = installments.length
+    ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: INSTALLMENT_LABELS[row.status ?? ""] ?? null, missing: false }))
+    : storedSchedule.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: row.due_date ? date(row.due_date) : row.trigger || "Tarih ve koşul yok", status: null, missing: !row.due_date && !row.trigger }));
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   // Sözleşme bağlantısı token'ı sabit; bir kez üretildikten sonra
   // sayfanın üstünde kalıcı gösteriliyor (teklif detayıyla aynı davranış).
@@ -318,22 +353,106 @@ export default async function ContractDetailPage({ params }: Props) {
                                         );
                                       })()}
                                     </PanelDrawer>
+          {/* İmzalı sözleşme veritabanında donmuş; değişiklik Ek Protokol ile */}
+          {!locked ? (
             <PanelDrawer
-                                      triggerLabel="Ödeme Planı"
-                                      title={data.contract_no}
-                                      description="Müşteri talebiyle ödeme planını revize edin (örn. 3 taksite bölme)."
-                                    >
-                                      <ContractPaymentPlanForm
-                                        contractId={data.id}
-                                        amountCents={data.amount}
-                                        currentPlanType={data.payment_plan_type}
-                                      />
-                                    </PanelDrawer>
+              triggerLabel="Ödeme Planı"
+              title={data.contract_no}
+              description="Müşteri talebiyle ödeme planını ve vade tarihlerini revize edin."
+            >
+              <ContractPaymentPlanForm
+                contractId={data.id}
+                amountCents={data.amount}
+                currentPlanType={data.payment_plan_type}
+                currentSchedule={data.payment_schedule ?? proposalJoin?.payment_schedule ?? []}
+              />
+            </PanelDrawer>
+          ) : null}
+          {!locked && planFeature ? (
+            <PanelDrawer triggerLabel="İş Planı" title={data.contract_no} description="Ara teslim takvimini sözleşmeye yazın (madde 4).">
+              <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
+            </PanelDrawer>
+          ) : null}
+          {signed && planFeature ? (
+            <PanelDrawer triggerLabel="Ek Protokol" title={`${data.contract_no} · Ek Protokol`} description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun.">
+              {pendingAddendum ? (
+                <p className="plan-form-hint">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
+              ) : (
+                <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
+              )}
+            </PanelDrawer>
+          ) : null}
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}
           {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form> : null}
           {canDelete ? <form action={deleteContract}><input type="hidden" name="contract_id" value={data.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${data.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz?`}/></form> : null}
           </div>
         </div>
+      </section>
+      <section className="panel-card crm-request-detail-card" aria-labelledby="contract-plan-title">
+        <div className="crm-request-detail-heading">
+          <div><small className="panel-kicker">ARA TESLİMLER VE VADELER</small><h2 id="contract-plan-title">İş planı ve ödeme takvimi</h2></div>
+          {pendingAddendum ? <span className="status-pill" data-tone={statusTone("pending")}>Ek protokol onay bekliyor</span> : null}
+        </div>
+        {!planFeature ? (
+          <p className="plan-form-hint">İş planı ve ek protokol için veritabanı güncellemesi (20260914090000_contract_work_plan_addenda) henüz uygulanmadı.</p>
+        ) : (
+          <>
+            {currentPlan.length ? (
+              <ol className="plan-timeline">
+                {currentPlan.map((item) => <li key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></li>)}
+              </ol>
+            ) : (
+              <p className="plan-form-hint">
+                {signed
+                  ? "Bu sözleşmede ara teslim takvimi yok. Müşteriyle netleştirdiğiniz takvimi “Ek Protokol” ile onaya sunun."
+                  : "Henüz ara teslim takvimi yok. “İş Planı” ile ekleyin; takvim sözleşmenin 4. maddesinde gösterilir."}
+              </p>
+            )}
+            {acceptedPlan ? <p className="plan-form-hint">Geçerli takvim Ek Protokol {acceptedPlan.addendum_no} ile belirlendi ({dateTime(acceptedPlan.responded_at)} tarihinde müşteri onayladı).</p> : null}
+          </>
+        )}
+        {paymentRows.length ? (
+          <div className="crm-request-detail-note">
+            <small>ÖDEME TAKVİMİ</small>
+            <ol className="plan-timeline">
+              {paymentRows.map((row) => (
+                <li key={row.sequence}>
+                  <time>{row.when}</time>
+                  <span>{row.label} · {money(row.amount, data.currency)}{row.status ? ` · ${row.status}` : ""}{row.missing ? " · ödeme planından vade tarihi girin" : ""}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+        {planFeature && addenda.length ? (
+          <ul className="plan-addenda">
+            {addenda.map((addendum) => {
+              const reminder = shareUrl
+                ? `Merhaba ${formatPersonName(customer?.customer_name)},\n\n${data.contract_no} numaralı sözleşmenize ait Ek Protokol ${addendum.addendum_no} (iş planı ve ödeme takvimi) onayınıza sunulmuştur. Aşağıdaki bağlantıdan inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz:\n\n${shareUrl}#ek-protokoller\n\n${brandName}`
+                : "";
+              return (
+                <li key={addendum.id}>
+                  <div className="plan-addenda-head">
+                    <strong>Ek Protokol {addendum.addendum_no}</strong>
+                    <span className="status-pill" data-tone={statusTone(ADDENDUM_TONES[addendum.status])}>{ADDENDUM_STATUS_LABELS[addendum.status]}</span>
+                  </div>
+                  <small>{dateTime(addendum.created_at)} · {addendum.work_plan.length} ara teslim · {addendum.payment_dates.length} vade değişikliği</small>
+                  {addendum.status === "accepted" ? <p>{addendum.responder_name} · {dateTime(addendum.responded_at)} · IP {addendum.responder_ip || "—"}</p> : null}
+                  {addendum.status === "rejected" ? <p>Müşterinin talebi: “{addendum.response_note || "—"}” · {dateTime(addendum.responded_at)}. Takvimi güncelleyip yeni bir ek protokol gönderin.</p> : null}
+                  {addendum.status === "sent" ? (
+                    <div className="panel-page-actions">
+                      {reminder && customer?.contact_email ? (
+                        <a className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${data.contract_no} · Ek Protokol ${addendum.addendum_no} onayınıza sunuldu`)}&body=${encodeURIComponent(reminder)}`}>✉ E-posta ile gönder</a>
+                      ) : null}
+                      {reminder ? <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(reminder)}`}>💬 WhatsApp ile gönder</a> : null}
+                      <form action={cancelContractAddendum}><input type="hidden" name="addendum_id" value={addendum.id} /><button className="panel-secondary">Geri çek</button></form>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </section>
           <RecordHistory opportunityId={data.opportunity_id} />
         </div>

@@ -58,6 +58,50 @@ export function buildLabeledSchedule(totalCents: number, amounts: number[]): Pay
   });
 }
 
+const validDueDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
+/** Taksitlere sıra numarasına göre vade tarihi uygular (boş değer tarihi kaldırır). */
+export function applyDueDates(schedule: PaymentScheduleItem[], dates: Record<number, string>): PaymentScheduleItem[] {
+  return schedule.map((item) => ({ ...item, due_date: dates[item.sequence] ?? item.due_date ?? "" }));
+}
+
+/**
+ * Önceki plandaki vade tarihlerini aynı sıra numaralı taksitlere taşır.
+ * Tutar değişip plan yeniden hesaplandığında girilmiş tarihler kaybolmasın.
+ */
+export function carryDueDates(next: PaymentScheduleItem[], previous: unknown): PaymentScheduleItem[] {
+  if (!Array.isArray(previous)) return next;
+  const bySequence = new Map<number, string>();
+  previous.forEach((item, index) => {
+    const row = (item ?? {}) as Partial<PaymentScheduleItem>;
+    const due = String(row.due_date ?? "");
+    if (validDueDate(due)) bySequence.set(Number(row.sequence ?? index + 1), due);
+  });
+  return next.map((item) => (item.due_date ? item : { ...item, due_date: bySequence.get(item.sequence) ?? "" }));
+}
+
+/**
+ * Her taksitin ya net bir vade tarihi ya da ödeme koşulu (ör. "Sözleşme
+ * Onayıyla") olmalı. Eskiden 3'lü planın "Ara Ödeme"si ikisi de olmadan
+ * kaydediliyor, sözleşmenin ödeme tablosunda boş görünüyordu.
+ * Hata metni ya da null döner.
+ */
+export function scheduleDateIssue(schedule: unknown): string | null {
+  if (!Array.isArray(schedule)) return "Ödeme planı okunamadı. Ödeme planını yeniden oluşturun.";
+  for (const [index, item] of schedule.entries()) {
+    const row = (item ?? {}) as Partial<PaymentScheduleItem>;
+    const label = String(row.label ?? "").trim() || `${index + 1}. Ödeme`;
+    const due = String(row.due_date ?? "").trim();
+    if (due && !validDueDate(due)) return `“${label}” için geçerli bir vade tarihi seçin.`;
+    if (!due && !String(row.trigger ?? "").trim()) return `“${label}” için vade tarihi girin; tarihi ya da koşulu olmayan taksit sözleşmede boş görünür.`;
+  }
+  return null;
+}
+
 export function getPaymentPlanLabel(type: PaymentPlanType) {
   if (type === "cash") return "Peşin Ödeme";
   if (type === "half") return "Ön Ödeme (Sözleşme Onayıyla) - Son Ödeme (Teslimden Önce)";

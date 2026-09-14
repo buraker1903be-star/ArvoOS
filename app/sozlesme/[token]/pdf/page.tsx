@@ -21,6 +21,8 @@ export default async function PublicContractPdfPage({ params }: { params: Promis
   const origin = await requestOrigin();
   return <ContractDocument
     row={loaded.row}
+    workPlan={loaded.workPlan}
+    addenda={loaded.addenda}
     audit={loaded.audit}
     auditAvailable={loaded.auditAvailable}
     verificationUrl={`${origin}/sozlesme/${token}`}

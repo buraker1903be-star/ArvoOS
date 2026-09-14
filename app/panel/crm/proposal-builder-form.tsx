@@ -4,12 +4,15 @@ import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createProposal, createContractDirectly, type CreateProposalState } from "./sales-actions";
 import {
+  applyDueDates,
   buildLabeledSchedule,
   calculatePaymentSchedule,
   getPaymentPlanLabel,
+  scheduleDateIssue,
   type PaymentPlanType,
   type PaymentScheduleItem,
 } from "@/lib/payment-schedule";
+import { ScheduleDateRows } from "./schedule-date-rows";
 
 type Props = {
   opportunityId: string;
@@ -33,6 +36,7 @@ const money = (value: number) =>
   }).format(value / 100);
 
 const today = () => new Date().toISOString().slice(0, 10);
+const shortDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("tr-TR");
 
 function SubmitButton({ customPlanValid, mode, blocked = false }: { customPlanValid: boolean; mode: "proposal" | "contract"; blocked?: boolean }) {
   const { pending } = useFormStatus();
@@ -69,6 +73,8 @@ export function ProposalBuilderForm({
   const [plan, setPlan] = useState<PaymentPlanType>("cash");
   const [customCount, setCustomCount] = useState(2);
   const [customPercentages, setCustomPercentages] = useState<number[]>([50, 50]);
+  // Taksit sıra numarasına göre vade tarihleri (plan değişse de korunur)
+  const [dueDates, setDueDates] = useState<Record<number, string>>({});
 
   const calculation = useMemo(() => {
     const amountCents = Math.max(0, Math.round(amount * 100));
@@ -115,11 +121,14 @@ export function ProposalBuilderForm({
     [calculation.gross, customPercentages],
   );
 
-  const schedule = plan === "custom" ? customSchedule : autoSchedule;
+  const schedule = useMemo(
+    () => applyDueDates(plan === "custom" ? customSchedule : autoSchedule, dueDates),
+    [plan, customSchedule, autoSchedule, dueDates],
+  );
   const planText = plan === "custom"
     ? schedule.map((item) => `${item.label}: %${item.percentage.toFixed(0)}${item.trigger ? ` (${item.trigger})` : ""}`).join(" · ")
     : getPaymentPlanLabel(plan);
-  const customPlanValid = plan !== "custom" || customPercentTotal === 100;
+  const customPlanValid = (plan !== "custom" || customPercentTotal === 100) && !scheduleDateIssue(schedule);
 
   return (
     <div className="proposal-drawer-content">
@@ -206,6 +215,8 @@ export function ProposalBuilderForm({
           </section>
         ) : null}
 
+        <ScheduleDateRows schedule={schedule} dates={dueDates} onChange={(sequence, value) => setDueDates((current) => ({ ...current, [sequence]: value }))} />
+
         <section className="proposal-live-summary wide" aria-live="polite">
           <header><span>TEKLİF ÖZETİ</span><strong>{money(calculation.gross)}</strong></header>
           <div><span>Ara toplam</span><b>{money(calculation.net)}</b></div>
@@ -213,7 +224,7 @@ export function ProposalBuilderForm({
           <div className="proposal-summary-total"><span>Genel toplam</span><strong>{money(calculation.gross)}</strong></div>
           <section className="proposal-payment-breakdown">
             <small>{plan === "custom" ? "ÖDEME PLANI" : "OTOMATİK ÖDEME PLANI"}</small>
-            {schedule.map((item) => <div key={item.sequence}><span>{item.sequence}. {item.label}{item.trigger ? ` · ${item.trigger}` : ""}</span><b>{money(item.amount)}</b></div>)}
+            {schedule.map((item) => <div key={item.sequence}><span>{item.sequence}. {item.label}{item.due_date ? ` · ${shortDate(item.due_date)}` : item.trigger ? ` · ${item.trigger}` : ""}</span><b>{money(item.amount)}</b></div>)}
           </section>
         </section>
 

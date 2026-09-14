@@ -434,6 +434,139 @@
   }
 }
 
+/* ---------- Vade tarihleri ve ara teslim takvimi ---------- */
+.plan-form-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.schedule-date-row,
+.work-plan-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+}
+.schedule-date-row {
+  grid-template-columns: 20px minmax(0, 1.4fr) minmax(128px, 1fr) minmax(0, 0.8fr);
+}
+.work-plan-row {
+  grid-template-columns: 20px minmax(0, 1fr) 150px 32px;
+}
+.schedule-date-row input,
+.work-plan-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--ux-line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ux-primary);
+  font: inherit;
+  font-size: 12px;
+}
+.schedule-date-row input:disabled {
+  opacity: 0.55;
+}
+.work-plan-remove {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ux-line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.work-plan-remove:hover {
+  color: var(--danger, #b42318);
+  border-color: currentColor;
+}
+.work-plan-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+.work-plan-foot p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.plan-addenda {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-addenda li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--ux-line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.plan-addenda-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.plan-addenda-head strong {
+  font-size: 13px;
+}
+.plan-addenda p,
+.plan-addenda small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.plan-timeline {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-timeline li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+}
+.plan-timeline time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .schedule-date-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+  .schedule-date-row input,
+  .schedule-date-row .custom-plan-amount {
+    grid-column: 2;
+  }
+  .schedule-date-row .custom-plan-amount {
+    text-align: left;
+  }
+  .work-plan-row {
+    grid-template-columns: 18px minmax(0, 1fr) 32px;
+  }
+  .work-plan-row input[type="date"] {
+    grid-column: 2;
+  }
+}
+
 .crm-row-link {
   display: block;
   color: inherit;
