@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+// DİKKAT: "use server" dosyasında `export type { X }` yeniden dışa aktarımı
+// yazmayın; modül çöker. `export type X = {...}` sorunsuz.
+export type OwnerLinkState = { error: string | null; link: string | null; email: string | null; note: string | null };
 
 const plans = new Set(["starter", "professional", "enterprise"]);
 
@@ -112,6 +117,84 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   if (error) throw new Error("Modül durumu değiştirilemedi.");
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform?organization=${organizationId}`);
+}
+
+/**
+ * Kurum sahibine tek kullanımlık giriş bağlantısı üretir (davet e-postası
+ * gelmediğinde ya da süresi dolduğunda kurucu WhatsApp'tan gönderir).
+ * Hesabı açılmamış sahip için davet bağlantısı (şifre belirleyip katılır,
+ * üyelik davet tetikleyicisiyle etkinleşir); hesabı açık sahip için şifre
+ * yenileme bağlantısı. Bağlantı /auth/callback → /auth/set-password akışını
+ * kullanır; saklanmaz, yalnızca kurucuya gösterilir.
+ */
+export async function createOwnerAccessLink(_previous: OwnerLinkState, formData: FormData): Promise<OwnerLinkState> {
+  const empty: OwnerLinkState = { error: null, link: null, email: null, note: null };
+  const { supabase, isPlatformOwner, userId } = await getPanelContext();
+  if (!isPlatformOwner) return { ...empty, error: "Bu işlem için kurucu yetkisi gerekiyor." };
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  if (!organizationId) return { ...empty, error: "Kurum seçilmedi." };
+
+  const { data: invitation } = await supabase
+    .from("organization_invitations")
+    .select("id,email,status,auth_user_id")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!invitation?.email) return { ...empty, error: "Bu kurum için sahip daveti bulunamadı." };
+
+  const admin = createAdminClient();
+  if (!admin) return { ...empty, error: "Sunucu anahtarı (SUPABASE_SECRET_KEY) tanımlı olmadığı için bağlantı oluşturulamadı." };
+
+  const origin = (await headers()).get("origin") ?? "https://app.arvo-os.com";
+  const redirectTo = `${origin}/auth/callback?next=/panel`;
+  let type: "invite" | "recovery" = "invite";
+  let generated = await admin.auth.admin.generateLink({
+    type: "invite",
+    email: invitation.email,
+    options: { redirectTo, data: { arvoos_invitation_id: invitation.id, arvoos_organization_id: organizationId, full_name: "Kurum Sahibi" } },
+  });
+  if (generated.error) {
+    // Hesap zaten doğrulanmış: davet yerine şifre yenileme bağlantısı
+    type = "recovery";
+    generated = await admin.auth.admin.generateLink({ type: "recovery", email: invitation.email, options: { redirectTo } });
+  }
+  const hashedToken = generated.data?.properties?.hashed_token;
+  if (generated.error || !hashedToken) {
+    return { ...empty, error: `Giriş bağlantısı oluşturulamadı: ${generated.error?.message ?? "bilinmeyen hata"}` };
+  }
+
+  const now = new Date().toISOString();
+  if (invitation.status !== "accepted") {
+    await admin.from("organization_invitations").update({
+      status: "sent",
+      auth_user_id: invitation.auth_user_id ?? generated.data.user?.id ?? null,
+      sent_at: now,
+      updated_at: now,
+      error_message: null,
+    }).eq("id", invitation.id);
+    await admin.from("organizations").update({ provisioning_state: "waiting_owner" }).eq("id", organizationId).in("provisioning_state", ["failed", "inviting_owner"]);
+  }
+  await admin.from("provisioning_audit_logs").insert({
+    organization_id: organizationId,
+    invitation_id: invitation.id,
+    actor_user_id: userId,
+    action: "owner_access_link",
+    state: invitation.status === "accepted" ? "active" : "waiting_owner",
+    result: "success",
+    details: { type, owner_email: invitation.email },
+  });
+  revalidatePath("/panel/platform");
+
+  const link = `${origin}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=${type}&next=${encodeURIComponent("/panel")}`;
+  return {
+    error: null,
+    link,
+    email: invitation.email,
+    note: type === "invite"
+      ? "Sahip bağlantıyı açınca şifresini belirleyip panele girer."
+      : "Hesap zaten açık; bağlantı yeni şifre belirletip panele sokar.",
+  };
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

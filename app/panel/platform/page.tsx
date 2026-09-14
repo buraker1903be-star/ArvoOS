@@ -1,82 +1,268 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
+import { legalDetailsFrom } from "../settings/legal-details";
+import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
+import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
+import { OwnerAccessLink } from "./owner-access-link";
+import "../settings/settings.css";
+import "./platform.css";
 
 type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
-type ManagedOrganization = { id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string; custom_domain: string | null; provisioning_state: string };
-type AuditRow = { id: string; action: string; state: string; result: string; duration_ms: number | null; details: Record<string, unknown>; created_at: string };
+type ManagedOrganization = {
+  id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string;
+  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null;
+};
+type Invitation = { organization_id: string; email: string; status: string; sent_at: string | null; accepted_at: string | null; error_message: string | null };
+type AuditRow = { id: string; action: string; state: string; result: string; duration_ms: number | null; created_at: string };
+type CheckState = "done" | "todo" | "bad" | "unknown";
 
 const stateLabels: Record<string, string> = {
   creating: "Oluşturuluyor",
-  inviting_owner: "Owner davet ediliyor",
-  waiting_owner: "Owner bekleniyor",
-  active: "Aktif",
+  inviting_owner: "Davet gönderiliyor",
+  waiting_owner: "Sahip bekleniyor",
+  active: "Kullanımda",
   suspended: "Askıda",
   archived: "Arşivlendi",
-  failed: "Başarısız",
+  failed: "Kurulum hatası",
 };
+const stateTones: Record<string, StgTone> = {
+  creating: "info", inviting_owner: "info", waiting_owner: "warning", active: "success", suspended: "danger", archived: "neutral", failed: "danger",
+};
+const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
+const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
+const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
+
+const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "medium", timeStyle: "short" }) : "—";
+const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
+const initials = (value: string) => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 
 export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string }> }) {
   const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
-  const { data: organizationData, error: organizationError } = await supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,provisioning_state").order("name");
+
+  const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }, pendingPayments] = await Promise.all([
+    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url").order("name"),
+    supabase.from("organization_invitations").select("organization_id,email,status,sent_at,accepted_at,error_message").order("created_at", { ascending: false }),
+    supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
+    supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+  ]);
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
   const organizations = (organizationData ?? []) as ManagedOrganization[];
-  const selectedOrganization = organizations.find((item) => item.id === params.organization) ?? organizations.find((item) => item.id === founderOrganization.id) ?? organizations[0];
-  if (!selectedOrganization) throw new Error("Yönetilecek kurum bulunamadı.");
-  const targetId = selectedOrganization.id;
-  const [{ count: memberCount }, { count: requestCount }, { data: plans }, { data: moduleData }, { data: invitationData }, { data: auditData }] = await Promise.all([
+  const latestInvitation = new Map<string, Invitation>();
+  for (const invitation of (invitationData ?? []) as Invitation[]) {
+    if (!latestInvitation.has(invitation.organization_id)) latestInvitation.set(invitation.organization_id, invitation);
+  }
+  const planList = (plans ?? []).map((plan) => ({ code: String(plan.code), name: String(plan.name) }));
+  const planNames = new Map(planList.map((plan) => [plan.code, plan.name]));
+
+  const selected = organizations.find((item) => item.id === params.organization) ?? organizations.find((item) => item.id === founderOrganization.id) ?? organizations[0];
+  if (!selected) throw new Error("Yönetilecek kurum bulunamadı.");
+  const targetId = selected.id;
+  const invitation = latestInvitation.get(targetId) ?? null;
+
+  const admin = createAdminClient();
+  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, licenseResult, onboardingResult] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
-    supabase.from("crm_requests").select("id", { count: "exact", head: true }).eq("organization_id", targetId),
-    supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
-    supabase.from("organization_invitations").select("email,status,sent_at,accepted_at,error_message").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(1),
-    supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,details,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", targetId).maybeSingle(),
+    supabase.from("organization_licenses").select("license_status,trial_ends_at,user_limit").eq("organization_id", targetId).maybeSingle(),
+    // İlk kurulum kaydı yalnızca kurum üyelerine açık (RLS); kurucu sunucu anahtarıyla okur.
+    admin ? admin.from("organization_onboarding").select("completed_at").eq("organization_id", targetId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
-  const latestInvitation = invitationData?.[0];
   const auditRows = (auditData ?? []) as AuditRow[];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
     const relation = Array.isArray(row.arvo_modules) ? row.arvo_modules[0] : row.arvo_modules;
     const fallback = panelModules[row.module_code];
-    return { code: row.module_code, name: fallback?.name ?? relation?.name ?? row.module_code, description: fallback?.description ?? relation?.description ?? "", enabled: row.is_enabled, order: relation?.sort_order ?? 0 };
+    return { code: row.module_code, name: fallback?.name ?? relation?.name ?? row.module_code, description: fallback?.description ?? relation?.description ?? "", icon: fallback?.icon ?? row.module_code.slice(0, 2).toUpperCase(), enabled: row.is_enabled, order: relation?.sort_order ?? 0 };
   }).sort((a, b) => a.order - b.order);
   const enabledCount = moduleRows.filter((module) => module.enabled).length;
+  const legal = legalDetailsFrom(legalResult.error ? null : (legalResult.data as Record<string, unknown> | null));
+  const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
+  const license = licenseResult.error ? null : (licenseResult.data as { license_status: string; trial_ends_at: string | null; user_limit: number } | null);
+  const onboardingDone = Boolean((onboardingResult.data as { completed_at?: string | null } | null)?.completed_at);
 
-  return <>
-    <div className="panel-pagehead"><div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını, provisioning durumlarını, owner davetlerini ve paket erişimlerini yönetin.</p></div><span className="owner-badge">◇ KURUCU YETKİSİ</span></div>
-    {params.provisioned === "1" ? <div className="wizard-success"><span>✓</span><div><b>{selectedOrganization.name} kuruldu</b><p>Davet {latestInvitation?.email ?? "belirtilen adrese"} gönderildi ve kabul bekleniyor. Aşağıdan modülleri özelleştirebilir veya kurum ayarlarını düzenleyebilirsiniz.</p></div></div> : null}
+  // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
+  const ownerJoined = Boolean(invitation?.accepted_at) || invitation?.status === "accepted";
+  const inviteState: CheckState = !invitation ? "todo" : invitation.status === "failed" ? "bad" : ["sent", "accepted"].includes(invitation.status) ? "done" : "todo";
+  const checks: { key: string; title: string; note: string; state: CheckState; optional?: boolean }[] = [
+    { key: "created", title: "Kurum oluşturuldu", note: `${planNames.get(selected.plan_code) ?? selected.plan_code} paketi · ${enabledCount} modül etkin`, state: selected.provisioning_state === "creating" ? "todo" : "done" },
+    {
+      key: "invite", title: "Sahibe davet gönderildi", state: inviteState,
+      note: !invitation ? "Davet kaydı yok." : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${dateTime(invitation.sent_at)}` : ""}`,
+    },
+    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `Katıldı${invitation?.accepted_at ? ` · ${dateTime(invitation.accepted_at)}` : ""} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
+    { key: "onboarding", title: "İlk kurulum tamamlandı", state: !admin ? "unknown" : onboardingDone ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : onboardingDone ? "Kurum bilgileri ve marka ayarları girildi." : "Sahip ilk girişte kurum bilgilerini ve marka rengini girer." },
+    { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalFilled === 5 ? "done" : "todo", note: legalFilled === 5 ? "Teklif ve sözleşmeler için hazır." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
+    { key: "logo", title: "Logo", state: selected.logo_url ? "done" : "todo", note: selected.logo_url ? "Belgelerde ve takip ekranında kullanılıyor." : "Logo yüklenmedi; belgelerde kurum adı yazar." },
+    {
+      key: "domain", title: "Özel alan adı", optional: true,
+      state: !selected.custom_domain ? "todo" : selected.custom_domain_status === "verified" ? "done" : selected.custom_domain_status === "failed" ? "bad" : "todo",
+      note: !selected.custom_domain ? "İsteğe bağlı; tanımlı değil." : `${selected.custom_domain} · ${selected.custom_domain_status === "verified" ? "doğrulandı" : selected.custom_domain_status === "failed" ? "doğrulanamadı" : "DNS doğrulaması bekleniyor"}`,
+    },
+  ];
+  const required = checks.filter((check) => !check.optional);
+  const doneCount = required.filter((check) => check.state === "done").length;
+  const progress = Math.round((doneCount / required.length) * 100);
 
-    <section className="management-grid">
-      <article className="panel-card management-card">
-        <div className="management-heading"><div><small>TENANT PROVISIONING</small><h2>Yeni müşteri kurulumu</h2></div><span className="status-pill">4 adım</span></div>
-        <NewOrganizationWizard action={createCustomerOrganization} plans={(plans ?? []).map((plan) => ({ code: plan.code, name: plan.name }))} />
-      </article>
+  // ---- Genel özet
+  const activeCount = organizations.filter((item) => item.provisioning_state === "active").length;
+  const pendingCount = organizations.filter((item) => PENDING_STATES.has(item.provisioning_state)).length;
+  const issueCount = organizations.filter((item) => item.provisioning_state === "failed" || item.provisioning_state === "suspended" || item.status === "suspended").length;
+  const paymentsWaiting = pendingPayments.error ? 0 : pendingPayments.count ?? 0;
 
-      <article className="panel-card management-card">
-        <div className="management-heading"><div><small>YÖNETİLECEK KURUM</small><h2>Kurum seçimi</h2></div><span className="status-pill">{organizations.length} kurum</span></div>
-        <form className="panel-form" method="get"><label className="wide">Aktif hedef kurum<select name="organization" defaultValue={targetId}>{organizations.map((item) => <option key={item.id} value={item.id}>{item.display_name ? `${item.display_name} - ${item.name}` : item.name} · {item.plan_code}</option>)}</select></label><div className="wide management-submit"><small>Seçim yalnızca kurucu yönetim görünümünü değiştirir.</small><button className="panel-primary" type="submit">Kurumu aç</button></div></form>
-        <div className="platform-note"><span>i</span><p><b>Provisioning: {stateLabels[selectedOrganization.provisioning_state] ?? selectedOrganization.provisioning_state}</b>{latestInvitation ? ` · ${latestInvitation.email} · ${latestInvitation.status}` : " · Owner daveti yok"}{latestInvitation?.error_message ? ` · ${latestInvitation.error_message}` : ""}</p></div>
-      </article>
-    </section>
-
-    <section className="platform-overview"><div><small>CANLI KURUM ÖZETİ</small><h2>{selectedOrganization.name}</h2><p>Seçilen kurumun paket, provisioning ve kullanım durumu canlı veriden okunur.</p></div><dl><div><dt>DURUM</dt><dd>{stateLabels[selectedOrganization.provisioning_state] ?? selectedOrganization.provisioning_state}</dd></div><div><dt>PAKET</dt><dd>{selectedOrganization.plan_code}</dd></div><div><dt>AKTİF MODÜL</dt><dd>{enabledCount}</dd></div><div><dt>KULLANICI</dt><dd>{memberCount ?? 0}</dd></div></dl></section>
-
-    <section className="panel-card management-card">
-      <div className="management-heading"><div><small>PROVISIONING AUDIT</small><h2>Son işlem adımları</h2></div><span className="status-pill">{auditRows.length} kayıt</span></div>
-      <div className="module-control-list">
-        {auditRows.length ? auditRows.map((entry) => <div className="module-control" key={entry.id}><div><b>{stateLabels[entry.state] ?? entry.state}</b><small>{entry.action} · {entry.result} · {new Date(entry.created_at).toLocaleString("tr-TR")}</small></div><span className="status-pill">{entry.duration_ms == null ? "—" : `${entry.duration_ms} ms`}</span></div>) : <p>Bu kurum için henüz provisioning audit kaydı yok.</p>}
+  return <div className="stg plt">
+    <div className="panel-pagehead">
+      <div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını kurun, sahiplerini panele alın, paket ve modüllerini yönetin.</p></div>
+      <div className="panel-page-actions">
+        <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
+          <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={organizations.map((item) => item.slug)} />
+        </PanelDrawer>
       </div>
+    </div>
+
+    {params.provisioned === "1" ? (
+      <div className="plt-banner" role="status">
+        <span className="plt-banner-icon"><StgIcon name="check" size={18} /></span>
+        <div>
+          <b>{selected.display_name || selected.name} kuruldu</b>
+          <p>Davet {invitation?.email ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse “Kurulum durumu” bölümünden giriş bağlantısı oluşturup WhatsApp’tan gönderin.</p>
+        </div>
+      </div>
+    ) : null}
+
+    <section className="stg-widgets" aria-label="Platform özeti">
+      <StgWidget tone="gold" icon="building" label="Kurumlar" value={organizations.length} note="Platformdaki toplam kurum" />
+      <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi katılmış kurumlar" />
+      <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekleyen" value={pendingCount} note={pendingCount ? "Sahibin katılması bekleniyor" : "Bekleyen kurulum yok"} />
+      <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat" value={issueCount} note={issueCount ? "Hata veya askıdaki kurum" : "Sorunlu kurum yok"} />
     </section>
 
-    <section className="management-grid">
-      <article className="panel-card management-card"><div className="management-heading"><div><small>KURUM ÇEKİRDEĞİ</small><h2>Kurum ayarları</h2></div><span className="status-pill">{selectedOrganization.status}</span></div><form className="panel-form" action={updateOrganizationSettings}><input type="hidden" name="organization_id" value={targetId} /><label>Kurum adı (yasal unvan)<input name="name" defaultValue={selectedOrganization.name} minLength={2} maxLength={160} required /></label><label>Tabela unvanı <small style={{fontWeight:400,color:"var(--muted)"}}>(boş bırakılırsa yasal unvan kullanılır)</small><input name="display_name" defaultValue={selectedOrganization.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label><label>Sektör<input name="sector" defaultValue={selectedOrganization.sector ?? "general"} minLength={2} maxLength={80} required /></label><label>Paket<select name="plan_code" defaultValue={selectedOrganization.plan_code}>{(plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label><label>Özel alan adı<input name="custom_domain" defaultValue={selectedOrganization.custom_domain ?? ""} placeholder="panel.firma.com" /></label><div className="wide management-submit"><small>Değişiklikler seçilen kurum paneline uygulanır.</small><button className="panel-primary" type="submit">Ayarları kaydet</button></div></form></article>
-      <article className="panel-card management-card"><div className="management-heading"><div><small>PAKET VE ERİŞİM</small><h2>Modül yönetimi</h2></div><span className="status-pill">{enabledCount}/{moduleRows.length} etkin</span></div><div className="module-control-list">{moduleRows.map((module) => <div className="module-control" key={module.code}><div><b>{module.name}</b><small>{module.description}</small></div><form action={toggleOrganizationModule}><input type="hidden" name="organization_id" value={targetId} /><input type="hidden" name="module_code" value={module.code} /><input type="hidden" name="is_enabled" value={String(!module.enabled)} /><button className={module.enabled ? "module-toggle enabled" : "module-toggle"} type="submit"><i /><span>{module.enabled ? "Etkin" : "Kapalı"}</span></button></form></div>)}</div></article>
-    </section>
+    <nav className="stg-nav" aria-label="Platform bölümleri">
+      <Link href={`/panel/platform/licenses?organization=${targetId}`}><StgIcon name="box" size={16} />Lisans ve kota</Link>
+      <Link href="/panel/platform/billing"><StgIcon name="chart" size={16} />Abonelikler</Link>
+      <Link href="/panel/platform/payments"><StgIcon name="wallet" size={16} />Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}</Link>
+    </nav>
 
-    <section className="platform-grid compact-platform-grid"><article className="panel-card platform-card"><i>KY</i><span>{memberCount ?? 0} aktif</span><h3>Kullanıcılar ve Roller</h3><p>Owner daveti doğrulandığında üyelik otomatik aktifleşir.</p><small className="platform-coming">AUTH BAĞLI</small></article><article className="panel-card platform-card"><i>CRM</i><span>{requestCount ?? 0} kayıt</span><h3>CRM Verileri</h3><p>Demo veri seçildiyse ilk CRM kayıtları otomatik hazırlanır.</p><small className="platform-coming">SEED DESTEKLİ</small></article><article className="panel-card platform-card"><i>DN</i><span>RLS aktif</span><h3>Denetim ve Güvenlik</h3><p>Provisioning işlemleri kurucu kimliği, state machine ve audit kayıtlarıyla korunur.</p><small className="platform-coming">KURUCU SINIRI</small></article></section>
-    <div className="platform-note"><span>i</span><p><b>Deneme durumu paket değildir.</b> Yeni kurum `status=trial` ile açılır; paket starter, professional veya enterprise olarak atanır.</p><Link href="/panel">Genel bakışa dön →</Link></div>
-  </>;
+    <div className="plt-layout">
+      <aside className="plt-orgs" aria-label="Kurumlar">
+        <header><b>Kurumlar</b><small>{organizations.length} kurum</small></header>
+        <ul>
+          {organizations.map((item) => {
+            const itemInvite = latestInvitation.get(item.id);
+            const label = item.display_name || item.name;
+            return (
+              <li key={item.id}>
+                <Link href={`/panel/platform?organization=${item.id}`} className={item.id === targetId ? "plt-org is-active" : "plt-org"} aria-current={item.id === targetId ? "page" : undefined}>
+                  <span className="plt-org-avatar" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{initials(label)}</span>
+                  <span className="plt-org-text">
+                    <b>{label}</b>
+                    <small>{item.slug} · {planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
+                  </span>
+                  <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </aside>
+
+      <div className="plt-detail">
+        <StgSection
+          id="kurum" wide icon="building" tone={stateTones[selected.provisioning_state] ?? "neutral"}
+          kicker={selected.slug} title={selected.display_name || selected.name}
+          description={selected.display_name ? selected.name : `${selected.sector} sektörü`}
+          aside={<span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{stateLabels[selected.provisioning_state] ?? selected.provisioning_state}</span>}
+        >
+          <dl className="stg-list plt-facts">
+            <StgValueRow label="Paket" value={planNames.get(selected.plan_code) ?? selected.plan_code} />
+            <StgValueRow label="Lisans" value={license ? `${licenseLabels[license.license_status] ?? license.license_status}${license.license_status === "trialing" && license.trial_ends_at ? ` · ${date(license.trial_ends_at)} bitiş` : ""}` : null} />
+            <StgValueRow label="Kullanıcılar" value={`${memberCount ?? 0}${license?.user_limit ? ` / ${license.user_limit}` : ""} aktif`} />
+            <StgValueRow label="Modüller" value={`${enabledCount} / ${moduleRows.length} etkin`} />
+            <StgValueRow label="Sahip" value={invitation?.email ?? null} />
+          </dl>
+        </StgSection>
+
+        <StgSection
+          id="kurulum" wide icon="check" tone={progress === 100 ? "success" : "warning"}
+          kicker="KURULUM DURUMU" title={progress === 100 ? "Kurum kullanıma hazır" : "Müşteriyi panele alın"}
+          description="Kurumun kullanıma hazır olması için gereken adımlar. Sahip katılınca kalan adımları kendi panelinden tamamlar."
+          aside={<span className="plt-progress" aria-label={`Kurulum ilerlemesi yüzde ${progress}`}><i style={{ width: `${progress}%` }} /><b>{doneCount}/{required.length}</b></span>}
+        >
+          <ol className="plt-checks">
+            {checks.map((check) => (
+              <li key={check.key} className={`is-${check.state}`}>
+                <span className="plt-check-dot" aria-hidden="true">{check.state === "done" ? <StgIcon name="check" size={14} /> : check.state === "bad" ? "!" : check.state === "unknown" ? "?" : ""}</span>
+                <span><b>{check.title}{check.optional ? <small className="plt-optional">isteğe bağlı</small> : null}</b><small>{check.note}</small></span>
+              </li>
+            ))}
+          </ol>
+          {invitation ? (
+            <div className="plt-access-box">
+              <div>
+                <b>Sahibe giriş bağlantısı</b>
+                <small>{ownerJoined ? "Sahip şifresini unuttuysa yeni şifre bağlantısı gönderin." : "Davet e-postası gelmediyse ya da süresi dolduysa tek kullanımlık bağlantıyı WhatsApp’tan gönderin."}</small>
+              </div>
+              <OwnerAccessLink organizationId={targetId} organizationName={selected.display_name || selected.name} ownerEmail={invitation.email} />
+            </div>
+          ) : null}
+        </StgSection>
+
+        <div className="plt-two">
+          <StgSection id="ayarlar" icon="palette" tone="info" kicker="KURUM ÇEKİRDEĞİ" title="Kurum ayarları" description="Değişiklikler seçilen kurumun paneline uygulanır.">
+            <form className="panel-form" action={updateOrganizationSettings}>
+              <input type="hidden" name="organization_id" value={targetId} />
+              <label className="wide">Yasal unvan<input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
+              <label className="wide">Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
+              <label>Sektör<input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
+              <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
+              <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
+              <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
+            </form>
+          </StgSection>
+
+          <StgSection id="moduller" icon="grid" tone="gold" kicker="PAKET VE ERİŞİM" title="Modüller" description="Kurumun panelinde görünecek modüller." aside={<span className="status-pill" data-tone="gold">{enabledCount}/{moduleRows.length}</span>}>
+            {moduleRows.length ? (
+              <div className="stg-list">
+                {moduleRows.map((module) => (
+                  <form className="plt-module" action={toggleOrganizationModule} key={module.code}>
+                    <input type="hidden" name="organization_id" value={targetId} />
+                    <input type="hidden" name="module_code" value={module.code} />
+                    <input type="hidden" name="is_enabled" value={String(!module.enabled)} />
+                    <span className="stg-row-main">
+                      <span className="stg-row-icon plt-module-icon" data-tone={module.enabled ? "success" : "neutral"}>{module.icon}</span>
+                      <span><b>{module.name}</b><small>{module.description}</small></span>
+                    </span>
+                    <button type="submit" className={module.enabled ? "plt-switch is-on" : "plt-switch"} role="switch" aria-checked={module.enabled} aria-label={`${module.name}: ${module.enabled ? "kapat" : "aç"}`}><i /></button>
+                  </form>
+                ))}
+              </div>
+            ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Bu kurum için modül kaydı yok.</p></div>}
+          </StgSection>
+        </div>
+
+        <StgSection id="gecmis" wide icon="chart" tone="neutral" kicker="KURULUM GEÇMİŞİ" title="Son işlemler" aside={<span className="status-pill">{auditRows.length} kayıt</span>}>
+          {auditRows.length ? (
+            <ol className="plt-audit">
+              {auditRows.map((entry) => (
+                <li key={entry.id} data-tone={entry.result === "failed" || entry.state === "failed" ? "danger" : "neutral"}>
+                  <span className="plt-audit-dot" aria-hidden="true" />
+                  <span>
+                    <b>{actionLabels[entry.action] ?? entry.action} · {stateLabels[entry.state] ?? entry.state}</b>
+                    <small>{dateTime(entry.created_at)}{entry.duration_ms != null ? ` · ${entry.duration_ms} ms` : ""}{entry.result ? ` · ${entry.result}` : ""}</small>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : <div className="stg-empty"><StgIcon name="chart" size={22} /><p>Bu kurum için henüz kurulum kaydı yok.</p></div>}
+        </StgSection>
+      </div>
+    </div>
+  </div>;
 }
