@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
-import { legalDetailsFrom } from "../settings/legal-details";
+import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
@@ -67,14 +67,16 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const invitation = latestInvitation.get(targetId) ?? null;
 
   const admin = createAdminClient();
-  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, licenseResult, onboardingResult] = await Promise.all([
+  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, licenseResult, onboardingResult, opportunityResult] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
     supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
-    supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", targetId).maybeSingle(),
+    supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},signature_stamp_url`).eq("id", targetId).maybeSingle(),
     supabase.from("organization_licenses").select("license_status,trial_ends_at,user_limit").eq("organization_id", targetId).maybeSingle(),
     // İlk kurulum kaydı yalnızca kurum üyelerine açık (RLS); kurucu sunucu anahtarıyla okur.
     admin ? admin.from("organization_onboarding").select("completed_at").eq("organization_id", targetId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    // Talepler de yalnızca kurum üyelerine açık; sayı sunucu anahtarıyla okunur.
+    admin ? admin.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", targetId) : Promise.resolve({ count: null, error: null }),
   ]);
   const auditRows = (auditData ?? []) as AuditRow[];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
@@ -85,8 +87,12 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const enabledCount = moduleRows.filter((module) => module.enabled).length;
   const legal = legalDetailsFrom(legalResult.error ? null : (legalResult.data as Record<string, unknown> | null));
   const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
+  // Ayarlar'daki "Belge kimliği" ve müşterinin kurulum kartıyla aynı ölçüt.
+  const legalComplete = legalFilled === 5 && !Object.keys(validateLegalDetails(legal)).length;
   const license = licenseResult.error ? null : (licenseResult.data as { license_status: string; trial_ends_at: string | null; user_limit: number } | null);
   const onboardingDone = Boolean((onboardingResult.data as { completed_at?: string | null } | null)?.completed_at);
+  const signatureUrl = legalResult.error ? null : (legalResult.data as { signature_stamp_url?: string | null } | null)?.signature_stamp_url ?? null;
+  const opportunityCount = opportunityResult.count ?? 0;
 
   // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
   const ownerJoined = Boolean(invitation?.accepted_at) || invitation?.status === "accepted";
@@ -99,8 +105,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     },
     { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `Katıldı${invitation?.accepted_at ? ` · ${dateTime(invitation.accepted_at)}` : ""} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
     { key: "onboarding", title: "İlk kurulum tamamlandı", state: !admin ? "unknown" : onboardingDone ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : onboardingDone ? "Kurum bilgileri ve marka ayarları girildi." : "Sahip ilk girişte kurum bilgilerini ve marka rengini girer." },
-    { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalFilled === 5 ? "done" : "todo", note: legalFilled === 5 ? "Teklif ve sözleşmeler için hazır." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
+    { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalComplete ? "done" : "todo", note: legalComplete ? "Teklif ve sözleşmeler için hazır." : legalFilled === 5 ? "Alanlar dolu ama biri geçersiz (IBAN, vergi no veya MERSİS). Sahip Ayarlar’dan düzeltir." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
     { key: "logo", title: "Logo", state: selected.logo_url ? "done" : "todo", note: selected.logo_url ? "Belgelerde ve takip ekranında kullanılıyor." : "Logo yüklenmedi; belgelerde kurum adı yazar." },
+    { key: "signature", title: "Kaşe-imza görseli", state: legalResult.error ? "unknown" : signatureUrl ? "done" : "todo", note: signatureUrl ? "Sözleşmelerde hizmet sağlayıcı imzası olarak görünüyor." : "Yüklenmedi; sözleşmelerde imza alanı boş kalır. Sahip Ayarlar’dan yükler." },
+    { key: "first-request", title: "İlk talep girildi", state: !admin || opportunityResult.error ? "unknown" : opportunityCount > 0 ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : opportunityCount > 0 ? `${opportunityCount} talep kayıtlı; kurum paneli kullanıyor.` : "Henüz talep yok. Sahip CRM’den ilk talebini girince teklif ve sözleşme süreci başlar." },
+    { key: "team", title: "Ekip davet edildi", optional: true, state: (memberCount ?? 0) > 1 ? "done" : "todo", note: (memberCount ?? 0) > 1 ? `${memberCount} aktif kullanıcı` : "Şimdilik yalnızca sahip var. Ekip, İnsan Kaynakları’ndan eklenir." },
     {
       key: "domain", title: "Özel alan adı", optional: true,
       state: !selected.custom_domain ? "todo" : selected.custom_domain_status === "verified" ? "done" : selected.custom_domain_status === "failed" ? "bad" : "todo",

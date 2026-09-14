@@ -112,8 +112,7 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-setup-dot{flex:none;display:grid;place-items:center;width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;color:var(--accent-strong);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
 .is-done .dash-setup-dot{border-color:transparent;background:var(--success-soft);color:var(--success)}
 .dash-setup-text{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:14px;line-height:1.35}
-.dash-setup-text b{font-weight:650}
-.is-done .dash-setup-text b{color:var(--muted)}
+.dash-setup-text b{font-weight:650}.is-done .dash-setup-text b{color:var(--muted)}
 .dash-setup-text small{color:var(--muted);font-size:12.5px}
 .dash-setup-go,.dash-setup-state{display:inline-flex;align-items:center;gap:2px;margin-top:6px;font-size:12.5px;font-weight:650}
 .dash-setup-go{color:var(--accent)}

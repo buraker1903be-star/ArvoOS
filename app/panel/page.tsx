@@ -233,7 +233,8 @@ export default async function PanelPage() {
   // Kurulum adımları: belgeler ve müşteri ekranı eksiksiz görünene kadar
   // gösterilir; hepsi tamamlanınca kart kendiliğinden kaybolur. Ölçütler
   // Ayarlar'daki "Belge kimliği" ile aynıdır.
-  type SetupStep = { key: string; title: string; note: string; href: string; done: boolean };
+  // Ekip adımı isteğe bağlı: tek kişilik işletmelerde kart hiç kaybolmazdı.
+  type SetupStep = { key: string; title: string; note: string; href: string; done: boolean; optional?: boolean };
   const setupSteps: SetupStep[] = [];
   if (canSetup && setupOrganization) {
     const row = setupOrganization as Record<string, unknown> & { logo_url?: string | null; signature_stamp_url?: string | null };
@@ -247,12 +248,13 @@ export default async function PanelPage() {
       { key: "kurum", title: "Kurum ve marka", note: "Resmi ad, iletişim, logo ve marka rengi", href: "/panel/onboarding", done: Boolean((onboardingRow as { completed_at?: string | null } | null)?.completed_at) },
       { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings#resmi-bilgiler", done: legalComplete },
       { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings#kurumsal-kimlik", done: hasLogo && hasSignature },
-      { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1 },
+      { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1, optional: true },
     );
     if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: items.length ? `${items.length} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: items.length > 0 });
   }
-  const setupDone = setupSteps.filter((step) => step.done).length;
-  const showSetup = setupSteps.length > 0 && setupDone < setupSteps.length;
+  const requiredSteps = setupSteps.filter((step) => !step.optional);
+  const setupDone = requiredSteps.filter((step) => step.done).length;
+  const showSetup = requiredSteps.length > 0 && setupDone < requiredSteps.length;
 
   // Widget'lar ve odak listesi (kurum türüne göre)
   const proposalWaiting = stageCount("proposal_ready") + stageCount("proposal_approved");
@@ -342,11 +344,11 @@ export default async function PanelPage() {
           <header className="dash-card-head">
             <div>
               <h2>Kurulumu tamamlayın</h2>
-              <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {setupSteps.length - setupDone} adım kaldı.</p>
+              <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {requiredSteps.length - setupDone} adım kaldı.</p>
             </div>
-            <div className="dash-setup-progress" aria-label={`${setupSteps.length} adımdan ${setupDone} tamamlandı`}>
-              <b>{setupDone}/{setupSteps.length}</b>
-              <span><i style={{ "--w": `${Math.round((setupDone / setupSteps.length) * 100)}%` } as CSSProperties} /></span>
+            <div className="dash-setup-progress" aria-label={`${requiredSteps.length} adımdan ${setupDone} tamamlandı`}>
+              <b>{setupDone}/{requiredSteps.length}</b>
+              <span><i style={{ "--w": `${Math.round((setupDone / requiredSteps.length) * 100)}%` } as CSSProperties} /></span>
             </div>
           </header>
           <ol className="dash-setup-list">
@@ -356,7 +358,7 @@ export default async function PanelPage() {
                   <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : index + 1}</span>
                   <span className="dash-setup-text">
                     <b>{step.title}</b>
-                    <small>{step.note}</small>
+                    <small>{step.optional ? "İsteğe bağlı · " : ""}{step.note}</small>
                     {step.done ? <span className="dash-setup-state">Tamamlandı</span> : <span className="dash-setup-go">Tamamla <Chevron /></span>}
                   </span>
                 </>
