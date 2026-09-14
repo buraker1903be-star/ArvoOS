@@ -194,6 +194,23 @@ export async function describeNotifications(
           actionLabel: "İş akışını aç",
         };
       }
+      case "proposal_customer_decision": {
+        // arvo_confirm_proposal: personelin sözleşmeye çevirdiği teklifi müşteri onayladı/reddetti.
+        const accepted = meta(row, "decision") === "accept";
+        const customer = formatPersonName(meta(row, "customer_name")) || "Müşteri";
+        return {
+          ...base,
+          label: "Teklif",
+          tone: accepted ? "success" : "danger",
+          icon: accepted ? "check" : "bubble",
+          headline: accepted ? `${customer} teklifi onayladı` : `${customer} teklifi reddetti`,
+          detail: accepted
+            ? "Müşteri teklifi takip ekranından ya da teklif sayfasından kendisi onayladı."
+            : "Müşteri teklifi reddetti; imzalanmamış sözleşme iptal edildi.",
+          context: meta(row, "proposal_no"),
+          actionLabel: accepted ? "Sözleşmeyi aç" : "Kaydı aç",
+        };
+      }
       case "contract_addendum_accepted":
       case "contract_addendum_rejected": {
         // arvo_respond_contract_addendum: müşteri ek protokolü onayladı / değişiklik istedi.

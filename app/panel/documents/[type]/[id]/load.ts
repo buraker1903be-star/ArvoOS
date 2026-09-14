@@ -100,7 +100,7 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
 
   const [{ data: organization, error: organizationError }, { data: proposal, error: proposalError }, { data: extra, error: extraError }, host, legal] = await Promise.all([
     organizationQuery,
-    supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,created_at,valid_until,estimated_delivery_date,net_amount,tax_amount,gross_amount,tax_rate,tax_status,status,revision_no,share_token,responded_at,response_ip,crm_opportunities(customer_name,contact_email,contact_phone)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
+    supabase.from("crm_proposals").select("id,proposal_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,created_at,valid_until,estimated_delivery_date,net_amount,tax_amount,gross_amount,tax_rate,tax_status,status,archive_reason,revision_no,share_token,responded_at,response_ip,crm_opportunities(customer_name,contact_email,contact_phone)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("crm_proposals").select("response_user_agent").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
     hostQuery,
     legalQuery,
@@ -109,15 +109,23 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
   if (proposalError) throw new Error(`Teklif okunamadı: ${proposalError.message}`);
   if (!organization || !proposal) return null;
   const customer = one(proposal.crm_opportunities as DocumentRow) as DocumentRow | null;
+  // Kabul/ret edilen teklif 'archived' olarak saklanır (asıl durum archive_reason).
+  // Karar yalnızca müşteri kendisi verdiyse gösterilir; personel dönüşümünde
+  // teklif müşteri sayfasındaki gibi "onay bekliyor" görünür.
+  const { data: customerDecision } = await supabase.from("crm_proposals").select("customer_responded_at").eq("id", id).eq("organization_id", organizationId).maybeSingle();
+  const reason = String(proposal.archive_reason ?? "");
+  const effective = proposal.status === "archived" && ["accepted", "rejected", "expired"].includes(reason) ? reason : proposal.status;
+  const customerDecided = Boolean((customerDecision as DocumentRow | null)?.customer_responded_at) || (Boolean(proposal.responded_at) && Boolean(proposal.response_ip));
   const row = {
     ...proposal,
+    status: effective === "accepted" && !customerDecided ? "sent" : effective,
     customer_name: customer?.customer_name || "Müşteri",
     contact_phone: customer?.contact_phone || null,
     contact_email: customer?.contact_email || null,
     ...organizationFields(organization, legal),
   };
-  const decision: ProposalDecision | null = ["accepted", "rejected"].includes(proposal.status)
-    ? { status: proposal.status, responded_at: proposal.responded_at, response_ip: proposal.response_ip, response_user_agent: extraError ? null : (extra as DocumentRow | null)?.response_user_agent ?? null, contract_share_token: null, contract_no: null }
+  const decision: ProposalDecision | null = ["accepted", "rejected"].includes(effective) && customerDecided
+    ? { status: effective, responded_at: proposal.responded_at, response_ip: proposal.response_ip, response_user_agent: extraError ? null : (extra as DocumentRow | null)?.response_user_agent ?? null, contract_share_token: null, contract_no: null }
     : null;
   return {
     type: "proposal",

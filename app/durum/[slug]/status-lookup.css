@@ -365,6 +365,22 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
 .trk-sign-cta:active{transform:scale(.99)}
 .trk-sign-foot{margin:0;padding:12px 0 0;color:var(--trk-muted);font-size:13px;text-align:center}
 
+/* Belge rozetleri ve teklif onayı */
+.trk-badge{flex:none;display:inline-flex;align-items:center;min-height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.trk-card-head .trk-badge{font-size:12px}
+.trk-badge.is-ok{background:color-mix(in srgb,var(--trk-success) 14%,transparent);color:var(--trk-success)}
+.trk-badge.is-wait{background:var(--trk-accent-soft);color:var(--trk-accent-text)}
+.trk-badge.is-bad{background:color-mix(in srgb,#b42318 12%,transparent);color:#b42318}
+.trk-badge.is-muted{background:var(--trk-fill-2);color:var(--trk-muted)}
+.trk-offer-view{display:inline-flex;align-items:center;gap:4px;margin:0 0 14px;color:var(--trk-accent-text);font-size:14px;font-weight:600;text-decoration:none}
+.trk-offer-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.trk-offer-actions.is-single{grid-template-columns:1fr}
+.trk-offer-actions button{min-height:50px;padding:0 14px;border-radius:14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.trk-offer-accept{border:0;background:linear-gradient(160deg,var(--trk-brand-500),var(--trk-brand-800));color:#fff;box-shadow:0 8px 20px rgba(11,27,46,.18)}
+.trk-offer-reject{border:1px solid color-mix(in srgb,#b42318 40%,transparent);background:var(--trk-surface);color:#b42318}
+.trk-offer-actions button:disabled{opacity:.6;cursor:default}
+@media (max-width:560px){.trk-offer-actions{grid-template-columns:1fr}}
+
 /* İş planı (ara teslimler) ve ödeme takvimi */
 .trk-plan-alert{display:flex;flex-direction:column;gap:2px;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:var(--trk-accent-soft);color:var(--trk-accent-text);text-decoration:none}
 .trk-plan-alert b{font-size:14px;font-weight:650}

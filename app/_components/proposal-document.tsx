@@ -15,6 +15,9 @@ export type ProposalDecision = {
   response_user_agent?: string | null;
   contract_share_token: string | null;
   contract_no: string | null;
+  /** Kararı müşterinin kendisi mi verdi (personel dönüşümünde false). */
+  customer_decided?: boolean | null;
+  contract_signed?: boolean | null;
 };
 
 type Props = {

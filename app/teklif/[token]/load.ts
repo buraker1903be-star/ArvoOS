@@ -24,9 +24,17 @@ export const loadPublicProposal = cache(async (token: string) => {
   // Resmi/banka bilgisi okunamazsa belge alt bilgi metniyle çizilir (eski davranış).
   if (legalResult.error) console.error("arvo_public_organization_legal failed", { code: legalResult.error.code, message: legalResult.error.message });
   const legal = legalResult.error ? null : first(legalResult.data as DocumentRow | DocumentRow[] | null);
-  const decision = first(decisionRows as DocumentRow | DocumentRow[] | null) as (ProposalDecision & DocumentRow) | null;
+  const raw = first(decisionRows as DocumentRow | DocumentRow[] | null) as (ProposalDecision & DocumentRow) | null;
+  // Kabul/ret edilen teklif veritabanında 'archived' olur; karar fonksiyonu
+  // asıl (etkin) durumu döndürür. Personel teklifi müşteri adına sözleşmeye
+  // çevirdiyse (customer_decided=false) teklif müşteriye "onayınızı bekliyor"
+  // olarak gösterilir ve kabul butonu açılır. Migration yoksa eski davranış.
+  const effective = String(raw?.status ?? row.status ?? "");
+  const awaitingCustomer = raw?.customer_decided === false && effective === "accepted";
+  const decision = raw && ["accepted", "rejected"].includes(effective) && raw.customer_decided !== false ? raw : null;
   const merged: DocumentRow = {
     ...row,
+    status: awaitingCustomer ? "sent" : effective || row.status,
     ...organizationLegalFields(legal),
     created_at: row.created_at ?? decision?.proposal_created_at ?? null,
     estimated_delivery_date: row.estimated_delivery_date ?? decision?.estimated_delivery_date ?? null,
@@ -34,5 +42,5 @@ export const loadPublicProposal = cache(async (token: string) => {
     payment_plan_type: row.payment_plan_type ?? decision?.payment_plan_type ?? null,
     payment_schedule: row.payment_schedule ?? decision?.payment_schedule ?? null,
   };
-  return { supabase, row: merged, decision };
+  return { supabase, row: merged, decision, awaitingCustomer, canReject: awaitingCustomer ? raw?.contract_signed !== true : true };
 });

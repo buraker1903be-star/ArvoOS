@@ -2,7 +2,7 @@
 
 import { Fragment, startTransition, useActionState, useEffect, useLayoutEffect, useOptimistic, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal, useFormStatus } from "react-dom";
-import { lookupTracking, refreshCustomerFileMessages, refreshCustomerPortalFiles, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type TakipState } from "./actions";
+import { lookupTracking, refreshCustomerFileMessages, refreshCustomerPortalFiles, respondToProposalFromTracking, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type ProposalDecisionState, type TakipState, type TrackingDocuments } from "./actions";
 import { LookupSubmitButton } from "../durum/[slug]/lookup-controls";
 import { CustomerFiles } from "../durum/[slug]/customer-files";
 import {
@@ -22,6 +22,26 @@ const POLL_MS = 20000;
 const planDate = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 const planMoney = (cents: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(cents / 100);
 const todayIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+
+const initialDecisionState: ProposalDecisionState = { error: null, success: null, documents: null };
+
+type Badge = { label: string; tone: "ok" | "wait" | "bad" | "muted" } | null;
+function proposalBadge(proposal: TrackingDocuments["proposal"] | undefined): Badge {
+  if (!proposal) return null;
+  if (proposal.status === "accepted") return proposal.customerDecided ? { label: "Kabul edildi", tone: "ok" } : { label: "Onayınızı bekliyor", tone: "wait" };
+  if (proposal.status === "sent") return { label: "Onayınızı bekliyor", tone: "wait" };
+  if (proposal.status === "rejected") return { label: "Reddedildi", tone: "bad" };
+  if (proposal.status === "expired") return { label: "Süresi doldu", tone: "muted" };
+  return null;
+}
+function contractBadge(contract: TrackingDocuments["contract"] | undefined): Badge {
+  if (!contract) return null;
+  if (contract.signed) return { label: "İmzalandı", tone: "ok" };
+  if (contract.status === "sent") return { label: "İmzalanmadı", tone: "wait" };
+  if (contract.status === "draft") return { label: "Hazırlanıyor", tone: "muted" };
+  if (contract.status === "cancelled") return { label: "İptal edildi", tone: "bad" };
+  return null;
+}
 
 export function TakipForm({ prefillCode }: { prefillCode?: string }) {
   // "Yeni sorgu" sayfayı yeniden yüklemeden baştan başlatır: anahtar
@@ -167,12 +187,17 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
   const links = row.documentLinks;
   const plan = row.workPlan;
   const today = todayIso();
+  const [decisionState, decisionAction, decisionPending] = useActionState(respondToProposalFromTracking, initialDecisionState);
+  const docs = decisionState.documents ?? row.documents;
+  const offer = docs?.proposal ?? null;
+  const showOffer = Boolean(offer && (offer.canAccept || decisionState.success));
+  const contractCancelled = docs?.contract?.status === "cancelled";
   // İmza öncesi: iş akışı yok, ilerleme/dosya/ödeme yerine sözleşme onayı gösterilir.
   const awaitingSignature = !row.workflow_status && ["draft", "sent"].includes(row.contract_status);
-  const signUrl = row.contract_status === "sent" && links?.contract_share_token ? `/sozlesme/${links.contract_share_token}#imza` : null;
+  const signUrl = row.contract_status === "sent" && !contractCancelled && links?.contract_share_token ? `/sozlesme/${links.contract_share_token}#imza` : null;
   const documents = [
-    ...(links?.proposal_share_token ? [{ href: `/teklif/${links.proposal_share_token}`, title: "Teklif belgesi", meta: links.proposal_no }] : []),
-    ...(links?.contract_share_token ? [{ href: `/sozlesme/${links.contract_share_token}`, title: "Sözleşme belgesi", meta: links.contract_no }] : []),
+    ...(links?.proposal_share_token ? [{ href: `/teklif/${links.proposal_share_token}`, title: "Teklif belgesi", meta: links.proposal_no, badge: proposalBadge(docs?.proposal) }] : []),
+    ...(links?.contract_share_token ? [{ href: `/sozlesme/${links.contract_share_token}`, title: "Sözleşme belgesi", meta: links.contract_no, badge: contractBadge(docs?.contract) }] : []),
   ];
 
   const thread = messages.map((message, index) => {
@@ -221,6 +246,51 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
 
         <div className="trk-layout">
           <div className="trk-col">
+            {showOffer && offer ? (
+              <section className="trk-card trk-offer-card" aria-labelledby="trk-offer-title">
+                <div className="trk-card-head">
+                  <h2 id="trk-offer-title">Teklif onayı</h2>
+                  {offer.canAccept ? <span className="trk-badge is-wait">Onayınızı bekliyor</span> : <span className="trk-badge is-ok">Kaydedildi</span>}
+                </div>
+                {decisionState.success ? (
+                  <p className="trk-sign-note" role="status">{decisionState.success}</p>
+                ) : (
+                  <>
+                    <p className="trk-sign-note">
+                      {offer.no ? `${offer.no} numaralı teklifinize` : "Teklifinize"} göre sözleşmeniz hazırlandı. Teklifi inceleyip kabul ettiğinizi bildirin{docs?.contract && !docs.contract.signed ? "; ardından sözleşmenizi imzalayabilirsiniz" : ""}.
+                    </p>
+                    {links?.proposal_share_token ? (
+                      <a className="trk-offer-view" href={`/teklif/${links.proposal_share_token}`} target="_blank" rel="noreferrer">
+                        Teklifi görüntüle<IconChevron /><span className="trk-sr">(yeni sekmede açılır)</span>
+                      </a>
+                    ) : null}
+                    <form action={decisionAction} className={offer.canReject ? "trk-offer-actions" : "trk-offer-actions is-single"}>
+                      <input type="hidden" name="tracking_code" value={row.tracking_code} />
+                      <button type="submit" name="decision" value="accept" className="trk-offer-accept" disabled={decisionPending}>
+                        {decisionPending ? "Kaydediliyor…" : "Teklifi kabul ediyorum"}
+                      </button>
+                      {offer.canReject ? (
+                        <button
+                          type="submit"
+                          name="decision"
+                          value="reject"
+                          className="trk-offer-reject"
+                          disabled={decisionPending}
+                          onClick={(event) => {
+                            if (!window.confirm("Teklifi reddetmek istediğinize emin misiniz? Hazırlanan sözleşme iptal edilir.")) event.preventDefault();
+                          }}
+                        >
+                          Teklifi reddediyorum
+                        </button>
+                      ) : null}
+                    </form>
+                    <p className="trk-sign-foot">Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır.</p>
+                  </>
+                )}
+                {decisionState.error ? <p className="trk-inline-error" role="alert">{decisionState.error}</p> : null}
+              </section>
+            ) : null}
+
             {awaitingSignature ? (
               <section className="trk-card trk-sign-card" aria-labelledby="trk-sign-title">
                 <div className="trk-card-head">
@@ -228,8 +298,8 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                   <span>{row.contract_status === "sent" ? "İmzanızı bekliyor" : "Hazırlanıyor"}</span>
                 </div>
                 <ol className="trk-sign-steps">
-                  {links?.proposal_no ? <li className={links.proposal_status === "accepted" ? "is-done" : undefined}><span>Teklif onayı</span></li> : null}
-                  <li className="is-current"><span>Sözleşme imzası</span></li>
+                  {offer ? <li className={offer.customerDecided ? "is-done" : offer.canAccept ? "is-current" : undefined}><span>Teklif onayı</span></li> : null}
+                  <li className={offer?.canAccept ? undefined : "is-current"}><span>Sözleşme imzası</span></li>
                   <li><span>Çalışma başlar</span></li>
                 </ol>
                 <p className="trk-sign-note">{status.note}</p>
@@ -389,6 +459,7 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                           <b>{document.title}</b>
                           {document.meta ? <small>{document.meta}</small> : null}
                         </span>
+                        {document.badge ? <span className={`trk-badge is-${document.badge.tone}`}>{document.badge.label}</span> : null}
                         <span className="trk-sr">(yeni sekmede açılır)</span>
                         <span className="trk-chevron" aria-hidden="true"><IconChevron /></span>
                       </a>

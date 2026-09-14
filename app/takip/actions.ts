@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
 import { normalizeWorkPlan } from "@/lib/work-plan";
@@ -48,8 +49,18 @@ export type TakipState = {
     } | null;
     /** null → bölüm gösterilmez (okunamadı ya da migration yok). */
     workPlan: TrackingWorkPlan | null;
+    /** Teklif/sözleşme rozetleri ve teklif onayı; null → gösterilmez. */
+    documents: TrackingDocuments | null;
   } | null;
 };
+
+/** arvo_tracking_documents: teklifin etkin durumu ve müşteri kararı, sözleşme imza durumu. */
+export type TrackingDocuments = {
+  proposal: { no: string | null; status: string; customerDecided: boolean; canAccept: boolean; canReject: boolean } | null;
+  contract: { no: string | null; status: string; signed: boolean } | null;
+};
+
+export type ProposalDecisionState = { error: string | null; success: string | null; documents: TrackingDocuments | null };
 
 export type TrackingPayment = {
   sequence: number;
@@ -99,6 +110,97 @@ function readWorkPlan(value: unknown): TrackingWorkPlan | null {
     payments,
     pendingAddendum: raw.pending_addendum === true,
   };
+}
+
+function readDocuments(value: unknown): TrackingDocuments | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as { proposal?: Record<string, unknown> | null; contract?: Record<string, unknown> | null };
+  const proposal = raw.proposal;
+  const contract = raw.contract;
+  return {
+    proposal: proposal
+      ? {
+          no: typeof proposal.no === "string" ? proposal.no : null,
+          status: String(proposal.status ?? ""),
+          customerDecided: proposal.customer_decided === true,
+          canAccept: proposal.can_accept === true,
+          canReject: proposal.can_reject === true,
+        }
+      : null,
+    contract: contract
+      ? { no: typeof contract.no === "string" ? contract.no : null, status: String(contract.status ?? ""), signed: contract.signed === true }
+      : null,
+  };
+}
+
+async function fetchDocuments(code: string): Promise<TrackingDocuments | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("arvo_tracking_documents", { p_tracking_code: code });
+  if (error) {
+    console.error("[takip] belge durumu okunamadı", { code: error.code, message: error.message });
+    return null;
+  }
+  return readDocuments(data);
+}
+
+const firstForwardedIp = (value: string | null) => value?.split(",")[0]?.trim() || null;
+
+/**
+ * Müşteri teklifi takip ekranından onaylar ya da (sözleşme imzalanmadıysa)
+ * reddeder. Karar tarih-saat, IP ve cihaz bilgisiyle kaydedilir.
+ */
+export async function respondToProposalFromTracking(
+  previous: ProposalDecisionState,
+  formData: FormData,
+): Promise<ProposalDecisionState> {
+  const code = String(formData.get("tracking_code") ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const decision = String(formData.get("decision") ?? "");
+  if (code.length < 6 || !["accept", "reject"].includes(decision)) {
+    return { ...previous, error: "İşlem tamamlanamadı, lütfen tekrar deneyin.", success: null };
+  }
+  const before = await fetchDocuments(code);
+  const requestHeaders = await headers();
+  const ip = firstForwardedIp(requestHeaders.get("x-forwarded-for")) || requestHeaders.get("x-real-ip") || requestHeaders.get("cf-connecting-ip") || null;
+  const userAgent = requestHeaders.get("user-agent")?.slice(0, 1000) || null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("arvo_tracking_confirm_proposal", {
+    p_tracking_code: code,
+    p_decision: decision,
+    p_ip: ip,
+    p_user_agent: userAgent,
+  });
+  if (error) {
+    console.error("[takip] teklif kararı kaydedilemedi", { code: error.code, message: error.message });
+    return { ...previous, error: "Kararınız kaydedilemedi, lütfen tekrar deneyin.", success: null };
+  }
+  const result = (Array.isArray(data) ? data[0] : data) as { result_status?: string; contract_status?: string | null } | null;
+  const outcome = result?.result_status ?? "";
+
+  // Ret sonrası sözleşme iptal olduğu için takip sorgusu artık onu bulmaz;
+  // ekrandaki rozetler önceki durumdan güncellenir.
+  let documents = await fetchDocuments(code);
+  if (!documents && before) {
+    documents = {
+      proposal: before.proposal ? { ...before.proposal, status: outcome === "rejected" ? "rejected" : before.proposal.status, customerDecided: true, canAccept: false, canReject: false } : null,
+      contract: before.contract ? { ...before.contract, status: result?.contract_status ?? before.contract.status } : null,
+    };
+  }
+
+  if (outcome === "accepted") {
+    return {
+      error: null,
+      documents,
+      success: documents?.contract && !documents.contract.signed
+        ? "Teklifi kabul ettiniz. Sıradaki adım: sözleşmenizi inceleyip imzalamak."
+        : "Teklif onayınız kaydedildi. Teşekkür ederiz.",
+    };
+  }
+  if (outcome === "rejected") {
+    return { error: null, documents, success: "Teklifi reddettiniz; ekibimiz bilgilendirildi. Sorunuz varsa mesaj alanından yazabilirsiniz." };
+  }
+  if (outcome === "contract_signed") return { error: "Sözleşmeniz imzalandığı için teklif reddedilemez.", success: null, documents };
+  return { error: "Bu teklif artık karara açık değil.", success: null, documents };
 }
 
 async function listMessages(code: string) {
@@ -155,6 +257,7 @@ export async function lookupTracking(
   });
   if (planError) console.error("[takip] iş planı okunamadı", { code: planError.code, message: planError.message });
   const workPlan = planError ? null : readWorkPlan(planData);
+  const documents = await fetchDocuments(code);
 
   let messages: CustomerFileMessage[] = [];
   try {
@@ -171,7 +274,7 @@ export async function lookupTracking(
     files = null;
   }
 
-  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks, workPlan } };
+  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks, workPlan, documents } };
 }
 
 /** Sekmeye dönüldüğünde (ör. PAYTR ödemesinden sonra) dosya kilitlerini tazeler. */

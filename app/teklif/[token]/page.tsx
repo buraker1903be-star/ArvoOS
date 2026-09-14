@@ -44,6 +44,8 @@ const statuses:Record<string,string>={
 const resultNotices:Record<string,string>={
  accepted:"İşleminiz kaydedildi: teklifi kabul ettiniz.",
  rejected:"İşleminiz kaydedildi: teklifi reddettiniz.",
+ locked:"Sözleşmeniz imzalandığı için teklif reddedilemez. Sorunuz varsa bizimle iletişime geçin.",
+ closed:"Bu teklif artık karara açık değil.",
 };
 
 export default async function PublicProposalPage({params,searchParams}:{params:Promise<{token:string}>;searchParams:Promise<{result?:string}>}){
@@ -51,7 +53,7 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const {result}=await searchParams;
  const loaded=await loadPublicProposal(token);
  if(!loaded)notFound();
- const {supabase,row,decision}=loaded;
+ const {supabase,row,decision,awaitingCustomer,canReject}=loaded;
  await supabase.rpc("mark_crm_proposal_viewed",{public_token:token});
  const audit=await requestAudit();
  await supabase.rpc("log_public_document_access",{
@@ -67,11 +69,13 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const locked=["accepted","rejected","expired","archived"].includes(row.status);
  const actions=!locked
   ?<div className="ad-actions print-hide">
-    <form action={respondToProposal.bind(null,token)}>
+    <form action={respondToProposal.bind(null,token)} style={canReject?undefined:{gridTemplateColumns:"1fr"}}>
      <button className="ad-accept" name="decision" value="accept">TEKLİFİ KABUL EDİYORUM</button>
-     <button className="ad-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>
+     {canReject?<button className="ad-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>:null}
     </form>
-    <p>Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır. Kabul ettiğinizde aynı kapsam ve bedelle hazırlanan sözleşme onayınıza sunulur.</p>
+    <p>{awaitingCustomer
+     ?"Sözleşmeniz bu teklife göre hazırlandı. Teklifi kabul ettiğinizi bildirdikten sonra sözleşmenizi inceleyip imzalayabilirsiniz. Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır."
+     :"Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır. Kabul ettiğinizde aynı kapsam ve bedelle hazırlanan sözleşme onayınıza sunulur."}</p>
    </div>
   :<div className="ad-status print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
  return <ProposalDocument
