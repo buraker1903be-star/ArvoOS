@@ -80,6 +80,9 @@
 .login-card>small{display:block;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:12px;line-height:1.6}
 
 /* --- Bildirimler --- */
+.login-account{display:flex;flex-direction:column;gap:2px;margin:2px 0 8px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--line) 28%,transparent)}
+.login-account small{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.login-account b{overflow:hidden;color:inherit;font-size:14px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
 .login-error,.login-success{margin-bottom:6px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5}
 .login-error{background:#f9e9e7;border:1px solid #efcdc8;color:#8c2f2b}
 .login-success{background:#e7f3ec;border:1px solid #c9e3d3;color:#1f5c3f}
