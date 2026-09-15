@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
+import { HrTabs } from "../hr-tabs";
 import { HrChevron, HrIcon, initials } from "../hr-icons";
 import "../hr.css";
 import "./style.css";
@@ -35,7 +36,8 @@ export default async function ConfidentialityArchivePage() {
   ];
 
   return <div className="hr-page hr-conf">
-    <div className="panel-pagehead"><div><small className="panel-kicker">İNSAN KAYNAKLARI / GİZLİ ARŞİV</small><h1>Gizlilik Sözleşmeleri</h1><p>Personel gizlilik sözleşmeleri yalnızca yetkili yöneticilere gösterilir.</p></div><div className="panel-page-actions"><Link className="panel-secondary" href="/panel/hr">← Personellere Dön</Link></div></div>
+    <div className="panel-pagehead"><div><small className="panel-kicker">İNSAN KAYNAKLARI / GİZLİ ARŞİV</small><h1>Gizlilik Sözleşmeleri</h1><p>Personel gizlilik sözleşmeleri yalnızca yetkili yöneticilere gösterilir.</p></div></div>
+    <HrTabs active="gizlilik" access={{ membership }} />
 
     <section className="hr-widgets" aria-label="Özet">
       {widgets.map((widget) => (

@@ -5,6 +5,7 @@ import { statusTone } from "@/lib/status-tone";
 import { allocateCollections, rateAt, type RateHistoryRow } from "@/lib/commission-allocation";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { HrIcon, initials } from "../hr-icons";
+import { HrTabs } from "../hr-tabs";
 import "../hr.css";
 import "./commissions.css";
 
@@ -150,8 +151,8 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   return <div className="hr-page hr-cm">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Prim Hesaplama</h1><p>Satış ve operasyon hak edişlerini personel ve dönem bazında takip edin.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/hr">← Personellere Dön</Link></div>
     </div>
+    <HrTabs active="prim" access={{ membership, isPlatformOwner }} />
 
     <section className="hr-card hr-cm-filter" aria-label="Dönem ve personel filtresi">
       <div className="hr-cm-filter-head">

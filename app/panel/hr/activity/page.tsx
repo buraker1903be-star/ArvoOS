@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import { ActivityAutoRefresh } from "./activity-auto-refresh";
+import { HrTabs } from "../hr-tabs";
 import { HrIcon, initials } from "../hr-icons";
 import "../hr.css";
 import "./activity.css";
@@ -105,8 +105,9 @@ export default async function PersonnelActivityPage() {
   return <div className="hr-page hr-act"><ActivityAutoRefresh />
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Personel Hareketleri</h1><p>Çevrimiçi durum, son görülme ve giriş-çıkış geçmişi. Sayfa 30 saniyede bir kendiliğinden yenilenir.</p></div>
-      <div className="panel-page-actions"><span className="hr-live" role="status"><i aria-hidden="true" />Canlı · 30 sn</span><Link className="panel-secondary" href="/panel/hr">← Personellere Dön</Link></div>
+      <div className="panel-page-actions"><span className="hr-live" role="status"><i aria-hidden="true" />Canlı · 30 sn</span></div>
     </div>
+    <HrTabs active="hareketler" access={{ membership }} />
 
     <section className="hr-widgets" aria-label="Özet">
       {widgets.map((widget) => (
