@@ -11,7 +11,8 @@ const moduleMeta: Record<string, { icon: string; note: string }> = {
   finance: { icon: "wallet", note: "Cari, tahsilat, maliyet" },
   hr: { icon: "building", note: "Personel, prim, gizlilik" },
   documents: { icon: "folder", note: "Belge merkezi" },
-  reports: { icon: "chart", note: "Satış ve kârlılık raporları" },
+  // Raporlar Finans'ın sekmesi; Finans'ı yalnızca Kurum Sahibi ve Yönetici görür
+  reports: { icon: "chart", note: "Finans → Raporlar sekmesi · yalnızca Kurum Sahibi ve Yönetici" },
 };
 
 export default async function PermissionsPage() {
