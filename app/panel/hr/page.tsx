@@ -40,7 +40,6 @@ export default async function HrPage() {
   const organizationName = organization.display_name || organization.name;
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = ["owner", "admin"].includes(membership.role);
-  const canViewCommissions = ["owner", "admin", "manager"].includes(membership.role);
 
   const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData }, { data: invitationData }, { data: docData }] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate,operation_commission_rate").eq("organization_id", membership.organization_id).order("full_name"),
