@@ -10,7 +10,10 @@ import {
 } from "./panel-navigation-config";
 import { NotificationsNavButton } from "./notifications-drawer";
 
-type MobileItem = { href: string; label: string; icon: string };
+// match: grubun alt modül önekleri. Grup bağlantısı genel bakışa gittiği
+// için (ör. /panel/finance/genel-bakis) cari veya talepler sayfasındayken
+// de grup seçili görünsün.
+type MobileItem = { href: string; label: string; icon: string; match?: string[] };
 
 export function MobileDrawer({
   modules,
@@ -54,6 +57,7 @@ export function MobileDrawer({
         href: resolveGroupHref(group),
         label: group.label,
         icon: group.icon,
+        match: group.items.map((item) => `/panel/${item.code}`),
       }));
 
     const result: MobileItem[] = [
@@ -82,7 +86,8 @@ export function MobileDrawer({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const active = (href: string) => href === "/panel" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const active = (href: string, match: string[] = []) => href === "/panel" ? pathname === href : under(href) || match.some(under);
   const initials = organizationName.trim().slice(0, 1).toUpperCase() || "A";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
 
@@ -109,7 +114,7 @@ export function MobileDrawer({
           {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-unread-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}<b>›</b></button>:null}
           <NotificationsNavButton variant="menu" initialCount={notificationUnreadCount} onOpen={() => setOpen(false)} />
           {items.map((item) => (
-            <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href) ? "active" : ""} aria-current={active(item.href) ? "page" : undefined}>
+            <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href, item.match) ? "active" : ""} aria-current={active(item.href, item.match) ? "page" : undefined}>
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>
             </Link>
           ))}

@@ -11,6 +11,7 @@ import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow
 import { FinEmpty, FinIcon, FinWidget } from "./finance-ui";
 import { FinanceTabs } from "./finance-navigation";
 import { buildAccountBalances } from "./account-balances";
+import { getPaytrStatus } from "@/lib/paytr-status";
 import "./finance.css";
 
 const money = (n: number) =>
@@ -52,7 +53,7 @@ type Contract = {
   created_at:string;
   crm_opportunities: { customer_name: string; contact_phone:string|null;contact_email:string|null;assigned_employee_id:string|null } | { customer_name: string;contact_phone:string|null;contact_email:string|null;assigned_employee_id:string|null }[] | null;
 };
-type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
+type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;payment_link_source:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
 type CostItem={contract_id:string;amount:number;status:string};
 
 const pageCopy = {
@@ -89,7 +90,7 @@ export default async function FinancePage({
         .select("id,party_id,amount,status,contract_no,title,currency,payment_plan_id,workflow_id,signed_at,created_at,service_cost,service_cost_supplier,service_cost_reference,service_cost_status,crm_opportunities(customer_name,contact_phone,contact_email,assigned_employee_id)")
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"]),
-      supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,notice_sent_at,reminder_sent_at").eq("organization_id",membership.organization_id).order("due_date"),
+      supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,payment_link_source,notice_sent_at,reminder_sent_at").eq("organization_id",membership.organization_id).order("due_date"),
       supabase.from("contract_cost_items").select("contract_id,amount,status").eq("organization_id",membership.organization_id),
       supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id),
       supabase.from("operation_workflows").select("id,assigned_employee_id").eq("organization_id",membership.organization_id),
@@ -125,7 +126,7 @@ export default async function FinancePage({
   const mode=params.gorunum==="paytr"?"paytr":params.gorunum==="maliyet"&&canManageCosts?"maliyet":"cari";
   const today=todayInIstanbul(); const brandName=organization.display_name||organization.name||"ArvoOS";
   const profitRows:ProfitRow[]=contracts.map(contract=>{const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const cost=costTotals.get(contract.id)??Number(contract.service_cost);const profit=Number(contract.amount)-cost;const operationEmployeeId=contract.workflow_id?workflowMap.get(contract.workflow_id):null;return{id:contract.id,contractNo:contract.contract_no,customer:relation?.customer_name||contract.title,title:contract.title,sales:relation?.assigned_employee_id?employeeMap.get(relation.assigned_employee_id)||"Pasif personel":"Atanmamış",operation:operationEmployeeId?employeeMap.get(operationEmployeeId)||"Pasif personel":"Atanmamış",amount:Number(contract.amount),cost,profit,margin:Number(contract.amount)?profit/Number(contract.amount)*100:0,date:(contract.signed_at||contract.created_at).slice(0,10)}});
-  const paymentRows:PaymentRow[]=contracts.flatMap(contract=>{const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;return installments.filter(item=>item.payment_plan_id===contract.payment_plan_id).map(item=>{const overdue=item.status!=="paid"&&Boolean(item.due_date&&item.due_date<today);const link=item.payment_url;const message=overdue?`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizin vadesi dolmuştur.\n\nÖdeme bağlantısı:\n${link||""}\n\nÖdeme yaptıysanız bu mesajı dikkate almayınız.\n\nSaygılarımızla,\n${brandName}`:`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizi aşağıdaki bağlantıdan tamamlayabilirsiniz:\n${link||""}\n\nSaygılarımızla,\n${brandName}`;const phone=String(customer?.contact_phone||"").replace(/\D/g,"").replace(/^0/,"90");return{id:item.id,contractId:contract.id,contractNo:contract.contract_no,installmentNo:item.installment_no,customer:customer?.customer_name||contract.title,amount:Number(item.amount),dueDate:item.due_date,status:item.status,paymentUrl:link,overdue,whatsappUrl:link&&phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null,emailUrl:link&&customer?.contact_email?`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${contract.contract_no} ödeme bilgilendirmesi`)}&body=${encodeURIComponent(message)}`:null}})});
+  const paymentRows:PaymentRow[]=contracts.flatMap(contract=>{const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;return installments.filter(item=>item.payment_plan_id===contract.payment_plan_id).map(item=>{const overdue=item.status!=="paid"&&Boolean(item.due_date&&item.due_date<today);const link=item.payment_url;const message=overdue?`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizin vadesi dolmuştur.\n\nÖdeme bağlantısı:\n${link||""}\n\nÖdeme yaptıysanız bu mesajı dikkate almayınız.\n\nSaygılarımızla,\n${brandName}`:`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizi aşağıdaki bağlantıdan tamamlayabilirsiniz:\n${link||""}\n\nSaygılarımızla,\n${brandName}`;const phone=String(customer?.contact_phone||"").replace(/\D/g,"").replace(/^0/,"90");return{id:item.id,contractId:contract.id,contractNo:contract.contract_no,installmentNo:item.installment_no,customer:customer?.customer_name||contract.title,amount:Number(item.amount),dueDate:item.due_date,status:item.status,paymentUrl:link,linkSource:item.payment_link_source??null,overdue,whatsappUrl:link&&phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null,emailUrl:link&&customer?.contact_email?`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${contract.contract_no} ödeme bilgilendirmesi`)}&body=${encodeURIComponent(message)}`:null}})});
 
   // İş maliyetleri özeti (yalnızca gösterim; değerler tablodakiyle aynı kuralla)
   const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
@@ -134,6 +135,8 @@ export default async function FinancePage({
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query) || params.durum === "acik" || params.durum === "kapali";
   const copy = pageCopy[mode];
+  // PayTR bağlıysa taksit satırında "PayTR bağlantısı oluştur" çıkar
+  const paytr = mode === "paytr" ? await getPaytrStatus(membership.organization_id) : null;
 
   return (
     <main className="fin">
@@ -395,7 +398,7 @@ export default async function FinancePage({
         </>
       ) : null}
 
-      {mode === "paytr" ? <PaytrWorkspace rows={paymentRows} /> : null}
+      {mode === "paytr" ? <PaytrWorkspace rows={paymentRows} paytrReady={Boolean(paytr?.available && paytr.connected && paytr.enabled)} /> : null}
 
       {mode === "maliyet" && canManageCosts ? (
         <>

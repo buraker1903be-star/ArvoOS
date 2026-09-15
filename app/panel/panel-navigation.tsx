@@ -28,15 +28,20 @@ export function PanelNavigation({ modules, isPlatformOwner, role, hiddenModuleKe
           ? group.items.filter((item) => !["accounts", "banking"].includes(normalizeModuleCode(item.code)))
           : group.items;
 
+        // Grubun ana modülü (ör. finance, hr) genel bakış sayfasını açar
+        // (resolveGroupHref → preferredHref). Eskiden tek öğeli gruplar
+        // doğrudan /panel/<kod>'a gidiyor, Finans ve İK genel bakışı hiç açılmıyordu.
+        const itemHref = (code: string) => (normalizeModuleCode(code) === group.key ? groupHref : `/panel/${code}`);
+
         if (visibleItems.length <= 1) {
-          const href = visibleItems[0] ? `/panel/${visibleItems[0].code}` : groupHref;
+          const href = visibleItems[0] ? itemHref(visibleItems[0].code) : groupHref;
           return <Link className={active ? "panel-nav-group-link active" : "panel-nav-group-link"} key={group.key} href={href} title={group.label}><i>{group.icon}</i><span>{group.label}</span></Link>;
         }
 
         return <details className={active ? "panel-nav-group active" : "panel-nav-group"} key={group.key} open={active}>
           <summary title={group.label}><i>{group.icon}</i><span>{group.label}</span><em>{visibleItems.length}</em></summary>
           <div className="panel-nav-children">
-            {visibleItems.map((item) => <Link className={pathname.startsWith(`/panel/${item.code}`) ? "active" : ""} href={`/panel/${item.code}`} key={item.code}><span>{item.name}</span></Link>)}
+            {visibleItems.map((item) => <Link className={pathname.startsWith(`/panel/${item.code}`) ? "active" : ""} href={itemHref(item.code)} key={item.code}><span>{item.name}</span></Link>)}
           </div>
         </details>;
       })}

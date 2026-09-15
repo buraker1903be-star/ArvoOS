@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { saveInstallmentPaymentLink } from "./actions";
+import { cancelPaytrPaymentLink, createPaytrPaymentLink } from "./paytr-actions";
 import { PaymentShareActions } from "./payment-share-actions";
 import { FinEmpty, FinIcon, FinPerson, FinWidget, initials } from "./finance-ui";
 
@@ -12,7 +13,7 @@ const normalize=(value:string)=>value.toLocaleLowerCase("tr-TR");
 const dueDate=(value:string|null)=>value?new Date(`${value}T00:00:00`).toLocaleDateString("tr-TR"):"—";
 
 export type ProfitRow={id:string;contractNo:string;customer:string;title:string;sales:string;operation:string;amount:number;cost:number;profit:number;margin:number;date:string};
-export type PaymentRow={id:string;contractId:string;contractNo:string;installmentNo:number;customer:string;amount:number;dueDate:string|null;status:string;paymentUrl:string|null;whatsappUrl:string|null;emailUrl:string|null;overdue:boolean};
+export type PaymentRow={id:string;contractId:string;contractNo:string;installmentNo:number;customer:string;amount:number;dueDate:string|null;status:string;paymentUrl:string|null;linkSource:string|null;whatsappUrl:string|null;emailUrl:string|null;overdue:boolean};
 
 function Pager({page,pages,total,onChange}:{page:number;pages:number;total:number;onChange:(page:number)=>void}){
   if(pages<=1)return null;
@@ -103,7 +104,7 @@ export function ProfitabilityWorkspace({rows}:{rows:ProfitRow[]}){
 
 const STATUS_FILTERS=[["all","Tümü","neutral"],["overdue","Gecikmiş","danger"],["pending","Bekleyen","warning"],["paid","Ödenen","success"]] as const;
 
-export function PaytrWorkspace({rows}:{rows:PaymentRow[]}){
+export function PaytrWorkspace({rows,paytrReady=false}:{rows:PaymentRow[];paytrReady?:boolean}){
   const [query,setQuery]=useState("");const [status,setStatus]=useState("all");const [page,setPage]=useState(1);
   const filtered=useMemo(()=>rows.filter(row=>(!query||normalize(`${row.customer} ${row.contractNo}`).includes(normalize(query)))&&(status==="all"||status==="overdue"&&row.overdue||status==="pending"&&row.status!=="paid"&&!row.overdue||status==="paid"&&row.status==="paid")),[rows,query,status]);
   const pages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));const safePage=Math.min(page,pages);const visible=filtered.slice((safePage-1)*PAGE_SIZE,safePage*PAGE_SIZE);
@@ -166,12 +167,31 @@ export function PaytrWorkspace({rows}:{rows:PaymentRow[]}){
                     {row.status!=="paid"?(
                       <>
                         <td className="fin-col-wide" data-label="Ödeme bağlantısı">
-                          <form className="fin-link-form" action={saveInstallmentPaymentLink}>
-                            <input type="hidden" name="installment_id" value={row.id}/>
-                            <input type="hidden" name="contract_id" value={row.contractId}/>
-                            <input name="payment_url" type="url" defaultValue={row.paymentUrl||""} placeholder="PAYTR ödeme bağlantısı" aria-label={`${row.customer} için PAYTR ödeme bağlantısı`}/>
-                            <button className="panel-secondary">Kaydet</button>
-                          </form>
+                          {paytrReady ? (
+                            // PayTR bağlı: bağlantı PayTR'de oluşturulur, ödeme gelince tahsilat kendiliğinden işlenir
+                            <div className="fin-link-form fin-paytr-actions">
+                              {row.paymentUrl ? <a className="fin-link" href={row.paymentUrl} target="_blank" rel="noreferrer">{row.linkSource==="paytr"?"PayTR bağlantısı":"Ödeme bağlantısı"}<FinIcon name="chevron" size={14}/></a> : null}
+                              <form action={createPaytrPaymentLink}>
+                                <input type="hidden" name="installment_id" value={row.id}/>
+                                <input type="hidden" name="contract_id" value={row.contractId}/>
+                                <button className={row.linkSource==="paytr"?"panel-secondary":"panel-primary"}>{row.linkSource==="paytr"?"Yenile":"PayTR bağlantısı oluştur"}</button>
+                              </form>
+                              {row.linkSource==="paytr" ? (
+                                <form action={cancelPaytrPaymentLink}>
+                                  <input type="hidden" name="installment_id" value={row.id}/>
+                                  <input type="hidden" name="contract_id" value={row.contractId}/>
+                                  <button className="panel-secondary">İptal</button>
+                                </form>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <form className="fin-link-form" action={saveInstallmentPaymentLink}>
+                              <input type="hidden" name="installment_id" value={row.id}/>
+                              <input type="hidden" name="contract_id" value={row.contractId}/>
+                              <input name="payment_url" type="url" defaultValue={row.paymentUrl||""} placeholder="PAYTR ödeme bağlantısı" aria-label={`${row.customer} için PAYTR ödeme bağlantısı`}/>
+                              <button className="panel-secondary">Kaydet</button>
+                            </form>
+                          )}
                         </td>
                         <td className="fin-col-actions">
                           <PaymentShareActions installmentId={row.id} contractId={row.contractId} whatsappUrl={row.whatsappUrl} emailUrl={row.emailUrl} overdue={row.overdue}/>

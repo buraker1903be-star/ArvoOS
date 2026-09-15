@@ -87,6 +87,16 @@
 .stg-color small{color:var(--muted);font-size:12.5px;font-weight:500}
 .stg-signature{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.8fr);gap:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
 .stg-signature>label{margin:0}
+/* PayTR bağlantısı (Entegrasyonlar) */
+.stg-paytr{display:grid;gap:14px;margin-bottom:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2)}
+.stg-paytr-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.stg-paytr-head b{display:block;color:var(--ink);font-size:15px;font-weight:700}
+.stg-paytr-head small{display:block;margin-top:3px;color:var(--muted);font-size:13px;line-height:1.45}
+.stg-paytr .stg-paytr-note{margin:0;color:var(--muted);font-size:12.5px;font-weight:500;line-height:1.5;letter-spacing:0;text-transform:none}
+.stg-paytr-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+.stg-paytr-foot b{color:var(--ink);font-weight:650}
+.stg-paytr-foot form{margin-left:auto}
+@media(max-width:760px){.stg-paytr-head{flex-direction:column}.stg-paytr-foot form{margin-left:0}}
 .panel-root .stg .panel-form input[type="file"]{padding:7px 8px;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer}
 .panel-root .stg .panel-form input[type="file"]::file-selector-button{margin-right:12px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:650;cursor:pointer;transition:background .15s,border-color .15s}
 .panel-root .stg .panel-form input[type="file"]:hover::file-selector-button{border-color:var(--muted);background:var(--surface)}
