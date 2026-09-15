@@ -323,7 +323,8 @@ export default async function PanelPage() {
           <p>{summary}</p>
         </div>
         <div className="panel-page-actions">
-          {canSeeReports ? <Link className="panel-secondary" href="/panel/reporting">Raporlar</Link> : null}
+          {/* Raporlar artık Finans sekmesi: Finans'ı göremeyen role düğme gösterilmez */}
+          {canSeeReports && canSeeFinance ? <Link className="panel-secondary" href="/panel/finance/raporlar">Raporlar</Link> : null}
           {canSeeCrm ? <Link className="panel-primary" href="/panel/crm">+ Yeni talep</Link> : null}
         </div>
       </header>

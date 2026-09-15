@@ -1,15 +1,41 @@
 import Link from "next/link";
 
-export type FinanceSection = "overview" | "accounts" | "plans" | "invoices" | "banking";
+// Finans modülünün tek sekme dizisi. Eskiden ana sayfa kendi dizisini
+// çiziyordu; bu dosyadaki ikinci dizi (Özet · Tahsilat Planları · Faturalar ·
+// Banka) hiçbir sayfada kullanılmıyordu ve "?tab=banka" okunmuyordu.
+export type FinanceTabKey = "genel-bakis" | "cari" | "paytr" | "maliyet" | "raporlar";
 
-// Finans ana sayfasındaki görünüm sekmeleriyle aynı bölümlü seçici (module-tabs).
-export function FinanceNavigation({ active, hasAccounts = true, hasBanking = true }: { active: FinanceSection; hasAccounts?: boolean; hasBanking?: boolean }) {
-  const items = [
-    { key: "overview" as const, label: "Özet", href: "/panel/finance" },
-    ...(hasAccounts ? [{ key: "accounts" as const, label: "Cari Hesaplar", href: "/panel/finance?tab=cari" }] : []),
-    { key: "plans" as const, label: "Tahsilat Planları", href: "/panel/finance/payment-plans" },
-    { key: "invoices" as const, label: "Faturalar", href: "/panel/finance/invoices" },
-    ...(hasBanking ? [{ key: "banking" as const, label: "Banka", href: "/panel/finance?tab=banka" }] : []),
+type PanelAccess = {
+  membership: { role: string };
+  modules: { code: string }[];
+  hiddenModuleKeys: ReadonlySet<string>;
+};
+
+/** İş maliyetleri yalnızca Kurum Sahibi ve Yönetici'ye açık. */
+export const canManageCosts = (context: PanelAccess) => ["owner", "admin"].includes(context.membership.role);
+
+/**
+ * Raporlar sekmesi: kurumda Raporlar modülü açık olmalı ve rolün "Raporlar"
+ * yetkisi kapatılmamış olmalı (Kurum Sahibi kısıtlanamaz). Finans kapısı
+ * (sahip/yönetici) zaten ayrıca uygulanıyor.
+ */
+export const canSeeFinanceReports = (context: PanelAccess) =>
+  context.modules.some((module) => module.code === "reporting") &&
+  (context.membership.role === "owner" || !context.hiddenModuleKeys.has("reports"));
+
+export function FinanceTabs({ active, context }: { active: FinanceTabKey; context: PanelAccess }) {
+  const tabs: { key: FinanceTabKey; href: string; label: string }[] = [
+    { key: "genel-bakis", href: "/panel/finance/genel-bakis", label: "Genel Bakış" },
+    { key: "cari", href: "/panel/finance", label: "Cari Hesaplar" },
+    { key: "paytr", href: "/panel/finance?gorunum=paytr", label: "PAYTR Tahsilatları" },
+    ...(canManageCosts(context) ? [{ key: "maliyet" as const, href: "/panel/finance?gorunum=maliyet", label: "İş Maliyetleri" }] : []),
+    ...(canSeeFinanceReports(context) ? [{ key: "raporlar" as const, href: "/panel/finance/raporlar", label: "Raporlar" }] : []),
   ];
-  return <nav className="module-tabs fin-tabs" aria-label="Finans bölümleri">{items.map((item) => <Link className={active === item.key ? "active" : ""} aria-current={active === item.key ? "page" : undefined} href={item.href} key={item.key}>{item.label}</Link>)}</nav>;
+  return (
+    <nav className="module-tabs fin-tabs" aria-label="Finans bölümleri">
+      {tabs.map((tab) => (
+        <Link key={tab.key} href={tab.href} className={tab.key === active ? "active" : ""} aria-current={tab.key === active ? "page" : undefined}>{tab.label}</Link>
+      ))}
+    </nav>
+  );
 }

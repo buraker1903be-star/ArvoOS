@@ -82,6 +82,17 @@ html[data-theme="dark"] .opsov [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .opsov-message-side time{color:var(--muted);font-size:12px;white-space:nowrap}
 .opsov-badge{padding:1px 8px;border-radius:999px;background:var(--danger);color:var(--n-0);font-size:11px;font-style:normal;font-weight:750}
 
+/* Tutar sütunu (CRM ve Finans genel bakış) */
+.opsov-amount{flex-direction:column;align-items:flex-end;gap:4px}
+.opsov-amount strong{color:var(--ink);font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.opsov-amount .opsov-amount-in{color:var(--success)}
+
+/* 5 widget, 3 sütunda 3+2 dizilince ikinci satırın sonu boş kalıyordu:
+   son widget kalan iki sütunu kaplar (CRM ve Finans genel bakış). */
+@media(min-width:761px) and (max-width:1280px){
+  .crmov .opsov-widget:last-child:nth-child(3n+2){grid-column:span 2}
+}
+
 .opsov-empty{display:flex;align-items:center;gap:10px;flex:1;margin:0;padding:18px 14px;border:1px dashed var(--line);border-radius:14px;background:var(--surface-2);color:var(--muted);font-size:13.5px;line-height:1.5}
 .opsov-empty svg{flex:none;color:var(--success)}
 .opsov-more{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;color:var(--accent);font-size:14px;font-weight:600;text-decoration:none}

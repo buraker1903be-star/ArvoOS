@@ -1,11 +1,8 @@
 /* ============================================================
-   CRM GENEL BAKIŞ (genel-bakis/page.tsx) — kartlar operasyon genel
-   bakışıyla aynı (operations/overview.css, .opsov-*). Burada yalnızca
-   tutar sütunu ve satış hunisi. Renkler panel-tokens.css'ten.
+   CRM GENEL BAKIŞ (genel-bakis/page.tsx) — kartlar, tutar sütunu ve
+   widget düzeni operasyon genel bakışında (operations/overview.css,
+   .opsov-*). Burada yalnızca satış hunisi. Renkler panel-tokens.css'ten.
    ============================================================ */
-
-.opsov-amount{flex-direction:column;align-items:flex-end;gap:4px}
-.opsov-amount strong{color:var(--ink);font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* Satış hunisi */
 .crmov-funnel{display:flex;flex-direction:column;gap:14px;flex:1;margin:0;padding:0;list-style:none}
@@ -16,13 +13,4 @@
 .crmov-funnel-track i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--success) 62%,var(--surface)),var(--success));transform-origin:left;animation:opsov-fill .9s cubic-bezier(.22,1,.36,1) both}
 .crmov-funnel small{display:block;margin-top:5px;color:var(--muted);font-size:12.5px}
 
-/* 5 widget, 3 sütunda 3+2 dizilince ikinci satırın sonu boş kalıyordu:
-   son widget kalan iki sütunu kaplar. 2 sütunlu mobil düzen operasyon
-   kuralında (son tek widget tam genişlik). */
-@media(min-width:761px) and (max-width:1280px){
-  .crmov .opsov-widget:last-child:nth-child(3n+2){grid-column:span 2}
-}
-@media(max-width:420px){
-  .opsov-amount{flex-direction:row;align-items:center}
-}
 @media(prefers-reduced-motion:reduce){.crmov-funnel-track i{animation:none}}

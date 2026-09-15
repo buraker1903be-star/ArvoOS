@@ -166,7 +166,7 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
   if (status !== "paid" && alreadyPaid) await supabase.from("account_entries").delete().eq("organization_id", membership.organization_id).eq("reference_no", `FIN:${transactionId}`);
 
   revalidatePath("/panel/finance");
-  revalidatePath("/panel/reporting");
+  revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel");
 }
@@ -182,7 +182,7 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel/finance/payment-plans");
   revalidatePath("/panel/finance/accounts");
   revalidatePath("/panel/finance/invoices");
-  revalidatePath("/panel/reporting");
+  revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel");
 }
@@ -299,7 +299,7 @@ export async function saveContractServiceCost(formData: FormData) {
   await flashSuccess("Sözleşme maliyeti kaydedildi");
   revalidatePath(`/panel/crm/contracts/${contractId}`);
   revalidatePath("/panel/finance");
-  revalidatePath("/panel/reporting");
+  revalidatePath("/panel/finance/raporlar");
 }
 
 export async function updateInvoiceStatus(formData: FormData) {
@@ -348,7 +348,7 @@ export async function updateInvoiceStatus(formData: FormData) {
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/invoices");
   revalidatePath("/panel/hr/commissions");
-  revalidatePath("/panel/reporting");
+  revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel");
 }
 

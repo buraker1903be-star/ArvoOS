@@ -76,7 +76,7 @@ async function getPartyLedger(partyId: string) {
 function revalidateLedger() {
   revalidatePath("/panel/finance");
   revalidatePath("/panel/hr/commissions");
-  revalidatePath("/panel/reporting");
+  revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel");
 }
 

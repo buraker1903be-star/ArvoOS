@@ -15,12 +15,14 @@ export type NavigationGroup = {
 };
 
 export const navigationGroups: NavigationGroup[] = [
-  { key: "crm", label: "CRM", icon: "C", codes: ["crm", "requests", "sales", "proposals", "contracts"], preferredHref: "/panel/crm" },
+  // Modül menüsü genel bakış sekmesini açar (operasyonla aynı). Panelin
+  // diğer bağlantıları (/panel/crm talepler, /panel/finance cari) değişmez.
+  { key: "crm", label: "CRM", icon: "C", codes: ["crm", "requests", "sales", "proposals", "contracts"], preferredHref: "/panel/crm/genel-bakis" },
   { key: "operations", label: "Operasyon", icon: "O", codes: ["operations", "tasks", "calendar", "workflows"], preferredHref: "/panel/operations" },
-  { key: "finance", label: "Finans", icon: "F", codes: ["finance", "accounts", "banking", "billing", "payments", "e_invoice"], preferredHref: "/panel/finance" },
+  { key: "finance", label: "Finans", icon: "F", codes: ["finance", "accounts", "banking", "billing", "payments", "e_invoice"], preferredHref: "/panel/finance/genel-bakis" },
   { key: "hr", label: "İnsan Kaynakları", icon: "İK", codes: ["hr"] },
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
-  { key: "reports", label: "Raporlar", icon: "R", codes: ["reporting", "reports", "analytics"], preferredHref: "/panel/reporting" },
+  // Raporlar ayrı menü değil: Finans → Raporlar sekmesi (/panel/finance/raporlar).
 ];
 
 export const normalizeModuleCode = (value: string) => value.replaceAll("-", "_").toLowerCase();

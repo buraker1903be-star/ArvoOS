@@ -9,6 +9,8 @@ import {
 } from "../accounts/actions";
 import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow } from "./finance-workspaces";
 import { FinEmpty, FinIcon, FinWidget } from "./finance-ui";
+import { FinanceTabs } from "./finance-navigation";
+import { buildAccountBalances } from "./account-balances";
 import "./finance.css";
 
 const money = (n: number) =>
@@ -65,7 +67,7 @@ export default async function FinancePage({
   searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string }>;
 }) {
   const params = await searchParams;
-  const { supabase, membership, modules, organization } = await getPanelContext();
+  const { supabase, membership, modules, organization, hiddenModuleKeys } = await getPanelContext();
   if (
     !modules.some((m) => m.code === "finance") ||
     !modules.some((m) => m.code === "accounts")
@@ -97,58 +99,9 @@ export default async function FinancePage({
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if(installmentError) throw new Error("Ödeme taksitleri okunamadı: "+installmentError.message);
   if(costItemError&&["owner","admin"].includes(membership.role))throw new Error("İş maliyetleri okunamadı: "+costItemError.message);
-  const contractTotals = new Map<string, number>();
   const contracts = (contractData ?? []) as unknown as Contract[];
-  for (const contract of contracts)
-    if (contract.party_id)
-      contractTotals.set(
-        contract.party_id,
-        (contractTotals.get(contract.party_id) ?? 0) + Number(contract.amount),
-      );
-
-  const accounts = ((data ?? []) as Party[]).map((party) => {
-    const entries = [...(party.account_entries ?? [])].sort((a, b) =>
-      b.transaction_date.localeCompare(a.transaction_date),
-    );
-    const ledgerDebt = entries
-      .filter((e) => e.entry_type === "debit" && e.source_type !== "adjustment")
-      .reduce((s, e) => s + Number(e.amount), 0);
-    const additionalServices = entries
-      .filter(
-        (e) =>
-          e.entry_type === "debit" &&
-          e.source_type === "manual" &&
-          e.description.startsWith("Ek hizmet ·"),
-      )
-      .reduce((s, e) => s + Number(e.amount), 0);
-    const debt = contractTotals.has(party.id)
-      ? (contractTotals.get(party.id) ?? 0) + additionalServices
-      : ledgerDebt;
-    const recordedCollections = entries
-      .filter((e) => e.entry_type === "credit")
-      .reduce((s, e) => s + Number(e.amount), 0);
-    const refunds = entries
-      .filter((e) => e.entry_type === "debit" && e.source_type === "adjustment")
-      .reduce((s, e) => s + Number(e.amount), 0);
-    const collections = Math.min(recordedCollections, debt + refunds);
-    return {
-      ...party,
-      entries,
-      debt,
-      collections,
-      refunds,
-      balance: Math.max(0, debt + refunds - collections),
-    };
-  });
-  const totals = accounts.reduce(
-    (r, a) => ({
-      debt: r.debt + a.debt,
-      collections: r.collections + a.collections,
-      refunds: r.refunds + a.refunds,
-      balance: r.balance + a.balance,
-    }),
-    { debt: 0, collections: 0, refunds: 0, balance: 0 },
-  );
+  // Cari bakiyeleri: Finans genel bakışla aynı kural (account-balances.ts)
+  const { accounts, totals } = buildAccountBalances((data ?? []) as Party[], contracts);
   const query = (params.arama ?? "").trim().toLocaleLowerCase("tr-TR");
   const filtered = accounts.filter(
     (a) =>
@@ -191,11 +144,7 @@ export default async function FinancePage({
           <p>{copy.text}</p>
         </div>
       </header>
-      <nav className="module-tabs fin-tabs" aria-label="Finans görünümleri">
-        <Link className={mode === "cari" ? "active" : ""} aria-current={mode === "cari" ? "page" : undefined} href="/panel/finance">Cari Hesaplar</Link>
-        <Link className={mode === "paytr" ? "active" : ""} aria-current={mode === "paytr" ? "page" : undefined} href="/panel/finance?gorunum=paytr">PAYTR Tahsilatları</Link>
-        {canManageCosts ? <Link className={mode === "maliyet" ? "active" : ""} aria-current={mode === "maliyet" ? "page" : undefined} href="/panel/finance?gorunum=maliyet">İş Maliyetleri</Link> : null}
-      </nav>
+      <FinanceTabs active={mode} context={{ membership, modules, hiddenModuleKeys }} />
 
       {mode === "cari" ? (
         <>
