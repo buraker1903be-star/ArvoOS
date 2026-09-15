@@ -8,7 +8,8 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   crm: { code: "crm", name: "Müşteri ve Satış", description: "Talep, teklif ve satış süreçleri", icon: "MS" },
   operations: { code: "operations", name: "Operasyon ve İş Akışları", description: "Görevler, terminler ve ilerleme", icon: "OP" },
   finance: { code: "finance", name: "Finans", description: "Gelir, gider ve tahsilat görünümü", icon: "FN" },
-  reporting: { code: "reporting", name: "Raporlama", description: "Yetkiye bağlı kurum raporları", icon: "RP" },
+  // Ayrı menü değil: Finans → Raporlar sekmesini açar (yalnızca sahip/yönetici)
+  reporting: { code: "reporting", name: "Raporlama", description: "Finans → Raporlar: satış ve kârlılık raporları", icon: "RP" },
   hr: { code: "hr", name: "Ekip ve İnsan Kaynakları", description: "Ekip ve organizasyon yönetimi", icon: "İK" },
   documents: { code: "documents", name: "Belgeler", description: "Kurumsal belge merkezi", icon: "BL" },
   support: { code: "support", name: "Destek Merkezi", description: "Destek talepleri ve çözüm takibi", icon: "DS" },
