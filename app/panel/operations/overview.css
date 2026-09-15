@@ -88,9 +88,9 @@ html[data-theme="dark"] .opsov [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .opsov-amount .opsov-amount-in{color:var(--success)}
 
 /* 5 widget, 3 sütunda 3+2 dizilince ikinci satırın sonu boş kalıyordu:
-   son widget kalan iki sütunu kaplar (CRM ve Finans genel bakış). */
+   son widget kalan iki sütunu kaplar (operasyon, CRM ve Finans genel bakış). */
 @media(min-width:761px) and (max-width:1280px){
-  .crmov .opsov-widget:last-child:nth-child(3n+2){grid-column:span 2}
+  .opsov .opsov-widget:last-child:nth-child(3n+2){grid-column:span 2}
 }
 
 .opsov-empty{display:flex;align-items:center;gap:10px;flex:1;margin:0;padding:18px 14px;border:1px dashed var(--line);border-radius:14px;background:var(--surface-2);color:var(--muted);font-size:13.5px;line-height:1.5}
