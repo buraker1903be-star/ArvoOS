@@ -246,9 +246,12 @@ export async function lookupTracking(
   }
 
   // Müşteri, onayladığı teklife ve sözleşmeye buradan da ulaşabilmeli.
-  const { data: linkRows } = await supabase.rpc("arvo_tracking_document_links", {
+  // Okunamazsa "Belgeleriniz" bölümü sessizce kaybolmasın; komşu çağrılar
+  // (iş planı, belgeler) hatayı zaten günlüğe yazıyor.
+  const { data: linkRows, error: linkError } = await supabase.rpc("arvo_tracking_document_links", {
     p_tracking_code: code,
   });
+  if (linkError) console.error("[takip] belge bağlantıları okunamadı", { code: linkError.code, message: linkError.message });
   const documentLinks = (Array.isArray(linkRows) ? linkRows[0] : linkRows) ?? null;
 
   // İş planı ve ödeme takvimi; okunamazsa bölüm gösterilmez.

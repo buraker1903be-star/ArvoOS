@@ -212,11 +212,16 @@ async function cancelInvitation__impl(formData: FormData) {
   const { supabase, membership } = await teamContext();
   const invitationId = String(formData.get("invitation_id") ?? "").trim();
   if (!invitationId) throw new Error("Davet seçilmedi.");
-  const { error } = await supabase.from("organization_invitations")
+  // RLS elerse hata değil 0 satır döner; doğrulanmazsa davet listede
+  // "gönderildi" kalır ama kullanıcı iptal ettiğini sanır. Aynı dosyadaki
+  // updateMember bu doğrulamayı zaten yapıyor.
+  const { data: cancelled, error } = await supabase.from("organization_invitations")
     .update({ status: "expired", updated_at: new Date().toISOString() })
     .eq("id", invitationId)
-    .eq("organization_id", membership.organization_id);
+    .eq("organization_id", membership.organization_id)
+    .select("id");
   if (error) throw new Error("Davet iptal edilemedi: " + error.message);
+  if (!cancelled?.length) throw new Error("Davet iptal edilemedi: kayıt bulunamadı veya yetkiniz yok.");
   revalidatePath("/panel/hr");
 }
 

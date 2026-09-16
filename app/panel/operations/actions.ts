@@ -184,13 +184,24 @@ async function setWorkflowDueDate__impl(formData: FormData) {
 // revalidate edilmez (liste ve genel bakış her açılışta taze okunur).
 export async function markCustomerMessagesRead(workflowId: string) {
   const { supabase, membership } = await operationContext();
-  await supabase
+  const id = String(workflowId).slice(0, 80);
+  // workflowId istemciden geliyor ve customer_file_messages'ın RLS'i işe değil
+  // kuruma göre yazıyor: doğrulama olmadan herhangi bir üye, sorumlusu olmadığı
+  // bir işin okunmamış belirtecini söndürebiliyordu.
+  const { data: workflow, error: workflowError } = await supabase
+    .from("operation_workflows").select("id")
+    .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
+  if (workflowError) throw new Error("İş akışı okunamadı: " + workflowError.message);
+  if (!workflow) return;
+
+  const { error } = await supabase
     .from("customer_file_messages")
     .update({ read_at: new Date().toISOString() })
-    .eq("workflow_id", String(workflowId).slice(0, 80))
+    .eq("workflow_id", id)
     .eq("organization_id", membership.organization_id)
     .eq("sender_type", "customer")
     .is("read_at", null);
+  if (error) throw new Error("Mesajlar okundu olarak işaretlenemedi: " + error.message);
 }
 
 export async function addWorkflowComment(formData: FormData) {
@@ -225,7 +236,10 @@ async function replyCustomerFileMessage__impl(formData: FormData) {
     body,
   });
   if (error) throw new Error("Müşteriye yanıt gönderilemedi: " + error.message);
-  await supabase.from("customer_file_messages").update({ read_at: new Date().toISOString() }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id).eq("sender_type", "customer").is("read_at", null);
+  const { error: readError } = await supabase.from("customer_file_messages").update({ read_at: new Date().toISOString() }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id).eq("sender_type", "customer").is("read_at", null);
+  // Yanıt gitti; okundu işareti konamadıysa akışı kesmeye değmez ama sessiz
+  // kalmamalı, yoksa belirteç neden sönmüyor anlaşılmaz.
+  if (readError) console.error("[operations] müşteri mesajları okundu işaretlenemedi", readError);
   // Genel bakıştaki "Müşteriden gelen mesajlar" kartı da tazelensin
   revalidateOperations();
 }

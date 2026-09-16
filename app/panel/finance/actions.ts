@@ -127,21 +127,21 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
     if (contractNo) {
       const { data: contract } = await supabase.from("crm_contracts").select("id,party_id,invoice_id").eq("organization_id", membership.organization_id).ilike("contract_no", contractNo).maybeSingle();
       if (!partyId && contract?.party_id) partyId = contract.party_id;
+      // Fatura yalnızca tahsil edilen tutar faturanın tamamını karşılıyorsa
+      // kapanır. Kısmi tahsilat faturayı "ödendi" yapmaz.
       if (contract?.invoice_id) {
-        await supabase.from("billing_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", contract.invoice_id).eq("organization_id", membership.organization_id);
-      }
-      if (contract?.id) {
-        const { data: plan } = await supabase.from("payment_plans").select("id").eq("organization_id", membership.organization_id).eq("contract_id", contract.id).maybeSingle();
-        if (plan?.id) {
-          const { data: pendingInstallments } = await supabase.from("payment_installments").select("id,amount").eq("organization_id", membership.organization_id).eq("payment_plan_id", plan.id).eq("status", "pending").order("installment_no", { ascending: true });
-          let remaining = Number(transaction.amount);
-          for (const installment of pendingInstallments ?? []) {
-            if (remaining <= 0) break;
-            await supabase.from("payment_installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", installment.id).eq("organization_id", membership.organization_id);
-            remaining -= Number(installment.amount);
-          }
+        const { data: invoice, error: invoiceReadError } = await supabase.from("billing_invoices").select("id,total").eq("id", contract.invoice_id).eq("organization_id", membership.organization_id).maybeSingle();
+        if (invoiceReadError) throw new Error("Sözleşmenin faturası okunamadı: " + invoiceReadError.message);
+        if (invoice && Number(transaction.amount) >= Number(invoice.total)) {
+          const { error: invoiceError } = await supabase.from("billing_invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", invoice.id).eq("organization_id", membership.organization_id);
+          if (invoiceError) throw new Error("Fatura ödendi olarak işaretlenemedi: " + invoiceError.message);
         }
       }
+      // Taksitler burada KAPATILMAZ. Aşağıdaki cari alacak kaydı
+      // private.arvo_reconcile_party_installments'ı tetikliyor; o fonksiyon
+      // parayı biriktirip taksidi ancak tutarı karşılandığında kapatıyor.
+      // Buradaki döngü tutarı düşmeden önce kapattığı için 100 TL'lik bir
+      // tahsilat 50.000 TL'lik taksidi kapatıyordu.
     }
 
     if (partyId) {
@@ -338,11 +338,11 @@ export async function updateInvoiceStatus(formData: FormData) {
         if (entryError) throw new Error("Fatura güncellendi ancak cari tahsilat işlenemedi: " + entryError.message);
       }
     }
-    const { data: plan } = await supabase.from("payment_plans").select("id").eq("organization_id", membership.organization_id).eq("contract_id", contract.id).maybeSingle();
-    if (plan?.id) {
-      await supabase.from("payment_installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("organization_id", membership.organization_id).eq("payment_plan_id", plan.id).eq("status", "pending");
-      await supabase.from("payment_plans").update({ status: "completed" }).eq("organization_id", membership.organization_id).eq("id", plan.id);
-    }
+    // Taksitler ve planın tamamlanması burada elle yapılmaz: yukarıdaki
+    // cari alacak kaydı private.arvo_reconcile_party_installments'ı
+    // tetikliyor ve taksitleri tahsil edilen tutar kadar kapatıyor.
+    // Buradaki koşulsuz güncelleme, cari hareketi 0 TL olsa bile (satır
+    // 334'teki min() sıfır verebiliyor) planın bütün taksitlerini kapatıyordu.
   }
   if (status !== "paid" && invoice.status === "paid") await supabase.from("account_entries").delete().eq("organization_id", membership.organization_id).eq("reference_no", referenceNo);
   revalidatePath("/panel/finance");

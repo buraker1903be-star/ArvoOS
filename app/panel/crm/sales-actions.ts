@@ -538,6 +538,13 @@ async function issueProposalLink__impl(formData: FormData) {
 
 async function updateContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
+  // Sözleşme tutarını, kapsamını, vadesini ve ödeme planını yazan işlem.
+  // Aynı dosyadaki sözleşme oluşturma, durum değiştirme ve silme yönetici
+  // yetkisi istiyordu; düzenleme istemiyordu. RLS de engellemiyor (atanmış
+  // temsilciye izin veriyor), yani sözleşme oluşturamayan bir satış personeli
+  // kendisine atanmış sözleşmenin tutarını imza öncesi değiştirebiliyordu.
+  if (!["owner", "admin", "manager"].includes(membership.role))
+    throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
   if (!Number.isFinite(contractAmount) || contractAmount < 0)

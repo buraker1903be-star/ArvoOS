@@ -19,6 +19,14 @@ async function uploadEmployeeDocument__impl(formData: FormData) {
   const { supabase, membership, userId } = await hrDocContext();
   const employeeId = String(formData.get("employee_id") ?? "").trim();
   if (!employeeId) throw new Error("Personel seçilmedi.");
+  // employee_id formdan geliyor; kurumla eşleştiği doğrulanmazsa satır kendi
+  // organization_id'mizle ama yabancı bir personel kimliğiyle yazılıyor ve
+  // hiçbir listede görünmediği için silinemiyor. deleteEmployeeDocument
+  // doğrulamayı zaten yapıyor.
+  const { data: employee, error: employeeError } = await supabase.from("hr_employees")
+    .select("id").eq("id", employeeId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (employeeError) throw new Error("Personel doğrulanamadı: " + employeeError.message);
+  if (!employee) throw new Error("Personel bulunamadı.");
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error("Bir dosya seçin.");
@@ -60,10 +68,16 @@ async function deleteEmployeeDocument__impl(formData: FormData) {
     .select("storage_path").eq("id", documentId).eq("organization_id", membership.organization_id).maybeSingle();
   if (fetchError || !doc) throw new Error("Dosya bulunamadı.");
 
-  const { error } = await supabase.from("hr_employee_documents").delete().eq("id", documentId).eq("organization_id", membership.organization_id);
+  // RLS elerse hata değil 0 satır döner; doğrulamadan depodaki dosyayı silmek
+  // kaydı duran ama dosyası yok edilmiş bir satır bırakıyordu (liste dosyayı
+  // gösterir, indirme 500 verir).
+  const { data: removed, error } = await supabase.from("hr_employee_documents")
+    .delete().eq("id", documentId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Dosya silinemedi: " + error.message);
+  if (!removed?.length) throw new Error("Dosya silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
 
-  await supabase.storage.from("hr-documents").remove([doc.storage_path]);
+  const { error: storageError } = await supabase.storage.from("hr-documents").remove([doc.storage_path]);
+  if (storageError) console.error("[hr] belge kaydı silindi ama depodaki dosya kaldırılamadı", { path: doc.storage_path, message: storageError.message });
   revalidatePath("/panel/hr");
 }
 

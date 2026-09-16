@@ -116,7 +116,12 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
       // geçmiş tahsilatları etkilemez.
       const rate = rateAt(rateHistory, employee.id, piece.date, Number(employee.commission_rate));
       if (rate <= 0) return [];
-      const amount = Math.round(piece.amount * rate / 100);
+      // İade parçalarında piece.amount negatif. JS'te Math.round yarımları
+      // +∞ yönüne yuvarladığı için Math.round(5000.5)=5001 ama
+      // Math.round(-5000.5)=-5000: ödeme ve tam iadesi birbirini götürmüyor,
+      // tamamen iade edilmiş tahsilattan prim tahakkuk ediyordu. Büyüklüğü
+      // yuvarlayıp işareti geri koyuyoruz.
+      const amount = Math.sign(piece.amount) * Math.round(Math.abs(piece.amount) * rate / 100);
       return [{ id: `sale-${piece.eventId}-${piece.contractId}-${piece.amount < 0 ? "iade" : "odeme"}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no, base: piece.amount, rate, amount, date: piece.date, status: "accrued" }];
     });
   });

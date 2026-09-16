@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { getPanelContext } from "@/lib/panel-context";
+import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase, membership } = await getPanelContext();
+  const { supabase, membership, hiddenModuleKeys } = await getPanelContext();
   if (!["owner", "admin"].includes(membership.role)) {
     return NextResponse.json({ error: "Bu dosyaya erişim yetkiniz yok." }, { status: 403 });
+  }
+  // Route handler'lar app/panel/hr/layout.tsx'i çalıştırmaz; Yetkilendirme'den
+  // İK'sı kapatılmış bir admin, sayfalara giremediği hâlde özlük dosyasını
+  // bu adresten indirebiliyordu. Kontrol sunucu işlemlerindekiyle aynı.
+  try {
+    assertModuleKeyAccess(membership.role, "hr", hiddenModuleKeys);
+  } catch {
+    return NextResponse.json({ error: "Bu modüle erişim yetkiniz yok." }, { status: 403 });
   }
 
   const { data: doc, error } = await supabase.from("hr_employee_documents")

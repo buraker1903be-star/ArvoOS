@@ -38,7 +38,11 @@ export function describeStatus(workflowStatus: string | null, contractStatus: st
 
 export const clampPercent = (value: number) => Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
 
-const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 });
+// Kuruş gösterilir: maximumFractionDigits 0 tutarı YUVARLIYORDU, yani aynı
+// ekranda ödeme planı (takip-form.tsx'teki planMoney) kuruşlu, "Kalan bakiye"
+// yuvarlanmış çıkıyordu — müşteri tek sayfada aynı para için iki farklı rakam
+// görüyordu ve kalan bakiye 0,50 TL'ye kadar fazla yazılabiliyordu.
+const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
 const dateTimeFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const dayFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
