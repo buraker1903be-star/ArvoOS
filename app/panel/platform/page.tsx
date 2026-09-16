@@ -156,6 +156,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     <nav className="stg-nav" aria-label="Platform bölümleri">
       <Link href={`/panel/platform/licenses?organization=${targetId}`}><StgIcon name="box" size={16} />Lisans ve kota</Link>
       <Link href="/panel/platform/billing"><StgIcon name="chart" size={16} />Abonelikler</Link>
+      <Link href="/panel/platform/subscribers"><StgIcon name="users" size={16} />Bireysel aboneler</Link>
       <Link href="/panel/platform/payments"><StgIcon name="wallet" size={16} />Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}</Link>
     </nav>
 
