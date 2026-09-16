@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
+import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
 import { reviewBankTransferPayment } from "./actions";
 import "../../settings/settings.css";
@@ -16,6 +17,8 @@ const planLabels: Record<string, string> = { starter: "Başlangıç", profession
 export default async function PaymentApprovalsPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+
+  const incidents = await getPaymentIncidents();
 
   const { data, error } = await supabase
     .from("organization_payment_requests")
@@ -48,8 +51,36 @@ export default async function PaymentApprovalsPage() {
       <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="wallet" label="İnceleme bekleyen" value={pendingCount} note={pendingCount ? formatTry(pendingTotal) : "Bekleyen dekont yok"} />
       <StgWidget tone="success" icon="check" label="Onaylanan toplam" value={formatTry(approvedTotal)} note="Son 100 bildirim" />
       <StgWidget tone="info" icon="doc" label="Bildirim" value={payments.length} note="Toplam kayıt" />
-      <StgWidget tone="gold" icon="lock" label="Dekont erişimi" value="15 dk" note="Süreli, özel bağlantı" />
+      <StgWidget tone={incidents.length ? "danger" : "neutral"} icon="shield" label="Karşılıksız bildirim" value={incidents.length} note={incidents.length ? "Müdahale bekliyor" : "Sorunlu bildirim yok"} />
     </section>
+
+    {incidents.length ? (
+      <StgSection
+        id="karsiliksiz" wide icon="shield" tone="danger"
+        kicker="MÜDAHALE BEKLİYOR" title={`${incidents.length} ödeme bildirimi işlenemedi`}
+        description="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın."
+      >
+        <div className="plt-table-scroll">
+          <table className="plt-table">
+            <thead><tr><th>Kurum</th><th>Sebep</th><th>Tutar</th><th>PayTR no</th><th>Tarih</th></tr></thead>
+            <tbody>
+              {incidents.map((incident) => (
+                <tr key={incident.id}>
+                  <td>{incident.organizationName ?? "—"}</td>
+                  <td>
+                    <span className="status-pill" data-tone="danger">{incidentLabels[incident.result] ?? incident.result}</span>
+                    <small className="plt-substatus">{incidentNotes[incident.result] ?? ""}</small>
+                  </td>
+                  <td>{incident.paymentAmount !== null ? formatTry(incident.paymentAmount) : "—"}</td>
+                  <td className="plt-mono">{incident.merchantOid}</td>
+                  <td>{dateTime(incident.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </StgSection>
+    ) : null}
 
     {payments.length ? (
       <div className="stg-grid">

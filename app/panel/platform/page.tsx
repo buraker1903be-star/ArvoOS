@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
@@ -93,6 +94,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const onboardingDone = Boolean((onboardingResult.data as { completed_at?: string | null } | null)?.completed_at);
   const signatureUrl = legalResult.error ? null : (legalResult.data as { signature_stamp_url?: string | null } | null)?.signature_stamp_url ?? null;
   const opportunityCount = opportunityResult.count ?? 0;
+  // ArvoLab ayrı veritabanında; köprü koparsa tek iz orada kalır (lib/arvolab.ts).
+  const bridge = await getArvolabBridgeHealth();
 
   // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
   /*
@@ -145,6 +148,22 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         </PanelDrawer>
       </div>
     </div>
+
+    {bridge?.broken ? (
+      <div className="plt-banner" data-tone="danger" role="alert">
+        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
+        <div>
+          <b>ArvoLab köprüsü yanıt vermiyor{bridge.permanent ? " · yapılandırma hatası" : ""}</b>
+          <p>
+            {bridge.permanent
+              ? "Anahtar eksik ya da iki tarafta farklı. ArvoLab abonelik durumunu soramıyor ve kimseyi engellemediği için bireysel kullanıcılar şu an ücretsiz kullanıyor. Vercel'de PRODUCT_BRIDGE_SECRET'in iki projede de aynı olduğunu kontrol edin."
+              : "ArvoLab, ArvoOS'a ulaşamıyor. Kullanıcılar engellenmiyor; sorun sürerse bireysel abonelikler denetlenemez."}
+            {bridge.lastErrorAt ? ` Son hata: ${dateTime(bridge.lastErrorAt)}.` : ""}
+            {bridge.lastOkAt ? ` Son başarılı bağlantı: ${dateTime(bridge.lastOkAt)}.` : " Hiç başarılı bağlantı kaydı yok."}
+          </p>
+        </div>
+      </div>
+    ) : null}
 
     {params.provisioned === "1" ? (
       <div className="plt-banner" role="status">

@@ -52,6 +52,46 @@ export async function pushArvolabLicense(license: ArvolabLicense): Promise<"sync
   return "synced";
 }
 
+export interface ArvolabBridgeHealth {
+  /** Köprü çalışmıyor: son deneme hata verdi ve sonrasında başarılı çağrı olmadı. */
+  broken: boolean;
+  /** Yapılandırma hatası mı (anahtar yanlış/eksik) yoksa geçici arıza mı. */
+  permanent: boolean;
+  lastOkAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+}
+
+/**
+ * ArvoLab köprüsünün son durumu.
+ *
+ * ArvoLab, ArvoOS'a ulaşamadığında kullanıcıyı engellemiyor — geçici bir arıza
+ * yüzünden ödemiş müşteriyi kapıda bırakmak daha pahalı. Ama yanlış yazılmış
+ * bir anahtar köprüyü kalıcı kırar ve herkes bedava kullanır. ArvoLab her
+ * çağrının sonucunu kendi veritabanına yazıyor; biz oradan okuyup kurucuya
+ * gösteriyoruz. Köprü kopukken de çalışır, çünkü okuma doğrudan veritabanından.
+ */
+export async function getArvolabBridgeHealth(): Promise<ArvolabBridgeHealth | null> {
+  const client = arvolabClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("bridge_health")
+    .select("last_ok_at,last_error_at,last_error,last_error_kind")
+    .eq("id", "arvoos")
+    .maybeSingle();
+  if (error || !data) return null;
+
+  const errorAt = data.last_error_at ? new Date(data.last_error_at).getTime() : 0;
+  const okAt = data.last_ok_at ? new Date(data.last_ok_at).getTime() : 0;
+  return {
+    broken: errorAt > okAt,
+    permanent: data.last_error_kind === "permanent",
+    lastOkAt: data.last_ok_at ?? null,
+    lastErrorAt: data.last_error_at ?? null,
+    lastError: data.last_error ?? null,
+  };
+}
+
 /**
  * Kurumun güncel ArvoLab lisansını okuyup yansıtır. Lisans satırı yoksa
  * "inactive" yazılır: ArvoLab tarafında erişim kapalı kalır.

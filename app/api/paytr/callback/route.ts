@@ -70,7 +70,15 @@ export async function POST(request: Request) {
   if (fields.status !== "success") return OK(); // Link API yalnızca başarılı ödeme bildirir
 
   const totalAmount = kurus(fields.total_amount);
-  const paymentAmount = kurus(field("payment_amount")) ?? totalAmount;
+  /*
+    İmza yalnızca total_amount'ı kapsıyor (callback_id + merchant_oid + salt +
+    status + total_amount); payment_amount imzasız geliyor. Kayda esas tutarı
+    imzalanmış değerle sınırlıyoruz: taksit farkı yüzünden payment_amount
+    total_amount'tan küçük olabilir, büyük olması beklenmez. Böylece imzasız
+    bir alan cari alacağını ya da abonelik kontrolünü şişiremez.
+  */
+  const reported = kurus(field("payment_amount")) ?? totalAmount;
+  const paymentAmount = totalAmount === null ? reported : Math.min(reported ?? totalAmount, totalAmount);
   const { data: result, error } = await admin.rpc("arvo_record_paytr_payment", {
     p_payment_link_id: link.id,
     p_merchant_oid: fields.merchant_oid,
