@@ -3,7 +3,7 @@
 // içe aktarılır. Kilit ve kalan bakiye veritabanında hesaplanır
 // (list_customer_portal_files); depolama yolu hiç dönmez.
 
-import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CustomerPortalFile = {
   id: string;
@@ -19,10 +19,15 @@ export type CustomerPortalFile = {
   payment_url: string | null;
 };
 
-export async function fetchCustomerPortalFiles(code: string): Promise<CustomerPortalFile[]> {
+// İstemci dışarıdan verilir: list_customer_portal_files artık yalnızca
+// service_role ile çağrılabiliyor ve çağrı, sınır kapısından geçen yerden
+// gelmeli (bkz. lib/tracking-access.ts).
+export async function fetchCustomerPortalFiles(
+  supabase: SupabaseClient,
+  code: string,
+): Promise<CustomerPortalFile[]> {
   const normalizedCode = String(code ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (normalizedCode.length < 6) return [];
-  const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_customer_portal_files", { p_tracking_code: normalizedCode });
   if (error) throw error;
   return ((data ?? []) as CustomerPortalFile[]).map((file) => ({
