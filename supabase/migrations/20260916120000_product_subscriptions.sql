@@ -289,49 +289,17 @@ $function$;
 revoke all on function public.arvo_record_paytr_payment(uuid, text, bigint, bigint, text, boolean, jsonb) from public, anon, authenticated;
 grant execute on function public.arvo_record_paytr_payment(uuid, text, bigint, bigint, text, boolean, jsonb) to service_role;
 
--- 6) ARC'ın kiracı çözümlemesi lisans durumunu da döndürsün
+-- 6) ARC'ın kiracı çözümlemesi
 --
--- commerce_enabled'a DOKUNMUYORUZ: bugün canlı mağazası olan kurumların
--- ürün lisansı henüz açılmadığı için lisansı buraya bağlamak mağazaları
--- anında kapatırdı. Yeni alanlar bilgi olarak dönüyor; yaptırım, ücretler
--- girildikten sonra ARC tarafında açılacak.
-drop function if exists public.arc_resolve_commerce_tenant();
-create function public.arc_resolve_commerce_tenant()
-returns table(
-  organization_id uuid,
-  membership_role text,
-  organization_name text,
-  organization_slug text,
-  plan_code text,
-  organization_status text,
-  commerce_enabled boolean,
-  arc_license_status text,
-  arc_period_end timestamptz
-)
-language sql
-stable
-security definer
-set search_path to ''
-as $function$
-  select organization.id,
-         membership.role::text,
-         organization.name,
-         organization.slug,
-         organization.plan_code::text,
-         organization.status::text,
-         coalesce(module.is_enabled, false),
-         coalesce(arc.status, 'inactive'),
-         arc.current_period_end
-  from public.organization_memberships membership
-  join public.organizations organization on organization.id = membership.organization_id
-  left join public.organization_modules module
-    on module.organization_id = organization.id and module.module_code = 'commerce'
-  left join public.organization_product_licenses arc
-    on arc.organization_id = organization.id and arc.product = 'arc'
-  where membership.user_id = auth.uid() and membership.is_active = true
-  order by (organization.slug = 'arvoculture') desc, membership.joined_at
-  limit 1
-$function$;
-
-revoke all on function public.arc_resolve_commerce_tenant() from public, anon;
-grant execute on function public.arc_resolve_commerce_tenant() to authenticated;
+-- BU MIGRATION ARTIK arc_resolve_commerce_tenant'I TANIMLAMIYOR.
+--
+-- Fonksiyon burada da, ArvoARC deposunda da drop+create ediliyordu ve buradaki
+-- sürümde ARC'ın ihtiyaç duyduğu arc_stage sütunu yoktu. Migration'lar iki ayrı
+-- klasörden elle uygulandığı için bu dosya sonradan bir kez daha çalıştırılırsa
+-- fonksiyonu eski haline döndürüyor ve Arc'ın kademeli kapanma yaptırımı
+-- SESSİZCE devre dışı kalıyordu — kod eksik sütunu görünce kimseyi engellemiyor.
+--
+-- Fonksiyonun tek sahibi ArvoARC deposu:
+--   ArvoARC/supabase/migrations/20260916200500_tenant_rpc_canonical.sql
+-- Orası hem lisans alanlarını hem kademeyi döndüren güncel sürümü tutuyor ve
+-- tekrar çalıştırılması zararsız.
