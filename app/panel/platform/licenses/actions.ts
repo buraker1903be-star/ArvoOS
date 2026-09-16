@@ -20,6 +20,15 @@ function readNonNegativeInteger(formData: FormData, key: string) {
   return value;
 }
 
+// Kuruma özel aylık ücret (TL → kuruş). Boşsa kartla ödeme kapalı kalır.
+function readOptionalMonthlyFee(formData: FormData) {
+  const raw = String(formData.get("monthly_fee") ?? "").trim();
+  if (!raw) return null;
+  const value = Math.round(Number(raw) * 100);
+  if (!Number.isSafeInteger(value) || value <= 0) throw new Error("Aylık ücret pozitif bir tutar olmalı.");
+  return value;
+}
+
 async function updateOrganizationLicense__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
@@ -33,6 +42,7 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   const trialEndsAt = String(formData.get("trial_ends_at") ?? "").trim();
   const currentPeriodEnd = String(formData.get("current_period_end") ?? "").trim();
   const suspensionReason = String(formData.get("suspension_reason") ?? "").trim();
+  const monthlyFee = readOptionalMonthlyFee(formData);
 
   if (!organizationId) throw new Error("Kurum seçilmedi.");
   if (!planCodes.has(planCode)) throw new Error("Geçerli bir paket seçin.");
@@ -49,6 +59,7 @@ async function updateOrganizationLicense__impl(formData: FormData) {
     user_limit: userLimit,
     storage_limit_mb: storageLimitMb,
     ai_credit_limit: aiCreditLimit,
+    monthly_fee: monthlyFee,
     suspended_at: licenseStatus === "suspended" ? now : null,
     suspension_reason: licenseStatus === "suspended" ? suspensionReason || "Kurucu tarafından askıya alındı" : null,
     updated_by: userData.user?.id ?? null,

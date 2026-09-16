@@ -18,13 +18,16 @@ export default async function PaymentApprovalsPage() {
 
   const { data, error } = await supabase
     .from("organization_payment_requests")
-    .select("id,organization_id,plan_code,amount,currency,status,receipt_path,reference_no,customer_note,review_note,created_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)")
+    .select("id,organization_id,plan_code,amount,currency,status,payment_method,receipt_path,reference_no,customer_note,review_note,created_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)")
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error(`Ödeme bildirimleri okunamadı: ${error.message}`);
 
   const payments = await Promise.all((data ?? []).map(async (payment) => {
-    const { data: signed } = await supabase.storage.from("payment-receipts").createSignedUrl(payment.receipt_path, 900);
+    // Kartla (PayTR) ödemede dekont yoktur
+    const { data: signed } = payment.receipt_path
+      ? await supabase.storage.from("payment-receipts").createSignedUrl(payment.receipt_path, 900)
+      : { data: null };
     return { ...payment, receiptUrl: signed?.signedUrl ?? null };
   }));
   // Bekleyenler en üstte
@@ -66,7 +69,9 @@ export default async function PaymentApprovalsPage() {
                 <StgValueRow label="Bildirim" value={dateTime(payment.created_at)} />
               </dl>
               {payment.customer_note ? <p className="plt-quote">“{payment.customer_note}”</p> : null}
-              {payment.receiptUrl
+              {payment.payment_method === "paytr"
+                ? <p className="stg-muted"><StgIcon name="check" size={16} />PayTR ile kartla ödendi; otomatik onaylandı.</p>
+                : payment.receiptUrl
                 ? <a className="panel-secondary plt-receipt" href={payment.receiptUrl} target="_blank" rel="noreferrer"><StgIcon name="doc" size={16} />Dekontu görüntüle</a>
                 : <p className="stg-muted"><StgIcon name="lock" size={16} />Dekont bağlantısı oluşturulamadı.</p>}
               {payment.status === "pending" ? (

@@ -110,6 +110,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             <label>Kullanıcı limiti<input name="user_limit" type="number" min={1} defaultValue={license.user_limit} required /></label>
             <label>Depolama limiti (MB)<input name="storage_limit_mb" type="number" min={1} defaultValue={license.storage_limit_mb} required /></label>
             <label>AI kredi limiti<input name="ai_credit_limit" type="number" min={0} defaultValue={license.ai_credit_limit} required /></label>
+            <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={(license as LicenseRow & { monthly_fee?: number | null }).monthly_fee ? Number((license as LicenseRow & { monthly_fee?: number | null }).monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
             <label>Askıya alma nedeni<input name="suspension_reason" defaultValue={license.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
             <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Lisansı kaydet</button></div>
           </form>

@@ -17,6 +17,14 @@ export type PaytrStatus = {
   updatedAt: string | null;
 };
 
+/** ArvoOS'un kendi kurumu: abonelik ödemeleri onun PayTR mağazasıyla alınır. */
+export async function getPlatformOrganizationId(): Promise<string | null> {
+  const admin = createAdminClient();
+  if (!admin) return null;
+  const { data } = await admin.from("organizations").select("id").eq("slug", "arvo-os").maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function getPaytrStatus(organizationId: string): Promise<PaytrStatus> {
   const admin = createAdminClient();
   const available = Boolean(admin) && paymentCredentialsConfigured();

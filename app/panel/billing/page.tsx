@@ -1,5 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { submitBankTransferPayment } from "./actions";
+import { payLicenseWithCard } from "./paytr-actions";
 
 function formatTry(value: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
@@ -16,10 +18,15 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const [{ data: bankAccounts }, { data: payments }, { data: license }] = await Promise.all([
     supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
     supabase.from("organization_payment_requests").select("id,plan_code,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
-    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee").eq("organization_id", organization.id).maybeSingle(),
   ]);
 
   const canSubmit = membership && ["owner", "admin"].includes(membership.role);
+  // Kartla ödeme: kuruma özel aylık ücret + ArvoOS'un PayTR mağazası bağlı olmalı
+  const monthlyFee = Number(license?.monthly_fee ?? 0);
+  const platformId = canSubmit ? await getPlatformOrganizationId() : null;
+  const platformPaytr = platformId && platformId !== organization.id ? await getPaytrStatus(platformId) : null;
+  const cardReady = Boolean(monthlyFee > 0 && platformPaytr?.available && platformPaytr.connected && platformPaytr.enabled);
 
   return <>
     <div className="panel-pagehead">
@@ -45,6 +52,18 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </dl>
       </article>
     </section>
+
+    {canSubmit && platformId !== organization.id ? <section className="panel-card management-card">
+      <div className="management-heading"><div><small>KARTLA ÖDEME</small><h2>PayTR ile öde</h2></div><span className="status-pill">{monthlyFee > 0 ? `${formatTry(monthlyFee)} / ay` : "Ücret belirlenmedi"}</span></div>
+      {cardReady ? (
+        <form action={payLicenseWithCard} className="management-submit">
+          <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca lisansınız 1 ay uzar; süresi dolmadıysa mevcut dönem sonuna eklenir. Dekont gerekmez.</small>
+          <button className="panel-primary" type="submit">Kartla öde · {formatTry(monthlyFee)}</button>
+        </form>
+      ) : (
+        <p className="panel-muted">{monthlyFee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyip dekont gönderebilirsiniz." : "Aylık ücretiniz henüz belirlenmedi. ArvoOS ile iletişime geçin ya da havale/EFT ile ödeyin."}</p>
+      )}
+    </section> : null}
 
     {canSubmit ? <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME BİLDİRİMİ</small><h2>Dekont gönder</h2></div><span className="status-pill">Manuel onay</span></div>
