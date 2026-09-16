@@ -95,15 +95,25 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const opportunityCount = opportunityResult.count ?? 0;
 
   // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
-  const ownerJoined = Boolean(invitation?.accepted_at) || invitation?.status === "accepted";
-  const inviteState: CheckState = !invitation ? "todo" : invitation.status === "failed" ? "bad" : ["sent", "accepted"].includes(invitation.status) ? "done" : "todo";
+  /*
+    Sahip katılmış sayılır: daveti kabul ettiyse YA DA kurumda aktif kullanıcı
+    varsa. Eskiden yalnızca davet kaydına bakılıyordu; sahibi doğrudan eklenen
+    kurumlarda (platformun kendi kurumu gibi) davet kaydı hiç oluşmadığı için
+    bu adım sonsuza kadar eksik görünüyor ve "Kurulum bekleyen" sayacını
+    şişiriyordu.
+  */
+  const hasActiveMember = (memberCount ?? 0) > 0;
+  const ownerJoined = Boolean(invitation?.accepted_at) || invitation?.status === "accepted" || hasActiveMember;
+  const inviteState: CheckState = invitation
+    ? invitation.status === "failed" ? "bad" : ["sent", "accepted"].includes(invitation.status) ? "done" : "todo"
+    : hasActiveMember ? "done" : "todo";
   const checks: { key: string; title: string; note: string; state: CheckState; optional?: boolean }[] = [
     { key: "created", title: "Kurum oluşturuldu", note: `${planNames.get(selected.plan_code) ?? selected.plan_code} paketi · ${enabledCount} modül etkin`, state: selected.provisioning_state === "creating" ? "todo" : "done" },
     {
       key: "invite", title: "Sahibe davet gönderildi", state: inviteState,
-      note: !invitation ? "Davet kaydı yok." : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${dateTime(invitation.sent_at)}` : ""}`,
+      note: !invitation ? (hasActiveMember ? "Davet gerekmedi; sahip doğrudan eklendi." : "Davet kaydı yok.") : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${dateTime(invitation.sent_at)}` : ""}`,
     },
-    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `Katıldı${invitation?.accepted_at ? ` · ${dateTime(invitation.accepted_at)}` : ""} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
+    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `${invitation?.accepted_at ? `Katıldı · ${dateTime(invitation.accepted_at)}` : "Hesap açık"} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
     { key: "onboarding", title: "İlk kurulum tamamlandı", state: !admin ? "unknown" : onboardingDone ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : onboardingDone ? "Kurum bilgileri ve marka ayarları girildi." : "Sahip ilk girişte kurum bilgilerini ve marka rengini girer." },
     { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalComplete ? "done" : "todo", note: legalComplete ? "Teklif ve sözleşmeler için hazır." : legalFilled === 5 ? "Alanlar dolu ama biri geçersiz (IBAN, vergi no veya MERSİS). Sahip Ayarlar’dan düzeltir." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
     { key: "logo", title: "Logo", state: selected.logo_url ? "done" : "todo", note: selected.logo_url ? "Belgelerde ve takip ekranında kullanılıyor." : "Logo yüklenmedi; belgelerde kurum adı yazar." },
