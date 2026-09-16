@@ -1,10 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
+import { resolvePublicHost } from "@/lib/public-host";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
@@ -127,13 +127,16 @@ async function createPaytrPaymentLink__impl(formData: FormData) {
   await closeActiveLink(admin, credentials, installmentId);
 
   const id = randomUUID();
-  const origin = (await headers()).get("origin") ?? "https://app.arvo-os.com";
+  // Bildirim adresi isteğin geldiği alan adına göre değil, kurumun kalıcı
+  // alan adına göre belirlenir: bağlantı aylarca açık kalabiliyor ve PayTR
+  // mağazasının kayıtlı sitesiyle aynı alan adı olması gerekiyor.
+  const host = await resolvePublicHost(supabase, membership.organization_id);
   const expiry = paytrExpiry(installment.due_date);
   const link = await createPaytrInstallmentLink(credentials, {
     name: `${contract?.contract_no ?? "Sözleşme"} · ${installment.installment_no}. taksit`,
     amountKurus: Number(installment.amount),
     expiry,
-    callbackUrl: `${origin}/api/paytr/callback`,
+    callbackUrl: `https://${host}/api/paytr/callback`,
     callbackId: toCallbackId(id),
   });
 

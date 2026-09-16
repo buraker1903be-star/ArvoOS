@@ -1,10 +1,10 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
+import { PLATFORM_HOST } from "@/lib/public-host";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
@@ -47,14 +47,15 @@ async function payLicenseWithCard__impl() {
   }
 
   const id = randomUUID();
-  const origin = (await headers()).get("origin") ?? "https://app.arvo-os.com";
+  // Bağlantı ArvoOS'un mağazasıyla açıldığı için bildirim adresi de her
+  // zaman ArvoOS'un alan adı olmalı; ödeyen kurumun alan adı değil.
   const expiry = paytrExpiry(null);
   const brand = organization.display_name || organization.name;
   const link = await createPaytrInstallmentLink(credentials, {
     name: `ArvoOS · ${brand} · ${planNames[license.plan_code] ?? license.plan_code} aylık lisans`,
     amountKurus: fee,
     expiry,
-    callbackUrl: `${origin}/api/paytr/callback`,
+    callbackUrl: `https://${PLATFORM_HOST}/api/paytr/callback`,
     callbackId: toCallbackId(id),
   });
   const { error } = await admin.from("payment_links").insert({
