@@ -79,7 +79,13 @@ export async function getArvolabBridgeHealth(): Promise<ArvolabBridgeHealth | nu
     .select("last_ok_at,last_error_at,last_error,last_error_kind")
     .eq("id", "arvoos")
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) {
+    // Sessiz dönmüyoruz: okuma başarısızsa Platform ekranı köprüyü sağlıklı
+    // sanır. En sık sebebi ArvoLab'daki bridge_health izinleri.
+    console.error("[arvolab] köprü sağlık kaydı okunamadı", error.message);
+    return null;
+  }
+  if (!data) return null;
 
   const errorAt = data.last_error_at ? new Date(data.last_error_at).getTime() : 0;
   const okAt = data.last_ok_at ? new Date(data.last_ok_at).getTime() : 0;
