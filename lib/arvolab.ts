@@ -23,7 +23,7 @@ type ArvolabLicense = {
 export const arvolabConfigured = () =>
   Boolean(process.env.ARVOLAB_SUPABASE_URL && process.env.ARVOLAB_SUPABASE_SECRET_KEY);
 
-function arvolabClient() {
+export function arvolabClient() {
   const url = process.env.ARVOLAB_SUPABASE_URL;
   const key = process.env.ARVOLAB_SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
