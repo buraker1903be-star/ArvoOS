@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncArvolabLicense } from "@/lib/arvolab";
 import { decryptSecret } from "@/lib/payment-credentials";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return text(503, "service unavailable"); // PayTR sonra yeniden dener
 
-  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id").eq("id", linkId).maybeSingle();
+  const { data: link } = await admin.from("payment_links").select("id,organization_id,provider_link_id,purpose,product,payer_organization_id").eq("id", linkId).maybeSingle();
   if (!link) {
     // Bizim oluşturmadığımız (ya da silinmiş) bir bağlantı: yeniden denemesin.
     console.warn("[paytr] bilinmeyen bağlantı bildirimi", fields.callback_id);
@@ -96,6 +97,13 @@ export async function POST(request: Request) {
       await deletePaytrLink(credentials, link.provider_link_id);
     } catch (closeError) {
       console.warn("[paytr] ödenen bağlantı kapatılamadı", closeError instanceof Error ? closeError.message : closeError);
+    }
+    // ArvoLab ayrı veritabanında: uzayan lisansı oraya yansıt. Başarısız olsa
+    // bile PayTR'ye OK dönüyoruz; ödeme kaydedildi, tekrar bildirim yeni bir
+    // şey yazmaz. Kurucu Platform → Lisans'tan kaydederek elle tetikleyebilir.
+    if (link.purpose === "subscription" && link.product === "arvolab" && link.payer_organization_id) {
+      const synced = await syncArvolabLicense(link.payer_organization_id);
+      if (synced !== "synced") console.error("[paytr] ArvoLab lisansı yansıtılamadı", link.payer_organization_id, synced);
     }
   }
   return OK();
