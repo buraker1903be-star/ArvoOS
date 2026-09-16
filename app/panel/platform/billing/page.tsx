@@ -18,18 +18,27 @@ export default async function BillingPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const [{ data: subscriptions }, { data: invoices }] = await Promise.all([
+  const [{ data: subscriptions }, { data: invoices }, { data: internalOrganizations }] = await Promise.all([
     supabase.from("billing_subscriptions").select("id,organization_id,provider,plan_code,status,currency,unit_amount,interval,current_period_end,organizations(name,display_name)").order("created_at", { ascending: false }),
     supabase.from("billing_invoices").select("id,organization_id,status,currency,total,paid_at,created_at").order("created_at", { ascending: false }).limit(50),
+    supabase.from("organizations").select("id").eq("kind", "internal"),
   ]);
+
+  /*
+    Kendi markalarımız gelir toplamına girmez: aynı tüzel kişiliğin kendi
+    kendine ödemesi gelir değil, yalnızca raporu şişirir. Kayıtlar listede
+    görünmeye devam eder, yalnızca sayımdan düşer.
+  */
+  const internal = new Set((internalOrganizations ?? []).map((row) => row.id as string));
+  const isCustomer = (row: { organization_id: string }) => !internal.has(row.organization_id);
 
   const subscriptionRows = (subscriptions ?? []) as Subscription[];
   const invoiceRows = (invoices ?? []) as Invoice[];
-  const active = subscriptionRows.filter((item) => item.status === "active" || item.status === "trialing");
+  const active = subscriptionRows.filter((item) => (item.status === "active" || item.status === "trialing") && isCustomer(item));
   const mrr = active.filter((item) => item.interval === "month").reduce((sum, item) => sum + Number(item.unit_amount), 0)
     + Math.round(active.filter((item) => item.interval === "year").reduce((sum, item) => sum + Number(item.unit_amount), 0) / 12);
-  const pastDue = subscriptionRows.filter((item) => item.status === "past_due").length;
-  const paidTotal = invoiceRows.filter((item) => item.status === "paid").reduce((sum, item) => sum + Number(item.total), 0);
+  const pastDue = subscriptionRows.filter((item) => item.status === "past_due" && isCustomer(item)).length;
+  const paidTotal = invoiceRows.filter((item) => item.status === "paid" && isCustomer(item)).reduce((sum, item) => sum + Number(item.total), 0);
   const currency = active[0]?.currency ?? invoiceRows[0]?.currency ?? "TRY";
 
   return <div className="stg plt">

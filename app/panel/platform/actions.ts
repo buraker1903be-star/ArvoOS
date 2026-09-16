@@ -85,8 +85,14 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
 
+  /*
+    Kurum türü: kendi markalarımız müşteri sayımlarına ve gelir toplamına
+    karışmasın diye. Erişimi ya da faturalamayı etkilemez, yalnızca Platform
+    ekranlarındaki etiket ve sayaçlar için.
+  */
+  const kind = formData.get("kind") === "internal" ? "internal" : "customer";
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
-  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, updated_at: new Date().toISOString() };
 
   if (customDomain !== (current?.custom_domain ?? null)) {
     const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");

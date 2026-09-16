@@ -16,7 +16,7 @@ import "./platform.css";
 type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
 type ManagedOrganization = {
   id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string;
-  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null;
+  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string;
 };
 type Invitation = { organization_id: string; email: string; status: string; sent_at: string | null; accepted_at: string | null; error_message: string | null };
 type AuditRow = { id: string; action: string; state: string; result: string; duration_ms: number | null; created_at: string };
@@ -48,7 +48,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
 
   const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }, pendingPayments] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url").order("name"),
+    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url,kind").order("name"),
     supabase.from("organization_invitations").select("organization_id,email,status,sent_at,accepted_at,error_message").order("created_at", { ascending: false }),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -134,9 +134,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const progress = Math.round((doneCount / required.length) * 100);
 
   // ---- Genel özet
-  const activeCount = organizations.filter((item) => item.provisioning_state === "active").length;
-  const pendingCount = organizations.filter((item) => PENDING_STATES.has(item.provisioning_state)).length;
-  const issueCount = organizations.filter((item) => item.provisioning_state === "failed" || item.provisioning_state === "suspended" || item.status === "suspended").length;
+  /*
+    Sayaçlar yalnızca müşteri kurumları sayar. Kendi markalarımız listede
+    görünür ama "kaç müşterim var" sorusunu bulandırmasın.
+  */
+  const customers = organizations.filter((item) => item.kind !== "internal");
+  const activeCount = customers.filter((item) => item.provisioning_state === "active").length;
+  const pendingCount = customers.filter((item) => PENDING_STATES.has(item.provisioning_state)).length;
+  const issueCount = customers.filter((item) => item.provisioning_state === "failed" || item.provisioning_state === "suspended" || item.status === "suspended").length;
   const paymentsWaiting = pendingPayments.error ? 0 : pendingPayments.count ?? 0;
 
   return <div className="stg plt">
@@ -176,7 +181,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     ) : null}
 
     <section className="stg-widgets" aria-label="Platform özeti">
-      <StgWidget tone="gold" icon="building" label="Kurumlar" value={organizations.length} note="Platformdaki toplam kurum" />
+      <StgWidget tone="gold" icon="building" label="Müşteri kurum" value={customers.length} note={organizations.length > customers.length ? `${organizations.length - customers.length} kendi markamız ayrı tutuluyor` : "Platformdaki müşteriler"} />
       <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi katılmış kurumlar" />
       <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekleyen" value={pendingCount} note={pendingCount ? "Sahibin katılması bekleniyor" : "Bekleyen kurulum yok"} />
       <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat" value={issueCount} note={issueCount ? "Hata veya askıdaki kurum" : "Sorunlu kurum yok"} />
@@ -203,7 +208,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                   <span className="plt-org-avatar" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{initials(label)}</span>
                   <span className="plt-org-text">
                     <b>{label}</b>
-                    <small>{item.slug} · {planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
+                    <small>{item.slug} · {item.kind === "internal" ? "Kendi markamız" : planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
                   </span>
                   <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>
                 </Link>
@@ -261,6 +266,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               <label className="wide">Yasal unvan<input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
               <label className="wide">Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
               <label>Sektör<input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
+              <label>Kurum türü<select name="kind" defaultValue={selected.kind ?? "customer"}><option value="customer">Müşteri</option><option value="internal">Kendi markamız</option></select></label>
               <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
               <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
               <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
