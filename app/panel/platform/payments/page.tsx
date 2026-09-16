@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { productName } from "@/lib/products";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
 import { reviewBankTransferPayment } from "./actions";
 import "../../settings/settings.css";
@@ -18,7 +19,7 @@ export default async function PaymentApprovalsPage() {
 
   const { data, error } = await supabase
     .from("organization_payment_requests")
-    .select("id,organization_id,plan_code,amount,currency,status,payment_method,receipt_path,reference_no,customer_note,review_note,created_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)")
+    .select("id,organization_id,plan_code,product,amount,currency,status,payment_method,receipt_path,reference_no,customer_note,review_note,created_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)")
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error(`Ödeme bildirimleri okunamadı: ${error.message}`);
@@ -63,6 +64,7 @@ export default async function PaymentApprovalsPage() {
               aside={<span className="status-pill" data-tone={tone}>{statusLabels[payment.status] ?? payment.status}</span>}
             >
               <dl className="stg-list">
+                <StgValueRow label="Ürün" value={productName(payment.product ?? "arvoos")} />
                 <StgValueRow label="Paket" value={planLabels[payment.plan_code] ?? payment.plan_code} />
                 <StgValueRow label="Banka" value={account?.bank_name ?? null} />
                 <StgValueRow label="Referans" value={payment.reference_no ?? null} mono />

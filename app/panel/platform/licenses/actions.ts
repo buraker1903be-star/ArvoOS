@@ -4,8 +4,10 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { isAddonProduct, productName } from "@/lib/products";
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
+const productStatuses = new Set(["inactive", ...licenseStatuses]);
 const planCodes = new Set(["starter", "professional", "enterprise"]);
 
 function readPositiveInteger(formData: FormData, key: string) {
@@ -21,8 +23,8 @@ function readNonNegativeInteger(formData: FormData, key: string) {
 }
 
 // Kuruma özel aylık ücret (TL → kuruş). Boşsa kartla ödeme kapalı kalır.
-function readOptionalMonthlyFee(formData: FormData) {
-  const raw = String(formData.get("monthly_fee") ?? "").trim();
+function readOptionalMonthlyFee(formData: FormData, key = "monthly_fee") {
+  const raw = String(formData.get(key) ?? "").trim();
   if (!raw) return null;
   const value = Math.round(Number(raw) * 100);
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error("Aylık ücret pozitif bir tutar olmalı.");
@@ -82,6 +84,46 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
 }
 
+// ArvoLab / Arc aboneliği: ArvoOS'un kendi lisansından ayrı, ürün başına ücret
+// ve dönem. Kurum yalnızca aldığı ürüne öder; ücreti boş bırakılan üründe
+// kartla ödeme açılmaz.
+async function updateProductLicense__impl(formData: FormData) {
+  const { supabase, isPlatformOwner } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const product = String(formData.get("product") ?? "").trim();
+  const status = String(formData.get("status") ?? "").trim();
+  const planCode = String(formData.get("plan_code") ?? "").trim();
+  const currentPeriodEnd = String(formData.get("current_period_end") ?? "").trim();
+  const suspensionReason = String(formData.get("suspension_reason") ?? "").trim();
+  const monthlyFee = readOptionalMonthlyFee(formData);
+
+  if (!organizationId) throw new Error("Kurum seçilmedi.");
+  if (!isAddonProduct(product)) throw new Error("Geçerli bir ürün seçin.");
+  if (!productStatuses.has(status)) throw new Error("Geçerli bir lisans durumu seçin.");
+  if (planCode && !planCodes.has(planCode)) throw new Error("Geçerli bir paket seçin.");
+
+  const { data: userData } = await supabase.auth.getUser();
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("organization_product_licenses").upsert({
+    organization_id: organizationId,
+    product,
+    status,
+    plan_code: planCode || null,
+    monthly_fee: monthlyFee,
+    current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd).toISOString() : null,
+    suspended_at: status === "suspended" ? now : null,
+    suspension_reason: status === "suspended" ? suspensionReason || "Kurucu tarafından askıya alındı" : null,
+    updated_by: userData.user?.id ?? null,
+    updated_at: now,
+  }, { onConflict: "organization_id,product" });
+  if (error) throw new Error(`${productName(product)} lisansı kaydedilemedi: ${error.message}`);
+
+  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+  revalidatePath("/panel/billing");
+}
+
 async function resetOrganizationAiCredits__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
@@ -95,6 +137,9 @@ async function resetOrganizationAiCredits__impl(formData: FormData) {
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateOrganizationLicense(...args: Parameters<typeof updateOrganizationLicense__impl>) {
   return runPanelAction(() => updateOrganizationLicense__impl(...args), "Lisans kaydedildi");
+}
+export async function updateProductLicense(...args: Parameters<typeof updateProductLicense__impl>) {
+  return runPanelAction(() => updateProductLicense__impl(...args), "Ürün lisansı kaydedildi");
 }
 export async function resetOrganizationAiCredits(...args: Parameters<typeof resetOrganizationAiCredits__impl>) {
   return runPanelAction(() => resetOrganizationAiCredits__impl(...args), "AI kullanımı sıfırlandı");

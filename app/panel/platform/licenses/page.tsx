@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
-import { resetOrganizationAiCredits, updateOrganizationLicense } from "./actions";
+import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -21,9 +22,18 @@ type LicenseRow = {
   suspension_reason: string | null;
 };
 
+type ProductLicenseRow = {
+  product: string;
+  status: string;
+  plan_code: string | null;
+  monthly_fee: number | null;
+  current_period_end: string | null;
+  suspension_reason: string | null;
+};
+
 const planLabels: Record<string, string> = { starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal" };
 const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
-const licenseTones: Record<string, StgTone> = { trialing: "info", active: "success", past_due: "warning", suspended: "danger", canceled: "danger" };
+const licenseTones: Record<string, StgTone> = { trialing: "info", active: "success", past_due: "warning", suspended: "danger", canceled: "danger", inactive: "neutral" };
 const dateValue = (value: string | null) => value ? value.slice(0, 10) : "";
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
 const numberFormat = new Intl.NumberFormat("tr-TR");
@@ -48,14 +58,16 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     ?? organizations[0];
   if (!selected) throw new Error("Yönetilecek kurum bulunamadı.");
 
-  const [{ data: licenseData, error: licenseError }, { count: activeUsers }] = await Promise.all([
+  const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
     supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
+    supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason").eq("organization_id", selected.id),
   ]);
   if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
   const license = licenseData as LicenseRow | null;
   if (!license) throw new Error("Kurum lisansı bulunamadı. Migration ve lisans backfill işlemini kontrol edin.");
 
+  const productLicenses = new Map(((productLicenseData ?? []) as ProductLicenseRow[]).map((row) => [row.product, row]));
   const users = activeUsers ?? 0;
   const userPercent = percent(users, license.user_limit);
   const aiPercent = percent(license.ai_credits_used, license.ai_credit_limit);
@@ -115,6 +127,30 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Lisansı kaydet</button></div>
           </form>
         </StgSection>
+
+        {ADDON_PRODUCTS.map((product) => {
+          const row = productLicenses.get(product.code);
+          const status = row?.status ?? "inactive";
+          return (
+            <StgSection
+              key={product.code} id={`urun-${product.code}`} wide icon="box" tone={licenseTones[status] ?? "neutral"}
+              kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} aboneliği`}
+              description={`${product.description}. Aylık ücret girilmezse kurum bu ürünü kartla ödeyemez.`}
+              aside={<span className="status-pill" data-tone={licenseTones[status] ?? "neutral"}>{productLicenseLabels[status] ?? status}</span>}
+            >
+              <form className="panel-form" action={updateProductLicense}>
+                <input type="hidden" name="organization_id" value={selected.id} />
+                <input type="hidden" name="product" value={product.code} />
+                <label>Durum<select name="status" defaultValue={status}><option value="inactive">Kapalı</option><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
+                <label>Paket<select name="plan_code" defaultValue={row?.plan_code ?? ""}><option value="">Belirtilmedi</option><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
+                <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={row?.monthly_fee ? Number(row.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
+                <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={dateValue(row?.current_period_end ?? null)} /></label>
+                <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={row?.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
+                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{product.name} lisansını kaydet</button></div>
+              </form>
+            </StgSection>
+          );
+        })}
 
         <StgSection id="ai" wide icon="chart" tone="info" kicker="AI KULLANIMI" title="Kredi dönemi" description="Yeni fatura ya da kullanım dönemi başlarken tüketilen AI kredilerini sıfırlayın." aside={<span className="status-pill" data-tone="info">%{aiPercent}</span>}>
           <div className="plt-usage">

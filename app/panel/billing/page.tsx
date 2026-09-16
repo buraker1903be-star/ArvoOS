@@ -1,5 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
+import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { submitBankTransferPayment } from "./actions";
 import { payLicenseWithCard } from "./paytr-actions";
 
@@ -15,18 +16,32 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const { supabase, organization, membership } = await getPanelContext();
   const params = await searchParams;
 
-  const [{ data: bankAccounts }, { data: payments }, { data: license }] = await Promise.all([
+  const [{ data: bankAccounts }, { data: payments }, { data: license }, { data: productLicenses }] = await Promise.all([
     supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
-    supabase.from("organization_payment_requests").select("id,plan_code,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
+    supabase.from("organization_payment_requests").select("id,plan_code,product,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
     supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("organization_product_licenses").select("product,status,monthly_fee,current_period_end").eq("organization_id", organization.id),
   ]);
 
   const canSubmit = membership && ["owner", "admin"].includes(membership.role);
-  // Kartla ödeme: kuruma özel aylık ücret + ArvoOS'un PayTR mağazası bağlı olmalı
-  const monthlyFee = Number(license?.monthly_fee ?? 0);
+  // Kartla ödeme: ürünün aylık ücreti girilmiş + ArvoOS'un PayTR mağazası bağlı olmalı
   const platformId = canSubmit ? await getPlatformOrganizationId() : null;
   const platformPaytr = platformId && platformId !== organization.id ? await getPaytrStatus(platformId) : null;
-  const cardReady = Boolean(monthlyFee > 0 && platformPaytr?.available && platformPaytr.connected && platformPaytr.enabled);
+  const storeReady = Boolean(platformPaytr?.available && platformPaytr.connected && platformPaytr.enabled);
+
+  const productRows = new Map(((productLicenses ?? []) as { product: string; status: string; monthly_fee: number | null; current_period_end: string | null }[]).map((row) => [row.product, row]));
+  const subscriptions = PRODUCTS.map((product) => {
+    const row = product.code === "arvoos" ? null : productRows.get(product.code);
+    const fee = Number((product.code === "arvoos" ? license?.monthly_fee : row?.monthly_fee) ?? 0);
+    return {
+      ...product,
+      fee,
+      status: product.code === "arvoos" ? (license?.license_status ?? "trialing") : (row?.status ?? "inactive"),
+      periodEnd: product.code === "arvoos" ? (license?.current_period_end ?? null) : (row?.current_period_end ?? null),
+      // Ücreti girilmemiş ek ürün kuruma hiç gösterilmez: satın almadığı ürün için kart çıkmasın.
+      visible: product.code === "arvoos" || fee > 0 || Boolean(row),
+    };
+  }).filter((product) => product.visible);
 
   return <>
     <div className="panel-pagehead">
@@ -53,16 +68,26 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </article>
     </section>
 
-    {canSubmit && platformId !== organization.id ? <section className="panel-card management-card">
-      <div className="management-heading"><div><small>KARTLA ÖDEME</small><h2>PayTR ile öde</h2></div><span className="status-pill">{monthlyFee > 0 ? `${formatTry(monthlyFee)} / ay` : "Ücret belirlenmedi"}</span></div>
-      {cardReady ? (
-        <form action={payLicenseWithCard} className="management-submit">
-          <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca lisansınız 1 ay uzar; süresi dolmadıysa mevcut dönem sonuna eklenir. Dekont gerekmez.</small>
-          <button className="panel-primary" type="submit">Kartla öde · {formatTry(monthlyFee)}</button>
-        </form>
-      ) : (
-        <p className="panel-muted">{monthlyFee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyip dekont gönderebilirsiniz." : "Aylık ücretiniz henüz belirlenmedi. ArvoOS ile iletişime geçin ya da havale/EFT ile ödeyin."}</p>
-      )}
+    {canSubmit && platformId !== organization.id ? <section className="management-grid">
+      {subscriptions.map((product) => <article className="panel-card management-card" key={product.code}>
+        <div className="management-heading">
+          <div><small>KARTLA ÖDEME</small><h2>{product.name}</h2></div>
+          <span className="status-pill">{product.fee > 0 ? `${formatTry(product.fee)} / ay` : "Ücret belirlenmedi"}</span>
+        </div>
+        <dl className="billing-summary">
+          <div><dt>Durum</dt><dd>{productLicenseLabels[product.status] ?? product.status}</dd></div>
+          <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? new Date(product.periodEnd).toLocaleDateString("tr-TR") : "—"}</dd></div>
+        </dl>
+        {storeReady && product.fee > 0 ? (
+          <form action={payLicenseWithCard} className="management-submit">
+            <input type="hidden" name="product" value={product.code} />
+            <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca {product.name} lisansınız 1 ay uzar; süresi dolmadıysa mevcut dönem sonuna eklenir. Dekont gerekmez.</small>
+            <button className="panel-primary" type="submit">Kartla öde · {formatTry(product.fee)}</button>
+          </form>
+        ) : (
+          <p className="panel-muted">{product.fee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyip dekont gönderebilirsiniz." : `${product.name} için aylık ücret henüz belirlenmedi. ArvoOS ile iletişime geçin ya da havale/EFT ile ödeyin.`}</p>
+        )}
+      </article>)}
     </section> : null}
 
     {canSubmit ? <section className="panel-card management-card">
@@ -81,7 +106,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME GEÇMİŞİ</small><h2>Bildirimler</h2></div><span className="status-pill">{payments?.length ?? 0} kayıt</span></div>
       <div className="module-control-list">
-        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{payment.plan_code} · {formatTry(payment.amount)}</b><small>{new Date(payment.created_at).toLocaleString("tr-TR")}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill">{payment.status}</span></div>)}
+        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {payment.plan_code} · {formatTry(payment.amount)}</b><small>{new Date(payment.created_at).toLocaleString("tr-TR")}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill">{payment.status}</span></div>)}
         {!payments?.length ? <p className="panel-muted">Henüz ödeme bildirimi bulunmuyor.</p> : null}
       </div>
     </section>
