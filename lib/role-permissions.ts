@@ -28,6 +28,11 @@ export const PERMISSION_ROLES = [
 const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
   "/panel/crm": "crm",
   "/panel/operations": "operations",
+  // Raporlar sayfası finans modülünün altında duruyor ama kendi yetki
+  // kutucuğu var. Daha uzun ön ek kazandığı için (aşağıya bakın) burası
+  // "/panel/finance"i eziyor: Raporlar'ı kapatılmış bir rol, finansa
+  // erişebilse bile bu sayfayı açamaz.
+  "/panel/finance/raporlar": "reports",
   "/panel/finance": "finance",
   "/panel/accounts": "finance",
   "/panel/banking": "finance",
@@ -39,8 +44,30 @@ const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
 };
 
 export function modulesKeyForPath(pathname: string): string | null {
-  const match = Object.keys(PATH_PREFIX_TO_MODULE_KEY).find((prefix) => pathname.startsWith(prefix));
+  // En UZUN eşleşen ön ek kazanır. Eskiden tanım sırasındaki ilk eşleşme
+  // alınıyordu; "/panel/finance" daha önce geldiği için
+  // "/panel/finance/raporlar" hep "finance" olarak çözülüyordu ve
+  // Yetkilendirme'deki "Raporlar" kutucuğu hiçbir şeyi kapatmıyordu —
+  // sayfayı adresi yazarak açmak mümkündü. Kutucuğun kapattığı tek şey
+  // paneldeki kısayoldu.
+  const match = Object.keys(PATH_PREFIX_TO_MODULE_KEY)
+    .filter((prefix) => pathname.startsWith(prefix))
+    .sort((a, b) => b.length - a.length)[0];
   return match ? PATH_PREFIX_TO_MODULE_KEY[match] : null;
+}
+
+/**
+ * Yolun dokunduğu BÜTÜN modül anahtarları. "/panel/finance/raporlar" hem
+ * finansın hem raporların altında: rapor sayfası finans verisini okuduğu
+ * için ikisinin de açık olması gerekir. Paneldeki kısayol da zaten
+ * "canSeeReports && canSeeFinance" istiyor.
+ */
+export function moduleKeysForPath(pathname: string): string[] {
+  return [...new Set(
+    Object.keys(PATH_PREFIX_TO_MODULE_KEY)
+      .filter((prefix) => pathname.startsWith(prefix))
+      .map((prefix) => PATH_PREFIX_TO_MODULE_KEY[prefix]),
+  )];
 }
 
 export function isNavigationGroupHiddenForRole(role: string, groupKey: string, hiddenModuleKeys: ReadonlySet<string>): boolean {
@@ -60,8 +87,7 @@ export function assertModuleKeyAccess(role: string, moduleKey: string, hiddenMod
 
 export function assertModuleAccess(role: string, pathname: string, hiddenModuleKeys: ReadonlySet<string>) {
   if (role === "owner") return;
-  const moduleKey = modulesKeyForPath(pathname);
-  if (moduleKey && hiddenModuleKeys.has(moduleKey)) {
+  if (moduleKeysForPath(pathname).some((key) => hiddenModuleKeys.has(key))) {
     throw new Error("Bu modüle erişim yetkiniz yok.");
   }
 }

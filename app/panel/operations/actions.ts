@@ -13,6 +13,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 const statuses = new Set(["planned", "in_progress", "blocked", "completed", "cancelled"]);
 const priorities = new Set(["low", "normal", "high", "urgent"]);
 const MANAGER_ROLES = ["owner", "admin", "manager"];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type OperationContext = Awaited<ReturnType<typeof getPanelContext>>;
 
@@ -219,16 +220,33 @@ export async function addWorkflowComment(formData: FormData) {
 async function replyCustomerFileMessage__impl(formData: FormData) {
   const { supabase, userId, membership } = await operationContext();
   const workflowId = String(formData.get("workflow_id") ?? "");
+  // Aşağıda .or() filtresinin içine gömülüyor; biçim doğrulanmazsa form
+  // verisi PostgREST filtre söz dizimine karışır. portal-files-actions.ts
+  // aynı kontrolü yapıyor.
+  if (!UUID.test(workflowId)) throw new Error("İş seçilmedi.");
   const body = String(formData.get("body") ?? "").trim();
   if (body.length < 2 || body.length > 2000) throw new Error("Yanıt 2–2000 karakter olmalı.");
   const [{ data: workflow }, { data: employee }] = await Promise.all([
     supabase.from("operation_workflows").select("id,contract_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle(),
     supabase.from("hr_employees").select("full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
   ]);
-  if (!workflow?.contract_id) throw new Error("Bu işe bağlı müşteri sözleşmesi bulunamadı.");
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  // Sözleşme–iş bağlantısı iki yönde de kurulabiliyor: sözleşmenin
+  // workflow_id'si ya da işin contract_id'si. Burada yalnızca işin
+  // contract_id'sine bakılıyordu, oysa sayfa formu sözleşmenin workflow_id'si
+  // üzerinden gösteriyor (page.tsx:91). İki yön ayrıştığında ya form
+  // görünmüyor ya da her gönderim hata veriyordu. portal-files-actions.ts
+  // ikisini zaten birlikte arıyor; aynı kural buraya da uygulanıyor.
+  const { data: contract, error: contractError } = await supabase.from("crm_contracts").select("id")
+    .eq("organization_id", membership.organization_id)
+    .or(workflow.contract_id ? `workflow_id.eq.${workflowId},id.eq.${workflow.contract_id}` : `workflow_id.eq.${workflowId}`)
+    .limit(1).maybeSingle();
+  if (contractError) throw new Error("Sözleşme okunamadı: " + contractError.message);
+  if (!contract) throw new Error("Bu işe bağlı müşteri sözleşmesi bulunamadı.");
+
   const { error } = await supabase.from("customer_file_messages").insert({
     organization_id: membership.organization_id,
-    contract_id: workflow.contract_id,
+    contract_id: contract.id,
     workflow_id: workflowId,
     sender_type: "staff",
     sender_user_id: userId,
@@ -249,7 +267,7 @@ async function replyCustomerFileMessage__impl(formData: FormData) {
 // silinir, bağlı bir sözleşme varsa o sözleşmenin iş akışı bağlantısı
 // (workflow_id) kopartılır ki sözleşme kaydı bozulmasın.
 async function deleteWorkflow__impl(formData: FormData) {
-  const { supabase, membership } = await operationContext();
+  const { supabase, membership, userId } = await operationContext();
   if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yönetici yetkisi gerekiyor.");
   const workflowId = String(formData.get("workflow_id") ?? "");
   if (!workflowId) throw new Error("İş akışı seçilmedi.");
@@ -257,11 +275,45 @@ async function deleteWorkflow__impl(formData: FormData) {
   const { data: workflow } = await supabase.from("operation_workflows").select("id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
 
-  await supabase.from("crm_contracts").update({ workflow_id: null }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
-  await supabase.from("operation_workflow_comments").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
-  await supabase.from("operation_steps").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  // Silme yetkisi, HİÇBİR ŞEYE DOKUNMADAN ÖNCE doğrulanır.
+  //
+  // Paneldeki rol get_my_workspaces RPC'sinden geliyor; tablodaki RLS silme
+  // politikası ise AKTİF bir organization_memberships satırında owner/admin
+  // arıyor. İkisi ayrıştığında (üyelik pasifleşmiş, rol oturum ortasında
+  // değişmiş) asıl silme 0 satır dönüyordu — ama adımlar, yorumlar ve
+  // sözleşme bağlantısı o noktada çoktan yok edilmiş oluyordu. Kullanıcı
+  // hatayı görüyor, işin görev listesi ve yazışma geçmişi geri gelmiyordu.
+  const { data: canDelete, error: permissionError } = await supabase
+    .from("organization_memberships").select("role")
+    .eq("organization_id", membership.organization_id)
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .in("role", ["owner", "admin"])
+    .maybeSingle();
+  if (permissionError) throw new Error("Silme yetkisi doğrulanamadı: " + permissionError.message);
+  if (!canDelete) throw new Error("İş akışı silinemedi: silme yetkiniz yok.");
+
+  // Prim tahakkuk etmişse silme veritabanında zaten reddediliyor
+  // (hr_operation_commissions.workflow_id "on delete restrict"). Burada
+  // önceden bakılmazsa ret, adımlar ve yorumlar silindikten SONRA geliyor.
+  const { data: commission, error: commissionError } = await supabase
+    .from("hr_operation_commissions").select("id")
+    .eq("organization_id", membership.organization_id)
+    .eq("workflow_id", workflowId)
+    .maybeSingle();
+  if (commissionError) throw new Error("Prim kaydı denetlenemedi: " + commissionError.message);
+  if (commission) throw new Error("Bu işe prim tahakkuk ettiği için silinemez. Önce prim kaydını kaldırın.");
+
+  const { error: unlinkError } = await supabase.from("crm_contracts").update({ workflow_id: null }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  if (unlinkError) throw new Error("Sözleşme bağlantısı kopartılamadı: " + unlinkError.message);
+  const { error: commentError } = await supabase.from("operation_workflow_comments").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  if (commentError) throw new Error("İş akışı yorumları silinemedi: " + commentError.message);
+  const { error: stepError } = await supabase.from("operation_steps").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  if (stepError) throw new Error("İş akışı adımları silinemedi: " + stepError.message);
 
   const { data: deleted, error } = await supabase.from("operation_workflows").delete().eq("id", workflowId).eq("organization_id", membership.organization_id).select("id");
+  // hr_operation_commissions.workflow_id "on delete restrict": prim tahakkuk
+  // etmiş bir iş silinemez ve bu doğru davranıştır.
   if (error) throw new Error("İş akışı silinemedi: " + error.message);
   if (!deleted?.length) throw new Error("İş akışı silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
 

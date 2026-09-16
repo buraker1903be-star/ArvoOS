@@ -161,6 +161,18 @@ export async function createProposal(
   const scheduleIssue = scheduleDateIssue(paymentSchedule);
   if (scheduleIssue) return { error: scheduleIssue };
 
+  // Plan istemciden geldiği gibi yazılıyordu; toplamı sunucuda hiç
+  // doğrulanmıyordu. Kötü niyet gerekmiyor, normal kullanımda da tutmuyordu:
+  // özel planda taksitler Math.round(brüt × yüzde / 100) ile hesaplanıyor ve
+  // yuvarlama sapıyor. 1000,01 TL, KDV hariç, %50/%50 iki taksit →
+  // brüt 120001 kuruş, taksitler 60001 + 60001 = 120002 kuruş. Sapma imzadan
+  // sonra düzeltilmeden belgeye basılıyor (donmuş plan yeniden ölçeklenmez).
+  //
+  // Güncelleme akışı bunu rescaleSchedule ile zaten yapıyordu; eksik olan
+  // yalnızca oluşturmaydı.
+  const totals = splitTax(proposalAmount, taxStatus);
+  const reconciledSchedule = rescaleSchedule(paymentSchedule, totals.gross, paymentPlanType);
+
   const { supabase, membership, userId } = await getPanelContext();
   const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
   if (representativeError) return { error: representativeError };
@@ -172,7 +184,7 @@ export async function createProposal(
     proposal_tax_status: taxStatus,
     proposal_payment_plan_type: paymentPlanType,
     proposal_payment_plan: paymentPlan || null,
-    proposal_payment_schedule: paymentSchedule,
+    proposal_payment_schedule: reconciledSchedule,
     proposal_valid_until: validUntil,
     proposal_estimated_delivery_date: estimatedDeliveryDate,
   });
@@ -278,6 +290,9 @@ export async function createContractDirectly(
   const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
   if (representativeError) return { error: representativeError };
 
+  // createProposal ile aynı gerekçe: plan toplamı brüt tutara uydurulur.
+  const directTotals = splitTax(proposalAmount, taxStatus);
+
   const { data, error } = await supabase.rpc("create_crm_proposal_v2", {
     target_opportunity_id: opportunityId,
     proposal_title: title,
@@ -286,7 +301,7 @@ export async function createContractDirectly(
     proposal_tax_status: taxStatus,
     proposal_payment_plan_type: paymentPlanType,
     proposal_payment_plan: paymentPlan || null,
-    proposal_payment_schedule: paymentSchedule,
+    proposal_payment_schedule: rescaleSchedule(paymentSchedule, directTotals.gross, paymentPlanType),
     proposal_valid_until: validUntil,
     proposal_estimated_delivery_date: estimatedDeliveryDate,
   });
