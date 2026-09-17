@@ -429,6 +429,25 @@ async function addInternalComment__impl(formData: FormData) {
     .maybeSingle();
   if (opportunityError || !opportunity) throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
 
+  // context_id formdan geliyor ve doğrulanmıyordu: yalnızca opportunity_id
+  // denetleniyordu. Satır kendi organization_id'mizle yazıldığı için sızıntı
+  // yok, ama yorum kuruma ait olmayan bir belge kimliğine bağlanabiliyordu —
+  // hiçbir ekranda görünmeyen, silinemeyen bir kayıt.
+  const contextTables: Record<string, string> = {
+    request: "crm_requests",
+    proposal: "crm_proposals",
+    contract: "crm_contracts",
+    operation: "operation_workflows",
+  };
+  const { data: context, error: contextError } = await supabase
+    .from(contextTables[contextType])
+    .select("id")
+    .eq("id", contextId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (contextError) throw new Error("Yorumun bağlı olduğu kayıt doğrulanamadı: " + contextError.message);
+  if (!context) throw new Error("Yorumun bağlı olduğu CRM kaydı bulunamadı veya bu kayda erişiminiz yok.");
+
   const { error } = await supabase.from("crm_internal_comments").insert({
     organization_id: membership.organization_id,
     opportunity_id: opportunityId,
