@@ -315,7 +315,7 @@ export function MessagesApp({
       ) : null}
       {lightbox ? (
         <button type="button" className="msg-lightbox" onClick={() => setLightbox(null)} aria-label="Görseli kapat">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {/* Kullanıcının yüklediği ek; adresi imzalı ve geçici (bkz. eslint.config.mjs). */}
           <img src={lightbox} alt="" />
         </button>
       ) : null}

@@ -16,7 +16,7 @@ export function OrgLookupShell({ org, title, description, children }: { org: Org
         <div className="trk-topbar-inner">
           <div className="trk-org">
             {org.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element -- kurum logosu harici, boyutu bilinmeyen bir URL
+              // Kurum logosu harici, boyutu bilinmeyen bir URL (bkz. eslint.config.mjs).
               <img src={org.logo_url} alt={org.name} className="trk-org-logo" />
             ) : (
               <span className="trk-org-name">{org.name}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 function ActionFeedbackInner() {
@@ -13,12 +13,23 @@ function ActionFeedbackInner() {
   const isFirstRun = useRef(true);
   const mainRef = useRef<HTMLElement | null>(null);
 
-  function clearTimers() {
+  // Bu üç yardımcı useCallback ile sabit kimlikli: aşağıdaki efektler
+  // bunları bağımlılık olarak sayabilsin ve yine yalnızca bir kez
+  // abone olsun diye. Hiçbiri değişen state'e kapanmaz (yalnızca ref'ler
+  // ve setVisible), davranış eskisiyle aynıdır.
+  const clearTimers = useCallback(() => {
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     if (observerRef.current) observerRef.current.disconnect();
-  }
+  }, []);
 
-  function start() {
+  const finish = useCallback(() => {
+    if (!activeRef.current) return;
+    activeRef.current = false;
+    clearTimers();
+    setVisible(false);
+  }, [clearTimers]);
+
+  const start = useCallback(() => {
     if (activeRef.current) return;
     activeRef.current = true;
     setVisible(true);
@@ -35,14 +46,7 @@ function ActionFeedbackInner() {
       observerRef.current.observe(mainRef.current, { childList: true, subtree: true });
     }
     timeoutRef.current = window.setTimeout(finish, 6000);
-  }
-
-  function finish() {
-    if (!activeRef.current) return;
-    activeRef.current = false;
-    clearTimers();
-    setVisible(false);
-  }
+  }, [finish]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -74,7 +78,7 @@ function ActionFeedbackInner() {
       document.removeEventListener("click", handleClick);
       document.removeEventListener("submit", handleSubmit);
     };
-  }, []);
+  }, [start]);
 
   useEffect(() => {
     if (isFirstRun.current) {
@@ -82,9 +86,9 @@ function ActionFeedbackInner() {
       return;
     }
     finish();
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, finish]);
 
-  useEffect(() => () => clearTimers(), []);
+  useEffect(() => () => clearTimers(), [clearTimers]);
 
   if (!visible) return null;
 

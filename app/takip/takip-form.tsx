@@ -234,7 +234,7 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
         <div className="trk-topbar-inner">
           <div className="trk-org">
             {row.organization_logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element -- kurum logosu harici, boyutu bilinmeyen bir URL
+              // Kurum logosu harici, boyutu bilinmeyen bir URL (bkz. eslint.config.mjs).
               <img src={row.organization_logo_url} alt={row.organization_name} className="trk-org-logo" />
             ) : (
               <span className="trk-org-name">{row.organization_name}</span>

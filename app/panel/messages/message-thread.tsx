@@ -314,7 +314,7 @@ export function Thread({
                       {message.attachment_name ? (
                         isImage && url ? (
                           <button type="button" className="msg-image" onClick={(event) => { event.stopPropagation(); onImage(url); }} aria-label={`${message.attachment_name} görselini büyüt`}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            {/* Kullanıcının yüklediği ek; adresi imzalı ve geçici (bkz. eslint.config.mjs). */}
                             <img src={url} alt={message.attachment_name} loading="lazy" />
                           </button>
                         ) : (

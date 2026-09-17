@@ -106,7 +106,6 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
               </a>
               <a className="ref" href="https://akademikmerkez.com" target="_blank" rel="noopener" data-reveal>
                 {/* Harici logo: next/image uzak kaynak yapılandırması olmadığı için düz img (boyutlu, tembel yükleme). */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="https://akademikmerkez.com/logo-trimmed.png" alt="AkademikMerkez" width={840} height={260} loading="lazy" decoding="async" />
                 <span>{c.refs.akademik} ↗</span>
               </a>
