@@ -1,5 +1,5 @@
 {
-  "name": "site-creator-vinext-starter",
+  "name": "arvoos",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -11,6 +11,7 @@
     "build": "node scripts/check-css-tokens.mjs && next build",
     "start": "next start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test:unit": "node --import ./tests/register.mjs --test 'tests/unit/*.test.ts'",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",

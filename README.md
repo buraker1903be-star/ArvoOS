@@ -1,108 +1,131 @@
-# vinext-starter
+# ArvoOS
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Çok kiracılı (multi-tenant) kurumsal yönetim paneli ve Arvo'nun pazarlama
+sitesi. Tek kod tabanı üç katmanı birlikte yayınlar:
 
-## Prerequisites
+| Katman | Yol | Alan adı |
+| --- | --- | --- |
+| Pazarlama sitesi (TR/EN) | `app/(site)/` | `arvo-os.com` |
+| Panel | `app/panel/` | `app.arvo-os.com` ve kurumların kendi alan adları |
+| Ürün köprüleri | `app/api/` | her iki host |
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+Panel modülleri: CRM (talep → teklif → sözleşme), Operasyon (iş akışları,
+adımlar, müşteri dosyaları), Finans (cari, banka, tahsilat, PayTR, raporlar),
+İnsan Kaynakları (ekip, prim, gizlilik sözleşmeleri), Dokümanlar, Mesajlaşma,
+Bildirimler ve Platform yönetimi.
 
-## Sites Lifecycle
+## Yığın
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
+Next.js 16 · React 19 · TypeScript · Tailwind 4 · Supabase (Postgres + Auth +
+Storage) · Cloudflare vinext üzerinde çalışır, dağıtım Sites/Vercel tarafında.
 
-This starter does not use `wrangler.jsonc`.
+## Kurulum
 
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
-
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm ci
+cp .env.example .env.local   # değerleri doldurun
+npm run dev
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+Zorunlu olan tek şey Supabase URL'i ve publishable anahtarıdır; geri kalan
+değişkenler ilgili özelliği açar (PayTR, ArvoLab köprüsü, Vercel alan adı
+bağlama). Hangisinin ne açtığı `.env.example` içinde tek tek yazılı — eksik
+değişken uygulamayı düşürmez, o özelliği kapalı gösterir.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## Komutlar
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+| Komut | Ne yapar |
+| --- | --- |
+| `npm run dev` | Geliştirme sunucusu |
+| `npm run test:unit` | Saf mantık birim testleri (derleme gerekmez) |
+| `npx tsc --noEmit` | Tip denetimi |
+| `npm run lint` | ESLint |
+| `npm run build` | Sites artefaktını üretir ve doğrular |
+| `npm test` | Derleme + yayınlanan HTML doğrulaması |
+| `npm run check:css` | CSS değişken (token) denetimi |
+| `npm run validate:artifact` | Mevcut artefaktın manifest/ESM kontrolü |
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+Her push ve PR'da `.github/workflows/ci.yml` tip denetimi, lint ve birim
+testlerini çalıştırır. Derleme CI'da değil, dağıtım tarafında yapılır.
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## Testler
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+`tests/unit/` altındaki birim testleri Next, React ya da Supabase'e dokunmayan
+saf mantık modüllerini kapsar: tutar ayrıştırma, Türkiye tarihi, ödeme planı,
+satış primi dağıtımı, rol yetkilendirmesi ve pazarlama host kuralları. Çoğu
+test, koddaki yorumlarda anlatılan gerçek hataların tekrarını engeller.
 
-## Diagnostic Commands
+Node 24 TypeScript'i kendisi sıyırdığı için derleme adımı yoktur;
+`tests/register.mjs` yalnızca `@/…` takma adını ve uzantısız import'ları
+tsconfig'deki gibi çözer.
 
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+`tests/rendered-html.test.mjs` bundan ayrıdır: derlenmiş Worker artefaktının
+yayınlanabilir olduğunu doğrular ve `npm test` ile çalışır.
 
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+## Veritabanı
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+Supabase migration'ları `supabase/migrations/` altında, zaman damgası
+sırasıyla uygulanır. Kurum verisi Row Level Security ile ayrılır; yetki üç
+yerde birden kurulur ve üçü de gereklidir:
 
-## Learn More
+1. **Veritabanı** — RLS politikaları (kurum üyeliği).
+2. **Sunucu** — `assertModuleAccess` / `assertModuleKeyAccess`
+   (`lib/role-permissions.ts`). Sayfa düzeni *ve* her server action bunu
+   çağırır; yalnızca sayfada çağırmak modül işlemlerini açıkta bırakır.
+3. **Arayüz** — menüde gizleme. Tek başına güvenlik değildir.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Kurum Sahibi (`owner`) hiçbir zaman kısıtlanamaz — kurumun kendi panelinden
+kilitlenip dışarıda kalmasını önlemek için.
+
+`supabase/functions/` altında üç Edge Function var: kurum sağlama, ekip daveti
+ve kimlik doğrulama e-postaları.
+
+## Ürün köprüleri
+
+- **ArvoLab** ayrı bir Supabase projesinde. Lisans durumu her istekte
+  sorulmaz; ArvoOS değişiklik oldukça ArvoLab'a yazar (`lib/arvolab.ts`), böylece
+  ArvoOS erişilemez olsa bile ArvoLab son bilinen duruma göre çalışır.
+- **Bireysel abonelik** için ürün, `app/api/bridge/subscription` ucuna
+  sunucudan sunucuya sorar; yetki iki tarafta aynı olan `PRODUCT_BRIDGE_SECRET`
+  ile doğrulanır. Fiyat, deneme ve askıya alma kararları ArvoOS'ta kalır.
+- **PayTR** "Link ile Ödeme" entegrasyonu kurum başınadır; mağaza anahtarları
+  veritabanında AES-256-GCM ile şifreli tutulur (`lib/payment-credentials.ts`).
+
+## Alan adları ve SEO
+
+Pazarlama sayfaları yalnızca `arvo-os.com`'da yayınlanır; kurum alan adından
+veya panel hostundan istenirse kanonik adrese 308 ile yönlendirilir. Panel,
+müşteri belgeleri ve oturum yolları hiçbir hostta dizine girmez. Kararların
+tamamı `lib/site/host-rules.ts` içinde saf fonksiyonlardadır ve birim
+testlidir; `lib/supabase/proxy.ts` ile `robots.ts` oradan okur.
+
+## Platform notları (Sites)
+
+Sites yaşam döngüsü CLI'ı kilitli bağımlılık kurulumunu kendisi yapar. Kaynağı
+düzenleyin, tutarlı bir aşama hazır olunca kontrol noktası alın; uzak Sites
+derleyicisi gönderilen commit üzerinde `npm run build` çalıştırır. Kurulum ve
+derlemeyi normal akışın parçası olarak tekrarlamayın.
+
+`install:ci` tek seferlik, yeniden denemeyen bir `npm ci`'dir: aynı proje için
+eşzamanlı kurulumu reddeder, imaj önbelleğini `--prefer-offline` ile kullanır,
+npm'i tek sokete indirir ve takılan kurulumu sonlandırır. Bu yardımcılar Linux
+ve GNU `timeout` içindir, macOS'ta çalışmaz. Zaman aşımları
+`SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT` ve
+`SITES_BUILD_KILL_AFTER` ile değiştirilebilir; hiçbiri yeniden denemez.
+
+Yazılabilir proje kapsamlı HOME/npm/XDG yolları gereken betikler
+`scripts/sites-env.sh` kullanır. Üretilen `.sites-runtime/` klasörü geçicidir
+ve Git'e girmez. Bu proje `wrangler.jsonc` kullanmaz.
+
+## Şablondan kalan, şu an kullanılmayan parçalar
+
+Bunlar vinext başlangıç şablonundan gelir ve ArvoOS'ta **kullanılmaz**; silinmediler
+çünkü platform iskeletinin parçası:
+
+- **Cloudflare D1 + Drizzle** (`db/`, `drizzle.config.ts`, `examples/d1/`):
+  `db/schema.ts` boş, `.openai/hosting.json` içinde `d1: null`. Tüm veri
+  Supabase'de.
+- **ChatGPT ile giriş** (`app/chatgpt-auth.ts`): hiçbir yerden import
+  edilmiyor. Panel girişi Supabase Auth ile yapılır.
+
+Bunlardan birini açacaksanız önce `.openai/hosting.json` bağlamalarını tanımlayın.

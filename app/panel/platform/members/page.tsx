@@ -72,7 +72,7 @@ export default async function MembersPage() {
 
   return <div className="stg plt">
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve Arc'ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
+      <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve Arc&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
       <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/platform">Platform yönetimi</Link></div>
     </div>
 
@@ -89,7 +89,7 @@ export default async function MembersPage() {
 
     {PRODUCT_ORDER.map((product) => <ProductTable key={product} product={product} rows={byProduct.get(product) ?? []} />)}
 
-    <div className="platform-note"><span>i</span><p>Bir kişi birden fazla üründe görünebilir; aynı e-posta ArvoOS ve Arc'ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.</p></div>
+    <div className="platform-note"><span>i</span><p>Bir kişi birden fazla üründe görünebilir; aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.</p></div>
 
     {!rows.length ? <div className="stg-empty"><StgIcon name="users" size={22} /><p>Henüz üye yok.</p></div> : null}
   </div>;

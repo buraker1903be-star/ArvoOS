@@ -27,9 +27,28 @@ import {
 const MIN_AGE_MS = 3_000;
 const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
-// SITE_LEAD_SALT canlıda tanımlanmalı; yoksa sabit değer kullanılır
-// (form yine çalışır, ancak imza tahmin edilebilir olur).
-const secret = () => process.env.SITE_LEAD_SALT || "arvo-site-lead-v1";
+// Form imzasının ve günlük IP özetinin tuzu.
+//
+// SITE_LEAD_SALT canlıda tanımlanmalı. Tanımlı değilse eskiden kod içindeki
+// sabit bir değere düşülüyordu: imza herkesçe üretilebildiği için bot 3
+// saniyelik bekleme ve tekrar oynatma engelini atlayabiliyor, dahası aynı
+// sabit clientIpHash'in tuzu olduğu için IP özetleri kaba kuvvetle geri
+// çözülebiliyordu (adres alanı küçük, tuz bilinince özet anonim değildir).
+//
+// Bunun yerine sunucuya özel, üretimde zaten zorunlu olan Supabase gizli
+// anahtarından türetilir: tahmin edilemez, süreçler ve dağıtımlar arasında
+// aynı kalır (imza bir örnekte üretilip başka örnekte doğrulanabilir) ve
+// eksik yapılandırma formu düşürmez. Anahtar döndürülürse açıktaki imzalar
+// geçersizleşir; submitLead bu durumda yeni jeton verip kullanıcıdan tekrar
+// göndermesini ister. İkisi de yoksa (yerel geliştirme) sabit değere düşer.
+const FALLBACK_SALT = "arvo-site-lead-v1";
+const derivedSecret = (() => {
+  const serverKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serverKey) return FALLBACK_SALT;
+  return createHash("sha256").update(`lead-form-salt|${serverKey}`).digest("base64url");
+})();
+
+const secret = () => process.env.SITE_LEAD_SALT || derivedSecret;
 
 const sign = (value: string) => createHmac("sha256", secret()).update(`lead-form|${value}`).digest("base64url");
 
