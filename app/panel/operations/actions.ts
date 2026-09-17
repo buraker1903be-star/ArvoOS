@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { PORTAL_BUCKET } from "./portal-files-shared";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
 // archiveWorkflow ile (ve yalnızca tamamlanan iş) gidilir, veritabanı
@@ -304,6 +305,17 @@ async function deleteWorkflow__impl(formData: FormData) {
   if (commissionError) throw new Error("Prim kaydı denetlenemedi: " + commissionError.message);
   if (commission) throw new Error("Bu işe prim tahakkuk ettiği için silinemez. Önce prim kaydını kaldırın.");
 
+  // Dosya yolları ana kayıt silinmeden önce okunur: operation_customer_files
+  // satırları "on delete cascade" ile gidiyor ve kaskat çalıştıktan sonra
+  // depodaki nesnelerin yolunu gösteren hiçbir kayıt kalmıyordu. Nesneler
+  // özel kovada sonsuza kadar duruyordu — ne denetlenebiliyor ne
+  // temizlenebiliyordu. Silme başarısız olursa depoya dokunulmaz.
+  const { data: portalFiles, error: portalFilesError } = await supabase
+    .from("operation_customer_files").select("storage_path")
+    .eq("organization_id", membership.organization_id)
+    .eq("workflow_id", workflowId);
+  if (portalFilesError) throw new Error("Müşteri dosyaları okunamadı: " + portalFilesError.message);
+
   const { error: unlinkError } = await supabase.from("crm_contracts").update({ workflow_id: null }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
   if (unlinkError) throw new Error("Sözleşme bağlantısı kopartılamadı: " + unlinkError.message);
   const { error: commentError } = await supabase.from("operation_workflow_comments").delete().eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
@@ -316,6 +328,15 @@ async function deleteWorkflow__impl(formData: FormData) {
   // etmiş bir iş silinemez ve bu doğru davranıştır.
   if (error) throw new Error("İş akışı silinemedi: " + error.message);
   if (!deleted?.length) throw new Error("İş akışı silinemedi: kayıt bulunamadı veya silme yetkiniz yok.");
+
+  // Kayıtlar gitti; depodaki nesneler de gitsin. Bu noktada iş silinmiş
+  // durumda, temizlik başarısız olursa akışı kesmeye değmez ama sessiz
+  // kalmamalı: yolu gösteren kayıt artık yok, elle bulunması gerekir.
+  const orphanPaths = (portalFiles ?? []).map((file) => file.storage_path).filter(Boolean);
+  if (orphanPaths.length) {
+    const { error: storageError } = await supabase.storage.from(PORTAL_BUCKET).remove(orphanPaths);
+    if (storageError) console.error("[operations] iş silindi ama müşteri dosyaları depodan kaldırılamadı", { workflowId, paths: orphanPaths, message: storageError.message });
+  }
 
   revalidateOperations();
   revalidatePath("/panel/crm/contracts");

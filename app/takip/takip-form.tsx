@@ -64,6 +64,20 @@ function TrackingLookup({ prefillCode, autoFocus, onStartOver }: { prefillCode?:
     if (prefillCode && !autoSubmitted.current && formRef.current) {
       autoSubmitted.current = true;
       formRef.current.requestSubmit();
+      // Kod adres çubuğunda bırakılmaz. Dosya indirme adresi bunu açıkça
+      // yasaklıyor (yalnızca POST kabul ediyor), ama sorgulama sayfasına
+      // ?code= ile gelinebildiği için kod tarayıcı geçmişine, Referer
+      // başlığına ve sunucu erişim günlüklerine düşüyordu. Kod tek anahtar:
+      // parola yok, hesap yok.
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("code")) {
+          url.searchParams.delete("code");
+          window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+        }
+      } catch {
+        // Adres okunamazsa sorgulama yine de çalışır.
+      }
     }
   }, [prefillCode]);
 

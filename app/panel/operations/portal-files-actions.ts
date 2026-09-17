@@ -64,7 +64,15 @@ async function registerPortalFiles__impl(formData: FormData) {
   const { workflow, contract } = await loadWorkflow(context, workflowId);
   const prefix = `${membership.organization_id}/${workflow.id}/`;
   const paths = entries.map((entry) => String(entry?.path ?? ""));
-  const cleanup = () => supabase.storage.from(PORTAL_BUCKET).remove(paths.filter((path) => path.startsWith(prefix)));
+  // Temizlik başarısız olursa kaydı olmayan nesne kovada kalıyor ve hiçbir
+  // yerde iz bırakmıyordu; sonraki temizlik turunun onu bulması için yolun
+  // günlüğe yazılması gerekiyor.
+  const cleanup = async () => {
+    const targets = paths.filter((path) => path.startsWith(prefix));
+    if (!targets.length) return;
+    const { error } = await supabase.storage.from(PORTAL_BUCKET).remove(targets);
+    if (error) console.error("[portal-files] yarım kalan yükleme temizlenemedi", { paths: targets, message: error.message });
+  };
 
   try {
     if (!contract) throw new Error("Bu iş bir sözleşmeye bağlı değil; müşteri portalı kapalı.");
@@ -185,10 +193,19 @@ export async function discardPortalUploads(workflowId: string, paths: string[]) 
     .slice(0, PORTAL_MAX_FILES_PER_BATCH);
   if (!safe.length) return;
   // Kaydı olan dosya asla silinmez.
-  const { data: registered } = await supabase.from("operation_customer_files").select("storage_path").in("storage_path", safe);
+  const { data: registered, error: registeredError } = await supabase.from("operation_customer_files").select("storage_path").in("storage_path", safe);
+  // Okuma başarısızsa "kaydı olan" kümesi boş kalır ve KAYITLI dosyalar
+  // öksüz sanılıp silinirdi. Hata varsa hiçbir şeye dokunulmaz.
+  if (registeredError) {
+    console.error("[portal-files] kayıtlı dosyalar okunamadı, temizlik atlandı", { message: registeredError.message });
+    return;
+  }
   const keep = new Set((registered ?? []).map((row) => row.storage_path as string));
   const orphans = safe.filter((path) => !keep.has(path));
-  if (orphans.length) await supabase.storage.from(PORTAL_BUCKET).remove(orphans);
+  if (orphans.length) {
+    const { error } = await supabase.storage.from(PORTAL_BUCKET).remove(orphans);
+    if (error) console.error("[portal-files] öksüz nesneler kaldırılamadı", { paths: orphans, message: error.message });
+  }
 }
 
 export async function registerPortalFiles(...args: Parameters<typeof registerPortalFiles__impl>) {

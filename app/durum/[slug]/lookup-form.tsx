@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { lookupStatus, refreshLookupPortalFiles } from "./actions";
 import { initialLookupState } from "./lookup-state";
 import { LookupSubmitButton } from "./lookup-controls";
@@ -10,6 +10,21 @@ import { describeStatus, FinanceSummary, formatDateTime, IconClock, LookupAlert,
 export function StatusLookupForm({ orgSlug, prefillCode }: { orgSlug: string; prefillCode?: string }) {
   const boundAction = lookupStatus.bind(null, orgSlug);
   const [state, formAction] = useActionState(boundAction, initialLookupState);
+
+  // Kod adres çubuğunda bırakılmaz: alana zaten dolduruldu. Dosya indirme
+  // adresi kodun adres çubuğuna yazılmasını açıkça yasaklıyor (yalnızca POST
+  // kabul ediyor), ama bu sayfaya ?code= ile gelinebildiği için kod tarayıcı
+  // geçmişine, Referer başlığına ve sunucu erişim günlüklerine düşüyordu.
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("code")) return;
+      url.searchParams.delete("code");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    } catch {
+      // Adres okunamazsa sorgulama yine de çalışır.
+    }
+  }, []);
 
   return (
     <div className="status-lookup">
