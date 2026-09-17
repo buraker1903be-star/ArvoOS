@@ -8,7 +8,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../../accounts/confirm-delete-button";
-import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../sales-actions";
+import { deleteContract, issueContractLink, markContractStatus, updateContract } from "../../contract-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ContractPaymentPlanForm } from "../../contract-payment-plan-form";
 import { ContractWorkPlanForm } from "../../contract-work-plan-form";

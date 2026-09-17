@@ -15,7 +15,7 @@ import {
   issueProposalLink,
   resolveProposal,
   updateProposal,
-} from "../../sales-actions";
+} from "../../proposal-actions";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";

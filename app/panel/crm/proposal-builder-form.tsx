@@ -2,7 +2,9 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { createProposal, createContractDirectly, type CreateProposalState } from "./sales-actions";
+import { createContractDirectly } from "./contract-actions";
+import { createProposal } from "./proposal-actions";
+import type { CreateProposalState } from "./sales-shared";
 import {
   applyDueDates,
   buildLabeledSchedule,

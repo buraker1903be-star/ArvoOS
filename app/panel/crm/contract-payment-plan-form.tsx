@@ -11,7 +11,7 @@ import {
   type PaymentPlanType,
   type PaymentScheduleItem,
 } from "@/lib/payment-schedule";
-import { updateContractPaymentPlan, type UpdateContractPlanState } from "./sales-actions";
+import { updateContractPaymentPlan, type UpdateContractPlanState } from "./contract-actions";
 import { ScheduleDateRows } from "./schedule-date-rows";
 
 const money = (value: number) =>

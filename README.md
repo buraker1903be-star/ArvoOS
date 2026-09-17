@@ -51,9 +51,14 @@ testlerini çalıştırır. Derleme CI'da değil, dağıtım tarafında yapılı
 ## Testler
 
 `tests/unit/` altındaki birim testleri Next, React ya da Supabase'e dokunmayan
-saf mantık modüllerini kapsar: tutar ayrıştırma, Türkiye tarihi, ödeme planı,
-satış primi dağıtımı, rol yetkilendirmesi ve pazarlama host kuralları. Çoğu
-test, koddaki yorumlarda anlatılan gerçek hataların tekrarını engeller.
+saf mantık modüllerini kapsar: tutar ayrıştırma, KDV hesabı, Türkiye tarihi,
+ödeme planı, satış primi dağıtımı, rol yetkilendirmesi, pazarlama host
+kuralları, telefon biçimlendirme ve mesaj balonu gruplama. Çoğu test, koddaki
+yorumlarda anlatılan gerçek hataların tekrarını engeller.
+
+Bir mantık parçası test edilemiyorsa nedeni genellikle Next/Supabase'e bağlı
+bir dosyanın içinde durmasıdır; `lib/sales-amounts.ts` ve
+`app/panel/messages/message-format.ts` bu yüzden ayrı durur.
 
 Node 24 TypeScript'i kendisi sıyırdığı için derleme adımı yoktur;
 `tests/register.mjs` yalnızca `@/…` takma adını ve uzantısız import'ları

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { markDocumentShared } from "./sales-actions";
+import { markDocumentShared } from "./document-share-actions";
 
 // Paylaşım bağlantısı belge oluşturulurken kaydediliyor ve personel onu
 // doğrudan WhatsApp/e-posta ile gönderiyordu; durum ise yalnızca
