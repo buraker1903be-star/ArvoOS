@@ -35,6 +35,10 @@ const amount = (formData: FormData, key: string) =>
 // veriyor. Uygulama tarafı da aynı listeyi kullanmalı; aksi halde manager
 // "Sil"e basıyor, RLS satırı sessizce eliyor ve kayıt silinmemiş oluyor.
 const DELETE_ROLES = ["owner", "admin"];
+/* Yönetici rolleri kuruma ait her kayda erişir; diğerleri yalnızca
+   kendilerine atanmış olanlara (private.arvo_can_access_opportunity ile
+   aynı ayrım). */
+const MANAGER_ROLES = ["owner", "admin", "manager"];
 
 const TAX_STATUSES = new Set(["excluded", "included", "exempt"]);
 const PLAN_TYPES = new Set<PaymentPlanType>(["cash", "half", "third", "custom"]);
@@ -553,13 +557,6 @@ async function issueProposalLink__impl(formData: FormData) {
 
 async function updateContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
-  // Sözleşme tutarını, kapsamını, vadesini ve ödeme planını yazan işlem.
-  // Aynı dosyadaki sözleşme oluşturma, durum değiştirme ve silme yönetici
-  // yetkisi istiyordu; düzenleme istemiyordu. RLS de engellemiyor (atanmış
-  // temsilciye izin veriyor), yani sözleşme oluşturamayan bir satış personeli
-  // kendisine atanmış sözleşmenin tutarını imza öncesi değiştirebiliyordu.
-  if (!["owner", "admin", "manager"].includes(membership.role))
-    throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   const contractAmount = amount(formData, "amount");
   if (!Number.isFinite(contractAmount) || contractAmount < 0)
@@ -571,6 +568,22 @@ async function updateContract__impl(formData: FormData) {
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
+
+  /*
+    Sözleşme düzenleme satış personelinde kalır, ama YALNIZCA kendisine
+    atanmış sözleşmelerde. Kural veritabanında zaten var
+    (private.arvo_can_access_opportunity: yönetici rolleri her şeye, diğerleri
+    fırsata atanmış aktif personelse). Ama RLS'in engellediği güncelleme hata
+    değil 0 SATIR döndürüyor: kontrol burada olmasaydı kullanıcı "kaydedildi"
+    görüp değişikliğini kaybederdi.
+  */
+  if (before && !MANAGER_ROLES.includes(membership.role)) {
+    const { data: assigned, error: assignedError } = await supabase
+      .rpc("arvo_can_access_opportunity", { target_opportunity: before.opportunity_id });
+    if (assignedError) throw new Error("Sözleşme yetkisi doğrulanamadı: " + assignedError.message);
+    if (assigned !== true)
+      throw new Error("Bu sözleşme size atanmadığı için düzenleyemezsiniz.");
+  }
 
   const { error } = await supabase.rpc("update_crm_contract", {
     target_contract_id: contractId,
