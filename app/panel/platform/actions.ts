@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
+import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // DİKKAT: "use server" dosyasında `export type { X }` yeniden dışa aktarımı
@@ -121,6 +122,7 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   if (!panelModules[moduleCode]) throw new Error("Geçersiz modül.");
   const { error } = await supabase.from("organization_modules").update({ is_enabled: isEnabled }).eq("organization_id", organizationId).eq("module_code", moduleCode);
   if (error) throw new Error("Modül durumu değiştirilemedi.");
+  if (moduleCode === "commerce") await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform?organization=${organizationId}`);
 }

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncArvolabLicense } from "@/lib/arvolab";
+import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { decryptSecret } from "@/lib/payment-credentials";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
 
@@ -112,6 +113,10 @@ export async function POST(request: Request) {
     if (link.purpose === "subscription" && link.product === "arvolab" && link.payer_organization_id) {
       const synced = await syncArvolabLicense(link.payer_organization_id);
       if (synced !== "synced") console.error("[paytr] ArvoLab lisansı yansıtılamadı", link.payer_organization_id, synced);
+    }
+    // ARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
+    if (link.purpose === "subscription" && link.product === "arc" && link.payer_organization_id) {
+      await syncArcTenantQuietly(link.payer_organization_id);
     }
   }
   return OK();
