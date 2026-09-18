@@ -47,6 +47,11 @@ export interface PaymentIncident {
 /**
  * Müdahale bekleyen ödeme bildirimleri. Tablo yalnızca service_role'e açık,
  * bu yüzden sunucu anahtarıyla okunur.
+ *
+ * Zaman sütunu `received_at` (tablo tanımı: 20260915090000_paytr_payment_links).
+ * Önceden `created_at` isteniyordu; o sütun yok, PostgREST hata döndü, hata
+ * yakalanıp boş liste döndürüldü ve Platform → Ödemeler sayfası 16 Eylül'den
+ * beri gerçek durumdan bağımsız olarak "Sorunlu bildirim yok" gösterdi.
  */
 export async function getPaymentIncidents(limit = 50): Promise<PaymentIncident[]> {
   const admin = createAdminClient();
@@ -54,9 +59,9 @@ export async function getPaymentIncidents(limit = 50): Promise<PaymentIncident[]
 
   const { data, error } = await admin
     .from("payment_provider_events")
-    .select("id,merchant_oid,result,organization_id,total_amount,payment_amount,currency,created_at,organizations(name,display_name)")
+    .select("id,merchant_oid,result,organization_id,total_amount,payment_amount,currency,received_at,organizations(name,display_name)")
     .not("result", "in", `(${HANDLED.join(",")})`)
-    .order("created_at", { ascending: false })
+    .order("received_at", { ascending: false })
     .limit(limit);
   if (error) {
     console.error("[ödeme] karşılıksız bildirimler okunamadı", error.message);
@@ -74,7 +79,7 @@ export async function getPaymentIncidents(limit = 50): Promise<PaymentIncident[]
       totalAmount: row.total_amount === null ? null : Number(row.total_amount),
       paymentAmount: row.payment_amount === null ? null : Number(row.payment_amount),
       currency: (row.currency as string) ?? null,
-      createdAt: row.created_at as string,
+      createdAt: row.received_at as string,
     };
   });
 }
