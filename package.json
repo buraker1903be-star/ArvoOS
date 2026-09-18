@@ -13,6 +13,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:unit": "node --import ./tests/register.mjs --test 'tests/unit/*.test.ts'",
     "check:migrations": "node scripts/check-migrations.mjs",
+    "check:schema": "node scripts/check-schema-usage.mjs",
     "db:new": "node scripts/new-migration.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
