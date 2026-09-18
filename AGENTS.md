@@ -57,6 +57,25 @@ Migration'lar `supabase/migrations/` altında, `YYYYMMDDHHMMSS_ad.sql`. Mevcut
 bir migration düzenlenmez; yenisi eklenir. Yeni tablo eklerken RLS'i açıp
 politikalarını aynı migration'da yazın.
 
+**ArvoOS ve ARC aynı Supabase projesini kullanır.** Bu deponun migration'ları
+şemanın tamamını kurmaz (`crm_contracts`, `crm_proposals`, `hr_employees`,
+`organization_memberships` gibi çekirdek tabloların `CREATE`'i hiçbir
+migration'da yok). Canlı şemanın tam anlık görüntüsü ArvoARC deposunda:
+`supabase/schema/` (güncelleme yöntemi oradaki README'de). Bir fonksiyonun
+canlıdaki gövdesini ya da bir tablonun gerçek sütunlarını oradan okuyun —
+buradaki eski migration'dan değil.
+
+**plpgsql gövdesi sütunları çalışma anında denetler.** Var olmayan bir sütuna
+başvuran fonksiyon oluşurken hata vermez, ilk çağrıda düşer. Yeni ya da
+değiştirilmiş her fonksiyonu gerçek tablo yapısıyla en az bir kez çalıştırın;
+`submit_site_lead` bu yüzden 5 gün boyunca her geçerli başvuruyu düşürdü.
+
+**security definer fonksiyonun yetkisini açıkça yazın.** Postgres yeni
+fonksiyonu varsayılan olarak herkese (`public`) açar. Her security definer
+fonksiyonun ardından `revoke all … from public, anon` ve yalnızca gereken
+rollere `grant` yazın; anon'a açılan fonksiyon kendi yetki kontrolünü
+yapmalıdır.
+
 ## Testler
 
 `tests/unit/` yalnızca saf mantık modülleri içindir (Next/React/Supabase'e
