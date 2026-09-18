@@ -36,6 +36,13 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   `todayInIstanbul`, karşılaştırma için `istanbulMidnight`.
   `new Date().toISOString().slice(0,10)` gece 00:00–03:00 arasında bir önceki
   günü verir.
+- **RLS "kim yazabilir"i söyler, "neyi"yi söylemez.** Oturum jetonu
+  tarayıcıda; bir tabloya UPDATE yetkisi olan kullanıcı her sütunu API'den
+  doğrudan yazabilir. Durum ve kanıt sütunları tetikleyiciyle korunur:
+  sözleşmenin `status = 'signed'` ve `signed_*` alanları yalnızca imza
+  fonksiyonlarıyla yazılır, imzalı sözleşme geri alınamaz
+  (`private.arvo_guard_contract_signature`). Bu koruma çağıranın rolüne
+  (`current_user`) baktığı için security **invoker**'dır.
 - **`service_role` istemcisi RLS'i atlar.** `createAdminClient` kullanan her
   yol yetkiyi kendisi doğrulamalıdır.
 - **Sırlar `NEXT_PUBLIC_` ile başlamaz.** Eksik ortam değişkeni uygulamayı
