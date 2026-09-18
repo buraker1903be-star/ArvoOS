@@ -53,8 +53,10 @@ enjekte edilemesin diye.
 
 ## Veritabanı
 
-Migration'lar `supabase/migrations/` altında, `YYYYMMDDHHMMSS_ad.sql`. Mevcut
-bir migration düzenlenmez; yenisi eklenir. Yeni tablo eklerken RLS'i açıp
+Migration'lar `supabase/migrations/` altında. Yeni dosyayı **`npm run db:new -- <ad>`**
+ile açın; sürümü son migration'ın ardına kendisi yerleştirir (elle yazılan
+damgalarda "…250000" gibi geçersiz saatler oluştu). `npm run check:migrations`
+CI'da çalışır. Mevcut bir migration düzenlenmez; yenisi eklenir. Yeni tablo eklerken RLS'i açıp
 politikalarını aynı migration'da yazın.
 
 **ArvoOS ve ARC aynı Supabase projesini kullanır.** Bu deponun migration'ları
