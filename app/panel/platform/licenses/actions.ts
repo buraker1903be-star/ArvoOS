@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { isAddonProduct, productName } from "@/lib/products";
 import { syncArvolabLicense } from "@/lib/arvolab";
-import { syncArcTenantQuietly } from "@/lib/arc-bridge";
+import { syncArcTenants } from "@/lib/arc-bridge";
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 const productStatuses = new Set(["inactive", ...licenseStatuses]);
@@ -129,7 +129,13 @@ async function updateProductLicense__impl(formData: FormData) {
     if (synced === "failed") throw new Error("Lisans kaydedildi ancak ArvoLab'a yansıtılamadı. Bağlantı ayarlarını kontrol edip tekrar kaydedin.");
   }
   // ARC kendi veritabanına taşındığında kademe oradan okunuyor (lib/arc-bridge.ts).
-  if (product === "arc") await syncArcTenantQuietly(organizationId);
+  // Kurucu ekranında hata görünsün: sessiz kalınca köprünün hiç çalışmadığı
+  // (ör. ortam değişkeni girilip yeniden dağıtılmadığı) anlaşılmıyordu.
+  if (product === "arc") {
+    const arc = await syncArcTenants(organizationId);
+    if (arc.status === "failed" || arc.errors.length)
+      throw new Error(`Lisans kaydedildi ancak ARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
+  }
 
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   revalidatePath("/panel/billing");
