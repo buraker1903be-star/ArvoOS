@@ -186,7 +186,14 @@ export async function getArcBridgeHealth(): Promise<ArcBridgeHealth> {
   const missing = ["ARC_SUPABASE_URL", "ARC_SUPABASE_SECRET_KEY"].filter((name) => !process.env[name]);
   const arc = arcClient();
   if (!arc) return { missing, ok: false, organizations: null, error: null };
-  const { count, error } = await arc.from("organizations").select("id", { count: "exact", head: true });
-  if (error) return { missing, ok: false, organizations: null, error: error.message || error.code || "bilinmeyen hata" };
+  const { count, error, status } = await arc.from("organizations").select("id", { count: "exact", head: true });
+  // head isteğinde yanıt gövdesi yok: yetki hatasında (401) mesaj boş geliyor
+  // ve uyarı "bilinmeyen hata" diyordu. Durum kodu nedeni söylüyor.
+  if (error) {
+    const neden = status === 401 || status === 403
+      ? `anahtar reddedildi (HTTP ${status}); anahtar silinmiş ya da başka projeye ait`
+      : error.message || error.code || `HTTP ${status}`;
+    return { missing, ok: false, organizations: null, error: neden };
+  }
   return { missing, ok: true, organizations: count ?? 0, error: null };
 }
