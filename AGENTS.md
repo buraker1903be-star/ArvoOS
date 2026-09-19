@@ -74,11 +74,13 @@ köprünün durumunu gösterir). Ayrıntı: ArvoARC/AYRILMA.md.
 
 Bu deponun migration'ları şemanın tamamını kurmaz (`crm_contracts`, `crm_proposals`, `hr_employees`,
 `organization_memberships` gibi çekirdek tabloların `CREATE`'i hiçbir
-migration'da yok). Canlı şemanın tam anlık görüntüsü ArvoARC deposunda:
-`supabase/schema/` (güncelleme yöntemi oradaki README'de; bu projede
-çalıştırılınca ArvoOS'un şemasını verir). Bir fonksiyonun
-canlıdaki gövdesini ya da bir tablonun gerçek sütunlarını oradan okuyun —
-buradaki eski migration'dan değil.
+migration'da yok). Canlı şemanın tam anlık görüntüsü
+`supabase/schema/canli-sema.sql`: ArvoARC'taki `scripts/sema-disa-aktar.sql`
+bu projenin SQL Editor'ünde çalıştırılır, CSV `scripts/sema-kaydet.mjs` ile
+dosyaya çevrilir. Bir fonksiyonun canlıdaki gövdesini ya da bir tablonun
+gerçek sütunlarını oradan okuyun — buradaki eski migration'dan değil.
+Migration uyguladıktan sonra anlık görüntüyü yenileyin; akış testleri onu
+kurar.
 
 **plpgsql gövdesi sütunları çalışma anında denetler.** Var olmayan bir sütuna
 başvuran fonksiyon oluşurken hata vermez, ilk çağrıda düşer. Yeni ya da
@@ -96,9 +98,16 @@ yapmalıdır.
 `tests/unit/` yalnızca saf mantık modülleri içindir (Next/React/Supabase'e
 dokunmayanlar). Bir hata düzeltince onu sabitleyen testi de ekleyin.
 
+`tests/db/` (`npm run test:db`) canlı şemayı PGlite'a kurar ve akışları gerçek
+fonksiyon/tetikleyicilerle, Supabase rolleriyle (anon, authenticated) koşar.
+Bir tabloya koruma (tetikleyici, RLS) eklerken o tabloya yazan **meşru** yolların
+senaryosu burada yeşil kalmalı; 19.09.2026'da teklif dondurma kuralı yalnızca
+saldırı senaryolarıyla sınandı ve müşterinin onayını canlıda kırdı. Yeni
+kuralı önce anlık görüntüye uygulayıp testleri çalıştırın.
+
 ## Kontroller
 
-`npx tsc --noEmit`, `npm run lint`, `npm run test:unit` — üçü de CI'da
+`npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run test:db` — hepsi CI'da
 (`.github/workflows/ci.yml`) çalışır. Derleme CI'da yapılmaz.
 
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC

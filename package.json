@@ -12,6 +12,7 @@
     "start": "next start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:unit": "node --import ./tests/register.mjs --test 'tests/unit/*.test.ts'",
+    "test:db": "node --test 'tests/db/*.test.mjs'",
     "check:migrations": "node scripts/check-migrations.mjs",
     "check:schema": "node scripts/check-schema-usage.mjs",
     "db:new": "node scripts/new-migration.mjs",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
+    "@electric-sql/pglite": "0.3.16",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

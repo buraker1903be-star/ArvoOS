@@ -34,9 +34,14 @@ jobs:
         run: npx eslint . --ignore-pattern dist --ignore-pattern .next
       - name: Birim testleri
         run: npm run test:unit
+      # Canlı şemanın anlık görüntüsü (supabase/schema/canli-sema.sql) PGlite'a
+      # kurulur; teklif → imza → iş → tahsilat akışı gerçek fonksiyon ve
+      # tetikleyicilerle, müşterinin ve personelin rolleriyle koşar.
+      - name: Veritabanı akış testleri
+        run: npm run test:db
       # Yeni migration adı ve sürüm sırası (scripts/check-migrations.mjs).
-      # ArvoOS ve ARC aynı veritabanına yazıyor; migration'lar SQL Editor'den
-      # elle uygulanıyor, sıralama hatası ancak burada yakalanır.
+      # Migration'lar SQL Editor'den elle uygulanıyor; sıralama hatası ancak
+      # burada yakalanır.
       - name: Migration denetimi
         run: npm run check:migrations
       # Koddaki tablo/sütun/fonksiyon adları canlı şemada var mı
