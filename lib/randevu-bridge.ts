@@ -169,3 +169,18 @@ export async function getRandevuBridgeHealth(): Promise<RandevuBridgeHealth> {
   }
   return { missing, ok: true, organizations: count ?? 0, error: null };
 }
+
+/**
+ * Randevu'da şifre belirleme bağlantısının jetonu (kurtarma türünde, Supabase
+ * varsayılanıyla 1 saat geçerli). Randevu projesinde e-posta servisi yok;
+ * bağlantıyı salon yöneticisi kişiye WhatsApp ya da kendi e-postasıyla
+ * iletir. Jeton saklanmaz, yalnızca çağırana döner.
+ */
+export async function createRandevuPasswordToken(email: string): Promise<string> {
+  const hedef = randevuClient();
+  if (!hedef) throw new Error("Randevu bağlantısı tanımlı değil");
+  const { data, error } = await hedef.auth.admin.generateLink({ type: "recovery", email });
+  const token = data?.properties?.hashed_token;
+  if (error || !token) throw new Error(`şifre bağlantısı oluşturulamadı: ${error?.message ?? "jeton yok"}`);
+  return token;
+}
