@@ -118,3 +118,47 @@ describe("randevu ürünü tablolara girebilir", () => {
         [SALON], /organization_product_licenses_product_check/);
     }));
 });
+
+describe("kartla (PayTR) ödeme ürün lisansını otomatik uzatır", () => {
+  // Randevu panelindeki "Kartla öde" bu bağlantıyı açar (lib/license-checkout.ts);
+  // PayTR bildirimi /api/paytr/callback → arvo_record_paytr_payment.
+  async function baglanti() {
+    await rol(db, "postgres");
+    return (await tek(
+      `insert into public.payment_links (id, organization_id, provider, provider_link_id, url, amount, purpose, payer_organization_id, plan_code, product, created_by)
+       values (gen_random_uuid(), $1, 'paytr', 'L' || gen_random_uuid(), 'https://paytr.com/x', 75000, 'subscription', $2, 'starter', 'randevu', $3) returning id`,
+      [ARVO, SALON, SAHIP],
+    )).id;
+  }
+  const ode = async (id, oid, tutar = 75000) =>
+    (await tek(`select public.arvo_record_paytr_payment($1, $2, $3, $3, 'TL', false, '{}'::jsonb) as sonuc`, [id, oid, tutar])).sonuc;
+  const bitis = async () =>
+    (await tek(`select status, current_period_end from public.organization_product_licenses where organization_id = $1 and product = 'randevu'`, [SALON]));
+
+  test("ödeme 1 ay açar; ikinci ödeme dönem sonuna 1 ay daha ekler; aynı bildirim iki kez sayılmaz", () =>
+    islem(db, async () => {
+      await tohum();
+      assert.notEqual(await ode(await baglanti(), "OID1"), "not_found");
+      const ilk = await bitis();
+      assert.equal(ilk.status, "active");
+      const ilkGun = (new Date(ilk.current_period_end) - Date.now()) / 86_400_000;
+      assert.ok(ilkGun > 27 && ilkGun < 32, `ilk dönem ${ilkGun} gün`);
+
+      const ikinci = await baglanti();
+      await ode(ikinci, "OID2");
+      assert.equal(await ode(ikinci, "OID2"), "duplicate");
+      const son = await bitis();
+      const fark = (new Date(son.current_period_end) - new Date(ilk.current_period_end)) / 86_400_000;
+      assert.ok(fark > 27 && fark < 32, `ikinci ödeme ${fark} gün ekledi`);
+
+      const kayit = await tek(`select count(*)::int as n from public.organization_payment_requests where organization_id = $1 and product = 'randevu' and payment_method = 'paytr' and status = 'approved'`, [SALON]);
+      assert.equal(kayit.n, 2);
+    }));
+
+  test("eksik tutar lisans açmaz", () =>
+    islem(db, async () => {
+      await tohum();
+      assert.equal(await ode(await baglanti(), "OID3", 1000), "amount_mismatch");
+      assert.equal(await bitis(), undefined);
+    }));
+});
