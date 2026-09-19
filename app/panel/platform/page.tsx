@@ -18,7 +18,7 @@ import "./platform.css";
 type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
 type ManagedOrganization = {
   id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string;
-  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string;
+  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string; contact_phone: string | null;
 };
 type Invitation = { organization_id: string; email: string; status: string; sent_at: string | null; accepted_at: string | null; error_message: string | null };
 type AuditRow = { id: string; action: string; state: string; result: string; duration_ms: number | null; created_at: string };
@@ -50,7 +50,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
 
   const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }, pendingPayments] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url,kind").order("name"),
+    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url,kind,contact_phone").order("name"),
     supabase.from("organization_invitations").select("organization_id,email,status,sent_at,accepted_at,error_message").order("created_at", { ascending: false }),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -304,6 +304,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               <label>Sektör<input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
               <label>Kurum türü<select name="kind" defaultValue={selected.kind ?? "customer"}><option value="customer">Müşteri</option><option value="internal">Kendi markamız</option></select></label>
               <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
+              <label className="wide">İletişim telefonu <small className="plt-optional">ödeme hatırlatması WhatsApp&apos;tan buraya gider</small><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
               <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
               <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
             </form>

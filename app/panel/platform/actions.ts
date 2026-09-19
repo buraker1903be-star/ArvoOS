@@ -86,6 +86,9 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   const sector = String(formData.get("sector") ?? "").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();
   const customDomain = cleanDomain(String(formData.get("custom_domain") ?? ""));
+  // Kurumun kendi Ayarlar'ından da girilir; ArvoOS'a girmeyen (Randevu salonu gibi)
+  // kurumlar için kurucu buradan girer. Ödeme hatırlatmaları bu numaraya gider.
+  const contactPhone = String(formData.get("contact_phone") ?? "").trim().slice(0, 20);
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (displayName && (displayName.length < 2 || displayName.length > 80)) throw new Error("Tabela unvanı 2–80 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
@@ -98,7 +101,7 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   */
   const kind = formData.get("kind") === "internal" ? "internal" : "customer";
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
-  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, contact_phone: contactPhone || null, updated_at: new Date().toISOString() };
 
   if (customDomain !== (current?.custom_domain ?? null)) {
     const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");

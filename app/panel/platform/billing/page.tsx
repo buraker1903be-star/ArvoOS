@@ -4,6 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
+import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 
 type Subscription = { id: string; organization_id: string; provider: string; plan_code: string; status: string; currency: string; unit_amount: number; interval: string; current_period_end: string | null; organizations: { name?: string; display_name?: string | null } | { name?: string; display_name?: string | null }[] | null };
 type Invoice = { id: string; organization_id: string; status: string; currency: string; total: number; paid_at: string | null; created_at: string };
@@ -14,15 +15,22 @@ const planLabels: Record<string, string> = { starter: "Başlangıç", profession
 const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
 const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
 
+// Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
+const remindersNow = (licenses: RenewalLicense[], organizations: RenewalOrganization[]) => renewalReminders(licenses, organizations, Date.now());
+
 export default async function BillingPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const [{ data: subscriptions }, { data: invoices }, { data: internalOrganizations }] = await Promise.all([
+  const [{ data: subscriptions }, { data: invoices }, { data: internalOrganizations }, { data: productLicenses }, { data: organizationRows }] = await Promise.all([
     supabase.from("billing_subscriptions").select("id,organization_id,provider,plan_code,status,currency,unit_amount,interval,current_period_end,organizations(name,display_name)").order("created_at", { ascending: false }),
     supabase.from("billing_invoices").select("id,organization_id,status,currency,total,paid_at,created_at").order("created_at", { ascending: false }).limit(50),
     supabase.from("organizations").select("id").eq("kind", "internal"),
+    supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due"]),
+    supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
   ]);
+  // Otomatik çekim yok: dönem sonu yaklaşanlar burada, kurucu WhatsApp'tan hatırlatır.
+  const reminders = remindersNow((productLicenses ?? []) as RenewalLicense[], (organizationRows ?? []) as RenewalOrganization[]);
 
   /*
     Kendi markalarımız gelir toplamına girmez: aynı tüzel kişiliğin kendi
@@ -55,6 +63,32 @@ export default async function BillingPage() {
     </section>
 
     <div className="stg-grid">
+      <StgSection
+        id="hatirlatmalar" wide icon="wallet" tone={reminders.some((r) => r.daysLeft < 0) ? "danger" : reminders.length ? "warning" : "neutral"}
+        kicker="ÖDEME HATIRLATMALARI" title="Dönem sonu yaklaşanlar"
+        description={`Arc, ArvoLab ve Randevu aboneliklerinden ${REMINDER_WINDOW_DAYS} gün içinde bitenler ve süresi geçenler. WhatsApp düğmesi kurumun iletişim numarasına ödeme bağlantılı hazır mesajı açar.`}
+        aside={<span className="status-pill" data-tone={reminders.length ? "warning" : "neutral"}>{reminders.length} kurum</span>}
+      >
+        {reminders.length ? (
+          <div className="stg-list">
+            {reminders.map((r) => (
+              <div key={`${r.organizationId}-${r.product}`} className="plt-row">
+                <span className="stg-row-main">
+                  <span className="stg-row-icon" data-tone={r.daysLeft < 0 ? "danger" : r.daysLeft <= 1 ? "warning" : "gold"}><StgIcon name="wallet" size={16} /></span>
+                  <span>
+                    <b>{r.organizationName} · {r.productName}</b>
+                    <small>{r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`} · {date(r.endsAt)}{r.fee ? ` · ${money(r.fee, "TRY")} / ay` : " · aylık ücret girilmedi"}</small>
+                  </span>
+                </span>
+                {r.whatsappUrl
+                  ? <a className="panel-secondary" href={r.whatsappUrl} target="_blank" rel="noreferrer" title={r.message}>WhatsApp ile hatırlat</a>
+                  : <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>}
+              </div>
+            ))}
+          </div>
+        ) : <div className="stg-empty"><StgIcon name="check" size={22} /><p>Önümüzdeki {REMINDER_WINDOW_DAYS} gün içinde biten ya da süresi geçmiş ek ürün aboneliği yok.</p></div>}
+      </StgSection>
+
       <StgSection id="abonelikler" wide icon="box" tone="gold" kicker="ABONELİKLER" title="Kurum abonelikleri" aside={<span className="status-pill">{subscriptionRows.length} kayıt</span>}>
         {subscriptionRows.length ? (
           <div className="stg-list">
