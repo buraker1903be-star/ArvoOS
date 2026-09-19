@@ -20,8 +20,9 @@ import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib
 // çağrı kaçarsa (ör. üyelik bir veritabanı tetikleyicisiyle değişti)
 // zamanlanmış eşitleme yakalar.
 //
-// ARC_SUPABASE_URL tanımlı değilse hiçbir şey yapmaz: taşıma gününe kadar
-// ARC eski ortak veritabanında, kopyaya gerek yok.
+// ARC_SUPABASE_URL tanımlı değilse hiçbir şey yapmaz. Taşıma 19.09.2026'da
+// yapıldı; o günden beri ARC bu kopyaya bağımlı — köprü durursa lisans ve
+// personel değişiklikleri ARC'a ulaşmaz (Platform sayfası uyarır).
 
 export type ArcSyncResult = {
   status: "synced" | "not_configured" | "failed";

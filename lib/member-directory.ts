@@ -5,8 +5,10 @@ import { arvolabClient } from "@/lib/arvolab";
 // Üç ürünün tüm üyelerini tek listede toplar (Platform → Üyeler).
 //
 // Veri üç yerde:
-//  - ArvoOS ve Arc aynı veritabanında, aynı organization_memberships tablosunu
-//    kullanır. Arc üyesi = kurumunda Arc lisansı ya da commerce modülü açık olan.
+//  - Arc üyesi = kurumunda Arc lisansı ya da commerce modülü açık olan, ArvoOS'un
+//    organization_memberships tablosundan. Arc 19.09.2026'dan beri ayrı
+//    veritabanında ama üyelik kopyasını buradan köprü yazıyor (lib/arc-bridge.ts);
+//    kaynak hâlâ burası.
 //  - ArvoLab ayrı Supabase projesinde: kendi profiles/organizations tabloları.
 //  - Bireysel ArvoLab aboneleri ArvoOS'ta product_subscribers'ta.
 //
