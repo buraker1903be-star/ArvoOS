@@ -66,8 +66,13 @@ async function createCustomerOrganization__impl(formData: FormData) {
     body: { name, slug, sector, planCode, ownerName, ownerEmail, customDomain, seedCrm, seedOperations, redirectBase },
   });
   if (error || !data?.organization_id) {
-    const message = data?.error || error?.message || "Kurum provisioning işlemi tamamlanamadı.";
-    throw new Error(message);
+    // 2xx dışı yanıtta supabase-js gövdeyi data'ya koymuyor; fonksiyonun
+    // döndürdüğü asıl neden error.context'teki yanıtta. Önceden ekranda
+    // yalnızca "Edge Function returned a non-2xx status code" görünüyordu.
+    const context = (error as { context?: Response } | null)?.context;
+    const body = context ? await context.clone().json().catch(() => null) as { error?: string } | null : null;
+    const message = body?.error || data?.error || error?.message || "Kurum provisioning işlemi tamamlanamadı.";
+    throw new Error(`Kurum oluşturulamadı: ${message}`);
   }
 
   revalidatePath("/panel", "layout");
