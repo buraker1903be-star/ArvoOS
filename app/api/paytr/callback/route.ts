@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
+import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { decryptSecret } from "@/lib/payment-credentials";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
 
@@ -117,6 +118,10 @@ export async function POST(request: Request) {
     // ARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
     if (link.purpose === "subscription" && link.product === "arc" && link.payer_organization_id) {
       await syncArcTenantQuietly(link.payer_organization_id);
+    }
+    // Randevu lisansı uzadıysa salonun online sayfası hemen açılsın.
+    if (link.purpose === "subscription" && link.product === "randevu" && link.payer_organization_id) {
+      await syncRandevuTenantQuietly(link.payer_organization_id);
     }
   }
   return OK();

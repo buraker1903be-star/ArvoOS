@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { ADDON_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
+import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
 import { updateProductPlan, updateSubscriber } from "./actions";
 import "../../settings/settings.css";
@@ -63,7 +63,7 @@ export default async function SubscribersPage() {
       <StgWidget tone="gold" icon="box" label="Toplam" value={subscribers.length} note="Son 200 kayıt" />
     </section>
 
-    {ADDON_PRODUCTS.map((product) => {
+    {SUBSCRIBER_PRODUCTS.map((product) => {
       const plan = plans.get(product.code);
       return (
         <StgSection

@@ -8,6 +8,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
+import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 async function teamContext() {
@@ -196,8 +197,12 @@ async function updateTeamMemberAccess__impl(formData: FormData) {
     .select("user_id");
   if (error) throw new Error("Kullanıcı güncellenemedi: " + error.message);
   if (!updated?.length) throw new Error("Kullanıcı güncellenemedi: yetkiniz yok veya kayıt bulunamadı.");
-  // Pasife alınan personel ARC'a da hemen giremesin (lib/arc-bridge.ts).
-  await syncArcTenantQuietly(membership.organization_id);
+  // Pasife alınan personel ARC'a ve Randevu'ya da hemen giremesin
+  // (lib/arc-bridge.ts, lib/randevu-bridge.ts).
+  await Promise.all([
+    syncArcTenantQuietly(membership.organization_id),
+    syncRandevuTenantQuietly(membership.organization_id),
+  ]);
 
   if (fullName) {
     const { error: nameError } = await supabase.rpc("update_member_display_name", {

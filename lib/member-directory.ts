@@ -15,7 +15,7 @@ import { arvolabClient } from "@/lib/arvolab";
 // E-postalar auth.users'ta; REST ile sorgulanamaz, yönetim API'siyle sayfa sayfa
 // çekilir. Ekran kurucuya özel olduğu için maliyeti kabul edilebilir.
 
-export type MemberProduct = "arvoos" | "arvolab" | "arc";
+export type MemberProduct = "arvoos" | "arvolab" | "arc" | "randevu";
 
 export interface DirectoryRow {
   product: MemberProduct;
@@ -120,6 +120,24 @@ export async function getMemberDirectory(): Promise<Directory> {
         access: commerce.get(membership.organization_id) ?? false,
         status: arc?.status ?? "lisans yok",
         periodEnd: arc?.current_period_end ?? null,
+      });
+    }
+
+    // Randevu: kurumda randevu lisansı varsa üye sayılır; erişim lisansa bağlı
+    // (Randevu tarafında rdv_lisans_acik aynı kuralı uygular).
+    const randevu = productLicense.get(`${membership.organization_id}:randevu`);
+    if (randevu) {
+      rows.push({
+        product: "randevu",
+        userId: membership.user_id,
+        name: user?.name ?? null,
+        email: user?.email ?? null,
+        scope,
+        role: membership.role,
+        individual: false,
+        access: licenseOpen(randevu.status, randevu.current_period_end ?? null),
+        status: randevu.status,
+        periodEnd: randevu.current_period_end ?? null,
       });
     }
   }

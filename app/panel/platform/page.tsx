@@ -4,6 +4,7 @@ import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
+import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
@@ -98,7 +99,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   // ArvoLab ayrı veritabanında; köprü koparsa tek iz orada kalır (lib/arvolab.ts).
   const bridge = await getArvolabBridgeHealth();
   // ARC köprüsü sessiz çalışıyor; durumu yalnızca burada görünür (lib/arc-bridge.ts).
-  const arcBridge = await getArcBridgeHealth();
+  const [arcBridge, randevuBridge] = await Promise.all([getArcBridgeHealth(), getRandevuBridgeHealth()]);
 
   // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
   /*
@@ -187,6 +188,22 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       </div>
     ) : (
       <p className="plt-substatus">ARC köprüsü bağlı · ARC veritabanında {arcBridge.organizations} kurum.</p>
+    )}
+
+    {!randevuBridge.ok ? (
+      <div className="plt-banner" data-tone={randevuBridge.error ? "danger" : undefined} role="status">
+        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
+        <div>
+          <b>{randevuBridge.error ? "Randevu köprüsü bağlanamıyor" : "Randevu köprüsü kapalı"}</b>
+          <p>
+            {randevuBridge.error
+              ? `Randevu veritabanına bağlanılamadı: ${randevuBridge.error}. Anahtarın ArvoRandevu projesinin secret anahtarı olduğunu kontrol edin.`
+              : `Bu dağıtımda tanımlı olmayan değişkenler: ${randevuBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın. Tanımlanana kadar salon lisansları Randevu'ya yansımaz.`}
+          </p>
+        </div>
+      </div>
+    ) : (
+      <p className="plt-substatus">Randevu köprüsü bağlı · Randevu veritabanında {randevuBridge.organizations} kurum.</p>
     )}
 
     {params.provisioned === "1" ? (

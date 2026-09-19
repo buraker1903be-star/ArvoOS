@@ -18,7 +18,7 @@ const statusLabels: Record<string, string> = {
   canceled: "İptal", inactive: "Kapalı", "lisans yok": "Lisans yok", "abonelik yok": "Abonelik yok", "iç ekip": "İç ekip",
 };
 
-const PRODUCT_ORDER: MemberProduct[] = ["arvoos", "arvolab", "arc"];
+const PRODUCT_ORDER: MemberProduct[] = ["arvoos", "arvolab", "arc", "randevu"];
 
 function ProductTable({ product, rows }: { product: MemberProduct; rows: DirectoryRow[] }) {
   const open = rows.filter((row) => row.access).length;

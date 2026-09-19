@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
-import { isAddonProduct, productName } from "@/lib/products";
+import { isSubscriberProduct, productName } from "@/lib/products";
 
 // Bireysel abonelerin denetimi. Fiyat ve deneme süresi ürün geneli
 // (product_plans); askıya alma ve dönem tek tek abonede.
@@ -15,7 +15,7 @@ async function updateProductPlan__impl(formData: FormData) {
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
 
   const product = String(formData.get("product") ?? "").trim();
-  if (!isAddonProduct(product)) throw new Error("Geçerli bir ürün seçin.");
+  if (!isSubscriberProduct(product)) throw new Error("Geçerli bir ürün seçin.");
 
   const rawFee = String(formData.get("individual_monthly_fee") ?? "").trim();
   const fee = rawFee ? Math.round(Number(rawFee) * 100) : null;

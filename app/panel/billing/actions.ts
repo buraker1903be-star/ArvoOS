@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { PRODUCTS } from "@/lib/products";
 
 const plans = new Set(["starter", "professional", "enterprise"]);
 const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -23,6 +24,7 @@ async function submitBankTransferPayment__impl(formData: FormData) {
   assertModuleKeyAccess(membership.role, "finance", hiddenModuleKeys);
 
   const bankAccountId = String(formData.get("bank_account_id") ?? "").trim();
+  const product = String(formData.get("product") ?? "arvoos").trim();
   const planCode = String(formData.get("plan_code") ?? "").trim();
   const amountTl = parseTurkishAmount(String(formData.get("amount") ?? ""));
   const referenceNo = String(formData.get("reference_no") ?? "").trim().slice(0, 120);
@@ -30,6 +32,7 @@ async function submitBankTransferPayment__impl(formData: FormData) {
   const receipt = formData.get("receipt");
 
   if (!bankAccountId) throw new Error("Banka hesabı seçilmedi.");
+  if (!PRODUCTS.some((p) => p.code === product)) throw new Error("Geçerli bir ürün seçin.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
   if (!Number.isFinite(amountTl) || amountTl <= 0 || amountTl > 10000000) throw new Error("Geçerli bir ödeme tutarı girin.");
   if (!(receipt instanceof File) || receipt.size === 0) throw new Error("Dekont dosyası zorunludur.");
@@ -59,6 +62,7 @@ async function submitBankTransferPayment__impl(formData: FormData) {
     organization_id: organization.id,
     bank_account_id: bankAccountId,
     plan_code: planCode,
+    product,
     amount,
     currency: "TRY",
     payment_method: "bank_transfer",

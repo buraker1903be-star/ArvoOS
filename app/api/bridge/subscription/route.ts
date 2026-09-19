@@ -4,7 +4,7 @@ import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-crede
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
-import { isAddonProduct, productName } from "@/lib/products";
+import { isSubscriberProduct, productName } from "@/lib/products";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride Arc).
 //
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   const action = String(body.action ?? "").trim();
   const userId = String(body.userId ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
-  if (!isAddonProduct(product)) return json(400, { error: "invalid_product" });
+  if (!isSubscriberProduct(product)) return json(400, { error: "invalid_product" });
   if (!userId || !email) return json(400, { error: "missing_user" });
   if (!["ensure", "checkout"].includes(action)) return json(400, { error: "invalid_action" });
 

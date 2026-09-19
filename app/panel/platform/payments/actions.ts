@@ -4,6 +4,9 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
+import { syncArvolabLicense } from "@/lib/arvolab";
+import { syncArcTenantQuietly } from "@/lib/arc-bridge";
+import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 
 async function reviewBankTransferPayment__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
@@ -22,6 +25,16 @@ async function reviewBankTransferPayment__impl(formData: FormData) {
     p_review_note: reviewNote || null,
   });
   if (error) throw new Error(`Ödeme kararı kaydedilemedi: ${error.message}`);
+
+  // Onaylanan ödeme ayrı veritabanındaki bir ürünün lisansını uzattıysa oraya
+  // hemen yansıt; kaçarsa 10 dakikalık eşitleme yakalar.
+  if (decision === "approved") {
+    const { data: payment } = await supabase.from("organization_payment_requests")
+      .select("organization_id, product").eq("id", paymentId).maybeSingle();
+    if (payment?.product === "arvolab") await syncArvolabLicense(payment.organization_id);
+    if (payment?.product === "arc") await syncArcTenantQuietly(payment.organization_id);
+    if (payment?.product === "randevu") await syncRandevuTenantQuietly(payment.organization_id);
+  }
 
   revalidatePath("/panel", "layout");
   revalidatePath("/panel/platform/payments");

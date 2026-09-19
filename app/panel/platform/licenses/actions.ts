@@ -5,6 +5,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { isAddonProduct, productName } from "@/lib/products";
+import { syncRandevuTenants } from "@/lib/randevu-bridge";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenants } from "@/lib/arc-bridge";
 
@@ -135,6 +136,15 @@ async function updateProductLicense__impl(formData: FormData) {
     const arc = await syncArcTenants(organizationId);
     if (arc.status === "failed" || arc.errors.length)
       throw new Error(`Lisans kaydedildi ancak ARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
+  }
+  // Randevu da kendi veritabanında (lib/randevu-bridge.ts); salonun online
+  // sayfası ve paneli lisansı oradan okuyor.
+  if (product === "randevu") {
+    const randevu = await syncRandevuTenants(organizationId);
+    if (randevu.status === "not_configured")
+      throw new Error("Lisans kaydedildi ancak Randevu köprüsü kapalı (RANDEVU_SUPABASE_URL / RANDEVU_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın, sonra tekrar kaydedin.");
+    if (randevu.status === "failed" || randevu.errors.length)
+      throw new Error(`Lisans kaydedildi ancak Randevu'ya yansıtılamadı: ${randevu.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
   }
 
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
