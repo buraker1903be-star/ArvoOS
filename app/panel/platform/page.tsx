@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
+import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
@@ -96,6 +97,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const opportunityCount = opportunityResult.count ?? 0;
   // ArvoLab ayrı veritabanında; köprü koparsa tek iz orada kalır (lib/arvolab.ts).
   const bridge = await getArvolabBridgeHealth();
+  // ARC köprüsü sessiz çalışıyor; durumu yalnızca burada görünür (lib/arc-bridge.ts).
+  const arcBridge = await getArcBridgeHealth();
 
   // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
   /*
@@ -169,6 +172,22 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
     ) : null}
+
+    {!arcBridge.ok ? (
+      <div className="plt-banner" data-tone={arcBridge.error ? "danger" : undefined} role="status">
+        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
+        <div>
+          <b>{arcBridge.error ? "ARC köprüsü bağlanamıyor" : "ARC köprüsü kapalı"}</b>
+          <p>
+            {arcBridge.error
+              ? `ARC veritabanına bağlanılamadı: ${arcBridge.error}. Anahtarın yeni ARC projesinin secret anahtarı olduğunu kontrol edin.`
+              : `Bu dağıtımda tanımlı olmayan değişkenler: ${arcBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın.`}
+          </p>
+        </div>
+      </div>
+    ) : (
+      <p className="plt-substatus">ARC köprüsü bağlı · ARC veritabanında {arcBridge.organizations} kurum.</p>
+    )}
 
     {params.provisioned === "1" ? (
       <div className="plt-banner" role="status">

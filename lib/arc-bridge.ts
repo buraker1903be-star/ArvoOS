@@ -166,3 +166,27 @@ export async function syncArcTenantQuietly(organizationId: string) {
   const result = await syncArcTenants(organizationId);
   if (result.status === "failed") console.error("[arc] anında aktarım başarısız; zamanlanmış eşitleme tekrar deneyecek", organizationId);
 }
+
+export interface ArcBridgeHealth {
+  /** Bu dağıtımda görünen değişkenlerin adları (değerleri değil). */
+  missing: string[];
+  ok: boolean;
+  /** ARC veritabanındaki kurum sayısı; bağlanılamadıysa null. */
+  organizations: number | null;
+  error: string | null;
+}
+
+/**
+ * Köprünün durumu, Platform ekranı için. Köprü hata durumunda çağıranı
+ * düşürmemek için sessiz kalıyor; bu yüzden "değişken bu dağıtıma ulaşmadı"
+ * ile "bağlandı ama yazamadı" ayrımı ancak burada görünüyor. (18.09.2026:
+ * değişkenler girildi, köprü hiçbir iz bırakmadan hiçbir şey yazmadı.)
+ */
+export async function getArcBridgeHealth(): Promise<ArcBridgeHealth> {
+  const missing = ["ARC_SUPABASE_URL", "ARC_SUPABASE_SECRET_KEY"].filter((name) => !process.env[name]);
+  const arc = arcClient();
+  if (!arc) return { missing, ok: false, organizations: null, error: null };
+  const { count, error } = await arc.from("organizations").select("id", { count: "exact", head: true });
+  if (error) return { missing, ok: false, organizations: null, error: error.message || error.code || "bilinmeyen hata" };
+  return { missing, ok: true, organizations: count ?? 0, error: null };
+}
