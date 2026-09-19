@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { randevuBridgeAuthorized } from "@/lib/randevu-bridge-auth";
 import { createRandevuPasswordToken, syncRandevuTenants } from "@/lib/randevu-bridge";
 import { accessChangeError, canManageMembers, parseRandevuMemberRequest } from "@/lib/randevu-members";
 
@@ -19,15 +19,6 @@ export const dynamic = "force-dynamic";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
-
-function authorized(request: Request) {
-  const secret = process.env.RANDEVU_BRIDGE_SECRET;
-  const sent = request.headers.get("x-arvo-bridge-secret");
-  if (!secret || !sent) return false;
-  const expected = Buffer.from(secret);
-  const received = Buffer.from(sent);
-  return expected.length === received.length && timingSafeEqual(expected, received);
-}
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
@@ -62,7 +53,7 @@ async function syncOrError(organizationId: string): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
-  if (!authorized(request)) return json(401, { error: "unauthorized" });
+  if (!randevuBridgeAuthorized(request)) return json(401, { error: "unauthorized" });
   const parsed = parseRandevuMemberRequest(await request.json().catch(() => null));
   if (!parsed.ok) return json(400, { error: parsed.error });
   const { action, actorId, organizationId, email, fullName, role, userId } = parsed.value;
