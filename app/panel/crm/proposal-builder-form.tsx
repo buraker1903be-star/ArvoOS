@@ -11,6 +11,7 @@ import {
   calculatePaymentSchedule,
   getPaymentPlanLabel,
   scheduleDateIssue,
+  splitByPercentages,
   type PaymentPlanType,
   type PaymentScheduleItem,
 } from "@/lib/payment-schedule";
@@ -116,10 +117,7 @@ export function ProposalBuilderForm({
 
   const customPercentTotal = customPercentages.reduce((sum, value) => sum + (Number(value) || 0), 0);
   const customSchedule: PaymentScheduleItem[] = useMemo(
-    () => buildLabeledSchedule(
-      calculation.gross,
-      customPercentages.map((percentage) => Math.round((calculation.gross * (Number(percentage) || 0)) / 100)),
-    ),
+    () => buildLabeledSchedule(calculation.gross, splitByPercentages(calculation.gross, customPercentages)),
     [calculation.gross, customPercentages],
   );
 

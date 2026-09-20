@@ -23,6 +23,32 @@ const splitCents = (totalCents: number, count: number) => {
 const percentOf = (amount: number, total: number) => (total ? Number(((amount / total) * 100).toFixed(2)) : 0);
 
 /**
+ * Yüzdeleri kuruşa çevirirken toplamı tam tutar. Eskiden her taksit ayrı ayrı
+ * yuvarlanıyordu (`Math.round(tutar * yüzde / 100)`); %33 + %33 + %34 gibi
+ * planlarda taksitlerin toplamı sözleşme tutarından birkaç kuruş sapıyordu.
+ * İmzada taksitler bu tutarlarla yazıldığı için ödeme planı hiçbir zaman
+ * "kapandı" sayılmıyor, müşteri portalındaki kilitli dosyalar açılmıyordu.
+ * Yüzdeler %100 etmiyorsa (form kaydetmeye izin vermez) önizleme dürüst
+ * kalsın diye tutarlar da o oranda eksik hesaplanır.
+ */
+export function splitByPercentages(totalCents: number, percentages: number[]): number[] {
+  const safeTotal = Math.max(0, Math.round(totalCents));
+  const weights = percentages.map((value) => Math.max(0, Number(value) || 0));
+  const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+  if (!weights.length) return [];
+  if (weightTotal <= 0) return weights.map(() => 0);
+
+  const target = Math.round((safeTotal * weightTotal) / 100);
+  const amounts = weights.map((weight) => Math.floor((target * weight) / weightTotal));
+  let remainder = target - amounts.reduce((sum, value) => sum + value, 0);
+  for (let index = 0; remainder > 0; index = (index + 1) % amounts.length) {
+    amounts[index] += 1;
+    remainder -= 1;
+  }
+  return amounts;
+}
+
+/**
  * Belirli bir tutar dizisini (her taksitin nakit tutarı) otomatik olarak
  * Ön Ödeme / Ara Ödeme / Son Ödeme şeklinde etiketler ve tetikleyici
  * metnini (ne zaman ödeneceği — tarih değil, olay bazlı) belirler.

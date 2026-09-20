@@ -7,6 +7,7 @@ import {
   installmentLabel,
   normalizePaymentSchedule,
   scheduleDateIssue,
+  splitByPercentages,
 } from "@/lib/payment-schedule";
 
 const sum = (items: { amount: number }[]) => items.reduce((total, item) => total + item.amount, 0);
@@ -103,4 +104,24 @@ test("aşırı uzun eski etiket kısaltılır", () => {
 
 test("negatif tutar sıfıra çekilir", () => {
   assert.deepEqual(calculatePaymentSchedule(-500, "cash").map((i) => i.amount), [0]);
+});
+
+test("yüzdelerle bölüşümde toplam birebir tutar", () => {
+  // Eskiden her taksit ayrı yuvarlanıyordu: %33+%33+%34 planında taksitlerin
+  // toplamı sözleşme tutarından sapıyor, ödeme planı hiç kapanmıyordu.
+  for (const total of [100_00, 1_000_01, 33_333, 7, 999_999]) {
+    for (const yuzdeler of [[33, 33, 34], [50, 50], [10, 20, 30, 40], [1, 99]]) {
+      const parcalar = splitByPercentages(total, yuzdeler);
+      assert.equal(parcalar.reduce((t, p) => t + p, 0), total, `${total} / ${yuzdeler}`);
+      assert.equal(parcalar.length, yuzdeler.length);
+    }
+  }
+});
+
+test("yüzdeler %100 etmiyorsa önizleme de eksik kalır", () => {
+  // Form bu planı kaydettirmez; tutarları yine de tam tutara şişirmek
+  // kullanıcıya "%90" uyarısıyla çelişen bir tablo gösteriyordu.
+  assert.deepEqual(splitByPercentages(100_000, [50, 40]), [50_000, 40_000]);
+  assert.deepEqual(splitByPercentages(100_000, [0, 0]), [0, 0]);
+  assert.deepEqual(splitByPercentages(100_000, []), []);
 });
