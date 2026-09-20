@@ -25,5 +25,9 @@ function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("Yetkisiz", { status: 401 });
   const result = await syncArcTenants();
-  return Response.json(result, { status: result.status === "failed" ? 500 : 200, headers: { "Cache-Control": "no-store" } });
+  // Kısmi hata da başarısızlıktır: 200 dönmek Vercel'in zamanlayıcı
+  // geçmişinde "sorun yok" gösteriyor, eksik kalan aktarım hiç fark edilmiyordu.
+  const failed = result.status === "failed" || result.status === "partial";
+  if (failed) console.error("[arc] zamanlanmış eşitleme eksik", result.status, result.errors);
+  return Response.json(result, { status: failed ? 500 : 200, headers: { "Cache-Control": "no-store" } });
 }

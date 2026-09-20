@@ -24,7 +24,8 @@ import type { Row } from "@/lib/arc-bridge-plan";
 // RANDEVU_SUPABASE_URL tanımlı değilse hiçbir şey yapmaz.
 
 export type RandevuSyncResult = {
-  status: "synced" | "not_configured" | "failed";
+  /** "partial": bir kısmı yazıldı, bir kısmı yazılamadı (errors dolu). */
+  status: "synced" | "partial" | "not_configured" | "failed";
   organizations: number;
   memberships: number;
   usersCreated: number;
@@ -137,6 +138,13 @@ export async function syncRandevuTenants(organizationId?: string): Promise<Rande
     result.errors.push(error instanceof Error ? error.message : String(error));
   }
 
+  /*
+    Kısmi hata "başarılı" sayılmaz. Eskiden yalnızca fırlatılan hata status'ü
+    "failed" yapıyordu; bir kurumun lisansı ya da bir personelin üyeliği
+    yazılamadığında sonuç "synced" dönüyor, sessiz aktarım hiç uyarmıyor ve
+    zamanlanmış eşitleme HTTP 200 ile "sorun yok" bildiriyordu.
+  */
+  if (result.status === "synced" && result.errors.length) result.status = "partial";
   if (result.errors.length) console.error("[randevu] köprü", organizationId ?? "tümü", result.errors);
   return result;
 }
@@ -145,7 +153,8 @@ export async function syncRandevuTenants(organizationId?: string): Promise<Rande
 export async function syncRandevuTenantQuietly(organizationId: string) {
   if (!randevuConfigured()) return;
   const result = await syncRandevuTenants(organizationId);
-  if (result.status === "failed") console.error("[randevu] anında aktarım başarısız; zamanlanmış eşitleme tekrar deneyecek", organizationId);
+  if (result.status === "failed" || result.status === "partial")
+    console.error(`[randevu] anında aktarım ${result.status === "partial" ? "eksik kaldı" : "başarısız"}; zamanlanmış eşitleme tekrar deneyecek`, organizationId, result.errors);
 }
 
 export interface RandevuBridgeHealth {

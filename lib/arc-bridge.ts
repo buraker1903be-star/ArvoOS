@@ -25,7 +25,8 @@ import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib
 // personel değişiklikleri ARC'a ulaşmaz (Platform sayfası uyarır).
 
 export type ArcSyncResult = {
-  status: "synced" | "not_configured" | "failed";
+  /** "partial": bir kısmı yazıldı, bir kısmı yazılamadı (errors dolu). */
+  status: "synced" | "partial" | "not_configured" | "failed";
   organizations: number;
   memberships: number;
   usersCreated: number;
@@ -154,6 +155,13 @@ export async function syncArcTenants(organizationId?: string): Promise<ArcSyncRe
     result.errors.push(error instanceof Error ? error.message : String(error));
   }
 
+  /*
+    Kısmi hata "başarılı" sayılmaz. Eskiden yalnızca fırlatılan hata status'ü
+    "failed" yapıyordu; bir kurumun lisansı ya da bir personelin üyeliği
+    yazılamadığında sonuç "synced" dönüyor, sessiz aktarım hiç uyarmıyor ve
+    zamanlanmış eşitleme HTTP 200 ile "sorun yok" bildiriyordu.
+  */
+  if (result.status === "synced" && result.errors.length) result.status = "partial";
   if (result.errors.length) console.error("[arc] köprü", organizationId ?? "tümü", result.errors);
   return result;
 }
@@ -165,7 +173,8 @@ export async function syncArcTenants(organizationId?: string): Promise<ArcSyncRe
 export async function syncArcTenantQuietly(organizationId: string) {
   if (!arcConfigured()) return;
   const result = await syncArcTenants(organizationId);
-  if (result.status === "failed") console.error("[arc] anında aktarım başarısız; zamanlanmış eşitleme tekrar deneyecek", organizationId);
+  if (result.status === "failed" || result.status === "partial")
+    console.error(`[arc] anında aktarım ${result.status === "partial" ? "eksik kaldı" : "başarısız"}; zamanlanmış eşitleme tekrar deneyecek`, organizationId, result.errors);
 }
 
 export interface ArcBridgeHealth {
