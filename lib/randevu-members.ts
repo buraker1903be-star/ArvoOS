@@ -67,3 +67,27 @@ export function accessChangeError(actorId: string, target: { user_id: string; ro
   if (target.user_id === actorId) return "self";
   return null;
 }
+
+/**
+ * Şifre belirleme bağlantısı verilebilir mi?
+ *
+ * Bağlantı, hesabın kontrolünü ele geçirmeye yeter. Salon yöneticisi başka
+ * bir salonun (ya da ArvoOS müşterisinin) e-postasını yazarak o hesabın
+ * bağlantısını alabiliyordu: kurbanın kendi panelini ele geçirmek için
+ * yeterliydi. Artık yalnızca iki durumda verilir:
+ *   - hesabı bu istekle biz açtıysak (kişinin başka yerde kullandığı bir
+ *     hesap değildir), ya da
+ *   - kişinin ArvoOS'taki tek aktif üyeliği bu kurumsa (zaten bu salonun
+ *     kullanıcısı; yönetici onun erişimini yönetiyor).
+ * ArvoOS'un ekip davetindeki kuralın aynısı (app/panel/hr/team-actions.ts).
+ */
+export function canIssuePasswordLink(input: {
+  createdNow: boolean;
+  memberships: { organization_id: string; is_active: boolean }[];
+  organizationId: string;
+}): boolean {
+  if (input.createdNow) return true;
+  return input.memberships
+    .filter((m) => m.is_active)
+    .every((m) => m.organization_id === input.organizationId);
+}

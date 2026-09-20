@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { accessChangeError, canManageMembers, parseRandevuMemberRequest } from "@/lib/randevu-members";
+import { accessChangeError, canIssuePasswordLink, canManageMembers, parseRandevuMemberRequest } from "@/lib/randevu-members";
 
 const ORG = "00000000-0000-4000-8000-0000000000a1";
 const ACTOR = "00000000-0000-4000-8000-000000000001";
@@ -37,5 +37,44 @@ describe("yetki kuralları", () => {
     assert.equal(accessChangeError(ACTOR, { user_id: ACTOR, role: "admin" }), "self");
     assert.equal(accessChangeError(ACTOR, null), "not_member");
     assert.equal(accessChangeError(ACTOR, { user_id: USER, role: "member" }), null);
+  });
+});
+
+describe("şifre belirleme bağlantısı", () => {
+  const ORG_B = "00000000-0000-4000-8000-0000000000a2";
+
+  test("yeni açılan hesaba verilir", () => {
+    assert.equal(canIssuePasswordLink({ createdNow: true, memberships: [], organizationId: ORG }), true);
+  });
+
+  test("yalnızca bu salonun kullanıcısıysa verilir", () => {
+    assert.equal(canIssuePasswordLink({
+      createdNow: false,
+      memberships: [{ organization_id: ORG, is_active: true }],
+      organizationId: ORG,
+    }), true);
+  });
+
+  test("başka kurumda da kullanılan mevcut hesaba VERİLMEZ", () => {
+    // Salon yöneticisi başka bir salonun kullanıcısının e-postasını yazarak
+    // o hesabın şifresini belirleyip kurbanın paneline girebiliyordu.
+    assert.equal(canIssuePasswordLink({
+      createdNow: false,
+      memberships: [{ organization_id: ORG, is_active: true }, { organization_id: ORG_B, is_active: true }],
+      organizationId: ORG,
+    }), false);
+    assert.equal(canIssuePasswordLink({
+      createdNow: false,
+      memberships: [{ organization_id: ORG_B, is_active: true }],
+      organizationId: ORG,
+    }), false);
+  });
+
+  test("pasif üyelikler kararı etkilemez", () => {
+    assert.equal(canIssuePasswordLink({
+      createdNow: false,
+      memberships: [{ organization_id: ORG, is_active: true }, { organization_id: ORG_B, is_active: false }],
+      organizationId: ORG,
+    }), true);
   });
 });

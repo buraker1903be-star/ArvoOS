@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { randevuBridgeAuthorized } from "@/lib/randevu-bridge-auth";
 import { createRandevuPasswordToken, syncRandevuTenants } from "@/lib/randevu-bridge";
-import { accessChangeError, canManageMembers, parseRandevuMemberRequest } from "@/lib/randevu-members";
+import { accessChangeError, canIssuePasswordLink, canManageMembers, parseRandevuMemberRequest } from "@/lib/randevu-members";
 
 // Randevu panelindeki "Kullanıcılar" bölümünün arka ucu.
 //
@@ -23,13 +23,13 @@ const json = (status: number, body: unknown) =>
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
 /** E-postası verilen hesabı bulur, yoksa şifresiz açar (davet e-postası gitmez). */
-async function findOrCreateUser(admin: Admin, email: string, fullName: string): Promise<string> {
+async function findOrCreateUser(admin: Admin, email: string, fullName: string): Promise<{ id: string; createdNow: boolean }> {
   const created = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
     user_metadata: fullName ? { full_name: fullName } : {},
   });
-  if (created.data.user) return created.data.user.id;
+  if (created.data.user) return { id: created.data.user.id, createdNow: true };
   if (!/already.*registered|already exists|email_exists/i.test(created.error?.message ?? "")) {
     throw new Error(`hesap açılamadı: ${created.error?.message ?? "bilinmeyen hata"}`);
   }
@@ -38,10 +38,16 @@ async function findOrCreateUser(admin: Admin, email: string, fullName: string): 
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
     if (error || !data?.users?.length) break;
     const match = data.users.find((user) => (user.email ?? "").toLowerCase() === email);
-    if (match) return match.id;
+    if (match) return { id: match.id, createdNow: false };
     if (data.users.length < 200) break;
   }
   throw new Error("bu e-posta kayıtlı görünüyor ama hesap bulunamadı");
+}
+
+/** Kişinin ArvoOS'taki üyelikleri; şifre bağlantısı kararı için (canIssuePasswordLink). */
+async function membershipsOf(admin: Admin, userId: string) {
+  const { data } = await admin.from("organization_memberships").select("organization_id,is_active").eq("user_id", userId);
+  return (data ?? []) as { organization_id: string; is_active: boolean }[];
 }
 
 /** Köprüyü çalıştırır; kullanıcı Randevu'ya geçmediyse nedenini döner. */
@@ -88,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "add") {
-      const newUserId = await findOrCreateUser(admin, email, fullName);
+      const { id: newUserId, createdNow } = await findOrCreateUser(admin, email, fullName);
       const { data: existing } = await admin.from("organization_memberships")
         .select("is_active").eq("organization_id", organizationId).eq("user_id", newUserId).maybeSingle();
       // Mevcut üyeliğin rolü ezilmez (invite-team-member'daki gibi): bir
@@ -99,7 +105,17 @@ export async function POST(request: Request) {
       if (error) throw new Error(`üyelik yazılamadı: ${error.message}`);
       const syncError = await syncOrError(organizationId);
       if (syncError) return json(502, { error: "sync_failed", detail: syncError });
-      return json(200, { userId: newUserId, tokenHash: await createRandevuPasswordToken(email) });
+      /*
+        Şifre bağlantısı hesabın kontrolünü verir: başka bir salonda da
+        kullanılan mevcut bir hesap için üretilmez (bkz. canIssuePasswordLink).
+        Kişi eklendi; kendi şifresiyle girer.
+      */
+      const izin = canIssuePasswordLink({ createdNow, memberships: await membershipsOf(admin, newUserId), organizationId });
+      return json(200, {
+        userId: newUserId,
+        existingAccount: !createdNow,
+        ...(izin ? { tokenHash: await createRandevuPasswordToken(email) } : {}),
+      });
     }
 
     const { data: target } = await admin.from("organization_memberships")
@@ -109,6 +125,9 @@ export async function POST(request: Request) {
       if (!target?.is_active) return json(404, { error: "not_member" });
       const { data } = await admin.auth.admin.getUserById(userId);
       if (!data.user?.email) return json(404, { error: "not_member" });
+      if (!canIssuePasswordLink({ createdNow: false, memberships: await membershipsOf(admin, userId), organizationId })) {
+        return json(409, { error: "shared_account" });
+      }
       // Hesap Randevu'ya henüz geçmemiş olabilir (10 dakikalık eşitleme).
       const syncError = await syncOrError(organizationId);
       if (syncError) return json(502, { error: "sync_failed", detail: syncError });
