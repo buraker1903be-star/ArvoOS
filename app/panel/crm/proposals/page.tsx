@@ -94,9 +94,19 @@ export default async function ProposalsPage({ searchParams }: Props) {
     .eq("organization_id", membership.organization_id)
     .neq("status", "archived")
     .neq("status", "expired");
-  if (status) q = q.eq("status", status);
+  /*
+    "Kabul edildi" / "Reddedildi" filtresi her zaman boş liste veriyordu:
+    tetikleyici bu teklifleri status='archived' + archive_reason=<durum>
+    olarak saklıyor, aktif liste ise arşivlileri dışarıda bırakıyor. Bu iki
+    seçim artık arşiv listesinde filtre uygular (aşağıda).
+  */
+  const arsivNedeni = status === "accepted" || status === "rejected" ? status : "";
+  if (status && !arsivNedeni) q = q.eq("status", status);
   if (search) q = q.or(`proposal_no.ilike.%${search}%,title.ilike.%${search}%`);
-  const { data, error } = await q.order("created_at", { ascending: false });
+  // Kabul/ret seçildiyse aktif liste boş kalır; bu teklifler arşivdedir.
+  const { data, error } = arsivNedeni
+    ? { data: [], error: null }
+    : await q.order("created_at", { ascending: false });
   if (error) throw new Error("Teklifler okunamadı: " + error.message);
   const fetchedRows = (data ?? []) as unknown as Proposal[];
   const searchKey = search.toLocaleLowerCase("tr-TR");
@@ -127,7 +137,9 @@ export default async function ProposalsPage({ searchParams }: Props) {
     .order("created_at", { ascending: false });
   if (archivedError)
     throw new Error("Arşivlenen teklifler okunamadı: " + archivedError.message);
-  const archivedRows = (archivedData ?? []) as unknown as Proposal[];
+  const archivedRows = ((archivedData ?? []) as unknown as Proposal[])
+    .filter((row) => (arsivNedeni ? row.archive_reason === arsivNedeni : true))
+    .filter(matchesSearch);
   const visibleOpportunityIds = [
     ...new Set(
       [...rows, ...archivedRows]
