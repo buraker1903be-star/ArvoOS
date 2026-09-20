@@ -128,6 +128,7 @@ export async function createContractDirectly(
   revalidatePath("/panel/crm");
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel/crm/contracts");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
   // Teklifte olduğu gibi: dönüşümde üretilen sözleşme token'ı da
   // kalıcı saklanmalı, yoksa "İmzaya Gönder" yeni token üretip
   // müşteriye gönderilmiş linki geçersiz kılıyor.
@@ -277,7 +278,11 @@ async function updateContract__impl(formData: FormData) {
       );
   }
 
+  // Dinamik detay sayfaları üst yolun tazelenmesiyle yenilenmiyor;
+  // kaydeden kullanıcı kendi değişikliğini göremiyordu.
   revalidatePath("/panel/crm/contracts");
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+  if (opportunityId) revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel/crm");
 }
 
@@ -315,7 +320,7 @@ export async function updateContractPaymentPlan(
 
   const { data: current } = await supabase
     .from("crm_contracts")
-    .select("status")
+    .select("status,amount")
     .eq("id", contractId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
@@ -324,12 +329,19 @@ export async function updateContractPaymentPlan(
   if (["signed", "completed"].includes(current.status))
     return { error: "Bu sözleşme imzalandı; ödeme planı değiştirilemez. Vade tarihlerini değiştirmek için Ek Protokol oluşturun.", success: false };
 
+  // Taksit toplamı sözleşme tutarını tutmalı. Formdaki yüzde denetimi yalnızca
+  // ekranı korur; bu işlem doğrudan çağrılabiliyor ve eskiden gelen plan olduğu
+  // gibi yazılıyordu. Toplamı tutmayan plan imzada taksit olarak yazıldığı için
+  // sözleşme hiç "ödendi" sayılmıyor (private.arvo_contract_payment_summary),
+  // müşteri portalındaki kilitli dosyalar da hiç açılmıyordu.
+  const reconciledSchedule = rescaleSchedule(schedule, Number(current.amount ?? 0), planType);
+
   const { error } = await supabase
     .from("crm_contracts")
     .update({
       payment_plan_type: planType,
       payment_plan: planText || null,
-      payment_schedule: schedule,
+      payment_schedule: reconciledSchedule,
       updated_at: new Date().toISOString(),
     })
     .eq("id", contractId)
@@ -357,6 +369,7 @@ export async function updateContractPaymentPlan(
   });
 
   revalidatePath("/panel/crm/contracts");
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
   return { error: null, success: true };
 }
 
@@ -459,6 +472,8 @@ async function markContractStatus__impl(formData: FormData) {
   });
 
   revalidatePath("/panel/crm/contracts");
+  revalidatePath(`/panel/crm/contracts/${contractId}`);
+  revalidatePath("/panel/crm");
 }
 
 

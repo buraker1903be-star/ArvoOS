@@ -249,7 +249,11 @@ async function updateProposal__impl(formData: FormData) {
       );
   }
 
+  // Dinamik detay sayfaları üst yolun tazelenmesiyle yenilenmiyor;
+  // kaydeden kullanıcı kendi değişikliğini göremiyordu.
   revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
+  if (opportunityId) revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel/crm");
 }
 
@@ -267,6 +271,8 @@ export async function createProposalRevision(formData: FormData) {
     throw new Error("Teklif revizyonu oluşturulamadı: " + error.message);
   const row = Array.isArray(data) ? data[0] : data;
   revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
+  revalidatePath("/panel/crm");
   redirect(
     `/panel/crm/proposals?share=${encodeURIComponent(row?.access_token ?? "")}`,
   );
@@ -378,7 +384,10 @@ async function fastTrackProposalToContract__impl(formData: FormData) {
     throw new Error("Teklif kabul edilemedi, durumunu kontrol edin.");
 
   revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
   revalidatePath("/panel/crm/contracts");
+  if (row?.contract_id) revalidatePath(`/panel/crm/contracts/${row.contract_id}`);
+  revalidatePath("/panel/crm");
   if (row?.contract_id && row?.contract_token) {
     await supabase
       .from("crm_contracts")
@@ -439,6 +448,8 @@ export async function markProposalStatus(formData: FormData) {
       to: proposalStatusLabel(status) }],
   });
   revalidatePath("/panel/crm/proposals");
+  revalidatePath(`/panel/crm/proposals/${proposalId}`);
+  revalidatePath("/panel/crm");
 }
 
 

@@ -470,6 +470,11 @@ async function addInternalComment__impl(formData: FormData) {
   revalidatePath(`/panel/crm/requests/${opportunityId}`);
   revalidatePath("/panel/crm/proposals");
   revalidatePath("/panel/crm/contracts");
+  // Yorum hangi belgenin sayfasından eklendiyse o detay da tazelenmeli;
+  // eskiden yalnızca operasyon detayı yenileniyor, teklif ve sözleşme
+  // sayfasında yeni yorum ancak sert yenilemeyle görünüyordu.
+  if (contextType === "proposal") revalidatePath(`/panel/crm/proposals/${contextId}`);
+  if (contextType === "contract") revalidatePath(`/panel/crm/contracts/${contextId}`);
   if (contextType === "operation") revalidatePath(`/panel/operations/${contextId}`);
 }
 
