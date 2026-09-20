@@ -46,6 +46,10 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .dash-card-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
 .dash-card-link{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;color:var(--accent);font-size:14px;font-weight:600;text-decoration:none}
 .dash-empty{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+/* Sorgu hatası şeridi: sayfa boş rakam göstermek yerine nedenini söyler. */
+.dash-uyari{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:12px 14px;border-radius:12px;background:var(--tone-bg);color:var(--tone-fg);font-size:14px;line-height:1.5}
+.dash-uyari b{display:block;font-size:14px}
+.dash-uyari small{display:block;color:inherit;opacity:.85;font-size:13px}
 .dash-chevron{flex:none;color:var(--dim)}
 
 /* Grafik: son 14 gün */

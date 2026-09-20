@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
+import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import { requestStageNames } from "./crm/request-status";
 import { relativeTime } from "./crm/last-contact";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
@@ -69,16 +70,17 @@ function activityHref(entity: string, id: string | null, action: string) {
   return null;
 }
 
-// Zamana bağlı yardımcılar (bileşen gövdesinde saat okunmaz)
+// Zamana bağlı yardımcılar (bileşen gövdesinde saat okunmaz).
+// Sunucu UTC'de çalışıyor: eskiden gün ve ay sınırı sunucu saatinden
+// alınıyordu. Gece 00:00–03:00 arasında "bugün" bir önceki günü gösteriyor,
+// ayın 1'inde o saatlerde ödenen fatura "bu ay"a girmiyordu.
 function dateWindow() {
   const now = Date.now();
-  const monthStart = new Date(now);
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
+  const today = todayInIstanbul(new Date(now));
   return {
-    monthStartIso: monthStart.toISOString(),
-    today: new Date(now).toISOString().slice(0, 10),
-    weekEnd: new Date(now + 7 * DAY).toISOString().slice(0, 10),
+    monthStartIso: istanbulMidnight(`${today.slice(0, 7)}-01`).toISOString(),
+    today,
+    weekEnd: todayInIstanbul(new Date(now + 7 * DAY)),
   };
 }
 function greetingLine() {
@@ -160,7 +162,7 @@ export default async function PanelPage() {
   const canSeeFinance = isPlatformOwner || (["owner", "admin"].includes(membership.role) && canSee("finance"));
   // Kurulum kartı yalnızca kurum sahibi/yöneticisine; platform kurucusu görmez.
   const canSetup = !isPlatformOwner && ["owner", "admin"].includes(membership.role);
-  const none = Promise.resolve({ data: null, count: 0 });
+  const none = Promise.resolve({ data: null, count: 0, error: null });
 
   const { data: verticalProfile } = await supabase
     .from("organization_vertical_profiles")
@@ -170,18 +172,18 @@ export default async function PanelPage() {
   const isAcademic = verticalProfile?.vertical_code === "academic_services";
 
   const [
-    { data: opportunities },
-    { count: openWorkflowCount },
-    { count: dueThisWeekCount },
-    { count: overdueWorkflowCount },
-    { count: pendingPaymentCount },
-    { count: unreadNotificationCount },
-    { data: paidInvoices },
-    { data: logRows },
-    { data: me },
-    { data: onboardingRow },
-    { data: setupOrganization },
-    { count: memberCount },
+    { data: opportunities, error: opportunitiesError },
+    { count: openWorkflowCount, error: openWorkflowError },
+    { count: dueThisWeekCount, error: dueThisWeekError },
+    { count: overdueWorkflowCount, error: overdueWorkflowError },
+    { count: pendingPaymentCount, error: pendingPaymentError },
+    { count: unreadNotificationCount, error: unreadNotificationError },
+    { data: paidInvoices, error: paidInvoicesError },
+    { data: logRows, error: logRowsError },
+    { data: me, error: meError },
+    { data: onboardingRow, error: onboardingError },
+    { data: setupOrganization, error: setupOrganizationError },
+    { count: memberCount, error: memberCountError },
   ] = await Promise.all([
     canSeeCrm ? supabase.from("crm_opportunities").select("stage,estimated_value,probability,created_at").eq("organization_id", organizationId) : none,
     canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", ["planned", "in_progress", "blocked"]) : none,
@@ -194,7 +196,7 @@ export default async function PanelPage() {
         : supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "pending"),
     isPlatformOwner
       ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "founder").is("read_at", null)
-      : supabase.rpc("arvo_unread_notification_count", { p_organization_id: organizationId }).then(({ data }) => ({ count: Number(data ?? 0) })),
+      : supabase.rpc("arvo_unread_notification_count", { p_organization_id: organizationId }).then(({ data, error }) => ({ count: Number(data ?? 0), error })),
     !canSeeFinance
       ? none
       : isPlatformOwner
@@ -208,6 +210,34 @@ export default async function PanelPage() {
     canSetup ? supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},logo_url,signature_stamp_url`).eq("id", organizationId).maybeSingle() : none,
     canSetup ? supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("is_active", true) : none,
   ]);
+
+  /*
+    Supabase istemcisi hata fırlatmaz, yalnızca error alanına yazar. Eskiden
+    burada sadece data/count okunuyordu: RLS engeli ya da yanlış sütun adı
+    "hiç kayıt yok" gibi görünüyor, ana sayfa sıfır gösterip susuyordu
+    (Platform → Ödemeler bu yüzden iki gün "sorun yok" gösterdi).
+  */
+  const failedQueries = ([
+    ["Talepler", opportunitiesError],
+    ["Açık işler", openWorkflowError],
+    ["Bu hafta teslim", dueThisWeekError],
+    ["Geciken işler", overdueWorkflowError],
+    ["Bekleyen ödemeler", pendingPaymentError],
+    ["Bildirimler", unreadNotificationError],
+    ["Tahsilatlar", paidInvoicesError],
+    ["Son hareketler", logRowsError],
+    ["Çalışan kaydı", meError],
+    ["Kurulum durumu", onboardingError],
+    ["Kurum bilgileri", setupOrganizationError],
+    ["Ekip sayısı", memberCountError],
+  ] as [string, { message: string } | null | undefined][])
+    .filter((row): row is [string, { message: string }] => Boolean(row[1]));
+  if (failedQueries.length)
+    console.error("[panel] ana sayfa sorguları okunamadı", {
+      organizationId,
+      role: membership.role,
+      failures: failedQueries.map(([label, error]) => `${label}: ${error.message}`),
+    });
 
   // Son hareketler için kişi ve müşteri adları
   const logs = (logRows ?? []) as LogRow[];
@@ -328,6 +358,16 @@ export default async function PanelPage() {
           {canSeeCrm ? <Link className="panel-primary" href="/panel/crm">+ Yeni talep</Link> : null}
         </div>
       </header>
+
+      {failedQueries.length ? (
+        <p className="dash-uyari" data-tone="danger" role="alert">
+          <span aria-hidden="true"><Icon name="alert" size={16} /></span>
+          <span>
+            <b>Bazı veriler okunamadı</b>
+            <small>{failedQueries.map(([label]) => label).join(", ")} yüklenemedi; aşağıdaki rakamlar eksik olabilir. Sorun sürerse destek kaydı açın.</small>
+          </span>
+        </p>
+      ) : null}
 
       <section className="dash-widgets" aria-label="Özet">
         {widgets.map((widget) => (
