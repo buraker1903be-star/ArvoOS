@@ -76,8 +76,16 @@ Bu deponun migration'ları şemanın tamamını kurmaz (`crm_contracts`, `crm_pr
 `organization_memberships` gibi çekirdek tabloların `CREATE`'i hiçbir
 migration'da yok). Canlı şemanın tam anlık görüntüsü
 `supabase/schema/canli-sema.sql`: ArvoARC'taki `scripts/sema-disa-aktar.sql`
-bu projenin SQL Editor'ünde çalıştırılır, CSV `scripts/sema-kaydet.mjs` ile
-dosyaya çevrilir. Bir fonksiyonun canlıdaki gövdesini ya da bir tablonun
+bu projenin SQL Editor'ünde çalıştırılır, sonuç **"Download CSV"** ile
+indirilir (hücreyi elle kopyalamayın: tırnak kaçışları bozuluyor) ve iki
+betikle dosyaya çevrilir — ikisi de hedef depoyu ikinci argümandan alır:
+
+```
+node ../ArvoARC/scripts/sema-kaydet.mjs ~/Downloads/<indirilen>.csv .
+node ../ArvoARC/scripts/sema-katalog.mjs .
+```
+
+Bir fonksiyonun canlıdaki gövdesini ya da bir tablonun
 gerçek sütunlarını oradan okuyun — buradaki eski migration'dan değil.
 Migration uyguladıktan sonra anlık görüntüyü yenileyin; akış testleri onu
 kurar.
