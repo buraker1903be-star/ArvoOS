@@ -4,6 +4,7 @@ import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { BelgeMetniDugmesi } from "../../belge-metni-dugmesi";
+import { waMeAdresi } from "@/lib/wa-me";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -144,7 +145,7 @@ export default async function ContractDetailPage({ params }: Props) {
               {gonderimYolu === "panel" ? (
                 <WhatsappGonderDugmesi kind="contract" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
               ) : messages ? (
-                <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={waMeAdresi(customer?.contact_phone, messages.whatsapp)}>
                   💬 WhatsApp ile gönder
                 </ShareSendLink>
               ) : null}
@@ -390,7 +391,7 @@ export default async function ContractDetailPage({ params }: Props) {
                                                   className="panel-primary"
                                                   target="_blank"
                                                   rel="noreferrer"
-                                                  href={`https://wa.me/?text=${encodeURIComponent(waText)}`}
+                                                  href={waMeAdresi(customer?.contact_phone, waText)}
                                                 >
                                                   WhatsApp ile gönder
                                                 </a>
@@ -509,7 +510,7 @@ export default async function ContractDetailPage({ params }: Props) {
                             onayMetni={`Ek Protokol ${addendum.addendum_no} hatırlatması ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
                           />
                         ) : (
-                          <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(reminder)}`}>💬 WhatsApp ile gönder</a>
+                          <a className="panel-secondary" target="_blank" rel="noreferrer" href={waMeAdresi(customer?.contact_phone, reminder)}>💬 WhatsApp ile gönder</a>
                         )
                       ) : null}
                       <form action={cancelContractAddendum}><input type="hidden" name="addendum_id" value={addendum.id} /><button className="panel-secondary">Geri çek</button></form>

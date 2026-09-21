@@ -3,6 +3,7 @@ import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
+import { waMeAdresi } from "@/lib/wa-me";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -135,7 +136,7 @@ export default async function ProposalDetailPage({ params }: Props) {
               {gonderimYolu === "panel" ? (
                 <WhatsappGonderDugmesi kind="proposal" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
               ) : messages ? (
-                <ShareSendLink kind="proposal" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                <ShareSendLink kind="proposal" token={data.share_token} className="panel-secondary" newTab href={waMeAdresi(customer?.contact_phone, messages.whatsapp)}>
                   💬 WhatsApp ile gönder
                 </ShareSendLink>
               ) : null}

@@ -3,6 +3,8 @@ import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
+import { waMeAdresi } from "@/lib/wa-me";
+import { belgeAliciTelefonu } from "../alici-telefonu";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
 import { phoneSearchTerms } from "@/lib/format-phone";
@@ -185,6 +187,9 @@ export default async function ContractsPage({ searchParams }: Props) {
     arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
   });
 
+  // Eski usul bağlantısının alıcısı; telefon URL'ye taşınmıyor (gerekçe: alici-telefonu.ts).
+  const aliciTelefonu = await belgeAliciTelefonu(supabase, membership.organization_id, "contract", share);
+
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = share ? `https://${publicHost}/sozlesme/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
@@ -243,7 +248,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                 {gonderimYolu === "panel" ? (
                   <WhatsappGonderDugmesi kind="contract" token={share} musteriAdi={customerName} />
                 ) : (
-                  <ShareSendLink kind="contract" token={share} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                  <ShareSendLink kind="contract" token={share} className="panel-secondary" newTab href={waMeAdresi(aliciTelefonu, messages.whatsapp)}>
                     💬 WhatsApp ile gönder
                   </ShareSendLink>
                 )}
