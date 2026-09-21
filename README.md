@@ -168,6 +168,21 @@ Meta → POST /api/webhooks/whatsapp (X-Hub-Signature-256)
      → gelen mesaj + durum bildirimi (iletildi / okundu / gitmedi)
 ```
 
+Kurulum: **iki ayrı abonelik gerekir**, biri olmadan diğeri yetmez.
+
+1. **Alan aboneliği** — uygulama panelinde WhatsApp → Configuration →
+   Webhooks → `messages` alanına Subscribe.
+2. **WABA aboneliği** — uygulamanın WhatsApp Business hesabına abone olması:
+   `POST /{WABA_ID}/subscribed_apps` (Graph API Explorer'dan, uygulama seçili
+   ve `whatsapp_business_management` izniyle).
+
+İkincisi unutulursa ortaya çok yanıltıcı bir tablo çıkar: panelden basılan
+**Test düğmesi 200 döner** (Meta'nın kendi "WA DevX Webhook Events 1P App"
+uygulaması WABA'ya abone olduğu için), ama **gerçek mesajlar hiç gelmez**.
+Uç nokta, imza, alan aboneliği — hepsi doğru görünür. 21.09.2026'da kurulum
+tam olarak burada takıldı; `GET /{WABA_ID}/subscribed_apps` listesinde
+ArvoOS'un olmadığı görülünce anlaşıldı.
+
 Bilinmesi gerekenler:
 
 - **Şablon zorunluluğu Meta'nın kuralı.** İş tarafının başlattığı mesaj,
