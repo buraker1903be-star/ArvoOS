@@ -135,9 +135,12 @@ export const COMPANY = {
     incelemesi bunları arıyor. Boş bırakılan alan sayfalarda hiç gösterilmez —
     uydurulmuş bir vergi numarası göstermektense satırı hiç yazmamak doğru.
   */
-  phone: "",
-  taxOffice: "",
-  taxNumber: "",
+  /* Kurum kaydındaki değerler (organizations: contact_phone, tax_office,
+     tax_number, mersis_no). MERSİS numarası kayıtta boş; alınınca buraya
+     yazılır, o zamana kadar satır hiç görünmez. */
+  phone: "+90 507 437 05 07",
+  taxOffice: "Beylikdüzü",
+  taxNumber: "0861785335",
   mersis: "",
 } as const;
 
