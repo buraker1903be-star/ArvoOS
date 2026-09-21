@@ -3,6 +3,7 @@ import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
+import { BelgeMetniDugmesi } from "../../belge-metni-dugmesi";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -374,14 +375,26 @@ export default async function ContractDetailPage({ params }: Props) {
                                             ) : null}
                                             {trackingOpen || !trackingToggleable ? (
                                             <div className="panel-page-actions">
-                                              <a
-                                                className="panel-primary"
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                href={`https://wa.me/?text=${encodeURIComponent(waText)}`}
-                                              >
-                                                WhatsApp ile gönder
-                                              </a>
+                                              {/* Numara bağlamamış kurumda eski usul sürüyor. */}
+                                              {gonderimYolu === "panel" ? (
+                                                <BelgeMetniDugmesi
+                                                  kind="contract"
+                                                  token={data.share_token}
+                                                  metin={waText}
+                                                  className="panel-primary"
+                                                  etiket="WhatsApp ile gönder"
+                                                  onayMetni={`Takip kodu ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
+                                                />
+                                              ) : (
+                                                <a
+                                                  className="panel-primary"
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  href={`https://wa.me/?text=${encodeURIComponent(waText)}`}
+                                                >
+                                                  WhatsApp ile gönder
+                                                </a>
+                                              )}
                                               <a
                                                 className="panel-secondary"
                                                 target="_blank"
@@ -487,7 +500,18 @@ export default async function ContractDetailPage({ params }: Props) {
                       {reminder && customer?.contact_email ? (
                         <a className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${data.contract_no} · Ek Protokol ${addendum.addendum_no} onayınıza sunuldu`)}&body=${encodeURIComponent(reminder)}`}>✉ E-posta ile gönder</a>
                       ) : null}
-                      {reminder ? <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(reminder)}`}>💬 WhatsApp ile gönder</a> : null}
+                      {reminder ? (
+                        gonderimYolu === "panel" ? (
+                          <BelgeMetniDugmesi
+                            kind="contract"
+                            token={data.share_token}
+                            metin={reminder}
+                            onayMetni={`Ek Protokol ${addendum.addendum_no} hatırlatması ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
+                          />
+                        ) : (
+                          <a className="panel-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(reminder)}`}>💬 WhatsApp ile gönder</a>
+                        )
+                      ) : null}
                       <form action={cancelContractAddendum}><input type="hidden" name="addendum_id" value={addendum.id} /><button className="panel-secondary">Geri çek</button></form>
                     </div>
                   ) : null}
