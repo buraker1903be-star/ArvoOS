@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
+import { arvoKurumuMu } from "@/lib/arvo-kurumu";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
 import { phoneSearchTerms } from "@/lib/format-phone";
@@ -163,6 +166,13 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const representativeMap = new Map(
     (employeeData ?? []).map((employee) => [employee.id, employee.full_name]),
   );
+  /* Kendi numarasını bağlamamış kurumda eski usul sürüyor (lib/belge-gonderim-yolu.ts). */
+  const waDurum = await getWhatsappStatus(membership.organization_id);
+  const gonderimYolu = belgeGonderimYolu({
+    kendiNumarasiBagli: waDurum.connected && waDurum.status !== "disabled",
+    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+  });
+
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   const shareUrl = share ? `https://${publicHost}/teklif/${share}` : "";
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
@@ -219,7 +229,13 @@ export default async function ProposalsPage({ searchParams }: Props) {
                 >
                   ✉ E-posta ile gönder
                 </ShareSendLink>
-                <WhatsappGonderDugmesi kind="proposal" token={share} musteriAdi={customerName} />
+                {gonderimYolu === "panel" ? (
+                  <WhatsappGonderDugmesi kind="proposal" token={share} musteriAdi={customerName} />
+                ) : (
+                  <ShareSendLink kind="proposal" token={share} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                    💬 WhatsApp ile gönder
+                  </ShareSendLink>
+                )}
                 <a
                   className="panel-secondary"
                   target="_blank"

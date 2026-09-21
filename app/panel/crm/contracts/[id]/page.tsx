@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
+import { arvoKurumuMu } from "@/lib/arvo-kurumu";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -83,6 +86,15 @@ export default async function ContractDetailPage({ params }: Props) {
   const paymentRows = installments.length
     ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: INSTALLMENT_LABELS[row.status ?? ""] ?? null, missing: false }))
     : storedSchedule.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: row.due_date ? date(row.due_date) : row.trigger || "Tarih ve koşul yok", status: null, missing: !row.due_date && !row.trigger }));
+  /* Kendi numarasını bağlamamış kurumda eski usul sürüyor: sözleşmeyi
+     Arvo'nun numarasından yollamak, müşteriye tanımadığı bir numaradan
+     imza bağlantısı göndermek olurdu. */
+  const waDurum = await getWhatsappStatus(membership.organization_id);
+  const gonderimYolu = belgeGonderimYolu({
+    kendiNumarasiBagli: waDurum.connected && waDurum.status !== "disabled",
+    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+  });
+
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   // Sözleşme bağlantısı token'ı sabit; bir kez üretildikten sonra
   // sayfanın üstünde kalıcı gösteriliyor (teklif detayıyla aynı davranış).
@@ -127,8 +139,13 @@ export default async function ContractDetailPage({ params }: Props) {
                   ✉ E-posta ile gönder
                 </ShareSendLink>
               ) : null}
-              {messages ? (
+              {/* Kendi numarasını bağlamamış kurumda eski usul sürüyor. */}
+              {gonderimYolu === "panel" ? (
                 <WhatsappGonderDugmesi kind="contract" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
+              ) : messages ? (
+                <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                  💬 WhatsApp ile gönder
+                </ShareSendLink>
               ) : null}
               <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
                 👁 Önizle

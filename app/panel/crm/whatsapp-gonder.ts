@@ -7,6 +7,9 @@ import { contractMessages, organizationBrandName, proposalMessages } from "@/lib
 import { sendThroughGateway } from "@/lib/whatsapp-gateway";
 import { loadConversation } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
+import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
+import { arvoKurumuMu } from "@/lib/arvo-kurumu";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { getPanelContext } from "./sales-shared";
 import { markDocumentShared } from "./document-share-actions";
 
@@ -44,6 +47,25 @@ type Tur = keyof typeof SABLON;
 async function belgeyiWhatsappGonder__impl(kind: Tur, token: string) {
   const { supabase, membership, organization } = await getPanelContext();
   const isProposal = kind === "proposal";
+
+  /*
+    Kendi numarasını bağlamamış kurum panelden göndermiyor: teklifi
+    Arvo'nun ortak numarasından yollamak, müşteriye hiç tanımadığı bir
+    numaradan teklif göndermek olurdu. O kurumda eski usul (WhatsApp Web)
+    sürüyor ve ekran da o düğmeyi gösteriyor; burası ikinci kapı, çünkü
+    sunucu işlemi ekrandan bağımsız çağrılabilir.
+  */
+  const durum = await getWhatsappStatus(membership.organization_id);
+  const yol = belgeGonderimYolu({
+    kendiNumarasiBagli: durum.connected && durum.status !== "disabled",
+    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+  });
+  if (yol !== "panel") {
+    throw new Error(
+      "Panelden göndermek için kendi WhatsApp Business numaranızı bağlayın (Ayarlar → Entegrasyonlar). " +
+        "Bağlamadan gönderirsek müşteriniz mesajı tanımadığı bir numaradan alır.",
+    );
+  }
 
   /*
     Belgeyi anahtardan okuyoruz, kimlikten değil: aynı işlem hem liste hem

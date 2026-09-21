@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
+import { arvoKurumuMu } from "@/lib/arvo-kurumu";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -81,6 +84,12 @@ export default async function ProposalDetailPage({ params }: Props) {
     : null;
 
 
+  const waDurum = await getWhatsappStatus(membership.organization_id);
+  const gonderimYolu = belgeGonderimYolu({
+    kendiNumarasiBagli: waDurum.connected && waDurum.status !== "disabled",
+    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+  });
+
   const locked = ["accepted", "rejected", "archived"].includes(data.status);
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
   const canDelete = ["owner", "admin"].includes(membership.role);
@@ -120,7 +129,16 @@ export default async function ProposalDetailPage({ params }: Props) {
                   ✉ E-posta ile gönder
                 </ShareSendLink>
               ) : null}
-              <WhatsappGonderDugmesi kind="proposal" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
+              {/* Kendi numarasını bağlamamış kurumda eski usul sürüyor:
+                  teklifi Arvo'nun numarasından yollamak, müşteriye
+                  tanımadığı bir numaradan teklif göndermek olurdu. */}
+              {gonderimYolu === "panel" ? (
+                <WhatsappGonderDugmesi kind="proposal" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
+              ) : messages ? (
+                <ShareSendLink kind="proposal" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
+                  💬 WhatsApp ile gönder
+                </ShareSendLink>
+              ) : null}
               <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
                 👁 Önizle
               </a>
