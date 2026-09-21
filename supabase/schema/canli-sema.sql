@@ -1468,7 +1468,15 @@ create table if not exists public.whatsapp_messages (
   ref text,
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null,
-  profile_name text
+  profile_name text,
+  message_type text not null,
+  media_id text,
+  media_mime text,
+  media_filename text,
+  media_size bigint,
+  media_path text,
+  media_error text,
+  media_status text not null
 );
 
 create table if not exists public.whatsapp_quick_replies (
@@ -11146,6 +11154,10 @@ alter table public.whatsapp_messages alter column created_at set default now();
 
 alter table public.whatsapp_messages alter column id set default gen_random_uuid();
 
+alter table public.whatsapp_messages alter column media_status set default 'none'::text;
+
+alter table public.whatsapp_messages alter column message_type set default 'text'::text;
+
 alter table public.whatsapp_messages alter column status set default 'queued'::text;
 
 alter table public.whatsapp_messages alter column updated_at set default now();
@@ -11912,6 +11924,8 @@ alter table public.whatsapp_conversation_state add constraint whatsapp_conversat
 
 alter table public.whatsapp_messages add constraint whatsapp_messages_direction_check CHECK ((direction = ANY (ARRAY['outbound'::text, 'inbound'::text])));
 
+alter table public.whatsapp_messages add constraint whatsapp_messages_media_status_check CHECK ((media_status = ANY (ARRAY['none'::text, 'pending'::text, 'stored'::text, 'failed'::text])));
+
 alter table public.whatsapp_messages add constraint whatsapp_messages_pkey PRIMARY KEY (id);
 
 alter table public.whatsapp_messages add constraint whatsapp_messages_product_check CHECK ((product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])));
@@ -12243,6 +12257,8 @@ CREATE INDEX user_session_logs_org_login_idx ON public.user_session_logs USING b
 CREATE INDEX user_session_logs_user_open_idx ON public.user_session_logs USING btree (user_id, logout_at, last_seen_at DESC);
 
 CREATE INDEX whatsapp_conversation_state_arsiv_idx ON public.whatsapp_conversation_state USING btree (organization_id) WHERE (archived_at IS NOT NULL);
+
+CREATE INDEX whatsapp_messages_medya_bekleyen_idx ON public.whatsapp_messages USING btree (organization_id, created_at) WHERE (media_status = 'pending'::text);
 
 CREATE INDEX whatsapp_messages_org_idx ON public.whatsapp_messages USING btree (organization_id, created_at DESC);
 
