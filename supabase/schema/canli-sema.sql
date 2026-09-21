@@ -1448,7 +1448,9 @@ create table if not exists public.whatsapp_conversation_state (
   archived_at timestamp with time zone,
   archived_by uuid,
   created_at timestamp with time zone not null,
-  updated_at timestamp with time zone not null
+  updated_at timestamp with time zone not null,
+  last_read_at timestamp with time zone,
+  last_read_by uuid
 );
 
 create table if not exists public.whatsapp_messages (
@@ -12713,6 +12715,8 @@ alter table public.user_session_logs add constraint user_session_logs_user_id_fk
 alter table public.whatsapp_accounts add constraint whatsapp_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_archived_by_fkey FOREIGN KEY (archived_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_last_read_by_fkey FOREIGN KEY (last_read_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
