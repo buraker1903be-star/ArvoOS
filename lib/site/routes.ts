@@ -136,12 +136,12 @@ export const COMPANY = {
     uydurulmuş bir vergi numarası göstermektense satırı hiç yazmamak doğru.
   */
   /* Kurum kaydındaki değerler (organizations: contact_phone, tax_office,
-     tax_number, mersis_no). MERSİS numarası kayıtta boş; alınınca buraya
-     yazılır, o zamana kadar satır hiç görünmez. */
+     tax_number, mersis_no). MERSİS kurum kaydında boştu, ticaret sicilinden
+     alındı; 16 hane kuralı ve VKN ile uyumu doğrulandı. */
   phone: "+90 507 437 05 07",
   taxOffice: "Beylikdüzü",
   taxNumber: "0861785335",
-  mersis: "",
+  mersis: "0086178533500001",
 } as const;
 
 export function pathFor(id: PageId, locale: Locale): string {
