@@ -208,7 +208,11 @@ html[data-theme="dark"] .wa-avatar { background: hsl(var(--wa-ton, 210) 30% 24%)
 /* Giden mesaj sağda ve yeşil: sohbetin yönü bir bakışta anlaşılsın. */
 .wa-msg[data-yon="outbound"] { align-self: flex-end; border-color: var(--wa-giden-cizgi); background: var(--wa-giden) }
 /* Köşelerden biri kısaltılınca yön renkten bağımsız olarak da anlaşılıyor. */
-.wa-msg[data-yon="inbound"] { border-top-left-radius: 2px }
+/* Sütun yönlü esnek kutuda çocuklar varsayılan olarak GERİLİR
+   (align-items:stretch): align-self olmadan iki kelimelik bir gelen mesaj
+   ekranın yarısını kaplayan bir kutu oluyordu. Giden balonda flex-end
+   bunu zaten örtmüş, gelende eksikti. */
+.wa-msg[data-yon="inbound"] { align-self: flex-start; border-top-left-radius: 2px }
 .wa-msg[data-yon="outbound"] { border-top-right-radius: 2px }
 /* Art arda aynı yönden gelen mesajlar tek bir konuşma bloğu gibi durur. */
 .wa-msg[data-bitisik="true"] { margin-top: -4px }
@@ -228,9 +232,27 @@ html[data-theme="dark"] .wa-avatar { background: hsl(var(--wa-ton, 210) 30% 24%)
 }
 /* Simge ile durumun adı aynı öğenin içinde; aralarında boşluk olmazsa
    "!gitmedi" gibi tek kelimeye yapışıyorlar. */
-.wa-msg-alt b { display: inline-flex; align-items: center; gap: 4px; font-weight: 600 }
+/* Saat daralınca "21:" ve "18" diye iki satıra bölünüyordu. */
+.wa-msg-alt time { flex: none }
+.wa-msg-alt b { display: inline-flex; flex: none; align-items: center; gap: 4px; font-weight: 600 }
 .wa-msg[data-durum="read"] .wa-msg-alt b { color: var(--wa-mavi) }
-.wa-msg[data-durum="failed"] { border-color: var(--danger) }
+/*
+  Hata metni kendi satırında duruyor. Saatin yanına yazıldığında Meta'nın
+  uzun açıklaması balonu ekranın yarısına kadar genişletiyor ve saati iki
+  satıra bölüyordu; oysa hata, mesajın kendisi kadar önemli bir bilgi ve
+  okunması gerekiyor.
+*/
+.wa-msg-hata {
+  display: block;
+  max-width: 320px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--danger);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.wa-msg[data-durum="failed"] { max-width: min(62%, 420px); border-color: var(--danger) }
 .wa-msg[data-durum="failed"] .wa-msg-alt { color: var(--danger) }
 
 /*

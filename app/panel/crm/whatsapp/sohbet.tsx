@@ -204,6 +204,10 @@ export default function Sohbet({
                 data-bitisik={oncekiAyniYon ? "true" : undefined}
               >
                 {mesaj.body ?? (mesaj.template ? `[şablon: ${mesaj.template}]` : "—")}
+                {/* Hata kendi satırında: saatin yanına sıkıştırıldığında
+                    Meta'nın uzun açıklaması balonu geriyor ve saati iki
+                    satıra bölüyordu. */}
+                {mesaj.error ? <span className="wa-msg-hata">{mesaj.error}</span> : null}
                 <span className="wa-msg-alt">
                   <time dateTime={mesaj.createdAt}>{saat(mesaj.createdAt)}</time>
                   {mesaj.direction === "outbound" ? (
@@ -214,7 +218,6 @@ export default function Sohbet({
                       <span className="wa-durum-adi">{DURUM_ADI[mesaj.status] ?? mesaj.status}</span>
                     </b>
                   ) : null}
-                  {mesaj.error ? <span>· {mesaj.error}</span> : null}
                 </span>
               </div>
             </div>
