@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
@@ -44,8 +44,10 @@ export default async function PaymentApprovalsPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Ödeme Onayları</h1><p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/platform">Platform yönetimi</Link></div>
+      
     </div>
+
+    <PlatformTabs active="odemeler" />
 
     <section className="stg-widgets" aria-label="Ödeme özeti">
       <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="wallet" label="İnceleme bekleyen" value={pendingCount} note={pendingCount ? formatTry(pendingTotal) : "Bekleyen dekont yok"} />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
@@ -53,8 +54,10 @@ export default async function BillingPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Abonelikler</h1><p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/platform">Platform yönetimi</Link></div>
+      
     </div>
+
+    <PlatformTabs active="abonelikler" />
 
     <section className="stg-widgets" aria-label="Abonelik özeti">
       <StgWidget tone="success" icon="check" label="Aktif abonelik" value={active.length} note="Aktif ve denemedeki kurumlar" />

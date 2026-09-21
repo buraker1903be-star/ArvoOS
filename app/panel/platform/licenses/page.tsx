@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
@@ -76,8 +77,10 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small><h1>Lisans ve Kota</h1><p>Kurumların paketini, kullanım limitlerini, deneme süresini ve erişim durumunu yönetin.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Platform yönetimi</Link></div>
+      
     </div>
+
+    <PlatformTabs active="lisans" />
 
     <div className="plt-layout">
       <aside className="plt-orgs" aria-label="Kurumlar">

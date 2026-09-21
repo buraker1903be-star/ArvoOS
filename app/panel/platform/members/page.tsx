@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory, type DirectoryRow, type MemberProduct } from "@/lib/member-directory";
@@ -73,8 +73,10 @@ export default async function MembersPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve Arc&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/platform">Platform yönetimi</Link></div>
+      
     </div>
+
+    <PlatformTabs active="uyeler" />
 
     {!arvolabReachable ? (
       <div className="platform-note"><span>!</span><p>ArvoLab veritabanına ulaşılamadı; aşağıdaki listede ArvoLab üyeleri eksik. Bağlantı ayarlarını kontrol edin.</p></div>

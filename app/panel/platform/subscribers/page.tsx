@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
@@ -53,8 +53,10 @@ export default async function SubscribersPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small><h1>Bireysel Aboneler</h1><p>Kuruma bağlı olmayan kullanıcıların aboneliği, ürün fiyatı ve deneme süresi.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/platform">Platform yönetimi</Link></div>
+      
     </div>
+
+    <PlatformTabs active="aboneler" />
 
     <section className="stg-widgets" aria-label="Abone özeti">
       <StgWidget tone="success" icon="users" label="Ödeyen abone" value={paying.length} note={monthlyRevenue ? `${formatTry(monthlyRevenue)} / ay` : "Ücret belirlenmedi"} />
