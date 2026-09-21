@@ -3,7 +3,7 @@
 // çevrilir. Hatayı ham göstermek ekranda "OAuthException 190" bırakıyordu.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { verifyWhatsappNumber, whatsappErrorMessage, whatsappInputError } from "../../lib/whatsapp-cloud";
+import { verifyWhatsappNumber, whatsappErrorMessage, whatsappInputError, GRAPH_VERSION } from "../../lib/whatsapp-cloud";
 
 const TOKEN = "x".repeat(60);
 
@@ -39,7 +39,7 @@ test("doğrulama numarayı ve işletme adını döndürür", async () => {
   const sonuc = await verifyWhatsappNumber("106540352242922", TOKEN, getir);
   assert.equal(sonuc.ok, true);
   assert.equal(sonuc.ok && sonuc.number.verifiedName, "AkademikMerkez");
-  assert.match(cagrilar[0].adres, /graph\.facebook\.com\/v21\.0\/106540352242922\?fields=display_phone_number,verified_name/);
+  assert.equal(cagrilar[0].adres, `https://graph.facebook.com/${GRAPH_VERSION}/106540352242922?fields=display_phone_number,verified_name`);
   assert.equal((cagrilar[0].secenek.headers as Record<string, string>).Authorization, `Bearer ${TOKEN}`);
 });
 
