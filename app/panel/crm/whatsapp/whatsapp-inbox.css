@@ -34,3 +34,12 @@
 .wa-reply textarea:focus-visible{outline:none;border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow-glow)}
 .wa-reply-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .wa-note{display:flex;align-items:flex-start;gap:8px;margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
+
+/* CRM kaydı özeti: sohbetin kiminle olduğunu ve elde ne olduğunu söyler.
+   Gelen kutusu CRM'e taşınınca eklendi; taşımanın asıl kazancı bu satır. */
+.wa-musteri {
+  display: block;
+  margin-top: 4px;
+  color: var(--panel-accent, #2f5f9e);
+  font-weight: 600;
+}

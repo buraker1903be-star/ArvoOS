@@ -3,12 +3,14 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { listConversations, loadConversation } from "@/lib/whatsapp-inbox";
-import { StgIcon } from "../settings-ui";
-import { arvoWhatsappKontrol, replyWhatsapp } from "./actions";
-import "../settings.css";
+import { StgIcon } from "../../settings/settings-ui";
+import { CrmTabs } from "../crm-tabs";
+import { sohbetMusterisi } from "./musteri-bagi";
+import { replyWhatsapp } from "../../settings/whatsapp/actions";
+import "../../settings/settings.css";
 import "./whatsapp-inbox.css";
 
-export const metadata: Metadata = { title: "WhatsApp gelen kutusu | ArvoOS" };
+export const metadata: Metadata = { title: "WhatsApp | CRM | ArvoOS" };
 export const dynamic = "force-dynamic";
 
 /*
@@ -16,9 +18,14 @@ export const dynamic = "force-dynamic";
   bizim gönderdiklerimiz tek akışta. Dört ürünün mesajı da burada görünür:
   müşteri için hepsi aynı sohbet, ayırmak yapay olurdu.
 
-  Yetki Ayarlar → Entegrasyonlar ile aynı: yalnızca Kurum Sahibi ve Yönetici.
-  Tabloda RLS de var (kurumun yetkili üyesi kendi kurumunu okur); burada
-  sunucu tarafı ayrıca bakıyor ve menü bağlantısı yalnızca yetkiliye çıkıyor.
+  Sayfa CRM modülünün altında: yazışma, müşterinin talebi ve teklifinin
+  yanında durmalı. Eskiden Ayarlar → Entegrasyonlar altındaydı — orası
+  yapılandırma yeri, günlük iş değil; satışçı her mesaj için ayarlara
+  giriyordu. Numara bağlama ve bağlantı kontrolü ayarlarda kaldı.
+
+  Yetki CRM modülüyle aynı: Satış Personeli de görür. Teklifini görebilen
+  kişi konuşmasını da görebilmeli. Erişim /panel/crm ön ekiyle modül
+  yetkilendirmesinden geçiyor (lib/role-permissions.ts), tabloda RLS de var.
 
   Serbest metinle yanıt yalnızca müşterinin son mesajından sonraki 24 saat
   içinde mümkün (Meta kuralı); pencere kapalıyken kutu yerine sebebi yazıyoruz.
@@ -39,31 +46,16 @@ const DURUM: Record<string, string> = {
 
 export default async function WhatsappInboxPage({ searchParams }: { searchParams: Promise<{ numara?: string }> }) {
   const { membership } = await getPanelContext();
-  const canManage = ["owner", "admin"].includes(membership.role);
 
   const baslik = (
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">ENTEGRASYONLAR</small><h1>WhatsApp gelen kutusu</h1></div>
+      <div><small className="panel-kicker">CRM</small><h1>WhatsApp</h1></div>
       <div className="panel-page-actions">
-        <Link className="panel-secondary" href="/panel/settings#entegrasyonlar">← Ayarlara dön</Link>
-        {/*
-          Gönderim başarısız olduğunda sebebini panelden görebilmek için.
-          Meta'ya tek soru sorar ve ham cevabı gösterir; anahtarın kendisi
-          hiçbir yerde görünmez, yalnızca uzunluğu — kopyalarken kırpılıp
-          kırpılmadığı ancak böyle anlaşılıyor.
-        */}
-        <form action={arvoWhatsappKontrol}>
-          <button className="panel-secondary" type="submit">Bağlantıyı kontrol et</button>
-        </form>
+        {/* Numara bağlama ve bağlantı kontrolü yapılandırmadır, ayarlarda kalır. */}
+        <Link className="panel-secondary" href="/panel/settings#entegrasyonlar">Numara ayarları</Link>
       </div>
     </div>
   );
-
-  if (!canManage) {
-    return <div className="stg">{baslik}
-      <div className="stg-empty"><StgIcon name="lock" size={22} /><p>Bu sayfayı yalnızca kurum sahibi veya yönetici görüntüleyebilir.</p></div>
-    </div>;
-  }
 
   const durum = await getWhatsappStatus(membership.organization_id);
   const sohbetler = await listConversations(membership.organization_id);
@@ -71,8 +63,11 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
   const secili = sohbetler.find((s) => s.phone === numara) ?? sohbetler[0] ?? null;
   const akis = secili ? await loadConversation(membership.organization_id, secili.phone) : null;
 
+  const musteri = secili ? await sohbetMusterisi(secili.phone) : null;
+
   return <div className="stg">
     {baslik}
+    <CrmTabs active="whatsapp" />
 
     {!durum.connected ? (
       <p className="wa-note"><StgIcon name="plug" size={16} />
@@ -87,7 +82,7 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
       <div className="wa-inbox">
         <nav className="wa-list" aria-label="Sohbetler">
           {sohbetler.map((sohbet) => (
-            <Link key={sohbet.phone} href={`/panel/settings/whatsapp?numara=${sohbet.phone}`} aria-current={secili?.phone === sohbet.phone}>
+            <Link key={sohbet.phone} href={`/panel/crm/whatsapp?numara=${sohbet.phone}`} aria-current={secili?.phone === sohbet.phone}>
               <span className="wa-list-top">
                 <b>{sohbet.name ?? numaraYaz(sohbet.phone)}</b>
                 <time dateTime={sohbet.lastAt}>{saat(sohbet.lastAt)}</time>
@@ -101,8 +96,18 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
           <section className="wa-thread">
             <div className="wa-thread-head">
               <div>
-                <h2>{secili.name ?? numaraYaz(secili.phone)}</h2>
+                {/* Ad önce CRM kaydından: müşterinin WhatsApp profil adı
+                    takma ad olabiliyor, kayıttaki ad ise satışçının bildiği ad. */}
+                <h2>{musteri?.name ?? secili.name ?? numaraYaz(secili.phone)}</h2>
                 <small>{numaraYaz(secili.phone)} · {akis.messages.length} mesaj</small>
+                {musteri ? (
+                  <small className="wa-musteri">
+                    CRM kaydı: {musteri.counts.requests} talep
+                    {musteri.counts.proposals ? ` · ${musteri.counts.proposals} teklif` : ""}
+                    {musteri.counts.contracts ? ` · ${musteri.counts.contracts} sözleşme` : ""}
+                    {musteri.lastContactLabel ? ` · son temas ${musteri.lastContactLabel}` : ""}
+                  </small>
+                ) : null}
               </div>
               <span className="status-pill" data-tone={akis.windowOpen ? "success" : "neutral"}>
                 {akis.windowOpen ? "Yanıt penceresi açık" : "Yanıt penceresi kapalı"}

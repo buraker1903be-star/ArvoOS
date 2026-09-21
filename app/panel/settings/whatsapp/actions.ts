@@ -19,10 +19,24 @@ import { verifyWhatsappNumber } from "@/lib/whatsapp-cloud";
   sanıp bekleyecekti.
 */
 
+/*
+  Gelen kutusu CRM'e taşındı (app/panel/crm/whatsapp). Yetki de oraya uydu:
+  eskiden yalnızca Kurum Sahibi ve Yönetici görebiliyordu, artık CRM
+  modülüne erişen herkes — Satış Personeli dahil. Müşterinin teklifini
+  görebilen kişi konuşmasını da görebilmeli; aksi hâlde satışçı yazışmayı
+  yöneticiden istemek zorunda kalıyordu.
+*/
 async function inboxContext() {
   const context = await getPanelContext();
+  assertModuleKeyAccess(context.membership.role, "crm", context.hiddenModuleKeys);
+  return context;
+}
+
+/** Bağlantı kontrolü yapılandırmadır; o yetki dar kalıyor. */
+async function ayarContext() {
+  const context = await getPanelContext();
   if (!["owner", "admin"].includes(context.membership.role)) {
-    throw new Error("WhatsApp gelen kutusunu yalnızca Kurum Sahibi ve Yönetici görebilir.");
+    throw new Error("Bu işlemi yalnızca Kurum Sahibi ve Yönetici yapabilir.");
   }
   assertModuleKeyAccess(context.membership.role, "integrations", context.hiddenModuleKeys);
   return context;
@@ -49,7 +63,7 @@ async function replyWhatsapp__impl(formData: FormData) {
   const ilk = sonuc.results[0];
   if (!ilk?.sent) throw new Error(ilk?.error ?? "Mesaj gönderilemedi.");
 
-  revalidatePath("/panel/settings/whatsapp");
+  revalidatePath("/panel/crm/whatsapp");
 }
 
 export async function replyWhatsapp(...args: Parameters<typeof replyWhatsapp__impl>) {
@@ -70,10 +84,7 @@ export async function replyWhatsapp(...args: Parameters<typeof replyWhatsapp__im
   böyle anlaşılıyor.
 */
 async function arvoWhatsappKontrol__impl() {
-  const { membership } = await inboxContext();
-  if (!["owner", "admin"].includes(membership.role)) {
-    throw new Error("Bu kontrolü yalnızca Kurum Sahibi ve Yönetici çalıştırabilir.");
-  }
+  await ayarContext();
 
   const phoneNumberId = process.env.WHATSAPP_PHONE_ID ?? "";
   const token = process.env.WHATSAPP_TOKEN ?? "";

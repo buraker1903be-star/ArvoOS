@@ -6,6 +6,10 @@ import Link from "next/link";
 const tabs = [
   { key: "genel-bakis", href: "/panel/crm/genel-bakis", label: "Genel Bakış" },
   { key: "talepler", href: "/panel/crm", label: "Talepler" },
+  // WhatsApp talebin hemen ardında: yazışmaların çoğu talepten önce ya da
+  // onunla birlikte geliyor. Eskiden Ayarlar → Entegrasyonlar altındaydı;
+  // orası yapılandırma yeri, günlük iş değil.
+  { key: "whatsapp", href: "/panel/crm/whatsapp", label: "WhatsApp" },
   { key: "teklifler", href: "/panel/crm/proposals", label: "Teklifler" },
   { key: "sozlesmeler", href: "/panel/crm/contracts", label: "Sözleşmeler" },
   { key: "takvim", href: "/panel/crm/takvim", label: "Takvim" },
