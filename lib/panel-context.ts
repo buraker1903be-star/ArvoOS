@@ -1,6 +1,7 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { createClient } from "@/lib/supabase/server";
 
 export type PanelModule = { code: string; name: string; description: string };
@@ -71,7 +72,19 @@ export const getPanelContext = cache(async () => {
 
   const cookieStore = await cookies();
   const requestedOrganizationId = cookieStore.get(WORKSPACE_COOKIE)?.value;
-  const selectedWorkspace = workspaces.find((item) => item.organizationId === requestedOrganizationId)
+
+  /*
+    Kurucu yönetim alan adında çalışma alanı ZORLA Arvo'nun kendi kurumu.
+
+    Varsayılan seçim akademikmerkez'i tercih ediyor; yönetim alan adına
+    giren kurucu o kuruma düşüyor, isPlatformOwner false oluyor ve platform
+    sayfası 404 veriyordu. Çerezdeki seçimi de dinlemiyoruz: bu alan adının
+    tamamı kurucu konsolu, müşteri kurumunda yapılan bir geçiş buraya
+    taşınmamalı.
+  */
+  const yonetimHostu = isManagementHost(hostFromHeaders(await headers()));
+  const selectedWorkspace = (yonetimHostu ? workspaces.find((item) => item.organization.slug === "arvo-os") : null)
+    ?? workspaces.find((item) => item.organizationId === requestedOrganizationId)
     ?? workspaces.find((item) => item.organization.slug === "akademikmerkez")
     ?? workspaces.find((item) => item.organization.slug === "arvo-os")
     ?? workspaces[0];

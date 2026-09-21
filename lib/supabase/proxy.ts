@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isMarketingHost, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
+import { isManagementHost, isMarketingHost, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
 import { resolvePath } from "@/lib/site/routes";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
@@ -37,6 +37,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  /*
+    Kurucu yönetim alan adı (yonetim.arvo-os.com): yalnızca platform
+    yönetimi servis ediliyor, kök yol doğrudan oraya iniyor ve platform
+    dışındaki panel yolları uygulama alan adına geri gönderiliyor.
+    Karar lib/site/host-rules.ts içinde (birim testli).
+  */
+  const managementTarget = managementRedirectTarget({
+    host: request.headers.get("host") ?? "",
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    appHost: DEFAULT_APP_HOST,
+  });
+  if (managementTarget) return NextResponse.redirect(managementTarget, 307);
+
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,8 +79,13 @@ export async function updateSession(request: NextRequest) {
   // olduğunu bulup kullanıcının o kurumun paneline düşmesini sağla. Giriş
   // yapmamış ziyaretçiler için de kurumu çözüyoruz ki kök yol (/) genel
   // ArvoOS tanıtım sayfasına değil, o kurumun markalı giriş ekranına gitsin.
+  /*
+    Yönetim alan adı bir kuruma ait değil; alan adı çözümlemesi her
+    istekte boşuna bir RPC olurdu.
+  */
+  const yonetimHostu = isManagementHost(host);
   let customDomainOrgId: string | null = null;
-  if (!isAppHost && host) {
+  if (!isAppHost && !yonetimHostu && host) {
     const { data: resolvedOrgId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
     customDomainOrgId = (resolvedOrgId as string | null) ?? null;
   }
