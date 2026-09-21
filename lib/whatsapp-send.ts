@@ -1,10 +1,12 @@
 /*
   WhatsApp şablon gönderimi (Meta Cloud API).
 
-  Neden serbest metin değil: iş tarafının başlattığı mesaj, müşterinin son
-  yazışmasından 24 saat sonra yalnızca Meta'nın ONAYLADIĞI şablonla
-  gönderilebilir. Ürünler bu yüzden kapıya şablon adı + parametre yollar,
-  hazır cümle değil.
+  İki tür mesaj var, ayrımı Meta'nın kuralı koyuyor: iş tarafının BAŞLATTIĞI
+  mesaj, müşterinin son yazışmasından 24 saat sonra yalnızca Meta'nın
+  ONAYLADIĞI şablonla gönderilebilir. Ürünler bu yüzden kapıya şablon adı +
+  parametre yollar, hazır cümle değil. Serbest metin yalnızca müşteri yazdıktan
+  sonraki 24 saat içinde geçerlidir (gelen kutusundan verilen yanıt); pencere
+  kapalıyken Meta 131047 ile reddeder ve mesaj "gitmedi" olarak kaydedilir.
 
   Saf: ağ çağrısı dışarıdan verilebilir. Kimin adına gönderildiği (kurumun
   kendi numarası mı Arvo'nunki mi) bu dosyanın bilmesi gereken bir şey değil;
@@ -17,9 +19,16 @@ export type WhatsappSendItem = {
   ref?: string | null;
   /** Ülke koduyla, artısız: 905XXXXXXXXX. */
   to: string;
-  template: string;
-  params: string[];
+  /** Onaylı şablon adı; serbest metin gönderiliyorsa boş. */
+  template?: string;
+  params?: string[];
   language?: string;
+  /**
+   * Serbest metin. Yalnızca müşterinin son mesajından sonraki 24 saat
+   * içinde geçerli; pencere kapalıyken Meta 131047 ile reddeder. Gelen
+   * kutusundan verilen yanıtlar bu yolla gider.
+   */
+  text?: string;
 };
 
 export type WhatsappSendResult = {
@@ -39,6 +48,13 @@ export type SenderCredentials = { phoneNumberId: string; token: string };
  */
 export const templateParam = (value: string) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
 
+/** Meta'nın müşteri hizmeti penceresi: müşterinin son mesajından sonraki 24 saat. */
+export const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** Serbest metin gönderilebilir mi; müşteri hiç yazmadıysa hayır. */
+export const windowOpen = (lastInboundAt: string | null, now = Date.now()) =>
+  Boolean(lastInboundAt) && now - Date.parse(lastInboundAt as string) < WINDOW_MS;
+
 /** 905XXXXXXXXX biçimine getirir; getiremezse null (mesaj hiç denenmez). */
 export function normalizePhone(raw: string): string | null {
   const digits = String(raw ?? "").replace(/\D/g, "");
@@ -56,10 +72,24 @@ export function templateBody(item: WhatsappSendItem) {
     template: {
       name: item.template,
       language: { code: item.language || "tr" },
-      components: [{ type: "body", parameters: item.params.map((p) => ({ type: "text", text: templateParam(p) })) }],
+      components: [{ type: "body", parameters: (item.params ?? []).map((p) => ({ type: "text", text: templateParam(p) })) }],
     },
   };
 }
+
+/** 24 saatlik pencere içinde serbest metin; şablon gerekmez. */
+export function textMessageBody(item: WhatsappSendItem) {
+  return {
+    messaging_product: "whatsapp",
+    to: item.to,
+    type: "text",
+    // Önizleme kapalı: yanıtta paylaşılan bağlantı sohbeti kart dolduruyordu.
+    text: { preview_url: false, body: String(item.text ?? "").slice(0, 4096) },
+  };
+}
+
+/** Şablon mu serbest metin mi: gövdeyi mesajın kendisi belirler. */
+export const messageBody = (item: WhatsappSendItem) => (item.template ? templateBody(item) : textMessageBody(item));
 
 /** Mesajları tek tek gönderir; biri düşerse diğerleri devam eder. */
 export async function sendWhatsappTemplates(
@@ -75,7 +105,7 @@ export async function sendWhatsappTemplates(
       const yanit = await getir(adres, {
         method: "POST",
         headers: { Authorization: `Bearer ${sender.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(templateBody(item)),
+        body: JSON.stringify(messageBody(item)),
         signal: AbortSignal.timeout(15_000),
       });
       const cevap = (await yanit.json().catch(() => ({}))) as {

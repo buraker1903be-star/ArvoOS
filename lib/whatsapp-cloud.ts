@@ -34,6 +34,10 @@ export function whatsappErrorMessage(error: MetaError | undefined, status: numbe
   if (code === 200 || code === 10) return "Bu anahtarın numara üzerinde yetkisi yok. Sistem kullanıcısına WhatsApp hesabı için yetki verin.";
   if (code === 100) return "Numara kimliği (phone number ID) bulunamadı. WhatsApp Manager'daki değerle aynı olduğundan emin olun.";
   if (code === 4 || code === 80007) return "Meta şu an istekleri sınırlıyor (rate limit). Birkaç dakika sonra tekrar deneyin.";
+  // Serbest metin yalnızca müşterinin son mesajından sonraki 24 saat içinde.
+  if (code === 131047) return "24 saatlik yanıt penceresi kapandı: serbest metin gönderilemez, onaylı şablon gerekir.";
+  if (code === 131026) return "Numara WhatsApp'ta kayıtlı değil ya da mesaj alamıyor.";
+  if (code === 132000 || code === 132001) return "Şablon Meta'da onaylı değil ya da parametre sayısı tutmuyor.";
   if (status === 408 || status === 504) return "Meta'ya ulaşılamadı (zaman aşımı). Tekrar deneyin.";
   return error?.message?.trim() || `Meta doğrulamayı reddetti (HTTP ${status}).`;
 }

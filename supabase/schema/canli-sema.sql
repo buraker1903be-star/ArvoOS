@@ -14650,7 +14650,8 @@ create table if not exists public.whatsapp_messages (
   error text,
   ref text,
   created_at timestamp with time zone not null,
-  updated_at timestamp with time zone not null
+  updated_at timestamp with time zone not null,
+  profile_name text
 );
 
 alter table public.whatsapp_accounts alter column status set default 'connected'::text;
@@ -14675,6 +14676,8 @@ alter table public.whatsapp_messages add constraint whatsapp_messages_organizati
 
 create index if not exists whatsapp_messages_org_idx on public.whatsapp_messages using btree (organization_id, created_at desc);
 create index if not exists whatsapp_messages_wa_id_idx on public.whatsapp_messages using btree (wa_message_id) where (wa_message_id is not null);
+create unique index if not exists whatsapp_messages_inbound_uniq on public.whatsapp_messages using btree (wa_message_id) where ((direction = 'inbound'::text) and (wa_message_id is not null));
+create index if not exists whatsapp_messages_sohbet_idx on public.whatsapp_messages using btree (organization_id, counterpart_phone, created_at desc);
 
 alter table public.whatsapp_accounts enable row level security;
 alter table public.whatsapp_messages enable row level security;

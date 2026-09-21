@@ -3,7 +3,7 @@
 // kuyruktan düşürüp müşteriye hiç ulaşmamasına yol açardı.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizePhone, sendWhatsappTemplates, templateBody, templateParam, type WhatsappSendItem } from "../../lib/whatsapp-send";
+import { messageBody, normalizePhone, sendWhatsappTemplates, templateBody, templateParam, windowOpen, type WhatsappSendItem } from "../../lib/whatsapp-send";
 
 const SENDER = { phoneNumberId: "555000", token: "gizli" };
 const item = (d: Partial<WhatsappSendItem> = {}): WhatsappSendItem => ({
@@ -78,4 +78,22 @@ test("ağ hatası mesajı düşürmez, sebebini taşır", async () => {
   const [sonuc] = await sendWhatsappTemplates([item()], SENDER, getir);
   assert.equal(sonuc.sent, false);
   assert.match(sonuc.error!, /ulaşılamadı: bağlanılamadı/);
+});
+
+test("şablonsuz mesaj serbest metin olarak gider", () => {
+  // Gelen kutusundan verilen yanıt: 24 saatlik pencere içinde şablon gerekmez.
+  const govde = messageBody({ to: "905320000000", text: "Yarın 15:00 uygun." }) as { type: string; text: { body: string; preview_url: boolean } };
+  assert.equal(govde.type, "text");
+  assert.equal(govde.text.body, "Yarın 15:00 uygun.");
+  assert.equal(govde.text.preview_url, false);
+  // Şablon varsa serbest metne düşmez.
+  assert.equal((messageBody(item()) as { type: string }).type, "template");
+});
+
+test("yanıt penceresi müşterinin son mesajından 24 saat sonra kapanır", () => {
+  const simdi = Date.parse("2026-09-21T12:00:00Z");
+  assert.equal(windowOpen("2026-09-21T11:00:00Z", simdi), true);
+  assert.equal(windowOpen("2026-09-20T11:59:00Z", simdi), false);
+  // Müşteri hiç yazmadıysa pencere hiç açılmadı.
+  assert.equal(windowOpen(null, simdi), false);
 });
