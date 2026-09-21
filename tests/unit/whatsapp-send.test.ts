@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { messageBody, normalizePhone, sendWhatsappTemplates, templateBody, templateParam, windowOpen, type WhatsappSendItem } from "../../lib/whatsapp-send";
+import { GRAPH_VERSION } from "../../lib/whatsapp-cloud";
 
 const SENDER = { phoneNumberId: "555000", token: "gizli" };
 const item = (d: Partial<WhatsappSendItem> = {}): WhatsappSendItem => ({
@@ -47,7 +48,8 @@ test("başarılı gönderim mesaj kimliğini taşır", async () => {
   const { getir, cagrilar } = sahteGetir([{ ok: true, govde: { messages: [{ id: "wamid.1" }] } }]);
   const [sonuc] = await sendWhatsappTemplates([item()], SENDER, getir);
   assert.deepEqual(sonuc, { ref: "r1", to: "905320000000", sent: true, waMessageId: "wamid.1" });
-  assert.match(cagrilar[0].adres, /\/v21\.0\/555000\/messages$/);
+  // Sürüm sabitten okunuyor: Meta sürümü emekli edince güncellenecek tek yer orası.
+  assert.equal(cagrilar[0].adres, `https://graph.facebook.com/${GRAPH_VERSION}/555000/messages`);
   assert.equal((cagrilar[0].secenek.headers as Record<string, string>).Authorization, "Bearer gizli");
 });
 

@@ -9,8 +9,20 @@
 // Ağ çağrısı dışarıdan verilebilir (testler için); testi
 // tests/unit/whatsapp-cloud.test.ts.
 
-/** Meta Graph API sürümü; numara doğrulama ve şablon gönderimi aynı sürümde. */
-export const GRAPH_VERSION = "v21.0";
+/**
+ * Meta Graph API sürümü; numara doğrulama, gönderim ve webhook aynı sürümde.
+ *
+ * Meta her sürümü yaklaşık iki yıl destekliyor, sonra kapatıyor: sürüm
+ * emekli olduğunda gönderim de webhook da tek seferde durur, üstelik bizim
+ * hiçbir şey değiştirmediğimiz bir günde. Yılda bir bakıp güncelleyin;
+ * güncel sürüm Meta uygulama panelindeki hazır curl örneğinde yazıyor
+ * (developers.facebook.com → uygulama → WhatsApp → API Setup).
+ *
+ * Tek yerde durmasının sebebi kapı: dört ürün de buradan geçtiği için
+ * sürüm yükseltmek tek satır. Ürünler Meta'ya doğrudan çağırsaydı dört
+ * depoda ayrı ayrı aranacaktı.
+ */
+export const GRAPH_VERSION = "v25.0";
 
 export type WhatsappNumber = {
   phoneNumberId: string;
