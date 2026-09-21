@@ -14612,3 +14612,74 @@ CREATE TRIGGER notify_payment_request_reviewed AFTER UPDATE OF status ON public.
 CREATE TRIGGER create_default_organization_license AFTER INSERT ON public.organizations FOR EACH ROW EXECUTE FUNCTION private.create_default_organization_license();
 
 CREATE TRIGGER touch_support_ticket AFTER INSERT ON public.support_messages FOR EACH ROW EXECUTE FUNCTION private.touch_support_ticket();
+
+
+-- ============================================================
+-- 20260921111009 (WhatsApp) — canlıya uygulandı, tam dışa aktarım
+-- beklemeden anlık görüntüye eklendi. Bir sonraki dışa aktarım bu bloğu
+-- kendi bölümlerine dağıtacak; biçim dışa aktarımın ürettiğiyle aynı.
+-- ============================================================
+create table if not exists public.whatsapp_accounts (
+  organization_id uuid not null,
+  waba_id text not null,
+  phone_number_id text not null,
+  display_phone text,
+  verified_name text,
+  access_token_enc text not null,
+  status text not null,
+  last_verified_at timestamp with time zone,
+  last_error text,
+  connected_by uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+create table if not exists public.whatsapp_messages (
+  id uuid not null,
+  organization_id uuid not null,
+  product text not null,
+  sender text not null,
+  direction text not null,
+  phone_number_id text,
+  wa_message_id text,
+  counterpart_phone text not null,
+  template text,
+  params jsonb,
+  body text,
+  status text not null,
+  error text,
+  ref text,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+alter table public.whatsapp_accounts alter column status set default 'connected'::text;
+alter table public.whatsapp_accounts alter column created_at set default now();
+alter table public.whatsapp_accounts alter column updated_at set default now();
+alter table public.whatsapp_messages alter column id set default gen_random_uuid();
+alter table public.whatsapp_messages alter column status set default 'queued'::text;
+alter table public.whatsapp_messages alter column created_at set default now();
+alter table public.whatsapp_messages alter column updated_at set default now();
+
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_pkey PRIMARY KEY (organization_id);
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_phone_number_id_key UNIQUE (phone_number_id);
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_status_check CHECK ((status = ANY (ARRAY['connected'::text, 'unverified'::text, 'disabled'::text])));
+alter table public.whatsapp_messages add constraint whatsapp_messages_pkey PRIMARY KEY (id);
+alter table public.whatsapp_messages add constraint whatsapp_messages_product_check CHECK ((product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])));
+alter table public.whatsapp_messages add constraint whatsapp_messages_sender_check CHECK ((sender = ANY (ARRAY['organization'::text, 'arvo'::text])));
+alter table public.whatsapp_messages add constraint whatsapp_messages_direction_check CHECK ((direction = ANY (ARRAY['outbound'::text, 'inbound'::text])));
+alter table public.whatsapp_messages add constraint whatsapp_messages_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text, 'received'::text])));
+
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+alter table public.whatsapp_messages add constraint whatsapp_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+create index if not exists whatsapp_messages_org_idx on public.whatsapp_messages using btree (organization_id, created_at desc);
+create index if not exists whatsapp_messages_wa_id_idx on public.whatsapp_messages using btree (wa_message_id) where (wa_message_id is not null);
+
+alter table public.whatsapp_accounts enable row level security;
+alter table public.whatsapp_messages enable row level security;
+
+revoke all on table public.whatsapp_accounts from anon, authenticated;
+
+create policy "privileged members read org whatsapp messages" on public.whatsapp_messages as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_is_privileged_member(organization_id));

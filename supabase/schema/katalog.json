@@ -1321,6 +1321,38 @@
       "organization_id",
       "user_agent",
       "user_id"
+    ],
+    "whatsapp_accounts": [
+      "access_token_enc",
+      "connected_by",
+      "created_at",
+      "display_phone",
+      "last_error",
+      "last_verified_at",
+      "organization_id",
+      "phone_number_id",
+      "status",
+      "updated_at",
+      "verified_name",
+      "waba_id"
+    ],
+    "whatsapp_messages": [
+      "body",
+      "counterpart_phone",
+      "created_at",
+      "direction",
+      "error",
+      "id",
+      "organization_id",
+      "params",
+      "phone_number_id",
+      "product",
+      "ref",
+      "sender",
+      "status",
+      "template",
+      "updated_at",
+      "wa_message_id"
     ]
   },
   "functions": [
