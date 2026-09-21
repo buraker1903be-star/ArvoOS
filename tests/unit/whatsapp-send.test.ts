@@ -1,0 +1,81 @@
+// WhatsApp şablon gönderimi: gövde biçimi, numara normalleştirme ve
+// "gitti mi" kararı. Kimliksiz 200'ü başarılı saymak, gitmeyen mesajı
+// kuyruktan düşürüp müşteriye hiç ulaşmamasına yol açardı.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { normalizePhone, sendWhatsappTemplates, templateBody, templateParam, type WhatsappSendItem } from "../../lib/whatsapp-send";
+
+const SENDER = { phoneNumberId: "555000", token: "gizli" };
+const item = (d: Partial<WhatsappSendItem> = {}): WhatsappSendItem => ({
+  ref: "r1", to: "905320000000", template: "randevu_hatirlatma",
+  params: ["Ayşe", "Deneme Salon", "yarın", "14:00", "Saç kesimi"], ...d,
+});
+
+test("numara 905XXXXXXXXX biçimine getirilir, cep değilse reddedilir", () => {
+  for (const raw of ["5320000000", "05320000000", "905320000000", "+90 532 000 00 00"]) {
+    assert.equal(normalizePhone(raw), "905320000000");
+  }
+  assert.equal(normalizePhone("2160000000"), null);
+  assert.equal(normalizePhone(""), null);
+});
+
+test("şablon parametresinde satır sonu ve fazla boşluk temizlenir", () => {
+  // Meta yeni satır ya da 4+ boşluk içeren parametreyi reddediyor (132000).
+  assert.equal(templateParam("Deneme\n  Salon   "), "Deneme Salon");
+});
+
+test("gövde onaylı şablonu ve dili taşır", () => {
+  const govde = templateBody(item({ language: "tr" }));
+  assert.equal(govde.type, "template");
+  assert.equal(govde.template.name, "randevu_hatirlatma");
+  assert.equal(govde.template.language.code, "tr");
+  assert.deepEqual(govde.template.components[0].parameters.map((p) => p.text), ["Ayşe", "Deneme Salon", "yarın", "14:00", "Saç kesimi"]);
+});
+
+function sahteGetir(yanitlar: { ok: boolean; durum?: number; govde: unknown }[]) {
+  const cagrilar: { adres: string; secenek: RequestInit }[] = [];
+  let i = 0;
+  const getir = (async (adres: string | URL, secenek?: RequestInit) => {
+    cagrilar.push({ adres: String(adres), secenek: secenek ?? {} });
+    const y = yanitlar[Math.min(i++, yanitlar.length - 1)];
+    return { ok: y.ok, status: y.durum ?? (y.ok ? 200 : 400), json: async () => y.govde } as Response;
+  }) as unknown as typeof fetch;
+  return { getir, cagrilar };
+}
+
+test("başarılı gönderim mesaj kimliğini taşır", async () => {
+  const { getir, cagrilar } = sahteGetir([{ ok: true, govde: { messages: [{ id: "wamid.1" }] } }]);
+  const [sonuc] = await sendWhatsappTemplates([item()], SENDER, getir);
+  assert.deepEqual(sonuc, { ref: "r1", to: "905320000000", sent: true, waMessageId: "wamid.1" });
+  assert.match(cagrilar[0].adres, /\/v21\.0\/555000\/messages$/);
+  assert.equal((cagrilar[0].secenek.headers as Record<string, string>).Authorization, "Bearer gizli");
+});
+
+test("kimliksiz 200 gönderilmedi sayılır", async () => {
+  const { getir } = sahteGetir([{ ok: true, govde: {} }]);
+  const [sonuc] = await sendWhatsappTemplates([item()], SENDER, getir);
+  assert.equal(sonuc.sent, false);
+  assert.match(sonuc.error!, /mesaj kimliği döndürmedi/);
+});
+
+test("Meta hatası Türkçeye çevrilir ve diğer mesajlar devam eder", async () => {
+  const { getir } = sahteGetir([
+    { ok: true, govde: { messages: [{ id: "wamid.1" }] } },
+    { ok: false, durum: 401, govde: { error: { code: 190, message: "Invalid OAuth access token" } } },
+    { ok: true, govde: { messages: [{ id: "wamid.3" }] } },
+  ]);
+  const sonuc = await sendWhatsappTemplates(
+    [item({ ref: "r1" }), item({ ref: "r2" }), item({ ref: "r3" })],
+    SENDER,
+    getir,
+  );
+  assert.deepEqual(sonuc.map((s) => [s.ref, s.sent]), [["r1", true], ["r2", false], ["r3", true]]);
+  assert.match(sonuc[1].error!, /anahtarı geçersiz/);
+});
+
+test("ağ hatası mesajı düşürmez, sebebini taşır", async () => {
+  const getir = (async () => { throw new Error("bağlanılamadı"); }) as unknown as typeof fetch;
+  const [sonuc] = await sendWhatsappTemplates([item()], SENDER, getir);
+  assert.equal(sonuc.sent, false);
+  assert.match(sonuc.error!, /ulaşılamadı: bağlanılamadı/);
+});
