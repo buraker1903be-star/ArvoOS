@@ -123,12 +123,15 @@ async function belgeyiWhatsappGonder__impl(kind: Tur, token: string) {
 
   const ilk = sonuc.results[0];
   if (!ilk?.sent) {
+    /*
+      Hangi şablonla denendiği yazılıyor ama SEBEP olarak sunulmuyor.
+      Eskiden burada "bu şablon onaylanmadan gönderilemez" yazıyordu ve
+      Meta "erişim anahtarı geçersiz" (190) dediğinde bile aynı cümle
+      çıkıyordu: kullanıcı onaylı bir şablonu onaysız sanıp saatlerce
+      yanlış yerde arıyordu. Sebebi Meta söyler, biz bağlamı ekleriz.
+    */
     const sebep = ilk?.error ?? "Mesaj gönderilemedi.";
-    throw new Error(
-      windowOpen
-        ? sebep
-        : `${sebep} (Bu mesaj "${SABLON[kind]}" onaylı şablonuyla gidiyor; Meta'da onaylanmadan gönderilemez.)`,
-    );
+    throw new Error(windowOpen ? sebep : `${sebep} (Şablon: ${SABLON[kind]})`);
   }
 
   // Yalnızca mesaj gerçekten gittiğinde taslaktan çıkar.

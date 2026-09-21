@@ -92,8 +92,17 @@ export async function replyWhatsapp(...args: Parameters<typeof replyWhatsapp__im
   yalnızca uzunluğu yazılır — kopyalarken kırpılıp kırpılmadığı ancak
   böyle anlaşılıyor.
 */
+/** Tek numaranın durumunu tek satırda anlatır; anahtarın kendisi asla yazılmaz. */
+async function numarayiSina(etiket: string, phoneNumberId: string, token: string): Promise<string> {
+  const imza = `kimlik ${phoneNumberId} · anahtar ${token.length} karakter`;
+  const sonuc = await verifyWhatsappNumber(phoneNumberId, token);
+  return sonuc.ok
+    ? `${etiket}: çalışıyor — ${sonuc.number.displayPhone ?? "numara"} · ${sonuc.number.verifiedName ?? "ad yok"} (${imza})`
+    : `${etiket}: HATA — ${sonuc.error} (${imza})`;
+}
+
 async function arvoWhatsappKontrol__impl() {
-  await ayarContext();
+  const { membership } = await ayarContext();
 
   const phoneNumberId = process.env.WHATSAPP_PHONE_ID ?? "";
   const token = process.env.WHATSAPP_TOKEN ?? "";
@@ -101,19 +110,48 @@ async function arvoWhatsappKontrol__impl() {
   if (!phoneNumberId) throw new Error("WHATSAPP_PHONE_ID tanımlı değil.");
   if (!token) throw new Error("WHATSAPP_TOKEN tanımlı değil.");
 
-  const sonuc = await verifyWhatsappNumber(phoneNumberId, token);
-  const imza = `numara kimliği ${phoneNumberId} · anahtar ${token.length} karakter`;
-
-  if (!sonuc.ok) throw new Error(`${sonuc.error} (${imza})`);
+  const satirlar = [await numarayiSina("Arvo ortak numarası", phoneNumberId, token)];
 
   /*
-    Başarı metni sabit değil, sonucun kendisi: hangi numaraya bağlandığı ve
-    Meta'nın o numara için bildirdiği ad. "Kontrol edildi" demek, sorunu
-    aramaya devam eden birine hiçbir şey anlatmaz.
+    Kurumun KENDİ bağladığı numara da sınanıyor.
+
+    Eskiden yalnızca Arvo'nun ortak numarasına bakılıyordu; oysa kapı
+    kurumun kendi numarası varsa onu kullanıyor. Kurumun anahtarı ölmüşken
+    kontrol "çalışıyor" diyor, gönderim "erişim anahtarı geçersiz" diyordu
+    ve ikisi aynı anda doğruydu — hangi anahtarın bozuk olduğunu anlamanın
+    yolu yoktu.
   */
-  await flashSuccess(
-    `Bağlantı çalışıyor: ${sonuc.number.displayPhone ?? "numara"} · ${sonuc.number.verifiedName ?? "ad yok"} (${imza})`,
-  );
+  const admin = createAdminClient();
+  if (admin && paymentCredentialsConfigured()) {
+    const { data } = await admin
+      .from("whatsapp_accounts")
+      .select("phone_number_id,access_token_enc,status")
+      .eq("organization_id", membership.organization_id)
+      .maybeSingle();
+
+    if (!data) {
+      satirlar.push("Kurumun kendi numarası: bağlı değil (mesajlar Arvo'nun numarasından gider).");
+    } else if (data.status === "disabled") {
+      satirlar.push("Kurumun kendi numarası: kapalı (mesajlar Arvo'nun numarasından gider).");
+    } else {
+      try {
+        satirlar.push(await numarayiSina("Kurumun kendi numarası", data.phone_number_id, decryptSecret(data.access_token_enc)));
+      } catch {
+        // Şifre çözülemiyorsa anahtar başka bir PAYMENT_CREDENTIALS_KEY ile yazılmış.
+        satirlar.push("Kurumun kendi numarası: anahtar çözülemedi (PAYMENT_CREDENTIALS_KEY değişmiş olabilir).");
+      }
+    }
+  }
+
+  /*
+    Sonuç sabit bir cümle değil, Meta'nın ham cevabı: "kontrol edildi"
+    demek, sorunu aramaya devam eden birine hiçbir şey anlatmaz. Anahtarın
+    KENDİSİ hiçbir yerde görünmez; yalnızca uzunluğu yazılır — kopyalarken
+    kırpılıp kırpılmadığı ancak böyle anlaşılıyor.
+  */
+  const hataVar = satirlar.some((satir) => satir.includes("HATA"));
+  if (hataVar) throw new Error(satirlar.join(" | "));
+  await flashSuccess(satirlar.join(" | "));
 }
 
 export async function arvoWhatsappKontrol(): Promise<void> {
