@@ -4,7 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { listConversations, loadConversation } from "@/lib/whatsapp-inbox";
 import { StgIcon } from "../settings-ui";
-import { replyWhatsapp } from "./actions";
+import { arvoWhatsappKontrol, replyWhatsapp } from "./actions";
 import "../settings.css";
 import "./whatsapp-inbox.css";
 
@@ -44,7 +44,18 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
   const baslik = (
     <div className="panel-pagehead">
       <div><small className="panel-kicker">ENTEGRASYONLAR</small><h1>WhatsApp gelen kutusu</h1></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/settings#entegrasyonlar">← Ayarlara dön</Link></div>
+      <div className="panel-page-actions">
+        <Link className="panel-secondary" href="/panel/settings#entegrasyonlar">← Ayarlara dön</Link>
+        {/*
+          Gönderim başarısız olduğunda sebebini panelden görebilmek için.
+          Meta'ya tek soru sorar ve ham cevabı gösterir; anahtarın kendisi
+          hiçbir yerde görünmez, yalnızca uzunluğu — kopyalarken kırpılıp
+          kırpılmadığı ancak böyle anlaşılıyor.
+        */}
+        <form action={arvoWhatsappKontrol}>
+          <button className="panel-secondary" type="submit">Bağlantıyı kontrol et</button>
+        </form>
+      </div>
     </div>
   );
 
