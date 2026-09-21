@@ -1,7 +1,7 @@
 // WhatsApp şablon gönderimi: gövde biçimi, numara normalleştirme ve
 // "gitti mi" kararı. Kimliksiz 200'ü başarılı saymak, gitmeyen mesajı
 // kuyruktan düşürüp müşteriye hiç ulaşmamasına yol açardı.
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { messageBody, normalizePhone, sendWhatsappTemplates, templateBody, templateParam, windowOpen, type WhatsappSendItem } from "../../lib/whatsapp-send";
 import { GRAPH_VERSION } from "../../lib/whatsapp-cloud";
@@ -98,4 +98,42 @@ test("yanıt penceresi müşterinin son mesajından 24 saat sonra kapanır", () 
   assert.equal(windowOpen("2026-09-20T11:59:00Z", simdi), false);
   // Müşteri hiç yazmadıysa pencere hiç açılmadı.
   assert.equal(windowOpen(null, simdi), false);
+});
+
+describe("isimli şablon parametreleri", () => {
+  test("nesne verilince her parametre kendi adını taşır", () => {
+    /*
+      Meta'da şablonun "Değişken türü" Ad seçilirse gövde {{kurum}} gibi
+      isimli değişkenler kullanır ve her parametre parameter_name ister.
+      Sıralı biçim gönderilirse 132012 ile reddedilir.
+    */
+    const govde = templateBody({
+      to: "905307939100",
+      template: "abonelik_yenileme",
+      params: { kurum: "ARVOCULTURE GROUP", urun: "ArvoOS", tarih: "28 Eylül", ucret: "₺1.500,00" },
+    }) as { template: { components: { parameters: { parameter_name?: string; text: string }[] }[] } };
+
+    const p = govde.template.components[0].parameters;
+    assert.deepEqual(p.map((x) => x.parameter_name), ["kurum", "urun", "tarih", "ucret"]);
+    assert.equal(p[0].text, "ARVOCULTURE GROUP");
+  });
+
+  test("dizi verilince sıralı biçim korunur", () => {
+    // Randevu hatırlatması sıralı şablon kullanıyor; o yol bozulmamalı.
+    const govde = templateBody({
+      to: "905307939100",
+      template: "randevu_hatirlatma",
+      params: ["Ayşe", "Deneme Salon", "22 Eylül", "14:30", "Saç kesimi"],
+    }) as { template: { components: { parameters: { parameter_name?: string; text: string }[] }[] } };
+
+    const p = govde.template.components[0].parameters;
+    assert.equal(p[0].parameter_name, undefined);
+    assert.deepEqual(p.map((x) => x.text), ["Ayşe", "Deneme Salon", "22 Eylül", "14:30", "Saç kesimi"]);
+  });
+
+  test("parametresiz şablonda components hiç gönderilmez", () => {
+    // Boş dizi Meta'yı "gövde parametresi bekleniyor" sanmaya itiyor.
+    const govde = templateBody({ to: "905307939100", template: "merhaba" }) as { template: Record<string, unknown> };
+    assert.equal("components" in govde.template, false);
+  });
 });

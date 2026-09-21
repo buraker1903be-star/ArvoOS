@@ -21,7 +21,19 @@ export type WhatsappSendItem = {
   to: string;
   /** Onaylı şablon adı; serbest metin gönderiliyorsa boş. */
   template?: string;
-  params?: string[];
+  /**
+   * Şablon gövde parametreleri. İki biçim de kabul edilir ve hangisinin
+   * kullanılacağını ŞABLONUN KENDİSİ belirler (Meta'da "Değişken türü"):
+   *
+   * - Dizi  → sıralı şablon ({{1}}, {{2}}…). Sıra kayarsa yanlış değer
+   *   yanlış yere gider ve bunu kimse fark etmez; Meta da uyarmaz.
+   * - Nesne → isimli şablon ({{kurum}}, {{tarih}}…). Sıraya bağlı
+   *   olmadığı için o hataya bağışık; yeni değişken eklemek de kolay.
+   *
+   * Biçim şablonla uyuşmazsa Meta 132000 ("parameter count mismatch")
+   * ya da 132012 ("parameter format mismatch") döndürür.
+   */
+  params?: string[] | Record<string, string>;
   language?: string;
   /**
    * Serbest metin. Yalnızca müşterinin son mesajından sonraki 24 saat
@@ -64,7 +76,24 @@ export function normalizePhone(raw: string): string | null {
   return /^5\d{9}$/.test(local) ? `90${local}` : null;
 }
 
+/**
+ * Gövde parametreleri: sıralı dizi ya da isimli nesne.
+ *
+ * İsimli şablonda her parametre kendi adını taşır (`parameter_name`);
+ * Meta değerleri sıraya değil ada göre yerleştirir.
+ */
+function bodyParameters(params: WhatsappSendItem["params"]) {
+  if (Array.isArray(params)) return params.map((p) => ({ type: "text", text: templateParam(p) }));
+  return Object.entries(params ?? {}).map(([ad, deger]) => ({
+    type: "text",
+    // Meta ad kuralı: küçük harf, rakam ve alt çizgi.
+    parameter_name: ad.toLowerCase(),
+    text: templateParam(deger),
+  }));
+}
+
 export function templateBody(item: WhatsappSendItem) {
+  const parameters = bodyParameters(item.params);
   return {
     messaging_product: "whatsapp",
     to: item.to,
@@ -72,7 +101,8 @@ export function templateBody(item: WhatsappSendItem) {
     template: {
       name: item.template,
       language: { code: item.language || "tr" },
-      components: [{ type: "body", parameters: (item.params ?? []).map((p) => ({ type: "text", text: templateParam(p) })) }],
+      // Parametresiz şablonda components hiç gönderilmez; boş dizi Meta'yı yanıltıyor.
+      ...(parameters.length ? { components: [{ type: "body", parameters }] } : {}),
     },
   };
 }
