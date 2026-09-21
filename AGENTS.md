@@ -47,6 +47,12 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   yol yetkiyi kendisi doğrulamalıdır.
 - **Sırlar `NEXT_PUBLIC_` ile başlamaz.** Eksik ortam değişkeni uygulamayı
   düşürmez, ilgili özelliği kapalı gösterir ve nedenini kullanıcıya yazar.
+- **WhatsApp'a doğrudan çağrı yapılmaz.** Dört ürün de kapıdan geçer
+  (`app/api/bridge/whatsapp` → `lib/whatsapp-gateway.ts`): tek yerde erişim
+  anahtarı, tek yerde mesaj kaydı, tek yerde hata haritası. Gönderen kararı
+  (kurumun kendi numarası mı Arvo'nunki mi) kapıdadır; ürün seçmez. Meta'nın
+  kuralı gereği iş tarafının başlattığı mesaj onaylı şablonla gider, serbest
+  metin yalnızca müşterinin son mesajından sonraki 24 saat içinde.
 - **Pazarlama sayfaları yalnızca `arvo-os.com`'da.** Host kararları
   `lib/site/host-rules.ts` içinde saf fonksiyonlardadır; proxy ve `robots.ts`
   oradan okur, kopya mantık yazılmaz.

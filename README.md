@@ -95,6 +95,10 @@ ve kimlik doğrulama e-postaları.
   ile doğrulanır. Fiyat, deneme ve askıya alma kararları ArvoOS'ta kalır.
 - **PayTR** "Link ile Ödeme" entegrasyonu kurum başınadır; mağaza anahtarları
   veritabanında AES-256-GCM ile şifreli tutulur (`lib/payment-credentials.ts`).
+- **WhatsApp** dört ürünün ortak kapısıdır: ürünler Meta'ya değil
+  `app/api/bridge/whatsapp` ucuna çağırır (`lib/whatsapp-gateway.ts`). Tek
+  yerde erişim anahtarı, tek yerde mesaj kaydı, tek yerde hata haritası.
+  Ayrıntı: **WhatsApp** bölümü.
 
 ## Alan adları ve SEO
 
@@ -134,3 +138,48 @@ Bunlar vinext başlangıç şablonundan gelir ve ArvoOS'ta **kullanılmaz**; sil
   edilmiyor. Panel girişi Supabase Auth ile yapılır.
 
 Bunlardan birini açacaksanız önce `.openai/hosting.json` bağlamalarını tanımlayın.
+
+## WhatsApp
+
+Dört ürün de (ArvoOS, ArvoLab, ARC, Randevu) müşterilerine WhatsApp'tan
+mesaj gönderir. İki ayrı gönderen var ve ayrımı ürün değil **kurum** belirler:
+
+- **Kurumun kendi numarası** — kurum WhatsApp Business hesabını bağladıysa
+  (`whatsapp_accounts`) mesaj onun numarasından gider. Müşteri "Arvo"dan
+  değil çalıştığı işletmeden mesaj aldığını görür.
+- **Arvo'nun ortak numarası** — Arvo'nun kendi mesajları (ödeme hatırlatma,
+  lisans bildirimi) ve numarasını bağlamamış kurumlar için yedek.
+  Anahtarı ortam değişkeninde (`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`).
+
+Numarayı kurum iki yerden bağlayabilir: ArvoOS panelinde Ayarlar →
+Entegrasyonlar, Randevu panelinde Ayarlar → WhatsApp numarası (köprü:
+`app/api/bridge/randevu/whatsapp`). İşin kendisi tek yerde:
+`lib/whatsapp-account.ts`. Bağlarken numara Meta'ya sorulur; anahtar
+yanlışsa kayıt hiç yazılmaz, yoksa hata ilk mesajda anlaşılırdı.
+
+Akış:
+
+```
+ürün → POST /api/bridge/whatsapp   (x-arvo-bridge-secret, ürün başına ayrı anahtar)
+     → gönderen çözülür (kurumun numarası / Arvo'nunki)
+     → Meta Cloud API
+     → her mesaj whatsapp_messages'a yazılır
+Meta → POST /api/webhooks/whatsapp (X-Hub-Signature-256)
+     → gelen mesaj + durum bildirimi (iletildi / okundu / gitmedi)
+```
+
+Bilinmesi gerekenler:
+
+- **Şablon zorunluluğu Meta'nın kuralı.** İş tarafının başlattığı mesaj,
+  müşterinin son yazışmasından 24 saat sonra yalnızca onaylı şablonla
+  gönderilebilir. Serbest metin yalnızca pencere içinde (gelen kutusundan
+  verilen yanıt); dışında Meta 131047 ile reddeder.
+- **Kısmi başarısızlıkta kapı 207 döner**, gövdede her mesajın sonucu vardır.
+  Ürün "hepsi gitti" sanmasın diye 200 değil.
+- **Webhook'a her zaman 200.** Meta 200 almadığı bildirimi saatlerce yeniden
+  dener ve sonunda aboneliği askıya alır; yalnızca yeniden denemenin işe
+  yarayacağı durumda (anahtar yok, veritabanı düştü) 500 döneriz.
+- **Gelen mesajın tekilliğini veritabanı kurar** (kısmi tekil indeks):
+  Meta aynı bildirimi yeniden yollayabilir.
+- **Gelen kutusu** Ayarlar → Entegrasyonlar → WhatsApp gelen kutusu. Dört
+  ürünün mesajı tek akışta; müşteri için hepsi aynı sohbet.
