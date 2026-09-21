@@ -34,6 +34,19 @@ export type WhatsappSendItem = {
    * ya da 132012 ("parameter format mismatch") döndürür.
    */
   params?: string[] | Record<string, string>;
+  /**
+   * Şablonun dinamik URL düğmesine eklenecek son parça.
+   *
+   * Meta'da düğmenin tabanı sabittir (`https://app.arvo-os.com/b/teklif/`)
+   * ve yalnızca sonuna tek bir değişken eklenir. Bağlantıyı gövdeye
+   * yazmak yerine düğmeye koymak bilinçli: Meta gövde değişkeni içindeki
+   * adresleri sık reddediyor, düğme ise bu iş için tasarlanmış ve
+   * müşteride dokunulabilir bir düğme olarak görünüyor.
+   *
+   * Taban sabit olduğu için kurumun kendi alan adına bu adresten
+   * yönlendiriliyor (app/b/[tur]/[token]).
+   */
+  urlButtonParam?: string;
   language?: string;
   /**
    * Serbest metin. Yalnızca müşterinin son mesajından sonraki 24 saat
@@ -92,8 +105,27 @@ function bodyParameters(params: WhatsappSendItem["params"]) {
   }));
 }
 
+/**
+ * Dinamik URL düğmesinin parçası.
+ *
+ * Düğme parametresi gövdeden ayrı numaralanır ve her zaman sıralıdır:
+ * isimli şablonda bile `parameter_name` almaz, `index` ile belirtilir.
+ * Tek düğmemiz olduğu için index her zaman "0".
+ */
+function buttonComponent(deger: string | undefined) {
+  const parca = templateParam(deger ?? "");
+  if (!parca) return null;
+  return { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: parca }] };
+}
+
 export function templateBody(item: WhatsappSendItem) {
   const parameters = bodyParameters(item.params);
+  const dugme = buttonComponent(item.urlButtonParam);
+  const components = [
+    // Parametresiz gövde hiç gönderilmez; boş dizi Meta'yı yanıltıyor.
+    ...(parameters.length ? [{ type: "body", parameters }] : []),
+    ...(dugme ? [dugme] : []),
+  ];
   return {
     messaging_product: "whatsapp",
     to: item.to,
@@ -101,8 +133,7 @@ export function templateBody(item: WhatsappSendItem) {
     template: {
       name: item.template,
       language: { code: item.language || "tr" },
-      // Parametresiz şablonda components hiç gönderilmez; boş dizi Meta'yı yanıltıyor.
-      ...(parameters.length ? { components: [{ type: "body", parameters }] } : {}),
+      ...(components.length ? { components } : {}),
     },
   };
 }

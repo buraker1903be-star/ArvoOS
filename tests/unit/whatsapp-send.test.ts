@@ -137,3 +137,64 @@ describe("isimli şablon parametreleri", () => {
     assert.equal("components" in govde.template, false);
   });
 });
+
+describe("şablonun dinamik URL düğmesi", () => {
+  const ANAHTAR = "9f2c1a7b4e6d08c35a1f9b2e7d4c6a8f0b3e5d7c9a1f2b4d";
+
+  test("düğme parametresi ayrı bir bileşen olarak gider", () => {
+    /*
+      Bağlantı gövdeye değil düğmeye konuyor: Meta gövde değişkeni içindeki
+      adresleri sık reddediyor ve müşteri dokunulabilir düğme yerine düz
+      metin görüyordu.
+    */
+    const govde = templateBody({
+      to: "905321234567",
+      template: "teklif_hazir",
+      params: { musteri: "Ayşe Yılmaz", kurum: "Akademik Merkez", belge_no: "TKL-2026-014" },
+      urlButtonParam: ANAHTAR,
+    }) as { template: { components: { type: string; sub_type?: string; index?: string; parameters: unknown[] }[] } };
+
+    const dugme = govde.template.components.find((bilesen) => bilesen.type === "button");
+    assert.ok(dugme, "düğme bileşeni yok");
+    assert.equal(dugme.sub_type, "url");
+    // Düğme parametresi gövdeden ayrı numaralanır; tek düğmede index "0".
+    assert.equal(dugme.index, "0");
+    assert.deepEqual(dugme.parameters, [{ type: "text", text: ANAHTAR }]);
+  });
+
+  test("düğme parametresi isimlendirilmez", () => {
+    // İsimli şablonda bile düğme parametresi sıraya göre yerleşir;
+    // parameter_name eklenirse Meta 132012 döndürür.
+    const govde = templateBody({
+      to: "905321234567",
+      template: "teklif_hazir",
+      params: { musteri: "Ayşe" },
+      urlButtonParam: ANAHTAR,
+    }) as { template: { components: { type: string; parameters: Record<string, unknown>[] }[] } };
+
+    const dugme = govde.template.components.find((bilesen) => bilesen.type === "button");
+    assert.ok(dugme && !("parameter_name" in dugme.parameters[0]));
+  });
+
+  test("düğme parametresi yoksa düğme bileşeni de gönderilmez", () => {
+    // Mevcut şablonlarda (abonelik_yenileme) düğme yok; boş bir button
+    // bileşeni Meta'da 132000'e yol açardı.
+    const govde = templateBody({
+      to: "905321234567",
+      template: "abonelik_yenileme",
+      params: { abone: "Akademik Merkez" },
+    }) as { template: { components: { type: string }[] } };
+
+    assert.ok(!govde.template.components.some((bilesen) => bilesen.type === "button"));
+  });
+
+  test("gövde parametresi olmayan şablonda yalnızca düğme gider", () => {
+    const govde = templateBody({
+      to: "905321234567",
+      template: "sozlesme_imza",
+      urlButtonParam: ANAHTAR,
+    }) as { template: { components: { type: string }[] } };
+
+    assert.deepEqual(govde.template.components.map((bilesen) => bilesen.type), ["button"]);
+  });
+});

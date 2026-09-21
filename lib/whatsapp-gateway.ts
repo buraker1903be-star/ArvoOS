@@ -30,7 +30,9 @@ export type GatewayRequest = {
     to: string;
     /** Onaylı şablon; serbest metin yollanıyorsa boş. */
     template?: string;
-    params?: string[];
+    params?: string[] | Record<string, string>;
+    /** Şablonun dinamik URL düğmesine eklenecek son parça (paylaşım anahtarı). */
+    urlButtonParam?: string;
     language?: string;
     /** 24 saatlik pencere içinde serbest metin (gelen kutusu yanıtı). */
     text?: string;
@@ -80,7 +82,15 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
     if (!message.template && !String(message.text ?? "").trim()) {
       throw new GatewayError(400, "Her mesajda onaylı şablon adı (template) ya da serbest metin (text) olmalı.");
     }
-    items.push({ ref: message.ref ?? null, to, template: message.template, params: message.params ?? [], language: message.language, text: message.text });
+    items.push({
+      ref: message.ref ?? null,
+      to,
+      template: message.template,
+      params: message.params ?? [],
+      urlButtonParam: message.urlButtonParam,
+      language: message.language,
+      text: message.text,
+    });
   }
 
   // Gönderen: kurumun kendi numarası mı, Arvo'nunki mi.

@@ -55,6 +55,8 @@ export const PRIVATE_PATH_PREFIXES = [
   "/api",
   "/teklif",
   "/sozlesme",
+  // WhatsApp şablon düğmesinin kısa bağlantısı; müşteri belgesine gider.
+  "/b",
   "/takip",
   "/durum",
   "/is-durumu",
