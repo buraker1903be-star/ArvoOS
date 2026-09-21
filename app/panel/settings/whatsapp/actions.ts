@@ -110,3 +110,22 @@ async function arvoWhatsappKontrol__impl() {
 export async function arvoWhatsappKontrol(): Promise<void> {
   await runPanelAction(arvoWhatsappKontrol__impl);
 }
+
+/*
+  Sohbeti yeniden okur; gelen kutusunun kendi kendine tazelenmesi için.
+
+  Eskiden sayfa sunucuda bir kez çiziliyordu: müşteri yazdığında ekranda
+  hiçbir şey olmuyor, kullanıcı sayfayı yenilemedikçe mesajı görmüyordu.
+  Mesajlaşma ekranında bu kabul edilemez — karşı taraf yazdı diye sayfayı
+  yenilemeyi kimse akıl etmez.
+*/
+async function sohbetiGetir__impl(telefon: string) {
+  const { membership } = await inboxContext();
+  const numara = normalizePhone(telefon);
+  if (!numara) throw new Error("Numara geçersiz.");
+  return loadConversation(membership.organization_id, numara);
+}
+
+export async function sohbetiGetir(telefon: string) {
+  return sohbetiGetir__impl(telefon);
+}

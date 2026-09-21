@@ -6,7 +6,8 @@ import { listConversations, loadConversation } from "@/lib/whatsapp-inbox";
 import { StgIcon } from "../../settings/settings-ui";
 import { CrmTabs } from "../crm-tabs";
 import { sohbetMusterisi } from "./musteri-bagi";
-import { replyWhatsapp } from "../../settings/whatsapp/actions";
+import Sohbet from "./sohbet";
+import SohbetListesi from "./sohbet-listesi";
 import "../../settings/settings.css";
 import "./whatsapp-inbox.css";
 
@@ -31,18 +32,10 @@ export const dynamic = "force-dynamic";
   içinde mümkün (Meta kuralı); pencere kapalıyken kutu yerine sebebi yazıyoruz.
 */
 
-const saat = (value: string) =>
-  new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-
 const numaraYaz = (phone: string) =>
   phone.length === 12 && phone.startsWith("90")
     ? `0${phone.slice(2, 5)} ${phone.slice(5, 8)} ${phone.slice(8, 10)} ${phone.slice(10)}`
     : phone;
-
-const DURUM: Record<string, string> = {
-  queued: "sırada", sent: "gönderildi", delivered: "iletildi",
-  read: "okundu", failed: "gitmedi", received: "geldi",
-};
 
 export default async function WhatsappInboxPage({ searchParams }: { searchParams: Promise<{ numara?: string }> }) {
   const { membership } = await getPanelContext();
@@ -80,17 +73,7 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
       <div className="stg-empty"><StgIcon name="chat" size={22} /><p>Henüz WhatsApp mesajı yok. Gönderdiğiniz ve müşterinizin yazdığı mesajlar burada birikir.</p></div>
     ) : (
       <div className="wa-inbox">
-        <nav className="wa-list" aria-label="Sohbetler">
-          {sohbetler.map((sohbet) => (
-            <Link key={sohbet.phone} href={`/panel/crm/whatsapp?numara=${sohbet.phone}`} aria-current={secili?.phone === sohbet.phone}>
-              <span className="wa-list-top">
-                <b>{sohbet.name ?? numaraYaz(sohbet.phone)}</b>
-                <time dateTime={sohbet.lastAt}>{saat(sohbet.lastAt)}</time>
-              </span>
-              <small>{sohbet.lastDirection === "outbound" ? "↗ " : "↙ "}{sohbet.lastBody ?? "—"}</small>
-            </Link>
-          ))}
-        </nav>
+        <SohbetListesi sohbetler={sohbetler} seciliNumara={secili?.phone ?? null} />
 
         {secili && akis ? (
           <section className="wa-thread">
@@ -114,34 +97,13 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
               </span>
             </div>
 
-            <div className="wa-flow">
-              {akis.messages.map((mesaj) => (
-                <div key={mesaj.id} className="wa-msg" data-yon={mesaj.direction} data-durum={mesaj.status}>
-                  {mesaj.body ?? (mesaj.template ? `[şablon: ${mesaj.template}]` : "—")}
-                  <span className="wa-msg-alt">
-                    <time dateTime={mesaj.createdAt}>{saat(mesaj.createdAt)}</time>
-                    {mesaj.direction === "outbound" ? <b>{DURUM[mesaj.status] ?? mesaj.status}</b> : null}
-                    {mesaj.error ? <span>· {mesaj.error}</span> : null}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {akis.windowOpen ? (
-              <form className="wa-reply" action={replyWhatsapp}>
-                <input type="hidden" name="phone" value={secili.phone} />
-                <textarea name="text" maxLength={4096} required placeholder="Yanıtınızı yazın…" aria-label="Yanıt" />
-                <div className="wa-reply-foot">
-                  <p className="wa-note"><StgIcon name="chat" size={16} />Yanıt {durum.connected ? "kendi numaranızdan" : "Arvo’nun ortak numarasından"} gider.</p>
-                  <button className="panel-primary" type="submit">Gönder</button>
-                </div>
-              </form>
-            ) : (
-              <p className="wa-note"><StgIcon name="lock" size={16} />
-                Müşteri son 24 saat içinde yazmadığı için serbest metin gönderilemiyor (Meta kuralı).
-                Müşteri yeniden yazdığında pencere açılır; o zamana kadar yalnızca onaylı şablonlu mesajlar (randevu, ödeme, sipariş bildirimi) gider.
-              </p>
-            )}
+            <Sohbet
+              key={secili.phone}
+              telefon={secili.phone}
+              ilkMesajlar={akis.messages}
+              ilkPencere={akis.windowOpen}
+              kendiNumarasi={durum.connected}
+            />
           </section>
         ) : null}
       </div>

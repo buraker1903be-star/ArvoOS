@@ -24,8 +24,10 @@
 .wa-msg{max-width:min(78%,560px);padding:9px 13px;border:1px solid var(--line);border-radius:16px;background:var(--surface-2);font-size:13.5px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
 /* Giden mesaj sağda: sohbetin yönü bir bakışta anlaşılsın. */
 .wa-msg[data-yon="outbound"]{align-self:flex-end;border-color:color-mix(in srgb,var(--accent) 28%,var(--line));background:var(--accent-soft)}
-.wa-msg-alt{display:flex;align-items:center;gap:7px;margin-top:5px;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
-.wa-msg-alt b{font-weight:600}
+.wa-msg-alt{display:flex;align-items:center;gap:6px;margin-top:3px;color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+/* Simge ile durumun adı aynı öğenin içinde; aralarında boşluk olmazsa
+   "!gitmedi" gibi tek kelimeye yapışıyorlar. */
+.wa-msg-alt b{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .wa-msg[data-durum="failed"]{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
 .wa-msg[data-durum="failed"] .wa-msg-alt{color:var(--danger)}
 
@@ -43,3 +45,77 @@
   color: var(--panel-accent, #2f5f9e);
   font-weight: 600;
 }
+
+/* ============================================================
+   Gerçek bir mesajlaşma ekranına yaklaştıran parçalar.
+   Eskiden akış düz bir balon listesiydi: hangi gün, kim art arda
+   yazmış, hangisi yanıt bekliyor — hiçbiri okunmuyordu.
+   ============================================================ */
+
+/* Liste başındaki arama. Yüz sohbette aranan kişiye kaydırarak
+   ulaşmak gerekiyordu; kutu listenin üstüne yapışık kalıyor. */
+.wa-ara {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 6px;
+  padding: 9px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.wa-ara:focus-visible { outline: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--shadow-glow) }
+.wa-list-bos { padding: 14px 13px }
+
+/* "Yanıt bekliyor": son mesaj müşteriden. Okunmamışlık DEĞİL —
+   öyle bir kaydımız yok, uydurmak yanıltıcı olurdu. */
+.wa-bekliyor {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* Gün ayıracı: ortada durur, akışla birlikte kayar. */
+.wa-grup { display: contents }
+.wa-gun { display: flex; justify-content: center; margin: 10px 0 4px }
+.wa-gun span {
+  padding: 3px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* Balon kuyruğu: köşelerden biri kısaltılınca mesajın hangi taraftan
+   geldiği renkten bağımsız olarak da anlaşılıyor. */
+.wa-msg[data-yon="inbound"] { border-bottom-left-radius: 6px }
+.wa-msg[data-yon="outbound"] { border-bottom-right-radius: 6px }
+/* Art arda aynı yönden gelen mesajlar tek bir konuşma bloğu gibi durur. */
+.wa-msg[data-bitisik="true"] { margin-top: -4px }
+.wa-msg[data-yon="inbound"][data-bitisik="true"] { border-top-left-radius: 6px }
+.wa-msg[data-yon="outbound"][data-bitisik="true"] { border-top-right-radius: 6px }
+
+/* Saat ve durum balonun sağ altında — WhatsApp'ta olduğu yerde. */
+.wa-msg-alt { justify-content: flex-end }
+
+/*
+  Durumun adı ekran okuyucu için hep var, gözle yalnızca "gitmedi"de
+  görünür. Her mesajın yanında "iletildi" yazması akışı okunmaz hale
+  getiriyordu; ✓ / ✓✓ farkı renge değil şekle dayandığı için renk
+  göremeyen de ayırt edebiliyor. Başarısızlık ise iş gerektirir,
+  simgeye bakıp anlamak zorunda kalınmamalı.
+*/
+.wa-durum-adi { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+.wa-msg[data-durum="failed"] .wa-durum-adi { position: static; width: auto; height: auto; clip-path: none }
+
+.wa-hata { color: var(--danger); font-weight: 600 }
