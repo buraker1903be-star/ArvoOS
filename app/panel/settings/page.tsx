@@ -8,6 +8,7 @@ import { getPaytrStatus } from "@/lib/paytr-status";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { removePaytrSettings, savePaytrSettings } from "../finance/paytr-actions";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
+import { arvoWhatsappKontrol } from "./whatsapp/actions";
 import "./settings-legal.css";
 import "./settings.css";
 
@@ -226,6 +227,22 @@ export default async function SettingsPage() {
               </div>
             ) : null}
             {whatsapp.lastError ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {whatsapp.lastError}</p> : null}
+            {/*
+              Bağlantı kontrolü: Meta'ya "bu numarayı tanıyor musun" diye
+              sorar ve ham cevabı gösterir. Gelen kutusu CRM'e taşınırken bu
+              düğme eski sayfada kalıp hiçbir yere bağlanmamıştı — işlem
+              kodda duruyordu ama çağıran yoktu, yani anahtar sorunlarını
+              panelden görmenin yolu yine kapalıydı.
+
+              Kurumun kendi numarası bağlı olmasa da anlamlı: o durumda
+              mesajlar Arvo'nun ortak numarasından gidiyor ve asıl
+              sorgulanması gereken anahtar o.
+            */}
+            <div className="wide panel-form-actions">
+              <form action={arvoWhatsappKontrol}>
+                <button className="panel-secondary" type="submit">Bağlantı kontrolü</button>
+              </form>
+            </div>
             <div className="stg-list">
               <StgLinkRow href="/panel/crm/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Sohbetler CRM altına taşındı; müşterinin talebi ve teklifinin yanında" />
             </div>
