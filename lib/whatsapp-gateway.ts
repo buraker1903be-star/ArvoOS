@@ -36,6 +36,19 @@ export type GatewayRequest = {
     language?: string;
     /** 24 saatlik pencere içinde serbest metin (gelen kutusu yanıtı). */
     text?: string;
+    /** 24 saatlik pencere içinde görsel/dosya; kimlik Meta'ya yüklenerek alınır. */
+    media?: { kind: "image" | "document" | "video" | "audio"; id: string; caption?: string; filename?: string };
+    /**
+     * Gönderilen dosyanın BİZDEKİ kopyasının kova yolu.
+     *
+     * Meta'ya yüklenen medyanın kimliği 30 gün sonra ölüyor; gelen kutusu
+     * ekranı giden dosyayı da gösterebilsin diye kopyayı biz saklıyoruz.
+     * Yükleme çağıranın işi (kova erişimi orada), kapı yalnızca kaydediyor.
+     */
+    mediaPath?: string;
+    /** Kopyanın MIME türü ve boyutu; ekran görseli dosyadan ayırsın. */
+    mediaMime?: string;
+    mediaSize?: number;
     /** Kayda düşecek metin; şablonlu mesajda ürünün kendi cümlesi. */
     body?: string | null;
   }[];
@@ -79,8 +92,8 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
     }
     // Şablon ya da serbest metin: biri olmalı. Serbest metin yalnızca
     // müşterinin son mesajından sonraki 24 saat içinde geçerli.
-    if (!message.template && !String(message.text ?? "").trim()) {
-      throw new GatewayError(400, "Her mesajda onaylı şablon adı (template) ya da serbest metin (text) olmalı.");
+    if (!message.template && !message.media?.id && !String(message.text ?? "").trim()) {
+      throw new GatewayError(400, "Her mesajda onaylı şablon adı (template), medya (media) ya da serbest metin (text) olmalı.");
     }
     items.push({
       ref: message.ref ?? null,
@@ -90,6 +103,7 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
       urlButtonParam: message.urlButtonParam,
       language: message.language,
       text: message.text,
+      media: message.media,
     });
   }
 
@@ -136,6 +150,13 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
         // Kayda düşen metin: ürünün kendi cümlesi ya da serbest metnin
         // kendisi. Gelen kutusu müşterinin gördüğü mesajı göstersin.
         body: kaynak?.body ?? kaynak?.text ?? null,
+        message_type: kaynak?.media?.kind ?? "text",
+        media_mime: kaynak?.mediaMime ?? null,
+        media_size: kaynak?.mediaSize ?? null,
+        media_filename: kaynak?.media?.filename ?? null,
+        media_path: kaynak?.mediaPath ?? null,
+        // Kopya zaten kovada (çağıran yükledi); indirilecek bir şey yok.
+        media_status: kaynak?.mediaPath ? "stored" : "none",
         status: result.sent ? "sent" : "failed",
         error: result.error ?? null,
         ref: result.ref,

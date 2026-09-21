@@ -54,6 +54,21 @@ export type WhatsappSendItem = {
    * kutusundan verilen yanıtlar bu yolla gider.
    */
   text?: string;
+  /**
+   * Görsel/dosya. Meta dosyanın kendisini mesajla almıyor: önce yükleyip
+   * medya kimliği alıyoruz (lib/whatsapp-medya.ts), burada yalnızca o
+   * kimlik taşınıyor.
+   *
+   * Serbest metinle aynı kural: yalnızca 24 saatlik pencerede gider.
+   */
+  media?: {
+    kind: "image" | "document" | "video" | "audio";
+    id: string;
+    /** Görsel/video/belgede altyazı; ses mesajında Meta kabul etmiyor. */
+    caption?: string;
+    /** Yalnızca belgede; müşteri dosyayı bu adla indiriyor. */
+    filename?: string;
+  };
 };
 
 export type WhatsappSendResult = {
@@ -149,8 +164,32 @@ export function textMessageBody(item: WhatsappSendItem) {
   };
 }
 
-/** Şablon mu serbest metin mi: gövdeyi mesajın kendisi belirler. */
-export const messageBody = (item: WhatsappSendItem) => (item.template ? templateBody(item) : textMessageBody(item));
+/**
+ * Medya mesajı.
+ *
+ * Altyazı ve dosya adı yalnızca destekleyen türlerde ekleniyor: Meta ses
+ * mesajında caption, görselde filename görürse 131009 ("parameter value is
+ * not valid") döndürüp mesajı hiç göndermiyor.
+ */
+export function mediaMessageBody(item: WhatsappSendItem) {
+  const media = item.media!;
+  const altYaziyiKabulEder = media.kind !== "audio";
+  const dosyaAdiniKabulEder = media.kind === "document";
+  return {
+    messaging_product: "whatsapp",
+    to: item.to,
+    type: media.kind,
+    [media.kind]: {
+      id: media.id,
+      ...(altYaziyiKabulEder && media.caption?.trim() ? { caption: media.caption.trim().slice(0, 1024) } : {}),
+      ...(dosyaAdiniKabulEder && media.filename?.trim() ? { filename: media.filename.trim().slice(0, 240) } : {}),
+    },
+  };
+}
+
+/** Şablon mu, medya mı, serbest metin mi: gövdeyi mesajın kendisi belirler. */
+export const messageBody = (item: WhatsappSendItem) =>
+  item.template ? templateBody(item) : item.media ? mediaMessageBody(item) : textMessageBody(item);
 
 /** Mesajları tek tek gönderir; biri düşerse diğerleri devam eder. */
 export async function sendWhatsappTemplates(

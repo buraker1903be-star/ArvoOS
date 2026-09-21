@@ -28,7 +28,23 @@ export type InboundMessage = {
   type: string;
   /** Metin; metin dışı türlerde "[görsel]" gibi yer tutucu. */
   body: string;
+  /**
+   * Görsel/dosya bilgisi. Eskiden okunmadan düşüyordu: müşteri dekont ya da
+   * imzalı belge gönderdiğinde panelde yalnızca "[görsel]" yazıyor, dosyaya
+   * sonradan da ulaşılamıyordu. Meta dosyanın kendisini değil kimliğini
+   * yolluyor; indirmek ayrı bir istek ve erişim anahtarı istiyor.
+   */
+  media: InboundMedia | null;
   sentAt: string;
+};
+
+export type InboundMedia = {
+  /** Meta'nın medya kimliği; indirme bununla yapılır (yaklaşık 30 gün geçerli). */
+  id: string;
+  mime: string | null;
+  /** Yalnızca belge türünde gelir; görselde Meta ad vermiyor. */
+  filename: string | null;
+  sha256: string | null;
 };
 
 export type StatusUpdate = {
@@ -88,6 +104,31 @@ function govdeMetni(message: MetaNesne): string {
   return altYazi ? `${tutucu} ${altYazi}` : tutucu;
 }
 
+/** Medya taşıyan türler; konum ve kişi kartı dosya değil, veri taşır. */
+const MEDYA_TURLERI = ["image", "video", "audio", "voice", "document", "sticker"] as const;
+
+/**
+ * Mesajın medya bilgisi; taşımıyorsa null.
+ *
+ * Kimlik yoksa null dönüyoruz: kimliksiz bir medya kaydı, ekranda
+ * indirilemeyecek bir dosya düğmesi göstermek demek olurdu.
+ */
+function medyaBilgisi(message: MetaNesne): InboundMedia | null {
+  const type = yazi(message.type);
+  if (!(MEDYA_TURLERI as readonly string[]).includes(type)) return null;
+
+  const medya = nesne(message[type]);
+  const id = yazi(medya.id).trim();
+  if (!id) return null;
+
+  return {
+    id,
+    mime: yazi(medya.mime_type).split(";")[0].trim() || null,
+    filename: yazi(medya.filename).trim() || null,
+    sha256: yazi(medya.sha256).trim() || null,
+  };
+}
+
 /** Meta'nın durum hatasını Türkçeleştirir; ham "131047" kimseye bir şey söylemez. */
 export function statusErrorMessage(error: { code?: number; title?: string; message?: string } | undefined): string | null {
   if (!error) return null;
@@ -135,6 +176,7 @@ export function parseWhatsappWebhook(payload: unknown): WebhookPayload {
           profileName: adlar.get(from) ?? null,
           type: yazi(message.type) || "text",
           body: govdeMetni(message),
+          media: medyaBilgisi(message),
           sentAt: zaman(message.timestamp),
         });
       }

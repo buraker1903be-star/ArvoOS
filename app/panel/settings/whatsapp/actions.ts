@@ -12,6 +12,9 @@ import {
   setConversationArchived,
 } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { MEDYA_SINIRI, gorunenDosyaAdi, medyayiYukle, uzanti } from "@/lib/whatsapp-medya";
+import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { verifyWhatsappNumber } from "@/lib/whatsapp-cloud";
 
 /*
@@ -194,4 +197,117 @@ async function hazirMesajSil__impl(id: string) {
 
 export async function hazirMesajSil(id: string): Promise<void> {
   await runPanelAction(() => hazirMesajSil__impl(id), "Hazır mesaj silindi");
+}
+
+
+/*
+  Panelden görsel/dosya gönderme.
+
+  Eskiden yalnızca metin gidiyordu: müşteri "fiyat listesini atar mısınız"
+  dediğinde personel WhatsApp Web'e geçip dosyayı oradan yolluyor, o mesaj
+  da panelde hiç görünmüyordu — yazışmanın yarısı panelde, yarısı telefonda
+  kalıyordu.
+
+  Dosya iki yere gidiyor: Meta'ya (gönderilebilmesi için) ve kendi kovamıza
+  (panelde görünebilmesi için). Meta'nın medya kimliği yaklaşık 30 gün sonra
+  ölüyor, yani yalnızca ona güvenmek bir ay sonra boş bir baloncuk demekti.
+
+  Serbest metinle aynı kural: yalnızca müşterinin son mesajından sonraki
+  24 saat içinde gönderilebilir.
+*/
+
+/** Meta'nın kabul ettiği ve panelde anlamlı gösterebildiğimiz türler. */
+const MEDYA_TURU: Record<string, "image" | "document" | "video" | "audio"> = {
+  "image/jpeg": "image", "image/png": "image", "image/webp": "image",
+  "video/mp4": "video", "video/3gpp": "video",
+  "audio/aac": "audio", "audio/mp4": "audio", "audio/mpeg": "audio", "audio/ogg": "audio",
+};
+
+async function gonderenAnahtari(organizationId: string) {
+  const admin = createAdminClient();
+  if (!admin) throw new Error("Sunucu anahtarı tanımlı değil.");
+
+  if (paymentCredentialsConfigured()) {
+    const { data } = await admin
+      .from("whatsapp_accounts")
+      .select("phone_number_id,access_token_enc,status")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (data && data.status !== "disabled") {
+      return { admin, phoneNumberId: data.phone_number_id as string, token: decryptSecret(data.access_token_enc) };
+    }
+  }
+
+  // Kurumun kendi numarası yoksa Arvo'nun ortak numarası; kapının da kuralı bu.
+  const phoneNumberId = process.env.WHATSAPP_PHONE_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!phoneNumberId || !token) throw new Error("WhatsApp numarası tanımlı değil.");
+  return { admin, phoneNumberId, token };
+}
+
+async function dosyaGonder__impl(formData: FormData) {
+  const { membership } = await inboxContext();
+  const telefon = normalizePhone(String(formData.get("phone") ?? ""));
+  if (!telefon) throw new Error("Numara geçersiz.");
+
+  const dosya = formData.get("file");
+  if (!(dosya instanceof File) || !dosya.size) throw new Error("Dosya seçilmedi.");
+
+  const mime = (dosya.type || "application/octet-stream").split(";")[0].trim();
+  // Tanımadığımız her tür "document": Meta belgede en geniş tür listesini
+  // kabul ediyor ve panelde indirme satırı olarak gösterebiliyoruz.
+  const tur = MEDYA_TURU[mime] ?? "document";
+
+  const sinir = MEDYA_SINIRI[tur] ?? MEDYA_SINIRI.document;
+  if (dosya.size > sinir) {
+    throw new Error(`Dosya çok büyük. ${tur === "image" ? "Görsel" : "Dosya"} en çok ${Math.round(sinir / 1024 / 1024)} MB olabilir.`);
+  }
+
+  // Pencereyi Meta'ya sormadan önce burada da bakıyoruz: kapalıyken istek
+  // 131047 ile dönerdi ve dosya boşuna yüklenmiş olurdu.
+  const { windowOpen } = await loadConversation(membership.organization_id, telefon);
+  if (!windowOpen) {
+    throw new Error("24 saatlik yanıt penceresi kapalı. Müşteri yeniden yazana kadar dosya gönderilemez.");
+  }
+
+  const { admin, phoneNumberId, token } = await gonderenAnahtari(membership.organization_id);
+  const govde = Buffer.from(await dosya.arrayBuffer());
+  const ad = dosya.name?.trim() || gorunenDosyaAdi(tur, mime, null);
+
+  const yukleme = await medyayiYukle(phoneNumberId, token, { govde, mime, ad });
+  if (!yukleme.ok) throw new Error(yukleme.hata);
+
+  /*
+    Kopya Meta'ya yükleme BAŞARILI olduktan sonra saklanıyor: yükleme
+    düşerse kovada sahipsiz bir dosya kalmasın.
+  */
+  const yol = `${membership.organization_id}/giden/${crypto.randomUUID()}.${uzanti(mime, ad)}`;
+  const { error: kovaHatasi } = await admin.storage
+    .from("whatsapp-media")
+    .upload(yol, govde, { contentType: mime, upsert: false });
+  if (kovaHatasi) console.error("[whatsapp] giden dosya saklanamadı", kovaHatasi.message);
+
+  const altYazi = String(formData.get("text") ?? "").trim();
+  const sonuc = await sendThroughGateway({
+    product: "arvoos",
+    organizationId: membership.organization_id,
+    sender: "organization",
+    messages: [{
+      to: telefon,
+      media: { kind: tur, id: yukleme.mediaId, caption: altYazi || undefined, filename: ad },
+      body: altYazi || ad,
+      mediaPath: kovaHatasi ? undefined : yol,
+      mediaMime: mime,
+      mediaSize: govde.length,
+    }],
+  });
+
+  const ilk = sonuc.results[0];
+  if (!ilk?.sent) throw new Error(ilk?.error ?? "Dosya gönderilemedi.");
+
+  revalidatePath("/panel/crm/whatsapp");
+}
+
+export async function dosyaGonder(formData: FormData): Promise<void> {
+  await runPanelAction(() => dosyaGonder__impl(formData), "Dosya gönderildi");
 }

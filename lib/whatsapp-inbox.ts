@@ -3,6 +3,8 @@ import { windowOpen } from "@/lib/whatsapp-send";
 import type { InboundMessage, StatusUpdate, WebhookPayload } from "@/lib/whatsapp-webhook";
 import { gelenMesajinKurumu, type KurumEslemesi } from "@/lib/whatsapp-kurum-eslemesi";
 import { arsivdeMi } from "@/lib/whatsapp-arsiv";
+import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { gorunenDosyaAdi, medyayiIndir, uzanti } from "@/lib/whatsapp-medya";
 import type { HazirMesaj } from "@/lib/whatsapp-hazir-mesaj";
 
 /*
@@ -26,6 +28,16 @@ export type InboxMessage = {
   status: string;
   error: string | null;
   createdAt: string;
+  /** Mesajın türü (text, image, document…); ekran görseli metinden ayırsın. */
+  messageType: string;
+  media: {
+    /** none: medya yok · pending: inmedi · stored: kovada · failed: inemedi */
+    status: "none" | "pending" | "stored" | "failed";
+    mime: string | null;
+    filename: string | null;
+    size: number | null;
+    error: string | null;
+  } | null;
 };
 
 export type InboxConversation = {
@@ -110,25 +122,52 @@ export async function applyWebhook(payload: WebhookPayload): Promise<{ inbound: 
     }
     const organizationId = esleme.organizationId;
     const arvoNumarasi = message.phoneNumberId === process.env.WHATSAPP_PHONE_ID;
-    const { error } = await admin.from("whatsapp_messages").insert({
-      organization_id: organizationId,
-      // Gelen mesaj hangi üründen sayılır belli değil; kaydı ArvoOS tutar,
-      // gelen kutusu ekranı ürün ayırmadan tek sohbet gösterir.
-      product: "arvoos",
-      sender: arvoNumarasi ? "arvo" : "organization",
-      direction: "inbound",
-      phone_number_id: message.phoneNumberId,
-      wa_message_id: message.waMessageId,
-      counterpart_phone: message.from,
-      profile_name: message.profileName,
-      body: message.body,
-      status: "received",
-      created_at: message.sentAt,
-      updated_at: message.sentAt,
-    });
+    /*
+      Satır ÖNCE yazılıyor, dosya sonra indiriliyor. Sıra önemli: indirme
+      Meta'ya iki istek demek ve düşebilir. Mesajı indirmeye bağlarsak,
+      dosya inmediğinde "müşteri bir şey gönderdi" bilgisi de kaybolur ve
+      karşı tarafta kimse bir şey olduğunu bilmez.
+    */
+    const { data: satir, error } = await admin
+      .from("whatsapp_messages")
+      .insert({
+        organization_id: organizationId,
+        // Gelen mesaj hangi üründen sayılır belli değil; kaydı ArvoOS tutar,
+        // gelen kutusu ekranı ürün ayırmadan tek sohbet gösterir.
+        product: "arvoos",
+        sender: arvoNumarasi ? "arvo" : "organization",
+        direction: "inbound",
+        phone_number_id: message.phoneNumberId,
+        wa_message_id: message.waMessageId,
+        counterpart_phone: message.from,
+        profile_name: message.profileName,
+        body: message.body,
+        status: "received",
+        message_type: message.type || "text",
+        media_id: message.media?.id ?? null,
+        media_mime: message.media?.mime ?? null,
+        media_filename: message.media?.filename ?? null,
+        media_status: message.media ? "pending" : "none",
+        created_at: message.sentAt,
+        updated_at: message.sentAt,
+      })
+      .select("id")
+      .maybeSingle();
     // 23505: Meta aynı bildirimi yeniden yolladı, tekillik indeksi tuttu.
     if (error && error.code !== "23505") console.error("[whatsapp] gelen mesaj yazılamadı", error.message);
     else if (!error) inbound += 1;
+
+    if (!error && satir?.id && message.media) {
+      await medyayiSakla(admin, {
+        mesajId: satir.id as string,
+        organizationId,
+        phoneNumberId: message.phoneNumberId,
+        tur: message.type,
+        mediaId: message.media.id,
+        mime: message.media.mime,
+        dosyaAdi: message.media.filename,
+      });
+    }
   }
 
   let statuses = 0;
@@ -136,6 +175,89 @@ export async function applyWebhook(payload: WebhookPayload): Promise<{ inbound: 
     if (await durumYaz(admin, update)) statuses += 1;
   }
   return { inbound, statuses };
+}
+
+/**
+ * Medyayı indirip kovaya koyar ve satırı günceller.
+ *
+ * Hata fırlatmıyor: dosya inmese de mesaj duruyor ve satır 'pending'
+ * kalıyor, yani panelden açıldığında yeniden denenebiliyor. Meta'daki aslı
+ * yaklaşık 30 gün duruyor, o pencerede ikinci şansımız var.
+ */
+export async function medyayiSakla(
+  admin: Admin,
+  girdi: {
+    mesajId: string;
+    organizationId: string;
+    phoneNumberId: string;
+    tur: string;
+    mediaId: string;
+    mime: string | null;
+    dosyaAdi: string | null;
+  },
+): Promise<boolean> {
+  const basarisiz = async (hata: string) => {
+    await admin
+      .from("whatsapp_messages")
+      .update({ media_status: "failed", media_error: hata, updated_at: new Date().toISOString() })
+      .eq("id", girdi.mesajId);
+    return false;
+  };
+
+  const anahtar = await indirmeAnahtari(admin, girdi.phoneNumberId);
+  if (!anahtar) return basarisiz("Numaranın erişim anahtarı bulunamadı; dosya indirilemedi.");
+
+  const sonuc = await medyayiIndir(girdi.mediaId, anahtar);
+  if (!sonuc.ok) return basarisiz(sonuc.hata);
+
+  const yol = `${girdi.organizationId}/${girdi.mesajId}.${uzanti(sonuc.medya.mime, girdi.dosyaAdi)}`;
+  const { error: yuklemeHatasi } = await admin.storage
+    .from("whatsapp-media")
+    .upload(yol, sonuc.medya.govde, { contentType: sonuc.medya.mime, upsert: true });
+  if (yuklemeHatasi) return basarisiz(`Dosya saklanamadı: ${yuklemeHatasi.message}`);
+
+  const { error } = await admin
+    .from("whatsapp_messages")
+    .update({
+      media_path: yol,
+      media_mime: sonuc.medya.mime,
+      media_size: sonuc.medya.boyut,
+      media_filename: girdi.dosyaAdi ?? gorunenDosyaAdi(girdi.tur, sonuc.medya.mime, null),
+      media_status: "stored",
+      media_error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", girdi.mesajId);
+  if (error) {
+    // Dosya kovada ama kayıt güncellenemedi: yolu bilmeden dosya erişilemez.
+    console.error("[whatsapp] medya kaydı güncellenemedi", error.message);
+    await admin.storage.from("whatsapp-media").remove([yol]);
+    return basarisiz("Dosya kaydı güncellenemedi.");
+  }
+  return true;
+}
+
+/**
+ * İndirme için kullanılacak erişim anahtarı.
+ *
+ * Bildirimi hangi numara aldıysa onun anahtarı gerekir: kurumun kendi
+ * numarasına gelen dosya, Arvo'nun anahtarıyla indirilemez (Meta 190/200).
+ */
+async function indirmeAnahtari(admin: Admin, phoneNumberId: string): Promise<string | null> {
+  if (phoneNumberId === process.env.WHATSAPP_PHONE_ID) return process.env.WHATSAPP_TOKEN ?? null;
+  if (!paymentCredentialsConfigured()) return null;
+
+  const { data } = await admin
+    .from("whatsapp_accounts")
+    .select("access_token_enc,status")
+    .eq("phone_number_id", phoneNumberId)
+    .maybeSingle();
+  if (!data || data.status === "disabled") return null;
+  try {
+    return decryptSecret(data.access_token_enc);
+  } catch {
+    return null;
+  }
 }
 
 /** İleri durum geri alınmaz: "read" gelmişken geç kalan "delivered" yazılmasın. */
@@ -312,7 +434,7 @@ export async function loadConversation(organizationId: string, phone: string): P
   if (!admin) return { messages: [], windowOpen: false };
   const { data } = await admin
     .from("whatsapp_messages")
-    .select("id,direction,product,sender,body,template,status,error,created_at")
+    .select("id,direction,product,sender,body,template,status,error,created_at,message_type,media_status,media_mime,media_filename,media_size,media_error")
     .eq("organization_id", organizationId)
     .eq("counterpart_phone", phone)
     .order("created_at", { ascending: true })
@@ -328,6 +450,17 @@ export async function loadConversation(organizationId: string, phone: string): P
     status: satir.status as string,
     error: (satir.error as string | null) ?? null,
     createdAt: satir.created_at as string,
+    messageType: (satir.message_type as string | null) ?? "text",
+    media:
+      (satir.media_status as string) && satir.media_status !== "none"
+        ? {
+            status: satir.media_status as "pending" | "stored" | "failed",
+            mime: (satir.media_mime as string | null) ?? null,
+            filename: (satir.media_filename as string | null) ?? null,
+            size: (satir.media_size as number | null) ?? null,
+            error: (satir.media_error as string | null) ?? null,
+          }
+        : null,
   }));
   const sonGelen = [...messages].reverse().find((m) => m.direction === "inbound");
   return { messages, windowOpen: windowOpen(sonGelen?.createdAt ?? null) };

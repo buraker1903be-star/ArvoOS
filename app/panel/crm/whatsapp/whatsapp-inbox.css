@@ -448,3 +448,34 @@ html[data-theme="dark"] .wa-avatar { background: hsl(var(--wa-ton, 210) 30% 24%)
   .wa-flow { padding: 14px }
   .wa-msg { max-width: 84% }
 }
+
+/* ------------------------------------------------------------
+   Görsel ve dosya
+   Müşterinin gönderdiği dekont, kimlik ya da imzalı belge eskiden
+   panelde yalnızca "[görsel]" olarak görünüyordu.
+   ------------------------------------------------------------ */
+
+/* Görsel balonun içinde, kendi genişliğinde. Yükseklik sınırı var:
+   dik çekilmiş bir fotoğraf akışın tamamını kaplıyordu. */
+.wa-gorsel { display: block; margin: -1px -3px 3px; border-radius: 7px; overflow: hidden }
+.wa-gorsel img { display: block; width: 100%; max-width: 320px; max-height: 340px; object-fit: cover; background: var(--surface-2) }
+
+/* Dosya satırı: video ve ses dahil her şey. Otomatik yüklenen bir video,
+   elli mesajlık akışta sayfayı ve bağlantıyı boşuna harcıyordu. */
+.wa-dosya {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 3px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: inherit;
+  text-decoration: none;
+}
+.wa-dosya:hover { background: color-mix(in srgb, var(--ink) 11%, transparent) }
+.wa-dosya[data-durum="failed"] { color: var(--danger) }
+.wa-dosya-simge { flex: none; font-size: 17px; line-height: 1 }
+.wa-dosya-ad { display: grid; gap: 1px; min-width: 0 }
+.wa-dosya-ad b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.wa-dosya-ad small { color: color-mix(in srgb, var(--ink) 50%, transparent); font-size: 11px }

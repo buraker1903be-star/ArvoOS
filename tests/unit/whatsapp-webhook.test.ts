@@ -34,7 +34,9 @@ test("gelen metin mesajı profil adı ve zamanıyla çözülür", () => {
   assert.equal(inbound.length, 1);
   assert.deepEqual(
     { ...inbound[0], sentAt: inbound[0].sentAt.slice(0, 4) },
-    { phoneNumberId: "555000", waMessageId: "wamid.1", from: "905320000000", profileName: "Ayşe", type: "text", body: "gelemeyeceğim", sentAt: "2025" },
+    // media: metin mesajında her zaman null — medya alanları eklendiğinde
+    // bu karşılaştırmanın da genişlemesi gerekti.
+    { phoneNumberId: "555000", waMessageId: "wamid.1", from: "905320000000", profileName: "Ayşe", type: "text", body: "gelemeyeceğim", media: null, sentAt: "2025" },
   );
 });
 
