@@ -73,6 +73,18 @@ const PAGES: Record<PageId, PageInfo> = {
     en: { name: "Privacy policy", summary: "How Arvo processes personal data." },
     tr: { name: "Gizlilik politikası", summary: "Arvo'nun kişisel verileri nasıl işlediği." },
   },
+  "distance-sales": {
+    en: { name: "Distance sales agreement", summary: "Terms for the online sale of Arvo subscriptions." },
+    tr: { name: "Mesafeli satış sözleşmesi", summary: "Arvo aboneliklerinin internetten satışına ilişkin sözleşme." },
+  },
+  refund: {
+    en: { name: "Cancellation and refund policy", summary: "How subscriptions are cancelled and refunded." },
+    tr: { name: "İptal ve iade koşulları", summary: "Aboneliğin iptali ve iade koşulları." },
+  },
+  delivery: {
+    en: { name: "Delivery and performance", summary: "When accounts open; the services are digital, no shipping." },
+    tr: { name: "Teslimat ve hizmetin ifası", summary: "Hesabın ne zaman açıldığı; hizmet dijitaldir, kargo yoktur." },
+  },
 };
 
 const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
@@ -88,7 +100,7 @@ const SECTIONS: { title: string; ids: PageId[] }[] = [
   { title: "Services", ids: ["services", "web-design", "seo-geo", "custom-software"] },
   { title: "Company", ids: ["home", "about"] },
   { title: "Contact", ids: ["contact"] },
-  { title: "Optional", ids: ["privacy"] },
+  { title: "Optional", ids: ["privacy", "distance-sales", "refund", "delivery"] },
 ];
 
 const SIGN_IN: Partial<Record<PageId, string>> = {

@@ -13,6 +13,9 @@ const CHANGE_FREQUENCY: Partial<Record<PageId, MetadataRoute.Sitemap[number]["ch
   arvolab: "weekly",
   arc: "weekly",
   privacy: "yearly",
+  "distance-sales": "yearly",
+  refund: "yearly",
+  delivery: "yearly",
 };
 
 export default function sitemap(): MetadataRoute.Sitemap {

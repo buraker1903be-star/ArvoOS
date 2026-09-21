@@ -35,8 +35,16 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         <div className="ftr-cols">
           <Col title={t.products} links={[...t.productLinks, ...t.arvoosLinks]} />
           <Col title={t.services} links={t.serviceLinks} />
-          <Col title={t.company} links={[{ label: t.about, href: ROUTES.about[locale] }, { label: t.contact, href: ROUTES.contact[locale] }, { label: t.privacy, href: ROUTES.privacy[locale] }]} />
+          <Col title={t.company} links={[{ label: t.about, href: ROUTES.about[locale] }, { label: t.contact, href: ROUTES.contact[locale] }]} />
           <Col title={t.signIn} links={t.signInLinks} />
+          {/* Mesafeli satış mevzuatı ve ödeme kuruluşu bu metinlerin her
+              sayfadan ulaşılabilir olmasını istiyor; alt bilgi tek yer. */}
+          <Col title={t.legal} links={[
+            { label: t.privacy, href: ROUTES.privacy[locale] },
+            { label: t.distanceSales, href: ROUTES["distance-sales"][locale] },
+            { label: t.refund, href: ROUTES.refund[locale] },
+            { label: t.delivery, href: ROUTES.delivery[locale] },
+          ]} />
         </div>
         <div className="ftr-legal">
           <address className="ftr-address">
