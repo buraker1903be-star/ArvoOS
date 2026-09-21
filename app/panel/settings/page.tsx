@@ -5,7 +5,9 @@ import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, StgWidget, type StgTone } from "./settings-ui";
 import { getPaytrStatus } from "@/lib/paytr-status";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { removePaytrSettings, savePaytrSettings } from "../finance/paytr-actions";
+import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
 import "./settings-legal.css";
 import "./settings.css";
 
@@ -35,6 +37,8 @@ export default async function SettingsPage() {
   const canManage = ["owner", "admin"].includes(membership.role);
   // PayTR mağaza bilgileri yalnızca sahip/yöneticiye (anahtarlar hiç okunmaz)
   const paytr = canManage ? await getPaytrStatus(membership.organization_id) : null;
+  // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
+  const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
   const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
   // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
@@ -186,6 +190,42 @@ export default async function SettingsPage() {
                 <form action={removePaytrSettings}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {whatsapp ? (
+          <div className="stg-paytr">
+            <div className="stg-paytr-head">
+              <div>
+                <b>WhatsApp ile mesaj</b>
+                <small>Kendi WhatsApp Business numaranızı bağlayın; teklif, sözleşme, sipariş ve randevu mesajları müşterinize sizin numaranızdan gitsin.</small>
+              </div>
+              <span className="status-pill" data-tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}>
+                {whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
+              </span>
+            </div>
+            {whatsapp.available ? (
+              <form className="panel-form" action={saveWhatsappAccount}>
+                <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
+                <label>Numara kimliği (phone number ID)<input name="phone_number_id" inputMode="numeric" required defaultValue={whatsapp.phoneNumberId ?? ""} autoComplete="off" /></label>
+                <label className="wide">Kalıcı erişim anahtarı<input name="access_token" type="password" autoComplete="new-password" required placeholder={whatsapp.connected ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+                <p className="wide stg-paytr-note">
+                  Bu değerler Meta Business → WhatsApp Manager → API Kurulumu ekranında yer alır. Anahtar şifreli saklanır, ekranda bir daha gösterilmez.
+                  Bağlarken numara Meta&apos;ya sorulur; anahtar yanlışsa kayıt hiç yazılmaz. Numara bağlamayan kurumların mesajları Arvo&apos;nun ortak numarasından gider.
+                </p>
+                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{whatsapp.connected ? "Güncelle" : "Numarayı bağla"}</button></div>
+              </form>
+            ) : (
+              <p className="stg-muted"><StgIcon name="lock" size={16} />WhatsApp için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
+            )}
+            {whatsapp.connected ? (
+              <div className="stg-paytr-foot">
+                <span>İşletme adı: <b>{whatsapp.verifiedName ?? "—"}</b></span>
+                <span>Son doğrulama: <b>{paytrDate(whatsapp.lastVerifiedAt)}</b></span>
+                <form action={verifyWhatsappAccount}><button className="panel-secondary" type="submit">Yeniden doğrula</button></form>
+                <form action={removeWhatsappAccount}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
+              </div>
+            ) : null}
+            {whatsapp.lastError ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {whatsapp.lastError}</p> : null}
           </div>
         ) : null}
         {integrations.length
