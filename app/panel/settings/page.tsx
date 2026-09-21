@@ -226,6 +226,9 @@ export default async function SettingsPage() {
               </div>
             ) : null}
             {whatsapp.lastError ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {whatsapp.lastError}</p> : null}
+            <div className="stg-list">
+              <StgLinkRow href="/panel/settings/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Müşterinin yazdıkları ve gönderdiğiniz mesajlar" />
+            </div>
           </div>
         ) : null}
         {integrations.length

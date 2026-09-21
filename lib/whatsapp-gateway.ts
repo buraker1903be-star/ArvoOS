@@ -25,7 +25,18 @@ export type GatewayRequest = {
   organizationId: string;
   /** İstenen gönderen; kurum numarası yoksa "arvo"ya düşer. */
   sender?: GatewaySender;
-  messages: { ref?: string | null; to: string; template: string; params?: string[]; language?: string; body?: string | null }[];
+  messages: {
+    ref?: string | null;
+    to: string;
+    /** Onaylı şablon; serbest metin yollanıyorsa boş. */
+    template?: string;
+    params?: string[];
+    language?: string;
+    /** 24 saatlik pencere içinde serbest metin (gelen kutusu yanıtı). */
+    text?: string;
+    /** Kayda düşecek metin; şablonlu mesajda ürünün kendi cümlesi. */
+    body?: string | null;
+  }[];
 };
 
 export type GatewayResponse = {
@@ -64,8 +75,12 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
       rejected.push({ ref: message.ref ?? null, to: message.to, sent: false, error: "Cep telefonu numarası geçersiz (5XXXXXXXXX bekleniyor)." });
       continue;
     }
-    if (!message.template) throw new GatewayError(400, "Her mesajda onaylı şablon adı (template) olmalı.");
-    items.push({ ref: message.ref ?? null, to, template: message.template, params: message.params ?? [], language: message.language });
+    // Şablon ya da serbest metin: biri olmalı. Serbest metin yalnızca
+    // müşterinin son mesajından sonraki 24 saat içinde geçerli.
+    if (!message.template && !String(message.text ?? "").trim()) {
+      throw new GatewayError(400, "Her mesajda onaylı şablon adı (template) ya da serbest metin (text) olmalı.");
+    }
+    items.push({ ref: message.ref ?? null, to, template: message.template, params: message.params ?? [], language: message.language, text: message.text });
   }
 
   // Gönderen: kurumun kendi numarası mı, Arvo'nunki mi.
@@ -96,22 +111,27 @@ export async function sendThroughGateway(request: GatewayRequest): Promise<Gatew
 
   if (all.length) {
     const now = new Date().toISOString();
-    const rows = all.map((result) => ({
-      organization_id: request.organizationId,
-      product: request.product,
-      sender: sender.kind,
-      direction: "outbound",
-      phone_number_id: sender.credentials.phoneNumberId,
-      wa_message_id: result.waMessageId ?? null,
-      counterpart_phone: result.to,
-      template: request.messages.find((m) => (m.ref ?? null) === result.ref)?.template ?? null,
-      params: request.messages.find((m) => (m.ref ?? null) === result.ref)?.params ?? null,
-      body: request.messages.find((m) => (m.ref ?? null) === result.ref)?.body ?? null,
-      status: result.sent ? "sent" : "failed",
-      error: result.error ?? null,
-      ref: result.ref,
-      updated_at: now,
-    }));
+    const rows = all.map((result) => {
+      const kaynak = request.messages.find((m) => (m.ref ?? null) === result.ref);
+      return {
+        organization_id: request.organizationId,
+        product: request.product,
+        sender: sender.kind,
+        direction: "outbound",
+        phone_number_id: sender.credentials.phoneNumberId,
+        wa_message_id: result.waMessageId ?? null,
+        counterpart_phone: result.to,
+        template: kaynak?.template ?? null,
+        params: kaynak?.params ?? null,
+        // Kayda düşen metin: ürünün kendi cümlesi ya da serbest metnin
+        // kendisi. Gelen kutusu müşterinin gördüğü mesajı göstersin.
+        body: kaynak?.body ?? kaynak?.text ?? null,
+        status: result.sent ? "sent" : "failed",
+        error: result.error ?? null,
+        ref: result.ref,
+        updated_at: now,
+      };
+    });
     // Kayıt yazılamazsa gönderim yine de olmuştur: ürünü yanıltmayalım,
     // sonucu döndürüp hatayı günlüğe yazıyoruz.
     const { error } = await admin.from("whatsapp_messages").insert(rows);
