@@ -183,3 +183,9 @@ Bilinmesi gerekenler:
   Meta aynı bildirimi yeniden yollayabilir.
 - **Gelen kutusu** Ayarlar → Entegrasyonlar → WhatsApp gelen kutusu. Dört
   ürünün mesajı tek akışta; müşteri için hepsi aynı sohbet.
+- **Gelen mesaj hangi kurumun?** Sırayla: numara bir kuruma bağlıysa o
+  kurumun; değilse Arvo'nun numarasına aynı kişiye gönderilmiş son mesajın
+  kurumu (müşteri kime cevap veriyorsa odur); hiç yazışma yoksa Arvo'nun
+  kendi kurumu (`organizations.kind = 'internal'`). Son adım olmadan,
+  Arvo'nun numarasına ilk kez yazan biri sessizce kayboluyordu. Kural ve
+  gerekçesi: `lib/whatsapp-kurum-eslemesi.ts`.

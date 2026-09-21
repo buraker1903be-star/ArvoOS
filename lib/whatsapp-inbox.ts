@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { windowOpen } from "@/lib/whatsapp-send";
 import type { InboundMessage, StatusUpdate, WebhookPayload } from "@/lib/whatsapp-webhook";
+import { gelenMesajinKurumu, type KurumEslemesi } from "@/lib/whatsapp-kurum-eslemesi";
 
 /*
   Meta bildirimlerinin veritabanı tarafı ve gelen kutusu okumaları.
@@ -9,12 +10,8 @@ import type { InboundMessage, StatusUpdate, WebhookPayload } from "@/lib/whatsap
   politika yalnızca SELECT için var, kullanıcı "gönderildi" ya da "müşteri
   şunu yazdı" diye satır yazamaz.
 
-  Gelen mesajı kuruma eşleme: bildirimdeki phone_number_id hangi kurumun
-  bağlı numarasıysa mesaj o kurumun. Arvo'nun ortak numarasına gelen yanıt
-  için bağlı kurum yok; o yüzden aynı numaraya Arvo adına gönderilmiş son
-  mesajın kurumu kullanılır — müşteri kime cevap veriyorsa odur. Hiçbiri
-  tutmazsa mesaj yazılmaz (kurumsuz satır zaten yazılamaz, organization_id
-  not null) ve sebebi günlüğe düşer.
+  Gelen mesajı kuruma eşleme kuralı ve gerekçesi:
+  lib/whatsapp-kurum-eslemesi.ts. Burada yalnızca ipuçları toplanır.
 */
 
 export type InboxMessage = {
@@ -42,16 +39,40 @@ export type InboxConversation = {
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
-/** phone_number_id → kurum; Arvo'nun numarasında son giden mesajdan çıkarılır. */
-async function kurumuBul(admin: Admin, message: InboundMessage): Promise<string | null> {
+/*
+  Arvo'nun kendi kurumu (organizations.kind = 'internal') süreç boyunca
+  değişmez; her mesaj için sorgulanmaz. Hata önbelleğe alınmaz, yoksa tek
+  bir geçici arıza süreç boyunca eşlemeyi bozardı.
+*/
+let arvoKurumId: string | null = null;
+
+async function arvoKurumunuBul(admin: Admin): Promise<string | null> {
+  if (arvoKurumId) return arvoKurumId;
+  const { data } = await admin
+    .from("organizations")
+    .select("id")
+    .eq("kind", "internal")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  arvoKurumId = data?.id ?? null;
+  return arvoKurumId;
+}
+
+/** Eşleme ipuçlarını toplar; kararı lib/whatsapp-kurum-eslemesi.ts verir. */
+async function kurumuBul(admin: Admin, message: InboundMessage): Promise<KurumEslemesi | null> {
   const { data: hesap } = await admin
     .from("whatsapp_accounts")
     .select("organization_id")
     .eq("phone_number_id", message.phoneNumberId)
     .maybeSingle();
-  if (hesap) return hesap.organization_id;
 
-  if (message.phoneNumberId !== process.env.WHATSAPP_PHONE_ID) return null;
+  const arvoNumarasi = message.phoneNumberId === process.env.WHATSAPP_PHONE_ID;
+  // Bağlı numara bulunduysa ya da Arvo'nun numarası değilse başka ipucu aranmaz.
+  if (hesap?.organization_id || !arvoNumarasi) {
+    return gelenMesajinKurumu({ bagliKurumId: hesap?.organization_id, arvoNumarasi });
+  }
+
   const { data: sonMesaj } = await admin
     .from("whatsapp_messages")
     .select("organization_id")
@@ -60,7 +81,13 @@ async function kurumuBul(admin: Admin, message: InboundMessage): Promise<string 
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return sonMesaj?.organization_id ?? null;
+
+  return gelenMesajinKurumu({
+    arvoNumarasi,
+    sonYazismaKurumId: sonMesaj?.organization_id,
+    // Hiç yazışma yoksa mesaj Arvo'ya yazılmıştır; sessizce atılmaz.
+    arvoKurumId: sonMesaj?.organization_id ? null : await arvoKurumunuBul(admin),
+  });
 }
 
 export async function applyWebhook(payload: WebhookPayload): Promise<{ inbound: number; statuses: number }> {
@@ -69,11 +96,16 @@ export async function applyWebhook(payload: WebhookPayload): Promise<{ inbound: 
 
   let inbound = 0;
   for (const message of payload.inbound) {
-    const organizationId = await kurumuBul(admin, message);
-    if (!organizationId) {
+    const esleme = await kurumuBul(admin, message);
+    if (!esleme) {
+      /*
+        Buraya yalnızca kurulum hatasında düşülür: tanınmayan bir numaraya
+        gelen bildirim ya da Arvo'nun kendi kurumunun kayıtlı olmaması.
+      */
       console.warn("[whatsapp] gelen mesajın kurumu bulunamadı", message.phoneNumberId);
       continue;
     }
+    const organizationId = esleme.organizationId;
     const arvoNumarasi = message.phoneNumberId === process.env.WHATSAPP_PHONE_ID;
     const { error } = await admin.from("whatsapp_messages").insert({
       organization_id: organizationId,
