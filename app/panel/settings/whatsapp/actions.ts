@@ -5,7 +5,12 @@ import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { sendThroughGateway } from "@/lib/whatsapp-gateway";
-import { loadConversation } from "@/lib/whatsapp-inbox";
+import {
+  createQuickReply,
+  deleteQuickReply,
+  loadConversation,
+  setConversationArchived,
+} from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
 import { verifyWhatsappNumber } from "@/lib/whatsapp-cloud";
 
@@ -128,4 +133,65 @@ async function sohbetiGetir__impl(telefon: string) {
 
 export async function sohbetiGetir(telefon: string) {
   return sohbetiGetir__impl(telefon);
+}
+
+/*
+  Arşivleme.
+
+  Kapanmış yazışmalar listenin başında durmaya devam ediyordu; satışçı her
+  gün aynı ölü sohbetlerin arasından geçiyordu. Silmek seçenek değil —
+  kayıt hem kanıt hem CRM geçmişi — bu yüzden gizleniyor, siliniyor değil.
+  Müşteri yeniden yazarsa sohbet arşivden kendiliğinden çıkar
+  (lib/whatsapp-arsiv.ts).
+*/
+async function sohbetiArsivle__impl(telefon: string, arsivle: boolean) {
+  const { membership, userId } = await inboxContext();
+  const numara = normalizePhone(telefon);
+  if (!numara) throw new Error("Numara geçersiz.");
+
+  await setConversationArchived(membership.organization_id, numara, arsivle, userId ?? null);
+  revalidatePath("/panel/crm/whatsapp");
+}
+
+export async function sohbetiArsivle(telefon: string, arsivle: boolean): Promise<void> {
+  await runPanelAction(
+    () => sohbetiArsivle__impl(telefon, arsivle),
+    arsivle ? "Sohbet arşivlendi" : "Sohbet arşivden çıkarıldı",
+  );
+}
+
+/*
+  Hazır mesajlar.
+
+  Aynı cevaplar her seferinde elle yazılıyordu. Önerilen liste kodda
+  (lib/whatsapp-hazir-mesaj.ts); burada yalnızca kurumun kendi kaydettiği
+  metinler yönetiliyor.
+*/
+async function hazirMesajEkle__impl(formData: FormData) {
+  const { membership, userId } = await inboxContext();
+  const baslik = String(formData.get("title") ?? "").trim();
+  const govde = String(formData.get("body") ?? "").trim();
+
+  if (!baslik) throw new Error("Hazır mesaja bir başlık verin.");
+  if (baslik.length > 60) throw new Error("Başlık en çok 60 karakter olabilir.");
+  if (!govde) throw new Error("Hazır mesajın metni boş olamaz.");
+  if (govde.length > 1024) throw new Error("Hazır mesaj en çok 1024 karakter olabilir.");
+
+  await createQuickReply(membership.organization_id, baslik, govde, userId ?? null);
+  revalidatePath("/panel/crm/whatsapp");
+}
+
+export async function hazirMesajEkle(formData: FormData): Promise<void> {
+  await runPanelAction(() => hazirMesajEkle__impl(formData), "Hazır mesaj kaydedildi");
+}
+
+async function hazirMesajSil__impl(id: string) {
+  const { membership } = await inboxContext();
+  if (!id) throw new Error("Kayıt bulunamadı.");
+  await deleteQuickReply(membership.organization_id, id);
+  revalidatePath("/panel/crm/whatsapp");
+}
+
+export async function hazirMesajSil(id: string): Promise<void> {
+  await runPanelAction(() => hazirMesajSil__impl(id), "Hazır mesaj silindi");
 }

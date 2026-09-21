@@ -2,6 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { windowOpen } from "@/lib/whatsapp-send";
 import type { InboundMessage, StatusUpdate, WebhookPayload } from "@/lib/whatsapp-webhook";
 import { gelenMesajinKurumu, type KurumEslemesi } from "@/lib/whatsapp-kurum-eslemesi";
+import { arsivdeMi } from "@/lib/whatsapp-arsiv";
+import type { HazirMesaj } from "@/lib/whatsapp-hazir-mesaj";
 
 /*
   Meta bildirimlerinin veritabanı tarafı ve gelen kutusu okumaları.
@@ -35,6 +37,7 @@ export type InboxConversation = {
   /** Okunmamış değil: müşteri son 24 saatte yazdıysa serbest metinle yanıtlanabilir. */
   windowOpen: boolean;
   messageCount: number;
+  archived: boolean;
 };
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
@@ -160,7 +163,13 @@ async function durumYaz(admin: Admin, update: StatusUpdate): Promise<boolean> {
   return true;
 }
 
-/** Gelen kutusu: numaraya göre sohbetler, son mesaja göre sıralı. */
+/**
+ * Gelen kutusu: numaraya göre sohbetler, son mesaja göre sıralı.
+ *
+ * Arşivlenmişler ayrı dönüyor (`arsiv` bayrağı): liste ekranı ikisini bir
+ * arada göstermiyor, çünkü arşivin amacı kapanmış yazışmaları günlük
+ * listeden çıkarmak. Sayım için ikisi de gerekiyor ("Arşiv (3)").
+ */
 export async function listConversations(organizationId: string, limit = 300): Promise<InboxConversation[]> {
   const admin = createAdminClient();
   if (!admin) return [];
@@ -184,6 +193,7 @@ export async function listConversations(organizationId: string, limit = 300): Pr
         lastAt: satir.created_at as string,
         windowOpen: false,
         messageCount: 0,
+        archived: false,
         lastInboundAt: null,
       };
       sohbetler.set(telefon, sohbet);
@@ -195,7 +205,106 @@ export async function listConversations(organizationId: string, limit = 300): Pr
       sohbet.name ??= (satir.profile_name as string | null) ?? null;
     }
   }
-  return [...sohbetler.values()].map(({ lastInboundAt, ...sohbet }) => ({ ...sohbet, windowOpen: windowOpen(lastInboundAt) }));
+  /*
+    Arşiv damgaları tek sorguda alınıyor. Sohbet başına sorgu atmak 300
+    sohbette 300 gidiş dönüş demekti; damga tablosu zaten küçük.
+  */
+  const { data: durumlar } = await admin
+    .from("whatsapp_conversation_state")
+    .select("counterpart_phone,archived_at")
+    .eq("organization_id", organizationId)
+    .not("archived_at", "is", null);
+
+  const arsivZamani = new Map((durumlar ?? []).map((satir) => [satir.counterpart_phone as string, satir.archived_at as string]));
+
+  return [...sohbetler.values()].map(({ lastInboundAt, ...sohbet }) => ({
+    ...sohbet,
+    windowOpen: windowOpen(lastInboundAt),
+    archived: arsivdeMi(arsivZamani.get(sohbet.phone), sohbet.lastAt),
+  }));
+}
+
+/**
+ * Sohbeti arşivler ya da arşivden çıkarır.
+ *
+ * Yazma service_role ile: tabloda yalnızca SELECT politikası var, çünkü
+ * kullanıcı doğrudan yazabilseydi başka kurumun numarasını kendi kurumuna
+ * damgalayabilirdi (anahtarın ilk sütunu kurum).
+ */
+export async function setConversationArchived(
+  organizationId: string,
+  phone: string,
+  archived: boolean,
+  userId: string | null,
+): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) throw new Error("Sunucu anahtarı tanımlı değil; sohbet arşivlenemiyor.");
+
+  const { error } = await admin.from("whatsapp_conversation_state").upsert(
+    {
+      organization_id: organizationId,
+      counterpart_phone: phone,
+      archived_at: archived ? new Date().toISOString() : null,
+      archived_by: archived ? userId : null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "organization_id,counterpart_phone" },
+  );
+  if (error) throw new Error(`Sohbet arşivlenemedi: ${error.message}`);
+}
+
+export type KayitliHazirMesaj = HazirMesaj & { id: string };
+
+/** Kurumun kayıtlı hazır mesajları; önerilerle birleştirme ekranda yapılır. */
+export async function listQuickReplies(organizationId: string): Promise<KayitliHazirMesaj[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  const { data } = await admin
+    .from("whatsapp_quick_replies")
+    .select("id,title,body")
+    .eq("organization_id", organizationId)
+    .order("sort_index", { ascending: true })
+    .order("created_at", { ascending: true })
+    .limit(50);
+
+  return (data ?? []).map((satir) => ({
+    id: satir.id as string,
+    title: satir.title as string,
+    body: satir.body as string,
+  }));
+}
+
+export async function createQuickReply(
+  organizationId: string,
+  title: string,
+  body: string,
+  userId: string | null,
+): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) throw new Error("Sunucu anahtarı tanımlı değil; hazır mesaj kaydedilemiyor.");
+
+  const { error } = await admin.from("whatsapp_quick_replies").insert({
+    organization_id: organizationId,
+    title,
+    body,
+    created_by: userId,
+  });
+  // 23505: aynı başlık zaten var. Kullanıcıya "kaydedildi" demek yanlış olurdu.
+  if (error?.code === "23505") throw new Error(`"${title}" adında bir hazır mesaj zaten var.`);
+  if (error) throw new Error(`Hazır mesaj kaydedilemedi: ${error.message}`);
+}
+
+/** Silme kurum kimliğiyle sınırlı: başka kurumun kaydı kimliği bilinse de silinemez. */
+export async function deleteQuickReply(organizationId: string, id: string): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) throw new Error("Sunucu anahtarı tanımlı değil; hazır mesaj silinemiyor.");
+
+  const { error } = await admin
+    .from("whatsapp_quick_replies")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("id", id);
+  if (error) throw new Error(`Hazır mesaj silinemedi: ${error.message}`);
 }
 
 export async function loadConversation(organizationId: string, phone: string): Promise<{ messages: InboxMessage[]; windowOpen: boolean }> {

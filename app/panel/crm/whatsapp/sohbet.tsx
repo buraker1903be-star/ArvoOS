@@ -1,17 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { InboxMessage } from "@/lib/whatsapp-inbox";
-import { replyWhatsapp, sohbetiGetir } from "../../settings/whatsapp/actions";
+import type { InboxMessage, KayitliHazirMesaj } from "@/lib/whatsapp-inbox";
+import { hazirMesajiDoldur, type HazirMesaj } from "@/lib/whatsapp-hazir-mesaj";
+import { hazirMesajEkle, hazirMesajSil, replyWhatsapp, sohbetiGetir } from "../../settings/whatsapp/actions";
 
 /*
-  Sohbet akışı ve yanıt kutusu.
+  Sohbet akışı, yazma kutusu ve hazır mesajlar.
 
   Sayfa sunucuda bir kez çiziliyordu: müşteri yazdığında ekranda hiçbir şey
   olmuyor, kullanıcı sayfayı yenilemedikçe mesajı görmüyordu. Mesajlaşma
   ekranında bu kabul edilemez, o yüzden bu parça istemcide çalışıyor.
 
-  Üç davranış gerçek bir mesajlaşma ekranını taklit ediyor:
+  Dört davranış gerçek bir mesajlaşma ekranını taklit ediyor:
 
   1. SEKME GÖRÜNÜRKEN tazeleme. Arka plandaki sekme için istek atmak, açık
      duran onlarca panelden boşuna trafik demek.
@@ -20,6 +21,9 @@ import { replyWhatsapp, sohbetiGetir } from "../../settings/whatsapp/actions";
   3. Yeni mesaj gelince en alta kayar — ama kullanıcı yukarı kaydırmışsa
      KAYDIRMAZ. Geçmişi okuyan birini aşağı fırlatmak, okuduğu yeri
      kaybettirir.
+  4. Hazır mesaj kutuya YAZILIR, doğrudan gönderilmez. Yanlış sohbete
+     giden hazır bir metni geri almanın yolu yok; gönderen kişi son bir
+     kez görsün.
 */
 
 const TAZELEME_MS = 10_000;
@@ -51,19 +55,30 @@ export default function Sohbet({
   ilkMesajlar,
   ilkPencere,
   kendiNumarasi,
+  hazirKendi,
+  hazirOnerilen,
+  musteriAdi,
 }: {
   telefon: string;
   ilkMesajlar: InboxMessage[];
   ilkPencere: boolean;
   /** Yanıt kurumun kendi numarasından mı gidiyor; kutunun altında yazılır. */
   kendiNumarasi: boolean;
+  hazirKendi: KayitliHazirMesaj[];
+  hazirOnerilen: HazirMesaj[];
+  /** {ad} yer tutucusunu doldurmak için; CRM kaydı ya da profil adı. */
+  musteriAdi: string | null;
 }) {
   const [mesajlar, setMesajlar] = useState(ilkMesajlar);
   const [pencereAcik, setPencereAcik] = useState(ilkPencere);
   const [metin, setMetin] = useState("");
   const [hata, setHata] = useState<string | null>(null);
+  const [hazirAcik, setHazirAcik] = useState(false);
+  const [ekleAcik, setEkleAcik] = useState(false);
   const [gonderiliyor, basla] = useTransition();
   const akisRef = useRef<HTMLDivElement>(null);
+  const kutuRef = useRef<HTMLTextAreaElement>(null);
+  const hazirRef = useRef<HTMLDivElement>(null);
   /* Kullanıcı yukarı kaydırdıysa otomatik kaydırma yapılmaz. */
   const altaYapisik = useRef(true);
 
@@ -96,6 +111,21 @@ export default function Sohbet({
     const akis = akisRef.current;
     if (akis && altaYapisik.current) akis.scrollTop = akis.scrollHeight;
   }, [mesajlar]);
+
+  // Hazır mesaj kutusu: Escape ve dışarı tıklama kapatır.
+  useEffect(() => {
+    if (!hazirAcik) return;
+    const tus = (olay: KeyboardEvent) => { if (olay.key === "Escape") setHazirAcik(false); };
+    const tikla = (olay: PointerEvent) => {
+      if (!hazirRef.current?.contains(olay.target as Node)) setHazirAcik(false);
+    };
+    document.addEventListener("keydown", tus);
+    document.addEventListener("pointerdown", tikla);
+    return () => {
+      document.removeEventListener("keydown", tus);
+      document.removeEventListener("pointerdown", tikla);
+    };
+  }, [hazirAcik]);
 
   /*
     Gün başlığı ve "önceki mesajla aynı yön" bilgisi çizimden ÖNCE hesaplanıyor.
@@ -143,6 +173,23 @@ export default function Sohbet({
     });
   };
 
+  /* Hazır mesaj kutuya yazılır, gönderilmez: son bakış gönderene kalsın. */
+  const hazirSec = (govde: string) => {
+    setMetin(hazirMesajiDoldur(govde, musteriAdi));
+    setHazirAcik(false);
+    kutuRef.current?.focus();
+  };
+
+  const hazirSilVeKapat = (id: string) => {
+    basla(async () => {
+      try {
+        await hazirMesajSil(id);
+      } catch (sorun) {
+        setHata(sorun instanceof Error ? sorun.message : "Hazır mesaj silinemedi.");
+      }
+    });
+  };
+
   return (
     <>
       <div className="wa-flow" ref={akisRef} onScroll={kaydirmaDegisti}>
@@ -177,30 +224,104 @@ export default function Sohbet({
 
       {pencereAcik ? (
         <div className="wa-reply">
-          <textarea
-            value={metin}
-            onChange={(olay) => setMetin(olay.target.value)}
-            onKeyDown={(olay) => {
-              // Enter gönderir, Shift+Enter satır atlar.
-              if (olay.key === "Enter" && !olay.shiftKey) {
-                olay.preventDefault();
-                gonder();
-              }
-            }}
-            maxLength={4096}
-            placeholder="Yanıtınızı yazın… (Enter gönderir, Shift+Enter satır atlar)"
-            aria-label="Yanıt"
-            disabled={gonderiliyor}
-          />
-          <div className="wa-reply-foot">
-            <p className="wa-note">
-              Yanıt {kendiNumarasi ? "kendi numaranızdan" : "Arvo’nun ortak numarasından"} gider.
-              {hata ? <b className="wa-hata"> {hata}</b> : null}
-            </p>
-            <button className="panel-primary" type="button" onClick={gonder} disabled={gonderiliyor || !metin.trim()}>
-              {gonderiliyor ? "Gönderiliyor…" : "Gönder"}
+          {hazirAcik ? (
+            <div className="wa-hazir" ref={hazirRef} role="dialog" aria-label="Hazır mesajlar">
+              <div className="wa-hazir-baslik">
+                <b>Hazır mesajlar</b>
+                <button type="button" className="wa-hazir-kapat" onClick={() => setEkleAcik((a) => !a)}>
+                  {ekleAcik ? "Vazgeç" : "Yeni ekle"}
+                </button>
+              </div>
+
+              {hazirKendi.length ? <p className="wa-hazir-grup">Kurumunuzun metinleri</p> : null}
+              {hazirKendi.map((mesaj) => (
+                <div key={mesaj.id} className="wa-hazir-satir">
+                  <button type="button" className="wa-hazir-secim" onClick={() => hazirSec(mesaj.body)}>
+                    <b>{mesaj.title}</b>
+                    <small>{hazirMesajiDoldur(mesaj.body, musteriAdi)}</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="wa-hazir-sil"
+                    onClick={() => hazirSilVeKapat(mesaj.id)}
+                    title={`${mesaj.title} hazır mesajını sil`}
+                  >
+                    Sil
+                  </button>
+                </div>
+              ))}
+
+              {hazirOnerilen.length ? <p className="wa-hazir-grup">Öneriler</p> : null}
+              {hazirOnerilen.map((mesaj) => (
+                <div key={mesaj.title} className="wa-hazir-satir">
+                  <button type="button" className="wa-hazir-secim" onClick={() => hazirSec(mesaj.body)}>
+                    <b>{mesaj.title}</b>
+                    <small>{hazirMesajiDoldur(mesaj.body, musteriAdi)}</small>
+                  </button>
+                </div>
+              ))}
+
+              {ekleAcik ? (
+                /* Kaydetme sunucu eylemiyle; kaydedilen metin sayfa
+                   tazelendiğinde "kurumunuzun metinleri" altına geçer. */
+                <form className="wa-hazir-ekle" action={hazirMesajEkle}>
+                  <input name="title" maxLength={60} placeholder="Başlık (ör. Fiyat listesi)" required />
+                  <textarea name="body" rows={3} maxLength={1024} placeholder="Merhaba {ad}, ..." required />
+                  <div className="wa-hazir-ekle-alt">
+                    <p className="wa-hazir-ipucu">{"{ad}"} müşterinin adıyla değişir.</p>
+                    <button className="panel-primary" type="submit">Kaydet</button>
+                  </div>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="wa-yazma">
+            <button
+              type="button"
+              className="wa-arac"
+              onClick={() => setHazirAcik((a) => !a)}
+              aria-expanded={hazirAcik}
+              title="Hazır mesajlar"
+              aria-label="Hazır mesajlar"
+            >
+              ⚡
+            </button>
+
+            <textarea
+              ref={kutuRef}
+              rows={1}
+              value={metin}
+              onChange={(olay) => setMetin(olay.target.value)}
+              onKeyDown={(olay) => {
+                // Enter gönderir, Shift+Enter satır atlar.
+                if (olay.key === "Enter" && !olay.shiftKey) {
+                  olay.preventDefault();
+                  gonder();
+                }
+              }}
+              maxLength={4096}
+              placeholder="Mesaj yazın… (Enter gönderir, Shift+Enter satır atlar)"
+              aria-label="Yanıt"
+              disabled={gonderiliyor}
+            />
+
+            <button
+              className="wa-gonder"
+              type="button"
+              onClick={gonder}
+              disabled={gonderiliyor || !metin.trim()}
+              title="Gönder"
+              aria-label="Gönder"
+            >
+              {gonderiliyor ? "…" : "➤"}
             </button>
           </div>
+
+          <p className="wa-note">
+            Yanıt {kendiNumarasi ? "kendi numaranızdan" : "Arvo’nun ortak numarasından"} gider.
+            {hata ? <b className="wa-hata"> {hata}</b> : null}
+          </p>
         </div>
       ) : (
         <p className="wa-note">
