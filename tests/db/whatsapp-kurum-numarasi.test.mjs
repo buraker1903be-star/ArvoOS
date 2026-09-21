@@ -1,8 +1,9 @@
 // WhatsApp: kurumun kendi numarası ve mesaj kaydı. Kurumun erişim anahtarı
 // (access_token_enc) tarayıcıdan okunamamalı; mesaj kaydını yetkili üye
 // görebilmeli ama yazamamalı — yazma yalnızca gönderim kapısından
-// (service_role) olur. 20260921111009 canlı şema dökümünden yeni olduğu için
-// burada ayrıca uygulanır (döküm yenilenince zararsız: "if not exists").
+// (service_role) olur. 20260921111009 canlı şema dökümünde yoksa burada
+// ayrıca uygulanır; varsa uygulanmaz (migration'daki create policy ikinci
+// kez çalışınca "already exists" ile düşerdi).
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -19,7 +20,8 @@ const BASKA_KURUM = "00000000-0000-4000-8000-0000000000a2";
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  const { rows } = await db.query(`select to_regclass('public.whatsapp_accounts') as tablo`);
+  if (!rows[0].tablo) await db.exec(fs.readFileSync(MIGRATION, "utf8"));
   // Supabase yeni tabloyu varsayılan yetkiyle bu rollere açar; döküm bunu
   // taşımadığı için burada taklit ediyoruz. Asıl kapıyı RLS ve migration'daki
   // revoke tutar — test tam olarak onları sınasın.
