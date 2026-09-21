@@ -50,6 +50,14 @@ export type InboxConversation = {
   windowOpen: boolean;
   messageCount: number;
   archived: boolean;
+  /**
+   * Okunmamış gelen mesaj sayısı.
+   *
+   * Eskiden yalnızca "son mesaj müşteriden mi" bilgisi vardı ve bu
+   * okunmamışlık değildi: sohbet okunduktan sonra da işaret duruyordu,
+   * yani "bakılacak" ile "bakılmış" hiç ayrılmıyordu.
+   */
+  unread: number;
 };
 
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
@@ -302,7 +310,8 @@ export async function listConversations(organizationId: string, limit = 300): Pr
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  const sohbetler = new Map<string, InboxConversation & { lastInboundAt: string | null }>();
+  /* gelenZamanlari yalnızca okunmamış sayımı için toplanıyor; dışarı çıkmıyor. */
+  const sohbetler = new Map<string, InboxConversation & { lastInboundAt: string | null; gelenZamanlari: string[] }>();
   for (const satir of data ?? []) {
     const telefon = satir.counterpart_phone as string;
     let sohbet = sohbetler.get(telefon);
@@ -316,7 +325,9 @@ export async function listConversations(organizationId: string, limit = 300): Pr
         windowOpen: false,
         messageCount: 0,
         archived: false,
+        unread: 0,
         lastInboundAt: null,
+        gelenZamanlari: [] as string[],
       };
       sohbetler.set(telefon, sohbet);
     }
@@ -325,25 +336,40 @@ export async function listConversations(organizationId: string, limit = 300): Pr
     if (satir.direction === "inbound") {
       sohbet.lastInboundAt ??= satir.created_at as string;
       sohbet.name ??= (satir.profile_name as string | null) ?? null;
+      sohbet.gelenZamanlari.push(satir.created_at as string);
     }
   }
   /*
-    Arşiv damgaları tek sorguda alınıyor. Sohbet başına sorgu atmak 300
-    sohbette 300 gidiş dönüş demekti; damga tablosu zaten küçük.
+    Arşiv ve okunma damgaları tek sorguda alınıyor. Sohbet başına sorgu
+    atmak 300 sohbette 300 gidiş dönüş demekti; damga tablosu zaten küçük.
   */
   const { data: durumlar } = await admin
     .from("whatsapp_conversation_state")
-    .select("counterpart_phone,archived_at")
-    .eq("organization_id", organizationId)
-    .not("archived_at", "is", null);
+    .select("counterpart_phone,archived_at,last_read_at")
+    .eq("organization_id", organizationId);
 
-  const arsivZamani = new Map((durumlar ?? []).map((satir) => [satir.counterpart_phone as string, satir.archived_at as string]));
+  const damga = new Map(
+    (durumlar ?? []).map((satir) => [
+      satir.counterpart_phone as string,
+      { arsiv: satir.archived_at as string | null, okundu: satir.last_read_at as string | null },
+    ]),
+  );
 
-  return [...sohbetler.values()].map(({ lastInboundAt, ...sohbet }) => ({
-    ...sohbet,
-    windowOpen: windowOpen(lastInboundAt),
-    archived: arsivdeMi(arsivZamani.get(sohbet.phone), sohbet.lastAt),
-  }));
+  return [...sohbetler.values()].map(({ lastInboundAt, gelenZamanlari, ...sohbet }) => {
+    const kendi = damga.get(sohbet.phone);
+    /*
+      Damga yoksa sohbet hiç açılmamıştır ve gelen mesajların HEPSİ
+      okunmamıştır. Sıfır saymak, panele ilk kez giren kullanıcıya
+      birikmiş yazışmaları hiç göstermemek olurdu.
+    */
+    const sinir = kendi?.okundu ? Date.parse(kendi.okundu) : 0;
+    return {
+      ...sohbet,
+      windowOpen: windowOpen(lastInboundAt),
+      archived: arsivdeMi(kendi?.arsiv, sohbet.lastAt),
+      unread: gelenZamanlari.filter((zaman) => Date.parse(zaman) > sinir).length,
+    };
+  });
 }
 
 /**
@@ -373,6 +399,41 @@ export async function setConversationArchived(
     { onConflict: "organization_id,counterpart_phone" },
   );
   if (error) throw new Error(`Sohbet arşivlenemedi: ${error.message}`);
+}
+
+/**
+ * Sohbeti "okundu" diye damgalar.
+ *
+ * Damga KURUM düzeyinde: aynı müşteriyle aynı ekipten iki kişi
+ * ilgileniyor ve biri okuduğunda diğerinin de "bakıldı" görmesi doğru.
+ * Kişiye özel okunmamışlık, meslektaşının yanıtladığı sohbeti tekrar
+ * açmaya yol açardı.
+ */
+export async function markConversationRead(
+  organizationId: string,
+  phone: string,
+  userId: string | null,
+): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin) return;
+
+  const simdi = new Date().toISOString();
+  const { error } = await admin.from("whatsapp_conversation_state").upsert(
+    {
+      organization_id: organizationId,
+      counterpart_phone: phone,
+      last_read_at: simdi,
+      last_read_by: userId,
+      updated_at: simdi,
+    },
+    { onConflict: "organization_id,counterpart_phone" },
+  );
+  /*
+    Hata fırlatmıyoruz: okundu damgası bir kolaylık. Yazılamazsa sohbet
+    okunmamış görünmeye devam eder — sohbetin kendisini açılmaz kılmak
+    ya da kullanıcıya hata göstermek bundan çok daha kötü olurdu.
+  */
+  if (error) console.error("[whatsapp] okundu damgası yazılamadı", error.message);
 }
 
 export type KayitliHazirMesaj = HazirMesaj & { id: string };

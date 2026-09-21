@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { InboxMessage, KayitliHazirMesaj } from "@/lib/whatsapp-inbox";
 import { hazirMesajiDoldur, type HazirMesaj } from "@/lib/whatsapp-hazir-mesaj";
-import { dosyaGonder, hazirMesajEkle, hazirMesajSil, replyWhatsapp, sohbetiGetir } from "../../settings/whatsapp/actions";
+import { dosyaGonder, hazirMesajEkle, hazirMesajSil, replyWhatsapp, sohbetiGetir, sohbetiOkunduIsaretle } from "../../settings/whatsapp/actions";
 
 /*
   Sohbet akışı, yazma kutusu ve hazır mesajlar.
@@ -146,15 +146,41 @@ export default function Sohbet({
     her durumu oraya da yazmayı unutmak kolaydı.
   */
 
+  /*
+    Okundu damgasının en son yazıldığı gelen mesajın zamanı.
+
+    Her tazelemede damga yazmak, açık duran her sekme için 10 saniyede bir
+    boşuna yazma demekti. Damga yalnızca DAHA YENİ bir gelen mesaj
+    göründüğünde yazılıyor.
+  */
+  const okunanaKadar = useRef<number>(0);
+
+  const okunduYaz = useCallback(
+    (gelenler: InboxMessage[]) => {
+      const sonGelen = [...gelenler].reverse().find((m) => m.direction === "inbound");
+      const zaman = sonGelen ? Date.parse(sonGelen.createdAt) : 0;
+      if (!zaman || zaman <= okunanaKadar.current) return;
+      okunanaKadar.current = zaman;
+      void sohbetiOkunduIsaretle(telefon);
+    },
+    [telefon],
+  );
+
   const tazele = useCallback(async () => {
     try {
       const sonuc = await sohbetiGetir(telefon);
       setMesajlar(sonuc.messages);
       setPencereAcik(sonuc.windowOpen);
+      okunduYaz(sonuc.messages);
     } catch {
       // Geçici ağ hatası ekranı bozmamalı; bir sonraki turda yeniden denenir.
     }
-  }, [telefon]);
+  }, [telefon, okunduYaz]);
+
+  // Sohbet açıldığı anda okundu sayılır; ekrandaki mesajlar görülmüş demektir.
+  useEffect(() => {
+    okunduYaz(ilkMesajlar);
+  }, [ilkMesajlar, okunduYaz]);
 
   useEffect(() => {
     const zamanlayici = window.setInterval(() => {

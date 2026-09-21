@@ -9,6 +9,7 @@ import {
   createQuickReply,
   deleteQuickReply,
   loadConversation,
+  markConversationRead,
   setConversationArchived,
 } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
@@ -132,6 +133,24 @@ async function sohbetiGetir__impl(telefon: string) {
   const numara = normalizePhone(telefon);
   if (!numara) throw new Error("Numara geçersiz.");
   return loadConversation(membership.organization_id, numara);
+}
+
+/*
+  Sohbet açıkken okundu damgası.
+
+  İstemci her tazelemede değil, YALNIZCA yeni gelen mesaj gördüğünde
+  çağırıyor: 10 saniyede bir yazmak, açık duran her sekme için boşuna
+  yazma demekti.
+*/
+async function sohbetiOkunduIsaretle__impl(telefon: string) {
+  const { membership, userId } = await inboxContext();
+  const numara = normalizePhone(telefon);
+  if (!numara) return;
+  await markConversationRead(membership.organization_id, numara, userId ?? null);
+}
+
+export async function sohbetiOkunduIsaretle(telefon: string): Promise<void> {
+  await sohbetiOkunduIsaretle__impl(telefon);
 }
 
 export async function sohbetiGetir(telefon: string) {

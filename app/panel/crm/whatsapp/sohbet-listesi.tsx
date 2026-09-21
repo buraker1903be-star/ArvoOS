@@ -7,7 +7,7 @@ import { basHarfler, numaraYaz, renkTonu } from "@/lib/whatsapp-kisi-gorunumu";
 import { sohbetiArsivle } from "../../settings/whatsapp/actions";
 
 /*
-  Sohbet listesi: arama, arşiv ve "yanıt bekliyor" işareti.
+  Sohbet listesi: arama, arşiv ve okunmamış sayacı.
 
   Liste sunucuda çizilip öylece duruyordu. Birkaç sohbetle sorun değil ama
   yüz sohbette aranan kişiyi bulmak kaydırmayla oluyordu; mesajlaşma
@@ -16,9 +16,13 @@ import { sohbetiArsivle } from "../../settings/whatsapp/actions";
   Arşiv ayrı bir liste, karışık değil: amacı kapanmış yazışmayı günlük
   listeden çıkarmak. Silme yok — kayıt hem kanıt hem CRM geçmişi.
 
-  "Yanıt bekliyor" işareti okunmamışlık DEĞİL — öyle bir kaydımız yok ve
-  uydurmak yanlış olurdu. Son mesajın müşteriden gelmiş olmasını
-  gösteriyor; satışçının bakması gereken sohbet zaten budur.
+  Okunmamış sayısı gerçek bir kayda dayanıyor (whatsapp_conversation_state.
+  last_read_at) ve damga KURUM düzeyinde: aynı müşteriyle ilgilenen iki
+  kişiden biri okuduğunda diğeri de "bakıldı" görür.
+
+  Sayı sıfırlanınca yeşil nokta devralıyor: okunmuş ama YANITLANMAMIŞ
+  sohbeti de göstermek gerekiyor, yoksa satışçı okuduğu ama cevaplamadığı
+  yazışmayı gözden kaçırır.
 */
 
 const saat = (value: string) => {
@@ -114,7 +118,12 @@ export default function SohbetListesi({
           gorunen.map((sohbet) => {
             const ad = sohbet.name ?? numaraYaz(sohbet.phone);
             return (
-              <div key={sohbet.phone} className="wa-satir" data-secili={seciliNumara === sohbet.phone}>
+              <div
+                key={sohbet.phone}
+                className="wa-satir"
+                data-secili={seciliNumara === sohbet.phone}
+                data-okunmamis={sohbet.unread > 0}
+              >
                 <Link className="wa-satir-ana" href={`/panel/crm/whatsapp?numara=${sohbet.phone}${arsivGorunumu ? "&arsiv=1" : ""}`}>
                   <span className="wa-avatar" style={{ "--wa-ton": renkTonu(sohbet.phone) } as React.CSSProperties} aria-hidden="true">
                     {basHarfler(sohbet.name, sohbet.phone)}
@@ -129,7 +138,16 @@ export default function SohbetListesi({
                         {sohbet.lastDirection === "outbound" ? "↗ " : ""}
                         {sohbet.lastBody ?? "—"}
                       </small>
-                      {sohbet.lastDirection === "inbound" ? (
+                      {/* Okunmamış sayısı gerçek bir kayda dayanıyor
+                          (last_read_at). Sayı yokken de son mesaj
+                          müşterideyse nokta kalıyor: yanıtlanmamış ama
+                          okunmuş sohbet de gözden kaçmasın. */}
+                      {sohbet.unread ? (
+                        <span className="wa-okunmamis">
+                          {sohbet.unread > 99 ? "99+" : sohbet.unread}
+                          <span className="wa-gizli"> okunmamış mesaj</span>
+                        </span>
+                      ) : sohbet.lastDirection === "inbound" ? (
                         <span className="wa-bekliyor">
                           <span className="wa-gizli">Yanıt bekliyor</span>
                         </span>
