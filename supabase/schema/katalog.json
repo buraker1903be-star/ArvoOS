@@ -1336,6 +1336,14 @@
       "verified_name",
       "waba_id"
     ],
+    "whatsapp_conversation_state": [
+      "archived_at",
+      "archived_by",
+      "counterpart_phone",
+      "created_at",
+      "organization_id",
+      "updated_at"
+    ],
     "whatsapp_messages": [
       "body",
       "counterpart_phone",
@@ -1354,6 +1362,16 @@
       "template",
       "updated_at",
       "wa_message_id"
+    ],
+    "whatsapp_quick_replies": [
+      "body",
+      "created_at",
+      "created_by",
+      "id",
+      "organization_id",
+      "sort_index",
+      "title",
+      "updated_at"
     ]
   },
   "functions": [

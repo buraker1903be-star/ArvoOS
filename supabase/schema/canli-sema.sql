@@ -1,4 +1,4 @@
--- Canlı şema dışa aktarımı: 2026-09-20
+-- Canlı şema dışa aktarımı: 2026-09-21
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
 -- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
@@ -1425,6 +1425,61 @@ create table if not exists public.user_session_logs (
   user_agent text,
   created_at timestamp with time zone not null,
   current_path text
+);
+
+create table if not exists public.whatsapp_accounts (
+  organization_id uuid not null,
+  waba_id text not null,
+  phone_number_id text not null,
+  display_phone text,
+  verified_name text,
+  access_token_enc text not null,
+  status text not null,
+  last_verified_at timestamp with time zone,
+  last_error text,
+  connected_by uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+create table if not exists public.whatsapp_conversation_state (
+  organization_id uuid not null,
+  counterpart_phone text not null,
+  archived_at timestamp with time zone,
+  archived_by uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+create table if not exists public.whatsapp_messages (
+  id uuid not null,
+  organization_id uuid not null,
+  product text not null,
+  sender text not null,
+  direction text not null,
+  phone_number_id text,
+  wa_message_id text,
+  counterpart_phone text not null,
+  template text,
+  params jsonb,
+  body text,
+  status text not null,
+  error text,
+  ref text,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null,
+  profile_name text
+);
+
+create table if not exists public.whatsapp_quick_replies (
+  id uuid not null,
+  organization_id uuid not null,
+  title text not null,
+  body text not null,
+  sort_index integer not null,
+  created_by uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
 );
 
 CREATE OR REPLACE FUNCTION private.activate_organization_owner_invitation()
@@ -11077,6 +11132,32 @@ alter table public.user_session_logs alter column last_seen_at set default now()
 
 alter table public.user_session_logs alter column login_at set default now();
 
+alter table public.whatsapp_accounts alter column created_at set default now();
+
+alter table public.whatsapp_accounts alter column status set default 'connected'::text;
+
+alter table public.whatsapp_accounts alter column updated_at set default now();
+
+alter table public.whatsapp_conversation_state alter column created_at set default now();
+
+alter table public.whatsapp_conversation_state alter column updated_at set default now();
+
+alter table public.whatsapp_messages alter column created_at set default now();
+
+alter table public.whatsapp_messages alter column id set default gen_random_uuid();
+
+alter table public.whatsapp_messages alter column status set default 'queued'::text;
+
+alter table public.whatsapp_messages alter column updated_at set default now();
+
+alter table public.whatsapp_quick_replies alter column created_at set default now();
+
+alter table public.whatsapp_quick_replies alter column id set default gen_random_uuid();
+
+alter table public.whatsapp_quick_replies alter column sort_index set default 0;
+
+alter table public.whatsapp_quick_replies alter column updated_at set default now();
+
 alter table public.account_entries add constraint account_entries_amount_check CHECK ((amount > 0));
 
 alter table public.account_entries add constraint account_entries_description_check CHECK (((char_length(description) >= 2) AND (char_length(description) <= 500)));
@@ -11821,6 +11902,30 @@ alter table public.user_session_logs add constraint user_session_logout_reason_c
 
 alter table public.user_session_logs add constraint user_session_logs_pkey PRIMARY KEY (id);
 
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_phone_number_id_key UNIQUE (phone_number_id);
+
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_pkey PRIMARY KEY (organization_id);
+
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_status_check CHECK ((status = ANY (ARRAY['connected'::text, 'unverified'::text, 'disabled'::text])));
+
+alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_pkey PRIMARY KEY (organization_id, counterpart_phone);
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_direction_check CHECK ((direction = ANY (ARRAY['outbound'::text, 'inbound'::text])));
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_pkey PRIMARY KEY (id);
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_product_check CHECK ((product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])));
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_sender_check CHECK ((sender = ANY (ARRAY['organization'::text, 'arvo'::text])));
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text, 'received'::text])));
+
+alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_body_check CHECK (((length(btrim(body)) >= 1) AND (length(btrim(body)) <= 1024)));
+
+alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_pkey PRIMARY KEY (id);
+
+alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_title_check CHECK (((length(btrim(title)) >= 1) AND (length(btrim(title)) <= 60)));
+
 CREATE INDEX account_entries_party_date_idx ON public.account_entries USING btree (party_id, transaction_date DESC, created_at DESC);
 
 CREATE INDEX account_parties_org_type_idx ON public.account_parties USING btree (organization_id, party_type, name);
@@ -12136,6 +12241,20 @@ CREATE INDEX user_presence_online_idx ON public.user_presence USING btree (organ
 CREATE INDEX user_session_logs_org_login_idx ON public.user_session_logs USING btree (organization_id, login_at DESC);
 
 CREATE INDEX user_session_logs_user_open_idx ON public.user_session_logs USING btree (user_id, logout_at, last_seen_at DESC);
+
+CREATE INDEX whatsapp_conversation_state_arsiv_idx ON public.whatsapp_conversation_state USING btree (organization_id) WHERE (archived_at IS NOT NULL);
+
+CREATE INDEX whatsapp_messages_org_idx ON public.whatsapp_messages USING btree (organization_id, created_at DESC);
+
+CREATE INDEX whatsapp_messages_sohbet_idx ON public.whatsapp_messages USING btree (organization_id, counterpart_phone, created_at DESC);
+
+CREATE INDEX whatsapp_messages_wa_id_idx ON public.whatsapp_messages USING btree (wa_message_id) WHERE (wa_message_id IS NOT NULL);
+
+CREATE UNIQUE INDEX whatsapp_messages_inbound_uniq ON public.whatsapp_messages USING btree (wa_message_id) WHERE ((direction = 'inbound'::text) AND (wa_message_id IS NOT NULL));
+
+CREATE INDEX whatsapp_quick_replies_org_idx ON public.whatsapp_quick_replies USING btree (organization_id, sort_index, created_at);
+
+CREATE UNIQUE INDEX whatsapp_quick_replies_baslik_uniq ON public.whatsapp_quick_replies USING btree (organization_id, lower(btrim(title)));
 
 alter table public.account_entries add constraint account_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT;
 
@@ -12575,6 +12694,18 @@ alter table public.user_session_logs add constraint user_session_logs_organizati
 
 alter table public.user_session_logs add constraint user_session_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
+alter table public.whatsapp_accounts add constraint whatsapp_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_archived_by_fkey FOREIGN KEY (archived_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.whatsapp_conversation_state add constraint whatsapp_conversation_state_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.whatsapp_messages add constraint whatsapp_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
 alter table public.account_entries enable row level security;
 
 alter table public.account_parties enable row level security;
@@ -12756,6 +12887,14 @@ alter table public.tracking_lookup_attempts enable row level security;
 alter table public.user_presence enable row level security;
 
 alter table public.user_session_logs enable row level security;
+
+alter table public.whatsapp_accounts enable row level security;
+
+alter table public.whatsapp_conversation_state enable row level security;
+
+alter table public.whatsapp_messages enable row level security;
+
+alter table public.whatsapp_quick_replies enable row level security;
 
 create policy members_read_own_account_entries on public.account_entries as PERMISSIVE for SELECT to authenticated
   using ((EXISTS ( SELECT 1
@@ -13792,6 +13931,15 @@ create policy session_logs_update_own on public.user_session_logs as PERMISSIVE 
   using ((user_id = ( SELECT auth.uid() AS uid)))
   with check ((user_id = ( SELECT auth.uid() AS uid)));
 
+create policy "privileged members read org whatsapp conversation state" on public.whatsapp_conversation_state as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_is_privileged_member(organization_id));
+
+create policy "privileged members read org whatsapp messages" on public.whatsapp_messages as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_is_privileged_member(organization_id));
+
+create policy "privileged members read org whatsapp quick replies" on public.whatsapp_quick_replies as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_is_privileged_member(organization_id));
+
 revoke all on function private.arvo_account_entry_reconcile() from public;
 grant execute on function private.arvo_account_entry_reconcile() to public;
 
@@ -14612,77 +14760,3 @@ CREATE TRIGGER notify_payment_request_reviewed AFTER UPDATE OF status ON public.
 CREATE TRIGGER create_default_organization_license AFTER INSERT ON public.organizations FOR EACH ROW EXECUTE FUNCTION private.create_default_organization_license();
 
 CREATE TRIGGER touch_support_ticket AFTER INSERT ON public.support_messages FOR EACH ROW EXECUTE FUNCTION private.touch_support_ticket();
-
-
--- ============================================================
--- 20260921111009 (WhatsApp) — canlıya uygulandı, tam dışa aktarım
--- beklemeden anlık görüntüye eklendi. Bir sonraki dışa aktarım bu bloğu
--- kendi bölümlerine dağıtacak; biçim dışa aktarımın ürettiğiyle aynı.
--- ============================================================
-create table if not exists public.whatsapp_accounts (
-  organization_id uuid not null,
-  waba_id text not null,
-  phone_number_id text not null,
-  display_phone text,
-  verified_name text,
-  access_token_enc text not null,
-  status text not null,
-  last_verified_at timestamp with time zone,
-  last_error text,
-  connected_by uuid,
-  created_at timestamp with time zone not null,
-  updated_at timestamp with time zone not null
-);
-
-create table if not exists public.whatsapp_messages (
-  id uuid not null,
-  organization_id uuid not null,
-  product text not null,
-  sender text not null,
-  direction text not null,
-  phone_number_id text,
-  wa_message_id text,
-  counterpart_phone text not null,
-  template text,
-  params jsonb,
-  body text,
-  status text not null,
-  error text,
-  ref text,
-  created_at timestamp with time zone not null,
-  updated_at timestamp with time zone not null,
-  profile_name text
-);
-
-alter table public.whatsapp_accounts alter column status set default 'connected'::text;
-alter table public.whatsapp_accounts alter column created_at set default now();
-alter table public.whatsapp_accounts alter column updated_at set default now();
-alter table public.whatsapp_messages alter column id set default gen_random_uuid();
-alter table public.whatsapp_messages alter column status set default 'queued'::text;
-alter table public.whatsapp_messages alter column created_at set default now();
-alter table public.whatsapp_messages alter column updated_at set default now();
-
-alter table public.whatsapp_accounts add constraint whatsapp_accounts_pkey PRIMARY KEY (organization_id);
-alter table public.whatsapp_accounts add constraint whatsapp_accounts_phone_number_id_key UNIQUE (phone_number_id);
-alter table public.whatsapp_accounts add constraint whatsapp_accounts_status_check CHECK ((status = ANY (ARRAY['connected'::text, 'unverified'::text, 'disabled'::text])));
-alter table public.whatsapp_messages add constraint whatsapp_messages_pkey PRIMARY KEY (id);
-alter table public.whatsapp_messages add constraint whatsapp_messages_product_check CHECK ((product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])));
-alter table public.whatsapp_messages add constraint whatsapp_messages_sender_check CHECK ((sender = ANY (ARRAY['organization'::text, 'arvo'::text])));
-alter table public.whatsapp_messages add constraint whatsapp_messages_direction_check CHECK ((direction = ANY (ARRAY['outbound'::text, 'inbound'::text])));
-alter table public.whatsapp_messages add constraint whatsapp_messages_status_check CHECK ((status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'read'::text, 'failed'::text, 'received'::text])));
-
-alter table public.whatsapp_accounts add constraint whatsapp_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-alter table public.whatsapp_messages add constraint whatsapp_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-create index if not exists whatsapp_messages_org_idx on public.whatsapp_messages using btree (organization_id, created_at desc);
-create index if not exists whatsapp_messages_wa_id_idx on public.whatsapp_messages using btree (wa_message_id) where (wa_message_id is not null);
-create unique index if not exists whatsapp_messages_inbound_uniq on public.whatsapp_messages using btree (wa_message_id) where ((direction = 'inbound'::text) and (wa_message_id is not null));
-create index if not exists whatsapp_messages_sohbet_idx on public.whatsapp_messages using btree (organization_id, counterpart_phone, created_at desc);
-
-alter table public.whatsapp_accounts enable row level security;
-alter table public.whatsapp_messages enable row level security;
-
-revoke all on table public.whatsapp_accounts from anon, authenticated;
-
-create policy "privileged members read org whatsapp messages" on public.whatsapp_messages as PERMISSIVE for SELECT to authenticated
-  using (private.arvo_is_privileged_member(organization_id));
