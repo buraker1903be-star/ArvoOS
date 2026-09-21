@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
 import { phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
@@ -229,15 +230,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                 >
                   ✉ E-posta ile gönder
                 </ShareSendLink>
-                <ShareSendLink
-                  kind="contract"
-                  token={share}
-                  className="panel-secondary"
-                  newTab
-                  href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}
-                >
-                  💬 WhatsApp ile gönder
-                </ShareSendLink>
+                <WhatsappGonderDugmesi kind="contract" token={share} musteriAdi={customerName} />
                 <a
                   className="panel-secondary"
                   target="_blank"

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
+import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
 import { PROPOSAL_STATUS_LABELS as labels } from "../../status-labels";
@@ -119,11 +120,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                   ✉ E-posta ile gönder
                 </ShareSendLink>
               ) : null}
-              {messages ? (
-                <ShareSendLink kind="proposal" token={data.share_token} className="panel-secondary" newTab href={`https://wa.me/?text=${encodeURIComponent(messages.whatsapp)}`}>
-                  💬 WhatsApp ile gönder
-                </ShareSendLink>
-              ) : null}
+              <WhatsappGonderDugmesi kind="proposal" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
               <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
                 👁 Önizle
               </a>
