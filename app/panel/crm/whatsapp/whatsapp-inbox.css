@@ -4,7 +4,7 @@
    Renkler yalnızca panel token'larından.
    ============================================================ */
 .wa-inbox{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
-@media (max-width:900px){.wa-inbox{grid-template-columns:minmax(0,1fr)}}
+
 
 .wa-list{display:flex;flex-direction:column;gap:2px;max-height:min(70vh,620px);padding:8px;overflow:auto;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm)}
 .wa-list a{display:grid;gap:3px;padding:11px 13px;border-radius:14px;color:var(--ink);text-decoration:none;transition:background-color .16s ease}
@@ -119,3 +119,63 @@
 .wa-msg[data-durum="failed"] .wa-durum-adi { position: static; width: auto; height: auto; clip-path: none }
 
 .wa-hata { color: var(--danger); font-weight: 600 }
+
+/* ============================================================
+   Dar ekran: tek seferde tek bölme.
+   Eskiden liste ve yazışma alt alta duruyordu — iki ayrı kaydırma
+   alanı üst üste binince sayfa uzuyor, telefonda bir mesaja bakmak
+   için önce listenin tamamını geçmek gerekiyordu. Gerçek bir
+   mesajlaşma uygulamasında olduğu gibi: ya liste, ya sohbet.
+   ============================================================ */
+.wa-geri { display: none }
+
+@media (max-width: 900px) {
+  .wa-inbox { grid-template-columns: minmax(0, 1fr) }
+
+  .wa-inbox[data-gorunum="liste"] .wa-thread { display: none }
+  .wa-inbox[data-gorunum="sohbet"] .wa-list { display: none }
+
+  /* Liste tek başınaysa kart olmasına gerek yok; sayfanın kendisi
+     kayar, arama kutusu tepede yapışık kalır. */
+  .wa-inbox[data-gorunum="liste"] .wa-list {
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .wa-inbox[data-gorunum="liste"] .wa-list { gap: 8px }
+  .wa-inbox[data-gorunum="liste"] .wa-list a {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  /* Geri düğmesi başlığın soluna girer; başlık artık üç parçalı. */
+  .wa-geri {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 17px;
+    line-height: 1;
+    text-decoration: none;
+  }
+  /* Geri düğmesi ve ad tek satırda; durum rozeti sığmazsa alta iner. */
+  .wa-thread-head { align-items: center; gap: 10px }
+  .wa-thread-head > div { flex: 1 1 60%; min-width: 0 }
+  .wa-thread-head h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .wa-thread { padding: 16px }
+
+  /* Yazışma tek başına kaldığı için akış daha uzun olabilir;
+     yine de sınırlı: kutunun kendi kaydırması korunuyor, yoksa
+     kaydırma sayfaya taşar ve "en alta in" davranışı bozulur. */
+  .wa-flow { max-height: min(62dvh, 520px) }
+}

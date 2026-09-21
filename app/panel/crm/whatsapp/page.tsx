@@ -58,6 +58,18 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
 
   const musteri = secili ? await sohbetMusterisi(secili.phone) : null;
 
+  /*
+    Dar ekranda tek seferde tek bölme görünür: sohbet seçilmemişse liste,
+    seçilmişse yazışma. Eskiden ikisi alt alta duruyordu; iki ayrı kaydırma
+    alanı üst üste binince sayfa uzuyor, telefonda mesajlara ulaşmak için
+    önce listeyi geçmek gerekiyordu. Geniş ekranda ikisi yan yana kalır.
+
+    Ölçüt adresteki `numara`: kullanıcının bir sohbete DOKUNMUŞ olması.
+    `secili` bunu söyleyemez, çünkü hiçbir şey seçilmediğinde ilk sohbete
+    düşüyor — telefonda sayfa doğrudan bir yazışmayla açılırdı.
+  */
+  const gorunum = numara ? "sohbet" : "liste";
+
   return <div className="stg">
     {baslik}
     <CrmTabs active="whatsapp" />
@@ -72,12 +84,15 @@ export default async function WhatsappInboxPage({ searchParams }: { searchParams
     {!sohbetler.length ? (
       <div className="stg-empty"><StgIcon name="chat" size={22} /><p>Henüz WhatsApp mesajı yok. Gönderdiğiniz ve müşterinizin yazdığı mesajlar burada birikir.</p></div>
     ) : (
-      <div className="wa-inbox">
+      <div className="wa-inbox" data-gorunum={gorunum}>
         <SohbetListesi sohbetler={sohbetler} seciliNumara={secili?.phone ?? null} />
 
         {secili && akis ? (
           <section className="wa-thread">
             <div className="wa-thread-head">
+              {/* Yalnızca dar ekranda görünür: yazışma tüm ekranı kapladığı
+                  için listeye dönecek bir yol olmalı. */}
+              <Link className="wa-geri" href="/panel/crm/whatsapp" aria-label="Sohbet listesine dön">←</Link>
               <div>
                 {/* Ad önce CRM kaydından: müşterinin WhatsApp profil adı
                     takma ad olabiliyor, kayıttaki ad ise satışçının bildiği ad. */}
