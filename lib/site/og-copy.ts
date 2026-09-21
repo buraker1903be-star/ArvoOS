@@ -78,6 +78,18 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     tr: { eyebrow: "GİZLİLİK", title: "Gizlilik politikası", tagline: "Kişisel verilerin nasıl işlendiğine dair bilgilendirme." },
     en: { eyebrow: "PRIVACY", title: "Privacy policy", tagline: "How personal data is processed." },
   },
+  "distance-sales": {
+    tr: { eyebrow: "MESAFELİ SATIŞ", title: "Mesafeli Satış Sözleşmesi", tagline: "Arvo aboneliklerinin internetten satış koşulları." },
+    en: { eyebrow: "DISTANCE SALES", title: "Distance Sales Agreement", tagline: "Terms for the online sale of Arvo subscriptions." },
+  },
+  refund: {
+    tr: { eyebrow: "İPTAL VE İADE", title: "İptal ve İade Koşulları", tagline: "Aboneliğin iptali, cayma hakkı ve iade." },
+    en: { eyebrow: "CANCELLATION", title: "Cancellation and Refund", tagline: "Cancelling a subscription, withdrawal and refunds." },
+  },
+  delivery: {
+    tr: { eyebrow: "TESLİMAT", title: "Teslimat ve Hizmetin İfası", tagline: "Hesap ne zaman açılır; hizmet dijitaldir." },
+    en: { eyebrow: "DELIVERY", title: "Delivery and Performance", tagline: "When accounts open; the services are digital." },
+  },
 };
 
 /** Görsellerde geçen tüm karakterler — Google Fonts'tan tek, küçük bir

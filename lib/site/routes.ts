@@ -24,7 +24,10 @@ export type PageId =
   | "custom-software"
   | "about"
   | "contact"
-  | "privacy";
+  | "privacy"
+  | "distance-sales"
+  | "refund"
+  | "delivery";
 
 /** Her sayfanın dil başına yolu. Türkçe kökte, İngilizce /en altında. */
 export const ROUTES: Record<PageId, Record<Locale, string>> = {
@@ -43,6 +46,11 @@ export const ROUTES: Record<PageId, Record<Locale, string>> = {
   about: { tr: "/hakkimizda", en: "/en/about" },
   contact: { tr: "/iletisim", en: "/en/contact" },
   privacy: { tr: "/gizlilik", en: "/en/privacy" },
+  // Mesafeli satış mevzuatı ve ödeme kuruluşunun canlı mod incelemesi bu üç
+  // metni ayrı ayrı arıyor; tek "şartlar" sayfası yeterli sayılmıyor.
+  "distance-sales": { tr: "/mesafeli-satis-sozlesmesi", en: "/en/distance-sales-agreement" },
+  refund: { tr: "/iptal-ve-iade", en: "/en/cancellation-and-refund" },
+  delivery: { tr: "/teslimat", en: "/en/delivery" },
 };
 
 /** Sitemap önceliği / değişim sıklığı (arama motorları için ipucu). */
@@ -62,6 +70,9 @@ export const PAGE_PRIORITY: Record<PageId, number> = {
   about: 0.6,
   contact: 0.7,
   privacy: 0.3,
+  "distance-sales": 0.2,
+  refund: 0.2,
+  delivery: 0.2,
 };
 
 /** Eski ArvoOS kurumsal sayfaları → yeni yerleri (kalıcı 301). */
@@ -78,7 +89,22 @@ export const PRODUCT_APPS = {
   arvoos: { name: "ArvoOS", url: "https://app.arvo-os.com/login", host: "app.arvo-os.com" },
   arvolab: { name: "ArvoLab", url: "https://lab.arvo-os.com", host: "lab.arvo-os.com" },
   arc: { name: "Arc", url: "https://arc.arvo-os.com", host: "arc.arvo-os.com" },
+  randevu: { name: "Arvo Randevu", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
 } as const;
+
+/*
+  Hukuki metinler (mesafeli satış, iptal-iade, teslimat) tek bir ürünün değil
+  Arvo'nun bütün abonelik ürünlerinin sözleşmesidir. Listeyi elle yazmıyoruz:
+  yeni ürün PRODUCT_APPS'e eklendiğinde metinlere de kendiliğinden girsin.
+*/
+export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.name);
+
+/** "ArvoOS, ArvoLab, Arc ve Arvo Randevu" — cümle içinde ürün listesi. */
+export function productList(locale: Locale): string {
+  const names = [...PRODUCT_NAMES];
+  const last = names.pop()!;
+  return names.length ? `${names.join(", ")} ${locale === "tr" ? "ve" : "and"} ${last}` : last;
+}
 
 /** Pazarlama sitesinin sunulduğu alan adları; diğer hostlarda (panel, kurum
  *  alan adları) bu sayfalar dizine alınmaz / arvo-os.com'a yönlendirilir. */
@@ -104,6 +130,15 @@ export const COMPANY = {
   },
   foundingYear: null as number | null,
   sameAs: [] as string[],
+  /*
+    Künye alanları: mesafeli satış sözleşmesi ve ödeme kuruluşunun canlı mod
+    incelemesi bunları arıyor. Boş bırakılan alan sayfalarda hiç gösterilmez —
+    uydurulmuş bir vergi numarası göstermektense satırı hiç yazmamak doğru.
+  */
+  phone: "",
+  taxOffice: "",
+  taxNumber: "",
+  mersis: "",
 } as const;
 
 export function pathFor(id: PageId, locale: Locale): string {
