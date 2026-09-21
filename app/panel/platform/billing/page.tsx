@@ -4,6 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
+import { abonelikHatirlatmasiGonder } from "../actions";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 
 type Subscription = { id: string; organization_id: string; provider: string; plan_code: string; status: string; currency: string; unit_amount: number; interval: string; current_period_end: string | null; organizations: { name?: string; display_name?: string | null } | { name?: string; display_name?: string | null }[] | null };
@@ -80,9 +81,29 @@ export default async function BillingPage() {
                     <small>{r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`} · {date(r.endsAt)}{r.fee ? ` · ${money(r.fee, "TRY")} / ay` : " · aylık ücret girilmedi"}</small>
                   </span>
                 </span>
-                {r.whatsappUrl
-                  ? <a className="panel-secondary" href={r.whatsappUrl} target="_blank" rel="noreferrer" title={r.message}>WhatsApp ile hatırlat</a>
-                  : <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>}
+                {/*
+                  Eskiden bu bir wa.me bağlantısıydı: kurucu WhatsApp Web'e
+                  düşüyor, mesajı elle gönderiyordu ve gönderilip
+                  gönderilmediğinin kaydı kalmıyordu — "bu kuruma hatırlattık
+                  mı" sorusunun yanıtı kimsede yoktu. Artık kapıdan gidiyor
+                  ve kurumun sohbetine yazılıyor.
+                */}
+                {r.phone ? (
+                  <form action={abonelikHatirlatmasiGonder}>
+                    <input type="hidden" name="organization_id" value={r.organizationId} />
+                    <input type="hidden" name="product" value={r.product} />
+                    <input type="hidden" name="tur" value={r.trial ? "trial" : "renewal"} />
+                    <input type="hidden" name="phone" value={r.phone} />
+                    <input type="hidden" name="message" value={r.message} />
+                    <input type="hidden" name="abone" value={r.organizationName} />
+                    <input type="hidden" name="urun" value={r.productName} />
+                    <input type="hidden" name="tarih" value={r.endsAtLabel} />
+                    <input type="hidden" name="ucret" value={r.feeLabel ?? ""} />
+                    <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
+                  </form>
+                ) : (
+                  <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
+                )}
               </div>
             ))}
           </div>

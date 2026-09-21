@@ -31,6 +31,14 @@ export type RenewalReminder = {
   fee: number | null;
   message: string;
   whatsappUrl: string | null;
+  /* Panelden şablonla gönderim için gerekenler. Şablon parametreleri
+     ekranda değil burada hazırlanıyor: aynı biçimlendirme (tarih, tutar)
+     hem serbest metinde hem şablonda kullanılsın, ikisi ayrışmasın. */
+  trial: boolean;
+  /** 905XXXXXXXXX; biçim tutmuyorsa null (kurucu elle arar). */
+  phone: string | null;
+  endsAtLabel: string;
+  feeLabel: string | null;
 };
 
 const DAY = 86_400_000;
@@ -79,6 +87,10 @@ export function renewalReminders(licenses: RenewalLicense[], organizations: Rene
       return [{
         organizationId: organization.id, organizationName, product: license.product, productName: name, endsAt, daysLeft, fee, message,
         whatsappUrl: number ? `https://wa.me/${number}?text=${encodeURIComponent(message)}` : null,
+        trial,
+        phone: number,
+        endsAtLabel: trDate(endsAt),
+        feeLabel: fee ? tl(fee) : null,
       }];
     })
     .sort((a, b) => a.daysLeft - b.daysLeft);

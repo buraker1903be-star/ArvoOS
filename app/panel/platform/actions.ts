@@ -8,6 +8,10 @@ import { redirect } from "next/navigation";
 import { getPanelContext, panelModules } from "@/lib/panel-context";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendThroughGateway } from "@/lib/whatsapp-gateway";
+import { loadConversation } from "@/lib/whatsapp-inbox";
+import { normalizePhone } from "@/lib/whatsapp-send";
+import { HATIRLATMA_SABLONLARI, hatirlatmaEngeli } from "@/lib/abonelik-hatirlatma";
 
 // DİKKAT: "use server" dosyasında `export type { X }` yeniden dışa aktarımı
 // yazmayın; modül çöker. `export type X = {...}` sorunsuz.
@@ -222,4 +226,85 @@ export async function updateOrganizationSettings(...args: Parameters<typeof upda
 }
 export async function toggleOrganizationModule(...args: Parameters<typeof toggleOrganizationModule__impl>) {
   return runPanelAction(() => toggleOrganizationModule__impl(...args));
+}
+
+/*
+  Abonelik / deneme hatırlatmasını WhatsApp'tan gönderir.
+
+  Eskiden Platform → Ödemeler'deki düğme `wa.me/<numara>?text=...` açıyordu:
+  kurucu WhatsApp Web'e düşüyor, mesajı elle gönderiyordu. Gönderilip
+  gönderilmediğinin kaydı yoktu, yani "bu kuruma hatırlattık mı" sorusunun
+  yanıtı kimsede yoktu; aynı kuruma iki kez yazmak ya da hiç yazmamak
+  eşit derecede kolaydı.
+
+  Gönderen Arvo'nun ortak numarası ve bu doğru: mesajı Arvo kendi
+  müşterisine yazıyor, başka bir kurum adına değil.
+
+  Meta kuralı iki yol dayatıyor. Müşteri son 24 saatte yazdıysa serbest
+  metin gider — ödeme bağlantısını içerdiği için tercih edilen yol bu.
+  Yazmadıysa onaylı şablon gider; şablonda bağlantı yok, müşteri panelden
+  ödüyor.
+*/
+async function abonelikHatirlatmasiGonder__impl(formData: FormData) {
+  const { isPlatformOwner } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const product = String(formData.get("product") ?? "").trim();
+  const tur = String(formData.get("tur") ?? "") === "trial" ? "trial" : "renewal";
+  const telefon = normalizePhone(String(formData.get("phone") ?? ""));
+  const metin = String(formData.get("message") ?? "").trim();
+  const abone = String(formData.get("abone") ?? "").trim();
+  const urun = String(formData.get("urun") ?? "").trim();
+  const tarih = String(formData.get("tarih") ?? "").trim();
+  const ucret = String(formData.get("ucret") ?? "").trim();
+
+  if (!organizationId || !product) throw new Error("Kurum ya da ürün seçilmedi.");
+  if (!telefon) throw new Error("Kurumun iletişim telefonu cep numarası değil.");
+
+  const { windowOpen } = await loadConversation(organizationId, telefon);
+
+  const mesaj: Parameters<typeof sendThroughGateway>[0]["messages"][number] = {
+    to: telefon,
+    ref: `${organizationId}:${product}`,
+  };
+
+  if (windowOpen) {
+    // Serbest metin ödeme bağlantısını da taşıyor; şablonda o bağlantı yok.
+    mesaj.text = metin;
+  } else {
+    const sablon = HATIRLATMA_SABLONLARI[tur];
+    const degerler = { abone, urun, tarih, ucret };
+    const engel = hatirlatmaEngeli(tur, degerler);
+    if (engel) throw new Error(engel);
+
+    mesaj.template = sablon.ad;
+    mesaj.params = sablon.parametreler(degerler);
+    mesaj.body = metin;
+  }
+
+  /*
+    Kayıt hatırlatmayı alan KURUMUN altına düşüyor, Arvo'nun altına değil:
+    "bu kuruma ne yazdık" sorusu o kurumun sohbetinden okunmalı. Gönderen
+    yine Arvo'nun numarası.
+  */
+  const sonuc = await sendThroughGateway({
+    product: "arvoos",
+    organizationId,
+    sender: "arvo",
+    messages: [mesaj],
+  });
+
+  const ilk = sonuc.results[0];
+  if (!ilk?.sent) {
+    const sebep = ilk?.error ?? "Hatırlatma gönderilemedi.";
+    // Şablon adı bağlam olarak yazılıyor, sebep olarak değil: sebebi Meta söyler.
+    throw new Error(windowOpen ? sebep : `${sebep} (Şablon: ${HATIRLATMA_SABLONLARI[tur].ad})`);
+  }
+
+  revalidatePath("/panel/platform/billing");
+}
+
+export async function abonelikHatirlatmasiGonder(formData: FormData): Promise<void> {
+  await runPanelAction(() => abonelikHatirlatmasiGonder__impl(formData), "Hatırlatma WhatsApp'tan gönderildi");
 }
