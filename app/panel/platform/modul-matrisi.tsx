@@ -5,18 +5,22 @@ import { useTransition } from "react";
 import { modulErisimiDegistir, modulKoprusuDegistir } from "./modul-actions";
 
 /*
-  Modül matrisi: dört ürün, satır başına üç bağımsız kontrol.
+  Modül kartları: dört ürün yan yana, kart başına iki anahtar.
 
   Kurucunun en sık yaptığı iş bu ve bugüne kadar üç ayrı yere dağılmıştı:
   erişim lisans formunun içinde bir açılır liste, köprü hiçbir yerde,
   ücret başka bir sayfada. Kiracıyı dondurmak için formu bulup kaydetmek
   gerekiyordu.
 
-  ÜÇ KONTROL AYRI DURUYOR, çünkü ayrı şeyler:
+  Anahtar, düğmeden iyi: "Dondur" yazan bir düğme şu anki durumu değil
+  yapılacak işi söylüyordu, yani durumu okumak için yanındaki rozete
+  bakmak gerekiyordu. Anahtar ikisini birden gösteriyor — sağdaysa açık
+  (yeşil), soldaysa kapalı (kırmızı).
+
+  İKİ ANAHTAR AYRI DURUYOR, çünkü ayrı şeyler:
 
     Erişim — kiracı ürüne girebiliyor mu. Tahsilat aracı.
     Köprü  — ArvoOS ile otomatik veri akışı var mı. Ürün tercihi.
-    Ücret  — ne ödüyor, hangi kotayla.
 
   Tek anahtara bindirilirse "ödemesini yapmış ama bağımsız çalışmak
   isteyen" kiracıya verilecek cevap kalmıyor.
@@ -60,9 +64,9 @@ export function ModulMatrisi({
 }) {
   const [calisiyor, basla] = useTransition();
 
-  const erisim = (satir: ModulSatiri, yeniDurum: string) => {
+  const erisim = (satir: ModulSatiri, acilacak: boolean) => {
     let sebep = "";
-    if (yeniDurum === "suspended") {
+    if (!acilacak) {
       /*
         Sebep burada isteniyor, sunucuda da zorunlu. Sebepsiz bir
         dondurmayı üç ay sonra kimse açıklayamıyor; müşteri arayınca
@@ -70,7 +74,7 @@ export function ModulMatrisi({
       */
       sebep = window.prompt(`${satir.name} neden donduruluyor?\n\n${kurumAdi} için bu sebep kayda geçer.`) ?? "";
       if (!sebep.trim()) return;
-    } else if (!window.confirm(`${kurumAdi} için ${satir.name} ${DURUM_ADI[yeniDurum]?.toLocaleLowerCase("tr-TR")} yapılsın mı?`)) {
+    } else if (!window.confirm(`${kurumAdi} için ${satir.name} açılsın mı?`)) {
       return;
     }
 
@@ -78,7 +82,7 @@ export function ModulMatrisi({
       const veri = new FormData();
       veri.set("organization_id", organizationId);
       veri.set("product", satir.product);
-      veri.set("status", yeniDurum);
+      veri.set("status", acilacak ? "active" : "suspended");
       veri.set("reason", sebep);
       await modulErisimiDegistir(veri);
     });
@@ -100,57 +104,70 @@ export function ModulMatrisi({
   };
 
   return (
-    <div className="modul-matris">
+    <div className="plt-modul-izgara">
       {satirlar.map((satir) => {
         const acik = ["active", "trialing", "past_due"].includes(satir.status);
         return (
-          <div key={satir.product} className="modul-satir" data-kapali={!acik}>
-            <div className="modul-ad">
-              <b>{satir.name}</b>
-              <small>{satir.cekirdek ? "çekirdek" : satir.product}</small>
-            </div>
-
-            <div className="modul-hucre">
+          <article key={satir.product} className="plt-modul-kart" data-kapali={!acik}>
+            <header>
+              <span>
+                <b>{satir.name}</b>
+                <small>{satir.cekirdek ? "çekirdek" : satir.product}</small>
+              </span>
               <span className="status-pill" data-tone={DURUM_TONU[satir.status] ?? "neutral"}>
                 {DURUM_ADI[satir.status] ?? satir.status}
               </span>
-              {satir.cekirdek ? (
-                /* Çekirdek lisans ayrı tabloda ve dondurulduğunda kurumun
-                   tamamı kapanıyor; o karar lisans ekranında veriliyor. */
-                <Link className="modul-baglanti" href={`/panel/platform/licenses?organization=${organizationId}`}>Lisans ekranı →</Link>
-              ) : acik ? (
-                <button type="button" className="panel-secondary" disabled={calisiyor} onClick={() => erisim(satir, "suspended")}>
-                  Dondur
-                </button>
-              ) : (
-                <button type="button" className="panel-secondary" disabled={calisiyor} onClick={() => erisim(satir, "active")}>
-                  Aç
-                </button>
-              )}
-            </div>
+            </header>
 
-            <div className="modul-hucre">
+            <dl className="plt-modul-anahtarlar">
+              <div>
+                <dt>Erişim</dt>
+                <dd>
+                  {satir.cekirdek ? (
+                    /* Çekirdek lisans ayrı tabloda ve dondurulduğunda kurumun
+                       tamamı kapanıyor; o karar lisans ekranında veriliyor. */
+                    <Link className="modul-baglanti" href={`/panel/platform/licenses?organization=${organizationId}`}>Lisans ekranı →</Link>
+                  ) : (
+                    <button
+                      type="button"
+                      className={acik ? "plt-switch is-on" : "plt-switch is-off"}
+                      role="switch"
+                      aria-checked={acik}
+                      aria-label={`${satir.name} erişimi: ${acik ? "kapat" : "aç"}`}
+                      disabled={calisiyor}
+                      onClick={() => erisim(satir, !acik)}
+                    ><i /></button>
+                  )}
+                </dd>
+              </div>
+
               {/* Köprü yalnızca erişim açıkken anlamlı: kapalı bir kapının
                   kilidini göstermenin anlamı yok. */}
-              {satir.cekirdek || !acik ? (
-                <span className="modul-bos">—</span>
-              ) : (
-                <>
-                  <span className="status-pill" data-tone={satir.integrated ? "success" : "neutral"}>
-                    {satir.integrated ? "Entegre" : "Bağımsız"}
-                  </span>
-                  <button type="button" className="panel-secondary" disabled={calisiyor} onClick={() => kopru(satir)}>
-                    {satir.integrated ? "Bağımsıza al" : "Entegre et"}
-                  </button>
-                </>
+              {satir.cekirdek ? null : (
+                <div>
+                  <dt>Köprü</dt>
+                  <dd>
+                    {acik ? (
+                      <button
+                        type="button"
+                        className={satir.integrated ? "plt-switch is-on" : "plt-switch"}
+                        role="switch"
+                        aria-checked={Boolean(satir.integrated)}
+                        aria-label={`${satir.name} köprüsü: ${satir.integrated ? "bağımsıza al" : "entegre et"}`}
+                        disabled={calisiyor}
+                        onClick={() => kopru(satir)}
+                      ><i /></button>
+                    ) : <span className="modul-bos">—</span>}
+                  </dd>
+                </div>
               )}
-            </div>
+            </dl>
 
-            <div className="modul-hucre modul-ucret">
+            <footer>
               <b>{satir.monthlyFee ? `${tl(Number(satir.monthlyFee))} / ay` : "ücret girilmedi"}</b>
               {satir.kotaOzeti ? <small>{satir.kotaOzeti}</small> : null}
-            </div>
-          </div>
+            </footer>
+          </article>
         );
       })}
     </div>

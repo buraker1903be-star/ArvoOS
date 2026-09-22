@@ -11,6 +11,10 @@ import { uyeErisimiDegistir } from "./members/actions";
   kurumu yeniden bulmak gerekiyordu. Kurucu kiracı ekseninde çalışıyor,
   ekran da öyle olmalı.
 
+  E-posta satırda yazıyor. "Adı kayıtlı değil" yazan üç satır arasında
+  kimin kim olduğunu ayırmanın yolu yoktu; ad her zaman girilmiş olmuyor
+  ama e-posta hesabın kendisi.
+
   Satır başına tek işlem var: erişimi aç/kapat. Rol değiştirme ve silme
   bilerek yok — biri geri alınamaz, diğeri kurumun kendi kararı.
 */
@@ -18,6 +22,7 @@ import { uyeErisimiDegistir } from "./members/actions";
 export type KiraciUyesi = {
   userId: string;
   name: string | null;
+  email: string | null;
   role: string;
   active: boolean;
 };
@@ -38,11 +43,11 @@ export function KiraciUyeleri({
 }) {
   const [calisiyor, basla] = useTransition();
 
-  // Son aktif sahibin erişimi kapatılamaz; düğme yerine sebebini yazıyoruz.
+  // Son aktif sahibin erişimi kapatılamaz; anahtar yerine sebebini yazıyoruz.
   const aktifSahipSayisi = uyeler.filter((uye) => uye.role === "owner" && uye.active).length;
 
   const degistir = (uye: KiraciUyesi) => {
-    const ad = uye.name || "bu kullanıcı";
+    const ad = uye.name || uye.email || "bu kullanıcı";
     const acilacak = !uye.active;
     if (!window.confirm(acilacak
       ? `${ad} için ${kurumAdi} erişimi açılsın mı?`
@@ -60,23 +65,30 @@ export function KiraciUyeleri({
   if (!uyeler.length) return <p className="plt-substatus">Bu kurumda üye yok.</p>;
 
   return (
-    <ul className="kiraci-uyeler">
+    <ul className="plt-uyeler">
       {uyeler.map((uye) => {
         const sonSahip = uye.role === "owner" && uye.active && aktifSahipSayisi < 2;
         return (
           <li key={uye.userId} data-pasif={!uye.active}>
-            <span>
-              <b>{uye.name ?? "Adı kayıtlı değil"}</b>
-              <small>{ROL_ADI[uye.role] ?? uye.role}{uye.active ? "" : " · erişim kapalı"}</small>
+            <span className="plt-uye-kim">
+              <b>{uye.name ?? uye.email ?? "Adı kayıtlı değil"}</b>
+              <small>{uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role}</small>
             </span>
+            <span className="plt-uye-rol">{ROL_ADI[uye.role] ?? uye.role}</span>
             {sonSahip ? (
-              /* Yapılamayacak iş için düğme gösterip hata vermektense
+              /* Yapılamayacak iş için anahtar gösterip hata vermektense
                  nedenini baştan söylüyoruz. */
               <small className="plt-substatus">son sahip</small>
             ) : (
-              <button type="button" className="panel-secondary" disabled={calisiyor} onClick={() => degistir(uye)}>
-                {uye.active ? "Erişimi kapat" : "Erişimi aç"}
-              </button>
+              <button
+                type="button"
+                className={uye.active ? "plt-switch is-on" : "plt-switch is-off"}
+                role="switch"
+                aria-checked={uye.active}
+                aria-label={`${uye.name ?? uye.email ?? "Üye"} erişimi: ${uye.active ? "kapat" : "aç"}`}
+                disabled={calisiyor}
+                onClick={() => degistir(uye)}
+              ><i /></button>
             )}
           </li>
         );

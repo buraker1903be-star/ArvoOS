@@ -48,11 +48,10 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
 
-  const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }, pendingPayments] = await Promise.all([
+  const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url,kind,contact_phone").order("name"),
     supabase.from("organization_invitations").select("organization_id,email,status,sent_at,accepted_at,error_message").order("created_at", { ascending: false }),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
-    supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
   const organizations = (organizationData ?? []) as ManagedOrganization[];
@@ -154,7 +153,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       || sadelestir(item.display_name || item.name).includes(anahtar)
       || sadelestir(item.name).includes(anahtar)
       || sadelestir(item.slug).includes(anahtar));
-  const paymentsWaiting = pendingPayments.error ? 0 : pendingPayments.count ?? 0;
 
 
   const invitation = selected ? latestInvitation.get(selected.id) ?? null : null;
@@ -262,7 +260,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         tumUyelikler={((tumUyelikler ?? []) as DosyaUyeligi[]).filter((satir) => satir.organization_id === selected.id)}
         seciliKota={kotaById.get(selected.id) ?? null}
         seciliLisans={lisansById.get(selected.id) ?? null}
-        paymentsWaiting={paymentsWaiting}
       />
     ) : (
       <>

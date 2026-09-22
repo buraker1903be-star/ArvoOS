@@ -16,8 +16,6 @@
 /* ---------- Yerleşim ---------- */
 /* Kiracı listesi artık sol sütunda değil, tam genişlikte bir tablo;
    liste ve dosya aynı anda değil sırayla açılıyor. */
-.plt-detail{display:grid;gap:16px;min-width:0}
-.plt-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
 
 
 /* ---------- Kurum özeti ---------- */
@@ -66,6 +64,10 @@
 .plt-switch{position:relative;flex:none;width:46px;height:28px;padding:0;border:0;border-radius:var(--r-pill);background:var(--line);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent);cursor:pointer;transition:background-color .22s ease}
 .plt-switch i{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-sm);transition:transform .28s cubic-bezier(.32,.72,0,1)}
 .plt-switch.is-on{background:var(--success)}
+/* Kapalı anahtar kırmızı: gri, "kapalı" değil "devre dışı" gibi
+   okunuyordu; kurucu erişimin kapalı olduğunu rozete bakmadan
+   göremiyordu. */
+.plt-switch.is-off{background:var(--danger)}
 .plt-switch.is-on i{transform:translateX(18px)}
 .plt-switch:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
 /* Telefonda panel her düğmeye en az 44px yükseklik veriyor; anahtar ölçüsü korunur */
@@ -163,8 +165,7 @@
 
 /* ---------- Duyarlı ---------- */
 @media (max-width:900px){
-  .plt-two{grid-template-columns:minmax(0,1fr)}
-}
+  }
 @media (max-width:560px){
   .plt-progress::before{width:80px}
   .plt-progress i{max-width:80px}
@@ -223,37 +224,6 @@
   .uye-suzgec input[type="search"] { flex-basis: 100% }
   .uye-sayi { margin-inline-start: 0 }
 }
-
-/* Kiracı özeti: lisans, kota, ücret ve dönem sonu tek şeritte.
-   Daha önce bu dört bilgi üç ayrı sekmeye dağılmıştı ve bir kiracı
-   hakkında karar vermek için üçünü de gezmek gerekiyordu. */
-/* Kiracının üyeleri: satır başına tek işlem, sağda. */
-.kiraci-uyeler { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none }
-.kiraci-uyeler li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 12px;
-  border-radius: 12px;
-}
-.kiraci-uyeler li:hover { background: var(--surface-2) }
-/* Erişimi kapalı üye soluk: listede duruyor ama öne çıkmıyor. */
-.kiraci-uyeler li[data-pasif="true"] b { color: var(--muted) }
-.kiraci-uyeler li span { display: grid; gap: 1px; min-width: 0 }
-.kiraci-uyeler li b { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.kiraci-uyeler li small { color: var(--muted); font-size: 12px }
-.kiraci-uyeler button { flex: none; padding: 6px 12px; font-size: 12.5px }
-
-/* Hızlı işlemler: kurucunun en sık yaptığı üç şey, kiracı dosyasının
-   başında. Hepsi mevcut ekranlara götürüyor; konsolda ikinci bir yazma
-   yolu açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar. */
-/* Kiracı dosyasının kartları: ödeme, kanallar, son etkinlik.
-   Üç bilgi daha önce üç ayrı sekmedeydi. */
-/* Son etkinlik: ne olduğu üstte, neye ve ne zaman altta. */
-/* Kiracı dosyasından gelinen tek sütunlu alt sayfalar (lisans ve kota).
-   Kendi kurum listeleri kaldırıldı: iki ayrı kurum listesi tutmak,
-   birinde seçip diğerinde kaybolmak demekti. */
 
 /* Çapraz listelerden kiracı dosyasına dönüş. Satırın kendisi bir işleme
    gidiyorsa bağlantı ayrı durur; satırı tıklanabilir yapmak iki farklı
@@ -329,46 +299,12 @@
 /* Dar kartta iki alanı yan yana sıkıştırmak okunmaz kılıyordu. */
 .plan-izgara .panel-form { grid-template-columns: minmax(0, 1fr) }
 
-/* Modül matrisi: dört ürün, satır başına üç bağımsız kontrol.
-   Bu üç şey daha önce üç ayrı yere dağılmıştı — erişim lisans formunun
-   içinde bir açılır liste, köprü hiçbir yerde, ücret başka sayfada. */
-.modul-matris { display: grid; gap: 2px }
-.modul-satir {
-  display: grid;
-  grid-template-columns: minmax(150px, 1.2fr) minmax(170px, 1fr) minmax(170px, 1fr) minmax(150px, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-}
-.modul-satir:hover { background: var(--surface-2) }
-/* Erişimi kapalı modül soluk: listede duruyor ama öne çıkmıyor. */
-.modul-satir[data-kapali="true"] .modul-ad b { color: var(--muted) }
-
-.modul-ad { display: grid; gap: 1px; min-width: 0 }
-.modul-ad b { font-size: 14px; font-weight: 650; letter-spacing: -.01em }
-.modul-ad small { color: var(--muted); font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, monospace }
-
-.modul-hucre { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap }
-.modul-hucre button { padding: 5px 11px; font-size: 12px }
+/* Modül kartındaki köprüsüz hücre ve lisans ekranı bağlantısı. */
 .modul-bos { color: var(--dim, var(--muted)); font-size: 13px }
 .modul-baglanti { color: var(--accent); font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap }
 .modul-baglanti:hover { text-decoration: underline }
 
-.modul-ucret { display: grid; gap: 1px; text-align: end; justify-items: end }
-.modul-ucret b { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums }
-.modul-ucret small { color: var(--muted); font-size: 11.5px }
 
-/* Dar ekranda satır iki sütuna iniyor; dört sütunu 400px'e sıkıştırmak
-   her hücreyi okunmaz yapıyordu. */
-@media (max-width: 860px) {
-  .modul-satir { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 10px }
-  .modul-ad { grid-column: 1 / -1 }
-  .modul-ucret { text-align: start; justify-items: start }
-}
-
-/* Konsol menüsündeki gruplar. Altı düz başlık, hepsi "tüm kiracıları
-   listele" eksenindeydi; kurucunun günü üç ayrı işten oluşuyor. */
 /* Menü grupları. Başlık metni kaldırıldı: menü daraltıldığında simgeler
    tek sütuna inerken başlık olduğu yerde kalıyor ve dar şeritte taşıyordu.
    Grupları artık aralık ve ince bir çizgi ayırıyor — daraltılmış menüde
@@ -444,8 +380,6 @@
    kiracı başlığı, işlem satırı, dosya ızgarası ve etkinlik listesi.
    ============================================================ */
 .plt-kiraci { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px }
-.plt-kiraci-ad { flex: 1; min-width: 0 }
-.plt-kiraci-ad h2 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.015em; overflow-wrap: anywhere }
 /* Etiketler ayrı parçalar: eskiden tek satırda dört bilgi vardı ve uzun
    ticari unvanlarda satır taşıyordu. */
 .plt-kiraci-etiket { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 5px 0 0; padding: 0; list-style: none }
@@ -461,17 +395,6 @@
 .plt-kiraci-avatar[data-tone="success"] { background: var(--success-soft); color: var(--success) }
 .plt-kiraci-avatar[data-tone="warning"] { background: var(--warning-soft); color: color-mix(in srgb, var(--warning) 80%, var(--ink)) }
 .plt-kiraci-avatar[data-tone="danger"] { background: var(--danger-soft); color: var(--danger) }
-
-.plt-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px }
-
-/* Dosya ızgarası: ödeme ve kanallar yan yana, etkinlik tam genişlikte.
-   Üç ayrı kart farklı yüksekliklerde duruyor, içleri çoğu zaman boştu. */
-.plt-dosya { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 24px }
-.plt-dosya-wide { grid-column: 1 / -1 }
-.plt-dosya-h {
-  margin: 0 0 8px; font-size: 11.5px; font-weight: 700;
-  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
-}
 
 .plt-etkinlik { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none }
 .plt-etkinlik li { display: flex; align-items: flex-start; gap: 10px }
@@ -578,3 +501,102 @@
 /* Satır içindeki gerçek etkileşimli öğeler kaplamanın üstünde kalmalı. */
 .plt-kiracilar tbody td :is(a:not(.plt-kiraci-baglanti), button, select, input, form) { position: relative; z-index: 1 }
 .plt-kiracilar-uc { color: var(--dim); font-size: 16px }
+
+/* ============================================================
+   Kiracı dosyası (2026-09) — sık yerleşim.
+
+   Dosya altı tam genişlikte kartın alt alta dizilmesiydi: her biri
+   içinde üç satır bilgi taşıyan, ekran boyu kartlar. Kurucunun bir
+   kiracı hakkında bilmek istediği her şey artık iki ekrana sığıyor.
+   ============================================================ */
+.plt-dosya { display: grid; gap: 14px; min-width: 0 }
+
+/* İki sütunlu bölüm ızgarası: dar sütuna sığan kartlar yan yana. */
+.plt-dosya-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; align-items: start }
+
+/* Kartlar küçüldü: 22px iç boşluk ve 18px aralık, dört satır bilgi
+   taşıyan bir kartta boşluğun kendisi kadar yer kaplıyordu. */
+.plt-kompakt { padding: 16px 18px; gap: 12px; border-radius: 18px }
+.plt-kompakt .stg-card-head { gap: 12px }
+.plt-kompakt .stg-card-icon { width: 32px; height: 32px; border-radius: 10px }
+.plt-kompakt .stg-card-title h2 { font-size: 16px }
+.plt-kompakt .stg-card-title p { margin-top: 4px; font-size: 12.5px }
+.plt-kompakt .panel-form { gap: 10px }
+
+/* ---------- Kimlik şeridi ---------- */
+.plt-kimlik { display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
+.plt-kimlik-ad { flex: 1 1 260px; min-width: 0 }
+.plt-kimlik-ad h2 { margin: 0; color: var(--ink); font-size: 22px; font-weight: 700; letter-spacing: -.02em }
+.plt-kimlik-islem { display: flex; align-items: center; gap: 8px; flex-wrap: wrap }
+
+/* ---------- Olgu şeridi ---------- */
+/* Kota, tahsilat ve kanallar tek şeritte. Bunlar üç ayrı karttı ve
+   içleri çoğunlukla "Belirtilmedi" ile doluydu: alt alta üç tire,
+   ekranın üçte biri. */
+.plt-olgular { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; border: 1px solid var(--line-soft); border-radius: 16px; background: var(--line-soft); overflow: hidden }
+.plt-olgular > span { display: grid; gap: 3px; padding: 10px 14px; background: var(--surface) }
+.plt-olgular small { color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase }
+.plt-olgular b { color: var(--ink); font-size: 14px; font-weight: 650; overflow-wrap: anywhere }
+.plt-olgular b.is-empty { color: var(--dim); font-weight: 500 }
+.plt-olgular b.is-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px }
+.plt-olgular > span[data-tone="danger"] b { color: var(--danger) }
+.plt-olgular > span[data-tone="warning"] b { color: color-mix(in srgb, var(--warning) 80%, var(--ink)) }
+.plt-olgular > span[data-tone="success"] b { color: var(--success) }
+
+.plt-uyari { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 13px; border-radius: 12px; background: var(--surface-2); color: var(--ink); font-size: 13px }
+.plt-uyari[data-tone="danger"] { background: var(--danger-soft); color: var(--danger) }
+
+/* ---------- Modül kartları (yatay) ---------- */
+/* Dört ürün satır satır dizildiğinde her biri ekranın tüm genişliğini
+   kaplıyor ama içinde üç kısa bilgi taşıyordu. */
+.plt-modul-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px }
+.plt-modul-kart { display: grid; gap: 10px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-2) }
+.plt-modul-kart[data-kapali="true"] { opacity: .72 }
+.plt-modul-kart > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px }
+.plt-modul-kart > header > span:first-child { display: grid; gap: 1px; min-width: 0 }
+.plt-modul-kart b { color: var(--ink); font-size: 14px; font-weight: 650 }
+.plt-modul-kart header small { color: var(--muted); font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace }
+.plt-modul-anahtarlar { display: flex; gap: 16px; margin: 0 }
+.plt-modul-anahtarlar > div { display: grid; gap: 5px; justify-items: start }
+.plt-modul-anahtarlar dt { color: var(--muted); font-size: 11.5px; font-weight: 600 }
+.plt-modul-anahtarlar dd { margin: 0 }
+.plt-modul-kart > footer { display: grid; gap: 1px; padding-top: 9px; border-top: 1px solid var(--line-soft) }
+.plt-modul-kart > footer b { font-size: 12.5px; font-weight: 600 }
+.plt-modul-kart > footer small { color: var(--muted); font-size: 11.5px }
+
+/* ---------- Üye listesi ---------- */
+.plt-uyeler { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line-soft); border-radius: 14px; background: var(--surface-2); overflow: hidden }
+.plt-uyeler li { display: flex; align-items: center; gap: 12px; padding: 9px 13px }
+.plt-uyeler li + li { border-top: 1px solid var(--line-soft) }
+.plt-uyeler li[data-pasif="true"] { opacity: .62 }
+.plt-uye-kim { flex: 1 1 auto; display: grid; gap: 1px; min-width: 0 }
+.plt-uye-kim b { color: var(--ink); font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-uye-kim small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-uye-rol { flex: none; color: var(--muted); font-size: 11.5px; white-space: nowrap }
+
+/* ---------- Kendi içinde kayan listeler ---------- */
+/* Altı satırlık bir etkinlik listesi bile sayfayı uzatıyordu; kaydırma
+   sayfanın değil kartın işi. */
+.plt-kaydir { max-height: 240px; overflow-y: auto; padding-right: 4px }
+
+/* ---------- Açılır bölümler ---------- */
+/* Dokuz maddelik kurulum listesi her açılışta ekranın yarısını
+   kaplıyordu; yerleşmiş bir kiracıda dokuz yeşil tik okunacak bir şey
+   söylemiyor. Özet satırı yeter, tamamını isteyen açıyor. */
+/* details bir flex kapsayıcı olursa bazı tarayıcılarda açılan içerik
+   beklenmedik yerleşiyor; kart burada blok kalıyor. */
+.plt-kurulum { display: block }
+.plt-kurulum > :not(summary) { margin-top: 12px }
+.plt-kurulum > summary { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none }
+.plt-kurulum > summary::-webkit-details-marker { display: none }
+.plt-kurulum-ad { flex: 1 1 auto; display: grid; gap: 2px; min-width: 0 }
+.plt-kurulum-ad b { color: var(--ink); font-size: 15px; font-weight: 650 }
+.plt-kurulum-ad small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere }
+.plt-kurulum[open] > summary { padding-bottom: 12px; margin-bottom: 2px; border-bottom: 1px solid var(--line-soft) }
+
+@media (max-width: 620px) {
+  .plt-kimlik-islem { width: 100% }
+  .plt-kimlik-islem .panel-primary, .plt-kimlik-islem .panel-secondary { flex: 1 }
+  .plt-olgular { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .plt-modul-izgara { grid-template-columns: minmax(0, 1fr) }
+}
