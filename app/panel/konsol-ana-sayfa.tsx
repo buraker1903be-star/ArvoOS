@@ -75,6 +75,7 @@ export async function KonsolAnaSayfa() {
     { data: urunSatirlari },
     bekleyenOdeme,
     { data: profil },
+    { data: personel },
     { data: depolamalar },
   ] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,kind,provisioning_state,contact_phone").order("name"),
@@ -83,6 +84,10 @@ export async function KonsolAnaSayfa() {
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    /* Ad birden çok yerde olabilir ve hiçbiri zorunlu değil; davet
+       akışından geçmeden açılmış bir hesabın profiles kaydı yok ve
+       selamlama adsız kalıyordu. */
+    supabase.from("hr_employees").select("full_name").eq("user_id", userId).limit(1).maybeSingle(),
     /* Depolama storage.objects'ten geliyor; o tablo PostgREST'e açık değil
        ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM döndürüyor. */
     admin ? admin.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
@@ -153,7 +158,9 @@ export async function KonsolAnaSayfa() {
   const onayBekleyen = odemeSayisi + (sozlesmeSayisi ?? 0);
 
   const { selam, tarih } = selamlama();
-  const ad = formatPersonName(profil?.full_name as string | null | undefined).split(" ")[0];
+  const ad = formatPersonName(
+    (profil?.full_name as string | null | undefined) || (personel?.full_name as string | null | undefined),
+  ).split(" ")[0];
 
   /* Özet cümle: sıfırsa hiç yazılmıyor. "0 kurulum bekliyor" demek,
      kurucuyu olmayan bir işe bakmaya çağırır. */
