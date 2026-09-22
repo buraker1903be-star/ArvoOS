@@ -13,9 +13,9 @@ import { useState } from "react";
 
   Üç somut sorun daha vardı:
 
-    1. Limitler ham sayıydı. "512000" ve "5000000" kimsenin kafasında bir
-       büyüklüğe karşılık gelmiyor; şimdi yazarken altında karşılığı
-       yazıyor (500 GB, 5.000.000 kredi, ₺1.500,00/ay).
+    1. Limitler ham sayıydı. "512000" kimsenin kafasında bir büyüklüğe
+       karşılık gelmiyor; şimdi yazarken altında karşılığı yazıyor
+       (500 GB, 10.000 kredi, ₺1.500,00/ay).
     2. Askıya alma nedeni her zaman ekrandaydı ve "yalnızca askıya
        alındığında kullanılır" diyordu — yani çoğu zaman kendi kendine
        gereksiz olduğunu söyleyen bir alan. Artık yalnızca durum "Askıda"
@@ -63,9 +63,9 @@ const DURUMLAR = [
   limitleri var ve paket değiştirmek onları sessizce silerdi.
 */
 const PAKET_VARSAYILANI: Record<string, { userLimit: number; storageLimitMb: number; aiCreditLimit: number }> = {
-  starter: { userLimit: 5, storageLimitMb: 5120, aiCreditLimit: 50000 },
-  professional: { userLimit: 25, storageLimitMb: 51200, aiCreditLimit: 500000 },
-  enterprise: { userLimit: 250, storageLimitMb: 512000, aiCreditLimit: 5000000 },
+  starter: { userLimit: 5, storageLimitMb: 5120, aiCreditLimit: 500 },
+  professional: { userLimit: 25, storageLimitMb: 51200, aiCreditLimit: 2500 },
+  enterprise: { userLimit: 250, storageLimitMb: 512000, aiCreditLimit: 10000 },
 };
 
 const sayiBicimi = new Intl.NumberFormat("tr-TR");
