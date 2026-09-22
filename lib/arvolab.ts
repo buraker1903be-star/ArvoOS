@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { arvolabGirisAdresi } from "@/lib/arvolab-giris";
 
 // ArvoLab köprüsü.
 //
@@ -230,7 +231,8 @@ export async function syncArvolabMembers(organizationId: string) {
  */
 export async function arvolabGirisBaglantisi(
   email: string,
-  hedef = "https://lab.arvo-os.com/dashboard",
+  hedef = "/dashboard",
+  koken = "https://lab.arvo-os.com",
 ): Promise<{ url: string } | { hata: string }> {
   const lab = arvolabClient();
   if (!lab) return { hata: "ArvoLab bağlantısı yapılandırılmamış." };
@@ -250,15 +252,13 @@ export async function arvolabGirisBaglantisi(
     return { hata: "ArvoLab hesabı açılamadı." };
   }
 
-  const { data, error } = await lab.auth.admin.generateLink({
-    type: "magiclink",
-    email: temiz,
-    options: { redirectTo: hedef },
-  });
-  if (error || !data?.properties?.action_link) {
+  const { data, error } = await lab.auth.admin.generateLink({ type: "magiclink", email: temiz });
+  if (error || !data?.properties?.hashed_token) {
     // Bağlantının kendisi loglanmıyor: log'u gören o kişi olarak girebilir.
-    console.error("[arvolab] giriş bağlantısı üretilemedi", error?.message ?? "bağlantı boş");
+    console.error("[arvolab] giriş bağlantısı üretilemedi", error?.message ?? "belirteç boş");
     return { hata: "ArvoLab giriş bağlantısı üretilemedi." };
   }
-  return { url: data.properties.action_link };
+
+  // Adres kurulumu saf modülde: tests/unit/arvolab-giris.test.ts.
+  return { url: arvolabGirisAdresi(koken, data.properties.hashed_token, hedef) };
 }
