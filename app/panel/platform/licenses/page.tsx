@@ -125,12 +125,20 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
           </form>
         </StgSection>
 
+        {/*
+          Ek ürün abonelikleri yan yana. Her biri beş alanlık kısa bir form
+          ama tam genişlikte duruyordu: üç ürünü görmek için ekran boyu
+          kaydırmak gerekiyordu ve ürün sayısı arttıkça sayfa uzayacaktı.
+          ArvoOS çekirdek lisansı geniş kalıyor — dokuz alanı var ve iki
+          sütunlu formu dar kartta okunmaz oluyor.
+        */}
+        <div className="plan-izgara">
         {ADDON_PRODUCTS.map((product) => {
           const row = productLicenses.get(product.code);
           const status = row?.status ?? "inactive";
           return (
             <StgSection
-              key={product.code} id={`urun-${product.code}`} wide icon="box" tone={licenseTones[status] ?? "neutral"}
+              key={product.code} id={`urun-${product.code}`} icon="box" tone={licenseTones[status] ?? "neutral"}
               kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} aboneliği`}
               description={`${product.description}. Aylık ücret girilmezse kurum bu ürünü kartla ödeyemez.`}
               aside={<span className="status-pill" data-tone={licenseTones[status] ?? "neutral"}>{productLicenseLabels[status] ?? status}</span>}
@@ -148,6 +156,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             </StgSection>
           );
         })}
+        </div>
 
         <StgSection id="ai" wide icon="chart" tone="info" kicker="AI KULLANIMI" title="Kredi dönemi" description="Yeni fatura ya da kullanım dönemi başlarken tüketilen AI kredilerini sıfırlayın." aside={<span className="status-pill" data-tone="info">%{aiPercent}</span>}>
           <div className="plt-usage">

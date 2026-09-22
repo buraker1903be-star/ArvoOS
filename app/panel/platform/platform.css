@@ -433,3 +433,15 @@
 .platform-serit [data-tone="warning"] b { color: var(--warning, #ba7517) }
 .platform-serit [data-tone="danger"] b { color: var(--danger) }
 .platform-serit a:hover { text-decoration: underline }
+
+/* Ürün planı kartları yan yana. Tek sütunda tam genişlik kaplıyorlardı:
+   iki kısa formu okumak için ekran boyu kaydırmak gerekiyordu ve ürün
+   sayısı arttıkça sayfa uzayacaktı. Sığdığı kadarı yan yana diziliyor. */
+.plan-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+/* Dar kartta iki alanı yan yana sıkıştırmak okunmaz kılıyordu. */
+.plan-izgara .panel-form { grid-template-columns: minmax(0, 1fr) }

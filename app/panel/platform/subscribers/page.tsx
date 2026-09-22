@@ -63,11 +63,18 @@ export default async function SubscribersPage() {
       <StgWidget tone="gold" icon="box" label="Toplam" value={subscribers.length} note="Son 200 kayıt" />
     </section>
 
+    {/*
+      Plan kartları yan yana. Tek sütunda tam genişlik kaplıyorlardı: iki
+      kısa formu alt alta okumak için ekran boyu kaydırmak gerekiyordu ve
+      ürün sayısı arttıkça sayfa uzayacaktı. Izgara, sığdığı kadar kartı
+      yan yana diziyor.
+    */}
+    <div className="plan-izgara">
     {SUBSCRIBER_PRODUCTS.map((product) => {
       const plan = plans.get(product.code);
       return (
         <StgSection
-          key={product.code} id={`plan-${product.code}`} wide icon="box" tone={plan?.individual_monthly_fee ? "success" : "warning"}
+          key={product.code} id={`plan-${product.code}`} icon="box" tone={plan?.individual_monthly_fee ? "success" : "warning"}
           kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} bireysel planı`}
           description="Fiyat herkese aynı uygulanır. Ücret girilmezse kişi ödeme yapamaz; deneme süresi 0 girilirse kayıt olan kişi doğrudan kapalı başlar."
           aside={<span className="status-pill" data-tone={plan?.individual_monthly_fee ? "success" : "warning"}>{plan?.individual_monthly_fee ? `${formatTry(Number(plan.individual_monthly_fee))} / ay` : "Ücret yok"}</span>}
@@ -81,6 +88,7 @@ export default async function SubscribersPage() {
         </StgSection>
       );
     })}
+    </div>
 
     {subscribers.length ? (
       <div className="stg-grid">
