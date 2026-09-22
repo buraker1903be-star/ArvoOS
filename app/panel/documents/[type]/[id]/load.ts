@@ -46,7 +46,7 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
   if (type === "contract") {
     const [{ data: organization, error: organizationError }, { data: contract, error: contractError }, { data: extra, error: extraError }, host, legal] = await Promise.all([
       organizationQuery,
-      supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,start_date,due_date,status,created_at,share_token,payment_plan_id,customer_address,customer_tax_number,customer_tax_office,signed_name,signed_at,signed_signature_data,signed_ip,signed_user_agent,contract_template_key,contract_template_version,crm_opportunities(customer_name,contact_email,contact_phone),crm_proposals(proposal_no,payment_schedule,tax_status,tax_rate,net_amount,tax_amount,gross_amount,estimated_delivery_date)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
+      supabase.from("crm_contracts").select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,payment_schedule,start_date,due_date,status,created_at,share_token,payment_plan_id,customer_address,customer_tax_number,customer_tax_office,signed_name,signed_at,signed_signature_data,signed_ip,signed_user_agent,contract_template_key,contract_template_version,issuer_snapshot,crm_opportunities(customer_name,contact_email,contact_phone),crm_proposals(proposal_no,payment_schedule,tax_status,tax_rate,net_amount,tax_amount,gross_amount,estimated_delivery_date)").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
       supabase.from("crm_contracts").select("legal_text_version,signed_consents").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
       hostQuery,
       legalQuery,
@@ -64,13 +64,16 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
       supabase.from("crm_contracts").select("work_plan").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
       supabase.from("crm_contract_addenda").select("id,addendum_no,work_plan,payment_dates,note,status,created_at,responded_at,responder_name,responder_ip,responder_user_agent,response_note").eq("contract_id", id).eq("organization_id", organizationId).order("addendum_no", { ascending: true }),
     ]);
+    // İmza anındaki künye varsa kurumun bugünkü kaydı değil o gösterilir:
+    // imzalanmış sözleşme sonradan değişen unvan ya da IBAN'la çizilmemeli.
+    const issuer = (contract.issuer_snapshot as DocumentRow | null) ?? legal;
     const row = {
       ...contract,
       customer_name: customer?.customer_name || "Müşteri",
       contact_phone: customer?.contact_phone || null,
       contact_email: customer?.contact_email || null,
       payment_schedule: contract.payment_schedule ?? proposal?.payment_schedule ?? [],
-      ...organizationFields(organization, legal),
+      ...organizationFields(organization, issuer),
     };
     const audit: ContractAudit = {
       signed_user_agent: contract.signed_user_agent,
