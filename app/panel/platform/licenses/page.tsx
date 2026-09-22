@@ -9,6 +9,7 @@ import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, depolama, kullanimTonu, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
+import { LisansFormu } from "./lisans-formu";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -204,19 +205,23 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         description="Askıya alınan ya da iptal edilen kurumun panel erişimi kurum durumuyla birlikte kapatılır."
         aside={<span className="status-pill" data-tone={durumTonu}>{durumAdi}</span>}
       >
-        <form className="panel-form" action={updateOrganizationLicense}>
-          <input type="hidden" name="organization_id" value={selected.id} />
-          <label>Paket<select name="plan_code" defaultValue={license.plan_code}><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
-          <label>Lisans durumu<select name="license_status" defaultValue={license.license_status}><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
-          <label>Deneme bitişi<input name="trial_ends_at" type="date" defaultValue={tarihDegeri(license.trial_ends_at)} /></label>
-          <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={tarihDegeri(license.current_period_end)} /></label>
-          <label>Kullanıcı limiti<input name="user_limit" type="number" min={1} defaultValue={license.user_limit} required /><small className="plt-field-note">şu an {sayi(users)} aktif üye</small></label>
-          <label>Depolama limiti (MB)<input name="storage_limit_mb" type="number" min={1} defaultValue={license.storage_limit_mb} required /><small className="plt-field-note">şu an {depolama(depolamaMb)} · limit {depolama(license.storage_limit_mb)}</small></label>
-          <label>AI kredi limiti<input name="ai_credit_limit" type="number" min={0} defaultValue={license.ai_credit_limit} required /><small className="plt-field-note">tanımlı hak; kullanım ölçülmediği için kısıtlama uygulanmıyor</small></label>
-          <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={license.monthly_fee ? Number(license.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
-          <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={license.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
-          <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Lisansı kaydet</button></div>
-        </form>
+        <LisansFormu
+          organizationId={selected.id}
+          aktifUye={users}
+          kullanilanMb={depolamaMb}
+          kaydet={updateOrganizationLicense}
+          baslangic={{
+            planCode: license.plan_code,
+            licenseStatus: license.license_status,
+            trialEndsAt: tarihDegeri(license.trial_ends_at),
+            currentPeriodEnd: tarihDegeri(license.current_period_end),
+            userLimit: String(license.user_limit),
+            storageLimitMb: String(license.storage_limit_mb),
+            aiCreditLimit: String(license.ai_credit_limit),
+            monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
+            suspensionReason: license.suspension_reason ?? "",
+          }}
+        />
       </StgSection>
 
       {/*
