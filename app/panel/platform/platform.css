@@ -1049,3 +1049,13 @@ dialog.plt-pencere {
   .plt-abonelik-kalem > .plt-urun-etiketi { grid-column: 1 / -1; justify-self: start }
   .plt-abonelik-kalem [data-etiket]::before { content: attr(data-etiket) ": "; color: var(--muted); font-size: 12px }
 }
+
+/* Ürüne yeniden yansıtma. Kaydet formundan ayrı duruyor: o form
+   değişiklik yokken kapalı, oysa yansıtmayı tekrar denemek tam da
+   hiçbir şey değişmemişken gerekiyor. */
+.plt-yansit {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.plt-yansit > small { flex: 1 1 200px; min-width: 0 }

@@ -68,6 +68,7 @@ export function UrunFormu({
   baslangic,
   kotalar,
   kaydet,
+  yenidenYansit,
 }: {
   organizationId: string;
   product: string;
@@ -75,6 +76,7 @@ export function UrunFormu({
   baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string };
   kotalar: KotaAlani[];
   kaydet: (formData: FormData) => void;
+  yenidenYansit: (formData: FormData) => void;
 }) {
   const [deger, setDeger] = useState(baslangic);
   const [kota, setKota] = useState<Record<string, string>>(
@@ -95,6 +97,7 @@ export function UrunFormu({
   };
 
   return (
+    <>
     <form className="panel-form plt-urun-formu" action={kaydet}>
       <input type="hidden" name="organization_id" value={organizationId} />
       <input type="hidden" name="product" value={product} />
@@ -185,5 +188,25 @@ export function UrunFormu({
         <button type="submit" className="panel-primary" disabled={!kirli}>Kaydet</button>
       </div>
     </form>
+
+    {/*
+      Yeniden yansıtma AYRI BİR FORM: yukarıdaki form değişiklik yokken
+      kaydetmeye izin vermiyor ve yansıtma da yalnızca kaydederken
+      çalışıyordu. Konsolda "Aktif" görünürken ürün tarafı "Deneme"
+      gösterdiğinde kurucunun elinde tekrar denemek için hiçbir şey
+      yoktu.
+
+      Veriye dokunmuyor; yalnızca mevcut durumu ürün veritabanına
+      yeniden yazıyor.
+    */}
+    <form action={yenidenYansit} className="plt-yansit">
+      <input type="hidden" name="organization_id" value={organizationId} />
+      <input type="hidden" name="product" value={product} />
+      <small className="kota-olcum">
+        {productName} kendi veritabanında. Orada eski durum görünüyorsa yansıtmayı yenileyin.
+      </small>
+      <button type="submit" className="panel-secondary">Ürüne yeniden yansıt</button>
+    </form>
+    </>
   );
 }

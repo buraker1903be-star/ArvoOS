@@ -56,12 +56,14 @@ export function UrunKartlari({
   kartlar,
   cekirdegiKaydet,
   urunuKaydet,
+  urunuYansit,
 }: {
   organizationId: string;
   kurumAdi: string;
   kartlar: UrunKarti[];
   cekirdegiKaydet: (formData: FormData) => void;
   urunuKaydet: (formData: FormData) => void;
+  urunuYansit: (formData: FormData) => void;
 }) {
   const [acik, setAcik] = useState<string | null>(null);
   const pencere = useRef<HTMLDialogElement>(null);
@@ -144,6 +146,7 @@ export function UrunKartlari({
                 baslangic={secili.baslangic}
                 kotalar={secili.kotalar}
                 kaydet={urunuKaydet}
+                yenidenYansit={urunuYansit}
               />
             )}
           </div>

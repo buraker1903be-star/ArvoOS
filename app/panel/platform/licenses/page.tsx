@@ -7,7 +7,7 @@ import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
 import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
-import { updateOrganizationLicense, updateProductLicense } from "./actions";
+import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
 import { UrunKartlari } from "./urun-kartlari";
 import "../../settings/settings.css";
@@ -239,6 +239,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
           kurumAdi={label}
           cekirdegiKaydet={updateOrganizationLicense}
           urunuKaydet={updateProductLicense}
+          urunuYansit={urunuYenidenYansit}
           kartlar={[
             {
               tur: "cekirdek" as const,
