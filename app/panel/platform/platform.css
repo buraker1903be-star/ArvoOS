@@ -974,3 +974,22 @@ dialog.plt-pencere {
   .plt-uye-satir [data-etiket]::before { content: attr(data-etiket) ": "; color: var(--muted); font-size: 12px }
   .plt-uye-erisim { justify-content: flex-start }
 }
+
+/* ---------- Modül matrisi ---------- */
+.plt-matris .plt-uye-arac { padding: 0 0 14px }
+.plt-matris-onay { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; font-weight: 600; cursor: pointer }
+.plt-matris-onay input { width: 15px; height: 15px; accent-color: var(--accent-500) }
+
+/* Hücrenin tamamı bağlantı: rozetin yanına tıklamak da lisans ekranını
+   açsın, yoksa hedef yalnızca rozetin birkaç pikseli oluyordu. */
+.plt-matris-hucre { display: inline-grid; gap: 2px; text-decoration: none }
+.plt-matris-hucre:hover .status-pill { box-shadow: 0 0 0 2px var(--accent-100) }
+.plt-matris-hucre:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; border-radius: 8px }
+
+/* Kısaltılmış etiketlerin karşılığı. Tek satır, tablonun hemen altında:
+   ayrı bir yardım metnine gömülse kimse açmazdı. */
+.plt-matris-lejant {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  margin: 12px 0 0; color: var(--muted); font-size: 12px;
+}
+.plt-matris-lejant > span { display: inline-flex; align-items: center; gap: 6px }
