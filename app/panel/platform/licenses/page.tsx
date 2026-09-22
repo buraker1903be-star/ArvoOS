@@ -7,11 +7,12 @@ import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
 import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, depolama, kullanimTonu, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
-import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
+import { updateOrganizationLicense, updateProductLicense } from "./actions";
+import { KiraciSecici } from "./kiraci-secici";
 import "../../settings/settings.css";
 import "../platform.css";
 
-type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string };
+type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string; kind: string | null };
 type LicenseRow = {
   organization_id: string;
   plan_code: string;
@@ -21,7 +22,6 @@ type LicenseRow = {
   user_limit: number;
   storage_limit_mb: number;
   ai_credit_limit: number;
-  ai_credits_used: number;
   monthly_fee: number | null;
   suspended_at: string | null;
   suspension_reason: string | null;
@@ -58,23 +58,34 @@ function Olcum({ etiket, kullanilan, limit, oran }: { etiket: string; kullanilan
 }
 
 export default async function LicenseManagementPage({ searchParams }: { searchParams: Promise<{ organization?: string }> }) {
-  const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
   const params = await searchParams;
   const adminClient = createAdminClient();
-  /* Kurum listesi yalnızca seçili kiracıyı bulmak için; liste görünümü
-     kiracı dosyasında. */
+  /* Kurum listesi hem seçili kiracıyı bulmak hem de sayfanın kendi
+     seçicisini doldurmak için. */
   const { data: organizationData, error: organizationError } = await supabase
-    .from("organizations").select("id,name,display_name,slug,plan_code,status").order("name");
+    .from("organizations").select("id,name,display_name,slug,plan_code,status,kind").order("name");
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
 
   const organizations = (organizationData ?? []) as OrganizationRow[];
+  if (!organizations.length) throw new Error("Yönetilecek kurum bulunamadı.");
 
-  const selected = organizations.find((item) => item.id === params.organization)
-    ?? organizations.find((item) => item.id === founderOrganization.id)
-    ?? organizations[0];
-  if (!selected) throw new Error("Yönetilecek kurum bulunamadı.");
+  /*
+    Adreste bir kurum yazıyorsa ONU açıyoruz, yoksa 404. Eskiden bilinmeyen
+    kimlik sessizce kendi kurumumuza düşüyordu: kurucu silinmiş ya da yanlış
+    bir bağlantıyla geldiğinde başka bir kiracının lisansını düzenlediğini
+    fark etmeden kaydedebilirdi — formlar seçili kurumun kimliğini yazıyor.
+
+    Adres boşken (menüden gelindiğinde) ilk MÜŞTERİ kurum açılıyor. Kendi
+    kurumumuza düşmek, "kimin lisansına bakıyorum" sorusunu her seferinde
+    yanlış yanıtlıyordu.
+  */
+  const selected = params.organization
+    ? organizations.find((item) => item.id === params.organization)
+    : organizations.find((item) => item.kind !== "internal") ?? organizations[0];
+  if (!selected) notFound();
 
   const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
     supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
@@ -111,7 +122,6 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const users = activeUsers ?? 0;
   const userPercent = yuzde(users, license.user_limit);
   const storagePercent = yuzde(depolamaMb, license.storage_limit_mb);
-  const aiPercent = yuzde(license.ai_credits_used, license.ai_credit_limit);
   const label = selected.display_name || selected.name;
   const durumTonu = LISANS_TONU[license.license_status] ?? "neutral";
   const durumAdi = productLicenseLabels[license.license_status] ?? license.license_status;
@@ -121,7 +131,17 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link></div>
+      <div className="panel-page-actions">
+        <KiraciSecici
+          secili={selected.id}
+          kurumlar={organizations.map((kurum) => ({
+            id: kurum.id,
+            ad: kurum.display_name || kurum.name,
+            kendi: kurum.kind === "internal",
+          }))}
+        />
+        <Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link>
+      </div>
     </div>
 
     {/*
@@ -147,34 +167,35 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         tone={kullanimTonu(storagePercent)} icon="folder" label="Depolama"
         value={depolama(depolamaMb)} note={`Limit ${depolama(license.storage_limit_mb)} · %${storagePercent} dolu`}
       />
+      {/* AI kredisi ÖLÇÜLMÜYOR. Burada "0 · %0 dolu" yazıyordu ve bu, hiç
+          AI kullanmamış bir kiracıyla günde bin istek atan kiracıyı aynı
+          gösteriyordu — tüketimi ArvoLab kendi veritabanında tutuyor,
+          ArvoOS'un lisans kaydına hiçbir zaman yazılmıyor. */}
       <StgWidget
-        tone={kullanimTonu(aiPercent)} icon="chart" label="AI kredisi"
-        value={sayi(license.ai_credits_used)} note={`Limit ${sayi(license.ai_credit_limit)} · %${aiPercent} dolu`}
+        tone="neutral" icon="chart" label="AI kredisi"
+        value="Ölçülmüyor" note={`Tanımlı hak ${sayi(license.ai_credit_limit)} kredi`}
       />
     </div>
 
     <div className="stg-grid">
       <StgSection
         id="kullanim" wide icon="chart" tone="info" kicker="KOTA" title="Şu anki kullanım"
-        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi lisans kaydından geliyor."
-        aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
+        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan geliyor. AI kredisi ölçülmüyor — tüketimi ArvoLab kendi veritabanında tutuyor."
+        aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent))}>En dolu kota %{Math.max(userPercent, storagePercent)}</span>}
       >
         <div className="plt-olcumler">
           <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
           <Olcum etiket="Depolama" kullanilan={depolama(depolamaMb)} limit={depolama(license.storage_limit_mb)} oran={storagePercent} />
-          <Olcum etiket="AI kredisi" kullanilan={sayi(license.ai_credits_used)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
         </div>
+        {/*
+          AI kredisi ölçeri kaldırıldı ve "AI kullanımını sıfırla" düğmesi de
+          onunla birlikte. Çubuk her kiracıda %0 gösteriyordu, düğme de hep
+          0 olan bir sayacı 0'a çekiyordu: ikisi de çalışan bir kota kurgusu
+          izlenimi veriyordu. ArvoLab tüketimi ArvoOS'un lisans kaydına
+          yazmaya başladığında ölçer de sıfırlama da geri gelir.
+        */}
+        <p className="stg-muted"><StgIcon name="chart" size={16} />AI kredisi ölçülmüyor: ArvoLab asistanının tüketimi henüz ArvoOS lisansına işlenmiyor. Aşağıdaki limit tanımlı hakkı yazar, bir kullanımı kısıtlamaz.</p>
         {license.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{license.suspension_reason}</p> : null}
-        {/* Sıfırlama, ölçerlerin altında: kurucu önce ne kadar tüketildiğini
-            görüp sonra karar veriyor. Kart köşesindeki bir düğme, okumadan
-            basılan bir düğme olurdu. */}
-        <form action={resetOrganizationAiCredits}>
-          <input type="hidden" name="organization_id" value={selected.id} />
-          <div className="plt-islem-notlu">
-            <small className="plt-field-note">Yeni fatura ya da kullanım dönemi başlarken tüketilen AI kredilerini sıfırlayın.</small>
-            <button className="panel-secondary" type="submit">AI kullanımını sıfırla</button>
-          </div>
-        </form>
       </StgSection>
 
       <StgSection
@@ -191,7 +212,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
           <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={tarihDegeri(license.current_period_end)} /></label>
           <label>Kullanıcı limiti<input name="user_limit" type="number" min={1} defaultValue={license.user_limit} required /><small className="plt-field-note">şu an {sayi(users)} aktif üye</small></label>
           <label>Depolama limiti (MB)<input name="storage_limit_mb" type="number" min={1} defaultValue={license.storage_limit_mb} required /><small className="plt-field-note">şu an {depolama(depolamaMb)} · limit {depolama(license.storage_limit_mb)}</small></label>
-          <label>AI kredi limiti<input name="ai_credit_limit" type="number" min={0} defaultValue={license.ai_credit_limit} required /><small className="plt-field-note">şu an {sayi(license.ai_credits_used)} kredi kullanıldı</small></label>
+          <label>AI kredi limiti<input name="ai_credit_limit" type="number" min={0} defaultValue={license.ai_credit_limit} required /><small className="plt-field-note">tanımlı hak; kullanım ölçülmediği için kısıtlama uygulanmıyor</small></label>
           <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={license.monthly_fee ? Number(license.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
           <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={license.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
           <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Lisansı kaydet</button></div>

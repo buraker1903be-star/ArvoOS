@@ -57,7 +57,7 @@ const Chevron = () => (
 );
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null };
-type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number; ai_credit_limit: number; ai_credits_used: number };
+type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
@@ -79,7 +79,7 @@ export async function KonsolAnaSayfa() {
   ] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,kind,provisioning_state,contact_phone").order("name"),
     supabase.from("organization_memberships").select("organization_id,is_active"),
-    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,storage_limit_mb,ai_credit_limit,ai_credits_used"),
+    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,storage_limit_mb"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
@@ -121,8 +121,6 @@ export async function KonsolAnaSayfa() {
     organizationId: lisans.organization_id,
     kullaniciSayisi: aktifUye.get(lisans.organization_id) ?? 0,
     kullaniciLimiti: lisans.user_limit,
-    aiKullanilan: lisans.ai_credits_used,
-    aiLimiti: lisans.ai_credit_limit,
     depolamaBayt: depolamaBayt.get(lisans.organization_id) ?? 0,
     depolamaLimitiMb: lisans.storage_limit_mb,
   })]));

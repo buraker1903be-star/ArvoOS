@@ -80,7 +80,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   */
   const [{ data: tumUyelikler }, { data: tumLisanslar }, { data: depolamalar }] = await Promise.all([
     supabase.from("organization_memberships").select("organization_id,user_id,role,is_active"),
-    supabase.from("organization_licenses").select("organization_id,user_limit,storage_limit_mb,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status,trial_ends_at"),
+    supabase.from("organization_licenses").select("organization_id,user_limit,storage_limit_mb,monthly_fee,current_period_end,license_status,trial_ends_at"),
     /*
       Depolama kullanımı storage.objects'ten geliyor; o tablo PostgREST'e
       açık değil ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM
@@ -97,7 +97,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     if (satir.is_active) aktifUyeSayisi.set(satir.organization_id, (aktifUyeSayisi.get(satir.organization_id) ?? 0) + 1);
   }
   const lisansById = new Map(
-    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; storage_limit_mb: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
+    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; storage_limit_mb: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
       .map((row) => [row.organization_id, row]),
   );
   const kotaById = new Map(
@@ -105,8 +105,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       organizationId: id,
       kullaniciSayisi: aktifUyeSayisi.get(id) ?? 0,
       kullaniciLimiti: lisans.user_limit,
-      aiKullanilan: lisans.ai_credits_used,
-      aiLimiti: lisans.ai_credit_limit,
       depolamaBayt: depolamaBayt.get(id) ?? 0,
       depolamaLimitiMb: lisans.storage_limit_mb,
     })]),

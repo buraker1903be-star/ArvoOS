@@ -653,3 +653,14 @@
   }
   .plt-kiracilar-uc { display: none }
 }
+
+/* Ekran okuyucuya yazılan ama çizilmeyen metin. Seçicinin etiketi
+   görünmüyor çünkü seçili kiracının adı zaten sayfa başlığında; etiketsiz
+   bir açılır liste ise klavyeyle gezen için adsız kalıyordu. */
+.plt-gizli { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+
+.plt-kiraci-secici select {
+  min-height: 36px; max-width: 260px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--ink); font-size: 13px;
+}

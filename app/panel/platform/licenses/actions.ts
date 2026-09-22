@@ -171,15 +171,13 @@ async function updateProductLicense__impl(formData: FormData) {
   revalidatePath("/panel/billing");
 }
 
-async function resetOrganizationAiCredits__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
-  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
-  const organizationId = String(formData.get("organization_id") ?? "").trim();
-  if (!organizationId) throw new Error("Kurum seçilmedi.");
-  const { error } = await supabase.from("organization_licenses").update({ ai_credits_used: 0, updated_at: new Date().toISOString() }).eq("organization_id", organizationId);
-  if (error) throw new Error(`AI kredileri sıfırlanamadı: ${error.message}`);
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
-}
+/*
+  "AI kullanımını sıfırla" işlemi kaldırıldı. ai_credits_used sütununu
+  hiçbir kod artırmıyor — ArvoLab asistanı tüketimi kendi veritabanında
+  tutuyor — yani bu işlem hep 0 olan bir sayacı 0'a çekiyordu. Çalışır
+  görünen ama hiçbir şey yapmayan bir düğme, kurucuya kotanın işlediğini
+  düşündürüyordu. ArvoLab tüketimi buraya yazmaya başlayınca geri gelir.
+*/
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateOrganizationLicense(...args: Parameters<typeof updateOrganizationLicense__impl>) {
@@ -187,7 +185,4 @@ export async function updateOrganizationLicense(...args: Parameters<typeof updat
 }
 export async function updateProductLicense(...args: Parameters<typeof updateProductLicense__impl>) {
   return runPanelAction(() => updateProductLicense__impl(...args), "Ürün lisansı kaydedildi");
-}
-export async function resetOrganizationAiCredits(...args: Parameters<typeof resetOrganizationAiCredits__impl>) {
-  return runPanelAction(() => resetOrganizationAiCredits__impl(...args), "AI kullanımı sıfırlandı");
 }
