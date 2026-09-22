@@ -9,7 +9,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
+import { StgIcon, StgSection, StgWidget, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
@@ -347,11 +347,45 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
       <div className="plt-detail">
         {/*
+          KİMLİK EN ÜSTTE. Kiracının adı sayfanın ortasında duruyordu:
+          kimin dosyasına baktığınızı görmek için aşağı kaydırmak
+          gerekiyordu. Dosya "bu kim" ile başlamalı.
+        */}
+        <header className="kiraci-baslik">
+          <span className="kiraci-avatar" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{initials(selected.display_name || selected.name)}</span>
+          <div>
+            <h2>{selected.display_name || selected.name}</h2>
+            <small>
+              {selected.slug}
+              {selected.display_name ? ` · ${selected.name}` : ""}
+              {selected.sector ? ` · ${selected.sector}` : ""}
+              {invitation?.email ? ` · ${invitation.email}` : ""}
+            </small>
+          </div>
+          <span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>
+            {stateLabels[selected.provisioning_state] ?? selected.provisioning_state}
+          </span>
+        </header>
+
+        {/*
           Kiracı özeti en üstte: lisans, kota, ücret ve dönem sonu. Bunlar
           daha önce üç ayrı sekmeye dağılmıştı (Lisans ve kota, Abonelikler,
           Üyeler) ve bir kiracı hakkında karar vermek için üçünü de gezmek
           gerekiyordu.
         */}
+        {/*
+          Hızlı işlemler kiracının üstünde: kurucunun en sık yaptığı üç şey.
+          Hepsi mevcut ekranlara götürüyor — konsolda ikinci bir yazma yolu
+          açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar.
+        */}
+        <div className="kiraci-islemler">
+          <a className="panel-secondary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Panele git</a>
+          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
+          <Link className="panel-secondary" href="/panel/platform/payments">
+            Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}
+          </Link>
+        </div>
+
         <section className="kiraci-ozet" aria-label="Kiracı özeti">
           <div>
             <small>Lisans</small>
@@ -378,19 +412,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             </b>
           </div>
         </section>
-
-        {/*
-          Hızlı işlemler kiracının üstünde: kurucunun en sık yaptığı üç şey.
-          Hepsi mevcut ekranlara götürüyor — konsolda ikinci bir yazma yolu
-          açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar.
-        */}
-        <div className="kiraci-islemler">
-          <a className="panel-secondary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Panele git</a>
-          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
-          <Link className="panel-secondary" href="/panel/platform/payments">
-            Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}
-          </Link>
-        </div>
 
         <div className="kiraci-kartlar">
           <section className="panel-card" aria-label="Ödeme">
@@ -447,23 +468,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           <KiraciUyeleri organizationId={targetId} kurumAdi={selected.display_name || selected.name} uyeler={kiraciUyeleri} />
         </StgSection>
 
-        <StgSection
-          id="kurum" wide icon="building" tone={stateTones[selected.provisioning_state] ?? "neutral"}
-          kicker={selected.slug} title={selected.display_name || selected.name}
-          description={selected.display_name ? selected.name : `${selected.sector} sektörü`}
-          aside={<span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{stateLabels[selected.provisioning_state] ?? selected.provisioning_state}</span>}
-        >
-          <dl className="stg-list plt-facts">
-            {/* Paket, lisans ve kullanıcı sayısı özet şeridinde; burada
-                tekrarlamıyoruz. Ekran aynı şeyi üç kez söylüyordu. */}
-            <StgValueRow label="Sektör" value={selected.sector} />
-            <StgValueRow label="Modüller" value={`${enabledCount} / ${moduleRows.length} etkin`} />
-            <StgValueRow label="Sahip" value={invitation?.email ?? null} />
-          </dl>
-        </StgSection>
 
+        {/*
+          Kurulum tamamlandıysa bölüm çizilmiyor: yerleşmiş bir kiracıda
+          dokuz maddelik "tamam" listesi her açılışta yer kaplıyor ve
+          okunacak bir şey söylemiyordu. Tek satırlık onay yeterli.
+        */}
+        {progress === 100 ? (
+          <p className="kiraci-not"><StgIcon name="check" size={15} />Kurulum tamamlandı · {doneCount}/{required.length} adım</p>
+        ) : (
         <StgSection
-          id="kurulum" wide icon="check" tone={progress === 100 ? "success" : "warning"}
+          id="kurulum" wide icon="check" tone="warning"
           kicker="KURULUM DURUMU" title={progress === 100 ? "Kurum kullanıma hazır" : "Müşteriyi panele alın"}
           description="Kurumun kullanıma hazır olması için gereken adımlar. Sahip katılınca kalan adımları kendi panelinden tamamlar."
           aside={<span className="plt-progress" aria-label={`Kurulum ilerlemesi yüzde ${progress}`}><i style={{ width: `${progress}%` }} /><b>{doneCount}/{required.length}</b></span>}
@@ -486,6 +501,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             </div>
           ) : null}
         </StgSection>
+        )}
 
         <div className="plt-two">
           <StgSection id="ayarlar" icon="palette" tone="info" kicker="KURUM ÇEKİRDEĞİ" title="Kurum ayarları" description="Değişiklikler seçilen kurumun paneline uygulanır.">
@@ -522,7 +538,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           </StgSection>
         </div>
 
-        <StgSection id="gecmis" wide icon="chart" tone="neutral" kicker="KURULUM GEÇMİŞİ" title="Son işlemler" aside={<span className="status-pill">{auditRows.length} kayıt</span>}>
+        {/*
+          Kurulum kayıtları yalnızca işe yaradığında: kurulum sürüyorsa ya
+          da bir adım hata verdiyse. Yerleşmiş kiracıda sekiz satırlık
+          teknik dökümün karşılığı yok; günlük iş için "Son etkinlik"
+          kartı var.
+        */}
+        {progress < 100 || auditRows.some((entry) => entry.result === "failed" || entry.state === "failed") ? (
+        <StgSection id="gecmis" wide icon="chart" tone="neutral" kicker="KURULUM KAYITLARI" title="Son işlemler" aside={<span className="status-pill">{auditRows.length} kayıt</span>}>
           {auditRows.length ? (
             <ol className="plt-audit">
               {auditRows.map((entry) => (
@@ -537,6 +560,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             </ol>
           ) : <div className="stg-empty"><StgIcon name="chart" size={22} /><p>Bu kurum için henüz kurulum kaydı yok.</p></div>}
         </StgSection>
+        ) : null}
       </div>
     </div>
   </div>;

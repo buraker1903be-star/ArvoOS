@@ -353,3 +353,57 @@
 
 /* Satırın sağ ucu: durum rozeti ve kiracı bağlantısı yan yana. */
 .plt-row-uc { display: inline-flex; align-items: center; gap: 10px; flex: none }
+
+/* Kiracı kimliği dosyanın en üstünde. Ad sayfanın ortasında duruyordu:
+   kimin dosyasına bakıldığını görmek için aşağı kaydırmak gerekiyordu. */
+.kiraci-baslik {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.kiraci-baslik > div { flex: 1; min-width: 0 }
+.kiraci-baslik h2 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.015em }
+.kiraci-baslik small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kiraci-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--surface-2);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.kiraci-avatar[data-tone="success"] { background: color-mix(in srgb, var(--success, #1d9e75) 14%, transparent); color: var(--success, #1d9e75) }
+.kiraci-avatar[data-tone="warning"] { background: color-mix(in srgb, var(--warning, #ba7517) 16%, transparent); color: var(--warning, #ba7517) }
+.kiraci-avatar[data-tone="danger"] { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger) }
+
+/* Kurulum tamamlandığında bölüm yerine tek satır: yerleşmiş kiracıda
+   dokuz maddelik "tamam" listesi okunacak bir şey söylemiyordu. */
+.kiraci-not {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12.5px;
+}
