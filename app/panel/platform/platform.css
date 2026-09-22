@@ -796,12 +796,26 @@
 .plt-urun-duzenle { color: var(--accent); font-size: 12px; font-weight: 700 }
 
 /* ---------- Düzenleme penceresi ---------- */
-.plt-pencere {
+/*
+  Seçici bilerek `dialog.plt-pencere`: panel-mobile.css içinde dar ekranda
+  BÜTÜN diyaloglara `margin: 8px` veren bir kural var ve o kural pencereyi
+  sol üst köşeye yapıştırıyordu. Ortalama, tarayıcının `margin: auto`
+  varsayılanından geliyor; bir yerde margin ezilince ortalama da gidiyor.
+  Konum ve margin burada açıkça yazılıyor ki hangi dosyanın sonra
+  yüklendiğine bağlı kalmasın.
+*/
+dialog.plt-pencere {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 64px);
   padding: 0; border: 1px solid var(--line); border-radius: 20px;
   background: var(--surface); color: var(--ink);
   box-shadow: 0 24px 60px rgb(0 0 0 / 22%);
+}
+@media (max-width: 900px) {
+  dialog.plt-pencere { width: calc(100vw - 24px); max-height: calc(100dvh - 32px) }
 }
 .plt-pencere::backdrop { background: rgb(9 20 34 / 45%) }
 .plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; max-height: calc(100vh - 64px); overflow: auto }
