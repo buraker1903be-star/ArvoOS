@@ -8,6 +8,8 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { PlatformTabs } from "./platform-tabs";
+import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
+import { kotaDurumu } from "@/lib/kota-durumu";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
@@ -38,6 +40,8 @@ const stateTones: Record<string, StgTone> = {
   creating: "info", inviting_owner: "info", waiting_owner: "warning", active: "success", suspended: "danger", archived: "neutral", failed: "danger",
 };
 const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
+// Tutarlar kuruş cinsinden tamsayı (AGENTS.md "Değişmezler").
+const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
 const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
@@ -71,6 +75,34 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const invitation = latestInvitation.get(targetId) ?? null;
 
   const admin = createAdminClient();
+
+  /*
+    Kiracı listesindeki kota rozeti için tüm kurumların ölçümü. Kurum başına
+    ayrı sayım sorgusu, kurum sayısı kadar gidiş dönüş demekti; satırlar
+    zaten az, bellekte gruplanıyor.
+  */
+  const [{ data: tumUyelikler }, { data: tumLisanslar }] = await Promise.all([
+    supabase.from("organization_memberships").select("organization_id,user_id,role,is_active"),
+    supabase.from("organization_licenses").select("organization_id,user_limit,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status"),
+  ]);
+  const aktifUyeSayisi = new Map<string, number>();
+  for (const satir of (tumUyelikler ?? []) as { organization_id: string; is_active: boolean }[]) {
+    if (satir.is_active) aktifUyeSayisi.set(satir.organization_id, (aktifUyeSayisi.get(satir.organization_id) ?? 0) + 1);
+  }
+  const lisansById = new Map(
+    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string }[])
+      .map((row) => [row.organization_id, row]),
+  );
+  const kotaById = new Map(
+    [...lisansById.entries()].map(([id, lisans]) => [id, kotaDurumu({
+      organizationId: id,
+      kullaniciSayisi: aktifUyeSayisi.get(id) ?? 0,
+      kullaniciLimiti: lisans.user_limit,
+      aiKullanilan: lisans.ai_credits_used,
+      aiLimiti: lisans.ai_credit_limit,
+    })]),
+  );
+
   const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, licenseResult, onboardingResult, opportunityResult] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
@@ -82,6 +114,30 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     // Talepler de yalnızca kurum üyelerine açık; sayı sunucu anahtarıyla okunur.
     admin ? admin.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", targetId) : Promise.resolve({ count: null, error: null }),
   ]);
+  /*
+    Seçili kiracının üyeleri. Ad profiles'tan okunuyor: e-posta auth.users'ta
+    ve yönetim API'siyle sayfa sayfa çekiliyor — tek kurum için o maliyete
+    girmeye değmez, ad zaten ayırt etmeye yetiyor.
+  */
+  const kiraciUyelikleri = ((tumUyelikler ?? []) as { organization_id: string; user_id: string; role: string; is_active: boolean }[])
+    .filter((satir) => satir.organization_id === targetId);
+  const { data: profilData } = kiraciUyelikleri.length
+    ? await supabase.from("profiles").select("id,full_name").in("id", kiraciUyelikleri.map((satir) => satir.user_id))
+    : { data: [] };
+  const adById = new Map(((profilData ?? []) as { id: string; full_name: string | null }[]).map((row) => [row.id, row.full_name]));
+  const kiraciUyeleri: KiraciUyesi[] = kiraciUyelikleri
+    .map((satir) => ({
+      userId: satir.user_id,
+      name: adById.get(satir.user_id) ?? null,
+      role: satir.role,
+      active: Boolean(satir.is_active),
+    }))
+    // Sahipler üstte, pasifler altta: bakılması gereken sıra bu.
+    .sort((a, b) => Number(b.active) - Number(a.active) || Number(b.role === "owner") - Number(a.role === "owner"));
+
+  const seciliKota = kotaById.get(targetId) ?? null;
+  const seciliLisans = lisansById.get(targetId) ?? null;
+
   const auditRows = (auditData ?? []) as AuditRow[];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
     const relation = Array.isArray(row.arvo_modules) ? row.arvo_modules[0] : row.arvo_modules;
@@ -243,7 +299,16 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                     <b>{label}</b>
                     <small>{item.slug} · {item.kind === "internal" ? "Kendi markamız" : planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
                   </span>
-                  <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>
+                  {/* Rozet önce KOTAYI söylüyor: kurucu listeye bakınca hangi
+                      kiracıya bakması gerektiğini görmeli. Kota sorunu yoksa
+                      kurulum durumu gösteriliyor. */}
+                  {(() => {
+                    const kota = kotaById.get(item.id);
+                    if (kota && kota.durum !== "normal") {
+                      return <span className="status-pill" data-tone={kota.durum === "asildi" ? "danger" : "warning"}>{kota.kullanici.kullanilan}/{kota.kullanici.limit}</span>;
+                    }
+                    return <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>;
+                  })()}
                 </Link>
               </li>
             );
@@ -252,6 +317,44 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       </aside>
 
       <div className="plt-detail">
+        {/*
+          Kiracı özeti en üstte: lisans, kota, ücret ve dönem sonu. Bunlar
+          daha önce üç ayrı sekmeye dağılmıştı (Lisans ve kota, Abonelikler,
+          Üyeler) ve bir kiracı hakkında karar vermek için üçünü de gezmek
+          gerekiyordu.
+        */}
+        <section className="kiraci-ozet" aria-label="Kiracı özeti">
+          <div>
+            <small>Lisans</small>
+            <b data-tone={seciliLisans?.license_status === "active" ? "success" : seciliLisans?.license_status === "trialing" ? "info" : "warning"}>
+              {seciliLisans ? (licenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"}
+            </b>
+          </div>
+          <div>
+            <small>Kullanıcı</small>
+            <b data-tone={seciliKota?.durum === "asildi" ? "danger" : seciliKota?.durum === "yaklasti" ? "warning" : undefined}>
+              {seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : "—"}
+            </b>
+          </div>
+          <div>
+            <small>Aylık</small>
+            <b>{seciliLisans?.monthly_fee ? formatTry(Number(seciliLisans.monthly_fee)) : "Girilmedi"}</b>
+          </div>
+          <div>
+            <small>Dönem sonu</small>
+            <b>{date(seciliLisans?.current_period_end ?? null)}</b>
+          </div>
+        </section>
+
+        <StgSection
+          id="uyeler" wide icon="users" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}
+          kicker="ERİŞİM" title="Üyeler"
+          description="Erişimi kapatılan kişi kurumun paneline giremez; kayıt kurumun etkinlik geçmişine düşer."
+          aside={<Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Limiti düzenle</Link>}
+        >
+          <KiraciUyeleri organizationId={targetId} kurumAdi={selected.display_name || selected.name} uyeler={kiraciUyeleri} />
+        </StgSection>
+
         <StgSection
           id="kurum" wide icon="building" tone={stateTones[selected.provisioning_state] ?? "neutral"}
           kicker={selected.slug} title={selected.display_name || selected.name}
