@@ -31,7 +31,9 @@ export function hostFromHeaders(headers: { get(name: string): string | null }): 
 */
 export const MANAGEMENT_HOST = "yonetim.arvo-os.com";
 const MANAGEMENT_HOST_IDN = "xn--ynetim-wxa.arvo-os.com";
-/** Yönetim alan adında yalnızca bu ön ek servis ediliyor. */
+/** Konsolun ana sayfası; kök yol buraya iner. */
+export const MANAGEMENT_HOME = "/panel";
+/** Yönetim alan adında ana sayfayla birlikte yalnızca bu ön ek servis ediliyor. */
 export const MANAGEMENT_PATH = "/panel/platform";
 
 export function isManagementHost(host: string): boolean {
@@ -44,9 +46,9 @@ export function isManagementHost(host: string): boolean {
  *
  * Üç kural:
  *  - Punycode adres okunur ASCII adrese taşınır.
- *  - Kök yol doğrudan platform yönetimine iner; burada başka bir giriş
- *    ekranı yok.
- *  - Platform DIŞINDAKİ panel yolları uygulama alan adına geri gönderilir.
+ *  - Kök yol konsolun ana sayfasına iner; burada başka bir giriş ekranı yok.
+ *  - Ana sayfa ve platform yolları olduğu yerde servis edilir.
+ *  - Geri kalan panel yolları uygulama alan adına geri gönderilir.
  *    Kurucunun müşteri kurumunda yaptığı iş yönetim alan adında
  *    görünmemeli; karışmasın diye ayırdık.
  */
@@ -61,7 +63,14 @@ export function managementRedirectTarget(input: {
   const search = input.search ?? "";
 
   if (host === MANAGEMENT_HOST_IDN) return `https://${MANAGEMENT_HOST}${input.pathname}${search}`;
-  if (input.pathname === "/" || input.pathname === "/panel") return `https://${MANAGEMENT_HOST}${MANAGEMENT_PATH}`;
+  if (input.pathname === "/") return `https://${MANAGEMENT_HOST}${MANAGEMENT_HOME}`;
+  /*
+    Ana sayfa burada servis ediliyor. Eskiden /panel de doğrudan kiracı
+    listesine yönlendiriliyordu; konsola ana sayfa eklenince o kural
+    sayfayı erişilemez kıldı — menüdeki "Ana Sayfa" ve marka bağlantısı
+    tıklanınca kiracı listesi açılıyordu.
+  */
+  if (input.pathname === MANAGEMENT_HOME || input.pathname === `${MANAGEMENT_HOME}/`) return null;
   if (input.pathname.startsWith("/panel") && !input.pathname.startsWith(MANAGEMENT_PATH)) {
     return `https://${input.appHost}${input.pathname}${search}`;
   }
