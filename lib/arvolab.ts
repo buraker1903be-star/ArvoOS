@@ -326,7 +326,13 @@ export async function arvolabKrediYukle(
   return "loaded";
 }
 
-export type ArvolabKrediDurumu = { aylikLimit: number; aylikKalan: number; ekBakiye: number };
+/**
+ * aylikLimit/aylikKalan null: ArvoOS bu kuruma henüz hak BİLDİRMEDİ.
+ * 0 ise bildirildi ve hak yok. İkisini aynı göstermek, yansıtması
+ * gecikmiş kuruma "hiç AI hakkınız yok" demek olurdu — AkademikMerkez'de
+ * tam bu oldu (ArvoLab migration 20260924100017).
+ */
+export type ArvolabKrediDurumu = { aylikLimit: number | null; aylikKalan: number | null; ekBakiye: number };
 
 /**
  * Kurumun ArvoLab'daki kredi bakiyesi. Kiracının Ödeme sayfası bunu
@@ -350,10 +356,10 @@ export async function arvolabKrediDurumu(organizationId: string): Promise<Arvola
     if (error) console.error("[arvolab] kredi bakiyesi okunamadı", organizationId, error.message);
     return null;
   }
-  const satir = data as { aylik_limit: number; aylik_kalan: number; ek_bakiye: number };
+  const satir = data as { aylik_limit: number | null; aylik_kalan: number | null; ek_bakiye: number };
   return {
-    aylikLimit: Number(satir.aylik_limit ?? 0),
-    aylikKalan: Number(satir.aylik_kalan ?? 0),
+    aylikLimit: satir.aylik_limit === null ? null : Number(satir.aylik_limit),
+    aylikKalan: satir.aylik_kalan === null ? null : Number(satir.aylik_kalan),
     ekBakiye: Number(satir.ek_bakiye ?? 0),
   };
 }

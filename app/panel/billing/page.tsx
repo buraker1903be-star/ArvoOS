@@ -116,10 +116,31 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           köprüsü kopmuş kurumu aynı göstermek, ikincisine ihtiyacı yokken
           kredi aldırırdı.
         */}
-        <div><dt>Bu ayki hak</dt><dd>{kredi ? `${sayi(kredi.aylikKalan)} / ${sayi(kredi.aylikLimit)} kredi` : "okunamadı"}</dd></div>
+        {/*
+          Üç ayrı bilinmezlik, üç ayrı metin:
+            kredi === null        → köprü okunamadı
+            aylikLimit === null   → hak henüz bildirilmedi (0 DEĞİL)
+            sayı                  → gerçek değer
+          İkincisini "0" yazmak, yansıtması gecikmiş kuruma "hiç AI
+          hakkınız yok" demekti; AkademikMerkez'de tam bu oldu.
+        */}
+        <div><dt>Bu ayki hak</dt><dd>{
+          !kredi ? "okunamadı"
+            : kredi.aylikLimit === null || kredi.aylikKalan === null ? "henüz bildirilmedi"
+            : `${sayi(kredi.aylikKalan)} / ${sayi(kredi.aylikLimit)} kredi`
+        }</dd></div>
         <div><dt>Satın alınan bakiye</dt><dd>{kredi ? `${sayi(kredi.ekBakiye)} kredi` : "okunamadı"}</dd></div>
-        <div><dt>Kullanılabilir</dt><dd>{kredi ? `${sayi(kredi.aylikKalan + kredi.ekBakiye)} kredi` : "okunamadı"}</dd></div>
+        <div><dt>Kullanılabilir</dt><dd>{
+          !kredi ? "okunamadı"
+            : kredi.aylikKalan === null ? `${sayi(kredi.ekBakiye)} kredi + bildirilmemiş aylık hak`
+            : `${sayi(kredi.aylikKalan + kredi.ekBakiye)} kredi`
+        }</dd></div>
       </dl>
+
+      {kredi && kredi.aylikLimit === null ? <div className="platform-note"><span>i</span><p>
+        Aylık AI hakkınız ArvoLab&apos;a henüz bildirilmemiş. Satın alacağınız kredi yine de
+        yüklenir ve kullanılır; aylık hakkınızın görünmesi için ArvoOS ile iletişime geçin.
+      </p></div> : null}
 
       <p className="panel-muted">
         Aylık hak her ayın başında yenilenir ve kullanılmayan kısmı devretmez.
