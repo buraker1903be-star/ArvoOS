@@ -439,13 +439,30 @@
    sayısı arttıkça sayfa uzayacaktı. Sığdığı kadarı yan yana diziliyor. */
 .plan-izgara {
   display: grid;
-  /* Dar ekranda tek sütun; sütun sayısı açıkça yazılıyor çünkü auto-fit
-     geniş ekranda dörde beşe çıkıp kartları gereksiz inceltiyordu. */
+  /* Sütun sayısı açıkça yazılıyor: auto-fit, ekran genişledikçe kartları
+     kendiliğinden inceltiyor ve kaç sütun göreceğimiz tarayıcının
+     tahminine kalıyordu.
+
+     Telefonda da iki sütun (360px'ten itibaren). Çok dar ekranda kart
+     ~170px'e düşüyor, o yüzden bu genişlikte kart dolgusu ve yazı ölçüsü
+     de kısılıyor — yoksa açılır listenin metni kutudan taşıyor. */
   grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   margin-bottom: 14px;
 }
-@media (min-width: 760px) { .plan-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
-@media (min-width: 1180px) { .plan-izgara { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+@media (min-width: 360px) { .plan-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px } }
+@media (min-width: 1180px) { .plan-izgara { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
+
+/* Dar sütunda kart içi boşluk kısılıyor; 22px dolgu, 170px'lik bir kartta
+   yazıya yer bırakmıyordu. */
+@media (max-width: 900px) { .plan-izgara .stg-card { padding: 16px } }
+@media (max-width: 560px) {
+  .plan-izgara .stg-card { padding: 12px; gap: 12px }
+  .plan-izgara .stg-card h2 { font-size: 15px }
+  /* Kart daraldıkça alan etiketleri ve girdiler de küçülüyor; taşan bir
+     açılır liste, okunmayan bir karttan beterdir. */
+  .plan-izgara .panel-form input,
+  .plan-izgara .panel-form select { padding: 8px 9px; font-size: 12.5px }
+}
 /* Dar kartta iki alanı yan yana sıkıştırmak okunmaz kılıyordu. */
 .plan-izgara .panel-form { grid-template-columns: minmax(0, 1fr) }
