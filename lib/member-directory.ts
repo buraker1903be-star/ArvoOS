@@ -89,7 +89,7 @@ export async function getMemberDirectory(): Promise<Directory> {
   const admin = createAdminClient();
   if (!admin) return { rows: [], arvolabReachable: false, kullanicilarTam: false };
 
-  const [{ data: organizations }, { data: memberships }, { data: licenses }, { data: productLicenses }, { data: modules }, { data: subscribers }, users] =
+  const [{ data: organizations }, { data: memberships }, { data: licenses }, { data: productLicenses }, { data: modules }, { data: subscribers }, users, { data: profiles }] =
     await Promise.all([
       admin.from("organizations").select("id,name,display_name,slug"),
       /*
@@ -103,9 +103,20 @@ export async function getMemberDirectory(): Promise<Directory> {
       admin.from("organization_modules").select("organization_id,module_code,is_enabled").eq("module_code", "commerce"),
       admin.from("product_subscribers").select("product,external_user_id,email,full_name,status,trial_ends_at,current_period_end"),
       emailMap(admin),
+      /*
+        Adın ASIL kaynağı profiles: kişi adını panelden buraya yazıyor ve
+        konsolun geri kalanı (ana sayfa, kiracı dosyası, CRM geçmişi) hep
+        buradan okuyor. Bu liste yalnızca auth user_metadata'ya bakıyordu;
+        metadata daveti gönderilirken doldurulduğu için, hesabı başka bir
+        yoldan açılmış kişiler "—" görünüyordu — kurucunun kendisi dahil.
+      */
+      admin.from("profiles").select("id,full_name"),
     ]);
 
   const userInfo = users.map;
+  const profilAdi = new Map(((profiles ?? []) as { id: string; full_name: string | null }[])
+    .filter((satir) => satir.full_name?.trim())
+    .map((satir) => [satir.id, satir.full_name!.trim()]));
   let kullanicilarTam = users.tam;
 
   const orgName = new Map((organizations ?? []).map((row) => [row.id, row.display_name || row.name]));
@@ -125,7 +136,7 @@ export async function getMemberDirectory(): Promise<Directory> {
     rows.push({
       product: "arvoos",
       userId: membership.user_id,
-      name: user?.name ?? null,
+      name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
       email: user?.email ?? null,
       scope,
       role: membership.role,
@@ -143,7 +154,7 @@ export async function getMemberDirectory(): Promise<Directory> {
       rows.push({
         product: "arc",
         userId: membership.user_id,
-        name: user?.name ?? null,
+        name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
         email: user?.email ?? null,
         scope,
         role: membership.role,
@@ -164,7 +175,7 @@ export async function getMemberDirectory(): Promise<Directory> {
       rows.push({
         product: "randevu",
         userId: membership.user_id,
-        name: user?.name ?? null,
+        name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
         email: user?.email ?? null,
         scope,
         role: membership.role,

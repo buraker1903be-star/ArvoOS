@@ -878,3 +878,79 @@ dialog.plt-pencere {
   .plt-abone-satir [data-etiket]::before { content: attr(data-etiket) ": "; color: var(--muted); font-size: 12px }
   .plt-abone-uc { display: none }
 }
+
+/* ============================================================
+   TÜM ÜYELER
+
+   Satır başına tam boy bir "Erişimi kapat" düğmesi vardı: on iki satır
+   on iki ağır düğme, üstelik düğmenin yazısı durumu değil yapılacak işi
+   söylüyordu. Modül matrisindeki anahtarın aynısı burada da.
+   ============================================================ */
+.plt-uyeler-karti { padding: 16px 0 0; overflow: hidden }
+.plt-uye-arac { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 18px 14px }
+.plt-uye-arac select {
+  min-height: 38px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-size: 13px;
+}
+.plt-uye-sayi { margin-inline-start: auto; color: var(--muted); font-size: 12.5px; font-weight: 600 }
+
+.plt-uye-baslik,
+.plt-uye-satir {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 2.1fr) minmax(80px, .8fr) minmax(120px, 1.2fr)
+    minmax(90px, 1fr) minmax(100px, 1fr) 76px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+}
+.plt-uye-baslik {
+  border-block: 1px solid var(--line);
+  color: var(--ink); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; opacity: .7;
+}
+.plt-uye-satir { border-bottom: 1px solid var(--line-soft); font-size: 13px }
+.plt-uye-satir:last-child { border-bottom: 0 }
+.plt-uye-satir:hover { background: color-mix(in srgb, var(--accent-100) 30%, var(--surface)) }
+/* Aynı kişinin devam satırı: üstteki çizgi silikleşiyor, satırlar bir
+   grup gibi okunuyor. */
+.plt-uye-satir[data-devam="true"] { border-top: 0; padding-top: 4px; margin-top: -4px }
+
+.plt-uye-kisi { display: flex; align-items: center; gap: 10px; min-width: 0 }
+.plt-uye-avatar { flex: none; width: 28px; height: 28px; border-radius: 9px; font-size: 11px }
+/* Devam satırında avatarın yerini ince bir çizgi alıyor: satırın kime ait
+   olduğu hizadan belli, e-posta beş kez tekrar edilmiyor. */
+.plt-uye-devam { flex: none; width: 28px; height: 18px; border-inline-start: 2px solid var(--line); margin-inline-start: 13px }
+.plt-uye-ad { min-width: 0 }
+.plt-uye-ad b { display: block; font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-uye-ad small { display: block; color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-uye-rolu { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-uye-erisim { display: flex; justify-content: flex-end }
+
+/* Ürün etiketi: dört ürün dört renk, hangi ürünün satırı olduğu okunmadan
+   belli olsun. */
+.plt-urun-etiketi {
+  display: inline-flex; padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--muted);
+  font-size: 11.5px; font-weight: 700; white-space: nowrap;
+}
+/* Renkler yalnızca tanımlı anlamsal token'lardan; var(--gold, …) gibi
+   olmayan bir ada yedekle başvurmak, sonradan gelen için o token varmış
+   gibi görünüyor. */
+.plt-urun-etiketi[data-urun="arvoos"] { background: var(--info-soft); color: var(--info) }
+.plt-urun-etiketi[data-urun="arvolab"] { background: var(--success-soft); color: var(--success) }
+.plt-urun-etiketi[data-urun="arc"] { background: var(--warning-soft); color: var(--warning) }
+.plt-urun-etiketi[data-urun="randevu"] { background: var(--accent-100); color: var(--accent-500) }
+
+@media (max-width: 900px) {
+  .plt-uye-baslik { display: none }
+  .plt-uye-satir {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    row-gap: 6px; padding: 14px 16px;
+  }
+  .plt-uye-satir[data-devam="true"] { padding-top: 14px; margin-top: 0 }
+  .plt-uye-kisi { grid-column: 1 / -1 }
+  .plt-uye-satir [data-etiket]::before { content: attr(data-etiket) ": "; color: var(--muted); font-size: 12px }
+  .plt-uye-erisim { justify-content: flex-start }
+}
