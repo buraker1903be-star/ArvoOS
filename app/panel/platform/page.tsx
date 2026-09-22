@@ -9,7 +9,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon, StgSection, StgWidget, type StgTone } from "../settings/settings-ui";
+import { StgIcon, StgSection, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
@@ -275,9 +275,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
       </div>
-    ) : (
-      <p className="plt-substatus">ARC köprüsü bağlı · ARC veritabanında {arcBridge.organizations} kurum.</p>
-    )}
+    ) : null}
 
     {!randevuBridge.ok ? (
       <div className="plt-banner" data-tone={randevuBridge.error ? "danger" : undefined} role="status">
@@ -291,9 +289,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
       </div>
-    ) : (
-      <p className="plt-substatus">Randevu köprüsü bağlı · Randevu veritabanında {randevuBridge.organizations} kurum.</p>
-    )}
+    ) : null}
 
     {params.provisioned === "1" ? (
       <div className="plt-banner" role="status">
@@ -305,11 +301,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       </div>
     ) : null}
 
-    <section className="stg-widgets" aria-label="Platform özeti">
-      <StgWidget tone="gold" icon="building" label="Müşteri kurum" value={customers.length} note={organizations.length > customers.length ? `${organizations.length - customers.length} kendi markamız ayrı tutuluyor` : "Platformdaki müşteriler"} />
-      <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi katılmış kurumlar" />
-      <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekleyen" value={pendingCount} note={pendingCount ? "Sahibin katılması bekleniyor" : "Bekleyen kurulum yok"} />
-      <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat" value={issueCount} note={issueCount ? "Hata veya askıdaki kurum" : "Sorunlu kurum yok"} />
+    {/*
+      Platform geneli sayılar tek şeritte. Dört büyük kart, kiracı seçilmiş
+      bir ekranda her açılışta dosyayı aşağı itiyordu; kurucu buraya bir kez
+      bakıyor, kiracıya defalarca. Sayılar aynı, yer onda biri.
+    */}
+    <section className="platform-serit" aria-label="Platform özeti">
+      <span><b>{customers.length}</b> müşteri kurum</span>
+      <span><b>{activeCount}</b> kullanımda</span>
+      {pendingCount ? <span data-tone="warning"><b>{pendingCount}</b> kurulum bekliyor</span> : null}
+      {issueCount ? <span data-tone="danger"><b>{issueCount}</b> dikkat</span> : null}
+      {paymentsWaiting ? <Link href="/panel/platform/payments" data-tone="warning"><b>{paymentsWaiting}</b> ödeme onayı</Link> : null}
     </section>
 
 

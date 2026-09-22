@@ -407,3 +407,29 @@
   color: var(--muted);
   font-size: 12.5px;
 }
+
+/* Platform geneli sayılar tek şeritte. Dört büyük kart, kiracı seçilmiş
+   bir ekranda dosyayı her açılışta aşağı itiyordu; kurucu buraya bir kez
+   bakıyor, kiracıya defalarca.
+
+   Sorunsuz sayılar (müşteri, kullanımda) sessiz; bekleyen iş varsa
+   renkleniyor ve tıklanabiliyor. Sıfır olan hiç çizilmiyor: "0 dikkat"
+   yazmak, bakılacak bir şey varmış gibi durmak demek. */
+.platform-serit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin-bottom: 14px;
+  padding: 11px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.platform-serit b { color: var(--ink); font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums }
+.platform-serit > * { display: inline-flex; align-items: baseline; gap: 5px; text-decoration: none; color: inherit }
+.platform-serit [data-tone="warning"] b { color: var(--warning, #ba7517) }
+.platform-serit [data-tone="danger"] b { color: var(--danger) }
+.platform-serit a:hover { text-decoration: underline }
