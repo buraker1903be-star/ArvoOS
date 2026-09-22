@@ -66,3 +66,49 @@
 .kiraci-uyeler li b { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .kiraci-uyeler li small { color: var(--muted); font-size: 12px }
 .kiraci-uyeler button { flex: none; padding: 6px 12px; font-size: 12.5px }
+
+/* Hızlı işlemler: kurucunun en sık yaptığı üç şey, kiracı dosyasının
+   başında. Hepsi mevcut ekranlara götürüyor; konsolda ikinci bir yazma
+   yolu açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar. */
+.kiraci-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px }
+.kiraci-islemler > * { font-size: 12.5px }
+
+/* Kiracı dosyasının kartları: ödeme, kanallar, son etkinlik.
+   Üç bilgi daha önce üç ayrı sekmedeydi. */
+.kiraci-kartlar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.kiraci-kartlar .panel-card { padding: 16px 18px }
+.kiraci-kartlar h3 {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.kiraci-kartlar dl { display: grid; gap: 7px; margin: 0 }
+.kiraci-kartlar dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px }
+.kiraci-kartlar dt { color: var(--muted); font-size: 12.5px }
+.kiraci-kartlar dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kiraci-kartlar dd[data-tone="success"] { color: var(--success, #1d9e75) }
+.kiraci-kartlar dd[data-tone="warning"] { color: var(--warning, #ba7517) }
+.kiraci-kartlar dd[data-tone="danger"] { color: var(--danger); white-space: normal }
+
+/* Son etkinlik: ne olduğu üstte, neye ve ne zaman altta. */
+.kiraci-etkinlik { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none }
+.kiraci-etkinlik li { display: grid; gap: 1px }
+.kiraci-etkinlik b { font-size: 12.5px; font-weight: 600 }
+.kiraci-etkinlik small { color: var(--muted); font-size: 11.5px }

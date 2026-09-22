@@ -42,6 +42,16 @@ const stateTones: Record<string, StgTone> = {
 const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
 // Tutarlar kuruş cinsinden tamsayı (AGENTS.md "Değişmezler").
 const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
+/* Etkinlik kaydındaki ham kodlar ("status", "crm_proposal") kimseye bir
+   şey anlatmıyor; okunur karşılıkları burada. */
+const ETKINLIK_ADI: Record<string, string> = {
+  create: "Oluşturuldu", update: "Güncellendi", status: "Durum değişti",
+  send: "Müşteriye gönderildi", delete: "Silindi", sign: "İmzalandı",
+};
+const VARLIK_ADI: Record<string, string> = {
+  crm_opportunity: "Talep", crm_proposal: "Teklif", crm_contract: "Sözleşme",
+  organization_membership: "Üye erişimi",
+};
 const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
@@ -137,6 +147,31 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
   const seciliKota = kotaById.get(targetId) ?? null;
   const seciliLisans = lisansById.get(targetId) ?? null;
+
+  /*
+    Kiracı dosyasının kalan parçaları: ödeme, kanallar, son etkinlik.
+    Hepsi seçili kuruma daraltılmış; dördü tek turda okunuyor.
+
+    Ödeme ve etkinlik kayıtları yalnızca kurum üyelerine açık (RLS);
+    kurucu bunları sunucu anahtarıyla okuyor — konsolun işi zaten başka
+    kurumların verisine bakmak.
+  */
+  const [{ data: odemeler }, { data: whatsappHesabi }, { data: etkinlikler }] = await Promise.all([
+    admin
+      ? admin.from("organization_payment_requests").select("id,amount,currency,status,created_at,reviewed_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(20)
+      : Promise.resolve({ data: [] }),
+    admin
+      ? admin.from("whatsapp_accounts").select("status,display_phone,verified_name,last_error").eq("organization_id", targetId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin
+      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const odemeSatirlari = (odemeler ?? []) as { amount: number; status: string; created_at: string; reviewed_at: string | null }[];
+  const bekleyenOdeme = odemeSatirlari.filter((satir) => satir.status === "pending");
+  const sonTahsilat = odemeSatirlari.find((satir) => satir.status === "approved") ?? null;
+  const wa = whatsappHesabi as { status: string; display_phone: string | null; verified_name: string | null; last_error: string | null } | null;
+  const etkinlikSatirlari = (etkinlikler ?? []) as { action: string; entity_type: string; created_at: string }[];
 
   const auditRows = (auditData ?? []) as AuditRow[];
   const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
@@ -345,6 +380,63 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             <b>{date(seciliLisans?.current_period_end ?? null)}</b>
           </div>
         </section>
+
+        {/*
+          Hızlı işlemler kiracının üstünde: kurucunun en sık yaptığı üç şey.
+          Hepsi mevcut ekranlara götürüyor — konsolda ikinci bir yazma yolu
+          açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar.
+        */}
+        <div className="kiraci-islemler">
+          <a className="panel-secondary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Panele git</a>
+          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
+          <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
+        </div>
+
+        <div className="kiraci-kartlar">
+          <section className="panel-card" aria-label="Ödeme">
+            <h3>Ödeme</h3>
+            <dl>
+              <div><dt>Bekleyen dekont</dt><dd data-tone={bekleyenOdeme.length ? "warning" : undefined}>{bekleyenOdeme.length || "yok"}</dd></div>
+              <div><dt>Son tahsilat</dt><dd>{sonTahsilat ? `${formatTry(Number(sonTahsilat.amount))} · ${date(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : "—"}</dd></div>
+              <div><dt>Toplam bildirim</dt><dd>{odemeSatirlari.length}</dd></div>
+            </dl>
+          </section>
+
+          <section className="panel-card" aria-label="Kanallar">
+            <h3>Kanallar</h3>
+            <dl>
+              <div>
+                <dt>WhatsApp</dt>
+                <dd data-tone={wa ? (wa.status === "connected" ? "success" : "warning") : undefined}>
+                  {wa ? (wa.status === "connected" ? (wa.display_phone ?? "bağlı") : "doğrulanamadı") : "bağlı değil"}
+                </dd>
+              </div>
+              <div>
+                <dt>Alan adı</dt>
+                <dd data-tone={selected.custom_domain_status === "verified" ? "success" : selected.custom_domain ? "warning" : undefined}>
+                  {selected.custom_domain ? (selected.custom_domain_status === "verified" ? selected.custom_domain : `${selected.custom_domain} · doğrulanmadı`) : "Arvo alan adı"}
+                </dd>
+              </div>
+              {/* WhatsApp hatası varsa yazılıyor: "bağlı değil" demek,
+                  bağlıyken bozulmuş bir numarayı gizlerdi. */}
+              {wa?.last_error ? <div><dt>Son hata</dt><dd data-tone="danger">{wa.last_error}</dd></div> : null}
+            </dl>
+          </section>
+
+          <section className="panel-card" aria-label="Son etkinlik">
+            <h3>Son etkinlik</h3>
+            {etkinlikSatirlari.length ? (
+              <ul className="kiraci-etkinlik">
+                {etkinlikSatirlari.map((satir, sira) => (
+                  <li key={`${satir.created_at}-${sira}`}>
+                    <b>{ETKINLIK_ADI[satir.action] ?? satir.action}</b>
+                    <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {dateTime(satir.created_at)}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="plt-substatus">Kayıtlı etkinlik yok.</p>}
+          </section>
+        </div>
 
         <StgSection
           id="uyeler" wide icon="users" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}
