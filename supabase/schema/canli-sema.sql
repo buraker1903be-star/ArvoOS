@@ -580,7 +580,8 @@ create table if not exists public.crm_contracts (
   signed_consents jsonb,
   work_plan jsonb,
   tracking_open_before_signature boolean not null,
-  subscription_intent jsonb
+  subscription_intent jsonb,
+  issuer_snapshot jsonb
 );
 
 create table if not exists public.crm_internal_comments (
