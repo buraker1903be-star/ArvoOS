@@ -40,6 +40,7 @@ const gruplar = [
     ad: "Ticari",
     ogeler: [
       { href: "/panel/platform/licenses", label: "Lisans ve kota", icon: "▣" },
+      { href: "/panel/platform/sozlesmeler", label: "Onay bekleyen sözleşmeler", icon: "⎘" },
       { href: "/panel/platform/billing", label: "Abonelikler", icon: "₺" },
       { href: "/panel/platform/payments", label: "Ödeme onayları", icon: "✓" },
       { href: "/panel/platform/subscribers", label: "Bireysel aboneler", icon: "☺" },

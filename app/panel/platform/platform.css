@@ -525,3 +525,51 @@
 .modul-capraz td { white-space: nowrap }
 .modul-capraz .plt-substatus { display: block; margin-top: 2px; font-size: 11px }
 .modul-bagimsiz-sayi { margin-inline-start: 6px; color: var(--muted); font-size: 11.5px }
+
+/* Bekleyen abonelik isteği kartı. İki karar da geri alınamaz cinsten:
+   onay modülleri açar, ret imzalı bir sözleşmeyi reddeder. */
+.istek-listesi { display: grid; gap: 14px; margin-bottom: 18px }
+.istek-karti { padding: 20px 22px; display: grid; gap: 14px }
+.istek-karti header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.istek-karti header b { display: block; font-size: 15.5px; font-weight: 650; letter-spacing: -.01em }
+.istek-karti header small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px }
+.istek-tutar { flex: none; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums }
+
+.istek-moduller { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none }
+.istek-moduller li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.istek-moduller b { font-size: 13.5px; font-weight: 600 }
+.istek-moduller span { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums }
+
+/* Modülsüz istek onaylanamaz; sebebini kartta söylüyoruz ki kurucu
+   düğmeyi deneyip hata almasın. */
+.istek-uyari {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning, #ba7517) 12%, transparent);
+  color: var(--warning, #ba7517);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.istek-alanlar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px }
+.istek-alanlar label { display: grid; gap: 5px; color: var(--muted); font-size: 12.5px; min-width: 0 }
+.istek-alanlar select, .istek-alanlar input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.istek-islemler { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap }
