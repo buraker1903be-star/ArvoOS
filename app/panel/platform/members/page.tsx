@@ -10,7 +10,7 @@ export default async function MembersPage() {
   const { isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const { rows, arvolabReachable } = await getMemberDirectory();
+  const { rows, arvolabReachable, kullanicilarTam } = await getMemberDirectory();
   const people = new Set(rows.map((row) => row.email ?? row.userId));
   const individuals = rows.filter((row) => row.individual);
   const blocked = rows.filter((row) => !row.access);
@@ -31,6 +31,24 @@ export default async function MembersPage() {
         <div>
           <b>ArvoLab veritabanına ulaşılamadı</b>
           <p>Aşağıdaki listede ArvoLab üyeleri eksik; sayılar da eksik olanı göstermiyor. Vercel&apos;de ArvoLab bağlantı ayarlarını kontrol edin.</p>
+        </div>
+      </div>
+    ) : null}
+
+    {/*
+      Kullanıcı listesi auth yönetim API'sinden sayfa sayfa çekiliyor ve
+      sınırı 10 × 1000. Sınıra dayanıldığında kalan kişilerin e-postası
+      eksik kalıyor, satırlar "Adı kayıtlı değil" diye çiziliyor ve "Kişi"
+      sayacı e-postasızları ayrı kişi sayıp şişiyordu — hiçbir yerde
+      görünmeden. Eksik olduğunu bilmediğimiz liste, dolu bir liste gibi
+      görünür.
+    */}
+    {!kullanicilarTam ? (
+      <div className="plt-banner" data-tone="warning" role="alert">
+        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
+        <div>
+          <b>Kullanıcı listesi eksiksiz alınamadı</b>
+          <p>Ad ve e-posta bilgileri bir kısım kişide boş olabilir; &quot;Kişi&quot; sayısı da olduğundan yüksek çıkar. Betikteki sayfa sınırının artırılması gerekiyor (lib/member-directory.ts).</p>
         </div>
       </div>
     ) : null}
