@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgSection, type StgTone } from "../../settings/settings-ui";
 import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -43,6 +44,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   if (!isPlatformOwner) notFound();
 
   const params = await searchParams;
+  const adminClient = createAdminClient();
   /* Kurum listesi yalnızca seçili kiracıyı bulmak için; liste görünümü
      kiracı dosyasında. */
   const { data: organizationData, error: organizationError } = await supabase
@@ -72,6 +74,16 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   if (!license) throw new Error("Kurum lisansı bulunamadı. Migration ve lisans backfill işlemini kontrol edin.");
 
   const productLicenses = new Map(((productLicenseData ?? []) as ProductLicenseRow[]).map((row) => [row.product, row]));
+  /*
+    Depolama kullanımı: limit tek başına bir şey anlatmıyor. Bu sayfada
+    "512000 MB" yazıyordu ve karşılığı yoktu; artık kullanımıyla birlikte.
+  */
+  const { data: depolamalar } = adminClient ? await adminClient.rpc("arvo_storage_usage") : { data: [] };
+  const depolamaMb = Math.ceil(
+    Number(((depolamalar ?? []) as { organization_id: string; bytes: number }[])
+      .find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
+  );
+
   const users = activeUsers ?? 0;
   const userPercent = percent(users, license.user_limit);
   const aiPercent = percent(license.ai_credits_used, license.ai_credit_limit);
@@ -97,11 +109,22 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
 
     <div className="plt-layout plt-layout-tek">
       <div className="plt-detail">
-        <section className="stg-widgets" aria-label={`${label} kullanımı`}>
-          <StgWidget tone={licenseTones[license.license_status] ?? "neutral"} icon="shield" label="Lisans" value={licenseLabels[license.license_status] ?? license.license_status} note={license.license_status === "trialing" ? `Deneme bitişi ${date(license.trial_ends_at)}` : license.current_period_end ? `Dönem sonu ${date(license.current_period_end)}` : "Dönem tarihi yok"} />
-          <StgWidget tone={userPercent >= 100 ? "danger" : userPercent >= 80 ? "warning" : "success"} icon="users" label="Kullanıcı" value={`${users} / ${license.user_limit}`} note={<span className="plt-meter"><i style={{ width: `${userPercent}%` }} /></span>} />
-          <StgWidget tone={aiPercent >= 100 ? "danger" : aiPercent >= 80 ? "warning" : "info"} icon="chart" label="AI kredisi" value={`%${aiPercent}`} note={`${numberFormat.format(license.ai_credits_used)} / ${numberFormat.format(license.ai_credit_limit)}`} />
-          <StgWidget tone="gold" icon="folder" label="Depolama" value={`${numberFormat.format(license.storage_limit_mb)} MB`} note="Kurum limiti" />
+        <section className="platform-serit" aria-label={`${label} kullanımı`}>
+          <span data-tone={license.license_status === "suspended" ? "danger" : undefined}>
+            <b>{licenseLabels[license.license_status] ?? license.license_status}</b>
+            {license.license_status === "trialing"
+              ? ` · deneme bitişi ${date(license.trial_ends_at)}`
+              : license.current_period_end ? ` · dönem sonu ${date(license.current_period_end)}` : ""}
+          </span>
+          <span data-tone={userPercent >= 100 ? "danger" : userPercent >= 85 ? "warning" : undefined}>
+            <b>{users} / {license.user_limit}</b> kullanıcı
+          </span>
+          <span data-tone={depolamaMb > license.storage_limit_mb ? "danger" : undefined}>
+            <b>{numberFormat.format(depolamaMb)} / {numberFormat.format(license.storage_limit_mb)}</b> MB
+          </span>
+          <span data-tone={aiPercent >= 100 ? "danger" : aiPercent >= 85 ? "warning" : undefined}>
+            <b>{numberFormat.format(license.ai_credits_used)} / {numberFormat.format(license.ai_credit_limit)}</b> AI kredisi
+          </span>
         </section>
 
         <StgSection

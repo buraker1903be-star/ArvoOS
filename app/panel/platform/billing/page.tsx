@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
 import { abonelikHatirlatmasiGonder } from "../actions";
@@ -88,11 +88,12 @@ export default async function BillingPage() {
     </div>
 
 
-    <section className="stg-widgets" aria-label="Abonelik özeti">
-      <StgWidget tone="success" icon="check" label="Aktif abonelik" value={active.length} note="Aktif ve denemedeki kurumlar" />
-      <StgWidget tone="gold" icon="chart" label="Beklenen aylık gelir" value={money(mrr, currency)} note={denemeGeliri ? `Denemede ayrıca ${money(denemeGeliri, currency)}` : "Aktif lisansların aylık ücreti"} />
-      <StgWidget tone={pastDue ? "warning" : "neutral"} icon="wallet" label="Ödemesi gecikmiş" value={pastDue} note={pastDue ? "Takip edilmesi gereken kurum" : "Gecikme yok"} />
-      <StgWidget tone="info" icon="doc" label="Tahsil edilen" value={money(paidTotal, currency)} note="Son 50 fatura içinde" />
+    <section className="platform-serit" aria-label="Abonelik özeti">
+      <span><b>{active.length}</b> aktif abonelik</span>
+      <span><b>{money(mrr, currency)}</b> beklenen aylık</span>
+      {denemeGeliri ? <span><b>{money(denemeGeliri, currency)}</b> denemede</span> : null}
+      {pastDue ? <span data-tone="warning"><b>{pastDue}</b> ödemesi gecikmiş</span> : null}
+      <span><b>{money(paidTotal, currency)}</b> tahsil edildi</span>
     </section>
 
     <div className="stg-grid">

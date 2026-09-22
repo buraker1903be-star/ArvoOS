@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory } from "@/lib/member-directory";
 import { UyeListesi } from "./uye-listesi";
-import { StgIcon, StgWidget } from "../../settings/settings-ui";
+import { StgIcon } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -26,11 +26,11 @@ export default async function MembersPage() {
       <div className="platform-note"><span>!</span><p>ArvoLab veritabanına ulaşılamadı; aşağıdaki listede ArvoLab üyeleri eksik. Bağlantı ayarlarını kontrol edin.</p></div>
     ) : null}
 
-    <section className="stg-widgets" aria-label="Üye özeti">
-      <StgWidget tone="gold" icon="users" label="Kişi" value={people.size} note="Ürünler arası tekil" />
-      <StgWidget tone="success" icon="check" label="Erişimi açık" value={rows.length - blocked.length} note={`${rows.length} üyelik kaydı`} />
-      <StgWidget tone={individuals.length ? "info" : "neutral"} icon="box" label="Bireysel" value={individuals.length} note="Kuruma bağlı olmayan" />
-      <StgWidget tone={blocked.length ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={blocked.length} note="Lisans, abonelik ya da üyelik kapalı" />
+    <section className="platform-serit" aria-label="Üye özeti">
+      <span><b>{people.size}</b> kişi</span>
+      <span><b>{rows.length - blocked.length}</b> erişimi açık</span>
+      {individuals.length ? <span><b>{individuals.length}</b> bireysel</span> : null}
+      {blocked.length ? <span data-tone="warning"><b>{blocked.length}</b> erişimi kapalı</span> : null}
     </section>
 
     <UyeListesi satirlar={rows} />

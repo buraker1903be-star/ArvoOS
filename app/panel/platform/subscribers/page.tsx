@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgValueRow, type StgTone } from "../../settings/settings-ui";
 import { updateProductPlan, updateSubscriber } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -56,11 +56,11 @@ export default async function SubscribersPage() {
     </div>
 
 
-    <section className="stg-widgets" aria-label="Abone özeti">
-      <StgWidget tone="success" icon="users" label="Ödeyen abone" value={paying.length} note={monthlyRevenue ? `${formatTry(monthlyRevenue)} / ay` : "Ücret belirlenmedi"} />
-      <StgWidget tone={trialing.length ? "info" : "neutral"} icon="chart" label="Denemede" value={trialing.length} note="Süresi dolmamış" />
-      <StgWidget tone={subscribers.length - active.length ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={subscribers.length - active.length} note="Süresi dolmuş ya da askıda" />
-      <StgWidget tone="gold" icon="box" label="Toplam" value={subscribers.length} note="Son 200 kayıt" />
+    <section className="platform-serit" aria-label="Abone özeti">
+      <span><b>{paying.length}</b> ödeyen abone{monthlyRevenue ? ` · ${formatTry(monthlyRevenue)} / ay` : ""}</span>
+      {trialing.length ? <span><b>{trialing.length}</b> denemede</span> : null}
+      {subscribers.length - active.length ? <span data-tone="warning"><b>{subscribers.length - active.length}</b> erişimi kapalı</span> : null}
+      <span><b>{subscribers.length}</b> toplam</span>
     </section>
 
     {/*

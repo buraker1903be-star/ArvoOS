@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgValueRow, type StgTone } from "../../settings/settings-ui";
 import { reviewBankTransferPayment } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -48,11 +48,11 @@ export default async function PaymentApprovalsPage() {
     </div>
 
 
-    <section className="stg-widgets" aria-label="Ödeme özeti">
-      <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="wallet" label="İnceleme bekleyen" value={pendingCount} note={pendingCount ? formatTry(pendingTotal) : "Bekleyen dekont yok"} />
-      <StgWidget tone="success" icon="check" label="Onaylanan toplam" value={formatTry(approvedTotal)} note="Son 100 bildirim" />
-      <StgWidget tone="info" icon="doc" label="Bildirim" value={payments.length} note="Toplam kayıt" />
-      <StgWidget tone={incidents.length ? "danger" : "neutral"} icon="shield" label="Karşılıksız bildirim" value={incidents.length} note={incidents.length ? "Müdahale bekliyor" : "Sorunlu bildirim yok"} />
+    <section className="platform-serit" aria-label="Ödeme özeti">
+      {pendingCount ? <span data-tone="warning"><b>{pendingCount}</b> inceleme bekliyor · {formatTry(pendingTotal)}</span> : null}
+      <span><b>{formatTry(approvedTotal)}</b> onaylanan toplam</span>
+      <span><b>{payments.length}</b> bildirim</span>
+      {incidents.length ? <span data-tone="danger"><b>{incidents.length}</b> karşılıksız</span> : null}
     </section>
 
     {incidents.length ? (
