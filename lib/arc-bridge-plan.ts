@@ -33,10 +33,20 @@ export type ArcPlan = {
  * açık olan kurum. Lisansı hiç olmayan ama modülü açık kurumlar eski
  * mağazalardır (ArvoCulture); arc_store_stage onları açık tutar.
  */
+/*
+  Köprü kapsamı: ARC lisansı olan kurumlar. Lisans "Standalone" (integrated
+  = false) işaretliyse kapsam dışı — kiracı ARC'ı kullanmaya devam eder,
+  yalnızca ArvoOS ile otomatik veri akışı durur.
+
+  integrated alanı olmayan eski satırlar entegre sayılıyor: sütun
+  varsayılanı true ve bu migration kimsenin senkronunu kesmemeli.
+*/
+export const kopruluMu = (license: Row) => license.integrated !== false;
+
 export function arcOrganizationIds(source: Pick<ArcSource, "modules" | "licenses">): string[] {
   const ids = new Set<string>();
   for (const license of source.licenses) {
-    if (license.product === "arc") ids.add(String(license.organization_id));
+    if (license.product === "arc" && kopruluMu(license)) ids.add(String(license.organization_id));
   }
   for (const row of source.modules) {
     if (row.module_code === "commerce" && row.is_enabled === true) ids.add(String(row.organization_id));
@@ -61,7 +71,7 @@ export function planArcSync(source: ArcSource, targetMemberships: { organization
     // ARC yalnızca ticaret modülüne ve ARC lisansına bakıyor; diğer ürünlerin
     // lisansı (ArvoLab) oraya taşınmaz.
     modules: scoped(source.modules).filter((m) => m.module_code === "commerce"),
-    licenses: scoped(source.licenses).filter((l) => l.product === "arc"),
+    licenses: scoped(source.licenses).filter((l) => l.product === "arc" && kopruluMu(l)),
     memberships,
     deactivate,
     userIds: [...new Set(memberships.map((m) => String(m.user_id)))].sort(),

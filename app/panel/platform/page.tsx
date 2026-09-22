@@ -8,6 +8,8 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
+import { ModulMatrisi, type ModulSatiri } from "./modul-matrisi";
+import { ADDON_PRODUCTS } from "@/lib/products";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { StgIcon, StgSection, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -157,6 +159,47 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
   const seciliKota = kotaById.get(targetId) ?? null;
   const seciliLisans = lisansById.get(targetId) ?? null;
+
+  /*
+    Modül matrisi: ArvoOS çekirdeği organization_licenses'ta, diğer üç
+    ürün organization_product_licenses'ta. İki tablodan tek liste
+    kuruluyor; kurucu için ikisi aynı soruya cevap veriyor.
+  */
+  const { data: urunLisanslari } = await supabase
+    .from("organization_product_licenses")
+    .select("product,status,monthly_fee,integrated")
+    .eq("organization_id", targetId);
+  const urunById = new Map(
+    ((urunLisanslari ?? []) as { product: string; status: string; monthly_fee: number | null; integrated: boolean | null }[])
+      .map((row) => [row.product, row]),
+  );
+  const modulSatirlari: ModulSatiri[] = [
+    {
+      product: "arvoos",
+      name: "ArvoOS",
+      status: seciliLisans?.license_status ?? "inactive",
+      integrated: null,
+      monthlyFee: seciliLisans?.monthly_fee ?? null,
+      // Yalnızca ÖLÇÜLEN kotalar yazılıyor; ölçümü olmayan limit,
+      // kurucunun koruma sandığı boş bir sayı olurdu.
+      kotaOzeti: seciliKota
+        ? `${seciliKota.kullanici.kullanilan}/${seciliKota.kullanici.limit} kullanıcı · ${seciliKota.depolama.kullanilan}/${seciliKota.depolama.limit} MB`
+        : null,
+      cekirdek: true,
+    },
+    ...ADDON_PRODUCTS.map((urun) => {
+      const satir = urunById.get(urun.code);
+      return {
+        product: urun.code,
+        name: urun.name,
+        status: satir?.status ?? "inactive",
+        integrated: satir?.integrated ?? true,
+        monthlyFee: satir?.monthly_fee ?? null,
+        kotaOzeti: null,
+        cekirdek: false,
+      };
+    }),
+  ];
 
   /*
     Kiracı dosyasının kalan parçaları: ödeme, kanallar, son etkinlik.
@@ -478,6 +521,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             ) : <p className="plt-substatus">Kayıtlı etkinlik yok.</p>}
           </section>
         </div>
+
+        <StgSection
+          id="moduller-matris" wide icon="grid" tone="neutral"
+          kicker="ERİŞİM VE ENTEGRASYON" title="Modüller"
+          description="Erişim kiracının ürüne girip giremediğini, köprü ArvoOS ile otomatik veri akışını yönetir. İkisi ayrı: ödemesini yapmış bir kiracı bağımsız çalışmayı seçebilir."
+        >
+          <ModulMatrisi organizationId={targetId} kurumAdi={selected.display_name || selected.name} satirlar={modulSatirlari} />
+        </StgSection>
 
         <StgSection
           id="uyeler" wide icon="users" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}

@@ -4,7 +4,7 @@
 // (lib/arc-bridge-plan.ts) aynı ilke; fark: kapsam yalnızca "randevu"
 // lisansı (modül yok) ve hedefin lisans tablosu yalnızca bu ürünü kabul eder.
 
-import type { Row } from "@/lib/arc-bridge-plan";
+import { kopruluMu, type Row } from "@/lib/arc-bridge-plan";
 
 export type RandevuSource = {
   organizations: Row[];
@@ -28,8 +28,16 @@ export type RandevuPlan = {
  * Askıya alınan ya da iptal edilen salon da aktarılır; kapanmayı Randevu
  * kendi tarafında lisansa bakarak uygular (rdv_lisans_acik).
  */
+/*
+  Köprü kapsamı: Randevu lisansı olan kurumlar. "Standalone" işaretli
+  lisans kapsam dışı — salon Randevu'yu kullanmaya devam eder, yalnızca
+  ArvoOS ile otomatik akış durur. Ayrımı lisanstan okumak, "lisansı var"
+  ile "entegre çalışıyor"u aynı şey saymaktan kurtarıyor.
+*/
 export function randevuOrganizationIds(licenses: Row[]): string[] {
-  return [...new Set(licenses.filter((l) => l.product === "randevu").map((l) => String(l.organization_id)))].sort();
+  return [...new Set(
+    licenses.filter((l) => l.product === "randevu" && kopruluMu(l)).map((l) => String(l.organization_id)),
+  )].sort();
 }
 
 export function planRandevuSync(source: RandevuSource, targetMemberships: { organization_id: string; user_id: string }[]): RandevuPlan {

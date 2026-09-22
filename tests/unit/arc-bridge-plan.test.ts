@@ -55,3 +55,36 @@ test("ArvoOS'ta silinen üyelik ARC'ta pasife alınır; kapsam dışı kurumlara
   ]);
   assert.deepEqual(plan.deactivate, [{ organization_id: ARC, user_id: "eski" }]);
 });
+
+// --- Köprü modu (Standalone / Integrated)
+{
+  const lisans = (organization_id: string, integrated?: boolean) => ({
+    organization_id, product: "arc", ...(integrated === undefined ? {} : { integrated }),
+  });
+
+  test("entegre lisans kapsamda", () => {
+    assert.deepEqual(arcOrganizationIds({ modules: [], licenses: [lisans("a", true)] }), ["a"]);
+  });
+
+  test("bağımsız lisans kapsam dışı", () => {
+    /*
+      Standalone kiracı ARC'ı kullanmaya devam eder; yalnızca ArvoOS ile
+      otomatik veri akışı durur. Erişimi kesen şey status, bu değil.
+    */
+    assert.deepEqual(arcOrganizationIds({ modules: [], licenses: [lisans("a", false)] }), []);
+  });
+
+  test("integrated alanı olmayan eski satır entegre sayılır", () => {
+    // Sütun varsayılanı true; migration kimsenin senkronunu kesmemeli.
+    assert.deepEqual(arcOrganizationIds({ modules: [], licenses: [lisans("a")] }), ["a"]);
+  });
+
+  test("bağımsız lisans senkron planına da girmez", () => {
+    const plan = planArcSync(
+      { organizations: [{ id: "a" }], modules: [], licenses: [lisans("a", false)], memberships: [] } as unknown as ArcSource,
+      [],
+    );
+    assert.deepEqual(plan.licenses, []);
+    assert.deepEqual(plan.organizationIds, []);
+  });
+}
