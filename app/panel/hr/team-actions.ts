@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
+import { syncArvolabMembers } from "@/lib/arvolab";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { davetEngeli } from "@/lib/kota-durumu";
 
@@ -220,11 +221,14 @@ async function updateTeamMemberAccess__impl(formData: FormData) {
     .select("user_id");
   if (error) throw new Error("Kullanıcı güncellenemedi: " + error.message);
   if (!updated?.length) throw new Error("Kullanıcı güncellenemedi: yetkiniz yok veya kayıt bulunamadı.");
-  // Pasife alınan personel ARC'a ve Randevu'ya da hemen giremesin
-  // (lib/arc-bridge.ts, lib/randevu-bridge.ts).
+  // Pasife alınan personel ARC'a, Randevu'ya ve ArvoLab'a da hemen
+  // giremesin (lib/arc-bridge.ts, lib/randevu-bridge.ts, lib/arvolab.ts).
+  // ArvoLab'da bağlanmış profil bağlı kalır; tazelenen şey, HENÜZ girmemiş
+  // kişinin ilk girişte kuruma bağlanıp bağlanmayacağı.
   await Promise.all([
     syncArcTenantQuietly(membership.organization_id),
     syncRandevuTenantQuietly(membership.organization_id),
+    syncArvolabMembers(membership.organization_id),
   ]);
 
   if (fullName) {

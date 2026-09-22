@@ -99,8 +99,68 @@ export async function getArvolabBridgeHealth(): Promise<ArvolabBridgeHealth | nu
 }
 
 /**
+ * Kurumun ArvoLab'a bağlanabilecek üye e-postalarını yansıtır.
+ *
+ * ArvoLab ayrı bir Supabase projesi ve kendi auth'unu kullanıyor; bir
+ * kurumun ArvoOS personeli oraya girdiğinde profili hiçbir kuruma bağlı
+ * olmadan açılıyordu. Kişi ürünün içinde ama kurumun çalışmalarını
+ * göremiyor, kurum da onu göremiyordu.
+ *
+ * Burada HESAP AÇILMIYOR, yalnızca eşleşme listesi yazılıyor: kişi ArvoLab'a
+ * kendi girdiğinde e-postası listede bulunursa profili kuruma bağlanıyor
+ * (migration 20260924100011). Önceden hesap açmak, ürünü hiç kullanmayacak
+ * kişiler için hayalet kayıtlar ve müşterinin personeline istenmeyen bir
+ * davet e-postası demekti.
+ *
+ * Lisans kapalıysa liste SİLİNİYOR: aboneliği biten kurumun yeni personeli
+ * kendini kuruma bağlayamamalı. Bağlanmış olanlar bağlı kalıyor; lisans
+ * kapısı ArvoLab'ın kendi tarafında zaten çalışıyor.
+ */
+async function pushArvolabMembers(organizationId: string, lisansAcik: boolean) {
+  const lab = arvolabClient();
+  const admin = createAdminClient();
+  if (!lab || !admin) return;
+
+  // Eski liste her seferinde siliniyor: kurumdan çıkarılan kişi listede
+  // kalırsa, ArvoLab'a ilk kez girdiğinde hâlâ o kuruma bağlanırdı.
+  const { error: silmeHatasi } = await lab.from("arvoos_members").delete().eq("organization_id", organizationId);
+  if (silmeHatasi) {
+    console.error("[arvolab] üye listesi temizlenemedi", organizationId, silmeHatasi.message);
+    return;
+  }
+  if (!lisansAcik) return;
+
+  const { data: uyelikler } = await admin.from("organization_memberships")
+    .select("user_id").eq("organization_id", organizationId).eq("is_active", true);
+  const kimlikler = (uyelikler ?? []).map((satir) => satir.user_id as string);
+  if (!kimlikler.length) return;
+
+  /*
+    E-postalar auth.users'ta; REST ile sorgulanamıyor, tek tek yönetim
+    API'siyle okunuyor. Bir kurumun üye sayısı onlarla ölçüldüğü için
+    kabul edilebilir — bütün kullanıcıları sayfalamaktan ucuz.
+  */
+  const epostalar: string[] = [];
+  for (const kimlik of kimlikler) {
+    const { data, error } = await admin.auth.admin.getUserById(kimlik);
+    if (error || !data.user?.email) continue;
+    epostalar.push(data.user.email.trim().toLocaleLowerCase("tr-TR"));
+  }
+  if (!epostalar.length) return;
+
+  const { error } = await lab.from("arvoos_members").upsert(
+    epostalar.map((email) => ({ email, organization_id: organizationId, synced_at: new Date().toISOString() })),
+    { onConflict: "email" },
+  );
+  if (error) console.error("[arvolab] üye listesi yazılamadı", organizationId, error.message);
+}
+
+/**
  * Kurumun güncel ArvoLab lisansını okuyup yansıtır. Lisans satırı yoksa
  * "inactive" yazılır: ArvoLab tarafında erişim kapalı kalır.
+ *
+ * Üye listesi de aynı anda yansıtılıyor; lisans ve kimin girebileceği ayrı
+ * anlarda güncellenirse ikisi birbirini tutmuyor.
  */
 export async function syncArvolabLicense(organizationId: string) {
   const admin = createAdminClient();
@@ -113,11 +173,34 @@ export async function syncArvolabLicense(organizationId: string) {
   ]);
   if (!organization) return "failed" as const;
 
-  return pushArvolabLicense({
+  const status = license?.status ?? "inactive";
+  const sonuc = await pushArvolabLicense({
     organizationId,
     name: organization.display_name || organization.name,
-    status: license?.status ?? "inactive",
+    status,
     planCode: license?.plan_code ?? null,
     currentPeriodEnd: license?.current_period_end ?? null,
   });
+
+  // Üye listesi kurumu yazdıktan SONRA: arvoos_members organizations'a
+  // yabancı anahtarla bağlı, kurum yoksa satırlar reddedilirdi.
+  if (sonuc === "synced") await pushArvolabMembers(organizationId, ACIK_LISANSLAR.has(status));
+  return sonuc;
+}
+
+/** Erişimi açık sayan lisans durumları (ArvoLab kapısıyla aynı kural). */
+const ACIK_LISANSLAR = new Set(["active", "trialing", "past_due"]);
+
+/**
+ * Üyelik değişti: ArvoLab'daki eşleşme listesini tazeler.
+ *
+ * Çağıranı düşürmez — davet ya da erişim kapatma, köprü çalışmıyor diye
+ * başarısız olmamalı.
+ */
+export async function syncArvolabMembers(organizationId: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const { data: license } = await admin.from("organization_product_licenses")
+    .select("status").eq("organization_id", organizationId).eq("product", "arvolab").maybeSingle();
+  await pushArvolabMembers(organizationId, ACIK_LISANSLAR.has(license?.status ?? "inactive"));
 }
