@@ -573,3 +573,8 @@
   font-size: 13px;
 }
 .istek-islemler { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap }
+
+/* Kota alanının altındaki ölçüm: limit tek başına bir şey anlatmıyor,
+   "şu an ne kadar" yanında olmalı. */
+.kota-olcum { color: var(--muted); font-size: 11px; line-height: 1.4 }
+.kota-olcum[data-tone="danger"] { color: var(--danger); font-weight: 600 }

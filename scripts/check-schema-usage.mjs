@@ -36,6 +36,8 @@ const OTHER_DATABASE_FILES = new Map([
 ]);
 const OTHER_DATABASE_RECEIVERS = new Map([
   ["lab", "ArvoLab veritabanı istemcisi (arvolabClient)"],
+  // Randevu da ayrı bir Supabase projesi; rdv_* tabloları orada.
+  ["rdv", "Randevu veritabanı istemcisi (randevuClient)"],
 ]);
 
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));

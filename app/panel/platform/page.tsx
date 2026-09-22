@@ -10,6 +10,8 @@ import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-detail
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
 import { ModulMatrisi, type ModulSatiri } from "./modul-matrisi";
 import { ADDON_PRODUCTS } from "@/lib/products";
+import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
+import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { StgIcon, StgSection, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -165,14 +167,26 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     ürün organization_product_licenses'ta. İki tablodan tek liste
     kuruluyor; kurucu için ikisi aynı soruya cevap veriyor.
   */
-  const { data: urunLisanslari } = await supabase
-    .from("organization_product_licenses")
-    .select("product,status,monthly_fee,integrated")
-    .eq("organization_id", targetId);
+  const [{ data: urunLisanslari }, kullanim] = await Promise.all([
+    supabase
+      .from("organization_product_licenses")
+      .select("product,status,monthly_fee,integrated,limits")
+      .eq("organization_id", targetId),
+    /*
+      Ürün kullanımı yalnızca SEÇİLİ kiracı için ölçülüyor: iki ayrı
+      veritabanına gidiyor (ArvoLab, Randevu) ve tüm kiracılar için
+      yapmak liste ekranını her açılışta yavaşlatırdı.
+    */
+    urunKullanimi(targetId),
+  ]);
   const urunById = new Map(
-    ((urunLisanslari ?? []) as { product: string; status: string; monthly_fee: number | null; integrated: boolean | null }[])
+    ((urunLisanslari ?? []) as { product: string; status: string; monthly_fee: number | null; integrated: boolean | null; limits: Record<string, unknown> | null }[])
       .map((row) => [row.product, row]),
   );
+  const kullanimById: Record<string, Record<string, number | null> | null> = {
+    arvolab: kullanim.arvolab,
+    randevu: kullanim.randevu,
+  };
   const modulSatirlari: ModulSatiri[] = [
     {
       product: "arvoos",
@@ -195,7 +209,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         status: satir?.status ?? "inactive",
         integrated: satir?.integrated ?? true,
         monthlyFee: satir?.monthly_fee ?? null,
-        kotaOzeti: null,
+        // Kota özeti yalnızca ölçümü yazılmış ürünlerde doluyor.
+        kotaOzeti: kotaOzetiYaz(urunKotalari(urun.code, satir?.limits, kullanimById[urun.code])),
         cekirdek: false,
       };
     }),

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
+import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
+import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { StgSection, type StgTone } from "../../settings/settings-ui";
 import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
 import "../../settings/settings.css";
@@ -24,6 +26,7 @@ type LicenseRow = {
 };
 
 type ProductLicenseRow = {
+  limits?: Record<string, unknown> | null;
   product: string;
   status: string;
   plan_code: string | null;
@@ -67,7 +70,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
     supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
-    supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason").eq("organization_id", selected.id),
+    supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
   ]);
   if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
   const license = licenseData as LicenseRow | null;
@@ -82,6 +85,18 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const depolamaMb = Math.ceil(
     Number(((depolamalar ?? []) as { organization_id: string; bytes: number }[])
       .find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
+  );
+
+  /*
+    Ürün kullanımı: kota alanlarının yanında "şu an ne kadar" yazabilmek
+    için. Limit tek başına bir şey anlatmıyor.
+  */
+  const kullanim = await urunKullanimi(selected.id);
+  const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
+    ADDON_PRODUCTS.map((urun) => [
+      urun.code,
+      urunKotalari(urun.code, productLicenses.get(urun.code)?.limits, ({ arvolab: kullanim.arvolab, randevu: kullanim.randevu } as Record<string, Record<string, number | null> | null>)[urun.code]),
+    ]),
   );
 
   const users = activeUsers ?? 0;
@@ -173,6 +188,29 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                 <label>Paket<select name="plan_code" defaultValue={row?.plan_code ?? ""}><option value="">Belirtilmedi</option><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
                 <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={row?.monthly_fee ? Number(row.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
                 <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={dateValue(row?.current_period_end ?? null)} /></label>
+                {/* Kota alanları yalnızca ÖLÇÜMÜ YAZILMIŞ ürünlerde
+                    çiziliyor. Ölçümsüz limit, kurucunun koruma sandığı
+                    boş bir sayı olurdu — storage_limit_mb dersi. */}
+                {(URUN_KOTALARI[product.code] ?? []).map((alan) => {
+                  const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
+                  return (
+                    <label key={alan.anahtar}>
+                      {alan.etiket} limiti ({alan.birim})
+                      <input
+                        name={`kota_${alan.anahtar}`}
+                        type="number"
+                        min={1}
+                        defaultValue={olcum?.limit ?? ""}
+                        placeholder="Boşsa sınırsız"
+                      />
+                      <small className="kota-olcum" data-tone={olcum?.asildi ? "danger" : undefined}>
+                        {olcum?.kullanilan === null || olcum?.kullanilan === undefined
+                          ? "kullanım ölçülemedi"
+                          : `şu an ${olcum.kullanilan} ${alan.birim}${alan.donemsel ? " (bu ay)" : ""}`}
+                      </small>
+                    </label>
+                  );
+                })}
                 <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={row?.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
                 <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{product.name} lisansını kaydet</button></div>
               </form>

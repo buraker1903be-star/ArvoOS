@@ -4,7 +4,8 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
-import { isAddonProduct, productName } from "@/lib/products";
+import { isAddonProduct, productName, type ProductCode } from "@/lib/products";
+import { URUN_KOTALARI } from "@/lib/urun-kotasi";
 import { syncRandevuTenants } from "@/lib/randevu-bridge";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenants } from "@/lib/arc-bridge";
@@ -102,6 +103,24 @@ async function updateProductLicense__impl(formData: FormData) {
   const suspensionReason = String(formData.get("suspension_reason") ?? "").trim();
   const monthlyFee = readOptionalMonthlyFee(formData);
 
+  /*
+    Ürün kotaları. Yalnızca ölçümü yazılmış alanlar okunuyor
+    (lib/urun-kotasi.ts); tanımsız bir anahtarı kaydetmek, karşılığı
+    olmayan bir limit saklamak olurdu — ArvoOS'ta storage_limit_mb ile
+    tam olarak bunu yaşadık.
+
+    Boş bırakılan alan SİLİNİYOR, sıfır yazılmıyor: sıfır limit "hak yok"
+    demek ve boş bırakan kurucu bunu kastetmiyor.
+  */
+  const limits: Record<string, number> = {};
+  for (const alan of URUN_KOTALARI[product as ProductCode] ?? []) {
+    const ham = String(formData.get(`kota_${alan.anahtar}`) ?? "").trim();
+    if (!ham) continue;
+    const sayi = Number(ham.replace(/\./g, ""));
+    if (!Number.isFinite(sayi) || sayi <= 0) continue;
+    limits[alan.anahtar] = Math.round(sayi);
+  }
+
   if (!organizationId) throw new Error("Kurum seçilmedi.");
   if (!isAddonProduct(product)) throw new Error("Geçerli bir ürün seçin.");
   if (!productStatuses.has(status)) throw new Error("Geçerli bir lisans durumu seçin.");
@@ -115,6 +134,7 @@ async function updateProductLicense__impl(formData: FormData) {
     status,
     plan_code: planCode || null,
     monthly_fee: monthlyFee,
+    limits,
     current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd).toISOString() : null,
     suspended_at: status === "suspended" ? now : null,
     suspension_reason: status === "suspended" ? suspensionReason || "Kurucu tarafından askıya alındı" : null,
