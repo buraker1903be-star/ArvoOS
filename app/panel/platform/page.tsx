@@ -292,72 +292,80 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         </section>
 
         {listelenen.length ? (
-          <section className="panel-card plt-table-wrap" aria-label="Kiracılar">
-            <div className="plt-table-scroll">
-              <table className="plt-table plt-kiracilar">
-                <thead>
-                  <tr>
-                    <th>Kurum</th>
-                    <th>Paket</th>
-                    <th>Durum</th>
-                    <th>Kullanıcı</th>
-                    <th>Depolama</th>
-                    <th>Aylık ücret</th>
-                    <th aria-label="Aç" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {listelenen.map((item) => {
-                    const kota = kotaById.get(item.id) ?? null;
-                    const lisans = lisansById.get(item.id) ?? null;
-                    const ad = item.display_name || item.name;
-                    const itemInvite = latestInvitation.get(item.id);
-                    return (
-                      <tr key={item.id}>
-                        <td>
-                          {/* Satırın tamamı tıklanabilir: bu bağlantı bir
-                              ::after ile satırı kaplıyor (CSS). Gerçek bir
-                              <a> olduğu için klavye, orta tık ve "yeni
-                              sekmede aç" çalışmaya devam ediyor — onClick
-                              ile yönlendirme olsaydı hiçbiri olmazdı. */}
-                          <Link className="plt-kiraci-baglanti" href={`/panel/platform?organization=${item.id}`}>
-                            <span className="plt-kiraci-avatar" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>{basHarfleri(ad)}</span>
-                            <span>
-                              <b>{ad}</b>
-                              <small className="plt-substatus">
-                                {item.slug}
-                                {item.kind === "internal" ? " · kendi markamız" : ""}
-                                {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
-                              </small>
-                            </span>
-                          </Link>
-                        </td>
-                        <td>{planNames.get(item.plan_code) ?? item.plan_code}</td>
-                        <td>
-                          <span className="status-pill" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>
-                            {KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state}
-                          </span>
-                        </td>
-                        {/* Kota hücreleri aşımda kırmızı: "dikkat gerektiren"
-                            uyarısı artık ayrı bir menü öğesi değil, satırın
-                            kendisi söylüyor. */}
-                        <td data-tone={kota?.kullanici.asildi ? "danger" : undefined}>
-                          {kota ? `${kota.kullanici.kullanilan} / ${kota.kullanici.limit}` : "—"}
-                        </td>
-                        <td data-tone={kota?.depolama.asildi ? "danger" : undefined}>
-                          {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
-                        </td>
-                        <td>{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</td>
-                        {/* Ok bir bağlantı değil, yalnızca işaret: satırın
-                            kendisi zaten dosyaya gidiyor ve aynı hedefe
-                            ikinci bir bağlantı klavyeyle gezerken her
-                            satırı iki kez durak yapardı. */}
-                        <td className="plt-kiracilar-uc" aria-hidden="true">›</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <section className="panel-card plt-kiracilar" aria-label="Kiracılar">
+            {/*
+              TABLO DEĞİL, IZGARA LİSTE.
+
+              Satırın tamamını tıklanabilir yapmak için <tr> üzerine
+              position:relative + ::after kaplaması konmuştu. Bu, birleşik
+              kenarlıklı bir tabloda (border-collapse: collapse) WebKit'te
+              çalışmıyor: <tr> kuşatan blok üretmiyor, kaplama en yakın
+              konumlandırılmış ataya — yani sayfaya — yayılıyor ve DOM'daki
+              SON satırın kaplaması bütün listeyi örtüyordu. Hangi kuruma
+              tıklanırsa tıklansın en alttaki kurum açılıyordu.
+
+              Satırın kendisi artık bir <a>: kaplama yok, hile yok. Klavye,
+              orta tık ve "yeni sekmede aç" doğal olarak çalışıyor.
+              Hizalama ızgaradan geliyor; başlık satırı aynı şablonu
+              kullandığı için sütunlar tabloyla aynı şekilde hizalı.
+            */}
+            <div className="plt-kiraci-baslik" aria-hidden="true">
+              <span>Kurum</span>
+              <span>Paket</span>
+              <span>Durum</span>
+              <span>Kullanıcı</span>
+              <span>Depolama</span>
+              <span>Aylık ücret</span>
+              <span />
+            </div>
+
+            <div className="plt-kiraci-liste">
+              {listelenen.map((item) => {
+                const kota = kotaById.get(item.id) ?? null;
+                const lisans = lisansById.get(item.id) ?? null;
+                const ad = item.display_name || item.name;
+                const itemInvite = latestInvitation.get(item.id);
+                return (
+                  <Link
+                    key={item.id}
+                    className="plt-kiraci-satir"
+                    href={`/panel/platform?organization=${item.id}`}
+                  >
+                    <span className="plt-kiraci-kim">
+                      <span className="plt-kiraci-avatar" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>{basHarfleri(ad)}</span>
+                      <span>
+                        <b>{ad}</b>
+                        <small className="plt-substatus">
+                          {item.slug}
+                          {item.kind === "internal" ? " · kendi markamız" : ""}
+                          {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
+                        </small>
+                      </span>
+                    </span>
+
+                    <span data-etiket="Paket">{planNames.get(item.plan_code) ?? item.plan_code}</span>
+
+                    <span data-etiket="Durum">
+                      <span className="status-pill" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>
+                        {KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state}
+                      </span>
+                    </span>
+
+                    {/* Kota hücreleri aşımda kırmızı: "dikkat gerektiren"
+                        uyarısı ayrı bir menü öğesi değil, satırın kendisi
+                        söylüyor. */}
+                    <span data-etiket="Kullanıcı" data-tone={kota?.kullanici.asildi ? "danger" : undefined}>
+                      {kota ? `${kota.kullanici.kullanilan} / ${kota.kullanici.limit}` : "—"}
+                    </span>
+                    <span data-etiket="Depolama" data-tone={kota?.depolama.asildi ? "danger" : undefined}>
+                      {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
+                    </span>
+                    <span data-etiket="Aylık ücret">{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</span>
+
+                    <span className="plt-kiracilar-uc" aria-hidden="true">›</span>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ) : (
