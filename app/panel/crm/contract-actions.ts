@@ -20,6 +20,7 @@ import {
   type CreateProposalState,
 } from "./sales-shared";
 import { rescaleSchedule, splitTax } from "@/lib/sales-amounts";
+import { niyetiFormdanOku } from "@/lib/abonelik-niyeti";
 
 // Talep sayfasından "Direkt Sözleşme Oluştur" ile çağrılır: fiyat/ödeme
 // planı yine teklif kaydı olarak tutulur (iç kayıt, raporlama için), ama
@@ -151,6 +152,20 @@ export async function createContractDirectly(
 async function updateContract__impl(formData: FormData) {
   const { supabase, membership, userId } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
+
+  /*
+    Abonelik niyeti: sözleşmenin hangi modülleri talep ettiği. Yalnızca
+    ARVO'NUN KENDİ KURUMUNDA anlamlı — kiracının kendi müşterisiyle
+    yaptığı sözleşme bizim aboneliğimizi açmaz ve o forma da bakmaz.
+    Kapsamı burada da kontrol ediyoruz; ekran alanı gizlese bile işlem
+    ekrandan bağımsız çağrılabilir.
+  */
+  const { data: kurum } = await supabase
+    .from("organizations").select("kind").eq("id", membership.organization_id).maybeSingle();
+  const arvoKurumu = kurum?.kind === "internal";
+  const niyet = arvoKurumu && formData.has("niyet_var")
+    ? niyetiFormdanOku((ad) => String(formData.get(ad) ?? ""))
+    : null;
   const contractAmount = amount(formData, "amount");
   if (!Number.isFinite(contractAmount) || contractAmount < 0)
     throw new Error("Sözleşme tutarı geçersiz.");
@@ -188,6 +203,20 @@ async function updateContract__impl(formData: FormData) {
     contract_due_date: text(formData, "due_date", 20) || null,
   });
   if (error) throw new Error("Sözleşme güncellenemedi: " + error.message);
+
+  /*
+    Niyet RPC'nin dışında yazılıyor: update_crm_contract canlı bir
+    fonksiyon ve imzasını değiştirmek onu çağıran her yeri etkiler.
+    Ayrı bir UPDATE, kurum kısıtıyla birlikte daha küçük bir değişiklik.
+  */
+  if (niyet) {
+    const { error: niyetHatasi } = await supabase
+      .from("crm_contracts")
+      .update({ subscription_intent: niyet })
+      .eq("id", contractId)
+      .eq("organization_id", membership.organization_id);
+    if (niyetHatasi) throw new Error("Abonelik bilgileri kaydedilemedi: " + niyetHatasi.message);
+  }
 
   const { data: after } = await supabase
     .from("crm_contracts")

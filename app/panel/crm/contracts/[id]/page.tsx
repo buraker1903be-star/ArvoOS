@@ -5,6 +5,7 @@ import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { BelgeMetniDugmesi } from "../../belge-metni-dugmesi";
 import { waMeAdresi } from "@/lib/wa-me";
+import { AbonelikAlanlari } from "./abonelik-alanlari";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
@@ -42,7 +43,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -91,10 +92,13 @@ export default async function ContractDetailPage({ params }: Props) {
   /* Kendi numarasını bağlamamış kurumda eski usul sürüyor: sözleşmeyi
      Arvo'nun numarasından yollamak, müşteriye tanımadığı bir numaradan
      imza bağlantısı göndermek olurdu. */
+  // Abonelik alanları yalnızca Arvo'nun kendi kurumunda çiziliyor.
+  const arvoKurumu = await arvoKurumuMu(supabase, membership.organization_id);
+
   const waDurum = await getWhatsappStatus(membership.organization_id);
   const gonderimYolu = belgeGonderimYolu({
     kendiNumarasiBagli: waDurum.connected && waDurum.status !== "disabled",
-    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+    arvoKurumu,
   });
 
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
@@ -327,6 +331,9 @@ export default async function ContractDetailPage({ params }: Props) {
                   defaultValue={data.customer_tax_office ?? ""}
                 />
               </label>
+              {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
+                  müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
+              {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
               <div className="wide panel-form-actions">
                 <button className="panel-primary">Kaydet</button>
               </div>

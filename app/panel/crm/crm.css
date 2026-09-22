@@ -299,3 +299,32 @@
 .panel-root .proposal-rep-required strong{display:block;color:var(--ink);font-size:14px}
 .panel-root .proposal-rep-required p{margin:3px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5}
 .panel-root .proposal-rep-select select:invalid{border-color:color-mix(in srgb,var(--warning) 55%,var(--line))}
+
+/* Sözleşmedeki abonelik seçimi: hangi modülleri açıyor.
+   Yalnızca Arvo'nun kendi kurumunda çiziliyor. */
+.abonelik-ipucu { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.55 }
+.abonelik-modul {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.abonelik-modul legend { padding: 0 6px }
+.abonelik-modul legend label { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; cursor: pointer }
+.abonelik-modul > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 6px }
+.abonelik-modul label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; min-width: 0 }
+.abonelik-modul input[type="text"], .abonelik-modul input:not([type]), .abonelik-modul select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+}
+/* Onay kutusu kendi satırında: "bağımsız" uzun bir cümle ve dar sütunda
+   etiketi girdisinden kopuyordu. */
+.abonelik-bagimsiz { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 7px; cursor: pointer }
+.abonelik-bagimsiz input { width: auto }
