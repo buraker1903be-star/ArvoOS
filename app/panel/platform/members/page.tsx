@@ -20,9 +20,18 @@ export default async function MembersPage() {
     kurumda beş ürünü varsa bu bir erişimdir, beş değil.
   */
   const uyelikler = new Map<string, boolean>();
+  /*
+    Gruplama listedeki kuralın aynısı (uye-listesi.tsx): kurum kimliği
+    olanlar grubu kuruyor, ArvoLab satırları (kimliksiz) adı tutan gruba
+    katılıyor. Kişi ise E-POSTAYA göre birleşiyor — ArvoLab'ın kullanıcı
+    kimliği ArvoOS'unkiyle aynı değil. İki yerde iki ayrı kural, iki ayrı
+    sayı demekti: ekranda beş grup, widget'ta altı kurum yazıyordu.
+  */
+  const isimdenGrup = new Map<string, string>();
+  for (const row of rows) if (row.organizationId) isimdenGrup.set(row.scope, row.organizationId);
   for (const row of rows) {
-    const grup = row.individual ? "bireysel" : row.organizationId ?? `ad:${row.scope}`;
-    const anahtar = `${grup}:${row.userId}`;
+    const grup = row.individual ? "bireysel" : row.organizationId ?? isimdenGrup.get(row.scope) ?? `ad:${row.scope}`;
+    const anahtar = `${grup}:${row.email?.toLocaleLowerCase("tr-TR") ?? `uid:${row.userId}`}`;
     uyelikler.set(anahtar, (uyelikler.get(anahtar) ?? false) || row.access);
   }
   const acikSayisi = [...uyelikler.values()].filter(Boolean).length;
