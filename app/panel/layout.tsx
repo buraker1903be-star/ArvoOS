@@ -120,7 +120,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />}
+    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />}
     <aside id="panel-sidebar" className="panel-sidebar">
       {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
           paneli açılmıyor, hepsinin yönetimi açılıyor. */}
@@ -137,7 +137,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       )}
       {konsolHostu
         ? <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
-        : <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />}
+        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />}
       <div className="panel-sidebar-footer">
         <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>

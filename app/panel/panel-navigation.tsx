@@ -9,7 +9,7 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 
-export function PanelNavigation({ modules, isPlatformOwner, role, hiddenModuleKeys }: { modules: PanelModule[]; isPlatformOwner: boolean; role?: string; hiddenModuleKeys?: string[] }) {
+export function PanelNavigation({ modules, role, hiddenModuleKeys }: { modules: PanelModule[]; role?: string; hiddenModuleKeys?: string[] }) {
   const pathname = usePathname();
   const resolved = resolveNavigationGroups(modules, role, new Set(hiddenModuleKeys ?? []));
 
@@ -47,6 +47,8 @@ export function PanelNavigation({ modules, isPlatformOwner, role, hiddenModuleKe
       })}
     </div>
     <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings" title="Ayarlar"><i>A</i><span>Ayarlar</span></Link>
-    {isPlatformOwner ? <Link className={pathname.startsWith("/panel/platform") ? "panel-nav-group-link owner-link active" : "panel-nav-group-link owner-link"} href="/panel/platform" title="Platform Yönetimi"><i>◇</i><span>Platform Yönetimi</span><b>OWNER</b></Link> : null}
+    {/* Platform yönetimi uygulama panelinden kaldırıldı: kendi alan adında
+        (yonetim.arvo-os.com). Aynı kabukta durduğu sürece "şu an hangi kurum
+        adına iş yapıyorum" sorusu karışıyordu. */}
   </nav>;
 }

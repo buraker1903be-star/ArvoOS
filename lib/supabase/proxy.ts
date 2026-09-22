@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isManagementHost, isMarketingHost, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
+import { isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
 import { resolvePath } from "@/lib/site/routes";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
@@ -50,6 +50,15 @@ export async function updateSession(request: NextRequest) {
     appHost: DEFAULT_APP_HOST,
   });
   if (managementTarget) return NextResponse.redirect(managementTarget, 307);
+
+  // Platform yönetimi uygulama panelinden kaldırıldı; eski bağlantılar
+  // 404 vermek yerine konsola taşınıyor.
+  const konsolAdresi = konsolaTasinanYol({
+    host: request.headers.get("host") ?? "",
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+  });
+  if (konsolAdresi) return NextResponse.redirect(konsolAdresi, 307);
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(

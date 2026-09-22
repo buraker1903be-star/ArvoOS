@@ -68,6 +68,24 @@ export function managementRedirectTarget(input: {
   return null;
 }
 
+/**
+ * Platform yönetimi uygulama alan adından İSTENDİĞİNDE konsola taşır.
+ *
+ * Yönetim kendi alan adına taşındı; uygulama panelinde artık menüsü de yok.
+ * Eski yer imleri ve paylaşılmış bağlantılar kırılmasın diye yol burada
+ * yönlendiriliyor — kaldırılan bir sayfanın 404 vermesi, taşındığını
+ * söylemekten kötü.
+ *
+ * Yönetim alan adının kendisi hariç her host için geçerli: kurum kendi
+ * alan adından da denese aynı yere gider (orada zaten yetkisi yok).
+ */
+export function konsolaTasinanYol(input: { host: string; pathname: string; search?: string }): string | null {
+  const host = normalizeHost(input.host);
+  if (!host || isManagementHost(host) || isDevOrPreviewHost(host)) return null;
+  if (!input.pathname.startsWith(MANAGEMENT_PATH)) return null;
+  return `https://${MANAGEMENT_HOST}${input.pathname}${input.search ?? ""}`;
+}
+
 export function isMarketingHost(host: string): boolean {
   return (MARKETING_HOSTS as readonly string[]).includes(normalizeHost(host));
 }

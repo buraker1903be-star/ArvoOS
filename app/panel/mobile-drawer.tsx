@@ -19,7 +19,6 @@ export function MobileDrawer({
   modules,
   organizationName,
   roleName,
-  isPlatformOwner,
   role,
   brandName,
   brandLogoUrl,
@@ -31,7 +30,6 @@ export function MobileDrawer({
   modules: PanelModule[];
   organizationName: string;
   roleName: string;
-  isPlatformOwner: boolean;
   role?: string;
   brandName?: string;
   brandLogoUrl?: string | null;
@@ -66,9 +64,9 @@ export function MobileDrawer({
     ];
 
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
-    if (isPlatformOwner) result.push({ href: "/panel/platform", label: "Platform Yönetimi", icon: "P" });
+    // Platform yönetimi uygulama panelinden kaldırıldı; kendi alan adında.
     return result;
-  }, [modules, isPlatformOwner, role, hiddenModuleKeys]);
+  }, [modules, role, hiddenModuleKeys]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("mobile-drawer-open", open);

@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { MANAGEMENT_HOST, isManagementHost, managementRedirectTarget } from "@/lib/site/host-rules";
+import { MANAGEMENT_HOST, isManagementHost, konsolaTasinanYol, managementRedirectTarget } from "@/lib/site/host-rules";
 
 const APP = "app.arvo-os.com";
 const hedef = (host: string, pathname: string, search?: string) =>
@@ -54,5 +54,36 @@ describe("yönetim alan adı", () => {
   test("başka alan adlarında karar verilmez", () => {
     assert.equal(hedef(APP, "/"), null);
     assert.equal(hedef("arvo-os.com", "/panel"), null);
+  });
+});
+
+describe("platform yolu konsola taşınır", () => {
+  const tasi = (host: string, pathname: string, search?: string) =>
+    konsolaTasinanYol({ host, pathname, search });
+
+  test("uygulama alan adındaki eski bağlantı konsola gider", () => {
+    // Kaldırılan bir sayfanın 404 vermesi, taşındığını söylemekten kötü.
+    assert.equal(
+      tasi(APP, "/panel/platform/licenses", "?organization=abc"),
+      `https://${MANAGEMENT_HOST}/panel/platform/licenses?organization=abc`,
+    );
+  });
+
+  test("kurum kendi alan adından denese de aynı yere gider", () => {
+    assert.equal(tasi("app.akademikmerkez.com", "/panel/platform"), `https://${MANAGEMENT_HOST}/panel/platform`);
+  });
+
+  test("konsolun kendi alan adında yönlendirme yok", () => {
+    // Yoksa sonsuz döngü olurdu.
+    assert.equal(tasi(MANAGEMENT_HOST, "/panel/platform"), null);
+  });
+
+  test("platform dışındaki yollara dokunulmaz", () => {
+    assert.equal(tasi(APP, "/panel/crm"), null);
+    assert.equal(tasi(APP, "/panel"), null);
+  });
+
+  test("yerel geliştirme etkilenmez", () => {
+    assert.equal(tasi("localhost", "/panel/platform"), null);
   });
 });
