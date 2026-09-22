@@ -13,74 +13,73 @@
   Kopyanın eski olduğu HİÇBİR YERDE görünmüyordu. Görünmeyen bir bozukluk,
   müşteri şikâyet edene kadar sürer; nitekim öyle oldu.
 
-  Karşılaştırma konsolun bildiği değerle ürünün tuttuğu değer arasında:
-  "ne zaman yansıtıldı" tek başına yetmez, çünkü zamanı yeni olan bir
-  kopya da yanlış olabilir (ve tersi: haftalardır değişmemiş bir kurumda
-  eski damga tamamen normaldir). Karar FARKA bakıyor.
+  Karar "ne zaman yansıtıldı"ya değil FARKA bakıyor: zamanı yeni olan bir
+  kopya da yanlış olabilir, ve haftalardır değişmemiş bir kurumda eski
+  damga tamamen normaldir.
+
+  Alanları çağıran biçimlendirip veriyor, çünkü üç ürünün kopyası üç ayrı
+  şekilde duruyor: ArvoLab kendi organizations satırında (durum + AI
+  hakkı), Arc ve Randevu ise ArvoOS'un lisans satırının aynen kopyasında
+  (durum + kayıt zamanı). Kural tek, karşılaştırılan alanlar ürüne özgü.
 */
 
-export type Yansima = {
-  syncedAt: string | null;
-  status: string;
-  aiCreditLimit: number | null;
+export type YansimaAlani = {
+  etiket: string;
+  /** Ürün veritabanındaki değer, gösterilecek biçimde. */
+  kopya: string;
+  /** Konsolun bildiği doğru değer, aynı biçimde. */
+  konsol: string;
 };
 
-export type Konsol = {
-  status: string;
-  aiCreditLimit: number | null;
+export type YansimaKopyasi = {
+  /** Kopyanın tazelik damgası; hiç yansıtılmamışsa null. */
+  damga: string | null;
+  alanlar: YansimaAlani[];
 };
 
 export type YansimaDurumu = {
   /** Kurucunun dikkatini hak ediyor mu: kopya konsolla uyuşmuyor. */
   uyari: boolean;
-  /** Kartta "Ürüne yeniden yansıt" düğmesinin üstünde yazan metin. */
+  /** "Ürüne yeniden yansıt" düğmesinin üstünde yazan metin. */
   notu: string;
 };
 
-const gun = (deger: string | null) =>
-  deger ? new Date(deger).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }) : null;
-
-const hak = (deger: number | null) =>
-  deger === null ? "bildirilmemiş" : `${new Intl.NumberFormat("tr-TR").format(deger)} kredi`;
+export const yansimaGunu = (deger: string | null) =>
+  deger
+    ? new Date(deger).toLocaleString("tr-TR", {
+        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
 
 /**
- * @param yansima Ürün veritabanındaki kopya; okunamadıysa null.
- * @param konsol  ArvoOS'un bildiği doğru değerler.
+ * @param kopya   Ürün veritabanındaki kopya; okunamadıysa null.
  * @param urunAdi Kullanıcıya gösterilen ürün adı.
  */
-export function yansimaDurumu(yansima: Yansima | null, konsol: Konsol, urunAdi: string): YansimaDurumu {
+export function yansimaDurumu(kopya: YansimaKopyasi | null, urunAdi: string): YansimaDurumu {
   /*
     Okunamaması UYARI DEĞİL. Köprü anahtarı tanımlı olmayan bir ortamda
     (yerel geliştirme, önizleme) her kurum "sorunlu" görünürdü ve uyarı
     hızla göz ardı edilen bir süs hâline gelirdi.
   */
-  if (!yansima) {
+  if (!kopya) {
     return { uyari: false, notu: `${urunAdi} kendi veritabanında; oradaki kopya şu an okunamadı.` };
   }
 
-  if (!yansima.syncedAt) {
+  if (!kopya.damga) {
     return { uyari: true, notu: `${urunAdi}'a hiç yansıtılmamış. Aşağıdaki düğme kopyayı oluşturur.` };
   }
 
-  const farklar: string[] = [];
-  if (yansima.status !== konsol.status) {
-    farklar.push(`durum "${yansima.status}" (burada "${konsol.status}")`);
-  }
-  /*
-    AI hakkı yalnızca ArvoLab'da anlamlı; diğer ürünlerde iki taraf da
-    null olur ve bu dal hiç çalışmaz.
-  */
-  if (yansima.aiCreditLimit !== konsol.aiCreditLimit) {
-    farklar.push(`AI hakkı ${hak(yansima.aiCreditLimit)} (burada ${hak(konsol.aiCreditLimit)})`);
-  }
+  const farklar = kopya.alanlar
+    .filter((alan) => alan.kopya !== alan.konsol)
+    .map((alan) => `${alan.etiket} ${alan.kopya} (burada ${alan.konsol})`);
 
   if (!farklar.length) {
-    return { uyari: false, notu: `${urunAdi}'daki kopya güncel. Son yansıtma: ${gun(yansima.syncedAt)}.` };
+    return { uyari: false, notu: `${urunAdi}'daki kopya güncel. Son yansıtma: ${yansimaGunu(kopya.damga)}.` };
   }
 
   return {
     uyari: true,
     notu: `${urunAdi}'daki kopya ESKİ — ${farklar.join(", ")}. `
-      + `Son yansıtma: ${gun(yansima.syncedAt)}. Aşağıdaki düğme kopyayı tazeler.`,
+      + `Son yansıtma: ${yansimaGunu(kopya.damga)}. Aşağıdaki düğme kopyayı tazeler.`,
   };
 }

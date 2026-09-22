@@ -6,7 +6,9 @@ import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
 import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
 import { arvolabYansimasi } from "@/lib/arvolab";
-import { yansimaDurumu } from "@/lib/yansima-durumu";
+import { arcUrunKopyasi } from "@/lib/arc-bridge";
+import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
+import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
@@ -122,7 +124,53 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     kalabiliyor: yansıtma yalnızca kaydederken çalışıyor.
     AkademikMerkez'de tam bu oldu (22.09.2026).
   */
-  const arvolabKopyasi = await arvolabYansimasi(selected.id);
+  const [arvolabKopyasi, arcKopyasi, randevuKopyasi] = await Promise.all([
+    arvolabYansimasi(selected.id),
+    arcUrunKopyasi(selected.id),
+    randevuUrunKopyasi(selected.id),
+  ]);
+
+  /*
+    Üç ürünün kopyası üç ayrı biçimde duruyor, o yüzden karşılaştırılacak
+    alanlar burada kuruluyor; kural tek yerde (lib/yansima-durumu.ts).
+
+    ArvoLab kendi organizations satırında durum + AI hakkı tutuyor.
+    Arc ve Randevu ise ArvoOS'un lisans satırının aynen kopyasını; orada
+    durum ve dönem sonu karşılaştırılıyor. updated_at KARŞILAŞTIRILMIYOR:
+    hedef veritabanında onu now() yapan bir tetikleyici varsa uyarı
+    sürekli yanardı ve sürekli yanan uyarı, olmayan uyarıdır.
+  */
+  const cekirdekHak = license.ai_credit_limit ?? null;
+  const krediMetni = (deger: number | null) =>
+    deger === null ? "bildirilmemiş" : `${sayi(deger)} kredi`;
+
+  function urunYansimasi(kod: string): YansimaKopyasi | null {
+    const konsolDurum = productLicenses.get(kod)?.status ?? "inactive";
+    if (kod === "arvolab") {
+      if (!arvolabKopyasi) return null;
+      return {
+        damga: arvolabKopyasi.syncedAt,
+        alanlar: [
+          { etiket: "durum", kopya: arvolabKopyasi.status, konsol: konsolDurum },
+          {
+            etiket: "AI hakkı",
+            kopya: krediMetni(arvolabKopyasi.aiCreditLimit),
+            konsol: krediMetni(cekirdekHak),
+          },
+        ],
+      };
+    }
+    const kopya = kod === "arc" ? arcKopyasi : kod === "randevu" ? randevuKopyasi : null;
+    if (!kopya) return null;
+    const konsolDonem = productLicenses.get(kod)?.current_period_end ?? null;
+    return {
+      damga: kopya.updatedAt,
+      alanlar: [
+        { etiket: "durum", kopya: kopya.status, konsol: konsolDurum },
+        { etiket: "dönem sonu", kopya: yansimaGunu(kopya.periodEnd), konsol: yansimaGunu(konsolDonem) },
+      ],
+    };
+  }
   const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
     ADDON_PRODUCTS.map((urun) => [
       urun.code,
@@ -309,9 +357,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                   yok. Onlarda yansima null geçiyor, metin de eskisi gibi
                   genel kalıyor — uydurma bir "güncel" yazmaktansa.
                 */
-                yansima: product.code === "arvolab"
-                  ? yansimaDurumu(arvolabKopyasi, { status, aiCreditLimit: license.ai_credit_limit ?? null }, product.name)
-                  : yansimaDurumu(null, { status, aiCreditLimit: null }, product.name),
+                yansima: yansimaDurumu(urunYansimasi(product.code), product.name),
                 ad: product.name,
                 aciklama: product.description,
                 durumAdi: productLicenseLabels[status] ?? status,

@@ -193,3 +193,22 @@ export async function createRandevuPasswordToken(email: string): Promise<string>
   if (error || !token) throw new Error(`şifre bağlantısı oluşturulamadı: ${error?.message ?? "jeton yok"}`);
   return token;
 }
+
+/** Randevu'daki lisans kopyasının kendisi; gerekçe lib/arc-bridge.ts'te. */
+export async function randevuUrunKopyasi(organizationId: string) {
+  const hedef = randevuClient();
+  if (!hedef) return null;
+  const { data, error } = await hedef.from("organization_product_licenses")
+    .select("status,current_period_end,updated_at").eq("organization_id", organizationId).eq("product", "randevu").maybeSingle();
+  if (error) {
+    console.error("[randevu] lisans kopyası okunamadı", organizationId, error.message);
+    return null;
+  }
+  if (!data) return { status: "yok", periodEnd: null, updatedAt: null };
+  const satir = data as { status: string | null; current_period_end: string | null; updated_at: string | null };
+  return {
+    status: satir.status ?? "inactive",
+    periodEnd: satir.current_period_end ?? null,
+    updatedAt: satir.updated_at ?? null,
+  };
+}

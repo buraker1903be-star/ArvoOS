@@ -207,3 +207,39 @@ export async function getArcBridgeHealth(): Promise<ArcBridgeHealth> {
   }
   return { missing, ok: true, organizations: count ?? 0, error: null };
 }
+
+export type UrunKopyasi = { status: string; periodEnd: string | null; updatedAt: string | null };
+
+/**
+ * ARC'taki lisans kopyasının KENDİSİ.
+ *
+ * getArcBridgeHealth köprünün ayakta olup olmadığını söylüyor; bunu
+ * söylemiyor. AkademikMerkez'in ArvoLab kopyası tam bu boşlukta altı gün
+ * eski kaldı: köprü sağlıklıydı, kopya bayattı.
+ *
+ * KARŞILAŞTIRMA updated_at ÜZERİNDEN YAPILMIYOR. Köprü onu aynen
+ * kopyalıyor ama hedef veritabanında satırı yazarken updated_at'i now()
+ * yapan bir tetikleyici varsa kopya her zaman farklı görünür ve uyarı
+ * sürekli yanar. Sürekli yanan uyarı, olmayan uyarıdır. Bunun yerine iş
+ * anlamı olan ve kendiliğinden değişmeyen alanlar karşılaştırılıyor:
+ * durum ve dönem sonu. updated_at yalnızca "son yansıtma" damgası olarak
+ * gösteriliyor.
+ */
+export async function arcUrunKopyasi(organizationId: string): Promise<UrunKopyasi | null> {
+  const arc = arcClient();
+  if (!arc) return null;
+  const { data, error } = await arc.from("organization_product_licenses")
+    .select("status,current_period_end,updated_at").eq("organization_id", organizationId).eq("product", "arc").maybeSingle();
+  if (error) {
+    console.error("[arc] lisans kopyası okunamadı", organizationId, error.message);
+    return null;
+  }
+  // Satır yok: kurum ARC'a hiç yansıtılmamış.
+  if (!data) return { status: "yok", periodEnd: null, updatedAt: null };
+  const satir = data as { status: string | null; current_period_end: string | null; updated_at: string | null };
+  return {
+    status: satir.status ?? "inactive",
+    periodEnd: satir.current_period_end ?? null,
+    updatedAt: satir.updated_at ?? null,
+  };
+}
