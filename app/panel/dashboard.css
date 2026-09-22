@@ -138,3 +138,9 @@ a.dash-setup-step:active{transform:scale(.985)}
   .dash-setup-list{grid-template-columns:minmax(0,1fr);gap:8px}
 }
 @media(prefers-reduced-motion:reduce){.dash-bar-fill,.dash-stage-track span{animation:none}}
+
+/* Satırın altındaki açıklama. Bölüm listesinde "Lisans ve kota" tek
+   başına neyin nerede olduğunu söylemiyordu. */
+.dash-row-note{display:block;margin-top:1px;color:var(--muted);font-size:12.5px;line-height:1.35}
+/* Para tutarı widget'a sığmıyordu: "₺1.234.567,00" tek satıra kesiliyordu. */
+.dash-widget strong{overflow-wrap:anywhere}

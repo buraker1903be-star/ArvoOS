@@ -124,7 +124,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <aside id="panel-sidebar" className="panel-sidebar">
       {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
           paneli açılmıyor, hepsinin yönetimi açılıyor. */}
-      <Link className="panel-brand" href={konsolHostu ? "/panel/platform" : "/panel"}>
+      <Link className="panel-brand" href="/panel">
         {konsolHostu || !brandLogoUrl ? <i>{konsolHostu ? "◇" : brandName.slice(0, 1).toUpperCase()}</i> : <img src={brandLogoUrl} alt={brandName} />}
         <span><b>{konsolHostu ? "Kurucu Konsolu" : brandName}</b><small>{konsolHostu ? "PLATFORM YÖNETİMİ" : brandTagline}</small></span>
       </Link>
