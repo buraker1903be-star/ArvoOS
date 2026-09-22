@@ -244,24 +244,6 @@
 /* Kiracı özeti: lisans, kota, ücret ve dönem sonu tek şeritte.
    Daha önce bu dört bilgi üç ayrı sekmeye dağılmıştı ve bir kiracı
    hakkında karar vermek için üçünü de gezmek gerekiyordu. */
-.kiraci-ozet {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.kiraci-ozet > div {
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--surface-2);
-}
-.kiraci-ozet small { display: block; margin-bottom: 3px; color: var(--muted); font-size: 12px }
-.kiraci-ozet b { font-size: 17px; font-weight: 650; letter-spacing: -.01em }
-.kiraci-ozet b[data-tone="success"] { color: var(--success, #1d9e75) }
-.kiraci-ozet b[data-tone="info"] { color: var(--accent) }
-.kiraci-ozet b[data-tone="warning"] { color: var(--warning, #ba7517) }
-.kiraci-ozet b[data-tone="danger"] { color: var(--danger) }
-
 /* Kiracının üyeleri: satır başına tek işlem, sağda. */
 .kiraci-uyeler { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none }
 .kiraci-uyeler li {
@@ -283,54 +265,9 @@
 /* Hızlı işlemler: kurucunun en sık yaptığı üç şey, kiracı dosyasının
    başında. Hepsi mevcut ekranlara götürüyor; konsolda ikinci bir yazma
    yolu açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar. */
-.kiraci-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px }
-.kiraci-islemler > * { font-size: 12.5px }
-
 /* Kiracı dosyasının kartları: ödeme, kanallar, son etkinlik.
    Üç bilgi daha önce üç ayrı sekmedeydi. */
-.kiraci-kartlar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.kiraci-kartlar .panel-card { padding: 16px 18px }
-.kiraci-kartlar h3 {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-.kiraci-kartlar dl { display: grid; gap: 7px; margin: 0 }
-.kiraci-kartlar dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px }
-/* Etiket bölünmesin: uzun bir değer ("Erişim anahtarı geçersiz…") etiketi
-   iki satıra kırıyordu ve satır okunmaz oluyordu. */
-.kiraci-kartlar dt { flex: none; color: var(--muted); font-size: 12.5px; white-space: nowrap }
-.kiraci-kartlar dd {
-  margin: 0;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: end;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.kiraci-kartlar dd[data-tone="success"] { color: var(--success, #1d9e75) }
-.kiraci-kartlar dd[data-tone="warning"] { color: var(--warning, #ba7517) }
-/* Hata metni uzun; kendi satırına iniyor ve soldan hizalanıyor. Sağa
-   yaslanmış çok satırlı bir hata okunmuyordu. */
-.kiraci-kartlar dl > div:has(dd[data-tone="danger"]) { flex-direction: column; align-items: flex-start; gap: 2px }
-.kiraci-kartlar dd[data-tone="danger"] { color: var(--danger); white-space: normal; text-align: start; line-height: 1.45 }
-
 /* Son etkinlik: ne olduğu üstte, neye ve ne zaman altta. */
-.kiraci-etkinlik { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none }
-.kiraci-etkinlik li { display: grid; gap: 1px }
-.kiraci-etkinlik b { font-size: 12.5px; font-weight: 600 }
-.kiraci-etkinlik small { color: var(--muted); font-size: 11.5px }
-
 /* Kiracı dosyasından gelinen tek sütunlu alt sayfalar (lisans ve kota).
    Kendi kurum listeleri kaldırıldı: iki ayrı kurum listesi tutmak,
    birinde seçip diğerinde kaybolmak demekti. */
@@ -356,44 +293,6 @@
 
 /* Kiracı kimliği dosyanın en üstünde. Ad sayfanın ortasında duruyordu:
    kimin dosyasına bakıldığını görmek için aşağı kaydırmak gerekiyordu. */
-.kiraci-baslik {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
-  padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-.kiraci-baslik > div { flex: 1; min-width: 0 }
-.kiraci-baslik h2 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.015em }
-.kiraci-baslik small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.kiraci-avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
-  background: var(--surface-2);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -.02em;
-}
-.kiraci-avatar[data-tone="success"] { background: color-mix(in srgb, var(--success, #1d9e75) 14%, transparent); color: var(--success, #1d9e75) }
-.kiraci-avatar[data-tone="warning"] { background: color-mix(in srgb, var(--warning, #ba7517) 16%, transparent); color: var(--warning, #ba7517) }
-.kiraci-avatar[data-tone="danger"] { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger) }
-
 /* Kurulum tamamlandığında bölüm yerine tek satır: yerleşmiş kiracıda
    dokuz maddelik "tamam" listesi okunacak bir şey söylemiyordu. */
 .kiraci-not {
@@ -415,25 +314,6 @@
    Sorunsuz sayılar (müşteri, kullanımda) sessiz; bekleyen iş varsa
    renkleniyor ve tıklanabiliyor. Sıfır olan hiç çizilmiyor: "0 dikkat"
    yazmak, bakılacak bir şey varmış gibi durmak demek. */
-.platform-serit {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
-  margin-bottom: 14px;
-  padding: 11px 18px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 12.5px;
-}
-.platform-serit b { color: var(--ink); font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums }
-.platform-serit > * { display: inline-flex; align-items: baseline; gap: 5px; text-decoration: none; color: inherit }
-.platform-serit [data-tone="warning"] b { color: var(--warning, #ba7517) }
-.platform-serit [data-tone="danger"] b { color: var(--danger) }
-.platform-serit a:hover { text-decoration: underline }
-
 /* Ürün planı kartları yan yana. Tek sütunda tam genişlik kaplıyorlardı:
    iki kısa formu okumak için ekran boyu kaydırmak gerekiyordu ve ürün
    sayısı arttıkça sayfa uzayacaktı. Sığdığı kadarı yan yana diziliyor. */
@@ -578,3 +458,50 @@
    "şu an ne kadar" yanında olmalı. */
 .kota-olcum { color: var(--muted); font-size: 11px; line-height: 1.4 }
 .kota-olcum[data-tone="danger"] { color: var(--danger); font-weight: 600 }
+
+/* ============================================================
+   Kiracı dosyası — kiracı panelinin diliyle (.stg-*) aynı ölçüler.
+   Buradaki sınıflar yalnızca o dilde karşılığı olmayan parçalar için:
+   kiracı başlığı, işlem satırı, dosya ızgarası ve etkinlik listesi.
+   ============================================================ */
+.plt-kiraci { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px }
+.plt-kiraci-ad { flex: 1; min-width: 0 }
+.plt-kiraci-ad h2 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.015em; overflow-wrap: anywhere }
+/* Etiketler ayrı parçalar: eskiden tek satırda dört bilgi vardı ve uzun
+   ticari unvanlarda satır taşıyordu. */
+.plt-kiraci-etiket { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 5px 0 0; padding: 0; list-style: none }
+.plt-kiraci-etiket li { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere }
+.plt-kiraci-etiket li + li::before { content: "·"; margin-inline-end: 10px; color: var(--line) }
+.plt-kiraci-etiket .is-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px }
+.plt-kiraci-avatar {
+  flex: none; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 14px;
+  background: var(--surface-2); color: var(--muted);
+  font-size: 14px; font-weight: 700;
+}
+.plt-kiraci-avatar[data-tone="success"] { background: var(--success-soft); color: var(--success) }
+.plt-kiraci-avatar[data-tone="warning"] { background: var(--warning-soft); color: color-mix(in srgb, var(--warning) 80%, var(--ink)) }
+.plt-kiraci-avatar[data-tone="danger"] { background: var(--danger-soft); color: var(--danger) }
+
+.plt-islemler { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px }
+
+/* Dosya ızgarası: ödeme ve kanallar yan yana, etkinlik tam genişlikte.
+   Üç ayrı kart farklı yüksekliklerde duruyor, içleri çoğu zaman boştu. */
+.plt-dosya { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 24px }
+.plt-dosya-wide { grid-column: 1 / -1 }
+.plt-dosya-h {
+  margin: 0 0 8px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+
+.plt-etkinlik { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none }
+.plt-etkinlik li { display: flex; align-items: flex-start; gap: 10px }
+.plt-etkinlik li > span:last-child { display: grid; gap: 1px; min-width: 0 }
+.plt-etkinlik b { font-size: 13px; font-weight: 600 }
+.plt-etkinlik small { color: var(--muted); font-size: 11.5px }
+/* Zaman çizgisi noktası: satırlar aynı ağırlıkta metin yığınıydı. */
+.plt-etkinlik-nokta {
+  flex: none; width: 7px; height: 7px; margin-top: 5px;
+  border-radius: 50%; background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}

@@ -13,7 +13,7 @@ import { ADDON_PRODUCTS } from "@/lib/products";
 import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
 import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon, StgSection, type StgTone } from "../settings/settings-ui";
+import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
@@ -47,14 +47,32 @@ const actionLabels: Record<string, string> = { provision_organization: "Kurulum"
 const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
 /* Etkinlik kaydındaki ham kodlar ("status", "crm_proposal") kimseye bir
    şey anlatmıyor; okunur karşılıkları burada. */
+// Ham eylem kodu ekranda görünmemeli: "archive" yazısı kurucuya bir şey
+// söylemiyordu. Listede karşılığı olmayan kod yine de basılır ama artık
+// eksik olanı görünce buraya eklemek yeterli.
 const ETKINLIK_ADI: Record<string, string> = {
   create: "Oluşturuldu", update: "Güncellendi", status: "Durum değişti",
   send: "Müşteriye gönderildi", delete: "Silindi", sign: "İmzalandı",
+  archive: "Arşivlendi", restore: "Geri alındı", accept: "Kabul edildi",
+  reject: "Reddedildi", cancel: "İptal edildi", complete: "Tamamlandı",
+  invite: "Davet edildi", activate: "Erişim açıldı", deactivate: "Erişim kapatıldı",
+  login: "Giriş yapıldı", payment: "Ödeme bildirildi",
 };
 const VARLIK_ADI: Record<string, string> = {
   crm_opportunity: "Talep", crm_proposal: "Teklif", crm_contract: "Sözleşme",
-  organization_membership: "Üye erişimi",
+  organization_membership: "Üye erişimi", organization: "Kurum",
+  payment_notification: "Ödeme bildirimi", operation_workflow: "İş akışı",
+  hr_employee: "Personel", finance_transaction: "Finans hareketi",
 };
+
+/**
+ * Depolamayı okunur birimde yazar. "512000 MB" kimsenin kafasında bir
+ * büyüklüğe karşılık gelmiyordu; 500 GB geliyor.
+ */
+function depolama(mb: number): string {
+  if (mb >= 1024) return `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: mb >= 10240 ? 0 : 1 }).format(mb / 1024)} GB`;
+  return `${new Intl.NumberFormat("tr-TR").format(mb)} MB`;
+}
 const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
@@ -391,17 +409,19 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     ) : null}
 
     {/*
-      Platform geneli sayılar tek şeritte. Dört büyük kart, kiracı seçilmiş
-      bir ekranda her açılışta dosyayı aşağı itiyordu; kurucu buraya bir kez
-      bakıyor, kiracıya defalarca. Sayılar aynı, yer onda biri.
+      Platform geneli sayılar kiracı panelindeki widget şeridiyle aynı dilde.
+      Eskiden tek satırlık sıkışık bir şeritti: geniş bir kutunun sol
+      köşesinde duruyor, boş alanı açıklamıyordu.
+
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "kurulum bekleyen
+      yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
-    <section className="platform-serit" aria-label="Platform özeti">
-      <span><b>{customers.length}</b> müşteri kurum</span>
-      <span><b>{activeCount}</b> kullanımda</span>
-      {pendingCount ? <span data-tone="warning"><b>{pendingCount}</b> kurulum bekliyor</span> : null}
-      {issueCount ? <span data-tone="danger"><b>{issueCount}</b> dikkat</span> : null}
-      {paymentsWaiting ? <Link href="/panel/platform/payments" data-tone="warning"><b>{paymentsWaiting}</b> ödeme onayı</Link> : null}
-    </section>
+    <div className="stg-widgets" aria-label="Platform özeti">
+      <StgWidget tone="info" icon="building" label="Müşteri kurum" value={customers.length} note={`${customers.length + 1} kurum kaydı`} />
+      <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi panele girmiş" />
+      <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekliyor" value={pendingCount} note={pendingCount ? "Sahip daveti tamamlanmadı" : "Bekleyen yok"} />
+      <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat gerektiren" value={issueCount} note={issueCount ? "Kurulum hatası ya da kota aşımı" : "Sorun yok"} />
+    </div>
 
 
     <div className="plt-layout">
@@ -432,13 +452,18 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                     <small>{item.slug} · {item.kind === "internal" ? "Kendi markamız" : planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
                   </span>
                   {/* Rozet önce KOTAYI söylüyor: kurucu listeye bakınca hangi
-                      kiracıya bakması gerektiğini görmeli. Kota sorunu yoksa
-                      kurulum durumu gösteriliyor. */}
+                      kiracıya bakması gerektiğini görmeli.
+
+                      Sorunu olmayan, kullanımdaki kiracıda rozet HİÇ
+                      çizilmiyor. Dört satırda dört yeşil "Kullanımda"
+                      rozeti, gözün ayırt etmesi gereken tek satırı
+                      (kurulum hatası) kalabalığın içinde kaybediyordu. */}
                   {(() => {
                     const kota = kotaById.get(item.id);
                     if (kota && kota.durum !== "normal") {
                       return <span className="status-pill" data-tone={kota.durum === "asildi" ? "danger" : "warning"}>{kota.kullanici.kullanilan}/{kota.kullanici.limit}</span>;
                     }
+                    if (item.provisioning_state === "active") return null;
                     return <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>;
                   })()}
                 </Link>
@@ -454,16 +479,25 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           kimin dosyasına baktığınızı görmek için aşağı kaydırmak
           gerekiyordu. Dosya "bu kim" ile başlamalı.
         */}
-        <header className="kiraci-baslik">
-          <span className="kiraci-avatar" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{initials(selected.display_name || selected.name)}</span>
-          <div>
+        {/*
+          KİMLİK EN ÜSTTE. Kiracının adı sayfanın ortasında duruyordu:
+          kimin dosyasına baktığınızı görmek için aşağı kaydırmak
+          gerekiyordu. Dosya "bu kim" ile başlamalı.
+
+          Alt satır eskiden tek satırda dört bilgi taşıyordu (çalışma alanı,
+          ticari unvan, sektör, e-posta) ve uzun unvanlarda okunmuyordu;
+          artık ayrı parçalar hâlinde, sarılarak.
+        */}
+        <header className="plt-kiraci">
+          <span className="plt-kiraci-avatar" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{initials(selected.display_name || selected.name)}</span>
+          <div className="plt-kiraci-ad">
             <h2>{selected.display_name || selected.name}</h2>
-            <small>
-              {selected.slug}
-              {selected.display_name ? ` · ${selected.name}` : ""}
-              {selected.sector ? ` · ${selected.sector}` : ""}
-              {invitation?.email ? ` · ${invitation.email}` : ""}
-            </small>
+            <ul className="plt-kiraci-etiket">
+              <li className="is-mono">{selected.slug}</li>
+              {selected.sector ? <li>{selected.sector}</li> : null}
+              {selected.display_name && selected.name !== selected.display_name ? <li>{selected.name}</li> : null}
+              {invitation?.email ? <li>{invitation.email}</li> : null}
+            </ul>
           </div>
           <span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>
             {stateLabels[selected.provisioning_state] ?? selected.provisioning_state}
@@ -481,92 +515,98 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           Hepsi mevcut ekranlara götürüyor — konsolda ikinci bir yazma yolu
           açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar.
         */}
-        <div className="kiraci-islemler">
-          <a className="panel-secondary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Panele git</a>
+        <div className="plt-islemler">
+          {/* Kurucunun en sık yaptığı şey kiracının paneline bakmak; üç
+              düğme aynı ağırlıktayken hangisinin asıl yol olduğu belli
+              değildi. Hepsi mevcut ekranlara götürüyor — konsolda ikinci
+              bir yazma yolu açmıyoruz, aksi hâlde aynı kural iki yerde
+              durur ve biri sapar. */}
+          <a className="panel-primary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Kiracının paneline git</a>
           <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
-          <Link className="panel-secondary" href="/panel/platform/payments">
-            Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}
-          </Link>
+          <Link className="panel-secondary" href={`/panel/platform/members?organization=${targetId}`}>Üyeler</Link>
         </div>
 
-        <section className="kiraci-ozet" aria-label="Kiracı özeti">
-          <div>
-            <small>Lisans</small>
-            <b data-tone={seciliLisans?.license_status === "active" ? "success" : seciliLisans?.license_status === "trialing" ? "info" : "warning"}>
-              {seciliLisans ? (licenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"}
-            </b>
-          </div>
-          <div>
-            <small>Kullanıcı</small>
-            <b data-tone={seciliKota?.durum === "asildi" ? "danger" : seciliKota?.durum === "yaklasti" ? "warning" : undefined}>
-              {seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : "—"}
-            </b>
-          </div>
-          <div>
-            <small>Depolama</small>
-            <b data-tone={seciliKota?.depolama.asildi ? "danger" : seciliKota && seciliKota.depolama.oran >= 85 ? "warning" : undefined}>
-              {seciliKota ? `${seciliKota.depolama.kullanilan} / ${seciliKota.depolama.limit} MB` : "—"}
-            </b>
-          </div>
-          <div>
-            <small>Aylık</small>
-            <b>{seciliLisans?.monthly_fee ? formatTry(Number(seciliLisans.monthly_fee)) : "Girilmedi"}</b>
-          </div>
-          <div>
+        {/*
+          Kiracı özeti gruplanmış liste: beş kutu yan yana dururken hepsi
+          aynı ağırlıktaydı ve boş olanlar ("Girilmedi", "—") yer kaplayıp
+          bir şey söylemiyordu. Listede boş değer satırın sonunda sessizce
+          durur, dolu olan öne çıkar.
+        */}
+        <StgSection
+          id="ozet" wide icon="box" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}
+          kicker="LİSANS VE KULLANIM" title="Kiracı özeti"
+          description="Paket durumu, kota kullanımı ve tahsilat dönemi."
+          aside={<Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>}
+        >
+          <dl className="stg-list">
+            <StgValueRow label="Lisans" value={seciliLisans ? (licenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"} />
+            <StgValueRow label="Kullanıcı" value={seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : null} />
+            <StgValueRow label="Depolama" value={seciliKota ? `${depolama(seciliKota.depolama.kullanilan)} / ${depolama(seciliKota.depolama.limit)}` : null} />
+            <StgValueRow label="Aylık ücret" value={seciliLisans?.monthly_fee ? formatTry(Number(seciliLisans.monthly_fee)) : null} />
             {/* Denemedeki kurumda asıl merak edilen deneme bitişi; dönem
                 sonu orada boş kalıyordu. */}
-            <small>{seciliLisans?.license_status === "trialing" ? "Deneme bitişi" : "Dönem sonu"}</small>
-            <b data-tone={seciliLisans?.license_status === "trialing" ? "warning" : undefined}>
-              {date(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null)}
-            </b>
-          </div>
-        </section>
+            <StgValueRow
+              label={seciliLisans?.license_status === "trialing" ? "Deneme bitişi" : "Dönem sonu"}
+              value={(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) ? date(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) : null}
+            />
+          </dl>
+          {seciliKota?.durum === "asildi" ? (
+            <p className="stg-muted"><StgIcon name="shield" size={16} />Bu kiracı kullanıcı limitini aşmış. Limit yalnızca burada görünür; kiracının kullanımını kesmez.</p>
+          ) : null}
+        </StgSection>
 
-        <div className="kiraci-kartlar">
-          <section className="panel-card" aria-label="Ödeme">
-            <h3>Ödeme</h3>
-            <dl>
-              <div><dt>Bekleyen dekont</dt><dd data-tone={bekleyenOdeme.length ? "warning" : undefined}>{bekleyenOdeme.length || "yok"}</dd></div>
-              <div><dt>Son tahsilat</dt><dd>{sonTahsilat ? `${formatTry(Number(sonTahsilat.amount))} · ${date(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : "—"}</dd></div>
-              <div><dt>Toplam bildirim</dt><dd>{odemeSatirlari.length}</dd></div>
-            </dl>
-          </section>
+        {/*
+          Ödeme, kanallar ve etkinlik tek bölümde, iki sütunlu bir ızgarada.
+          Üç ayrı kart farklı yüksekliklerde duruyordu ve içleri çoğu zaman
+          boştu: alt alta üç tire, ekranın üçte birini kaplıyordu.
+        */}
+        <StgSection
+          id="dosya" wide icon="folder" tone="neutral"
+          kicker="KİRACI DOSYASI" title="Ödeme, kanallar ve etkinlik"
+          description="Tahsilat geçmişi, kiracının bağlı kanalları ve panelde son yapılanlar."
+          aside={paymentsWaiting ? <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları<span className="plt-count">{paymentsWaiting}</span></Link> : undefined}
+        >
+          <div className="plt-dosya">
+            <div>
+              <h3 className="plt-dosya-h">Ödeme</h3>
+              <dl className="stg-list">
+                <StgValueRow label="Bekleyen dekont" value={bekleyenOdeme.length ? `${bekleyenOdeme.length} bildirim` : null} />
+                <StgValueRow label="Son tahsilat" value={sonTahsilat ? `${formatTry(Number(sonTahsilat.amount))} · ${date(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : null} />
+                <StgValueRow label="Toplam bildirim" value={odemeSatirlari.length ? String(odemeSatirlari.length) : null} />
+              </dl>
+            </div>
 
-          <section className="panel-card" aria-label="Kanallar">
-            <h3>Kanallar</h3>
-            <dl>
-              <div>
-                <dt>WhatsApp</dt>
-                <dd data-tone={wa ? (wa.status === "connected" ? "success" : "warning") : undefined}>
-                  {wa ? (wa.status === "connected" ? (wa.display_phone ?? "bağlı") : "doğrulanamadı") : "bağlı değil"}
-                </dd>
-              </div>
-              <div>
-                <dt>Alan adı</dt>
-                <dd data-tone={selected.custom_domain_status === "verified" ? "success" : selected.custom_domain ? "warning" : undefined}>
-                  {selected.custom_domain ? (selected.custom_domain_status === "verified" ? selected.custom_domain : `${selected.custom_domain} · doğrulanmadı`) : "Arvo alan adı"}
-                </dd>
-              </div>
+            <div>
+              <h3 className="plt-dosya-h">Kanallar</h3>
+              <dl className="stg-list">
+                <StgValueRow label="WhatsApp" value={wa ? (wa.status === "connected" ? (wa.display_phone ?? "Bağlı") : "Doğrulanamadı") : null} />
+                <StgValueRow label="Alan adı" value={selected.custom_domain ? (selected.custom_domain_status === "verified" ? selected.custom_domain : `${selected.custom_domain} · doğrulanmadı`) : "Arvo alan adı"} mono={Boolean(selected.custom_domain)} />
+              </dl>
               {/* WhatsApp hatası varsa yazılıyor: "bağlı değil" demek,
                   bağlıyken bozulmuş bir numarayı gizlerdi. */}
-              {wa?.last_error ? <div><dt>Son hata</dt><dd data-tone="danger">{wa.last_error}</dd></div> : null}
-            </dl>
-          </section>
+              {wa?.last_error ? <p className="stg-muted"><StgIcon name="lock" size={16} />{wa.last_error}</p> : null}
+            </div>
 
-          <section className="panel-card" aria-label="Son etkinlik">
-            <h3>Son etkinlik</h3>
-            {etkinlikSatirlari.length ? (
-              <ul className="kiraci-etkinlik">
-                {etkinlikSatirlari.map((satir, sira) => (
-                  <li key={`${satir.created_at}-${sira}`}>
-                    <b>{ETKINLIK_ADI[satir.action] ?? satir.action}</b>
-                    <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {dateTime(satir.created_at)}</small>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="plt-substatus">Kayıtlı etkinlik yok.</p>}
-          </section>
-        </div>
+            <div className="plt-dosya-wide">
+              <h3 className="plt-dosya-h">Son etkinlik</h3>
+              {etkinlikSatirlari.length ? (
+                <ul className="plt-etkinlik">
+                  {etkinlikSatirlari.map((satir, sira) => (
+                    <li key={`${satir.created_at}-${sira}`}>
+                      <span className="plt-etkinlik-nokta" aria-hidden="true" />
+                      <span>
+                        <b>{ETKINLIK_ADI[satir.action] ?? satir.action}</b>
+                        <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {dateTime(satir.created_at)}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="stg-empty"><StgIcon name="doc" size={22} /><p>Bu kiracının panelinde henüz bir işlem yapılmamış.</p></div>
+              )}
+            </div>
+          </div>
+        </StgSection>
 
         <StgSection
           id="moduller-matris" wide icon="grid" tone="neutral"
