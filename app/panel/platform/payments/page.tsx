@@ -1,4 +1,3 @@
-import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
@@ -47,7 +46,6 @@ export default async function PaymentApprovalsPage() {
       
     </div>
 
-    <PlatformTabs active="odemeler" />
 
     <section className="stg-widgets" aria-label="Ödeme özeti">
       <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="wallet" label="İnceleme bekleyen" value={pendingCount} note={pendingCount ? formatTry(pendingTotal) : "Bekleyen dekont yok"} />

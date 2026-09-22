@@ -7,7 +7,6 @@ import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
-import { PlatformTabs } from "./platform-tabs";
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
@@ -93,14 +92,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   */
   const [{ data: tumUyelikler }, { data: tumLisanslar }] = await Promise.all([
     supabase.from("organization_memberships").select("organization_id,user_id,role,is_active"),
-    supabase.from("organization_licenses").select("organization_id,user_limit,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status"),
+    supabase.from("organization_licenses").select("organization_id,user_limit,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status,trial_ends_at"),
   ]);
   const aktifUyeSayisi = new Map<string, number>();
   for (const satir of (tumUyelikler ?? []) as { organization_id: string; is_active: boolean }[]) {
     if (satir.is_active) aktifUyeSayisi.set(satir.organization_id, (aktifUyeSayisi.get(satir.organization_id) ?? 0) + 1);
   }
   const lisansById = new Map(
-    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string }[])
+    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
       .map((row) => [row.organization_id, row]),
   );
   const kotaById = new Map(
@@ -113,12 +112,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     })]),
   );
 
-  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, licenseResult, onboardingResult, opportunityResult] = await Promise.all([
+  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, onboardingResult, opportunityResult] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
     supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
     supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},signature_stamp_url`).eq("id", targetId).maybeSingle(),
-    supabase.from("organization_licenses").select("license_status,trial_ends_at,user_limit").eq("organization_id", targetId).maybeSingle(),
     // İlk kurulum kaydı yalnızca kurum üyelerine açık (RLS); kurucu sunucu anahtarıyla okur.
     admin ? admin.from("organization_onboarding").select("completed_at").eq("organization_id", targetId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     // Talepler de yalnızca kurum üyelerine açık; sayı sunucu anahtarıyla okunur.
@@ -184,7 +182,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
   // Ayarlar'daki "Belge kimliği" ve müşterinin kurulum kartıyla aynı ölçüt.
   const legalComplete = legalFilled === 5 && !Object.keys(validateLegalDetails(legal)).length;
-  const license = licenseResult.error ? null : (licenseResult.data as { license_status: string; trial_ends_at: string | null; user_limit: number } | null);
   const onboardingDone = Boolean((onboardingResult.data as { completed_at?: string | null } | null)?.completed_at);
   const signatureUrl = legalResult.error ? null : (legalResult.data as { signature_stamp_url?: string | null } | null)?.signature_stamp_url ?? null;
   const opportunityCount = opportunityResult.count ?? 0;
@@ -315,9 +312,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat" value={issueCount} note={issueCount ? "Hata veya askıdaki kurum" : "Sorunlu kurum yok"} />
     </section>
 
-    <nav className="stg-nav" aria-label="Platform bölümleri">
-      <PlatformTabs active="kurumlar" bekleyenOdeme={paymentsWaiting} />
-    </nav>
 
     <div className="plt-layout">
       <aside className="plt-orgs" aria-label="Kurumlar">
@@ -376,8 +370,12 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             <b>{seciliLisans?.monthly_fee ? formatTry(Number(seciliLisans.monthly_fee)) : "Girilmedi"}</b>
           </div>
           <div>
-            <small>Dönem sonu</small>
-            <b>{date(seciliLisans?.current_period_end ?? null)}</b>
+            {/* Denemedeki kurumda asıl merak edilen deneme bitişi; dönem
+                sonu orada boş kalıyordu. */}
+            <small>{seciliLisans?.license_status === "trialing" ? "Deneme bitişi" : "Dönem sonu"}</small>
+            <b data-tone={seciliLisans?.license_status === "trialing" ? "warning" : undefined}>
+              {date(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null)}
+            </b>
           </div>
         </section>
 
@@ -389,7 +387,9 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         <div className="kiraci-islemler">
           <a className="panel-secondary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Panele git</a>
           <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
-          <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
+          <Link className="panel-secondary" href="/panel/platform/payments">
+            Ödeme onayları{paymentsWaiting ? <span className="plt-count">{paymentsWaiting}</span> : null}
+          </Link>
         </div>
 
         <div className="kiraci-kartlar">
@@ -454,9 +454,9 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           aside={<span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{stateLabels[selected.provisioning_state] ?? selected.provisioning_state}</span>}
         >
           <dl className="stg-list plt-facts">
-            <StgValueRow label="Paket" value={planNames.get(selected.plan_code) ?? selected.plan_code} />
-            <StgValueRow label="Lisans" value={license ? `${licenseLabels[license.license_status] ?? license.license_status}${license.license_status === "trialing" && license.trial_ends_at ? ` · ${date(license.trial_ends_at)} bitiş` : ""}` : null} />
-            <StgValueRow label="Kullanıcılar" value={`${memberCount ?? 0}${license?.user_limit ? ` / ${license.user_limit}` : ""} aktif`} />
+            {/* Paket, lisans ve kullanıcı sayısı özet şeridinde; burada
+                tekrarlamıyoruz. Ekran aynı şeyi üç kez söylüyordu. */}
+            <StgValueRow label="Sektör" value={selected.sector} />
             <StgValueRow label="Modüller" value={`${enabledCount} / ${moduleRows.length} etkin`} />
             <StgValueRow label="Sahip" value={invitation?.email ?? null} />
           </dl>

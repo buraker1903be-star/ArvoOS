@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
@@ -118,7 +117,6 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
       
     </div>
 
-    <PlatformTabs active="lisans" />
 
     {/*
       Kota uyarıları en üstte: bu ekranın asıl işi tek bir kurumu

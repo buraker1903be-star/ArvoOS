@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
@@ -57,7 +56,6 @@ export default async function BillingPage() {
       
     </div>
 
-    <PlatformTabs active="abonelikler" />
 
     <section className="stg-widgets" aria-label="Abonelik özeti">
       <StgWidget tone="success" icon="check" label="Aktif abonelik" value={active.length} note="Aktif ve denemedeki kurumlar" />

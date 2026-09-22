@@ -1,4 +1,3 @@
-import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory } from "@/lib/member-directory";
@@ -22,7 +21,6 @@ export default async function MembersPage() {
       
     </div>
 
-    <PlatformTabs active="uyeler" />
 
     {!arvolabReachable ? (
       <div className="platform-note"><span>!</span><p>ArvoLab veritabanına ulaşılamadı; aşağıdaki listede ArvoLab üyeleri eksik. Bağlantı ayarlarını kontrol edin.</p></div>

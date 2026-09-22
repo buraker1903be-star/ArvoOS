@@ -1,4 +1,3 @@
-import { PlatformTabs } from "../platform-tabs";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
@@ -56,7 +55,6 @@ export default async function SubscribersPage() {
       
     </div>
 
-    <PlatformTabs active="aboneler" />
 
     <section className="stg-widgets" aria-label="Abone özeti">
       <StgWidget tone="success" icon="users" label="Ödeyen abone" value={paying.length} note={monthlyRevenue ? `${formatTry(monthlyRevenue)} / ay` : "Ücret belirlenmedi"} />
