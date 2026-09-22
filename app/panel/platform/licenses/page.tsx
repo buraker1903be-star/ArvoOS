@@ -4,7 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
-import { urunKullanimi } from "@/lib/urun-kullanimi";
+import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense } from "./actions";
@@ -120,6 +120,20 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     ]),
   );
 
+  /*
+    AI kredisi artık ÖLÇÜLÜYOR: ArvoLab'ın tükettiği karakter kuruma göre
+    toplanıp krediye çevriliyor (1 kredi = 1.000 karakter). Eskiden bu kutu
+    her kiracıda "0 kredi · %0 dolu" diyordu çünkü hiçbir kod
+    ai_credits_used sütununu artırmıyordu.
+
+    Ölçüm ALINAMAZSA null kalıyor ve ekran yine "Ölçülmüyor" diyor —
+    köprü koptuğunda "0 kredi" yazmak, hiç kullanmamış kiracıyla ölçümü
+    kopmuş kiracıyı aynı gösterirdi.
+  */
+  const aiKredi = kullanim.arvolab?.aylik_kredi ?? null;
+  const aiOlculdu = aiKredi !== null;
+  const aiPercent = aiOlculdu ? yuzde(aiKredi, license.ai_credit_limit) : 0;
+
   const users = activeUsers ?? 0;
   const userPercent = yuzde(users, license.user_limit);
   const storagePercent = yuzde(depolamaMb, license.storage_limit_mb);
@@ -169,34 +183,38 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         tone={kullanimTonu(storagePercent)} icon="folder" label="Depolama"
         value={depolama(depolamaMb)} note={`Limit ${depolama(license.storage_limit_mb)} · %${storagePercent} dolu`}
       />
-      {/* AI kredisi ÖLÇÜLMÜYOR. Burada "0 · %0 dolu" yazıyordu ve bu, hiç
-          AI kullanmamış bir kiracıyla günde bin istek atan kiracıyı aynı
-          gösteriyordu — tüketimi ArvoLab kendi veritabanında tutuyor,
-          ArvoOS'un lisans kaydına hiçbir zaman yazılmıyor. */}
       <StgWidget
-        tone="neutral" icon="chart" label="AI kredisi"
-        value="Ölçülmüyor" note={`Tanımlı hak ${sayi(license.ai_credit_limit)} kredi`}
+        tone={aiOlculdu ? kullanimTonu(aiPercent) : "neutral"} icon="chart" label="AI kredisi"
+        value={aiOlculdu ? `${sayi(aiKredi)} / ${sayi(license.ai_credit_limit)}` : "Ölçülemedi"}
+        note={aiOlculdu
+          ? `Bu ay · %${aiPercent} dolu`
+          : "ArvoLab'a ulaşılamadı; tanımlı hak " + sayi(license.ai_credit_limit)}
       />
     </div>
 
     <div className="stg-grid">
       <StgSection
         id="kullanim" wide icon="chart" tone="info" kicker="KOTA" title="Şu anki kullanım"
-        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan geliyor. AI kredisi ölçülmüyor — tüketimi ArvoLab kendi veritabanında tutuyor."
-        aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent))}>En dolu kota %{Math.max(userPercent, storagePercent)}</span>}
+        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
+        aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
       >
         <div className="plt-olcumler">
           <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
           <Olcum etiket="Depolama" kullanilan={depolama(depolamaMb)} limit={depolama(license.storage_limit_mb)} oran={storagePercent} />
+          {/* Ölçüm alınamadıysa çubuk hiç çizilmiyor: %0'lık bir çubuk
+              "kullanmamış" der, oysa söyleyebileceğimiz tek şey
+              "bilmiyoruz". */}
+          {aiOlculdu ? (
+            <Olcum etiket="AI kredisi (bu ay)" kullanilan={sayi(aiKredi)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
+          ) : null}
         </div>
-        {/*
-          AI kredisi ölçeri kaldırıldı ve "AI kullanımını sıfırla" düğmesi de
-          onunla birlikte. Çubuk her kiracıda %0 gösteriyordu, düğme de hep
-          0 olan bir sayacı 0'a çekiyordu: ikisi de çalışan bir kota kurgusu
-          izlenimi veriyordu. ArvoLab tüketimi ArvoOS'un lisans kaydına
-          yazmaya başladığında ölçer de sıfırlama da geri gelir.
-        */}
-        <p className="stg-muted"><StgIcon name="chart" size={16} />AI kredisi ölçülmüyor: ArvoLab asistanının tüketimi henüz ArvoOS lisansına işlenmiyor. ArvoOS kartındaki limit tanımlı hakkı yazar, bir kullanımı kısıtlamaz.</p>
+        <p className="stg-muted">
+          <StgIcon name="chart" size={16} />
+          {aiOlculdu
+            ? `1 kredi = ${sayi(KREDI_KARAKTERI)} karakter (istem + yanıt). Reddedilen yanıtlar sayılmaz — kullanıcıya gösterilmeyen bir şeyin parası alınmıyor. Sayaç her ay başında sıfırlanır.`
+            : "AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil."}
+          {kullanim.arvolab?.aylik_calisma != null ? ` Bu ay ${sayi(kullanim.arvolab.aylik_calisma)} asistan çalışması.` : ""}
+        </p>
         {license.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{license.suspension_reason}</p> : null}
       </StgSection>
 
@@ -238,6 +256,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
               ],
               aktifUye: users,
               kullanilanMb: depolamaMb,
+              aiKullanilan: aiKredi,
               baslangic: {
                 planCode: license.plan_code,
                 licenseStatus: license.license_status,

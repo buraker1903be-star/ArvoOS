@@ -16,8 +16,25 @@ import { arvolabClient } from "@/lib/arvolab";
   türü olurdu — bilinmeyen, aşım değildir.
 */
 
+/*
+  1 KREDİ = 1.000 KARAKTER.
+
+  Maliyet jetonla oluşuyor; ArvoLab'ın kaydettiği prompt_chars +
+  output_chars jetonun en yakın vekili. "Çalışma sayısı" saymak kârı
+  rastlantıya bırakırdı: iki sayfalık bir özetle altmış sayfalık bir
+  analiz aynı 1 çalışma olur ve en çok kullanan müşteride en çok zarar
+  edilirdi.
+
+  Tanım BURADA çünkü fiyat kararı ArvoOS'un; ArvoLab yalnızca karakter
+  sayıyor. Dilim değişirse tek yer değişir.
+*/
+export const KREDI_KARAKTERI = 1000;
+
+/** Karakteri krediye çevirir; başlanan dilim tam sayılır. */
+export const krediye = (karakter: number) => Math.ceil(Math.max(0, karakter) / KREDI_KARAKTERI);
+
 export type UrunKullanimi = {
-  arvolab: { aylik_kontrol: number | null; proje: number | null } | null;
+  arvolab: { aylik_kontrol: number | null; proje: number | null; aylik_kredi: number | null; aylik_calisma: number | null } | null;
   randevu: { personel: number | null; aylik_randevu: number | null } | null;
 };
 
@@ -53,9 +70,25 @@ async function arvolabKullanimi(organizationId: string) {
     if (error) throw error;
 
     const projeIdleri = (projeler ?? []).map((satir) => satir.id as string);
-    if (!projeIdleri.length) return { aylik_kontrol: 0, proje: 0 };
-
     const baslangic = ayBasi();
+
+    /*
+      AI tüketimi projeden bağımsız: kurumun hiç projesi olmasa da
+      asistan çalıştırılmış olabilir. Bu yüzden erken dönüşten ÖNCE
+      ölçülüyor — eskiden proje yoksa fonksiyon burada dönüyordu.
+    */
+    const { data: aiSatiri, error: aiHatasi } = await lab
+      .rpc("arvoos_ai_kullanimi", { p_organization_id: organizationId, p_since: baslangic })
+      .maybeSingle();
+    /*
+      Ölçüm alınamazsa null: "0 kredi" yazmak, hiç kullanmamış kiracıyla
+      ölçümü kopmuş kiracıyı aynı gösterirdi. Bilinmeyen, sıfır değildir.
+    */
+    const ai = aiHatasi ? null : (aiSatiri as { karakter: number; calisma: number } | null);
+    const aylik_kredi = ai ? krediye(Number(ai.karakter ?? 0)) : null;
+    const aylik_calisma = ai ? Number(ai.calisma ?? 0) : null;
+
+    if (!projeIdleri.length) return { aylik_kontrol: 0, proje: 0, aylik_kredi, aylik_calisma };
     const [{ count: atif }, { data: belgeler }] = await Promise.all([
       lab.from("citation_checks").select("id", { count: "exact", head: true })
         .in("project_id", projeIdleri).gte("created_at", baslangic),
@@ -68,7 +101,7 @@ async function arvolabKullanimi(organizationId: string) {
           .in("document_id", belgeIdleri).gte("created_at", baslangic)
       : { count: 0 };
 
-    return { aylik_kontrol: (atif ?? 0) + (ozgunluk ?? 0), proje: projeIdleri.length };
+    return { aylik_kontrol: (atif ?? 0) + (ozgunluk ?? 0), proje: projeIdleri.length, aylik_kredi, aylik_calisma };
   } catch (sorun) {
     // Ölçüm bir kolaylık; ArvoLab'a ulaşılamaması ekranı kapatmamalı.
     console.error("[kota] ArvoLab kullanımı okunamadı", sorun instanceof Error ? sorun.message : sorun);

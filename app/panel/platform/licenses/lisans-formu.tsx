@@ -91,12 +91,15 @@ export function LisansFormu({
   baslangic,
   aktifUye,
   kullanilanMb,
+  aiKullanilan,
   kaydet,
 }: {
   organizationId: string;
   baslangic: LisansDegerleri;
   aktifUye: number;
   kullanilanMb: number;
+  /** Bu ayki AI kredisi; null ise ölçüm alınamadı (sıfır değil). */
+  aiKullanilan: number | null;
   kaydet: (formData: FormData) => void;
 }) {
   const [deger, setDeger] = useState(baslangic);
@@ -195,11 +198,13 @@ export function LisansFormu({
           <label>
             AI kredi limiti
             <input type="number" name="ai_credit_limit" min={0} required value={deger.aiCreditLimit} onChange={(o) => yaz("aiCreditLimit", o.target.value)} />
-            {/* Kullanım ölçülmediği için bu alanın altında "şu an şu kadar
-                kullanıldı" yazmıyor; ölçümü olmayan bir kotayı ölçülmüş
-                gibi göstermek, hiç göstermemekten kötü. */}
+            {/* Tüketim ölçülüyor ama HENÜZ KISITLAMIYOR: kredi bitince
+                asistanı durduran bir kural yok. Limitin ne işe yaradığını
+                olduğundan büyük göstermemek için bu not duruyor. */}
             <small className="plt-field-note">
-              {Number.isFinite(kredi) ? `${sayiBicimi.format(kredi)} kredi · ` : ""}tanımlı hak, kısıtlama uygulanmıyor
+              {Number.isFinite(kredi) ? `${sayiBicimi.format(kredi)} kredi · ` : ""}
+              {aiKullanilan === null ? "tüketim ölçülemedi" : `bu ay ${sayiBicimi.format(aiKullanilan)} kullanıldı`}
+              {" · henüz kısıtlama uygulanmıyor"}
             </small>
           </label>
           <label>

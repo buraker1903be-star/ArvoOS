@@ -42,6 +42,7 @@ export type UrunKarti =
       baslangic: LisansDegerleri;
       aktifUye: number;
       kullanilanMb: number;
+      aiKullanilan: number | null;
     })
   | (OrtakKart & {
       tur: "ek";
@@ -132,6 +133,7 @@ export function UrunKartlari({
                 baslangic={secili.baslangic}
                 aktifUye={secili.aktifUye}
                 kullanilanMb={secili.kullanilanMb}
+                aiKullanilan={secili.aiKullanilan}
                 kaydet={cekirdegiKaydet}
               />
             ) : (
