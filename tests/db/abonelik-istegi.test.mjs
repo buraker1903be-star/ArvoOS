@@ -25,7 +25,16 @@ before(async () => {
   db = await veritabani();
   const { rows } = await db.query(`select to_regclass('public.platform_subscription_requests') as t`);
   if (!rows[0].t) await db.exec(fs.readFileSync(MIGRATION, "utf8"));
-  await db.exec("grant all on public.platform_subscription_requests to service_role");
+  /*
+    Harness şema yüklendikten SONRA public'teki tüm tablolara varsayılan
+    yetkiyi veriyor (Supabase'in davranışını taklit ediyor). Tablo anlık
+    görüntüye girdiği andan itibaren migration'daki revoke artık
+    çalışmıyor; burada tekrarlıyoruz ki test asıl kapıyı sınasın.
+  */
+  await db.exec(`
+    grant all on public.platform_subscription_requests to service_role;
+    revoke all on table public.platform_subscription_requests from anon, authenticated;
+  `);
 });
 
 async function tohum() {
