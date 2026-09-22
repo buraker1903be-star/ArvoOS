@@ -1,75 +1,50 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPanelContext, panelModules } from "@/lib/panel-context";
+import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
-import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
-import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
-import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
-import { ModulMatrisi, type ModulSatiri } from "./modul-matrisi";
-import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
-import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
-import { depolama, para, tarih, tarihSaat } from "./bicim";
+import { StgIcon, StgWidget } from "../settings/settings-ui";
+import { KURULUM_ADI, KURULUM_TONU, basHarfleri, depolama, para, tarihSaat } from "./bicim";
 import { PanelDrawer } from "../components/panel-drawer";
-import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
+import { createCustomerOrganization } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
-import { OwnerAccessLink } from "./owner-access-link";
+import { KiraciDosyasi, type DosyaDaveti, type DosyaKurumu, type DosyaUyeligi } from "./kiraci-dosyasi";
 import "../settings/settings.css";
 import "./platform.css";
 
-type ModuleRow = { module_code: string; is_enabled: boolean; arvo_modules: { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null };
-type ManagedOrganization = {
-  id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string;
-  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string; contact_phone: string | null;
-};
-type Invitation = { organization_id: string; email: string; status: string; sent_at: string | null; accepted_at: string | null; error_message: string | null };
-type AuditRow = { id: string; action: string; state: string; result: string; duration_ms: number | null; created_at: string };
-type CheckState = "done" | "todo" | "bad" | "unknown";
+/*
+  Kiracı listesi ve tek kiracının dosyası.
 
-const stateLabels: Record<string, string> = {
-  creating: "Oluşturuluyor",
-  inviting_owner: "Davet gönderiliyor",
-  waiting_owner: "Sahip bekleniyor",
-  active: "Kullanımda",
-  suspended: "Askıda",
-  archived: "Arşivlendi",
-  failed: "Kurulum hatası",
-};
-const stateTones: Record<string, StgTone> = {
-  creating: "info", inviting_owner: "info", waiting_owner: "warning", active: "success", suspended: "danger", archived: "neutral", failed: "danger",
-};
-const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
-/* Etkinlik kaydındaki ham kodlar ("status", "crm_proposal") kimseye bir
-   şey anlatmıyor; okunur karşılıkları burada. */
-// Ham eylem kodu ekranda görünmemeli: "archive" yazısı kurucuya bir şey
-// söylemiyordu. Listede karşılığı olmayan kod yine de basılır ama artık
-// eksik olanı görünce buraya eklemek yeterli.
-const ETKINLIK_ADI: Record<string, string> = {
-  create: "Oluşturuldu", update: "Güncellendi", status: "Durum değişti",
-  send: "Müşteriye gönderildi", delete: "Silindi", sign: "İmzalandı",
-  archive: "Arşivlendi", restore: "Geri alındı", accept: "Kabul edildi",
-  reject: "Reddedildi", cancel: "İptal edildi", complete: "Tamamlandı",
-  invite: "Davet edildi", activate: "Erişim açıldı", deactivate: "Erişim kapatıldı",
-  login: "Giriş yapıldı", payment: "Ödeme bildirildi",
-};
-const VARLIK_ADI: Record<string, string> = {
-  crm_opportunity: "Talep", crm_proposal: "Teklif", crm_contract: "Sözleşme",
-  organization_membership: "Üye erişimi", organization: "Kurum",
-  payment_notification: "Ödeme bildirimi", operation_workflow: "İş akışı",
-  hr_employee: "Personel", finance_transaction: "Finans hareketi",
-};
+  İkisi aynı yolda ama aynı anda değil: ?organization= varsa dosya, yoksa
+  liste. Eskiden liste solda dar bir sütunda, dosya sağda duruyordu;
+  kurucu bir kiracının paketine mi bakıyor yoksa hangi kiracıya
+  bakacağını mı arıyor — ikisi aynı ekranda birbirini kısıtlıyordu.
+  Liste artık tam genişlikte bir tablo: kiracı başına paket, durum, kota
+  ve ücret tek bakışta yan yana. Kolon kolon karşılaştırmak, kartları tek
+  tek açmaktan hızlı.
+
+  Eski ?organization= bağlantıları olduğu gibi çalışıyor; konsolun her
+  ekranından kiracı dosyasına o bağlantıyla giriliyor.
+*/
+
+type ManagedOrganization = DosyaKurumu;
+type Invitation = DosyaDaveti;
+
 
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
-const initials = (value: string) => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 
-export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string; filtre?: string }> }) {
-  const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
+/** Türkçe duyarsız arama: "İş" ile "is" eşleşsin. */
+const sadelestir = (value: string) =>
+  value.replace(/İ/g, "i").replace(/I/g, "ı").toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
+    .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c").trim();
+
+export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string; filtre?: string; ara?: string }> }) {
+  const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
 
@@ -88,10 +63,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const planList = (plans ?? []).map((plan) => ({ code: String(plan.code), name: String(plan.name) }));
   const planNames = new Map(planList.map((plan) => [plan.code, plan.name]));
 
-  const selected = organizations.find((item) => item.id === params.organization) ?? organizations.find((item) => item.id === founderOrganization.id) ?? organizations[0];
-  if (!selected) throw new Error("Yönetilecek kurum bulunamadı.");
-  const targetId = selected.id;
-  const invitation = latestInvitation.get(targetId) ?? null;
+  /*
+    Dosya modu yalnızca adres bir kiracıyı gösteriyorsa. Eskiden hiçbir
+    kiracı seçilmemişken kurucunun KENDİ kurumunun dosyası açılıyordu:
+    konsolu her açışta Arvo'nun kendi kaydı karşılıyordu, oysa aranan
+    soru "hangi müşteriye bakmalıyım" idi.
+  */
+  const selected = params.organization ? organizations.find((item) => item.id === params.organization) ?? null : null;
+  if (params.organization && !selected) notFound();
 
   const admin = createAdminClient();
 
@@ -134,173 +113,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     })]),
   );
 
-  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, onboardingResult, opportunityResult] = await Promise.all([
-    supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
-    supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
-    supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
-    supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},signature_stamp_url`).eq("id", targetId).maybeSingle(),
-    // İlk kurulum kaydı yalnızca kurum üyelerine açık (RLS); kurucu sunucu anahtarıyla okur.
-    admin ? admin.from("organization_onboarding").select("completed_at").eq("organization_id", targetId).maybeSingle() : Promise.resolve({ data: null, error: null }),
-    // Talepler de yalnızca kurum üyelerine açık; sayı sunucu anahtarıyla okunur.
-    admin ? admin.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", targetId) : Promise.resolve({ count: null, error: null }),
-  ]);
-  /*
-    Seçili kiracının üyeleri. Ad profiles'tan okunuyor: e-posta auth.users'ta
-    ve yönetim API'siyle sayfa sayfa çekiliyor — tek kurum için o maliyete
-    girmeye değmez, ad zaten ayırt etmeye yetiyor.
-  */
-  const kiraciUyelikleri = ((tumUyelikler ?? []) as { organization_id: string; user_id: string; role: string; is_active: boolean }[])
-    .filter((satir) => satir.organization_id === targetId);
-  const { data: profilData } = kiraciUyelikleri.length
-    ? await supabase.from("profiles").select("id,full_name").in("id", kiraciUyelikleri.map((satir) => satir.user_id))
-    : { data: [] };
-  const adById = new Map(((profilData ?? []) as { id: string; full_name: string | null }[]).map((row) => [row.id, row.full_name]));
-  const kiraciUyeleri: KiraciUyesi[] = kiraciUyelikleri
-    .map((satir) => ({
-      userId: satir.user_id,
-      name: adById.get(satir.user_id) ?? null,
-      role: satir.role,
-      active: Boolean(satir.is_active),
-    }))
-    // Sahipler üstte, pasifler altta: bakılması gereken sıra bu.
-    .sort((a, b) => Number(b.active) - Number(a.active) || Number(b.role === "owner") - Number(a.role === "owner"));
-
-  const seciliKota = kotaById.get(targetId) ?? null;
-  const seciliLisans = lisansById.get(targetId) ?? null;
-
-  /*
-    Modül matrisi: ArvoOS çekirdeği organization_licenses'ta, diğer üç
-    ürün organization_product_licenses'ta. İki tablodan tek liste
-    kuruluyor; kurucu için ikisi aynı soruya cevap veriyor.
-  */
-  const [{ data: urunLisanslari }, kullanim] = await Promise.all([
-    supabase
-      .from("organization_product_licenses")
-      .select("product,status,monthly_fee,integrated,limits")
-      .eq("organization_id", targetId),
-    /*
-      Ürün kullanımı yalnızca SEÇİLİ kiracı için ölçülüyor: iki ayrı
-      veritabanına gidiyor (ArvoLab, Randevu) ve tüm kiracılar için
-      yapmak liste ekranını her açılışta yavaşlatırdı.
-    */
-    urunKullanimi(targetId),
-  ]);
-  const urunById = new Map(
-    ((urunLisanslari ?? []) as { product: string; status: string; monthly_fee: number | null; integrated: boolean | null; limits: Record<string, unknown> | null }[])
-      .map((row) => [row.product, row]),
-  );
-  const kullanimById: Record<string, Record<string, number | null> | null> = {
-    arvolab: kullanim.arvolab,
-    randevu: kullanim.randevu,
-  };
-  const modulSatirlari: ModulSatiri[] = [
-    {
-      product: "arvoos",
-      name: "ArvoOS",
-      status: seciliLisans?.license_status ?? "inactive",
-      integrated: null,
-      monthlyFee: seciliLisans?.monthly_fee ?? null,
-      // Yalnızca ÖLÇÜLEN kotalar yazılıyor; ölçümü olmayan limit,
-      // kurucunun koruma sandığı boş bir sayı olurdu.
-      kotaOzeti: seciliKota
-        ? `${seciliKota.kullanici.kullanilan}/${seciliKota.kullanici.limit} kullanıcı · ${seciliKota.depolama.kullanilan}/${seciliKota.depolama.limit} MB`
-        : null,
-      cekirdek: true,
-    },
-    ...ADDON_PRODUCTS.map((urun) => {
-      const satir = urunById.get(urun.code);
-      return {
-        product: urun.code,
-        name: urun.name,
-        status: satir?.status ?? "inactive",
-        integrated: satir?.integrated ?? true,
-        monthlyFee: satir?.monthly_fee ?? null,
-        // Kota özeti yalnızca ölçümü yazılmış ürünlerde doluyor.
-        kotaOzeti: kotaOzetiYaz(urunKotalari(urun.code, satir?.limits, kullanimById[urun.code])),
-        cekirdek: false,
-      };
-    }),
-  ];
-
-  /*
-    Kiracı dosyasının kalan parçaları: ödeme, kanallar, son etkinlik.
-    Hepsi seçili kuruma daraltılmış; dördü tek turda okunuyor.
-
-    Ödeme ve etkinlik kayıtları yalnızca kurum üyelerine açık (RLS);
-    kurucu bunları sunucu anahtarıyla okuyor — konsolun işi zaten başka
-    kurumların verisine bakmak.
-  */
-  const [{ data: odemeler }, { data: whatsappHesabi }, { data: etkinlikler }] = await Promise.all([
-    admin
-      ? admin.from("organization_payment_requests").select("id,amount,currency,status,created_at,reviewed_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(20)
-      : Promise.resolve({ data: [] }),
-    admin
-      ? admin.from("whatsapp_accounts").select("status,display_phone,verified_name,last_error").eq("organization_id", targetId).maybeSingle()
-      : Promise.resolve({ data: null }),
-    admin
-      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
-      : Promise.resolve({ data: [] }),
-  ]);
-  const odemeSatirlari = (odemeler ?? []) as { amount: number; status: string; created_at: string; reviewed_at: string | null }[];
-  const bekleyenOdeme = odemeSatirlari.filter((satir) => satir.status === "pending");
-  const sonTahsilat = odemeSatirlari.find((satir) => satir.status === "approved") ?? null;
-  const wa = whatsappHesabi as { status: string; display_phone: string | null; verified_name: string | null; last_error: string | null } | null;
-  const etkinlikSatirlari = (etkinlikler ?? []) as { action: string; entity_type: string; created_at: string }[];
-
-  const auditRows = (auditData ?? []) as AuditRow[];
-  const moduleRows = ((moduleData ?? []) as ModuleRow[]).map((row) => {
-    const relation = Array.isArray(row.arvo_modules) ? row.arvo_modules[0] : row.arvo_modules;
-    const fallback = panelModules[row.module_code];
-    return { code: row.module_code, name: fallback?.name ?? relation?.name ?? row.module_code, description: fallback?.description ?? relation?.description ?? "", icon: fallback?.icon ?? row.module_code.slice(0, 2).toUpperCase(), enabled: row.is_enabled, order: relation?.sort_order ?? 0 };
-  }).sort((a, b) => a.order - b.order);
-  const enabledCount = moduleRows.filter((module) => module.enabled).length;
-  const legal = legalDetailsFrom(legalResult.error ? null : (legalResult.data as Record<string, unknown> | null));
-  const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
-  // Ayarlar'daki "Belge kimliği" ve müşterinin kurulum kartıyla aynı ölçüt.
-  const legalComplete = legalFilled === 5 && !Object.keys(validateLegalDetails(legal)).length;
-  const onboardingDone = Boolean((onboardingResult.data as { completed_at?: string | null } | null)?.completed_at);
-  const signatureUrl = legalResult.error ? null : (legalResult.data as { signature_stamp_url?: string | null } | null)?.signature_stamp_url ?? null;
-  const opportunityCount = opportunityResult.count ?? 0;
   // ArvoLab ayrı veritabanında; köprü koparsa tek iz orada kalır (lib/arvolab.ts).
   const bridge = await getArvolabBridgeHealth();
   // ARC köprüsü sessiz çalışıyor; durumu yalnızca burada görünür (lib/arc-bridge.ts).
   const [arcBridge, randevuBridge] = await Promise.all([getArcBridgeHealth(), getRandevuBridgeHealth()]);
 
-  // ---- Kurulum durumu (sahip katılana ve kurum hazır olana kadar)
-  /*
-    Sahip katılmış sayılır: daveti kabul ettiyse YA DA kurumda aktif kullanıcı
-    varsa. Eskiden yalnızca davet kaydına bakılıyordu; sahibi doğrudan eklenen
-    kurumlarda (platformun kendi kurumu gibi) davet kaydı hiç oluşmadığı için
-    bu adım sonsuza kadar eksik görünüyor ve "Kurulum bekleyen" sayacını
-    şişiriyordu.
-  */
-  const hasActiveMember = (memberCount ?? 0) > 0;
-  const ownerJoined = Boolean(invitation?.accepted_at) || invitation?.status === "accepted" || hasActiveMember;
-  const inviteState: CheckState = invitation
-    ? invitation.status === "failed" ? "bad" : ["sent", "accepted"].includes(invitation.status) ? "done" : "todo"
-    : hasActiveMember ? "done" : "todo";
-  const checks: { key: string; title: string; note: string; state: CheckState; optional?: boolean }[] = [
-    { key: "created", title: "Kurum oluşturuldu", note: `${planNames.get(selected.plan_code) ?? selected.plan_code} paketi · ${enabledCount} modül etkin`, state: selected.provisioning_state === "creating" ? "todo" : "done" },
-    {
-      key: "invite", title: "Sahibe davet gönderildi", state: inviteState,
-      note: !invitation ? (hasActiveMember ? "Davet gerekmedi; sahip doğrudan eklendi." : "Davet kaydı yok.") : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${tarihSaat(invitation.sent_at)}` : ""}`,
-    },
-    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `${invitation?.accepted_at ? `Katıldı · ${tarihSaat(invitation.accepted_at)}` : "Hesap açık"} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
-    { key: "onboarding", title: "İlk kurulum tamamlandı", state: !admin ? "unknown" : onboardingDone ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : onboardingDone ? "Kurum bilgileri ve marka ayarları girildi." : "Sahip ilk girişte kurum bilgilerini ve marka rengini girer." },
-    { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalComplete ? "done" : "todo", note: legalComplete ? "Teklif ve sözleşmeler için hazır." : legalFilled === 5 ? "Alanlar dolu ama biri geçersiz (IBAN, vergi no veya MERSİS). Sahip Ayarlar’dan düzeltir." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
-    { key: "logo", title: "Logo", state: selected.logo_url ? "done" : "todo", note: selected.logo_url ? "Belgelerde ve takip ekranında kullanılıyor." : "Logo yüklenmedi; belgelerde kurum adı yazar." },
-    { key: "signature", title: "Kaşe-imza görseli", state: legalResult.error ? "unknown" : signatureUrl ? "done" : "todo", note: signatureUrl ? "Sözleşmelerde hizmet sağlayıcı imzası olarak görünüyor." : "Yüklenmedi; sözleşmelerde imza alanı boş kalır. Sahip Ayarlar’dan yükler." },
-    { key: "first-request", title: "İlk talep girildi", state: !admin || opportunityResult.error ? "unknown" : opportunityCount > 0 ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : opportunityCount > 0 ? `${opportunityCount} talep kayıtlı; kurum paneli kullanıyor.` : "Henüz talep yok. Sahip CRM’den ilk talebini girince teklif ve sözleşme süreci başlar." },
-    { key: "team", title: "Ekip davet edildi", optional: true, state: (memberCount ?? 0) > 1 ? "done" : "todo", note: (memberCount ?? 0) > 1 ? `${memberCount} aktif kullanıcı` : "Şimdilik yalnızca sahip var. Ekip, İnsan Kaynakları’ndan eklenir." },
-    {
-      key: "domain", title: "Özel alan adı", optional: true,
-      state: !selected.custom_domain ? "todo" : selected.custom_domain_status === "verified" ? "done" : selected.custom_domain_status === "failed" ? "bad" : "todo",
-      note: !selected.custom_domain ? "İsteğe bağlı; tanımlı değil." : `${selected.custom_domain} · ${selected.custom_domain_status === "verified" ? "doğrulandı" : selected.custom_domain_status === "failed" ? "doğrulanamadı" : "DNS doğrulaması bekleniyor"}`,
-    },
-  ];
-  const required = checks.filter((check) => !check.optional);
-  const doneCount = required.filter((check) => check.state === "done").length;
-  const progress = Math.round((doneCount / required.length) * 100);
 
   // ---- Genel özet
   /*
@@ -320,25 +137,44 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
   /*
     Listeyi süzme. Kurucu sabah konsolu açtığında "bugün kime bakmam
-    gerek" diye soruyor; cevabı listeyi taramakla değil, menüden tek
-    tıkla gelmeli. Süzgeç kendi markalarımızı da dışarıda tutuyor —
-    kurulum bekleyen ya da sorunlu olan biz değiliz.
+    gerek" diye soruyor; cevabı listeyi taramakla değil tek tıkla
+    gelmeli — süzgeç hem menüden hem tablonun üstündeki formdan
+    geliyor. Süzgeç kendi markalarımızı dışarıda tutuyor: kurulum
+    bekleyen ya da sorunlu olan biz değiliz.
   */
   const filtre = params.filtre === "kurulum" || params.filtre === "dikkat" ? params.filtre : null;
-  const listelenen = filtre === "kurulum"
+  const ara = (params.ara ?? "").trim();
+  const anahtar = sadelestir(ara);
+  const listelenen = (filtre === "kurulum"
     ? customers.filter((item) => PENDING_STATES.has(item.provisioning_state))
     : filtre === "dikkat"
       ? customers.filter(sorunluMu)
-      : organizations;
+      : organizations)
+    .filter((item) => !anahtar
+      || sadelestir(item.display_name || item.name).includes(anahtar)
+      || sadelestir(item.name).includes(anahtar)
+      || sadelestir(item.slug).includes(anahtar));
   const paymentsWaiting = pendingPayments.error ? 0 : pendingPayments.count ?? 0;
+
+
+  const invitation = selected ? latestInvitation.get(selected.id) ?? null : null;
+  const label = selected ? selected.display_name || selected.name : null;
 
   return <div className="stg plt">
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">YALNIZCA ARVOOS KURUCU ERİŞİMİ</small><h1>Platform Yönetimi</h1><p>Müşteri kurumlarını kurun, sahiplerini panele alın, paket ve modüllerini yönetin.</p></div>
+      <div>
+        <small className="panel-kicker">{selected ? "KİRACI DOSYASI" : "YALNIZCA ARVOOS KURUCU ERİŞİMİ"}</small>
+        <h1>{selected ? label : "Kiracılar"}</h1>
+        <p>{selected ? "Paket, modüller, üyeler ve kurulum durumu tek dosyada." : "Müşteri kurumlarını kurun, sahiplerini panele alın, paket ve modüllerini yönetin."}</p>
+      </div>
       <div className="panel-page-actions">
-        <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
-          <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={organizations.map((item) => item.slug)} />
-        </PanelDrawer>
+        {selected
+          ? <Link className="panel-secondary" href="/panel/platform">← Kiracı listesi</Link>
+          : (
+            <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
+              <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={organizations.map((item) => item.slug)} />
+            </PanelDrawer>
+          )}
       </div>
     </div>
 
@@ -390,7 +226,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       <div className="plt-banner" role="status">
         <span className="plt-banner-icon"><StgIcon name="check" size={18} /></span>
         <div>
-          <b>{selected.display_name || selected.name} kuruldu</b>
+          <b>{selected ? label : "Kurum"} kuruldu</b>
           <p>Davet {invitation?.email ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse “Kurulum durumu” bölümünden giriş bağlantısı oluşturup WhatsApp’tan gönderin.</p>
         </div>
       </div>
@@ -404,309 +240,137 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "kurulum bekleyen
       yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
-    <div className="stg-widgets" aria-label="Platform özeti">
-      <StgWidget tone="info" icon="building" label="Müşteri kurum" value={customers.length} note={`${customers.length + 1} kurum kaydı`} />
-      <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi panele girmiş" />
-      <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekliyor" value={pendingCount} note={pendingCount ? "Sahip daveti tamamlanmadı" : "Bekleyen yok"} />
-      <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat gerektiren" value={issueCount} note={issueCount ? "Kurulum hatası ya da kota aşımı" : "Sorun yok"} />
-    </div>
 
-
-    <div className="plt-layout">
-      <aside className="plt-orgs" aria-label="Kurumlar">
-        <header>
-          <b>{filtre === "kurulum" ? "Kurulum bekleyenler" : filtre === "dikkat" ? "Dikkat gerektirenler" : "Kurumlar"}</b>
-          <small>{listelenen.length} kurum</small>
-        </header>
-        {filtre && !listelenen.length ? (
-          /* Boş süzgeçte "hiç kurum yok" demek yanlış olurdu; kurum var,
-             bu ölçüte uyan yok. */
-          <p className="plt-substatus" style={{ padding: "12px 14px" }}>
-            {filtre === "kurulum" ? "Kurulum bekleyen kurum yok." : "Dikkat gerektiren kurum yok."}
-          </p>
-        ) : null}
-        <ul>
-          {listelenen.map((item) => {
-            const itemInvite = latestInvitation.get(item.id);
-            const label = item.display_name || item.name;
-            return (
-              <li key={item.id}>
-                {/* Süzgeç bağlantıda korunuyor: kiracıya bakıp geri dönünce
-                    liste yeniden tüm kurumlara açılmasın. */}
-                <Link href={`/panel/platform?organization=${item.id}${filtre ? `&filtre=${filtre}` : ""}`} className={item.id === targetId ? "plt-org is-active" : "plt-org"} aria-current={item.id === targetId ? "page" : undefined}>
-                  <span className="plt-org-avatar" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{initials(label)}</span>
-                  <span className="plt-org-text">
-                    <b>{label}</b>
-                    <small>{item.slug} · {item.kind === "internal" ? "Kendi markamız" : planNames.get(item.plan_code) ?? item.plan_code}{item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}</small>
-                  </span>
-                  {/* Rozet önce KOTAYI söylüyor: kurucu listeye bakınca hangi
-                      kiracıya bakması gerektiğini görmeli.
-
-                      Sorunu olmayan, kullanımdaki kiracıda rozet HİÇ
-                      çizilmiyor. Dört satırda dört yeşil "Kullanımda"
-                      rozeti, gözün ayırt etmesi gereken tek satırı
-                      (kurulum hatası) kalabalığın içinde kaybediyordu. */}
-                  {(() => {
-                    const kota = kotaById.get(item.id);
-                    if (kota && kota.durum !== "normal") {
-                      return <span className="status-pill" data-tone={kota.durum === "asildi" ? "danger" : "warning"}>{kota.kullanici.kullanilan}/{kota.kullanici.limit}</span>;
-                    }
-                    if (item.provisioning_state === "active") return null;
-                    return <span className="status-pill" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{stateLabels[item.provisioning_state] ?? item.provisioning_state}</span>;
-                  })()}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </aside>
-
-      <div className="plt-detail">
-        {/*
-          KİMLİK EN ÜSTTE. Kiracının adı sayfanın ortasında duruyordu:
-          kimin dosyasına baktığınızı görmek için aşağı kaydırmak
-          gerekiyordu. Dosya "bu kim" ile başlamalı.
-        */}
-        {/*
-          KİMLİK EN ÜSTTE. Kiracının adı sayfanın ortasında duruyordu:
-          kimin dosyasına baktığınızı görmek için aşağı kaydırmak
-          gerekiyordu. Dosya "bu kim" ile başlamalı.
-
-          Alt satır eskiden tek satırda dört bilgi taşıyordu (çalışma alanı,
-          ticari unvan, sektör, e-posta) ve uzun unvanlarda okunmuyordu;
-          artık ayrı parçalar hâlinde, sarılarak.
-        */}
-        <header className="plt-kiraci">
-          <span className="plt-kiraci-avatar" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>{initials(selected.display_name || selected.name)}</span>
-          <div className="plt-kiraci-ad">
-            <h2>{selected.display_name || selected.name}</h2>
-            <ul className="plt-kiraci-etiket">
-              <li className="is-mono">{selected.slug}</li>
-              {selected.sector ? <li>{selected.sector}</li> : null}
-              {selected.display_name && selected.name !== selected.display_name ? <li>{selected.name}</li> : null}
-              {invitation?.email ? <li>{invitation.email}</li> : null}
-            </ul>
-          </div>
-          <span className="status-pill" data-tone={stateTones[selected.provisioning_state] ?? "neutral"}>
-            {stateLabels[selected.provisioning_state] ?? selected.provisioning_state}
-          </span>
-        </header>
-
-        {/*
-          Kiracı özeti en üstte: lisans, kota, ücret ve dönem sonu. Bunlar
-          daha önce üç ayrı sekmeye dağılmıştı (Lisans ve kota, Abonelikler,
-          Üyeler) ve bir kiracı hakkında karar vermek için üçünü de gezmek
-          gerekiyordu.
-        */}
-        {/*
-          Hızlı işlemler kiracının üstünde: kurucunun en sık yaptığı üç şey.
-          Hepsi mevcut ekranlara götürüyor — konsolda ikinci bir yazma yolu
-          açmıyoruz, aksi hâlde aynı kural iki yerde durur ve biri sapar.
-        */}
-        <div className="plt-islemler">
-          {/* Kurucunun en sık yaptığı şey kiracının paneline bakmak; üç
-              düğme aynı ağırlıktayken hangisinin asıl yol olduğu belli
-              değildi. Hepsi mevcut ekranlara götürüyor — konsolda ikinci
-              bir yazma yolu açmıyoruz, aksi hâlde aynı kural iki yerde
-              durur ve biri sapar. */}
-          <a className="panel-primary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Kiracının paneline git</a>
-          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
-          <Link className="panel-secondary" href={`/panel/platform/members?organization=${targetId}`}>Üyeler</Link>
-        </div>
-
-        {/*
-          Kiracı özeti gruplanmış liste: beş kutu yan yana dururken hepsi
-          aynı ağırlıktaydı ve boş olanlar ("Girilmedi", "—") yer kaplayıp
-          bir şey söylemiyordu. Listede boş değer satırın sonunda sessizce
-          durur, dolu olan öne çıkar.
-        */}
-        <StgSection
-          id="ozet" wide icon="box" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}
-          kicker="LİSANS VE KULLANIM" title="Kiracı özeti"
-          description="Paket durumu, kota kullanımı ve tahsilat dönemi."
-          aside={<Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>}
-        >
-          <dl className="stg-list">
-            <StgValueRow label="Lisans" value={seciliLisans ? (productLicenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"} />
-            <StgValueRow label="Kullanıcı" value={seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : null} />
-            <StgValueRow label="Depolama" value={seciliKota ? `${depolama(seciliKota.depolama.kullanilan)} / ${depolama(seciliKota.depolama.limit)}` : null} />
-            <StgValueRow label="Aylık ücret" value={seciliLisans?.monthly_fee ? para(Number(seciliLisans.monthly_fee)) : null} />
-            {/* Denemedeki kurumda asıl merak edilen deneme bitişi; dönem
-                sonu orada boş kalıyordu. */}
-            <StgValueRow
-              label={seciliLisans?.license_status === "trialing" ? "Deneme bitişi" : "Dönem sonu"}
-              value={(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) ? tarih(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) : null}
-            />
-          </dl>
-          {seciliKota?.durum === "asildi" ? (
-            <p className="stg-muted"><StgIcon name="shield" size={16} />Bu kiracı kullanıcı limitini aşmış. Limit yalnızca burada görünür; kiracının kullanımını kesmez.</p>
-          ) : null}
-        </StgSection>
-
-        {/*
-          Ödeme, kanallar ve etkinlik tek bölümde, iki sütunlu bir ızgarada.
-          Üç ayrı kart farklı yüksekliklerde duruyordu ve içleri çoğu zaman
-          boştu: alt alta üç tire, ekranın üçte birini kaplıyordu.
-        */}
-        <StgSection
-          id="dosya" wide icon="folder" tone="neutral"
-          kicker="KİRACI DOSYASI" title="Ödeme, kanallar ve etkinlik"
-          description="Tahsilat geçmişi, kiracının bağlı kanalları ve panelde son yapılanlar."
-          aside={paymentsWaiting ? <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları<span className="plt-count">{paymentsWaiting}</span></Link> : undefined}
-        >
-          <div className="plt-dosya">
-            <div>
-              <h3 className="plt-dosya-h">Ödeme</h3>
-              <dl className="stg-list">
-                <StgValueRow label="Bekleyen dekont" value={bekleyenOdeme.length ? `${bekleyenOdeme.length} bildirim` : null} />
-                <StgValueRow label="Son tahsilat" value={sonTahsilat ? `${para(Number(sonTahsilat.amount))} · ${tarih(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : null} />
-                <StgValueRow label="Toplam bildirim" value={odemeSatirlari.length ? String(odemeSatirlari.length) : null} />
-              </dl>
-            </div>
-
-            <div>
-              <h3 className="plt-dosya-h">Kanallar</h3>
-              <dl className="stg-list">
-                <StgValueRow label="WhatsApp" value={wa ? (wa.status === "connected" ? (wa.display_phone ?? "Bağlı") : "Doğrulanamadı") : null} />
-                <StgValueRow label="Alan adı" value={selected.custom_domain ? (selected.custom_domain_status === "verified" ? selected.custom_domain : `${selected.custom_domain} · doğrulanmadı`) : "Arvo alan adı"} mono={Boolean(selected.custom_domain)} />
-              </dl>
-              {/* WhatsApp hatası varsa yazılıyor: "bağlı değil" demek,
-                  bağlıyken bozulmuş bir numarayı gizlerdi. */}
-              {wa?.last_error ? <p className="stg-muted"><StgIcon name="lock" size={16} />{wa.last_error}</p> : null}
-            </div>
-
-            <div className="plt-dosya-wide">
-              <h3 className="plt-dosya-h">Son etkinlik</h3>
-              {etkinlikSatirlari.length ? (
-                <ul className="plt-etkinlik">
-                  {etkinlikSatirlari.map((satir, sira) => (
-                    <li key={`${satir.created_at}-${sira}`}>
-                      <span className="plt-etkinlik-nokta" aria-hidden="true" />
-                      <span>
-                        <b>{ETKINLIK_ADI[satir.action] ?? satir.action}</b>
-                        <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {tarihSaat(satir.created_at)}</small>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="stg-empty"><StgIcon name="doc" size={22} /><p>Bu kiracının panelinde henüz bir işlem yapılmamış.</p></div>
-              )}
-            </div>
-          </div>
-        </StgSection>
-
-        <StgSection
-          id="moduller-matris" wide icon="grid" tone="neutral"
-          kicker="ERİŞİM VE ENTEGRASYON" title="Modüller"
-          description="Erişim kiracının ürüne girip giremediğini, köprü ArvoOS ile otomatik veri akışını yönetir. İkisi ayrı: ödemesini yapmış bir kiracı bağımsız çalışmayı seçebilir."
-        >
-          <ModulMatrisi organizationId={targetId} kurumAdi={selected.display_name || selected.name} satirlar={modulSatirlari} />
-        </StgSection>
-
-        <StgSection
-          id="uyeler" wide icon="users" tone={seciliKota?.durum === "asildi" ? "danger" : "neutral"}
-          kicker="ERİŞİM" title="Üyeler"
-          description="Erişimi kapatılan kişi kurumun paneline giremez; kayıt kurumun etkinlik geçmişine düşer."
-          aside={<Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Limiti düzenle</Link>}
-        >
-          <KiraciUyeleri organizationId={targetId} kurumAdi={selected.display_name || selected.name} uyeler={kiraciUyeleri} />
-        </StgSection>
-
-
-        {/*
-          Kurulum tamamlandıysa bölüm çizilmiyor: yerleşmiş bir kiracıda
-          dokuz maddelik "tamam" listesi her açılışta yer kaplıyor ve
-          okunacak bir şey söylemiyordu. Tek satırlık onay yeterli.
-        */}
-        {progress === 100 ? (
-          <p className="kiraci-not"><StgIcon name="check" size={15} />Kurulum tamamlandı · {doneCount}/{required.length} adım</p>
-        ) : (
-        <StgSection
-          id="kurulum" wide icon="check" tone="warning"
-          kicker="KURULUM DURUMU" title={progress === 100 ? "Kurum kullanıma hazır" : "Müşteriyi panele alın"}
-          description="Kurumun kullanıma hazır olması için gereken adımlar. Sahip katılınca kalan adımları kendi panelinden tamamlar."
-          aside={<span className="plt-progress" aria-label={`Kurulum ilerlemesi yüzde ${progress}`}><i style={{ width: `${progress}%` }} /><b>{doneCount}/{required.length}</b></span>}
-        >
-          <ol className="plt-checks">
-            {checks.map((check) => (
-              <li key={check.key} className={`is-${check.state}`}>
-                <span className="plt-check-dot" aria-hidden="true">{check.state === "done" ? <StgIcon name="check" size={14} /> : check.state === "bad" ? "!" : check.state === "unknown" ? "?" : ""}</span>
-                <span><b>{check.title}{check.optional ? <small className="plt-optional">isteğe bağlı</small> : null}</b><small>{check.note}</small></span>
-              </li>
-            ))}
-          </ol>
-          {invitation ? (
-            <div className="plt-access-box">
-              <div>
-                <b>Sahibe giriş bağlantısı</b>
-                <small>{ownerJoined ? "Sahip şifresini unuttuysa yeni şifre bağlantısı gönderin." : "Davet e-postası gelmediyse ya da süresi dolduysa tek kullanımlık bağlantıyı WhatsApp’tan gönderin."}</small>
-              </div>
-              <OwnerAccessLink organizationId={targetId} organizationName={selected.display_name || selected.name} ownerEmail={invitation.email} />
-            </div>
-          ) : null}
-        </StgSection>
-        )}
-
-        <div className="plt-two">
-          <StgSection id="ayarlar" icon="palette" tone="info" kicker="KURUM ÇEKİRDEĞİ" title="Kurum ayarları" description="Değişiklikler seçilen kurumun paneline uygulanır.">
-            <form className="panel-form" action={updateOrganizationSettings}>
-              <input type="hidden" name="organization_id" value={targetId} />
-              <label className="wide">Yasal unvan<input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
-              <label className="wide">Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
-              <label>Sektör<input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
-              <label>Kurum türü<select name="kind" defaultValue={selected.kind ?? "customer"}><option value="customer">Müşteri</option><option value="internal">Kendi markamız</option></select></label>
-              <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
-              <label className="wide">İletişim telefonu <small className="plt-optional">ödeme hatırlatması WhatsApp&apos;tan buraya gider</small><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
-              <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
-              <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
-            </form>
-          </StgSection>
-
-          <StgSection id="moduller" icon="grid" tone="gold" kicker="PAKET VE ERİŞİM" title="Modüller" description="Kurumun panelinde görünecek modüller." aside={<span className="status-pill" data-tone="gold">{enabledCount}/{moduleRows.length}</span>}>
-            {moduleRows.length ? (
-              <div className="stg-list">
-                {moduleRows.map((module) => (
-                  <form className="plt-module" action={toggleOrganizationModule} key={module.code}>
-                    <input type="hidden" name="organization_id" value={targetId} />
-                    <input type="hidden" name="module_code" value={module.code} />
-                    <input type="hidden" name="is_enabled" value={String(!module.enabled)} />
-                    <span className="stg-row-main">
-                      <span className="stg-row-icon plt-module-icon" data-tone={module.enabled ? "success" : "neutral"}>{module.icon}</span>
-                      <span><b>{module.name}</b><small>{module.description}</small></span>
-                    </span>
-                    <button type="submit" className={module.enabled ? "plt-switch is-on" : "plt-switch"} role="switch" aria-checked={module.enabled} aria-label={`${module.name}: ${module.enabled ? "kapat" : "aç"}`}><i /></button>
-                  </form>
-                ))}
-              </div>
-            ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Bu kurum için modül kaydı yok.</p></div>}
-          </StgSection>
-        </div>
-
-        {/*
-          Kurulum kayıtları yalnızca işe yaradığında: kurulum sürüyorsa ya
-          da bir adım hata verdiyse. Yerleşmiş kiracıda sekiz satırlık
-          teknik dökümün karşılığı yok; günlük iş için "Son etkinlik"
-          kartı var.
-        */}
-        {progress < 100 || auditRows.some((entry) => entry.result === "failed" || entry.state === "failed") ? (
-        <StgSection id="gecmis" wide icon="chart" tone="neutral" kicker="KURULUM KAYITLARI" title="Son işlemler" aside={<span className="status-pill">{auditRows.length} kayıt</span>}>
-          {auditRows.length ? (
-            <ol className="plt-audit">
-              {auditRows.map((entry) => (
-                <li key={entry.id} data-tone={entry.result === "failed" || entry.state === "failed" ? "danger" : "neutral"}>
-                  <span className="plt-audit-dot" aria-hidden="true" />
-                  <span>
-                    <b>{actionLabels[entry.action] ?? entry.action} · {stateLabels[entry.state] ?? entry.state}</b>
-                    <small>{tarihSaat(entry.created_at)}{entry.duration_ms != null ? ` · ${entry.duration_ms} ms` : ""}{entry.result ? ` · ${entry.result}` : ""}</small>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          ) : <div className="stg-empty"><StgIcon name="chart" size={22} /><p>Bu kurum için henüz kurulum kaydı yok.</p></div>}
-        </StgSection>
-        ) : null}
+    {/* Platform geneli sayılar yalnızca listede. Tek kiracının dosyası
+        açıkken "kaç müşterim var" bir şey anlatmıyor; dosyanın kendi
+        özeti hemen altında duruyor. */}
+    {selected ? null : (
+      <div className="stg-widgets" aria-label="Platform özeti">
+        <StgWidget tone="info" icon="building" label="Müşteri kurum" value={customers.length} note={`${customers.length + 1} kurum kaydı`} />
+        <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi panele girmiş" />
+        <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekliyor" value={pendingCount} note={pendingCount ? "Sahip daveti tamamlanmadı" : "Bekleyen yok"} />
+        <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat gerektiren" value={issueCount} note={issueCount ? "Kurulum hatası ya da kota aşımı" : "Sorun yok"} />
       </div>
-    </div>
+    )}
+
+    {selected ? (
+      <KiraciDosyasi
+        supabase={supabase}
+        selected={selected}
+        invitation={invitation}
+        planList={planList}
+        tumUyelikler={((tumUyelikler ?? []) as DosyaUyeligi[]).filter((satir) => satir.organization_id === selected.id)}
+        seciliKota={kotaById.get(selected.id) ?? null}
+        seciliLisans={lisansById.get(selected.id) ?? null}
+        paymentsWaiting={paymentsWaiting}
+      />
+    ) : (
+      <>
+        {/*
+          Süzgeç menüden de geliyor (Kurulum bekleyenler) ama tek giriş
+          yolu olmamalı: kurucu tabloya bakarken aradığını buradan
+          daraltıyor. "Dikkat gerektirenler" ayrı bir menü öğesiydi;
+          listenin kendi süzgeci olunca menüde ikinci bir yol tutmanın
+          karşılığı kalmadı.
+        */}
+        <section className="panel-card plt-suzgec">
+          <form action="/panel/platform" className="plt-suzgec-form">
+            <label>
+              <span>Kurum ara</span>
+              <input name="ara" defaultValue={ara} placeholder="Ad ya da çalışma alanı" />
+            </label>
+            <label>
+              <span>Görünüm</span>
+              <select name="filtre" defaultValue={filtre ?? ""}>
+                <option value="">Tüm kurumlar</option>
+                <option value="kurulum">Kurulum bekleyenler</option>
+                <option value="dikkat">Dikkat gerektirenler</option>
+              </select>
+            </label>
+            <div>
+              <button className="panel-primary" type="submit">Filtrele</button>
+              {filtre || ara ? <Link className="panel-secondary" href="/panel/platform">Temizle</Link> : null}
+            </div>
+          </form>
+        </section>
+
+        {listelenen.length ? (
+          <section className="panel-card plt-table-wrap" aria-label="Kiracılar">
+            <div className="plt-table-scroll">
+              <table className="plt-table plt-kiracilar">
+                <thead>
+                  <tr>
+                    <th>Kurum</th>
+                    <th>Paket</th>
+                    <th>Durum</th>
+                    <th>Kullanıcı</th>
+                    <th>Depolama</th>
+                    <th>Aylık ücret</th>
+                    <th aria-label="Aç" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {listelenen.map((item) => {
+                    const kota = kotaById.get(item.id) ?? null;
+                    const lisans = lisansById.get(item.id) ?? null;
+                    const ad = item.display_name || item.name;
+                    const itemInvite = latestInvitation.get(item.id);
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          {/* Satırın tamamı değil, adı tıklanıyor: satırı
+                              link yapmak tablo içindeki başka hedeflerle
+                              çakışır ve klavyeyle gezilemez olurdu. */}
+                          <Link className="plt-kiraci-baglanti" href={`/panel/platform?organization=${item.id}`}>
+                            <span className="plt-kiraci-avatar" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>{basHarfleri(ad)}</span>
+                            <span>
+                              <b>{ad}</b>
+                              <small className="plt-substatus">
+                                {item.slug}
+                                {item.kind === "internal" ? " · kendi markamız" : ""}
+                                {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
+                              </small>
+                            </span>
+                          </Link>
+                        </td>
+                        <td>{planNames.get(item.plan_code) ?? item.plan_code}</td>
+                        <td>
+                          <span className="status-pill" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>
+                            {KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state}
+                          </span>
+                        </td>
+                        {/* Kota hücreleri aşımda kırmızı: "dikkat gerektiren"
+                            uyarısı artık ayrı bir menü öğesi değil, satırın
+                            kendisi söylüyor. */}
+                        <td data-tone={kota?.kullanici.asildi ? "danger" : undefined}>
+                          {kota ? `${kota.kullanici.kullanilan} / ${kota.kullanici.limit}` : "—"}
+                        </td>
+                        <td data-tone={kota?.depolama.asildi ? "danger" : undefined}>
+                          {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
+                        </td>
+                        <td>{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</td>
+                        <td className="plt-kiracilar-uc">
+                          <Link className="kiraci-baglanti" href={`/panel/platform?organization=${item.id}`} aria-label={`${ad} dosyasını aç`}>Dosya →</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : (
+          <div className="stg-empty">
+            <StgIcon name="building" size={22} />
+            <p>
+              {filtre === "kurulum" ? "Kurulum bekleyen kurum yok."
+                : filtre === "dikkat" ? "Dikkat gerektiren kurum yok; kotalar ve kurulumlar yolunda."
+                : ara ? `“${ara}” ile eşleşen kurum yok.`
+                : "Henüz kurum yok. “+ Yeni müşteri” ile ilk kurumu kurun."}
+            </p>
+          </div>
+        )}
+      </>
+    )}
   </div>;
 }

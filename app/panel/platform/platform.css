@@ -13,25 +13,12 @@
 
 .plt-count{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:2px;padding:0 6px;border-radius:var(--r-pill);background:var(--danger);color:var(--surface);font-size:11px;font-weight:700}
 
-/* ---------- Yerleşim: kurum listesi + ayrıntı ---------- */
-.plt-layout{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:16px;align-items:start}
+/* ---------- Yerleşim ---------- */
+/* Kiracı listesi artık sol sütunda değil, tam genişlikte bir tablo;
+   liste ve dosya aynı anda değil sırayla açılıyor. */
 .plt-detail{display:grid;gap:16px;min-width:0}
 .plt-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
 
-.plt-orgs{position:sticky;top:88px;display:flex;flex-direction:column;max-height:calc(100vh - 110px);border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
-.plt-orgs header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--line-soft)}
-.plt-orgs header b{color:var(--ink);font-size:15px;font-weight:700}
-.plt-orgs header small{color:var(--muted);font-size:12.5px}
-.plt-orgs ul{margin:0;padding:6px;list-style:none;overflow-y:auto}
-.plt-org{display:grid;grid-template-columns:36px minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:6px;align-items:center;padding:10px 12px;border-radius:14px;color:var(--ink);text-decoration:none;transition:background-color .15s ease}
-.plt-org:hover{background:var(--surface-2)}
-.plt-org.is-active{background:var(--accent-soft)}
-.plt-org:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
-.plt-org-avatar{grid-row:1/3;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted));font-size:12px;font-weight:800;letter-spacing:.02em}
-.plt-org-text{min-width:0}
-.plt-org-text b{display:block;overflow:hidden;color:var(--ink);font-size:14px;font-weight:650;text-overflow:ellipsis;white-space:nowrap}
-.plt-org-text small{display:block;overflow:hidden;color:var(--muted);font-size:12px;text-overflow:ellipsis;white-space:nowrap}
-.plt-org .status-pill{grid-column:2;justify-self:start;font-size:11px}
 
 /* ---------- Kurum özeti ---------- */
 /* Son sütun (sahibin e-postası) daha geniş; e-posta ortadan bölünmesin */
@@ -175,10 +162,6 @@
 .plw-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px}
 
 /* ---------- Duyarlı ---------- */
-@media (max-width:1180px){
-  .plt-layout{grid-template-columns:minmax(0,1fr)}
-  .plt-orgs{position:static;max-height:360px}
-}
 @media (max-width:900px){
   .plt-two{grid-template-columns:minmax(0,1fr)}
 }
@@ -194,7 +177,7 @@
   .plt .plt-facts>div+div{box-shadow:none;border-top:1px solid var(--line-soft)}
 }
 @media (prefers-reduced-motion:reduce){
-  .plt-org,.plt-switch,.plt-switch i,.plw-chip,.plw-plan,.plw-switch i,.plw-switch i::after{transition:none}
+  .plt-switch,.plt-switch i,.plw-chip,.plw-plan,.plw-switch i,.plw-switch i::after{transition:none}
 }
 
 /* Üye listesi tablosu (Platform → Tüm Üyeler). Dar ekranda tablo kendi
@@ -271,7 +254,6 @@
 /* Kiracı dosyasından gelinen tek sütunlu alt sayfalar (lisans ve kota).
    Kendi kurum listeleri kaldırıldı: iki ayrı kurum listesi tutmak,
    birinde seçip diğerinde kaybolmak demekti. */
-.plt-layout-tek { grid-template-columns: minmax(0, 1fr) }
 
 /* Çapraz listelerden kiracı dosyasına dönüş. Satırın kendisi bir işleme
    gidiyorsa bağlantı ayrı durur; satırı tıklanabilir yapmak iki farklı
@@ -387,16 +369,13 @@
 
 /* Konsol menüsündeki gruplar. Altı düz başlık, hepsi "tüm kiracıları
    listele" eksenindeydi; kurucunun günü üç ayrı işten oluşuyor. */
-.konsol-grup { display: grid; gap: 2px; margin-bottom: 14px }
-.konsol-grup-ad {
-  padding: 0 12px 4px;
-  color: color-mix(in srgb, currentColor 55%, transparent);
-  /* 11px alt sınır: check-css-tokens bunun altını okunamaz sayıyor. */
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
+/* Menü grupları. Başlık metni kaldırıldı: menü daraltıldığında simgeler
+   tek sütuna inerken başlık olduğu yerde kalıyor ve dar şeritte taşıyordu.
+   Grupları artık aralık ve ince bir çizgi ayırıyor — daraltılmış menüde
+   de doğru görünen tek ayraç bu. */
+.konsol-grup { display: grid; gap: 2px; padding-top: 12px; margin-top: 12px }
+.konsol-grup + .konsol-grup { border-top: 1px solid rgba(255, 255, 255, .08) }
+.konsol-grup:first-child { padding-top: 0; margin-top: 0 }
 
 /* Çapraz matris: kiracı × modül. Kiracı adı sola sabitleniyor, yatay
    kaydırmada kaybolmasın. */
@@ -544,3 +523,45 @@
    Kart köşesine sıkıştırılmış bir düğme, okumadan basılan bir düğme. */
 .plt-islem-notlu { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap }
 .plt-islem-notlu .plt-field-note { flex: 1 1 260px; margin: 0 }
+
+/* ---------- Kiracı tablosu ---------- */
+/* Liste artık tam genişlikte bir tablo (ArvoOS'un talep/teklif
+   listeleriyle aynı biçim): kiracı başına paket, durum, kota ve ücret
+   yan yana. Kolon kolon karşılaştırmak, kartları tek tek açmaktan hızlı. */
+.plt-suzgec { padding: 16px }
+.plt-suzgec-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .35fr) auto; gap: 12px; align-items: end }
+.plt-suzgec-form label { display: flex; flex-direction: column; gap: 6px }
+.plt-suzgec-form label > span { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .05em }
+.plt-suzgec-form input,
+.plt-suzgec-form select {
+  width: 100%; min-height: 40px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--ink); font-size: 13px;
+}
+.plt-suzgec-form > div { display: flex; gap: 8px }
+.plt-suzgec-form a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none }
+
+.plt-table-wrap { padding: 0; overflow: hidden }
+.plt-kiracilar { min-width: 860px }
+.plt-kiracilar td { vertical-align: middle }
+/* Kota hücresi aşımda kırmızı: "dikkat gerektiren" ayrı bir menü öğesiydi,
+   artık satırın kendisi söylüyor. */
+.plt-kiracilar td[data-tone="danger"] { color: var(--danger); font-weight: 650 }
+.plt-kiracilar-uc { text-align: right }
+
+/* Ad hücresi: avatar + ad + çalışma alanı. Satırın tamamını link yapmak
+   tablodaki öbür hedeflerle çakışır ve klavyeyle gezilemez olurdu. */
+.plt-kiraci-baglanti { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none }
+.plt-kiraci-baglanti:hover b { text-decoration: underline }
+.plt-kiraci-baglanti b { display: block; font-size: 13.5px; font-weight: 650 }
+.plt-kiracilar .plt-kiraci-avatar { width: 32px; height: 32px; border-radius: 10px; font-size: 12px }
+
+@media (max-width: 900px) {
+  .plt-suzgec-form { grid-template-columns: 1fr 1fr }
+  .plt-suzgec-form > div { grid-column: 1 / -1 }
+}
+@media (max-width: 620px) {
+  .plt-suzgec-form { grid-template-columns: 1fr }
+  .plt-suzgec-form > div { grid-column: auto }
+  .plt-suzgec-form button, .plt-suzgec-form a { flex: 1 }
+}
