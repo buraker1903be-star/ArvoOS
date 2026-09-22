@@ -25,6 +25,8 @@ export type KotaDurumu = {
   organizationId: string;
   kullanici: KotaOlcumu;
   aiKredi: KotaOlcumu;
+  /** Megabayt cinsinden; limit lisanstaki storage_limit_mb. */
+  depolama: KotaOlcumu;
   /** En kötü ölçüme göre genel durum. */
   durum: "normal" | "yaklasti" | "asildi";
 };
@@ -47,22 +49,36 @@ export function kotaDurumu(girdi: {
   kullaniciLimiti: number;
   aiKullanilan: number;
   aiLimiti: number;
+  /** Kullanılan depolama, BAYT. Ölçüm yoksa 0. */
+  depolamaBayt?: number;
+  /** Lisanstaki storage_limit_mb. */
+  depolamaLimitiMb?: number;
 }): KotaDurumu {
   const kullanici = olc(girdi.kullaniciSayisi, girdi.kullaniciLimiti);
   const aiKredi = olc(girdi.aiKullanilan, girdi.aiLimiti);
-  const enYuksek = Math.max(kullanici.oran, aiKredi.oran);
+  /*
+    Depolama megabayta çevrilip öyle ölçülüyor: limit MB cinsinden
+    giriliyor ve iki farklı birimi karşılaştırmak, oranı bin katı yanlış
+    hesaplamak demekti. Yukarı yuvarlıyoruz — 0,4 MB'lık bir dosyayı
+    "0 MB" saymak, limiti dolmuş bir kurumu boş göstermeye giden yol.
+  */
+  const depolama = olc(Math.ceil((girdi.depolamaBayt ?? 0) / (1024 * 1024)), girdi.depolamaLimitiMb ?? 0);
+  const enYuksek = Math.max(kullanici.oran, aiKredi.oran, depolama.oran);
   return {
     organizationId: girdi.organizationId,
     kullanici,
     aiKredi,
-    durum: kullanici.asildi || aiKredi.asildi ? "asildi" : enYuksek >= YAKLASMA_ORANI ? "yaklasti" : "normal",
+    depolama,
+    durum: kullanici.asildi || aiKredi.asildi || depolama.asildi
+      ? "asildi"
+      : enYuksek >= YAKLASMA_ORANI ? "yaklasti" : "normal",
   };
 }
 
 /** Önce aşanlar, sonra yaklaşanlar; her grupta en doluluk oranı yüksek olan üstte. */
 export function kotayaGoreSirala(durumlar: KotaDurumu[]): KotaDurumu[] {
   const agirlik = { asildi: 0, yaklasti: 1, normal: 2 } as const;
-  const doluluk = (d: KotaDurumu) => Math.max(d.kullanici.oran, d.aiKredi.oran);
+  const doluluk = (d: KotaDurumu) => Math.max(d.kullanici.oran, d.aiKredi.oran, d.depolama.oran);
   return [...durumlar].sort((a, b) => agirlik[a.durum] - agirlik[b.durum] || doluluk(b) - doluluk(a));
 }
 

@@ -90,16 +90,26 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     ayrı sayım sorgusu, kurum sayısı kadar gidiş dönüş demekti; satırlar
     zaten az, bellekte gruplanıyor.
   */
-  const [{ data: tumUyelikler }, { data: tumLisanslar }] = await Promise.all([
+  const [{ data: tumUyelikler }, { data: tumLisanslar }, { data: depolamalar }] = await Promise.all([
     supabase.from("organization_memberships").select("organization_id,user_id,role,is_active"),
-    supabase.from("organization_licenses").select("organization_id,user_limit,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status,trial_ends_at"),
+    supabase.from("organization_licenses").select("organization_id,user_limit,storage_limit_mb,ai_credit_limit,ai_credits_used,monthly_fee,current_period_end,license_status,trial_ends_at"),
+    /*
+      Depolama kullanımı storage.objects'ten geliyor; o tablo PostgREST'e
+      açık değil ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM
+      döndürüyor (dosya adı ve yolu dışarı çıkmıyor) ve yalnızca
+      service_role çağırabiliyor.
+    */
+    admin ? admin.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
   ]);
+  const depolamaBayt = new Map(
+    ((depolamalar ?? []) as { organization_id: string; bytes: number }[]).map((row) => [row.organization_id, Number(row.bytes ?? 0)]),
+  );
   const aktifUyeSayisi = new Map<string, number>();
   for (const satir of (tumUyelikler ?? []) as { organization_id: string; is_active: boolean }[]) {
     if (satir.is_active) aktifUyeSayisi.set(satir.organization_id, (aktifUyeSayisi.get(satir.organization_id) ?? 0) + 1);
   }
   const lisansById = new Map(
-    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
+    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; storage_limit_mb: number; ai_credit_limit: number; ai_credits_used: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
       .map((row) => [row.organization_id, row]),
   );
   const kotaById = new Map(
@@ -109,6 +119,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       kullaniciLimiti: lisans.user_limit,
       aiKullanilan: lisans.ai_credits_used,
       aiLimiti: lisans.ai_credit_limit,
+      depolamaBayt: depolamaBayt.get(id) ?? 0,
+      depolamaLimitiMb: lisans.storage_limit_mb,
     })]),
   );
 
@@ -399,6 +411,12 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             <small>Kullanıcı</small>
             <b data-tone={seciliKota?.durum === "asildi" ? "danger" : seciliKota?.durum === "yaklasti" ? "warning" : undefined}>
               {seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : "—"}
+            </b>
+          </div>
+          <div>
+            <small>Depolama</small>
+            <b data-tone={seciliKota?.depolama.asildi ? "danger" : seciliKota && seciliKota.depolama.oran >= 85 ? "warning" : undefined}>
+              {seciliKota ? `${seciliKota.depolama.kullanilan} / ${seciliKota.depolama.limit} MB` : "—"}
             </b>
           </div>
           <div>

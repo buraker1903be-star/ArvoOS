@@ -100,3 +100,41 @@ describe("davet engeli", () => {
     assert.equal(davetEngeli(99, 0), null);
   });
 });
+
+describe("depolama kotası", () => {
+  const dep = (bayt: number, limitMb: number) =>
+    kotaDurumu({ organizationId: "o", kullaniciSayisi: 1, kullaniciLimiti: 10, aiKullanilan: 0, aiLimiti: 100, depolamaBayt: bayt, depolamaLimitiMb: limitMb });
+
+  test("bayt megabayta çevrilir", () => {
+    /*
+      Limit MB cinsinden giriliyor. İki farklı birimi karşılaştırmak, oranı
+      bin katı yanlış hesaplamak demekti.
+    */
+    assert.equal(dep(50 * 1024 * 1024, 100).depolama.kullanilan, 50);
+    assert.equal(dep(50 * 1024 * 1024, 100).depolama.oran, 50);
+  });
+
+  test("bir megabaytın altı yukarı yuvarlanır", () => {
+    // 0,4 MB'ı "0 MB" saymak, dolmuş bir kurumu boş göstermeye giden yol.
+    assert.equal(dep(400 * 1024, 100).depolama.kullanilan, 1);
+  });
+
+  test("limiti aşan depolama genel durumu bozar", () => {
+    assert.equal(dep(200 * 1024 * 1024, 100).durum, "asildi");
+  });
+
+  test("depolama ölçümü yoksa kota sorunsuz görünür", () => {
+    // Ölçüm gelmediğinde kurumu suçlamıyoruz; bilinmeyen, aşım değildir.
+    const d = kotaDurumu({ organizationId: "o", kullaniciSayisi: 1, kullaniciLimiti: 10, aiKullanilan: 0, aiLimiti: 100, depolamaLimitiMb: 100 });
+    assert.equal(d.depolama.kullanilan, 0);
+    assert.equal(d.durum, "normal");
+  });
+
+  test("depolama da sıralamayı etkiler", () => {
+    const liste = [
+      kotaDurumu({ organizationId: "bos", kullaniciSayisi: 1, kullaniciLimiti: 10, aiKullanilan: 0, aiLimiti: 100, depolamaBayt: 0, depolamaLimitiMb: 100 }),
+      kotaDurumu({ organizationId: "dolu", kullaniciSayisi: 1, kullaniciLimiti: 10, aiKullanilan: 0, aiLimiti: 100, depolamaBayt: 120 * 1024 * 1024, depolamaLimitiMb: 100 }),
+    ];
+    assert.equal(kotayaGoreSirala(liste)[0].organizationId, "dolu");
+  });
+});
