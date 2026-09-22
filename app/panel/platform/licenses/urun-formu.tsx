@@ -69,6 +69,7 @@ export function UrunFormu({
   kotalar,
   kaydet,
   yenidenYansit,
+  yansima,
 }: {
   organizationId: string;
   product: string;
@@ -77,6 +78,8 @@ export function UrunFormu({
   kotalar: KotaAlani[];
   kaydet: (formData: FormData) => void;
   yenidenYansit: (formData: FormData) => void;
+  /** Ürün veritabanındaki kopyanın durumu (lib/yansima-durumu.ts). */
+  yansima: { uyari: boolean; notu: string };
 }) {
   const [deger, setDeger] = useState(baslangic);
   const [kota, setKota] = useState<Record<string, string>>(
@@ -199,13 +202,17 @@ export function UrunFormu({
       Veriye dokunmuyor; yalnızca mevcut durumu ürün veritabanına
       yeniden yazıyor.
     */}
-    <form action={yenidenYansit} className="plt-yansit">
+    <form action={yenidenYansit} className="plt-yansit" data-uyari={yansima.uyari}>
       <input type="hidden" name="organization_id" value={organizationId} />
       <input type="hidden" name="product" value={product} />
-      <small className="kota-olcum">
-        {productName} kendi veritabanında. Orada eski durum görünüyorsa yansıtmayı yenileyin.
-      </small>
-      <button type="submit" className="panel-secondary">Ürüne yeniden yansıt</button>
+      {/*
+        Metin artık genel bir hatırlatma değil, O KURUMUN o andaki
+        kopyasının durumu. "Eski görünüyorsa yenileyin" demek, kurucudan
+        göremediği bir şeyi fark etmesini istemekti: AkademikMerkez'de
+        kopya altı gün eski kaldı ve kimse bilmiyordu.
+      */}
+      <small className="kota-olcum" data-tone={yansima.uyari ? "danger" : undefined}>{yansima.notu}</small>
+      <button type="submit" className={yansima.uyari ? "panel-primary" : "panel-secondary"}>Ürüne yeniden yansıt</button>
     </form>
     </>
   );

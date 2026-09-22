@@ -363,3 +363,37 @@ export async function arvolabKrediDurumu(organizationId: string): Promise<Arvola
     ekBakiye: Number(satir.ek_bakiye ?? 0),
   };
 }
+
+export type ArvolabYansimasi = {
+  syncedAt: string | null;
+  status: string;
+  aiCreditLimit: number | null;
+};
+
+/**
+ * ArvoLab'da o kurumun ŞU AN DURAN kopyası.
+ *
+ * bridge_health köprünün çalışıp çalışmadığını söylüyor; bunu söylemiyor.
+ * AkademikMerkez'de tam bu boşluk açığa çıktı: köprü sağlıklıydı ama
+ * kopya 16.09.2026'dan kalmaydı, çünkü yansıtma yalnızca kaydederken
+ * çalışıyor. Altı gün boyunca konsol "10.000 kredi" derken ArvoLab'da hak
+ * hiç yoktu ve kimse bilmiyordu — müşteri şikâyet edene kadar.
+ *
+ * Ulaşılamazsa null; kurucu ekranı bundan ötürü kapanmamalı.
+ */
+export async function arvolabYansimasi(organizationId: string): Promise<ArvolabYansimasi | null> {
+  const lab = arvolabClient();
+  if (!lab) return null;
+  const { data, error } = await lab.from("organizations")
+    .select("license_status,ai_credit_limit,synced_at").eq("id", organizationId).maybeSingle();
+  if (error || !data) {
+    if (error) console.error("[arvolab] kopya okunamadı", organizationId, error.message);
+    return null;
+  }
+  const satir = data as { license_status: string | null; ai_credit_limit: number | null; synced_at: string | null };
+  return {
+    syncedAt: satir.synced_at ?? null,
+    status: satir.license_status ?? "inactive",
+    aiCreditLimit: satir.ai_credit_limit === null ? null : Number(satir.ai_credit_limit),
+  };
+}

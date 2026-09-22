@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
 import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
+import { arvolabYansimasi } from "@/lib/arvolab";
+import { yansimaDurumu } from "@/lib/yansima-durumu";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
@@ -113,6 +115,14 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     için. Limit tek başına bir şey anlatmıyor.
   */
   const kullanim = await urunKullanimi(selected.id);
+
+  /*
+    ArvoLab'daki kopyanın KENDİSİ okunuyor — köprünün sağlığı değil.
+    bridge_health "son çağrı başarılı" derken kopya günlerce eski
+    kalabiliyor: yansıtma yalnızca kaydederken çalışıyor.
+    AkademikMerkez'de tam bu oldu (22.09.2026).
+  */
+  const arvolabKopyasi = await arvolabYansimasi(selected.id);
   const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
     ADDON_PRODUCTS.map((urun) => [
       urun.code,
@@ -293,6 +303,15 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
               return {
                 tur: "ek" as const,
                 kod: product.code,
+                /*
+                  Karşılaştırma yalnızca ArvoLab için yapılabiliyor: Arc ve
+                  Randevu ayrı köprüler ve kopyalarını okuyan bir yol henüz
+                  yok. Onlarda yansima null geçiyor, metin de eskisi gibi
+                  genel kalıyor — uydurma bir "güncel" yazmaktansa.
+                */
+                yansima: product.code === "arvolab"
+                  ? yansimaDurumu(arvolabKopyasi, { status, aiCreditLimit: license.ai_credit_limit ?? null }, product.name)
+                  : yansimaDurumu(null, { status, aiCreditLimit: null }, product.name),
                 ad: product.name,
                 aciklama: product.description,
                 durumAdi: productLicenseLabels[status] ?? status,

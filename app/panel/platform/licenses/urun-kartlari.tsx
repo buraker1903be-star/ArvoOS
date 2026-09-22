@@ -48,6 +48,7 @@ export type UrunKarti =
       tur: "ek";
       baslangic: { status: string; planCode: string; monthlyFee: string; currentPeriodEnd: string; suspensionReason: string };
       kotalar: KotaAlani[];
+      yansima: { uyari: boolean; notu: string };
     });
 
 export function UrunKartlari({
@@ -147,6 +148,7 @@ export function UrunKartlari({
                 kotalar={secili.kotalar}
                 kaydet={urunuKaydet}
                 yenidenYansit={urunuYansit}
+                yansima={secili.yansima}
               />
             )}
           </div>
