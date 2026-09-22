@@ -40,6 +40,18 @@
       "metadata",
       "organization_id"
     ],
+    "ai_credit_orders": [
+      "amount",
+      "created_at",
+      "created_by",
+      "currency",
+      "id",
+      "kredi",
+      "loaded_at",
+      "organization_id",
+      "paket_kodu",
+      "payment_link_id"
+    ],
     "arc_collection_products": [
       "collection_id",
       "created_at",

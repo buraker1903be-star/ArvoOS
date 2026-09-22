@@ -57,6 +57,19 @@ create table if not exists public.activity_logs (
   created_at timestamp with time zone not null
 );
 
+create table if not exists public.ai_credit_orders (
+  id uuid not null,
+  payment_link_id uuid not null,
+  organization_id uuid not null,
+  paket_kodu text not null,
+  kredi bigint not null,
+  amount bigint not null,
+  currency text not null,
+  created_by uuid,
+  created_at timestamp with time zone not null,
+  loaded_at timestamp with time zone
+);
+
 create table if not exists public.arc_collection_products (
   organization_id uuid not null,
   collection_id uuid not null,
@@ -3561,9 +3574,9 @@ CREATE OR REPLACE FUNCTION private.default_license_limits(p_plan plan_code)
  SET search_path TO ''
 AS $function$
   select case p_plan
-    when 'starter'::public.plan_code then jsonb_build_object('user_limit', 5, 'storage_limit_mb', 5120, 'ai_credit_limit', 50000)
-    when 'professional'::public.plan_code then jsonb_build_object('user_limit', 25, 'storage_limit_mb', 51200, 'ai_credit_limit', 500000)
-    else jsonb_build_object('user_limit', 250, 'storage_limit_mb', 512000, 'ai_credit_limit', 5000000)
+    when 'starter'::public.plan_code then jsonb_build_object('user_limit', 5, 'storage_limit_mb', 5120, 'ai_credit_limit', 500)
+    when 'professional'::public.plan_code then jsonb_build_object('user_limit', 25, 'storage_limit_mb', 51200, 'ai_credit_limit', 2500)
+    else jsonb_build_object('user_limit', 250, 'storage_limit_mb', 512000, 'ai_credit_limit', 10000)
   end;
 $function$
 ;
@@ -5962,6 +5975,8 @@ declare
   v_event uuid;
   v_entry uuid;
   v_request uuid;
+  v_order public.ai_credit_orders%rowtype;
+  v_plan public.plan_code;
 begin
   if p_payment_link_id is null or coalesce(p_merchant_oid, '') = '' then
     return 'invalid';
@@ -5992,6 +6007,61 @@ begin
   if coalesce(p_payment_amount, 0) <= 0 then
     update public.payment_provider_events set result = 'invalid_amount' where id = v_event;
     return 'invalid_amount';
+  end if;
+
+  /*
+    AI kredisi. Eskiden 'subscription' olmayan her şey taksit sayılıyordu;
+    bu amaç o dala düşseydi 'no_party' ile reddedilirdi.
+
+    Kredi ArvoLab'ın veritabanında ve buradan ulaşılamıyor: yükleme
+    bildirimi alan yolda yapılıyor (app/api/paytr/callback). Burada
+    yalnızca ödeme kaydı yazılıyor ki tahsilat raporlarında görünsün;
+    "para alındı ama kredi yüklenmedi" durumu ai_credit_orders.loaded_at
+    ile izleniyor.
+  */
+  if v_link.purpose = 'ai_credit' then
+    -- Eksik ödeme kredi yüklemez (bağlantı tutarı sunucuda belirlendi).
+    if p_payment_amount < v_link.amount then
+      update public.payment_provider_events set result = 'amount_mismatch' where id = v_event;
+      return 'amount_mismatch';
+    end if;
+
+    select * into v_order from public.ai_credit_orders where payment_link_id = v_link.id;
+    if v_order.id is null then
+      update public.payment_provider_events set result = 'no_order' where id = v_event;
+      return 'no_order';
+    end if;
+
+    /*
+      Kredi satışı da gelirdir; tahsilat listesinde görünmeli.
+
+      plan_code ve submitted_by bu tabloda NOT NULL. Kredi satışının bir
+      paketi yok, o yüzden kurumun YÜRÜRLÜKTEKİ paketi yazılıyor —
+      "hangi paketteki müşteri kredi alıyor" sorusu da böylece
+      yanıtlanabiliyor. Null geçilseydi kayıt düşer ve ödeme alınmış
+      olmasına rağmen hiçbir yerde görünmezdi.
+    */
+    select coalesce(l.plan_code, o.plan_code) into v_plan
+      from public.organizations o
+      left join public.organization_licenses l on l.organization_id = o.id
+     where o.id = v_order.organization_id;
+
+    insert into public.organization_payment_requests (
+      organization_id, bank_account_id, plan_code, product, amount, currency, payment_method, status,
+      receipt_path, reference_no, review_note, submitted_by, reviewed_at, updated_at
+    ) values (
+      v_order.organization_id, null, coalesce(v_plan, 'starter'::public.plan_code), 'arvolab',
+      p_payment_amount, 'TRY', 'paytr', 'approved',
+      null, left('PAYTR-' || p_merchant_oid, 120),
+      'AI kredisi satın alındı (' || v_order.kredi || ' kredi), otomatik onaylandı',
+      coalesce(v_link.created_by, v_order.created_by), now(), now()
+    );
+
+    update public.payment_links set status = 'paid', paid_at = now() where id = v_link.id;
+    update public.organization_payment_providers
+    set last_payment_at = now()
+    where organization_id = v_link.organization_id and provider = 'paytr';
+    return 'recorded';
   end if;
 
   if v_link.purpose = 'subscription' then
@@ -10396,6 +10466,12 @@ alter table public.activity_logs alter column created_at set default now();
 
 alter table public.activity_logs alter column metadata set default '{}'::jsonb;
 
+alter table public.ai_credit_orders alter column created_at set default now();
+
+alter table public.ai_credit_orders alter column currency set default 'TRY'::text;
+
+alter table public.ai_credit_orders alter column id set default gen_random_uuid();
+
 alter table public.arc_collection_products alter column "position" set default 0;
 
 alter table public.arc_collection_products alter column created_at set default now();
@@ -11311,6 +11387,14 @@ alter table public.account_parties add constraint account_parties_pkey PRIMARY K
 
 alter table public.activity_logs add constraint activity_logs_pkey PRIMARY KEY (id);
 
+alter table public.ai_credit_orders add constraint ai_credit_orders_amount_check CHECK ((amount > 0));
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_kredi_check CHECK ((kredi > 0));
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_payment_link_id_key UNIQUE (payment_link_id);
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_pkey PRIMARY KEY (id);
+
 alter table public.arc_collection_products add constraint arc_collection_products_pkey PRIMARY KEY (collection_id, product_id);
 
 alter table public.arc_collection_products add constraint arc_collection_products_position_check CHECK (("position" >= 0));
@@ -11958,7 +12042,7 @@ alter table public.payment_links add constraint payment_links_pkey PRIMARY KEY (
 
 alter table public.payment_links add constraint payment_links_provider_check CHECK ((provider = 'paytr'::text));
 
-alter table public.payment_links add constraint payment_links_purpose_check CHECK ((((purpose = 'installment'::text) AND (installment_id IS NOT NULL)) OR ((purpose = 'subscription'::text) AND (product IS NOT NULL) AND (product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])) AND (((payer_organization_id IS NOT NULL) AND (plan_code IS NOT NULL)) OR (subscriber_id IS NOT NULL)) AND (NOT ((payer_organization_id IS NOT NULL) AND (subscriber_id IS NOT NULL))))));
+alter table public.payment_links add constraint payment_links_purpose_check CHECK ((((purpose = 'installment'::text) AND (installment_id IS NOT NULL)) OR ((purpose = 'subscription'::text) AND (product IS NOT NULL) AND (product = ANY (ARRAY['arvoos'::text, 'arvolab'::text, 'arc'::text, 'randevu'::text])) AND (((payer_organization_id IS NOT NULL) AND (plan_code IS NOT NULL)) OR (subscriber_id IS NOT NULL)) AND (NOT ((payer_organization_id IS NOT NULL) AND (subscriber_id IS NOT NULL)))) OR ((purpose = 'ai_credit'::text) AND (payer_organization_id IS NOT NULL))));
 
 alter table public.payment_links add constraint payment_links_status_check CHECK ((status = ANY (ARRAY['active'::text, 'paid'::text, 'cancelled'::text])));
 
@@ -12077,6 +12161,8 @@ CREATE INDEX activity_logs_entity_idx ON public.activity_logs USING btree (organ
 CREATE INDEX activity_logs_metadata_idx ON public.activity_logs USING gin (metadata jsonb_path_ops);
 
 CREATE INDEX activity_logs_organization_created_idx ON public.activity_logs USING btree (organization_id, created_at DESC);
+
+CREATE INDEX ai_credit_orders_org_idx ON public.ai_credit_orders USING btree (organization_id, created_at DESC);
 
 CREATE INDEX arc_collection_products_collection_org_idx ON public.arc_collection_products USING btree (collection_id, organization_id);
 
@@ -12420,6 +12506,12 @@ alter table public.account_parties add constraint account_parties_organization_i
 alter table public.activity_logs add constraint activity_logs_actor_user_id_fkey FOREIGN KEY (actor_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.activity_logs add constraint activity_logs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.ai_credit_orders add constraint ai_credit_orders_payment_link_id_fkey FOREIGN KEY (payment_link_id) REFERENCES payment_links(id) ON DELETE CASCADE;
 
 alter table public.arc_collection_products add constraint arc_collection_products_collection_id_organization_id_fkey FOREIGN KEY (collection_id, organization_id) REFERENCES arc_collections(id, organization_id) ON DELETE CASCADE;
 
@@ -12876,6 +12968,8 @@ alter table public.account_parties enable row level security;
 
 alter table public.activity_logs enable row level security;
 
+alter table public.ai_credit_orders enable row level security;
+
 alter table public.arc_collection_products enable row level security;
 
 alter table public.arc_collections enable row level security;
@@ -13114,6 +13208,11 @@ create policy activity_logs_select_crm_chain on public.activity_logs as PERMISSI
   WHERE ((m.organization_id = activity_logs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.is_active = true)))) AND (EXISTS ( SELECT 1
    FROM crm_opportunities o
   WHERE ((o.organization_id = activity_logs.organization_id) AND ((o.id)::text = COALESCE((activity_logs.metadata ->> 'opportunity_id'::text), activity_logs.entity_id)) AND private.arvo_can_access_opportunity(o.id))))));
+
+create policy ai_credit_orders_select on public.ai_credit_orders as PERMISSIVE for SELECT to authenticated
+  using ((organization_id IN ( SELECT m.organization_id
+   FROM organization_memberships m
+  WHERE ((m.user_id = auth.uid()) AND m.is_active))));
 
 create policy "arc managers delete collection products" on public.arc_collection_products as PERMISSIVE for DELETE to authenticated
   using ((EXISTS ( SELECT 1
