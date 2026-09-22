@@ -60,7 +60,7 @@ const dateTime = (value: string | null) => value ? new Date(value).toLocaleStrin
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
 const initials = (value: string) => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 
-export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string }> }) {
+export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string; filtre?: string }> }) {
   const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
@@ -289,7 +289,26 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const customers = organizations.filter((item) => item.kind !== "internal");
   const activeCount = customers.filter((item) => item.provisioning_state === "active").length;
   const pendingCount = customers.filter((item) => PENDING_STATES.has(item.provisioning_state)).length;
-  const issueCount = customers.filter((item) => item.provisioning_state === "failed" || item.provisioning_state === "suspended" || item.status === "suspended").length;
+  const sorunluMu = (item: ManagedOrganization) =>
+    item.provisioning_state === "failed"
+    || item.provisioning_state === "suspended"
+    || item.status === "suspended"
+    // Kota aşımı da "dikkat" sayılıyor: kurucunun bakması gereken kiracı.
+    || kotaById.get(item.id)?.durum === "asildi";
+  const issueCount = customers.filter(sorunluMu).length;
+
+  /*
+    Listeyi süzme. Kurucu sabah konsolu açtığında "bugün kime bakmam
+    gerek" diye soruyor; cevabı listeyi taramakla değil, menüden tek
+    tıkla gelmeli. Süzgeç kendi markalarımızı da dışarıda tutuyor —
+    kurulum bekleyen ya da sorunlu olan biz değiliz.
+  */
+  const filtre = params.filtre === "kurulum" || params.filtre === "dikkat" ? params.filtre : null;
+  const listelenen = filtre === "kurulum"
+    ? customers.filter((item) => PENDING_STATES.has(item.provisioning_state))
+    : filtre === "dikkat"
+      ? customers.filter(sorunluMu)
+      : organizations;
   const paymentsWaiting = pendingPayments.error ? 0 : pendingPayments.count ?? 0;
 
   return <div className="stg plt">
@@ -372,14 +391,26 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
     <div className="plt-layout">
       <aside className="plt-orgs" aria-label="Kurumlar">
-        <header><b>Kurumlar</b><small>{organizations.length} kurum</small></header>
+        <header>
+          <b>{filtre === "kurulum" ? "Kurulum bekleyenler" : filtre === "dikkat" ? "Dikkat gerektirenler" : "Kurumlar"}</b>
+          <small>{listelenen.length} kurum</small>
+        </header>
+        {filtre && !listelenen.length ? (
+          /* Boş süzgeçte "hiç kurum yok" demek yanlış olurdu; kurum var,
+             bu ölçüte uyan yok. */
+          <p className="plt-substatus" style={{ padding: "12px 14px" }}>
+            {filtre === "kurulum" ? "Kurulum bekleyen kurum yok." : "Dikkat gerektiren kurum yok."}
+          </p>
+        ) : null}
         <ul>
-          {organizations.map((item) => {
+          {listelenen.map((item) => {
             const itemInvite = latestInvitation.get(item.id);
             const label = item.display_name || item.name;
             return (
               <li key={item.id}>
-                <Link href={`/panel/platform?organization=${item.id}`} className={item.id === targetId ? "plt-org is-active" : "plt-org"} aria-current={item.id === targetId ? "page" : undefined}>
+                {/* Süzgeç bağlantıda korunuyor: kiracıya bakıp geri dönünce
+                    liste yeniden tüm kurumlara açılmasın. */}
+                <Link href={`/panel/platform?organization=${item.id}${filtre ? `&filtre=${filtre}` : ""}`} className={item.id === targetId ? "plt-org is-active" : "plt-org"} aria-current={item.id === targetId ? "page" : undefined}>
                   <span className="plt-org-avatar" data-tone={stateTones[item.provisioning_state] ?? "neutral"}>{initials(label)}</span>
                   <span className="plt-org-text">
                     <b>{label}</b>

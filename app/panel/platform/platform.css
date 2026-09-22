@@ -504,3 +504,24 @@
   .modul-ad { grid-column: 1 / -1 }
   .modul-ucret { text-align: start; justify-items: start }
 }
+
+/* Konsol menüsündeki gruplar. Altı düz başlık, hepsi "tüm kiracıları
+   listele" eksenindeydi; kurucunun günü üç ayrı işten oluşuyor. */
+.konsol-grup { display: grid; gap: 2px; margin-bottom: 14px }
+.konsol-grup-ad {
+  padding: 0 12px 4px;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+  /* 11px alt sınır: check-css-tokens bunun altını okunamaz sayıyor. */
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+/* Çapraz matris: kiracı × modül. Kiracı adı sola sabitleniyor, yatay
+   kaydırmada kaybolmasın. */
+.modul-capraz th:first-child,
+.modul-capraz td:first-child { position: sticky; inset-inline-start: 0; background: var(--surface); z-index: 1 }
+.modul-capraz td { white-space: nowrap }
+.modul-capraz .plt-substatus { display: block; margin-top: 2px; font-size: 11px }
+.modul-bagimsiz-sayi { margin-inline-start: 6px; color: var(--muted); font-size: 11.5px }
