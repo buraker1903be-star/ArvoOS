@@ -22,7 +22,7 @@ export default async function BillingPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const [{ data: subscriptions }, { data: tahsilatlar }, { data: aboneOdemeleri }, { data: internalOrganizations }, { data: productLicenses }, { data: organizationRows }] = await Promise.all([
+  const [{ data: subscriptions }, { data: tahsilatlar }, { data: aboneOdemeleri }, { data: internalOrganizations }, { data: productLicenses }, { data: organizationRows }, { data: coreLicenses }] = await Promise.all([
     supabase.from("billing_subscriptions").select("id,organization_id,provider,plan_code,status,currency,unit_amount,interval,current_period_end,organizations(name,display_name)").order("created_at", { ascending: false }),
     /*
       Platformun TAHSİL ETTİĞİ para: onaylanmış havale/EFT bildirimleri ve
@@ -36,6 +36,8 @@ export default async function BillingPage() {
     supabase.from("organizations").select("id").eq("kind", "internal"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due"]),
     supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
+    // ArvoOS çekirdek lisansının aylık ücreti; ek ürünler ayrı tabloda.
+    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee"),
   ]);
   // Otomatik çekim yok: dönem sonu yaklaşanlar burada, kurucu WhatsApp'tan hatırlatır.
   const reminders = remindersNow((productLicenses ?? []) as RenewalLicense[], (organizationRows ?? []) as RenewalOrganization[]);
@@ -53,8 +55,26 @@ export default async function BillingPage() {
   const tahsilatSatirlari = ((tahsilatlar ?? []) as { amount: number; currency: string; reviewed_at: string | null; organization_id: string }[]).filter(isCustomer);
   const aboneOdemeSatirlari = (aboneOdemeleri ?? []) as { amount: number; currency: string; paid_at: string | null }[];
   const active = subscriptionRows.filter((item) => (item.status === "active" || item.status === "trialing") && isCustomer(item));
-  const mrr = active.filter((item) => item.interval === "month").reduce((sum, item) => sum + Number(item.unit_amount), 0)
-    + Math.round(active.filter((item) => item.interval === "year").reduce((sum, item) => sum + Number(item.unit_amount), 0) / 12);
+  /*
+    Beklenen aylık gelir LİSANSLARDAN hesaplanıyor, billing_subscriptions'tan
+    değil: o tabloya satır ancak bir ödeme onaylandığında düşüyor, yani
+    denemedeki ya da elle lisans verilmiş kurumlar hiç sayılmıyordu ve
+    gerçek gelir varken ekranda ₺0 yazabiliyordu.
+
+    Denemedekiler ayrı tutuluyor: henüz ödemiyorlar, beklenen gelire
+    katmak raporu şişirir. Potansiyel olarak ayrıca gösteriliyor.
+  */
+  const odeyenDurumlar = new Set(["active", "past_due"]);
+  const ucretTopla = (satirlar: { organization_id: string; monthly_fee: number | null }[], durumlar: Set<string>, durumAl: (s: unknown) => string) =>
+    satirlar.filter((satir) => isCustomer(satir) && durumlar.has(durumAl(satir))).reduce((sum, satir) => sum + Number(satir.monthly_fee ?? 0), 0);
+
+  const cekirdek = (coreLicenses ?? []) as { organization_id: string; license_status: string; monthly_fee: number | null }[];
+  const ekUrunler = (productLicenses ?? []) as unknown as { organization_id: string; status: string; monthly_fee: number | null }[];
+  const durumCekirdek = (satir: unknown) => String((satir as { license_status: string }).license_status);
+  const durumUrun = (satir: unknown) => String((satir as { status: string }).status);
+
+  const mrr = ucretTopla(cekirdek, odeyenDurumlar, durumCekirdek) + ucretTopla(ekUrunler, odeyenDurumlar, durumUrun);
+  const denemeGeliri = ucretTopla(cekirdek, new Set(["trialing"]), durumCekirdek) + ucretTopla(ekUrunler, new Set(["trialing"]), durumUrun);
   const pastDue = subscriptionRows.filter((item) => item.status === "past_due" && isCustomer(item)).length;
   // Kurum havalesi + bireysel abone ödemesi: platformun gerçekten aldığı para.
   const paidTotal = tahsilatSatirlari.reduce((sum, satir) => sum + Number(satir.amount), 0)
@@ -70,7 +90,7 @@ export default async function BillingPage() {
 
     <section className="stg-widgets" aria-label="Abonelik özeti">
       <StgWidget tone="success" icon="check" label="Aktif abonelik" value={active.length} note="Aktif ve denemedeki kurumlar" />
-      <StgWidget tone="gold" icon="chart" label="Tahmini aylık gelir" value={money(mrr, currency)} note="Yıllıklar aya bölünür" />
+      <StgWidget tone="gold" icon="chart" label="Beklenen aylık gelir" value={money(mrr, currency)} note={denemeGeliri ? `Denemede ayrıca ${money(denemeGeliri, currency)}` : "Aktif lisansların aylık ücreti"} />
       <StgWidget tone={pastDue ? "warning" : "neutral"} icon="wallet" label="Ödemesi gecikmiş" value={pastDue} note={pastDue ? "Takip edilmesi gereken kurum" : "Gecikme yok"} />
       <StgWidget tone="info" icon="doc" label="Tahsil edilen" value={money(paidTotal, currency)} note="Son 50 fatura içinde" />
     </section>
