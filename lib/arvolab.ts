@@ -274,3 +274,34 @@ export async function arvolabGirisBaglantisi(
   // Adres kurulumu saf modülde: tests/unit/arvolab-giris.test.ts.
   return { url: arvolabGirisAdresi(koken, data.properties.hashed_token, hedef) };
 }
+
+/**
+ * Satın alınan krediyi ArvoLab'daki bakiyeye ekler.
+ *
+ * kaynak = ödemenin kimliği (PayTR merchant_oid). ArvoLab aynı kaynakla
+ * ikinci kez yüklemiyor: ödeme bildirimleri tekrar gelebiliyor ve her
+ * denemede kredi eklemek, bir kez ödeyen müşteriye kat kat hak vermek
+ * demekti.
+ *
+ * Çağıranı düşürmez; sonucu döndürür. Yükleme başarısızsa ArvoOS'taki
+ * sipariş kaydı loaded_at'siz kalıyor ve "para alındı, kredi yüklenmedi"
+ * durumu oradan görülebiliyor.
+ */
+export async function arvolabKrediYukle(
+  organizationId: string,
+  kredi: number,
+  kaynak: string,
+): Promise<"loaded" | "not_configured" | "failed"> {
+  const lab = arvolabClient();
+  if (!lab) return "not_configured";
+  const { error } = await lab.rpc("ai_kredi_yukle", {
+    p_organization_id: organizationId,
+    p_kredi: kredi,
+    p_kaynak: kaynak,
+  });
+  if (error) {
+    console.error("[arvolab] kredi yüklenemedi", organizationId, error.message);
+    return "failed";
+  }
+  return "loaded";
+}
