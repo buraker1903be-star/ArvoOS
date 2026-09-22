@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory } from "@/lib/member-directory";
 import { UyeListesi } from "./uye-listesi";
-import { StgIcon } from "../../settings/settings-ui";
+import { StgIcon, StgWidget } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -18,25 +18,43 @@ export default async function MembersPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve Arc&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
-      
     </div>
 
-
+    {/*
+      Eksik veriyle dolu bir liste, dolu bir liste gibi görünür. Uyarı
+      listenin ÜSTÜNDE ve konsolun öbür uyarılarıyla aynı dilde duruyor;
+      altta soluk bir kutuydu ve kimse okumuyordu.
+    */}
     {!arvolabReachable ? (
-      <div className="platform-note"><span>!</span><p>ArvoLab veritabanına ulaşılamadı; aşağıdaki listede ArvoLab üyeleri eksik. Bağlantı ayarlarını kontrol edin.</p></div>
+      <div className="plt-banner" data-tone="warning" role="alert">
+        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
+        <div>
+          <b>ArvoLab veritabanına ulaşılamadı</b>
+          <p>Aşağıdaki listede ArvoLab üyeleri eksik; sayılar da eksik olanı göstermiyor. Vercel&apos;de ArvoLab bağlantı ayarlarını kontrol edin.</p>
+        </div>
+      </div>
     ) : null}
 
-    <section className="platform-serit" aria-label="Üye özeti">
-      <span><b>{people.size}</b> kişi</span>
-      <span><b>{rows.length - blocked.length}</b> erişimi açık</span>
-      {individuals.length ? <span><b>{individuals.length}</b> bireysel</span> : null}
-      {blocked.length ? <span data-tone="warning"><b>{blocked.length}</b> erişimi kapalı</span> : null}
-    </section>
+    {/*
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "erişimi kapalı
+      kimse yok" demek, satırın hiç olmamasından daha çok şey söyler.
+    */}
+    <div className="stg-widgets" aria-label="Üye özeti">
+      <StgWidget tone="info" icon="users" label="Kişi" value={people.size} note={`${rows.length} ürün kaydı`} />
+      <StgWidget tone="success" icon="check" label="Erişimi açık" value={rows.length - blocked.length} note="Ürüne şu an girebiliyor" />
+      <StgWidget tone={individuals.length ? "gold" : "neutral"} icon="box" label="Bireysel" value={individuals.length} note={individuals.length ? "Kuruma bağlı değil" : "Bireysel abone yok"} />
+      <StgWidget tone={blocked.length ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={blocked.length} note={blocked.length ? "Lisans, abonelik ya da üyelik kapalı" : "Kapalı kayıt yok"} />
+    </div>
 
-    <UyeListesi satirlar={rows} />
+    {rows.length ? (
+      <UyeListesi satirlar={rows} />
+    ) : (
+      <div className="stg-empty"><StgIcon name="users" size={22} /><p>Henüz üye yok. Bir kuruma sahip daveti gönderildiğinde ya da bir ürüne ilk giriş yapıldığında burada görünür.</p></div>
+    )}
 
-    <div className="platform-note"><span>i</span><p>Bir kişi birden fazla üründe görünebilir; aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.</p></div>
-
-    {!rows.length ? <div className="stg-empty"><StgIcon name="users" size={22} /><p>Henüz üye yok.</p></div> : null}
+    <p className="stg-muted">
+      <StgIcon name="users" size={16} />
+      Bir kişi birden fazla üründe görünebilir; aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
+    </p>
   </div>;
 }

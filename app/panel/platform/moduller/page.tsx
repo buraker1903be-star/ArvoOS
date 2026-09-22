@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { ADDON_PRODUCTS, PRODUCTS } from "@/lib/products";
-import { StgIcon } from "../../settings/settings-ui";
+import { PRODUCTS, productLicenseLabels } from "@/lib/products";
+import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { LISANS_TONU } from "../bicim";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -21,14 +22,12 @@ import "../platform.css";
 
 export const dynamic = "force-dynamic";
 
-const DURUM_ADI: Record<string, string> = {
-  active: "Aktif", trialing: "Deneme", past_due: "Gecikmiş",
-  suspended: "Donduruldu", inactive: "Kapalı", canceled: "İptal",
-};
-const DURUM_TONU: Record<string, string> = {
-  active: "success", trialing: "info", past_due: "warning",
-  suspended: "danger", inactive: "neutral", canceled: "danger",
-};
+// Çekirdek lisansta "Donduruldu", ek üründe "Askıda" yazıyordu; aynı
+// tabloda iki ad, aynı durumun iki ayrı şey olduğunu düşündürüyor.
+const DURUM_ADI = productLicenseLabels;
+
+// Modülü açık sayan durumlar: ödeme gecikse de kullanıcı hâlâ içeride.
+const ACIK_DURUMLAR = new Set(["active", "trialing", "past_due"]);
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null };
 type UrunLisansi = { organization_id: string; product: string; status: string; integrated: boolean | null };
@@ -49,6 +48,7 @@ export default async function ModulMatrisiSayfasi() {
   // kurumun o modülü kullandığı sorusunun yanıtı kendimizle şişmemeli.
   const satirlar = (kurumlar ?? []) as Kurum[];
   const musteriMi = (kurum: Kurum) => kurum.kind !== "internal";
+  const musteriler = satirlar.filter(musteriMi);
 
   const urunById = new Map(
     ((urunLisanslari ?? []) as UrunLisansi[]).map((row) => [`${row.organization_id}:${row.product}`, row]),
@@ -62,14 +62,14 @@ export default async function ModulMatrisiSayfasi() {
       ? cekirdekById.get(kurum.id) ?? "inactive"
       : urunById.get(`${kurum.id}:${urun}`)?.status ?? "inactive";
 
-  const acikMi = (durum: string) => ["active", "trialing", "past_due"].includes(durum);
+  const acikMi = (durum: string) => ACIK_DURUMLAR.has(durum);
 
   const sayim = PRODUCTS.map((urun) => ({
     ...urun,
-    acik: satirlar.filter((kurum) => musteriMi(kurum) && acikMi(durumAl(kurum, urun.code))).length,
+    acik: musteriler.filter((kurum) => acikMi(durumAl(kurum, urun.code))).length,
     bagimsiz: urun.code === "arvoos"
       ? 0
-      : satirlar.filter((kurum) => musteriMi(kurum) && urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
+      : musteriler.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
   }));
 
   return <div className="stg plt">
@@ -81,59 +81,69 @@ export default async function ModulMatrisiSayfasi() {
       </div>
     </div>
 
-    <section className="platform-serit" aria-label="Modül özeti">
+    {/*
+      Ürün başına bir widget. Sayı, MÜŞTERİ kurumları sayıyor: kendi
+      markalarımızı da katmak "ArvoLab'ı kaç kurum kullanıyor" sorusunun
+      yanıtını kendimizle şişirirdi.
+    */}
+    <div className="stg-widgets" aria-label="Modül özeti">
       {sayim.map((urun) => (
-        <span key={urun.code}>
-          <b>{urun.acik}</b> {urun.name}
-          {urun.bagimsiz ? <span className="modul-bagimsiz-sayi">{urun.bagimsiz} bağımsız</span> : null}
-        </span>
+        <StgWidget
+          key={urun.code}
+          tone={urun.acik ? "success" : "neutral"}
+          icon={urun.code === "arvoos" ? "grid" : "box"}
+          label={urun.name}
+          value={`${urun.acik} / ${musteriler.length}`}
+          note={urun.bagimsiz
+            ? `${urun.bagimsiz} kiracı bağımsız modda`
+            : urun.acik ? "Tümü köprü üzerinden" : "Kullanan kiracı yok"}
+        />
       ))}
-    </section>
+    </div>
 
-    <section className="panel-card management-card" aria-label="Modül matrisi">
-      <div className="plt-table-scroll">
-        <table className="plt-table modul-capraz">
-          <thead>
-            <tr>
-              <th>Kiracı</th>
-              {PRODUCTS.map((urun) => <th key={urun.code}>{urun.name}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {satirlar.map((kurum) => (
-              <tr key={kurum.id}>
-                <td>
-                  <Link className="modul-baglanti" href={`/panel/platform?organization=${kurum.id}`}>
-                    {kurum.display_name || kurum.name}
-                  </Link>
-                  {musteriMi(kurum) ? null : <small className="plt-substatus">kendi markamız</small>}
-                </td>
-                {PRODUCTS.map((urun) => {
-                  const durum = durumAl(kurum, urun.code);
-                  const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
-                  return (
-                    <td key={urun.code}>
-                      <span className="status-pill" data-tone={DURUM_TONU[durum] ?? "neutral"}>
-                        {DURUM_ADI[durum] ?? durum}
-                      </span>
-                      {/* Bağımsız mod yalnızca açık modülde yazılıyor;
-                          kapalı bir modülün köprü modu bir şey anlatmıyor. */}
-                      {lisans && acikMi(durum) && lisans.integrated === false
-                        ? <small className="plt-substatus">bağımsız</small>
-                        : null}
-                    </td>
-                  );
-                })}
+    <StgSection
+      id="matris" wide icon="grid" tone="info" kicker="ÇAPRAZ GÖRÜNÜM" title="Kiracı × modül"
+      description="Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz."
+      aside={<span className="status-pill">{satirlar.length} kurum</span>}
+    >
+      {satirlar.length ? (
+        <div className="plt-table-scroll">
+          <table className="plt-table modul-capraz">
+            <thead>
+              <tr>
+                <th>Kiracı</th>
+                {PRODUCTS.map((urun) => <th key={urun.code}>{urun.name}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {!satirlar.length ? <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Henüz kurum yok.</p></div> : null}
-    </section>
-
-    <p className="plt-substatus">
-      Sayımda kendi markalarımız yok; tabloda görünüyorlar. {ADDON_PRODUCTS.length} ek ürün ve ArvoOS çekirdeği listeleniyor.
-    </p>
+            </thead>
+            <tbody>
+              {satirlar.map((kurum) => (
+                <tr key={kurum.id}>
+                  <td>
+                    <Link className="modul-baglanti" href={`/panel/platform?organization=${kurum.id}`}>
+                      {kurum.display_name || kurum.name}
+                    </Link>
+                    {musteriMi(kurum) ? null : <small className="plt-substatus">kendi markamız</small>}
+                  </td>
+                  {PRODUCTS.map((urun) => {
+                    const durum = durumAl(kurum, urun.code);
+                    const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
+                    return (
+                      <td key={urun.code}>
+                        <span className="status-pill" data-tone={LISANS_TONU[durum] ?? "neutral"}>
+                          {DURUM_ADI[durum] ?? durum}
+                        </span>
+                        {lisans && acikMi(durum) && lisans.integrated === false
+                          ? <small className="plt-substatus">bağımsız</small>
+                          : null}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Henüz kurum yok. İlk müşteri kurulduğunda matris burada dolar.</p></div>}
+    </StgSection>
   </div>;
 }

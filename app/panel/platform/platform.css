@@ -505,3 +505,42 @@
   border-radius: 50%; background: var(--accent-soft);
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
+
+/* Uyarı şeridinin diğer tonları. Bir eksik veri uyarısı (ArvoLab'a
+   ulaşılamadı) kırmızı değil: liste çalışıyor, yalnızca eksik. */
+.plt-banner[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--line));
+  background: var(--warning-soft);
+}
+.plt-banner[data-tone="warning"] .plt-banner-icon {
+  background: color-mix(in srgb, var(--warning) 82%, var(--ink));
+}
+.plt-banner[data-tone="info"] {
+  border-color: color-mix(in srgb, var(--info) 30%, var(--line));
+  background: var(--info-soft);
+}
+.plt-banner[data-tone="info"] .plt-banner-icon { background: var(--info) }
+
+/* Kota ölçerleri: etiket üstte, oran sağda, çubuk altta. Üç limit daha
+   önce tek satırlık şeritte yalnızca sayıydı ("180 / 200") ve doluluğu
+   gözün hesaplaması gerekiyordu. */
+.plt-olcumler { display: grid; gap: 16px }
+.plt-olcum { display: grid; gap: 7px }
+.plt-olcum-bas { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+.plt-olcum-bas b { color: var(--ink); font-size: 13.5px; font-weight: 600 }
+.plt-olcum-bas span { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap }
+
+/* Bölüm içine alınan kart ızgarası. Ürün kartları artık bir başlığın
+   altında gruplanıyor; kart içinde aynı yüzeyden ikinci bir kart iki
+   katmanı birbirine karıştırırdı. İç kartlar gruplanmış liste gibi bir
+   alt yüzeyde duruyor. */
+.plt .stg-card .plan-izgara > .stg-card {
+  border-color: var(--line-soft);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+/* Açıklamasıyla birlikte duran tek işlem: not solda, düğme sağda.
+   Kart köşesine sıkıştırılmış bir düğme, okumadan basılan bir düğme. */
+.plt-islem-notlu { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap }
+.plt-islem-notlu .plt-field-note { flex: 1 1 260px; margin: 0 }

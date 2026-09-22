@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { PAKET_ADI, para, tarih } from "../bicim";
 import "../../settings/settings.css";
 import "../platform.css";
 import { abonelikHatirlatmasiGonder } from "../actions";
@@ -9,9 +10,6 @@ import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type Renew
 
 type Subscription = { id: string; organization_id: string; provider: string; plan_code: string; status: string; currency: string; unit_amount: number; interval: string; current_period_end: string | null; organizations: { name?: string; display_name?: string | null } | { name?: string; display_name?: string | null }[] | null };
 
-const money = (amount: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(amount / 100);
-const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
-const planLabels: Record<string, string> = { starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal" };
 const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
 const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
 
@@ -84,17 +82,19 @@ export default async function BillingPage() {
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Abonelikler</h1><p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p></div>
-      
     </div>
 
-
-    <section className="platform-serit" aria-label="Abonelik özeti">
-      <span><b>{active.length}</b> aktif abonelik</span>
-      <span><b>{money(mrr, currency)}</b> beklenen aylık</span>
-      {denemeGeliri ? <span><b>{money(denemeGeliri, currency)}</b> denemede</span> : null}
-      {pastDue ? <span data-tone="warning"><b>{pastDue}</b> ödemesi gecikmiş</span> : null}
-      <span><b>{money(paidTotal, currency)}</b> tahsil edildi</span>
-    </section>
+    {/*
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "ödemesi
+      gecikmiş kurum yok" demek, satırın hiç olmamasından daha çok şey
+      söyler.
+    */}
+    <div className="stg-widgets" aria-label="Abonelik özeti">
+      <StgWidget tone="gold" icon="wallet" label="Beklenen aylık" value={para(mrr, currency)} note={denemeGeliri ? `${para(denemeGeliri, currency)} denemede` : "Denemede gelir yok"} />
+      <StgWidget tone="success" icon="check" label="Tahsil edildi" value={para(paidTotal, currency)} note={`${tahsilatSatirlari.length + aboneOdemeSatirlari.length} ödeme kaydı`} />
+      <StgWidget tone="info" icon="box" label="Aktif abonelik" value={active.length} note={`${subscriptionRows.length} abonelik kaydı`} />
+      <StgWidget tone={pastDue ? "warning" : "neutral"} icon="shield" label="Ödemesi gecikmiş" value={pastDue} note={pastDue ? "Hatırlatma gönderin" : "Gecikmiş abonelik yok"} />
+    </div>
 
     <div className="stg-grid">
       <StgSection
@@ -111,7 +111,7 @@ export default async function BillingPage() {
                   <span className="stg-row-icon" data-tone={r.daysLeft < 0 ? "danger" : r.daysLeft <= 1 ? "warning" : "gold"}><StgIcon name="wallet" size={16} /></span>
                   <span>
                     <b>{r.organizationName} · {r.productName}</b>
-                    <small>{r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`} · {date(r.endsAt)}{r.fee ? ` · ${money(r.fee, "TRY")} / ay` : " · aylık ücret girilmedi"}</small>
+                    <small>{r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`} · {tarih(r.endsAt)}{r.fee ? ` · ${para(r.fee, "TRY")} / ay` : " · aylık ücret girilmedi"}</small>
                   </span>
                 </span>
                 {/*
@@ -152,7 +152,7 @@ export default async function BillingPage() {
                 <div key={row.id} className="plt-row">
                   <span className="stg-row-main">
                     <span className="stg-row-icon" data-tone={statusTones[row.status] ?? "neutral"}><StgIcon name="building" size={16} /></span>
-                    <span><b>{relation?.display_name || relation?.name || row.organization_id}</b><small>{planLabels[row.plan_code] ?? row.plan_code} · {money(Number(row.unit_amount), row.currency)} / {row.interval === "year" ? "yıl" : "ay"} · {row.provider}{row.current_period_end ? ` · dönem sonu ${date(row.current_period_end)}` : ""}</small></span>
+                    <span><b>{relation?.display_name || relation?.name || row.organization_id}</b><small>{PAKET_ADI[row.plan_code] ?? row.plan_code} · {para(Number(row.unit_amount), row.currency)} / {row.interval === "year" ? "yıl" : "ay"} · {row.provider}{row.current_period_end ? ` · dönem sonu ${tarih(row.current_period_end)}` : ""}</small></span>
                   </span>
                   <span className="plt-row-uc">
                     <span className="status-pill" data-tone={statusTones[row.status] ?? "neutral"}>{statusLabels[row.status] ?? row.status}</span>
@@ -183,8 +183,8 @@ export default async function BillingPage() {
                 <span className="stg-row-main">
                   <span className="stg-row-icon" data-tone="success"><StgIcon name="wallet" size={16} /></span>
                   <span>
-                    <b>{money(Number(row.amount), row.currency)}</b>
-                    <small>{orgAdi.get(row.organization_id) ?? "Kurum"} · onay {date(row.reviewed_at)}</small>
+                    <b>{para(Number(row.amount), row.currency)}</b>
+                    <small>{orgAdi.get(row.organization_id) ?? "Kurum"} · onay {tarih(row.reviewed_at)}</small>
                   </span>
                 </span>
                 <Link className="kiraci-baglanti" href={`/panel/platform?organization=${row.organization_id}`}>Kiracı →</Link>
