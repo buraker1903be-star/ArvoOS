@@ -68,10 +68,10 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const origin=await requestOrigin();
  const locked=["accepted","rejected","expired","archived"].includes(row.status);
  const actions=!locked
-  ?<div className="ad-actions print-hide">
+  ?<div className="doc-actions print-hide">
     <form action={respondToProposal.bind(null,token)} style={canReject?undefined:{gridTemplateColumns:"1fr"}}>
-     <button className="ad-accept" name="decision" value="accept">TEKLİFİ KABUL EDİYORUM</button>
-     {canReject?<button className="ad-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>:null}
+     <button className="doc-accept" name="decision" value="accept">TEKLİFİ KABUL EDİYORUM</button>
+     {canReject?<button className="doc-reject" name="decision" value="reject">TEKLİFİ REDDEDİYORUM</button>:null}
     </form>
     <p>{awaitingCustomer
      ?(canReject
@@ -79,7 +79,7 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
       :"Sözleşmeniz bu teklife göre imzalandı; teklifi de onaylamanız kayıtlarınızı tamamlar. Onayınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır.")
      :"Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır. Kabul ettiğinizde aynı kapsam ve bedelle hazırlanan sözleşme onayınıza sunulur."}</p>
    </div>
-  :<div className="ad-status print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
+  :<div className="doc-status print-hide">{statuses[row.status]||"Bu teklifin karar aşaması tamamlandı. Belge görüntülenebilir durumda."}</div>;
  return <ProposalDocument
   row={row}
   decision={decision}

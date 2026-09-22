@@ -31,10 +31,10 @@ export function PrintAutorun({ fileName, backHref }: { fileName: string; backHre
   }, [fileName]);
 
   return (
-    <div className="ad-printbar ad-noprint">
+    <div className="doc-printbar doc-noprint">
       <p><b>PDF olarak kaydetmek için</b> yazdırma penceresinde hedef olarak “PDF olarak kaydet”i seçin. iPhone / iPad: Paylaş → Yazdır → Paylaş → “Dosyalara Kaydet”. Android: ⋮ → Paylaş → Yazdır → “PDF olarak kaydet”.</p>
-      {backHref ? <a className="ad-btn" href={backHref}>Belgeye dön</a> : null}
-      <button type="button" className="ad-btn ad-btn-primary" onClick={() => window.print()}>Yazdır / PDF kaydet</button>
+      {backHref ? <a className="doc-btn" href={backHref}>Belgeye dön</a> : null}
+      <button type="button" className="doc-btn doc-btn-primary" onClick={() => window.print()}>Yazdır / PDF kaydet</button>
     </div>
   );
 }

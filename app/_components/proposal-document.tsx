@@ -46,65 +46,65 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
   const print = mode === "print";
   const fileName = pdfFileName("Teklif", row.proposal_no);
   const css = documentCss({ footerLeft: `${row.proposal_no || ""} · Hizmet Teklifi · ${provider.name}` });
-  const rootClass = ["ad-root", print ? "ad-print" : "", print && overlay ? "ad-print-overlay" : ""].filter(Boolean).join(" ");
+  const rootClass = ["doc-root", print ? "doc-print" : "", print && overlay ? "doc-print-overlay" : ""].filter(Boolean).join(" ");
   const taxCell = tax.status === "included" || tax.status === "excluded" ? `%${tax.rate.toLocaleString("tr-TR")}` : tax.status === "exempt" ? "İstisna" : "—";
 
-  return <main className={rootClass} style={{ "--ad-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
+  return <main className={rootClass} style={{ "--doc-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
     <style>{css}</style>
     {print
       ? <PrintAutorun fileName={fileName} backHref={backHref} />
-      : <div className="ad-toolbar print-hide"><div>{toolbarLeft}</div><div className="ad-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="proposal" documentId={logDocumentId ?? undefined} documentNumber={row.proposal_no} /> : null}</div></div>}
-    <article className="ad-sheet">
-      <div className="ad-band" />
+      : <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="proposal" documentId={logDocumentId ?? undefined} documentNumber={row.proposal_no} /> : null}</div></div>}
+    <article className="doc-sheet">
+      <div className="doc-band" />
       <DocHeader provider={provider} kicker="Hizmet Teklifi" number={String(row.proposal_no || "")} meta={[
         ["Düzenleme", formatDate(row.created_at)],
         ["Geçerlilik", formatDate(row.valid_until)],
         ["Durum", statuses[row.status] || row.status || "—"],
       ]} />
-      <section className="ad-title">
-        <div className="ad-kicker">Teklif Konusu</div>
+      <section className="doc-title">
+        <div className="doc-kicker">Teklif Konusu</div>
         <h1>{title}</h1>
         <p>Sayın {customer.name}, talebiniz doğrultusunda hazırlanan hizmet kapsamı, fiyatlandırma ve ticari koşullar aşağıda bilgilerinize sunulmuştur.</p>
       </section>
-      {notice && !print ? <div className="ad-notice print-hide">{notice}</div> : null}
+      {notice && !print ? <div className="doc-notice print-hide">{notice}</div> : null}
 
-      <section className="ad-sec"><div className="ad-grid-2">
+      <section className="doc-sec"><div className="doc-grid-2">
         <PartyCard role="Teklif Veren" name={provider.name} rows={providerRows(provider)} />
         <PartyCard role="Teklif Sunulan" name={customer.name} rows={customerRows(customer).filter(([label]) => label !== "Adres" || customer.address)} />
       </div></section>
 
-      <section className="ad-sec"><div className="ad-facts">
-        <div className="ad-fact ad-fact-dark"><small>Teklif tutarı</small><strong>{formatMoney(tax.gross, currency)}</strong></div>
-        <div className="ad-fact"><small>Geçerlilik tarihi</small><strong>{formatDate(row.valid_until)}</strong></div>
-        <div className="ad-fact"><small>Tahmini teslim</small><strong>{formatDate(row.estimated_delivery_date, "Sözleşmede belirlenir")}</strong></div>
-        <div className="ad-fact"><small>Ödeme modeli</small><strong>{schedule.length === 1 ? "Tek ödeme" : `${schedule.length} taksit`}</strong></div>
+      <section className="doc-sec"><div className="doc-facts">
+        <div className="doc-fact doc-fact-dark"><small>Teklif tutarı</small><strong>{formatMoney(tax.gross, currency)}</strong></div>
+        <div className="doc-fact"><small>Geçerlilik tarihi</small><strong>{formatDate(row.valid_until)}</strong></div>
+        <div className="doc-fact"><small>Tahmini teslim</small><strong>{formatDate(row.estimated_delivery_date, "Sözleşmede belirlenir")}</strong></div>
+        <div className="doc-fact"><small>Ödeme modeli</small><strong>{schedule.length === 1 ? "Tek ödeme" : `${schedule.length} taksit`}</strong></div>
       </div></section>
 
-      <section className="ad-sec">
+      <section className="doc-sec">
         <SectionHeading index="01">Hizmet Kapsamı</SectionHeading>
-        <div className="ad-box"><ul className="ad-list">{scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div>
+        <div className="doc-box"><ul className="doc-list">{scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div>
       </section>
 
-      <section className="ad-sec">
+      <section className="doc-sec">
         <SectionHeading index="02">Fiyatlandırma</SectionHeading>
-        <div className="ad-table-wrap"><table className="ad-table">
-          <thead><tr><th style={{ width: "6%" }}>#</th><th>Hizmet / Açıklama</th><th className="ad-center" style={{ width: "9%" }}>Miktar</th><th className="ad-num" style={{ width: "17%" }}>Birim fiyat</th><th className="ad-center" style={{ width: "9%" }}>KDV</th><th className="ad-num" style={{ width: "18%" }}>Toplam</th></tr></thead>
+        <div className="doc-table-wrap"><table className="doc-table">
+          <thead><tr><th style={{ width: "6%" }}>#</th><th>Hizmet / Açıklama</th><th className="doc-center" style={{ width: "9%" }}>Miktar</th><th className="doc-num" style={{ width: "17%" }}>Birim fiyat</th><th className="doc-center" style={{ width: "9%" }}>KDV</th><th className="doc-num" style={{ width: "18%" }}>Toplam</th></tr></thead>
           <tbody><tr>
             <td>1</td>
             <td><strong>{title}</strong>{scopeItems.length > 1 || scopeItems[0] !== title ? <ul>{scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul> : null}</td>
-            <td className="ad-center">1 hizmet</td>
-            <td className="ad-num">{formatMoney(tax.net, currency)}</td>
-            <td className="ad-center">{taxCell}</td>
-            <td className="ad-num"><strong>{formatMoney(tax.gross, currency)}</strong></td>
+            <td className="doc-center">1 hizmet</td>
+            <td className="doc-num">{formatMoney(tax.net, currency)}</td>
+            <td className="doc-center">{taxCell}</td>
+            <td className="doc-num"><strong>{formatMoney(tax.gross, currency)}</strong></td>
           </tr></tbody>
         </table></div>
         <TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} />
       </section>
 
-      <section className="ad-sec">
+      <section className="doc-sec">
         <SectionHeading index="03">Ödeme Koşulları</SectionHeading>
         <PaymentPlanTable rows={schedule} currency={currency} />
-        <div className="ad-box" style={{ marginTop: "3mm" }}><ul className="ad-list">
+        <div className="doc-box" style={{ marginTop: "3mm" }}><ul className="doc-list">
           <li>Ödemeler, teklifin kabulüyle oluşturulan Hizmet Sözleşmesi’ndeki ödeme planına göre, aynı tutarlarla yapılır.</li>
           {provider.iban
             ? <li><b>Havale / EFT:</b> yalnızca aşağıda bilgileri gösterilen, {provider.accountHolder || provider.name} adına kayıtlı banka hesabına; ödeme açıklamasına {row.proposal_no || "belge"} numarası yazılmalıdır. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.</li>
@@ -114,9 +114,9 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
         </ul>{provider.iban ? <div style={{ marginTop: "3mm" }}><BankAccountBox provider={provider} /></div> : null}</div>
       </section>
 
-      <section className="ad-sec">
+      <section className="doc-sec">
         <SectionHeading index="04">Geçerlilik ve Kabul</SectionHeading>
-        <div className="ad-box"><ul className="ad-list">
+        <div className="doc-box"><ul className="doc-list">
           <li>Bu teklif {formatDate(row.valid_until)} tarihine kadar geçerlidir. Bu tarihten sonra fiyat ve koşullar yeniden değerlendirilir.</li>
           <li>Teklifin elektronik olarak kabulüyle aynı kapsam, bedel ve ödeme planını içeren Hizmet Sözleşmesi oluşturulur ve onayınıza sunulur; hizmet ilişkisi sözleşmenin onaylanmasıyla kurulur.</li>
           <li>Tahmini teslim tarihi {formatDate(row.estimated_delivery_date, "sözleşmede belirlenecektir")}; kesin iş takvimi sözleşmede yer alır.</li>
@@ -125,56 +125,56 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
         </ul></div>
       </section>
 
-      <section className="ad-sec">
+      <section className="doc-sec">
         <SectionHeading index="05">Gizlilik</SectionHeading>
-        <div className="ad-box">
+        <div className="doc-box">
           <p>Bu teklif ve ekleri yalnızca muhatabı için hazırlanmıştır. İçerdiği fiyat, kapsam ve yöntem bilgileri ticari sır niteliğinde olup {provider.name}’in yazılı onayı olmaksızın üçüncü kişilerle paylaşılamaz, çoğaltılamaz veya teklifin değerlendirilmesi dışında bir amaçla kullanılamaz.</p>
           <p>Teklif sürecinde paylaşılan kişisel veriler 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında yalnızca teklifin hazırlanması, değerlendirilmesi ve sözleşme süreci amacıyla işlenir.</p>
         </div>
       </section>
 
-      <section className="ad-sec ad-sign-block">
+      <section className="doc-sec doc-sign-block">
         <SectionHeading index="06">Karar</SectionHeading>
-        <div className="ad-sign">
-          <div className="ad-sign-card">
+        <div className="doc-sign">
+          <div className="doc-sign-card">
             <h3>Teklif Veren</h3>
-            <div className="ad-sign-name">{provider.name}</div>
-            <div className="ad-sign-sub">Yetkili imza ve kaşe</div>
-            <div className="ad-sign-art">{provider.stampUrl ? <img src={provider.stampUrl} alt="Firma kaşe ve imzası" /> : <span className="ad-sign-empty">Kaşe / İmza</span>}</div>
-            <dl className="ad-audit"><dt>Düzenleme</dt><dd>{formatDate(row.created_at)}</dd><dt>Belge no</dt><dd>{row.proposal_no}</dd></dl>
+            <div className="doc-sign-name">{provider.name}</div>
+            <div className="doc-sign-sub">Yetkili imza ve kaşe</div>
+            <div className="doc-sign-art">{provider.stampUrl ? <img src={provider.stampUrl} alt="Firma kaşe ve imzası" /> : <span className="doc-sign-empty">Kaşe / İmza</span>}</div>
+            <dl className="doc-audit"><dt>Düzenleme</dt><dd>{formatDate(row.created_at)}</dd><dt>Belge no</dt><dd>{row.proposal_no}</dd></dl>
           </div>
-          {decided ? <div className={decided.status === "accepted" ? "ad-decision" : "ad-decision is-rejected"}>
-            <div className="ad-decision-badge"><i>{decided.status === "accepted" ? "✓" : "✕"}</i>{decided.status === "accepted" ? "Teklif elektronik olarak kabul edildi" : "Teklif reddedildi"}</div>
-            <dl className="ad-audit">
+          {decided ? <div className={decided.status === "accepted" ? "doc-decision" : "doc-decision is-rejected"}>
+            <div className="doc-decision-badge"><i>{decided.status === "accepted" ? "✓" : "✕"}</i>{decided.status === "accepted" ? "Teklif elektronik olarak kabul edildi" : "Teklif reddedildi"}</div>
+            <dl className="doc-audit">
               <dt>Müşteri</dt><dd>{customer.name}</dd>
               <dt>Karar tarihi ve saati</dt><dd>{formatDateTime(decided.responded_at)}</dd>
               <dt>IP adresi</dt><dd>{decided.response_ip || "Kayıt bulunamadı"}</dd>
               <dt>Cihaz / tarayıcı</dt><dd>{summarizeUserAgent(decided.response_user_agent) || "Kayıt bulunamadı"}</dd>
               <dt>Belge referansı</dt><dd>{row.proposal_no}</dd>
             </dl>
-            {decided.status === "accepted" && decided.contract_share_token && !print ? <a className="ad-decision-link print-hide" href={`/sozlesme/${decided.contract_share_token}`}>Bu tekliften oluşan sözleşmeyi görüntüle{decided.contract_no ? ` · ${decided.contract_no}` : ""}</a> : null}
-          </div> : <div className="ad-sign-card">
+            {decided.status === "accepted" && decided.contract_share_token && !print ? <a className="doc-decision-link print-hide" href={`/sozlesme/${decided.contract_share_token}`}>Bu tekliften oluşan sözleşmeyi görüntüle{decided.contract_no ? ` · ${decided.contract_no}` : ""}</a> : null}
+          </div> : <div className="doc-sign-card">
             {/* Teklifte müşteri imzası yok: karar "Teklifi kabul ediyorum /
                 reddediyorum" butonlarıyla verilir. İmza yalnızca sözleşmede. */}
             <h3>Müşteri Kararı</h3>
-            <div className="ad-sign-name">{customer.name}</div>
-            <div className="ad-await">
-              <span className="ad-await-dot" aria-hidden="true" />
+            <div className="doc-sign-name">{customer.name}</div>
+            <div className="doc-await">
+              <span className="doc-await-dot" aria-hidden="true" />
               {row.status === "expired" ? <div><b>Teklifin geçerlilik süresi doldu</b></div> : <div>
                 <b>Karar bekleniyor</b>
                 <p>Teklif, bu belgenin çevrimiçi sürümündeki “Teklifi kabul ediyorum” veya “Teklifi reddediyorum” butonuyla tek adımda yanıtlanır; imza gerekmez.</p>
               </div>}
             </div>
-            <dl className="ad-audit"><dt>Durum</dt><dd>{statuses[row.status] ?? "Onay bekliyor"}</dd><dt>Belge no</dt><dd>{row.proposal_no}</dd></dl>
+            <dl className="doc-audit"><dt>Durum</dt><dd>{statuses[row.status] ?? "Onay bekliyor"}</dd><dt>Belge no</dt><dd>{row.proposal_no}</dd></dl>
           </div>}
         </div>
-        <p className="ad-legal-note">Teklifin bu sayfa üzerinden elektronik olarak kabulü; karar tarihi-saati, IP adresi ve cihaz bilgisiyle birlikte kayıt altına alınır. Bu elektronik onay, 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; taraf iradesini gösteren elektronik kayıt olarak saklanır.</p>
+        <p className="doc-legal-note">Teklifin bu sayfa üzerinden elektronik olarak kabulü; karar tarihi-saati, IP adresi ve cihaz bilgisiyle birlikte kayıt altına alınır. Bu elektronik onay, 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; taraf iradesini gösteren elektronik kayıt olarak saklanır.</p>
       </section>
 
       {!print ? actions : null}
 
       <DocFooter provider={provider} reference={<>{row.proposal_no}{row.revision_no ? ` · R${row.revision_no}` : ""}</>} verificationUrl={verificationUrl} />
-      <div className="ad-confidential">Gizlidir · Yalnızca teklif muhatabı içindir</div>
+      <div className="doc-confidential">Gizlidir · Yalnızca teklif muhatabı içindir</div>
     </article>
   </main>;
 }

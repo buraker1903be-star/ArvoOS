@@ -53,6 +53,10 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   (kurumun kendi numarası mı Arvo'nunki mi) kapıdadır; ürün seçmez. Meta'nın
   kuralı gereği iş tarafının başlattığı mesaj onaylı şablonla gider, serbest
   metin yalnızca müşterinin son mesajından sonraki 24 saat içinde.
+- **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
+  belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
+  reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata
+  vermeden bomboş görünüyordu — imzaya gönderilen sözleşme dahil.
 - **Pazarlama sayfaları yalnızca `arvo-os.com`'da.** Host kararları
   `lib/site/host-rules.ts` içinde saf fonksiyonlardadır; proxy ve `robots.ts`
   oradan okur, kopya mantık yazılmaz.

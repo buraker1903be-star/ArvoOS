@@ -14,7 +14,7 @@ export default async function DocumentPreviewPage({params}:{params:Promise<{type
  const {supabase}=await getPanelContext();
  const audit=await requestAudit();
  await supabase.rpc("log_document_access",{target_document_type:type,target_document_id:id,target_access_type:"panel_preview",target_ip:audit.ip,target_user_agent:audit.userAgent,target_referrer:audit.referrer,target_metadata:{number:document.number,source:"document_center_shared_renderer"}});
- const backLink=<Link className="ad-btn" href={`/panel/documents/${type}/${id}`}>← Yaşam döngüsüne dön</Link>;
+ const backLink=<Link className="doc-btn" href={`/panel/documents/${type}/${id}`}>← Yaşam döngüsüne dön</Link>;
  const pdfHref=`/panel/documents/${type}/${id}/pdf`;
  if(document.type==="contract"){
   return <ContractDocument workPlan={document.workPlan} addenda={document.addenda} row={document.row} audit={document.audit} auditAvailable={document.auditAvailable} verificationUrl={document.verificationUrl} verificationHash={document.verificationHash} toolbarLeft={backLink} pdfHref={pdfHref} logDocumentId={id}/>;
