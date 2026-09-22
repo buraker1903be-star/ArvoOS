@@ -65,3 +65,31 @@ export function kotayaGoreSirala(durumlar: KotaDurumu[]): KotaDurumu[] {
   const doluluk = (d: KotaDurumu) => Math.max(d.kullanici.oran, d.aiKredi.oran);
   return [...durumlar].sort((a, b) => agirlik[a.durum] - agirlik[b.durum] || doluluk(b) - doluluk(a));
 }
+
+
+/**
+ * Yeni bir kullanıcı davet edilebilir mi; edilemezse sebebi.
+ *
+ * Denetim VERİTABANINDA değil burada: üyelikler auth.users üzerindeki bir
+ * tetikleyiciden yazılıyor (activate_organization_owner_invitation), yani
+ * veritabanı tarafında "bu yazma istemciden mi geliyor" ayrımı yapılamıyor.
+ * Oraya konan bir koruma ya hiç çalışmaz ya da kurucunun kendi davetlerini
+ * ve ürün köprülerini de keserdi. Davet akışı ise tek bir kapıdan geçiyor
+ * (app/panel/hr/team-actions.ts), kural orada anlamlı.
+ *
+ * Kota bir yetki sınırı değil ticari sınır; bu yüzden RLS'in üç katmanlı
+ * kuralına tabi değil.
+ *
+ * @param limit Lisanstaki user_limit; null ise (lisans satırı yok) sınır
+ *              uygulanmaz — olmayan bir limiti gerekçe gösterip daveti
+ *              durdurmak, kurulumu yarım kalmış kurumu çalışmaz kılardı.
+ */
+export function davetEngeli(aktifKullanici: number, limit: number | null | undefined): string | null {
+  if (limit === null || limit === undefined) return null;
+  const l = Math.round(limit);
+  if (l <= 0) return null;
+  // Limite EŞİT olmak aşım değil: 10 kullanıcılık pakette onuncu kullanıcı
+  // hakkın içinde. Yeni davet on birinciyi yaratacağı için burada bakılıyor.
+  if (aktifKullanici < l) return null;
+  return `Kullanıcı limitiniz dolu (${aktifKullanici}/${l}). Yeni kullanıcı davet etmek için paketinizi yükseltin ya da kullanılmayan bir hesabı pasife alın.`;
+}

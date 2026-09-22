@@ -10,6 +10,7 @@ import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/li
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { davetEngeli } from "@/lib/kota-durumu";
 
 async function teamContext() {
   const context = await getPanelContext();
@@ -86,6 +87,28 @@ export async function inviteTeamMember(
     if (employeeId && await isManagementEmployee(supabase, membership.organization_id, "id", employeeId))
       return { error: "Yönetici departmanındaki çalışanlar Kurum Sahibi yetkisi alır; bu daveti yalnızca bir Kurum Sahibi gönderebilir.", success: false };
   }
+
+  /*
+    Kullanıcı kotası. user_limit yıllardır yazılıyor ve lisans ekranında
+    yüzde çubuğuyla gösteriliyordu ama hiçbir yerde denetlenmiyordu:
+    Başlangıç paketindeki bir kurum istediği kadar kullanıcı ekleyebiliyordu.
+
+    Denetim burada, veritabanında değil: üyelikler auth.users üzerindeki bir
+    tetikleyiciden yazılıyor, yani orada "bu yazma istemciden mi geliyor"
+    ayrımı yapılamıyor ve konacak bir koruma kurucunun kendi davetlerini de
+    keserdi. Davet ise tek bir kapıdan geçiyor — burası.
+
+    Mevcut durumu kilitlemiyor: limiti zaten aşmış kurum çalışmaya devam
+    eder, yalnızca YENİ davet duraklar.
+  */
+  const [{ count: aktifKullanici }, { data: lisans }] = await Promise.all([
+    supabase.from("organization_memberships").select("user_id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id).eq("is_active", true),
+    supabase.from("organization_licenses").select("user_limit")
+      .eq("organization_id", membership.organization_id).maybeSingle(),
+  ]);
+  const engel = davetEngeli(aktifKullanici ?? 0, lisans?.user_limit ?? null);
+  if (engel) return { error: engel, success: false };
 
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
