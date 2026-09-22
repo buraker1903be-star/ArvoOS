@@ -1,12 +1,16 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
+import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
+import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { submitBankTransferPayment } from "./actions";
-import { payLicenseWithCard } from "./paytr-actions";
+import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
 
 function formatTry(value: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
 }
+
+const sayi = (value: number) => new Intl.NumberFormat("tr-TR").format(value);
 
 function formatIban(iban: string) {
   return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
@@ -42,6 +46,16 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       visible: product.code === "arvoos" || fee > 0 || Boolean(row),
     };
   }).filter((product) => product.visible);
+
+  /*
+    AI kredisi yalnızca ArvoLab aboneliği AÇIK kuruma satılıyor: kapalıyken
+    yüklenen kredi kullanılamaz, yani müşteriden kullanamayacağı bir şeyin
+    parası alınmış olur. Aynı kural satın alma tarafında da var
+    (lib/ai-kredi-checkout.ts) — ekran kuralı hatırlatır, sunucu uygular.
+  */
+  const arvolabAcik = ["active", "trialing", "past_due"].includes(productRows.get("arvolab")?.status ?? "inactive");
+  // Bakiye ArvoLab'ın veritabanında; ulaşılamazsa null döner ve "0" yazılmaz.
+  const kredi = canSubmit && arvolabAcik ? await arvolabKrediDurumu(organization.id) : null;
 
   return <>
     <div className="panel-pagehead">
@@ -88,6 +102,43 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <p className="panel-muted">{product.fee > 0 ? "Kartla ödeme şu an kullanılamıyor; aşağıdan havale/EFT ile ödeyip dekont gönderebilirsiniz." : `${product.name} için aylık ücret henüz belirlenmedi. ArvoOS ile iletişime geçin ya da havale/EFT ile ödeyin.`}</p>
         )}
       </article>)}
+    </section> : null}
+
+    {canSubmit && arvolabAcik && platformId !== organization.id ? <section className="panel-card management-card">
+      <div className="management-heading">
+        <div><small>ARVOLAB ASİSTANI</small><h2>AI kredisi</h2></div>
+        <span className="status-pill">1 kredi = 1.000 karakter</span>
+      </div>
+
+      <dl className="billing-summary">
+        {/*
+          Bakiye okunamadığında "0" YAZILMIYOR: hiç kullanmamış kurumla
+          köprüsü kopmuş kurumu aynı göstermek, ikincisine ihtiyacı yokken
+          kredi aldırırdı.
+        */}
+        <div><dt>Bu ayki hak</dt><dd>{kredi ? `${sayi(kredi.aylikKalan)} / ${sayi(kredi.aylikLimit)} kredi` : "okunamadı"}</dd></div>
+        <div><dt>Satın alınan bakiye</dt><dd>{kredi ? `${sayi(kredi.ekBakiye)} kredi` : "okunamadı"}</dd></div>
+        <div><dt>Kullanılabilir</dt><dd>{kredi ? `${sayi(kredi.aylikKalan + kredi.ekBakiye)} kredi` : "okunamadı"}</dd></div>
+      </dl>
+
+      <p className="panel-muted">
+        Aylık hak her ayın başında yenilenir ve kullanılmayan kısmı devretmez.
+        Satın alınan bakiye yanmaz; önce aylık hak, o bitince bakiye harcanır.
+      </p>
+
+      {storeReady ? <div className="management-grid">
+        {KREDI_PAKETLERI.map((paket) => <article className="panel-card management-card" key={paket.kod}>
+          <div className="management-heading">
+            <div><small>{sayi(binKrediFiyati(paket) / 100)} ₺ / 1.000 kredi</small><h2>{paket.ad}</h2></div>
+            <span className="status-pill">{formatTry(paket.fiyat)}</span>
+          </div>
+          <form action={buyAiCredit} className="management-submit">
+            <input type="hidden" name="paket" value={paket.kod} />
+            <small>Güvenli PayTR ödeme sayfasına yönlendirilirsiniz. Ödeme onaylanınca {sayi(paket.kredi)} kredi bakiyenize eklenir.</small>
+            <button className="panel-primary" type="submit">Satın al · {formatTry(paket.fiyat)}</button>
+          </form>
+        </article>)}
+      </div> : <p className="panel-muted">Kredi satın alma şu an kullanılamıyor. ArvoOS ile iletişime geçin.</p>}
     </section> : null}
 
     {canSubmit ? <section className="panel-card management-card">

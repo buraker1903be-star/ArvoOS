@@ -325,3 +325,35 @@ export async function arvolabKrediYukle(
   }
   return "loaded";
 }
+
+export type ArvolabKrediDurumu = { aylikLimit: number; aylikKalan: number; ekBakiye: number };
+
+/**
+ * Kurumun ArvoLab'daki kredi bakiyesi. Kiracının Ödeme sayfası bunu
+ * gösteriyor.
+ *
+ * ULAŞILAMAZSA null. "0 kredi" yazmak, hiç kullanmamış kurumla köprüsü
+ * kopmuş kurumu aynı gösterirdi ve ikincisinde müşteri ihtiyacı yokken
+ * kredi satın alırdı (lib/urun-kullanimi.ts ile aynı ilke).
+ *
+ * Ay değişimi kuralı burada DEĞİL: ArvoLab'ın fonksiyonu hesaplıyor
+ * (arvoos_ai_kredi_durumu). Aynı kuralın ikinci kopyası ikisi ayrışınca
+ * müşteriye yanlış bakiye gösterirdi.
+ */
+export async function arvolabKrediDurumu(organizationId: string): Promise<ArvolabKrediDurumu | null> {
+  const lab = arvolabClient();
+  if (!lab) return null;
+  const { data, error } = await lab
+    .rpc("arvoos_ai_kredi_durumu", { p_organization_id: organizationId })
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error("[arvolab] kredi bakiyesi okunamadı", organizationId, error.message);
+    return null;
+  }
+  const satir = data as { aylik_limit: number; aylik_kalan: number; ek_bakiye: number };
+  return {
+    aylikLimit: Number(satir.aylik_limit ?? 0),
+    aylikKalan: Number(satir.aylik_kalan ?? 0),
+    ekBakiye: Number(satir.ek_bakiye ?? 0),
+  };
+}
