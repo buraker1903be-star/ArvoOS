@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { headers } from "next/headers";
 import { getPanelContext } from "@/lib/panel-context";
+import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
+import { KonsolAnaSayfa } from "./konsol-ana-sayfa";
 import { formatPersonName } from "@/lib/format-name";
 import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import { requestStageNames } from "./crm/request-status";
@@ -150,6 +153,15 @@ type FocusItem = { label: string; count: number; href: string; icon: string; ton
 type LogRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; entity_id: string | null; created_at: string; metadata: { opportunity_id?: string } | null };
 
 export default async function PanelPage() {
+  /*
+    Kurucu konsolunun (yonetim.arvo-os.com) ana sayfası ayrı: buradaki
+    özet TEK BİR KURUMUN günü (talepler, teklifler, teslimler) ve konsolda
+    o kurum Arvo'nun kendisi olurdu — kurucu platformun durumunu değil
+    kendi CRM'ini görürdü. Kabuk zaten alan adına göre ayrışıyor
+    (layout.tsx); ana sayfa da ayrışmalı.
+  */
+  if (isManagementHost(hostFromHeaders(await headers()))) return <KonsolAnaSayfa />;
+
   const { supabase, organization, isPlatformOwner, membership, hiddenModuleKeys, userId } = await getPanelContext();
   const organizationId = organization.id;
   const window = dateWindow();

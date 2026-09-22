@@ -62,6 +62,13 @@ export function KonsolNavigasyon({ uygulamaAdresi }: { uygulamaAdresi: string })
 
   return (
     <nav className="panel-nav panel-nav-v2" aria-label="Kurucu konsolu">
+      {/* Ana sayfa gruplardan önce ve grup başlığı olmadan: kiracı
+          panelindeki yeriyle aynı. Konsolun bir "eve dönüş" noktası yoktu;
+          menü doğrudan kiracı listesiyle başlıyor, kurucunun ilk sorusu
+          ("bugün neye bakmam gerek") hiçbir ekranda yanıtlanmıyordu. */}
+      <Link className={pathname === "/panel" ? "panel-nav-home active" : "panel-nav-home"} href="/panel" title="Ana Sayfa">
+        <i>⌂</i><span>Ana Sayfa</span>
+      </Link>
       <div className="panel-nav-groups">
         {gruplar.map((grup) => (
           <div key={grup.ad} className="konsol-grup">
