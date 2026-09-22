@@ -146,20 +146,40 @@ async function pushArvolabMembers(organizationId: string, lisansAcik: boolean) {
   if (!kimlikler.length) return;
 
   /*
+    Ad da gönderiliyor. ArvoLab'a ArvoOS üzerinden bağlanan kişi oranın
+    kayıt formunu hiç doldurmuyor, dolayısıyla profilinde ad olmuyordu ve
+    panel "Hoş geldiniz, uzman@akademikmerkez.com" yazıyordu. Adın asıl
+    kaynağı profiles (konsolun geri kalanı da oradan okuyor).
+  */
+  const { data: profiller } = await admin.from("profiles").select("id,full_name").in("id", kimlikler);
+  const adlar = new Map(((profiller ?? []) as { id: string; full_name: string | null }[])
+    .filter((satir) => satir.full_name?.trim())
+    .map((satir) => [satir.id, satir.full_name!.trim()]));
+
+  /*
     E-postalar auth.users'ta; REST ile sorgulanamıyor, tek tek yönetim
     API'siyle okunuyor. Bir kurumun üye sayısı onlarla ölçüldüğü için
     kabul edilebilir — bütün kullanıcıları sayfalamaktan ucuz.
   */
-  const epostalar: string[] = [];
+  const uyeler: { email: string; full_name: string | null }[] = [];
   for (const kimlik of kimlikler) {
     const { data, error } = await admin.auth.admin.getUserById(kimlik);
     if (error || !data.user?.email) continue;
-    epostalar.push(data.user.email.trim().toLocaleLowerCase("tr-TR"));
+    const ustVeri = (data.user.user_metadata ?? {}) as { full_name?: string; name?: string };
+    uyeler.push({
+      email: data.user.email.trim().toLocaleLowerCase("tr-TR"),
+      full_name: adlar.get(kimlik) ?? ustVeri.full_name ?? ustVeri.name ?? null,
+    });
   }
-  if (!epostalar.length) return;
+  if (!uyeler.length) return;
 
   const { error } = await lab.from("arvoos_members").upsert(
-    epostalar.map((email) => ({ email, organization_id: organizationId, synced_at: new Date().toISOString() })),
+    uyeler.map((uye) => ({
+      email: uye.email,
+      full_name: uye.full_name,
+      organization_id: organizationId,
+      synced_at: new Date().toISOString(),
+    })),
     { onConflict: "email" },
   );
   if (error) console.error("[arvolab] üye listesi yazılamadı", organizationId, error.message);
