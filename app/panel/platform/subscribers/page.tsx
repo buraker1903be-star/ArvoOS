@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { StgIcon, StgSection, StgValueRow, StgWidget } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { updateProductPlan, updateSubscriber } from "./actions";
+import { AboneListesi } from "./abone-listesi";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -32,14 +33,26 @@ export default async function SubscribersPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const [{ data: planData }, { data: subscriberData, error }] = await Promise.all([
+  /*
+    Sayım sorgudan geliyor (count: exact), listenin uzunluğundan değil.
+    Eskiden "Toplam kayıt", "Erişimi kapalı" ve aylık gelir yalnızca
+    yüklenen 200 kayıttan hesaplanıyordu: 201. aboneden sonra rakamlar
+    sessizce eksik kalacaktı. Sınır duruyor ama artık tamamını kapsamadığı
+    durumda bunu yazıyoruz.
+  */
+  const LISTE_SINIRI = 1000;
+  const [{ data: planData }, { data: subscriberData, count, error }] = await Promise.all([
     supabase.from("product_plans").select("product,individual_monthly_fee,trial_days"),
-    supabase.from("product_subscribers").select("id,product,email,full_name,status,trial_ends_at,current_period_end,suspension_reason,created_at").order("created_at", { ascending: false }).limit(200),
+    supabase.from("product_subscribers")
+      .select("id,product,email,full_name,status,trial_ends_at,current_period_end,suspension_reason,created_at", { count: "exact" })
+      .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
   ]);
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
 
   const plans = new Map(((planData ?? []) as PlanRow[]).map((row) => [row.product, row]));
   const subscribers = (subscriberData ?? []) as SubscriberRow[];
+  const toplamKayit = count ?? subscribers.length;
+  const eksikKapsam = toplamKayit > subscribers.length;
   const active = subscribers.filter(hasAccess);
   const trialing = subscribers.filter((row) => row.status === "trialing" && hasAccess(row));
   const paying = active.filter((row) => row.status === "active");
@@ -71,7 +84,7 @@ export default async function SubscribersPage() {
       <StgWidget tone="success" icon="wallet" label="Ödeyen abone" value={paying.length} note={monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "Aylık gelir yok"} />
       <StgWidget tone={trialing.length ? "info" : "neutral"} icon="box" label="Denemede" value={trialing.length} note={trialing.length ? "Henüz ödeme yok" : "Denemede kimse yok"} />
       <StgWidget tone={kapali ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={kapali} note={kapali ? "Süresi geçmiş ya da askıda" : "Kapalı abone yok"} />
-      <StgWidget tone="neutral" icon="users" label="Toplam kayıt" value={subscribers.length} note={`Son ${Math.min(subscribers.length, 200)} kayıt listeleniyor`} />
+      <StgWidget tone="neutral" icon="users" label="Toplam kayıt" value={toplamKayit} note={eksikKapsam ? `En yeni ${subscribers.length} kayıt işleniyor` : "Tamamı listeleniyor"} />
     </div>
 
     {/*
@@ -117,37 +130,43 @@ export default async function SubscribersPage() {
       </div>
     </section>
 
-    {subscribers.length ? (
-      <div className="stg-grid">
-        {subscribers.map((subscriber) => {
+    {/*
+      Aboneler artık satır listesi. Eskiden her abone, içinde açık bir
+      düzenleme formu olan tam boy bir karttı ve iki yüz taneye kadar
+      çiziliyordu: tek bir aboneyi bulmanın yolu tarayıcının sayfa içi
+      aramasıydı, ekranda hiçbir süzgeç yoktu.
+    */}
+    <StgSection
+      id="aboneler" wide icon="users" tone="info" kicker="ABONELER" title="Bireysel aboneler"
+      description="Satıra tıklayarak durumu, dönemi ve askıyı düzenleyin."
+      aside={<span className="status-pill">{toplamKayit} kayıt</span>}
+    >
+      {eksikKapsam ? (
+        <p className="stg-muted"><StgIcon name="shield" size={16} />Toplam {toplamKayit} abone var; bu listede en yeni {subscribers.length} tanesi işleniyor. Üstteki sayılar da bu kesiti kapsıyor.</p>
+      ) : null}
+      <AboneListesi
+        kaydet={updateSubscriber}
+        aboneler={subscribers.map((subscriber) => {
           const open = hasAccess(subscriber);
-          const tone = open ? LISANS_TONU[subscriber.status] ?? "neutral" : "danger";
-          return (
-            <StgSection
-              key={subscriber.id} id={`abone-${subscriber.id}`} icon="users" tone={tone}
-              kicker={productName(subscriber.product).toLocaleUpperCase("tr-TR")}
-              title={subscriber.full_name || subscriber.email}
-              aside={<span className="status-pill" data-tone={tone}>{open ? productLicenseLabels[subscriber.status] ?? subscriber.status : "Erişim kapalı"}</span>}
-            >
-              <dl className="stg-list">
-                <StgValueRow label="E-posta" value={subscriber.email} />
-                <StgValueRow label="Deneme bitişi" value={tarih(subscriber.trial_ends_at)} />
-                <StgValueRow label="Dönem sonu" value={tarih(subscriber.current_period_end)} />
-                <StgValueRow label="Kayıt" value={tarih(subscriber.created_at)} />
-              </dl>
-              {subscriber.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{subscriber.suspension_reason}</p> : null}
-              <form className="panel-form" action={updateSubscriber}>
-                <input type="hidden" name="subscriber_id" value={subscriber.id} />
-                <label>Durum<select name="status" defaultValue={subscriber.status}><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
-                <label>Deneme bitişi<input name="trial_ends_at" type="date" defaultValue={tarihDegeri(subscriber.trial_ends_at)} /></label>
-                <label>Dönem sonu<input name="current_period_end" type="date" defaultValue={tarihDegeri(subscriber.current_period_end)} /></label>
-                <label>Askıya alma nedeni<input name="suspension_reason" defaultValue={subscriber.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında" /></label>
-                <div className="wide panel-form-actions"><button className="panel-secondary" type="submit">Kaydet</button></div>
-              </form>
-            </StgSection>
-          );
+          return {
+            id: subscriber.id,
+            urun: subscriber.product,
+            urunAdi: productName(subscriber.product),
+            ad: subscriber.full_name,
+            eposta: subscriber.email,
+            durum: subscriber.status,
+            durumAdi: productLicenseLabels[subscriber.status] ?? subscriber.status,
+            tone: open ? LISANS_TONU[subscriber.status] ?? "neutral" : "danger",
+            erisimAcik: open,
+            denemeSonu: tarihDegeri(subscriber.trial_ends_at),
+            donemSonu: tarihDegeri(subscriber.current_period_end),
+            denemeSonuAdi: tarih(subscriber.trial_ends_at),
+            donemSonuAdi: tarih(subscriber.current_period_end),
+            askiNedeni: subscriber.suspension_reason ?? "",
+            kayit: tarih(subscriber.created_at),
+          };
         })}
-      </div>
-    ) : <div className="stg-empty"><StgIcon name="users" size={22} /><p>Henüz bireysel abone yok. Ürüne ilk giriş yapan kişi burada görünür.</p></div>}
+      />
+    </StgSection>
   </div>;
 }
