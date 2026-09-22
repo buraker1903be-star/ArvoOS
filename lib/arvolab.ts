@@ -204,3 +204,61 @@ export async function syncArvolabMembers(organizationId: string) {
     .select("status").eq("organization_id", organizationId).eq("product", "arvolab").maybeSingle();
   await pushArvolabMembers(organizationId, ACIK_LISANSLAR.has(license?.status ?? "inactive"));
 }
+
+/**
+ * Kişiyi ArvoLab'a oturumu açılmış olarak gönderecek TEK KULLANIMLIK bağlantı.
+ *
+ * Kurumun personeli ArvoLab'a geçmek için ikinci bir kez giriş yapmak
+ * zorundaydı: ayrı proje, ayrı auth, ayrı parola. Çoğu kişi ArvoLab'da bir
+ * hesabı olduğunu bile bilmiyordu.
+ *
+ * Bağlantı ArvoLab'ın kendi auth'undan üretiliyor (magic link): tek
+ * kullanımlık ve kısa ömürlü. ASLA ekrana yazılmıyor, yalnızca sunucudan
+ * yönlendirme olarak kullanılıyor — bağlantıyı gören herkes o kişi olarak
+ * girebilir.
+ *
+ * Hesap yoksa BU ANDA açılıyor. Önceden toplu hesap açmamıştık çünkü
+ * ürünü hiç kullanmayacak kişilere hayalet kayıt ve istenmeyen davet
+ * e-postası demekti; burada kişi zaten "ArvoLab'a geç" diyor. E-posta
+ * doğrulanmış işaretleniyor, yani Supabase hiçbir posta göndermiyor.
+ * Yeni hesabın profili, ArvoOS'un ittiği eşleşme listesi sayesinde
+ * kendiliğinden kuruma bağlanıyor (ArvoLab migration 20260924100011).
+ *
+ * Çağıran, kişinin bu kurumda AKTİF üye olduğunu ve kurumun ArvoLab
+ * lisansının açık olduğunu kendisi doğrulamalı: burası yalnızca bağlantıyı
+ * üretir.
+ */
+export async function arvolabGirisBaglantisi(
+  email: string,
+  hedef = "https://lab.arvo-os.com/dashboard",
+): Promise<{ url: string } | { hata: string }> {
+  const lab = arvolabClient();
+  if (!lab) return { hata: "ArvoLab bağlantısı yapılandırılmamış." };
+
+  const temiz = email.trim().toLocaleLowerCase("tr-TR");
+  if (!temiz) return { hata: "Hesabınızda e-posta adresi yok." };
+
+  /*
+    Önce hesabı açmayı deniyoruz. Zaten varsa Supabase "already registered"
+    diyor ve bu bir hata değil, beklenen durum: akış devam ediyor.
+    email_confirm: true — doğrulama postası gitmesin; kişinin kimliğini
+    ArvoOS oturumu zaten doğrulamış durumda.
+  */
+  const { error: acmaHatasi } = await lab.auth.admin.createUser({ email: temiz, email_confirm: true });
+  if (acmaHatasi && !/already|registered|exists/i.test(acmaHatasi.message)) {
+    console.error("[arvolab] hesap açılamadı", acmaHatasi.message);
+    return { hata: "ArvoLab hesabı açılamadı." };
+  }
+
+  const { data, error } = await lab.auth.admin.generateLink({
+    type: "magiclink",
+    email: temiz,
+    options: { redirectTo: hedef },
+  });
+  if (error || !data?.properties?.action_link) {
+    // Bağlantının kendisi loglanmıyor: log'u gören o kişi olarak girebilir.
+    console.error("[arvolab] giriş bağlantısı üretilemedi", error?.message ?? "bağlantı boş");
+    return { hata: "ArvoLab giriş bağlantısı üretilemedi." };
+  }
+  return { url: data.properties.action_link };
+}

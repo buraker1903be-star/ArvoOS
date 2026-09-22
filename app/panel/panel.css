@@ -252,3 +252,15 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
 .konsol-red h1 { margin: 0 0 8px; font-size: 21px; font-weight: 650; letter-spacing: -.01em }
 .konsol-red p { margin: 0 0 18px; color: var(--muted); line-height: 1.6 }
 .konsol-red .panel-page-actions { justify-content: center }
+
+/* ---------- Diğer uygulamalar ----------
+   Kurumun sahip olduğu öbür Arvo ürünleri menünün altında, ayarların
+   üstünde. Modüllerden ince bir çizgiyle ayrılıyor: bunlar panelin
+   bölümleri değil, başka uygulamalar — tıklayınca panelden çıkılıyor. */
+.panel-nav-apps{display:grid;gap:2px;padding-top:12px;margin-top:12px;border-top:1px solid var(--line-soft)}
+.panel-nav-apps>small{padding:0 12px 4px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.05em}
+.panel-nav-apps em{margin-left:auto;color:var(--dim);font-size:11px;font-style:normal}
+/* Menü daraltıldığında yazılar gizleniyor; başlık da onlarla birlikte
+   gitmeli, yoksa dar şeritte tek başına kalıyor. */
+.panel-root.is-nav-collapsed .panel-nav-apps>small{display:none}
+.panel-root.is-nav-collapsed .panel-nav-apps em{display:none}
