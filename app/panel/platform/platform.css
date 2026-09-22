@@ -464,20 +464,9 @@
 .plt-suzgec-form > div { display: flex; gap: 8px }
 .plt-suzgec-form a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none }
 
-.plt-table-wrap { padding: 0; overflow: hidden }
-.plt-kiracilar { min-width: 860px }
-.plt-kiracilar td { vertical-align: middle }
-/* Kota hücresi aşımda kırmızı: "dikkat gerektiren" ayrı bir menü öğesiydi,
-   artık satırın kendisi söylüyor. */
-.plt-kiracilar td[data-tone="danger"] { color: var(--danger); font-weight: 650 }
-.plt-kiracilar-uc { text-align: right; width: 1% }
-
-/* Ad hücresi: avatar + ad + çalışma alanı. Satırın tamamını link yapmak
-   tablodaki öbür hedeflerle çakışır ve klavyeyle gezilemez olurdu. */
-.plt-kiraci-baglanti { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none }
-.plt-kiraci-baglanti:hover b { text-decoration: underline }
-.plt-kiraci-baglanti b { display: block; font-size: 13.5px; font-weight: 650 }
-.plt-kiracilar .plt-kiraci-avatar { width: 32px; height: 32px; border-radius: 10px; font-size: 12px }
+/* Kiracı listesinin kendi kuralları dosyanın sonundaki ızgara bölümünde.
+   Buradaki tablo kuralları kaldırıldı: `min-width: 860px` ızgarayı dar
+   ekranda yatay kaydırmaya zorluyordu. */
 
 @media (max-width: 900px) {
   .plt-suzgec-form { grid-template-columns: 1fr 1fr }
