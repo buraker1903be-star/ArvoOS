@@ -740,3 +740,12 @@
   .plt-kaydet-serit { flex-direction: column; align-items: stretch }
   .plt-kaydet-dugmeler > button { flex: 1 }
 }
+
+/* Ek ürün kartının formu. Dar kartta gruplara bölmek yer kazandırmadan
+   gürültü ekliyordu; düzen tek sütun kalıyor, yalnızca kaydet satırı
+   çekirdek formdaki şeritle aynı dili konuşuyor. */
+.plt-urun-kaydet { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 2px }
+.plt-urun-kaydet button:disabled { opacity: .45; cursor: not-allowed }
+.plt-urun-kaydet > button { flex: 1 1 auto }
+/* Askı alanı kırmızı çerçeveli: erişimi kapatan tek karar. */
+.plt-urun-formu label[data-tone="danger"] > input { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)) }

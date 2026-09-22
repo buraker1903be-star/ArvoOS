@@ -10,6 +10,7 @@ import { LISANS_TONU, depolama, kullanimTonu, sayi, tarih, tarihDegeri, yuzde } 
 import { updateOrganizationLicense, updateProductLicense } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
 import { LisansFormu } from "./lisans-formu";
+import { UrunFormu } from "./urun-formu";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -256,39 +257,34 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                 description={product.description}
                 aside={<span className="status-pill" data-tone={LISANS_TONU[status] ?? "neutral"}>{productLicenseLabels[status] ?? status}</span>}
               >
-                <form className="panel-form" action={updateProductLicense}>
-                  <input type="hidden" name="organization_id" value={selected.id} />
-                  <input type="hidden" name="product" value={product.code} />
-                  <label>Durum<select name="status" defaultValue={status}><option value="inactive">Kapalı</option><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
-                  <label>Paket<select name="plan_code" defaultValue={row?.plan_code ?? ""}><option value="">Belirtilmedi</option><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
-                  <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={row?.monthly_fee ? Number(row.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
-                  <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={tarihDegeri(row?.current_period_end ?? null)} /></label>
-                  {/* Kota alanları yalnızca ÖLÇÜMÜ YAZILMIŞ ürünlerde
-                      çiziliyor. Ölçümsüz limit, kurucunun koruma sandığı
-                      boş bir sayı olurdu — storage_limit_mb dersi. */}
-                  {(URUN_KOTALARI[product.code] ?? []).map((alan) => {
+                <UrunFormu
+                  organizationId={selected.id}
+                  product={product.code}
+                  productName={product.name}
+                  kaydet={updateProductLicense}
+                  baslangic={{
+                    status,
+                    planCode: row?.plan_code ?? "",
+                    monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
+                    currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
+                    suspensionReason: row?.suspension_reason ?? "",
+                  }}
+                  /* Kota alanları yalnızca ÖLÇÜMÜ YAZILMIŞ ürünlerde
+                     çiziliyor. Ölçümsüz limit, kurucunun koruma sandığı
+                     boş bir sayı olurdu — storage_limit_mb dersi. */
+                  kotalar={(URUN_KOTALARI[product.code] ?? []).map((alan) => {
                     const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
-                    return (
-                      <label key={alan.anahtar}>
-                        {alan.etiket} limiti ({alan.birim})
-                        <input
-                          name={`kota_${alan.anahtar}`}
-                          type="number"
-                          min={1}
-                          defaultValue={olcum?.limit ?? ""}
-                          placeholder="Boşsa sınırsız"
-                        />
-                        <small className="kota-olcum" data-tone={olcum?.asildi ? "danger" : undefined}>
-                          {olcum?.kullanilan === null || olcum?.kullanilan === undefined
-                            ? "kullanım ölçülemedi"
-                            : `şu an ${sayi(olcum.kullanilan)} ${alan.birim}${alan.donemsel ? " (bu ay)" : ""}`}
-                        </small>
-                      </label>
-                    );
+                    return {
+                      anahtar: alan.anahtar,
+                      etiket: alan.etiket,
+                      birim: alan.birim,
+                      donemsel: Boolean(alan.donemsel),
+                      limit: olcum?.limit != null ? String(olcum.limit) : "",
+                      kullanilan: olcum?.kullanilan ?? null,
+                      asildi: Boolean(olcum?.asildi),
+                    };
                   })}
-                  <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={row?.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
-                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{product.name} lisansını kaydet</button></div>
-                </form>
+                />
               </StgSection>
             );
           })}
