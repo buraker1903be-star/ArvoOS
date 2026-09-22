@@ -579,7 +579,8 @@ create table if not exists public.crm_contracts (
   legal_text_version text,
   signed_consents jsonb,
   work_plan jsonb,
-  tracking_open_before_signature boolean not null
+  tracking_open_before_signature boolean not null,
+  subscription_intent jsonb
 );
 
 create table if not exists public.crm_internal_comments (
@@ -1288,6 +1289,24 @@ create table if not exists public.platform_bank_accounts (
   currency text not null,
   is_active boolean not null,
   sort_order integer not null,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+create table if not exists public.platform_subscription_requests (
+  id uuid not null,
+  contract_id uuid not null,
+  source_organization_id uuid not null,
+  target_organization_id uuid,
+  customer_name text,
+  contract_no text,
+  amount bigint,
+  currency text not null,
+  requested jsonb not null,
+  status text not null,
+  review_note text,
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null
 );
@@ -3211,6 +3230,54 @@ AS $function$
       else s.d
     end, '0')
   from (select regexp_replace(coalesce(value, ''), '[^0-9]', '', 'g') as d) s
+$function$
+;
+
+CREATE OR REPLACE FUNCTION private.arvo_sozlesmeden_abonelik_istegi()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_kurum_turu text;
+  v_musteri text;
+begin
+  -- Yalnızca imzaya GEÇİŞ; imzalı bir sözleşmenin her güncellemesi değil.
+  if new.status is distinct from 'signed' or old.status = 'signed' then
+    return new;
+  end if;
+
+  select o.kind into v_kurum_turu
+  from public.organizations o
+  where o.id = new.organization_id;
+
+  /*
+    Kapsam: yalnızca Arvo'nun kendi kurumundaki sözleşmeler. Kiracının
+    kendi müşterisiyle imzaladığı sözleşme onun işi; konsola düşerse
+    kurucu başkasının satışlarını onaylamaya çalışır.
+  */
+  if v_kurum_turu is distinct from 'internal' then
+    return new;
+  end if;
+
+  select op.customer_name into v_musteri
+  from public.crm_opportunities op
+  where op.id = new.opportunity_id;
+
+  insert into public.platform_subscription_requests (
+    contract_id, source_organization_id, customer_name, contract_no,
+    amount, currency, requested
+  ) values (
+    new.id, new.organization_id, v_musteri, new.contract_no,
+    new.amount, coalesce(new.currency, 'TRY'), coalesce(new.subscription_intent, '{}'::jsonb)
+  )
+  -- Sözleşme yeniden imzalanamıyor (arvo_guard_contract_signature) ama
+  -- tetikleyici yine de iki kez çalışabilir; kuyruk çiftlenmesin.
+  on conflict (contract_id) do nothing;
+
+  return new;
+end;
 $function$
 ;
 
@@ -11093,6 +11160,18 @@ alter table public.platform_bank_accounts alter column sort_order set default 0;
 
 alter table public.platform_bank_accounts alter column updated_at set default now();
 
+alter table public.platform_subscription_requests alter column created_at set default now();
+
+alter table public.platform_subscription_requests alter column currency set default 'TRY'::text;
+
+alter table public.platform_subscription_requests alter column id set default gen_random_uuid();
+
+alter table public.platform_subscription_requests alter column requested set default '{}'::jsonb;
+
+alter table public.platform_subscription_requests alter column status set default 'pending'::text;
+
+alter table public.platform_subscription_requests alter column updated_at set default now();
+
 alter table public.product_plans alter column trial_days set default 14;
 
 alter table public.product_plans alter column updated_at set default now();
@@ -11883,6 +11962,10 @@ alter table public.platform_bank_accounts add constraint platform_bank_accounts_
 
 alter table public.platform_bank_accounts add constraint platform_bank_accounts_pkey PRIMARY KEY (id);
 
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_pkey PRIMARY KEY (id);
+
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])));
+
 alter table public.product_plans add constraint product_plans_individual_monthly_fee_check CHECK (((individual_monthly_fee IS NULL) OR (individual_monthly_fee > 0)));
 
 alter table public.product_plans add constraint product_plans_pkey PRIMARY KEY (product);
@@ -12254,6 +12337,10 @@ CREATE UNIQUE INDEX payment_links_one_active_subscriber ON public.payment_links 
 CREATE UNIQUE INDEX payment_links_one_active_subscription ON public.payment_links USING btree (payer_organization_id, product) WHERE ((status = 'active'::text) AND (purpose = 'subscription'::text));
 
 CREATE INDEX payment_plans_org_contract_idx ON public.payment_plans USING btree (organization_id, contract_id);
+
+CREATE INDEX platform_subscription_requests_bekleyen_idx ON public.platform_subscription_requests USING btree (created_at DESC) WHERE (status = 'pending'::text);
+
+CREATE UNIQUE INDEX platform_subscription_requests_sozlesme_uniq ON public.platform_subscription_requests USING btree (contract_id);
 
 CREATE INDEX product_subscribers_email_idx ON public.product_subscribers USING btree (product, email);
 
@@ -12699,6 +12786,14 @@ alter table public.payment_provider_events add constraint payment_provider_event
 
 alter table public.payment_provider_events add constraint payment_provider_events_payment_link_id_fkey FOREIGN KEY (payment_link_id) REFERENCES payment_links(id) ON DELETE SET NULL;
 
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE CASCADE;
+
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_source_organization_id_fkey FOREIGN KEY (source_organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.platform_subscription_requests add constraint platform_subscription_requests_target_organization_id_fkey FOREIGN KEY (target_organization_id) REFERENCES organizations(id) ON DELETE SET NULL;
+
 alter table public.product_plans add constraint product_plans_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
 
 alter table public.product_subscribers add constraint product_subscribers_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
@@ -12908,6 +13003,8 @@ alter table public.payment_provider_events enable row level security;
 alter table public.plans enable row level security;
 
 alter table public.platform_bank_accounts enable row level security;
+
+alter table public.platform_subscription_requests enable row level security;
 
 alter table public.product_plans enable row level security;
 
@@ -14744,6 +14841,8 @@ CREATE TRIGGER arvo_link_contract_messages_to_workflow AFTER UPDATE OF workflow_
 CREATE TRIGGER arvo_normalize_contract_work_plan BEFORE INSERT OR UPDATE OF work_plan ON public.crm_contracts FOR EACH ROW EXECUTE FUNCTION private.arvo_normalize_contract_work_plan();
 
 CREATE TRIGGER arvo_promote_draft_on_customer_view BEFORE UPDATE ON public.crm_contracts FOR EACH ROW EXECUTE FUNCTION private.arvo_promote_draft_on_customer_view();
+
+CREATE TRIGGER arvo_sozlesmeden_abonelik_istegi AFTER UPDATE OF status ON public.crm_contracts FOR EACH ROW EXECUTE FUNCTION private.arvo_sozlesmeden_abonelik_istegi();
 
 CREATE TRIGGER arvo_sync_installment_due_dates AFTER UPDATE OF payment_plan_id ON public.crm_contracts FOR EACH ROW WHEN (((new.payment_plan_id IS NOT NULL) AND (new.payment_plan_id IS DISTINCT FROM old.payment_plan_id))) EXECUTE FUNCTION private.arvo_sync_installment_due_dates();
 

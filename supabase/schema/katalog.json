@@ -528,6 +528,7 @@
       "signed_user_agent",
       "start_date",
       "status",
+      "subscription_intent",
       "title",
       "tracking_code",
       "tracking_open_before_signature",
@@ -1197,6 +1198,23 @@
       "id",
       "is_active",
       "sort_order",
+      "updated_at"
+    ],
+    "platform_subscription_requests": [
+      "amount",
+      "contract_id",
+      "contract_no",
+      "created_at",
+      "currency",
+      "customer_name",
+      "id",
+      "requested",
+      "review_note",
+      "reviewed_at",
+      "reviewed_by",
+      "source_organization_id",
+      "status",
+      "target_organization_id",
       "updated_at"
     ],
     "product_plans": [
