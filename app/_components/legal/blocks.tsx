@@ -100,71 +100,71 @@ export function customerRows(customer: Customer): Row[] {
 
 export function PartyCard({ role, name, rows }: { role: string; name: string; rows: Row[] }) {
   const visible = rows.filter(([, value]) => value != null && value !== "");
-  return <div className="ad-party">
+  return <div className="doc-party">
     <h3>{role}</h3>
     <strong>{name}</strong>
-    <dl className="ad-dl">{visible.map(([label, value]) => <div key={label} style={{ display: "contents" }}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+    <dl className="doc-dl">{visible.map(([label, value]) => <div key={label} style={{ display: "contents" }}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
   </div>;
 }
 
 /** Havale/EFT için kurumun banka hesabı; IBAN yoksa hiçbir şey çizmez. */
 export function BankAccountBox({ provider }: { provider: Provider }) {
   if (!provider.iban) return null;
-  return <div className="ad-bank">
+  return <div className="doc-bank">
     {provider.bankName ? <div><small>Banka</small><strong>{provider.bankName}</strong></div> : null}
     <div><small>Hesap sahibi</small><strong>{provider.accountHolder || provider.name}</strong></div>
-    <div className="ad-bank-iban"><small>IBAN</small><strong>{formatIban(provider.iban)}</strong></div>
+    <div className="doc-bank-iban"><small>IBAN</small><strong>{formatIban(provider.iban)}</strong></div>
   </div>;
 }
 
 export function DocHeader({ provider, kicker, number, meta }: { provider: Provider; kicker: string; number: string; meta: [string, string][] }) {
   const brand = provider.brandName || provider.name;
   const detail = provider.address || provider.info;
-  return <header className="ad-head">
-    <div className="ad-head-brand">
-      {provider.logoUrl ? <img src={provider.logoUrl} alt={`${brand} logosu`} /> : <div className="ad-wordmark">{brand}</div>}
+  return <header className="doc-head">
+    <div className="doc-head-brand">
+      {provider.logoUrl ? <img src={provider.logoUrl} alt={`${brand} logosu`} /> : <div className="doc-wordmark">{brand}</div>}
       {detail ? <p>{detail}</p> : null}
     </div>
-    <div className="ad-head-meta">
-      <div className="ad-kicker">{kicker}</div>
+    <div className="doc-head-meta">
+      <div className="doc-kicker">{kicker}</div>
       <strong>{number}</strong>
-      <div className="ad-rule" />
-      <dl className="ad-meta">{meta.map(([label, value]) => <div key={label} style={{ display: "contents" }}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+      <div className="doc-rule" />
+      <dl className="doc-meta">{meta.map(([label, value]) => <div key={label} style={{ display: "contents" }}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     </div>
   </header>;
 }
 
 export function SectionHeading({ index, children }: { index?: string; children: ReactNode }) {
-  return <h2 className="ad-sec-h">{index ? <b>{index}</b> : null}{children}</h2>;
+  return <h2 className="doc-sec-h">{index ? <b>{index}</b> : null}{children}</h2>;
 }
 
 export function PaymentPlanTable({ rows, currency }: { rows: ScheduleRow[]; currency: string }) {
   const showStatus = rows.some((row) => row.status);
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
-  return <div className="ad-table-wrap"><table className="ad-table">
+  return <div className="doc-table-wrap"><table className="doc-table">
     <thead><tr>
       <th style={{ width: "8%" }}>No</th>
       <th>Ödeme</th>
       <th style={{ width: showStatus ? "25%" : "30%" }}>Vade / Koşul</th>
-      <th className="ad-num" style={{ width: "10%" }}>Oran</th>
-      <th className="ad-num" style={{ width: "19%" }}>Tutar</th>
-      {showStatus ? <th className="ad-center" style={{ width: "13%" }}>Durum</th> : null}
+      <th className="doc-num" style={{ width: "10%" }}>Oran</th>
+      <th className="doc-num" style={{ width: "19%" }}>Tutar</th>
+      {showStatus ? <th className="doc-center" style={{ width: "13%" }}>Durum</th> : null}
     </tr></thead>
     <tbody>{rows.map((row) => <tr key={row.sequence}>
       <td>{row.sequence}</td>
       <td><strong>{row.label}</strong></td>
-      <td>{row.dueDate ? formatDate(row.dueDate) : row.trigger || "Sözleşmede belirtilen koşulla"}{row.dueDate && row.trigger ? <><br /><span style={{ color: "var(--ad-muted)" }}>{row.trigger}</span></> : null}</td>
-      <td className="ad-num">%{row.percentage.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}</td>
-      <td className="ad-num"><strong>{formatMoney(row.amount, currency)}</strong>{row.paymentUrl && row.status !== "paid" ? <><br /><a className="ad-paylink print-hide" href={row.paymentUrl} target="_blank" rel="noopener noreferrer">Kartla öde →</a></> : null}</td>
-      {showStatus ? <td className="ad-center">{row.status ? <span className={row.status === "paid" ? "ad-pill ad-pill-ok" : row.status === "overdue" ? "ad-pill ad-pill-bad" : "ad-pill"}>{installmentStatusLabel(row.status)}</span> : "—"}</td> : null}
+      <td>{row.dueDate ? formatDate(row.dueDate) : row.trigger || "Sözleşmede belirtilen koşulla"}{row.dueDate && row.trigger ? <><br /><span style={{ color: "var(--doc-muted)" }}>{row.trigger}</span></> : null}</td>
+      <td className="doc-num">%{row.percentage.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}</td>
+      <td className="doc-num"><strong>{formatMoney(row.amount, currency)}</strong>{row.paymentUrl && row.status !== "paid" ? <><br /><a className="doc-paylink print-hide" href={row.paymentUrl} target="_blank" rel="noopener noreferrer">Kartla öde →</a></> : null}</td>
+      {showStatus ? <td className="doc-center">{row.status ? <span className={row.status === "paid" ? "doc-pill doc-pill-ok" : row.status === "overdue" ? "doc-pill doc-pill-bad" : "doc-pill"}>{installmentStatusLabel(row.status)}</span> : "—"}</td> : null}
     </tr>)}</tbody>
-    <tfoot><tr><td colSpan={4}>Plan toplamı</td><td className="ad-num">{formatMoney(total, currency)}</td>{showStatus ? <td /> : null}</tr></tfoot>
+    <tfoot><tr><td colSpan={4}>Plan toplamı</td><td className="doc-num">{formatMoney(total, currency)}</td>{showStatus ? <td /> : null}</tr></tfoot>
   </table></div>;
 }
 
 /** Ara teslim takvimi (sözleşme madde 4 ve ek protokoller). */
 export function WorkPlanTable({ items }: { items: WorkPlanItem[] }) {
-  return <div className="ad-table-wrap"><table className="ad-table ad-table-compact">
+  return <div className="doc-table-wrap"><table className="doc-table doc-table-compact">
     <thead><tr>
       <th style={{ width: "8%" }}>No</th>
       <th>Ara teslim / iş adımı</th>
@@ -186,13 +186,13 @@ export const taxStatusText: Record<TaxBreakdown["status"], string> = {
 };
 
 export function TaxTotals({ tax, currency, words }: { tax: TaxBreakdown; currency: string; words?: string }) {
-  return <div className="ad-totals">
+  return <div className="doc-totals">
     <div><span>Hizmet bedeli {tax.status === "unknown" ? "" : "(KDV hariç)"}</span><span>{formatMoney(tax.net, currency)}</span></div>
     {tax.status === "included" || tax.status === "excluded" ? <div><span>KDV (%{tax.rate.toLocaleString("tr-TR")})</span><span>{formatMoney(tax.tax, currency)}</span></div> : null}
     {tax.status === "exempt" ? <div><span>KDV</span><span>İstisna</span></div> : null}
     <div><span>Vergi durumu</span><span>{taxStatusText[tax.status]}</span></div>
-    <div className="ad-grand"><span>Genel toplam</span><span>{formatMoney(tax.gross, currency)}</span></div>
-    {words ? <p className="ad-words">({words})</p> : null}
+    <div className="doc-grand"><span>Genel toplam</span><span>{formatMoney(tax.gross, currency)}</span></div>
+    {words ? <p className="doc-words">({words})</p> : null}
   </div>;
 }
 
@@ -202,10 +202,10 @@ export function DocFooter({ provider, reference, verificationUrl }: { provider: 
   // <footer> değil <div>: app/globals.css'teki site alt bilgisi kuralları
   // (footer{background:#050505;color:#fff;padding:130px 0 40px}) belgeye
   // sızıyor, alt bilgiyi lacivert zemin üzerinde koyu metne çeviriyordu.
-  return <div className="ad-foot" role="contentinfo">
+  return <div className="doc-foot" role="contentinfo">
     <div><strong>{provider.name}</strong>{identity}</div>
     <div><strong>İletişim</strong>{contact || "Kurum iletişim bilgileri"}</div>
-    <div className="ad-right"><strong>Belge</strong>{reference}{verificationUrl ? <><br /><span style={{ wordBreak: "break-all" }}>{verificationUrl}</span></> : null}</div>
-    {provider.address && provider.info ? <p className="ad-foot-note">{provider.info}</p> : null}
+    <div className="doc-right"><strong>Belge</strong>{reference}{verificationUrl ? <><br /><span style={{ wordBreak: "break-all" }}>{verificationUrl}</span></> : null}</div>
+    {provider.address && provider.info ? <p className="doc-foot-note">{provider.info}</p> : null}
   </div>;
 }

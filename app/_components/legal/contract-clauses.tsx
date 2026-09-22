@@ -98,7 +98,7 @@ function buildArticles(ctx: ContractContext): Article[] {
     parties: {
       key: "parties", title: "Taraflar", blocks: [
         P("İşbu Hizmet Sözleşmesi (“Sözleşme”), aşağıda bilgileri yer alan taraflar arasında, aşağıdaki hüküm ve koşullar dahilinde elektronik ortamda akdedilmiştir."),
-        N(<div className="ad-grid-2">
+        N(<div className="doc-grid-2">
           <PartyCard role="Hizmet Sağlayıcı" name={ctx.provider.name} rows={providerRows(ctx.provider)} />
           <PartyCard role={consumer ? "Müşteri / Tüketici" : "Müşteri / Alıcı"} name={ctx.customer.name} rows={customerRows(ctx.customer)} />
         </div>),
@@ -339,26 +339,26 @@ function ArticleView({ article, index }: { article: Article; index: number }) {
   const paragraphNo = (blockIndex: number) => article.blocks.slice(0, blockIndex + 1).filter((block) => block.t === "p").length;
   const rendered = article.blocks.map((block, blockIndex) => {
     if (block.t === "p") {
-      return <p key={blockIndex}><span className="ad-pn">{index}.{paragraphNo(blockIndex)}</span>{block.c}</p>;
+      return <p key={blockIndex}><span className="doc-pn">{index}.{paragraphNo(blockIndex)}</span>{block.c}</p>;
     }
     if (block.t === "ul") return <ul key={blockIndex}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul>;
     if (block.t === "h") return <h4 key={blockIndex}>{block.c}</h4>;
-    return <div className="ad-block" key={blockIndex}>{block.c}</div>;
+    return <div className="doc-block" key={blockIndex}>{block.c}</div>;
   });
   const [first, ...rest] = rendered;
-  return <section className="ad-article">
-    <div className="ad-keep"><h2><em>Madde {index}</em>{article.title}</h2>{first}</div>
+  return <section className="doc-article">
+    <div className="doc-keep"><h2><em>Madde {index}</em>{article.title}</h2>{first}</div>
     {rest}
   </section>;
 }
 
 export function ContractArticles({ ctx }: { ctx: ContractContext }) {
-  return <div className="ad-articles">{buildArticles(ctx).map((article, index) => <ArticleView key={article.key} article={article} index={index + 1} />)}</div>;
+  return <div className="doc-articles">{buildArticles(ctx).map((article, index) => <ArticleView key={article.key} article={article} index={index + 1} />)}</div>;
 }
 
 /** İmzası yeni metinden önce alınmış sözleşmeler: onaylandıkları metinle gösterilir. */
 export function LegacyArticles({ clauses }: { clauses: ContractClause[] }) {
-  return <div className="ad-articles">{clauses.map((clause, index) => <ArticleView key={clause.title} index={index + 1} article={{ key: clause.title, title: clause.title, blocks: clause.paragraphs.map((paragraph) => P(paragraph)) }} />)}</div>;
+  return <div className="doc-articles">{clauses.map((clause, index) => <ArticleView key={clause.title} index={index + 1} article={{ key: clause.title, title: clause.title, blocks: clause.paragraphs.map((paragraph) => P(paragraph)) }} />)}</div>;
 }
 
 /** Tüketici işlemlerinde Ek-1: Mesafeli Sözleşmeler Yönetmeliği m.5 kapsamındaki bilgiler. */
@@ -377,11 +377,11 @@ export function PreInformationAnnex({ ctx }: { ctx: ContractContext }) {
     ["Şikâyet ve başvurular", <>Şikâyetler Hizmet Sağlayıcı’nın yukarıdaki iletişim adreslerine iletilebilir. Uyuşmazlıklarda Ticaret Bakanlığı’nca her yıl belirlenen parasal sınırlar dahilinde tüketici hakem heyetlerine, bu sınırları aşan uyuşmazlıklarda arabuluculuk şartı saklı kalmak üzere tüketici mahkemelerine başvurulabilir.</>],
     ["Sözleşmenin saklanması", <>Sözleşme ve bu form Elektronik Belge Sistemi’nde saklanır; Müşteri her ikisini de dilediği zaman PDF olarak indirebilir.</>],
   ];
-  return <section className="ad-annex">
-    <div className="ad-kicker">Ek-1 · {ctx.contractNo}</div>
-    <h2 className="ad-annex-h">Ön Bilgilendirme Formu</h2>
-    <p className="ad-annex-sub">6502 sayılı Tüketicinin Korunması Hakkında Kanun m.48 ve Mesafeli Sözleşmeler Yönetmeliği m.5 uyarınca, Sözleşme kurulmadan önce Müşteri’ye sunulan bilgiler.</p>
-    <div className="ad-table-wrap"><table className="ad-table"><tbody>{rows.map(([label, value]) => <tr key={label}><td>{label}</td><td>{value}</td></tr>)}</tbody></table></div>
-    <p className="ad-legal-note">Müşteri, bu formu Sözleşme’yi onaylamadan önce okuduğunu elektronik onay ekranında ayrı bir beyanla teyit eder.</p>
+  return <section className="doc-annex">
+    <div className="doc-kicker">Ek-1 · {ctx.contractNo}</div>
+    <h2 className="doc-annex-h">Ön Bilgilendirme Formu</h2>
+    <p className="doc-annex-sub">6502 sayılı Tüketicinin Korunması Hakkında Kanun m.48 ve Mesafeli Sözleşmeler Yönetmeliği m.5 uyarınca, Sözleşme kurulmadan önce Müşteri’ye sunulan bilgiler.</p>
+    <div className="doc-table-wrap"><table className="doc-table"><tbody>{rows.map(([label, value]) => <tr key={label}><td>{label}</td><td>{value}</td></tr>)}</tbody></table></div>
+    <p className="doc-legal-note">Müşteri, bu formu Sözleşme’yi onaylamadan önce okuduğunu elektronik onay ekranında ayrı bir beyanla teyit eder.</p>
   </section>;
 }

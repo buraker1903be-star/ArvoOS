@@ -122,88 +122,88 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
   const fileName = pdfFileName("Sozlesme", row.contract_no);
   const css = documentCss({ footerLeft: `${row.contract_no || ""} · Hizmet Sözleşmesi · ${provider.name}` });
   const print = mode === "print";
-  const rootClass = ["ad-root", print ? "ad-print" : "", print && overlay ? "ad-print-overlay" : ""].filter(Boolean).join(" ");
+  const rootClass = ["doc-root", print ? "doc-print" : "", print && overlay ? "doc-print-overlay" : ""].filter(Boolean).join(" ");
 
-  return <main className={rootClass} style={{ "--ad-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
+  return <main className={rootClass} style={{ "--doc-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
     <style>{css}</style>
     {print
       ? <PrintAutorun fileName={fileName} backHref={backHref} />
-      : <div className="ad-toolbar print-hide"><div>{toolbarLeft}</div><div className="ad-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="contract" documentId={logDocumentId ?? undefined} documentNumber={row.contract_no} /> : null}</div></div>}
-    <article className="ad-sheet">
-      <div className="ad-band" />
+      : <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="contract" documentId={logDocumentId ?? undefined} documentNumber={row.contract_no} /> : null}</div></div>}
+    <article className="doc-sheet">
+      <div className="doc-band" />
       <DocHeader provider={provider} kicker="Hizmet Sözleşmesi" number={String(row.contract_no || "")} meta={[
         ["Düzenleme", formatDate(row.created_at)],
         ["Durum", signed ? "İmzalandı" : row.status === "cancelled" ? "İptal edildi" : row.status === "rejected" ? "Reddedildi" : "İmza bekliyor"],
         ["Metin sürümü", legacy ? `Şablon v${row.contract_template_version || template.version}` : `v${textVersion}`],
       ]} />
-      <section className="ad-title">
-        <div className="ad-kicker">{legacy ? template.name : "Hizmet Sözleşmesi"}</div>
+      <section className="doc-title">
+        <div className="doc-kicker">{legacy ? template.name : "Hizmet Sözleşmesi"}</div>
         <h1>{ctx.title}</h1>
         <p>{customer.name} ile {provider.name} arasında, aşağıdaki hüküm ve koşullarla elektronik ortamda düzenlenmiştir.</p>
       </section>
-      {notice && !print ? <div className="ad-notice print-hide">{notice}</div> : null}
-      {errorMessage && !print ? <div className="ad-error print-hide">{errorMessage}</div> : null}
+      {notice && !print ? <div className="doc-notice print-hide">{notice}</div> : null}
+      {errorMessage && !print ? <div className="doc-error print-hide">{errorMessage}</div> : null}
       {trackingCode && !print ? (
-        <div className="ad-track print-hide">
+        <div className="doc-track print-hide">
           <div><b>Dosyanızı takip edin</b><span>Takip kodunuz: <code>{trackingCode}</code> · İlerlemeyi görün, sorularınızı iletin.</span></div>
-          <a className="ad-btn" href={`/takip?code=${encodeURIComponent(trackingCode)}`}>Takip ekranını aç</a>
+          <a className="doc-btn" href={`/takip?code=${encodeURIComponent(trackingCode)}`}>Takip ekranını aç</a>
         </div>
       ) : null}
 
-      <section className="ad-sec">
-        <div className="ad-facts">
-          <div className="ad-fact ad-fact-dark"><small>Sözleşme bedeli</small><strong>{formatMoney(tax.gross, currency)}</strong></div>
-          <div className="ad-fact"><small>{row.start_date ? "Başlangıç" : "Düzenleme"}</small><strong>{formatDate(row.start_date || row.created_at)}</strong></div>
-          <div className="ad-fact"><small>Teslim</small><strong>{formatDate(ctx.dueDate, "Teklif takvimine göre")}</strong></div>
-          <div className="ad-fact"><small>Ödeme planı</small><strong>{schedule.length === 1 ? "Tek ödeme" : `${schedule.length} taksit`}</strong></div>
+      <section className="doc-sec">
+        <div className="doc-facts">
+          <div className="doc-fact doc-fact-dark"><small>Sözleşme bedeli</small><strong>{formatMoney(tax.gross, currency)}</strong></div>
+          <div className="doc-fact"><small>{row.start_date ? "Başlangıç" : "Düzenleme"}</small><strong>{formatDate(row.start_date || row.created_at)}</strong></div>
+          <div className="doc-fact"><small>Teslim</small><strong>{formatDate(ctx.dueDate, "Teklif takvimine göre")}</strong></div>
+          <div className="doc-fact"><small>Ödeme planı</small><strong>{schedule.length === 1 ? "Tek ödeme" : `${schedule.length} taksit`}</strong></div>
         </div>
       </section>
 
       {legacy ? <>
-        <section className="ad-sec"><SectionHeading>Taraflar</SectionHeading><div className="ad-grid-2">
+        <section className="doc-sec"><SectionHeading>Taraflar</SectionHeading><div className="doc-grid-2">
           <PartyCard role="Hizmet Sağlayıcı" name={provider.name} rows={providerRows(provider)} />
           <PartyCard role="Müşteri" name={customer.name} rows={customerRows(customer)} />
         </div></section>
-        <section className="ad-sec"><SectionHeading>Hizmet Kapsamı</SectionHeading><div className="ad-box"><ul className="ad-list">{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div></section>
-        <section className="ad-sec"><SectionHeading>Ücret ve Ödeme Planı</SectionHeading><PaymentPlanTable rows={schedule} currency={currency} /><TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} /></section>
-        <section className="ad-sec"><SectionHeading>Sözleşme Hükümleri</SectionHeading><LegacyArticles clauses={template.clauses} /></section>
-      </> : <section className="ad-sec"><ContractArticles ctx={ctx} /></section>}
+        <section className="doc-sec"><SectionHeading>Hizmet Kapsamı</SectionHeading><div className="doc-box"><ul className="doc-list">{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div></section>
+        <section className="doc-sec"><SectionHeading>Ücret ve Ödeme Planı</SectionHeading><PaymentPlanTable rows={schedule} currency={currency} /><TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} /></section>
+        <section className="doc-sec"><SectionHeading>Sözleşme Hükümleri</SectionHeading><LegacyArticles clauses={template.clauses} /></section>
+      </> : <section className="doc-sec"><ContractArticles ctx={ctx} /></section>}
 
-      <section className="ad-sec ad-sign-block">
+      <section className="doc-sec doc-sign-block">
         <SectionHeading>İmzalar ve Elektronik Onay Kaydı</SectionHeading>
-        <div className="ad-sign">
-          <div className="ad-sign-card">
+        <div className="doc-sign">
+          <div className="doc-sign-card">
             <h3>Hizmet Sağlayıcı</h3>
-            <div className="ad-sign-name">{provider.name}</div>
-            <div className="ad-sign-sub">Yetkili imza ve kaşe</div>
-            <div className="ad-sign-art">{provider.stampUrl ? <img src={provider.stampUrl} alt="Hizmet Sağlayıcı kaşe ve imzası" /> : <span className="ad-sign-empty">Kaşe / İmza</span>}</div>
-            <dl className="ad-audit">
+            <div className="doc-sign-name">{provider.name}</div>
+            <div className="doc-sign-sub">Yetkili imza ve kaşe</div>
+            <div className="doc-sign-art">{provider.stampUrl ? <img src={provider.stampUrl} alt="Hizmet Sağlayıcı kaşe ve imzası" /> : <span className="doc-sign-empty">Kaşe / İmza</span>}</div>
+            <dl className="doc-audit">
               <dt>Düzenleme tarihi</dt><dd>{formatDateTime(row.created_at)}</dd>
               <dt>Belge referansı</dt><dd>{row.contract_no}</dd>
             </dl>
           </div>
-          <div className="ad-sign-card">
+          <div className="doc-sign-card">
             <h3>{kind === "consumer" ? "Müşteri / Tüketici" : "Müşteri / Alıcı"}</h3>
-            <div className="ad-sign-name">{signed ? signerName : customer.name}</div>
-            <div className="ad-sign-sub">{signed && signerName !== customer.name ? `${customer.name} adına` : null}{signed && signerName !== customer.name && taxId ? " · " : null}{taxId ? `${taxId.label}: ${taxId.value}` : null}</div>
-            <div className="ad-sign-art">{signed && row.signed_signature_data ? <img src={row.signed_signature_data} alt="Müşteri imzası" /> : <span className="ad-sign-empty">{signed ? "Elektronik onay" : "İmza bekleniyor"}</span>}</div>
+            <div className="doc-sign-name">{signed ? signerName : customer.name}</div>
+            <div className="doc-sign-sub">{signed && signerName !== customer.name ? `${customer.name} adına` : null}{signed && signerName !== customer.name && taxId ? " · " : null}{taxId ? `${taxId.label}: ${taxId.value}` : null}</div>
+            <div className="doc-sign-art">{signed && row.signed_signature_data ? <img src={row.signed_signature_data} alt="Müşteri imzası" /> : <span className="doc-sign-empty">{signed ? "Elektronik onay" : "İmza bekleniyor"}</span>}</div>
             {signed ? <>
-              <div className="ad-esign"><i>✓</i>Elektronik olarak imzalanmıştır</div>
-              <dl className="ad-audit">
+              <div className="doc-esign"><i>✓</i>Elektronik olarak imzalanmıştır</div>
+              <dl className="doc-audit">
                 <dt>İmza tarihi ve saati</dt><dd>{formatDateTime(row.signed_at)}</dd>
                 <dt>IP adresi</dt><dd>{row.signed_ip || "Kayıt bulunamadı"}</dd>
                 <dt>Cihaz / tarayıcı</dt><dd>{userAgent || "Kayıt bulunamadı"}</dd>
                 <dt>Belge referansı</dt><dd>{row.contract_no}</dd>
-                {verificationHash ? <><dt>Doğrulama özeti</dt><dd className="ad-hash">SHA-256 · {groupHash(verificationHash)}</dd></> : null}
+                {verificationHash ? <><dt>Doğrulama özeti</dt><dd className="doc-hash">SHA-256 · {groupHash(verificationHash)}</dd></> : null}
               </dl>
             </> : <>
-              <div className="ad-esign ad-esign-pending">İmza bekleniyor</div>
-              <div className="ad-blank"><span>Ad Soyad</span><span>Tarih / Saat</span></div>
+              <div className="doc-esign doc-esign-pending">İmza bekleniyor</div>
+              <div className="doc-blank"><span>Ad Soyad</span><span>Tarih / Saat</span></div>
             </>}
           </div>
         </div>
-        {consents ? <ul className="ad-consents">{consentLabels.filter(([key]) => consents[key] === true).map(([key, label]) => <li key={key}>{label}</li>)}</ul> : null}
-        <p className="ad-legal-note">{signed
+        {consents ? <ul className="doc-consents">{consentLabels.filter(([key]) => consents[key] === true).map(([key, label]) => <li key={key}>{label}</li>)}</ul> : null}
+        <p className="doc-legal-note">{signed
           ? "Bu belge elektronik ortamda düzenlenmiş ve Müşteri tarafından elektronik olarak onaylanmıştır. Elektronik onay 5070 sayılı Elektronik İmza Kanunu kapsamında güvenli elektronik imza niteliğinde değildir; onaya ilişkin tarih-saat, IP adresi, cihaz bilgisi ve doğrulama özeti HMK m.193 kapsamında delil olarak saklanır."
           : "Müşteri, belgenin sonundaki elektronik imza alanında ad soyadını yazıp imzasını çizerek ve onay beyanlarını işaretleyerek Sözleşme’yi onaylar. Onay tarihi-saati, IP adresi ve cihaz bilgisi bu bölümde gösterilir."}</p>
       </section>
@@ -213,10 +213,10 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
       {!legacy && kind === "consumer" ? <PreInformationAnnex ctx={ctx} /> : null}
 
       {!print && !signed && ["draft", "sent"].includes(row.status) ? signatureForm : null}
-      {!print && proposalLink ? <p className="ad-related print-hide"><a className="ad-btn" href={`/teklif/${proposalLink.token}`}>Bu sözleşmenin dayandığı teklifi görüntüle{proposalLink.no ? ` · ${proposalLink.no}` : ""}</a></p> : null}
+      {!print && proposalLink ? <p className="doc-related print-hide"><a className="doc-btn" href={`/teklif/${proposalLink.token}`}>Bu sözleşmenin dayandığı teklifi görüntüle{proposalLink.no ? ` · ${proposalLink.no}` : ""}</a></p> : null}
 
       <DocFooter provider={provider} reference={<>{row.contract_no} · Metin v{legacy ? row.contract_template_version || template.version : textVersion}</>} verificationUrl={signed ? verificationUrl : null} />
-      <div className="ad-confidential">Gizlidir · Yalnızca sözleşme tarafları içindir</div>
+      <div className="doc-confidential">Gizlidir · Yalnızca sözleşme tarafları içindir</div>
     </article>
   </main>;
 }
