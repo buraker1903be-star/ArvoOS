@@ -16,7 +16,9 @@ import { MessagesDrawer } from "./messages-drawer";
 import { NotificationsDrawer } from "./notifications-drawer";
 import { loadMessagesInit } from "./messages/load-messages";
 import { SidebarToggle } from "./sidebar-toggle";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
+import { KonsolNavigasyon } from "./konsol-navigasyon";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -43,8 +45,41 @@ const roleNames: Record<string, string> = {
   operasyoncu: "Operasyon Personeli",
 };
 
+/** Konsoldan müşteri paneline geçiş için; proxy'deki adresle aynı. */
+const DEFAULT_APP_HOST = "app.arvo-os.com";
+
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
+
+  /*
+    Kurucu konsolu (yonetim.arvo-os.com) normal panel kabuğunu KULLANMAZ.
+
+    Eskiden bu alan adında da müşteri menüsü (CRM, Operasyon, Finans…)
+    çiziliyordu; hepsi uygulama alan adına sıçradığı için kurucu menüye
+    her tıkladığında konsoldan çıkıyordu. Ayrıca çalışma alanı seçici,
+    bildirim çekmecesi ve mesaj çekmecesi buraya ait değil: konsol tek bir
+    kurumun paneli değil, platformun kendisi.
+  */
+  const konsolHostu = isManagementHost(hostFromHeaders(await headers()));
+
+  /*
+    Konsola yalnızca kurucu girebilir. Yetkisi olmayan biri giriş yaparsa
+    normal paneli BURADA göstermiyoruz: bu alan adının tamamı platform
+    yönetimi, müşteri paneli için uygulama alan adı var.
+  */
+  if (konsolHostu && !isPlatformOwner) {
+    return <div className="panel-root"><main className="panel-frame konsol-red">
+      <section>
+        <h1>Bu adres kurucu yönetimi içindir</h1>
+        <p>Hesabınızın platform yönetimine erişimi yok. Kendi panelinize aşağıdaki adresten girebilirsiniz.</p>
+        <div className="panel-page-actions">
+          <a className="panel-primary" href={`https://${DEFAULT_APP_HOST}/panel`}>ArvoOS paneline git</a>
+          <form action={logout}><button className="panel-secondary" type="submit">Çıkış yap</button></form>
+        </div>
+      </section>
+    </main></div>;
+  }
+
   const roleName = isPlatformOwner ? "Kurucu / Owner" : roleNames[membership.role] ?? "Kurum Kullanıcısı";
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
   // Toplu bildirimlerde okundu bilgisi kişiye özel; kurum sayacı veritabanı
@@ -85,13 +120,24 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />
+    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} isPlatformOwner={isPlatformOwner} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />}
     <aside id="panel-sidebar" className="panel-sidebar">
-      <Link className="panel-brand" href="/panel">{brandLogoUrl?<img src={brandLogoUrl} alt={brandName}/>:<i>{brandName.slice(0,1).toUpperCase()}</i>}<span><b>{brandName}</b><small>{brandTagline}</small></span></Link>
-      <div className="panel-org panel-org-switchable">
-        <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
-      </div>
-      <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />
+      {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
+          paneli açılmıyor, hepsinin yönetimi açılıyor. */}
+      <Link className="panel-brand" href={konsolHostu ? "/panel/platform" : "/panel"}>
+        {konsolHostu || !brandLogoUrl ? <i>{konsolHostu ? "◇" : brandName.slice(0, 1).toUpperCase()}</i> : <img src={brandLogoUrl} alt={brandName} />}
+        <span><b>{konsolHostu ? "Kurucu Konsolu" : brandName}</b><small>{konsolHostu ? "PLATFORM YÖNETİMİ" : brandTagline}</small></span>
+      </Link>
+      {/* Konsolda çalışma alanı seçici yok: bu alan adında çalışma alanı
+          zorla Arvo'nun kendi kurumu (lib/panel-context.ts). */}
+      {konsolHostu ? null : (
+        <div className="panel-org panel-org-switchable">
+          <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
+        </div>
+      )}
+      {konsolHostu
+        ? <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
+        : <PanelNavigation modules={modules} isPlatformOwner={isPlatformOwner} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />}
       <div className="panel-sidebar-footer">
         <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
@@ -103,7 +149,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <PanelBreadcrumb brandName={isPlatformOwner ? "Kurucu Merkezi" : brandName} />
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
+            {/* Mesaj çekmecesi kurum içi yazışma; konsol tek bir kurumun
+                paneli değil. Bildirimler kurucuya ait olduğu için kalıyor. */}
+            {messagesInit && !konsolHostu ? <MessagesDrawer init={messagesInit} /> : null}
             <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
           </div>
           <ThemeToggle />

@@ -243,3 +243,12 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
   .panel-content{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
   .panel-root{min-height:0!important}
 }
+
+/* Kurucu konsoluna yetkisiz giriş: normal panel kabuğu çizilmiyor, çünkü
+   bu alan adının tamamı platform yönetimi. Kullanıcıya kendi panelinin
+   adresi veriliyor; kapalı bir kapı önünde bırakmıyoruz. */
+.konsol-red { display: grid; place-items: center; min-height: 100dvh; padding: 24px }
+.konsol-red section { max-width: 480px; text-align: center }
+.konsol-red h1 { margin: 0 0 8px; font-size: 21px; font-weight: 650; letter-spacing: -.01em }
+.konsol-red p { margin: 0 0 18px; color: var(--muted); line-height: 1.6 }
+.konsol-red .panel-page-actions { justify-content: center }
