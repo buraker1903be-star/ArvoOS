@@ -21,8 +21,9 @@ import { usePathname, useSearchParams } from "next/navigation";
   oluşuyor — kiracıyı yönetmek, parayı takip etmek, ürün erişimine
   bakmak.
 
-  Kiracılar grubundaki iki süzgeç, "bugün kime bakmam gerek" sorusunun
-  cevabını listeyi taramadan veriyor.
+  "Dikkat gerektirenler" menüden kalktı: aynı soruyu kiracı tablosunun
+  kendi süzgeci yanıtlıyor ve satırdaki kırmızı kota hücresi zaten
+  gösteriyor. Aynı yolu iki yerde tutmak, birinin sapması demek.
 
   Menüye yalnızca GERÇEKTEN bir yere giden öğe konuyor: boş sayfaya çıkan
   bir başlık, olmayandan kötü.
@@ -31,9 +32,8 @@ const gruplar = [
   {
     ad: "Kiracılar",
     ogeler: [
-      { href: "/panel/platform", label: "Tüm kiracılar", icon: "◇", tam: true },
+      { href: "/panel/platform", label: "Kiracılar", icon: "◇", tam: true },
       { href: "/panel/platform?filtre=kurulum", label: "Kurulum bekleyenler", icon: "◷" },
-      { href: "/panel/platform?filtre=dikkat", label: "Dikkat gerektirenler", icon: "!" },
     ],
   },
   {
@@ -58,7 +58,7 @@ const gruplar = [
 export function KonsolNavigasyon({ uygulamaAdresi }: { uygulamaAdresi: string }) {
   const pathname = usePathname();
   const parametreler = useSearchParams();
-  const arama = parametreler.toString() ? `?${parametreler.toString()}` : "";
+  const filtre = parametreler.get("filtre");
 
   return (
     <nav className="panel-nav panel-nav-v2" aria-label="Kurucu konsolu">
@@ -71,17 +71,22 @@ export function KonsolNavigasyon({ uygulamaAdresi }: { uygulamaAdresi: string })
       </Link>
       <div className="panel-nav-groups">
         {gruplar.map((grup) => (
-          <div key={grup.ad} className="konsol-grup">
-            <span className="konsol-grup-ad">{grup.ad}</span>
+          /* Grup başlığı yazılmıyor: menü daraltıldığında simgeler tek
+             sütuna inerken başlık metni olduğu yerde kalıyor ve dar
+             şeritte taşıyordu. Gruplar artık yalnızca aralık ve ince bir
+             çizgiyle ayrılıyor; aria-label yerini söylemeye devam ediyor. */
+          <div key={grup.ad} className="konsol-grup" role="group" aria-label={grup.ad}>
             {grup.ogeler.map((oge) => {
               /*
-                Süzgeçli bağlantılar aynı yola gidiyor; hangisinin aktif
-                olduğunu adres değil süzgeç belirliyor. pathname ile
-                karşılaştırmak üçünü birden aktif gösterirdi.
+                Süzgeçli bağlantı aynı yola gidiyor; hangisinin aktif
+                olduğunu adres değil SÜZGEÇ belirliyor. Tüm sorguyu
+                karşılaştırmak, kiracı dosyasında (?organization=…)
+                ikisini birden sönük bırakıyordu — kurucu bir kiracının
+                içindeyken menüde nerede olduğunu göremiyordu.
               */
               const [yol, sorgu] = oge.href.split("?");
               const aktif = yol === "/panel/platform"
-                ? pathname === "/panel/platform" && (sorgu ? arama === `?${sorgu}` : !arama)
+                ? pathname === "/panel/platform" && (sorgu ? sorgu === `filtre=${filtre}` : !filtre)
                 : pathname.startsWith(yol);
               return (
                 <Link

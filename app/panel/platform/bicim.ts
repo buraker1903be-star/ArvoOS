@@ -60,3 +60,22 @@ export const LISANS_TONU: Record<string, StgTone> = {
 export const PAKET_ADI: Record<string, string> = {
   starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal",
 };
+
+/** Kurulum durumları. Liste tablosu ve kiracı dosyası aynı adı yazmalı. */
+export const KURULUM_ADI: Record<string, string> = {
+  creating: "Oluşturuluyor",
+  inviting_owner: "Davet gönderiliyor",
+  waiting_owner: "Sahip bekleniyor",
+  active: "Kullanımda",
+  suspended: "Askıda",
+  archived: "Arşivlendi",
+  failed: "Kurulum hatası",
+};
+export const KURULUM_TONU: Record<string, StgTone> = {
+  creating: "info", inviting_owner: "info", waiting_owner: "warning",
+  active: "success", suspended: "danger", archived: "neutral", failed: "danger",
+};
+
+/** Avatar baş harfleri; adı olmayan kurumda "?". */
+export const basHarfleri = (deger: string) =>
+  deger.split(/\s+/).filter(Boolean).slice(0, 2).map((parca) => parca[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
