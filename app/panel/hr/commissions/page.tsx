@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
-import { allocateCollections, rateAt, type RateHistoryRow } from "@/lib/commission-allocation";
+import { type RateHistoryRow } from "@/lib/commission-allocation";
+import { buildAccrualRows, inPeriod } from "@/lib/commission-accruals";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { HrIcon, initials } from "../hr-icons";
 import { HrTabs } from "../hr-tabs";
@@ -61,7 +62,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     supabase.from("hr_employees").select("id,full_name,job_title,employment_status,commission_rate,operation_commission_rate").eq("organization_id", orgId).order("full_name"),
     supabase.from("crm_opportunities").select("id,customer_name,assigned_employee_id").eq("organization_id", orgId),
     supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,amount,currency,signed_at,status,created_at").eq("organization_id", orgId).in("status", ["signed", "completed"]).order("created_at", { ascending: false }),
-    supabase.from("hr_operation_commissions").select("id,employee_id,workflow_id,contract_id,base_amount,commission_rate,commission_amount,status,accrued_at").eq("organization_id", orgId).gte("accrued_at", start.toISOString()).lt("accrued_at", end.toISOString()).neq("status", "cancelled"),
+    supabase.from("hr_operation_commissions").select("id,employee_id,workflow_id,contract_id,base_amount,commission_rate,commission_amount,status,accrued_at").eq("organization_id", orgId).neq("status", "cancelled"),
     // Dağıtım tüm geçmişe göre yapıldığı için dönem filtresi dağıtımdan sonra
     // uygulanıyor. Yalnızca gerçek ödemeler (payment) ve iadeler (adjustment
     // borç kaydı) sayılır; manuel/düzeltme alacakları prim matrahı değildir.
@@ -82,57 +83,23 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   const operations = (operationData ?? []) as OperationCommission[];
   const collections = (collectionData ?? []) as Collection[];
   const employeeMap = new Map(employees.map((item) => [item.id, item]));
-  const opportunityMap = new Map(opportunities.map((item) => [item.id, item]));
-  const contractMap = new Map(contracts.map((item) => [item.id, item]));
   const selectedEmployee = params.personel || "";
   const periodStart = startKey;
   const periodEnd = endKey;
 
-  // Her müşterinin ödemeleri sözleşmelerine eskiden yeniye dağıtılır ve her
-  // parça o sözleşmenin satışçısına yazılır (lib/commission-allocation).
-  const contractsByParty = new Map<string, Contract[]>();
-  for (const contract of contracts) {
-    if (!contract.party_id) continue;
-    contractsByParty.set(contract.party_id, [...(contractsByParty.get(contract.party_id) ?? []), contract]);
-  }
-  const collectionsByParty = new Map<string, Collection[]>();
-  for (const collection of collections) {
-    if (!collection.party_id) continue;
-    collectionsByParty.set(collection.party_id, [...(collectionsByParty.get(collection.party_id) ?? []), collection]);
-  }
-
-  const salesRows = [...collectionsByParty].flatMap(([partyId, partyCollections]) => {
-    const pieces = allocateCollections(
-      (contractsByParty.get(partyId) ?? []).map((contract) => ({ id: contract.id, amount: Number(contract.amount), order: contract.signed_at ?? contract.created_at })),
-      partyCollections.map((collection) => ({ id: collection.id, kind: collection.entry_type === "credit" ? "payment" as const : "refund" as const, amount: Number(collection.amount), date: collection.transaction_date })),
-    );
-    return pieces.filter((piece) => piece.date >= periodStart && piece.date < periodEnd).flatMap((piece) => {
-      const contract = contractMap.get(piece.contractId);
-      if (!contract) return [];
-      const opportunity = opportunityMap.get(contract.opportunity_id);
-      const employee = opportunity?.assigned_employee_id ? employeeMap.get(opportunity.assigned_employee_id) : undefined;
-      if (!employee || (selectedEmployee && employee.id !== selectedEmployee)) return [];
-      // Tahsilat tarihinde geçerli oran; sonradan yapılan oran değişikliği
-      // geçmiş tahsilatları etkilemez.
-      const rate = rateAt(rateHistory, employee.id, piece.date, Number(employee.commission_rate));
-      if (rate <= 0) return [];
-      // İade parçalarında piece.amount negatif. JS'te Math.round yarımları
-      // +∞ yönüne yuvarladığı için Math.round(5000.5)=5001 ama
-      // Math.round(-5000.5)=-5000: ödeme ve tam iadesi birbirini götürmüyor,
-      // tamamen iade edilmiş tahsilattan prim tahakkuk ediyordu. Büyüklüğü
-      // yuvarlayıp işareti geri koyuyoruz.
-      const amount = Math.sign(piece.amount) * Math.round(Math.abs(piece.amount) * rate / 100);
-      return [{ id: `sale-${piece.eventId}-${piece.contractId}-${piece.amount < 0 ? "iade" : "odeme"}`, type: "Satış", employee, customer: opportunity?.customer_name || "Müşteri", reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no, base: piece.amount, rate, amount, date: piece.date, status: "accrued" }];
+  // Tahakkuk hesabı lib/commission-accruals.ts'te: aynı hesabı "Prim Hesabı"
+  // (cari) ekranı da kullanıyor. Burada yalnızca dönem ve personel süzgeci.
+  const allRows = buildAccrualRows({ employees, opportunities, contracts, operations, collections, rateHistory });
+  const periodRows = allRows
+    .filter((row) => inPeriod(row, { startKey: periodStart, endKey: periodEnd, start, end }))
+    .filter((row) => !selectedEmployee || row.employeeId === selectedEmployee)
+    .flatMap((row) => {
+      const employee = employeeMap.get(row.employeeId);
+      return employee ? [{ ...row, employee }] : [];
     });
-  });
-  const operationRows = operations.flatMap((item) => {
-    const employee = employeeMap.get(item.employee_id);
-    if (!employee || (selectedEmployee && employee.id !== selectedEmployee)) return [];
-    const contract = item.contract_id ? contractMap.get(item.contract_id) : undefined;
-    const opportunity = contract ? opportunityMap.get(contract.opportunity_id) : undefined;
-    return [{ id: `operation-${item.id}`, type: "Operasyon", employee, customer: opportunity?.customer_name || "Tamamlanan iş", reference: contract?.contract_no || `İş ${item.workflow_id.slice(0, 8)}`, base: Number(item.base_amount), rate: Number(item.commission_rate), amount: Number(item.commission_amount), date: item.accrued_at, status: item.status }];
-  });
-  const rows = [...salesRows, ...operationRows].sort((a, b) => +new Date(b.date) - +new Date(a.date));
+  const rows = periodRows;
+  const salesRows = periodRows.filter((row) => row.type === "Satış");
+  const operationRows = periodRows.filter((row) => row.type === "Operasyon");
   const salesTotal = salesRows.reduce((sum, item) => sum + item.amount, 0);
   const operationTotal = operationRows.reduce((sum, item) => sum + item.amount, 0);
   const grandTotal = salesTotal + operationTotal;

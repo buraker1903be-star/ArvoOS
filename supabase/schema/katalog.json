@@ -502,6 +502,7 @@
       "first_viewed_at",
       "id",
       "invoice_id",
+      "issuer_snapshot",
       "last_viewed_at",
       "legal_text_version",
       "opportunity_id",
@@ -676,6 +677,18 @@
       "title",
       "transaction_type",
       "updated_at"
+    ],
+    "hr_commission_payments": [
+      "amount",
+      "created_at",
+      "created_by",
+      "employee_id",
+      "finance_transaction_id",
+      "id",
+      "method",
+      "note",
+      "organization_id",
+      "paid_on"
     ],
     "hr_confidentiality_agreements": [
       "agreement_no",
