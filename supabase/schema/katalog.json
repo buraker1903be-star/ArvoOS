@@ -502,6 +502,7 @@
       "first_viewed_at",
       "id",
       "invoice_id",
+      "issuer_snapshot",
       "last_viewed_at",
       "legal_text_version",
       "opportunity_id",
