@@ -6,11 +6,10 @@ import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
 import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
-import { LISANS_TONU, depolama, kullanimTonu, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
+import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
-import { LisansFormu } from "./lisans-formu";
-import { UrunFormu } from "./urun-formu";
+import { UrunKartlari } from "./urun-kartlari";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -127,7 +126,8 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const label = selected.display_name || selected.name;
   const durumTonu = LISANS_TONU[license.license_status] ?? "neutral";
   const durumAdi = productLicenseLabels[license.license_status] ?? license.license_status;
-  // Açık abonelik = ücret tahsil edilen ya da denemede olan ek ürün.
+  // Açık abonelik = ücret tahsil edilen ya da denemede olan ürün.
+  const cekirdekAcik = ["active", "trialing", "past_due"].includes(license.license_status);
   const acikUrunler = ADDON_PRODUCTS.filter((urun) => ["active", "trialing", "past_due"].includes(productLicenses.get(urun.code)?.status ?? "inactive"));
 
   return <div className="stg plt">
@@ -196,100 +196,107 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
           izlenimi veriyordu. ArvoLab tüketimi ArvoOS'un lisans kaydına
           yazmaya başladığında ölçer de sıfırlama da geri gelir.
         */}
-        <p className="stg-muted"><StgIcon name="chart" size={16} />AI kredisi ölçülmüyor: ArvoLab asistanının tüketimi henüz ArvoOS lisansına işlenmiyor. Aşağıdaki limit tanımlı hakkı yazar, bir kullanımı kısıtlamaz.</p>
+        <p className="stg-muted"><StgIcon name="chart" size={16} />AI kredisi ölçülmüyor: ArvoLab asistanının tüketimi henüz ArvoOS lisansına işlenmiyor. ArvoOS kartındaki limit tanımlı hakkı yazar, bir kullanımı kısıtlamaz.</p>
         {license.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{license.suspension_reason}</p> : null}
       </StgSection>
 
+      {/*
+        Dört ürün, tek satırda dört kart. Eskiden ArvoOS çekirdek lisansı
+        tam genişlikte dev bir form, diğer üçü altında ayrı bir bölümdü —
+        oysa dördü de ayrı ürün. "Bu kiracı hangi ürünleri alıyor" sorusu
+        iki ayrı yere bakmayı gerektiriyordu.
+
+        Kartlar özet; düzenleme tıklayınca açılan pencerede. Dört formu
+        aynı anda dar sütunlarda tutmak hepsini okunmaz yapardı.
+      */}
       <StgSection
-        id="lisans" wide icon="box" tone={durumTonu}
-        kicker={selected.slug} title={`${label} · lisans politikası`}
-        description="Askıya alınan ya da iptal edilen kurumun panel erişimi kurum durumuyla birlikte kapatılır."
-        aside={<span className="status-pill" data-tone={durumTonu}>{durumAdi}</span>}
+        id="urunler" wide icon="grid" tone="gold" kicker="ÜRÜNLER" title={`${label} abonelikleri`}
+        description="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
+        aside={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
+          {acikUrunler.length + (cekirdekAcik ? 1 : 0)} / {ADDON_PRODUCTS.length + 1} açık
+        </span>}
       >
-        <LisansFormu
+        <UrunKartlari
           organizationId={selected.id}
-          aktifUye={users}
-          kullanilanMb={depolamaMb}
-          kaydet={updateOrganizationLicense}
-          baslangic={{
-            planCode: license.plan_code,
-            licenseStatus: license.license_status,
-            trialEndsAt: tarihDegeri(license.trial_ends_at),
-            currentPeriodEnd: tarihDegeri(license.current_period_end),
-            userLimit: String(license.user_limit),
-            storageLimitMb: String(license.storage_limit_mb),
-            aiCreditLimit: String(license.ai_credit_limit),
-            monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
-            suspensionReason: license.suspension_reason ?? "",
-          }}
+          kurumAdi={label}
+          cekirdegiKaydet={updateOrganizationLicense}
+          urunuKaydet={updateProductLicense}
+          kartlar={[
+            {
+              tur: "cekirdek" as const,
+              kod: "arvoos",
+              ad: "ArvoOS",
+              aciklama: "Çekirdek panel: CRM, operasyon, finans, İK",
+              durumAdi,
+              tone: durumTonu,
+              acik: cekirdekAcik,
+              ozet: [
+                { etiket: "Paket", deger: PAKET_ADI[license.plan_code] ?? license.plan_code },
+                { etiket: "Aylık ücret", deger: license.monthly_fee ? `${para(Number(license.monthly_fee))} / ay` : "girilmedi" },
+                { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
+                { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
+              ],
+              aktifUye: users,
+              kullanilanMb: depolamaMb,
+              baslangic: {
+                planCode: license.plan_code,
+                licenseStatus: license.license_status,
+                trialEndsAt: tarihDegeri(license.trial_ends_at),
+                currentPeriodEnd: tarihDegeri(license.current_period_end),
+                userLimit: String(license.user_limit),
+                storageLimitMb: String(license.storage_limit_mb),
+                aiCreditLimit: String(license.ai_credit_limit),
+                monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
+                suspensionReason: license.suspension_reason ?? "",
+              },
+            },
+            ...ADDON_PRODUCTS.map((product) => {
+              const row = productLicenses.get(product.code);
+              const status = row?.status ?? "inactive";
+              const kotalar = (URUN_KOTALARI[product.code] ?? []).map((alan) => {
+                const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
+                return {
+                  anahtar: alan.anahtar,
+                  etiket: alan.etiket,
+                  birim: alan.birim,
+                  donemsel: Boolean(alan.donemsel),
+                  limit: olcum?.limit != null ? String(olcum.limit) : "",
+                  kullanilan: olcum?.kullanilan ?? null,
+                  asildi: Boolean(olcum?.asildi),
+                };
+              });
+              /* Kota özeti yalnızca limiti GİRİLMİŞ alanlardan; "boşsa
+                 sınırsız" olan bir alanı kartta yazmak, kota varmış gibi
+                 okunurdu. */
+              const kotaOzeti = kotalar.filter((alan) => alan.limit)
+                .map((alan) => `${sayi(Number(alan.limit))} ${alan.birim}`).join(" · ");
+              return {
+                tur: "ek" as const,
+                kod: product.code,
+                ad: product.name,
+                aciklama: product.description,
+                durumAdi: productLicenseLabels[status] ?? status,
+                tone: LISANS_TONU[status] ?? "neutral",
+                acik: ["active", "trialing", "past_due"].includes(status),
+                ozet: [
+                  { etiket: "Paket", deger: row?.plan_code ? (PAKET_ADI[row.plan_code] ?? row.plan_code) : "belirtilmedi" },
+                  { etiket: "Aylık ücret", deger: row?.monthly_fee ? `${para(Number(row.monthly_fee))} / ay` : "girilmedi" },
+                  { etiket: "Dönem sonu", deger: tarih(row?.current_period_end ?? null) },
+                  { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "kota yok") },
+                ],
+                kotalar,
+                baslangic: {
+                  status,
+                  planCode: row?.plan_code ?? "",
+                  monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
+                  currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
+                  suspensionReason: row?.suspension_reason ?? "",
+                },
+              };
+            }),
+          ]}
         />
       </StgSection>
-
-      {/*
-        Ek ürün abonelikleri yan yana. Her biri beş alanlık kısa bir form
-        ama tam genişlikte duruyordu: üç ürünü görmek için ekran boyu
-        kaydırmak gerekiyordu ve ürün sayısı arttıkça sayfa uzayacaktı.
-        ArvoOS çekirdek lisansı geniş kalıyor — dokuz alanı var ve iki
-        sütunlu formu dar kartta okunmaz oluyor.
-      */}
-      <section className="stg-card is-wide" aria-labelledby="ek-urunler-title">
-        <header className="stg-card-head">
-          <span className="stg-card-icon" data-tone="gold"><StgIcon name="grid" size={20} /></span>
-          <div className="stg-card-title">
-            <small>EK ÜRÜNLER</small>
-            <h2 id="ek-urunler-title">{label} abonelikleri</h2>
-            <p>Her ürünün kendi durumu, ücreti ve kotası var. Aylık ücret girilmezse kurum o ürünü kartla ödeyemez.</p>
-          </div>
-          <div className="stg-card-aside">
-            <span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
-              {acikUrunler.length} / {ADDON_PRODUCTS.length} açık
-            </span>
-          </div>
-        </header>
-        <div className="plan-izgara">
-          {ADDON_PRODUCTS.map((product) => {
-            const row = productLicenses.get(product.code);
-            const status = row?.status ?? "inactive";
-            return (
-              <StgSection
-                key={product.code} id={`urun-${product.code}`} icon="box" tone={LISANS_TONU[status] ?? "neutral"}
-                kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} aboneliği`}
-                description={product.description}
-                aside={<span className="status-pill" data-tone={LISANS_TONU[status] ?? "neutral"}>{productLicenseLabels[status] ?? status}</span>}
-              >
-                <UrunFormu
-                  organizationId={selected.id}
-                  product={product.code}
-                  productName={product.name}
-                  kaydet={updateProductLicense}
-                  baslangic={{
-                    status,
-                    planCode: row?.plan_code ?? "",
-                    monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
-                    currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
-                    suspensionReason: row?.suspension_reason ?? "",
-                  }}
-                  /* Kota alanları yalnızca ÖLÇÜMÜ YAZILMIŞ ürünlerde
-                     çiziliyor. Ölçümsüz limit, kurucunun koruma sandığı
-                     boş bir sayı olurdu — storage_limit_mb dersi. */
-                  kotalar={(URUN_KOTALARI[product.code] ?? []).map((alan) => {
-                    const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
-                    return {
-                      anahtar: alan.anahtar,
-                      etiket: alan.etiket,
-                      birim: alan.birim,
-                      donemsel: Boolean(alan.donemsel),
-                      limit: olcum?.limit != null ? String(olcum.limit) : "",
-                      kullanilan: olcum?.kullanilan ?? null,
-                      asildi: Boolean(olcum?.asildi),
-                    };
-                  })}
-                />
-              </StgSection>
-            );
-          })}
-        </div>
-      </section>
     </div>
   </div>;
 }

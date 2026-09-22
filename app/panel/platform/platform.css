@@ -329,6 +329,10 @@
 .istek-karti header b { display: block; font-size: 15.5px; font-weight: 650; letter-spacing: -.01em }
 .istek-karti header small { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px }
 .istek-tutar { flex: none; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums }
+/* İmzalı sözleşmeye bağlantı: kurucu tahsilatı bu ekranda doğruluyor ama
+   sözleşmeyi açacak bir yer yoktu. */
+.istek-sozlesme { display: inline-block; margin-top: 6px; color: var(--accent); font-size: 12.5px; font-weight: 600; text-decoration: none }
+.istek-sozlesme:hover { text-decoration: underline }
 
 .istek-moduller { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none }
 .istek-moduller li {
@@ -749,3 +753,68 @@
 .plt-urun-kaydet > button { flex: 1 1 auto }
 /* Askı alanı kırmızı çerçeveli: erişimi kapatan tek karar. */
 .plt-urun-formu label[data-tone="danger"] > input { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)) }
+
+/* ============================================================
+   ÜRÜN KARTLARI (ArvoOS · ArvoLab · Arc · Randevu)
+
+   Dördü ayrı ürün, tek satırda dört kart. Kart özet; düzenleme karta
+   tıklayınca açılan pencerede. Dört formu aynı anda dar sütunlarda
+   tutmak hepsini okunmaz yapıyordu — çekirdek lisansın tek başına
+   dokuz alanı var.
+   ============================================================ */
+.plt-urun-izgara { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+/* 1180px, dosyadaki öbür dörtlü ızgarayla (.plan-izgara) aynı eşik:
+   iki ayrı eşik, aynı ekranda kartların farklı yerlerde kırılması demek. */
+@media (min-width: 1180px) { .plt-urun-izgara { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
+
+.plt-urun-karti {
+  display: grid; align-content: start; gap: 10px;
+  padding: 16px; width: 100%;
+  border: 1px solid var(--line); border-radius: 16px;
+  background: var(--surface); color: var(--ink);
+  font: inherit; text-align: start; cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.plt-urun-karti:hover { border-color: var(--accent-500); box-shadow: var(--shadow-sm); transform: translateY(-1px) }
+.plt-urun-karti:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus) }
+/* Kapalı ürün sönük: açık üründen bakışta ayrılmalı. */
+.plt-urun-karti[data-kapali="true"] { background: var(--surface-2) }
+.plt-urun-karti[data-kapali="true"] .plt-urun-ozet dd { color: var(--muted) }
+
+.plt-urun-bas { display: flex; align-items: center; justify-content: space-between; gap: 8px }
+.plt-urun-bas b { font-size: 14.5px; font-weight: 650; letter-spacing: -.01em }
+.plt-urun-aciklama { color: var(--muted); font-size: 12px; line-height: 1.45 }
+
+.plt-urun-ozet { display: grid; gap: 6px; margin: 2px 0 0 }
+.plt-urun-ozet > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+.plt-urun-ozet dt { color: var(--muted); font-size: 11.5px; font-weight: 600 }
+.plt-urun-ozet dd {
+  margin: 0; min-width: 0; color: var(--ink); font-size: 12.5px; font-weight: 600;
+  font-variant-numeric: tabular-nums; text-align: end;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.plt-urun-duzenle { color: var(--accent); font-size: 12px; font-weight: 700 }
+
+/* ---------- Düzenleme penceresi ---------- */
+.plt-pencere {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 0; border: 1px solid var(--line); border-radius: 20px;
+  background: var(--surface); color: var(--ink);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 22%);
+}
+.plt-pencere::backdrop { background: rgb(9 20 34 / 45%) }
+.plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; max-height: calc(100vh - 64px); overflow: auto }
+.plt-pencere-bas { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+.plt-pencere-bas small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase }
+.plt-pencere-bas h2 { margin: 3px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em }
+.plt-pencere-kapat {
+  flex: none; width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.plt-pencere-kapat:hover { border-color: var(--danger); color: var(--danger) }
+/* Pencere zaten kaydırılabilir; formun kendi şeridi yapışkan kalmasın,
+   iki ayrı kaydırma alanı üst üste binip düğmeleri gizliyordu. */
+.plt-pencere .plt-kaydet-serit { position: static }

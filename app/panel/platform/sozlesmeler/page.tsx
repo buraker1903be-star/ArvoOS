@@ -30,6 +30,7 @@ const sadelestir = (value: string) =>
 
 type IstekSatiri = {
   id: string;
+  contract_id: string | null;
   contract_no: string | null;
   customer_name: string | null;
   amount: number | null;
@@ -51,7 +52,7 @@ export default async function SozlesmelerPage() {
 
   const [{ data: istekler }, { data: kurumSatirlari }] = await Promise.all([
     admin.from("platform_subscription_requests")
-      .select("id,contract_no,customer_name,amount,currency,created_at,status,requested,target_organization_id,review_note,reviewed_at")
+      .select("id,contract_id,contract_no,customer_name,amount,currency,created_at,status,requested,target_organization_id,review_note,reviewed_at")
       .order("created_at", { ascending: false })
       .limit(100),
     admin.from("organizations").select("id,name,display_name,kind").order("name"),
@@ -82,6 +83,7 @@ export default async function SozlesmelerPage() {
     const oneri = ad ? kurumlar.find((kurum) => sadelestir(kurum.ad) === ad) : undefined;
     return {
       id: satir.id,
+      contractId: satir.contract_id,
       contractNo: satir.contract_no,
       customerName: satir.customer_name,
       amount: satir.amount,

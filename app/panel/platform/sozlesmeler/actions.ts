@@ -75,6 +75,20 @@ async function abonelikIsteginiOnayla__impl(formData: FormData) {
   }
 
   const simdi = new Date().toISOString();
+  /*
+    Dönem sonu yazılıyor. Eskiden yalnızca current_period_start
+    yazılıyordu ve dönem sonu boş kalıyordu; sonucu iki yerde görünüyordu:
+    lisans ekranında "Dönem sonu girilmedi" ve daha kötüsü, yenileme
+    hatırlatmaları hiç çıkmıyordu — lib/renewal-reminders.ts aktif
+    aboneliklerde current_period_end'e bakıyor. Yani onayladığımız her
+    abonelik sessizce hatırlatmasız kalıyordu.
+
+    Bir ay: PayTR bildirimi de dönemi bir ay uzatıyor
+    (arvo_record_paytr_payment), iki yerde iki farklı süre olmasın.
+  */
+  const donemSonu = new Date(simdi);
+  donemSonu.setMonth(donemSonu.getMonth() + 1);
+
   const { error: lisansHatasi } = await admin.from("organization_product_licenses").upsert(
     moduller.map((modul) => ({
       organization_id: hedefKurum,
@@ -85,6 +99,7 @@ async function abonelikIsteginiOnayla__impl(formData: FormData) {
       // Sözleşmede belirtilmemişse entegre: bugünkü varsayılan davranış.
       integrated: modul.integrated !== false,
       current_period_start: simdi,
+      current_period_end: donemSonu.toISOString(),
       suspended_at: null,
       suspension_reason: null,
       updated_by: userId,
@@ -94,7 +109,7 @@ async function abonelikIsteginiOnayla__impl(formData: FormData) {
   );
   if (lisansHatasi) throw new Error(`Lisanslar yazılamadı: ${lisansHatasi.message}`);
 
-  const { error } = await admin
+  const { data: guncellenen, error } = await admin
     .from("platform_subscription_requests")
     .update({
       status: "approved",
@@ -106,8 +121,17 @@ async function abonelikIsteginiOnayla__impl(formData: FormData) {
     })
     .eq("id", istekId)
     // Yarış durumunda ikinci onay lisansı yeniden yazmasın.
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id");
   if (error) throw new Error(`İstek güncellenemedi: ${error.message}`);
+  /*
+    Kaç satırın değiştiğine BAKILIYOR. PostgREST, koşula uyan satır
+    bulamadığında hata vermiyor; eskiden bu durumda kurucuya "3 modül
+    açıldı" yazılıyordu, oysa istek başka bir sekmede çoktan
+    sonuçlandırılmış olabilirdi. Yanlış bir "oldu" bilgisi, hiç bilgi
+    vermemekten kötü.
+  */
+  if (!guncellenen?.length) throw new Error("Bu istek başka bir yerde sonuçlandırılmış. Sayfayı yenileyin.");
 
   // Lisans yazıldığı anda ürün tarafı haberdar olmalı.
   await syncArcTenantQuietly(hedefKurum);
@@ -137,18 +161,27 @@ async function abonelikIsteginiReddet__impl(formData: FormData) {
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı değil.");
 
-  const { error } = await admin
+  const simdi = new Date().toISOString();
+  const { data: guncellenen, error } = await admin
     .from("platform_subscription_requests")
     .update({
       status: "rejected",
       review_note: not,
       reviewed_by: userId,
-      reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      reviewed_at: simdi,
+      updated_at: simdi,
     })
     .eq("id", istekId)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id");
   if (error) throw new Error(`İstek güncellenemedi: ${error.message}`);
+  /*
+    Burada hiç durum kontrolü yoktu ve PostgREST koşula uyan satır
+    bulamayınca hata da vermiyor: onaylanmış bir isteği reddetmeye
+    çalışmak hiçbir şey yapmadan "İstek reddedildi" yazıyordu. Kurucu
+    reddettiğini sanıyor, abonelik açık kalıyordu.
+  */
+  if (!guncellenen?.length) throw new Error("Bu istek başka bir yerde sonuçlandırılmış. Sayfayı yenileyin.");
 
   revalidatePath("/panel/platform/sozlesmeler");
   await flashSuccess("İstek reddedildi");
