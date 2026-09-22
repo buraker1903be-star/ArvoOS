@@ -200,7 +200,14 @@ export default async function PanelPage() {
     !canSeeFinance
       ? none
       : isPlatformOwner
-        ? supabase.from("billing_invoices").select("total").eq("status", "paid").gte("paid_at", window.monthStartIso)
+        /*
+          Kurucunun ayı: platformun TAHSİL ETTİĞİ para. Eskiden burada tüm
+          kurumların billing_invoices toplamı okunuyordu — o tablo kiracının
+          KENDİ MÜŞTERİLERİNE kestiği faturalar (Finans modülü oraya yazıyor).
+          Kurucu ekranı, müşterilerinin cirosunu kendi geliri gibi
+          gösteriyordu.
+        */
+        ? supabase.from("organization_payment_requests").select("amount").eq("status", "approved").gte("reviewed_at", window.monthStartIso)
         : supabase.from("billing_invoices").select("total").eq("organization_id", organizationId).eq("status", "paid").gte("paid_at", window.monthStartIso),
     canSeeCrm
       ? supabase.from("activity_logs").select("id,actor_user_id,action,entity_type,entity_id,created_at,metadata").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(7)
@@ -251,7 +258,9 @@ export default async function PanelPage() {
   const customerName = new Map(((customerRows ?? []) as { id: string; customer_name: string | null }[]).map((row) => [row.id, formatPersonName(row.customer_name)]));
 
   const items = (opportunities ?? []) as { stage: string; estimated_value: number | null; probability: number | null; created_at: string }[];
-  const monthlyRevenue = ((paidInvoices ?? []) as { total: number | null }[]).reduce((sum, invoice) => sum + Number(invoice.total ?? 0), 0);
+  /* Kurucuda alan adı "amount" (tahsilat), kurumda "total" (fatura). */
+  const monthlyRevenue = ((paidInvoices ?? []) as { total?: number | null; amount?: number | null }[])
+    .reduce((sum, satir) => sum + Number(satir.total ?? satir.amount ?? 0), 0);
   const stageCount = (stage: string) => items.filter((item) => item.stage === stage).length;
   const activeOpportunities = items.filter((item) => !["won", "lost", "completed"].includes(item.stage));
   const pipelineValue = activeOpportunities.reduce((sum, item) => sum + Number(item.estimated_value ?? 0), 0);

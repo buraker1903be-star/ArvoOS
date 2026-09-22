@@ -8,7 +8,6 @@ import { abonelikHatirlatmasiGonder } from "../actions";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 
 type Subscription = { id: string; organization_id: string; provider: string; plan_code: string; status: string; currency: string; unit_amount: number; interval: string; current_period_end: string | null; organizations: { name?: string; display_name?: string | null } | { name?: string; display_name?: string | null }[] | null };
-type Invoice = { id: string; organization_id: string; status: string; currency: string; total: number; paid_at: string | null; created_at: string };
 
 const money = (amount: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(amount / 100);
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
@@ -23,9 +22,17 @@ export default async function BillingPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const [{ data: subscriptions }, { data: invoices }, { data: internalOrganizations }, { data: productLicenses }, { data: organizationRows }] = await Promise.all([
+  const [{ data: subscriptions }, { data: tahsilatlar }, { data: aboneOdemeleri }, { data: internalOrganizations }, { data: productLicenses }, { data: organizationRows }] = await Promise.all([
     supabase.from("billing_subscriptions").select("id,organization_id,provider,plan_code,status,currency,unit_amount,interval,current_period_end,organizations(name,display_name)").order("created_at", { ascending: false }),
-    supabase.from("billing_invoices").select("id,organization_id,status,currency,total,paid_at,created_at").order("created_at", { ascending: false }).limit(50),
+    /*
+      Platformun TAHSİL ETTİĞİ para: onaylanmış havale/EFT bildirimleri ve
+      bireysel abone ödemeleri. Eskiden burada billing_invoices okunuyordu —
+      o tablo KİRACININ KENDİ MÜŞTERİLERİNE kestiği faturalar (Finans modülü
+      oraya yazıyor). Konsol, AkademikMerkez'in müşterilerinden tahsil
+      ettiğini Arvo'nun geliri gibi topluyordu.
+    */
+    supabase.from("organization_payment_requests").select("amount,currency,status,reviewed_at,organization_id").eq("status", "approved").order("reviewed_at", { ascending: false }).limit(50),
+    supabase.from("subscriber_payments").select("amount,currency,paid_at").order("paid_at", { ascending: false }).limit(50),
     supabase.from("organizations").select("id").eq("kind", "internal"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due"]),
     supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
@@ -42,13 +49,17 @@ export default async function BillingPage() {
   const isCustomer = (row: { organization_id: string }) => !internal.has(row.organization_id);
 
   const subscriptionRows = (subscriptions ?? []) as Subscription[];
-  const invoiceRows = (invoices ?? []) as Invoice[];
+  const orgAdi = new Map(((organizationRows ?? []) as { id: string; name: string; display_name: string | null }[]).map((row) => [row.id, row.display_name || row.name]));
+  const tahsilatSatirlari = ((tahsilatlar ?? []) as { amount: number; currency: string; reviewed_at: string | null; organization_id: string }[]).filter(isCustomer);
+  const aboneOdemeSatirlari = (aboneOdemeleri ?? []) as { amount: number; currency: string; paid_at: string | null }[];
   const active = subscriptionRows.filter((item) => (item.status === "active" || item.status === "trialing") && isCustomer(item));
   const mrr = active.filter((item) => item.interval === "month").reduce((sum, item) => sum + Number(item.unit_amount), 0)
     + Math.round(active.filter((item) => item.interval === "year").reduce((sum, item) => sum + Number(item.unit_amount), 0) / 12);
   const pastDue = subscriptionRows.filter((item) => item.status === "past_due" && isCustomer(item)).length;
-  const paidTotal = invoiceRows.filter((item) => item.status === "paid" && isCustomer(item)).reduce((sum, item) => sum + Number(item.total), 0);
-  const currency = active[0]?.currency ?? invoiceRows[0]?.currency ?? "TRY";
+  // Kurum havalesi + bireysel abone ödemesi: platformun gerçekten aldığı para.
+  const paidTotal = tahsilatSatirlari.reduce((sum, satir) => sum + Number(satir.amount), 0)
+    + aboneOdemeSatirlari.reduce((sum, satir) => sum + Number(satir.amount), 0);
+  const currency = active[0]?.currency ?? tahsilatSatirlari[0]?.currency ?? "TRY";
 
   return <div className="stg plt">
     <div className="panel-pagehead">
@@ -135,20 +146,31 @@ export default async function BillingPage() {
         ) : <div className="stg-empty"><StgIcon name="box" size={22} /><p>Henüz abonelik kaydı yok. Ödeme sağlayıcısı bağlandığında abonelikler burada listelenir.</p></div>}
       </StgSection>
 
-      <StgSection id="faturalar" wide icon="doc" tone="info" kicker="FATURALAR" title="Son faturalar" aside={<span className="status-pill">{invoiceRows.length} kayıt</span>}>
-        {invoiceRows.length ? (
+      {/*
+        Burada "Son faturalar" diye KİRACININ KENDİ MÜŞTERİLERİNE kestiği
+        faturalar listeleniyordu (billing_invoices; Finans modülü oraya
+        yazıyor). Konsol, AkademikMerkez'in müşterilerinden tahsil ettiğini
+        Arvo'nun geliri gibi gösteriyordu — hem yanlış hem de kiracının işi.
+
+        Yerine platformun kendi tahsilatı: onaylanmış havale bildirimleri.
+      */}
+      <StgSection id="tahsilat" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler" aside={<span className="status-pill">{tahsilatSatirlari.length} kayıt</span>}>
+        {tahsilatSatirlari.length ? (
           <div className="stg-list">
-            {invoiceRows.map((row) => (
-              <div key={row.id} className="plt-row">
+            {tahsilatSatirlari.map((row, sira) => (
+              <div key={`${row.organization_id}-${row.reviewed_at}-${sira}`} className="plt-row">
                 <span className="stg-row-main">
-                  <span className="stg-row-icon" data-tone={statusTones[row.status] ?? "neutral"}><StgIcon name="doc" size={16} /></span>
-                  <span><b>{money(Number(row.total), row.currency)}</b><small>{date(row.created_at)}{row.paid_at ? ` · ödendi ${date(row.paid_at)}` : ""}</small></span>
+                  <span className="stg-row-icon" data-tone="success"><StgIcon name="wallet" size={16} /></span>
+                  <span>
+                    <b>{money(Number(row.amount), row.currency)}</b>
+                    <small>{orgAdi.get(row.organization_id) ?? "Kurum"} · onay {date(row.reviewed_at)}</small>
+                  </span>
                 </span>
-                <span className="status-pill" data-tone={statusTones[row.status] ?? "neutral"}>{statusLabels[row.status] ?? row.status}</span>
+                <Link className="kiraci-baglanti" href={`/panel/platform?organization=${row.organization_id}`}>Kiracı →</Link>
               </div>
             ))}
           </div>
-        ) : <div className="stg-empty"><StgIcon name="doc" size={22} /><p>Henüz fatura kaydı yok.</p></div>}
+        ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Onaylanmış ödeme bildirimi yok. Havale/EFT dekontları onaylandığında burada görünür.</p></div>}
       </StgSection>
     </div>
   </div>;
