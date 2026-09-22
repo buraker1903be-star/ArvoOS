@@ -318,9 +318,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                     return (
                       <tr key={item.id}>
                         <td>
-                          {/* Satırın tamamı değil, adı tıklanıyor: satırı
-                              link yapmak tablo içindeki başka hedeflerle
-                              çakışır ve klavyeyle gezilemez olurdu. */}
+                          {/* Satırın tamamı tıklanabilir: bu bağlantı bir
+                              ::after ile satırı kaplıyor (CSS). Gerçek bir
+                              <a> olduğu için klavye, orta tık ve "yeni
+                              sekmede aç" çalışmaya devam ediyor — onClick
+                              ile yönlendirme olsaydı hiçbiri olmazdı. */}
                           <Link className="plt-kiraci-baglanti" href={`/panel/platform?organization=${item.id}`}>
                             <span className="plt-kiraci-avatar" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>{basHarfleri(ad)}</span>
                             <span>
@@ -349,9 +351,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                           {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
                         </td>
                         <td>{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</td>
-                        <td className="plt-kiracilar-uc">
-                          <Link className="kiraci-baglanti" href={`/panel/platform?organization=${item.id}`} aria-label={`${ad} dosyasını aç`}>Dosya →</Link>
-                        </td>
+                        {/* Ok bir bağlantı değil, yalnızca işaret: satırın
+                            kendisi zaten dosyaya gidiyor ve aynı hedefe
+                            ikinci bir bağlantı klavyeyle gezerken her
+                            satırı iki kez durak yapardı. */}
+                        <td className="plt-kiracilar-uc" aria-hidden="true">›</td>
                       </tr>
                     );
                   })}

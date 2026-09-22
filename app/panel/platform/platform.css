@@ -547,7 +547,7 @@
 /* Kota hücresi aşımda kırmızı: "dikkat gerektiren" ayrı bir menü öğesiydi,
    artık satırın kendisi söylüyor. */
 .plt-kiracilar td[data-tone="danger"] { color: var(--danger); font-weight: 650 }
-.plt-kiracilar-uc { text-align: right }
+.plt-kiracilar-uc { text-align: right; width: 1% }
 
 /* Ad hücresi: avatar + ad + çalışma alanı. Satırın tamamını link yapmak
    tablodaki öbür hedeflerle çakışır ve klavyeyle gezilemez olurdu. */
@@ -565,3 +565,16 @@
   .plt-suzgec-form > div { grid-column: auto }
   .plt-suzgec-form button, .plt-suzgec-form a { flex: 1 }
 }
+
+/* Satırın tamamı tıklanabilir. Ad hücresindeki bağlantı bir ::after ile
+   satırı kaplıyor; gerçek bir <a> olduğu için klavye, orta tık ve "yeni
+   sekmede aç" çalışmaya devam ediyor — onClick ile yönlendirme olsaydı
+   hiçbiri olmazdı (CRM listelerindeki kalıbın aynısı). */
+.plt-kiracilar tbody tr { position: relative; cursor: pointer }
+.plt-kiracilar tbody tr:hover { background: color-mix(in srgb, var(--accent-100) 38%, var(--surface)) }
+.plt-kiracilar tbody tr:focus-within { outline: 2px solid var(--accent); outline-offset: -2px }
+.plt-kiracilar tbody td:first-child .plt-kiraci-baglanti { position: static }
+.plt-kiracilar tbody td:first-child .plt-kiraci-baglanti::after { content: ""; position: absolute; inset: 0; z-index: 0 }
+/* Satır içindeki gerçek etkileşimli öğeler kaplamanın üstünde kalmalı. */
+.plt-kiracilar tbody td :is(a:not(.plt-kiraci-baglanti), button, select, input, form) { position: relative; z-index: 1 }
+.plt-kiracilar-uc { color: var(--dim); font-size: 16px }
