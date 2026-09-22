@@ -86,6 +86,8 @@ export default async function BillingPage() {
       topluyor, PayTR'den gelen kurum ödemelerini atlıyordu.
     */
     supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product").eq("status", "approved"),
+    // tuzak-tamam: burada ABONELİK değil TAHSİLAT olarak okunuyor; bu tablo
+    // yalnızca arvo_record_paytr_payment tarafından yazılan kart ödeme günlüğü.
     supabase.from("billing_subscriptions").select("id,organization_id,product,unit_amount,currency,created_at,provider"),
     supabase.from("subscriber_payments").select("id,amount,currency,paid_at"),
   ]);

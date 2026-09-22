@@ -56,6 +56,8 @@ export default async function SubscribersPage() {
   const active = subscribers.filter(hasAccess);
   const trialing = subscribers.filter((row) => row.status === "trialing" && hasAccess(row));
   const paying = active.filter((row) => row.status === "active");
+  // tuzak-tamam: sınır 1000 ve tamamını kapsamadığında `eksikKapsam`
+  // hem widget notunda hem listenin üstünde yazıyor; sessiz bir eksilme yok.
   const monthlyRevenue = paying.reduce((sum, row) => sum + Number(plans.get(row.product)?.individual_monthly_fee ?? 0), 0);
   const kapali = subscribers.length - active.length;
   // Ücreti girilmemiş ürün kimseden para tahsil edemez; kurucunun görmesi gereken ilk şey bu.

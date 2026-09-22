@@ -56,10 +56,18 @@ export default async function PersonnelActivityPage() {
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Personel hareketlerini görme yetkiniz yok.");
-  const [{ data: presenceData }, { data: employeeData }, { data: sessionData }] = await Promise.all([
+  /*
+    Bugünün oturumları AYRI ve sınırsız sorguda. Eskiden hepsi tek listeden
+    (son 250 kayıt) süzülüyordu: kalabalık bir kurumda günde 250'den çok
+    giriş olduğunda "Bugünkü giriş" ve "Ortalama oturum" sessizce eksik
+    çıkacaktı. Aşağıdaki 250'lik liste yalnızca GEÇMİŞ dökümü için.
+  */
+  const { onlineCutoff, todayStart, todayKey, yesterdayKey } = activityClock();
+  const [{ data: presenceData }, { data: employeeData }, { data: sessionData }, { data: todayData }] = await Promise.all([
     supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id).order("last_seen_at", { ascending: false }),
     supabase.from("hr_employees").select("id,user_id,full_name,job_title").eq("organization_id", membership.organization_id).order("full_name"),
     supabase.from("user_session_logs").select("id,user_id,employee_id,login_at,last_seen_at,logout_at,logout_reason,ip_address,current_path").eq("organization_id", membership.organization_id).order("login_at", { ascending: false }).limit(250),
+    supabase.from("user_session_logs").select("login_at,last_seen_at,logout_at").eq("organization_id", membership.organization_id).gte("login_at", new Date(todayStart).toISOString()),
   ]);
   const presences = (presenceData ?? []) as Presence[];
   const employees = (employeeData ?? []) as Employee[];
@@ -71,13 +79,12 @@ export default async function PersonnelActivityPage() {
   const pathByUser = new Map<string, string>();
   for (const session of sessions) { if (session.current_path && !session.logout_at && !pathByUser.has(session.user_id)) pathByUser.set(session.user_id, session.current_path); }
 
-  const { onlineCutoff, todayStart, todayKey, yesterdayKey } = activityClock();
   const connected = employees.filter((item) => item.user_id);
   const isOnline = (employee: Employee) => new Date(presenceByUser.get(employee.user_id!)?.last_seen_at ?? 0).getTime() >= onlineCutoff;
   const onlineEmployees = connected.filter(isOnline);
   const offlineEmployees = connected.filter((employee) => !isOnline(employee));
   const onlineCount = onlineEmployees.length;
-  const todaySessions = sessions.filter((item) => new Date(item.login_at).getTime() >= todayStart);
+  const todaySessions = (todayData ?? []) as { login_at: string; last_seen_at: string; logout_at: string | null }[];
   const openSessions = sessions.filter((item) => !item.logout_at && new Date(item.last_seen_at).getTime() >= onlineCutoff);
   const averageMinutes = todaySessions.length ? Math.round(todaySessions.reduce((total, item) => total + (new Date(item.logout_at ?? item.last_seen_at).getTime() - new Date(item.login_at).getTime()), 0) / todaySessions.length / 60000) : 0;
   const sessionGroups = groupByDay(sessions);

@@ -125,8 +125,21 @@ kuralı önce anlık görüntüye uygulayıp testleri çalıştırın.
 
 ## Kontroller
 
-`npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run test:db` — hepsi CI'da
+`npx tsc --noEmit`, `npm run lint`, `npm run test:unit`, `npm run test:db`,
+`npm run check:rakamlar` — hepsi CI'da
 (`.github/workflows/ci.yml`) çalışır. Derleme CI'da yapılmaz.
+
+**Rakam denetimi** (`npm run check:rakamlar`): ekrandaki sayıların iki
+bilinen yanlış kaynağını arar. Birincisi `.limit()` ile sınırlı bir
+sorgudan `.reduce()` ile toplam almak — 22.09.2026'da konsolun üç
+sayfasında ayrı ayrı çıktı ("Tahsil edildi" son 50 kaydın toplamıydı) ve
+sınıra ulaşılana kadar hiçbir belirti vermiyor. İkincisi adı doğru gelen
+ama başka bir şey tutan tablodan okumak: `billing_invoices` kiracının
+KENDİ müşterilerine kestiği faturalar, `billing_subscriptions` bir abonelik
+kütüğü değil ödeme günlüğü, `ai_credits_used` hiç yazılmıyor. Bilerek
+kullanıyorsanız satırın üstündeki yorum bloğuna `tuzak-tamam: <sebep>`
+yazın — sebebi yazmak, denetimi susturmanın bedeli. Yeni bir tuzak
+öğrenildiğinde betikteki listeye eklenir.
 
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)

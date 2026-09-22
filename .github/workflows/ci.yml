@@ -49,3 +49,9 @@ jobs:
       # sütun adı derlemede görünmez, üretimde sessizce boş veri döndürür.
       - name: Şema sözleşmesi
         run: npm run check:schema
+      # Ekrandaki sayıların iki bilinen yanlış kaynağı (scripts/check-rakamlar.mjs):
+      # .limit() ile sınırlı sorgudan toplam almak ve tuzak tablodan okumak.
+      # İkisi de derlemede, lint'te ve şema denetiminde görünmüyor — sorgu
+      # çalışıyor, sayı yazılıyor, yalnızca yanlış oluyor.
+      - name: Rakam denetimi
+        run: npm run check:rakamlar

@@ -15,6 +15,7 @@
     "test:db": "node --test 'tests/db/*.test.mjs'",
     "check:migrations": "node scripts/check-migrations.mjs",
     "check:schema": "node scripts/check-schema-usage.mjs",
+    "check:rakamlar": "node scripts/check-rakamlar.mjs",
     "db:new": "node scripts/new-migration.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
