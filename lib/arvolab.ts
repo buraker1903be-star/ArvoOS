@@ -19,6 +19,8 @@ type ArvolabLicense = {
   status: string;
   planCode: string | null;
   currentPeriodEnd: string | null;
+  /** 1 kredi = 1.000 karakter. null: hak bildirilmedi, ArvoLab kapı kapatmaz. */
+  aiCreditLimit: number | null;
 };
 
 export const arvolabConfigured = () =>
@@ -44,6 +46,13 @@ export async function pushArvolabLicense(license: ArvolabLicense): Promise<"sync
     license_status: license.status,
     plan_code: license.planCode,
     current_period_end: license.currentPeriodEnd,
+    /*
+      AI kredi hakkı da yansıtılıyor: ArvoLab kapıyı kendi tarafında
+      uyguluyor ve her istekte ArvoOS'a sormuyor. Yansıtılmazsa (null)
+      ArvoLab kimseyi engellemez — bildirilmemiş bir hak, "hak yok"
+      demek değil.
+    */
+    ai_credit_limit: license.aiCreditLimit,
     synced_at: new Date().toISOString(),
   }, { onConflict: "id" });
   if (error) {
@@ -167,10 +176,12 @@ export async function syncArvolabLicense(organizationId: string) {
   const admin = createAdminClient();
   if (!admin) return "failed" as const;
 
-  const [{ data: organization }, { data: license }] = await Promise.all([
+  const [{ data: organization }, { data: license }, { data: cekirdek }] = await Promise.all([
     admin.from("organizations").select("name,display_name").eq("id", organizationId).maybeSingle(),
     admin.from("organization_product_licenses").select("status,plan_code,current_period_end")
       .eq("organization_id", organizationId).eq("product", "arvolab").maybeSingle(),
+    // AI kredi hakkı çekirdek lisansta; ek ürün tablosunda değil.
+    admin.from("organization_licenses").select("ai_credit_limit").eq("organization_id", organizationId).maybeSingle(),
   ]);
   if (!organization) return "failed" as const;
 
@@ -181,6 +192,7 @@ export async function syncArvolabLicense(organizationId: string) {
     status,
     planCode: license?.plan_code ?? null,
     currentPeriodEnd: license?.current_period_end ?? null,
+    aiCreditLimit: cekirdek?.ai_credit_limit ?? null,
   });
 
   // Üye listesi kurumu yazdıktan SONRA: arvoos_members organizations'a
