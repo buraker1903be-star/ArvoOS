@@ -123,10 +123,11 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         .in("status", ["active", "trialing", "past_due"]);
   const acikUrunler = new Set(((urunLisanslari ?? []) as { product: string }[]).map((satir) => satir.product));
   const digerUygulamalar = [
-    // ArvoLab kendi yolundan: tek kullanımlık oturum bağlantısıyla, ikinci
-    // bir giriş ekranı görmeden. Aynı sekmede çünkü yönlendirme zinciri
-    // yeni sekmede pencere engelleyicilere takılabiliyor.
-    { kod: "arvolab", ad: "ArvoLab", href: "/panel/uygulama/arvolab", ayniSekme: true },
+    /* ArvoLab kendi yolundan: tek kullanımlık oturum bağlantısıyla, ikinci
+       bir giriş ekranı görmeden. Yeni sekmede — kişi ArvoOS'taki işini
+       kaybetmesin. Kullanıcı tıklamasıyla açıldığı için yönlendirme
+       zinciri pencere engelleyicisine takılmıyor. */
+    { kod: "arvolab", ad: "ArvoLab", href: "/panel/uygulama/arvolab", ayniSekme: false },
     { kod: "arc", ad: "Arc", href: "https://arc.arvo-os.com", ayniSekme: false },
     { kod: "randevu", ad: "Arvo Randevu", href: "https://randevu.arvo-os.com", ayniSekme: false },
   ].filter((uygulama) => acikUrunler.has(uygulama.kod));

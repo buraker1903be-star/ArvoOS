@@ -4,6 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
 import { PAKET_ADI, para, tarih } from "../bicim";
 import { productName } from "@/lib/products";
+import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
 import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -223,6 +224,53 @@ export default async function BillingPage() {
 
   const sonTahsilatlar = tahsilatlar.slice(0, 20);
 
+  /*
+    Abonelikler kiracı bazında gruplanıyor. Düz listede aynı kurumun üç
+    aboneliği listenin üç ayrı yerine dağılıyordu ve "bu kurum bize ayda ne
+    ödüyor" sorusunun yanıtı hiçbir satırda yazmıyordu.
+
+    Sıralama GELİRE göre: bir finans ekranında ilk bakılan şey en çok kimin
+    ödediği. Denemedekiler toplama girmiyor — henüz ödemiyorlar; grup
+    başlığı kaç tanesinin denemede olduğunu ayrıca yazıyor.
+  */
+  const grupHarita = new Map<string, AbonelikGrubu>();
+  for (const satir of abonelikler) {
+    let grup = grupHarita.get(satir.organizationId);
+    if (!grup) {
+      grup = {
+        organizationId: satir.organizationId,
+        ad: satir.organizationName,
+        aylikToplam: 0,
+        aylikToplamAdi: "",
+        kalemler: [],
+        odeyen: 0,
+        denemede: 0,
+        geciken: 0,
+      };
+      grupHarita.set(satir.organizationId, grup);
+    }
+    if (satir.durum === "trialing") grup.denemede += 1;
+    else if (satir.durum === "past_due") { grup.geciken += 1; grup.aylikToplam += Number(satir.monthlyFee ?? 0); }
+    else { grup.odeyen += 1; grup.aylikToplam += Number(satir.monthlyFee ?? 0); }
+
+    grup.kalemler.push({
+      urun: satir.urun,
+      urunAdi: satir.urunAdi,
+      durum: satir.durum,
+      durumAdi: statusLabels[satir.durum] ?? satir.durum,
+      tone: statusTones[satir.durum] ?? "neutral",
+      planAdi: satir.planCode ? PAKET_ADI[satir.planCode] ?? satir.planCode : null,
+      ucret: satir.monthlyFee ? `${para(Number(satir.monthlyFee), currency)} / ay` : null,
+      donemAdi: satir.durum === "trialing"
+        ? tarih(satir.denemeSonu)
+        : satir.donemSonu ? tarih(satir.donemSonu) : "girilmedi",
+      donemNotu: satir.durum === "trialing" ? "Deneme bitişi" : "Dönem sonu",
+    });
+  }
+  const abonelikGruplari = [...grupHarita.values()]
+    .map((grup) => ({ ...grup, aylikToplamAdi: grup.aylikToplam ? para(grup.aylikToplam, currency) : "—" }))
+    .sort((a, b) => b.aylikToplam - a.aylikToplam || a.ad.localeCompare(b.ad, "tr"));
+
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Abonelikler</h1><p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p></div>
@@ -309,37 +357,11 @@ export default async function BillingPage() {
 
       <StgSection
         id="abonelikler" wide icon="box" tone="gold" kicker="ABONELİKLER" title="Kurum abonelikleri"
-        description="Kiracı × ürün. Kaynak lisans kayıtları: ödemesi henüz gelmemiş ya da elle açılmış abonelikler de burada."
+        description="Kiracı bazında gruplu; başlıkta o kurumun aylık toplamı. Kaynak lisans kayıtları, yani ödemesi henüz gelmemiş ya da elle açılmış abonelikler de burada."
         aside={<span className="status-pill">{abonelikler.length} abonelik</span>}
       >
-        {abonelikler.length ? (
-          <div className="stg-list">
-            {abonelikler.map((satir) => (
-              <div key={`${satir.organizationId}-${satir.urun}`} className="plt-row">
-                <span className="stg-row-main">
-                  <span className="stg-row-icon" data-tone={statusTones[satir.durum] ?? "neutral"}><StgIcon name="building" size={16} /></span>
-                  <span>
-                    <b>{satir.organizationName} · {satir.urunAdi}</b>
-                    <small>
-                      {satir.planCode ? `${PAKET_ADI[satir.planCode] ?? satir.planCode} · ` : ""}
-                      {/* Ücreti girilmemiş abonelik ₺0 yazmıyor: sıfır ücret
-                          bir fiyat, eksik ücret ise eksik bir kayıt. */}
-                      {satir.monthlyFee ? `${para(Number(satir.monthlyFee), currency)} / ay` : "aylık ücret girilmedi"}
-                      {satir.durum === "trialing"
-                        ? ` · deneme bitişi ${tarih(satir.denemeSonu)}`
-                        : satir.donemSonu ? ` · dönem sonu ${tarih(satir.donemSonu)}` : " · dönem sonu girilmedi"}
-                    </small>
-                  </span>
-                </span>
-                <span className="plt-row-uc">
-                  <span className="status-pill" data-tone={statusTones[satir.durum] ?? "neutral"}>{statusLabels[satir.durum] ?? satir.durum}</span>
-                  {/* Çapraz listeden kiracı dosyasına: kurucu bir satırda
-                      sorun görünce o kiracının tamamına bakmak istiyor. */}
-                  <Link className="kiraci-baglanti" href={`/panel/platform/licenses?organization=${satir.organizationId}`}>Lisans →</Link>
-                </span>
-              </div>
-            ))}
-          </div>
+        {abonelikGruplari.length ? (
+          <AbonelikListesi gruplar={abonelikGruplari} />
         ) : <div className="stg-empty"><StgIcon name="box" size={22} /><p>Aktif, denemede ya da ödemesi gecikmiş abonelik yok.</p></div>}
       </StgSection>
 

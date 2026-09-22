@@ -993,3 +993,59 @@ dialog.plt-pencere {
   margin: 12px 0 0; color: var(--muted); font-size: 12px;
 }
 .plt-matris-lejant > span { display: inline-flex; align-items: center; gap: 6px }
+
+/* ============================================================
+   KURUM ABONELİKLERİ — kiracı bazında
+
+   Düz listede aynı kurumun üç aboneliği listenin üç ayrı yerine
+   dağılıyordu ve "bu kurum bize ayda ne ödüyor" sorusunun yanıtı hiçbir
+   satırda yazmıyordu. Her kurum bir grup, aylık toplam başlıkta.
+   ============================================================ */
+.plt-abonelikler .plt-uye-arac { padding: 0 0 14px }
+.plt-abonelik-gruplar { display: grid; gap: 10px }
+
+.plt-abonelik-grup {
+  border: 1px solid var(--line); border-radius: 16px;
+  background: var(--surface); overflow: hidden;
+}
+.plt-abonelik-grup > header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-2);
+}
+.plt-abonelik-kim { flex: 1 1 auto; min-width: 0 }
+.plt-abonelik-kim b { display: block; font-size: 14px; font-weight: 650; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-abonelik-kim small { display: block; margin-top: 1px; color: var(--muted); font-size: 12px }
+/* Toplam sağda ve iri: finans ekranında ilk okunan sayı bu. */
+.plt-abonelik-toplam { flex: none; text-align: end }
+.plt-abonelik-toplam b { display: block; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums }
+.plt-abonelik-toplam small { display: block; color: var(--muted); font-size: 11.5px }
+
+.plt-abonelik-kalemler { display: grid }
+.plt-abonelik-kalem {
+  display: grid;
+  grid-template-columns: minmax(90px, .9fr) minmax(90px, 1fr) minmax(110px, 1.1fr) minmax(90px, 1fr) minmax(90px, .9fr);
+  align-items: center; gap: 12px;
+  padding: 9px 16px; font-size: 13px;
+}
+.plt-abonelik-kalem + .plt-abonelik-kalem { border-top: 1px solid var(--line-soft) }
+/* Etiket ızgara hücresinin çocuğu olduğu için sütunu boydan boya
+   dolduruyor ve rozet değil şerit gibi görünüyordu. */
+.plt-abonelik-kalem > .plt-urun-etiketi { justify-self: start }
+.plt-abonelik-paket { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.plt-abonelik-ucret { font-weight: 650; font-variant-numeric: tabular-nums }
+/* Ücreti girilmemiş kayıt sönük: ₺0 bir fiyattır, eksik ücret eksik bir
+   kayıttır — ikisi aynı görünmemeli. */
+.plt-abonelik-ucret[data-yok="true"] { color: var(--muted); font-weight: 500 }
+.plt-abonelik-donem { color: var(--muted); font-variant-numeric: tabular-nums }
+
+@media (max-width: 900px) {
+  .plt-abonelik-grup > header { flex-wrap: wrap }
+  .plt-abonelik-kalem {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    row-gap: 6px; padding: 12px 16px;
+  }
+  .plt-abonelik-kalem > .plt-urun-etiketi { grid-column: 1 / -1; justify-self: start }
+  .plt-abonelik-kalem [data-etiket]::before { content: attr(data-etiket) ": "; color: var(--muted); font-size: 12px }
+}
