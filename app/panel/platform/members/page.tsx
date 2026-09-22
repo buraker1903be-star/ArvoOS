@@ -12,8 +12,21 @@ export default async function MembersPage() {
 
   const { rows, arvolabReachable, kullanicilarTam } = await getMemberDirectory();
   const people = new Set(rows.map((row) => row.email ?? row.userId));
-  const individuals = rows.filter((row) => row.individual);
-  const blocked = rows.filter((row) => !row.access);
+  const individuals = new Set(rows.filter((row) => row.individual).map((row) => row.email ?? row.userId));
+  /*
+    Sayılar ÜRÜN KAYDI değil KİŞİ × KURUM üzerinden. Liste kiracı bazında
+    ve anahtar da kişinin o kurumdaki erişimini açıp kapatıyor; widget ürün
+    kaydı sayarsa ekrandaki anahtar sayısıyla tutmuyor. Aynı kişinin bir
+    kurumda beş ürünü varsa bu bir erişimdir, beş değil.
+  */
+  const uyelikler = new Map<string, boolean>();
+  for (const row of rows) {
+    const grup = row.individual ? "bireysel" : row.organizationId ?? `ad:${row.scope}`;
+    const anahtar = `${grup}:${row.userId}`;
+    uyelikler.set(anahtar, (uyelikler.get(anahtar) ?? false) || row.access);
+  }
+  const acikSayisi = [...uyelikler.values()].filter(Boolean).length;
+  const blocked = uyelikler.size - acikSayisi;
 
   return <div className="stg plt">
     <div className="panel-pagehead">
@@ -58,10 +71,10 @@ export default async function MembersPage() {
       kimse yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
     <div className="stg-widgets" aria-label="Üye özeti">
-      <StgWidget tone="info" icon="users" label="Kişi" value={people.size} note={`${rows.length} ürün kaydı`} />
-      <StgWidget tone="success" icon="check" label="Erişimi açık" value={rows.length - blocked.length} note="Ürüne şu an girebiliyor" />
-      <StgWidget tone={individuals.length ? "gold" : "neutral"} icon="box" label="Bireysel" value={individuals.length} note={individuals.length ? "Kuruma bağlı değil" : "Bireysel abone yok"} />
-      <StgWidget tone={blocked.length ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={blocked.length} note={blocked.length ? "Lisans, abonelik ya da üyelik kapalı" : "Kapalı kayıt yok"} />
+      <StgWidget tone="info" icon="users" label="Kişi" value={people.size} note={`${uyelikler.size} kurum üyeliği · ${rows.length} ürün kaydı`} />
+      <StgWidget tone="success" icon="check" label="Erişimi açık" value={acikSayisi} note="En az bir ürüne girebiliyor" />
+      <StgWidget tone={individuals.size ? "gold" : "neutral"} icon="box" label="Bireysel" value={individuals.size} note={individuals.size ? "Kuruma bağlı değil" : "Bireysel abone yok"} />
+      <StgWidget tone={blocked ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={blocked} note={blocked ? "Lisans, abonelik ya da üyelik kapalı" : "Kapalı üyelik yok"} />
     </div>
 
     {rows.length ? (
@@ -72,7 +85,7 @@ export default async function MembersPage() {
 
     <p className="stg-muted">
       <StgIcon name="users" size={16} />
-      Bir kişi birden fazla üründe görünebilir; aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
+      Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
     </p>
   </div>;
 }
