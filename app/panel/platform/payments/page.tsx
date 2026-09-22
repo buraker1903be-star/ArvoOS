@@ -6,6 +6,7 @@ import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../..
 import { reviewBankTransferPayment } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
+import Link from "next/link";
 
 const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
 const dateTime = (value: string) => new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "medium", timeStyle: "short" });
@@ -92,7 +93,14 @@ export default async function PaymentApprovalsPage() {
             <StgSection
               key={payment.id} id={`odeme-${payment.id}`} icon="wallet" tone={tone}
               kicker={organization?.slug ?? "KURUM"} title={`${organization?.name ?? "Kurum"} · ${formatTry(payment.amount)}`}
-              aside={<span className="status-pill" data-tone={tone}>{statusLabels[payment.status] ?? payment.status}</span>}
+              aside={
+                <span className="plt-row-uc">
+                  <span className="status-pill" data-tone={tone}>{statusLabels[payment.status] ?? payment.status}</span>
+                  {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir:
+                      lisansı ne durumda, kaç kullanıcısı var. */}
+                  <Link className="kiraci-baglanti" href={`/panel/platform?organization=${payment.organization_id}`}>Kiracı →</Link>
+                </span>
+              }
             >
               <dl className="stg-list">
                 <StgValueRow label="Ürün" value={productName(payment.product ?? "arvoos")} />

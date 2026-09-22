@@ -122,7 +122,12 @@ export default async function BillingPage() {
                     <span className="stg-row-icon" data-tone={statusTones[row.status] ?? "neutral"}><StgIcon name="building" size={16} /></span>
                     <span><b>{relation?.display_name || relation?.name || row.organization_id}</b><small>{planLabels[row.plan_code] ?? row.plan_code} · {money(Number(row.unit_amount), row.currency)} / {row.interval === "year" ? "yıl" : "ay"} · {row.provider}{row.current_period_end ? ` · dönem sonu ${date(row.current_period_end)}` : ""}</small></span>
                   </span>
-                  <span className="status-pill" data-tone={statusTones[row.status] ?? "neutral"}>{statusLabels[row.status] ?? row.status}</span>
+                  <span className="plt-row-uc">
+                    <span className="status-pill" data-tone={statusTones[row.status] ?? "neutral"}>{statusLabels[row.status] ?? row.status}</span>
+                    {/* Çapraz listeden kiracı dosyasına: kurucu bir satırda
+                        sorun görünce o kiracının tamamına bakmak istiyor. */}
+                    <Link className="kiraci-baglanti" href={`/panel/platform?organization=${row.organization_id}`}>Kiracı →</Link>
+                  </span>
                 </div>
               );
             })}
