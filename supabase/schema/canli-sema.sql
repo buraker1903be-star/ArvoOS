@@ -10906,6 +10906,9 @@ alter table public.hr_leave_requests alter column status set default 'pending'::
 
 alter table public.hr_leave_requests alter column updated_at set default now();
 
+alter table public.hr_commission_payments alter column id set default gen_random_uuid();
+alter table public.hr_commission_payments alter column method set default 'havale'::text;
+alter table public.hr_commission_payments alter column created_at set default now();
 alter table public.hr_operation_commissions alter column accrued_at set default now();
 
 alter table public.hr_operation_commissions alter column base_amount set default 0;
@@ -11720,30 +11723,14 @@ alter table public.hr_leave_requests add constraint hr_leave_requests_status_che
 
 alter table public.hr_leave_requests add constraint hr_leave_requests_total_days_check CHECK ((total_days > 0));
 
+alter table public.hr_commission_payments add constraint hr_commission_payments_pkey PRIMARY KEY (id);
+alter table public.hr_commission_payments add constraint hr_commission_payments_amount_check CHECK ((amount > 0));
+alter table public.hr_commission_payments add constraint hr_commission_payments_method_check CHECK ((method = ANY (ARRAY['havale'::text, 'nakit'::text, 'mahsup'::text, 'diger'::text])));
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_base_amount_check CHECK ((base_amount >= 0));
 
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_commission_amount_check CHECK ((commission_amount >= 0));
 
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_commission_rate_check CHECK (((commission_rate >= (0)::numeric) AND (commission_rate <= (100)::numeric)));
-
-alter table public.hr_commission_payments alter column id set default gen_random_uuid();
-alter table public.hr_commission_payments alter column method set default 'havale'::text;
-alter table public.hr_commission_payments alter column created_at set default now();
-alter table public.hr_commission_payments add constraint hr_commission_payments_pkey PRIMARY KEY (id);
-alter table public.hr_commission_payments add constraint hr_commission_payments_amount_check CHECK ((amount > 0));
-alter table public.hr_commission_payments add constraint hr_commission_payments_method_check CHECK ((method = ANY (ARRAY['havale'::text, 'nakit'::text, 'mahsup'::text, 'diger'::text])));
-alter table public.hr_commission_payments add constraint hr_commission_payments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-alter table public.hr_commission_payments add constraint hr_commission_payments_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES hr_employees(id) ON DELETE RESTRICT;
-alter table public.hr_commission_payments add constraint hr_commission_payments_finance_transaction_id_fkey FOREIGN KEY (finance_transaction_id) REFERENCES finance_transactions(id) ON DELETE SET NULL;
-create index if not exists hr_commission_payments_personel_idx on public.hr_commission_payments using btree (organization_id, employee_id, paid_on desc);
-alter table public.hr_commission_payments enable row level security;
-create policy "commission payments manageable by admins" on public.hr_commission_payments as PERMISSIVE for ALL to authenticated
-  using (private.arvo_is_org_admin(organization_id))
-  with check (private.arvo_is_org_admin(organization_id));
-create policy "commission payments readable" on public.hr_commission_payments as PERMISSIVE for SELECT to authenticated
-  using ((private.arvo_is_privileged_member(organization_id) OR (EXISTS ( SELECT 1
-   FROM hr_employees e
-  WHERE ((e.id = hr_commission_payments.employee_id) AND (e.organization_id = hr_commission_payments.organization_id) AND (e.user_id = ( SELECT auth.uid() AS uid)))))));
 
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_pkey PRIMARY KEY (id);
 
@@ -12261,6 +12248,7 @@ CREATE INDEX hr_employee_documents_employee_idx ON public.hr_employee_documents 
 
 CREATE INDEX hr_employees_org_active_idx ON public.hr_employees USING btree (organization_id, employment_status);
 
+CREATE INDEX hr_commission_payments_personel_idx ON public.hr_commission_payments USING btree (organization_id, employee_id, paid_on DESC);
 CREATE INDEX hr_employees_org_idx ON public.hr_employees USING btree (organization_id, employment_status);
 
 CREATE INDEX hr_employees_org_sales_idx ON public.hr_employees USING btree (organization_id, can_receive_sales_requests) WHERE (employment_status = 'active'::text);
@@ -12653,6 +12641,9 @@ alter table public.hr_leave_requests add constraint hr_leave_requests_organizati
 
 alter table public.hr_leave_requests add constraint hr_leave_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
+alter table public.hr_commission_payments add constraint hr_commission_payments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+alter table public.hr_commission_payments add constraint hr_commission_payments_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES hr_employees(id) ON DELETE RESTRICT;
+alter table public.hr_commission_payments add constraint hr_commission_payments_finance_transaction_id_fkey FOREIGN KEY (finance_transaction_id) REFERENCES finance_transactions(id) ON DELETE SET NULL;
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE SET NULL;
 
 alter table public.hr_operation_commissions add constraint hr_operation_commissions_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES hr_employees(id) ON DELETE RESTRICT;
@@ -12967,6 +12958,7 @@ alter table public.hr_employee_commission_rates enable row level security;
 
 alter table public.hr_employee_documents enable row level security;
 
+alter table public.hr_commission_payments enable row level security;
 alter table public.hr_employees enable row level security;
 
 alter table public.hr_leave_requests enable row level security;
@@ -13722,6 +13714,15 @@ create policy "members create hr leave requests" on public.hr_leave_requests as 
 
 create policy "members read hr leave requests" on public.hr_leave_requests as PERMISSIVE for SELECT to authenticated
   using (arvo_is_member(organization_id));
+
+create policy "commission payments manageable by admins" on public.hr_commission_payments as PERMISSIVE for ALL to authenticated
+  using (private.arvo_is_org_admin(organization_id))
+  with check (private.arvo_is_org_admin(organization_id));
+
+create policy "commission payments readable" on public.hr_commission_payments as PERMISSIVE for SELECT to authenticated
+  using ((private.arvo_is_privileged_member(organization_id) OR (EXISTS ( SELECT 1
+   FROM hr_employees e
+  WHERE ((e.id = hr_commission_payments.employee_id) AND (e.organization_id = hr_commission_payments.organization_id) AND (e.user_id = ( SELECT auth.uid() AS uid)))))));
 
 create policy "operation commissions manageable by managers" on public.hr_operation_commissions as PERMISSIVE for ALL to authenticated
   using (private.arvo_is_privileged_member(organization_id))
