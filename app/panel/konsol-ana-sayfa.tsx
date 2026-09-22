@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPersonName } from "@/lib/format-name";
@@ -61,7 +62,10 @@ type UrunLisansi = { organization_id: string; product: string; status: string; m
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
 export async function KonsolAnaSayfa() {
-  const { supabase, userId } = await getPanelContext();
+  const { supabase, userId, isPlatformOwner } = await getPanelContext();
+  /* Kabuk da eliyor (layout.tsx) ama yetki üç yerde birden duruyor
+     (AGENTS.md): kabuğun bir gün değişmesi bu sayfayı açmamalı. */
+  if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
 
   const [

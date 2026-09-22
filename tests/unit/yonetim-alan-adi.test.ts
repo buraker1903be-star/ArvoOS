@@ -25,9 +25,18 @@ describe("yönetim alan adı", () => {
     );
   });
 
-  test("kök yol doğrudan platform yönetimine iner", () => {
-    assert.equal(hedef(MANAGEMENT_HOST, "/"), `https://${MANAGEMENT_HOST}/panel/platform`);
-    assert.equal(hedef(MANAGEMENT_HOST, "/panel"), `https://${MANAGEMENT_HOST}/panel/platform`);
+  test("kök yol konsolun ana sayfasına iner", () => {
+    assert.equal(hedef(MANAGEMENT_HOST, "/"), `https://${MANAGEMENT_HOST}/panel`);
+  });
+
+  test("ana sayfa olduğu yerde servis edilir", () => {
+    /*
+      Eskiden /panel de kiracı listesine yönlendiriliyordu. Konsola ana
+      sayfa eklenince o kural sayfayı erişilemez kıldı: menüdeki "Ana
+      Sayfa" ve marka bağlantısı tıklanınca kiracı listesi açılıyordu.
+    */
+    assert.equal(hedef(MANAGEMENT_HOST, "/panel"), null);
+    assert.equal(hedef(MANAGEMENT_HOST, "/panel/"), null);
   });
 
   test("platform yolları olduğu yerde kalır", () => {

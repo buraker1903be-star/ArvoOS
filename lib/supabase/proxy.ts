@@ -38,9 +38,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   /*
-    Kurucu yönetim alan adı (yonetim.arvo-os.com): yalnızca platform
-    yönetimi servis ediliyor, kök yol doğrudan oraya iniyor ve platform
-    dışındaki panel yolları uygulama alan adına geri gönderiliyor.
+    Kurucu yönetim alan adı (yonetim.arvo-os.com): konsolun ana sayfası
+    ve platform yönetimi servis ediliyor, kök yol ana sayfaya iniyor ve
+    geri kalan panel yolları uygulama alan adına geri gönderiliyor.
     Karar lib/site/host-rules.ts içinde (birim testli).
   */
   const managementTarget = managementRedirectTarget({
