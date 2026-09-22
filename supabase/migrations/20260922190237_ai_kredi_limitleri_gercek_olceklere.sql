@@ -17,6 +17,38 @@
 -- Kullanıcı ve depolama limitlerine DOKUNULMUYOR: sorun yalnızca AI
 -- biriminde, diğer ikisinin ölçüsü zaten doğruydu.
 
+-- ---------------------------------------------------------------------------
+-- Doğru proje mi
+-- ---------------------------------------------------------------------------
+/*
+  Bu migration YANLIŞ PROJEDE çalıştırıldı ve "schema private does not
+  exist" hatası verdi. Teşhisi zorlaştıran şey şu: organization_licenses
+  ArvoARC projesinde de var — köprü kurum ve lisans kopyasını oraya
+  yazıyor (lib/arc-bridge.ts). Yani "bu tablo var mı" sorusu iki projeyi
+  ayırmıyor.
+
+  platform_subscription_requests yalnızca ArvoOS'ta. Yanlış projede
+  sessizce çalışıp ARC'ın lisans kopyasını bozmaktansa burada duruyoruz.
+*/
+do $kontrol$
+begin
+  if to_regclass('public.platform_subscription_requests') is null then
+    raise exception 'Bu migration ArvoOS projesi içindir (oahshpkgdzrraqdzjqau). Açık olan proje ArvoOS değil; SQL Editor''de projeyi değiştirip tekrar çalıştırın.';
+  end if;
+end
+$kontrol$;
+
+-- ---------------------------------------------------------------------------
+-- Paket varsayılanları
+-- ---------------------------------------------------------------------------
+/*
+  Şema burada da kuruluyor: anlık görüntü de aynısını yapıyor
+  (canli-sema.sql), çünkü politikalar ve tetikleyiciler private şemasındaki
+  fonksiyonlara dayanıyor. "Zaten vardır" varsayımı, migration'ı yeni
+  kurulan bir ortamda kıran türden bir varsayım.
+*/
+create schema if not exists private;
+
 create or replace function private.default_license_limits(p_plan public.plan_code)
 returns jsonb
 language sql
