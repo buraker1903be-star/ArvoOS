@@ -28,6 +28,10 @@ export interface DirectoryRow {
   access: boolean;          // ürüne şu an girebiliyor mu
   status: string;
   periodEnd: string | null;
+  /* Konsoldan erişim açıp kapatabilmek için. ArvoLab üyelerinde ve bireysel
+     abonelerde null: onların kaydı bu veritabanında değil. */
+  organizationId: string | null;
+  membershipActive: boolean | null;
 }
 
 const ACTIVE_LICENSE = new Set(["active", "trialing"]);
@@ -72,7 +76,12 @@ export async function getMemberDirectory(): Promise<Directory> {
   const [{ data: organizations }, { data: memberships }, { data: licenses }, { data: productLicenses }, { data: modules }, { data: subscribers }, users] =
     await Promise.all([
       admin.from("organizations").select("id,name,display_name,slug"),
-      admin.from("organization_memberships").select("user_id,organization_id,role,is_active").eq("is_active", true),
+      /*
+        Pasif üyelikler de çekiliyor. Eskiden yalnızca aktifler geliyordu:
+        kurucu bir üyenin erişimini kapattığı anda kişi listeden tamamen
+        kayboluyor ve geri açmanın yolu kalmıyordu.
+      */
+      admin.from("organization_memberships").select("user_id,organization_id,role,is_active"),
       admin.from("organization_licenses").select("organization_id,license_status,current_period_end"),
       admin.from("organization_product_licenses").select("organization_id,product,status,current_period_end"),
       admin.from("organization_modules").select("organization_id,module_code,is_enabled").eq("module_code", "commerce"),
@@ -92,6 +101,8 @@ export async function getMemberDirectory(): Promise<Directory> {
     const scope = orgName.get(membership.organization_id) ?? "Bilinmeyen kurum";
 
     const os = osLicense.get(membership.organization_id);
+    // Pasif üyenin lisans durumu ne olursa olsun erişimi yoktur.
+    const uyelikAcik = Boolean(membership.is_active);
     rows.push({
       product: "arvoos",
       userId: membership.user_id,
@@ -100,9 +111,11 @@ export async function getMemberDirectory(): Promise<Directory> {
       scope,
       role: membership.role,
       individual: false,
-      access: licenseOpen(os?.license_status, os?.current_period_end ?? null),
-      status: os?.license_status ?? "lisans yok",
+      access: uyelikAcik && licenseOpen(os?.license_status, os?.current_period_end ?? null),
+      status: uyelikAcik ? (os?.license_status ?? "lisans yok") : "erişim kapalı",
       periodEnd: os?.current_period_end ?? null,
+      organizationId: membership.organization_id,
+      membershipActive: uyelikAcik,
     });
 
     // Arc: kurumda Arc lisansı ya da commerce modülü açıksa üye sayılır.
@@ -117,9 +130,11 @@ export async function getMemberDirectory(): Promise<Directory> {
         role: membership.role,
         individual: false,
         // Yaptırım henüz açılmadı: bugün erişimi commerce modülü belirliyor.
-        access: commerce.get(membership.organization_id) ?? false,
-        status: arc?.status ?? "lisans yok",
+        access: uyelikAcik && (commerce.get(membership.organization_id) ?? false),
+        status: uyelikAcik ? (arc?.status ?? "lisans yok") : "erişim kapalı",
         periodEnd: arc?.current_period_end ?? null,
+        organizationId: membership.organization_id,
+        membershipActive: uyelikAcik,
       });
     }
 
@@ -135,9 +150,11 @@ export async function getMemberDirectory(): Promise<Directory> {
         scope,
         role: membership.role,
         individual: false,
-        access: licenseOpen(randevu.status, randevu.current_period_end ?? null),
-        status: randevu.status,
+        access: uyelikAcik && licenseOpen(randevu.status, randevu.current_period_end ?? null),
+        status: uyelikAcik ? randevu.status : "erişim kapalı",
         periodEnd: randevu.current_period_end ?? null,
+        organizationId: membership.organization_id,
+        membershipActive: uyelikAcik,
       });
     }
   }
@@ -196,6 +213,9 @@ export async function getMemberDirectory(): Promise<Directory> {
           access,
           status,
           periodEnd,
+          // ArvoLab ayrı veritabanında; erişimi konsoldan değiştirilemiyor.
+          organizationId: null,
+          membershipActive: null,
         });
       }
 
@@ -214,6 +234,9 @@ export async function getMemberDirectory(): Promise<Directory> {
           access: subscriber.status === "active" && notExpired(subscriber.current_period_end),
           status: subscriber.status,
           periodEnd: subscriber.current_period_end,
+          // ArvoLab ayrı veritabanında; erişimi konsoldan değiştirilemiyor.
+          organizationId: null,
+          membershipActive: null,
         });
       }
     }

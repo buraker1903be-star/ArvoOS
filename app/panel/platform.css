@@ -1,0 +1,29 @@
+
+/* Üye listesi süzgeci. Dört ayrı tablo yerine tek liste kullanılıyor;
+   aranan kişiyi bulmanın yolu tabloları taramak değil, süzmek olmalı. */
+.uye-suzgec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px }
+.uye-suzgec input[type="search"] { flex: 1 1 220px; min-width: 0 }
+.uye-suzgec input, .uye-suzgec select {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.uye-suzgec input:focus-visible, .uye-suzgec select:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow-glow);
+}
+.uye-sayi { margin-inline-start: auto; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums }
+
+/* İşlem sütunu dar ve sağda; satırın asıl bilgisi soldaki kişi. */
+.uye-islem { text-align: end; white-space: nowrap }
+.uye-islem button { padding: 6px 12px; font-size: 12.5px }
+
+@media (max-width: 720px) {
+  .uye-suzgec input[type="search"] { flex-basis: 100% }
+  .uye-sayi { margin-inline-start: 0 }
+}
