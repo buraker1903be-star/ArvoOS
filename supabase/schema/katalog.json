@@ -678,6 +678,18 @@
       "transaction_type",
       "updated_at"
     ],
+    "hr_commission_payments": [
+      "amount",
+      "created_at",
+      "created_by",
+      "employee_id",
+      "finance_transaction_id",
+      "id",
+      "method",
+      "note",
+      "organization_id",
+      "paid_on"
+    ],
     "hr_confidentiality_agreements": [
       "agreement_no",
       "agreement_version",
