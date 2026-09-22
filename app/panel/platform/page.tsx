@@ -9,11 +9,12 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { legalDetailsFrom, validateLegalDetails } from "../settings/legal-details";
 import { KiraciUyeleri, type KiraciUyesi } from "./kiraci-uyeleri";
 import { ModulMatrisi, type ModulSatiri } from "./modul-matrisi";
-import { ADDON_PRODUCTS } from "@/lib/products";
+import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
 import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../settings/settings-ui";
+import { depolama, para, tarih, tarihSaat } from "./bicim";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization, toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
@@ -43,8 +44,6 @@ const stateTones: Record<string, StgTone> = {
   creating: "info", inviting_owner: "info", waiting_owner: "warning", active: "success", suspended: "danger", archived: "neutral", failed: "danger",
 };
 const actionLabels: Record<string, string> = { provision_organization: "Kurulum", owner_access_link: "Giriş bağlantısı" };
-// Tutarlar kuruş cinsinden tamsayı (AGENTS.md "Değişmezler").
-const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
 /* Etkinlik kaydındaki ham kodlar ("status", "crm_proposal") kimseye bir
    şey anlatmıyor; okunur karşılıkları burada. */
 // Ham eylem kodu ekranda görünmemeli: "archive" yazısı kurucuya bir şey
@@ -65,19 +64,8 @@ const VARLIK_ADI: Record<string, string> = {
   hr_employee: "Personel", finance_transaction: "Finans hareketi",
 };
 
-/**
- * Depolamayı okunur birimde yazar. "512000 MB" kimsenin kafasında bir
- * büyüklüğe karşılık gelmiyordu; 500 GB geliyor.
- */
-function depolama(mb: number): string {
-  if (mb >= 1024) return `${new Intl.NumberFormat("tr-TR", { maximumFractionDigits: mb >= 10240 ? 0 : 1 }).format(mb / 1024)} GB`;
-  return `${new Intl.NumberFormat("tr-TR").format(mb)} MB`;
-}
-const licenseLabels: Record<string, string> = { trialing: "Deneme", active: "Aktif", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal" };
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
-const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "medium", timeStyle: "short" }) : "—";
-const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
 const initials = (value: string) => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
 
 export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ organization?: string; provisioned?: string; filtre?: string }> }) {
@@ -295,9 +283,9 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     { key: "created", title: "Kurum oluşturuldu", note: `${planNames.get(selected.plan_code) ?? selected.plan_code} paketi · ${enabledCount} modül etkin`, state: selected.provisioning_state === "creating" ? "todo" : "done" },
     {
       key: "invite", title: "Sahibe davet gönderildi", state: inviteState,
-      note: !invitation ? (hasActiveMember ? "Davet gerekmedi; sahip doğrudan eklendi." : "Davet kaydı yok.") : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${dateTime(invitation.sent_at)}` : ""}`,
+      note: !invitation ? (hasActiveMember ? "Davet gerekmedi; sahip doğrudan eklendi." : "Davet kaydı yok.") : invitation.status === "failed" ? `Davet gönderilemedi: ${invitation.error_message ?? "bilinmeyen hata"}. Aşağıdan giriş bağlantısı oluşturun.` : `${invitation.email}${invitation.sent_at ? ` · ${tarihSaat(invitation.sent_at)}` : ""}`,
     },
-    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `${invitation?.accepted_at ? `Katıldı · ${dateTime(invitation.accepted_at)}` : "Hesap açık"} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
+    { key: "joined", title: "Sahip hesabını açtı", state: ownerJoined ? "done" : "todo", note: ownerJoined ? `${invitation?.accepted_at ? `Katıldı · ${tarihSaat(invitation.accepted_at)}` : "Hesap açık"} · ${memberCount ?? 0} aktif kullanıcı` : "Davet bekleniyor. E-posta gelmediyse giriş bağlantısını WhatsApp’tan gönderin." },
     { key: "onboarding", title: "İlk kurulum tamamlandı", state: !admin ? "unknown" : onboardingDone ? "done" : "todo", note: !admin ? "Sunucu anahtarı olmadan okunamıyor." : onboardingDone ? "Kurum bilgileri ve marka ayarları girildi." : "Sahip ilk girişte kurum bilgilerini ve marka rengini girer." },
     { key: "legal", title: "Resmi bilgiler", state: legalResult.error ? "unknown" : legalComplete ? "done" : "todo", note: legalComplete ? "Teklif ve sözleşmeler için hazır." : legalFilled === 5 ? "Alanlar dolu ama biri geçersiz (IBAN, vergi no veya MERSİS). Sahip Ayarlar’dan düzeltir." : `${legalFilled}/5 zorunlu alan dolu (adres, il, vergi dairesi, vergi no, IBAN). Sahip Ayarlar’dan tamamlar.` },
     { key: "logo", title: "Logo", state: selected.logo_url ? "done" : "todo", note: selected.logo_url ? "Belgelerde ve takip ekranında kullanılıyor." : "Logo yüklenmedi; belgelerde kurum adı yazar." },
@@ -363,8 +351,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             {bridge.permanent
               ? "Anahtar eksik ya da iki tarafta farklı. ArvoLab abonelik durumunu soramıyor ve kimseyi engellemediği için bireysel kullanıcılar şu an ücretsiz kullanıyor. Vercel'de PRODUCT_BRIDGE_SECRET'in iki projede de aynı olduğunu kontrol edin."
               : "ArvoLab, ArvoOS'a ulaşamıyor. Kullanıcılar engellenmiyor; sorun sürerse bireysel abonelikler denetlenemez."}
-            {bridge.lastErrorAt ? ` Son hata: ${dateTime(bridge.lastErrorAt)}.` : ""}
-            {bridge.lastOkAt ? ` Son başarılı bağlantı: ${dateTime(bridge.lastOkAt)}.` : " Hiç başarılı bağlantı kaydı yok."}
+            {bridge.lastErrorAt ? ` Son hata: ${tarihSaat(bridge.lastErrorAt)}.` : ""}
+            {bridge.lastOkAt ? ` Son başarılı bağlantı: ${tarihSaat(bridge.lastOkAt)}.` : " Hiç başarılı bağlantı kaydı yok."}
           </p>
         </div>
       </div>
@@ -539,15 +527,15 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           aside={<Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>}
         >
           <dl className="stg-list">
-            <StgValueRow label="Lisans" value={seciliLisans ? (licenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"} />
+            <StgValueRow label="Lisans" value={seciliLisans ? (productLicenseLabels[seciliLisans.license_status] ?? seciliLisans.license_status) : "Lisans yok"} />
             <StgValueRow label="Kullanıcı" value={seciliKota ? `${seciliKota.kullanici.kullanilan} / ${seciliKota.kullanici.limit}` : null} />
             <StgValueRow label="Depolama" value={seciliKota ? `${depolama(seciliKota.depolama.kullanilan)} / ${depolama(seciliKota.depolama.limit)}` : null} />
-            <StgValueRow label="Aylık ücret" value={seciliLisans?.monthly_fee ? formatTry(Number(seciliLisans.monthly_fee)) : null} />
+            <StgValueRow label="Aylık ücret" value={seciliLisans?.monthly_fee ? para(Number(seciliLisans.monthly_fee)) : null} />
             {/* Denemedeki kurumda asıl merak edilen deneme bitişi; dönem
                 sonu orada boş kalıyordu. */}
             <StgValueRow
               label={seciliLisans?.license_status === "trialing" ? "Deneme bitişi" : "Dönem sonu"}
-              value={(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) ? date(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) : null}
+              value={(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) ? tarih(seciliLisans?.license_status === "trialing" ? seciliLisans.trial_ends_at : seciliLisans?.current_period_end ?? null) : null}
             />
           </dl>
           {seciliKota?.durum === "asildi" ? (
@@ -571,7 +559,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               <h3 className="plt-dosya-h">Ödeme</h3>
               <dl className="stg-list">
                 <StgValueRow label="Bekleyen dekont" value={bekleyenOdeme.length ? `${bekleyenOdeme.length} bildirim` : null} />
-                <StgValueRow label="Son tahsilat" value={sonTahsilat ? `${formatTry(Number(sonTahsilat.amount))} · ${date(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : null} />
+                <StgValueRow label="Son tahsilat" value={sonTahsilat ? `${para(Number(sonTahsilat.amount))} · ${tarih(sonTahsilat.reviewed_at ?? sonTahsilat.created_at)}` : null} />
                 <StgValueRow label="Toplam bildirim" value={odemeSatirlari.length ? String(odemeSatirlari.length) : null} />
               </dl>
             </div>
@@ -596,7 +584,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                       <span className="plt-etkinlik-nokta" aria-hidden="true" />
                       <span>
                         <b>{ETKINLIK_ADI[satir.action] ?? satir.action}</b>
-                        <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {dateTime(satir.created_at)}</small>
+                        <small>{VARLIK_ADI[satir.entity_type] ?? satir.entity_type} · {tarihSaat(satir.created_at)}</small>
                       </span>
                     </li>
                   ))}
@@ -710,7 +698,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                   <span className="plt-audit-dot" aria-hidden="true" />
                   <span>
                     <b>{actionLabels[entry.action] ?? entry.action} · {stateLabels[entry.state] ?? entry.state}</b>
-                    <small>{dateTime(entry.created_at)}{entry.duration_ms != null ? ` · ${entry.duration_ms} ms` : ""}{entry.result ? ` · ${entry.result}` : ""}</small>
+                    <small>{tarihSaat(entry.created_at)}{entry.duration_ms != null ? ` · ${entry.duration_ms} ms` : ""}{entry.result ? ` · ${entry.result}` : ""}</small>
                   </span>
                 </li>
               ))}

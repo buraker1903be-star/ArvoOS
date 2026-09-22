@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
-import { StgIcon } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -20,9 +21,6 @@ import "../platform.css";
 */
 
 export const dynamic = "force-dynamic";
-
-const tarih = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
 
 /** Türkçe duyarsız karşılaştırma: "İş" ile "is" eşleşsin. */
 const sadelestir = (value: string) =>
@@ -66,7 +64,13 @@ export default async function SozlesmelerPage() {
 
   const satirlar = (istekler ?? []) as IstekSatiri[];
   const bekleyenler = satirlar.filter((satir) => satir.status === "pending");
+  const onaylananlar = satirlar.filter((satir) => satir.status === "approved");
+  const reddedilenler = satirlar.filter((satir) => satir.status === "rejected");
   const sonuclananlar = satirlar.filter((satir) => satir.status !== "pending").slice(0, 20);
+  // Kuyrukta bekleyen para: kurucunun "bugün neyi tahsil etmem gerek"
+  // sorusunun yanıtı. Sözleşme tutarı kuruş cinsinden tamsayı.
+  const bekleyenTutar = bekleyenler.reduce((toplam, satir) => toplam + Number(satir.amount ?? 0), 0);
+  const bekleyenBirim = bekleyenler.find((satir) => satir.currency)?.currency ?? "TRY";
 
   const bekleyen = (satir: IstekSatiri): BekleyenIstek => {
     const ad = sadelestir(satir.customer_name ?? "");
@@ -102,13 +106,22 @@ export default async function SozlesmelerPage() {
       </div>
     </div>
 
-    <section className="platform-serit" aria-label="Kuyruk özeti">
-      <span data-tone={bekleyenler.length ? "warning" : undefined}><b>{bekleyenler.length}</b> onay bekliyor</span>
-      <span><b>{satirlar.filter((s) => s.status === "approved").length}</b> onaylandı</span>
-      {satirlar.some((s) => s.status === "rejected")
-        ? <span><b>{satirlar.filter((s) => s.status === "rejected").length}</b> reddedildi</span>
-        : null}
-    </section>
+    {/*
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "onay bekleyen
+      yok" demek, satırın hiç olmamasından daha çok şey söyler.
+    */}
+    <div className="stg-widgets" aria-label="Kuyruk özeti">
+      <StgWidget
+        tone={bekleyenler.length ? "warning" : "success"} icon="doc" label="Onay bekliyor" value={bekleyenler.length}
+        note={bekleyenler.length ? "Tahsilatı doğrulayıp onaylayın" : "Kuyruk boş"}
+      />
+      <StgWidget
+        tone={bekleyenTutar ? "gold" : "neutral"} icon="wallet" label="Bekleyen tutar" value={para(bekleyenTutar, bekleyenBirim)}
+        note={bekleyenTutar ? "Onaylanınca modüller açılır" : "Bekleyen tutar yok"}
+      />
+      <StgWidget tone="success" icon="check" label="Onaylandı" value={onaylananlar.length} note="Abonelik açıldı" />
+      <StgWidget tone={reddedilenler.length ? "danger" : "neutral"} icon="lock" label="Reddedildi" value={reddedilenler.length} note={reddedilenler.length ? "Sebebi kayıtta" : "Reddedilen istek yok"} />
+    </div>
 
     {bekleyenler.length ? (
       <div className="istek-listesi">
@@ -122,10 +135,11 @@ export default async function SozlesmelerPage() {
     )}
 
     {sonuclananlar.length ? (
-      <section className="panel-card management-card" aria-label="Sonuçlananlar">
-        <div className="management-heading">
-          <div><small>GEÇMİŞ</small><h2>Sonuçlanan istekler</h2></div>
-        </div>
+      <StgSection
+        id="gecmis" wide icon="folder" tone="neutral" kicker="GEÇMİŞ" title="Sonuçlanan istekler"
+        description="Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder."
+        aside={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
+      >
         <div className="stg-list">
           {sonuclananlar.map((satir) => (
             <div key={satir.id} className="plt-row">
@@ -144,7 +158,7 @@ export default async function SozlesmelerPage() {
             </div>
           ))}
         </div>
-      </section>
+      </StgSection>
     ) : null}
   </div>;
 }

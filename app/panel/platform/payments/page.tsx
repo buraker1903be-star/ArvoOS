@@ -1,18 +1,16 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { StgIcon, StgSection, StgValueRow, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { PAKET_ADI, para, tarihSaat } from "../bicim";
 import { reviewBankTransferPayment } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
-import Link from "next/link";
 
-const formatTry = (value: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
-const dateTime = (value: string) => new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "medium", timeStyle: "short" });
 const statusLabels: Record<string, string> = { pending: "İnceleme bekliyor", approved: "Onaylandı", rejected: "Reddedildi" };
 const statusTones: Record<string, StgTone> = { pending: "warning", approved: "success", rejected: "danger" };
-const planLabels: Record<string, string> = { starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal" };
 
 export default async function PaymentApprovalsPage() {
   const { supabase, isPlatformOwner } = await getPanelContext();
@@ -37,23 +35,27 @@ export default async function PaymentApprovalsPage() {
   // Bekleyenler en üstte
   payments.sort((a, b) => Number(b.status === "pending") - Number(a.status === "pending"));
 
-  const pendingCount = payments.filter((payment) => payment.status === "pending").length;
-  const pendingTotal = payments.filter((payment) => payment.status === "pending").reduce((sum, payment) => sum + payment.amount, 0);
-  const approvedTotal = payments.filter((payment) => payment.status === "approved").reduce((sum, payment) => sum + payment.amount, 0);
+  const pending = payments.filter((payment) => payment.status === "pending");
+  const pendingTotal = pending.reduce((sum, payment) => sum + payment.amount, 0);
+  const approved = payments.filter((payment) => payment.status === "approved");
+  const approvedTotal = approved.reduce((sum, payment) => sum + payment.amount, 0);
+  const rejected = payments.filter((payment) => payment.status === "rejected").length;
 
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Ödeme Onayları</h1><p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p></div>
-      
     </div>
 
-
-    <section className="platform-serit" aria-label="Ödeme özeti">
-      {pendingCount ? <span data-tone="warning"><b>{pendingCount}</b> inceleme bekliyor · {formatTry(pendingTotal)}</span> : null}
-      <span><b>{formatTry(approvedTotal)}</b> onaylanan toplam</span>
-      <span><b>{payments.length}</b> bildirim</span>
-      {incidents.length ? <span data-tone="danger"><b>{incidents.length}</b> karşılıksız</span> : null}
-    </section>
+    {/*
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "karşılıksız
+      bildirim yok" demek, satırın hiç olmamasından daha çok şey söyler.
+    */}
+    <div className="stg-widgets" aria-label="Ödeme özeti">
+      <StgWidget tone={pending.length ? "warning" : "neutral"} icon="wallet" label="İnceleme bekliyor" value={pending.length} note={pending.length ? `${para(pendingTotal)} tutarında` : "Bekleyen dekont yok"} />
+      <StgWidget tone="success" icon="check" label="Onaylanan" value={para(approvedTotal)} note={`${approved.length} bildirim`} />
+      <StgWidget tone={rejected ? "info" : "neutral"} icon="doc" label="Reddedilen" value={rejected} note={rejected ? "Müşteriye not yazıldı" : "Reddedilen bildirim yok"} />
+      <StgWidget tone={incidents.length ? "danger" : "neutral"} icon="shield" label="Karşılıksız" value={incidents.length} note={incidents.length ? "PayTR ödedi, kayıt oluşmadı" : "İşlenemeyen bildirim yok"} />
+    </div>
 
     {incidents.length ? (
       <StgSection
@@ -72,9 +74,9 @@ export default async function PaymentApprovalsPage() {
                     <span className="status-pill" data-tone="danger">{incidentLabels[incident.result] ?? incident.result}</span>
                     <small className="plt-substatus">{incidentNotes[incident.result] ?? ""}</small>
                   </td>
-                  <td>{incident.paymentAmount !== null ? formatTry(incident.paymentAmount) : "—"}</td>
+                  <td>{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</td>
                   <td className="plt-mono">{incident.merchantOid}</td>
-                  <td>{dateTime(incident.createdAt)}</td>
+                  <td>{tarihSaat(incident.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -92,7 +94,7 @@ export default async function PaymentApprovalsPage() {
           return (
             <StgSection
               key={payment.id} id={`odeme-${payment.id}`} icon="wallet" tone={tone}
-              kicker={organization?.slug ?? "KURUM"} title={`${organization?.name ?? "Kurum"} · ${formatTry(payment.amount)}`}
+              kicker={organization?.slug ?? "KURUM"} title={`${organization?.name ?? "Kurum"} · ${para(payment.amount, payment.currency)}`}
               aside={
                 <span className="plt-row-uc">
                   <span className="status-pill" data-tone={tone}>{statusLabels[payment.status] ?? payment.status}</span>
@@ -104,10 +106,11 @@ export default async function PaymentApprovalsPage() {
             >
               <dl className="stg-list">
                 <StgValueRow label="Ürün" value={productName(payment.product ?? "arvoos")} />
-                <StgValueRow label="Paket" value={planLabels[payment.plan_code] ?? payment.plan_code} />
+                <StgValueRow label="Paket" value={PAKET_ADI[payment.plan_code] ?? payment.plan_code} />
+                <StgValueRow label="Ödeme yolu" value={payment.payment_method === "paytr" ? "Kartla (PayTR)" : "Havale / EFT"} />
                 <StgValueRow label="Banka" value={account?.bank_name ?? null} />
                 <StgValueRow label="Referans" value={payment.reference_no ?? null} mono />
-                <StgValueRow label="Bildirim" value={dateTime(payment.created_at)} />
+                <StgValueRow label="Bildirim" value={tarihSaat(payment.created_at)} />
               </dl>
               {payment.customer_note ? <p className="plt-quote">“{payment.customer_note}”</p> : null}
               {payment.payment_method === "paytr"
@@ -126,6 +129,6 @@ export default async function PaymentApprovalsPage() {
           );
         })}
       </div>
-    ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Henüz ödeme bildirimi yok.</p></div>}
+    ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Henüz ödeme bildirimi yok. Kurumlar panelden havale bildirdiğinde ya da kartla ödediğinde burada görünür.</p></div>}
   </div>;
 }
