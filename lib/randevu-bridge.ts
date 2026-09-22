@@ -212,3 +212,21 @@ export async function randevuUrunKopyasi(organizationId: string) {
     updatedAt: satir.updated_at ?? null,
   };
 }
+
+/** Bütün kurumların Randevu lisans kopyası, tek sorguda. */
+export async function randevuKopyalari() {
+  const hedef = randevuClient();
+  if (!hedef) return null;
+  const { data, error } = await hedef.from("organization_product_licenses")
+    .select("organization_id,status,current_period_end,updated_at").eq("product", "randevu");
+  if (error) {
+    console.error("[randevu] kopyalar okunamadı", error.message);
+    return null;
+  }
+  const satirlar = (data ?? []) as { organization_id: string; status: string | null; current_period_end: string | null; updated_at: string | null }[];
+  return new Map(satirlar.map((satir) => [satir.organization_id, {
+    status: satir.status ?? "inactive",
+    periodEnd: satir.current_period_end ?? null,
+    updatedAt: satir.updated_at ?? null,
+  }]));
+}

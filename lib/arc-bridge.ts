@@ -243,3 +243,21 @@ export async function arcUrunKopyasi(organizationId: string): Promise<UrunKopyas
     updatedAt: satir.updated_at ?? null,
   };
 }
+
+/** Bütün kurumların ARC lisans kopyası, tek sorguda (gerekçe: lib/arvolab.ts). */
+export async function arcKopyalari(): Promise<Map<string, UrunKopyasi> | null> {
+  const arc = arcClient();
+  if (!arc) return null;
+  const { data, error } = await arc.from("organization_product_licenses")
+    .select("organization_id,status,current_period_end,updated_at").eq("product", "arc");
+  if (error) {
+    console.error("[arc] kopyalar okunamadı", error.message);
+    return null;
+  }
+  const satirlar = (data ?? []) as { organization_id: string; status: string | null; current_period_end: string | null; updated_at: string | null }[];
+  return new Map(satirlar.map((satir) => [satir.organization_id, {
+    status: satir.status ?? "inactive",
+    periodEnd: satir.current_period_end ?? null,
+    updatedAt: satir.updated_at ?? null,
+  }]));
+}

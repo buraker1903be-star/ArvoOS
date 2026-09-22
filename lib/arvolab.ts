@@ -397,3 +397,26 @@ export async function arvolabYansimasi(organizationId: string): Promise<ArvolabY
     aiCreditLimit: satir.ai_credit_limit === null ? null : Number(satir.ai_credit_limit),
   };
 }
+
+/**
+ * BÜTÜN kurumların ArvoLab kopyası, tek sorguda.
+ *
+ * Konsol ana sayfası kiracı başına ayrı okuma yapamaz: kurum sayısı kadar
+ * ağ gidiş dönüşü, ana sayfayı her açılışta yavaşlatırdı. Kopya denetimi
+ * üç üründe de böyle toplu okunuyor.
+ */
+export async function arvolabKopyalari(): Promise<Map<string, ArvolabYansimasi> | null> {
+  const lab = arvolabClient();
+  if (!lab) return null;
+  const { data, error } = await lab.from("organizations").select("id,license_status,ai_credit_limit,synced_at");
+  if (error) {
+    console.error("[arvolab] kopyalar okunamadı", error.message);
+    return null;
+  }
+  const satirlar = (data ?? []) as { id: string; license_status: string | null; ai_credit_limit: number | null; synced_at: string | null }[];
+  return new Map(satirlar.map((satir) => [satir.id, {
+    syncedAt: satir.synced_at ?? null,
+    status: satir.license_status ?? "inactive",
+    aiCreditLimit: satir.ai_credit_limit === null ? null : Number(satir.ai_credit_limit),
+  }]));
+}
