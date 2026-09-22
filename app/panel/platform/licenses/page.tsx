@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { YAKLASMA_ORANI, kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -46,14 +47,51 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   if (!isPlatformOwner) notFound();
 
   const params = await searchParams;
-  const [{ data: organizationData, error: organizationError }, { data: allLicenses }] = await Promise.all([
+  const [{ data: organizationData, error: organizationError }, { data: allLicenses }, { data: activeMemberships }] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,slug,plan_code,status").order("name"),
-    supabase.from("organization_licenses").select("organization_id,license_status"),
+    supabase.from("organization_licenses").select("organization_id,license_status,user_limit,ai_credit_limit,ai_credits_used"),
+    /*
+      Kurum başına üye sayımı: tek sorguda tüm aktif üyelikler okunup
+      bellekte gruplanıyor. Kurum başına ayrı sayım sorgusu, kurum sayısı
+      kadar gidiş dönüş demekti; satırlar zaten az.
+    */
+    supabase.from("organization_memberships").select("organization_id").eq("is_active", true),
   ]);
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
 
   const organizations = (organizationData ?? []) as OrganizationRow[];
   const statusByOrg = new Map(((allLicenses ?? []) as { organization_id: string; license_status: string }[]).map((row) => [row.organization_id, row.license_status]));
+  /*
+    Kota gerçeği: hangi kurum limitini aşmış. Bu soru hiçbir ekranda
+    yanıtlanmıyordu — yüzde çubuğu yalnızca SEÇİLİ kurum için vardı ve
+    kurucu her kurumu tek tek açmadıkça aşımı göremiyordu. Kotayı
+    uygulamaya başlamadan önce bilinmesi gereken ilk şey bu.
+  */
+  const uyeSayilari = new Map<string, number>();
+  for (const satir of (activeMemberships ?? []) as { organization_id: string }[]) {
+    uyeSayilari.set(satir.organization_id, (uyeSayilari.get(satir.organization_id) ?? 0) + 1);
+  }
+  const lisansById = new Map(
+    ((allLicenses ?? []) as { organization_id: string; user_limit: number; ai_credit_limit: number; ai_credits_used: number }[])
+      .map((row) => [row.organization_id, row]),
+  );
+  const kotalar = kotayaGoreSirala(
+    organizations
+      .filter((kurum) => lisansById.has(kurum.id))
+      .map((kurum) => {
+        const lisans = lisansById.get(kurum.id)!;
+        return kotaDurumu({
+          organizationId: kurum.id,
+          kullaniciSayisi: uyeSayilari.get(kurum.id) ?? 0,
+          kullaniciLimiti: lisans.user_limit,
+          aiKullanilan: lisans.ai_credits_used,
+          aiLimiti: lisans.ai_credit_limit,
+        });
+      }),
+  );
+  const sorunlular = kotalar.filter((k) => k.durum !== "normal");
+  const kurumAdlari = new Map(organizations.map((k) => [k.id, k.display_name || k.name]));
+
   const selected = organizations.find((item) => item.id === params.organization)
     ?? organizations.find((item) => item.id === founderOrganization.id)
     ?? organizations[0];
@@ -81,6 +119,52 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     </div>
 
     <PlatformTabs active="lisans" />
+
+    {/*
+      Kota uyarıları en üstte: bu ekranın asıl işi tek bir kurumu
+      düzenlemek, ama düzenlenmesi GEREKEN kurumu bulmanın yolu yoktu.
+    */}
+    <StgSection
+      id="kota-uyarilari"
+      wide
+      icon="chart"
+      tone={sorunlular.some((k) => k.durum === "asildi") ? "danger" : sorunlular.length ? "gold" : "neutral"}
+      kicker="KOTA DURUMU"
+      title="Limitini aşan ve yaklaşan kurumlar"
+      description={`Tüm kurumlar tarandı; ${YAKLASMA_ORANI}% ve üstü yaklaşma sayılıyor.`}
+      aside={<span className="status-pill" data-tone={sorunlular.length ? "warning" : "success"}>{sorunlular.length} kurum</span>}
+    >
+      {sorunlular.length ? (
+        <div className="stg-list">
+          {sorunlular.map((kota) => (
+            <Link key={kota.organizationId} className="stg-row" href={`/panel/platform/licenses?organization=${kota.organizationId}`}>
+              <span className="stg-row-main">
+                <span className="stg-row-icon" data-tone={kota.durum === "asildi" ? "danger" : "gold"}>{kota.durum === "asildi" ? "!" : "~"}</span>
+                <span>
+                  <b>{kurumAdlari.get(kota.organizationId) ?? kota.organizationId}</b>
+                  <small>
+                    Kullanıcı {numberFormat.format(kota.kullanici.kullanilan)}/{numberFormat.format(kota.kullanici.limit)} (%{kota.kullanici.oran})
+                    {" · "}
+                    AI {numberFormat.format(kota.aiKredi.kullanilan)}/{numberFormat.format(kota.aiKredi.limit)} (%{kota.aiKredi.oran})
+                  </small>
+                </span>
+              </span>
+              <span className="status-pill" data-tone={kota.durum === "asildi" ? "danger" : "warning"}>
+                {kota.durum === "asildi" ? "Limit aşıldı" : "Limite yaklaştı"}
+              </span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="stg-empty"><p>Hiçbir kurum limitine yaklaşmadı.</p></div>
+      )}
+      {/* Kotalar şu an yalnızca ÖLÇÜLÜYOR; kullanıcı eklemeyi ya da dosya
+          yüklemeyi engellemiyor. Ekranın bunu söylemesi gerekiyor, yoksa
+          çubuk bir koruma sanılıyor. */}
+      <p className="stg-muted">
+        Kotalar şu an yalnızca ölçülüyor: limit aşıldığında kullanıcı ekleme, dosya yükleme ya da AI kullanımı engellenmiyor.
+      </p>
+    </StgSection>
 
     <div className="plt-layout">
       <aside className="plt-orgs" aria-label="Kurumlar">
