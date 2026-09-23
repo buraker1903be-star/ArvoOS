@@ -62,6 +62,16 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
 .ntf-item.is-unread h3{font-weight:700}
 .ntf-detail{margin:3px 0 0;color:var(--ink-soft);font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ntf-item[data-tone="gold"] .ntf-detail{-webkit-line-clamp:6}
+/* Açılmış duyuru: kırpma kalkar, metin tamamıyla okunur. */
+.ntf-detail.is-acik{-webkit-line-clamp:unset;display:block;overflow:visible}
+/* "Devamını göster": satır gibi durur, düğme gibi davranır. Yalnızca
+   gerçekten kesilen metinde çiziliyor (duyuru-metni.tsx ölçüyor). */
+.ntf-devam{
+  margin:6px 0 0;padding:0;border:0;background:none;
+  color:var(--accent);font:inherit;font-size:13px;font-weight:650;cursor:pointer
+}
+.ntf-devam:hover{text-decoration:underline}
+.ntf-devam:focus-visible{outline:none;box-shadow:var(--shadow-glow);border-radius:6px}
 .ntf-context{margin:4px 0 0;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
 .ntf-dot{width:10px;height:10px;margin-top:6px;border-radius:50%;background:var(--info);box-shadow:0 0 0 3px color-mix(in srgb,var(--info) 18%,transparent)}
 

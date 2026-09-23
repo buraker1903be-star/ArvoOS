@@ -6,6 +6,7 @@ import type { DescribedNotification } from "./describe";
 import { inNotificationFilter, notificationFilters as filters } from "./filters";
 import { loadNotifications } from "./load-notifications";
 import { NotificationIcon as Icon } from "./notification-icon";
+import { DuyuruMetni } from "./duyuru-metni";
 import "./notifications.css";
 
 const TZ = "Europe/Istanbul";
@@ -107,7 +108,12 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                     <time dateTime={item.created_at}>{clock(item.created_at)}</time>
                   </div>
                   <h3>{item.headline}</h3>
-                  <p className="ntf-detail">{item.detail}</p>
+                  {/* Duyuru tek okunası metin; kesilirse açılabiliyor.
+                      Otomatik bildirimler zaten tek satır, onlarda kırpma
+                      listeyi taranabilir tutuyor. */}
+                  {item.category === "management_announcement"
+                    ? <DuyuruMetni metin={item.detail} />
+                    : <p className="ntf-detail">{item.detail}</p>}
                   {item.context ? <p className="ntf-context">{item.context}</p> : null}
                   <div className="ntf-actions">
                     {item.action_url && item.category !== "management_announcement" ? (
