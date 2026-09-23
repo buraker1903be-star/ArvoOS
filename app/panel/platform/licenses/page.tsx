@@ -4,14 +4,20 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
-import { urunKullanimi } from "@/lib/urun-kullanimi";
+import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
+import { arvolabYansimasi } from "@/lib/arvolab";
+import { arcUrunKopyasi } from "@/lib/arc-bridge";
+import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
+import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
-import { LISANS_TONU, depolama, kullanimTonu, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
-import { resetOrganizationAiCredits, updateOrganizationLicense, updateProductLicense } from "./actions";
+import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
+import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
+import { KiraciSecici } from "./kiraci-secici";
+import { UrunKartlari } from "./urun-kartlari";
 import "../../settings/settings.css";
 import "../platform.css";
 
-type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string };
+type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string; kind: string | null };
 type LicenseRow = {
   organization_id: string;
   plan_code: string;
@@ -21,7 +27,6 @@ type LicenseRow = {
   user_limit: number;
   storage_limit_mb: number;
   ai_credit_limit: number;
-  ai_credits_used: number;
   monthly_fee: number | null;
   suspended_at: string | null;
   suspension_reason: string | null;
@@ -58,23 +63,34 @@ function Olcum({ etiket, kullanilan, limit, oran }: { etiket: string; kullanilan
 }
 
 export default async function LicenseManagementPage({ searchParams }: { searchParams: Promise<{ organization?: string }> }) {
-  const { supabase, organization: founderOrganization, isPlatformOwner } = await getPanelContext();
+  const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
   const params = await searchParams;
   const adminClient = createAdminClient();
-  /* Kurum listesi yalnızca seçili kiracıyı bulmak için; liste görünümü
-     kiracı dosyasında. */
+  /* Kurum listesi hem seçili kiracıyı bulmak hem de sayfanın kendi
+     seçicisini doldurmak için. */
   const { data: organizationData, error: organizationError } = await supabase
-    .from("organizations").select("id,name,display_name,slug,plan_code,status").order("name");
+    .from("organizations").select("id,name,display_name,slug,plan_code,status,kind").order("name");
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
 
   const organizations = (organizationData ?? []) as OrganizationRow[];
+  if (!organizations.length) throw new Error("Yönetilecek kurum bulunamadı.");
 
-  const selected = organizations.find((item) => item.id === params.organization)
-    ?? organizations.find((item) => item.id === founderOrganization.id)
-    ?? organizations[0];
-  if (!selected) throw new Error("Yönetilecek kurum bulunamadı.");
+  /*
+    Adreste bir kurum yazıyorsa ONU açıyoruz, yoksa 404. Eskiden bilinmeyen
+    kimlik sessizce kendi kurumumuza düşüyordu: kurucu silinmiş ya da yanlış
+    bir bağlantıyla geldiğinde başka bir kiracının lisansını düzenlediğini
+    fark etmeden kaydedebilirdi — formlar seçili kurumun kimliğini yazıyor.
+
+    Adres boşken (menüden gelindiğinde) ilk MÜŞTERİ kurum açılıyor. Kendi
+    kurumumuza düşmek, "kimin lisansına bakıyorum" sorusunu her seferinde
+    yanlış yanıtlıyordu.
+  */
+  const selected = params.organization
+    ? organizations.find((item) => item.id === params.organization)
+    : organizations.find((item) => item.kind !== "internal") ?? organizations[0];
+  if (!selected) notFound();
 
   const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
     supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
@@ -101,6 +117,60 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     için. Limit tek başına bir şey anlatmıyor.
   */
   const kullanim = await urunKullanimi(selected.id);
+
+  /*
+    ArvoLab'daki kopyanın KENDİSİ okunuyor — köprünün sağlığı değil.
+    bridge_health "son çağrı başarılı" derken kopya günlerce eski
+    kalabiliyor: yansıtma yalnızca kaydederken çalışıyor.
+    AkademikMerkez'de tam bu oldu (22.09.2026).
+  */
+  const [arvolabKopyasi, arcKopyasi, randevuKopyasi] = await Promise.all([
+    arvolabYansimasi(selected.id),
+    arcUrunKopyasi(selected.id),
+    randevuUrunKopyasi(selected.id),
+  ]);
+
+  /*
+    Üç ürünün kopyası üç ayrı biçimde duruyor, o yüzden karşılaştırılacak
+    alanlar burada kuruluyor; kural tek yerde (lib/yansima-durumu.ts).
+
+    ArvoLab kendi organizations satırında durum + AI hakkı tutuyor.
+    Arc ve Randevu ise ArvoOS'un lisans satırının aynen kopyasını; orada
+    durum ve dönem sonu karşılaştırılıyor. updated_at KARŞILAŞTIRILMIYOR:
+    hedef veritabanında onu now() yapan bir tetikleyici varsa uyarı
+    sürekli yanardı ve sürekli yanan uyarı, olmayan uyarıdır.
+  */
+  const cekirdekHak = license.ai_credit_limit ?? null;
+  const krediMetni = (deger: number | null) =>
+    deger === null ? "bildirilmemiş" : `${sayi(deger)} kredi`;
+
+  function urunYansimasi(kod: string): YansimaKopyasi | null {
+    const konsolDurum = productLicenses.get(kod)?.status ?? "inactive";
+    if (kod === "arvolab") {
+      if (!arvolabKopyasi) return null;
+      return {
+        damga: arvolabKopyasi.syncedAt,
+        alanlar: [
+          { etiket: "durum", kopya: arvolabKopyasi.status, konsol: konsolDurum },
+          {
+            etiket: "AI hakkı",
+            kopya: krediMetni(arvolabKopyasi.aiCreditLimit),
+            konsol: krediMetni(cekirdekHak),
+          },
+        ],
+      };
+    }
+    const kopya = kod === "arc" ? arcKopyasi : kod === "randevu" ? randevuKopyasi : null;
+    if (!kopya) return null;
+    const konsolDonem = productLicenses.get(kod)?.current_period_end ?? null;
+    return {
+      damga: kopya.updatedAt,
+      alanlar: [
+        { etiket: "durum", kopya: kopya.status, konsol: konsolDurum },
+        { etiket: "dönem sonu", kopya: yansimaGunu(kopya.periodEnd), konsol: yansimaGunu(konsolDonem) },
+      ],
+    };
+  }
   const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
     ADDON_PRODUCTS.map((urun) => [
       urun.code,
@@ -108,20 +178,44 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     ]),
   );
 
+  /*
+    AI kredisi artık ÖLÇÜLÜYOR: ArvoLab'ın tükettiği karakter kuruma göre
+    toplanıp krediye çevriliyor (1 kredi = 1.000 karakter). Eskiden bu kutu
+    her kiracıda "0 kredi · %0 dolu" diyordu çünkü hiçbir kod
+    ai_credits_used sütununu artırmıyordu.
+
+    Ölçüm ALINAMAZSA null kalıyor ve ekran yine "Ölçülmüyor" diyor —
+    köprü koptuğunda "0 kredi" yazmak, hiç kullanmamış kiracıyla ölçümü
+    kopmuş kiracıyı aynı gösterirdi.
+  */
+  const aiKredi = kullanim.arvolab?.aylik_kredi ?? null;
+  const aiOlculdu = aiKredi !== null;
+  const aiPercent = aiOlculdu ? yuzde(aiKredi, license.ai_credit_limit) : 0;
+
   const users = activeUsers ?? 0;
   const userPercent = yuzde(users, license.user_limit);
   const storagePercent = yuzde(depolamaMb, license.storage_limit_mb);
-  const aiPercent = yuzde(license.ai_credits_used, license.ai_credit_limit);
   const label = selected.display_name || selected.name;
   const durumTonu = LISANS_TONU[license.license_status] ?? "neutral";
   const durumAdi = productLicenseLabels[license.license_status] ?? license.license_status;
-  // Açık abonelik = ücret tahsil edilen ya da denemede olan ek ürün.
+  // Açık abonelik = ücret tahsil edilen ya da denemede olan ürün.
+  const cekirdekAcik = ["active", "trialing", "past_due"].includes(license.license_status);
   const acikUrunler = ADDON_PRODUCTS.filter((urun) => ["active", "trialing", "past_due"].includes(productLicenses.get(urun.code)?.status ?? "inactive"));
 
   return <div className="stg plt">
     <div className="panel-pagehead">
       <div><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link></div>
+      <div className="panel-page-actions">
+        <KiraciSecici
+          secili={selected.id}
+          kurumlar={organizations.map((kurum) => ({
+            id: kurum.id,
+            ad: kurum.display_name || kurum.name,
+            kendi: kurum.kind === "internal",
+          }))}
+        />
+        <Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link>
+      </div>
     </div>
 
     {/*
@@ -148,126 +242,146 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         value={depolama(depolamaMb)} note={`Limit ${depolama(license.storage_limit_mb)} · %${storagePercent} dolu`}
       />
       <StgWidget
-        tone={kullanimTonu(aiPercent)} icon="chart" label="AI kredisi"
-        value={sayi(license.ai_credits_used)} note={`Limit ${sayi(license.ai_credit_limit)} · %${aiPercent} dolu`}
+        tone={aiOlculdu ? kullanimTonu(aiPercent) : "neutral"} icon="chart" label="AI kredisi"
+        value={aiOlculdu ? `${sayi(aiKredi)} / ${sayi(license.ai_credit_limit)}` : "Ölçülemedi"}
+        note={aiOlculdu
+          ? `Bu ay · %${aiPercent} dolu`
+          : "ArvoLab'a ulaşılamadı; tanımlı hak " + sayi(license.ai_credit_limit)}
       />
     </div>
 
     <div className="stg-grid">
       <StgSection
         id="kullanim" wide icon="chart" tone="info" kicker="KOTA" title="Şu anki kullanım"
-        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi lisans kaydından geliyor."
+        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
         aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
       >
         <div className="plt-olcumler">
           <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
           <Olcum etiket="Depolama" kullanilan={depolama(depolamaMb)} limit={depolama(license.storage_limit_mb)} oran={storagePercent} />
-          <Olcum etiket="AI kredisi" kullanilan={sayi(license.ai_credits_used)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
+          {/* Ölçüm alınamadıysa çubuk hiç çizilmiyor: %0'lık bir çubuk
+              "kullanmamış" der, oysa söyleyebileceğimiz tek şey
+              "bilmiyoruz". */}
+          {aiOlculdu ? (
+            <Olcum etiket="AI kredisi (bu ay)" kullanilan={sayi(aiKredi)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
+          ) : null}
         </div>
+        <p className="stg-muted">
+          <StgIcon name="chart" size={16} />
+          {aiOlculdu
+            ? `1 kredi = ${sayi(KREDI_KARAKTERI)} karakter (istem + yanıt). Reddedilen yanıtlar sayılmaz — kullanıcıya gösterilmeyen bir şeyin parası alınmıyor. Sayaç her ay başında sıfırlanır.`
+            : "AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil."}
+          {kullanim.arvolab?.aylik_calisma != null ? ` Bu ay ${sayi(kullanim.arvolab.aylik_calisma)} asistan çalışması.` : ""}
+        </p>
         {license.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{license.suspension_reason}</p> : null}
-        {/* Sıfırlama, ölçerlerin altında: kurucu önce ne kadar tüketildiğini
-            görüp sonra karar veriyor. Kart köşesindeki bir düğme, okumadan
-            basılan bir düğme olurdu. */}
-        <form action={resetOrganizationAiCredits}>
-          <input type="hidden" name="organization_id" value={selected.id} />
-          <div className="plt-islem-notlu">
-            <small className="plt-field-note">Yeni fatura ya da kullanım dönemi başlarken tüketilen AI kredilerini sıfırlayın.</small>
-            <button className="panel-secondary" type="submit">AI kullanımını sıfırla</button>
-          </div>
-        </form>
-      </StgSection>
-
-      <StgSection
-        id="lisans" wide icon="box" tone={durumTonu}
-        kicker={selected.slug} title={`${label} · lisans politikası`}
-        description="Askıya alınan ya da iptal edilen kurumun panel erişimi kurum durumuyla birlikte kapatılır."
-        aside={<span className="status-pill" data-tone={durumTonu}>{durumAdi}</span>}
-      >
-        <form className="panel-form" action={updateOrganizationLicense}>
-          <input type="hidden" name="organization_id" value={selected.id} />
-          <label>Paket<select name="plan_code" defaultValue={license.plan_code}><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
-          <label>Lisans durumu<select name="license_status" defaultValue={license.license_status}><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
-          <label>Deneme bitişi<input name="trial_ends_at" type="date" defaultValue={tarihDegeri(license.trial_ends_at)} /></label>
-          <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={tarihDegeri(license.current_period_end)} /></label>
-          <label>Kullanıcı limiti<input name="user_limit" type="number" min={1} defaultValue={license.user_limit} required /><small className="plt-field-note">şu an {sayi(users)} aktif üye</small></label>
-          <label>Depolama limiti (MB)<input name="storage_limit_mb" type="number" min={1} defaultValue={license.storage_limit_mb} required /><small className="plt-field-note">şu an {depolama(depolamaMb)} · limit {depolama(license.storage_limit_mb)}</small></label>
-          <label>AI kredi limiti<input name="ai_credit_limit" type="number" min={0} defaultValue={license.ai_credit_limit} required /><small className="plt-field-note">şu an {sayi(license.ai_credits_used)} kredi kullanıldı</small></label>
-          <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={license.monthly_fee ? Number(license.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
-          <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={license.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
-          <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Lisansı kaydet</button></div>
-        </form>
       </StgSection>
 
       {/*
-        Ek ürün abonelikleri yan yana. Her biri beş alanlık kısa bir form
-        ama tam genişlikte duruyordu: üç ürünü görmek için ekran boyu
-        kaydırmak gerekiyordu ve ürün sayısı arttıkça sayfa uzayacaktı.
-        ArvoOS çekirdek lisansı geniş kalıyor — dokuz alanı var ve iki
-        sütunlu formu dar kartta okunmaz oluyor.
+        Dört ürün, tek satırda dört kart. Eskiden ArvoOS çekirdek lisansı
+        tam genişlikte dev bir form, diğer üçü altında ayrı bir bölümdü —
+        oysa dördü de ayrı ürün. "Bu kiracı hangi ürünleri alıyor" sorusu
+        iki ayrı yere bakmayı gerektiriyordu.
+
+        Kartlar özet; düzenleme tıklayınca açılan pencerede. Dört formu
+        aynı anda dar sütunlarda tutmak hepsini okunmaz yapardı.
       */}
-      <section className="stg-card is-wide" aria-labelledby="ek-urunler-title">
-        <header className="stg-card-head">
-          <span className="stg-card-icon" data-tone="gold"><StgIcon name="grid" size={20} /></span>
-          <div className="stg-card-title">
-            <small>EK ÜRÜNLER</small>
-            <h2 id="ek-urunler-title">{label} abonelikleri</h2>
-            <p>Her ürünün kendi durumu, ücreti ve kotası var. Aylık ücret girilmezse kurum o ürünü kartla ödeyemez.</p>
-          </div>
-          <div className="stg-card-aside">
-            <span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
-              {acikUrunler.length} / {ADDON_PRODUCTS.length} açık
-            </span>
-          </div>
-        </header>
-        <div className="plan-izgara">
-          {ADDON_PRODUCTS.map((product) => {
-            const row = productLicenses.get(product.code);
-            const status = row?.status ?? "inactive";
-            return (
-              <StgSection
-                key={product.code} id={`urun-${product.code}`} icon="box" tone={LISANS_TONU[status] ?? "neutral"}
-                kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} aboneliği`}
-                description={product.description}
-                aside={<span className="status-pill" data-tone={LISANS_TONU[status] ?? "neutral"}>{productLicenseLabels[status] ?? status}</span>}
-              >
-                <form className="panel-form" action={updateProductLicense}>
-                  <input type="hidden" name="organization_id" value={selected.id} />
-                  <input type="hidden" name="product" value={product.code} />
-                  <label>Durum<select name="status" defaultValue={status}><option value="inactive">Kapalı</option><option value="trialing">Deneme</option><option value="active">Aktif</option><option value="past_due">Ödeme gecikmiş</option><option value="suspended">Askıda</option><option value="canceled">İptal</option></select></label>
-                  <label>Paket<select name="plan_code" defaultValue={row?.plan_code ?? ""}><option value="">Belirtilmedi</option><option value="starter">Başlangıç</option><option value="professional">Profesyonel</option><option value="enterprise">Kurumsal</option></select></label>
-                  <label>Aylık ücret (TL)<input name="monthly_fee" type="number" min={1} step="0.01" defaultValue={row?.monthly_fee ? Number(row.monthly_fee) / 100 : ""} placeholder="Kartla ödeme tutarı · boşsa kapalı" /></label>
-                  <label>Dönem bitişi<input name="current_period_end" type="date" defaultValue={tarihDegeri(row?.current_period_end ?? null)} /></label>
-                  {/* Kota alanları yalnızca ÖLÇÜMÜ YAZILMIŞ ürünlerde
-                      çiziliyor. Ölçümsüz limit, kurucunun koruma sandığı
-                      boş bir sayı olurdu — storage_limit_mb dersi. */}
-                  {(URUN_KOTALARI[product.code] ?? []).map((alan) => {
-                    const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
-                    return (
-                      <label key={alan.anahtar}>
-                        {alan.etiket} limiti ({alan.birim})
-                        <input
-                          name={`kota_${alan.anahtar}`}
-                          type="number"
-                          min={1}
-                          defaultValue={olcum?.limit ?? ""}
-                          placeholder="Boşsa sınırsız"
-                        />
-                        <small className="kota-olcum" data-tone={olcum?.asildi ? "danger" : undefined}>
-                          {olcum?.kullanilan === null || olcum?.kullanilan === undefined
-                            ? "kullanım ölçülemedi"
-                            : `şu an ${sayi(olcum.kullanilan)} ${alan.birim}${alan.donemsel ? " (bu ay)" : ""}`}
-                        </small>
-                      </label>
-                    );
-                  })}
-                  <label className="wide">Askıya alma nedeni<input name="suspension_reason" defaultValue={row?.suspension_reason ?? ""} placeholder="Yalnızca askıya alındığında kullanılır" /></label>
-                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{product.name} lisansını kaydet</button></div>
-                </form>
-              </StgSection>
-            );
-          })}
-        </div>
-      </section>
+      <StgSection
+        id="urunler" wide icon="grid" tone="gold" kicker="ÜRÜNLER" title={`${label} abonelikleri`}
+        description="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
+        aside={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
+          {acikUrunler.length + (cekirdekAcik ? 1 : 0)} / {ADDON_PRODUCTS.length + 1} açık
+        </span>}
+      >
+        <UrunKartlari
+          organizationId={selected.id}
+          kurumAdi={label}
+          cekirdegiKaydet={updateOrganizationLicense}
+          urunuKaydet={updateProductLicense}
+          urunuYansit={urunuYenidenYansit}
+          kartlar={[
+            {
+              tur: "cekirdek" as const,
+              kod: "arvoos",
+              ad: "ArvoOS",
+              aciklama: "Çekirdek panel: CRM, operasyon, finans, İK",
+              durumAdi,
+              tone: durumTonu,
+              acik: cekirdekAcik,
+              ozet: [
+                { etiket: "Paket", deger: PAKET_ADI[license.plan_code] ?? license.plan_code },
+                { etiket: "Aylık ücret", deger: license.monthly_fee ? `${para(Number(license.monthly_fee))} / ay` : "girilmedi" },
+                { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
+                { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
+              ],
+              aktifUye: users,
+              kullanilanMb: depolamaMb,
+              aiKullanilan: aiKredi,
+              baslangic: {
+                planCode: license.plan_code,
+                licenseStatus: license.license_status,
+                trialEndsAt: tarihDegeri(license.trial_ends_at),
+                currentPeriodEnd: tarihDegeri(license.current_period_end),
+                userLimit: String(license.user_limit),
+                storageLimitMb: String(license.storage_limit_mb),
+                aiCreditLimit: String(license.ai_credit_limit),
+                monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
+                suspensionReason: license.suspension_reason ?? "",
+              },
+            },
+            ...ADDON_PRODUCTS.map((product) => {
+              const row = productLicenses.get(product.code);
+              const status = row?.status ?? "inactive";
+              const kotalar = (URUN_KOTALARI[product.code] ?? []).map((alan) => {
+                const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
+                return {
+                  anahtar: alan.anahtar,
+                  etiket: alan.etiket,
+                  birim: alan.birim,
+                  donemsel: Boolean(alan.donemsel),
+                  limit: olcum?.limit != null ? String(olcum.limit) : "",
+                  kullanilan: olcum?.kullanilan ?? null,
+                  asildi: Boolean(olcum?.asildi),
+                };
+              });
+              /* Kota özeti yalnızca limiti GİRİLMİŞ alanlardan; "boşsa
+                 sınırsız" olan bir alanı kartta yazmak, kota varmış gibi
+                 okunurdu. */
+              const kotaOzeti = kotalar.filter((alan) => alan.limit)
+                .map((alan) => `${sayi(Number(alan.limit))} ${alan.birim}`).join(" · ");
+              return {
+                tur: "ek" as const,
+                kod: product.code,
+                /*
+                  Karşılaştırma yalnızca ArvoLab için yapılabiliyor: Arc ve
+                  Randevu ayrı köprüler ve kopyalarını okuyan bir yol henüz
+                  yok. Onlarda yansima null geçiyor, metin de eskisi gibi
+                  genel kalıyor — uydurma bir "güncel" yazmaktansa.
+                */
+                yansima: yansimaDurumu(urunYansimasi(product.code), product.name),
+                ad: product.name,
+                aciklama: product.description,
+                durumAdi: productLicenseLabels[status] ?? status,
+                tone: LISANS_TONU[status] ?? "neutral",
+                acik: ["active", "trialing", "past_due"].includes(status),
+                ozet: [
+                  { etiket: "Paket", deger: row?.plan_code ? (PAKET_ADI[row.plan_code] ?? row.plan_code) : "belirtilmedi" },
+                  { etiket: "Aylık ücret", deger: row?.monthly_fee ? `${para(Number(row.monthly_fee))} / ay` : "girilmedi" },
+                  { etiket: "Dönem sonu", deger: tarih(row?.current_period_end ?? null) },
+                  { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "kota yok") },
+                ],
+                kotalar,
+                baslangic: {
+                  status,
+                  planCode: row?.plan_code ?? "",
+                  monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
+                  currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
+                  suspensionReason: row?.suspension_reason ?? "",
+                },
+              };
+            }),
+          ]}
+        />
+      </StgSection>
     </div>
   </div>;
 }

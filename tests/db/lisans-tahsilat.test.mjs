@@ -1,14 +1,15 @@
 // Ek ürün lisansı ve tahsilat: havale onayı doğru lisansı uzatır, "randevu"
-// ürünü lisans/ödeme tablolarına girebilir. 20260919132725 canlı şema
-// dökümünden yeni olduğu için burada ayrıca uygulanır (döküm yenilenince de
-// zararsız: kısıtlar düşürülüp yeniden ekleniyor, fonksiyonlar değiştiriliyor).
+// ürünü lisans/ödeme tablolarına girebilir, kredi satışı gelire yazılır.
+//
+// 20260919132725 burada AYRICA UYGULANIYORDU: o migration anlık görüntüden
+// yeniydi. Artık değil (görüntü 22.09.2026) ve yeniden uygulamak zararsız da
+// değildi — migration payment_links_purpose_check'i düşürüp kendi sürümüyle
+// değiştirdiği için görüntüdeki GÜNCEL kısıtı eskisine döndürüyor, 'ai_credit'
+// amacını reddediyordu. Anlık görüntüyü yenileyen, buradaki elle uygulanan
+// migration'ları da kaldırmalı.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
-
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20260919132725_randevu_urunu_ve_havale_urune_gore.sql");
 
 const KURUCU = "00000000-0000-4000-8000-000000000001";
 const SAHIP = "00000000-0000-4000-8000-000000000002";
@@ -19,7 +20,6 @@ const HESAP = "00000000-0000-4000-8000-0000000000e1";
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -160,5 +160,90 @@ describe("kartla (PayTR) ödeme ürün lisansını otomatik uzatır", () => {
       await tohum();
       assert.equal(await ode(await baglanti(), "OID3", 1000), "amount_mismatch");
       assert.equal(await bitis(), undefined);
+    }));
+});
+
+describe("AI kredisi satın alma", () => {
+  /*
+    Bu dal hiç çalıştırılmamıştı. plpgsql gövdesi sütunları ancak çağrıda
+    denetlediği için, arvo_record_paytr_payment'in kredi kolu ilk gerçek
+    ödemede düşebilirdi — nitekim organization_payment_requests'in
+    plan_code ve submitted_by sütunları NOT NULL ve ilk yazımda null
+    geçilmişti.
+
+    Kredinin kendisi ArvoLab'ın veritabanında; burada yalnızca ödemenin
+    geliri olarak kaydedilmesi sınanıyor.
+  */
+  async function siparis({ tutar = 49900, kredi = 500, siparisYaz = true } = {}) {
+    await rol(db, "postgres");
+    const link = (await tek(
+      `insert into public.payment_links (id, organization_id, provider, provider_link_id, url, amount, purpose, payer_organization_id, created_by)
+       values (gen_random_uuid(), $1, 'paytr', 'K' || gen_random_uuid(), 'https://paytr.com/k', $2, 'ai_credit', $3, $4) returning id`,
+      [ARVO, tutar, SALON, SAHIP],
+    )).id;
+    if (siparisYaz) {
+      await db.query(
+        `insert into public.ai_credit_orders (payment_link_id, organization_id, paket_kodu, kredi, amount, created_by)
+         values ($1, $2, 'k500', $3, $4, $5)`,
+        [link, SALON, kredi, tutar, SAHIP],
+      );
+    }
+    return link;
+  }
+  const ode = async (id, oid, tutar = 49900) =>
+    (await tek(`select public.arvo_record_paytr_payment($1, $2, $3, $3, 'TL', false, '{}'::jsonb) as sonuc`, [id, oid, tutar])).sonuc;
+
+  test("ödeme kaydedilir, gelir tahsilat listesine düşer, lisans dönemi uzamaz", () =>
+    islem(db, async () => {
+      await tohum();
+      const oncekiArvoos = await tek(`select current_period_end, license_status from public.organization_licenses where organization_id = $1`, [SALON]);
+      assert.equal(await ode(await siparis(), "KREDI1"), "recorded");
+
+      const kayit = await tek(
+        `select product, plan_code, status, amount, submitted_by, review_note from public.organization_payment_requests
+          where organization_id = $1 and payment_method = 'paytr'`,
+        [SALON],
+      );
+      assert.deepEqual(
+        [kayit.product, kayit.plan_code, kayit.status, Number(kayit.amount), kayit.submitted_by],
+        ["arvolab", "starter", "approved", 49900, SAHIP],
+      );
+      assert.match(kayit.review_note, /500 kredi/);
+
+      // Kredi satışı abonelik değil: ArvoOS lisansı olduğu yerde kalmalı.
+      const sonraArvoos = await tek(`select current_period_end, license_status from public.organization_licenses where organization_id = $1`, [SALON]);
+      assert.deepEqual(sonraArvoos, oncekiArvoos);
+      const ek = await tek(`select count(*)::int as n from public.organization_product_licenses where organization_id = $1`, [SALON]);
+      assert.equal(ek.n, 0);
+    }));
+
+  test("sipariş satırı yoksa para kaydedilmez: 'no_order'", () =>
+    islem(db, async () => {
+      await tohum();
+      const link = await siparis({ siparisYaz: false });
+      assert.equal(await ode(link, "KREDI2"), "no_order");
+      const l = await tek(`select status, paid_at from public.payment_links where id = $1`, [link]);
+      assert.deepEqual([l.status, l.paid_at], ["active", null]);
+    }));
+
+  test("eksik tutar kredi yüklemez", () =>
+    islem(db, async () => {
+      await tohum();
+      const link = await siparis();
+      assert.equal(await ode(link, "KREDI3", 1000), "amount_mismatch");
+      const kayit = await tek(`select count(*)::int as n from public.organization_payment_requests where organization_id = $1`, [SALON]);
+      assert.equal(kayit.n, 0);
+    }));
+
+  test("kiracı başkasının kredi siparişini göremez", () =>
+    islem(db, async () => {
+      await tohum();
+      await siparis();
+      await rol(db, "authenticated", KURUCU);
+      const gorulen = await tek(`select count(*)::int as n from public.ai_credit_orders`);
+      assert.equal(gorulen.n, 0);
+      await rol(db, "authenticated", SAHIP);
+      const kendi = await tek(`select count(*)::int as n from public.ai_credit_orders`);
+      assert.equal(kendi.n, 1);
     }));
 });

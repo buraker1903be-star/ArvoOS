@@ -45,14 +45,26 @@ function licenseOpen(status: string | undefined, periodEnd: string | null) {
   return Boolean(status && ACTIVE_LICENSE.has(status) && notExpired(periodEnd));
 }
 
-/** auth.users listesini sayfa sayfa toplar; id → {email, ad} eşlemesi döner. */
+/**
+ * auth.users listesini sayfa sayfa toplar; id → {email, ad} eşlemesi döner.
+ *
+ * `tam` alanı, listenin KAPSAMIN TAMAMINI getirip getirmediğini söylüyor.
+ * Sayfa sınırına (10 × 1000) dayanıldığında ya da bir sayfa hata verdiğinde
+ * kalan kullanıcıların e-postası eksik kalıyordu ve bu hiçbir yerde
+ * görünmüyordu: satırlar "Adı kayıtlı değil" diye çiziliyor, "Kişi" sayacı
+ * da e-postası olmayanları kimliğe göre ayrı kişi sayıp şişiyordu. Eksik
+ * olduğunu bilmediğimiz bir liste, dolu bir liste gibi görünür.
+ */
 async function emailMap(client: SupabaseClient) {
   const map = new Map<string, { email: string | null; name: string | null }>();
   const perPage = 1000;
-  for (let page = 1; page <= 10; page += 1) {
+  const maxPage = 10;
+  let tam = true;
+  for (let page = 1; page <= maxPage; page += 1) {
     const { data, error } = await client.auth.admin.listUsers({ page, perPage });
     if (error) {
       console.error("[üyeler] kullanıcılar okunamadı", error.message);
+      tam = false;
       break;
     }
     for (const user of data.users) {
@@ -60,20 +72,24 @@ async function emailMap(client: SupabaseClient) {
       map.set(user.id, { email: user.email ?? null, name: metadata.full_name ?? metadata.name ?? null });
     }
     if (data.users.length < perPage) break;
+    // Son sayfa da doluysa arkada daha çok kullanıcı var demektir.
+    if (page === maxPage) tam = false;
   }
-  return map;
+  return { map, tam };
 }
 
 export interface Directory {
   rows: DirectoryRow[];
   arvolabReachable: boolean;
+  /** Kullanıcı listesi eksiksiz mi (auth sayfa sınırı aşılmadı mı). */
+  kullanicilarTam: boolean;
 }
 
 export async function getMemberDirectory(): Promise<Directory> {
   const admin = createAdminClient();
-  if (!admin) return { rows: [], arvolabReachable: false };
+  if (!admin) return { rows: [], arvolabReachable: false, kullanicilarTam: false };
 
-  const [{ data: organizations }, { data: memberships }, { data: licenses }, { data: productLicenses }, { data: modules }, { data: subscribers }, users] =
+  const [{ data: organizations }, { data: memberships }, { data: licenses }, { data: productLicenses }, { data: modules }, { data: subscribers }, users, { data: profiles }] =
     await Promise.all([
       admin.from("organizations").select("id,name,display_name,slug"),
       /*
@@ -87,7 +103,21 @@ export async function getMemberDirectory(): Promise<Directory> {
       admin.from("organization_modules").select("organization_id,module_code,is_enabled").eq("module_code", "commerce"),
       admin.from("product_subscribers").select("product,external_user_id,email,full_name,status,trial_ends_at,current_period_end"),
       emailMap(admin),
+      /*
+        Adın ASIL kaynağı profiles: kişi adını panelden buraya yazıyor ve
+        konsolun geri kalanı (ana sayfa, kiracı dosyası, CRM geçmişi) hep
+        buradan okuyor. Bu liste yalnızca auth user_metadata'ya bakıyordu;
+        metadata daveti gönderilirken doldurulduğu için, hesabı başka bir
+        yoldan açılmış kişiler "—" görünüyordu — kurucunun kendisi dahil.
+      */
+      admin.from("profiles").select("id,full_name"),
     ]);
+
+  const userInfo = users.map;
+  const profilAdi = new Map(((profiles ?? []) as { id: string; full_name: string | null }[])
+    .filter((satir) => satir.full_name?.trim())
+    .map((satir) => [satir.id, satir.full_name!.trim()]));
+  let kullanicilarTam = users.tam;
 
   const orgName = new Map((organizations ?? []).map((row) => [row.id, row.display_name || row.name]));
   const osLicense = new Map((licenses ?? []).map((row) => [row.organization_id, row]));
@@ -97,7 +127,7 @@ export async function getMemberDirectory(): Promise<Directory> {
   const rows: DirectoryRow[] = [];
 
   for (const membership of memberships ?? []) {
-    const user = users.get(membership.user_id);
+    const user = userInfo.get(membership.user_id);
     const scope = orgName.get(membership.organization_id) ?? "Bilinmeyen kurum";
 
     const os = osLicense.get(membership.organization_id);
@@ -106,7 +136,7 @@ export async function getMemberDirectory(): Promise<Directory> {
     rows.push({
       product: "arvoos",
       userId: membership.user_id,
-      name: user?.name ?? null,
+      name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
       email: user?.email ?? null,
       scope,
       role: membership.role,
@@ -124,7 +154,7 @@ export async function getMemberDirectory(): Promise<Directory> {
       rows.push({
         product: "arc",
         userId: membership.user_id,
-        name: user?.name ?? null,
+        name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
         email: user?.email ?? null,
         scope,
         role: membership.role,
@@ -145,7 +175,7 @@ export async function getMemberDirectory(): Promise<Directory> {
       rows.push({
         product: "randevu",
         userId: membership.user_id,
-        name: user?.name ?? null,
+        name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
         email: user?.email ?? null,
         scope,
         role: membership.role,
@@ -172,11 +202,12 @@ export async function getMemberDirectory(): Promise<Directory> {
       console.error("[üyeler] ArvoLab okunamadı", labError.message);
     } else {
       arvolabReachable = true;
+      if (!labUsers.tam) kullanicilarTam = false;
       const labOrgs = new Map((labOrganizations ?? []).map((row) => [row.id, row]));
       const subscriberByUser = new Map((subscribers ?? []).filter((row) => row.product === "arvolab").map((row) => [row.external_user_id, row]));
 
       for (const profile of labProfiles ?? []) {
-        const user = labUsers.get(profile.id);
+        const user = labUsers.map.get(profile.id);
         const organization = profile.organization_id ? labOrgs.get(profile.organization_id) : null;
         const subscriber = subscriberByUser.get(profile.id);
         const staff = profile.role === "founder" || profile.role === "system_admin";
@@ -248,5 +279,5 @@ export async function getMemberDirectory(): Promise<Directory> {
     (a.scope ?? "").localeCompare(b.scope ?? "", "tr") ||
     (a.email ?? "").localeCompare(b.email ?? "", "tr"));
 
-  return { rows, arvolabReachable };
+  return { rows, arvolabReachable, kullanicilarTam };
 }

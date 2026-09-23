@@ -9,7 +9,25 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 
-export function PanelNavigation({ modules, role, hiddenModuleKeys }: { modules: PanelModule[]; role?: string; hiddenModuleKeys?: string[] }) {
+/*
+  Kurumun sahip olduğu DİĞER Arvo ürünleri. Panelde bunların hiçbir izi
+  yoktu: ArvoLab'ı da alan bir kurum, ürüne nasıl gideceğini bilmiyordu —
+  adresi bilen elle yazıyor, bilmeyen "bize ArvoLab verilmemiş" sanıyordu.
+
+  ArvoLab'a geçiş kendi yolundan gidiyor (/panel/uygulama/arvolab): orada
+  tek kullanımlık bir oturum bağlantısı üretilip yönlendiriliyor, kişi
+  ikinci kez giriş yapmıyor. Arc ve Randevu şimdilik düz bağlantı — onlar
+  için böyle bir köprü henüz yok ve olmayan bir kolaylığı varmış gibi
+  göstermek, kullanıcıyı şaşırtan bir giriş ekranına çıkarır.
+*/
+export type DigerUygulama = { kod: string; ad: string; href: string; ayniSekme: boolean };
+
+export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulamalar = [] }: {
+  modules: PanelModule[];
+  role?: string;
+  hiddenModuleKeys?: string[];
+  digerUygulamalar?: DigerUygulama[];
+}) {
   const pathname = usePathname();
   const resolved = resolveNavigationGroups(modules, role, new Set(hiddenModuleKeys ?? []));
 
@@ -46,6 +64,24 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys }: { modules: 
         </details>;
       })}
     </div>
+    {digerUygulamalar.length ? (
+      <div className="panel-nav-apps" role="group" aria-label="Diğer uygulamalar">
+        <small>DİĞER UYGULAMALAR</small>
+        {digerUygulamalar.map((uygulama) => (
+          <a
+            className="panel-nav-group-link"
+            key={uygulama.kod}
+            href={uygulama.href}
+            title={`${uygulama.ad} uygulamasını aç`}
+            {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
+          >
+            <i>{uygulama.ad.slice(0, 1)}</i>
+            <span>{uygulama.ad}</span>
+            <em aria-hidden="true">↗</em>
+          </a>
+        ))}
+      </div>
+    ) : null}
     <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings" title="Ayarlar"><i>A</i><span>Ayarlar</span></Link>
     {/* Platform yönetimi uygulama panelinden kaldırıldı: kendi alan adında
         (yonetim.arvo-os.com). Aynı kabukta durduğu sürece "şu an hangi kurum

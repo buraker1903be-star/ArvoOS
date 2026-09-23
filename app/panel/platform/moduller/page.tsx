@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
 import { LISANS_TONU } from "../bicim";
+import { Matris } from "./matris";
 import "../../settings/settings.css";
 import "../platform.css";
 
@@ -28,6 +28,16 @@ const DURUM_ADI = productLicenseLabels;
 
 // Modülü açık sayan durumlar: ödeme gecikse de kullanıcı hâlâ içeride.
 const ACIK_DURUMLAR = new Set(["active", "trialing", "past_due"]);
+
+/*
+  Matris hücresinde KISA ad. Tam adlar ("Ödeme gecikmiş") dört sütunda
+  tabloyu yatay kaydırma gerektiren bir şeride çeviriyordu; sorulan soru
+  ise "hangi hücre yeşil değil". Karşılıkları tablonun altındaki şeritte.
+*/
+const KISA_ADI: Record<string, string> = {
+  active: "Aktif", trialing: "Deneme", past_due: "Gecikmiş",
+  suspended: "Askıda", canceled: "İptal", inactive: "Kapalı",
+};
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null };
 type UrunLisansi = { organization_id: string; product: string; status: string; integrated: boolean | null };
@@ -103,46 +113,45 @@ export default async function ModulMatrisiSayfasi() {
 
     <StgSection
       id="matris" wide icon="grid" tone="info" kicker="ÇAPRAZ GÖRÜNÜM" title="Kiracı × modül"
-      description="Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz."
+      description="Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır."
       aside={<span className="status-pill">{satirlar.length} kurum</span>}
     >
       {satirlar.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table modul-capraz">
-            <thead>
-              <tr>
-                <th>Kiracı</th>
-                {PRODUCTS.map((urun) => <th key={urun.code}>{urun.name}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {satirlar.map((kurum) => (
-                <tr key={kurum.id}>
-                  <td>
-                    <Link className="modul-baglanti" href={`/panel/platform?organization=${kurum.id}`}>
-                      {kurum.display_name || kurum.name}
-                    </Link>
-                    {musteriMi(kurum) ? null : <small className="plt-substatus">kendi markamız</small>}
-                  </td>
-                  {PRODUCTS.map((urun) => {
-                    const durum = durumAl(kurum, urun.code);
-                    const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
-                    return (
-                      <td key={urun.code}>
-                        <span className="status-pill" data-tone={LISANS_TONU[durum] ?? "neutral"}>
-                          {DURUM_ADI[durum] ?? durum}
-                        </span>
-                        {lisans && acikMi(durum) && lisans.integrated === false
-                          ? <small className="plt-substatus">bağımsız</small>
-                          : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <Matris
+            urunler={PRODUCTS.map((urun) => ({ code: urun.code, name: urun.name }))}
+            satirlar={satirlar.map((kurum) => ({
+              id: kurum.id,
+              ad: kurum.display_name || kurum.name,
+              kendiMarkamiz: !musteriMi(kurum),
+              hucreler: Object.fromEntries(PRODUCTS.map((urun) => {
+                const durum = durumAl(kurum, urun.code);
+                const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
+                return [urun.code, {
+                  durum,
+                  durumAdi: DURUM_ADI[durum] ?? durum,
+                  kisaAd: KISA_ADI[durum] ?? DURUM_ADI[durum] ?? durum,
+                  tone: LISANS_TONU[durum] ?? "neutral",
+                  acik: acikMi(durum),
+                  bagimsiz: Boolean(lisans && acikMi(durum) && lisans.integrated === false),
+                }];
+              })),
+            }))}
+          />
+          {/*
+            Kısaltılmış etiketlerin karşılığı: hücrede "Gecikmiş" yazıyor,
+            kurucunun bunun "Ödeme gecikmiş" olduğunu tahmin etmesi
+            gerekmemeli. Tek satır, tablonun hemen altında.
+          */}
+          <p className="plt-matris-lejant">
+            {Object.entries(KISA_ADI).map(([durum, kisa]) => (
+              <span key={durum}>
+                <span className="status-pill" data-tone={LISANS_TONU[durum] ?? "neutral"}>{kisa}</span>
+                {DURUM_ADI[durum] ?? durum}
+              </span>
+            ))}
+          </p>
+        </>
       ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Henüz kurum yok. İlk müşteri kurulduğunda matris burada dolar.</p></div>}
     </StgSection>
   </div>;

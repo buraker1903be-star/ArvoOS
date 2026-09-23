@@ -30,6 +30,7 @@ const sadelestir = (value: string) =>
 
 type IstekSatiri = {
   id: string;
+  contract_id: string | null;
   contract_no: string | null;
   customer_name: string | null;
   amount: number | null;
@@ -49,11 +50,18 @@ export default async function SozlesmelerPage() {
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı değil.");
 
-  const [{ data: istekler }, { data: kurumSatirlari }] = await Promise.all([
-    admin.from("platform_subscription_requests")
-      .select("id,contract_no,customer_name,amount,currency,created_at,status,requested,target_organization_id,review_note,reviewed_at")
-      .order("created_at", { ascending: false })
-      .limit(100),
+  /*
+    Bekleyenler AYRI ve sınırsız sorguda. Eskiden tek sorgu vardı ve en yeni
+    100 isteği çekiyordu: yüzden çok istek biriktiğinde eski bir BEKLEYEN
+    sözleşme kuyruktan sessizce düşerdi — imzalanmış, parası beklenen bir iş
+    hiçbir ekranda görünmeden kaybolurdu. Sayılar da aynı 100'lükten
+    hesaplanıyordu.
+  */
+  const SECIM = "id,contract_id,contract_no,customer_name,amount,currency,created_at,status,requested,target_organization_id,review_note,reviewed_at";
+  const [{ data: bekleyenSatirlar }, { data: gecmisSatirlar }, { data: sayimlar }, { data: kurumSatirlari }] = await Promise.all([
+    admin.from("platform_subscription_requests").select(SECIM).eq("status", "pending").order("created_at", { ascending: false }),
+    admin.from("platform_subscription_requests").select(SECIM).neq("status", "pending").order("reviewed_at", { ascending: false }).limit(20),
+    admin.from("platform_subscription_requests").select("status"),
     admin.from("organizations").select("id,name,display_name,kind").order("name"),
   ]);
 
@@ -62,11 +70,12 @@ export default async function SozlesmelerPage() {
     .filter((kurum) => kurum.kind !== "internal")
     .map((kurum) => ({ id: kurum.id, ad: kurum.display_name || kurum.name }));
 
-  const satirlar = (istekler ?? []) as IstekSatiri[];
-  const bekleyenler = satirlar.filter((satir) => satir.status === "pending");
-  const onaylananlar = satirlar.filter((satir) => satir.status === "approved");
-  const reddedilenler = satirlar.filter((satir) => satir.status === "rejected");
-  const sonuclananlar = satirlar.filter((satir) => satir.status !== "pending").slice(0, 20);
+  const bekleyenler = (bekleyenSatirlar ?? []) as IstekSatiri[];
+  const sonuclananlar = (gecmisSatirlar ?? []) as IstekSatiri[];
+  // Sayımlar bütün kayıtlardan; liste kısa kalıyor, sayı kısalmıyor.
+  const tumDurumlar = ((sayimlar ?? []) as { status: string }[]).map((satir) => satir.status);
+  const onaylananSayisi = tumDurumlar.filter((durum) => durum === "approved").length;
+  const reddedilenSayisi = tumDurumlar.filter((durum) => durum === "rejected").length;
   // Kuyrukta bekleyen para: kurucunun "bugün neyi tahsil etmem gerek"
   // sorusunun yanıtı. Sözleşme tutarı kuruş cinsinden tamsayı.
   const bekleyenTutar = bekleyenler.reduce((toplam, satir) => toplam + Number(satir.amount ?? 0), 0);
@@ -82,6 +91,7 @@ export default async function SozlesmelerPage() {
     const oneri = ad ? kurumlar.find((kurum) => sadelestir(kurum.ad) === ad) : undefined;
     return {
       id: satir.id,
+      contractId: satir.contract_id,
       contractNo: satir.contract_no,
       customerName: satir.customer_name,
       amount: satir.amount,
@@ -119,8 +129,8 @@ export default async function SozlesmelerPage() {
         tone={bekleyenTutar ? "gold" : "neutral"} icon="wallet" label="Bekleyen tutar" value={para(bekleyenTutar, bekleyenBirim)}
         note={bekleyenTutar ? "Onaylanınca modüller açılır" : "Bekleyen tutar yok"}
       />
-      <StgWidget tone="success" icon="check" label="Onaylandı" value={onaylananlar.length} note="Abonelik açıldı" />
-      <StgWidget tone={reddedilenler.length ? "danger" : "neutral"} icon="lock" label="Reddedildi" value={reddedilenler.length} note={reddedilenler.length ? "Sebebi kayıtta" : "Reddedilen istek yok"} />
+      <StgWidget tone="success" icon="check" label="Onaylandı" value={onaylananSayisi} note="Abonelik açıldı" />
+      <StgWidget tone={reddedilenSayisi ? "danger" : "neutral"} icon="lock" label="Reddedildi" value={reddedilenSayisi} note={reddedilenSayisi ? "Sebebi kayıtta" : "Reddedilen istek yok"} />
     </div>
 
     {bekleyenler.length ? (

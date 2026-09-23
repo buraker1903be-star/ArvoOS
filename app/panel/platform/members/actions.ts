@@ -5,6 +5,7 @@ import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { erisimDegisikligiEngeli } from "@/lib/uye-erisimi";
+import { syncArvolabMembers } from "@/lib/arvolab";
 
 /*
   Kurucu konsolundan üye erişimini açma/kapatma.
@@ -63,6 +64,13 @@ async function uyeErisimiDegistir__impl(formData: FormData) {
     .eq("organization_id", organizationId)
     .eq("user_id", hedefKullanici);
   if (error) throw new Error(`Erişim güncellenemedi: ${error.message}`);
+
+  /*
+    ArvoLab'daki eşleşme listesi tazeleniyor: erişimi kapatılan kişi listede
+    kalırsa ArvoLab'a ilk kez girdiğinde hâlâ bu kuruma bağlanırdı. Köprü
+    çalışmıyorsa akış düşmüyor; on dakikalık eşitleme yakalar.
+  */
+  await syncArvolabMembers(organizationId);
 
   /*
     Kayıt hedef KURUMUN altına düşüyor, Arvo'nun altına değil: o kurumun

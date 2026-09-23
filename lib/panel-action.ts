@@ -38,6 +38,14 @@ function isRedirectSignal(error: unknown) {
   return isControlFlowSignal(error) && String((error as { digest: string }).digest).startsWith("NEXT_REDIRECT");
 }
 
+/**
+ * Hata bildirimi bırakır (runPanelAction dışındaki işlemler için: route
+ * handler'lar kendi yönlendirmesini yapıyor ve sarmalayıcıdan geçmiyor).
+ */
+export async function flashError(message: string) {
+  (await cookies()).set(FLASH_COOKIE, encodeURIComponent(message.slice(0, 200)), cookieOptions());
+}
+
 /** Başarı bildirimi bırakır (runPanelAction dışındaki işlemler için). */
 export async function flashSuccess(message: string) {
   (await cookies()).set(FLASH_OK_COOKIE, encodeURIComponent(message.slice(0, 200)), cookieOptions());

@@ -108,6 +108,30 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const { data: pendingAgreement } = await pendingAgreementQuery;
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
+  /*
+    Kurumun sahip olduğu diğer Arvo ürünleri menünün altında. Panelde
+    bunların hiçbir izi yoktu: ArvoLab'ı da alan bir kurum ürüne nasıl
+    gideceğini bilmiyordu — adresi bilen elle yazıyor, bilmeyen "bize
+    ArvoLab verilmemiş" sanıyordu.
+
+    Konsolda çizilmiyor: orada tek bir kurumun paneli açık değil.
+  */
+  const { data: urunLisanslari } = konsolHostu
+    ? { data: null }
+    : await supabase.from("organization_product_licenses")
+        .select("product,status").eq("organization_id", membership.organization_id)
+        .in("status", ["active", "trialing", "past_due"]);
+  const acikUrunler = new Set(((urunLisanslari ?? []) as { product: string }[]).map((satir) => satir.product));
+  const digerUygulamalar = [
+    /* ArvoLab kendi yolundan: tek kullanımlık oturum bağlantısıyla, ikinci
+       bir giriş ekranı görmeden. Yeni sekmede — kişi ArvoOS'taki işini
+       kaybetmesin. Kullanıcı tıklamasıyla açıldığı için yönlendirme
+       zinciri pencere engelleyicisine takılmıyor. */
+    { kod: "arvolab", ad: "ArvoLab", href: "/panel/uygulama/arvolab", ayniSekme: false },
+    { kod: "arc", ad: "Arc", href: "https://arc.arvo-os.com", ayniSekme: false },
+    { kod: "randevu", ad: "Arvo Randevu", href: "https://randevu.arvo-os.com", ayniSekme: false },
+  ].filter((uygulama) => acikUrunler.has(uygulama.kod));
+
   // Beyaz etiket: kurum kendi marka rengini seçtiyse tüm panel vurgusu
   // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
   // panel-tokens.css içindeki fallback ArvoOS yeşilini kullanır.
@@ -137,7 +161,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       )}
       {konsolHostu
         ? <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
-        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} />}
+        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} digerUygulamalar={digerUygulamalar} />}
       <div className="panel-sidebar-footer">
         <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>

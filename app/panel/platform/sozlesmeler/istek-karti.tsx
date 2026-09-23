@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { para } from "../bicim";
 import { abonelikIsteginiOnayla, abonelikIsteginiReddet } from "./actions";
 
 /*
@@ -15,6 +16,7 @@ export type Kurum = { id: string; ad: string };
 
 export type BekleyenIstek = {
   id: string;
+  contractId: string | null;
   contractNo: string | null;
   customerName: string | null;
   amount: number | null;
@@ -25,8 +27,13 @@ export type BekleyenIstek = {
   onerilenKurumId: string | null;
 };
 
-const tl = (kurus: number, currency: string) =>
-  new Intl.NumberFormat("tr-TR", { style: "currency", currency: currency || "TRY", maximumFractionDigits: 0 }).format(kurus / 100);
+/*
+  Tutar KURUŞUYLA yazılıyor. Burada ayrı bir biçimleyici vardı ve
+  maximumFractionDigits: 0 kullanıyordu: sayfanın üstündeki "bekleyen
+  tutar" kuruşlu, karttaki tutar yuvarlanmış çıkıyordu. Kurucu tahsilatı
+  bu sayıyla doğruluyor; yuvarlanmış bir tutar, iki kaydın tutmamasına
+  giden yol. Biçim artık tek yerde (../bicim).
+*/
 
 const tarih = (value: string) =>
   new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric" });
@@ -75,8 +82,21 @@ export function IstekKarti({ istek, kurumlar }: { istek: BekleyenIstek; kurumlar
         <div>
           <b>{istek.customerName ?? "Müşteri adı yok"}</b>
           <small>{istek.contractNo ?? "sözleşme no yok"} · imza {tarih(istek.createdAt)}</small>
+          {/*
+            İmzalı sözleşmeye bağlantı. Kurucu bu ekranda "tahsilatı
+            doğrula" diye karar veriyor ama sözleşmeyi açacak hiçbir yer
+            yoktu: sözleşme no okunup app.arvo-os.com'da elle aranıyordu.
+            Sözleşme öbür alan adında, o yüzden tam adres ve yeni sekme.
+          */}
+          {istek.contractId ? (
+            <a
+              className="istek-sozlesme"
+              href={`https://app.arvo-os.com/panel/crm/contracts/${istek.contractId}`}
+              target="_blank" rel="noreferrer"
+            >Sözleşmeyi aç ↗</a>
+          ) : null}
         </div>
-        {istek.amount ? <span className="istek-tutar">{tl(Number(istek.amount), istek.currency)}</span> : null}
+        {istek.amount ? <span className="istek-tutar">{para(Number(istek.amount), istek.currency)}</span> : null}
       </header>
 
       {istek.moduller.length ? (
@@ -85,7 +105,7 @@ export function IstekKarti({ istek, kurumlar }: { istek: BekleyenIstek; kurumlar
             <li key={modul.product}>
               <b>{modul.name}</b>
               <span>
-                {modul.monthlyFee ? `${tl(Number(modul.monthlyFee), istek.currency)} / ay` : "ücret belirtilmedi"}
+                {modul.monthlyFee ? `${para(Number(modul.monthlyFee), istek.currency)} / ay` : "ücret belirtilmedi"}
                 {modul.integrated ? "" : " · bağımsız"}
               </span>
             </li>

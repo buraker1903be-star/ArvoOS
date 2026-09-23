@@ -2,20 +2,31 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { DirectoryRow, MemberProduct } from "@/lib/member-directory";
+import { basHarfleri } from "../bicim";
 import { uyeErisimiDegistir } from "./actions";
 
 /*
-  Tüm üyeler: tek liste, üstte filtreler.
+  Tüm üyeler: KİRACI BAZINDA.
 
-  Eskiden dört ayrı tablo vardı (ArvoOS, ArvoLab, Arc, Randevu) ve dördü de
-  aynı sütunlara sahipti. Aynı kişi üç tabloda birden görünüyor, "bu kişiyi
-  nereden kapatacağım" sorusu her seferinde tabloları taramakla
-  yanıtlanıyordu. Tek liste + filtre hem daha az yer kaplıyor hem de
-  aranan kişiyi tek yerde buluyor.
+  Liste önce ürün × kişi düz listesiydi ve iki şeyi birden yanlış
+  yapıyordu:
 
-  Satır başına TEK işlem var: erişimi aç/kapat. Rol değiştirme, silme gibi
-  işlemler bilerek yok — biri geri alınamaz, diğeri kurum içi bir karar ve
-  kurumun kendi panelinde yapılıyor.
+    1. Kurucu kiracı ekseninde çalışıyor ("AkademikMerkez'de kimler var"),
+       liste ise kişi ekseninde diziliyordu. Bir kurumun üyelerini görmek
+       için listeyi baştan sona taramak gerekiyordu.
+    2. Aynı kişi, aynı kurumda her ürün için ayrı bir satırdı ve her
+       satırda ayrı bir erişim anahtarı vardı. Oysa ERİŞİM ÜRÜN BAZINDA
+       DEĞİL: uyeErisimiDegistir kurum + kişi alıyor, yani beş anahtar tek
+       bir şeyi açıp kapatıyordu. Beş anahtardan birini kapatmak
+       diğerlerini de kapatıyordu ve ekranda bunu anlatan hiçbir şey yoktu.
+
+  Artık her kurum bir grup, her kişi grupta TEK satır, ürünler o satırda
+  etiket. Anahtar da tek: kişinin o kurumdaki erişimi.
+
+  Gruplar kapalı açılıyor: on kiracının tüm üyeleri aynı anda açık
+  olduğunda sayfa yine taranması gereken bir listeye dönüyor. Arama
+  yapıldığında eşleşen gruplar kendiliğinden açılıyor — aranan kişiyi
+  bulup bir de grubu açmak zorunda kalmak, aramanın yarısını yapmak olur.
 */
 
 const URUN_ADI: Record<MemberProduct, string> = {
@@ -25,6 +36,7 @@ const URUN_ADI: Record<MemberProduct, string> = {
 const ROL_ADI: Record<string, string> = {
   owner: "Kurum sahibi", admin: "Yönetici", manager: "Müdür", member: "Üye", viewer: "İzleyici",
   client: "Üye", employee: "Çalışan", expert: "Uzman", controller: "Kontrolör",
+  operasyoncu: "Operasyon personeli",
   academic_manager: "Akademik yönetici", system_admin: "Sistem yöneticisi", founder: "Kurucu",
 };
 
@@ -33,9 +45,6 @@ const DURUM_ADI: Record<string, string> = {
   canceled: "İptal", inactive: "Kapalı", "lisans yok": "Lisans yok",
   "abonelik yok": "Abonelik yok", "iç ekip": "İç ekip", "erişim kapalı": "Erişim kapalı",
 };
-
-const tarih = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul" }) : "—";
 
 /** Türkçe duyarsız arama: "İş" ile "is" eşleşsin. */
 const sadelestir = (value: string) =>
@@ -47,39 +56,154 @@ const sadelestir = (value: string) =>
 
 type Suzgec = "hepsi" | "acik" | "kapali";
 
+type UrunRozeti = { product: MemberProduct; access: boolean; status: string };
+type Kisi = {
+  anahtar: string;
+  userId: string;
+  ad: string;
+  eposta: string | null;
+  rol: string | null;
+  organizationId: string | null;
+  membershipActive: boolean | null;
+  individual: boolean;
+  urunler: UrunRozeti[];
+  erisimVar: boolean;
+};
+type Grup = { anahtar: string; ad: string; bireysel: boolean; kisiler: Kisi[]; acik: number };
+
 export function UyeListesi({ satirlar }: { satirlar: DirectoryRow[] }) {
   const [arama, setArama] = useState("");
   const [urun, setUrun] = useState<MemberProduct | "hepsi">("hepsi");
   const [erisim, setErisim] = useState<Suzgec>("hepsi");
+  const [acilanlar, setAcilanlar] = useState<Set<string>>(new Set());
   const [islenen, setIslenen] = useState<string | null>(null);
   const [, basla] = useTransition();
 
-  const gorunen = useMemo(() => {
-    const anahtar = sadelestir(arama.trim());
-    return satirlar.filter((satir) => {
+  const aranan = sadelestir(arama.trim());
+
+  const gruplar = useMemo<Grup[]>(() => {
+    const suzulmus = satirlar.filter((satir) => {
       if (urun !== "hepsi" && satir.product !== urun) return false;
       if (erisim === "acik" && !satir.access) return false;
       if (erisim === "kapali" && satir.access) return false;
-      if (!anahtar) return true;
-      return sadelestir(`${satir.name ?? ""} ${satir.email ?? ""} ${satir.scope}`).includes(anahtar);
+      if (!aranan) return true;
+      return sadelestir(`${satir.name ?? ""} ${satir.email ?? ""} ${satir.scope}`).includes(aranan);
     });
-  }, [satirlar, arama, urun, erisim]);
 
-  const degistir = (satir: DirectoryRow) => {
-    if (!satir.organizationId) return;
-    const ad = satir.name || satir.email || "bu kullanıcı";
-    const acilacak = !satir.membershipActive;
+    /*
+      GRUPLAMA İKİ GEÇİŞTE.
+
+      ArvoLab ayrı bir Supabase projesi: satırlarında ArvoOS kurum kimliği
+      yok (organizationId null) ve kullanıcı kimliği de o veritabanının
+      kendi kimliği. Tek geçişte gruplayınca AkademikMerkez iki kez
+      listeleniyordu — biri dört ArvoOS üyesiyle, diğeri tek ArvoLab
+      üyesiyle. Aynı kurum, iki ayrı satır.
+
+      Önce kurum kimliği OLAN satırlardan gruplar kuruluyor ve adları
+      kaydediliyor; sonra kimliksiz satırlar adı tutan gruba katılıyor.
+      Ad eşleşmesi yalnızca bu yönde: var olan bir kuruma katılmak için.
+      İki ayrı kiracıyı adları benzediği için birleştirmiyor.
+    */
+    const grupHarita = new Map<string, Grup>();
+    const isimdenGrup = new Map<string, string>();
+
+    const grubuAl = (satir: DirectoryRow): Grup => {
+      if (satir.individual) {
+        let grup = grupHarita.get("bireysel");
+        if (!grup) {
+          grup = { anahtar: "bireysel", ad: "Bireysel aboneler", bireysel: true, kisiler: [], acik: 0 };
+          grupHarita.set("bireysel", grup);
+        }
+        return grup;
+      }
+      const isim = sadelestir(satir.scope);
+      const anahtar = satir.organizationId ?? isimdenGrup.get(isim) ?? `ad:${isim}`;
+      let grup = grupHarita.get(anahtar);
+      if (!grup) {
+        grup = { anahtar, ad: satir.scope, bireysel: false, kisiler: [], acik: 0 };
+        grupHarita.set(anahtar, grup);
+      }
+      if (satir.organizationId) isimdenGrup.set(isim, satir.organizationId);
+      return grup;
+    };
+
+    // Kurum kimliği olanlar önce: adı tutan grup onlardan kuruluyor.
+    const sirali = [...suzulmus].sort((a, b) => Number(Boolean(b.organizationId)) - Number(Boolean(a.organizationId)));
+
+    for (const satir of sirali) {
+      const grup = grubuAl(satir);
+      /*
+        Kişi anahtarı E-POSTA: ArvoLab'ın kullanıcı kimliği ArvoOS'unkiyle
+        aynı değil, aynı insanın iki veritabanındaki iki hesabı. Kimliğe
+        göre birleştirmek aynı kişiyi grupta iki satır yapıyordu. E-posta
+        yoksa kimliğe düşülüyor.
+      */
+      const kisiAnahtari = `${grup.anahtar}:${satir.email?.toLocaleLowerCase("tr-TR") ?? `uid:${satir.userId}`}`;
+      let kisi = grup.kisiler.find((mevcut) => mevcut.anahtar === kisiAnahtari);
+      if (!kisi) {
+        kisi = {
+          anahtar: kisiAnahtari,
+          userId: satir.userId,
+          ad: satir.name || satir.email || "Adı kayıtlı değil",
+          eposta: satir.email,
+          rol: satir.role,
+          organizationId: satir.organizationId,
+          membershipActive: satir.membershipActive,
+          individual: satir.individual,
+          urunler: [],
+          erisimVar: false,
+        };
+        grup.kisiler.push(kisi);
+      } else {
+        /*
+          Anahtarı çizen kayıt, kurum üyeliği OLAN kayıt olmalı: ArvoLab
+          satırının kimliği yok ve onun üzerinden erişim değiştirilemiyor.
+          Ad da boşsa doluyla dolduruluyor — ArvoLab profili adı tutuyor
+          ama ArvoOS metadata'sı tutmayabiliyor.
+        */
+        if (!kisi.organizationId && satir.organizationId) {
+          kisi.organizationId = satir.organizationId;
+          kisi.membershipActive = satir.membershipActive;
+          kisi.rol = satir.role ?? kisi.rol;
+        }
+        if ((!kisi.ad || kisi.ad === kisi.eposta || kisi.ad === "Adı kayıtlı değil") && satir.name) kisi.ad = satir.name;
+        if (!kisi.eposta && satir.email) kisi.eposta = satir.email;
+      }
+      kisi.urunler.push({ product: satir.product, access: satir.access, status: satir.status });
+      if (satir.access) kisi.erisimVar = true;
+    }
+
+    const URUN_SIRASI: MemberProduct[] = ["arvoos", "arvolab", "arc", "randevu"];
+    for (const grup of grupHarita.values()) {
+      for (const kisi of grup.kisiler) {
+        // Sabit sıra: etiketler satırdan satıra yer değiştirmesin.
+        kisi.urunler.sort((a, b) => URUN_SIRASI.indexOf(a.product) - URUN_SIRASI.indexOf(b.product));
+      }
+      grup.kisiler.sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+      grup.acik = grup.kisiler.filter((kisi) => kisi.erisimVar).length;
+    }
+
+    // Bireysel en sonda: kiracılar kurucunun asıl ekseni.
+    return [...grupHarita.values()].sort((a, b) =>
+      Number(a.bireysel) - Number(b.bireysel) || a.ad.localeCompare(b.ad, "tr"));
+  }, [satirlar, aranan, urun, erisim]);
+
+  const kisiSayisi = gruplar.reduce((toplam, grup) => toplam + grup.kisiler.length, 0);
+
+  const degistir = (kisi: Kisi, grupAdi: string) => {
+    if (!kisi.organizationId) return;
+    const acilacak = !kisi.membershipActive;
     if (!window.confirm(acilacak
-      ? `${ad} için ${satir.scope} erişimi açılsın mı?`
-      : `${ad} için ${satir.scope} erişimi kapatılsın mı? Kişi kurumun paneline giremez.`)) return;
+      ? `${kisi.ad} için ${grupAdi} erişimi açılsın mı?`
+      : `${kisi.ad} için ${grupAdi} erişimi kapatılsın mı? Kişi kurumun paneline giremez; bu kurumdaki bütün ürünleri kapanır.`)) return;
 
-    const anahtar = `${satir.organizationId}:${satir.userId}`;
+    const anahtar = `${kisi.organizationId}:${kisi.userId}`;
     setIslenen(anahtar);
     basla(async () => {
       try {
         const veri = new FormData();
-        veri.set("organization_id", satir.organizationId!);
-        veri.set("user_id", satir.userId);
+        veri.set("organization_id", kisi.organizationId!);
+        veri.set("user_id", kisi.userId);
         veri.set("acik", acilacak ? "1" : "0");
         await uyeErisimiDegistir(veri);
       } finally {
@@ -89,16 +213,22 @@ export function UyeListesi({ satirlar }: { satirlar: DirectoryRow[] }) {
     });
   };
 
+  const cevir = (anahtar: string) => setAcilanlar((eski) => {
+    const yeni = new Set(eski);
+    if (yeni.has(anahtar)) yeni.delete(anahtar); else yeni.add(anahtar);
+    return yeni;
+  });
+
   return (
-    <section className="panel-card management-card" aria-label="Üyeler">
-      <div className="uye-suzgec">
-        <input
-          type="search"
-          value={arama}
-          onChange={(olay) => setArama(olay.target.value)}
-          placeholder="Ad, e-posta ya da kurum ara"
-          aria-label="Üyelerde ara"
-        />
+    <section className="panel-card plt-uyeler-karti" aria-label="Üyeler">
+      <div className="plt-uye-arac">
+        <label className="plt-abone-arama">
+          <span className="plt-gizli">Üyelerde ara</span>
+          <input
+            type="search" value={arama} placeholder="Ad, e-posta ya da kurum ara"
+            onChange={(olay) => setArama(olay.target.value)}
+          />
+        </label>
         <select value={urun} onChange={(olay) => setUrun(olay.target.value as MemberProduct | "hepsi")} aria-label="Ürün">
           <option value="hepsi">Tüm ürünler</option>
           {(Object.keys(URUN_ADI) as MemberProduct[]).map((kod) => (
@@ -110,64 +240,89 @@ export function UyeListesi({ satirlar }: { satirlar: DirectoryRow[] }) {
           <option value="acik">Erişimi açık</option>
           <option value="kapali">Erişimi kapalı</option>
         </select>
-        <span className="uye-sayi">{gorunen.length} kayıt</span>
+        <span className="plt-uye-sayi">{gruplar.length} kurum · {kisiSayisi} kişi</span>
       </div>
 
-      {gorunen.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead>
-              <tr>
-                <th>Kişi</th><th>Ürün</th><th>Bağlı olduğu</th><th>Rol</th><th>Durum</th><th>Dönem sonu</th><th aria-label="İşlem" />
-              </tr>
-            </thead>
-            <tbody>
-              {gorunen.map((satir) => {
-                const anahtar = `${satir.product}-${satir.userId}-${satir.scope}`;
-                const islem = satir.organizationId ? `${satir.organizationId}:${satir.userId}` : null;
-                return (
-                  <tr key={anahtar}>
-                    <td>
-                      <b>{satir.name ?? "—"}</b>
-                      <small className="plt-substatus plt-mono">{satir.email ?? "—"}</small>
-                    </td>
-                    <td>{URUN_ADI[satir.product]}</td>
-                    <td>{satir.individual ? <span className="status-pill" data-tone="info">Bireysel</span> : satir.scope}</td>
-                    <td>{satir.role ? ROL_ADI[satir.role] ?? satir.role : "—"}</td>
-                    <td>
-                      <span className="status-pill" data-tone={satir.access ? "success" : "danger"}>
-                        {satir.access ? "Açık" : "Kapalı"}
-                      </span>
-                      <small className="plt-substatus">{DURUM_ADI[satir.status] ?? satir.status}</small>
-                    </td>
-                    <td>{tarih(satir.periodEnd)}</td>
-                    <td className="uye-islem">
-                      {satir.organizationId ? (
-                        <button
-                          type="button"
-                          className="panel-secondary"
-                          disabled={islenen === islem}
-                          onClick={() => degistir(satir)}
-                        >
-                          {islenen === islem ? "…" : satir.membershipActive ? "Erişimi kapat" : "Erişimi aç"}
-                        </button>
-                      ) : (
-                        /* ArvoLab ayrı veritabanında, bireysel abone ise
-                           Bireysel Aboneler ekranından yönetiliyor. Boş
-                           bırakmak yerine nedenini yazıyoruz. */
-                        <small className="plt-substatus">
-                          {satir.individual ? "Bireysel abonelerden" : "ArvoLab'dan yönetilir"}
-                        </small>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {gruplar.length ? (
+        <div className="plt-uye-gruplar">
+          {gruplar.map((grup) => {
+            // Arama yapılırken gruplar kendiliğinden açık.
+            const acikMi = Boolean(aranan) || acilanlar.has(grup.anahtar);
+            return (
+              <div key={grup.anahtar} className="plt-uye-grup" data-acik={acikMi}>
+                <button
+                  type="button"
+                  className="plt-uye-grup-bas"
+                  aria-expanded={acikMi}
+                  onClick={() => cevir(grup.anahtar)}
+                >
+                  <span className="plt-kiraci-avatar plt-uye-avatar" aria-hidden="true">{basHarfleri(grup.ad)}</span>
+                  <span className="plt-uye-grup-ad">
+                    <b>{grup.ad}</b>
+                    <small>
+                      {grup.kisiler.length} kişi
+                      {grup.acik < grup.kisiler.length ? ` · ${grup.kisiler.length - grup.acik} erişimi kapalı` : " · tümünün erişimi açık"}
+                    </small>
+                  </span>
+                  <span className="plt-uye-grup-ok" aria-hidden="true">›</span>
+                </button>
+
+                {acikMi ? (
+                  <div className="plt-uye-liste">
+                    {grup.kisiler.map((kisi) => {
+                      const islem = kisi.organizationId ? `${kisi.organizationId}:${kisi.userId}` : null;
+                      return (
+                        <div key={kisi.anahtar} className="plt-uye-satir">
+                          <span className="plt-uye-ad">
+                            <b>{kisi.ad}</b>
+                            {kisi.eposta && kisi.eposta !== kisi.ad ? <small>{kisi.eposta}</small> : null}
+                          </span>
+                          <span data-etiket="Rol" className="plt-uye-rolu">{kisi.rol ? ROL_ADI[kisi.rol] ?? kisi.rol : "—"}</span>
+                          <span data-etiket="Ürünler" className="plt-uye-urunler">
+                            {/* Ürün etiketi kendi erişimini gösteriyor: kişinin
+                                kurumdaki üyeliği açık olsa bile o ürünün
+                                lisansı kapalıysa ürüne giremiyor. */}
+                            {kisi.urunler.map((rozet) => (
+                              <span
+                                key={rozet.product}
+                                className="plt-urun-etiketi"
+                                data-urun={rozet.product}
+                                data-kapali={!rozet.access}
+                                title={`${URUN_ADI[rozet.product]} · ${DURUM_ADI[rozet.status] ?? rozet.status}`}
+                              >{URUN_ADI[rozet.product]}</span>
+                            ))}
+                          </span>
+                          <span data-etiket="Erişim" className="plt-uye-erisim">
+                            {kisi.organizationId ? (
+                              <button
+                                type="button"
+                                className={kisi.membershipActive ? "plt-switch is-on" : "plt-switch is-off"}
+                                role="switch"
+                                aria-checked={Boolean(kisi.membershipActive)}
+                                aria-label={`${kisi.ad} · ${grup.ad} erişimi: ${kisi.membershipActive ? "kapat" : "aç"}`}
+                                disabled={islenen === islem}
+                                onClick={() => degistir(kisi, grup.ad)}
+                              ><i /></button>
+                            ) : (
+                              /* ArvoLab ayrı veritabanında, bireysel abone ise
+                                 Bireysel Aboneler ekranından yönetiliyor. Boş
+                                 bırakmak yerine nedenini yazıyoruz. */
+                              <small className="plt-substatus">
+                                {kisi.individual ? "Bireysel abonelerden" : "ArvoLab'dan"}
+                              </small>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <p className="panel-muted">Aramanıza uyan üye yok.</p>
+        <p className="plt-substatus plt-uye-bos">Aramanıza uyan üye yok.</p>
       )}
     </section>
   );

@@ -171,15 +171,55 @@ async function updateProductLicense__impl(formData: FormData) {
   revalidatePath("/panel/billing");
 }
 
-async function resetOrganizationAiCredits__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
+/*
+  Köprüyü yeniden yansıtma.
+
+  Konsolda durum "Aktif" görünürken ürün tarafı hâlâ "Deneme" gösteriyordu:
+  yansıtma bir noktada başarısız olmuş ve bir daha denenmemişti. Yansıtma
+  yalnızca lisans KAYDEDİLİRKEN çalışıyor, kurucunun elinde tekrar denemek
+  için hiçbir düğme yoktu — üstelik form değişiklik olmadan kaydetmeye de
+  izin vermiyor, yani "aynısını tekrar kaydet" bile yapılamıyordu.
+
+  Veriye dokunmaz: yalnızca mevcut durumu ürün veritabanına yeniden yazar.
+*/
+async function urunuYenidenYansit__impl(formData: FormData) {
+  const { isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
   const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const product = String(formData.get("product") ?? "").trim();
   if (!organizationId) throw new Error("Kurum seçilmedi.");
-  const { error } = await supabase.from("organization_licenses").update({ ai_credits_used: 0, updated_at: new Date().toISOString() }).eq("organization_id", organizationId);
-  if (error) throw new Error(`AI kredileri sıfırlanamadı: ${error.message}`);
+  if (!isAddonProduct(product)) throw new Error("Bu ürünün köprüsü yok.");
+
+  if (product === "arvolab") {
+    const synced = await syncArvolabLicense(organizationId);
+    if (synced === "not_configured")
+      throw new Error("ArvoLab köprüsü kapalı (ARVOLAB_SUPABASE_URL / ARVOLAB_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın.");
+    if (synced !== "synced") throw new Error("ArvoLab'a yansıtılamadı. Bağlantı ayarlarını kontrol edin.");
+  }
+  if (product === "arc") {
+    const arc = await syncArcTenants(organizationId);
+    if (arc.status === "failed" || arc.errors.length)
+      throw new Error(`ARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}`);
+  }
+  if (product === "randevu") {
+    const randevu = await syncRandevuTenants(organizationId);
+    if (randevu.status === "not_configured")
+      throw new Error("Randevu köprüsü kapalı (RANDEVU_SUPABASE_URL / RANDEVU_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın.");
+    if (randevu.status === "failed" || randevu.errors.length)
+      throw new Error(`Randevu'ya yansıtılamadı: ${randevu.errors[0] ?? "bilinmeyen hata"}`);
+  }
+
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
 }
+
+/*
+  "AI kullanımını sıfırla" işlemi kaldırıldı. ai_credits_used sütununu
+  hiçbir kod artırmıyor — ArvoLab asistanı tüketimi kendi veritabanında
+  tutuyor — yani bu işlem hep 0 olan bir sayacı 0'a çekiyordu. Çalışır
+  görünen ama hiçbir şey yapmayan bir düğme, kurucuya kotanın işlediğini
+  düşündürüyordu. ArvoLab tüketimi buraya yazmaya başlayınca geri gelir.
+*/
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function updateOrganizationLicense(...args: Parameters<typeof updateOrganizationLicense__impl>) {
@@ -188,6 +228,6 @@ export async function updateOrganizationLicense(...args: Parameters<typeof updat
 export async function updateProductLicense(...args: Parameters<typeof updateProductLicense__impl>) {
   return runPanelAction(() => updateProductLicense__impl(...args), "Ürün lisansı kaydedildi");
 }
-export async function resetOrganizationAiCredits(...args: Parameters<typeof resetOrganizationAiCredits__impl>) {
-  return runPanelAction(() => resetOrganizationAiCredits__impl(...args), "AI kullanımı sıfırlandı");
+export async function urunuYenidenYansit(...args: Parameters<typeof urunuYenidenYansit__impl>) {
+  return runPanelAction(() => urunuYenidenYansit__impl(...args), "Ürün veritabanına yeniden yansıtıldı");
 }

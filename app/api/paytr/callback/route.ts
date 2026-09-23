@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncArvolabLicense } from "@/lib/arvolab";
+import { arvolabKrediYukle, syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { decryptSecret } from "@/lib/payment-credentials";
@@ -103,6 +103,28 @@ export async function POST(request: Request) {
 
   // Ödenen bağlantıyı PayTR'de de kapat (tek kullanımlık; en iyi çaba).
   if (result === "recorded") {
+    /*
+      AI kredisi ArvoLab'ın veritabanında; ArvoOS'un SQL'i oraya
+      ulaşamıyor, bu yüzden yükleme burada. Başarısız olursa PayTR'ye yine
+      OK dönüyoruz — ödeme kaydedildi ve tekrar bildirim yeni bir şey
+      yazmaz. İzi ai_credit_orders.loaded_at'te: boş kalan satır "para
+      alındı ama kredi yüklenmedi" demek ve elle yüklenebilir.
+    */
+    if (link.purpose === "ai_credit" && link.payer_organization_id) {
+      const { data: siparis } = await admin.from("ai_credit_orders")
+        .select("id,kredi").eq("payment_link_id", link.id).maybeSingle();
+      if (!siparis) {
+        console.error("[paytr] kredi siparişi bulunamadı", link.id);
+      } else {
+        const yuklendi = await arvolabKrediYukle(link.payer_organization_id, Number(siparis.kredi), fields.merchant_oid);
+        if (yuklendi === "loaded") {
+          await admin.from("ai_credit_orders").update({ loaded_at: new Date().toISOString() }).eq("id", siparis.id);
+        } else {
+          console.error("[paytr] AI kredisi yüklenemedi", link.payer_organization_id, yuklendi);
+        }
+      }
+    }
+
     try {
       await deletePaytrLink(credentials, link.provider_link_id);
     } catch (closeError) {

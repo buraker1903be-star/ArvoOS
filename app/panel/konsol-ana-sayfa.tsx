@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPersonName } from "@/lib/format-name";
-import { getArvolabBridgeHealth } from "@/lib/arvolab";
-import { getArcBridgeHealth } from "@/lib/arc-bridge";
-import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
+import { arvolabKopyalari, getArvolabBridgeHealth } from "@/lib/arvolab";
+import { arcKopyalari, getArcBridgeHealth } from "@/lib/arc-bridge";
+import { randevuKopyalari, getRandevuBridgeHealth } from "@/lib/randevu-bridge";
+import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { StgIcon } from "./settings/settings-ui";
@@ -57,7 +58,7 @@ const Chevron = () => (
 );
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null };
-type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number; ai_credit_limit: number; ai_credits_used: number };
+type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
 
@@ -80,7 +81,7 @@ export async function KonsolAnaSayfa() {
   ] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,kind,provisioning_state,contact_phone").order("name"),
     supabase.from("organization_memberships").select("organization_id,is_active"),
-    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,storage_limit_mb,ai_credit_limit,ai_credits_used"),
+    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,storage_limit_mb"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
@@ -104,10 +105,19 @@ export async function KonsolAnaSayfa() {
       ])
     : [{ count: null, error: null }, { data: [] }];
 
-  const [arvolab, arc, randevu] = await Promise.all([
+  const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya] = await Promise.all([
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
+    /*
+      Kopyaların KENDİSİ okunuyor, ürün başına TEK sorguyla. Köprü sağlığı
+      (yukarıdaki üçü) "çağrı gidiyor mu" diyor; kopyanın bayat olup
+      olmadığını söylemiyor. AkademikMerkez'de köprü sağlıklıyken kopya
+      altı gün eski kaldı ve bunu hiçbir ekran göstermiyordu.
+    */
+    arvolabKopyalari(),
+    arcKopyalari(),
+    randevuKopyalari(),
   ]);
 
   const kurumlar = (kurumSatirlari ?? []) as Kurum[];
@@ -126,8 +136,6 @@ export async function KonsolAnaSayfa() {
     organizationId: lisans.organization_id,
     kullaniciSayisi: aktifUye.get(lisans.organization_id) ?? 0,
     kullaniciLimiti: lisans.user_limit,
-    aiKullanilan: lisans.ai_credits_used,
-    aiLimiti: lisans.ai_credit_limit,
     depolamaBayt: depolamaBayt.get(lisans.organization_id) ?? 0,
     depolamaLimitiMb: lisans.storage_limit_mb,
   })]));
@@ -174,6 +182,16 @@ export async function KonsolAnaSayfa() {
     ? `Bugün ${parcalar.join(", ")}.`
     : "Bekleyen bir iş yok; platform kendi kendine dönüyor.";
 
+  /*
+    Kopyası konsoldan farklı erişim veren kiracılar. Yalnızca MÜŞTERİ
+    kurumları: Arvo'nun kendi kurumu ürünlerin kopyasında bulunmaz ve her
+    açılışta listeye düşerdi.
+  */
+  const bayatKopyalar = eskiKopyalar(
+    urunler.filter((satir) => musteriMi.has(satir.organization_id)),
+    { arvolab: labKopya, arc: arcKopya, randevu: rdvKopya },
+  );
+
   const kopruler = [
     arvolab?.broken
       ? {
@@ -185,6 +203,22 @@ export async function KonsolAnaSayfa() {
       : null,
     !arc.ok ? { ad: "ARC köprüsü", not: arc.error ? `Bağlanılamadı: ${arc.error}` : `Tanımlı olmayan değişkenler: ${arc.missing.join(", ")}` } : null,
     !randevu.ok ? { ad: "Randevu köprüsü", not: randevu.error ? `Bağlanılamadı: ${randevu.error}` : `Tanımlı olmayan değişkenler: ${randevu.missing.join(", ")}` } : null,
+    /*
+      Tek satır, kurum kurum değil: kaç kiracının kopyası bozuk olduğu
+      uyarı için yeter, hangisi olduğu kiracı sayfasında yazıyor. Uzun bir
+      liste ana sayfayı ezer ve okunmaz hâle gelirdi.
+    */
+    bayatKopyalar.length
+      ? {
+          ad: `${bayatKopyalar.length} kiracının ürün kopyası bozuk`,
+          not: bayatKopyalar
+            .slice(0, 3)
+            .map((kayit) => `${kurumAdi.get(kayit.organizationId) ?? kayit.organizationId} · ${kayit.product}: üründe "${kayit.kopyaDurumu}", burada "${kayit.konsolDurumu}"`)
+            .join(" — ")
+            + (bayatKopyalar.length > 3 ? ` (ve ${bayatKopyalar.length - 3} tane daha)` : "")
+            + ". Kiracının lisans sayfasından \"Ürüne yeniden yansıt\".",
+        }
+      : null,
   ].filter(Boolean) as { ad: string; not: string }[];
 
   const widgetlar: { etiket: string; deger: string | number; not: string; href: string; icon: string; tone: Tone }[] = [
