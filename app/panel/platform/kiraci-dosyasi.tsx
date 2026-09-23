@@ -89,9 +89,36 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
   */
   const kiraciUyelikleri = tumUyelikler
     .filter((satir) => satir.organization_id === targetId);
-  const { data: profilData } = kiraciUyelikleri.length
-    ? await supabase.from("profiles").select("id,full_name").in("id", kiraciUyelikleri.map((satir) => satir.user_id))
-    : { data: [] };
+  /*
+    Ad üç yerde olabilir ve hiçbiri zorunlu değil:
+
+      profiles.full_name  — davet akışı yazıyor (owner daveti, üye ekleme).
+      hr_employees        — kurumun kendi personel kaydı; kiracının paneli
+                            selamlamada bunu kullanıyor.
+      auth üstverisi      — kayıt sırasında girilmişse.
+
+    Üçü de denenmediği için konsolda "Adı kayıtlı değil" yazan satırlar
+    kalıyordu: davet akışından geçmeden kuruma eklenen bir hesabın
+    profiles kaydı hiç oluşmuyor.
+  */
+  const kullaniciIdleri = kiraciUyelikleri.map((satir) => satir.user_id);
+  /* Personel kaydı yalnızca kurum üyelerine açık (RLS: arvo_is_member).
+     Kurucu her kiracının üyesi değil; kullanıcı anahtarıyla okusaydık ad
+     bazı kiracılarda çıkar bazılarında çıkmazdı — sessiz ve açıklanamaz
+     bir fark. Sunucu anahtarıyla okunuyor, ödeme ve etkinlik gibi. */
+  const [{ data: profilData }, { data: personelData }] = kullaniciIdleri.length
+    ? await Promise.all([
+        supabase.from("profiles").select("id,full_name").in("id", kullaniciIdleri),
+        admin
+          ? admin.from("hr_employees").select("user_id,full_name").eq("organization_id", targetId).in("user_id", kullaniciIdleri)
+          : Promise.resolve({ data: [] }),
+      ])
+    : [{ data: [] }, { data: [] }];
+  const personelAdi = new Map(
+    ((personelData ?? []) as { user_id: string | null; full_name: string | null }[])
+      .filter((row) => row.user_id && row.full_name)
+      .map((row) => [row.user_id as string, row.full_name]),
+  );
   const adById = new Map(((profilData ?? []) as { id: string; full_name: string | null }[]).map((row) => [row.id, row.full_name]));
   /*
     E-posta ve yedek ad auth.users'ta; REST'ten okunamıyor, yönetim
@@ -114,7 +141,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
   const kiraciUyeleri: KiraciUyesi[] = kiraciUyelikleri
     .map((satir) => ({
       userId: satir.user_id,
-      name: adById.get(satir.user_id) ?? hesapById.get(satir.user_id)?.name ?? null,
+      name: adById.get(satir.user_id) || personelAdi.get(satir.user_id) || hesapById.get(satir.user_id)?.name || null,
       email: hesapById.get(satir.user_id)?.email ?? null,
       role: satir.role,
       active: Boolean(satir.is_active),
