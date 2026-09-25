@@ -61,7 +61,7 @@ export async function describeNotifications(
   const contractIds = idsFor(["customer_message"], "contract_id");
   const commentIds = idsFor(["internal_comment"], "comment_id");
   const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation", "site_lead"], "opportunity_id");
-  const workflowIds = idsFor(["operation_assignment"], "workflow_id");
+  const workflowIds = idsFor(["operation_assignment", "operation_step_due"], "workflow_id");
 
   const [contractResult, messageResult, commentResult, opportunityResult, workflowResult] = await Promise.all([
     contractIds.length ? supabase.from("crm_contracts").select("id,contract_no,title,crm_opportunities(customer_name,request_details)").in("id", contractIds) : empty,
@@ -179,6 +179,26 @@ export async function describeNotifications(
           headline: "Size yeni bir iş atandı",
           detail: workflow ? [formatSubject(workflow.title), formatPersonName(workflow.customer_name)].filter(Boolean).join(" — ") : row.message,
           context: assigner ? `Atayan: ${assigner}` : null,
+          actionLabel: "İşi aç",
+        };
+      }
+      case "operation_step_due": {
+        /*
+          Gecelik termin taraması (app/api/cron/adim-terminleri). Metin
+          veritabanında hazır ama işin ve müşterinin adı yalnızca burada
+          bilinebiliyor: bildirim "hangi tezin hangi bölümü" sorusunu
+          okumadan cevaplamalı.
+        */
+        const workflow = workflows.get(meta(row, "workflow_id") ?? "");
+        const gecikti = meta(row, "state") === "overdue";
+        return {
+          ...base,
+          label: "İş adımı termini",
+          tone: gecikti ? "danger" : "gold",
+          icon: "briefcase",
+          headline: gecikti ? "Bir iş adımı gecikti" : "Bir iş adımının teslimi yaklaştı",
+          detail: row.message,
+          context: workflow ? join(formatSubject(workflow.title), formatPersonName(workflow.customer_name)) : null,
           actionLabel: "İşi aç",
         };
       }

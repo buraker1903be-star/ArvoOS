@@ -229,3 +229,26 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-archived>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
 .opd-archived b{font-size:15px}
 .opd-archived small{color:var(--muted);font-size:13px;line-height:1.45}
+
+/* ---------- Adımın tarihi, durumu ve sorumlusu ----------
+   Adım satırı artık iki katlı: üstte tek dokunuşla tamamlama (eski
+   davranış aynen duruyor), altta düzenleme. Alt kat arşivdeki işte hiç
+   çizilmiyor. Seçiciler ".opd-step .opd-step-meta …" ile yazıldı: yalın
+   ".opd-step button" kuralı bütün butonları tam genişlik yapıyor ve
+   eşit özgüllükte bir kural sıraya bağlı kalırdı. */
+.opd-step-flag{flex:none;align-self:center;padding:2px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:11.5px;font-weight:650;letter-spacing:.01em}
+.opd-step-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:0 8px 10px 52px}
+.opd-step.is-done .opd-step-meta{opacity:.62}
+.opd-step-states{display:flex;flex-wrap:wrap;gap:4px}
+.opd-step .opd-step-meta button{display:inline-flex;align-items:center;width:auto;min-height:0;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;line-height:1.7;cursor:pointer}
+.opd-step .opd-step-meta button:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--surface)}
+.opd-step .opd-step-meta button.is-active{background:var(--tone-bg);border-color:color-mix(in srgb,var(--tone-fg) 35%,var(--line));color:var(--tone-fg)}
+.opd-step-date,.opd-step-who{display:flex;align-items:center;gap:6px}
+.opd-step-meta input[type="date"],.opd-step-meta select{height:30px;max-width:190px;padding:0 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px}
+.opd-step-meta input[type="date"]:focus,.opd-step-meta select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.opd-step-hint{color:var(--muted);font-size:12px}
+.opd-add{grid-template-columns:minmax(0,1fr) auto auto}
+@media (max-width:640px){
+  .opd-step-meta{padding-left:8px}
+  .opd-add{grid-template-columns:minmax(0,1fr)}
+}

@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
-import { addWorkflowStep, archiveWorkflow, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
-import { OpsIcon } from "../ops-shared";
+import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
+import { OpsIcon, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
@@ -21,7 +22,7 @@ import "../operations.css";
 import "../../crm/request-page.css";
 import "./detail.css";
 
-type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null };
+type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null };
 type Workflow = { id: string; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
 type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
@@ -74,7 +75,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -94,7 +95,13 @@ export default async function OperationDetailPage({ params }: { params: Promise<
       ? supabase.from("hr_employees").select("id,full_name,job_title").eq("id", workflow.assigned_employee_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from("hr_employees").select("id").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
-    canAssign ? supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name") : Promise.resolve({ data: [] }),
+    /*
+      Personel listesi artık YÖNETİCİ OLMAYANA da okunuyor: adımın
+      sorumlusunu göstermek için ada ihtiyaç var ve eskiden liste yalnızca
+      atama yetkisi olana geliyordu. Atama kutusu yine yalnızca yöneticiye
+      çiziliyor (canAssign).
+    */
+    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
     isArchived && workflow.archived_by
       ? supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", workflow.archived_by).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -104,6 +111,9 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const unreadCustomerMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
   const contract = contractData as Contract | null;
   const employees = (employeeData ?? []) as { id: string; full_name: string }[];
+  const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
+  // Saat bileşen gövdesinde okunmaz (react-hooks/purity); yardımcı ops-shared'da.
+  const bugunIstanbul = todayIstanbul();
   const assigneeRow = assignee as { id: string; full_name: string; job_title: string | null } | null;
   // Termini yöneticiler ve işin sorumlusu girebilir (actions.ts ile aynı kural)
   const canEditDue = canAssign || Boolean((me as { id?: string } | null)?.id && (me as { id: string }).id === workflow.assigned_employee_id);
@@ -288,25 +298,83 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <strong className="opd-big">%{progress}</strong>
             </header>
             <div className="opd-steps">
-              {steps.map((step, index) => (
-                <form action={toggleWorkflowStep} className={`opd-step${step.is_completed ? " is-done" : ""}`} key={step.id}>
-                  <input type="hidden" name="step_id" value={step.id} />
-                  <input type="hidden" name="workflow_id" value={workflow.id} />
-                  <input type="hidden" name="is_completed" value={String(!step.is_completed)} />
-                  <button type="submit" aria-pressed={step.is_completed}>
-                    <span className="opd-check" aria-hidden="true">{step.is_completed ? <CheckIcon /> : null}</span>
-                    <span className="opd-step-body">
-                      <b>{step.title}</b>
-                      <small>{step.is_completed ? `Tamamlandı · ${formatDate(step.completed_at, true)}` : `Adım ${index + 1}`}</small>
-                    </span>
-                  </button>
-                </form>
-              ))}
+              {steps.map((step, index) => {
+                /*
+                  Adımın kendi gecikmesi. İşin termini bir tarihti; oysa
+                  dokuz parçalı bir tezde geciken şey genelde iş değil, tek
+                  bir bölüm oluyor ve o gecikme hiçbir yerde görünmüyordu.
+                */
+                const uyari = hatirlatmaDurumu(step, bugunIstanbul);
+                const stepAssignee = step.assigned_employee_id ? employeeNames.get(step.assigned_employee_id) ?? null : null;
+                return (
+                  <div className={`opd-step${step.is_completed ? " is-done" : ""}`} key={step.id}>
+                    <form action={toggleWorkflowStep}>
+                      <input type="hidden" name="step_id" value={step.id} />
+                      <input type="hidden" name="workflow_id" value={workflow.id} />
+                      <input type="hidden" name="is_completed" value={String(!step.is_completed)} />
+                      <button type="submit" aria-pressed={step.is_completed}>
+                        <span className="opd-check" aria-hidden="true">{step.is_completed ? <CheckIcon /> : null}</span>
+                        <span className="opd-step-body">
+                          <b>{step.title}</b>
+                          <small>
+                            {step.is_completed
+                              ? `Tamamlandı · ${formatDate(step.completed_at, true)}`
+                              : step.due_date
+                                ? `Adım ${index + 1} · Teslim ${formatDate(step.due_date)}`
+                                : `Adım ${index + 1} · Tarih girilmedi`}
+                          </small>
+                        </span>
+                        {uyari ? (
+                          <span className="opd-step-flag" data-tone={uyari === "overdue" ? "danger" : "warning"}>
+                            {uyari === "overdue" ? "Gecikti" : "Yaklaştı"}
+                          </span>
+                        ) : null}
+                      </button>
+                    </form>
+                    {isArchived ? null : (
+                      <div className="opd-step-meta">
+                        <div className="opd-step-states" role="group" aria-label={`${step.title} durumu`}>
+                          {STEP_STATUSES.map((value) => (
+                            <form action={setStepStatus} key={value}>
+                              <input type="hidden" name="step_id" value={step.id} />
+                              <input type="hidden" name="status" value={value} />
+                              <button type="submit" data-tone={STEP_STATUS_TONES[value]} className={step.status === value ? "is-active" : ""} aria-pressed={step.status === value}>
+                                {STEP_STATUS_LABELS[value]}
+                              </button>
+                            </form>
+                          ))}
+                        </div>
+                        {canEditDue ? (
+                          <form action={setStepDueDate} className="opd-step-date">
+                            <input type="hidden" name="step_id" value={step.id} />
+                            <input type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
+                            <button type="submit">Kaydet</button>
+                          </form>
+                        ) : step.due_date ? null : <span className="opd-step-hint">Tarihi yönetici ya da işin sorumlusu girer.</span>}
+                        {canAssign ? (
+                          <form action={assignStep} className="opd-step-who">
+                            <input type="hidden" name="step_id" value={step.id} />
+                            <select name="assigned_employee_id" defaultValue={step.assigned_employee_id ?? ""} aria-label={`${step.title} sorumlusu`}>
+                              <option value="">Sorumlu yok</option>
+                              {employees.map((employee) => (
+                                <option key={employee.id} value={employee.id}>{formatPersonName(employee.full_name)}</option>
+                              ))}
+                            </select>
+                            <button type="submit">Ata</button>
+                          </form>
+                        ) : stepAssignee ? <span className="opd-step-hint">Sorumlu: {formatPersonName(stepAssignee)}</span> : null}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {!steps.length ? <p className="opd-empty">Henüz görev yok. Aşağıdan ilk görevi ekleyin.</p> : null}
             </div>
+            {/* Sonradan gelen adım: tez bittikten sonra istenen sunum dosyası gibi. */}
             <form className="opd-add" action={addWorkflowStep}>
               <input type="hidden" name="workflow_id" value={workflow.id} />
               <input name="title" required minLength={2} maxLength={180} placeholder="Yeni görev ekle" aria-label="Yeni görev" />
+              <input type="date" name="due_date" aria-label="Yeni görevin teslim tarihi" />
               <button className="panel-primary" type="submit">Ekle</button>
             </form>
           </section>
