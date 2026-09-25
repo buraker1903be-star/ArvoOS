@@ -909,13 +909,18 @@
       "workflow_id"
     ],
     "operation_steps": [
+      "assigned_employee_id",
       "completed_at",
       "completed_by",
       "created_at",
+      "due_date",
       "id",
       "is_completed",
       "organization_id",
+      "reminder_sent_at",
+      "reminder_state",
       "sort_order",
+      "status",
       "title",
       "workflow_id"
     ],
@@ -1097,6 +1102,16 @@
       "updated_at",
       "updated_by"
     ],
+    "organization_step_templates": [
+      "code",
+      "created_at",
+      "day_offset",
+      "is_active",
+      "organization_id",
+      "sort_order",
+      "title",
+      "updated_at"
+    ],
     "organization_vertical_profiles": [
       "brand_config",
       "created_at",
@@ -1250,6 +1265,7 @@
       "updated_by"
     ],
     "product_subscribers": [
+      "closed_at",
       "created_at",
       "current_period_end",
       "current_period_start",
