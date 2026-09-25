@@ -5,7 +5,7 @@
 // kategori de "Diğer" altında görünür. Boş başlıklar arayüzde gösterilmez.
 export const notificationFilters = [
   { key: "sales", label: "Talepler", categories: ["sales_assignment", "site_lead"] },
-  { key: "operations", label: "Operasyon", categories: ["operation_assignment", "crm_won_automation"] },
+  { key: "operations", label: "Operasyon", categories: ["operation_assignment", "operation_step_due", "crm_won_automation"] },
   { key: "musteri", label: "Müşteri", categories: ["customer_message", "contract_addendum_accepted", "contract_addendum_rejected", "proposal_customer_decision"] },
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },
   { key: "duyurular", label: "Duyurular", categories: ["management_announcement"] },

@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/randevu-sync",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/adim-terminleri",
+      "schedule": "50 4 * * *"
     }
   ]
 }

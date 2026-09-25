@@ -1,0 +1,20 @@
+/* Adım şablonu: iki sütunlu (adım adı + gün) düzenleme listesi. */
+.sablon-form{display:flex;flex-direction:column;gap:8px}
+.sablon-basliklar,.sablon-satir{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:10px;align-items:center}
+.sablon-basliklar{padding:0 2px;color:var(--muted);font-size:12px;font-weight:650;letter-spacing:.02em;text-transform:uppercase}
+.sablon-satir input{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.sablon-satir input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.sablon-satir input:disabled{background:var(--surface-2);color:var(--muted)}
+.sablon-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:6px}
+.sablon-hint{color:var(--muted);font-size:12.5px}
+.sablon-clear{padding-top:14px;margin-top:14px;border-top:1px solid var(--line-soft)}
+.sablon-bos{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.sablon-bos h2{display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.sablon-bos p{margin:0;color:var(--muted);font-size:13.5px;max-width:74ch}
+@media (max-width:640px){
+  .sablon-basliklar{display:none}
+  .sablon-satir{grid-template-columns:minmax(0,1fr) 92px}
+}
+.sablon-card-head{margin-bottom:14px}
+.sablon-card-head h2{margin:0 0 4px;font-size:16px;font-weight:700}
+.sablon-card-head p{margin:0;color:var(--muted);font-size:13px;max-width:78ch}
