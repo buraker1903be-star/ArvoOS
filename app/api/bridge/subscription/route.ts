@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   const email = String(body.email ?? "").trim().toLowerCase();
   if (!isSubscriberProduct(product)) return json(400, { error: "invalid_product" });
   if (!userId || !email) return json(400, { error: "missing_user" });
-  if (!["ensure", "checkout"].includes(action)) return json(400, { error: "invalid_action" });
+  if (!["ensure", "checkout", "close"].includes(action)) return json(400, { error: "invalid_action" });
 
   const admin = createAdminClient();
   if (!admin) return json(503, { error: "unavailable" });
@@ -85,6 +85,12 @@ export async function POST(request: Request) {
     .eq("product", product).eq("external_user_id", userId).maybeSingle();
 
   if (!subscriber) {
+    /*
+      Kapatma isteğinde abone yoksa yapacak bir şey yok ve bu bir hata
+      değil: kullanıcı deneme bile başlatmadan hesabını silmiş olabilir.
+      404 dönseydi ArvoLab'ın silme cron'u takılır, hesap silinmeden kalırdı.
+    */
+    if (action === "close") return json(200, { closed: true, alreadyAbsent: true });
     if (action !== "ensure") return json(404, { error: "subscriber_not_found" });
     // İlk giriş: deneme süresi tanımlıysa denemeyle başlar, değilse kapalı.
     const trialDays = plan?.trial_days ?? 0;
@@ -108,6 +114,37 @@ export async function POST(request: Request) {
     // E-posta ya da ad değişmiş olabilir; kurucunun listesi güncel kalsın.
     await admin.from("product_subscribers").update({ email, full_name: body.fullName?.trim() || null, updated_at: new Date().toISOString() })
       .eq("id", subscriber.id);
+  }
+
+  /*
+    close: ArvoLab'da hesap KALICI olarak silindi.
+
+    Satır silinmiyor — subscriber_payments ve payment_links buna cascade ile
+    bağlı, silmek ödeme ve fatura kaydını da götürürdü (VUK beş yıl saklama).
+    Bunun yerine durum 'canceled' oluyor, closed_at damgalanıyor ve kişisel
+    alanlar anonimleşiyor: ödeme izi kimliksiz olarak kalıyor.
+
+    E-posta NOT NULL, o yüzden boşaltılamıyor; abonenin kendi kimliğinden
+    türeyen bir yer tutucu yazılıyor ki benzersiz kalsın ve bir daha gerçek
+    bir adresle karışmasın.
+
+    İşlem tekrarlanabilir: ikinci çağrı aynı sonucu verir. Cron yeniden
+    denerse bir şey bozulmaz.
+  */
+  if (action === "close") {
+    const { error } = await admin.from("product_subscribers").update({
+      status: "canceled",
+      closed_at: new Date().toISOString(),
+      email: `silinmis+${subscriber.id}@arvo-os.com`,
+      full_name: null,
+      suspension_reason: "Kullanıcı hesabını sildi",
+      updated_at: new Date().toISOString(),
+    }).eq("id", subscriber.id);
+    if (error) {
+      console.error("[bridge] abone kapatılamadı", product, error.message);
+      return json(500, { error: "close_failed" });
+    }
+    return json(200, { closed: true });
   }
 
   if (action === "ensure") return json(200, state(subscriber, monthlyFee));
