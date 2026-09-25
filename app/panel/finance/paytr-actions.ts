@@ -7,13 +7,16 @@ import { getPanelContext } from "@/lib/panel-context";
 import { resolvePublicHost } from "@/lib/public-host";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { decryptSecret, encryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
 
-// PayTR işlemleri: mağaza bilgileri (Ayarlar) ve taksit ödeme bağlantısı
-// (Finans → PAYTR Tahsilatları). Yalnızca Kurum Sahibi ve Yönetici.
-// Sağlayıcı tabloları yalnızca service_role'e açık; sahiplik kontrolleri
-// kullanıcının kendi oturumuyla (RLS) yapıldıktan sonra sunucu anahtarıyla yazılır.
+// PayTR taksit ödeme bağlantısı (Finans → PAYTR Tahsilatları). Yalnızca
+// Kurum Sahibi ve Yönetici.
+//
+// Mağaza bilgilerinin girilmesi burada DEĞİL: sağlayıcıdan bağımsız karta
+// taşındı (odeme-saglayici-actions.ts), çünkü Garanti'nin alanları başka ve
+// iki ayrı kayıt ekranı tutmak ikisinin ayrışması demekti.
 
 async function paytrContext() {
   const context = await getPanelContext();
@@ -26,64 +29,14 @@ async function paytrContext() {
 }
 type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
 
-async function loadCredentials(admin: Admin, organizationId: string): Promise<PaytrCredentials> {
-  const { data } = await admin
-    .from("organization_payment_providers")
-    .select("merchant_id,merchant_key_enc,merchant_salt_enc,is_enabled")
-    .eq("organization_id", organizationId)
-    .eq("provider", "paytr")
-    .maybeSingle();
-  if (!data) throw new Error("PayTR bağlı değil. Ayarlar → Entegrasyonlar'dan mağaza bilgilerini girin.");
-  if (!data.is_enabled) throw new Error("PayTR bağlantısı kapalı. Ayarlar → Entegrasyonlar'dan açın.");
-  return { merchantId: data.merchant_id, merchantKey: decryptSecret(data.merchant_key_enc), merchantSalt: decryptSecret(data.merchant_salt_enc) };
-}
+const loadCredentials = (admin: Admin, organizationId: string): Promise<PaytrCredentials> =>
+  paytrKimligi(admin, organizationId);
 
 const refresh = (contractId?: string) => {
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/genel-bakis");
   if (contractId) revalidatePath(`/panel/crm/contracts/${contractId}`);
 };
-
-// ---------------------------------------------------------------
-// Mağaza bilgileri
-// ---------------------------------------------------------------
-async function savePaytrSettings__impl(formData: FormData) {
-  const { admin, membership, userId } = await paytrContext();
-  const merchantId = String(formData.get("merchant_id") ?? "").trim();
-  const merchantKey = String(formData.get("merchant_key") ?? "").trim();
-  const merchantSalt = String(formData.get("merchant_salt") ?? "").trim();
-  const enabled = formData.get("is_enabled") === "on";
-  if (!/^[0-9]{3,20}$/.test(merchantId)) throw new Error("Mağaza numarası (merchant_id) yalnızca rakamlardan oluşmalı.");
-
-  const { data: existing } = await admin.from("organization_payment_providers").select("merchant_key_enc,merchant_salt_enc")
-    .eq("organization_id", membership.organization_id).eq("provider", "paytr").maybeSingle();
-  // Anahtar ve tuz boş bırakılırsa mevcut değerler korunur (ekranda hiç gösterilmezler).
-  if (!existing && (!merchantKey || !merchantSalt)) throw new Error("İlk kurulumda Mağaza Parolası (merchant_key) ve Gizli Anahtar (merchant_salt) zorunludur.");
-  if ((merchantKey && merchantKey.length > 200) || (merchantSalt && merchantSalt.length > 200)) throw new Error("Anahtar değerleri geçersiz görünüyor.");
-
-  const { error } = await admin.from("organization_payment_providers").upsert({
-    organization_id: membership.organization_id,
-    provider: "paytr",
-    merchant_id: merchantId,
-    merchant_key_enc: merchantKey ? encryptSecret(merchantKey) : existing!.merchant_key_enc,
-    merchant_salt_enc: merchantSalt ? encryptSecret(merchantSalt) : existing!.merchant_salt_enc,
-    is_enabled: enabled,
-    updated_by: userId,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "organization_id,provider" });
-  if (error) throw new Error("PayTR bilgileri kaydedilemedi: " + error.message);
-  revalidatePath("/panel/settings");
-  refresh();
-}
-
-async function removePaytrSettings__impl() {
-  const { admin, membership } = await paytrContext();
-  const { error } = await admin.from("organization_payment_providers").delete()
-    .eq("organization_id", membership.organization_id).eq("provider", "paytr");
-  if (error) throw new Error("PayTR bağlantısı kaldırılamadı: " + error.message);
-  revalidatePath("/panel/settings");
-  refresh();
-}
 
 // ---------------------------------------------------------------
 // Taksit ödeme bağlantısı
@@ -170,12 +123,6 @@ async function cancelPaytrPaymentLink__impl(formData: FormData) {
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
-export async function savePaytrSettings(...args: Parameters<typeof savePaytrSettings__impl>) {
-  return runPanelAction(() => savePaytrSettings__impl(...args), "PayTR bilgileri kaydedildi");
-}
-export async function removePaytrSettings(...args: Parameters<typeof removePaytrSettings__impl>) {
-  return runPanelAction(() => removePaytrSettings__impl(...args), "PayTR bağlantısı kaldırıldı");
-}
 export async function createPaytrPaymentLink(...args: Parameters<typeof createPaytrPaymentLink__impl>) {
   return runPanelAction(() => createPaytrPaymentLink__impl(...args), "PayTR ödeme bağlantısı oluşturuldu");
 }

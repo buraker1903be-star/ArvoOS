@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
@@ -57,11 +58,14 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
   if (!platformId) throw new CheckoutError("unavailable", UNAVAILABLE);
   if (platformId === organizationId) throw new CheckoutError("platform_self", "ArvoOS kendi lisansı için ödeme almaz.");
 
-  const { data: provider } = await admin.from("organization_payment_providers")
-    .select("merchant_id,merchant_key_enc,merchant_salt_enc,is_enabled")
-    .eq("organization_id", platformId).eq("provider", "paytr").maybeSingle();
-  if (!provider?.is_enabled) throw new CheckoutError("unavailable", UNAVAILABLE);
-  const credentials: PaytrCredentials = { merchantId: provider.merchant_id, merchantKey: decryptSecret(provider.merchant_key_enc), merchantSalt: decryptSecret(provider.merchant_salt_enc) };
+  let credentials: PaytrCredentials;
+  try {
+    credentials = await paytrKimligi(admin, platformId);
+  } catch (error) {
+    // Bağlı değil, kapalı ya da anahtar eksik: kullanıcıya hepsi aynı kapı.
+    console.error("[lisans] PayTR kimliği alınamadı", error instanceof Error ? error.message : error);
+    throw new CheckoutError("unavailable", UNAVAILABLE);
+  }
 
   // Aynı ürün için önceki açık bağlantıyı kapat; diğer ürünlerinki açık kalır.
   const { data: previous } = await admin.from("payment_links").select("id,provider_link_id")

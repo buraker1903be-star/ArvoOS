@@ -4,9 +4,9 @@ import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } f
 import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, StgWidget, type StgTone } from "./settings-ui";
-import { getPaytrStatus } from "@/lib/paytr-status";
+import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
-import { removePaytrSettings, savePaytrSettings } from "../finance/paytr-actions";
+import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
 import { arvoWhatsappKontrol } from "./whatsapp/actions";
 import "./settings-legal.css";
@@ -36,8 +36,8 @@ export default async function SettingsPage() {
   const enabledCodes = new Set(modules.map((module) => module.code));
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
   const canManage = ["owner", "admin"].includes(membership.role);
-  // PayTR mağaza bilgileri yalnızca sahip/yöneticiye (anahtarlar hiç okunmaz)
-  const paytr = canManage ? await getPaytrStatus(membership.organization_id) : null;
+  // Ödeme sağlayıcıları yalnızca sahip/yöneticiye (anahtarlar hiç okunmaz)
+  const odemeSaglayicilari = canManage ? await saglayiciDurumlari(membership.organization_id) : [];
   // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
   const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
@@ -166,33 +166,10 @@ export default async function SettingsPage() {
       </StgSection>
 
       <StgSection id="entegrasyonlar" icon="plug" tone="neutral" kicker="ENTEGRASYONLAR" title="Bağlantılar" description="Ödeme, banka, e-fatura ve alan adı bileşenleri.">
-        {paytr ? (
-          <div className="stg-paytr">
-            <div className="stg-paytr-head">
-              <div><b>PayTR ile tahsilat</b><small>Taksit için tek kullanımlık ödeme bağlantısı; ödeme gelince tahsilat cariye kendiliğinden işlenir.</small></div>
-              <span className="status-pill" data-tone={paytr.connected ? (paytr.enabled ? "success" : "warning") : "neutral"}>{paytr.connected ? (paytr.enabled ? `Bağlı · ${paytr.merchantHint}` : "Kapalı") : "Bağlı değil"}</span>
-            </div>
-            {paytr.available ? (
-              <form className="panel-form" action={savePaytrSettings}>
-                <label>Mağaza numarası (merchant_id)<input name="merchant_id" inputMode="numeric" pattern="[0-9]{3,20}" required defaultValue={paytr.merchantId ?? ""} autoComplete="off" /></label>
-                <label>Mağaza parolası (merchant_key)<input name="merchant_key" type="password" autoComplete="new-password" required={!paytr.connected} placeholder={paytr.connected ? "Değiştirmek için yeni değeri girin" : ""} /></label>
-                <label>Gizli anahtar (merchant_salt)<input name="merchant_salt" type="password" autoComplete="new-password" required={!paytr.connected} placeholder={paytr.connected ? "Değiştirmek için yeni değeri girin" : ""} /></label>
-                <label className="wide stg-check"><input name="is_enabled" type="checkbox" defaultChecked={!paytr.connected || paytr.enabled} />Taksitler için PayTR ödeme bağlantısı oluşturulabilsin</label>
-                <p className="wide stg-paytr-note">Bu bilgiler PayTR Mağaza Paneli → Destek &amp; Kurulum → Entegrasyon Bilgileri&apos;nde yer alır. Mağazanızda &quot;Link ile Ödeme&quot; özelliğinin açık olması gerekir. Parola ve gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez.</p>
-                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{paytr.connected ? "Güncelle" : "PayTR'yi bağla"}</button></div>
-              </form>
-            ) : (
-              <p className="stg-muted"><StgIcon name="lock" size={16} />PayTR için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
-            )}
-            {paytr.connected ? (
-              <div className="stg-paytr-foot">
-                <span>Son test ödemesi: <b>{paytrDate(paytr.lastTestPaymentAt)}</b></span>
-                <span>Son tahsilat: <b>{paytrDate(paytr.lastPaymentAt)}</b></span>
-                <form action={removePaytrSettings}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {/* PayTR ve Garanti aynı kalıptan; alanlar lib/payments/saglayicilar.ts'te. */}
+        {odemeSaglayicilari.map((status) => (
+          <OdemeSaglayiciKarti key={status.spec.code} status={status} />
+        ))}
         {whatsapp ? (
           <div className="stg-paytr">
             <div className="stg-paytr-head">

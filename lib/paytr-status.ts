@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { saglayiciKaydi } from "@/lib/payments/kimlik";
 
 // Kurumun PayTR bağlantı durumu (ayarlar ve finans ekranları için).
 // "use server" dosyasında değil: tarayıcıdan çağrılabilir bir sunucu
@@ -30,21 +31,19 @@ export async function getPaytrStatus(organizationId: string): Promise<PaytrStatu
   const available = Boolean(admin) && paymentCredentialsConfigured();
   const empty: PaytrStatus = { available, connected: false, enabled: false, merchantId: null, merchantHint: null, lastTestPaymentAt: null, lastPaymentAt: null, updatedAt: null };
   if (!admin) return empty;
-  const { data } = await admin
-    .from("organization_payment_providers")
-    .select("merchant_id,is_enabled,last_test_payment_at,last_payment_at,updated_at")
-    .eq("organization_id", organizationId)
-    .eq("provider", "paytr")
-    .maybeSingle();
-  if (!data) return empty;
+  // Kimlik bilgileri artık credentials_enc haritasında; okuma tek yerde
+  // (lib/payments/kimlik.ts). Bu sarmalayıcı, PayTR'ye özel ekranlar
+  // (Finans, Ödemeler) değişmesin diye duruyor.
+  const kayit = await saglayiciKaydi(admin, organizationId, "paytr");
+  if (!kayit) return empty;
   return {
     available,
     connected: true,
-    enabled: Boolean(data.is_enabled),
-    merchantId: String(data.merchant_id),
-    merchantHint: `••••${String(data.merchant_id).slice(-4)}`,
-    lastTestPaymentAt: data.last_test_payment_at ?? null,
-    lastPaymentAt: data.last_payment_at ?? null,
-    updatedAt: data.updated_at ?? null,
+    enabled: kayit.enabled,
+    merchantId: kayit.merchantId,
+    merchantHint: `••••${kayit.merchantId.slice(-4)}`,
+    lastTestPaymentAt: kayit.lastTestPaymentAt,
+    lastPaymentAt: kayit.lastPaymentAt,
+    updatedAt: kayit.updatedAt,
   };
 }

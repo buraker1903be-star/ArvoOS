@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { arvolabKrediYukle, syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
-import { decryptSecret } from "@/lib/payment-credentials";
+import { paytrKimligi } from "@/lib/payments/kimlik";
 import { deletePaytrLink, fromCallbackId, verifyPaytrCallback, type PaytrCredentials } from "@/lib/paytr";
 
 // PayTR "Link ile Ödeme" bildirimi (herkese açık, giriş yok).
@@ -51,20 +51,13 @@ export async function POST(request: Request) {
     return OK();
   }
 
-  const { data: provider } = await admin
-    .from("organization_payment_providers")
-    .select("merchant_id,merchant_key_enc,merchant_salt_enc")
-    .eq("organization_id", link.organization_id)
-    .eq("provider", "paytr")
-    .maybeSingle();
-  if (!provider) return text(503, "provider not configured");
-
   let credentials: PaytrCredentials;
   try {
-    credentials = { merchantId: provider.merchant_id, merchantKey: decryptSecret(provider.merchant_key_enc), merchantSalt: decryptSecret(provider.merchant_salt_enc) };
+    // Kapalı sağlayıcıda da çözülür: para çoktan hareket etti (gerekçe kimlik.ts).
+    credentials = await paytrKimligi(admin, link.organization_id, { acikOlmali: false });
   } catch (error) {
     console.error("[paytr] mağaza anahtarları çözülemedi", error instanceof Error ? error.message : error);
-    return text(503, "credentials unavailable");
+    return text(503, "credentials unavailable"); // PayTR sonra yeniden dener
   }
 
   if (field("merchant_id") && field("merchant_id") !== credentials.merchantId) return text(400, "merchant mismatch");

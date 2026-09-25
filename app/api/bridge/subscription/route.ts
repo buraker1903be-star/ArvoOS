@@ -1,6 +1,7 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
@@ -156,15 +157,13 @@ export async function POST(request: Request) {
   const platformId = await getPlatformOrganizationId();
   if (!platformId) return json(503, { error: "payments_unavailable" });
 
-  const { data: provider } = await admin.from("organization_payment_providers")
-    .select("merchant_id,merchant_key_enc,merchant_salt_enc,is_enabled")
-    .eq("organization_id", platformId).eq("provider", "paytr").maybeSingle();
-  if (!provider?.is_enabled) return json(503, { error: "payments_unavailable" });
-  const credentials: PaytrCredentials = {
-    merchantId: provider.merchant_id,
-    merchantKey: decryptSecret(provider.merchant_key_enc),
-    merchantSalt: decryptSecret(provider.merchant_salt_enc),
-  };
+  let credentials: PaytrCredentials;
+  try {
+    credentials = await paytrKimligi(admin, platformId);
+  } catch (error) {
+    console.error("[abonelik] PayTR kimliği alınamadı", error instanceof Error ? error.message : error);
+    return json(503, { error: "payments_unavailable" });
+  }
 
   // Aynı abonenin önceki açık bağlantısını kapat (birey başına tek aktif).
   const { data: previous } = await admin.from("payment_links").select("id,provider_link_id")
