@@ -141,7 +141,7 @@ Bunlardan birini açacaksanız önce `.openai/hosting.json` bağlamalarını tan
 
 ## WhatsApp
 
-Dört ürün de (ArvoOS, ArvoLab, ARC, Randevu) müşterilerine WhatsApp'tan
+Dört ürün de (ArvoOS, ArvoLab, ArvoARC, Randevu) müşterilerine WhatsApp'tan
 mesaj gönderir. İki ayrı gönderen var ve ayrımı ürün değil **kurum** belirler:
 
 - **Kurumun kendi numarası** — kurum WhatsApp Business hesabını bağladıysa

@@ -4,7 +4,7 @@
 // zaman gönderilmiş olanların SONUNA eklenir. "supabase migration new" ve
 // elle yazılan zaman damgası bunu garanti etmez: ArvoLab'da sürümler bir
 // dönem ileri tarihliydi (bugünün damgası uygulanmışların önüne düşerdi),
-// ArvoOS ve ARC'ta gün içinde saatler tükenince "…250000" (saat 25) gibi
+// ArvoOS ve ArvoARC'ta gün içinde saatler tükenince "…250000" (saat 25) gibi
 // geçersiz damgalar yazıldı. Denetim: scripts/check-migrations.mjs.
 //
 // Aynı dosya ArvoOS, ArvoARC ve ArvoLab'da birebir durur.
