@@ -1,8 +1,12 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
-// Ödeme sağlayıcısı (PayTR) mağaza anahtarlarının şifrelenmesi.
+// Ödeme sağlayıcısı kimlik bilgilerinin şifrelenmesi.
 //
-// merchant_key ve merchant_salt veritabanına düz yazılmaz: AES-256-GCM ile
+// Sağlayıcı bir değişken (lib/payments/saglayicilar.ts): PayTR mağaza
+// anahtarları, Garanti BBVA terminal ve provizyon şifreleri hep buradan
+// geçiyor. Alan adları sağlayıcıya göre değişir, şifreleme değişmez.
+//
+// Kimlik bilgileri veritabanına düz yazılmaz: AES-256-GCM ile
 // şifrelenir, anahtar yalnızca sunucudaki PAYMENT_CREDENTIALS_KEY ortam
 // değişkenindedir (32 bayt, base64). Veritabanı sızsa bile anahtarlar
 // okunamaz; tablo zaten yalnızca service_role'e açıktır.
@@ -40,7 +44,29 @@ export function encryptSecret(plain: string): string {
 export function decryptSecret(value: string): string {
   const [version, iv, tag, data] = value.split(":");
   if (version !== VERSION || !iv || !tag || !data) throw new Error("Şifreli değer biçimi tanınmadı.");
-  const decipher = createDecipheriv("aes-256-gcm", masterKey(), Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
+  /* masterKey() try'ın DIŞINDA: eksik ya da 32 bayt olmayan anahtar için
+     kendi kesin mesajı var, aşağıdaki genel mesaj onu ezmesin. */
+  const key = masterKey();
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
+  } catch (sorun) {
+    /*
+      GCM doğrulaması düşünce Node "Unsupported state or unable to
+      authenticate data" diyor; İngilizce, sebebi yazmıyor ve bu mesaj
+      kullanıcıya kadar çıkıyordu. En olası sebep PAYMENT_CREDENTIALS_KEY'in
+      değişmesi: o anda kayıtlı BÜTÜN kimlik bilgileri çözülemez hâle gelir
+      ve yapılacak iş (eski anahtarı geri koymak ya da bilgileri yeniden
+      girmek) hiçbir yerde yazmıyordu.
+
+      Ayrıntı dışarı verilmiyor: sır ya da anahtar parçası mesaja girmemeli.
+      Asıl hata yalnızca sunucu günlüğüne.
+    */
+    console.error("[ödeme] kimlik bilgisi çözülemedi", sorun instanceof Error ? sorun.message : sorun);
+    throw new Error(
+      "Kayıtlı ödeme kimlik bilgisi çözülemedi. Büyük olasılıkla şifreleme anahtarı (PAYMENT_CREDENTIALS_KEY) " +
+      "değişti; eski anahtarı geri koyun ya da Ayarlar → Entegrasyonlar'dan bilgileri yeniden girin.",
+    );
+  }
 }
