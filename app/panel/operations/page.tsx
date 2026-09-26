@@ -43,6 +43,9 @@ type MessageRow = {
 type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
 
 const LIST_LIMIT = 5;
+/* Mesaj ÖNİZLEME penceresi. Kutucuktaki toplam buradan gelmiyor; ayrı ve
+   sınırsız bir sayım sorgusundan geliyor. */
+const MESAJ_ONIZLEME = 500;
 const ISLER = "/panel/operations/isler";
 
 export default async function OperationsOverviewPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string }> }) {
@@ -59,7 +62,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);
 
-  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }] = await Promise.all([
+  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }, { count: okunmamisSayisi }] = await Promise.all([
     supabase.from("operation_workflows")
       .select("id,title,customer_name,status,priority,due_date,created_at,updated_at,assigned_employee_id,operation_steps(is_completed)")
       .eq("organization_id", organizationId)
@@ -74,8 +77,20 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
       .is("read_at", null)
       .neq("operation_workflows.status", "cancelled")
       .order("created_at", { ascending: false })
-      .limit(500),
+      .limit(MESAJ_ONIZLEME),
     supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "archived"),
+    /*
+      Okunmamış mesaj sayısı AYRI ve sınırsız sorguda. Yukarıdaki liste
+      önizleme için sınırlı; sayısını ondan almak, sınır aşıldığında
+      kutucuğun sessizce "500"de donması demekti (aynı sayfada arşiv sayısı
+      zaten bu teknikle alınıyor).
+    */
+    supabase.from("customer_file_messages")
+      .select("id,operation_workflows!inner(id)", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("sender_type", "customer")
+      .is("read_at", null)
+      .neq("operation_workflows.status", "cancelled"),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
@@ -101,15 +116,30 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const dueSoonCount = dueList.length - overdueCount;
 
   const messages = ((messageData ?? []) as unknown as MessageRow[]).map((row) => ({ ...row, workflow: Array.isArray(row.operation_workflows) ? row.operation_workflows[0] : row.operation_workflows }));
-  // İş başına tek satır: en son mesaj + okunmamış sayısı
+  // İş başına tek satır: en son mesaj + o işteki okunmamış sayısı.
   const threads = new Map<string, { latest: (typeof messages)[number]; count: number }>();
+  /*
+    tuzak-tamam: bu sayı bilerek ÖNİZLEME penceresinden (son MESAJ_ONIZLEME
+    mesaj) geliyor. Kutucuktaki TOPLAM artık ayrı ve sınırsız bir sayım
+    sorgusundan; buradaki liste ve iş başına sayı yalnızca en yeni mesajları
+    göstermek için. Pencere dolduğunda "kaç işte" metni "en az" diye
+    yazılıyor, sayı kesinmiş gibi sunulmuyor.
+  */
   for (const message of messages) {
     const thread = threads.get(message.workflow_id);
     if (thread) thread.count += 1;
     else threads.set(message.workflow_id, { latest: message, count: 1 });
   }
   const threadList = [...threads.values()];
-  const unreadTotal = messages.length;
+  /*
+    Kutucuktaki sayı kesin sorgudan; liste yalnızca önizleme. Sayım
+    alınamazsa listeden düşülüyor — en azından eldeki kadarını söylemek,
+    hiç söylememekten iyi.
+  */
+  const unreadTotal = okunmamisSayisi ?? messages.length;
+  /* Liste sınıra dayandıysa "kaç işte" sayısı da alt sınırdır. */
+  const onizlemeKesildi = messages.length >= MESAJ_ONIZLEME;
+  const isSayisiMetni = `${onizlemeKesildi ? "en az " : ""}${threads.size} işte okunmamış`;
 
   const withSteps = workflows.filter((workflow) => (workflow.operation_steps ?? []).length);
   const averageProgress = withSteps.length ? Math.round(withSteps.reduce((sum, workflow) => sum + stepProgress(workflow.operation_steps).percentage, 0) / withSteps.length) : 0;
@@ -119,7 +149,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
     { label: "Aktif iş", value: workflows.length, note: unassignedTotal ? `${unassignedTotal} iş atanmamış` : "Hepsinin sorumlusu var", href: ISLER, icon: "briefcase", tone: "brand" },
     { label: "Bu hafta teslim", value: dueSoonCount, note: "Önümüzdeki 7 gün", href: `${ISLER}?termin=yaklasan`, icon: "clock", tone: "gold" },
     { label: "Geciken teslim", value: overdueCount, note: overdueCount ? "Termini geçti" : "Geciken iş yok", href: `${ISLER}?termin=geciken`, icon: "alert", tone: overdueCount ? "danger" : "success" },
-    { label: "Müşteri mesajı", value: unreadTotal, note: unreadTotal ? `${threads.size} işte okunmamış` : "Hepsi okundu", href: `${ISLER}?mesaj=yeni`, icon: "message", tone: unreadTotal ? "danger" : "info" },
+    { label: "Müşteri mesajı", value: unreadTotal, note: unreadTotal ? isSayisiMetni : "Hepsi okundu", href: `${ISLER}?mesaj=yeni`, icon: "message", tone: unreadTotal ? "danger" : "info" },
     { label: "Ortalama ilerleme", value: `%${averageProgress}`, note: "Aktif işlerin görevleri", href: `${ISLER}?durum=devam`, icon: "progress", tone: "success" },
   ];
 
@@ -246,7 +276,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
           <article className="opsov-card" data-tone={unreadTotal ? "danger" : "brand"}>
             <header className="opsov-card-head">
               <span className="opsov-card-icon"><OpsIcon name="message" /></span>
-              <div><h2>Müşteriden gelen mesajlar</h2><p>{unreadTotal ? `${threads.size} işte okunmamış mesaj` : "Takip ekranından yazılanlar"}</p></div>
+              <div><h2>Müşteriden gelen mesajlar</h2><p>{unreadTotal ? `${isSayisiMetni} mesaj` : "Takip ekranından yazılanlar"}</p></div>
               <b className="opsov-count">{unreadTotal}</b>
             </header>
             {threadList.length ? (
