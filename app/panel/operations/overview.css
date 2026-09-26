@@ -126,3 +126,13 @@ html[data-theme="dark"] .opsov [data-tone="brand"]{--tone-fg:var(--brand-200)}
   .opsov-row>svg{display:none}
 }
 @media(prefers-reduced-motion:reduce){.opsov-bar i{animation:none}.opsov-widget,.opsov-row{transition:none}}
+
+/*
+  Yaklaşan aşamalar kartı iki sütunu birden kaplıyor: operasyoncunun ilk
+  sorduğu soru bu ("hangi maddenin tarihi yaklaşıyor") ve listesi de
+  diğerlerinden uzun. Yarım genişlikte iş başlığı + aşama adı + sorumlu +
+  tarih aynı satıra sığmıyordu.
+*/
+.opsov-card-genis{grid-column:1/-1}
+/* Aşama satırında iki rozet var (sorumlu ve tarih); dar ekranda sarsınlar. */
+.opsov-asamalar .opsov-row-side{flex-wrap:wrap;justify-content:flex-end}

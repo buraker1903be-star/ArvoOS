@@ -30,7 +30,15 @@ type Workflow = {
   created_at: string;
   updated_at: string;
   assigned_employee_id: string | null;
-  operation_steps: { is_completed: boolean }[] | null;
+  operation_steps: OverviewStep[] | null;
+};
+type OverviewStep = {
+  id: string;
+  title: string;
+  due_date: string | null;
+  is_completed: boolean;
+  sort_order: number;
+  assigned_employee_id: string | null;
 };
 type MessageRow = {
   id: string;
@@ -43,6 +51,8 @@ type MessageRow = {
 type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
 
 const LIST_LIMIT = 5;
+/* Yaklaşan aşamalar kartı tam genişlikte: daha uzun bir liste sığıyor. */
+const ASAMA_LIMIT = 8;
 /* Mesaj ÖNİZLEME penceresi. Kutucuktaki toplam buradan gelmiyor; ayrı ve
    sınırsız bir sayım sorgusundan geliyor. */
 const MESAJ_ONIZLEME = 500;
@@ -64,7 +74,9 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
 
   const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }, { count: okunmamisSayisi }] = await Promise.all([
     supabase.from("operation_workflows")
-      .select("id,title,customer_name,status,priority,due_date,created_at,updated_at,assigned_employee_id,operation_steps(is_completed)")
+      // Adımın kendi alanları da geliyor: "yaklaşan aşamalar" kartı AŞAMA
+      // düzeyinde, işin termini düzeyinde değil.
+      .select("id,title,customer_name,status,priority,due_date,created_at,updated_at,assigned_employee_id,operation_steps(id,title,due_date,is_completed,sort_order,assigned_employee_id)")
       .eq("organization_id", organizationId)
       .in("status", [...activeStatuses])
       .order("created_at", { ascending: false }),
@@ -111,6 +123,37 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const blockedCount = ongoing.filter((workflow) => workflow.status === "blocked").length;
   const ongoingList = [...ongoing].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || b.updated_at.localeCompare(a.updated_at));
 
+  /*
+    YAKLAŞAN AŞAMALAR — operasyoncunun kendi cümlesiyle "hangi maddenin
+    tarihi yaklaşıyor". Bu sayfa şimdiye kadar yalnızca İŞİN terminine
+    bakıyordu; oysa sekiz aşamalı bir işte asıl kaçırılan, işin termini
+    daha uzakken gecikmiş olan ara teslim. İkisi ayrı kartlarda duruyor:
+    biri "iş ne zaman teslim edilecek", diğeri "şu an hangi maddeye
+    yetişmek gerekiyor".
+
+    Pencere işin terminiyle aynı: bugüne kadar gecikmişler + önümüzdeki
+    7 gün.
+  */
+  const yaklasanAsamalar = workflows
+    .flatMap((workflow) =>
+      (workflow.operation_steps ?? [])
+        .filter((step) => step.due_date && !step.is_completed && step.due_date <= weekEnd)
+        .map((step) => ({
+          id: step.id,
+          baslik: step.title,
+          tarih: step.due_date!,
+          isId: workflow.id,
+          isBasligi: workflow.title,
+          musteri: workflow.customer_name || "Kurum içi iş",
+          // Adımın kendi sorumlusu yoksa işin sorumlusu (panodaki kuralla aynı).
+          sorumlu: step.assigned_employee_id
+            ? employeeName.get(step.assigned_employee_id) ?? "Pasif personel"
+            : assigneeOf(workflow),
+        })),
+    )
+    .sort((a, b) => a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr"));
+  const gecikenAsama = yaklasanAsamalar.filter((asama) => asama.tarih < today).length;
+
   const dueList = workflows.filter((workflow) => workflow.due_date && workflow.due_date <= weekEnd).sort((a, b) => a.due_date!.localeCompare(b.due_date!));
   const overdueCount = dueList.filter((workflow) => workflow.due_date! < today).length;
   const dueSoonCount = dueList.length - overdueCount;
@@ -155,6 +198,8 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
 
   const parts = [
     planned.length ? `${planned.length} yeni iş` : null,
+    // Geciken AŞAMA önce: iş termini daha uzakken kaçırılan ara teslim bu.
+    gecikenAsama ? `${gecikenAsama} geciken aşama` : null,
     overdueCount ? `${overdueCount} geciken teslim` : null,
     dueSoonCount ? `bu hafta ${dueSoonCount} teslim` : null,
     unreadTotal ? `${unreadTotal} okunmamış müşteri mesajı` : null,
@@ -184,6 +229,56 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
         </section>
 
         <section className="opsov-grid">
+          {/*
+            YAKLAŞAN AŞAMALAR — en üstte ve tam genişlikte, çünkü
+            operasyoncunun sorduğu soru bu: "hangi maddenin tarihi
+            yaklaşıyor, kimin işi". Alttaki kartlar iş düzeyinde kalıyor.
+          */}
+          <article className="opsov-card opsov-card-genis" data-tone={gecikenAsama ? "danger" : "gold"}>
+            <header className="opsov-card-head">
+              <span className="opsov-card-icon"><OpsIcon name="clock" /></span>
+              <div>
+                <h2>Yaklaşan aşamalar</h2>
+                <p>{gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek aşamalar"}</p>
+              </div>
+              <b className="opsov-count">{yaklasanAsamalar.length}</b>
+            </header>
+            {yaklasanAsamalar.length ? (
+              <ul className="opsov-list opsov-asamalar">
+                {yaklasanAsamalar.slice(0, ASAMA_LIMIT).map((asama) => {
+                  const rozet = dueBadge(asama.tarih, today);
+                  return (
+                    <li key={asama.id} className={rozet.late ? "is-flagged" : undefined} data-flag="danger">
+                      <Link className="opsov-row" href={`/panel/operations/${asama.isId}`}>
+                        <span className="opsov-row-main">
+                          <b title={asama.baslik}>{formatSubject(asama.baslik)}</b>
+                          {/* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */}
+                          <small>{asama.musteri} · {formatSubject(asama.isBasligi)}</small>
+                        </span>
+                        <span className="opsov-row-side">
+                          {asama.sorumlu ? (
+                            <span className="opsov-person" title={asama.sorumlu}>
+                              <i aria-hidden="true">{initials(asama.sorumlu)}</i><span>{asama.sorumlu}</span>
+                            </span>
+                          ) : <span className="status-pill" data-tone="gold">Atanmamış</span>}
+                          <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span>
+                        </span>
+                        <OpsIcon name="chevron" size={14} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="opsov-empty">
+                <OpsIcon name="check" size={20} />
+                Yaklaşan aşama yok. Aşamaların tarihi girilmemişse burası boş kalır — iş detayındaki
+                “Tarihleri dağıt” ile bir kerede doldurabilirsiniz.
+              </p>
+            )}
+            <Link className="opsov-more" href="/panel/operations/takvim">Takvimde gör<OpsIcon name="chevron" size={14} /></Link>
+          </article>
+
           {/* Yeni gelen işler */}
           <article className="opsov-card" data-tone="info">
             <header className="opsov-card-head">
