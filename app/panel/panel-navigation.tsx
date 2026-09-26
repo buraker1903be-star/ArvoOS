@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   normalizeModuleCode,
@@ -20,20 +21,21 @@ import {
   için böyle bir köprü henüz yok ve olmayan bir kolaylığı varmış gibi
   göstermek, kullanıcıyı şaşırtan bir giriş ekranına çıkarır.
 
-  MİNİ IZGARA. Uygulamalar menüde düz bir bağlantı listesiydi; artık
-  başlığın üstüne gelince yanda açılan küçük bir ızgarada, ikon ve adıyla
-  duruyorlar. Önce tam sayfa bir "Uygulamalar" ekranı denendi ve bırakıldı:
-  ürünler arası geçiş bir varış noktası değil, bir açma hareketi — araya
-  bir sayfa koymak her geçişe fazladan bir tıklama ekliyordu.
+  AÇILIR PENCERE. Uygulamalar menüde düz bir bağlantı listesiydi; şimdi
+  "UYGULAMALAR" düğmesi ekranın ORTASINDA bir pencere açıyor ve ürünler
+  orada ikon + ad ızgarasında duruyor.
+
+  İki ara sürüm denendi ve bırakıldı:
+   - Tam sayfa "Uygulamalar" ekranı: ürünler arası geçiş bir varış noktası
+     değil, bir açma hareketi; araya sayfa koymak her geçişe fazladan bir
+     tıklama ekliyordu.
+   - Menünün yanında hover ile açılan mini ızgara: dar şeridin yanında
+     açıldığı için panelin içeriğiyle üst üste biniyor ve arkasındaki
+     kartlar okunuyordu; dokunmatikte de hiç açılmıyordu.
 
   YALNIZCA GİDİLEBİLEN ürünler görünüyor (lisansı açık olanlar). Kapalı
-  ürünleri de listeleyen sürüm denendi ve bırakıldı: menüde basılınca
-  hiçbir şey açmayan satırlar duruyordu.
-
-  Açılma CSS ile: :hover ve :focus-within. Klavyeyle gelen kullanıcı
-  başlığa sekince ızgara açılıyor ve bağlantılara sekmeyle geçiyor —
-  JavaScript'e bağlanan bir menü, sunucu bileşeni olan bu ağaçta ayrı bir
-  istemci bileşeni demekti.
+  ürünleri de listeleyen sürüm denendi ve bırakıldı: basılınca hiçbir şey
+  açmayan satırlar duruyordu.
 */
 export type DigerUygulama = { kod: string; ad: string; href: string; ayniSekme: boolean };
 
@@ -44,6 +46,7 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
   digerUygulamalar?: DigerUygulama[];
 }) {
   const pathname = usePathname();
+  const pencere = useRef<HTMLDialogElement>(null);
   const resolved = resolveNavigationGroups(modules, role, new Set(hiddenModuleKeys ?? []));
 
   return <nav className="panel-nav panel-nav-v2" aria-label="Ana menü">
@@ -81,19 +84,39 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
     </div>
     {digerUygulamalar.length ? (
       <div className="panel-nav-apps" role="group" aria-label="Diğer uygulamalar">
-        <button className="panel-nav-apps-head" type="button" aria-haspopup="true" title="Arvo uygulamaları">
+        <button
+          className="panel-nav-apps-head"
+          type="button"
+          aria-haspopup="dialog"
+          title="Arvo uygulamaları"
+          onClick={() => pencere.current?.showModal()}
+        >
           <em aria-hidden="true">⊞</em>
           <small>UYGULAMALAR</small>
           <span aria-hidden="true">{digerUygulamalar.length}</span>
         </button>
-        <div className="panel-nav-apps-mini">
-          <small>ARVO UYGULAMALARI</small>
-          <div>
+        <dialog
+          className="panel-apps-pencere"
+          ref={pencere}
+          aria-label="Arvo uygulamaları"
+          /*
+            Pencerenin DIŞINA basınca kapanıyor. dialog elemanının kendisi
+            arka planı da kaplıyor, yani hedef dialog ise tıklama içeriğe
+            değil boşluğa gelmiştir.
+          */
+          onClick={(olay) => { if (olay.target === pencere.current) pencere.current?.close(); }}
+        >
+          <header>
+            <b>Arvo uygulamaları</b>
+            <button type="button" onClick={() => pencere.current?.close()} aria-label="Kapat">✕</button>
+          </header>
+          <div className="panel-apps-izgara">
             {digerUygulamalar.map((uygulama) => (
               <a
                 key={uygulama.kod}
                 href={uygulama.href}
                 title={`${uygulama.ad} uygulamasını aç`}
+                onClick={() => pencere.current?.close()}
                 {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
               >
                 <i aria-hidden="true">{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>
@@ -101,7 +124,8 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
               </a>
             ))}
           </div>
-        </div>
+          <footer>Uygulamalar yeni sekmede açılır; paneldeki işiniz açık kalır.</footer>
+        </dialog>
       </div>
     ) : null}
     <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings" title="Ayarlar"><i>A</i><span>Ayarlar</span></Link>
