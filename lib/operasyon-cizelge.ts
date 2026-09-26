@@ -220,3 +220,122 @@ export function satirlariDiz(
 /** Izgaranın toplam satır sayısı (başlık satırı dahil). */
 export const satirSayisi = (satirlar: CizelgeSatiri[], ilkSatir = 2) =>
   satirlar.length ? satirlar[satirlar.length - 1].satir : ilkSatir - 1;
+
+// ---------- Kişiye göre görünüm ----------
+
+/*
+  "Kimde ne var" sorusu müşteriye göre gruplamayla yanıtlanmıyor: bir
+  operasyoncunun üstündeki aşamalar dört ayrı müşterinin altına dağılıyor ve
+  kendi gündemini görmek için bütün çizelgeyi taramak gerekiyor.
+
+  Bu yüzden aynı veri İKİNCİ bir eksende de kuruluyor: kişi → aşamalar.
+  Aşama hangi işe ve müşteriye ait olduğunu taşıyor, yoksa "Literatür
+  taraması" tek başına hangi tezin literatürü olduğunu söylemiyor.
+*/
+export interface KisiAsamasi extends CizelgeAsamasi {
+  isId: string;
+  isBasligi: string;
+  musteri: string;
+}
+
+export interface CizelgeKisisi {
+  /** Personel kimliği; atanmamış aşamalar için boş dizge. */
+  anahtar: string;
+  ad: string;
+  asamalar: KisiAsamasi[];
+}
+
+export const ATANMAMIS = "Sorumlu atanmadı";
+
+/**
+ * Aşamaları sorumlusuna göre gruplar. `adCoz` personel kimliğini ada
+ * çevirir (kimlik ekranda okunmuyor); çözemezse aşama "atanmamış" grubuna
+ * DÜŞMEZ, "bilinmeyen personel" olarak kendi grubunda kalır — silinmiş bir
+ * personelin üstündeki işi "kimsede yok" göstermek, onu kaybetmek olurdu.
+ */
+export function kisilereGoreKur(
+  isler: CizelgeIsi[],
+  adCoz: (personelId: string) => string | null,
+): CizelgeKisisi[] {
+  const gruplar = new Map<string, CizelgeKisisi>();
+
+  for (const is of isler) {
+    const musteri = is.customer_name?.trim() || KURUM_ICI;
+    for (const asama of asamalariKur(is)) {
+      const anahtar = asama.sorumluId ?? "";
+      const ad = asama.sorumluId ? adCoz(asama.sorumluId) ?? "Bilinmeyen personel" : ATANMAMIS;
+      const grup = gruplar.get(anahtar) ?? { anahtar, ad, asamalar: [] };
+      grup.asamalar.push({ ...asama, isId: is.id, isBasligi: is.title, musteri });
+      gruplar.set(anahtar, grup);
+    }
+  }
+
+  for (const grup of gruplar.values()) {
+    // Tarihe göre: en yakın teslim üstte, tarihsizler sonda.
+    grup.asamalar.sort((a, b) => {
+      if (a.tarih && b.tarih) return a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr");
+      if (a.tarih) return -1;
+      if (b.tarih) return 1;
+      return a.baslik.localeCompare(b.baslik, "tr");
+    });
+  }
+
+  return [...gruplar.values()].sort((a, b) => {
+    // Atanmamış grubu en sonda: asıl gündem kişilerin üstündekiler.
+    if (a.anahtar === "") return 1;
+    if (b.anahtar === "") return -1;
+    return a.ad.localeCompare(b.ad, "tr");
+  });
+}
+
+// ---------- Süzgeçler ----------
+
+export interface Suzgec {
+  /** Personel kimliği; "" = atanmamış, undefined = süzme yok. */
+  kisi?: string;
+  /** Müşteri adı (gruplama anahtarıyla aynı normalleştirme). */
+  musteri?: string;
+  /** İşin durumu. */
+  durum?: string;
+}
+
+/**
+ * İş düzeyindeki süzgeç. Müşteri ve durum işe ait; kişi süzgeci İŞİ
+ * düşürmüyor çünkü kişinin aşaması o işin içinde olabiliyor — kişi süzgeci
+ * aşama düzeyinde uygulanıyor (asamaSuzgeci).
+ */
+export function isSuzgeci(suzgec: Suzgec) {
+  const musteri = suzgec.musteri ? musteriAnahtari(suzgec.musteri) : undefined;
+  return (is: CizelgeIsi) => {
+    if (suzgec.durum && is.status !== suzgec.durum) return false;
+    if (musteri !== undefined && musteriAnahtari(is.customer_name) !== musteri) return false;
+    if (suzgec.kisi !== undefined) {
+      // İşin hiçbir aşaması o kişide değilse iş de listede durmasın.
+      return (is.steps ?? []).some((adim) => (adim.assigned_employee_id ?? "") === suzgec.kisi);
+    }
+    return true;
+  };
+}
+
+/** Aşama düzeyindeki süzgeç: kişi. */
+export function asamaSuzgeci(suzgec: Suzgec) {
+  return (asama: { sorumluId: string | null }) =>
+    suzgec.kisi === undefined || (asama.sorumluId ?? "") === suzgec.kisi;
+}
+
+/**
+ * Süzgeçte kullanılmak üzere müşteri adları (tekilleştirilmiş).
+ *
+ * Aynı kişinin iki yazımı varsa İLK görülen kalıyor: sonrakini yazmak,
+ * özensiz girilmiş bir kaydın ("emine") düzgün olanı ("Emine Yılmaz")
+ * bastırması demekti. Kurum içi işler listede yok — süzülecek bir ad
+ * taşımıyorlar.
+ */
+export function musteriAdlari(isler: CizelgeIsi[]): string[] {
+  const adlar = new Map<string, string>();
+  for (const is of isler) {
+    const ad = is.customer_name?.trim();
+    if (ad && !adlar.has(musteriAnahtari(ad))) adlar.set(musteriAnahtari(ad), ad);
+  }
+  return [...adlar.values()].sort((a, b) => a.localeCompare(b, "tr"));
+}

@@ -52,3 +52,34 @@
 .gantt-step-bar[data-tone="warning"] span{color:var(--ink)}
 .gantt-step-bar[data-tone="danger"]{background:var(--danger-soft);border-color:var(--danger)}
 .gantt-step-bar[data-tone="danger"] span{color:var(--danger)}
+
+/*
+  Süzgeç çubuğu. Bağlantı olarak kuruldu (form değil): sunucu bileşeni
+  kalıyor ve adres paylaşılabiliyor — "Ayşe'nin işleri" bağlantısı
+  gönderilebilir.
+*/
+.ops-suzgec{display:grid;gap:10px;padding:14px 16px}
+.ops-suzgec-grup{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.ops-suzgec-grup small{min-width:64px;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.ops-suzgec-grup a{padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:700;text-decoration:none}
+.ops-suzgec-grup a:hover{border-color:var(--accent-300);color:var(--ink)}
+.ops-suzgec-grup a.is-active{background:var(--accent-500);border-color:var(--accent-500);color:#fff}
+
+/* Kişiye göre görünüm: "bende ne var" listesi. */
+.ops-kisi-listesi{display:grid;gap:14px;margin-top:12px}
+.ops-kisi{border:1px solid var(--line-soft);border-radius:var(--r-md);overflow:hidden}
+.ops-kisi header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--line-soft)}
+.ops-kisi header b{font-size:13px;color:var(--ink)}
+.ops-kisi ul{margin:0;padding:0;list-style:none}
+.ops-kisi li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line-soft)}
+.ops-kisi li:last-child{border-bottom:0}
+.ops-kisi li[data-tone="warning"]{background:var(--warning-soft)}
+.ops-kisi li[data-tone="danger"]{background:var(--danger-soft)}
+.ops-kisi li.is-done{opacity:.6}
+.ops-kisi li a{display:grid;gap:2px;min-width:0;text-decoration:none}
+.ops-kisi li a b{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ops-kisi li a small{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ops-kisi-tarih{display:flex;align-items:center;gap:8px;flex:none;font-size:12px;font-weight:700;color:var(--muted)}
+.ops-kisi-tarih em{font-style:normal;font-size:11px;font-weight:800}
+.ops-kisi-tarih em[data-tone="warning"]{color:var(--warning)}
+.ops-kisi-tarih em[data-tone="danger"]{color:var(--danger)}

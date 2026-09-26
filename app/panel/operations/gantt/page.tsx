@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { OperationsTabs } from "../operations-tabs";
-import { cizelgeyiKur, esZamanliMi, KURUM_ICI, satirlariDiz, type CizelgeIsi } from "@/lib/operasyon-cizelge";
+import {
+  ATANMAMIS,
+  asamaSuzgeci,
+  cizelgeyiKur,
+  esZamanliMi,
+  isSuzgeci,
+  kisilereGoreKur,
+  KURUM_ICI,
+  musteriAdlari,
+  satirlariDiz,
+  type CizelgeIsi,
+  type Suzgec,
+} from "@/lib/operasyon-cizelge";
 import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
 import { todayIstanbul } from "../ops-shared";
 import "../../gantt.css";
@@ -47,8 +59,24 @@ const gunAnahtari = (d: Date) => `${ayAnahtari(d)}-${pad(d.getDate())}`;
 const kisaTarih = (gun: string) =>
   new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short" }).format(new Date(`${gun}T12:00:00`));
 
-export default async function OperationsGanttPage({ searchParams }: { searchParams: Promise<{ ay?: string; tamamlanan?: string }> }) {
+export default async function OperationsGanttPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ay?: string; tamamlanan?: string; gorunum?: string; kisi?: string; musteri?: string; durum?: string }>;
+}) {
   const params = await searchParams;
+  /*
+    İki eksen: müşteriye göre (eş zamanlı çalışmaları yan yana görmek) ve
+    KİŞİYE göre ("bu hafta bende ne var"). Aynı veri, farklı gruplama;
+    ikisini ayrı sayfa yapmak süzgeçleri de ikiye bölerdi.
+  */
+  const kisiGorunumu = params.gorunum === "kisi";
+  // "kisi" boş dizge de geçerli bir değer: atanmamış aşamalar.
+  const suzgec: Suzgec = {
+    ...(params.kisi !== undefined ? { kisi: params.kisi } : {}),
+    ...(params.musteri ? { musteri: params.musteri } : {}),
+    ...(params.durum ? { durum: params.durum } : {}),
+  };
   /*
     Tamamlanan aşamalar VARSAYILAN OLARAK gizli: sekiz aşamalı iki işi olan
     bir müşteri 19 satır üretiyor ve çizelge okunmuyor. Bitmiş aşama
@@ -70,12 +98,23 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   const prevMonth = ayAnahtari(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1));
   const nextMonth = ayAnahtari(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1));
   /*
-    Ay gezinmesi tamamlanan seçimini kaybetmemeli; boş değer parametreyi
-    tümden düşürüyor ("?ay=2026-10&tamamlanan=" gibi bir adres kalmasın).
+    Adres üretimi tek yerde: ay gezinmesi, görünüm anahtarı ve süzgeçler
+    birbirinin seçimini kaybetmemeli. Boş değer parametreyi düşürüyor
+    ("?ay=2026-10&durum=" gibi bir adres kalmasın) — tek istisna "kisi",
+    çünkü boş dizge orada "atanmamış" ANLAMINA geliyor.
   */
   const adres = (ek: Record<string, string>) => {
-    const usp = new URLSearchParams({ ay: ayAnahtari(monthStart), ...(tamamlananlariGoster ? { tamamlanan: "1" } : {}), ...ek });
-    for (const [ad, deger] of [...usp.entries()]) if (!deger) usp.delete(ad);
+    const usp = new URLSearchParams({
+      ay: ayAnahtari(monthStart),
+      ...(tamamlananlariGoster ? { tamamlanan: "1" } : {}),
+      ...(kisiGorunumu ? { gorunum: "kisi" } : {}),
+      ...(params.kisi !== undefined ? { kisi: params.kisi } : {}),
+      ...(params.musteri ? { musteri: params.musteri } : {}),
+      ...(params.durum ? { durum: params.durum } : {}),
+      ...ek,
+    });
+    for (const [ad, deger] of [...usp.entries()]) if (!deger && ad !== "kisi") usp.delete(ad);
+    if (usp.get("kisi") === "__yok__") usp.delete("kisi");
     return `/panel/operations/gantt?${usp.toString()}`;
   };
   const monthStartKey = gunAnahtari(monthStart);
@@ -95,7 +134,17 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
 
   const kayitlar = (data ?? []) as Kayit[];
   const sorumlular = new Map(((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]));
-  const cizelge = cizelgeyiKur(kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] })));
+  const tumIsler: CizelgeIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
+  const suzulmus = tumIsler.filter(isSuzgeci(suzgec));
+  const cizelge = cizelgeyiKur(suzulmus);
+  const kisiler = kisiGorunumu ? kisilereGoreKur(suzulmus, (id) => sorumlular.get(id) ?? null) : [];
+  // Süzgeç listeleri SÜZÜLMEMİŞ veriden: seçimi daralttıkça seçenekler kaybolmamalı.
+  const musteriSecenekleri = musteriAdlari(tumIsler);
+  const kisiSecenekleri = [...new Map(
+    tumIsler.flatMap((is) => (is.steps ?? []).map((adim) => adim.assigned_employee_id))
+      .filter((id): id is string => Boolean(id))
+      .map((id) => [id, sorumlular.get(id) ?? "Bilinmeyen personel"] as const),
+  )].sort((a, b) => a[1].localeCompare(b[1], "tr"));
 
   /*
     Bir çubuk aya düşüyor mu? Ayın dışına taşan çubuklar kırpılır; hiç
@@ -111,8 +160,9 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   });
 
   // Ekranda çizilecek müşteriler: en az bir işi ya da aşaması bu aya düşenler.
-  const asamaGorunur = (asama: { aralik: { bas: string; son: string } | null; tamamlandi: boolean }) =>
-    kesisiyor(asama.aralik) && (tamamlananlariGoster || !asama.tamamlandi);
+  const asamaSuzgecinden = asamaSuzgeci(suzgec);
+  const asamaGorunur = (asama: { aralik: { bas: string; son: string } | null; tamamlandi: boolean; sorumluId: string | null }) =>
+    kesisiyor(asama.aralik) && (tamamlananlariGoster || !asama.tamamlandi) && asamaSuzgecinden(asama);
 
   const gorunen = cizelge
     .map((musteri) => ({
@@ -146,10 +196,18 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
       <div>
         <small className="panel-kicker">OPERASYON / ÇİZELGE</small>
         <h1>Çalışma Çizelgesi</h1>
-        <p>İşler müşteriye göre gruplu; her işin altında aşamaları ve tarihleri. Aynı kişinin eş zamanlı çalışmaları yan yana.</p>
+        <p>
+          {kisiGorunumu
+            ? "Aşamalar sorumlusuna göre gruplu; tarihe göre sıralı. Hangi işin hangi bölümü olduğu her satırda."
+            : "İşler müşteriye göre gruplu; her işin altında aşamaları ve tarihleri. Aynı kişinin eş zamanlı çalışmaları yan yana."}
+        </p>
       </div>
       <div className="panel-page-actions">
-        <span className="status-pill">{cizilenIs} iş</span>
+        <span className="status-pill">{kisiGorunumu ? `${kisiler.length} kişi` : `${cizilenIs} iş`}</span>
+        {/* İki eksen aynı sayfada: süzgeçler ikiye bölünmesin. */}
+        <Link className="panel-secondary" href={adres({ gorunum: kisiGorunumu ? "" : "kisi" })}>
+          {kisiGorunumu ? "Müşteriye göre" : "Kişiye göre"}
+        </Link>
         <Link className="panel-secondary" href={adres({ tamamlanan: tamamlananlariGoster ? "" : "1" })}>
           {tamamlananlariGoster ? "Tamamlananları gizle" : "Tamamlananları göster"}
         </Link>
@@ -157,6 +215,90 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
     </div>
     <OperationsTabs active="gantt" />
     <div className="module-tab-panel">
+
+    {/*
+      Süzgeçler bağlantı olarak kuruluyor, form olarak değil: sunucu bileşeni
+      ve adres paylaşılabilir kalıyor ("Ayşe'nin ekimi" bağlantısı gönderilebilir).
+      Seçenekler SÜZÜLMEMİŞ veriden geliyor, yoksa bir süzgeç seçtikçe
+      öbürünün seçenekleri kaybolurdu.
+    */}
+    <section className="panel-card ops-suzgec">
+      <div className="ops-suzgec-grup" role="group" aria-label="Kişi süzgeci">
+        <small>Kişi</small>
+        <Link className={params.kisi === undefined ? "is-active" : ""} href={adres({ kisi: "__yok__" })}>Hepsi</Link>
+        {kisiSecenekleri.map(([id, ad]) => (
+          <Link key={id} className={params.kisi === id ? "is-active" : ""} href={adres({ kisi: id })}>{ad}</Link>
+        ))}
+        <Link className={params.kisi === "" ? "is-active" : ""} href={adres({ kisi: "" })}>{ATANMAMIS}</Link>
+      </div>
+      <div className="ops-suzgec-grup" role="group" aria-label="Müşteri süzgeci">
+        <small>Müşteri</small>
+        <Link className={!params.musteri ? "is-active" : ""} href={adres({ musteri: "" })}>Hepsi</Link>
+        {musteriSecenekleri.map((ad) => (
+          <Link key={ad} className={params.musteri === ad ? "is-active" : ""} href={adres({ musteri: ad })}>{ad}</Link>
+        ))}
+      </div>
+      <div className="ops-suzgec-grup" role="group" aria-label="Durum süzgeci">
+        <small>Durum</small>
+        <Link className={!params.durum ? "is-active" : ""} href={adres({ durum: "" })}>Hepsi</Link>
+        {["planned", "in_progress", "blocked", "completed"].map((durum) => (
+          <Link key={durum} className={params.durum === durum ? "is-active" : ""} href={adres({ durum })}>{isDurumAdi(durum)}</Link>
+        ))}
+      </div>
+    </section>
+    {kisiGorunumu ? (
+      /*
+        Kişi görünümü LİSTE, ızgara değil: "bende ne var" sorusunda okunması
+        gereken şey tarih sırası, takvimdeki yeri değil. Ay penceresi de
+        burada anlamsız — kişinin gündemi ay sınırında bitmiyor — bu yüzden
+        ay gezinmesi yalnızca müşteri görünümünde çıkıyor ve liste tüm
+        tarihli aşamaları kapsıyor.
+      */
+      <section className="panel-card">
+        <div className="section-heading compact">
+          <div>
+            <small className="panel-kicker">KİŞİYE GÖRE</small>
+            <h2>Kimde ne var</h2>
+            <p>Tarihe göre sıralı; ay sınırı uygulanmaz. Yaklaşan ve geciken aşamalar işaretli.</p>
+          </div>
+        </div>
+        {kisiler.length ? (
+          <div className="ops-kisi-listesi">
+            {kisiler.map((kisi) => {
+              const bekleyen = kisi.asamalar.filter((asama) => !asama.tamamlandi);
+              const gosterilecek = tamamlananlariGoster ? kisi.asamalar : bekleyen;
+              if (!gosterilecek.length) return null;
+              return (
+                <article className="ops-kisi" key={kisi.anahtar || "atanmamis"}>
+                  <header>
+                    <b>{kisi.ad}</b>
+                    <span className="status-pill">{bekleyen.length} bekleyen aşama</span>
+                  </header>
+                  <ul>
+                    {gosterilecek.map((asama) => {
+                      const uyari = hatirlatmaDurumu({ due_date: asama.tarih, is_completed: asama.tamamlandi }, bugun);
+                      return (
+                        <li key={asama.id} data-tone={uyari ?? undefined} className={asama.tamamlandi ? "is-done" : ""}>
+                          <Link href={`/panel/operations/${asama.isId}`}>
+                            <b>{asama.tamamlandi ? "✓ " : ""}{asama.baslik}</b>
+                            {/* Aşama adı tek başına hangi tezin bölümü olduğunu söylemiyor. */}
+                            <small>{asama.musteri} · {asama.isBasligi}</small>
+                          </Link>
+                          <span className="ops-kisi-tarih">
+                            {asama.tarih ? kisaTarih(asama.tarih) : "tarih yok"}
+                            {uyari ? <em data-tone={uyari === "overdue" ? "danger" : "warning"}>{uyari === "overdue" ? "gecikti" : "yaklaştı"}</em> : null}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </article>
+              );
+            })}
+          </div>
+        ) : <p className="panel-empty">Süzgece uyan aşama bulunmuyor.</p>}
+      </section>
+    ) : (
     <section className="panel-card gantt-card">
       <div className="calendar-month-nav">
         <Link className="panel-icon-button" href={adres({ ay: prevMonth })} aria-label="Önceki ay">‹</Link>
@@ -249,6 +391,7 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
         <span className="status-completed">Tamamlandı</span>
       </div>
     </section>
+    )}
 
     {disarida.length ? (
       <section className="panel-card">

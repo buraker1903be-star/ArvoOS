@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { asamalariKur, cizelgeyiKur, esZamanliMi, KURUM_ICI, satirlariDiz, type CizelgeIsi } from "@/lib/operasyon-cizelge";
+import {
+  asamaSuzgeci,
+  asamalariKur,
+  ATANMAMIS,
+  cizelgeyiKur,
+  esZamanliMi,
+  isSuzgeci,
+  kisilereGoreKur,
+  KURUM_ICI,
+  musteriAdlari,
+  satirlariDiz,
+  type CizelgeIsi,
+} from "@/lib/operasyon-cizelge";
 
 /*
   Operasyon çizelgesi. Talep operasyoncunun kendi cümlelerinden:
@@ -205,5 +217,110 @@ test("ızgara satırları", async (t) => {
 
   await t.test("boş çizelge boş dizi", () => {
     assert.deepEqual(satirlariDiz([], () => true), []);
+  });
+});
+
+const ADLAR: Record<string, string> = { p1: "Ayşe Demir", p2: "Can Yıldız" };
+const adCoz = (id: string) => ADLAR[id] ?? null;
+
+test("kişiye göre görünüm", async (t) => {
+  const isler = [
+    is({
+      id: "w1", title: "Tez", customer_name: "Emine",
+      steps: [adim(1, "Literatür", "2026-10-05", false, "p1"), adim(2, "Analiz", "2026-10-12", false, "p2")],
+    }),
+    is({
+      id: "w2", title: "Makale", customer_name: "Ali",
+      steps: [adim(1, "Kaynakça", "2026-10-02", false, "p1"), adim(2, "Kontrol", "2026-10-20", false, null)],
+    }),
+  ];
+
+  await t.test("aşamalar sorumlusunda toplanıyor, işi ve müşterisiyle", () => {
+    /*
+      "Kimde ne var" sorusu müşteriye göre gruplamayla yanıtlanmıyor: bir
+      kişinin aşamaları dört ayrı müşterinin altına dağılıyor.
+    */
+    const kisiler = kisilereGoreKur(isler, adCoz);
+    const ayse = kisiler.find((k) => k.ad === "Ayşe Demir");
+    assert.equal(ayse?.asamalar.length, 2);
+    // Tarihe göre: en yakın teslim üstte.
+    assert.deepEqual(ayse?.asamalar.map((a) => a.baslik), ["Kaynakça", "Literatür"]);
+    // Aşama hangi işe ait olduğunu taşımalı; "Kaynakça" tek başına yetmiyor.
+    assert.deepEqual(ayse?.asamalar.map((a) => `${a.isBasligi}/${a.musteri}`), ["Makale/Ali", "Tez/Emine"]);
+  });
+
+  await t.test("atanmamış aşamalar tek grupta ve en sonda", () => {
+    const kisiler = kisilereGoreKur(isler, adCoz);
+    assert.deepEqual(kisiler.map((k) => k.ad), ["Ayşe Demir", "Can Yıldız", ATANMAMIS]);
+    assert.equal(kisiler[2].asamalar.length, 1);
+  });
+
+  await t.test("silinmiş personelin işi kaybolmuyor", () => {
+    /*
+      Adı çözülemeyen kimlik "atanmamış" grubuna DÜŞMEZ: silinmiş bir
+      personelin üstündeki işi "kimsede yok" göstermek onu kaybetmek olur.
+    */
+    const kisiler = kisilereGoreKur(
+      [is({ steps: [adim(1, "Analiz", "2026-10-05", false, "silinmis")] })],
+      adCoz,
+    );
+    assert.deepEqual(kisiler.map((k) => k.ad), ["Bilinmeyen personel"]);
+    assert.notEqual(kisiler[0].anahtar, "", "atanmamış sayılmamalı");
+  });
+
+  await t.test("tarihsiz aşama listenin sonunda", () => {
+    const kisiler = kisilereGoreKur(
+      [is({ steps: [adim(1, "Tarihsiz", null, false, "p1"), adim(2, "Tarihli", "2026-10-05", false, "p1")] })],
+      adCoz,
+    );
+    assert.deepEqual(kisiler[0].asamalar.map((a) => a.baslik), ["Tarihli", "Tarihsiz"]);
+  });
+});
+
+test("süzgeçler", async (t) => {
+  const isler = [
+    is({ id: "w1", title: "Tez", customer_name: "Emine", status: "in_progress", steps: [adim(1, "Analiz", "2026-10-05", false, "p1")] }),
+    is({ id: "w2", title: "Makale", customer_name: "Ali", status: "blocked", steps: [adim(1, "Kontrol", "2026-10-10", false, "p2")] }),
+  ];
+
+  await t.test("müşteri süzgeci adın yazımına takılmıyor", () => {
+    assert.deepEqual(isler.filter(isSuzgeci({ musteri: " emine " })).map((i) => i.id), ["w1"]);
+  });
+
+  await t.test("durum süzgeci", () => {
+    assert.deepEqual(isler.filter(isSuzgeci({ durum: "blocked" })).map((i) => i.id), ["w2"]);
+  });
+
+  await t.test("kişi süzgeci işi düşürüyor ama aşamayı da süzüyor", () => {
+    /*
+      Kişi süzgecinde iki kademe var: o kişinin hiç aşaması olmayan İŞ
+      listeden çıkıyor, kalan işlerde de yalnızca onun aşamaları görünüyor.
+      Tek kademe olsaydı ya iş başlıkları boş satır olarak kalırdı ya da
+      başkasının aşamaları da listelenirdi.
+    */
+    assert.deepEqual(isler.filter(isSuzgeci({ kisi: "p1" })).map((i) => i.id), ["w1"]);
+    const asamalar = asamalariKur(isler[0]).filter(asamaSuzgeci({ kisi: "p1" }));
+    assert.deepEqual(asamalar.map((a) => a.baslik), ["Analiz"]);
+    assert.deepEqual(asamalariKur(isler[0]).filter(asamaSuzgeci({ kisi: "p2" })), []);
+  });
+
+  await t.test("atanmamış süzgeci boş dizgeyle çalışıyor", () => {
+    const atanmamisli = is({ id: "w3", steps: [adim(1, "Boşta", "2026-10-05", false, null)] });
+    assert.equal(isSuzgeci({ kisi: "" })(atanmamisli), true);
+    assert.equal(isSuzgeci({ kisi: "" })(isler[0]), false, "p1'deki aşama atanmamış sayılmamalı");
+  });
+
+  await t.test("süzgeç verilmezse hiçbir şey düşmüyor", () => {
+    assert.equal(isler.filter(isSuzgeci({})).length, 2);
+    assert.equal(asamalariKur(isler[0]).filter(asamaSuzgeci({})).length, 1);
+  });
+
+  await t.test("müşteri listesi tekilleştirilip sıralanıyor, ilk yazım korunuyor", () => {
+    /*
+      Aynı kişinin iki yazımında İLK görülen kalıyor: sonrakini yazmak,
+      özensiz girilmiş bir kaydın ("emine") düzgün olanı bastırması demekti.
+    */
+    const liste = musteriAdlari([...isler, is({ id: "w4", customer_name: " emine " }), is({ id: "w5", customer_name: null })]);
+    assert.deepEqual(liste, ["Ali", "Emine"], "kurum içi işler listede olmamalı, ilk yazım kalmalı");
   });
 });
