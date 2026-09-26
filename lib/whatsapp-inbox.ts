@@ -300,76 +300,64 @@ async function durumYaz(admin: Admin, update: StatusUpdate): Promise<boolean> {
  * arada göstermiyor, çünkü arşivin amacı kapanmış yazışmaları günlük
  * listeden çıkarmak. Sayım için ikisi de gerekiyor ("Arşiv (3)").
  */
-export async function listConversations(organizationId: string, limit = 300): Promise<InboxConversation[]> {
+/**
+ * Kurumun sohbet listesi.
+ *
+ * SAYIM VERİTABANINDA (migration 20260926113129). Eskiden kurumun son 300
+ * MESAJI çekilip uygulamada sohbetlere bölünüyordu ve üç sonucu vardı:
+ * messageCount "son 300'ün kaçı bu sohbette" oluyordu, unread yalnızca o
+ * pencerede sayılıyordu ve en ağırı — 300 mesajdan eskiye kalan sohbet
+ * listeden TAMAMEN kayboluyordu. Gelen kutusunda bu, müşterinin yazdığını
+ * hiç görmemek demek. Sınır artık MESAJ değil SOHBET sayısına uygulanıyor.
+ *
+ * `okunamadi`: okuma başarısız. Eskiden hata yutulup boş dizi dönüyordu ve
+ * ekran "hiç yazışma yok" diyordu — bir gelen kutusunda söylenebilecek en
+ * yanlış şey.
+ */
+export async function listConversations(
+  organizationId: string,
+  limit = 300,
+): Promise<{ sohbetler: InboxConversation[]; okunamadi: boolean }> {
   const admin = createAdminClient();
-  if (!admin) return [];
-  const { data } = await admin
-    .from("whatsapp_messages")
-    .select("counterpart_phone,profile_name,body,template,direction,created_at")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  if (!admin) return { sohbetler: [], okunamadi: true };
 
-  /* gelenZamanlari yalnızca okunmamış sayımı için toplanıyor; dışarı çıkmıyor. */
-  const sohbetler = new Map<string, InboxConversation & { lastInboundAt: string | null; gelenZamanlari: string[] }>();
-  for (const satir of data ?? []) {
-    const telefon = satir.counterpart_phone as string;
-    let sohbet = sohbetler.get(telefon);
-    if (!sohbet) {
-      sohbet = {
-        phone: telefon,
-        name: null,
-        lastBody: (satir.body as string | null) ?? (satir.template as string | null),
-        lastDirection: satir.direction as InboxConversation["lastDirection"],
-        lastAt: satir.created_at as string,
-        windowOpen: false,
-        messageCount: 0,
-        archived: false,
-        unread: 0,
-        lastInboundAt: null,
-        gelenZamanlari: [] as string[],
-      };
-      sohbetler.set(telefon, sohbet);
-    }
-    sohbet.messageCount += 1;
-    // Satırlar yeniden eskiye geliyor: ilk gördüğümüz gelen mesaj en yenisi.
-    if (satir.direction === "inbound") {
-      sohbet.lastInboundAt ??= satir.created_at as string;
-      sohbet.name ??= (satir.profile_name as string | null) ?? null;
-      sohbet.gelenZamanlari.push(satir.created_at as string);
-    }
-  }
-  /*
-    Arşiv ve okunma damgaları tek sorguda alınıyor. Sohbet başına sorgu
-    atmak 300 sohbette 300 gidiş dönüş demekti; damga tablosu zaten küçük.
-  */
-  const { data: durumlar } = await admin
-    .from("whatsapp_conversation_state")
-    .select("counterpart_phone,archived_at,last_read_at")
-    .eq("organization_id", organizationId);
-
-  const damga = new Map(
-    (durumlar ?? []).map((satir) => [
-      satir.counterpart_phone as string,
-      { arsiv: satir.archived_at as string | null, okundu: satir.last_read_at as string | null },
-    ]),
-  );
-
-  return [...sohbetler.values()].map(({ lastInboundAt, gelenZamanlari, ...sohbet }) => {
-    const kendi = damga.get(sohbet.phone);
-    /*
-      Damga yoksa sohbet hiç açılmamıştır ve gelen mesajların HEPSİ
-      okunmamıştır. Sıfır saymak, panele ilk kez giren kullanıcıya
-      birikmiş yazışmaları hiç göstermemek olurdu.
-    */
-    const sinir = kendi?.okundu ? Date.parse(kendi.okundu) : 0;
-    return {
-      ...sohbet,
-      windowOpen: windowOpen(lastInboundAt),
-      archived: arsivdeMi(kendi?.arsiv, sohbet.lastAt),
-      unread: gelenZamanlari.filter((zaman) => Date.parse(zaman) > sinir).length,
-    };
+  const { data, error } = await admin.rpc("whatsapp_sohbetler", {
+    p_organization_id: organizationId,
+    p_limit: limit,
   });
+  if (error) {
+    console.error("[whatsapp] sohbet listesi okunamadı", error.message);
+    return { sohbetler: [], okunamadi: true };
+  }
+
+  type Satir = {
+    counterpart_phone: string;
+    profile_name: string | null;
+    last_body: string | null;
+    last_template: string | null;
+    last_direction: string;
+    last_at: string;
+    last_inbound_at: string | null;
+    message_count: number | string;
+    unread: number | string;
+    archived_at: string | null;
+    last_read_at: string | null;
+  };
+
+  /* count(*) bigint döner ve PostgREST bigint'i METİN olarak taşır; Number()
+     olmadan sayılar şablonda "12" gibi görünür ama karşılaştırmada bozulur. */
+  const sohbetler = ((data ?? []) as Satir[]).map((satir) => ({
+    phone: satir.counterpart_phone,
+    name: satir.profile_name,
+    lastBody: satir.last_body ?? satir.last_template,
+    lastDirection: satir.last_direction as InboxConversation["lastDirection"],
+    lastAt: satir.last_at,
+    windowOpen: windowOpen(satir.last_inbound_at),
+    messageCount: Number(satir.message_count),
+    archived: arsivdeMi(satir.archived_at, satir.last_at),
+    unread: Number(satir.unread),
+  }));
+  return { sohbetler, okunamadi: false };
 }
 
 /**

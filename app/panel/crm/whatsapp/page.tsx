@@ -53,7 +53,7 @@ export default async function WhatsappInboxPage({
   );
 
   const durum = await getWhatsappStatus(membership.organization_id);
-  const tumSohbetler = await listConversations(membership.organization_id);
+  const { sohbetler: tumSohbetler, okunamadi: sohbetlerOkunamadi } = await listConversations(membership.organization_id);
   const { numara, arsiv } = await searchParams;
 
   /*
@@ -98,7 +98,21 @@ export default async function WhatsappInboxPage({
       </p>
     ) : null}
 
-    {!tumSohbetler.length ? (
+    {/*
+      Okunamadı ile "hiç mesaj yok" AYRI. Eskiden liste okuma hatasında boş
+      dizi dönüyordu ve ekran "Henüz WhatsApp mesajı yok" diyordu — bir gelen
+      kutusunda söylenebilecek en yanlış şey: kullanıcı müşterisinin
+      yazmadığını sanır.
+    */}
+    {sohbetlerOkunamadi ? (
+      <div className="stg-empty" role="alert">
+        <StgIcon name="chat" size={22} />
+        <p>
+          Yazışmalar yüklenemedi. Mesajlarınız yerinde duruyor ve müşterinizin
+          yazmadığı anlamına gelmez — sayfayı yenileyin.
+        </p>
+      </div>
+    ) : !tumSohbetler.length ? (
       <div className="stg-empty"><StgIcon name="chat" size={22} /><p>Henüz WhatsApp mesajı yok. Gönderdiğiniz ve müşterinizin yazdığı mesajlar burada birikir.</p></div>
     ) : (
       <div className="wa-inbox" data-gorunum={gorunum}>

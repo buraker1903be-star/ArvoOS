@@ -1587,6 +1587,7 @@
     "update_crm_contract",
     "update_crm_proposal",
     "update_group_message_channel",
-    "update_member_display_name"
+    "update_member_display_name",
+    "whatsapp_sohbetler"
   ]
 }
