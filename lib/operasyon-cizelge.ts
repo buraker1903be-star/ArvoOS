@@ -24,6 +24,8 @@
   Saf modül; testi tests/unit/operasyon-cizelge.test.ts.
 */
 
+import { gunFarki } from "./is-adimlari";
+
 export interface CizelgeAdimi {
   id: string;
   title: string;
@@ -395,6 +397,15 @@ export interface PanoIsKarti {
   baslik: string;
   musteri: string;
   durum: string;
+  /** low | normal | high | urgent. Kartta yalnızca normalin dışındakiler yazıyor. */
+  oncelik: string;
+  /*
+    İŞİN teslim tarihi — aşamanınkiyle karıştırılmamalı. Operasyoncu ikisini
+    de soruyor: "bu aşama ne zaman bitecek" ve "iş müşteriye ne zaman
+    teslim edilecek". Kartta yalnızca aşama tarihi varken ikincisi için iş
+    detayına girmek gerekiyordu.
+  */
+  isTermini: string | null;
   /** Tamamlanmayan ilk adım; hepsi bittiyse null. */
   guncelAsama: string | null;
   guncelAsamaId: string | null;
@@ -417,6 +428,22 @@ export interface PanoIsKarti {
     girilmeden de ölçülebilen bir olgu.
   */
   bekleyenGun: number | null;
+  /** İşin bütün aşamaları: panodan çıkmadan açılan hızlı bakış bunu gösteriyor. */
+  adimlar: PanoAdimi[];
+}
+
+/*
+  Hızlı bakışta bir satır. Kartın özetinden farkı: HER aşama burada.
+
+  CizelgeAdimi'yi GENİŞLETİYOR, kendi alan adlarını uydurmuyor: tasimaPlani
+  aynı şekli bekliyor ve sürükleme ipucu ("2 aşama kapanacak") bırakmadan
+  önce istemcide bu listeden hesaplanıyor. Ayrı bir şekil, ikinci bir
+  dönüştürme katmanı demekti.
+*/
+export interface PanoAdimi extends CizelgeAdimi {
+  /** Tamamlanmayan ilk adım mı: hızlı bakışta vurgulanıyor. */
+  guncel: boolean;
+  sorumluAdi: string | null;
 }
 
 export type PanoKolonTuru = "asama" | "tamamlandi" | "sablon_disi";
@@ -467,10 +494,6 @@ const istanbulGunu = (zaman: string): string | null => {
     : new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(an);
 };
 
-/** İki gün (YYYY-MM-DD) arasındaki tam gün farkı. */
-const gunFarki = (baslangic: string, bitis: string): number =>
-  Math.round((Date.parse(`${bitis}T00:00:00Z`) - Date.parse(`${baslangic}T00:00:00Z`)) / 86_400_000);
-
 export function asamaPanosuKur(
   isler: CizelgeIsi[],
   sablon: SablonAsamasi[],
@@ -513,6 +536,8 @@ export function asamaPanosuKur(
       baslik: is.title,
       musteri: is.customer_name?.trim() || KURUM_ICI,
       durum: is.status,
+      oncelik: is.priority,
+      isTermini: is.due_date,
       guncelAsama: guncel?.title ?? null,
       guncelAsamaId: guncel?.id ?? null,
       tarih: guncel?.due_date ?? null,
@@ -546,6 +571,11 @@ export function asamaPanosuKur(
         verirdi; "−4 gündür bu aşamada" anlamsız, sıfıra sabitleniyor.
       */
       bekleyenGun: asamayaGecis ? Math.max(gunFarki(asamayaGecis, bugun), 0) : null,
+      adimlar: adimlar.map((adim) => ({
+        ...adim,
+        guncel: adim.id === guncel?.id,
+        sorumluAdi: adim.assigned_employee_id ? adCoz(adim.assigned_employee_id) ?? "Bilinmeyen personel" : null,
+      })),
     };
 
     /*
@@ -611,3 +641,60 @@ export const VARSAYILAN_PANO_SABLONU: SablonAsamasi[] = [
   { title: "Revizyonlar Yapılıyor", sort_order: 70 },
   { title: "Evrak Teslimine Hazır", sort_order: 80 },
 ];
+
+/*
+  KARTI BİR KOLONDAN DİĞERİNE TAŞIMAK ne demek.
+
+  Kartın kolonu türetilmiş bir değer: "tamamlanmayan İLK adım"ın başlığı.
+  Dolayısıyla kartı X kolonuna taşımak, X'i tamamlanmayan ilk adım yapmak
+  demektir — tek kural iki yönü de kapsıyor:
+
+    X'ten önceki tamamlanmamış adımlar  → tamamlanır
+    X ve sonrasındaki tamamlanmış adımlar → yeniden açılır
+
+  Bunu yapmayan bir taşıma kartı hedefte TUTAMAZ: bırakıldığı anda kolonu
+  yeniden hesaplanır ve eski yerine zıplar, kullanıcı da sürüklemenin
+  çalışmadığını sanar. Bu yüzden 2. kolondan 5. kolona sürüklemek aradaki
+  aşamaları da kapatıyor; arayüz bunu bırakmadan ÖNCE yazıyor, sessizce
+  yapmıyor.
+
+  Geçersiz taşımalarda null dönüyor (hedef aşama o işte yok, iş adımsız):
+  mesajı çağıran yazıyor, saf modül kullanıcıya konuşmuyor.
+*/
+export interface TasimaPlani {
+  /** Tamamlanacak adım kimlikleri (sırayla). */
+  tamamlanacak: string[];
+  /** Yeniden açılacak adım kimlikleri. */
+  acilacak: string[];
+  /** Hedef aşamanın BU İŞTEKİ yazımı; kayıt geçmişi bunu yazıyor. */
+  hedefAdi: string | null;
+}
+
+/**
+ * Kartı hedef aşamaya taşımak için hangi adımların kapanıp açılacağı.
+ * `hedefBaslik` null ise hedef "Tamamlandı" kolonudur (tüm adımlar kapanır).
+ */
+export function tasimaPlani(adimlar: CizelgeAdimi[], hedefBaslik: string | null): TasimaPlani | null {
+  const sirali = [...adimlar].sort((a, b) => a.sort_order - b.sort_order);
+  // Adımı olmayan iş taşınamaz: hangi aşamada olduğu zaten tanımsız.
+  if (!sirali.length) return null;
+
+  if (hedefBaslik === null) {
+    return { tamamlanacak: sirali.filter((a) => !a.is_completed).map((a) => a.id), acilacak: [], hedefAdi: null };
+  }
+
+  /*
+    Aynı başlıkta birden çok adım olabiliyor (sözleşmeden gelen planda
+    tekrar eden aşama adları). İLK olanı hedef alınıyor: kartın kolonu da
+    tamamlanmayan İLK adımdan türüyor, ikisi aynı adımı göstermeli.
+  */
+  const anahtar = asamaAnahtari(hedefBaslik);
+  const hedef = sirali.find((adim) => asamaAnahtari(adim.title) === anahtar);
+  if (!hedef) return null;
+
+  return {
+    tamamlanacak: sirali.filter((a) => a.sort_order < hedef.sort_order && !a.is_completed).map((a) => a.id),
+    acilacak: sirali.filter((a) => a.sort_order >= hedef.sort_order && a.is_completed).map((a) => a.id),
+    hedefAdi: hedef.title,
+  };
+}

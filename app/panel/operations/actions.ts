@@ -8,6 +8,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
 import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
+import { tasimaPlani } from "@/lib/operasyon-cizelge";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
@@ -182,6 +183,81 @@ const gunMetni = (deger: string | null) => (deger ? deger : "tarih yok");
   dolduruyor (arvo_operation_step_status_sync). İkisini birden yazmak, ara
   durumu ("kontrolde") sessizce kaybettiren bir yol açardı.
 */
+/*
+  PANODA KARTI BAŞKA BİR KOLONA SÜRÜKLEMEK.
+
+  Kartın kolonu "tamamlanmayan ilk adım"dan türüyor, dolayısıyla taşıma tek
+  bir adımı değil BİR DİZİ adımı değiştiriyor: hedeften öncekiler kapanır,
+  hedef ve sonrası açılır (gerekçesi lib/operasyon-cizelge.ts'te). Plan
+  burada YENİDEN hesaplanıyor — istemcinin gönderdiği liste kullanılmıyor,
+  yoksa doğrudan çağrılan bir istek istediği adımı kapatabilirdi.
+
+  Tek kayıt düşüyor, adım başına değil: üç aşamayı kapatan bir sürükleme
+  geçmişe üç satır yazsaydı, elle yapılan tek tek işaretlemelerle
+  karışırdı. Hangi adımların değiştiği kaydın kendi içinde yazılı.
+*/
+async function moveWorkflowToStage__impl(formData: FormData) {
+  const context = await operationContext();
+  const { supabase, userId, membership } = context;
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const hedefHam = String(formData.get("stage") ?? "");
+  if (!UUID.test(workflowId)) throw new Error("Geçersiz iş kimliği.");
+
+  const { data: workflow } = await supabase
+    .from("operation_workflows").select("id,status,assigned_employee_id,title")
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  if (workflow.status === "archived") throw new Error("Arşivdeki işin aşamaları değiştirilemez; önce arşivden çıkarın.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+    throw new Error("İşi başka aşamaya taşımayı yalnızca yöneticiler ve işin sorumlusu yapabilir.");
+  }
+
+  const { data: adimlar, error: adimHatasi } = await supabase
+    .from("operation_steps").select("id,title,sort_order,due_date,is_completed,assigned_employee_id,status")
+    .eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  if (adimHatasi) throw new Error("İş adımları okunamadı: " + adimHatasi.message);
+
+  // "__tamamlandi__" sentinel'i panodan geliyor; başlık olarak yorumlanamaz.
+  const plan = tasimaPlani((adimlar ?? []) as Parameters<typeof tasimaPlani>[0], hedefHam === "__tamamlandi__" ? null : hedefHam);
+  if (!plan) throw new Error("Bu işte böyle bir aşama yok; kart bu kolona taşınamıyor.");
+  if (!plan.tamamlanacak.length && !plan.acilacak.length) return;
+
+  const adlar = new Map(((adimlar ?? []) as { id: string; title: string }[]).map((a) => [a.id, a.title]));
+  /*
+    İki toplu güncelleme. Sırası önemli: önce açmak, sonra kapatmak, aradaki
+    bir hatada işin "hepsi bitti" görünmesini engelliyor — yarım kalan taşıma
+    işi olduğundan İLERİ değil GERİ bırakır, yani kimse bitmemiş bir işi
+    tamamlanmış sanmaz.
+  */
+  for (const [idler, status] of [[plan.acilacak, "planned"], [plan.tamamlanacak, "done"]] as const) {
+    if (!idler.length) continue;
+    const { data, error } = await supabase
+      .from("operation_steps")
+      .update({ status, completed_by: status === "done" ? userId : null })
+      .in("id", idler).eq("organization_id", membership.organization_id).select("id");
+    if (error) throw new Error("Aşama güncellenemedi: " + error.message);
+    // RLS engellediğinde güncelleme sessizce 0 satır döner
+    if (data?.length !== idler.length) throw new Error("Aşama güncellenemedi: bu iş için yetkiniz yok.");
+  }
+
+  const isim = (idler: string[]) => idler.map((id) => adlar.get(id) ?? id).join(", ");
+  await kayitDus(context, {
+    workflowId,
+    action: "stage_move",
+    stepTitle: plan.hedefAdi ?? "Tamamlandı",
+    note: plan.hedefAdi ? `Pano: “${plan.hedefAdi}” aşamasına taşındı` : "Pano: tamamlandı olarak işaretlendi",
+    changes: [
+      ...(plan.tamamlanacak.length
+        ? [{ field: "completed", label: "Tamamlanan aşamalar", from: "", to: isim(plan.tamamlanacak) }]
+        : []),
+      ...(plan.acilacak.length
+        ? [{ field: "reopened", label: "Yeniden açılan aşamalar", from: "", to: isim(plan.acilacak) }]
+        : []),
+    ],
+  });
+  revalidateOperations();
+}
+
 async function setStepStatus__impl(formData: FormData) {
   const context = await operationContext();
   const { supabase, membership } = context;
@@ -574,6 +650,9 @@ export async function replyCustomerFileMessage(...args: Parameters<typeof replyC
 }
 export async function setWorkflowDueDate(...args: Parameters<typeof setWorkflowDueDate__impl>) {
   return runPanelAction(() => setWorkflowDueDate__impl(...args), "Termin kaydedildi");
+}
+export async function moveWorkflowToStage(...args: Parameters<typeof moveWorkflowToStage__impl>) {
+  return runPanelAction(() => moveWorkflowToStage__impl(...args), "İş yeni aşamaya taşındı");
 }
 export async function setStepStatus(...args: Parameters<typeof setStepStatus__impl>) {
   return runPanelAction(() => setStepStatus__impl(...args));

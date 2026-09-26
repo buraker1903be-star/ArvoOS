@@ -11,6 +11,7 @@ import {
   KURUM_ICI,
   asamaPanosuKur,
   BEKLEME_ESIGI_GUN,
+  tasimaPlani,
   musteriAdlari,
   SABLON_DISI_KOLONU,
   satirlariDiz,
@@ -621,5 +622,116 @@ test("pano · aşamada kaç gündür bekliyor", async (t) => {
       etmiyor; ikinci bir yerde farklı bir sayı türemesin diye sabitliyor.
     */
     assert.equal(BEKLEME_ESIGI_GUN, 21);
+  });
+});
+
+test("pano · kartı başka kolona taşımak", async (t) => {
+  /*
+    Kartın kolonu türetilmiş bir değer: "tamamlanmayan İLK adım"ın başlığı.
+    Taşımanın bunu KURMASI gerekiyor, yoksa kart bırakıldığı anda eski
+    kolonuna geri zıplar ve kullanıcı sürüklemenin çalışmadığını sanar.
+    Testler bu değişmezi iki yönde de sabitliyor.
+  */
+  const AKIS = [
+    adim(1, "Hazırlık Yapılıyor", null, true),
+    adim(2, "İç Kontrol Yapılıyor", null),
+    adim(3, "Evrak Teslimine Hazır", null),
+  ];
+  /** Taşıma uygulandıktan sonra kart hangi kolona düşüyor? */
+  const uygulaSonrasiKolon = (adimlar: ReturnType<typeof adim>[], plan: NonNullable<ReturnType<typeof tasimaPlani>>) => {
+    const sonrasi = adimlar.map((a) => ({
+      ...a,
+      is_completed: plan.tamamlanacak.includes(a.id) ? true : plan.acilacak.includes(a.id) ? false : a.is_completed,
+    }));
+    return panoKolonlari([is({ steps: sonrasi })], SABLON, adCoz, BUGUN)[0].baslik;
+  };
+
+  await t.test("İLERİ taşıma aradaki aşamaları da kapatıyor", () => {
+    // 2. kolondan 3. kolona: 2 kapanmalı, yoksa kart 2'de kalır.
+    const plan = tasimaPlani(AKIS, "Evrak Teslimine Hazır")!;
+    assert.deepEqual(plan.tamamlanacak, ["s2"]);
+    assert.deepEqual(plan.acilacak, []);
+    assert.equal(uygulaSonrasiKolon(AKIS, plan), "Evrak Teslimine Hazır", "kart hedefte durmalı");
+  });
+
+  await t.test("GERİ taşıma hedefi ve sonrasını yeniden açıyor", () => {
+    const bitmis = [
+      adim(1, "Hazırlık Yapılıyor", null, true),
+      adim(2, "İç Kontrol Yapılıyor", null, true),
+      adim(3, "Evrak Teslimine Hazır", null, true),
+    ];
+    const plan = tasimaPlani(bitmis, "İç Kontrol Yapılıyor")!;
+    assert.deepEqual(plan.tamamlanacak, []);
+    assert.deepEqual(plan.acilacak, ["s2", "s3"], "hedeften SONRAKİLER de açılmalı");
+    assert.equal(uygulaSonrasiKolon(bitmis, plan), "İç Kontrol Yapılıyor");
+  });
+
+  await t.test("Tamamlandı kolonuna taşımak bütün aşamaları kapatıyor", () => {
+    const plan = tasimaPlani(AKIS, null)!;
+    assert.deepEqual(plan.tamamlanacak, ["s2", "s3"]);
+    assert.equal(plan.hedefAdi, null);
+  });
+
+  await t.test("bulunduğu kolona taşımak hiçbir şeyi değiştirmiyor", () => {
+    const plan = tasimaPlani(AKIS, "İç Kontrol Yapılıyor")!;
+    assert.deepEqual([plan.tamamlanacak, plan.acilacak], [[], []]);
+  });
+
+  await t.test("o işte olmayan aşamaya taşınamıyor", () => {
+    // Sözleşmeden açılan işin adımları şablonla eşleşmeyebiliyor.
+    assert.equal(tasimaPlani(AKIS, "Revizyon Yapılıyor"), null);
+  });
+
+  await t.test("adımı olmayan iş taşınamıyor", () => {
+    assert.equal(tasimaPlani([], "Hazırlık Yapılıyor"), null);
+  });
+
+  await t.test("hedef adı BÜYÜK/küçük harf ve boşluk farkına takılmıyor", () => {
+    /*
+      Kolon başlığı şablondan, adım adı işten geliyor; yazımları ayrışabilir.
+      BÜYÜK harf doğru Türkçeyle yazılmalı: tr-TR'de "I" küçüğü "ı"dır,
+      yani "TESLIMINE" gerçekten "teslımıne" demek ve eşleşmez. Şablona
+      büyük harfle yazan kurum da "TESLİMİNE" yazacaktır.
+    */
+    const plan = tasimaPlani(AKIS, "EVRAK  TESLİMİNE HAZIR")!;
+    assert.equal(plan.hedefAdi, "Evrak Teslimine Hazır", "işteki yazım kayda geçiyor");
+  });
+
+  await t.test("noktasız i noktalı İ ile EŞLEŞMİYOR (kabul edilmiş sınır)", () => {
+    /*
+      Türkçede "hazır" ile "hazir" farklı kelimeler ve eşleştirme
+      toLocaleLowerCase("tr-TR") ile yapılıyor. Yani şablona "Hazir" yazan
+      kurumun kartı o kolona taşınamaz — kolon da zaten ayrı görünür, iki
+      ad gerçekten farklıdır. Bu satır davranışı doğru ilan etmiyor,
+      sınırın bilindiğini kaydediyor.
+    */
+    assert.equal(tasimaPlani(AKIS, "Evrak Teslimine Hazir"), null);
+  });
+
+  await t.test("SIRA DIŞI tamamlanmış ileri adım geri taşımada açılıyor", () => {
+    /*
+      1 ve 3 bitmiş, 2 bekliyor. Kartı 2'ye taşımak zaten 2'de olduğu için
+      bir şey değiştirmemeli AMA 3 açılmalı: aksi hâlde kullanıcı kartı
+      ileri sürüklediğinde 3 zaten kapalı olduğundan aşama atlanır.
+    */
+    const karisik = [
+      adim(1, "Hazırlık Yapılıyor", null, true),
+      adim(2, "İç Kontrol Yapılıyor", null),
+      adim(3, "Evrak Teslimine Hazır", null, true),
+    ];
+    const plan = tasimaPlani(karisik, "İç Kontrol Yapılıyor")!;
+    assert.deepEqual(plan.acilacak, ["s3"]);
+  });
+
+  await t.test("aynı başlıklı iki adımda İLKİ hedef", () => {
+    // Sözleşme planında tekrar eden aşama adları olabiliyor; kartın kolonu
+    // da tamamlanmayan İLK adımdan türüyor, ikisi aynı adımı göstermeli.
+    const tekrarli = [
+      adim(1, "Revizyon", null, true),
+      adim(2, "İç Kontrol Yapılıyor", null, true),
+      adim(3, "Revizyon", null, true),
+    ];
+    const plan = tasimaPlani(tekrarli, "Revizyon")!;
+    assert.deepEqual(plan.acilacak, ["s1", "s2", "s3"], "s1 hedef: ondan sonrakilerin hepsi açılıyor");
   });
 });

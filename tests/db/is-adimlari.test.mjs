@@ -241,3 +241,105 @@ describe("şablon kapısı", () => {
       assert.equal(okunan.rows.length, 0, "Başka kurumun şablonu görünmemeli");
     }));
 });
+
+/*
+  PANODA SÜRÜKLEYEREK TAŞIMA, veritabanı tarafı.
+
+  Taşıma tek adımı değil BİR DİZİ adımı değiştiriyor (gerekçesi
+  lib/operasyon-cizelge.ts'te) ve bunu tek bir `... where id in (...)`
+  ifadesiyle yapıyor. Burada sınanan iki şey: toplu güncelleme RLS altında
+  MEŞRU kullanıcı için geçiyor mu, ve BEFORE tetikleyicisi her satırda ayrı
+  ayrı çalışıp is_completed/completed_at'i doğru yazıyor mu. Tetikleyici
+  satır başına çalıştığı için toplu ifadede sessizce atlanması mümkündü.
+*/
+describe("panodan toplu aşama taşıma", () => {
+  const idler = async (isId) =>
+    (await db.query(`select id from public.operation_steps where workflow_id = $1 order by sort_order`, [isId]))
+      .rows.map((r) => r.id);
+
+  test("kurumun yöneticisi birden çok adımı tek ifadeyle kapatabiliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      const isId = await isAc();
+      const hepsi = await idler(isId);
+      // İlk üç adımı kapatmak = kartı 4. kolona taşımak.
+      const kapanacak = hepsi.slice(0, 3);
+
+      await rol(db, "authenticated", SAHIP);
+      const yazilan = await db.query(
+        `update public.operation_steps set status = 'done' where id = any($1::uuid[]) returning id`,
+        [kapanacak],
+      );
+      assert.equal(yazilan.rows.length, 3, "üç satırın üçü de güncellenmeli");
+
+      await rol(db, "postgres");
+      const satirlar = await adimlar(isId);
+      assert.deepEqual(
+        satirlar.slice(0, 3).map((s) => s.is_completed),
+        [true, true, true],
+        "tetikleyici toplu ifadede de her satırda çalışmalı",
+      );
+      const damgali = await db.query(
+        `select count(*)::int as n from public.operation_steps
+           where id = any($1::uuid[]) and completed_at is not null`,
+        [kapanacak],
+      );
+      assert.equal(damgali.rows[0].n, 3, "completed_at üçünde de yazılmalı");
+      assert.equal(satirlar[3].is_completed, false, "dokunulmayan adım değişmemeli");
+    }));
+
+  test("geri taşıma zaman damgasını temizliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      const isId = await isAc();
+      const hepsi = await idler(isId);
+      await rol(db, "postgres");
+      await db.query(`update public.operation_steps set status = 'done' where id = any($1::uuid[])`, [hepsi.slice(0, 3)]);
+
+      // Kartı 2. kolona geri sürüklemek: hedef ve sonrası yeniden açılır.
+      await rol(db, "authenticated", SAHIP);
+      const acilan = await db.query(
+        `update public.operation_steps set status = 'planned' where id = any($1::uuid[]) returning id`,
+        [hepsi.slice(1, 3)],
+      );
+      assert.equal(acilan.rows.length, 2);
+
+      await rol(db, "postgres");
+      const satirlar = await db.query(
+        `select is_completed, completed_at, completed_by from public.operation_steps
+           where workflow_id = $1 order by sort_order`,
+        [isId],
+      );
+      assert.equal(satirlar.rows[0].is_completed, true, "hedeften ÖNCEKİ kapalı kalmalı");
+      assert.deepEqual(
+        satirlar.rows.slice(1, 3).map((s) => [s.is_completed, s.completed_at, s.completed_by]),
+        [[false, null, null], [false, null, null]],
+        "açılan adımda damga ve kim bitirdi bilgisi silinmeli",
+      );
+    }));
+
+  test("başka kurumun kullanıcısı hiçbir satırı taşıyamıyor", () =>
+    islem(db, async () => {
+      await tohum();
+      const isId = await isAc();
+      const hepsi = await idler(isId);
+      const YABANCI = "00000000-0000-4000-8000-000000000061";
+      const BASKA = "00000000-0000-4000-8000-000000000062";
+      await rol(db, "postgres");
+      await db.exec(`
+        insert into auth.users (id, email) values ('${YABANCI}', 'yabanci2@example.com');
+        insert into public.organizations (id, name, slug, status, plan_code)
+          values ('${BASKA}', 'Başka', 'baska-2', 'active', 'starter');
+        insert into public.organization_memberships (organization_id, user_id, role)
+          values ('${BASKA}', '${YABANCI}', 'owner');
+      `);
+
+      // RLS hata vermiyor, SIFIR satır döndürüyor: sunucu kodu sayıyı denetliyor.
+      await rol(db, "authenticated", YABANCI);
+      const yazilan = await db.query(
+        `update public.operation_steps set status = 'done' where id = any($1::uuid[]) returning id`,
+        [hepsi.slice(0, 3)],
+      );
+      assert.equal(yazilan.rows.length, 0, "yabancı kurum hiçbir adımı değiştirememeli");
+    }));
+});

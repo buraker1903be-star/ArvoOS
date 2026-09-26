@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { OperationsTabs } from "../operations-tabs";
-import { setStepDueDate, setStepStatus } from "../actions";
 import {
   asamaPanosuKur,
-  BEKLEME_ESIGI_GUN,
   SABLON_DISI_KOLONU,
   VARSAYILAN_PANO_SABLONU,
   type CizelgeIsi,
   type SablonAsamasi,
 } from "@/lib/operasyon-cizelge";
-import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
-import { initials } from "@/lib/table-format";
 import { todayIstanbul } from "../ops-shared";
+import { PanoTahtasi } from "./pano-tahtasi";
 import "../../gantt.css";
 import "./pano.css";
 
@@ -36,21 +33,16 @@ import "./pano.css";
   TARİH KARTTAN GİRİLİYOR. Canlıda (27.09.2026) sekiz işin sekizinde de
   aşama tarihi boştu: pano gecikme uyarısı üretemiyor, kart sıralaması
   anlamsız kalıyor ve operasyoncunun asıl derdi olan PLANLAMA yapılamıyor.
-  Tarih girmek için iş detayına girip çıkmak gerekiyordu; alan artık kartın
-  üzerinde. Yetkisi olmayana alan gösterilmiyor (çizelgedeki kuralın aynısı)
-  — kaydetmeyen bir alan göstermek yanıltıcı olurdu.
+  Yetkisi olmayana alan gösterilmiyor (çizelgedeki kuralın aynısı) —
+  kaydetmeyen bir alan göstermek yanıltıcı olurdu.
 
   SÜZGEÇ YOK, bilerek. Denendi ve kaldırıldı: müşteri adları şirket unvanı
   olduğunda ("… LİMİTED ŞİRKETİ") rozetler iki satıra taşıyor ve panonun
   kendisini ekranın dışına itiyor — oysa panonun bütün değeri bir bakışta
-  görünmesi. Süzme ihtiyacı Çalışma Çizelgesi'nde karşılanıyor; pano
-  "her şey nerede" görünümü olarak kalıyor.
+  görünmesi. Süzme ihtiyacı Çalışma Çizelgesi'nde karşılanıyor.
 
-  KART TAŞIMA: "Tamamla" güncel aşamayı bitirip işi sonraki kolona geçiriyor,
-  "Geri al" güncel aşamadan önceki tamamlanmış aşamayı yeniden açıyor.
-  Sürükleme yok — istemci bileşeni, dokunmatik ve klavye için ayrı bir tur
-  demek; düğme üçünde de çalışıyor ve iş detayındaki durum düğmeleriyle aynı
-  işlemi kullanıyor.
+  Bu dosya yalnızca VERİYİ hazırlıyor; sürükle-bırak, hızlı bakış ve
+  düğmeler pano-tahtasi.tsx'te (istemci bileşeni).
 */
 
 type AdimSatiri = {
@@ -64,11 +56,6 @@ type AdimSatiri = {
   completed_at: string | null;
 };
 type Kayit = CizelgeIsi & { operation_steps: AdimSatiri[] };
-
-const kisaTarih = (gun: string) =>
-  new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short" }).format(
-    new Date(`${gun}T12:00:00`),
-  );
 
 export default async function OperationsPanoPage() {
   const { supabase, membership, modules, userId } = await getPanelContext();
@@ -91,7 +78,7 @@ export default async function OperationsPanoPage() {
       .eq("organization_id", membership.organization_id)
       .eq("is_active", true)
       .order("sort_order"),
-    // Tarih düzenleme yetkisi için: işin sorumlusu ben miyim?
+    // Taşıma ve tarih yetkisi için: işin sorumlusu ben miyim?
     supabase
       .from("hr_employees")
       .select("id")
@@ -113,15 +100,16 @@ export default async function OperationsPanoPage() {
   const tumIsler: CizelgeIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
 
   /*
-    Tarihi yöneticiler ve İŞİN sorumlusu değiştirebiliyor (actions.ts
-    isManagerOrAssignee ile aynı kural). Kart işin sorumlusunu taşımıyor —
-    kartta AŞAMANIN sorumlusu yazıyor ve ikisi farklı olabiliyor.
+    Aşamaları yöneticiler ve İŞİN sorumlusu değiştirebiliyor (actions.ts
+    isManagerOrAssignee ile aynı kural). Yetkisi olmayanın kartı
+    sürüklenemiyor ve tarih alanı gösterilmiyor — kaydetmeyen bir alan
+    göstermek yanıltıcı olurdu. Asıl karar yine sunucuda ve RLS'te.
   */
-  const isSorumlusu = new Map(kayitlar.map((kayit) => [kayit.id, kayit.assigned_employee_id ?? null]));
   const benimPersonelId = (benimKaydim as { id?: string } | null)?.id ?? null;
   const yonetici = ["owner", "admin", "manager"].includes(membership.role);
-  const tarihDuzenlenebilir = (isId: string) =>
-    yonetici || Boolean(benimPersonelId && benimPersonelId === isSorumlusu.get(isId));
+  const yetkiliIsler = kayitlar
+    .filter((kayit) => yonetici || Boolean(benimPersonelId && benimPersonelId === kayit.assigned_employee_id))
+    .map((kayit) => kayit.id);
 
   const bugun = todayIstanbul();
   const { kolonlar, bosAsamalar } = asamaPanosuKur(tumIsler, sablon, (id) => sorumlular.get(id) ?? null, bugun);
@@ -140,8 +128,8 @@ export default async function OperationsPanoPage() {
           <h1>Pano</h1>
           <p>
             İşler bulundukları aşamanın kolonunda. Kolonlar{" "}
-            {kendiSablonu ? "kurumunuzun adım şablonundan" : "varsayılan sekiz aşamadan"} geliyor; kartta aşamanın
-            tarihi ve sorumlusu yazıyor.
+            {kendiSablonu ? "kurumunuzun adım şablonundan" : "varsayılan sekiz aşamadan"} geliyor; kartı sürükleyerek
+            ya da düğmeyle başka aşamaya taşıyabilir, “Aşamalar” ile işin tamamını panodan çıkmadan görebilirsiniz.
           </p>
         </div>
         <div className="panel-page-actions">
@@ -179,129 +167,7 @@ export default async function OperationsPanoPage() {
 
         {toplamKart ? (
           <>
-            <div className="ops-pano">
-              {kolonlar.map((kolon) => (
-                <section className="ops-pano-kolon" key={kolon.anahtar} data-tur={kolon.tur}>
-                  <header>
-                    {/* Numara ŞABLONDAKİ sıra: atlanan aşama boşlukla görünüyor. */}
-                    {kolon.tur === "asama" ? <i aria-hidden="true">{kolon.sira}</i> : null}
-                    <b>{kolon.baslik}</b>
-                    <span>{kolon.kartlar.length}</span>
-                  </header>
-                  <div className="ops-pano-kartlar">
-                    {kolon.kartlar.map((kart) => {
-                      const uyari = hatirlatmaDurumu({ due_date: kart.tarih, is_completed: kart.tamamlandi }, bugun);
-                      const yuzde = kart.toplamAsama
-                        ? Math.round((kart.tamamlananAsama / kart.toplamAsama) * 100)
-                        : 0;
-                      const uzunBekleme = kart.bekleyenGun !== null && kart.bekleyenGun >= BEKLEME_ESIGI_GUN;
-                      return (
-                        <article className="ops-pano-kart" key={kart.isId} data-tone={uyari ?? undefined}>
-                          <Link href={`/panel/operations/${kart.isId}`}>
-                            {/* Uzun başlık iki satıra kırpılıyor; tamamı title'da. */}
-                            <b title={kart.baslik}>{kart.baslik}</b>
-                            <small title={kart.musteri}>{kart.musteri}</small>
-                          </Link>
-                          <div className="ops-pano-kart-alt">
-                            <span className="ops-pano-kisi" title={kart.sorumluAdi ?? "Sorumlu atanmadı"}>
-                              <i aria-hidden="true" data-bos={kart.sorumluAdi ? undefined : "1"}>
-                                {kart.sorumluAdi ? initials(kart.sorumluAdi) : "?"}
-                              </i>
-                              {kart.sorumluAdi ?? "sorumlu yok"}
-                            </span>
-                            {/*
-                              Bekleme süresi tarihten BAĞIMSIZ ölçülüyor ve
-                              tarih girilmemiş işlerde panonun tek sinyali o.
-                              Bitmiş işte gösterilmiyor: beklemiyor.
-                            */}
-                            {kart.guncelAsamaId && kart.bekleyenGun !== null ? (
-                              <span
-                                className="ops-pano-bekleme"
-                                data-uzun={uzunBekleme ? "1" : undefined}
-                                title={
-                                  uzunBekleme
-                                    ? `${BEKLEME_ESIGI_GUN} günden uzun süredir “${kart.guncelAsama}” aşamasında`
-                                    : `“${kart.guncelAsama}” aşamasına geçileli ${kart.bekleyenGun} gün oldu`
-                                }
-                              >
-                                {kart.bekleyenGun} gün
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="ops-pano-tarih">
-                            {tarihDuzenlenebilir(kart.isId) && kart.guncelAsamaId ? (
-                              <form action={setStepDueDate} className="ops-tarih-form">
-                                <input type="hidden" name="step_id" value={kart.guncelAsamaId} />
-                                <input
-                                  type="date"
-                                  name="due_date"
-                                  defaultValue={kart.tarih ?? ""}
-                                  aria-label={`${kart.guncelAsama} teslim tarihi`}
-                                />
-                                <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
-                              </form>
-                            ) : (
-                              <span className="ops-pano-tarih-metin">
-                                {kart.tarih
-                                  ? kisaTarih(kart.tarih)
-                                  : kart.guncelAsama
-                                    ? "tarih yok"
-                                    : isDurumAdi(kart.durum)}
-                              </span>
-                            )}
-                            {uyari ? (
-                              <em data-tone={uyari === "overdue" ? "danger" : "warning"}>
-                                {uyari === "overdue" ? "gecikti" : "yaklaştı"}
-                              </em>
-                            ) : null}
-                          </div>
-                          {/* Şablon dışı kolonda hangi aşamada olduğu yazılmalı: kolon adı söylemiyor. */}
-                          {kolon.tur === "sablon_disi" ? (
-                            <p className="ops-pano-asama">{kart.guncelAsama ?? "Aşama üretilmemiş"}</p>
-                          ) : null}
-                          <div className="ops-pano-tasi">
-                            <span className="ops-pano-sayac">
-                              {kart.tamamlananAsama}/{kart.toplamAsama} aşama
-                            </span>
-                            {/* Sonraki kolona geçmek = güncel aşamayı tamamlamak. */}
-                            {kart.guncelAsamaId ? (
-                              <form action={setStepStatus}>
-                                <input type="hidden" name="step_id" value={kart.guncelAsamaId} />
-                                <input type="hidden" name="status" value="done" />
-                                <button
-                                  type="submit"
-                                  data-tone="success"
-                                  title={`“${kart.guncelAsama}” aşamasını tamamla`}
-                                >
-                                  Tamamla →
-                                </button>
-                              </form>
-                            ) : null}
-                            {kart.oncekiAsamaId ? (
-                              <form action={setStepStatus}>
-                                <input type="hidden" name="step_id" value={kart.oncekiAsamaId} />
-                                <input type="hidden" name="status" value="in_progress" />
-                                <button type="submit" title="Bir önceki aşamayı yeniden aç">← Geri al</button>
-                              </form>
-                            ) : null}
-                          </div>
-                          {/*
-                            İlerleme çubuğu kartın alt kenarında, tam genişlikte:
-                            kolonu tarayan göz yüzdeleri aynı hizada karşılaştırıyor.
-                          */}
-                          <div
-                            className="ops-pano-ilerleme"
-                            title={`${kart.tamamlananAsama}/${kart.toplamAsama} aşama tamam`}
-                          >
-                            <i style={{ width: `${yuzde}%` }} />
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
+            <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} />
             {bosAsamalar.length ? (
               /*
                 Gizlenen aşamalar sayılıyor: adı geçmezse "İç Kontrol kolonu

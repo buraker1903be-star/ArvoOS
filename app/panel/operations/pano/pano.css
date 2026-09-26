@@ -2,20 +2,22 @@
   Pano düzeni. Kolonlar yatay kayan bir şerit: dört kolon dar ekranda yan
   yana sığmıyor ve sıkıştırmak kartları okunmaz yapıyor. Boş kolonlar
   gizlendiği için (lib/operasyon-cizelge.ts) şerit çoğu kurumda kaydırmaya
-  gerek kalmadan sığıyor; 220px alt sınır dört kolonu 1024px'te yan yana
+  gerek kalmadan sığıyor; 224px alt sınır dört kolonu 1024px'te yan yana
   getiriyor.
 */
-.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,1fr);gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:8px;align-items:start}
-.ops-pano-kolon{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(224px,1fr);gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:8px;align-items:start}
+/* Taşıma sunucuya giderken pano donuk: ikinci bir sürükleme yarıda kalırdı. */
+.ops-pano[data-bekliyor="1"]{opacity:.65;pointer-events:none}
+.ops-pano-kolon{display:flex;flex-direction:column;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2);transition:border-color .12s,background .12s}
 
 /*
   Başlık yapışkan: uzun bir kolonu aşağı kaydırırken hangi aşamaya baktığını
   kaybetmemek için. Sayfa kaydırıyor, kolonun kendisi değil.
 */
-.ops-pano-kolon header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:7px;padding:9px 11px;border-bottom:1px solid var(--line-soft);border-radius:var(--r-md) var(--r-md) 0 0;background:var(--surface)}
-.ops-pano-kolon header b{flex:1;min-width:0;font-size:12px;font-weight:800;letter-spacing:.01em;line-height:1.3}
+.ops-pano-kolon header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:7px;padding:10px 11px;border-bottom:1px solid var(--line-soft);border-radius:var(--r-md) var(--r-md) 0 0;background:var(--surface)}
+.ops-pano-kolon header b{flex:1;min-width:0;font-size:12px;font-weight:800;letter-spacing:.01em;line-height:1.3;color:var(--ink)}
 /* Numara ŞABLONDAKİ sıra: gizlenen aşamalar sayı atlamasıyla görünüyor. */
-.ops-pano-kolon header i{flex:none;display:grid;place-items:center;width:18px;height:18px;border-radius:var(--r-sm);background:var(--accent-50);color:var(--accent-700);font-style:normal;font-size:11px;font-weight:800}
+.ops-pano-kolon header i{flex:none;display:grid;place-items:center;width:19px;height:19px;border-radius:var(--r-sm);background:var(--accent-500);color:var(--paper);font-style:normal;font-size:11px;font-weight:800}
 .ops-pano-kolon header span{flex:none;min-width:21px;padding:1px 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:800;text-align:center}
 /* Tamamlandı ve şablon dışı kolonları akıştan ayrılmalı. */
 .ops-pano-kolon[data-tur="tamamlandi"] header b{color:var(--success)}
@@ -24,26 +26,48 @@
 .ops-pano-kartlar{display:grid;gap:8px;padding:9px}
 
 /*
-  Kart: uyarı rengi artık kartın tamamını boyamıyor, SOL KENARDA duruyor.
-  Dolu zemin denendi ve bırakıldı — bir kolonda üç geciken iş olduğunda pano
+  SÜRÜKLEME HEDEFİ. Kolonun kendisi renkleniyor ve bırakılınca ne olacağı
+  yazıyor: "2 aşama kapanacak". Kartın kolonu "tamamlanmayan ilk adım"dan
+  türediği için uzağa sürüklemek aradaki aşamaları da kapatıyor ve bunu
+  bırakmadan ÖNCE söylemek gerekiyor.
+*/
+.ops-pano-kolon[data-hedef="1"]{border-color:var(--accent-500);background:var(--accent-50)}
+.ops-pano-birak{margin:0;padding:7px 11px;border-bottom:1px dashed var(--accent-300);color:var(--accent-700);font-size:11px;font-weight:700;line-height:1.4}
+
+/*
+  Kart: uyarı rengi kartın tamamını boyamıyor, SOL KENARDA duruyor. Dolu
+  zemin denendi ve bırakıldı — bir kolonda üç geciken iş olduğunda pano
   kırmızı bir bloğa dönüşüyor, kart başlıkları okunmuyor ve hangi işin daha
   acil olduğu kayboluyor. Kenar çizgisi taramada aynı işi görüyor.
   box-shadow inset kullanılıyor ki geometri değişmesin: ilerleme çubuğu
   kartın kenarına negatif kenar boşluğuyla oturuyor.
 */
-.ops-pano-kart{display:grid;gap:7px;padding:10px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface);overflow:hidden;box-shadow:inset 3px 0 0 var(--line)}
-.ops-pano-kart:hover{border-color:var(--accent-300);box-shadow:inset 3px 0 0 var(--accent-400),var(--shadow-sm)}
+.ops-pano-kart{display:grid;gap:7px;padding:10px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface);overflow:hidden;box-shadow:inset 3px 0 0 var(--line);transition:box-shadow .12s,border-color .12s,transform .12s}
+.ops-pano-kart[draggable="true"]{cursor:grab}
+.ops-pano-kart[draggable="true"]:active{cursor:grabbing}
+.ops-pano-kart:hover{border-color:var(--accent-300);transform:translateY(-1px);box-shadow:inset 3px 0 0 var(--accent-400),var(--shadow-md)}
 .ops-pano-kart[data-tone="warning"]{box-shadow:inset 3px 0 0 var(--warning)}
-.ops-pano-kart[data-tone="warning"]:hover{box-shadow:inset 3px 0 0 var(--warning),var(--shadow-sm)}
+.ops-pano-kart[data-tone="warning"]:hover{box-shadow:inset 3px 0 0 var(--warning),var(--shadow-md)}
 .ops-pano-kart[data-tone="danger"]{box-shadow:inset 3px 0 0 var(--danger)}
-.ops-pano-kart[data-tone="danger"]:hover{box-shadow:inset 3px 0 0 var(--danger),var(--shadow-sm)}
-.ops-pano-kart > a{display:grid;gap:2px;text-decoration:none;min-width:0}
+.ops-pano-kart[data-tone="danger"]:hover{box-shadow:inset 3px 0 0 var(--danger),var(--shadow-md)}
+
+/* Üst şerit: öncelik, işin termini ve hızlı bakış düğmesi. */
+.ops-pano-ust{display:flex;align-items:center;gap:6px;min-height:19px}
+.ops-pano-oncelik{padding:1px 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:800}
+.ops-pano-oncelik[data-oncelik="high"],.ops-pano-oncelik[data-oncelik="urgent"]{background:var(--warning-soft);color:var(--warning)}
+.ops-pano-oncelik[data-oncelik="low"]{background:var(--info-soft);color:var(--info)}
+/* İŞİN termini: aşamanınkiyle karışmasın diye "Teslim" yazıyor ve soluk. */
+.ops-pano-termin{color:var(--dim);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ops-pano-bak{margin-left:auto;flex:none;padding:2px 7px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+.ops-pano-bak:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
+
 /*
   Başlık iki satıra kırpılıyor. Canlıda üç satırlık başlıklar var
   ("Arapça Çevirisi+Analiz Desteği+Literatür Desteği+Tezden Makale+Savunma
   Çeviri") ve kartlar bambaşka yüksekliklere çıkıp kolonu tarayan gözü
   bozuyordu; tamamı title özniteliğinde.
 */
+.ops-pano-kart > a{display:grid;gap:2px;text-decoration:none;min-width:0}
 .ops-pano-kart > a b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;font-weight:700;line-height:1.35;color:var(--ink)}
 .ops-pano-kart > a:hover b{color:var(--accent-700)}
 .ops-pano-kart > a small{font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -53,9 +77,10 @@
 .ops-pano-kisi{display:inline-flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ops-pano-kisi i{flex:none;display:grid;place-items:center;width:19px;height:19px;border-radius:var(--r-pill);background:var(--accent-50);color:var(--accent-700);font-style:normal;font-size:11px;font-weight:800}
 .ops-pano-kisi i[data-bos="1"]{background:var(--surface-2);color:var(--dim)}
+
 /*
   Tarih kendi satırında: alanın kendisi (input + kaydet) sorumlu adıyla
-  aynı satıra 220px kolonda sığmıyor, ikisi de kırpılıyordu.
+  aynı satıra 224px kolonda sığmıyor, ikisi de kırpılıyordu.
 */
 .ops-pano-tarih{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted)}
 .ops-pano-tarih .ops-tarih-form{flex:1;min-width:0}
@@ -73,7 +98,7 @@
 .ops-pano-bekleme{flex:none;padding:1px 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--dim);font-size:11px;font-weight:700;white-space:nowrap}
 .ops-pano-bekleme[data-uzun="1"]{background:var(--warning-soft);color:var(--warning)}
 
-/* Kolon değiştirme düğmeleri: sürükleme yerine. Üçü birden sığmalı. */
+/* Kolon değiştirme düğmeleri: dokunmatik ve klavye için (sürükleme orada yok). */
 .ops-pano-tasi{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-top:7px;border-top:1px solid var(--line-soft)}
 .ops-pano-tasi button{padding:3px 7px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
 .ops-pano-tasi button:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
@@ -92,12 +117,45 @@
 /* Şablon dışı kartta hangi aşamada olduğu yazılmalı: kolon adı söylemiyor. */
 .ops-pano-asama{margin:0;padding:3px 7px;border-radius:var(--r-sm);background:var(--warning-soft);color:var(--ink);font-size:11px;font-weight:700}
 
-/* Şablon dışı uyarısı: sebebi de yazılı olduğu için tek satır değil. */
-.ops-pano-not{margin:12px 0 0;padding:10px 14px;border:1px solid var(--warning);border-radius:var(--r-md);background:var(--warning-soft);color:var(--ink);font-size:12px;line-height:1.55}
-.ops-pano-not a{color:var(--accent-600);font-weight:700}
+/*
+  HIZLI BAKIŞ penceresi. Kart tıklanınca iş detayına gitmek panoyu
+  kapatıyordu; işin bütün aşamaları artık panodan çıkmadan görünüyor.
+*/
+.ops-pano-pencere{width:min(560px,92vw);padding:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg)}
+.ops-pano-pencere::backdrop{background:rgb(0 0 0 / .45)}
+.ops-pano-pencere header{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line-soft)}
+.ops-pano-pencere header div{display:grid;gap:2px;min-width:0}
+.ops-pano-pencere header b{font-size:14px;font-weight:700;line-height:1.35}
+.ops-pano-pencere header small{font-size:11px;color:var(--dim)}
+.ops-pano-pencere header button{margin-left:auto;flex:none;padding:2px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:800;cursor:pointer}
+.ops-pano-pencere header button:hover{border-color:var(--danger);color:var(--danger)}
+.ops-pano-pencere footer{padding:11px 16px;border-top:1px solid var(--line-soft);background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.ops-pano-pencere footer a{color:var(--accent-600);font-size:12px;font-weight:700;text-decoration:none}
+.ops-pano-pencere footer a:hover{text-decoration:underline}
+
+.ops-pano-adimlar{list-style:none;margin:0;padding:8px;display:grid;gap:5px;max-height:min(420px,55vh);overflow-y:auto}
+.ops-pano-adimlar li{display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface)}
+/* Güncel aşama vurgulu: pencerenin asıl cevabı "şu an neredeyiz". */
+.ops-pano-adimlar li[data-durum="guncel"]{border-color:var(--accent-400);background:var(--accent-50)}
+.ops-pano-adimlar li[data-durum="bitti"]{opacity:.7}
+.ops-pano-adimlar li[data-durum="bitti"] .ops-pano-adim-ad b{color:var(--success)}
+.ops-pano-adim-ad{display:grid;gap:1px;min-width:0;flex:1}
+.ops-pano-adim-ad b{font-size:12px;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis}
+.ops-pano-adim-ad small{font-size:11px;color:var(--dim)}
+.ops-pano-adim-sag{display:flex;align-items:center;gap:6px;flex:none;font-size:11px;font-weight:700;color:var(--muted)}
+.ops-pano-adim-sag em{font-style:normal;font-weight:800}
+.ops-pano-adim-sag em[data-tone="warning"]{color:var(--warning)}
+.ops-pano-adim-sag em[data-tone="danger"]{color:var(--danger)}
+.ops-pano-adim-dugme{padding:3px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ops-pano-adim-dugme:hover{border-color:var(--accent-500);color:var(--accent-600)}
+.ops-pano-adim-yok{justify-content:center;color:var(--dim);font-size:11px}
 
 /* Panonun en önemli uyarısı: tarih yoksa gecikme zinciri sessizce çalışmıyor. */
 .ops-pano-uyari{margin:12px 0 0;padding:10px 14px;border:1px solid var(--info);border-left-width:3px;border-radius:var(--r-md);background:var(--info-soft);color:var(--ink);font-size:12px;line-height:1.55}
+
+/* Şablon dışı uyarısı: sebebi de yazılı olduğu için tek satır değil. */
+.ops-pano-not{margin:12px 0 0;padding:10px 14px;border:1px solid var(--warning);border-radius:var(--r-md);background:var(--warning-soft);color:var(--ink);font-size:12px;line-height:1.55}
+.ops-pano-not a{color:var(--accent-600);font-weight:700}
 
 /* Gizlenen aşamaların adı: pano eksik sanılmasın. */
 .ops-pano-gizli{margin:10px 0 0;color:var(--dim);font-size:11px;line-height:1.5}
