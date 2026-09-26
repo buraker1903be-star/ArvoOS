@@ -41,6 +41,12 @@ export interface CizelgeAdimi {
     zaten NOT NULL, yani gerçek veride her zaman dolu.
   */
   status?: string | null;
+  /*
+    Adımın bitirildiği AN (gün değil, timestamp). Panoda "kaç gündür bu
+    aşamada" bundan hesaplanıyor: güncel aşamaya, kendisinden önceki
+    adımların bitişiyle gelinmiş olur. İsteğe bağlı — çizelge kullanmıyor.
+  */
+  completed_at?: string | null;
 }
 
 export interface CizelgeIsi {
@@ -400,6 +406,17 @@ export interface PanoIsKarti {
   sorumluAdi: string | null;
   tamamlananAsama: number;
   toplamAsama: number;
+  /*
+    Güncel aşamada kaç gündür bekliyor. Bitmiş işte ve başlangıcı
+    bilinmeyen işte null.
+
+    Bu alan TARİHTEN BAĞIMSIZ çalışıyor ve panonun asıl açığını kapatıyor:
+    canlıda (27.09.2026) sekiz işin sekizinde de aşama tarihi girilmemişti,
+    dolayısıyla "gecikti/yaklaştı" uyarısı hiç çıkmıyor ve kartların
+    sıralaması da rastgele oluyordu. "23 gündür aynı aşamada" ise tarih
+    girilmeden de ölçülebilen bir olgu.
+  */
+  bekleyenGun: number | null;
 }
 
 export type PanoKolonTuru = "asama" | "tamamlandi" | "sablon_disi";
@@ -430,10 +447,36 @@ export interface SablonAsamasi {
   sort_order: number;
 }
 
+/*
+  Bir aşamada bu kadar gün bekleyen iş kartta vurgulanıyor. Sayı KURUMDAN
+  gelmiyor, seçilmiş bir eşik: akademik işlerde aşamalar haftalarca sürüyor
+  (canlıdaki işler sekiz adımlı), üç hafta takılmayı ayırt edecek en kısa
+  makul süre. Kurum başına ayarlanabilir olması gerekirse önce şablon
+  sayfasına bir alan eklenmeli; koda gömülü ikinci bir sayı üretmeyin.
+
+  Eşiğin AYIRDIĞI şey "gecikme" değil: gecikme tarihle tanımlı ve kartın
+  kenar rengiyle gösteriliyor. Bu yalnızca "uzun süredir kımıldamıyor".
+*/
+export const BEKLEME_ESIGI_GUN = 21;
+
+/** Timestamp'in İstanbul günü. Sunucu UTC'de: gece yarısından sonra bir gün kayardı. */
+const istanbulGunu = (zaman: string): string | null => {
+  const an = new Date(zaman);
+  return Number.isNaN(an.getTime())
+    ? null
+    : new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(an);
+};
+
+/** İki gün (YYYY-MM-DD) arasındaki tam gün farkı. */
+const gunFarki = (baslangic: string, bitis: string): number =>
+  Math.round((Date.parse(`${bitis}T00:00:00Z`) - Date.parse(`${baslangic}T00:00:00Z`)) / 86_400_000);
+
 export function asamaPanosuKur(
   isler: CizelgeIsi[],
   sablon: SablonAsamasi[],
   adCoz: (personelId: string) => string | null,
+  /** Bugünün İstanbul günü; bekleme süresi buna göre. Dışarıdan: modül saf kalsın. */
+  bugun: string,
 ): PanoSonucu {
   const sirali = [...sablon].sort((a, b) => a.sort_order - b.sort_order);
   const kolonlar = new Map<string, PanoKolonu>();
@@ -451,6 +494,20 @@ export function asamaPanosuKur(
     const adimlar = [...(is.steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
     const guncel = adimlar.find((adim) => !adim.is_completed) ?? null;
     const tamamlanan = adimlar.filter((adim) => adim.is_completed);
+    /*
+      Güncel aşamaya ne zaman gelindi: kendisinden ÖNCEKİ adımların en son
+      bitişi ("geri al" ile aynı mantık — sıra dışı tamamlamada ileride
+      bitmiş bir adım bu aşamanın başlangıcını söylemez). Hiç bitmiş adım
+      yoksa iş başlangıcı; o da yoksa ölçülemiyor ve gösterilmiyor.
+    */
+    const asamayaGecis = guncel
+      ? tamamlanan
+          .filter((adim) => adim.sort_order < guncel.sort_order)
+          .map((adim) => (adim.completed_at ? istanbulGunu(adim.completed_at) : null))
+          .filter((gun): gun is string => gun !== null)
+          .sort()
+          .at(-1) ?? is.start_date
+      : null;
     const kart: PanoIsKarti = {
       isId: is.id,
       baslik: is.title,
@@ -484,6 +541,11 @@ export function asamaPanosuKur(
           : null,
       tamamlananAsama: tamamlanan.length,
       toplamAsama: adimlar.length,
+      /*
+        Geleceğe dönük bir başlangıç (ileri tarihli start_date) negatif gün
+        verirdi; "−4 gündür bu aşamada" anlamsız, sıfıra sabitleniyor.
+      */
+      bekleyenGun: asamayaGecis ? Math.max(gunFarki(asamayaGecis, bugun), 0) : null,
     };
 
     /*
@@ -503,12 +565,20 @@ export function asamaPanosuKur(
   }
 
   for (const kolon of kolonlar.values()) {
-    // Tarihe göre: en yakın teslim üstte, tarihsizler sonda.
+    /*
+      Tarihe göre: en yakın teslim üstte, tarihsizler sonda.
+
+      TARİHSİZLER ARASINDA en uzun bekleyen üstte. Eskiden hepsi ada göre
+      diziliyordu; canlıda (27.09.2026) sekiz işin sekizi de tarihsiz
+      olduğu için pano baştan sona alfabetikti, yani sıralama hiçbir şey
+      söylemiyordu. Bekleme süresi tarih girilmeden de ölçülüyor ve en
+      azından "hangisi takılmış" sorusunu yanıtlıyor.
+    */
     kolon.kartlar.sort((a, b) => {
       if (a.tarih && b.tarih) return a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr");
       if (a.tarih) return -1;
       if (b.tarih) return 1;
-      return a.baslik.localeCompare(b.baslik, "tr");
+      return (b.bekleyenGun ?? -1) - (a.bekleyenGun ?? -1) || a.baslik.localeCompare(b.baslik, "tr");
     });
   }
 

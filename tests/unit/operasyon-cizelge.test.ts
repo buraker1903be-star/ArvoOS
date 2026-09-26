@@ -10,6 +10,7 @@ import {
   kisilereGoreKur,
   KURUM_ICI,
   asamaPanosuKur,
+  BEKLEME_ESIGI_GUN,
   musteriAdlari,
   SABLON_DISI_KOLONU,
   satirlariDiz,
@@ -33,7 +34,8 @@ const adim = (
   due_date: string | null,
   is_completed = false,
   assigned_employee_id: string | null = null,
-) => ({ id: `s${sort_order}`, title, sort_order, due_date, is_completed, assigned_employee_id });
+  completed_at: string | null = null,
+) => ({ id: `s${sort_order}`, title, sort_order, due_date, is_completed, assigned_employee_id, completed_at });
 
 const is = (uzerine: Partial<CizelgeIsi> = {}): CizelgeIsi => ({
   id: "w1",
@@ -335,6 +337,9 @@ const SABLON = [
   { title: "Evrak Teslimine Hazır", sort_order: 30 },
 ];
 
+/** Testlerin sabit "bugün"ü: bekleme süreleri buna göre hesaplanıyor. */
+const BUGUN = "2026-10-15";
+
 /** Gösterilen kolonlar. Boş kolonlar gizlendiği için burada yer almazlar. */
 const panoKolonlari = (...girdi: Parameters<typeof asamaPanosuKur>) => asamaPanosuKur(...girdi).kolonlar;
 
@@ -354,7 +359,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
         adim(3, "Evrak Teslimine Hazır", "2026-10-20"),
       ]),
       isAsamalarla("w2", "Makale", "Emine", [adim(1, "Hazırlık Yapılıyor", "2026-10-05")]),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
 
     const kolon = (baslik: string) => pano.find((k) => k.baslik === baslik)!;
     assert.deepEqual(kolon("Hazırlık Yapılıyor").kartlar.map((c) => c.baslik), ["Makale"]);
@@ -371,7 +376,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
       isAsamalarla("w3", "C", "X", [adim(1, "Evrak Teslimine Hazır", "2026-10-04")]),
       isAsamalarla("w4", "D", "X", [adim(1, "Hazırlık Yapılıyor", "2026-10-01", true)]),
       isAsamalarla("w5", "E", "X", [adim(1, "Literatür taraması", "2026-10-05")]),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     assert.deepEqual(pano.map((k) => k.baslik), [
       ...SABLON.map((a) => a.title), "Tamamlandı", "Şablon dışı aşama",
     ]);
@@ -384,13 +389,13 @@ test("pano · şablon aşamaları kolon", async (t) => {
       aşamaların adı dönmeli: sessizce yok etmek "İç Kontrol nerede?"
       sorusunu doğuruyor.
     */
-    const bos = asamaPanosuKur([], SABLON, adCoz);
+    const bos = asamaPanosuKur([], SABLON, adCoz, BUGUN);
     assert.deepEqual(bos.kolonlar, [], "iş yoksa hiç kolon yok");
     assert.deepEqual(bos.bosAsamalar, SABLON.map((a) => a.title));
 
     const dolu = asamaPanosuKur(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "İç Kontrol Yapılıyor", "2026-10-05")])],
-      SABLON, adCoz,
+      SABLON, adCoz, BUGUN,
     );
     assert.deepEqual(dolu.kolonlar.map((k) => k.baslik), ["İç Kontrol Yapılıyor"]);
     assert.deepEqual(dolu.bosAsamalar, ["Hazırlık Yapılıyor", "Evrak Teslimine Hazır"]);
@@ -401,7 +406,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   await t.test("bütün aşamaları bitmiş iş Tamamlandı kolonunda", () => {
     const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "Hazırlık Yapılıyor", "2026-10-02", true)])],
-      SABLON, adCoz,
+      SABLON, adCoz, BUGUN,
     );
     const tamam = pano.find((k) => k.anahtar === TAMAMLANDI_KOLONU)!;
     assert.deepEqual(tamam.kartlar.map((c) => c.baslik), ["Tez"]);
@@ -418,7 +423,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
     */
     const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "Literatür taraması", "2026-10-05")])],
-      SABLON, adCoz,
+      SABLON, adCoz, BUGUN,
     );
     assert.equal(pano.some((k) => k.baslik === "Hazırlık Yapılıyor"), false, "kart oraya düşmedi");
     const disi = pano.find((k) => k.anahtar === SABLON_DISI_KOLONU)!;
@@ -427,7 +432,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
 
   await t.test("adımı hiç olmayan iş gizlenmiyor", () => {
     // Henüz adımı üretilmemiş iş; gizlemek onu unutturmanın en kolay yolu.
-    const pano = panoKolonlari([isAsamalarla("w1", "Yeni iş", "Ali", [])], SABLON, adCoz);
+    const pano = panoKolonlari([isAsamalarla("w1", "Yeni iş", "Ali", [])], SABLON, adCoz, BUGUN);
     const disi = pano.find((k) => k.anahtar === SABLON_DISI_KOLONU)!;
     assert.deepEqual(disi.kartlar.map((c) => c.baslik), ["Yeni iş"]);
     assert.equal(disi.kartlar[0].guncelAsama, null);
@@ -438,7 +443,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
     // Türkçe küçük harf dönüşümü: "İç Kontrol" ile "iç  kontrol" aynı aşama.
     const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "iç  kontrol yapılıyor", "2026-10-05")])],
-      SABLON, adCoz,
+      SABLON, adCoz, BUGUN,
     );
     assert.deepEqual(pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar.map((c) => c.baslik), ["Tez"]);
   });
@@ -449,7 +454,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
         adim(1, "Hazırlık Yapılıyor", "2026-10-02", true),
         adim(2, "İç Kontrol Yapılıyor", "2026-10-10", false, "p1"),
       ]),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     const [kart] = pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar;
     assert.equal(kart.tamamlananAsama, 1);
     assert.equal(kart.toplamAsama, 2);
@@ -472,7 +477,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
         adim(2, "İç Kontrol Yapılıyor", "2026-10-05"),
         adim(3, "Evrak Teslimine Hazır", "2026-10-09", true),
       ] }),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     const [kart] = pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar;
     assert.equal(kart.guncelAsamaId, "s2");
     assert.equal(kart.oncekiAsamaId, "s1", "s3 değil: o güncelin İLERİSİNDE");
@@ -481,7 +486,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   await t.test("ilk aşamadaysa geri alınacak aşama yok", () => {
     const pano = panoKolonlari(
       [is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-05")] })],
-      SABLON, adCoz,
+      SABLON, adCoz, BUGUN,
     );
     assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].oncekiAsamaId, null);
   });
@@ -489,7 +494,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   await t.test("hepsi bittiyse geri al en son aşamayı açıyor", () => {
     const pano = panoKolonlari([
       is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-01", true), adim(2, "İç Kontrol Yapılıyor", "2026-10-05", true)] }),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     assert.equal(pano.find((k) => k.anahtar === TAMAMLANDI_KOLONU)!.kartlar[0].oncekiAsamaId, "s2");
   });
 
@@ -498,7 +503,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
     const pano = panoKolonlari([
       is({ id: "w1", title: "Tez", customer_name: "Emine", assigned_employee_id: "p2",
            steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-05", false, null)] }),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].sorumluAdi, "Can Yıldız");
   });
 
@@ -507,10 +512,114 @@ test("pano · şablon aşamaları kolon", async (t) => {
       isAsamalarla("w1", "Geç", "A", [adim(1, "Hazırlık Yapılıyor", "2026-10-20")]),
       isAsamalarla("w2", "Tarihsiz", "B", [adim(1, "Hazırlık Yapılıyor", null)]),
       isAsamalarla("w3", "Erken", "C", [adim(1, "Hazırlık Yapılıyor", "2026-10-02")]),
-    ], SABLON, adCoz);
+    ], SABLON, adCoz, BUGUN);
     assert.deepEqual(
       pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar.map((c) => c.baslik),
       ["Erken", "Geç", "Tarihsiz"],
     );
+  });
+
+  await t.test("TARİHSİZLER arasında en uzun bekleyen üstte", () => {
+    /*
+      Canlıda (27.09.2026) sekiz işin sekizi de tarihsizdi; eskiden hepsi
+      ada göre diziliyordu, yani sıralama hiçbir şey söylemiyordu. Bekleme
+      süresi tarih girilmeden de ölçülüyor.
+    */
+    const bekleyen = (id: string, baslik: string, gecis: string) =>
+      is({ id, title: baslik, customer_name: "A", start_date: gecis,
+           steps: [adim(1, "Hazırlık Yapılıyor", null)] });
+    const pano = panoKolonlari([
+      bekleyen("w1", "Yeni", "2026-10-13"),
+      bekleyen("w2", "Takılmış", "2026-09-01"),
+      bekleyen("w3", "Orta", "2026-10-05"),
+    ], SABLON, adCoz, BUGUN);
+    assert.deepEqual(
+      pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar.map((c) => [c.baslik, c.bekleyenGun]),
+      [["Takılmış", 44], ["Orta", 10], ["Yeni", 2]],
+    );
+  });
+});
+
+test("pano · aşamada kaç gündür bekliyor", async (t) => {
+  await t.test("önceki adımın bitişinden ölçülüyor, işin başlangıcından değil", () => {
+    const pano = panoKolonlari([
+      is({ start_date: "2026-09-01", steps: [
+        adim(1, "Hazırlık Yapılıyor", null, true, null, "2026-10-10T09:00:00Z"),
+        adim(2, "İç Kontrol Yapılıyor", null),
+      ] }),
+    ], SABLON, adCoz, BUGUN);
+    assert.equal(pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar[0].bekleyenGun, 5);
+  });
+
+  await t.test("hiç bitmiş adım yoksa işin başlangıcı kullanılıyor", () => {
+    const pano = panoKolonlari(
+      [is({ start_date: "2026-10-01", steps: [adim(1, "Hazırlık Yapılıyor", null)] })],
+      SABLON, adCoz, BUGUN,
+    );
+    assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].bekleyenGun, 14);
+  });
+
+  await t.test("başlangıcı hiç bilinmiyorsa ölçülmüyor", () => {
+    // Uydurulmuş bir "0 gün" yerine hiç göstermemek doğru: kart sessiz kalıyor.
+    const pano = panoKolonlari(
+      [is({ start_date: null, steps: [adim(1, "Hazırlık Yapılıyor", null)] })],
+      SABLON, adCoz, BUGUN,
+    );
+    assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].bekleyenGun, null);
+  });
+
+  await t.test("SIRA DIŞI tamamlamada ileri adımın bitişi sayılmıyor", () => {
+    /*
+      1 ve 3 bitmiş, 2 bekliyor: 2. aşamaya 1'in bitişiyle gelindi. En son
+      bitişi (3) almak "1 gündür bekliyor" derdi, oysa iş 2. aşamada
+      haftalardır duruyor — takılan işi gizleyen bir sayı olurdu.
+    */
+    const pano = panoKolonlari([
+      is({ start_date: "2026-09-01", steps: [
+        adim(1, "Hazırlık Yapılıyor", null, true, null, "2026-09-20T09:00:00Z"),
+        adim(2, "İç Kontrol Yapılıyor", null),
+        adim(3, "Evrak Teslimine Hazır", null, true, null, "2026-10-14T09:00:00Z"),
+      ] }),
+    ], SABLON, adCoz, BUGUN);
+    assert.equal(pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar[0].bekleyenGun, 25);
+  });
+
+  await t.test("bitişin İSTANBUL günü esas: gece yarısından sonrası kaymıyor", () => {
+    /*
+      Sunucu UTC'de. 09 Ekim 22:30 UTC, İstanbul'da 10 Ekim 01:30'dur;
+      UTC günü alınsaydı bekleme bir gün fazla çıkardı.
+    */
+    const pano = panoKolonlari([
+      is({ steps: [
+        adim(1, "Hazırlık Yapılıyor", null, true, null, "2026-10-09T22:30:00Z"),
+        adim(2, "İç Kontrol Yapılıyor", null),
+      ] }),
+    ], SABLON, adCoz, BUGUN);
+    assert.equal(pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar[0].bekleyenGun, 5);
+  });
+
+  await t.test("bitmiş işte bekleme yok", () => {
+    // Güncel aşaması olmayan iş beklemiyor; "44 gündür" yazmak yanlış olurdu.
+    const pano = panoKolonlari(
+      [is({ steps: [adim(1, "Hazırlık Yapılıyor", null, true, null, "2026-10-10T09:00:00Z")] })],
+      SABLON, adCoz, BUGUN,
+    );
+    assert.equal(pano.find((k) => k.anahtar === TAMAMLANDI_KOLONU)!.kartlar[0].bekleyenGun, null);
+  });
+
+  await t.test("ileri tarihli başlangıç negatif gün vermiyor", () => {
+    const pano = panoKolonlari(
+      [is({ start_date: "2026-10-20", steps: [adim(1, "Hazırlık Yapılıyor", null)] })],
+      SABLON, adCoz, BUGUN,
+    );
+    assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].bekleyenGun, 0);
+  });
+
+  await t.test("eşik kodda tek yerde ve makul aralıkta", () => {
+    /*
+      Sayı kurumdan gelmiyor, seçilmiş bir eşik. Test onu DOĞRU ilan
+      etmiyor; ikinci bir yerde farklı bir sayı türemesin diye sabitliyor.
+    */
+    assert.equal(BEKLEME_ESIGI_GUN, 21);
   });
 });

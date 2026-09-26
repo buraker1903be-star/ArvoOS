@@ -38,7 +38,13 @@
 .ops-pano-kart[data-tone="danger"]{box-shadow:inset 3px 0 0 var(--danger)}
 .ops-pano-kart[data-tone="danger"]:hover{box-shadow:inset 3px 0 0 var(--danger),var(--shadow-sm)}
 .ops-pano-kart > a{display:grid;gap:2px;text-decoration:none;min-width:0}
-.ops-pano-kart > a b{font-size:13px;font-weight:700;line-height:1.35;color:var(--ink)}
+/*
+  Başlık iki satıra kırpılıyor. Canlıda üç satırlık başlıklar var
+  ("Arapça Çevirisi+Analiz Desteği+Literatür Desteği+Tezden Makale+Savunma
+  Çeviri") ve kartlar bambaşka yüksekliklere çıkıp kolonu tarayan gözü
+  bozuyordu; tamamı title özniteliğinde.
+*/
+.ops-pano-kart > a b{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;font-weight:700;line-height:1.35;color:var(--ink)}
 .ops-pano-kart > a:hover b{color:var(--accent-700)}
 .ops-pano-kart > a small{font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ops-pano-kart-alt{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);font-weight:700}
@@ -47,10 +53,25 @@
 .ops-pano-kisi{display:inline-flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ops-pano-kisi i{flex:none;display:grid;place-items:center;width:19px;height:19px;border-radius:var(--r-pill);background:var(--accent-50);color:var(--accent-700);font-style:normal;font-size:11px;font-weight:800}
 .ops-pano-kisi i[data-bos="1"]{background:var(--surface-2);color:var(--dim)}
-.ops-pano-tarih{display:inline-flex;align-items:center;gap:6px;flex:none}
-.ops-pano-tarih em{font-style:normal;font-weight:800}
+/*
+  Tarih kendi satırında: alanın kendisi (input + kaydet) sorumlu adıyla
+  aynı satıra 220px kolonda sığmıyor, ikisi de kırpılıyordu.
+*/
+.ops-pano-tarih{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted)}
+.ops-pano-tarih .ops-tarih-form{flex:1;min-width:0}
+.ops-pano-tarih .ops-tarih-form input[type="date"]{flex:1;min-width:0;width:100%}
+.ops-pano-tarih-metin{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-pano-tarih em{flex:none;font-style:normal;font-weight:800}
 .ops-pano-tarih em[data-tone="warning"]{color:var(--warning)}
 .ops-pano-tarih em[data-tone="danger"]{color:var(--danger)}
+
+/*
+  Bekleme rozeti "gecikti" DEĞİL: gecikme tarihle tanımlı ve kartın kenar
+  rengiyle gösteriliyor. Bu yalnızca "kaç gündür kımıldamıyor" — bu yüzden
+  eşiği aşınca da danger değil warning tonunda.
+*/
+.ops-pano-bekleme{flex:none;padding:1px 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--dim);font-size:11px;font-weight:700;white-space:nowrap}
+.ops-pano-bekleme[data-uzun="1"]{background:var(--warning-soft);color:var(--warning)}
 
 /* Kolon değiştirme düğmeleri: sürükleme yerine. Üçü birden sığmalı. */
 .ops-pano-tasi{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-top:7px;border-top:1px solid var(--line-soft)}
@@ -74,6 +95,9 @@
 /* Şablon dışı uyarısı: sebebi de yazılı olduğu için tek satır değil. */
 .ops-pano-not{margin:12px 0 0;padding:10px 14px;border:1px solid var(--warning);border-radius:var(--r-md);background:var(--warning-soft);color:var(--ink);font-size:12px;line-height:1.55}
 .ops-pano-not a{color:var(--accent-600);font-weight:700}
+
+/* Panonun en önemli uyarısı: tarih yoksa gecikme zinciri sessizce çalışmıyor. */
+.ops-pano-uyari{margin:12px 0 0;padding:10px 14px;border:1px solid var(--info);border-left-width:3px;border-radius:var(--r-md);background:var(--info-soft);color:var(--ink);font-size:12px;line-height:1.55}
 
 /* Gizlenen aşamaların adı: pano eksik sanılmasın. */
 .ops-pano-gizli{margin:10px 0 0;color:var(--dim);font-size:11px;line-height:1.5}
