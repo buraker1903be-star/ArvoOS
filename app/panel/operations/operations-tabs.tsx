@@ -6,7 +6,7 @@ import Link from "next/link";
 const tabs = [
   { key: "genel-bakis", href: "/panel/operations", label: "Genel Bakış" },
   { key: "is-akisi", href: "/panel/operations/isler", label: "İşler" },
-  { key: "gantt", href: "/panel/operations/gantt", label: "Gantt Çizelgesi" },
+  { key: "gantt", href: "/panel/operations/gantt", label: "Çalışma Çizelgesi" },
   { key: "takvim", href: "/panel/operations/takvim", label: "Takvim" },
   { key: "arsiv", href: "/panel/operations/arsiv", label: "Arşiv" },
   { key: "sablon", href: "/panel/operations/sablon", label: "Adım Şablonu" },

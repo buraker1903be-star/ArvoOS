@@ -27,3 +27,28 @@
 .gantt-legend span.status-completed:before{background:var(--success)}
 
 @media(max-width:900px){.gantt-row-label{padding:6px 8px}.gantt-row-label b{font-size:12px}}
+
+/*
+  Aşama satırları (çalışma çizelgesi).
+
+  İş satırı ile aşama satırı bir bakışta ayrılmalı: aşamalar girintili,
+  daha ince ve soluk. Aksi halde on sekiz satırlık bir çizelgede neyin işe
+  neyin aşamaya ait olduğu okunmuyordu.
+*/
+.gantt-group{display:flex;align-items:center;gap:10px;position:sticky;left:0;padding:10px 10px 6px;background:var(--surface);border-bottom:1px solid var(--line)}
+.gantt-group b{font-size:12px;font-weight:800;color:var(--ink);letter-spacing:.02em}
+.gantt-row-label.is-step{padding:5px 10px 5px 24px}
+.gantt-row-label.is-step b{font-size:12px;font-weight:600;color:var(--muted)}
+.gantt-row-label.is-step small{font-size:11px}
+.gantt-row-track.is-step{background:none}
+/* Aşama çubuğu işin çubuğundan ince: ikisi aynı kalınlıkta olunca hiyerarşi kayboluyordu. */
+.gantt-step-bar{margin:4px 2px;border-radius:5px;display:flex;align-items:center;padding:0 7px;min-width:0;overflow:hidden;background:var(--accent-100);border:1px solid var(--accent-300)}
+.gantt-step-bar span{font-size:11px;font-weight:700;color:var(--accent-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gantt-step-bar.is-done{background:var(--surface-2);border-color:var(--line)}
+.gantt-step-bar.is-done span{color:var(--dim)}
+/* Şu an çalışılan aşama: çizelgede aranan ilk şey bu. */
+.gantt-step-bar.is-current{border-color:var(--accent-500);box-shadow:0 0 0 1px var(--accent-500) inset}
+.gantt-step-bar[data-tone="warning"]{background:var(--warning-soft);border-color:var(--warning)}
+.gantt-step-bar[data-tone="warning"] span{color:var(--ink)}
+.gantt-step-bar[data-tone="danger"]{background:var(--danger-soft);border-color:var(--danger)}
+.gantt-step-bar[data-tone="danger"] span{color:var(--danger)}
