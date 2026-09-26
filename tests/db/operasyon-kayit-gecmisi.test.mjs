@@ -16,7 +16,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, rol, veritabani } from "./ortam.mjs";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(
   import.meta.dirname,
@@ -147,6 +147,60 @@ describe("operasyon kayıt geçmişi", () => {
       `);
       const satirlar = await okunan(YONETICI);
       assert.deepEqual(satirlar.map((r) => r.entity_id), [IS]);
+    }));
+
+  test("UYGULAMANIN YAZDIĞI yol açık: authenticated olarak eklenip okunabiliyor", () =>
+    islem(db, async () => {
+      /*
+        Yukarıdaki testler kaydı postgres olarak ekliyor, yani RLS'i atlıyor
+        ve yalnızca OKUMA kuralını sınıyor. Uygulamanın yolu bu değil:
+        logActivity kullanıcının istemcisiyle yazıyor ve activity_logs_insert
+        politikasından geçmek zorunda.
+
+        Bu ayrım burada kritik, çünkü logActivity hatayı YUTUYOR (dosya
+        başındaki nota göre bilinçli: geçmiş yazılamazsa kullanıcının işlemi
+        düşmemeli). Yani ekleme politikası reddederse geçmiş sessizce boş
+        kalır ve hiçbir belirti olmaz — tam da bugün düzeltilen hatanın
+        biçimi. Yazma yolunu sınamazsak aynı sessizlik geri gelir.
+      */
+      await tohum();
+      await rol(db, "authenticated", YONETICI);
+      await db.query(
+        `insert into public.activity_logs (organization_id, actor_user_id, action, entity_type, entity_id, metadata, created_at)
+         values ($1, $2, 'step_due', 'operation_workflow', $3, $4::jsonb, now())`,
+        [KURUM, YONETICI, IS, JSON.stringify({ step_title: "İç kontrol", changes: [] })],
+      );
+      const satirlar = await okunan(YONETICI);
+      assert.equal(satirlar.length, 1, "uygulamanın yazdığı kayıt okunabilmeli");
+      assert.equal(satirlar[0].metadata.step_title, "İç kontrol");
+    }));
+
+  test("başkasının adına kayıt yazılamıyor", () =>
+    islem(db, async () => {
+      // activity_logs_insert actor_user_id = auth.uid() istiyor: geçmiş
+      // kanıt değerini yitirmemeli.
+      await tohum();
+      await rol(db, "authenticated", YONETICI);
+      await reddedilir(
+        db,
+        `insert into public.activity_logs (organization_id, actor_user_id, action, entity_type, entity_id, metadata, created_at)
+         values ('${KURUM}', '${CALISAN_KULLANICI}', 'step_due', 'operation_workflow', '${IS}', '{}'::jsonb, now())`,
+        [],
+        /policy|permission/i,
+      );
+    }));
+
+  test("başka kurumun işine kayıt yazılamıyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "authenticated", YONETICI);
+      await reddedilir(
+        db,
+        `insert into public.activity_logs (organization_id, actor_user_id, action, entity_type, entity_id, metadata, created_at)
+         values ('${BASKA_KURUM}', '${YONETICI}', 'step_due', 'operation_workflow', '${BASKA_IS}', '{}'::jsonb, now())`,
+        [],
+        /policy|permission/i,
+      );
     }));
 
   test("CRM kaydı bu politikayla açılmıyor", () =>
