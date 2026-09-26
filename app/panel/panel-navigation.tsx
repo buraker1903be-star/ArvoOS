@@ -115,6 +115,8 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
               <a
                 key={uygulama.kod}
                 href={uygulama.href}
+                /* Platform yönetimi bir ürün değil: ızgarada ayrı tonda. */
+                data-kod={uygulama.kod}
                 title={`${uygulama.ad} uygulamasını aç`}
                 onClick={() => pencere.current?.close()}
                 {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}

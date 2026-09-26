@@ -305,3 +305,7 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
 .panel-apps-pencere .panel-apps-izgara a:hover,.panel-apps-pencere .panel-apps-izgara a:focus-visible{border-color:var(--accent-500);background:var(--accent-50);color:var(--accent-700);outline:none}
 .panel-apps-pencere .panel-apps-izgara a i{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r-md);background:var(--accent-500);color:var(--paper);font-style:normal;font-size:19px;font-weight:800}
 .panel-apps-pencere .panel-apps-izgara a span{font-size:12px;font-weight:700;line-height:1.3;text-align:center}
+/* Kurucu konsolu bir ürün değil, platformun kendisi: ızgarada ayrı tonda
+   duruyor ki yanındaki müşteri ürünleriyle karışmasın. */
+.panel-apps-pencere .panel-apps-izgara a[data-kod="yonetim"] i{background:var(--navy);color:var(--paper)}
+.panel-apps-pencere .panel-apps-izgara a[data-kod="yonetim"]:hover,.panel-apps-pencere .panel-apps-izgara a[data-kod="yonetim"]:focus-visible{border-color:var(--navy);background:var(--surface);color:var(--ink)}

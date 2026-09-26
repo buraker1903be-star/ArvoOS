@@ -17,7 +17,7 @@ import { NotificationsDrawer } from "./notifications-drawer";
 import { loadMessagesInit } from "./messages/load-messages";
 import { SidebarToggle } from "./sidebar-toggle";
 import { cookies, headers } from "next/headers";
-import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
+import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
 import { KonsolNavigasyon } from "./konsol-navigasyon";
 import "./panel-tokens.css";
 import "./panel.css";
@@ -122,7 +122,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         .select("product,status").eq("organization_id", membership.organization_id)
         .in("status", ["active", "trialing", "past_due"]);
   const acikUrunler = new Set(((urunLisanslari ?? []) as { product: string }[]).map((satir) => satir.product));
-  const digerUygulamalar = [
+  const lisansliUrunler = [
     /* ArvoLab kendi yolundan: tek kullanımlık oturum bağlantısıyla, ikinci
        bir giriş ekranı görmeden. Yeni sekmede — kişi ArvoOS'taki işini
        kaybetmesin. Kullanıcı tıklamasıyla açıldığı için yönlendirme
@@ -131,6 +131,28 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     { kod: "arc", ad: "Arc", href: "https://arc.arvo-os.com", ayniSekme: false },
     { kod: "randevu", ad: "Arvo Randevu", href: "https://randevu.arvo-os.com", ayniSekme: false },
   ].filter((uygulama) => acikUrunler.has(uygulama.kod));
+
+  /*
+    KURUCU KONSOLU (yonetim.arvo-os.com) uygulama ızgarasında, ama yalnızca
+    oraya GERÇEKTEN girebilenlere. Koşul konsolun kendi kapısıyla birebir
+    aynı: isPlatformOwner, yani Arvo'nun kendi kurumunda (arvo-os) owner
+    rolü. Başkasına yetki vermek, o kişiyi arvo-os çalışma alanına owner
+    olarak eklemek demek.
+
+    Burası YETKİ VERMİYOR, yalnızca gösteriyor. Asıl kapı bu dosyanın
+    yukarısında: konsol alan adına yetkisiz giren "Bu adres kurucu
+    yönetimi içindir" ekranıyla karşılaşıyor. Menüde gizlemek üçüncü
+    katman (AGENTS.md: RLS + sunucu + menü); tek başına koruma değil.
+
+    Bağlantı yeni sekmede: konsol tek bir kurumun paneli değil, platformun
+    kendisi — kurum panelindeki işin üstüne açılmamalı.
+  */
+  const digerUygulamalar = [
+    ...lisansliUrunler,
+    ...(isPlatformOwner
+      ? [{ kod: "yonetim", ad: "Kurucu Konsolu", href: `https://${MANAGEMENT_HOST}/panel`, ayniSekme: false }]
+      : []),
+  ];
 
   // Beyaz etiket: kurum kendi marka rengini seçtiyse tüm panel vurgusu
   // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
