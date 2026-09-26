@@ -143,7 +143,7 @@ export function MobileDrawer({
                   */}
                   <i>
                     {uygulama.marka
-                      ? <Image src={`/brand/${uygulama.marka}-on-dark.png`} alt={uygulama.ad} width={MARKA_OLCU[uygulama.marka].w} height={MARKA_OLCU[uygulama.marka].h} />
+                      ? <Image src={`/brand/${uygulama.marka}-on-dark.${MARKA_OLCU[uygulama.marka].uzanti}`} alt={uygulama.ad} width={MARKA_OLCU[uygulama.marka].w} height={MARKA_OLCU[uygulama.marka].h} />
                       : uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}
                   </i>
                   <span>{uygulama.ad}</span>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Arvo Kurucu Merkezi">
+  <title>Arvo Kurucu Merkezi</title>
+  <!--
+    ArvoOS kelime logosundaki iç içe geçmiş "OO" motifi, kare bir işarete
+    indirgenmiş hâli. Kurucu merkezi bir ÜRÜN değil, platformun kendisi;
+    bu yüzden kardeşleri gibi kelime logosu değil, işaret.
+    Renkler logodan birebir örneklendi: lacivert #ffffff, yeşil #6f9548.
+    Lacivert halkanın sol yarısı yeşilin üstüne yeniden çiziliyor — özgün
+    logodaki örgü (birbirinin içinden geçme) hissi böyle korunuyor.
+  -->
+  <circle cx="25" cy="32" r="13" fill="none" stroke="#ffffff" stroke-width="8"/>
+  <circle cx="39" cy="32" r="13" fill="none" stroke="#6f9548" stroke-width="8"/>
+  <path d="M25 19 A13 13 0 0 0 25 45" fill="none" stroke="#ffffff" stroke-width="8"/>
+</svg>

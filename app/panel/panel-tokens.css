@@ -123,6 +123,14 @@ html[data-theme="dark"] .panel-root{
   --danger:#f07a6f; --danger-soft:#3a1716;
   --info:#7ea8e6; --info-soft:#132844;
 
+  /*
+    --accent-50 koyu temada TANIMSIZDI ve açık temanın kremi (#fbf8f1)
+    olduğu gibi kalıyordu: onu zemin olarak kullanan her katman (uygulama
+    ızgarası hücresi, pano sürükleme hedefi, hızlı bakıştaki güncel aşama)
+    koyu panelin ortasında bembeyaz bir kutuya dönüşüyor, üstündeki açık
+    renkli marka logosu ve metin okunmaz oluyordu.
+  */
+  --accent-50:#1d1710;
   --accent-100:#2a2215;
   /* koyu zeminde koyu altın okunmuyor: vurgu parlak altına geçer */
   --accent:        var(--tenant-accent,        var(--accent-400));

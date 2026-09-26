@@ -150,7 +150,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const digerUygulamalar = [
     ...lisansliUrunler,
     ...(isPlatformOwner
-      ? [{ kod: "yonetim", ad: "Kurucu Konsolu", href: `https://${MANAGEMENT_HOST}/panel`, ayniSekme: false }]
+      ? [{ kod: "yonetim", ad: "Kurucu Konsolu", href: `https://${MANAGEMENT_HOST}/panel`, ayniSekme: false, marka: "yonetim" as const }]
       : []),
   ];
 

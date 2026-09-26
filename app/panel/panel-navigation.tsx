@@ -51,11 +51,17 @@ export type DigerUygulama = {
   marka?: MarkaKodu;
 };
 
-/** Logo dosyalarının kendi en-boy oranı; kırpılmadan sığdırmak için. */
+/*
+  Logo dosyalarının kendi en-boy oranı ve uzantısı; kırpılmadan sığdırmak
+  için. Ürünlerin kelime logosu PNG (tasarımdan geldiği gibi), kurucu
+  merkezinin işareti SVG — o bir ürün değil, platformun kendisi ve
+  kardeşleri gibi bir kelime logosu yok.
+*/
 export const MARKA_OLCU = {
-  arvoos: { w: 1901, h: 395 },
-  arvolab: { w: 1920, h: 468 },
-  arc: { w: 1909, h: 373 },
+  arvoos: { w: 1901, h: 395, uzanti: "png" },
+  arvolab: { w: 1920, h: 468, uzanti: "png" },
+  arc: { w: 1909, h: 373, uzanti: "png" },
+  yonetim: { w: 64, h: 64, uzanti: "svg" },
 } as const;
 export type MarkaKodu = keyof typeof MARKA_OLCU;
 
@@ -66,11 +72,11 @@ export type MarkaKodu = keyof typeof MARKA_OLCU;
   JavaScript ile seçmek ise tema değişiminde bir kare yanlış logo demek.
 */
 function MarkaLogosu({ marka, ad }: { marka: MarkaKodu; ad: string }) {
-  const { w, h } = MARKA_OLCU[marka];
+  const { w, h, uzanti } = MARKA_OLCU[marka];
   return (
     <>
-      <Image className="marka-acik" src={`/brand/${marka}.png`} alt={ad} width={w} height={h} />
-      <Image className="marka-koyu" src={`/brand/${marka}-on-dark.png`} alt={ad} width={w} height={h} />
+      <Image className="marka-acik" src={`/brand/${marka}.${uzanti}`} alt={ad} width={w} height={h} />
+      <Image className="marka-koyu" src={`/brand/${marka}-on-dark.${uzanti}`} alt={ad} width={w} height={h} />
     </>
   );
 }
