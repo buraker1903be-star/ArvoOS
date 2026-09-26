@@ -6,9 +6,10 @@
 .ops-pano-kolon{border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2);overflow:hidden}
 .ops-pano-kolon header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line-soft);background:var(--surface)}
 .ops-pano-kolon header b{font-size:12px;font-weight:800;letter-spacing:.02em}
-.ops-pano-kolon header b[data-tone="info"]{color:var(--accent-600)}
-.ops-pano-kolon header b[data-tone="warning"]{color:var(--warning)}
-.ops-pano-kolon header b[data-tone="success"]{color:var(--success)}
+/* Tamamlandı ve şablon dışı kolonları akıştan ayrılmalı. */
+.ops-pano-kolon[data-tur="tamamlandi"] header b{color:var(--success)}
+.ops-pano-kolon[data-tur="sablon_disi"]{border-style:dashed}
+.ops-pano-kolon[data-tur="sablon_disi"] header b{color:var(--warning)}
 .ops-pano-kolon header span{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:800;text-align:center}
 .ops-pano-kartlar{display:grid;gap:8px;padding:10px}
 
@@ -28,6 +29,19 @@
 .ops-pano-tasi{display:flex;flex-wrap:wrap;gap:4px;padding-top:6px;border-top:1px solid var(--line-soft)}
 .ops-pano-tasi button{padding:3px 7px;border:1px solid var(--line);border-radius:5px;background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
 .ops-pano-tasi button:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
-.ops-pano-tasi button[data-tone="success"]:hover{border-color:var(--success);color:var(--success)}
+.ops-pano-tasi button[data-tone="success"]{border-color:var(--success);color:var(--success)}
+.ops-pano-tasi button[data-tone="success"]:hover{background:var(--success);color:#fff}
+.ops-pano-sayac{margin-right:auto;font-size:11px;font-weight:700;color:var(--dim);align-self:center}
+
+/* İlerleme çubuğu: "3/8 aşama" sayısının görsel karşılığı. */
+.ops-pano-ilerleme{height:3px;border-radius:999px;background:var(--line-soft);overflow:hidden}
+.ops-pano-ilerleme i{display:block;height:100%;background:var(--accent-500)}
+
+/* Şablon dışı kartta hangi aşamada olduğu yazılmalı: kolon adı söylemiyor. */
+.ops-pano-asama{margin:0;padding:3px 7px;border-radius:5px;background:var(--warning-soft);color:var(--ink);font-size:11px;font-weight:700}
+
+/* Şablon dışı uyarısı: sebebi de yazılı olduğu için tek satır değil. */
+.ops-pano-not{margin:12px 0 0;padding:10px 14px;border:1px solid var(--warning);border-radius:var(--r-md);background:var(--warning-soft);color:var(--ink);font-size:12px;line-height:1.55}
+.ops-pano-not a{color:var(--accent-600);font-weight:700}
 
 .ops-pano-bos,.ops-pano-kisalt{margin:0;padding:8px 2px;color:var(--dim);font-size:11px;text-align:center}

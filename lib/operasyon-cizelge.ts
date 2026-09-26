@@ -360,64 +360,129 @@ export function musteriAdlari(isler: CizelgeIsi[]): string[] {
   return [...adlar.values()].sort((a, b) => a.localeCompare(b, "tr"));
 }
 
-// ---------- Pano (kanban) ----------
+// ---------- Pano: şablon aşamaları kolon ----------
 
 /*
-  Pano: aşamalar durum kolonlarında.
+  Pano kolonları ADIM ŞABLONUNDAKİ aşamalar, kart ise İŞ.
 
-  Neden kart AŞAMA, iş değil: "ne hangi aşamada" sorusu ancak böyle
-  görünüyor. İşler kart olsaydı kolonlar işin durumunu (planlandı/devam
-  ediyor) gösterirdi ve bir tezin dokuz bölümünden hangisinin kontrolde
-  olduğu yine görünmezdi — çizelgeyi yapma sebebimizin aynısı.
+  İlk sürümde kolonlar adımın dört durumuydu (planlandı/çalışılıyor/
+  kontrolde/tamamlandı) ve kart aşamaydı. Operasyoncunun istediği bu değil:
+  "her iki çalışmada da hangi aşamada olduğumuzu görmek" sorusunun yanıtı,
+  işin şablondaki hangi aşamada durduğudur. Kart iş olunca pano o soruyu
+  doğrudan yanıtlıyor: Emine Hanım'ın tezi "İç Kontrol" kolonunda, makalesi
+  "Hazırlanıyor" kolonunda.
 
-  Kart hangi işe ve müşteriye ait olduğunu taşıyor; "İç kontrol" tek başına
-  hangi tezin iç kontrolü olduğunu söylemiyor.
+  İŞİN KOLONU: tamamlanmayan İLK adımı (sıraya göre). Hepsi bittiyse iş
+  "Tamamlandı" kolonunda.
 
-  Ay penceresi YOK: pano "şu an ne var" görünümü, takvim değil. Tarihi
-  olmayan aşama da panoda duruyor — planlanacak iş de iştir.
+  ŞABLON DIŞI kolon şart. Adımlar üç kaynaktan üretiliyor ve önceliği
+  sözleşmenin ara teslim takviminde (add_standard_operation_steps):
+  sözleşmeden açılan bir işin aşama adları müşteriye satılan plandan gelir
+  ve şablonla eşleşmeyebilir. Böyle bir işi ilk kolona koymak ya da
+  gizlemek, panonun yanlış bir tablo göstermesi olurdu — kendi kolonunda,
+  adıyla duruyor.
+
+  Saf modül; testi tests/unit/operasyon-cizelge.test.ts.
 */
-export interface PanoKarti extends KisiAsamasi {
+export interface PanoIsKarti {
+  isId: string;
+  baslik: string;
+  musteri: string;
+  durum: string;
+  /** Tamamlanmayan ilk adım; hepsi bittiyse null. */
+  guncelAsama: string | null;
+  guncelAsamaId: string | null;
+  /** Aşamanın teslim tarihi (işin termini değil). */
+  tarih: string | null;
+  tamamlandi: boolean;
+  /** Bir önceki tamamlanmış adım: "geri al" bunu yeniden açıyor. */
+  oncekiAsamaId: string | null;
   sorumluAdi: string | null;
+  tamamlananAsama: number;
+  toplamAsama: number;
 }
+
+export type PanoKolonTuru = "asama" | "tamamlandi" | "sablon_disi";
 
 export interface PanoKolonu {
-  durum: string;
-  kartlar: PanoKarti[];
+  anahtar: string;
+  baslik: string;
+  tur: PanoKolonTuru;
+  kartlar: PanoIsKarti[];
 }
 
-/** Kolon sırası: işin akışı (planlandı → çalışılıyor → kontrolde → tamamlandı). */
-export const PANO_KOLONLARI = ["planned", "in_progress", "review", "done"];
+export const TAMAMLANDI_KOLONU = "__tamamlandi__";
+export const SABLON_DISI_KOLONU = "__sablon_disi__";
 
-export function panoyuKur(
+/** Aşama adlarını karşılaştırmak için: Türkçe küçük harf, boşluklar teklenir. */
+const asamaAnahtari = (baslik: string) => baslik.trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
+
+export interface SablonAsamasi {
+  title: string;
+  sort_order: number;
+}
+
+export function asamaPanosuKur(
   isler: CizelgeIsi[],
+  sablon: SablonAsamasi[],
   adCoz: (personelId: string) => string | null,
 ): PanoKolonu[] {
-  const kolonlar = new Map<string, PanoKarti[]>(PANO_KOLONLARI.map((durum) => [durum, []]));
+  const sirali = [...sablon].sort((a, b) => a.sort_order - b.sort_order);
+  const kolonlar = new Map<string, PanoKolonu>();
+  for (const asama of sirali) {
+    const anahtar = asamaAnahtari(asama.title);
+    if (!kolonlar.has(anahtar)) kolonlar.set(anahtar, { anahtar, baslik: asama.title, tur: "asama", kartlar: [] });
+  }
+  kolonlar.set(TAMAMLANDI_KOLONU, { anahtar: TAMAMLANDI_KOLONU, baslik: "Tamamlandı", tur: "tamamlandi", kartlar: [] });
+  kolonlar.set(SABLON_DISI_KOLONU, { anahtar: SABLON_DISI_KOLONU, baslik: "Şablon dışı aşama", tur: "sablon_disi", kartlar: [] });
 
   for (const is of isler) {
-    const musteri = is.customer_name?.trim() || KURUM_ICI;
-    for (const asama of asamalariKur(is)) {
+    const adimlar = [...(is.steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+    const guncel = adimlar.find((adim) => !adim.is_completed) ?? null;
+    const tamamlanan = adimlar.filter((adim) => adim.is_completed);
+    const kart: PanoIsKarti = {
+      isId: is.id,
+      baslik: is.title,
+      musteri: is.customer_name?.trim() || KURUM_ICI,
+      durum: is.status,
+      guncelAsama: guncel?.title ?? null,
+      guncelAsamaId: guncel?.id ?? null,
+      tarih: guncel?.due_date ?? null,
       /*
-        Tanınmayan durum "planlandı"ya düşürülmüyor, kendi kolonunda
-        toplanıyor: veriyi sessizce başka bir yere yazmak, bir göç hatasını
-        gizlemenin en kolay yolu.
+        "Tamamlanmayan adım yok" ile "hiç adım yok" aynı şey değil: adımı
+        üretilmemiş iş bitmiş sayılamaz. Ayrım yapılmazsa yeni açılmış her
+        iş panoda "tamamlandı" görünürdü.
       */
-      const kolon = kolonlar.get(asama.durum) ?? [];
-      kolon.push({
-        ...asama,
-        isId: is.id,
-        isBasligi: is.title,
-        musteri,
-        isSorumlusuId: is.assigned_employee_id ?? null,
-        sorumluAdi: asama.sorumluId ? adCoz(asama.sorumluId) ?? "Bilinmeyen personel" : null,
-      });
-      kolonlar.set(asama.durum, kolon);
-    }
+      tamamlandi: adimlar.length > 0 && !guncel,
+      oncekiAsamaId: tamamlanan.length ? tamamlanan[tamamlanan.length - 1].id : null,
+      sorumluAdi: guncel?.assigned_employee_id
+        ? adCoz(guncel.assigned_employee_id) ?? "Bilinmeyen personel"
+        : is.assigned_employee_id
+          ? adCoz(is.assigned_employee_id) ?? "Bilinmeyen personel"
+          : null,
+      tamamlananAsama: tamamlanan.length,
+      toplamAsama: adimlar.length,
+    };
+
+    /*
+      Adımı hiç olmayan iş de panoda görünmeli: "şablon dışı" değil,
+      henüz adımı üretilmemiş bir iş — kolonu Tamamlandı da olamaz.
+      Şablon dışına düşüyor ve kartta "aşama yok" yazıyor; gizlenmesi onu
+      unutturmanın en kolay yolu olurdu.
+    */
+    const hedef = !adimlar.length
+      ? SABLON_DISI_KOLONU
+      : !guncel
+        ? TAMAMLANDI_KOLONU
+        : kolonlar.has(asamaAnahtari(guncel.title))
+          ? asamaAnahtari(guncel.title)
+          : SABLON_DISI_KOLONU;
+    kolonlar.get(hedef)!.kartlar.push(kart);
   }
 
-  for (const kartlar of kolonlar.values()) {
+  for (const kolon of kolonlar.values()) {
     // Tarihe göre: en yakın teslim üstte, tarihsizler sonda.
-    kartlar.sort((a, b) => {
+    kolon.kartlar.sort((a, b) => {
       if (a.tarih && b.tarih) return a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr");
       if (a.tarih) return -1;
       if (b.tarih) return 1;
@@ -425,10 +490,23 @@ export function panoyuKur(
     });
   }
 
-  // Bilinen kolonlar sırayla, tanınmayan durumlar sonda.
-  const bilinen = PANO_KOLONLARI.map((durum) => ({ durum, kartlar: kolonlar.get(durum) ?? [] }));
-  const digerleri = [...kolonlar.entries()]
-    .filter(([durum]) => !PANO_KOLONLARI.includes(durum))
-    .map(([durum, kartlar]) => ({ durum, kartlar }));
-  return [...bilinen, ...digerleri];
+  /*
+    Boş kalan "şablon dışı" kolon gösterilmiyor: her zaman duran boş bir
+    kolon panoyu daraltıyor ve kullanıcıya açıklaması gereken bir şey
+    bırakıyor. Şablon aşamaları ise boş olsa da duruyor — akışın tamamı
+    görünmeli.
+  */
+  return [...kolonlar.values()].filter((kolon) => kolon.tur !== "sablon_disi" || kolon.kartlar.length > 0);
 }
+
+/** Varsayılan şablon (add_standard_operation_steps ile aynı sekiz aşama). */
+export const VARSAYILAN_PANO_SABLONU: SablonAsamasi[] = [
+  { title: "İş Kabul Edildi", sort_order: 10 },
+  { title: "Hazırlık Yapılıyor", sort_order: 20 },
+  { title: "Hazırlanıyor", sort_order: 30 },
+  { title: "İç Kontrol Yapılıyor", sort_order: 40 },
+  { title: "Hazırlandı", sort_order: 50 },
+  { title: "Müşteri İlişkileri Talimatı Bekleniyor", sort_order: 60 },
+  { title: "Revizyonlar Yapılıyor", sort_order: 70 },
+  { title: "Evrak Teslimine Hazır", sort_order: 80 },
+];
