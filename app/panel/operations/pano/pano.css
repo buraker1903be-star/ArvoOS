@@ -133,7 +133,16 @@
   HIZLI BAKIŞ penceresi. Kart tıklanınca iş detayına gitmek panoyu
   kapatıyordu; işin bütün aşamaları artık panodan çıkmadan görünüyor.
 */
-.ops-pano-pencere{width:min(560px,92vw);padding:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg)}
+/*
+  KONUM ve ZEMİN açıkça yazılı.
+   - position/inset/margin: tarayıcının kendi ortalamasına bırakılan
+     dialog, kapsayıcısına göre köşeye yapışabiliyor (panel menüsündeki
+     uygulama penceresinde canlıda öyle oldu).
+   - --surface DEĞİL --surface-raised: premium temada --surface yarı
+     saydam (rgba(255,255,255,.97)) ve pencerenin arkasındaki pano
+     kartları içinden okunuyor.
+*/
+.ops-pano-pencere{position:fixed;inset:0;margin:auto;width:min(560px,92vw);height:fit-content;max-height:86vh;padding:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg)}
 .ops-pano-pencere::backdrop{background:rgb(0 0 0 / .45)}
 .ops-pano-pencere header{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line-soft)}
 .ops-pano-pencere header div{display:grid;gap:2px;min-width:0}
@@ -141,12 +150,12 @@
 .ops-pano-pencere header small{font-size:11px;color:var(--dim)}
 .ops-pano-pencere header button{margin-left:auto;flex:none;padding:2px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:800;cursor:pointer}
 .ops-pano-pencere header button:hover{border-color:var(--danger);color:var(--danger)}
-.ops-pano-pencere footer{padding:11px 16px;border-top:1px solid var(--line-soft);background:var(--surface-2);border-radius:0 0 var(--r-lg) var(--r-lg)}
+.ops-pano-pencere footer{padding:11px 16px;border-top:1px solid var(--line-soft);background:var(--surface);border-radius:0 0 var(--r-lg) var(--r-lg)}
 .ops-pano-pencere footer a{color:var(--accent-600);font-size:12px;font-weight:700;text-decoration:none}
 .ops-pano-pencere footer a:hover{text-decoration:underline}
 
 .ops-pano-adimlar{list-style:none;margin:0;padding:8px;display:grid;gap:5px;max-height:min(420px,55vh);overflow-y:auto}
-.ops-pano-adimlar li{display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface)}
+.ops-pano-adimlar li{display:flex;align-items:center;gap:10px;padding:7px 9px;border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface-2)}
 /* Güncel aşama vurgulu: pencerenin asıl cevabı "şu an neredeyiz". */
 .ops-pano-adimlar li[data-durum="guncel"]{border-color:var(--accent-400);background:var(--accent-50)}
 .ops-pano-adimlar li[data-durum="bitti"]{opacity:.7}
