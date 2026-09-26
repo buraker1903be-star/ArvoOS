@@ -63,6 +63,12 @@ export function MobileDrawer({
       ...groups,
     ];
 
+    /*
+      Uygulama ekranı mobilde de olmalı. Masaüstü menüsünde "Diğer
+      uygulamalar" bölümü vardı, burada hiç yoktu: telefondan giren kişi
+      ArvoLab'a ya da öbür ürünlere panelden ulaşamıyordu.
+    */
+    result.push({ href: "/panel/uygulamalar", label: "Uygulamalar", icon: "⊞" });
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
     // Platform yönetimi uygulama panelinden kaldırıldı; kendi alan adında.
     return result;
