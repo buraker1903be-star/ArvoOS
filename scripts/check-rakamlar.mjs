@@ -35,7 +35,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+/*
+  Kök argümandan verilebiliyor: denetimin KENDİSİ sınanabilsin diye
+  (tests/unit/check-rakamlar.test.ts sabit bir örnek ağaca karşı koşuyor).
+  Denetimin sessizce kör kalması, denetlediği hatadan farksız.
+*/
+const root = process.argv[2]
+  ? path.resolve(process.cwd(), process.argv[2])
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const TARANAN = ["app", "lib"];
 
 /*
@@ -168,12 +175,27 @@ const dataAdi = (kalip) => {
  * İkincisinde eşleşme SIRAYA göre: birinci yıkım birinci sorguya denk.
  */
 function sinirliAdlar(kaynak) {
-  const sinirli = new Set();
+  /*
+    Bağlanmalar KONUMUYLA tutuluyor, düz bir ad kümesiyle değil.
+
+    "data" bu kod tabanındaki en yaygın değişken adı ve aynı dosyada bir
+    eylem onu .limit()'li, bir başkası sınırsız sorgudan bağlıyor. Ad kümesi
+    tutmak, sınırsız sorgudan gelen sayımı da suçluyordu — yani denetim en
+    sık karşılaşılan yazımda yanlış alarm veriyordu. Okunmaz bir denetim,
+    olmayan denetimdir.
+
+    Kural: bir adın o satırdaki durumunu, ONDAN ÖNCEKİ SON bağlanması
+    söyler. Yeniden bağlanmak sınırı temizler.
+  */
+  const baglanmalar = new Map();
+  const ekle = (ad, index, sinirli) => {
+    if (!ad) return;
+    if (!baglanmalar.has(ad)) baglanmalar.set(ad, []);
+    baglanmalar.get(ad).push({ index, sinirli });
+  };
 
   for (const m of kaynak.matchAll(/const\s*\{([^{}]*)\}\s*=\s*await\s+[\s\S]*?;/g)) {
-    if (!/\.limit\(/.test(m[0])) continue;
-    const ad = dataAdi(m[1]);
-    if (ad) sinirli.add(ad);
+    ekle(dataAdi(m[1]), m.index + m[0].length, /\.limit\(/.test(m[0]));
   }
 
   for (const m of kaynak.matchAll(/const\s*\[([\s\S]*?)\]\s*=\s*await\s+Promise\.all\(\s*\[([\s\S]*?)\]\s*\)\s*;/g)) {
@@ -181,11 +203,20 @@ function sinirliAdlar(kaynak) {
     const sorgular = ustSeviyeBol(m[2]);
     hedefler.forEach((hedef, sira) => {
       const sorgu = sorgular[sira];
-      if (!sorgu || !/\.limit\(/.test(sorgu)) return;
-      const ad = dataAdi(hedef);
-      if (ad) sinirli.add(ad);
+      if (!sorgu) return;
+      ekle(dataAdi(hedef), m.index + m[0].length, /\.limit\(/.test(sorgu));
     });
   }
+
+  const sinirliMi = (ad, konum) => {
+    const liste = baglanmalar.get(ad);
+    if (!liste) return false;
+    let son = null;
+    for (const b of liste) {
+      if (b.index < konum) son = b;
+    }
+    return Boolean(son?.sinirli);
+  };
 
   /*
     Türev adlar: `const satirlar = (data ?? []) as T[]` ve ardından
@@ -195,13 +226,16 @@ function sinirliAdlar(kaynak) {
   for (let gecis = 0; gecis < 3; gecis += 1) {
     for (const m of kaynak.matchAll(/const\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);/g)) {
       const [, hedef, sag] = m;
-      if (sinirli.has(hedef)) continue;
-      const tureyen = [...sinirli].some((ad) => new RegExp(`\\b${ad}\\b`).test(sag));
-      if (tureyen && /\?\?\s*\[\]|\.filter\(|\.map\(|\.slice\(|\.\.\./.test(sag)) sinirli.add(hedef);
+      const son = m.index + m[0].length;
+      if (sinirliMi(hedef, son + 1)) continue;
+      const tureyen = [...baglanmalar.keys()].some(
+        (ad) => new RegExp(`\\b${ad}\\b`).test(sag) && sinirliMi(ad, m.index),
+      );
+      if (tureyen && /\?\?\s*\[\]|\.filter\(|\.map\(|\.slice\(|\.\.\./.test(sag)) ekle(hedef, son, true);
     }
   }
 
-  return sinirli;
+  return { adlar: [...baglanmalar.keys()], sinirliMi };
 }
 
 /**
@@ -212,17 +246,51 @@ function sinirliAdlar(kaynak) {
  * biriken sayı da sessizce eksilir.
  */
 function dongununGovdesi(kaynak, baslangic) {
-  const acilis = kaynak.indexOf("{", baslangic);
-  if (acilis === -1) return "";
+  let i = baslangic;
+  while (i < kaynak.length && /\s/.test(kaynak[i])) i += 1;
+
+  /*
+    Süslü parantezsiz gövde: `for (const s of liste) toplam += s.x;`
+
+    Eskiden gövde "baştan sonraki ilk {" diye aranıyordu ve tek satırlık
+    döngüde bu, BAMBAŞKA bir bloğu (çoğu zaman sonraki fonksiyonun
+    gövdesini) denetlemek demekti. Biriktirme orada görünmediği için desen
+    sessizce kaçıyordu — üstelik bu yazım, tek satırlık toplamanın en
+    doğal hâli.
+  */
+  if (kaynak[i] !== "{") {
+    const son = kaynak.indexOf(";", i);
+    return kaynak.slice(i, son === -1 ? Math.min(kaynak.length, i + 200) : son + 1);
+  }
+
   let derinlik = 0;
-  for (let i = acilis; i < kaynak.length; i += 1) {
-    if (kaynak[i] === "{") derinlik += 1;
-    else if (kaynak[i] === "}") {
+  for (let j = i; j < kaynak.length; j += 1) {
+    if (kaynak[j] === "{") derinlik += 1;
+    else if (kaynak[j] === "}") {
       derinlik -= 1;
-      if (derinlik === 0) return kaynak.slice(acilis, i + 1);
+      if (derinlik === 0) return kaynak.slice(i, j + 1);
     }
   }
-  return kaynak.slice(acilis);
+  return kaynak.slice(i);
+}
+
+/** `.forEach(` sonrası geri çağırmanın gövdesi: ok işaretinden sonrası. */
+function geriCagirmaninGovdesi(kaynak, bas) {
+  const ok = kaynak.indexOf("=>", bas);
+  return ok === -1 || ok - bas > 120 ? "" : dongununGovdesi(kaynak, ok + 2);
+}
+
+/** Açılış parantezinin eşleşen kapanışından SONRAKİ konum. */
+function kapanistanSonra(kaynak, acilis) {
+  let derinlik = 0;
+  for (let i = acilis; i < kaynak.length; i += 1) {
+    if (kaynak[i] === "(") derinlik += 1;
+    else if (kaynak[i] === ")") {
+      derinlik -= 1;
+      if (derinlik === 0) return i + 1;
+    }
+  }
+  return kaynak.length;
 }
 
 /*
@@ -275,14 +343,16 @@ for (const dizin of TARANAN) {
     };
 
     // --- KALIP 1
-    const sinirli = sinirliAdlar(kaynak);
-    if (sinirli.size) {
+    const { adlar, sinirliMi } = sinirliAdlar(kaynak);
+    if (adlar.length) {
       for (const m of kaynak.matchAll(/\.reduce\(/g)) {
         const no = satirNo(m.index);
         if (kacisVar(no)) continue;
         // Toplamanın alıcısı bu ifadenin solunda; zincir satıra yayılabiliyor.
         const onceki = kaynak.slice(Math.max(0, m.index - 400), m.index);
-        const suclu = [...sinirli].find((ad) => new RegExp(`\\b${ad}\\b[^;]*$`).test(onceki));
+        const suclu = adlar.find(
+          (ad) => new RegExp(`\\b${ad}\\b[^;]*$`).test(onceki) && sinirliMi(ad, m.index),
+        );
         if (!suclu) continue;
         sorunlar.push(
           `${goreli}:${no}  "${suclu}" .limit() ile sınırlı bir sorgudan geliyor ama .reduce() ile toplanıyor.\n` +
@@ -292,7 +362,7 @@ for (const dizin of TARANAN) {
       }
 
       // --- KALIP 1b: sınırlı liste üzerinde döngü kurup sayı biriktirmek
-      for (const ad of sinirli) {
+      for (const ad of adlar) {
         const desenler = [
           new RegExp(`for\\s*\\([^)]*\\bof\\s+[^)]*\\b${ad}\\b[^)]*\\)`, "g"),
           new RegExp(`\\b${ad}\\b[^;=]{0,40}?\\.forEach\\(`, "g"),
@@ -301,7 +371,11 @@ for (const dizin of TARANAN) {
           for (const m of kaynak.matchAll(desen)) {
             const no = satirNo(m.index);
             if (kacisVar(no)) continue;
-            if (!BIRIKTIRME.test(dongununGovdesi(kaynak, m.index + m[0].length - 1))) continue;
+            if (!sinirliMi(ad, m.index)) continue;
+            const govde = m[0].includes(".forEach(")
+              ? geriCagirmaninGovdesi(kaynak, m.index + m[0].length)
+              : dongununGovdesi(kaynak, m.index + m[0].length);
+            if (!BIRIKTIRME.test(govde)) continue;
             sorunlar.push(
               `${goreli}:${no}  "${ad}" .limit() ile sınırlı ama bir döngüde sayı biriktiriliyor (+= ya da ++).\n` +
               "      Sınır aşıldığında liste kısalır, biriken sayı da sessizce eksilir — üstelik listeye hiç\n" +
@@ -313,19 +387,32 @@ for (const dizin of TARANAN) {
         }
       }
 
-      // --- KALIP 1c: sınırlı liste üzerinde .filter(…).length ile saymak
-      for (const ad of sinirli) {
-        const desen = new RegExp(`\\b${ad}\\b\\s*\\.filter\\(`, "g");
-        for (const m of kaynak.matchAll(desen)) {
-          const kalan = kaynak.slice(m.index, m.index + 600);
-          if (!/\)\s*\.length\b/.test(kalan)) continue;
-          const no = satirNo(m.index);
-          if (kacisVar(no)) continue;
-          sorunlar.push(
-            `${goreli}:${no}  "${ad}" .limit() ile sınırlı ama .filter(…).length ile SAYILIYOR.\n` +
-            "      Sayı, sınıra ulaşıldığı anda sessizce eksilmeye başlar. Sayımı veritabanına taşıyın.",
-          );
-        }
+      /*
+        KALIP 1c: sınırlı liste üzerinde .filter(…).length ile saymak.
+
+        Ad ile .filter( arasındaki sarmalayıcılar atlanıyor. Desen eskiden
+        `ad.filter(` biçimini arıyordu ve Supabase'in EN YAYGIN yazımını
+        hiç görmüyordu: `(data ?? []).filter(…).length`. Aradaki `?? []`,
+        parantez ve `as T[]` yüzünden ad doğrudan .filter'a komşu olmuyor.
+
+        .length denetimi 600 karakterlik pencereyle değil, filter çağrısının
+        KENDİ kapanışıyla yapılıyor: pencere, ilgisiz bir .length'i eşleştirip
+        yanlış alarm üretebiliyordu.
+      */
+      for (const m of kaynak.matchAll(/\.filter\(/g)) {
+        const sonra = kaynak.slice(kapanistanSonra(kaynak, m.index + ".filter".length));
+        if (!/^\s*\.length\b/.test(sonra)) continue;
+        const no = satirNo(m.index);
+        if (kacisVar(no)) continue;
+        const onceki = kaynak.slice(Math.max(0, m.index - 80), m.index);
+        const suclu = adlar.find(
+          (ad) => new RegExp(`\\b${ad}\\b[^;]*$`).test(onceki) && sinirliMi(ad, m.index),
+        );
+        if (!suclu) continue;
+        sorunlar.push(
+          `${goreli}:${no}  "${suclu}" .limit() ile sınırlı ama .filter(…).length ile SAYILIYOR.\n` +
+          "      Sayı, sınıra ulaşıldığı anda sessizce eksilmeye başlar. Sayımı veritabanına taşıyın.",
+        );
       }
     }
 

@@ -35,6 +35,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // check-rakamlar'ın örnek ağacı — bilerek hatalı kod içerir.
+    "tests/fixtures/**",
   ]),
 ]);
 
