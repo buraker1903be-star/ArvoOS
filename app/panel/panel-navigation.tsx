@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRef } from "react";
 import { usePathname } from "next/navigation";
@@ -37,7 +38,42 @@ import {
   ürünleri de listeleyen sürüm denendi ve bırakıldı: basılınca hiçbir şey
   açmayan satırlar duruyordu.
 */
-export type DigerUygulama = { kod: string; ad: string; href: string; ayniSekme: boolean };
+export type DigerUygulama = {
+  kod: string;
+  ad: string;
+  href: string;
+  ayniSekme: boolean;
+  /*
+    public/brand/ altındaki marka dosyasının adı. Logosu olan ürün gerçek
+    logosuyla, olmayan (Randevu, Kurucu Konsolu) baş harfiyle görünüyor —
+    olmayan bir logoyu harfle taklit etmek yerine ayrımı açıkça bırakmak.
+  */
+  marka?: MarkaKodu;
+};
+
+/** Logo dosyalarının kendi en-boy oranı; kırpılmadan sığdırmak için. */
+export const MARKA_OLCU = {
+  arvoos: { w: 1901, h: 395 },
+  arvolab: { w: 1920, h: 468 },
+  arc: { w: 1909, h: 373 },
+} as const;
+export type MarkaKodu = keyof typeof MARKA_OLCU;
+
+/*
+  Logo iki kez çiziliyor, biri CSS ile gizli: markaların koyu zemin için
+  ayrı dosyası var (-on-dark) ve panel teması html[data-theme] ile
+  değişiyor. Tek dosyayı süzgeçle koyulaştırmak marka kılavuzuna aykırı;
+  JavaScript ile seçmek ise tema değişiminde bir kare yanlış logo demek.
+*/
+function MarkaLogosu({ marka, ad }: { marka: MarkaKodu; ad: string }) {
+  const { w, h } = MARKA_OLCU[marka];
+  return (
+    <>
+      <Image className="marka-acik" src={`/brand/${marka}.png`} alt={ad} width={w} height={h} />
+      <Image className="marka-koyu" src={`/brand/${marka}-on-dark.png`} alt={ad} width={w} height={h} />
+    </>
+  );
+}
 
 export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulamalar = [] }: {
   modules: PanelModule[];
@@ -121,7 +157,11 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
                 onClick={() => pencere.current?.close()}
                 {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
               >
-                <i aria-hidden="true">{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>
+                <span className="panel-apps-simge">
+                  {uygulama.marka
+                    ? <MarkaLogosu marka={uygulama.marka} ad={uygulama.ad} />
+                    : <i aria-hidden="true">{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>}
+                </span>
                 <span>{uygulama.ad}</span>
               </a>
             ))}

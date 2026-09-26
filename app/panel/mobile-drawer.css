@@ -49,6 +49,8 @@
   .mobile-drawer-apps{display:grid;gap:2px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)}
   .mobile-drawer-apps>small{padding:0 10px 6px;color:rgba(255,255,255,.45);font-size:11px;font-weight:800;letter-spacing:.05em}
   .mobile-drawer-apps a>b{font-size:14px}
+  /* Logosu olan ürün gerçek logosuyla; kutu aynı boyda kalıyor. */
+  .mobile-drawer-apps a i img{width:auto;height:auto;max-width:30px;max-height:18px;object-fit:contain}
 
   .mobile-drawer-footer{margin-top:auto;padding:12px 16px max(18px,env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.1)}
   .mobile-drawer-footer>div{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.72)}

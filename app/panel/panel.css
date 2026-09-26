@@ -300,10 +300,23 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
   uygulama simgesini eziyordu: kutu görünmüyor, harf menü ikonunun altın
   rengiyle tek başına duruyordu.
 */
-.panel-apps-pencere .panel-apps-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;padding:0 18px}
+/* Hücre 132px: en geniş logo (ArvoARC, 1909×373) 22px yükseklikte 113px
+   ediyor ve iç boşlukla birlikte 112px'lik hücreye sığmıyordu. */
+.panel-apps-pencere .panel-apps-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;padding:0 18px}
 .panel-apps-pencere .panel-apps-izgara a{display:grid;justify-items:center;gap:8px;padding:16px 8px;border:1px solid var(--line-soft);border-radius:var(--r-lg);background:var(--surface-2);color:var(--muted);text-decoration:none}
 .panel-apps-pencere .panel-apps-izgara a:hover,.panel-apps-pencere .panel-apps-izgara a:focus-visible{border-color:var(--accent-500);background:var(--accent-50);color:var(--accent-700);outline:none}
-.panel-apps-pencere .panel-apps-izgara a i{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r-md);background:var(--accent-500);color:var(--paper);font-style:normal;font-size:19px;font-weight:800}
+/*
+  Simge alanı sabit yükseklikte: logosu olan ürünle (yatay logo) olmayanın
+  (kare harf kutusu) hücreleri aynı boyda dursun.
+*/
+.panel-apps-pencere .panel-apps-izgara .panel-apps-simge{display:grid;place-items:center;width:100%;height:44px}
+.panel-apps-pencere .panel-apps-izgara a i{display:grid;place-items:center;width:38px;height:38px;border-radius:var(--r-md);background:var(--accent-500);color:var(--paper);font-style:normal;font-size:17px;font-weight:800}
+/* Logo kırpılmadan sığıyor; ASLA yeniden renklendirilmiyor (marka kuralı),
+   koyu zemin için ayrı dosyası var. */
+.panel-apps-pencere .panel-apps-izgara img{width:auto;height:auto;max-width:100%;max-height:22px;object-fit:contain}
+.panel-apps-pencere .panel-apps-izgara .marka-koyu{display:none}
+html[data-theme="dark"] .panel-apps-pencere .panel-apps-izgara .marka-acik{display:none}
+html[data-theme="dark"] .panel-apps-pencere .panel-apps-izgara .marka-koyu{display:block}
 .panel-apps-pencere .panel-apps-izgara a span{font-size:12px;font-weight:700;line-height:1.3;text-align:center}
 /* Kurucu konsolu bir ürün değil, platformun kendisi: ızgarada ayrı tonda
    duruyor ki yanındaki müşteri ürünleriyle karışmasın. */

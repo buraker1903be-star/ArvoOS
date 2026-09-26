@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 import { NotificationsNavButton } from "./notifications-drawer";
-import type { DigerUygulama } from "./panel-navigation";
+import { MARKA_OLCU, type DigerUygulama } from "./panel-navigation";
 
 // match: grubun alt modül önekleri. Grup bağlantısı genel bakışa gittiği
 // için (ör. /panel/finance/genel-bakis) cari veya talepler sayfasındayken
@@ -135,7 +136,16 @@ export function MobileDrawer({
                   onClick={() => setOpen(false)}
                   {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
                 >
-                  <i>{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>
+                  {/*
+                    Çekmece her zaman koyu zeminli, o yüzden logonun tek
+                    sürümü yeter (-on-dark). Masaüstü penceresi iki sürümü
+                    de taşıyor, orada tema değişebiliyor.
+                  */}
+                  <i>
+                    {uygulama.marka
+                      ? <Image src={`/brand/${uygulama.marka}-on-dark.png`} alt={uygulama.ad} width={MARKA_OLCU[uygulama.marka].w} height={MARKA_OLCU[uygulama.marka].h} />
+                      : uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}
+                  </i>
                   <span>{uygulama.ad}</span>
                   <b>↗</b>
                 </a>
