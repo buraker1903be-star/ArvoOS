@@ -256,20 +256,33 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
 /* ---------- Diğer uygulamalar ----------
    Kurumun sahip olduğu öbür Arvo ürünleri menünün altında, ayarların
    üstünde. Modüllerden ince bir çizgiyle ayrılıyor: bunlar panelin
-   bölümleri değil, başka uygulamalar — tıklayınca panelden çıkılıyor. */
-.panel-nav-apps{display:grid;gap:2px;padding-top:12px;margin-top:12px;border-top:1px solid var(--line-soft)}
-/* Başlık artık tıklanabilir: bütün ürünlerin durduğu uygulama ekranına
-   gidiyor. Altındaki kısayollar yalnızca AÇIK ürünler; kapalı olanları da
-   görmenin tek yolu bu bağlantı. */
-.panel-nav-apps-head{display:flex;align-items:center;gap:6px;padding:2px 12px 5px;border-radius:var(--r-sm);text-decoration:none}
-.panel-nav-apps-head>small{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.05em}
-.panel-nav-apps-head:hover>small,.panel-nav-apps-head.active>small{color:var(--accent-600)}
-.panel-nav-apps em{margin-left:auto;color:var(--dim);font-size:11px;font-style:normal}
-.panel-nav-apps-head:hover em,.panel-nav-apps-head.active em{color:var(--accent-600)}
-/* Menü daraltıldığında yazılar gizleniyor; başlık da onlarla birlikte
-   gitmeli, yoksa dar şeritte tek başına kalıyor. Izgara simgesi KALIYOR:
-   daraltılmış menüde uygulama ekranına giden tek tıklanabilir yer o. */
-.panel-root.is-nav-collapsed .panel-nav-apps-head{justify-content:center;padding:6px 0}
-.panel-root.is-nav-collapsed .panel-nav-apps-head>small{display:none}
-.panel-root.is-nav-collapsed .panel-nav-apps-head em{margin:0;font-size:14px}
-.panel-root.is-nav-collapsed .panel-nav-apps>a:not(.panel-nav-apps-head) em{display:none}
+   bölümleri değil, başka uygulamalar — tıklayınca panelden çıkılıyor.
+
+   Düz liste yerine HOVER ile açılan mini ızgara: üç ürün menünün dibinde
+   üç satır yer kaplıyordu ve modüllerle aynı ağırlıkta görünüyordu, oysa
+   günde bir kez basılıyorlar. */
+.panel-nav-apps{position:relative;padding-top:12px;margin-top:12px;border-top:1px solid var(--line-soft)}
+.panel-nav-apps-head{display:flex;align-items:center;gap:9px;width:100%;padding:7px 12px;border:0;border-radius:var(--r-sm);background:none;color:var(--muted);font:inherit;text-align:left;cursor:pointer}
+.panel-nav-apps-head>em{flex:none;font-style:normal;font-size:15px;line-height:1}
+.panel-nav-apps-head>small{flex:1;min-width:0;font-size:11px;font-weight:800;letter-spacing:.05em}
+.panel-nav-apps-head>span{flex:none;min-width:18px;padding:1px 6px;border-radius:var(--r-pill);background:var(--surface-2);color:var(--dim);font-size:11px;font-weight:800;text-align:center}
+.panel-nav-apps:hover .panel-nav-apps-head,.panel-nav-apps:focus-within .panel-nav-apps-head{background:var(--surface-2);color:var(--ink)}
+
+/* Mini ızgara menünün YANINDA açılıyor: dar şeridin içine sığmıyor ve
+   menüyü aşağı doğru uzatmak yine liste olurdu. */
+.panel-nav-apps-mini{position:absolute;left:calc(100% + 8px);bottom:0;z-index:40;min-width:206px;padding:10px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateX(-4px);transition:opacity .12s,transform .12s,visibility .12s}
+/* :focus-within — klavyeyle başlığa sekince de açılıyor, JavaScript yok. */
+.panel-nav-apps:hover .panel-nav-apps-mini,.panel-nav-apps:focus-within .panel-nav-apps-mini{opacity:1;visibility:visible;transform:translateX(0)}
+.panel-nav-apps-mini>small{display:block;padding:0 4px 8px;color:var(--dim);font-size:11px;font-weight:800;letter-spacing:.05em}
+.panel-nav-apps-mini>div{display:grid;grid-template-columns:repeat(2,minmax(84px,1fr));gap:6px}
+/* Izgara hücresi: ikon üstte, ad altta — işletim sistemindeki uygulama
+   simgesiyle aynı okuma sırası. */
+.panel-nav-apps-mini a{display:grid;justify-items:center;gap:6px;padding:11px 6px;border:1px solid transparent;border-radius:var(--r-md);color:var(--muted);text-decoration:none}
+.panel-nav-apps-mini a:hover,.panel-nav-apps-mini a:focus-visible{border-color:var(--accent-300);background:var(--accent-50);color:var(--accent-700);outline:none}
+.panel-nav-apps-mini i{display:grid;place-items:center;width:34px;height:34px;border-radius:var(--r-md);background:var(--accent-500);color:var(--paper);font-style:normal;font-size:15px;font-weight:800}
+.panel-nav-apps-mini span{font-size:11px;font-weight:700;line-height:1.3;text-align:center}
+
+/* Menü daraltıldığında yalnızca ızgara simgesi kalıyor; mini ızgara
+   hover'da yine açılıyor, yani uygulamalara erişim kaybolmuyor. */
+.panel-root.is-nav-collapsed .panel-nav-apps-head{justify-content:center;padding:8px 0}
+.panel-root.is-nav-collapsed .panel-nav-apps-head>small,.panel-root.is-nav-collapsed .panel-nav-apps-head>span{display:none}

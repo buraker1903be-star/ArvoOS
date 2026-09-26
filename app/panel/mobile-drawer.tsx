@@ -9,6 +9,7 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 import { NotificationsNavButton } from "./notifications-drawer";
+import type { DigerUygulama } from "./panel-navigation";
 
 // match: grubun alt modül önekleri. Grup bağlantısı genel bakışa gittiği
 // için (ör. /panel/finance/genel-bakis) cari veya talepler sayfasındayken
@@ -26,6 +27,7 @@ export function MobileDrawer({
   hiddenModuleKeys,
   notificationUnreadCount = 0,
   messageUnreadCount: initialMessageUnreadCount = 0,
+  digerUygulamalar = [],
 }: {
   modules: PanelModule[];
   organizationName: string;
@@ -37,6 +39,7 @@ export function MobileDrawer({
   hiddenModuleKeys?: string[];
   notificationUnreadCount?: number;
   messageUnreadCount?: number;
+  digerUygulamalar?: DigerUygulama[];
 }) {
   const pathname = usePathname();
   // Menü açıldığı sayfaya bağlı: başka sayfaya geçilince kendiliğinden
@@ -63,12 +66,6 @@ export function MobileDrawer({
       ...groups,
     ];
 
-    /*
-      Uygulama ekranı mobilde de olmalı. Masaüstü menüsünde "Diğer
-      uygulamalar" bölümü vardı, burada hiç yoktu: telefondan giren kişi
-      ArvoLab'a ya da öbür ürünlere panelden ulaşamıyordu.
-    */
-    result.push({ href: "/panel/uygulamalar", label: "Uygulamalar", icon: "⊞" });
     result.push({ href: "/panel/settings", label: "Ayarlar", icon: "A" });
     // Platform yönetimi uygulama panelinden kaldırıldı; kendi alan adında.
     return result;
@@ -122,6 +119,29 @@ export function MobileDrawer({
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>
             </Link>
           ))}
+          {/*
+            Diğer Arvo uygulamaları. Masaüstünde menü başlığının üstüne
+            gelince açılan mini ızgarada duruyorlar; dokunmatikte hover
+            olmadığı için burada düz liste — telefondan giren kişi
+            ArvoLab'a panelden ulaşamıyordu.
+          */}
+          {digerUygulamalar.length ? (
+            <div className="mobile-drawer-apps">
+              <small>DİĞER UYGULAMALAR</small>
+              {digerUygulamalar.map((uygulama) => (
+                <a
+                  key={uygulama.kod}
+                  href={uygulama.href}
+                  onClick={() => setOpen(false)}
+                  {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
+                >
+                  <i>{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>
+                  <span>{uygulama.ad}</span>
+                  <b>↗</b>
+                </a>
+              ))}
+            </div>
+          ) : null}
         </nav>
 
         <footer className="mobile-drawer-footer">

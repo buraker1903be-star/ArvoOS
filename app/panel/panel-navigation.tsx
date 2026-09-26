@@ -20,11 +20,20 @@ import {
   için böyle bir köprü henüz yok ve olmayan bir kolaylığı varmış gibi
   göstermek, kullanıcıyı şaşırtan bir giriş ekranına çıkarır.
 
-  BAŞLIK /panel/uygulamalar'a gidiyor ve bölüm LİSANS OLMASA DA duruyor.
-  Buradaki liste yalnızca açık ürünleri gösteriyor, yani hiç ek ürünü
-  olmayan kurum ekosistemi hiç görmüyordu — "bize ArvoLab verilmemiş"
-  sananın tersi: Arc ve Randevu'nun varlığından haberi olmuyordu. Uygulama
-  ekranı bütün ürünleri, kapalı olanları da sebebiyle birlikte gösteriyor.
+  MİNİ IZGARA. Uygulamalar menüde düz bir bağlantı listesiydi; artık
+  başlığın üstüne gelince yanda açılan küçük bir ızgarada, ikon ve adıyla
+  duruyorlar. Önce tam sayfa bir "Uygulamalar" ekranı denendi ve bırakıldı:
+  ürünler arası geçiş bir varış noktası değil, bir açma hareketi — araya
+  bir sayfa koymak her geçişe fazladan bir tıklama ekliyordu.
+
+  YALNIZCA GİDİLEBİLEN ürünler görünüyor (lisansı açık olanlar). Kapalı
+  ürünleri de listeleyen sürüm denendi ve bırakıldı: menüde basılınca
+  hiçbir şey açmayan satırlar duruyordu.
+
+  Açılma CSS ile: :hover ve :focus-within. Klavyeyle gelen kullanıcı
+  başlığa sekince ızgara açılıyor ve bağlantılara sekmeyle geçiyor —
+  JavaScript'e bağlanan bir menü, sunucu bileşeni olan bu ağaçta ayrı bir
+  istemci bileşeni demekti.
 */
 export type DigerUygulama = { kod: string; ad: string; href: string; ayniSekme: boolean };
 
@@ -70,29 +79,31 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
         </details>;
       })}
     </div>
-    <div className="panel-nav-apps" role="group" aria-label="Diğer uygulamalar">
-      <Link
-        className={pathname.startsWith("/panel/uygulamalar") ? "panel-nav-apps-head active" : "panel-nav-apps-head"}
-        href="/panel/uygulamalar"
-        title="Bütün Arvo uygulamaları"
-      >
-        <small>UYGULAMALAR</small>
-        <em aria-hidden="true">⊞</em>
-      </Link>
-      {digerUygulamalar.map((uygulama) => (
-        <a
-          className="panel-nav-group-link"
-          key={uygulama.kod}
-          href={uygulama.href}
-          title={`${uygulama.ad} uygulamasını aç`}
-          {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
-        >
-          <i>{uygulama.ad.slice(0, 1)}</i>
-          <span>{uygulama.ad}</span>
-          <em aria-hidden="true">↗</em>
-        </a>
-      ))}
-    </div>
+    {digerUygulamalar.length ? (
+      <div className="panel-nav-apps" role="group" aria-label="Diğer uygulamalar">
+        <button className="panel-nav-apps-head" type="button" aria-haspopup="true" title="Arvo uygulamaları">
+          <em aria-hidden="true">⊞</em>
+          <small>UYGULAMALAR</small>
+          <span aria-hidden="true">{digerUygulamalar.length}</span>
+        </button>
+        <div className="panel-nav-apps-mini">
+          <small>ARVO UYGULAMALARI</small>
+          <div>
+            {digerUygulamalar.map((uygulama) => (
+              <a
+                key={uygulama.kod}
+                href={uygulama.href}
+                title={`${uygulama.ad} uygulamasını aç`}
+                {...(uygulama.ayniSekme ? {} : { target: "_blank", rel: "noreferrer" })}
+              >
+                <i aria-hidden="true">{uygulama.ad.replace(/^Arvo\s*/, "").slice(0, 1)}</i>
+                <span>{uygulama.ad}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    ) : null}
     <Link className={pathname.startsWith("/panel/settings") ? "panel-nav-group-link active" : "panel-nav-group-link"} href="/panel/settings" title="Ayarlar"><i>A</i><span>Ayarlar</span></Link>
     {/* Platform yönetimi uygulama panelinden kaldırıldı: kendi alan adında
         (yonetim.arvo-os.com). Aynı kabukta durduğu sürece "şu an hangi kurum

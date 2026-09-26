@@ -144,7 +144,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} />}
+    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} digerUygulamalar={digerUygulamalar} />}
     <aside id="panel-sidebar" className="panel-sidebar">
       {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
           paneli açılmıyor, hepsinin yönetimi açılıyor. */}
