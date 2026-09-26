@@ -68,7 +68,7 @@ export function HomeView({ locale, c }: { locale: Locale; c: HomeContent }) {
           <LabMock locale={locale} />
         </ProductTile>
 
-        <ProductTile name="Arc" kicker={arc.category} title={`${arc.title} ${arc.subtitle}`} sub={arc.short} href={c.products.arcCta.href} app={c.products.arcSignIn.href} more={more} signIn={signIn} narrow>
+        <ProductTile name="ArvoARC" kicker={arc.category} title={`${arc.title} ${arc.subtitle}`} sub={arc.short} href={c.products.arcCta.href} app={c.products.arcSignIn.href} more={more} signIn={signIn} narrow>
           <ArcMock locale={locale} />
         </ProductTile>
 

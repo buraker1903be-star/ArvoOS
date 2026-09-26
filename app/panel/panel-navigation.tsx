@@ -17,7 +17,7 @@ import {
 
   ArvoLab'a geçiş kendi yolundan gidiyor (/panel/uygulama/arvolab): orada
   tek kullanımlık bir oturum bağlantısı üretilip yönlendiriliyor, kişi
-  ikinci kez giriş yapmıyor. Arc ve Randevu şimdilik düz bağlantı — onlar
+  ikinci kez giriş yapmıyor. ArvoARC ve Randevu şimdilik düz bağlantı — onlar
   için böyle bir köprü henüz yok ve olmayan bir kolaylığı varmış gibi
   göstermek, kullanıcıyı şaşırtan bir giriş ekranına çıkarır.
 

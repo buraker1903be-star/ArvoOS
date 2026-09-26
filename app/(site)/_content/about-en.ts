@@ -6,7 +6,7 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].en;
 
 export const ABOUT_EN: SubContent = {
   id: "about",
-  meta: { title: "About", description: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS, ArvoLab and Arc, and delivers web design and custom software services.` },
+  meta: { title: "About", description: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS, ArvoLab and ArvoARC, and delivers web design and custom software services.` },
   hero: {
     eyebrow: "About", title: "We make complex work", subtitle: "simple.",
     lead: `Arvo is the software brand of ${COMPANY.legalName}, based in İstanbul. It designs powerful yet calm digital ways of working for organizations, researchers and stores.`,
@@ -14,7 +14,7 @@ export const ABOUT_EN: SubContent = {
   },
   cards: {
     eyebrow: "One vision, a growing ecosystem", title: "What we believe.",
-    lead: "With ArvoOS we transform how businesses operate, with ArvoLab how research gets done, and with Arc how stores manage products and orders — all with one brand language and quality standard.",
+    lead: "With ArvoOS we transform how businesses operate, with ArvoLab how research gets done, and with ArvoARC how stores manage products and orders — all with one brand language and quality standard.",
     items: [
       { title: "Technology centred on people", text: "Experiences that make deciding and creating easier, without passing complexity on to the user." },
       { title: "Uncompromising detail", text: "Reliable, understandable, long-lived systems — from interface to infrastructure." },
@@ -37,7 +37,7 @@ export const ABOUT_EN: SubContent = {
   faq: { eyebrow: "FAQ", title: "About Arvo", items: [
     { q: "Which company is behind Arvo?", a: `Arvo is a brand of ${COMPANY.legalName}.` },
     { q: "Where is Arvo based?", a: `${COMPANY.address.display}, Türkiye.` },
-    { q: "What is the difference between Arvo and ArvoOS?", a: "Arvo is the brand (and arvo-os.com its website); ArvoOS is one of its products. The others are ArvoLab and Arc." },
+    { q: "What is the difference between Arvo and ArvoOS?", a: "Arvo is the brand (and arvo-os.com its website); ArvoOS is one of its products. The others are ArvoLab and ArvoARC." },
     { q: "How do I contact Arvo?", a: `Use the form on the contact page or write to ${COMPANY.email}.` },
   ] },
   cta: { title: "Let’s build a better system together.", actions: [{ label: "Get in touch", href: R("contact"), variant: "gold" }, { label: "Products", href: R("arvoos"), variant: "ghost" }] },

@@ -23,7 +23,7 @@ type Errors = Partial<Record<LeadField, string>>;
 const copy = {
   tr: {
     interestLegend: "Konu",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "Arc", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", services: "Hizmetler", other: "Diğer" } as Record<LeadInterest, string>,
     name: "Ad soyad",
     email: "E-posta",
     phone: "Telefon",
@@ -33,7 +33,7 @@ const copy = {
     messagePlaceholder: {
       arvoos: "Ekibiniz, sektörünüz ve ArvoOS'ta görmek istediğiniz modüller…",
       arvolab: "ArvoLab'ı hangi amaçla kullanmak istiyorsunuz?",
-      arc: "Arc hakkında merak ettikleriniz…",
+      arc: "ArvoARC hakkında merak ettikleriniz…",
       services: "Projenizi kısaca anlatın: web sitesi, özel yazılım, süreç tasarımı…",
       other: "Size nasıl yardımcı olabiliriz?",
     } as Record<LeadInterest, string>,
@@ -62,7 +62,7 @@ const copy = {
   },
   en: {
     interestLegend: "Topic",
-    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "Arc", services: "Services", other: "Other" } as Record<LeadInterest, string>,
+    interests: { arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", services: "Services", other: "Other" } as Record<LeadInterest, string>,
     name: "Full name",
     email: "Email",
     phone: "Phone",
@@ -72,7 +72,7 @@ const copy = {
     messagePlaceholder: {
       arvoos: "Your team, industry and the ArvoOS modules you'd like to see…",
       arvolab: "What would you like to use ArvoLab for?",
-      arc: "What would you like to know about Arc?",
+      arc: "What would you like to know about ArvoARC?",
       services: "Tell us about your project: website, custom software, process design…",
       other: "How can we help?",
     } as Record<LeadInterest, string>,

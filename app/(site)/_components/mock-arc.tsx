@@ -1,15 +1,15 @@
-// Arc maketi: ürün kataloğu + siparişler (tanımdaki iki temel iş). Ödeme,
+// ArvoARC maketi: ürün kataloğu + siparişler (tanımdaki iki temel iş). Ödeme,
 // kargo veya entegrasyon öğesi GÖSTERİLMEZ.
 import type { Locale } from "@/lib/site/routes";
 
 const T = {
   tr: {
-    label: "Arc paneli — örnek görünüm", cap: "Örnek arayüz",
+    label: "ArvoARC paneli — örnek görünüm", cap: "Örnek arayüz",
     catalog: "Ürünler", products: ["Seramik kupa", "Keten örtü", "Mum seti", "Ahşap tepsi"],
     orders: "Siparişler", rows: [["#1048", "Yeni", "info"], ["#1047", "Hazırlanıyor", "gold"], ["#1046", "Tamamlandı", "success"]],
   },
   en: {
-    label: "Arc panel — sample view", cap: "Illustrative interface",
+    label: "ArvoARC panel — sample view", cap: "Illustrative interface",
     catalog: "Products", products: ["Ceramic mug", "Linen throw", "Candle set", "Wooden tray"],
     orders: "Orders", rows: [["#1048", "New", "info"], ["#1047", "Preparing", "gold"], ["#1046", "Completed", "success"]],
   },

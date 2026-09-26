@@ -9,7 +9,7 @@ import { createAiKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { PRODUCTS, type ProductCode } from "@/lib/products";
 
 // Müşteri kurumun aboneliğini kartla (PayTR Link) ödemesi. ArvoOS, ArvoLab,
-// Arc ve Randevu ayrı ayrı ödenir. Bağlantıyı lib/license-checkout.ts kurar
+// ArvoARC ve Randevu ayrı ayrı ödenir. Bağlantıyı lib/license-checkout.ts kurar
 // (Randevu paneli de aynısını kullanır); burası yalnızca yetkiyi denetler.
 
 async function payLicenseWithCard__impl(formData: FormData) {

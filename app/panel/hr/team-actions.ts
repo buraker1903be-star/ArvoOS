@@ -221,7 +221,7 @@ async function updateTeamMemberAccess__impl(formData: FormData) {
     .select("user_id");
   if (error) throw new Error("Kullanıcı güncellenemedi: " + error.message);
   if (!updated?.length) throw new Error("Kullanıcı güncellenemedi: yetkiniz yok veya kayıt bulunamadı.");
-  // Pasife alınan personel ARC'a, Randevu'ya ve ArvoLab'a da hemen
+  // Pasife alınan personel ArvoARC'a, Randevu'ya ve ArvoLab'a da hemen
   // giremesin (lib/arc-bridge.ts, lib/randevu-bridge.ts, lib/arvolab.ts).
   // ArvoLab'da bağlanmış profil bağlı kalır; tazelenen şey, HENÜZ girmemiş
   // kişinin ilk girişte kuruma bağlanıp bağlanmayacağı.

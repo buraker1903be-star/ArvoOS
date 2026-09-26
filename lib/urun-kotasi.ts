@@ -8,7 +8,7 @@ import type { ProductCode } from "@/lib/products";
   sayının karşılığı yoktu; kurucu onu bir koruma sandı. Ölçümü olmayan
   limit alanı arayüzde görünmemeli.
 
-  Bu yüzden ARC arşiv alanı burada YOK: ölçümü ARC'ın kendi veritabanında
+  Bu yüzden ArvoARC arşiv alanı burada YOK: ölçümü ArvoARC'ın kendi veritabanında
   bir fonksiyon gerektiriyor ve o ayrı bir depo. Ölçümü yazıldığında
   buraya eklenecek.
 

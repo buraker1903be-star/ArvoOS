@@ -2,17 +2,17 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib/arc-bridge-plan";
 
-// ARC köprüsü.
+// ArvoARC köprüsü.
 //
-// ARC kendi Supabase projesine taşınıyor (ArvoARC/AYRILMA.md). Mağazanın
-// açık olup olmadığını, kademesini ve personel yetkisini ARC kendi
+// ArvoARC kendi Supabase projesine taşınıyor (ArvoARC/AYRILMA.md). Mağazanın
+// açık olup olmadığını, kademesini ve personel yetkisini ArvoARC kendi
 // veritabanındaki organizations / organization_memberships /
 // organization_product_licenses / organization_modules kopyasından okur;
 // kopyayı burası yazar. ArvoLab köprüsüyle aynı ilke (lib/arvolab.ts):
-// ArvoOS erişilemese bile ARC son bilinen durumla çalışır.
+// ArvoOS erişilemese bile ArvoARC son bilinen durumla çalışır.
 //
 // Kimlikler iki tarafta aynı (kurum id, kullanıcı id); eşleştirme tablosu yok.
-// Yeni personel ARC'ta aynı uuid ile açılır, şifresiz: ilk girişte şifre
+// Yeni personel ArvoARC'ta aynı uuid ile açılır, şifresiz: ilk girişte şifre
 // belirler. Şifreler iki sistemde ayrı yaşar.
 //
 // Kim çağırır: lisans ve modül ekranı, üye yetkisi değişikliği, ödeme
@@ -21,8 +21,8 @@ import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib
 // zamanlanmış eşitleme yakalar.
 //
 // ARC_SUPABASE_URL tanımlı değilse hiçbir şey yapmaz. Taşıma 19.09.2026'da
-// yapıldı; o günden beri ARC bu kopyaya bağımlı — köprü durursa lisans ve
-// personel değişiklikleri ARC'a ulaşmaz (Platform sayfası uyarır).
+// yapıldı; o günden beri ArvoARC bu kopyaya bağımlı — köprü durursa lisans ve
+// personel değişiklikleri ArvoARC'a ulaşmaz (Platform sayfası uyarır).
 
 export type ArcSyncResult = {
   /** "partial": bir kısmı yazıldı, bir kısmı yazılamadı (errors dolu). */
@@ -73,7 +73,7 @@ async function loadSource(admin: Client, organizationId?: string): Promise<ArcSo
   };
 }
 
-/** ARC'ta hesabı olmayan kullanıcıyı aynı uuid ve e-postayla, şifresiz açar. */
+/** ArvoARC'ta hesabı olmayan kullanıcıyı aynı uuid ve e-postayla, şifresiz açar. */
 async function ensureUser(admin: Client, arc: Client, userId: string): Promise<"exists" | "created"> {
   const existing = await arc.auth.admin.getUserById(userId);
   if (existing.data.user) return "exists";
@@ -91,12 +91,12 @@ async function ensureUser(admin: Client, arc: Client, userId: string): Promise<"
   return "created";
 }
 
-// ARC'ta ArvoOS kullanıcılarına bağlı "kim değiştirdi" sütunları: kullanıcı
-// ARC'ta olmayabilir (kurucu ARC personeli değil), yabancı anahtar düşmesin.
+// ArvoARC'ta ArvoOS kullanıcılarına bağlı "kim değiştirdi" sütunları: kullanıcı
+// ArvoARC'ta olmayabilir (kurucu ArvoARC personeli değil), yabancı anahtar düşmesin.
 const withoutActor = (rows: Row[]) => rows.map((row) => ({ ...row, updated_by: null }));
 
 /**
- * ARC kurumlarını ARC veritabanına aktarır. `organizationId` verilirse yalnız
+ * ArvoARC kurumlarını ArvoARC veritabanına aktarır. `organizationId` verilirse yalnız
  * o kurum; verilmezse hepsi. Çağıranı düşürmez: hata fırlatmaz, sonucu döner.
  */
 export async function syncArcTenants(organizationId?: string): Promise<ArcSyncResult> {
@@ -112,7 +112,7 @@ export async function syncArcTenants(organizationId?: string): Promise<ArcSyncRe
     if (!ids.length) return result;
 
     const target = await arc.from("organization_memberships").select("organization_id,user_id").in("organization_id", ids);
-    if (target.error) throw new Error("ARC üyelikleri okunamadı: " + target.error.message);
+    if (target.error) throw new Error("ArvoARC üyelikleri okunamadı: " + target.error.message);
     const plan = planArcSync(source, target.data ?? []);
 
     // Sıra yabancı anahtarlara göre: kurum → hesap → üyelik.
@@ -181,7 +181,7 @@ export interface ArcBridgeHealth {
   /** Bu dağıtımda görünen değişkenlerin adları (değerleri değil). */
   missing: string[];
   ok: boolean;
-  /** ARC veritabanındaki kurum sayısı; bağlanılamadıysa null. */
+  /** ArvoARC veritabanındaki kurum sayısı; bağlanılamadıysa null. */
   organizations: number | null;
   error: string | null;
 }
@@ -211,7 +211,7 @@ export async function getArcBridgeHealth(): Promise<ArcBridgeHealth> {
 export type UrunKopyasi = { status: string; periodEnd: string | null; updatedAt: string | null };
 
 /**
- * ARC'taki lisans kopyasının KENDİSİ.
+ * ArvoARC'taki lisans kopyasının KENDİSİ.
  *
  * getArcBridgeHealth köprünün ayakta olup olmadığını söylüyor; bunu
  * söylemiyor. AkademikMerkez'in ArvoLab kopyası tam bu boşlukta altı gün
@@ -234,7 +234,7 @@ export async function arcUrunKopyasi(organizationId: string): Promise<UrunKopyas
     console.error("[arc] lisans kopyası okunamadı", organizationId, error.message);
     return null;
   }
-  // Satır yok: kurum ARC'a hiç yansıtılmamış.
+  // Satır yok: kurum ArvoARC'a hiç yansıtılmamış.
   if (!data) return { status: "yok", periodEnd: null, updatedAt: null };
   const satir = data as { status: string | null; current_period_end: string | null; updated_at: string | null };
   return {
@@ -244,7 +244,7 @@ export async function arcUrunKopyasi(organizationId: string): Promise<UrunKopyas
   };
 }
 
-/** Bütün kurumların ARC lisans kopyası, tek sorguda (gerekçe: lib/arvolab.ts). */
+/** Bütün kurumların ArvoARC lisans kopyası, tek sorguda (gerekçe: lib/arvolab.ts). */
 export async function arcKopyalari(): Promise<Map<string, UrunKopyasi> | null> {
   const arc = arcClient();
   if (!arc) return null;

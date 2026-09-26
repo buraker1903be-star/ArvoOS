@@ -5,8 +5,8 @@ import { arvolabClient } from "@/lib/arvolab";
 // Üç ürünün tüm üyelerini tek listede toplar (Platform → Üyeler).
 //
 // Veri üç yerde:
-//  - Arc üyesi = kurumunda Arc lisansı ya da commerce modülü açık olan, ArvoOS'un
-//    organization_memberships tablosundan. Arc 19.09.2026'dan beri ayrı
+//  - ArvoARC üyesi = kurumunda ArvoARC lisansı ya da commerce modülü açık olan, ArvoOS'un
+//    organization_memberships tablosundan. ArvoARC 19.09.2026'dan beri ayrı
 //    veritabanında ama üyelik kopyasını buradan köprü yazıyor (lib/arc-bridge.ts);
 //    kaynak hâlâ burası.
 //  - ArvoLab ayrı Supabase projesinde: kendi profiles/organizations tabloları.
@@ -148,7 +148,7 @@ export async function getMemberDirectory(): Promise<Directory> {
       membershipActive: uyelikAcik,
     });
 
-    // Arc: kurumda Arc lisansı ya da commerce modülü açıksa üye sayılır.
+    // ArvoARC: kurumda ArvoARC lisansı ya da commerce modülü açıksa üye sayılır.
     const arc = productLicense.get(`${membership.organization_id}:arc`);
     if (arc || commerce.get(membership.organization_id)) {
       rows.push({

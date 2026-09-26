@@ -1,6 +1,6 @@
 // Randevu köprüsünün saf kısmı: ArvoOS'taki satırlardan Arvo Randevu'ya ne
 // yazılacağını hesaplar. Veritabanına dokunmaz; tests/unit/randevu-bridge-plan.test.ts
-// sınar. Köprünün kendisi: lib/randevu-bridge.ts. ARC köprüsüyle
+// sınar. Köprünün kendisi: lib/randevu-bridge.ts. ArvoARC köprüsüyle
 // (lib/arc-bridge-plan.ts) aynı ilke; fark: kapsam yalnızca "randevu"
 // lisansı (modül yok) ve hedefin lisans tablosu yalnızca bu ürünü kabul eder.
 

@@ -83,7 +83,7 @@ export function websiteLd(locale: Locale): Json {
   };
 }
 
-/** Yazılım ürünü (ArvoOS, ArvoLab, Arc). Fiyat bilgisi uydurulmaz. */
+/** Yazılım ürünü (ArvoOS, ArvoLab, ArvoARC). Fiyat bilgisi uydurulmaz. */
 export function productLd(p: {
   name: string;
   description: string;

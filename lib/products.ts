@@ -7,7 +7,7 @@
 export const PRODUCTS = [
   { code: "arvoos", name: "ArvoOS", description: "Yönetim paneli" },
   { code: "arvolab", name: "ArvoLab", description: "Akademik yazım ve editöryal kontrol" },
-  { code: "arc", name: "Arc", description: "E-ticaret ve mağaza yönetimi" },
+  { code: "arc", name: "ArvoARC", description: "E-ticaret ve mağaza yönetimi" },
   { code: "randevu", name: "Arvo Randevu", description: "Kuaför ve güzellik salonu randevu yönetimi" },
 ] as const;
 

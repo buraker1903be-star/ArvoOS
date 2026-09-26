@@ -6,13 +6,13 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].en;
 
 export const HOME_EN: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab and Arc — better systems for better work",
-    description: "Arvo builds ArvoOS for businesses, ArvoLab for researchers and Arc for stores — and delivers web design, SEO & GEO and custom software services.",
+    title: "Arvo | ArvoOS, ArvoLab and ArvoARC — better systems for better work",
+    description: "Arvo builds ArvoOS for businesses, ArvoLab for researchers and ArvoARC for stores — and delivers web design, SEO & GEO and custom software services.",
   },
   hero: {
     eyebrow: "The Arvo product family",
     title: "Better systems", subtitle: "for better work.",
-    lead: "Arvo is a software brand that builds ArvoOS for businesses, ArvoLab for researchers and Arc for stores. It turns complex work into calm, powerful and connected experiences.",
+    lead: "Arvo is a software brand that builds ArvoOS for businesses, ArvoLab for researchers and ArvoARC for stores. It turns complex work into calm, powerful and connected experiences.",
     actions: [
       { label: "Request a demo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Explore the products", href: "#products", variant: "ghost" },
@@ -38,7 +38,7 @@ export const HOME_EN: HomeContent = {
       cta: { label: "Explore ArvoLab", href: R("arvolab"), variant: "primary" },
       signIn: { label: "Sign in", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     },
-    arcCta: { label: "Explore Arc", href: R("arc"), variant: "gold" },
+    arcCta: { label: "Explore ArvoARC", href: R("arc"), variant: "gold" },
     arcSignIn: { label: "Sign in", href: PRODUCT_APPS.arc.url, external: true, variant: "ghost" },
   },
   band: {
@@ -63,7 +63,7 @@ export const HOME_EN: HomeContent = {
   eco: {
     eyebrow: "Ecosystem",
     title: "Three products. One ecosystem.",
-    lead: "ArvoOS, ArvoLab and Arc are separate web applications, each on its own arvo-os.com subdomain, built by the same team to one brand and quality standard.",
+    lead: "ArvoOS, ArvoLab and ArvoARC are separate web applications, each on its own arvo-os.com subdomain, built by the same team to one brand and quality standard.",
     roles: ["Operations", "Research", "Stores"],
     principles: [
       { title: "A space of your own", text: "Every organization, team or store works in its own workspace." },
@@ -98,9 +98,9 @@ export const HOME_EN: HomeContent = {
     eyebrow: "FAQ",
     title: "Questions about Arvo",
     items: [
-      { q: "What is Arvo?", a: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS for businesses, ArvoLab for researchers and Arc for stores, and also offers web design and custom software services.` },
-      { q: "What is the difference between ArvoOS, ArvoLab and Arc?", a: "ArvoOS runs a business’s operations from request to payment. ArvoLab supports academic research and writing. Arc brings a store’s products and orders into one panel." },
-      { q: "Where do I sign in to Arvo products?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and Arc at ${PRODUCT_APPS.arc.host}. All three are web applications that run in the browser.` },
+      { q: "What is Arvo?", a: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS for businesses, ArvoLab for researchers and ArvoARC for stores, and also offers web design and custom software services.` },
+      { q: "What is the difference between ArvoOS, ArvoLab and ArvoARC?", a: "ArvoOS runs a business’s operations from request to payment. ArvoLab supports academic research and writing. ArvoARC brings a store’s products and orders into one panel." },
+      { q: "Where do I sign in to Arvo products?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and ArvoARC at ${PRODUCT_APPS.arc.host}. All three are web applications that run in the browser.` },
       { q: "How much does ArvoOS cost?", a: "There is no public price list. Plans are scoped with each organization based on modules, number of users and branch structure." },
       { q: "How do I request a demo?", a: `Fill in the form on the contact page or write to ${COMPANY.email}; your request goes to the relevant product team.` },
     ],
@@ -108,7 +108,7 @@ export const HOME_EN: HomeContent = {
   cta: {
     eyebrow: "A demo for your organization",
     title: "Let’s build the systems of tomorrow, together.",
-    lead: "Let us show you how ArvoOS, ArvoLab or Arc would work for you.",
+    lead: "Let us show you how ArvoOS, ArvoLab or ArvoARC would work for you.",
     actions: [
       { label: "Request a demo", href: `${R("contact")}?interest=arvoos`, variant: "gold" },
       { label: "Meet us", href: R("about"), variant: "ghost" },

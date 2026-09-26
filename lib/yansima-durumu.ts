@@ -19,7 +19,7 @@
 
   Alanları çağıran biçimlendirip veriyor, çünkü üç ürünün kopyası üç ayrı
   şekilde duruyor: ArvoLab kendi organizations satırında (durum + AI
-  hakkı), Arc ve Randevu ise ArvoOS'un lisans satırının aynen kopyasında
+  hakkı), ArvoARC ve Randevu ise ArvoOS'un lisans satırının aynen kopyasında
   (durum + kayıt zamanı). Kural tek, karşılaştırılan alanlar ürüne özgü.
 */
 

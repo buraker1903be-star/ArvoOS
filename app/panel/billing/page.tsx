@@ -165,7 +165,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     {canSubmit ? <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME BİLDİRİMİ</small><h2>Dekont gönder</h2></div><span className="status-pill">Manuel onay</span></div>
       <form className="panel-form" action={submitBankTransferPayment}>
-        {/* Önceden ürün gönderilmiyordu (varsayılan ArvoOS); Arc/Randevu için
+        {/* Önceden ürün gönderilmiyordu (varsayılan ArvoOS); ArvoARC/Randevu için
             havaleyle ödeyen kurumun o ürünün lisansı uzamıyordu. */}
         <label>Ürün<select name="product" defaultValue="arvoos">{subscriptions.map((product) => <option key={product.code} value={product.code}>{product.name}</option>)}</select></label>
         <label>Banka hesabı<select name="bank_account_id" required>{(bankAccounts ?? []).map((account) => <option key={account.id} value={account.id}>{account.bank_name} · {formatIban(account.iban)}</option>)}</select></label>

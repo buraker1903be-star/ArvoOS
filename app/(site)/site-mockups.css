@@ -1,5 +1,5 @@
 /* ============================================================
-   Arayüz maketleri (HTML/CSS) — ArvoOS, ArvoLab, Arc
+   Arayüz maketleri (HTML/CSS) — ArvoOS, ArvoLab, ArvoARC
    ============================================================ */
 .site .mock{container-type:inline-size;margin:0}
 .site .mock-win{overflow:hidden;border-radius:clamp(14px,2.2cqi,22px);background:#f2f2f7;color:#0b1b2e;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 30px 80px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.06);font-size:13px;letter-spacing:-.005em;text-align:left}
@@ -81,7 +81,7 @@
   .site .ml-src{display:none}
 }
 
-/* Arc */
+/* ArvoARC */
 .site .ma-body{padding:16px;background:#fbfbfd}
 .site .ma-h{margin:4px 0 10px;color:#6e6e73;font-size:11px;font-weight:600}
 .site .ma-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}

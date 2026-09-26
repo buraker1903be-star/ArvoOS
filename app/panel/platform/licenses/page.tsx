@@ -135,7 +135,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
     alanlar burada kuruluyor; kural tek yerde (lib/yansima-durumu.ts).
 
     ArvoLab kendi organizations satırında durum + AI hakkı tutuyor.
-    Arc ve Randevu ise ArvoOS'un lisans satırının aynen kopyasını; orada
+    ArvoARC ve Randevu ise ArvoOS'un lisans satırının aynen kopyasını; orada
     durum ve dönem sonu karşılaştırılıyor. updated_at KARŞILAŞTIRILMIYOR:
     hedef veritabanında onu now() yapan bir tetikleyici varsa uyarı
     sürekli yanardı ve sürekli yanan uyarı, olmayan uyarıdır.
@@ -352,7 +352,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                 tur: "ek" as const,
                 kod: product.code,
                 /*
-                  Karşılaştırma yalnızca ArvoLab için yapılabiliyor: Arc ve
+                  Karşılaştırma yalnızca ArvoLab için yapılabiliyor: ArvoARC ve
                   Randevu ayrı köprüler ve kopyalarını okuyan bir yol henüz
                   yok. Onlarda yansima null geçiyor, metin de eskisi gibi
                   genel kalıyor — uydurma bir "güncel" yazmaktansa.

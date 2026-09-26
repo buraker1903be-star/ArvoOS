@@ -1,11 +1,11 @@
 // /og/{locale}/{id} paylaşım görsellerinin metinleri. Her PageId × dil için
 // üst etiket, başlık ve kısa açıklama. Büyük harfler elle yazıldı (JS
-// toUpperCase Türkçe "i/İ" dönüşümünü yanlış yapar). Arc: e-ticaret ve
+// toUpperCase Türkçe "i/İ" dönüşümünü yanlış yapar). ArvoARC: e-ticaret ve
 // mağazalar için self servis ürün + sipariş yönetimi (başka iddia yok).
 import type { Locale, PageId } from "./routes";
 
 export type OgCopy = { eyebrow: string; title: string; tagline: string };
-export type ProductName = "ArvoOS" | "ArvoLab" | "Arc";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC";
 
 export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   arvoos: "ArvoOS",
@@ -14,13 +14,13 @@ export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   "arvoos-solutions": "ArvoOS",
   "arvoos-plans": "ArvoOS",
   arvolab: "ArvoLab",
-  arc: "Arc",
+  arc: "ArvoARC",
 };
 
 export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
   home: {
-    tr: { eyebrow: "ARVO ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve mağazalar için dijital ürünler: ArvoOS, ArvoLab ve Arc." },
-    en: { eyebrow: "THE ARVO PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and stores: ArvoOS, ArvoLab and Arc." },
+    tr: { eyebrow: "ARVO ÜRÜN EKOSİSTEMİ", title: "Daha iyi çalışmak için daha iyi sistemler.", tagline: "Kurumlar, araştırmacılar ve mağazalar için dijital ürünler: ArvoOS, ArvoLab ve ArvoARC." },
+    en: { eyebrow: "THE ARVO PRODUCT ECOSYSTEM", title: "Better systems for better work.", tagline: "Software for organizations, researchers and stores: ArvoOS, ArvoLab and ArvoARC." },
   },
   arvoos: {
     tr: { eyebrow: "ARVOOS · İŞLETME İŞLETİM SİSTEMİ", title: "İşletmenizin tamamı. Tek bir akışta.", tagline: "CRM, teklif, e-imzalı sözleşme, operasyon, finans, İK ve raporlama tek sistemde." },
@@ -47,8 +47,8 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     en: { eyebrow: "ARVOLAB · RESEARCH WORKSPACE", title: "A stronger workspace for research.", tagline: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks." },
   },
   arc: {
-    tr: { eyebrow: "ARC · E-TİCARET VE MAĞAZA YÖNETİMİ", title: "Self servis ürün ve sipariş yönetimi.", tagline: "Mağazanızın ürünleri ve siparişleri. Tek, sade bir panelde." },
-    en: { eyebrow: "ARC · E-COMMERCE & STORE MANAGEMENT", title: "Self-service product and order management.", tagline: "Your store's products and orders. In one calm panel." },
+    tr: { eyebrow: "ARVOARC · E-TİCARET VE MAĞAZA YÖNETİMİ", title: "Self servis ürün ve sipariş yönetimi.", tagline: "Mağazanızın ürünleri ve siparişleri. Tek, sade bir panelde." },
+    en: { eyebrow: "ARVOARC · E-COMMERCE & STORE MANAGEMENT", title: "Self-service product and order management.", tagline: "Your store's products and orders. In one calm panel." },
   },
   services: {
     tr: { eyebrow: "HİZMETLER", title: "Markadan sisteme. Uçtan uca dijital.", tagline: "Web tasarımı, özel yazılım, süreç tasarımı, entegrasyon ve otomasyon." },

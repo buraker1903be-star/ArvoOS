@@ -30,7 +30,7 @@ import { uyeErisimiDegistir } from "./actions";
 */
 
 const URUN_ADI: Record<MemberProduct, string> = {
-  arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "Arc", randevu: "Randevu",
+  arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", randevu: "Randevu",
 };
 
 const ROL_ADI: Record<string, string> = {

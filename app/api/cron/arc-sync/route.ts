@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { syncArcTenants } from "@/lib/arc-bridge";
 
-// ARC köprüsünün tam eşitlemesi (lib/arc-bridge.ts). Vercel zamanlayıcısı
+// ArvoARC köprüsünün tam eşitlemesi (lib/arc-bridge.ts). Vercel zamanlayıcısı
 // 10 dakikada bir çağırır (vercel.json). Anında aktarımın kaçırdığı her
 // değişikliği yakalar: üyeliği veritabanı tetikleyicisiyle değişen personel,
 // kurum bilgisi (unvan, vergi no — vitrinin yasal sayfaları bunu okuyor),

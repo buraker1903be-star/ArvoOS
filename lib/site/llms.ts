@@ -3,7 +3,7 @@
 // fiyat, deneme süresi veya ödül YAZMAYIN. ArvoOS özellikleri panelde
 // arayüzü olan (doğrulanmış) özelliklerle sınırlıdır: stok, satın alma,
 // sevkiyat, e-fatura, banka mutabakatı, pazaryeri entegrasyonu YOK.
-// Arc: e-ticaret ve mağazalar için self servis ürün + sipariş yönetimi;
+// ArvoARC: e-ticaret ve mağazalar için self servis ürün + sipariş yönetimi;
 // entegrasyon/ödeme/kargo iddiası YOK.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, type Locale, type PageId } from "./routes";
 
@@ -14,8 +14,8 @@ type PageInfo = Record<Locale, { name: string; summary: string }>;
 /** Her sayfa için kısa, olgusal açıklama (Record → her PageId zorunlu). */
 const PAGES: Record<PageId, PageInfo> = {
   home: {
-    en: { name: "Arvo home", summary: "Overview of the Arvo product ecosystem (ArvoOS, ArvoLab, Arc) and services." },
-    tr: { name: "Arvo ana sayfa", summary: "Arvo ürün ekosistemine (ArvoOS, ArvoLab, Arc) ve hizmetlere genel bakış." },
+    en: { name: "Arvo home", summary: "Overview of the Arvo product ecosystem (ArvoOS, ArvoLab, ArvoARC) and services." },
+    tr: { name: "Arvo ana sayfa", summary: "Arvo ürün ekosistemine (ArvoOS, ArvoLab, ArvoARC) ve hizmetlere genel bakış." },
   },
   arvoos: {
     en: { name: "ArvoOS", summary: "Multi-tenant business operating system for service businesses and institutions: CRM and sales pipeline, proposals with online customer acceptance, e-signed contracts, operations (jobs, tasks, stage board, calendar), a customer tracking portal, finance with online payment links, HR, reports and team communication — one flow from request to collection." },
@@ -42,8 +42,8 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "ArvoLab", summary: "Literatür ve atıf yönetimi, akademik yazım, kılavuz kontrolü, nicel ve nitel analiz, akademik editör ve özgünlük ön kontrolü için araştırma çalışma alanı." },
   },
   arc: {
-    en: { name: "Arc", summary: "Self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel." },
-    tr: { name: "Arc", summary: "E-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmeti." },
+    en: { name: "ArvoARC", summary: "Self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel." },
+    tr: { name: "ArvoARC", summary: "E-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmeti." },
   },
   services: {
     en: { name: "Services", summary: "Website design and development, SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals) and ongoing development support." },
@@ -118,7 +118,7 @@ export function buildLlmsTxt(): string {
   const lines = [
     `# ${COMPANY.brand}`,
     "",
-    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and Arc, a self-service SaaS platform for online stores and retail shops to manage products and orders. Arvo also delivers services: website design, SEO and GEO content optimization, and custom software. The website is bilingual: Turkish at ${SITE_ORIGIN} and English at ${absoluteUrl(ROUTES.home.en)}.`,
+    `> Arvo is the software brand of ${COMPANY.legalName}, a technology company based in ${COMPANY.city}, Türkiye. Arvo builds three products: ArvoOS, a multi-tenant business operating system that runs a service business from request to collection (CRM, proposals, e-signed contracts, operations, customer portal, finance, HR, reports); ArvoLab, a research workspace for academic work; and ArvoARC, a self-service SaaS platform for online stores and retail shops to manage products and orders. Arvo also delivers services: website design, SEO and GEO content optimization, and custom software. The website is bilingual: Turkish at ${SITE_ORIGIN} and English at ${absoluteUrl(ROUTES.home.en)}.`,
     "",
     "Key facts:",
     "",
@@ -126,8 +126,8 @@ export function buildLlmsTxt(): string {
     `- Address: ${COMPANY.address.display}, Türkiye.`,
     `- Contact: ${COMPANY.email} (no public phone number).`,
     "- Website languages: Turkish (tr-TR, default, at the site root) and English (en-US, under /en).",
-    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, Arc at ${PRODUCT_APPS.arc.host}.`,
-    "- ArvoOS vs. Arc: ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); Arc manages an online or physical store's products and orders.",
+    `- Each product is a web application on its own subdomain: ArvoOS at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host}, ArvoARC at ${PRODUCT_APPS.arc.host}.`,
+    "- ArvoOS vs. ArvoARC: ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoARC manages an online or physical store's products and orders.",
     "- ArvoOS flagship flow: request → proposal (online acceptance) → contract (e-signature) → automatic job workflow → customer tracking portal → online collection → profitability report.",
     `- Prices are not published. Contact ${COMPANY.email}.`,
     `- A longer knowledge base (English and Turkish) is available at ${SITE_ORIGIN}/llms-full.txt.`,
@@ -158,9 +158,9 @@ export function buildLlmsFullTxt(): string {
 
   return `# Arvo — knowledge base / bilgi tabanı
 
-> Factual reference about Arvo, its products (ArvoOS, ArvoLab, Arc) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
+> Factual reference about Arvo, its products (ArvoOS, ArvoLab, ArvoARC) and services, written for AI assistants and answer engines. English first, Turkish below. Last updated: ${LLMS_UPDATED}. Canonical site: ${SITE_ORIGIN}. Short index: ${SITE_ORIGIN}/llms.txt.
 >
-> Arvo, ürünleri (ArvoOS, ArvoLab, Arc) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
+> Arvo, ürünleri (ArvoOS, ArvoLab, ArvoARC) ve hizmetleri hakkında yapay zekâ asistanları ve yanıt motorları için hazırlanmış olgusal başvuru metni. Önce İngilizce, ardından Türkçe.
 
 ---
 
@@ -172,7 +172,7 @@ Arvo is the software brand of ${COMPANY.legalName}, a technology company based i
 
 - ArvoOS — business operating system for service businesses and institutions (${os.host}).
 - ArvoLab — research workspace for academic work (${lab.host}).
-- Arc — self-service SaaS for online stores and retail shops: product and order management (${arc.host}).
+- ArvoARC — self-service SaaS for online stores and retail shops: product and order management (${arc.host}).
 - Services: website design and development, SEO and GEO content optimization, custom software development, process and experience design, integrations and automation, corporate digital systems (panels, portals), ongoing development support.
 - Website: ${SITE_ORIGIN} (Turkish), ${u("home", "en")} (English).
 - Contact: ${mail}
@@ -226,19 +226,19 @@ Page: ${u("arvolab", "en")} · Sign in: ${lab.url}
 
 **Access.** Request access via ${mail}; sign in at ${lab.url}.
 
-## Arc — product and order management for stores
+## ArvoARC — product and order management for stores
 
 Page: ${u("arc", "en")} · Web app: ${arc.url}
 
-**What it is.** Arc is a self-service SaaS platform for online stores and retail shops. It brings product management (catalog and product information) and order management into one panel.
+**What it is.** ArvoARC is a self-service SaaS platform for online stores and retail shops. It brings product management (catalog and product information) and order management into one panel.
 
 **Who it is for.** E-commerce businesses, physical stores and retailers, and growing brands.
 
-**How it works.** Stores sign up and set up Arc themselves (self-service). It is cloud-based and runs in the browser. It is multi-tenant: each store has its own space.
+**How it works.** Stores sign up and set up ArvoARC themselves (self-service). It is cloud-based and runs in the browser. It is multi-tenant: each store has its own space.
 
 ## How the products relate
 
-ArvoOS, ArvoLab and Arc are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${arc.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; Arc manages a store's products and orders.
+ArvoOS, ArvoLab and ArvoARC are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${arc.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoARC manages a store's products and orders.
 
 ## Services
 
@@ -301,17 +301,17 @@ ArvoLab is Arvo's research workspace for literature and citation management, aca
 **How do I get access to ArvoLab?**
 Request access at ${mail}. Sign in at ${lab.url}.
 
-**What is Arc?**
-Arc is a self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel. It is available at ${arc.url}.
+**What is ArvoARC?**
+ArvoARC is a self-service SaaS platform for online stores and retail shops that brings product (catalog) management and order management into one panel. It is available at ${arc.url}.
 
-**Who is Arc for?**
+**Who is ArvoARC for?**
 E-commerce businesses, physical stores and retailers, and growing brands.
 
-**What is the difference between Arc and ArvoOS?**
-ArvoOS is a business operating system for a company's operations: CRM, proposals, contracts, jobs, finance and HR. Arc is for e-commerce and stores: managing products and orders in one panel.
+**What is the difference between ArvoARC and ArvoOS?**
+ArvoOS is a business operating system for a company's operations: CRM, proposals, contracts, jobs, finance and HR. ArvoARC is for e-commerce and stores: managing products and orders in one panel.
 
 **What is the difference between Arvo and ArvoOS?**
-Arvo is the brand (and arvo-os.com the website) of ${COMPANY.legalName}. ArvoOS is one of its products; ArvoLab and Arc are the others.
+Arvo is the brand (and arvo-os.com the website) of ${COMPANY.legalName}. ArvoOS is one of its products; ArvoLab and ArvoARC are the others.
 
 **Does Arvo build websites or custom software?**
 Yes. Arvo's services include website design and development, SEO and GEO content optimization, custom software development (panels, portals, integrations and automation), process and experience design, and ongoing development support. See ${u("services", "en")}.
@@ -332,7 +332,7 @@ Arvo, ${COMPANY.city} merkezli teknoloji şirketi ${COMPANY.legalName} bünyesin
 
 - ArvoOS — hizmet işletmeleri ve kurumlar için işletme işletim sistemi (${os.host}).
 - ArvoLab — akademik çalışma için araştırma çalışma alanı (${lab.host}).
-- Arc — e-ticaret siteleri ve mağazalar için self servis SaaS: ürün ve sipariş yönetimi (${arc.host}).
+- ArvoARC — e-ticaret siteleri ve mağazalar için self servis SaaS: ürün ve sipariş yönetimi (${arc.host}).
 - Hizmetler: web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme, süreç ve deneyim tasarımı, entegrasyon ve otomasyon, kurumsal dijital sistemler (panel, portal), sürekli geliştirme desteği.
 - Web sitesi: ${SITE_ORIGIN} (Türkçe), ${u("home", "en")} (İngilizce).
 - İletişim: ${mail}
@@ -386,19 +386,19 @@ Sayfa: ${u("arvolab", "tr")} · Giriş: ${lab.url}
 
 **Erişim.** ${mail} adresinden erişim talep edin; giriş: ${lab.url}.
 
-## Arc — mağazalar için ürün ve sipariş yönetimi
+## ArvoARC — mağazalar için ürün ve sipariş yönetimi
 
 Sayfa: ${u("arc", "tr")} · Uygulama: ${arc.url}
 
-**Nedir?** Arc, e-ticaret siteleri ve mağazalar için self servis bir SaaS hizmetidir. Ürün yönetimini (katalog ve ürün bilgileri) ve sipariş yönetimini tek panelde toplar.
+**Nedir?** ArvoARC, e-ticaret siteleri ve mağazalar için self servis bir SaaS hizmetidir. Ürün yönetimini (katalog ve ürün bilgileri) ve sipariş yönetimini tek panelde toplar.
 
 **Kimler için?** E-ticaret işletmeleri, fiziksel mağazalar ve perakendeciler, büyüyen markalar.
 
-**Nasıl çalışır?** Mağazalar Arc'a kendileri kaydolur ve kurulumu kendileri yapar (self servis). Bulut tabanlıdır, tarayıcıda çalışır. Çok kiracılıdır: her mağazanın kendi alanı vardır.
+**Nasıl çalışır?** Mağazalar ArvoARC'a kendileri kaydolur ve kurulumu kendileri yapar (self servis). Bulut tabanlıdır, tarayıcıda çalışır. Çok kiracılıdır: her mağazanın kendi alanı vardır.
 
 ## Ürünler arasındaki ilişki
 
-ArvoOS, ArvoLab ve Arc; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${arc.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; Arc bir mağazanın ürünlerini ve siparişlerini yönetir.
+ArvoOS, ArvoLab ve ArvoARC; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${arc.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoARC bir mağazanın ürünlerini ve siparişlerini yönetir.
 
 ## Hizmetler
 
@@ -461,17 +461,17 @@ ArvoLab, Arvo'nun literatür ve atıf yönetimi, akademik yazım, kılavuz kontr
 **ArvoLab'e nasıl erişilir?**
 ${mail} adresinden erişim talep edin. Giriş: ${lab.url}.
 
-**Arc nedir?**
-Arc, e-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmetidir. Adresi: ${arc.url}.
+**ArvoARC nedir?**
+ArvoARC, e-ticaret siteleri ve mağazalar için ürün (katalog) yönetimini ve sipariş yönetimini tek panelde toplayan self servis SaaS hizmetidir. Adresi: ${arc.url}.
 
-**Arc kimler için?**
+**ArvoARC kimler için?**
 E-ticaret işletmeleri, fiziksel mağazalar ve perakendeciler, büyüyen markalar.
 
-**Arc ile ArvoOS arasındaki fark nedir?**
-ArvoOS, bir şirketin operasyonunu yöneten işletme işletim sistemidir: CRM, teklif, sözleşme, iş takibi, finans ve İK. Arc ise e-ticaret ve mağazalar içindir: ürünleri ve siparişleri tek panelde yönetir.
+**ArvoARC ile ArvoOS arasındaki fark nedir?**
+ArvoOS, bir şirketin operasyonunu yöneten işletme işletim sistemidir: CRM, teklif, sözleşme, iş takibi, finans ve İK. ArvoARC ise e-ticaret ve mağazalar içindir: ürünleri ve siparişleri tek panelde yönetir.
 
 **Arvo ile ArvoOS arasındaki fark nedir?**
-Arvo, ${COMPANY.legalName} şirketinin markası (arvo-os.com da web sitesi); ArvoOS ise bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve Arc'tır.
+Arvo, ${COMPANY.legalName} şirketinin markası (arvo-os.com da web sitesi); ArvoOS ise bu markanın ürünlerinden biridir. Diğer ürünler ArvoLab ve ArvoARC'tır.
 
 **Arvo web sitesi veya özel yazılım yapıyor mu?**
 Evet. Arvo'nun hizmetleri arasında web sitesi tasarımı ve yapımı, SEO ve GEO içerik düzenleme, özel yazılım geliştirme (panel, portal, entegrasyon ve otomasyon), süreç ve deneyim tasarımı ile sürekli geliştirme desteği bulunur. Bkz. ${u("services", "tr")}.

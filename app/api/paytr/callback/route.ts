@@ -130,7 +130,7 @@ export async function POST(request: Request) {
       const synced = await syncArvolabLicense(link.payer_organization_id);
       if (synced !== "synced") console.error("[paytr] ArvoLab lisansı yansıtılamadı", link.payer_organization_id, synced);
     }
-    // ARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
+    // ArvoARC lisansı uzadıysa kademe hemen açılsın; 10 dakikayı beklemesin.
     if (link.purpose === "subscription" && link.product === "arc" && link.payer_organization_id) {
       await syncArcTenantQuietly(link.payer_organization_id);
     }

@@ -10,7 +10,7 @@ const SIZE: Record<Brand, { w: number; h: number }> = {
   arc: { w: 1909, h: 373 },
   arvoculture: { w: 1920, h: 259 },
 };
-const ALT: Record<"ArvoOS" | "ArvoLab" | "Arc", string> = { ArvoOS: "ArvoOS", ArvoLab: "ArvoLab", Arc: "Arvo Arc" };
+const ALT: Record<"ArvoOS" | "ArvoLab" | "ArvoARC", string> = { ArvoOS: "ArvoOS", ArvoLab: "ArvoLab", ArvoARC: "ArvoARC" };
 
 export function BrandLogo({ brand, tone = "light", height, alt = "", className = "", priority = false }: {
   brand: Brand; tone?: "light" | "dark"; height?: number; alt?: string; className?: string; priority?: boolean;
@@ -31,9 +31,9 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
   );
 }
 
-export type ProductName = "ArvoOS" | "ArvoLab" | "Arc";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC";
 
-const BRAND_OF: Record<ProductName, Brand> = { ArvoOS: "arvoos", ArvoLab: "arvolab", Arc: "arc" };
+const BRAND_OF: Record<ProductName, Brand> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc" };
 
 /** Ürün kimliği: ürünün gerçek logosu, zemine göre sürümüyle. */
 export function ProductLogo({ name, tone = "light", height = 28, withAlt = true, className = "" }: {

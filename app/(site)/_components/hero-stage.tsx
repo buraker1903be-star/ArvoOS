@@ -1,5 +1,5 @@
 // Açılış sahnesi: eğik başlayıp kaydırdıkça düzleşen katmanlı arayüz.
-// ArvoOS: panel + e-imza kartı + PWA müşteri portalı. ArvoLab / Arc: ana
+// ArvoOS: panel + e-imza kartı + PWA müşteri portalı. ArvoLab / ArvoARC: ana
 // pencere + ürüne özgü yüzen kart. Hepsi "Örnek arayüz" olarak etiketlidir.
 import type { Locale } from "@/lib/site/routes";
 import { FloatCard, SignCard } from "./float-card";

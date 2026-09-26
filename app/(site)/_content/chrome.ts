@@ -29,7 +29,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
-      { label: "Arc", desc: "E-ticaret ve mağaza yönetimi", href: ROUTES.arc.tr },
+      { label: "ArvoARC", desc: "E-ticaret ve mağaza yönetimi", href: ROUTES.arc.tr },
     ],
     arvoosTitle: "ArvoOS’u keşfedin",
     arvoosLinks: [
@@ -57,7 +57,7 @@ export const CHROME: Record<Locale, Chrome> = {
     productLinks: [
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },
-      { label: "Arc", desc: "E-commerce and store management", href: ROUTES.arc.en },
+      { label: "ArvoARC", desc: "E-commerce and store management", href: ROUTES.arc.en },
     ],
     arvoosTitle: "Explore ArvoOS",
     arvoosLinks: [

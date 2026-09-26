@@ -755,7 +755,7 @@
 .plt-urun-formu label[data-tone="danger"] > input { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)) }
 
 /* ============================================================
-   ÜRÜN KARTLARI (ArvoOS · ArvoLab · Arc · Randevu)
+   ÜRÜN KARTLARI (ArvoOS · ArvoLab · ArvoARC · Randevu)
 
    Dördü ayrı ürün, tek satırda dört kart. Kart özet; düzenleme karta
    tıklayınca açılan pencerede. Dört formu aynı anda dar sütunlarda

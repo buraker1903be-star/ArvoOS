@@ -10,8 +10,8 @@ import type { Row } from "@/lib/arc-bridge-plan";
 // randevu sayfasının açık olup olmadığını ve personelin panele girip
 // giremeyeceğini Randevu kendi veritabanındaki organizations /
 // organization_memberships / organization_product_licenses kopyasından
-// okur (rdv_lisans_acik, rdv_uye_mi). Kopyayı burası yazar. ARC köprüsüyle
-// (lib/arc-bridge.ts) aynı yapı; ARC'ınkine dokunmamak için ayrı dosya.
+// okur (rdv_lisans_acik, rdv_uye_mi). Kopyayı burası yazar. ArvoARC köprüsüyle
+// (lib/arc-bridge.ts) aynı yapı; ArvoARC'ınkine dokunmamak için ayrı dosya.
 //
 // Kimlikler iki tarafta aynı (kurum id, kullanıcı id). Yeni personel
 // Randevu'da aynı uuid ve e-postayla, şifresiz açılır; ilk girişte şifre

@@ -10,7 +10,7 @@ import { OG_COPY, OG_PRODUCT, ogCharset, type ProductName } from "@/lib/site/og-
 type Fonts = NonNullable<NonNullable<ConstructorParameters<typeof ImageResponse>[1]>["fonts"]>;
 
 const SIZE = { width: 1200, height: 630 };
-const PRODUCTS: ProductName[] = ["ArvoOS", "ArvoLab", "Arc"];
+const PRODUCTS: ProductName[] = ["ArvoOS", "ArvoLab", "ArvoARC"];
 const CHAMPAGNE = "#c9a66a";
 // Eski bir Safari UA'sı: Google Fonts woff2 yerine (satori'nin okuyabildiği) TTF döndürür.
 const LEGACY_UA = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1";

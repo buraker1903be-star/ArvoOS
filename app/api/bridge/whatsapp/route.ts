@@ -4,7 +4,7 @@ import { GatewayError, sendThroughGateway, type GatewayProduct, type GatewaySend
 /*
   Dört ürünün WhatsApp gönderim kapısı.
 
-  Ürünler (Randevu, Arc, ArvoLab ve ArvoOS'un kendi işleri) Meta'ya değil
+  Ürünler (Randevu, ArvoARC, ArvoLab ve ArvoOS'un kendi işleri) Meta'ya değil
   buraya çağırır. Neden: tek yerde erişim anahtarı, tek yerde mesaj kaydı,
   tek yerde hata haritası. Dört ürün ayrı ayrı Meta'ya konuşsaydı dört yerde
   token, dört ayrı hata yönetimi ve dağınık kayıt olurdu.

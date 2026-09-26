@@ -1,4 +1,4 @@
-// Ürün sayfası şablonu (ArvoOS, ArvoLab, Arc) — açık açılış + keskin beyaz/gri sahneler.
+// Ürün sayfası şablonu (ArvoOS, ArvoLab, ArvoARC) — açık açılış + keskin beyaz/gri sahneler.
 import Link from "next/link";
 import { ROUTES, type Locale } from "@/lib/site/routes";
 import { JsonLd, breadcrumbLd, faqLd, productLd, webPageLd } from "@/lib/site/structured-data";

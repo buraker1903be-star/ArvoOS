@@ -1,6 +1,6 @@
 /* ============================================================
    Açık açılışlar, ürün kutuları (apple.com), bölüm başlıkları,
-   eski adım anlatısı (ArvoLab / Arc), kaydırmayla belirme
+   eski adım anlatısı (ArvoLab / ArvoARC), kaydırmayla belirme
    ============================================================ */
 
 /* ---------- ana sayfa açılışı ---------- */
@@ -54,7 +54,7 @@
 .site .ptile-visual{width:min(1240px,100% - 2*var(--gutter));margin:clamp(36px,4.5vw,64px) auto 0}
 .site .ptile-visual.narrow{width:min(980px,100% - 2*var(--gutter))}
 
-/* ---------- ArvoLab / Arc adım anlatısı (açık) ---------- */
+/* ---------- ArvoLab / ArvoARC adım anlatısı (açık) ---------- */
 .site .story{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(40px,6vw,96px)}
 .site .story-pin{position:sticky;top:calc(var(--header-h) + 40px);align-self:start}
 .site .story-pin .lead{margin-top:16px}

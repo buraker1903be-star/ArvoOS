@@ -39,7 +39,7 @@ export default async function MembersPage() {
 
   return <div className="stg plt">
     <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve Arc&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
+      <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve ArvoARC&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
     </div>
 
     {/*
@@ -94,7 +94,7 @@ export default async function MembersPage() {
 
     <p className="stg-muted">
       <StgIcon name="users" size={16} />
-      Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve Arc&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
+      Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve ArvoARC&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
     </p>
   </div>;
 }

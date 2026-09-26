@@ -9,7 +9,7 @@ import { UrunFormu, type KotaAlani } from "./urun-formu";
 
   Eskiden ArvoOS çekirdek lisansı tam genişlikte dev bir form, diğer üç
   ürün ise altında ayrı bir bölümdeydi. Oysa dördü de ayrı ürün: ArvoOS,
-  ArvoLab, Arc, Randevu. Sayfa ikiye bölününce "bu kiracı hangi ürünleri
+  ArvoLab, ArvoARC, Randevu. Sayfa ikiye bölününce "bu kiracı hangi ürünleri
   alıyor" sorusunu yanıtlamak için iki ayrı yere bakmak gerekiyordu ve
   çekirdek form dokuz alanıyla ekranın yarısını yiyordu.
 

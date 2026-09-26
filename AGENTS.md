@@ -76,9 +76,9 @@ damgalarda "…250000" gibi geçersiz saatler oluştu). `npm run check:migration
 CI'da çalışır. Mevcut bir migration düzenlenmez; yenisi eklenir. Yeni tablo eklerken RLS'i açıp
 politikalarını aynı migration'da yazın.
 
-**ARC 19 Eylül 2026'dan beri ayrı Supabase projesinde** (`obaskcdxaaezjglayash`;
+**ArvoARC 19 Eylül 2026'dan beri ayrı Supabase projesinde** (`obaskcdxaaezjglayash`;
 ArvoOS `oahshpkgdzrraqdzjqau`'da kaldı). Bu projedeki `arc_*` tabloları geçişten
-kalma salt okunur yedek: onlara migration yazmayın, kod eklemeyin. ARC'ın kurum,
+kalma salt okunur yedek: onlara migration yazmayın, kod eklemeyin. ArvoARC'ın kurum,
 lisans, modül ve personel kopyasını `lib/arc-bridge.ts` yazar (Platform sayfası
 köprünün durumunu gösterir). Ayrıntı: ArvoARC/AYRILMA.md.
 

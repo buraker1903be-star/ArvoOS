@@ -88,7 +88,7 @@ export const LEGACY_REDIRECTS: { from: string; to: string }[] = [
 export const PRODUCT_APPS = {
   arvoos: { name: "ArvoOS", url: "https://app.arvo-os.com/login", host: "app.arvo-os.com" },
   arvolab: { name: "ArvoLab", url: "https://lab.arvo-os.com", host: "lab.arvo-os.com" },
-  arc: { name: "Arc", url: "https://arc.arvo-os.com", host: "arc.arvo-os.com" },
+  arc: { name: "ArvoARC", url: "https://arc.arvo-os.com", host: "arc.arvo-os.com" },
   randevu: { name: "Arvo Randevu", url: "https://randevu.arvo-os.com", host: "randevu.arvo-os.com" },
 } as const;
 
@@ -99,7 +99,7 @@ export const PRODUCT_APPS = {
 */
 export const PRODUCT_NAMES: string[] = Object.values(PRODUCT_APPS).map((p) => p.name);
 
-/** "ArvoOS, ArvoLab, Arc ve Arvo Randevu" — cümle içinde ürün listesi. */
+/** "ArvoOS, ArvoLab, ArvoARC ve Arvo Randevu" — cümle içinde ürün listesi. */
 export function productList(locale: Locale): string {
   const names = [...PRODUCT_NAMES];
   const last = names.pop()!;

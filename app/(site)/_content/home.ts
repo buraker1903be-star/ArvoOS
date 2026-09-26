@@ -22,13 +22,13 @@ const R = (id: keyof typeof ROUTES) => ROUTES[id].tr;
 
 export const HOME_TR: HomeContent = {
   meta: {
-    title: "Arvo | ArvoOS, ArvoLab ve Arc — daha iyi çalışma sistemleri",
-    description: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için Arc’ı geliştirir. Web sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
+    title: "Arvo | ArvoOS, ArvoLab ve ArvoARC — daha iyi çalışma sistemleri",
+    description: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için ArvoARC’ı geliştirir. Web sitesi tasarımı, SEO ve GEO ile özel yazılım hizmetleri sunar.",
   },
   hero: {
     eyebrow: "Arvo ürün ailesi",
     title: "Daha iyi çalışmak için", subtitle: "daha iyi sistemler.",
-    lead: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için Arc’ı geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
+    lead: "Arvo; işletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için ArvoARC’ı geliştiren bir yazılım markasıdır. Karmaşık süreçleri sakin, güçlü ve bağlantılı çalışma deneyimlerine dönüştürür.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
       { label: "Ürünleri keşfedin", href: "#urunler", variant: "ghost" },
@@ -54,7 +54,7 @@ export const HOME_TR: HomeContent = {
       cta: { label: "ArvoLab’i keşfedin", href: R("arvolab"), variant: "primary" },
       signIn: { label: "Giriş", href: PRODUCT_APPS.arvolab.url, external: true, variant: "ghost" },
     },
-    arcCta: { label: "Arc’ı keşfedin", href: R("arc"), variant: "gold" },
+    arcCta: { label: "ArvoARC’ı keşfedin", href: R("arc"), variant: "gold" },
     arcSignIn: { label: "Giriş", href: PRODUCT_APPS.arc.url, external: true, variant: "ghost" },
   },
   band: {
@@ -79,7 +79,7 @@ export const HOME_TR: HomeContent = {
   eco: {
     eyebrow: "Ekosistem",
     title: "Üç ürün. Tek ekosistem.",
-    lead: "ArvoOS, ArvoLab ve Arc; arvo-os.com’un kendi alt alan adlarında çalışan ayrı web uygulamalarıdır ve aynı ekip tarafından, ortak marka ve kalite standardıyla geliştirilir.",
+    lead: "ArvoOS, ArvoLab ve ArvoARC; arvo-os.com’un kendi alt alan adlarında çalışan ayrı web uygulamalarıdır ve aynı ekip tarafından, ortak marka ve kalite standardıyla geliştirilir.",
     roles: ["Operasyon", "Araştırma", "Mağaza"],
     principles: [
       { title: "Her kuruma kendi alanı", text: "Her kurum, ekip ya da mağaza kendi çalışma alanında çalışır." },
@@ -114,9 +114,9 @@ export const HOME_TR: HomeContent = {
     eyebrow: "Sık sorulan sorular",
     title: "Arvo hakkında merak edilenler",
     items: [
-      { q: "Arvo nedir?", a: `Arvo, ${COMPANY.legalName} şirketinin yazılım markasıdır. İşletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için Arc’ı geliştirir; web sitesi tasarımı ve özel yazılım hizmetleri de sunar.` },
-      { q: "ArvoOS, ArvoLab ve Arc arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. Arc ise mağazaların ürünlerini ve siparişlerini tek panelde toplar." },
-      { q: "Arvo ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, Arc ise ${PRODUCT_APPS.arc.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
+      { q: "Arvo nedir?", a: `Arvo, ${COMPANY.legalName} şirketinin yazılım markasıdır. İşletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için ArvoARC’ı geliştirir; web sitesi tasarımı ve özel yazılım hizmetleri de sunar.` },
+      { q: "ArvoOS, ArvoLab ve ArvoARC arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. ArvoARC ise mağazaların ürünlerini ve siparişlerini tek panelde toplar." },
+      { q: "Arvo ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoARC ise ${PRODUCT_APPS.arc.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
       { q: "ArvoOS’un fiyatı nedir?", a: "Herkese açık bir fiyat listesi yoktur. Paketler; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir." },
       { q: "Nasıl demo talep edebilirim?", a: `İletişim sayfasındaki formu doldurabilir ya da ${COMPANY.email} adresine yazabilirsiniz; talebiniz ilgili ürün ekibine iletilir.` },
     ],
@@ -124,7 +124,7 @@ export const HOME_TR: HomeContent = {
   cta: {
     eyebrow: "Kurumunuza özel demo",
     title: "Geleceğin çalışma sistemlerini birlikte kuralım.",
-    lead: "ArvoOS, ArvoLab veya Arc’ın sizin için nasıl çalışacağını birlikte gösterelim.",
+    lead: "ArvoOS, ArvoLab veya ArvoARC’ın sizin için nasıl çalışacağını birlikte gösterelim.",
     actions: [
       { label: "Demo talep edin", href: `${R("contact")}?ilgi=arvoos`, variant: "gold" },
       { label: "Bizimle tanışın", href: R("about"), variant: "ghost" },

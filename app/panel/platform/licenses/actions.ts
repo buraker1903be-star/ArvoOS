@@ -88,7 +88,7 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
 }
 
-// ArvoLab / Arc aboneliği: ArvoOS'un kendi lisansından ayrı, ürün başına ücret
+// ArvoLab / ArvoARC aboneliği: ArvoOS'un kendi lisansından ayrı, ürün başına ücret
 // ve dönem. Kurum yalnızca aldığı ürüne öder; ücreti boş bırakılan üründe
 // kartla ödeme açılmaz.
 async function updateProductLicense__impl(formData: FormData) {
@@ -149,13 +149,13 @@ async function updateProductLicense__impl(formData: FormData) {
     const synced = await syncArvolabLicense(organizationId);
     if (synced === "failed") throw new Error("Lisans kaydedildi ancak ArvoLab'a yansıtılamadı. Bağlantı ayarlarını kontrol edip tekrar kaydedin.");
   }
-  // ARC kendi veritabanına taşındığında kademe oradan okunuyor (lib/arc-bridge.ts).
+  // ArvoARC kendi veritabanına taşındığında kademe oradan okunuyor (lib/arc-bridge.ts).
   // Kurucu ekranında hata görünsün: sessiz kalınca köprünün hiç çalışmadığı
   // (ör. ortam değişkeni girilip yeniden dağıtılmadığı) anlaşılmıyordu.
   if (product === "arc") {
     const arc = await syncArcTenants(organizationId);
     if (arc.status === "failed" || arc.errors.length)
-      throw new Error(`Lisans kaydedildi ancak ARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
+      throw new Error(`Lisans kaydedildi ancak ArvoARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
   }
   // Randevu da kendi veritabanında (lib/randevu-bridge.ts); salonun online
   // sayfası ve paneli lisansı oradan okuyor.
@@ -200,7 +200,7 @@ async function urunuYenidenYansit__impl(formData: FormData) {
   if (product === "arc") {
     const arc = await syncArcTenants(organizationId);
     if (arc.status === "failed" || arc.errors.length)
-      throw new Error(`ARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}`);
+      throw new Error(`ArvoARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}`);
   }
   if (product === "randevu") {
     const randevu = await syncRandevuTenants(organizationId);

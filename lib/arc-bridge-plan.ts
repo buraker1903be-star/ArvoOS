@@ -1,4 +1,4 @@
-// ARC köprüsünün saf kısmı: ArvoOS'taki satırlardan ARC'a ne yazılacağını
+// ArvoARC köprüsünün saf kısmı: ArvoOS'taki satırlardan ArvoARC'a ne yazılacağını
 // hesaplar. Veritabanına dokunmaz; tests/unit/arc-bridge-plan.test.ts sınar.
 // Köprünün kendisi: lib/arc-bridge.ts. Neden var: ArvoARC/AYRILMA.md.
 
@@ -17,25 +17,25 @@ export type ArcPlan = {
   modules: Row[];
   licenses: Row[];
   memberships: Row[];
-  /** ARC'ta olup ArvoOS'ta artık olmayan üyelikler: silinmez, pasife alınır. */
+  /** ArvoARC'ta olup ArvoOS'ta artık olmayan üyelikler: silinmez, pasife alınır. */
   deactivate: { organization_id: string; user_id: string }[];
   /**
-   * ARC'ta hesabı olması gereken kullanıcılar. Pasif üyeler de dahil:
+   * ArvoARC'ta hesabı olması gereken kullanıcılar. Pasif üyeler de dahil:
    * üyelik satırı hesaba yabancı anahtarla bağlı, hesap yoksa satır
-   * yazılamaz. Pasif üye hesabıyla ARC'a giremez (üyelik is_active = false).
+   * yazılamaz. Pasif üye hesabıyla ArvoARC'a giremez (üyelik is_active = false).
    */
   userIds: string[];
 };
 
 /**
- * ARC'a aktarılacak kurum: ARC lisansı olan (durumu ne olursa olsun; kademe
- * yaptırımı "canceled"/"suspended"ı ARC'ta uygular) ya da ticaret modülü
+ * ArvoARC'a aktarılacak kurum: ArvoARC lisansı olan (durumu ne olursa olsun; kademe
+ * yaptırımı "canceled"/"suspended"ı ArvoARC'ta uygular) ya da ticaret modülü
  * açık olan kurum. Lisansı hiç olmayan ama modülü açık kurumlar eski
  * mağazalardır (ArvoCulture); arc_store_stage onları açık tutar.
  */
 /*
-  Köprü kapsamı: ARC lisansı olan kurumlar. Lisans "Standalone" (integrated
-  = false) işaretliyse kapsam dışı — kiracı ARC'ı kullanmaya devam eder,
+  Köprü kapsamı: ArvoARC lisansı olan kurumlar. Lisans "Standalone" (integrated
+  = false) işaretliyse kapsam dışı — kiracı ArvoARC'ı kullanmaya devam eder,
   yalnızca ArvoOS ile otomatik veri akışı durur.
 
   integrated alanı olmayan eski satırlar entegre sayılıyor: sütun
@@ -68,7 +68,7 @@ export function planArcSync(source: ArcSource, targetMemberships: { organization
   return {
     organizationIds,
     organizations: source.organizations.filter((o) => inScope.has(String(o.id))),
-    // ARC yalnızca ticaret modülüne ve ARC lisansına bakıyor; diğer ürünlerin
+    // ArvoARC yalnızca ticaret modülüne ve ArvoARC lisansına bakıyor; diğer ürünlerin
     // lisansı (ArvoLab) oraya taşınmaz.
     modules: scoped(source.modules).filter((m) => m.module_code === "commerce"),
     licenses: scoped(source.licenses).filter((l) => l.product === "arc" && kopruluMu(l)),

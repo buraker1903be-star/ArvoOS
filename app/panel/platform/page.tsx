@@ -112,7 +112,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
 
   // ArvoLab ayrı veritabanında; köprü koparsa tek iz orada kalır (lib/arvolab.ts).
   const bridge = await getArvolabBridgeHealth();
-  // ARC köprüsü sessiz çalışıyor; durumu yalnızca burada görünür (lib/arc-bridge.ts).
+  // ArvoARC köprüsü sessiz çalışıyor; durumu yalnızca burada görünür (lib/arc-bridge.ts).
   const [arcBridge, randevuBridge] = await Promise.all([getArcBridgeHealth(), getRandevuBridgeHealth()]);
 
 
@@ -194,10 +194,10 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       <div className="plt-banner" data-tone={arcBridge.error ? "danger" : undefined} role="status">
         <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
         <div>
-          <b>{arcBridge.error ? "ARC köprüsü bağlanamıyor" : "ARC köprüsü kapalı"}</b>
+          <b>{arcBridge.error ? "ArvoARC köprüsü bağlanamıyor" : "ArvoARC köprüsü kapalı"}</b>
           <p>
             {arcBridge.error
-              ? `ARC veritabanına bağlanılamadı: ${arcBridge.error}. Anahtarın yeni ARC projesinin secret anahtarı olduğunu kontrol edin.`
+              ? `ArvoARC veritabanına bağlanılamadı: ${arcBridge.error}. Anahtarın yeni ArvoARC projesinin secret anahtarı olduğunu kontrol edin.`
               : `Bu dağıtımda tanımlı olmayan değişkenler: ${arcBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın.`}
           </p>
         </div>

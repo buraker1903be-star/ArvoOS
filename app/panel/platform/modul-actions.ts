@@ -70,7 +70,7 @@ async function modulErisimiDegistir__impl(formData: FormData) {
     .eq("product", product);
   if (error) throw new Error(`Erişim güncellenemedi: ${error.message}`);
 
-  // Lisans değişikliği ürün tarafına yansımalı; ARC kopyayı köprüden okuyor.
+  // Lisans değişikliği ürün tarafına yansımalı; ArvoARC kopyayı köprüden okuyor.
   await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel/platform");
   await flashSuccess(

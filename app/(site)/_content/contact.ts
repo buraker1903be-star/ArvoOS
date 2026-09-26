@@ -11,7 +11,7 @@ export type ContactContent = {
 };
 
 export const CONTACT_TR: ContactContent = {
-  meta: { title: "İletişim ve Demo Talebi", description: `ArvoOS, ArvoLab ve Arc demo talepleri, ürün erişimi ve proje görüşmeleri için Arvo ile iletişime geçin: ${COMPANY.email}.` },
+  meta: { title: "İletişim ve Demo Talebi", description: `ArvoOS, ArvoLab ve ArvoARC demo talepleri, ürün erişimi ve proje görüşmeleri için Arvo ile iletişime geçin: ${COMPANY.email}.` },
   hero: {
     eyebrow: "İletişim", title: "Yeni fikriniz için", subtitle: "buradayız.",
     lead: "Ürün demosu, panel erişimi veya kurumunuza özel bir dijital proje için formu doldurun ya da doğrudan yazın; talebiniz ilgili ürün veya proje ekibine iletilir.",
@@ -26,7 +26,7 @@ export const CONTACT_TR: ContactContent = {
     items: [
       { q: "Nasıl demo talep edebilirim?", a: "Bu sayfadaki formda ilgilendiğiniz ürünü seçip ihtiyacınızı yazmanız yeterli; ekibimiz sizinle iletişime geçer." },
       { q: "Form dışında nasıl ulaşabilirim?", a: `${COMPANY.email} adresine e-posta gönderebilirsiniz.` },
-      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: "ArvoOS app.arvo-os.com, ArvoLab lab.arvo-os.com, Arc arc.arvo-os.com adresinde çalışır; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz." },
+      { q: "Paneli kullanan bir kurumum, nereden giriş yaparım?", a: "ArvoOS app.arvo-os.com, ArvoLab lab.arvo-os.com, ArvoARC arc.arvo-os.com adresinde çalışır; kurumunuzun özel alan adı varsa oradan da giriş yapabilirsiniz." },
       { q: "Form verilerim nasıl kullanılır?", a: `Yalnızca talebinizi yanıtlamak için işlenir. Ayrıntılar Gizlilik ve KVKK Aydınlatma Metni’nde (${ROUTES.privacy.tr}).` },
     ],
   },

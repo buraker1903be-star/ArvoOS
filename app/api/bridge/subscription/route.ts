@@ -7,7 +7,7 @@ import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { isSubscriberProduct, productName } from "@/lib/products";
 
-// Ürünler için abonelik köprüsü (ArvoLab, ileride Arc).
+// Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
 // Bireysel kullanıcının ArvoOS paneli yok: aboneliğini kendi kullandığı ürünün
 // içinden yönetir. Ürün bu uca sunucudan sunucuya çağrı yapar; tarayıcıdan

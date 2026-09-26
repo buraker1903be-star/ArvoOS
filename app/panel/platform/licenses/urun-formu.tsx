@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /*
-  Ek ürün aboneliği kartının formu (ArvoLab, Arc, Randevu).
+  Ek ürün aboneliği kartının formu (ArvoLab, ArvoARC, Randevu).
 
   Çekirdek lisans formu gruplanıp kaydet şeridi kazanınca bu üç kart eski
   düz formla kaldı: aynı sayfada iki ayrı form dili, hangisinin neyi
