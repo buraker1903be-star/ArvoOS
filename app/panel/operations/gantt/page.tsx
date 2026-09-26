@@ -47,8 +47,19 @@ const gunAnahtari = (d: Date) => `${ayAnahtari(d)}-${pad(d.getDate())}`;
 const kisaTarih = (gun: string) =>
   new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short" }).format(new Date(`${gun}T12:00:00`));
 
-export default async function OperationsGanttPage({ searchParams }: { searchParams: Promise<{ ay?: string }> }) {
+export default async function OperationsGanttPage({ searchParams }: { searchParams: Promise<{ ay?: string; tamamlanan?: string }> }) {
   const params = await searchParams;
+  /*
+    Tamamlanan aşamalar VARSAYILAN OLARAK gizli: sekiz aşamalı iki işi olan
+    bir müşteri 19 satır üretiyor ve çizelge okunmuyor. Bitmiş aşama
+    planlama kararına girmiyor — "şu an neredeyiz, sırada ne var" sorusunu
+    yanıtlamıyor.
+
+    Bilgi kaybolmuyor: iş satırında kaç aşamanın bittiği yazıyor ve
+    "Tamamlananları göster" ile hepsi geri geliyor. Tümden gizlemek,
+    geçmişi görmek isteyeni çizelgeden koparırdı.
+  */
+  const tamamlananlariGoster = params.tamamlanan === "1";
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
@@ -58,6 +69,15 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   const monthQuery = ayAnahtari(monthStart);
   const prevMonth = ayAnahtari(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1));
   const nextMonth = ayAnahtari(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1));
+  /*
+    Ay gezinmesi tamamlanan seçimini kaybetmemeli; boş değer parametreyi
+    tümden düşürüyor ("?ay=2026-10&tamamlanan=" gibi bir adres kalmasın).
+  */
+  const adres = (ek: Record<string, string>) => {
+    const usp = new URLSearchParams({ ay: ayAnahtari(monthStart), ...(tamamlananlariGoster ? { tamamlanan: "1" } : {}), ...ek });
+    for (const [ad, deger] of [...usp.entries()]) if (!deger) usp.delete(ad);
+    return `/panel/operations/gantt?${usp.toString()}`;
+  };
   const monthStartKey = gunAnahtari(monthStart);
   const monthEndKey = gunAnahtari(monthEnd);
   const bugun = todayIstanbul();
@@ -91,10 +111,13 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
   });
 
   // Ekranda çizilecek müşteriler: en az bir işi ya da aşaması bu aya düşenler.
+  const asamaGorunur = (asama: { aralik: { bas: string; son: string } | null; tamamlandi: boolean }) =>
+    kesisiyor(asama.aralik) && (tamamlananlariGoster || !asama.tamamlandi);
+
   const gorunen = cizelge
     .map((musteri) => ({
       ...musteri,
-      isler: musteri.isler.filter((is) => kesisiyor(is.aralik) || is.asamalar.some((asama) => kesisiyor(asama.aralik))),
+      isler: musteri.isler.filter((is) => kesisiyor(is.aralik) || is.asamalar.some(asamaGorunur)),
     }))
     .filter((musteri) => musteri.isler.length > 0);
 
@@ -116,7 +139,7 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
     çizim sırasında sayaç artırmak React 19'da yasak ve haklı olarak —
     bileşen iki kez çizilirse sayaç kaldığı yerden devam eder.
   */
-  const satirlar = satirlariDiz(gorunen, (asama) => kesisiyor(asama.aralik));
+  const satirlar = satirlariDiz(gorunen, asamaGorunur);
 
   return <div className="crm-page-stack">
     <div className="panel-pagehead">
@@ -125,15 +148,20 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
         <h1>Çalışma Çizelgesi</h1>
         <p>İşler müşteriye göre gruplu; her işin altında aşamaları ve tarihleri. Aynı kişinin eş zamanlı çalışmaları yan yana.</p>
       </div>
-      <div className="panel-page-actions"><span className="status-pill">{cizilenIs} iş</span></div>
+      <div className="panel-page-actions">
+        <span className="status-pill">{cizilenIs} iş</span>
+        <Link className="panel-secondary" href={adres({ tamamlanan: tamamlananlariGoster ? "" : "1" })}>
+          {tamamlananlariGoster ? "Tamamlananları gizle" : "Tamamlananları göster"}
+        </Link>
+      </div>
     </div>
     <OperationsTabs active="gantt" />
     <div className="module-tab-panel">
     <section className="panel-card gantt-card">
       <div className="calendar-month-nav">
-        <Link className="panel-icon-button" href={`/panel/operations/gantt?ay=${prevMonth}`} aria-label="Önceki ay">‹</Link>
+        <Link className="panel-icon-button" href={adres({ ay: prevMonth })} aria-label="Önceki ay">‹</Link>
         <b>{monthLabel(monthStart)}</b>
-        <Link className="panel-icon-button" href={`/panel/operations/gantt?ay=${nextMonth}`} aria-label="Sonraki ay">›</Link>
+        <Link className="panel-icon-button" href={adres({ ay: nextMonth })} aria-label="Sonraki ay">›</Link>
       </div>
 
       {cizilenIs ? (
@@ -168,7 +196,11 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
                 return [
                   <Link href={`/panel/operations/${is.id}`} className="gantt-row-label" key={`${is.id}-label`} style={{ gridRow: kayit.satir, gridColumn: 1 }}>
                     <b>{is.baslik}</b>
-                    <small>{is.guncelAsama ? `Şu an: ${is.guncelAsama}` : isDurumAdi(is.durum)}</small>
+                    {/* Tamamlanan aşamalar gizliyken "kaç bitti" bilgisi burada duruyor. */}
+                    <small>
+                      {is.guncelAsama ? `Şu an: ${is.guncelAsama}` : isDurumAdi(is.durum)}
+                      {is.asamalar.length ? ` · ${is.tamamlanan}/${is.asamalar.length} tamam` : ""}
+                    </small>
                   </Link>,
                   <div key={`${is.id}-track`} className="gantt-row-track" style={{ gridRow: kayit.satir, gridColumn: `2 / ${daysInMonth + 2}` }} />,
                   kirpilmis ? (
