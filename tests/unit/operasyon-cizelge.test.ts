@@ -335,6 +335,9 @@ const SABLON = [
   { title: "Evrak Teslimine Hazır", sort_order: 30 },
 ];
 
+/** Gösterilen kolonlar. Boş kolonlar gizlendiği için burada yer almazlar. */
+const panoKolonlari = (...girdi: Parameters<typeof asamaPanosuKur>) => asamaPanosuKur(...girdi).kolonlar;
+
 test("pano · şablon aşamaları kolon", async (t) => {
   const isAsamalarla = (id: string, baslik: string, musteri: string, adimlar: ReturnType<typeof adim>[]) =>
     is({ id, title: baslik, customer_name: musteri, steps: adimlar });
@@ -344,7 +347,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
       İsteğin çekirdeği: "her iki çalışmada da hangi aşamadayız". Kart iş
       olunca pano bunu doğrudan yanıtlıyor.
     */
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       isAsamalarla("w1", "Tez", "Emine", [
         adim(1, "Hazırlık Yapılıyor", "2026-10-02", true),
         adim(2, "İç Kontrol Yapılıyor", "2026-10-10"),
@@ -356,18 +359,47 @@ test("pano · şablon aşamaları kolon", async (t) => {
     const kolon = (baslik: string) => pano.find((k) => k.baslik === baslik)!;
     assert.deepEqual(kolon("Hazırlık Yapılıyor").kartlar.map((c) => c.baslik), ["Makale"]);
     assert.deepEqual(kolon("İç Kontrol Yapılıyor").kartlar.map((c) => c.baslik), ["Tez"]);
-    assert.equal(kolon("Evrak Teslimine Hazır").kartlar.length, 0, "boş şablon kolonu yine duruyor");
+    // İçinde iş olmayan aşama gösterilmiyor; numarası sırayı söylüyor.
+    assert.equal(pano.some((k) => k.baslik === "Evrak Teslimine Hazır"), false);
+    assert.deepEqual(pano.map((k) => k.sira), [1, 2], "numara ŞABLONDAKİ sıra: 3 atlandı");
   });
 
   await t.test("kolonlar şablon sırasında, sonda Tamamlandı", () => {
-    const pano = asamaPanosuKur([], SABLON, adCoz);
-    assert.deepEqual(pano.map((k) => k.baslik), [...SABLON.map((a) => a.title), "Tamamlandı"]);
-    // Boş "şablon dışı" kolon gösterilmiyor: hep duran boş kolon panoyu daraltır.
-    assert.equal(pano.some((k) => k.tur === "sablon_disi"), false);
+    const pano = panoKolonlari([
+      isAsamalarla("w1", "A", "X", [adim(1, "Hazırlık Yapılıyor", "2026-10-02")]),
+      isAsamalarla("w2", "B", "X", [adim(1, "İç Kontrol Yapılıyor", "2026-10-03")]),
+      isAsamalarla("w3", "C", "X", [adim(1, "Evrak Teslimine Hazır", "2026-10-04")]),
+      isAsamalarla("w4", "D", "X", [adim(1, "Hazırlık Yapılıyor", "2026-10-01", true)]),
+      isAsamalarla("w5", "E", "X", [adim(1, "Literatür taraması", "2026-10-05")]),
+    ], SABLON, adCoz);
+    assert.deepEqual(pano.map((k) => k.baslik), [
+      ...SABLON.map((a) => a.title), "Tamamlandı", "Şablon dışı aşama",
+    ]);
+  });
+
+  await t.test("BOŞ KOLON GİZLENİYOR, adı ayrıca dönüyor", () => {
+    /*
+      Önce akışın tamamı gösteriliyordu; canlıda sekiz aşama + Tamamlandı
+      dokuz kolon etti ve pano yatay kaydırmadan görünmez oldu. Gizlenen
+      aşamaların adı dönmeli: sessizce yok etmek "İç Kontrol nerede?"
+      sorusunu doğuruyor.
+    */
+    const bos = asamaPanosuKur([], SABLON, adCoz);
+    assert.deepEqual(bos.kolonlar, [], "iş yoksa hiç kolon yok");
+    assert.deepEqual(bos.bosAsamalar, SABLON.map((a) => a.title));
+
+    const dolu = asamaPanosuKur(
+      [isAsamalarla("w1", "Tez", "Emine", [adim(1, "İç Kontrol Yapılıyor", "2026-10-05")])],
+      SABLON, adCoz,
+    );
+    assert.deepEqual(dolu.kolonlar.map((k) => k.baslik), ["İç Kontrol Yapılıyor"]);
+    assert.deepEqual(dolu.bosAsamalar, ["Hazırlık Yapılıyor", "Evrak Teslimine Hazır"]);
+    // "Tamamlandı" ve "Şablon dışı" akışın aşaması değil: sayıma girmiyor.
+    assert.equal(dolu.bosAsamalar.length, 2);
   });
 
   await t.test("bütün aşamaları bitmiş iş Tamamlandı kolonunda", () => {
-    const pano = asamaPanosuKur(
+    const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "Hazırlık Yapılıyor", "2026-10-02", true)])],
       SABLON, adCoz,
     );
@@ -384,18 +416,18 @@ test("pano · şablon aşamaları kolon", async (t) => {
       plandan gelir ve şablonla eşleşmeyebilir. İlk kolona koymak panonun
       yanlış bir tablo göstermesi olurdu.
     */
-    const pano = asamaPanosuKur(
+    const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "Literatür taraması", "2026-10-05")])],
       SABLON, adCoz,
     );
-    assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar.length, 0);
+    assert.equal(pano.some((k) => k.baslik === "Hazırlık Yapılıyor"), false, "kart oraya düşmedi");
     const disi = pano.find((k) => k.anahtar === SABLON_DISI_KOLONU)!;
     assert.deepEqual(disi.kartlar.map((c) => c.guncelAsama), ["Literatür taraması"]);
   });
 
   await t.test("adımı hiç olmayan iş gizlenmiyor", () => {
     // Henüz adımı üretilmemiş iş; gizlemek onu unutturmanın en kolay yolu.
-    const pano = asamaPanosuKur([isAsamalarla("w1", "Yeni iş", "Ali", [])], SABLON, adCoz);
+    const pano = panoKolonlari([isAsamalarla("w1", "Yeni iş", "Ali", [])], SABLON, adCoz);
     const disi = pano.find((k) => k.anahtar === SABLON_DISI_KOLONU)!;
     assert.deepEqual(disi.kartlar.map((c) => c.baslik), ["Yeni iş"]);
     assert.equal(disi.kartlar[0].guncelAsama, null);
@@ -404,7 +436,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
 
   await t.test("aşama adı büyük/küçük harf ve boşluk farkına takılmıyor", () => {
     // Türkçe küçük harf dönüşümü: "İç Kontrol" ile "iç  kontrol" aynı aşama.
-    const pano = asamaPanosuKur(
+    const pano = panoKolonlari(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "iç  kontrol yapılıyor", "2026-10-05")])],
       SABLON, adCoz,
     );
@@ -412,7 +444,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   });
 
   await t.test("kartta ilerleme, tarih, sorumlu ve geri alınacak aşama var", () => {
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       isAsamalarla("w1", "Tez", "Emine", [
         adim(1, "Hazırlık Yapılıyor", "2026-10-02", true),
         adim(2, "İç Kontrol Yapılıyor", "2026-10-10", false, "p1"),
@@ -434,7 +466,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
       4'tür; onu açmak güncel aşamayı (3) değiştirmez ve kart yerinde
       kalır — kullanıcı düğmenin çalışmadığını sanar.
     */
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       is({ id: "w1", title: "Tez", customer_name: "Emine", steps: [
         adim(1, "Hazırlık Yapılıyor", "2026-10-01", true),
         adim(2, "İç Kontrol Yapılıyor", "2026-10-05"),
@@ -447,7 +479,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   });
 
   await t.test("ilk aşamadaysa geri alınacak aşama yok", () => {
-    const pano = asamaPanosuKur(
+    const pano = panoKolonlari(
       [is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-05")] })],
       SABLON, adCoz,
     );
@@ -455,7 +487,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   });
 
   await t.test("hepsi bittiyse geri al en son aşamayı açıyor", () => {
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-01", true), adim(2, "İç Kontrol Yapılıyor", "2026-10-05", true)] }),
     ], SABLON, adCoz);
     assert.equal(pano.find((k) => k.anahtar === TAMAMLANDI_KOLONU)!.kartlar[0].oncekiAsamaId, "s2");
@@ -463,7 +495,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
 
   await t.test("aşama sorumlusu yoksa İŞİN sorumlusu yazılıyor", () => {
     // Kartta "sorumlu yok" göstermek, işin sorumlusu varken yanlış olurdu.
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       is({ id: "w1", title: "Tez", customer_name: "Emine", assigned_employee_id: "p2",
            steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-05", false, null)] }),
     ], SABLON, adCoz);
@@ -471,7 +503,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
   });
 
   await t.test("kartlar tarihe göre, tarihsizler sonda", () => {
-    const pano = asamaPanosuKur([
+    const pano = panoKolonlari([
       isAsamalarla("w1", "Geç", "A", [adim(1, "Hazırlık Yapılıyor", "2026-10-20")]),
       isAsamalarla("w2", "Tarihsiz", "B", [adim(1, "Hazırlık Yapılıyor", null)]),
       isAsamalarla("w3", "Erken", "C", [adim(1, "Hazırlık Yapılıyor", "2026-10-02")]),

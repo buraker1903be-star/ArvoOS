@@ -408,7 +408,15 @@ export interface PanoKolonu {
   anahtar: string;
   baslik: string;
   tur: PanoKolonTuru;
+  /** Akıştaki sırası (1'den başlar); başlıkta gösteriliyor. */
+  sira: number;
   kartlar: PanoIsKarti[];
+}
+
+export interface PanoSonucu {
+  kolonlar: PanoKolonu[];
+  /** Gizlenen boş aşamaların adları; ekran tek satırda sayıyor. */
+  bosAsamalar: string[];
 }
 
 export const TAMAMLANDI_KOLONU = "__tamamlandi__";
@@ -426,15 +434,18 @@ export function asamaPanosuKur(
   isler: CizelgeIsi[],
   sablon: SablonAsamasi[],
   adCoz: (personelId: string) => string | null,
-): PanoKolonu[] {
+): PanoSonucu {
   const sirali = [...sablon].sort((a, b) => a.sort_order - b.sort_order);
   const kolonlar = new Map<string, PanoKolonu>();
   for (const asama of sirali) {
     const anahtar = asamaAnahtari(asama.title);
-    if (!kolonlar.has(anahtar)) kolonlar.set(anahtar, { anahtar, baslik: asama.title, tur: "asama", kartlar: [] });
+    if (!kolonlar.has(anahtar)) {
+      kolonlar.set(anahtar, { anahtar, baslik: asama.title, tur: "asama", sira: kolonlar.size + 1, kartlar: [] });
+    }
   }
-  kolonlar.set(TAMAMLANDI_KOLONU, { anahtar: TAMAMLANDI_KOLONU, baslik: "Tamamlandı", tur: "tamamlandi", kartlar: [] });
-  kolonlar.set(SABLON_DISI_KOLONU, { anahtar: SABLON_DISI_KOLONU, baslik: "Şablon dışı aşama", tur: "sablon_disi", kartlar: [] });
+  const asamaSayisi = kolonlar.size;
+  kolonlar.set(TAMAMLANDI_KOLONU, { anahtar: TAMAMLANDI_KOLONU, baslik: "Tamamlandı", tur: "tamamlandi", sira: asamaSayisi + 1, kartlar: [] });
+  kolonlar.set(SABLON_DISI_KOLONU, { anahtar: SABLON_DISI_KOLONU, baslik: "Şablon dışı aşama", tur: "sablon_disi", sira: asamaSayisi + 2, kartlar: [] });
 
   for (const is of isler) {
     const adimlar = [...(is.steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -502,12 +513,21 @@ export function asamaPanosuKur(
   }
 
   /*
-    Boş kalan "şablon dışı" kolon gösterilmiyor: her zaman duran boş bir
-    kolon panoyu daraltıyor ve kullanıcıya açıklaması gereken bir şey
-    bırakıyor. Şablon aşamaları ise boş olsa da duruyor — akışın tamamı
-    görünmeli.
+    BOŞ KOLONLAR GİZLENİYOR.
+
+    Önce akışın tamamı gösteriliyordu; canlıda sekiz aşama + Tamamlandı
+    dokuz kolon etti ve pano yatay kaydırmadan görünmez oldu. Panonun
+    bütün değeri bir bakışta görünmesi, dolayısıyla içinde iş olmayan
+    aşama yer kaplamamalı.
+
+    Gizlenen aşamaların adları ayrıca dönüyor: ekran onları tek satırda
+    sayıyor. Sessizce yok etmek "İç Kontrol nerede?" sorusunu doğururdu.
   */
-  return [...kolonlar.values()].filter((kolon) => kolon.tur !== "sablon_disi" || kolon.kartlar.length > 0);
+  const dolu = [...kolonlar.values()].filter((kolon) => kolon.kartlar.length > 0);
+  const bosAsamalar = [...kolonlar.values()]
+    .filter((kolon) => kolon.tur === "asama" && !kolon.kartlar.length)
+    .map((kolon) => kolon.baslik);
+  return { kolonlar: dolu, bosAsamalar };
 }
 
 /** Varsayılan şablon (add_standard_operation_steps ile aynı sekiz aşama). */
