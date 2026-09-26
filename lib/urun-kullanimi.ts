@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { arvolabClient } from "@/lib/arvolab";
+import { istanbulMonthStart } from "@/lib/istanbul-date";
 
 /*
   Ürün kullanımının ölçülmesi: ArvoLab ve Randevu.
@@ -38,13 +39,6 @@ export type UrunKullanimi = {
   randevu: { personel: number | null; aylik_randevu: number | null } | null;
 };
 
-/** Ayın ilk günü, Türkiye saatiyle. Dönemsel sayımların başlangıcı. */
-function ayBasi(): string {
-  const simdi = new Date();
-  const istanbul = new Date(simdi.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-  return new Date(Date.UTC(istanbul.getFullYear(), istanbul.getMonth(), 1)).toISOString();
-}
-
 function randevuClient() {
   const url = process.env.RANDEVU_SUPABASE_URL;
   const key = process.env.RANDEVU_SUPABASE_SECRET_KEY;
@@ -52,7 +46,7 @@ function randevuClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-async function arvolabKullanimi(organizationId: string) {
+async function arvolabKullanimi(organizationId: string, baslangic: string) {
   const lab = arvolabClient();
   if (!lab) return null;
 
@@ -70,7 +64,6 @@ async function arvolabKullanimi(organizationId: string) {
     if (error) throw error;
 
     const projeIdleri = (projeler ?? []).map((satir) => satir.id as string);
-    const baslangic = ayBasi();
 
     /*
       AI tüketimi projeden bağımsız: kurumun hiç projesi olmasa da
@@ -109,7 +102,7 @@ async function arvolabKullanimi(organizationId: string) {
   }
 }
 
-async function randevuKullanimi(organizationId: string) {
+async function randevuKullanimi(organizationId: string, baslangic: string) {
   const rdv = randevuClient();
   if (!rdv) return null;
 
@@ -118,7 +111,7 @@ async function randevuKullanimi(organizationId: string) {
       rdv.from("rdv_staff").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
       // Randevular başlangıç saatine göre sayılıyor: bu ay YAPILAN iş.
       rdv.from("rdv_appointments").select("id", { count: "exact", head: true })
-        .eq("organization_id", organizationId).gte("starts_at", ayBasi()),
+        .eq("organization_id", organizationId).gte("starts_at", baslangic),
     ]);
     if (personelHatasi) throw personelHatasi;
 
@@ -136,9 +129,12 @@ async function randevuKullanimi(organizationId: string) {
  * ve tüm kiracılar için yapmak liste ekranını her açılışta yavaşlatırdı.
  */
 export async function urunKullanimi(organizationId: string): Promise<UrunKullanimi> {
+  /* Sınır BİR KEZ hesaplanıp iki ürüne de veriliyor: ayrı ayrı çağrılınca
+     ay sınırı iki ölçüm arasında değişebilirdi. */
+  const baslangic = istanbulMonthStart().toISOString();
   const [arvolab, randevu] = await Promise.all([
-    arvolabKullanimi(organizationId),
-    randevuKullanimi(organizationId),
+    arvolabKullanimi(organizationId, baslangic),
+    randevuKullanimi(organizationId, baslangic),
   ]);
   return { arvolab, randevu };
 }
