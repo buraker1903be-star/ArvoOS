@@ -25,6 +25,14 @@
 .calendar-day.selected{border-color:var(--accent-500);box-shadow:0 0 0 1px var(--accent-500)}
 .calendar-day-number{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;font-size:13px;font-weight:800}
 .calendar-day em{display:block;padding:2px 5px;border-radius:5px;background:var(--accent-100);color:var(--accent-600);font-size:11px;font-style:normal;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/*
+  Operasyon takviminde iki tür madde var: işin termini ve bir aşamanın
+  teslimi. Aynı görünürlerse takvim "bugün ne teslim edilecek" sorusunu
+  yanıtlamıyor — aşama daha soluk ve girintili.
+*/
+.calendar-day em[data-tur="asama"]{background:var(--surface-2);color:var(--muted);font-weight:600}
+.calendar-day em[data-tone="warning"]{background:var(--warning-soft);color:var(--ink)}
+.calendar-day em[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
 .calendar-day small{color:var(--dim);font-size:11px}
 
 /* ---------- Appointment rows (shared by month "selected day" panel and list view) ---------- */
