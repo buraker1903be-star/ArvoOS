@@ -11,7 +11,7 @@ export const ARVOOS_EN: ProductContent = {
   name: "ArvoOS",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.arvoos.url,
-  featureList: ["CRM and sales pipeline", "Proposals with online acceptance", "E-signed contracts and A4 PDF", "Document centre", "Operations, Gantt and calendar", "Customer tracking portal", "Current accounts, instalments and online payment links", "HR and commissions", "Reports and profitability", "Team messaging and notifications", "Role × module permission matrix", "Custom domain and branding", "Installable PWA"],
+  featureList: ["CRM and sales pipeline", "Proposals with online acceptance", "E-signed contracts and A4 PDF", "Document centre", "Operations, stage board and calendar", "Customer tracking portal", "Current accounts, instalments and online payment links", "HR and commissions", "Reports and profitability", "Team messaging and notifications", "Role × module permission matrix", "Custom domain and branding", "Installable PWA"],
   meta: {
     title: "ArvoOS — Business Operating System",
     description: "ArvoOS is a multi-tenant business operating system that connects CRM, proposals with online acceptance, e-signed contracts, operations, a customer portal, finance, HR and reports in one flow.",
@@ -33,7 +33,7 @@ export const ARVOOS_EN: ProductContent = {
       { title: "Proposals", text: "Revisions, VAT options and payment plans; customers accept online in one click.", size: "hero", visual: "s1" },
       { title: "CRM & sales", text: "Pipeline stages, automatic customer history, instant customer lookup and a sales calendar." },
       { title: "E-signed contracts", text: "Templates, drawn signatures and consent statements; content locks after signing, with A4 PDF output." },
-      { title: "Operations", text: "Jobs table, Gantt chart, calendar, tasks and owners. Signing starts the workflow automatically." },
+      { title: "Operations", text: "Jobs table, stage board, calendar, tasks and owners. Signing starts the workflow automatically." },
       { title: "Finance", text: "Current accounts, instalment plans, online payment links, invoices and per-job profitability." },
       { title: "Customer tracking portal", text: "Customers follow progress, documents and a payment summary on a branded page with a tracking code.", size: "hero", alt: true, visual: "s4" },
       { title: "Human resources", text: "Staff, roles, commission calculation, activity logs and e-signed confidentiality agreements." },

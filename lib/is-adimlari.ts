@@ -25,7 +25,7 @@ export const STEP_STATUS_TONES: Record<StepStatus, string> = {
 
 /*
   İŞİN durumu (adımın değil). Liste üç yerde ayrı ayrı yazılıydı: iş detayı,
-  çizelge ve sunucu işlemleri. Kayıt geçmişine "Devam ediyor → Tamamlandı"
+  pano ve sunucu işlemleri. Kayıt geçmişine "Devam ediyor → Tamamlandı"
   yazabilmek için dördüncü bir kopya gerekiyordu; kopya yerine tek kaynak.
 
   "archived" seçicide yok: arşive yalnızca tamamlanan iş "Arşivle" ile

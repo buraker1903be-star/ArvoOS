@@ -40,7 +40,7 @@ export default async function StepTemplatePage() {
   const satirlar = (data ?? []) as SablonSatiri[];
   const bosSayisi = canManage ? Math.max(0, Math.min(BOS_SATIR, SABLON_EN_COK - satirlar.length)) : 0;
 
-  // Kabuk kardeş operasyon sayfalarıyla birebir aynı (takvim, gantt, arşiv).
+  // Kabuk kardeş operasyon sayfalarıyla birebir aynı (takvim, pano, arşiv).
   return (
     <div className="crm-page-stack">
       <div className="panel-pagehead">

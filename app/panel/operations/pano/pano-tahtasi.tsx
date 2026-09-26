@@ -10,7 +10,7 @@ import {
   tasimaPlani,
   type PanoIsKarti,
   type PanoKolonu,
-} from "@/lib/operasyon-cizelge";
+} from "@/lib/operasyon-panosu";
 import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
 import { initials } from "@/lib/table-format";
 import { priorityNames } from "../ops-shared";
@@ -29,7 +29,7 @@ import { priorityNames } from "../ops-shared";
 
   BIRAKMADAN ÖNCE NE OLACAĞI YAZIYOR. Kartın kolonu "tamamlanmayan ilk adım"
   olduğu için 2. kolondan 5. kolona sürüklemek aradaki aşamaları da kapatıyor
-  (gerekçesi lib/operasyon-cizelge.ts'te). Bu sessizce yapılırsa kullanıcı tek
+  (gerekçesi lib/operasyon-panosu.ts'te). Bu sessizce yapılırsa kullanıcı tek
   hareketle üç aşamayı bitirmiş olur ve farkına varmaz; hedef kolon bu yüzden
   sürükleme sırasında "2 aşama kapanacak" diye yazıyor. Plan istemcide
   yalnızca BU YAZI için hesaplanıyor — sunucu kendi planını baştan kuruyor.

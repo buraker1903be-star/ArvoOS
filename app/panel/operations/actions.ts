@@ -8,7 +8,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
 import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
-import { tasimaPlani } from "@/lib/operasyon-cizelge";
+import { tasimaPlani } from "@/lib/operasyon-panosu";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
 
@@ -29,7 +29,7 @@ async function operationContext() {
   return context;
 }
 
-// Genel bakış, işler, arşiv, gantt, takvim ve iş detayı tek düzen altında:
+// Genel bakış, işler, arşiv, pano, takvim ve iş detayı tek düzen altında:
 // "layout" ile hepsi birlikte tazelenir. Ana sayfa özetleri de işleri sayıyor.
 function revalidateOperations() {
   revalidatePath("/panel/operations", "layout");
@@ -189,7 +189,7 @@ const gunMetni = (deger: string | null) => (deger ? deger : "tarih yok");
 
   Kartın kolonu "tamamlanmayan ilk adım"dan türüyor, dolayısıyla taşıma tek
   bir adımı değil BİR DİZİ adımı değiştiriyor: hedeften öncekiler kapanır,
-  hedef ve sonrası açılır (gerekçesi lib/operasyon-cizelge.ts'te). Plan
+  hedef ve sonrası açılır (gerekçesi lib/operasyon-panosu.ts'te). Plan
   burada YENİDEN hesaplanıyor — istemcinin gönderdiği liste kullanılmıyor,
   yoksa doğrudan çağrılan bir istek istediği adımı kapatabilirdi.
 

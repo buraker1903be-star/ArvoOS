@@ -70,7 +70,7 @@ export const HOME_TR: HomeContent = {
       { title: "Talep", text: "Talep CRM satış hattına düşer; müşterinin geçmişi otomatik görünür ve bir satış temsilcisine atanır." },
       { title: "Teklif", text: "KDV seçenekli ve ödeme planlı teklif WhatsApp veya e-postayla paylaşılır; müşteri tek tıkla çevrim içi onaylar." },
       { title: "E-imza", text: "Onaylanan teklif tek adımda sözleşmeye dönüşür; müşteri çizdiği imzayla onaylar. İçerik zaman damgası ve doğrulama özetiyle kilitlenir." },
-      { title: "İş akışı", text: "İmza, iş akışını otomatik başlatır: görevler, sorumlular, terminler, Gantt şeması ve takvim." },
+      { title: "İş akışı", text: "İmza, iş akışını otomatik başlatır: görevler, sorumlular, terminler, aşama panosu ve takvim." },
       { title: "Takip portalı", text: "Müşteri, takip koduyla işinin ilerlemesini ve belgelerini markalı bir sayfada izler; ekibinizle mesajlaşır." },
       { title: "Online tahsilat", text: "Taksitler çevrim içi ödeme bağlantılarıyla tahsil edilir; teslim dosyaları ödeme yapılana kadar kilitli kalır." },
       { title: "Rapor", text: "Satış hunisi, en zayıf adım ve iş bazında gerçek kârlılık tek ekranda." },

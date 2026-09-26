@@ -54,7 +54,7 @@ export const HOME_EN: HomeContent = {
       { title: "Request", text: "A request lands in the CRM pipeline; the customer’s history appears automatically and a sales rep is assigned." },
       { title: "Proposal", text: "A proposal with VAT options and a payment plan is shared via WhatsApp or e-mail; the customer accepts it online in one click." },
       { title: "E-signature", text: "The accepted proposal becomes a contract in one step; the customer signs with a drawn signature. The content locks with a timestamp and verification hash." },
-      { title: "Workflow", text: "Signing starts the job workflow automatically: tasks, owners, due dates, a Gantt chart and a calendar." },
+      { title: "Workflow", text: "Signing starts the job workflow automatically: tasks, owners, due dates, a stage board and a calendar." },
       { title: "Tracking portal", text: "With a tracking code, the customer follows progress and documents on a branded page, and messages your team." },
       { title: "Online payment", text: "Instalments are collected through online payment links; deliverables stay locked until payment." },
       { title: "Reports", text: "Sales funnel, the weakest step and real profitability per job — on one screen." },

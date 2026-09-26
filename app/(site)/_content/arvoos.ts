@@ -11,7 +11,7 @@ export const ARVOOS_TR: ProductContent = {
   name: "ArvoOS",
   category: "BusinessApplication",
   appUrl: PRODUCT_APPS.arvoos.url,
-  featureList: ["CRM ve satış hattı", "Çevrim içi onaylı teklifler", "E-imzalı sözleşmeler ve A4 PDF", "Belge merkezi", "Operasyon, Gantt ve takvim", "Müşteri takip portalı", "Cari hesap, taksit ve çevrim içi ödeme bağlantısı", "İnsan kaynakları ve prim hesabı", "Raporlar ve kârlılık", "Ekip mesajlaşması ve bildirimler", "Rol × modül yetki matrisi", "Özel alan adı ve markalama", "Yüklenebilir PWA"],
+  featureList: ["CRM ve satış hattı", "Çevrim içi onaylı teklifler", "E-imzalı sözleşmeler ve A4 PDF", "Belge merkezi", "Operasyon, aşama panosu ve takvim", "Müşteri takip portalı", "Cari hesap, taksit ve çevrim içi ödeme bağlantısı", "İnsan kaynakları ve prim hesabı", "Raporlar ve kârlılık", "Ekip mesajlaşması ve bildirimler", "Rol × modül yetki matrisi", "Özel alan adı ve markalama", "Yüklenebilir PWA"],
   meta: {
     title: "ArvoOS — İşletme İşletim Sistemi",
     description: "ArvoOS; CRM, çevrim içi onaylı teklif, e-imzalı sözleşme, operasyon, müşteri takip portalı, finans, İK ve raporları tek akışta birleştiren çok kiracılı işletme işletim sistemidir.",
@@ -33,7 +33,7 @@ export const ARVOOS_TR: ProductContent = {
       { title: "Teklifler", text: "Revizyon, KDV seçenekleri ve ödeme planı; müşteri tek tıkla çevrim içi onaylar.", size: "hero", visual: "s1" },
       { title: "CRM ve satış", text: "Satış hattı aşamaları, otomatik müşteri geçmişi, anlık müşteri sorgulama ve satış takvimi." },
       { title: "E-imzalı sözleşmeler", text: "Şablonlar, çizilen imza ve onay beyanları; imzadan sonra kilitlenen içerik ve A4 PDF." },
-      { title: "Operasyon", text: "İş tablosu, Gantt şeması, takvim, görevler ve sorumlular. İmza, iş akışını otomatik başlatır." },
+      { title: "Operasyon", text: "İş tablosu, aşama panosu, takvim, görevler ve sorumlular. İmza, iş akışını otomatik başlatır." },
       { title: "Finans", text: "Cari hesaplar, taksit planları, çevrim içi ödeme bağlantıları, faturalar ve iş bazında kârlılık." },
       { title: "Müşteri takip portalı", text: "Müşteri, takip koduyla ilerlemeyi, belgelerini ve ödeme özetini markalı bir sayfada izler.", size: "hero", alt: true, visual: "s4" },
       { title: "İnsan kaynakları", text: "Personel, roller, prim hesabı, etkinlik kayıtları ve e-imzalı gizlilik sözleşmeleri." },

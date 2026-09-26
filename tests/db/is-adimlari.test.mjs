@@ -246,7 +246,7 @@ describe("şablon kapısı", () => {
   PANODA SÜRÜKLEYEREK TAŞIMA, veritabanı tarafı.
 
   Taşıma tek adımı değil BİR DİZİ adımı değiştiriyor (gerekçesi
-  lib/operasyon-cizelge.ts'te) ve bunu tek bir `... where id in (...)`
+  lib/operasyon-panosu.ts'te) ve bunu tek bir `... where id in (...)`
   ifadesiyle yapıyor. Burada sınanan iki şey: toplu güncelleme RLS altında
   MEŞRU kullanıcı için geçiyor mu, ve BEFORE tetikleyicisi her satırda ayrı
   ayrı çalışıp is_completed/completed_at'i doğru yazıyor mu. Tetikleyici

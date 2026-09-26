@@ -5,12 +5,11 @@ import {
   asamaPanosuKur,
   SABLON_DISI_KOLONU,
   VARSAYILAN_PANO_SABLONU,
-  type CizelgeIsi,
+  type OperasyonIsi,
   type SablonAsamasi,
-} from "@/lib/operasyon-cizelge";
+} from "@/lib/operasyon-panosu";
 import { todayIstanbul } from "../ops-shared";
 import { PanoTahtasi } from "./pano-tahtasi";
-import "../../gantt.css";
 import "./pano.css";
 
 /*
@@ -25,7 +24,7 @@ import "./pano.css";
   tanımlanmamışsa varsayılan sekiz aşama. Kolonları koda gömmek, şablonunu
   düzenleyen kurumda panoyu yanlış gösterirdi.
 
-  BOŞ KOLON GÖSTERİLMİYOR (gerekçe lib/operasyon-cizelge.ts'te): sekiz aşama +
+  BOŞ KOLON GÖSTERİLMİYOR (gerekçe lib/operasyon-panosu.ts'te): sekiz aşama +
   Tamamlandı dokuz kolon ediyor ve pano yatay kaydırmadan görünmez oluyordu.
   Kolon başlığındaki numara ŞABLONDAKİ sıra, panodaki sıra değil — atlanan
   aşamalar böyle görünüyor; gizlenenler de altta tek satırda sayılıyor.
@@ -33,13 +32,15 @@ import "./pano.css";
   TARİH KARTTAN GİRİLİYOR. Canlıda (27.09.2026) sekiz işin sekizinde de
   aşama tarihi boştu: pano gecikme uyarısı üretemiyor, kart sıralaması
   anlamsız kalıyor ve operasyoncunun asıl derdi olan PLANLAMA yapılamıyor.
-  Yetkisi olmayana alan gösterilmiyor (çizelgedeki kuralın aynısı) —
-  kaydetmeyen bir alan göstermek yanıltıcı olurdu.
+  Yetkisi olmayana alan gösterilmiyor (actions.ts isManagerOrAssignee ile
+  aynı kural) — kaydetmeyen bir alan göstermek yanıltıcı olurdu.
 
-  SÜZGEÇ YOK, bilerek. Denendi ve kaldırıldı: müşteri adları şirket unvanı
-  olduğunda ("… LİMİTED ŞİRKETİ") rozetler iki satıra taşıyor ve panonun
-  kendisini ekranın dışına itiyor — oysa panonun bütün değeri bir bakışta
-  görünmesi. Süzme ihtiyacı Çalışma Çizelgesi'nde karşılanıyor.
+  SÜZGEÇ YOK. Denendi ve kaldırıldı: müşteri adları şirket unvanı olduğunda
+  ("… LİMİTED ŞİRKETİ") rozetler iki satıra taşıyor ve panonun kendisini
+  ekranın dışına itiyor — oysa panonun bütün değeri bir bakışta görünmesi.
+  Süzme ihtiyacı o sırada Çalışma Çizelgesi'nde karşılanıyordu; o ekran
+  27.09.2026'da kaldırıldı, yani ŞU AN modülde kişiye/müşteriye göre süzme
+  hiçbir yerde yok. Geri gelirse burada değil, kendi görünümünde olmalı.
 
   Bu dosya yalnızca VERİYİ hazırlıyor; sürükle-bırak, hızlı bakış ve
   düğmeler pano-tahtasi.tsx'te (istemci bileşeni).
@@ -55,7 +56,7 @@ type AdimSatiri = {
   status: string;
   completed_at: string | null;
 };
-type Kayit = CizelgeIsi & { operation_steps: AdimSatiri[] };
+type Kayit = OperasyonIsi & { operation_steps: AdimSatiri[] };
 
 export default async function OperationsPanoPage() {
   const { supabase, membership, modules, userId } = await getPanelContext();
@@ -97,7 +98,7 @@ export default async function OperationsPanoPage() {
     ((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]),
   );
   const kayitlar = (data ?? []) as Kayit[];
-  const tumIsler: CizelgeIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
+  const tumIsler: OperasyonIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
 
   /*
     Aşamaları yöneticiler ve İŞİN sorumlusu değiştirebiliyor (actions.ts
