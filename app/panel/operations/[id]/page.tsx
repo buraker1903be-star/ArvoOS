@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
-import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
+import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 import { OpsIcon, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -39,8 +39,8 @@ const statusOptions = [
   ["completed", "Tamamlandı"],
   ["cancelled", "İptal"],
 ] as const;
-// "Arşivlendi" seçicide yok: arşive yalnızca tamamlanan iş "Arşivle" ile gider
-const statusNames: Record<string, string> = { ...Object.fromEntries(statusOptions), archived: "Arşivlendi" };
+// Adlar tek kaynakta (lib/is-adimlari.ts): liste dört yerde ayrı yazılıydı.
+const statusNames = IS_DURUM_ADLARI;
 const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
 const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
 const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 });

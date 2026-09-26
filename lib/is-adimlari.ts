@@ -23,6 +23,25 @@ export const STEP_STATUS_TONES: Record<StepStatus, string> = {
   done: "success",
 };
 
+/*
+  İŞİN durumu (adımın değil). Liste üç yerde ayrı ayrı yazılıydı: iş detayı,
+  çizelge ve sunucu işlemleri. Kayıt geçmişine "Devam ediyor → Tamamlandı"
+  yazabilmek için dördüncü bir kopya gerekiyordu; kopya yerine tek kaynak.
+
+  "archived" seçicide yok: arşive yalnızca tamamlanan iş "Arşivle" ile
+  gider. Ama geçmişte ve etikette görünmesi gerekiyor.
+*/
+export const IS_DURUM_ADLARI: Record<string, string> = {
+  planned: "Planlandı",
+  in_progress: "Devam ediyor",
+  blocked: "Beklemede",
+  completed: "Tamamlandı",
+  cancelled: "İptal",
+  archived: "Arşivlendi",
+};
+
+export const isDurumAdi = (deger: string) => IS_DURUM_ADLARI[deger] ?? deger;
+
 export const isStepStatus = (value: unknown): value is StepStatus =>
   typeof value === "string" && (STEP_STATUSES as string[]).includes(value);
 

@@ -1093,6 +1093,12 @@
    Eski/yeni değerler yan yana; "güncellendi" demek yerine
    farkın kendisini gösteriyoruz.
    ============================================================ */
+/* Olayın hangi aşamaya ait olduğu: operasyon geçmişinde asıl aranan bilgi. */
+.crm-record-history-step {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .crm-record-history {
   padding: 22px 24px;
 }

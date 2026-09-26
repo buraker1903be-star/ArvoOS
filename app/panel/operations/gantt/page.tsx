@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { OperationsTabs } from "../operations-tabs";
 import { cizelgeyiKur, esZamanliMi, KURUM_ICI, satirlariDiz, type CizelgeIsi } from "@/lib/operasyon-cizelge";
-import { hatirlatmaDurumu } from "@/lib/is-adimlari";
+import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
 import { todayIstanbul } from "../ops-shared";
 import "../../gantt.css";
 
@@ -27,8 +27,6 @@ import "../../gantt.css";
   ama tarihli işler "bu ayda görünmüyor" listesinde kalıyor, tarihsizler
   ayrı listede — ikisi de planlama gündemidir, gizlenmemeli.
 */
-
-const statusNames: Record<string, string> = { planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede", completed: "Tamamlandı", cancelled: "İptal" };
 
 type AdimSatiri = { id: string; title: string; sort_order: number; due_date: string | null; is_completed: boolean; assigned_employee_id: string | null };
 type Kayit = CizelgeIsi & { operation_steps: AdimSatiri[] };
@@ -170,7 +168,7 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
                 return [
                   <Link href={`/panel/operations/${is.id}`} className="gantt-row-label" key={`${is.id}-label`} style={{ gridRow: kayit.satir, gridColumn: 1 }}>
                     <b>{is.baslik}</b>
-                    <small>{is.guncelAsama ? `Şu an: ${is.guncelAsama}` : statusNames[is.durum] ?? is.durum}</small>
+                    <small>{is.guncelAsama ? `Şu an: ${is.guncelAsama}` : isDurumAdi(is.durum)}</small>
                   </Link>,
                   <div key={`${is.id}-track`} className="gantt-row-track" style={{ gridRow: kayit.satir, gridColumn: `2 / ${daysInMonth + 2}` }} />,
                   kirpilmis ? (
@@ -178,9 +176,9 @@ export default async function OperationsGanttPage({ searchParams }: { searchPara
                       key={`${is.id}-bar`}
                       className={`gantt-bar status-${is.durum} priority-${is.oncelik}`}
                       style={{ gridRow: kayit.satir, gridColumn: `${kolon(kirpilmis.bas)} / ${kolon(kirpilmis.son, 1)}` }}
-                      title={`${is.baslik} · ${statusNames[is.durum] ?? is.durum} · ${is.tamamlanan}/${is.asamalar.length} aşama`}
+                      title={`${is.baslik} · ${isDurumAdi(is.durum)} · ${is.tamamlanan}/${is.asamalar.length} aşama`}
                     >
-                      <span>{is.guncelAsama ?? statusNames[is.durum] ?? is.durum}</span>
+                      <span>{is.guncelAsama ?? isDurumAdi(is.durum)}</span>
                     </div>
                   ) : null,
                 ];

@@ -40,6 +40,17 @@ const ACTION_LABELS: Record<string, string> = {
   delete: "sildi",
   step: "adım ekledi",
   comment: "not ekledi",
+  /*
+    Operasyon olayları. Adım olayları ayrı bir varlık türü değil: işin
+    kimliğiyle yazılıyor, adımın adı metadata'da (lib/activity-log.ts).
+    Etiketler "kaydını …" kalıbına oturuyor ve ADIM adı ayrıca yazıldığı
+    için burada "aşama" demek yetiyor.
+  */
+  step_status: "bir aşamanın durumunu değiştirdi",
+  step_due: "bir aşamanın tarihini değiştirdi",
+  step_assign: "bir aşamaya sorumlu atadı",
+  step_done: "bir aşamayı tamamladı",
+  step_undone: "bir aşamayı yeniden açtı",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -55,7 +66,7 @@ type LogRow = {
   action: string;
   entity_type: string;
   created_at: string;
-  metadata: { changes?: FieldChange[]; note?: string | null } | null;
+  metadata: { changes?: FieldChange[]; note?: string | null; step_title?: string | null } | null;
 };
 
 export async function RecordHistory({
@@ -146,6 +157,9 @@ export async function RecordHistory({
                 <span>
                   {ENTITY_LABELS[log.entity_type] ?? log.entity_type} kaydını{" "}
                   {ACTION_LABELS[log.action] ?? log.action}
+                  {/* Hangi aşama: "bir aşamanın tarihini değiştirdi" tek başına
+                      dokuz parçalı bir işte hangi bölüm olduğunu söylemiyor. */}
+                  {log.metadata?.step_title ? <b className="crm-record-history-step"> · {log.metadata.step_title}</b> : null}
                 </span>
                 <time dateTime={log.created_at}>
                   {new Date(log.created_at).toLocaleString("tr-TR", {

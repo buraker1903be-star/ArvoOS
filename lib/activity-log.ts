@@ -16,6 +16,15 @@ export type FieldChange = { field: string; label: string; from: string; to: stri
 
 export type CrmEntityType = "crm_opportunity" | "crm_proposal" | "crm_contract";
 
+/*
+  Operasyon olayları da bu tabloya yazılıyor. Adım olayları AYRI bir tür
+  değil: entity_type = "operation_workflow" ve entity_id = işin kimliği,
+  adımın kendisi metadata'da. Böylece tek sorgu işin bütün geçmişini
+  veriyor (RecordHistory) ve ikinci bir RLS politikasına gerek kalmıyor
+  (migration 20260926185634).
+*/
+export type EntityType = CrmEntityType | "operation_workflow";
+
 /** Alan adlarının Türkçe karşılıkları; geçmiş ekranında bu isimler görünür. */
 export const FIELD_LABELS: Record<string, string> = {
   title: "Başlık",
@@ -85,12 +94,19 @@ export async function logActivity(
     organizationId: string;
     actorUserId: string;
     action: string;
-    entityType: CrmEntityType;
+    entityType: EntityType;
     entityId: string;
-    /** Zincirin kökü. Geçmiş sorgusu ve RLS politikası bunu kullanıyor. */
-    opportunityId: string;
+    /*
+      CRM zincirinin kökü; geçmiş sorgusu ve CRM politikası bunu kullanıyor.
+      Operasyon işleri bir sözleşmeye bağlı OLMAYABİLİR (kurum içi iş), o
+      yüzden isteğe bağlı: operasyon kayıtları entity_id ile bulunuyor.
+    */
+    opportunityId?: string | null;
     changes?: FieldChange[];
     note?: string;
+    /** Operasyon adımı olayları: hangi adım (entity_id işin kimliği kalıyor). */
+    stepId?: string;
+    stepTitle?: string | null;
   },
 ): Promise<void> {
   // Değişiklik yoksa kayıt açma; "hiçbir şey değişmedi" satırları
@@ -104,7 +120,8 @@ export async function logActivity(
     entity_type: input.entityType,
     entity_id: input.entityId,
     metadata: {
-      opportunity_id: input.opportunityId,
+      opportunity_id: input.opportunityId ?? null,
+      ...(input.stepId ? { step_id: input.stepId, step_title: input.stepTitle ?? null } : {}),
       changes: input.changes ?? [],
       note: input.note ?? null,
     },

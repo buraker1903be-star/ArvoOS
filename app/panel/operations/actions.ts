@@ -7,7 +7,8 @@ import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
-import { isStepStatus } from "@/lib/is-adimlari";
+import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
+import { logActivity, type FieldChange } from "@/lib/activity-log";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
 // archiveWorkflow ile (ve yalnızca tamamlanan iş) gidilir, veritabanı
@@ -118,7 +119,9 @@ function stepDueDate(raw: FormDataEntryValue | null) {
 */
 async function stepRow(supabase: OperationContext["supabase"], organizationId: string, stepId: string) {
   const { data: step } = await supabase
-    .from("operation_steps").select("id,workflow_id")
+    // title/due_date/status/assigned_employee_id: geçmişe "neyden neye"
+    // yazabilmek için ÖNCEKİ değer gerekiyor (kayitDus).
+    .from("operation_steps").select("id,workflow_id,title,due_date,status,assigned_employee_id")
     .eq("id", stepId).eq("organization_id", organizationId).maybeSingle();
   if (!step) throw new Error("İş adımı bulunamadı.");
   const { data: workflow } = await supabase
@@ -126,8 +129,52 @@ async function stepRow(supabase: OperationContext["supabase"], organizationId: s
     .eq("id", step.workflow_id).eq("organization_id", organizationId).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
   if (workflow.status === "archived") throw new Error("Arşivdeki işin adımları değiştirilemez; önce arşivden çıkarın.");
-  return { stepId: step.id as string, workflowId: step.workflow_id as string, assignedEmployeeId: workflow.assigned_employee_id as string | null };
+  return {
+    stepId: step.id as string,
+    workflowId: step.workflow_id as string,
+    assignedEmployeeId: workflow.assigned_employee_id as string | null,
+    title: step.title as string,
+    dueDate: (step.due_date as string | null) ?? null,
+    status: step.status as string,
+    stepAssigneeId: (step.assigned_employee_id as string | null) ?? null,
+  };
 }
+
+/*
+  Operasyon olaylarını kayıt geçmişine yazar.
+
+  Neden ayrı yardımcı: hiçbir operasyon işlemi kayıt düşmüyordu ve iş
+  detayındaki "Kayıt geçmişi" panosu bu yüzden her zaman boştu. Operasyoncunun
+  takip etmek istediği şey tam olarak burada birikiyor: bir aşamanın tarihi
+  kaç kez ötelendi, durumu kim değiştirdi, sorumlusu ne zaman değişti.
+
+  Değişiklikler ELLE kuruluyor, diffFields ile değil: FIELD_LABELS'ta
+  assigned_employee_id "Satış temsilcisi" diye etiketli ve operasyonda o ad
+  yanlış olur. Etiketi çağrı yerinde vermek iki modülü birbirine
+  bağlamaktan iyi.
+
+  Kayıt akışı düşürmez: logActivity hatayı kendi içinde yutuyor, yani
+  geçmiş yazılamazsa kullanıcının işlemi yine tamamlanır.
+*/
+async function kayitDus(
+  context: OperationContext,
+  input: { workflowId: string; action: string; changes?: FieldChange[]; note?: string; stepId?: string; stepTitle?: string },
+) {
+  await logActivity(context.supabase, {
+    organizationId: context.membership.organization_id,
+    actorUserId: context.userId,
+    action: input.action,
+    entityType: "operation_workflow",
+    entityId: input.workflowId,
+    changes: input.changes,
+    note: input.note,
+    stepId: input.stepId,
+    stepTitle: input.stepTitle,
+  });
+}
+
+/** "boş" yerine okunur bir değer: geçmişte "— → 12 Ekim" anlaşılır. */
+const gunMetni = (deger: string | null) => (deger ? deger : "tarih yok");
 
 /*
   Adımın durumu. Uygulama artık is_completed DEĞİL status yazıyor: iki
@@ -136,15 +183,30 @@ async function stepRow(supabase: OperationContext["supabase"], organizationId: s
   durumu ("kontrolde") sessizce kaybettiren bir yol açardı.
 */
 async function setStepStatus__impl(formData: FormData) {
-  const { supabase, membership } = await operationContext();
+  const context = await operationContext();
+  const { supabase, membership } = context;
   const stepId = String(formData.get("step_id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (!isStepStatus(status)) throw new Error("Geçersiz adım durumu.");
-  await stepRow(supabase, membership.organization_id, stepId);
+  const step = await stepRow(supabase, membership.organization_id, stepId);
   const { data, error } = await supabase.from("operation_steps").update({ status }).eq("id", stepId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Adım durumu güncellenemedi: " + error.message);
   // RLS engellediğinde güncelleme sessizce 0 satır döner
   if (!data?.length) throw new Error("Adım durumu güncellenemedi: bu iş için yetkiniz yok.");
+  if (step.status !== status) {
+    await kayitDus(context, {
+      workflowId: step.workflowId,
+      action: "step_status",
+      stepId: step.stepId,
+      stepTitle: step.title,
+      changes: [{
+        field: "status",
+        label: "Aşama durumu",
+        from: STEP_STATUS_LABELS[step.status as keyof typeof STEP_STATUS_LABELS] ?? step.status,
+        to: STEP_STATUS_LABELS[status] ?? status,
+      }],
+    });
+  }
   revalidateOperations();
 }
 
@@ -160,17 +222,31 @@ async function setStepDueDate__impl(formData: FormData) {
   const { data, error } = await supabase.from("operation_steps").update({ due_date: dueDate }).eq("id", stepId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Adım tarihi kaydedilemedi: " + error.message);
   if (!data?.length) throw new Error("Adım tarihi kaydedilemedi: bu iş için yetkiniz yok.");
+  /*
+    Ötelenen tarih operasyoncunun en çok izlediği şey: "bu bölüm üç kez
+    ertelendi" sorusunun cevabı yalnızca burada birikiyor.
+  */
+  if (step.dueDate !== dueDate) {
+    await kayitDus(context, {
+      workflowId: step.workflowId,
+      action: "step_due",
+      stepId: step.stepId,
+      stepTitle: step.title,
+      changes: [{ field: "due_date", label: "Aşama teslim tarihi", from: gunMetni(step.dueDate), to: gunMetni(dueDate) }],
+    });
+  }
   revalidateOperations();
 }
 
 // Adımın sorumlusu: bir tezin literatür kısmıyla analiz kısmını farklı
 // kişiler yapabiliyor; işin tek sorumlusu bunu anlatmaya yetmiyordu.
 async function assignStep__impl(formData: FormData) {
-  const { supabase, membership } = await operationContext();
+  const context = await operationContext();
+  const { supabase, membership } = context;
   if (!MANAGER_ROLES.includes(membership.role)) throw new Error("Adıma sorumlu atamak için yönetici yetkisi gerekiyor.");
   const stepId = String(formData.get("step_id") ?? "");
   const employeeId = String(formData.get("assigned_employee_id") ?? "") || null;
-  await stepRow(supabase, membership.organization_id, stepId);
+  const step = await stepRow(supabase, membership.organization_id, stepId);
   if (employeeId) {
     const { data: employee } = await supabase.from("hr_employees").select("id").eq("id", employeeId).eq("organization_id", membership.organization_id).eq("employment_status", "active").maybeSingle();
     if (!employee) throw new Error("Atanacak aktif personel bulunamadı.");
@@ -178,13 +254,30 @@ async function assignStep__impl(formData: FormData) {
   const { data, error } = await supabase.from("operation_steps").update({ assigned_employee_id: employeeId }).eq("id", stepId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Adım sorumlusu güncellenemedi: " + error.message);
   if (!data?.length) throw new Error("Adım sorumlusu güncellenemedi: bu iş için yetkiniz yok.");
+  if (step.stepAssigneeId !== employeeId) {
+    // Kimlik değil AD yazılıyor: geçmişte uuid okunmuyor.
+    const adi = async (id: string | null) => {
+      if (!id) return "atanmadı";
+      const { data: kisi } = await supabase.from("hr_employees").select("full_name").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
+      return (kisi?.full_name as string | undefined) ?? "bilinmeyen personel";
+    };
+    await kayitDus(context, {
+      workflowId: step.workflowId,
+      action: "step_assign",
+      stepId: step.stepId,
+      stepTitle: step.title,
+      changes: [{ field: "assigned_employee_id", label: "Aşama sorumlusu", from: await adi(step.stepAssigneeId), to: await adi(employeeId) }],
+    });
+  }
   revalidateOperations();
 }
 
 async function toggleWorkflowStep__impl(formData: FormData) {
-  const { supabase, userId, membership } = await operationContext();
+  const context = await operationContext();
+  const { supabase, userId, membership } = context;
   const stepId = String(formData.get("step_id") ?? "");
   const completed = String(formData.get("is_completed") ?? "") === "true";
+  const step = await stepRow(supabase, membership.organization_id, stepId);
   /*
     Onay kutusu da artık status yazıyor; is_completed ondan türüyor.
     "planned"a döndürmek yerine geri alma tetikleyiciye bırakılsaydı ara
@@ -197,11 +290,19 @@ async function toggleWorkflowStep__impl(formData: FormData) {
   if (error) throw new Error("İş adımı güncellenemedi: " + error.message);
   // RLS engellediğinde güncelleme sessizce 0 satır döner
   if (!data?.length) throw new Error("İş adımı güncellenemedi: bu iş için yetkiniz yok.");
+  await kayitDus(context, {
+    workflowId: step.workflowId,
+    action: completed ? "step_done" : "step_undone",
+    stepId: step.stepId,
+    stepTitle: step.title,
+    note: completed ? "Aşama tamamlandı" : "Aşama yeniden açıldı",
+  });
   revalidateOperations();
 }
 
 async function setWorkflowStatus__impl(formData: FormData) {
-  const { supabase, membership } = await operationContext();
+  const context = await operationContext();
+  const { supabase, membership } = context;
   const workflowId = String(formData.get("workflow_id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (status === "archived") throw new Error("İşi arşive göndermek için “Arşivle” düğmesini kullanın.");
@@ -212,6 +313,13 @@ async function setWorkflowStatus__impl(formData: FormData) {
   const { data, error } = await supabase.from("operation_workflows").update({ status, updated_at: new Date().toISOString() }).eq("id", workflowId).eq("organization_id", membership.organization_id).neq("status", "archived").select("id");
   if (error) throw new Error("İş durumu güncellenemedi: " + error.message);
   if (!data?.length) throw new Error("İş durumu güncellenemedi: bu iş için yetkiniz yok.");
+  if (workflow.status !== status) {
+    await kayitDus(context, {
+      workflowId,
+      action: "status",
+      changes: [{ field: "status", label: "İş durumu", from: isDurumAdi(String(workflow.status)), to: isDurumAdi(status) }],
+    });
+  }
   revalidateOperations();
 }
 
