@@ -70,7 +70,7 @@ const commonClauses: ContractClause[] = [
     title: "Mücbir Sebep ve Beklenmeyen Haller",
     paragraphs: [
       "Tarafların makul kontrolü dışında gelişen doğal afet, salgın, savaş, terör, grev, kamu otoritesi kararı, yaygın enerji, altyapı veya iletişim kesintisi ve benzeri olaylar mücbir sebep sayılır.",
-      "Etkilenen taraf durumu makul sürede bildirir ve etkileri azaltmak için gereken çabayı gösterir. Mücbir sebep devam ettiği sürece etkilenen yükümlülükler askıya alınır; olayun sözleşmenin amacını kalıcı olarak ortadan kaldırması halinde taraflar fesih ve tasfiye koşullarını iyi niyetle belirler.",
+      "Etkilenen taraf durumu makul sürede bildirir ve etkileri azaltmak için gereken çabayı gösterir. Mücbir sebep devam ettiği sürece etkilenen yükümlülükler askıya alınır; olayın sözleşmenin amacını kalıcı olarak ortadan kaldırması halinde taraflar fesih ve tasfiye koşullarını iyi niyetle belirler.",
     ],
   },
   {
@@ -214,7 +214,38 @@ export const akademikMerkezTemplate: ContractTemplate = {
   ],
 };
 
+const SABLONLAR = [arvoOSGeneralTemplate, akademikMerkezTemplate];
+
+/**
+ * Kayıtlı şablon anahtarından şablon; tanınmayan anahtarda null.
+ *
+ * İmza fonksiyonu (arvo_sign_contract) imzalarken crm_contracts satırına
+ * contract_template_key yazıyor. İmzalanmış bir sözleşme O ANAHTARLA
+ * çizilmeli: kurumun slug'ı sonradan değişirse (yeniden adlandırma) imzalı
+ * belgenin madde kümesi değişmemeli.
+ */
+export const contractTemplateByKey = (key?: string | null) =>
+  SABLONLAR.find((sablon) => sablon.key === key) ?? null;
+
+/*
+  Slug normalizasyonu YEREL AYARSIZ.
+
+  Eskiden `toLocaleLowerCase("tr-TR")` kullanılıyordu ve Türkçe'de ASCII "I"
+  harfinin küçüğü noktasız "ı"dır; sonraki [^a-z0-9] süzgeci onu ATIYORDU:
+
+    "AKADEMIKMERKEZ" → "akademıkmerkez" → "akademkmerkez" → EŞLEŞMEZ
+    "AKADEMİKMERKEZ" → "akademikmerkez"                   → eşleşir
+
+  Yani İngilizce yazım büyük harfle çöküyor, Türkçe yazım çalışıyordu.
+  Sonuç sessizdi: müşteriye akademik etik maddeleri (vekâleten tez
+  yazmama, intihal, yapay zekâ kullanımı, yayın garantisi verilmemesi)
+  içermeyen genel yazılım sözleşmesi gidiyordu.
+
+  Daha kötüsü, imza fonksiyonu aynı kuralı düz `lower()` ile uyguluyor ve
+  DOĞRU anahtarı kaydediyordu: veritabanı "akademikmerkez_academic" derken
+  belge genel sözleşmeyi çiziyordu. İki kopya kural birbirini tutmuyordu.
+*/
 export function getContractTemplate(organizationSlug?: string | null) {
-  const normalized = String(organizationSlug || "").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9]/g, "");
+  const normalized = String(organizationSlug || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   return normalized.includes("akademikmerkez") ? akademikMerkezTemplate : arvoOSGeneralTemplate;
 }

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { PrintDocumentButton } from "@/app/_components/print-document-button";
 import { PrintAutorun } from "@/app/_components/print-autorun";
-import { getContractTemplate } from "@/lib/contract-templates";
+import { contractTemplateByKey, getContractTemplate } from "@/lib/contract-templates";
 import { DocFooter, DocHeader, PartyCard, PaymentPlanTable, SectionHeading, TaxTotals, customerRows, providerFromRow, providerRows, type Customer } from "@/app/_components/legal/blocks";
 import { ContractArticles, LegacyArticles, PreInformationAnnex, specialClausesFor, type ContractContext } from "@/app/_components/legal/contract-clauses";
 import { documentCss } from "@/app/_components/legal/document-styles";
@@ -72,7 +72,15 @@ export function contractCustomerKind(row: DocumentRow) {
 
 export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions, trackingCode }: Props) {
   const signed = isContractSigned(row);
-  const template = getContractTemplate(row.organization_slug);
+  /*
+    KAYITLI anahtar önce gelir. İmza fonksiyonu imzalarken
+    contract_template_key yazıyor; belgeyi slug'dan yeniden türetmek iki
+    şeyi bozuyordu: kurum yeniden adlandırılırsa imzalı sözleşmenin madde
+    kümesi değişiyordu, ve slug normalizasyonundaki fark yüzünden
+    veritabanının kaydettiği şablonla çizilen şablon ayrışabiliyordu.
+    Anahtar yoksa (taslak ya da eski kayıt) slug'dan seçilir.
+  */
+  const template = contractTemplateByKey(row.contract_template_key) ?? getContractTemplate(row.organization_slug);
   // İmzalanmış sözleşme, imzalandığı metinle gösterilir: yeni yasal metin
   // yalnızca onu onaylayan (legal_text_version kaydı olan) sözleşmelerde.
   const legacy = signed && !audit?.legal_text_version && (auditAvailable || isBefore(row.signed_at, LEGAL_V3_FALLBACK_CUTOFF));
