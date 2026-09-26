@@ -427,6 +427,40 @@ test("pano · şablon aşamaları kolon", async (t) => {
     assert.equal(kart.oncekiAsamaId, "s1", "geri al düğmesi bunu yeniden açıyor");
   });
 
+  await t.test("geri al, güncel aşamadan ÖNCEKİ tamamlanmışı açıyor", () => {
+    /*
+      Adımlar iş detayından tek tek işaretlenebiliyor, yani sıra dışı
+      tamamlama mümkün. 1, 2 ve 4 bitmiş, 3 bekliyorsa en son tamamlanan
+      4'tür; onu açmak güncel aşamayı (3) değiştirmez ve kart yerinde
+      kalır — kullanıcı düğmenin çalışmadığını sanar.
+    */
+    const pano = asamaPanosuKur([
+      is({ id: "w1", title: "Tez", customer_name: "Emine", steps: [
+        adim(1, "Hazırlık Yapılıyor", "2026-10-01", true),
+        adim(2, "İç Kontrol Yapılıyor", "2026-10-05"),
+        adim(3, "Evrak Teslimine Hazır", "2026-10-09", true),
+      ] }),
+    ], SABLON, adCoz);
+    const [kart] = pano.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar;
+    assert.equal(kart.guncelAsamaId, "s2");
+    assert.equal(kart.oncekiAsamaId, "s1", "s3 değil: o güncelin İLERİSİNDE");
+  });
+
+  await t.test("ilk aşamadaysa geri alınacak aşama yok", () => {
+    const pano = asamaPanosuKur(
+      [is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-05")] })],
+      SABLON, adCoz,
+    );
+    assert.equal(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar[0].oncekiAsamaId, null);
+  });
+
+  await t.test("hepsi bittiyse geri al en son aşamayı açıyor", () => {
+    const pano = asamaPanosuKur([
+      is({ id: "w1", steps: [adim(1, "Hazırlık Yapılıyor", "2026-10-01", true), adim(2, "İç Kontrol Yapılıyor", "2026-10-05", true)] }),
+    ], SABLON, adCoz);
+    assert.equal(pano.find((k) => k.anahtar === TAMAMLANDI_KOLONU)!.kartlar[0].oncekiAsamaId, "s2");
+  });
+
   await t.test("aşama sorumlusu yoksa İŞİN sorumlusu yazılıyor", () => {
     // Kartta "sorumlu yok" göstermek, işin sorumlusu varken yanlış olurdu.
     const pano = asamaPanosuKur([

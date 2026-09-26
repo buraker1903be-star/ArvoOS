@@ -454,7 +454,18 @@ export function asamaPanosuKur(
         iş panoda "tamamlandı" görünürdü.
       */
       tamamlandi: adimlar.length > 0 && !guncel,
-      oncekiAsamaId: tamamlanan.length ? tamamlanan[tamamlanan.length - 1].id : null,
+      /*
+        "Geri al" güncel aşamadan ÖNCEKİ tamamlanmış adımı açmalı, en son
+        tamamlananı değil. Adımlar iş detayından tek tek işaretlenebiliyor,
+        yani sıra dışı tamamlama mümkün: 1, 2 ve 4 bitmiş, 3 bekliyorsa en
+        son tamamlanan 4'tür ve onu açmak güncel aşamayı (3) değiştirmez —
+        kart yerinde kalır, kullanıcı düğmenin çalışmadığını sanar.
+      */
+      oncekiAsamaId:
+        (guncel
+          ? tamamlanan.filter((adim) => adim.sort_order < guncel.sort_order).at(-1)
+          : tamamlanan.at(-1)
+        )?.id ?? null,
       sorumluAdi: guncel?.assigned_employee_id
         ? adCoz(guncel.assigned_employee_id) ?? "Bilinmeyen personel"
         : is.assigned_employee_id
