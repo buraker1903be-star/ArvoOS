@@ -46,6 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
     Etiketler "kaydını …" kalıbına oturuyor ve ADIM adı ayrıca yazıldığı
     için burada "aşama" demek yetiyor.
   */
+  step_dates: "aşama tarihlerini işin takvimine dağıttı",
   // Panoda sürüklemek tek kayıt düşürüyor: kapanan/açılan aşamalar içinde yazılı.
   stage_move: "işi panoda başka aşamaya taşıdı",
   step_status: "bir aşamanın durumunu değiştirdi",

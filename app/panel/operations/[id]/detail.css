@@ -252,3 +252,14 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   .opd-step-meta{padding-left:8px}
   .opd-add{grid-template-columns:minmax(0,1fr)}
 }
+
+/*
+  "Tarihleri dağıt" kutusu. Görevlerin hemen üstünde: canlıda işlerin
+  hiçbirinde aşama tarihi yoktu ve tek tek girmek iş başına sekiz giriş
+  demekti. Ne yapılacağı düğmenin ÜSTÜNDE yazıyor — toplu bir tarih
+  yazma işlemi sessizce çalışmamalı.
+*/
+.opd-dagit{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--info);border-left-width:3px;border-radius:var(--r-md);background:var(--info-soft)}
+.opd-dagit p{margin:0;flex:1;min-width:200px;color:var(--ink);font-size:12px;line-height:1.55}
+.opd-dagit button{flex:none;padding:6px 14px;border:1px solid var(--accent-600);border-radius:var(--r-sm);background:var(--accent-600);color:var(--paper);font-size:12px;font-weight:700;cursor:pointer}
+.opd-dagit button:hover{background:var(--accent-700);border-color:var(--accent-700)}

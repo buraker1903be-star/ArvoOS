@@ -9,6 +9,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
 import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
 import { tasimaPlani } from "@/lib/operasyon-cizelge";
+import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
@@ -254,6 +255,73 @@ async function moveWorkflowToStage__impl(formData: FormData) {
         ? [{ field: "reopened", label: "Yeniden açılan aşamalar", from: "", to: isim(plan.acilacak) }]
         : []),
     ],
+  });
+  revalidateOperations();
+}
+
+/*
+  AŞAMA TARİHLERİNİ İŞİN TAKVİMİNE DAĞITMAK.
+
+  Canlıda sekiz işin sekizinde de aşama tarihi boştu; elle girmek sekiz iş
+  × sekiz aşama demek ve kimse yapmıyordu. Dağıtım kuralı ve neyin
+  uydurulmadığı lib/tarih-dagitimi.ts'te — ELLE GİRİLMİŞ tarihler çapa
+  olarak korunuyor, tamamlanmış aşamalara ileri tarih yazılmıyor, işin
+  başlangıcı ya da termini yoksa o boşluk dağıtılmıyor.
+
+  Plan burada yeniden hesaplanıyor; istemciden tarih listesi alınmıyor.
+*/
+async function distributeStepDates__impl(formData: FormData) {
+  const context = await operationContext();
+  const { supabase, membership } = context;
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  if (!UUID.test(workflowId)) throw new Error("Geçersiz iş kimliği.");
+
+  const { data: workflow } = await supabase
+    .from("operation_workflows").select("id,status,assigned_employee_id,start_date,due_date")
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  if (workflow.status === "archived") throw new Error("Arşivdeki işin tarihleri değiştirilemez; önce arşivden çıkarın.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+    throw new Error("Aşama tarihlerini yalnızca yöneticiler ve işin sorumlusu dağıtabilir.");
+  }
+  if (!workflow.due_date) throw new Error("Önce işin teslim tarihini girin: aşamalar onunla işin başlangıcı arasına dağıtılıyor.");
+
+  const { data: adimlar, error: adimHatasi } = await supabase
+    .from("operation_steps").select("id,sort_order,due_date,is_completed")
+    .eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
+  if (adimHatasi) throw new Error("İş adımları okunamadı: " + adimHatasi.message);
+
+  const { atamalar } = tarihleriDagit((adimlar ?? []) as Parameters<typeof tarihleriDagit>[0], {
+    baslangic: (workflow.start_date as string | null) ?? null,
+    termin: workflow.due_date as string,
+  });
+  if (!atamalar.length) throw new Error("Dağıtılacak tarihsiz aşama yok.");
+
+  /*
+    Aynı tarihe düşen aşamalar tek ifadede güncelleniyor: sekiz aşama için
+    sekiz istek yerine en çok birkaç istek. Sıra önemsiz, her grup bağımsız.
+  */
+  const gruplar = new Map<string, string[]>();
+  for (const atama of atamalar) gruplar.set(atama.tarih, [...(gruplar.get(atama.tarih) ?? []), atama.id]);
+  for (const [tarih, idler] of gruplar) {
+    const { data, error } = await supabase
+      .from("operation_steps").update({ due_date: tarih })
+      .in("id", idler).eq("organization_id", membership.organization_id).select("id");
+    if (error) throw new Error("Aşama tarihi kaydedilemedi: " + error.message);
+    // RLS engellediğinde güncelleme sessizce 0 satır döner
+    if (data?.length !== idler.length) throw new Error("Aşama tarihi kaydedilemedi: bu iş için yetkiniz yok.");
+  }
+
+  await kayitDus(context, {
+    workflowId,
+    action: "step_dates",
+    note: `${atamalar.length} aşamanın tarihi işin takvimine dağıtıldı`,
+    changes: [{
+      field: "due_date",
+      label: "Dağıtılan aralık",
+      from: gunMetni((workflow.start_date as string | null) ?? null),
+      to: gunMetni(workflow.due_date as string),
+    }],
   });
   revalidateOperations();
 }
@@ -650,6 +718,9 @@ export async function replyCustomerFileMessage(...args: Parameters<typeof replyC
 }
 export async function setWorkflowDueDate(...args: Parameters<typeof setWorkflowDueDate__impl>) {
   return runPanelAction(() => setWorkflowDueDate__impl(...args), "Termin kaydedildi");
+}
+export async function distributeStepDates(...args: Parameters<typeof distributeStepDates__impl>) {
+  return runPanelAction(() => distributeStepDates__impl(...args), "Aşama tarihleri dağıtıldı");
 }
 export async function moveWorkflowToStage(...args: Parameters<typeof moveWorkflowToStage__impl>) {
   return runPanelAction(() => moveWorkflowToStage__impl(...args), "İş yeni aşamaya taşındı");

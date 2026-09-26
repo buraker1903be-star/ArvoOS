@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
-import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { tarihleriDagit } from "@/lib/tarih-dagitimi";
+import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
-import { OpsIcon, todayIstanbul } from "../ops-shared";
+// Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
+import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
@@ -41,8 +43,6 @@ const statusOptions = [
 ] as const;
 // Adlar tek kaynakta (lib/is-adimlari.ts): liste dört yerde ayrı yazılıydı.
 const statusNames = IS_DURUM_ADLARI;
-const priorityNames: Record<string, string> = { low: "Düşük", normal: "Normal", high: "Yüksek", urgent: "Acil" };
-const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
 const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 });
 
 const formatDate = (value?: string | null, withTime = false) =>
@@ -84,6 +84,12 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
   const completedCount = steps.filter((step) => step.is_completed).length;
   const progress = steps.length ? Math.round((completedCount / steps.length) * 100) : 0;
+  /*
+    "Tarihleri dağıt" ÖNİZLEMESİ. Aynı saf fonksiyon sunucu işleminde de
+    çalışıyor, yani düğmenin üstünde yazan sayı ile yapılacak iş birebir
+    aynı. Tahmini ayrı hesaplamak ikisinin ayrışmasına açık kapı olurdu.
+  */
+  const dagitim = tarihleriDagit(steps, { baslangic: workflow.start_date, termin: workflow.due_date });
   const canAssign = ["owner", "admin", "manager"].includes(membership.role);
   const canDelete = ["owner", "admin"].includes(membership.role);
 
@@ -297,6 +303,37 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <div><h2>Görevler</h2><p>{completedCount}/{steps.length} tamamlandı · tamamlamak için dokunun</p></div>
               <strong className="opd-big">%{progress}</strong>
             </header>
+            {/*
+              TARİHLERİ DAĞIT. Canlıda işlerin hiçbirinde aşama tarihi
+              yoktu; tek tek girmek iş başına sekiz giriş demek ve kimse
+              yapmıyordu. Elle girilmiş tarihler çapa olarak korunuyor,
+              yani düğme daha önce yapılan planlamayı ezmiyor.
+            */}
+            {canEditDue && steps.length ? (
+              <div className="opd-dagit">
+                {dagitim.atamalar.length ? (
+                  <>
+                    <p>
+                      Tarihsiz {dagitim.atamalar.length} aşama, işin{" "}
+                      {workflow.start_date ? `${formatDate(workflow.start_date)} – ` : ""}
+                      {formatDate(workflow.due_date)} takvimine dağıtılacak. Girilmiş tarihler korunuyor.
+                      {dagitim.atlanan ? ` ${dagitim.atlanan} aşama için aralık tanımlı değil, tarihsiz kalacak.` : ""}
+                    </p>
+                    <form action={distributeStepDates}>
+                      <input type="hidden" name="workflow_id" value={workflow.id} />
+                      <button type="submit">Tarihleri dağıt</button>
+                    </form>
+                  </>
+                ) : dagitim.atlanan ? (
+                  <p>
+                    {dagitim.atlanan} aşama tarihsiz.{" "}
+                    {workflow.due_date
+                      ? "Dağıtmak için aşamaların arasında bir aralık gerekiyor; işin başlangıç tarihini girin."
+                      : "Dağıtmak için önce işin teslim tarihini girin."}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="opd-steps">
               {steps.map((step, index) => {
                 /*

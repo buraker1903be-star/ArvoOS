@@ -148,7 +148,8 @@ export default async function OperationsPanoPage() {
           <p className="ops-pano-uyari">
             Süren {surmekte} işin {tarihsiz === surmekte ? "hepsinde" : `${tarihsiz} tanesinde`} şu anki aşamanın
             tarihi girilmemiş. Tarih olmadan pano “gecikti / yaklaştı” uyarısı üretemiyor ve Takvim bu işleri
-            göstermiyor. Kartlardaki tarih alanına doğrudan yazabilirsiniz.
+            göstermiyor. Kartlardaki tarih alanına tek tek yazabilir, ya da işin detayındaki “Tarihleri dağıt”
+            ile bütün aşamaları işin takvimine bir kerede yayabilirsiniz.
           </p>
         ) : null}
         {sablonDisi ? (

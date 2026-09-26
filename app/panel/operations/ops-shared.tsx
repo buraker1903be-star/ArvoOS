@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { gunFarki } from "@/lib/is-adimlari";
 
 // Operasyon ekranlarının ortak etiketleri, tarih yardımcıları ve simgeleri.
 // Yönergesiz modül: sunucu sayfalarından içe aktarılır. Saat okuyan
@@ -29,14 +30,15 @@ export function addDaysKey(dateKey: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-/** İki gün anahtarı arasındaki gün farkı (b - a) */
-export function daysBetween(a: string, b: string) {
-  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
-}
+/*
+  Gün farkı tek kaynakta (lib/is-adimlari.ts gunFarki): burada ikinci bir
+  kopyası duruyordu ve ikisi ayrı yuvarlama kuralına kayabilirdi. Dışarıdan
+  kullanan yoktu, olduğu gibi kaldırıldı.
+*/
 
 /** Termin rozeti: geciken kırmızı, bugün/3 gün sarı, sonrası mavi */
 export function dueBadge(due: string, today: string): { tone: "danger" | "warning" | "info"; label: string; late: boolean } {
-  const days = daysBetween(today, due);
+  const days = gunFarki(today, due);
   if (days < 0) return { tone: "danger", label: `${-days} gün gecikti`, late: true };
   if (days === 0) return { tone: "warning", label: "Bugün teslim", late: false };
   if (days <= 3) return { tone: "warning", label: `${days} gün kaldı`, late: false };
