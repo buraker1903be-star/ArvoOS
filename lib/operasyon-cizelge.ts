@@ -31,6 +31,16 @@ export interface CizelgeAdimi {
   due_date: string | null;
   is_completed: boolean;
   assigned_employee_id: string | null;
+  /*
+    Adımın dört durumundan biri (planned | in_progress | review | done).
+    Pano kolonları buna göre ayrılıyor; is_completed yalnızca "bitti mi"
+    diyor ve "kontrolde" ile "çalışılıyor" ayrımını kaybediyor.
+
+    İsteğe bağlı: çizelge bu alanı kullanmıyordu ve eski çağrılar onu
+    geçirmiyor. Yokken is_completed'dan türetiliyor — veritabanında sütun
+    zaten NOT NULL, yani gerçek veride her zaman dolu.
+  */
+  status?: string | null;
 }
 
 export interface CizelgeIsi {
@@ -55,6 +65,8 @@ export interface CizelgeAsamasi {
   sira: number;
   tarih: string | null;
   tamamlandi: boolean;
+  /** Dört durumdan biri; pano kolonu bununla belirleniyor. */
+  durum: string;
   sorumluId: string | null;
   /** Çubuğun aralığı; tarih yoksa null. */
   aralik: Aralik | null;
@@ -118,6 +130,7 @@ export function asamalariKur(is: CizelgeIsi): CizelgeAsamasi[] {
       sira: adim.sort_order,
       tarih,
       tamamlandi: adim.is_completed,
+      durum: adim.status || (adim.is_completed ? "done" : "planned"),
       sorumluId: adim.assigned_employee_id,
       aralik,
       guncel: adim.id === guncelId,
@@ -345,4 +358,77 @@ export function musteriAdlari(isler: CizelgeIsi[]): string[] {
     if (ad && !adlar.has(musteriAnahtari(ad))) adlar.set(musteriAnahtari(ad), ad);
   }
   return [...adlar.values()].sort((a, b) => a.localeCompare(b, "tr"));
+}
+
+// ---------- Pano (kanban) ----------
+
+/*
+  Pano: aşamalar durum kolonlarında.
+
+  Neden kart AŞAMA, iş değil: "ne hangi aşamada" sorusu ancak böyle
+  görünüyor. İşler kart olsaydı kolonlar işin durumunu (planlandı/devam
+  ediyor) gösterirdi ve bir tezin dokuz bölümünden hangisinin kontrolde
+  olduğu yine görünmezdi — çizelgeyi yapma sebebimizin aynısı.
+
+  Kart hangi işe ve müşteriye ait olduğunu taşıyor; "İç kontrol" tek başına
+  hangi tezin iç kontrolü olduğunu söylemiyor.
+
+  Ay penceresi YOK: pano "şu an ne var" görünümü, takvim değil. Tarihi
+  olmayan aşama da panoda duruyor — planlanacak iş de iştir.
+*/
+export interface PanoKarti extends KisiAsamasi {
+  sorumluAdi: string | null;
+}
+
+export interface PanoKolonu {
+  durum: string;
+  kartlar: PanoKarti[];
+}
+
+/** Kolon sırası: işin akışı (planlandı → çalışılıyor → kontrolde → tamamlandı). */
+export const PANO_KOLONLARI = ["planned", "in_progress", "review", "done"];
+
+export function panoyuKur(
+  isler: CizelgeIsi[],
+  adCoz: (personelId: string) => string | null,
+): PanoKolonu[] {
+  const kolonlar = new Map<string, PanoKarti[]>(PANO_KOLONLARI.map((durum) => [durum, []]));
+
+  for (const is of isler) {
+    const musteri = is.customer_name?.trim() || KURUM_ICI;
+    for (const asama of asamalariKur(is)) {
+      /*
+        Tanınmayan durum "planlandı"ya düşürülmüyor, kendi kolonunda
+        toplanıyor: veriyi sessizce başka bir yere yazmak, bir göç hatasını
+        gizlemenin en kolay yolu.
+      */
+      const kolon = kolonlar.get(asama.durum) ?? [];
+      kolon.push({
+        ...asama,
+        isId: is.id,
+        isBasligi: is.title,
+        musteri,
+        isSorumlusuId: is.assigned_employee_id ?? null,
+        sorumluAdi: asama.sorumluId ? adCoz(asama.sorumluId) ?? "Bilinmeyen personel" : null,
+      });
+      kolonlar.set(asama.durum, kolon);
+    }
+  }
+
+  for (const kartlar of kolonlar.values()) {
+    // Tarihe göre: en yakın teslim üstte, tarihsizler sonda.
+    kartlar.sort((a, b) => {
+      if (a.tarih && b.tarih) return a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr");
+      if (a.tarih) return -1;
+      if (b.tarih) return 1;
+      return a.baslik.localeCompare(b.baslik, "tr");
+    });
+  }
+
+  // Bilinen kolonlar sırayla, tanınmayan durumlar sonda.
+  const bilinen = PANO_KOLONLARI.map((durum) => ({ durum, kartlar: kolonlar.get(durum) ?? [] }));
+  const digerleri = [...kolonlar.entries()]
+    .filter(([durum]) => !PANO_KOLONLARI.includes(durum))
+    .map(([durum, kartlar]) => ({ durum, kartlar }));
+  return [...bilinen, ...digerleri];
 }

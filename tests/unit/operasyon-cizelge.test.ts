@@ -10,6 +10,8 @@ import {
   kisilereGoreKur,
   KURUM_ICI,
   musteriAdlari,
+  PANO_KOLONLARI,
+  panoyuKur,
   satirlariDiz,
   type CizelgeIsi,
 } from "@/lib/operasyon-cizelge";
@@ -322,5 +324,80 @@ test("süzgeçler", async (t) => {
     */
     const liste = musteriAdlari([...isler, is({ id: "w4", customer_name: " emine " }), is({ id: "w5", customer_name: null })]);
     assert.deepEqual(liste, ["Ali", "Emine"], "kurum içi işler listede olmamalı, ilk yazım kalmalı");
+  });
+});
+
+/** Durumlu adım: pano kolonları buna göre ayrılıyor. */
+const durumluAdim = (sort_order: number, title: string, due_date: string | null, status: string, sorumlu: string | null = null) => ({
+  id: `s${sort_order}-${status}`, title, sort_order, due_date, status,
+  is_completed: status === "done", assigned_employee_id: sorumlu,
+});
+
+test("pano", async (t) => {
+  const isler = [
+    is({
+      id: "w1", title: "Tez", customer_name: "Emine",
+      steps: [
+        durumluAdim(1, "Literatür", "2026-10-02", "done", "p1"),
+        durumluAdim(2, "Analiz", "2026-10-12", "in_progress", "p1"),
+        durumluAdim(3, "İç kontrol", "2026-10-20", "review", "p2"),
+        durumluAdim(4, "Teslim", null, "planned", null),
+      ],
+    }),
+    is({ id: "w2", title: "Makale", customer_name: "Ali", steps: [durumluAdim(1, "Kaynakça", "2026-10-05", "in_progress", "p2")] }),
+  ];
+
+  await t.test("kolonlar işin akış sırasında", () => {
+    assert.deepEqual(panoyuKur(isler, adCoz).map((k) => k.durum), PANO_KOLONLARI);
+  });
+
+  await t.test("kart AŞAMA, iş değil: hangi işin hangi bölümü yazıyor", () => {
+    /*
+      İşler kart olsaydı kolonlar işin durumunu gösterirdi ve bir tezin
+      dokuz bölümünden hangisinin kontrolde olduğu yine görünmezdi.
+    */
+    const pano = panoyuKur(isler, adCoz);
+    const calisilan = pano.find((k) => k.durum === "in_progress")!;
+    assert.deepEqual(
+      calisilan.kartlar.map((kart) => `${kart.baslik}@${kart.isBasligi}/${kart.musteri}`),
+      ["Kaynakça@Makale/Ali", "Analiz@Tez/Emine"],
+      "tarihe göre sıralı",
+    );
+  });
+
+  await t.test("sorumlu adı çözülüyor, atanmamış null kalıyor", () => {
+    const pano = panoyuKur(isler, adCoz);
+    assert.equal(pano.find((k) => k.durum === "review")!.kartlar[0].sorumluAdi, "Can Yıldız");
+    assert.equal(pano.find((k) => k.durum === "planned")!.kartlar[0].sorumluAdi, null);
+  });
+
+  await t.test("tarihsiz aşama panoda duruyor, sonda", () => {
+    // Planlanacak iş de iştir; panoda görünmezse hiç planlanmaz.
+    const planlanan = panoyuKur(isler, adCoz).find((k) => k.durum === "planned")!;
+    assert.deepEqual(planlanan.kartlar.map((kart) => kart.baslik), ["Teslim"]);
+    assert.equal(planlanan.kartlar[0].tarih, null);
+  });
+
+  await t.test("tanınmayan durum kendi kolonunda toplanıyor", () => {
+    /*
+      "planlandı"ya düşürmek bir göç hatasını gizlemenin en kolay yolu
+      olurdu: kart görünür ama yanlış kolonda.
+    */
+    const pano = panoyuKur([is({ steps: [durumluAdim(1, "Belirsiz", "2026-10-05", "uydurma")] })], adCoz);
+    assert.deepEqual(pano.map((k) => k.durum), [...PANO_KOLONLARI, "uydurma"]);
+    assert.equal(pano.find((k) => k.durum === "uydurma")!.kartlar.length, 1);
+    assert.equal(pano.find((k) => k.durum === "planned")!.kartlar.length, 0);
+  });
+
+  await t.test("durum yazılmamış adım is_completed'dan türüyor", () => {
+    // Eski çağrılar status geçirmiyor; veritabanında sütun NOT NULL.
+    const pano = panoyuKur([is({ steps: [adim(1, "Bitmiş", "2026-10-01", true), adim(2, "Bitmemiş", "2026-10-02")] })], adCoz);
+    assert.deepEqual(pano.find((k) => k.durum === "done")!.kartlar.map((c) => c.baslik), ["Bitmiş"]);
+    assert.deepEqual(pano.find((k) => k.durum === "planned")!.kartlar.map((c) => c.baslik), ["Bitmemiş"]);
+  });
+
+  await t.test("boş girdide kolonlar yine duruyor", () => {
+    // Boş pano "kolon yok" demek değil: sürükleyecek yer görünmeli.
+    assert.deepEqual(panoyuKur([], adCoz).map((k) => k.kartlar.length), [0, 0, 0, 0]);
   });
 });
