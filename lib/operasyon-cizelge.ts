@@ -41,6 +41,8 @@ export interface CizelgeIsi {
   priority: string;
   start_date: string | null;
   due_date: string | null;
+  /** İŞİN sorumlusu (adımın değil): tarih düzenleme yetkisi buna bakıyor. */
+  assigned_employee_id?: string | null;
   steps: CizelgeAdimi[];
 }
 
@@ -65,6 +67,8 @@ export interface CizelgeIsSatiri {
   baslik: string;
   durum: string;
   oncelik: string;
+  /** İşin sorumlusu; ekran "bu tarihi kim değiştirebilir" kararını buna dayandırıyor. */
+  sorumluId: string | null;
   aralik: Aralik | null;
   asamalar: CizelgeAsamasi[];
   /** Şu an hangi aşamada: tamamlanmayan ilk adımın başlığı; hepsi bittiyse null. */
@@ -147,6 +151,7 @@ export function cizelgeyiKur(isler: CizelgeIsi[]): CizelgeMusterisi[] {
       baslik: is.title,
       durum: is.status,
       oncelik: is.priority,
+      sorumluId: is.assigned_employee_id ?? null,
       aralik: isAraligi(is),
       asamalar,
       guncelAsama: asamalar.find((asama) => asama.guncel)?.baslik ?? null,
@@ -236,6 +241,8 @@ export interface KisiAsamasi extends CizelgeAsamasi {
   isId: string;
   isBasligi: string;
   musteri: string;
+  /** İŞİN sorumlusu; tarih düzenleme yetkisi için (adımın sorumlusu ayrı). */
+  isSorumlusuId: string | null;
 }
 
 export interface CizelgeKisisi {
@@ -265,7 +272,7 @@ export function kisilereGoreKur(
       const anahtar = asama.sorumluId ?? "";
       const ad = asama.sorumluId ? adCoz(asama.sorumluId) ?? "Bilinmeyen personel" : ATANMAMIS;
       const grup = gruplar.get(anahtar) ?? { anahtar, ad, asamalar: [] };
-      grup.asamalar.push({ ...asama, isId: is.id, isBasligi: is.title, musteri });
+      grup.asamalar.push({ ...asama, isId: is.id, isBasligi: is.title, musteri, isSorumlusuId: is.assigned_employee_id ?? null });
       gruplar.set(anahtar, grup);
     }
   }

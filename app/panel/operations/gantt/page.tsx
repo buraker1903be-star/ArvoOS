@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { OperationsTabs } from "../operations-tabs";
+import { setStepDueDate } from "../actions";
 import {
   ATANMAMIS,
   asamaSuzgeci,
@@ -88,7 +89,7 @@ export default async function OperationsGanttPage({
     geçmişi görmek isteyeni çizelgeden koparırdı.
   */
   const tamamlananlariGoster = params.tamamlanan === "1";
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
   const monthStart = parseMonthParam(params.ay);
@@ -121,19 +122,31 @@ export default async function OperationsGanttPage({
   const monthEndKey = gunAnahtari(monthEnd);
   const bugun = todayIstanbul();
 
-  const [{ data, error }, { data: employees }] = await Promise.all([
+  const [{ data, error }, { data: employees }, { data: benimKaydim }] = await Promise.all([
     supabase.from("operation_workflows")
-      .select("id,title,customer_name,status,priority,start_date,due_date,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id)")
+      .select("id,title,customer_name,status,priority,start_date,due_date,assigned_employee_id,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id)")
       .eq("organization_id", membership.organization_id)
       // İptal edilen ve arşive gönderilen işler çizelgeyi doldurmasın
       .not("status", "in", "(cancelled,archived)")
       .order("start_date", { ascending: true, nullsFirst: false }),
     supabase.from("hr_employees").select("id,full_name").eq("organization_id", membership.organization_id),
+    // Tarih düzenleme yetkisi için: işin sorumlusu ben miyim?
+    supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle(),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
 
   const kayitlar = (data ?? []) as Kayit[];
   const sorumlular = new Map(((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]));
+  /*
+    Tarihi yöneticiler ve İŞİN sorumlusu değiştirebiliyor (actions.ts
+    isManagerOrAssignee ile aynı kural). Alanı yetkisi olmayana göstermek,
+    kaydetmeyen bir alan göstermek olurdu.
+  */
+  const benimPersonelId = (benimKaydim as { id?: string } | null)?.id ?? null;
+  const yonetici = ["owner", "admin", "manager"].includes(membership.role);
+  const tarihDuzenlenebilir = (isSorumlusuId: string | null) =>
+    yonetici || Boolean(benimPersonelId && benimPersonelId === isSorumlusuId);
+
   const tumIsler: CizelgeIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
   const suzulmus = tumIsler.filter(isSuzgeci(suzgec));
   const cizelge = cizelgeyiKur(suzulmus);
@@ -285,7 +298,21 @@ export default async function OperationsGanttPage({
                             <small>{asama.musteri} · {asama.isBasligi}</small>
                           </Link>
                           <span className="ops-kisi-tarih">
-                            {asama.tarih ? kisaTarih(asama.tarih) : "tarih yok"}
+                            {/*
+                              Tarih yerinde düzenlenebiliyor: planlama sırasında
+                              her öteleme için iş detayına girip çıkmak gerekiyordu.
+                              Yetkisi olmayana alan gösterilmiyor — kaydetmeyen bir
+                              alan göstermek yanıltıcı olurdu.
+                            */}
+                            {tarihDuzenlenebilir(asama.isSorumlusuId) ? (
+                              <form action={setStepDueDate} className="ops-tarih-form">
+                                <input type="hidden" name="step_id" value={asama.id} />
+                                <input type="date" name="due_date" defaultValue={asama.tarih ?? ""} aria-label={`${asama.baslik} teslim tarihi`} />
+                                <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
+                              </form>
+                            ) : (
+                              asama.tarih ? kisaTarih(asama.tarih) : "tarih yok"
+                            )}
                             {uyari ? <em data-tone={uyari === "overdue" ? "danger" : "warning"}>{uyari === "overdue" ? "gecikti" : "yaklaştı"}</em> : null}
                           </span>
                         </li>
@@ -366,7 +393,18 @@ export default async function OperationsGanttPage({
                 <div className="gantt-row-label is-step" key={`${asama.id}-label`} style={{ gridRow: kayit.satir, gridColumn: 1 }}>
                   <b>{asama.tamamlandi ? "✓ " : ""}{asama.baslik}</b>
                   {/* "Kimin hangi işi" sorusunun yanıtı: aşamanın sorumlusu ve tarihi. */}
-                  <small>{[sorumlu, asama.tarih ? kisaTarih(asama.tarih) : null].filter(Boolean).join(" · ") || "sorumlu ve tarih yok"}</small>
+                  {tarihDuzenlenebilir(kayit.is.sorumluId) ? (
+                    <span className="gantt-step-meta">
+                      <small>{sorumlu ?? "sorumlu yok"}</small>
+                      <form action={setStepDueDate} className="ops-tarih-form">
+                        <input type="hidden" name="step_id" value={asama.id} />
+                        <input type="date" name="due_date" defaultValue={asama.tarih ?? ""} aria-label={`${asama.baslik} teslim tarihi`} />
+                        <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
+                      </form>
+                    </span>
+                  ) : (
+                    <small>{[sorumlu, asama.tarih ? kisaTarih(asama.tarih) : null].filter(Boolean).join(" · ") || "sorumlu ve tarih yok"}</small>
+                  )}
                 </div>,
                 <div key={`${asama.id}-track`} className="gantt-row-track is-step" style={{ gridRow: kayit.satir, gridColumn: `2 / ${daysInMonth + 2}` }} />,
                 <div
