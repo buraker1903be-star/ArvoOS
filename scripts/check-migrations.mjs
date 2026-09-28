@@ -80,6 +80,64 @@ for (const name of entries) {
   if (!roundTrips && !isShipped(name)) problems.push(`${name}: ${version} geçerli bir tarih/saat değil`);
 }
 
+/*
+  POLİTİKA KURALI: her "create policy" kendi "drop policy if exists"ini
+  taşımalı.
+
+  Migration'lar SQL Editor'den elle uygulanıyor. Bir çalıştırma ortasında
+  hata verir de dosya yeniden çalıştırılırsa, korumasız bir create policy
+  42710 ("already exists") ile düşer ve dosyanın GERİ KALANI hiç çalışmaz —
+  gördüğünüz hata, koşmayan işi gizler. ArvoLab'da 20260924100032 canlıda
+  tam bunu yaptı (25.09.2026): üç politika da korumasızdı, ilkinde takıldı,
+  gerisi uygulanmadan kaldı. "create policy if not exists" diye bir şey
+  olmadığı için tek çare her create'in yanına kendi drop'unu yazmak.
+
+  ESKİ DOSYALAR MUAF. Kuralın yazıldığı gündeki en son migration'a kadar
+  olanlar uygulanmış durumda ve uygulanmış bir migration geriye dönük
+  değiştirilmez (defter bozulur). Eşik bir SABİT: yeni her dosyanın sürümü
+  bundan büyük olacağı için liste büyümüyor, muafiyet de genişlemiyor.
+
+  EŞİK HER DEPODA KENDİ SON SÜRÜMÜ. Dosyanın geri kalanı üç depoda
+  birebir aynı ama bu sabit değil: ArvoARC'ınkini buraya kopyalamak,
+  eşiği ArvoOS'un bütün migration'larının üstüne çıkarır ve kural hiçbir
+  şeyi kapsamaz — çalıştığı sanılan bir denetim, hiç olmayanından kötüdür.
+
+  Ad TIRNAKLI da TIRNAKSIZ da olabilir: bu depoda ikisi de kullanılıyor
+  ("operation comments deletable by creator" ile admins_manage_crm_stages).
+  Yalnızca tırnaklıyı arayan bir desen yarısını kaçırırdı.
+*/
+const POLITIKA_KURALI_ESIGI = "20260926185634";
+
+// Yorumlar ÖNCE soyuluyor: "create policy if not exists yok" diye yazan bir
+// açıklama satırı, denetime "if" adlı bir politika gibi görünüyordu.
+const yorumsuz = (sql) =>
+  sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+
+const AD = String.raw`(?:"([^"]+)"|([a-z_][a-z0-9_]*))`;
+const politikaAdi = (m) => m[1] ?? m[2];
+
+for (const [version, name] of versions) {
+  if (version <= POLITIKA_KURALI_ESIGI) continue;
+  let icerik;
+  try {
+    icerik = yorumsuz(fs.readFileSync(path.join(DIR, name), "utf8"));
+  } catch {
+    continue;
+  }
+  const dusurulen = new Set(
+    [...icerik.matchAll(new RegExp(String.raw`drop\s+policy\s+if\s+exists\s+${AD}`, "gi"))].map(politikaAdi),
+  );
+  for (const m of icerik.matchAll(new RegExp(String.raw`create\s+policy\s+${AD}`, "gi"))) {
+    const politika = politikaAdi(m);
+    if (!dusurulen.has(politika)) {
+      problems.push(
+        `${name}: "${politika}" politikası kendi 'drop policy if exists' satırını taşımıyor. ` +
+        `Dosya ikinci kez çalıştırılınca 42710 verir ve gerisi uygulanmaz.`,
+      );
+    }
+  }
+}
+
 // Asıl kural: yeni bir migration, gönderilmiş olanların en büyüğünden büyük
 // bir sürüm taşımalı; yoksa uygulanmışların önüne sıralanır.
 if (tracked && tracked.size) {
