@@ -17,12 +17,12 @@
   Tekrarlayan ödemenin sıklığı da ayrı bir alan: GOSAS'ta D/W/M/Y
   (aylık abonelik "M").
 
-  KART ALANLARI BURADA YOK. 3D_PAY'de kart bilgisi bankaya gönderiliyor
-  ama alan adları henüz elimizde değil; uydurmak yerine dışarıda
-  bırakıldı. Ayrıca kartın bizim sayfamızdan geçmesi PCI kapsamı demek —
-  sağlayıcı tanımındaki "kart bilgisi bize hiç gelmez" sözü Ortak Ödeme
-  Sayfası'na ait. Hangi akışın seçileceği netleşmeden kart alanı
-  eklenmemeli.
+  KART ALANLARI AYRI BİR FONKSİYONDA (kartliPesinSatisFormu) ve bu
+  bilerek: kartın bizim sayfamızdan geçmesi PCI kapsamına girmek
+  demek. Sağlayıcı tanımındaki "kart bilgisi bize hiç gelmez" sözü
+  Ortak Ödeme Sayfası'na ait; kart taşıyan yolu ayrı bir adla
+  çağırmak, o kararın sessizce alınmasını engelliyor ve "PAN nereden
+  geçiyor" sorusunun cevabını tek bir grep'e indiriyor.
 */
 
 import { TRY_KODU, hashData, type ParaBirimi } from "./imza";
@@ -174,10 +174,76 @@ export function pesinSatisFormu(girdi: FormGirdisi): GarantiFormu {
   */
   if (girdi.musteriEposta?.trim()) alanlar.customeremailaddress = girdi.musteriEposta.trim();
   if (girdi.musteriIp?.trim()) alanlar.customeripaddress = girdi.musteriIp.trim();
+  /*
+    ÇELİŞKİ, TEST TERMİNALİNDE SINANACAK: bankanın yanıt tablosu bu
+    alanı "cardholdername" diye sayıyor ("işlem yapılırken gönderilen
+    müşteri adı"), GOSAS'ın GVPOSCard'ı ise [FormElement("cardholder")]
+    diyor. Bankanın kendi tablosuna uyuyoruz; yanlışsa banka alanı yok
+    sayar (imza tutmaya devam eder, çünkü ad imzaya girmiyor) ve
+    ekstrede kart sahibi adı boş görünür.
+  */
   if (girdi.kartSahibiAdi?.trim()) alanlar.cardholdername = girdi.kartSahibiAdi.trim();
   if (girdi.refreshTime !== undefined) alanlar.refreshtime = String(girdi.refreshTime);
 
   return { ucAdresi: girdi.kip === "TEST" ? TEST_UCU : girdi.uretimUcu!, alanlar };
+}
+
+/*
+  KART ALANLARI. Adlar GOSAS.VirtualPos'un GVPOSCard sınıfındaki
+  [FormElement] özniteliklerinden: cardnumber, cardexpiredatemonth,
+  cardexpiredateyear, cardcvv2.
+
+  Son kullanma tarihi FORMDA İKİ AYRI ALAN, tek bir MMYY değil.
+  Dört haneli yıl iki haneye indiriliyor (2027 → "27"), ay ve yıl
+  sıfırla iki haneye tamamlanıyor — GOSAS'ın IsRequireZero'su da
+  bunu yapıyor.
+*/
+export interface KartBilgisi {
+  /** Kart numarası; 15-19 rakam. */
+  numara: string;
+  /** Son kullanma ayı, 1-12. */
+  ay: number;
+  /** Son kullanma yılı; 27 ya da 2027. */
+  yil: number;
+  /** 3 ya da 4 (AMEX) rakam. */
+  cvv: string;
+}
+
+const ikiHane = (deger: number) => String(deger).padStart(2, "0");
+
+/*
+  Kart hatalarında DEĞER YAZILMIYOR, yalnızca hangi alan olduğu.
+  Kart numarasını bir istisna mesajına koymak, onu günlüklere,
+  hata izleyicisine ve destek ekranlarına taşımak demek.
+*/
+function kartAlanlari(kart: KartBilgisi): Record<string, string> {
+  const numara = kart.numara.replace(/\s/g, "");
+  if (!/^[0-9]{15,19}$/.test(numara)) throw new Error("Kart numarası 15-19 rakam olmalı.");
+  if (!Number.isInteger(kart.ay) || kart.ay < 1 || kart.ay > 12) throw new Error("Son kullanma ayı 1-12 olmalı.");
+  if (!/^[0-9]{3,4}$/.test(kart.cvv)) throw new Error("CVV 3 ya da 4 rakam olmalı.");
+  const yil = kart.yil > 2000 ? kart.yil - 2000 : kart.yil;
+  if (!Number.isInteger(yil) || yil < 0 || yil > 99) throw new Error("Son kullanma yılı iki haneye indirilemedi.");
+  return {
+    cardnumber: numara,
+    cardexpiredatemonth: ikiHane(kart.ay),
+    cardexpiredateyear: ikiHane(yil),
+    cardcvv2: kart.cvv,
+  };
+}
+
+/**
+ * Kart bilgisi TAŞIYAN 3D peşin satış formu.
+ *
+ * Ayrı bir ad taşıyor çünkü ayrı bir karar: bu yolda kart numarası
+ * bizim sayfamızdan geçer ve PCI kapsamına gireriz. Ortak Ödeme
+ * Sayfası'na geçilirse bu fonksiyon hiç çağrılmaz.
+ *
+ * Dönen alanlar KAYDEDİLMEMELİ ve GÜNLÜĞE YAZILMAMALI: yalnızca
+ * bankaya gönderilecek formu doldurmak için.
+ */
+export function kartliPesinSatisFormu(girdi: FormGirdisi, kart: KartBilgisi): GarantiFormu {
+  const form = pesinSatisFormu(girdi);
+  return { ucAdresi: form.ucAdresi, alanlar: { ...form.alanlar, ...kartAlanlari(kart) } };
 }
 
 /**

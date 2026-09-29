@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { describe, test } from "node:test";
-import { API_SURUMU, TEST_UCU, pesinSatisFormu, siparisNumarasi } from "@/lib/payments/garanti/form";
+import { API_SURUMU, TEST_UCU, kartliPesinSatisFormu, pesinSatisFormu, siparisNumarasi } from "@/lib/payments/garanti/form";
 import { TRY_KODU, hashData } from "@/lib/payments/garanti/imza";
 import { YANIT_ALAN_ADLARI } from "@/lib/payments/garanti/yanit";
 
@@ -92,9 +92,12 @@ describe("3D peşin satış formu", () => {
     assert.equal(pesinSatisFormu({ ...GIRDI, taksit: 3, tekCekimBosGitsin: true }).alanlar.txninstallmentcount, "3");
   });
 
-  test("KART ALANI GÖNDERİLMİYOR", () => {
-    /* Adları elimizde yok ve akış (3D_PAY mi, Ortak Ödeme Sayfası mı)
-       netleşmedi; uydurulmuş bir kart alanı sessizce eklenmesin. */
+  test("VARSAYILAN YOLDA kart alanı yok", () => {
+    /*
+      Kart taşıyan yol ayrı bir ada sahip (kartliPesinSatisFormu):
+      PCI kapsamına girmek bilinçli bir karar olsun ve "PAN nereden
+      geçiyor" sorusu tek bir grep'e insin.
+    */
     const { alanlar } = pesinSatisFormu(GIRDI);
     for (const ad of ["cardnumber", "cardcvv2", "cardexpiredatemonth", "cardexpiredateyear"]) {
       assert.equal(alanlar[ad], undefined, ad);
@@ -130,5 +133,60 @@ describe("3D peşin satış formu", () => {
     const b = siparisNumarasi(randomUUID());
     assert.match(a, /^[0-9a-f]{32}$/);
     assert.notEqual(a, b);
+  });
+});
+
+const KART = { numara: "4242424242424242", ay: 3, yil: 2027, cvv: "123" };
+
+describe("kart taşıyan form", () => {
+  test("alan adları GOSAS'ın [FormElement] öznitelikleriyle aynı", () => {
+    const { alanlar } = kartliPesinSatisFormu(GIRDI, KART);
+    assert.equal(alanlar.cardnumber, "4242424242424242");
+    assert.equal(alanlar.cardcvv2, "123");
+    assert.equal(alanlar.cardexpiredatemonth, "03");
+    assert.equal(alanlar.cardexpiredateyear, "27");
+  });
+
+  test("son kullanma tarihi İKİ AYRI ALAN, tek MMYY değil", () => {
+    const { alanlar } = kartliPesinSatisFormu(GIRDI, KART);
+    assert.ok(!("cardexpiredate" in alanlar));
+    assert.equal(alanlar.cardexpiredatemonth.length, 2);
+    assert.equal(alanlar.cardexpiredateyear.length, 2);
+  });
+
+  test("iki haneli yıl da kabul ediliyor", () => {
+    assert.equal(kartliPesinSatisFormu(GIRDI, { ...KART, yil: 27 }).alanlar.cardexpiredateyear, "27");
+  });
+
+  test("kart numarasındaki boşluklar atılıyor", () => {
+    assert.equal(kartliPesinSatisFormu(GIRDI, { ...KART, numara: "4242 4242 4242 4242" }).alanlar.cardnumber, "4242424242424242");
+  });
+
+  test("imza kart bilgisinden ETKİLENMİYOR", () => {
+    /* Hash formülünde kart yok; kartlı ve kartsız form aynı imzayı
+       taşımalı, yoksa biri yanlış hesaplanıyor demektir. */
+    assert.equal(kartliPesinSatisFormu(GIRDI, KART).alanlar.secure3dhash, pesinSatisFormu(GIRDI).alanlar.secure3dhash);
+  });
+
+  test("bozuk kart reddediliyor ve DEĞER hata mesajına sızmıyor", () => {
+    /*
+      Kart numarasını istisna mesajına koymak, onu günlüklere, hata
+      izleyicisine ve destek ekranlarına taşımak demek.
+    */
+    const kotular = [
+      { ...KART, numara: "4242" },
+      { ...KART, numara: "4242424242424242424242" },
+      { ...KART, ay: 0 },
+      { ...KART, ay: 13 },
+      { ...KART, cvv: "12" },
+      { ...KART, cvv: "abcd" },
+    ];
+    for (const kart of kotular) {
+      assert.throws(() => kartliPesinSatisFormu(GIRDI, kart), (hata: Error) => {
+        assert.ok(!hata.message.includes(kart.numara), "kart numarası mesaja sızmış");
+        assert.ok(!hata.message.includes(kart.cvv), "CVV mesaja sızmış");
+        return true;
+      });
+    }
   });
 });
