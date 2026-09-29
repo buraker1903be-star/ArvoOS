@@ -1055,6 +1055,7 @@
     "organization_payment_providers": [
       "created_at",
       "credentials_enc",
+      "identifiers",
       "is_enabled",
       "last_payment_at",
       "last_test_payment_at",

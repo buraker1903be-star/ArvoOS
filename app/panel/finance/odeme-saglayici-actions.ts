@@ -7,7 +7,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { kimlikSil, kimlikYaz, saglayiciKaydi } from "@/lib/payments/kimlik";
-import { isProviderCode, kimlikSorunu, providerSpec, secretKeys } from "@/lib/payments/saglayicilar";
+import { identifierKeys, isProviderCode, kimlikSorunu, providerSpec, secretKeys } from "@/lib/payments/saglayicilar";
 
 // Ödeme sağlayıcısı bilgileri (Ayarlar → Entegrasyonlar). Sağlayıcıdan
 // bağımsız: hangi alanların istendiği kayıt defterinde (saglayicilar.ts),
@@ -59,8 +59,13 @@ async function saveProviderSettings__impl(formData: FormData) {
   const secrets: Record<string, string> = {};
   for (const key of secretKeys(provider)) secrets[key] = String(formData.get(key) ?? "").trim();
 
+  /* Sır olmayan alanlar ayrı: ekranda göründükleri için boş bırakılmaları
+     "değiştirme" değil gerçekten boş demek. */
+  const identifiers: Record<string, string> = {};
+  for (const key of identifierKeys(provider)) identifiers[key] = String(formData.get(key) ?? "").trim();
+
   const kayit = await saglayiciKaydi(admin, membership.organization_id, provider);
-  const sorun = kimlikSorunu(provider, merchantId, secrets, kayit?.storedKeys ?? []);
+  const sorun = kimlikSorunu(provider, merchantId, secrets, kayit?.storedKeys ?? [], identifiers);
   if (sorun) throw new Error(sorun);
 
   await kimlikYaz(admin, {
@@ -70,6 +75,7 @@ async function saveProviderSettings__impl(formData: FormData) {
     mode,
     enabled,
     secrets,
+    identifiers,
     actorId: userId,
   });
   tazele();

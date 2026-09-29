@@ -1,6 +1,6 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret } from "@/lib/payment-credentials";
-import { isProviderCode, isProviderMode, kimlikTam, providerSpec, secretKeys, type ProviderCode, type ProviderMode } from "./saglayicilar";
+import { identifierKeys, isProviderCode, isProviderMode, kimlikTam, providerSpec, secretKeys, type ProviderCode, type ProviderMode } from "./saglayicilar";
 
 // Kurumun ödeme sağlayıcısı kimlik bilgilerini okuyup yazan tek yer.
 //
@@ -21,6 +21,12 @@ export interface ProviderRecord {
   enabled: boolean;
   /** Haritada kayıtlı alan adları; DEĞERLER değil. Ekrana bunlar gider. */
   storedKeys: string[];
+  /*
+    Sır olmayan kimlikler; DEĞERLERİYLE birlikte ekrana gider. Terminal
+    numarası gibi, üç markanın tek üye işyerini paylaştığı kurulumda
+    kayıtları ayıran alanlar burada (20260929120932).
+  */
+  identifiers: Record<string, string>;
   /** Sağlayıcının istediği bütün zorunlu alanlar kayıtlı mı */
   complete: boolean;
   lastTestPaymentAt: string | null;
@@ -28,7 +34,7 @@ export interface ProviderRecord {
   updatedAt: string | null;
 }
 
-const SELECT = "provider,merchant_id,mode,is_enabled,credentials_enc,last_test_payment_at,last_payment_at,updated_at";
+const SELECT = "provider,merchant_id,mode,is_enabled,credentials_enc,identifiers,last_test_payment_at,last_payment_at,updated_at";
 
 type Row = {
   provider: string;
@@ -36,6 +42,7 @@ type Row = {
   mode: string;
   is_enabled: boolean;
   credentials_enc: Record<string, string> | null;
+  identifiers: Record<string, string> | null;
   last_test_payment_at: string | null;
   last_payment_at: string | null;
   updated_at: string | null;
@@ -47,13 +54,20 @@ function toRecord(row: Row): ProviderRecord | null {
   // Yalnızca sağlayıcının TANIDIĞI alanlar sayılıyor: eski bir sağlayıcıdan
   // kalma artık anahtar "bağlı" izlenimi vermesin.
   const storedKeys = secretKeys(row.provider).filter((key) => typeof harita[key] === "string" && harita[key].length > 0);
+  const gorunurHarita = row.identifiers ?? {};
+  const identifiers: Record<string, string> = {};
+  for (const key of identifierKeys(row.provider)) {
+    const value = gorunurHarita[key];
+    if (typeof value === "string" && value.length > 0) identifiers[key] = value;
+  }
   return {
     provider: row.provider,
     merchantId: row.merchant_id,
     mode: isProviderMode(row.mode) ? row.mode : "production",
     enabled: Boolean(row.is_enabled),
     storedKeys,
-    complete: kimlikTam(row.provider, storedKeys),
+    identifiers,
+    complete: kimlikTam(row.provider, storedKeys, Object.keys(identifiers)),
     lastTestPaymentAt: row.last_test_payment_at,
     lastPaymentAt: row.last_payment_at,
     updatedAt: row.updated_at,
@@ -99,7 +113,7 @@ export async function sirlariCoz(
   */
   { acikOlmali = true }: { acikOlmali?: boolean } = {},
 ): Promise<Record<string, string>> {
-  const { data, error } = await admin.from("organization_payment_providers").select("credentials_enc,is_enabled")
+  const { data, error } = await admin.from("organization_payment_providers").select("credentials_enc,identifiers,is_enabled")
     .eq("organization_id", organizationId).eq("provider", provider).maybeSingle();
   if (error) throw new Error("Ödeme sağlayıcısı okunamadı: " + error.message);
   const spec = providerSpec(provider);
@@ -115,6 +129,25 @@ export async function sirlariCoz(
       continue;
     }
     cozulmus[secret.key] = decryptSecret(sifreli);
+  }
+
+  /*
+    Görünür kimlikler de aynı haritada dönüyor: bankaya giden istekte
+    terminal numarası ile PROVAUT şifresi yan yana duruyor ve çağıranın
+    ikisini iki ayrı yerden toplaması, birini unutmasına davetiye olurdu.
+
+    Eksikse yine HATA: terminalsiz giden bir istek bankadan "imza
+    hatalı" olarak döner ve sorunun kimlik eksikliği olduğu günlerce
+    anlaşılmaz — sırlardaki gerekçenin aynısı.
+  */
+  const gorunur = (data.identifiers ?? {}) as Record<string, string>;
+  for (const alan of spec.identifiers) {
+    const value = (gorunur[alan.key] ?? "").trim();
+    if (!value) {
+      if (alan.required) throw new Error(`${spec.name} kimlik bilgisi eksik: ${alan.label}. Ayarlar'dan yeniden girin.`);
+      continue;
+    }
+    cozulmus[alan.key] = value;
   }
   return cozulmus;
 }
@@ -132,6 +165,12 @@ export async function kimlikYaz(admin: Admin, input: {
   enabled: boolean;
   /** Yalnızca DEĞİŞTİRİLEN alanlar; boş/eksik olanlar mevcut değerini korur */
   secrets: Record<string, string>;
+  /*
+    Sır olmayan alanlar. Sırların aksine BOŞ OLAN SİLİNİR: değer ekranda
+    görünüyor, yani kullanıcı boş bıraktığında gerçekten boş bırakmayı
+    seçmiş oluyor.
+  */
+  identifiers?: Record<string, string>;
   actorId: string | null;
 }): Promise<void> {
   const { data: existing, error: readError } = await admin.from("organization_payment_providers")
@@ -149,12 +188,19 @@ export async function kimlikYaz(admin: Admin, input: {
     if (!secretKeys(input.provider).includes(key)) delete harita[key];
   }
 
+  const gorunur: Record<string, string> = {};
+  for (const key of identifierKeys(input.provider)) {
+    const value = (input.identifiers?.[key] ?? "").trim();
+    if (value) gorunur[key] = value;
+  }
+
   const { error } = await admin.from("organization_payment_providers").upsert({
     organization_id: input.organizationId,
     provider: input.provider,
     merchant_id: input.merchantId,
     mode: input.mode,
     credentials_enc: harita,
+    identifiers: gorunur,
     is_enabled: input.enabled,
     updated_by: input.actorId,
     updated_at: new Date().toISOString(),

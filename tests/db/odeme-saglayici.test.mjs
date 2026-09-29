@@ -20,6 +20,10 @@ const MIGRATION = path.resolve(
   import.meta.dirname,
   "../../supabase/migrations/20260925130801_odeme_saglayici_katmani_garanti.sql",
 );
+const GORUNUR_MIGRATION = path.resolve(
+  import.meta.dirname,
+  "../../supabase/migrations/20260929120932_gorunur_kimlik_alanlari.sql",
+);
 
 const KURUM = "00000000-0000-4000-8000-0000000000e1";
 const SAHIP = "00000000-0000-4000-8000-0000000000e2";
@@ -34,6 +38,11 @@ before(async () => {
       select 1 from information_schema.columns
       where table_name = 'organization_payment_providers' and column_name = 'credentials_enc') as v`);
   if (!rows[0].v) await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  const { rows: g } = await db.query(`
+    select exists (
+      select 1 from information_schema.columns
+      where table_name = 'organization_payment_providers' and column_name = 'identifiers') as v`);
+  if (!g[0].v) await db.exec(fs.readFileSync(GORUNUR_MIGRATION, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -175,5 +184,122 @@ describe("PayTR satırları taşındı", () => {
       await saglayiciYaz("garanti", { store_key: SIFRELI });
       const satir = await tek(`select merchant_key_enc from public.organization_payment_providers`);
       assert.equal(satir.merchant_key_enc, null);
+    }));
+});
+
+/*
+  SIR OLMAYAN KİMLİKLER (identifiers).
+
+  Terminal numarası önce sır sayılıyordu; şifrelendiği için hiçbir ekranda
+  geri gösterilemiyordu. ArvoOS, AkademikMerkez ve ArvoCulture aynı tüzel
+  kişilik ve aynı Üye İşyeri Numarasını paylaşıyor — kayıtları ayıran TEK
+  alan terminal numarası. Görünmeyince "hangi kurum hangi terminale bağlı"
+  sorusunun cevabı kalmıyor ve yanlış terminale bağlanmış bir kurum sessizce
+  başka bir markanın hesabına tahsilat yapar (20260929120932).
+
+  Alan DÜZ saklanıyor, o yüzden biçimi kısıtla daraltılmış: buraya
+  yanlışlıkla bir sır yapıştırılırsa uzunluk sınırına takılıp ekranda
+  görünmeden önce reddedilsin.
+*/
+const gorunurYaz = (deger) =>
+  db.query(
+    `insert into public.organization_payment_providers
+       (organization_id, provider, merchant_id, credentials_enc, identifiers, is_enabled)
+     values ($1, 'garanti', '7000679', '{}'::jsonb, $2::jsonb, true)`,
+    [KURUM, JSON.stringify(deger)],
+  );
+
+describe("sır olmayan kimlikler", () => {
+  test("terminal numarası düz yazılabiliyor ve GERİ OKUNABİLİYOR", () =>
+    islem(db, async () => {
+      await tohum();
+      await gorunurYaz({ terminal_id: "30690978" });
+      const satir = await tek(`select identifiers from public.organization_payment_providers`);
+      assert.equal(satir.identifiers.terminal_id, "30690978", "değer geri gösterilebilmeli");
+    }));
+
+  test("aynı üye işyeri, ÜÇ AYRI TERMİNAL", () =>
+    islem(db, async () => {
+      /* Kurulumun kendisi: tek üye işyeri numarası, marka başına terminal. */
+      await tohum();
+      await db.exec(`
+        insert into public.organizations (id, name, slug, status, plan_code) values
+          ('00000000-0000-4000-8000-0000000000e3', 'ArvoOS', 'arvo-os', 'active', 'starter'),
+          ('00000000-0000-4000-8000-0000000000e4', 'ArvoCulture', 'arvoculture', 'active', 'starter');
+      `);
+      await gorunurYaz({ terminal_id: "30690978" });
+      for (const [kurum, terminal] of [
+        ["00000000-0000-4000-8000-0000000000e3", "30690979"],
+        ["00000000-0000-4000-8000-0000000000e4", "30690980"],
+      ]) {
+        await db.query(
+          `insert into public.organization_payment_providers
+             (organization_id, provider, merchant_id, credentials_enc, identifiers, is_enabled)
+           values ($1, 'garanti', '7000679', '{}'::jsonb, $2::jsonb, true)`,
+          [kurum, JSON.stringify({ terminal_id: terminal })],
+        );
+      }
+      const { rows } = await db.query(
+        `select merchant_id, identifiers->>'terminal_id' as terminal
+           from public.organization_payment_providers order by terminal`);
+      assert.equal(rows.length, 3);
+      assert.deepEqual(rows.map((r) => r.terminal), ["30690978", "30690979", "30690980"]);
+      assert.equal(new Set(rows.map((r) => r.merchant_id)).size, 1, "üye işyeri numarası ortak");
+    }));
+
+  test("boş harita geçerli: henüz girilmemiş demek", () =>
+    islem(db, async () => {
+      await tohum();
+      await gorunurYaz({});
+      assert.deepEqual((await tek(`select identifiers from public.organization_payment_providers`)).identifiers, {});
+    }));
+
+  test("sır yapıştırılmış gibi UZUN değer reddediliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await reddedilir(db,
+        `insert into public.organization_payment_providers
+           (organization_id, provider, merchant_id, credentials_enc, identifiers, is_enabled)
+         values ($1, 'garanti', '7000679', '{}'::jsonb, $2::jsonb, true)`,
+        [KURUM, JSON.stringify({ terminal_id: "x".repeat(65) })], /identifiers_check/);
+    }));
+
+  test("boşluklu değer, metin olmayan değer ve dokuz alan reddediliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      const kotu = [
+        { terminal_id: "30 690 978" },
+        { terminal_id: 30690978 },
+        Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`a${i}`, "1"])),
+      ];
+      for (const deger of kotu) {
+        await reddedilir(db,
+          `insert into public.organization_payment_providers
+             (organization_id, provider, merchant_id, credentials_enc, identifiers, is_enabled)
+           values ($1, 'garanti', '7000679', '{}'::jsonb, $2::jsonb, true)`,
+          [KURUM, JSON.stringify(deger)], /identifiers_check/);
+      }
+    }));
+
+  test("denetim fonksiyonu PUBLIC'e açık değil", () =>
+    islem(db, async () => {
+      /* Postgres yeni fonksiyonu PUBLIC'e açık oluşturuyor; migration
+         kapatıyor. credentials_enc'in denetimiyle aynı yetki kümesi. */
+      const satir = await tek(
+        `select has_function_privilege('anon', p.oid, 'execute') as anon,
+                has_function_privilege('authenticated', p.oid, 'execute') as panel
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'private' and p.proname = 'arvo_gorunur_harita_mi'`);
+      assert.equal(satir.anon, false);
+      assert.equal(satir.panel, true);
+    }));
+
+  test("migration ikinci kez çalıştırılabiliyor", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      await db.exec(fs.readFileSync(GORUNUR_MIGRATION, "utf8"));
+      await tohum();
+      await gorunurYaz({ terminal_id: "30690978" });
+      assert.equal((await tek(`select count(*)::int n from public.organization_payment_providers`)).n, 1);
     }));
 });

@@ -49,6 +49,26 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
             <input name="merchant_id" inputMode="numeric" required defaultValue={status.merchantId ?? ""} autoComplete="off" />
           </label>
 
+          {/*
+            Sır OLMAYAN kimlikler sırlardan ÖNCE ve düz metin olarak:
+            değeri geri gösterilebiliyor. Terminal numarası bunlardan
+            biri ve üç markanın tek üye işyerini paylaştığı kurulumda
+            kayıtları ayıran tek alan o.
+          */}
+          {spec.identifiers.map((alan) => (
+            <label key={alan.key}>
+              {alan.label}
+              <input
+                name={alan.key}
+                inputMode="numeric"
+                required={alan.required}
+                defaultValue={status.identifiers[alan.key] ?? ""}
+                placeholder={alan.hint ?? ""}
+                autoComplete="off"
+              />
+            </label>
+          ))}
+
           {spec.secrets.map((secret) => {
             const kayitli = status.storedKeys.includes(secret.key);
             return (

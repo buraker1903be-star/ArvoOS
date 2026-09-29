@@ -24,6 +24,8 @@ export interface ProviderStatus {
   merchantHint: string | null;
   mode: "test" | "production";
   storedKeys: string[];
+  /** Sır olmayan kimlikler, DEĞERLERİYLE: terminal numarası gibi. */
+  identifiers: Record<string, string>;
   lastTestPaymentAt: string | null;
   lastPaymentAt: string | null;
   updatedAt: string | null;
@@ -31,7 +33,7 @@ export interface ProviderStatus {
 
 const bos = (spec: ProviderSpec, available: boolean, readFailed = false): ProviderStatus => ({
   spec, available, readFailed, connected: false, enabled: false, complete: false, active: false,
-  merchantId: null, merchantHint: null, mode: "production", storedKeys: [],
+  merchantId: null, merchantHint: null, mode: "production", storedKeys: [], identifiers: {},
   lastTestPaymentAt: null, lastPaymentAt: null, updatedAt: null,
 });
 
@@ -47,6 +49,7 @@ const doldur = (spec: ProviderSpec, kayit: ProviderRecord, available: boolean, s
   merchantHint: `••••${kayit.merchantId.slice(-4)}`,
   mode: kayit.mode,
   storedKeys: kayit.storedKeys,
+  identifiers: kayit.identifiers,
   lastTestPaymentAt: kayit.lastTestPaymentAt,
   lastPaymentAt: kayit.lastPaymentAt,
   updatedAt: kayit.updatedAt,

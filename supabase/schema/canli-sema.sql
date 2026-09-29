@@ -1149,7 +1149,8 @@ create table if not exists public.organization_payment_providers (
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null,
   credentials_enc jsonb not null,
-  mode text not null
+  mode text not null,
+  identifiers jsonb not null
 );
 
 create table if not exists public.organization_payment_requests (
@@ -3376,6 +3377,23 @@ AS $function$
        from jsonb_each(deger) as alan(anahtar, icerik)
        where jsonb_typeof(icerik) <> 'string'
           or (icerik #>> '{}') !~ '^v1:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$'
+     );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION private.arvo_gorunur_harita_mi(deger jsonb)
+ RETURNS boolean
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+  select jsonb_typeof(deger) = 'object'
+     and (select count(*) from jsonb_object_keys(deger)) <= 8
+     and not exists (
+       select 1
+       from jsonb_each(deger) as alan(anahtar, icerik)
+       where jsonb_typeof(icerik) <> 'string'
+          or (icerik #>> '{}') !~ '^[A-Za-z0-9._-]{1,64}$'
      );
 $function$
 ;
@@ -11427,6 +11445,8 @@ alter table public.organization_payment_providers alter column created_at set de
 
 alter table public.organization_payment_providers alter column credentials_enc set default '{}'::jsonb;
 
+alter table public.organization_payment_providers alter column identifiers set default '{}'::jsonb;
+
 alter table public.organization_payment_providers alter column is_enabled set default true;
 
 alter table public.organization_payment_providers alter column mode set default 'production'::text;
@@ -12252,6 +12272,8 @@ alter table public.organization_onboarding add constraint organization_onboardin
 alter table public.organization_onboarding add constraint organization_onboarding_pkey PRIMARY KEY (organization_id);
 
 alter table public.organization_payment_providers add constraint organization_payment_providers_credentials_check CHECK (private.arvo_sifreli_harita_mi(credentials_enc));
+
+alter table public.organization_payment_providers add constraint organization_payment_providers_identifiers_check CHECK (private.arvo_gorunur_harita_mi(identifiers));
 
 alter table public.organization_payment_providers add constraint organization_payment_providers_merchant_id_check CHECK ((merchant_id ~ '^[A-Za-z0-9._-]{3,64}$'::text));
 
@@ -14652,6 +14674,10 @@ grant execute on function private.arvo_request_role() to public;
 revoke all on function private.arvo_sifreli_harita_mi(deger jsonb) from public;
 grant execute on function private.arvo_sifreli_harita_mi(deger jsonb) to authenticated;
 grant execute on function private.arvo_sifreli_harita_mi(deger jsonb) to service_role;
+
+revoke all on function private.arvo_gorunur_harita_mi(deger jsonb) from public;
+grant execute on function private.arvo_gorunur_harita_mi(deger jsonb) to authenticated;
+grant execute on function private.arvo_gorunur_harita_mi(deger jsonb) to service_role;
 
 revoke all on function private.arvo_sync_installment_due_dates() from public;
 grant execute on function private.arvo_sync_installment_due_dates() to public;

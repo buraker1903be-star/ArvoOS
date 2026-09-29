@@ -34,6 +34,16 @@ export interface ProviderSpec {
   merchantLabel: string;
   merchantPattern: RegExp;
   merchantHint: string;
+  /*
+    SIR OLMAYAN kimlik alanları: düz saklanır ve ekranda GÖSTERİLİR.
+
+    Garanti'nin terminal numarası buraya ait. Önce sır sayılıyordu ve
+    şifrelendiği için geri gösterilemiyordu; üç markanın tek üye işyeri
+    numarasını paylaştığı kurulumda kayıtları birbirinden ayıran tek
+    alan o olduğu için panelde "hangi kurum hangi terminale bağlı"
+    sorusunun cevabı kalmıyordu (20260929120932).
+  */
+  identifiers: CredentialField[];
   /** Sırlar; hepsi şifrelenip haritaya yazılır, ekranda bir daha gösterilmez */
   secrets: CredentialField[];
   /** Test ve canlı ayrı sunucularda mı (kip seçimi gösterilsin mi) */
@@ -52,6 +62,7 @@ export const PROVIDERS: ProviderSpec[] = [
     merchantLabel: "Mağaza numarası (merchant_id)",
     merchantPattern: /^[0-9]{3,20}$/,
     merchantHint: "Yalnızca rakam.",
+    identifiers: [],
     secrets: [
       { key: "merchant_key", label: "Mağaza parolası (merchant_key)", required: true },
       { key: "merchant_salt", label: "Gizli anahtar (merchant_salt)", required: true },
@@ -67,9 +78,16 @@ export const PROVIDERS: ProviderSpec[] = [
     enableLabel: "Bu kurumun tahsilatı Garanti BBVA üzerinden yapılsın",
     merchantLabel: "Üye İşyeri Numarası",
     merchantPattern: /^[0-9]{5,20}$/,
-    merchantHint: "Sanal POS yönetim panelinde yazan üye işyeri numarası.",
+    merchantHint: "Sanal POS panelinde yazan üye işyeri numarası. Aynı tüzel kişiliğin markaları bu numarayı paylaşabilir.",
+    identifiers: [
+      {
+        key: "terminal_id",
+        label: "Terminal Numarası",
+        required: true,
+        hint: "Her markanın kendi terminali. Üye işyeri numarası ortak olduğunda kurumları ayıran alan budur.",
+      },
+    ],
     secrets: [
-      { key: "terminal_id", label: "Terminal Numarası", required: true, hint: "Sanal POS panelinde tanımlı terminal." },
       { key: "prov_user", label: "Provizyon kullanıcısı (PROVAUT)", required: true },
       { key: "prov_password", label: "Provizyon şifresi", required: true },
       { key: "store_key", label: "3D Secure anahtarı (StoreKey)", required: true, hint: "Panelde “3D” şifresi olarak tanımlanır." },
@@ -99,6 +117,17 @@ export const isProviderMode = (value: unknown): value is ProviderMode =>
 /** Sır alanlarının anahtar kümesi; harita denetiminde kullanılır. */
 export const secretKeys = (code: ProviderCode) => providerSpec(code)!.secrets.map((secret) => secret.key);
 
+/** Sır olmayan kimlik alanlarının anahtar kümesi. */
+export const identifierKeys = (code: ProviderCode) => providerSpec(code)!.identifiers.map((alan) => alan.key);
+
+/*
+  Görünür alanlar düz saklandığı için biçimleri burada da sınırlanıyor;
+  veritabanındaki CHECK ile aynı desen (20260929120932). İkisi birden
+  var: biri kullanıcıya sebebini söylüyor, diğeri koddan geçmeyen bir
+  yazımı engelliyor.
+*/
+const GORUNUR_DESEN = /^[A-Za-z0-9._-]{1,64}$/;
+
 /**
  * Formdan gelen değerleri denetler.
  *
@@ -114,12 +143,30 @@ export function kimlikSorunu(
   merchantId: string,
   girilen: Record<string, string>,
   mevcut: readonly string[] = [],
+  /*
+    Sır olmayan alanlar. Sırlardan ayrı geliyor çünkü kuralı da ayrı:
+    ekranda GÖRÜNDÜKLERİ için boş bırakılmaları "değiştirme" değil
+    gerçekten boş demek — kullanıcı değeri görüyor, yazmamayı seçmiş.
+  */
+  gorunurler: Record<string, string> = {},
 ): string | null {
   const spec = providerSpec(code);
   if (!spec) return "Tanınmayan ödeme sağlayıcısı.";
   if (!spec.merchantPattern.test(merchantId.trim())) {
     return `${spec.merchantLabel} geçersiz. ${spec.merchantHint}`;
   }
+  for (const alan of spec.identifiers) {
+    const value = (gorunurler[alan.key] ?? "").trim();
+    if (!value) {
+      if (alan.required) return `${alan.label} zorunlu.`;
+      continue;
+    }
+    if (!GORUNUR_DESEN.test(value)) {
+      return `${alan.label} geçersiz: yalnızca harf, rakam, nokta, alt çizgi ve kısa çizgi, en fazla 64 karakter.`;
+    }
+  }
+  const taninmayanGorunur = Object.keys(gorunurler).filter((key) => !identifierKeys(code).includes(key) && gorunurler[key]?.trim());
+  if (taninmayanGorunur.length) return `${spec.name} için tanınmayan alan: ${taninmayanGorunur.join(", ")}`;
   for (const secret of spec.secrets) {
     const value = (girilen[secret.key] ?? "").trim();
     const kayitli = mevcut.includes(secret.key);
@@ -132,11 +179,24 @@ export function kimlikSorunu(
   return null;
 }
 
-/** Kayıtlı bir haritada sağlayıcının istediği bütün zorunlu alanlar var mı. */
-export function kimlikTam(code: ProviderCode, mevcut: readonly string[]): boolean {
+/**
+ * Kayıtlı bir haritada sağlayıcının istediği bütün zorunlu alanlar var mı.
+ *
+ * Görünür alanlar da sayılıyor: terminal numarası olmayan bir Garanti
+ * kaydı "tam" sayılırsa seçici (tahsilatSaglayicisi) onu uygun bulur ve
+ * banka isteği terminalsiz gider.
+ */
+export function kimlikTam(
+  code: ProviderCode,
+  mevcut: readonly string[],
+  gorunurler: readonly string[] = [],
+): boolean {
   const spec = providerSpec(code);
   if (!spec) return false;
-  return spec.secrets.every((secret) => !secret.required || mevcut.includes(secret.key));
+  return (
+    spec.secrets.every((secret) => !secret.required || mevcut.includes(secret.key))
+    && spec.identifiers.every((alan) => !alan.required || gorunurler.includes(alan.key))
+  );
 }
 
 /**
