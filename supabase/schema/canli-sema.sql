@@ -1269,6 +1269,23 @@ create table if not exists public.payment_installments (
   payment_link_source text
 );
 
+create table if not exists public.garanti_payment_attempts (
+  id uuid not null,
+  organization_id uuid not null,
+  payment_link_id uuid not null,
+  order_id text not null,
+  amount bigint not null,
+  currency_code integer not null,
+  terminal_id text not null,
+  status text not null,
+  md_status text,
+  proc_return_code text,
+  bank_message text,
+  reject_reason text,
+  started_at timestamp with time zone not null,
+  finished_at timestamp with time zone
+);
+
 create table if not exists public.payment_links (
   id uuid not null,
   organization_id uuid not null,
@@ -11519,6 +11536,14 @@ alter table public.payment_installments alter column id set default gen_random_u
 
 alter table public.payment_installments alter column status set default 'pending'::text;
 
+alter table public.garanti_payment_attempts alter column id set default gen_random_uuid();
+
+alter table public.garanti_payment_attempts alter column currency_code set default 949;
+
+alter table public.garanti_payment_attempts alter column status set default 'started'::text;
+
+alter table public.garanti_payment_attempts alter column started_at set default now();
+
 alter table public.payment_links alter column created_at set default now();
 
 alter table public.payment_links alter column provider set default 'paytr'::text;
@@ -12364,6 +12389,18 @@ alter table public.payment_installments add constraint payment_installments_paym
 alter table public.payment_installments add constraint payment_installments_pkey PRIMARY KEY (id);
 
 alter table public.payment_installments add constraint payment_installments_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'paid'::text, 'cancelled'::text])));
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_pkey PRIMARY KEY (id);
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_order_id_key UNIQUE (order_id);
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_amount_check CHECK ((amount > 0));
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_status_check CHECK ((status = ANY (ARRAY['started'::text, 'paid'::text, 'failed'::text, 'rejected'::text])));
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_order_id_check CHECK ((order_id ~ '^[A-Za-z0-9-]{8,64}$'::text));
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_finished_check CHECK (((status = 'started'::text) = (finished_at IS NULL)));
 
 alter table public.payment_links add constraint payment_links_amount_check CHECK ((amount > 0));
 
@@ -13233,6 +13270,10 @@ alter table public.payment_links add constraint payment_links_created_by_fkey FO
 
 alter table public.payment_links add constraint payment_links_installment_id_fkey FOREIGN KEY (installment_id) REFERENCES payment_installments(id) ON DELETE CASCADE;
 
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.garanti_payment_attempts add constraint garanti_payment_attempts_payment_link_id_fkey FOREIGN KEY (payment_link_id) REFERENCES payment_links(id) ON DELETE CASCADE;
+
 alter table public.payment_links add constraint payment_links_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.payment_links add constraint payment_links_payer_organization_id_fkey FOREIGN KEY (payer_organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
@@ -13464,6 +13505,12 @@ alter table public.organization_vertical_profiles enable row level security;
 alter table public.organizations enable row level security;
 
 alter table public.payment_installments enable row level security;
+
+create index garanti_payment_attempts_link_idx on public.garanti_payment_attempts using btree (payment_link_id, started_at desc);
+
+create index garanti_payment_attempts_org_idx on public.garanti_payment_attempts using btree (organization_id, started_at desc);
+
+alter table public.garanti_payment_attempts enable row level security;
 
 alter table public.payment_links enable row level security;
 

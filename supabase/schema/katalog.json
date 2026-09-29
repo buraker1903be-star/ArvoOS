@@ -690,6 +690,22 @@
       "transaction_type",
       "updated_at"
     ],
+    "garanti_payment_attempts": [
+      "amount",
+      "bank_message",
+      "currency_code",
+      "finished_at",
+      "id",
+      "md_status",
+      "order_id",
+      "organization_id",
+      "payment_link_id",
+      "proc_return_code",
+      "reject_reason",
+      "started_at",
+      "status",
+      "terminal_id"
+    ],
     "hr_commission_payments": [
       "amount",
       "created_at",
