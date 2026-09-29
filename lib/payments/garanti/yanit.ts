@@ -114,19 +114,36 @@ export const formuluCoz = (hashparams: string): string[] =>
 /**
  * Formüldeki alanların değerlerini yanıttan toplayıp birleştirir.
  *
- * Bankanın gönderdiği hashparamsval ile KARŞILAŞTIRMAK için: ikisi
- * ayrışıyorsa yanıt yolda değişmiş ya da formül tanımadığımız bir alana
- * işaret ediyor demektir. Eksik alan varsa null dönüyor; "boş geç"
- * demek, doğrulamayı kendi elimizle geçersiz kılmak olurdu.
+ * EKSİK ALAN BOŞ DİZGE SAYILIYOR. Önce "tanınmayan alan varsa null
+ * dön" diye yazmıştım ve bunu bir güvenlik özelliği sanmıştım; YANLIŞTI.
+ * Bankanın örnek kodu eksik alanı açıkça "" kabul ediyor
+ * (Request.Form.Get(param) == null ? "" : ...) ve formülün kendisi
+ * doğası gereği bazı işlemlerde boş kalan alanlar içeriyor — örnek
+ * formülde cavv, eci, md, rnd böyle. Bankadan katı davranmak, meşru
+ * yanıtları reddetmek olurdu.
+ *
+ * Katılık burada zaten gereksiz: özet, mağaza anahtarıyla (3D Key)
+ * bitiyor. Saldırgan formülü istediği gibi kursa da anahtar olmadan
+ * eşleşen bir hash üretemez. Kapı hash'in kendisi, formülün biçimi değil.
+ *
+ * Eksik kalan adlar ayrıca döndürülüyor: doğrulama tutmadığında
+ * "hangi alan gelmemiş" sorusunun cevabı günlükte dursun.
  */
-export function formuldenDeger(yanit: GarantiYaniti, hashparams: string): string | null {
+export function formuldenDeger(
+  yanit: GarantiYaniti,
+  hashparams: string,
+): { deger: string; eksikAlanlar: string[] } {
   const adlar = formuluCoz(hashparams);
-  if (adlar.length === 0) return null;
   const parcalar: string[] = [];
+  const eksikAlanlar: string[] = [];
   for (const ad of adlar) {
     const deger = (yanit as Record<string, unknown>)[ad] ?? yanit.ekstra[ad];
-    if (typeof deger !== "string") return null;
-    parcalar.push(deger);
+    if (typeof deger === "string") {
+      parcalar.push(deger);
+    } else {
+      parcalar.push("");
+      eksikAlanlar.push(ad);
+    }
   }
-  return parcalar.join("");
+  return { deger: parcalar.join(""), eksikAlanlar };
 }

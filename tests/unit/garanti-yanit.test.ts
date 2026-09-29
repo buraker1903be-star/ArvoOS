@@ -88,31 +88,48 @@ describe("hash formülü", () => {
 
   test("formüldeki alanlar sırayla birleştiriliyor", () => {
     const yanit = yanitiAyristir(YANIT);
-    assert.equal(formuldenDeger(yanit, "clientid:oid:mdstatus:txnamount"), YANIT.hashparamsval);
+    assert.equal(formuldenDeger(yanit, "clientid:oid:mdstatus:txnamount").deger, YANIT.hashparamsval);
   });
 
   test("SIRA ÖNEMLİ", () => {
     const yanit = yanitiAyristir(YANIT);
     assert.notEqual(
-      formuldenDeger(yanit, "oid:clientid:mdstatus:txnamount"),
-      formuldenDeger(yanit, "clientid:oid:mdstatus:txnamount"),
+      formuldenDeger(yanit, "oid:clientid:mdstatus:txnamount").deger,
+      formuldenDeger(yanit, "clientid:oid:mdstatus:txnamount").deger,
     );
   });
 
-  test("TANINMAYAN alan boş geçilmiyor, null dönüyor", () => {
+  test("EKSİK ALAN BOŞ SAYILIYOR — ve hangisi olduğu bildiriliyor", () => {
     /*
-      Formül bankadan geliyor, yani dış veri. Bilmediğimiz bir alanı
-      boş kabul etseydik imzayı kendi elimizle tutturmaya çalışırdık;
-      saldırgan da formüle olmayan bir alan koyarak doğrulamayı
-      zayıflatabilirdi.
+      Önce "tanınmayan alan varsa null dön" diye yazmıştım ve bunu
+      güvenlik özelliği sanmıştım; yanlıştı. Bankanın örnek kodu eksik
+      alanı açıkça "" kabul ediyor ve formülün kendisi bazı işlemlerde
+      boş kalan alanlar içeriyor (cavv, eci, md, rnd). Bankadan katı
+      davranmak meşru yanıtları reddederdi.
+
+      Katılık zaten gereksiz: özet mağaza anahtarıyla bitiyor, yani
+      kapı hash'in kendisi. Eksik adlar günlük için dönüyor.
     */
-    assert.equal(formuldenDeger(yanitiAyristir(YANIT), "clientid:bilinmeyen"), null);
-    assert.equal(formuldenDeger(yanitiAyristir(YANIT), ""), null);
+    const sonuc = formuldenDeger(yanitiAyristir(YANIT), "clientid:bilinmeyen:oid");
+    assert.equal(sonuc.deger, `${YANIT.clientid}${YANIT.oid}`);
+    assert.deepEqual(sonuc.eksikAlanlar, ["bilinmeyen"]);
+  });
+
+  test("boş formül boş değer veriyor", () => {
+    assert.deepEqual(formuldenDeger(yanitiAyristir(YANIT), ""), { deger: "", eksikAlanlar: [] });
   });
 
   test("ekstradaki alan da formülde kullanılabiliyor", () => {
     /* Banka yeni bir alan ekleyip formüle koyarsa çalışmaya devam etsin. */
     const yanit = yanitiAyristir({ ...YANIT, yenialan: "99" });
-    assert.equal(formuldenDeger(yanit, "clientid:yenialan"), "3069129799");
+    assert.equal(formuldenDeger(yanit, "clientid:yenialan").deger, "3069129799");
+  });
+
+  test("sondaki iki nokta zararsız", () => {
+    /* Bankanın örnek formülü iki noktayla bitiyor. */
+    assert.equal(
+      formuldenDeger(yanitiAyristir(YANIT), "clientid:oid:").deger,
+      formuldenDeger(yanitiAyristir(YANIT), "clientid:oid").deger,
+    );
   });
 });
