@@ -16,11 +16,14 @@
 
   İki nokta özellikle dikkat istiyor:
 
-  1. "0" + terminalId, PadLeft(9,'0') DEĞİL. Belgedeki C# gövdesi düz
-     bir "0" ekliyor. Terminal numaraları sekiz haneli olduğu için
-     ikisi bugün aynı sonucu veriyor; dokuz haneli bir terminalde
-     AYRIŞIRLAR. Belgeye uyuyoruz ve beklenmedik uzunluğu sessizce
-     geçmek yerine hata veriyoruz (terminalDenetle).
+  1. Terminal numarası DOKUZ HANEYE tamamlanıyor. Bankanın belgesindeki
+     C# düz bir "0" ekliyor (pw + "0" + terminalId); GOSAS.VirtualPos
+     ise IsRequireZero(terminalId, 9) ile dokuz haneye dolduruyor.
+     Sekiz haneli terminalde İKİSİ AYNI SONUCU VERİYOR — bizim
+     terminallerimiz sekiz haneli, yani bugün fark yok. Yedi haneli bir
+     terminalde ayrışırlar ve dokuza tamamlama daha savunulabilir
+     okuma: alanın dokuz karakter olması amaçlanmış. İki kaynak da
+     sekiz hanede aynı dediği için riski olmayan tarafı seçtik.
 
   2. Özet ISO-8859-9 (Latin-5) baytları üzerinden alınıyor, UTF-8
      değil. Alanların çoğu ASCII ama provizyon şifresi ve StoreKey
@@ -83,28 +86,32 @@ export const sha1 = (metin: string) => ozet("sha1", metin);
 export const sha512 = (metin: string) => ozet("sha512", metin);
 
 /*
-  Terminal numarası bekleneni tutuyor mu. Sekiz hane bugünkü tek biçim
-  ve "0" ekleme kuralı ona göre yazılmış; başka bir uzunluk gelirse
-  imza sessizce yanlış üretilmesin.
+  Terminal numarası bekleneni tutuyor mu. Dokuzdan uzun bir numara,
+  doldurma kuralını anlamsız kılar ve imzayı sessizce bozardı.
 */
 function terminalDenetle(terminalId: string): void {
-  if (!/^[0-9]{8}$/.test(terminalId)) {
+  if (!/^[0-9]{1,9}$/.test(terminalId)) {
     throw new Error(
-      `Terminal numarası sekiz haneli olmalı (gelen: ${JSON.stringify(terminalId)}). `
-      + "Banka belgesindeki hash tarifi sekiz hane varsayıyor; farklı bir uzunluk imzayı sessizce bozar.",
+      `Terminal numarası en fazla dokuz haneli rakam olmalı (gelen: ${JSON.stringify(terminalId)}). `
+      + "Hash tarifi numarayı dokuz haneye tamamlıyor; daha uzun bir değer imzayı sessizce bozar.",
     );
   }
 }
 
+/** Belgedeki "0" ekleme ile GOSAS'ın IsRequireZero(id, 9)'unun ortak hâli. */
+export const dokuzHane = (terminalId: string) => terminalId.padStart(9, "0");
+
 /**
  * Birinci aşama: provizyon şifresinin açık dolaşmaması için.
  *
- * Belgedeki gövde: Sha1(provisionPassword + "0" + terminalId).
+ * Belgedeki gövde Sha1(provisionPassword + "0" + terminalId),
+ * GOSAS.VirtualPos'unki Sha1(userPassword + IsRequireZero(terminalId, 9));
+ * sekiz haneli terminalde ikisi aynı.
  */
 export function hashedPassword(provizyonSifresi: string, terminalId: string): string {
   terminalDenetle(terminalId);
   if (!provizyonSifresi) throw new Error("Provizyon şifresi boş olamaz.");
-  return sha1(`${provizyonSifresi}0${terminalId}`);
+  return sha1(`${provizyonSifresi}${dokuzHane(terminalId)}`);
 }
 
 export interface ImzaGirdisi {
@@ -126,11 +133,12 @@ export interface ImzaGirdisi {
    */
   type: string;
   /**
-   * Taksit sayısı. Belgedeki imza int alıyor, yani tek çekimde metne
-   * "0" olarak giriyor. Forma gönderilen değerle İMZADAKİ değerin aynı
-   * olması şart; ikisi ayrışırsa banka imzayı reddeder.
+   * Taksit sayısının METİN hâli. Sayı değil metin alıyoruz çünkü tek
+   * çekimde "0" mı yoksa boş dizge mi gittiği belgeler arasında
+   * çelişiyor (bkz. form.ts). Forma yazılan metnin AYNISI imzaya
+   * girmeli; ayrışırlarsa banka imzayı reddeder ve sebebi görünmez.
    */
-  installmentCount: number;
+  installmentMetni: string;
   storeKey: string;
   provizyonSifresi: string;
 }
@@ -143,8 +151,8 @@ export function hashData(girdi: ImzaGirdisi): string {
     throw new Error(`Tutar kuruş cinsinden pozitif tamsayı olmalı (gelen: ${girdi.amount}).`);
   }
   if (!Number.isInteger(girdi.currencyCode)) throw new Error("Para birimi kodu tamsayı olmalı (TRY: 949).");
-  if (!Number.isInteger(girdi.installmentCount) || girdi.installmentCount < 0) {
-    throw new Error(`Taksit sayısı negatif olmayan tamsayı olmalı (gelen: ${girdi.installmentCount}).`);
+  if (!/^[0-9]*$/.test(girdi.installmentMetni)) {
+    throw new Error(`Taksit alanı yalnızca rakam ya da boş olmalı (gelen: ${JSON.stringify(girdi.installmentMetni)}).`);
   }
   if (!girdi.storeKey) throw new Error("StoreKey boş olamaz.");
 
@@ -158,7 +166,7 @@ export function hashData(girdi: ImzaGirdisi): string {
     + girdi.successUrl
     + girdi.errorUrl
     + girdi.type
-    + String(girdi.installmentCount)
+    + girdi.installmentMetni
     + girdi.storeKey
     + sifre,
   );

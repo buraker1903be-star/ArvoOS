@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   Iso88599Hatasi,
   TRY_KODU,
+  dokuzHane,
   hashData,
   hashedPassword,
   iso88599,
@@ -76,17 +77,24 @@ describe("hashedPassword", () => {
     assert.equal(hashedPassword(SIFRE, TERMINAL), sha1(`${SIFRE}0${TERMINAL}`));
   });
 
-  test("PadLeft(9) DEĞİL: düz bir sıfır ekleniyor", () => {
+  test("terminal DOKUZ HANEYE tamamlanıyor", () => {
     /*
-      Sekiz haneli terminalde ikisi aynı sonucu verir; ayrım dokuz
-      hanede ortaya çıkar. Belgeye uyuyoruz ve farkı burada sabitliyoruz.
+      Bankanın belgesi düz bir "0" ekliyor, GOSAS.VirtualPos
+      IsRequireZero(id, 9) ile dokuza dolduruyor. Sekiz hanede ikisi
+      aynı; iki kaynak da orada birleştiği için riski olmayan tarafı
+      seçtik. Ayrım yedi hanede ortaya çıkıyor ve burada sabitleniyor.
     */
-    assert.equal(hashedPassword(SIFRE, "00000001"), sha1(`${SIFRE}000000001`));
+    assert.equal(dokuzHane(TERMINAL), "030691297");
+    assert.equal(hashedPassword(SIFRE, TERMINAL), sha1(`${SIFRE}030691297`));
+    assert.equal(hashedPassword(SIFRE, "3069129"), sha1(`${SIFRE}003069129`));
+    assert.equal(hashedPassword(SIFRE, "306912970"), sha1(`${SIFRE}306912970`));
   });
 
-  test("beklenmedik terminal uzunluğu sessizce geçmiyor", () => {
-    for (const kotu of ["3069129", "306912970", "3069129A", ""]) {
-      assert.throws(() => hashedPassword(SIFRE, kotu), /sekiz haneli/);
+  test("dokuz haneden uzun ya da rakam olmayan terminal reddediliyor", () => {
+    /* Doldurma kuralı dokuz hane varsayıyor; daha uzunu imzayı
+       sessizce bozardı. */
+    for (const kotu of ["3069129701", "3069129A", ""]) {
+      assert.throws(() => hashedPassword(SIFRE, kotu), /dokuz haneli/);
     }
   });
 
@@ -103,7 +111,7 @@ const GIRDI = {
   successUrl: "https://akademikmerkez.com/odeme/tamam",
   errorUrl: "https://akademikmerkez.com/odeme/hata",
   type: "sales",
-  installmentCount: 0,
+  installmentMetni: "0",
   storeKey: STORE_KEY,
   provizyonSifresi: SIFRE,
 };
@@ -143,7 +151,7 @@ describe("hashData", () => {
       { successUrl: "https://akademikmerkez.com/odeme/tamam2" },
       { errorUrl: "https://akademikmerkez.com/odeme/hata2" },
       { type: "preauth" },
-      { installmentCount: 3 },
+      { installmentMetni: "3" },
       { storeKey: "87654321" },
       { provizyonSifresi: "baska" },
       { terminalId: "30691298" },
@@ -165,14 +173,17 @@ describe("hashData", () => {
     }
   });
 
-  test("taksit sayısı imzada ve formda AYNI olmalı", () => {
+  test('taksit METİN: "0" ile boş dizge AYNI İMZA DEĞİL', () => {
     /*
-      Belgedeki imza int alıyor; tek çekimde metne "0" giriyor. Forma
-      boş dizge gönderilip imzada "0" kullanılırsa banka reddeder —
-      ikisini üreten yer tek olsun diye taksit girdiye dahil.
+      Tek çekimde "0" mı boş dizge mi gittiği belgeler arasında
+      çelişiyor (bankanın 3D örneği int, GOSAS'ın XML yolu boş dizge).
+      İkisi farklı imza üretiyor; bu yüzden metin tek yerden geçiyor ve
+      forma yazılanla imzaya girenin aynı olması garanti altında.
     */
-    assert.notEqual(hashData({ ...GIRDI, installmentCount: 1 }), hashData(GIRDI));
-    assert.throws(() => hashData({ ...GIRDI, installmentCount: -1 }), /Taksit/);
+    assert.notEqual(hashData({ ...GIRDI, installmentMetni: "" }), hashData(GIRDI));
+    assert.notEqual(hashData({ ...GIRDI, installmentMetni: "1" }), hashData(GIRDI));
+    assert.throws(() => hashData({ ...GIRDI, installmentMetni: "-1" }), /Taksit/);
+    assert.throws(() => hashData({ ...GIRDI, installmentMetni: "iki" }), /Taksit/);
   });
 
   test("eksik StoreKey ve orderId reddediliyor", () => {

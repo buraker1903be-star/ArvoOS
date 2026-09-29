@@ -24,10 +24,16 @@ export type GarantiKipi = "TEST" | "PROD";
 export const API_SURUMU = "512";
 
 /*
-  Test ucu belgeden. ÜRETİM UCU BİLEREK YOK: belgeden okuyamadım ve
-  ödeme adresini tahmin etmek, canlıda yanlış bir sunucuya kart
-  göndermeye çalışmak demek. Kip PROD olduğunda çağıran adresi açıkça
-  vermek zorunda.
+  Test ucu bankanın güncel belgesinden.
+
+  ÜRETİM UCU BİLEREK SABİT DEĞİL. İki kaynak var ve ayrışıyorlar:
+  bankanın güncel portalı garantibbva.com.tr alan adını kullanıyor,
+  GOSAS.VirtualPos ise eski garanti.com.tr'yi (test
+  sanalposprovtest.garanti.com.tr, üretim sanalposprov.garanti.com.tr).
+  Desen belli — "provtest" yerine "prov" — ama alan adı taşındığı için
+  üretim adresini bu desenden ÜRETMEK tahmin olurdu ve canlıda yanlış
+  bir sunucuya ödeme göndermeye çalışmak demekti. Adres Sanal POS
+  yönetim ekranından doğrulanıp açıkça verilmeli.
 */
 export const TEST_UCU = "https://sanalposprovtest.garantibbva.com.tr/servlet/gt3dengine";
 
@@ -53,8 +59,23 @@ export interface FormGirdisi {
   paraBirimi?: number;
   successUrl: string;
   errorUrl: string;
-  /** Tek çekim için 0. */
+  /**
+   * Taksit sayısı; tek çekim için 0.
+   *
+   * ÇÖZÜLMEMİŞ ÇELİŞKİ — test terminalinde İLK SINANACAK ŞEY BU.
+   * Bankanın 3D hash örneği int alıyor, yani tek çekimde metne "0"
+   * giriyor. GOSAS.VirtualPos'un XML yolu ise tek çekimde BOŞ DİZGE
+   * gönderiyor (installment <= 0 ? string.Empty : ...). İkisi farklı
+   * yollar ama hangisinin 3D formunda geçerli olduğu belgeden
+   * anlaşılmıyor.
+   *
+   * Bankanın kendi 3D örneğine uyuyoruz ("0"). Yanlışsa banka imzayı
+   * reddeder — yani sessiz değil, gürültülü bir hata; test
+   * terminalinde hemen görülür ve tekCekimBosGitsin ile çevrilir.
+   */
   taksit?: number;
+  /** Tek çekimde taksit alanı boş dizge gitsin (yukarıdaki çelişki). */
+  tekCekimBosGitsin?: boolean;
   companyName: string;
   musteriEposta?: string;
   musteriIp?: string;
@@ -82,6 +103,8 @@ export interface GarantiFormu {
 export function pesinSatisFormu(girdi: FormGirdisi): GarantiFormu {
   const paraBirimi = girdi.paraBirimi ?? TRY_KODU;
   const taksit = girdi.taksit ?? 0;
+  /* Aynı metin hem forma hem imzaya gidiyor; ayrışırlarsa banka reddeder. */
+  const taksitMetni = taksit <= 0 && girdi.tekCekimBosGitsin ? "" : String(taksit);
   const tip = "sales";
 
   if (girdi.kip === "PROD" && !girdi.uretimUcu) {
@@ -110,7 +133,7 @@ export function pesinSatisFormu(girdi: FormGirdisi): GarantiFormu {
     successUrl: girdi.successUrl,
     errorUrl: girdi.errorUrl,
     type: tip,
-    installmentCount: taksit,
+    installmentMetni: taksitMetni,
     storeKey: girdi.storeKey,
     provizyonSifresi: girdi.provizyonSifresi,
   });
@@ -129,7 +152,7 @@ export function pesinSatisFormu(girdi: FormGirdisi): GarantiFormu {
     txntype: tip,
     txnamount: String(girdi.tutarKurus),
     txncurrencycode: String(paraBirimi),
-    txninstallmentcount: String(taksit),
+    txninstallmentcount: taksitMetni,
     companyname: girdi.companyName,
     secure3dhash: imza,
     lang: girdi.lang ?? "tr",

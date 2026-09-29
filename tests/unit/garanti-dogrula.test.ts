@@ -107,7 +107,28 @@ describe("ödeme sonucu", () => {
   test("hepsi tutunca ödendi", () => {
     assert.deepEqual(odemeSonucu(yanitiAyristir(GECERLI), BEKLENEN), {
       durum: "odendi", orderId: ORDER_ID, tutarKurus: 10000,
+      md: { durum: "tam", aciklama: "Tam doğrulama" },
     });
+  });
+
+  test("YARIM doğrulamada ödeme geçiyor ama SORUMLULUK bizde kalıyor", () => {
+    /*
+      procreturncode 00 ise para hareket etmiştir; mdstatus ise itiraz
+      (chargeback) sorumluluğunun kimde olduğunu söyler. Tam
+      doğrulamada kart bankasına geçer, yarımda geçmez. Karar
+      çağıranın olsun diye sonuçta açıkta duruyor — sessizce "hepsi
+      olur" demek, aylar sonra faturanın bize çıkması demekti.
+    */
+    for (const [kod, beklenen] of [["2", "yarim"], ["4", "yarim"], ["1", "tam"]] as const) {
+      const sonuc = odemeSonucu(yanitiAyristir(imzala({ ...TEMEL, mdstatus: kod })), BEKLENEN);
+      assert.equal(sonuc.durum, "odendi", kod);
+      assert.equal((sonuc as { md: { durum: string } }).md.durum, beklenen, kod);
+    }
+  });
+
+  test("tanınmayan mdstatus 'bilinmiyor' — sessizce kabul de red de edilmiyor", () => {
+    const sonuc = odemeSonucu(yanitiAyristir(imzala({ ...TEMEL, mdstatus: "42" })), BEKLENEN);
+    assert.equal((sonuc as { md: { durum: string } }).md.durum, "bilinmiyor");
   });
 
   test("BAŞKA BİR İŞLEMİN geçerli yanıtı bu siparişe yapıştırılamıyor", () => {

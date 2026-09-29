@@ -28,6 +28,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { sha512 } from "./imza";
+import { mdDurumu, type MdDurumu } from "./mdstatus";
 import { formuldenDeger, type GarantiYaniti } from "./yanit";
 
 /** Provizyonun başarı kodu; bankanın örneğinde tek kabul edilen değer. */
@@ -71,7 +72,18 @@ export function bankadanMiGeldi(yanit: GarantiYaniti, storeKey: string): Dogrula
 }
 
 export type OdemeSonucu =
-  | { durum: "odendi"; orderId: string; tutarKurus: number }
+  | {
+      durum: "odendi";
+      orderId: string;
+      tutarKurus: number;
+      /*
+        3D doğrulama düzeyi. Ödemenin gerçekleştiğini procreturncode
+        söylüyor; bu alan İTİRAZ SORUMLULUĞUNUN kimde olduğunu söylüyor.
+        "yarim" gelirse para alınmıştır ama chargeback riski bizdedir —
+        kararı çağıran versin diye açıkta duruyor.
+      */
+      md: { durum: MdDurumu; aciklama: string };
+    }
   | { durum: "basarisiz"; sebep: string; kod: string | null }
   | { durum: "reddedildi"; sebep: string };
 
@@ -132,5 +144,5 @@ export function odemeSonucu(yanit: GarantiYaniti, beklenen: Beklenen): OdemeSonu
     };
   }
 
-  return { durum: "odendi", orderId: gelenOrderId, tutarKurus: gelenTutar };
+  return { durum: "odendi", orderId: gelenOrderId, tutarKurus: gelenTutar, md: mdDurumu(yanit.mdstatus) };
 }

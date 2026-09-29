@@ -61,7 +61,7 @@ describe("3D peşin satış formu", () => {
       successUrl: GIRDI.successUrl,
       errorUrl: GIRDI.errorUrl,
       type: "sales",
-      installmentCount: 3,
+      installmentMetni: "3",
       storeKey: GIRDI.storeKey,
       provizyonSifresi: GIRDI.provizyonSifresi,
     }));
@@ -71,6 +71,25 @@ describe("3D peşin satış formu", () => {
     const a = pesinSatisFormu(GIRDI).alanlar.secure3dhash;
     const b = pesinSatisFormu({ ...GIRDI, taksit: 6 }).alanlar.secure3dhash;
     assert.notEqual(a, b);
+  });
+
+  test("tek çekimde boş dizge seçeneği FORMA VE İMZAYA birlikte gidiyor", () => {
+    /*
+      Bankanın 3D örneği tek çekimde "0", GOSAS'ın XML yolu boş dizge
+      kullanıyor; hangisinin 3D formunda geçerli olduğu belgeden
+      anlaşılmıyor. Seçenek tek bir yerden geçiyor ki form bir şey,
+      imza başka bir şey taşımasın — asıl kusur o olurdu.
+    */
+    const { alanlar } = pesinSatisFormu({ ...GIRDI, tekCekimBosGitsin: true });
+    assert.equal(alanlar.txninstallmentcount, "");
+    assert.equal(alanlar.secure3dhash, hashData({
+      terminalId: GIRDI.terminalId, orderId: GIRDI.orderId, amount: 10000,
+      currencyCode: TRY_KODU, successUrl: GIRDI.successUrl, errorUrl: GIRDI.errorUrl,
+      type: "sales", installmentMetni: "", storeKey: GIRDI.storeKey,
+      provizyonSifresi: GIRDI.provizyonSifresi,
+    }));
+    /* Taksitli işlemde seçenek etkisiz. */
+    assert.equal(pesinSatisFormu({ ...GIRDI, taksit: 3, tekCekimBosGitsin: true }).alanlar.txninstallmentcount, "3");
   });
 
   test("KART ALANI GÖNDERİLMİYOR", () => {
