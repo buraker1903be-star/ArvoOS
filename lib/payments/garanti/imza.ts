@@ -117,7 +117,13 @@ export interface ImzaGirdisi {
   currencyCode: number;
   successUrl: string;
   errorUrl: string;
-  /** "sales", "preauth", "postauth", "void", "refund". */
+  /**
+   * İşlem tipi: "sales", "preauth", "postauth", "void", "refund".
+   *
+   * Formda bu alanın adı `txntype` — imzadaki adıyla (type) aynı değil.
+   * İkisini karıştırmak, formu doğru gönderip imzayı yanlış üretmek
+   * demek olurdu.
+   */
   type: string;
   /**
    * Taksit sayısı. Belgedeki imza int alıyor, yani tek çekimde metne
