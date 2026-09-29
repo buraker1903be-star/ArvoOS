@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { describe, test } from "node:test";
 import {
+  ISLEM_TIPLERI,
   Iso88599Hatasi,
   TRY_KODU,
   dokuzHane,
@@ -116,6 +117,22 @@ const GIRDI = {
   provizyonSifresi: SIFRE,
 };
 
+describe("işlem tipleri", () => {
+  test("bankanın beklediği dizgeler birebir", () => {
+    /*
+      Tip hem forma (txntype) hem imzaya giriyor. "sale" yazan biri
+      geçerli GÖRÜNEN bir imza üretir, banka reddeder ve hata "imza
+      hatalı" olarak döner — bir harf yüzünden günler gider. Derleyici
+      yakalasın diye liste kapalı; değerler GOSAS'ın enum'undan.
+    */
+    assert.deepEqual([...ISLEM_TIPLERI], [
+      "sales", "preauth", "postauth", "void", "partialvoid",
+      "refund", "orderinq", "orderhistoryinq", "recurringvoid",
+    ]);
+    assert.ok(ISLEM_TIPLERI.every((tip) => /^[a-z]+$/.test(tip)), "hepsi küçük harf, boşluksuz");
+  });
+});
+
 describe("hashData", () => {
   test("BİRLEŞTİRME SIRASI belgedeki gövdeyle birebir", () => {
     /*
@@ -144,13 +161,13 @@ describe("hashData", () => {
       tek sınıyoruz.
     */
     const temel = hashData(GIRDI);
-    const degisiklikler: Partial<typeof GIRDI>[] = [
+      const degisiklikler: Partial<typeof GIRDI>[] = [
       { orderId: "baska-siparis" },
       { amount: 10001 },
       { currencyCode: 840 },
       { successUrl: "https://akademikmerkez.com/odeme/tamam2" },
       { errorUrl: "https://akademikmerkez.com/odeme/hata2" },
-      { type: "preauth" },
+      { type: "preauth" as const },
       { installmentMetni: "3" },
       { storeKey: "87654321" },
       { provizyonSifresi: "baska" },

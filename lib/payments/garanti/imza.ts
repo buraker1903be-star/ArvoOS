@@ -35,6 +35,36 @@
 import { createHash } from "node:crypto";
 
 /*
+  İŞLEM TİPLERİ. Değerler GOSAS.VirtualPos'un GVPOSTransactionTypes
+  tanımından; bankanın beklediği dizgelerin birebir kendisi.
+
+  Serbest metin DEĞİL, çünkü tip hem forma hem imzaya giriyor: "sale"
+  yazan biri geçerli GÖRÜNEN bir imza üretir, banka reddeder ve hata
+  "imza hatalı" olarak döner — bir harfin yüzünden günler gider.
+  Derleyici burada yakalasın.
+
+  Listede yalnızca bizim kullanacaklarımız var; bankanın tam listesi
+  çok daha uzun (cepbank, gsmunitsales, utilitypayment …) ve
+  kullanmadığımız bir tipi buraya yazmak, denenmemiş bir yolu açık
+  bırakmak olurdu.
+*/
+export const ISLEM_TIPLERI = [
+  "sales",
+  "preauth",
+  "postauth",
+  "void",
+  "partialvoid",
+  "refund",
+  /* Bankanın her işlemden sonra önerdiği teyit sorgusu. */
+  "orderinq",
+  "orderhistoryinq",
+  /* Tekrarlayan ödemenin bekleyen çekimlerini iptal eder. */
+  "recurringvoid",
+] as const;
+
+export type IslemTipi = (typeof ISLEM_TIPLERI)[number];
+
+/*
   ISO-8859-9, ISO-8859-1'in aynısıdır; yalnızca altı kod noktası
   farklıdır (Latin-1'deki Ð Ý Þ ð ý þ yerine Türkçe harfler).
 */
@@ -125,13 +155,11 @@ export interface ImzaGirdisi {
   successUrl: string;
   errorUrl: string;
   /**
-   * İşlem tipi: "sales", "preauth", "postauth", "void", "refund".
-   *
-   * Formda bu alanın adı `txntype` — imzadaki adıyla (type) aynı değil.
-   * İkisini karıştırmak, formu doğru gönderip imzayı yanlış üretmek
-   * demek olurdu.
+   * İşlem tipi. Formda bu alanın adı `txntype` — imzadaki adıyla
+   * (type) aynı değil. İkisini karıştırmak, formu doğru gönderip
+   * imzayı yanlış üretmek demek olurdu.
    */
-  type: string;
+  type: IslemTipi;
   /**
    * Taksit sayısının METİN hâli. Sayı değil metin alıyoruz çünkü tek
    * çekimde "0" mı yoksa boş dizge mi gittiği belgeler arasında
