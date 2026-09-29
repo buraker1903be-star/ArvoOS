@@ -8,6 +8,15 @@
   tablo bu alanları "işlem yapılırken gönderilen …" diye tarif ediyor,
   yani istekte de aynı adla gidiyorlar (lib/payments/garanti/yanit.ts).
 
+  XML YOLUNU YAZACAK OLANA NOT. Provizyon/tekrarlayan ödeme XML'i
+  yazıldığında CardholderPresentCode alanı 3D işlemlerde 0 DEĞİL 13
+  olmalı (GOSAS: "Normal işlemler için 0, 3D güvenli işlemler için
+  13"). GOSAS'ın kendi Sales() gövdesi 0 kullanıyor çünkü orası 3D'siz
+  satış; oradan kopyalayan biri 3D işleme 0 gönderir ve işlem 3D'siz
+  sayılır — para geçer ama itiraz sorumluluğu üstümüzde kalır.
+  Tekrarlayan ödemenin sıklığı da ayrı bir alan: GOSAS'ta D/W/M/Y
+  (aylık abonelik "M").
+
   KART ALANLARI BURADA YOK. 3D_PAY'de kart bilgisi bankaya gönderiliyor
   ama alan adları henüz elimizde değil; uydurmak yerine dışarıda
   bırakıldı. Ayrıca kartın bizim sayfamızdan geçmesi PCI kapsamı demek —
@@ -16,7 +25,7 @@
   eklenmemeli.
 */
 
-import { TRY_KODU, hashData } from "./imza";
+import { TRY_KODU, hashData, type ParaBirimi } from "./imza";
 
 export type GarantiKipi = "TEST" | "PROD";
 
@@ -56,7 +65,7 @@ export interface FormGirdisi {
   orderId: string;
   /** KURUŞ cinsinden tamsayı: 100,00 TL → 10000. */
   tutarKurus: number;
-  paraBirimi?: number;
+  paraBirimi?: ParaBirimi;
   successUrl: string;
   errorUrl: string;
   /**

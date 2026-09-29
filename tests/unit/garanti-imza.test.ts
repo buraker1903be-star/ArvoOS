@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { describe, test } from "node:test";
 import {
   ISLEM_TIPLERI,
+  PARA_BIRIMLERI,
   Iso88599Hatasi,
   TRY_KODU,
   dokuzHane,
@@ -117,6 +118,24 @@ const GIRDI = {
   provizyonSifresi: SIFRE,
 };
 
+describe("para birimleri", () => {
+  test("kodlar ISO 4217 ile aynı", () => {
+    assert.deepEqual(PARA_BIRIMLERI, { TRY: 949, USD: 840, EUR: 978 });
+    assert.equal(TRY_KODU, 949);
+  });
+
+  test("tanınmayan kod reddediliyor", () => {
+    /*
+      Kod hem forma (txncurrencycode) hem imzaya giriyor; 94 yazan biri
+      geçerli GÖRÜNEN bir imza üretir ve banka reddeder.
+    */
+    assert.throws(
+      () => hashData({ ...GIRDI, currencyCode: 94 as never }),
+      /Tanınmayan para birimi/,
+    );
+  });
+});
+
 describe("işlem tipleri", () => {
   test("bankanın beklediği dizgeler birebir", () => {
     /*
@@ -164,7 +183,7 @@ describe("hashData", () => {
       const degisiklikler: Partial<typeof GIRDI>[] = [
       { orderId: "baska-siparis" },
       { amount: 10001 },
-      { currencyCode: 840 },
+      { currencyCode: PARA_BIRIMLERI.USD },
       { successUrl: "https://akademikmerkez.com/odeme/tamam2" },
       { errorUrl: "https://akademikmerkez.com/odeme/hata2" },
       { type: "preauth" as const },

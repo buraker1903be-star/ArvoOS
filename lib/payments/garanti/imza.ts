@@ -151,7 +151,7 @@ export interface ImzaGirdisi {
   /** KURUŞ cinsinden tamsayı: 100,00 TL → 10000. Belgede ulong. */
   amount: number;
   /** ISO 4217 sayısal kod; TRY için 949. Belgede int. */
-  currencyCode: number;
+  currencyCode: ParaBirimi;
   successUrl: string;
   errorUrl: string;
   /**
@@ -178,7 +178,9 @@ export function hashData(girdi: ImzaGirdisi): string {
   if (!Number.isInteger(girdi.amount) || girdi.amount <= 0) {
     throw new Error(`Tutar kuruş cinsinden pozitif tamsayı olmalı (gelen: ${girdi.amount}).`);
   }
-  if (!Number.isInteger(girdi.currencyCode)) throw new Error("Para birimi kodu tamsayı olmalı (TRY: 949).");
+  if (!Object.values(PARA_BIRIMLERI).includes(girdi.currencyCode)) {
+    throw new Error(`Tanınmayan para birimi kodu: ${girdi.currencyCode}. Desteklenenler: ${Object.values(PARA_BIRIMLERI).join(", ")}.`);
+  }
   if (!/^[0-9]*$/.test(girdi.installmentMetni)) {
     throw new Error(`Taksit alanı yalnızca rakam ya da boş olmalı (gelen: ${JSON.stringify(girdi.installmentMetni)}).`);
   }
@@ -200,5 +202,21 @@ export function hashData(girdi: ImzaGirdisi): string {
   );
 }
 
+/*
+  PARA BİRİMİ KODLARI. Değerler GOSAS.VirtualPos'un GVPOSCurrencyCodes
+  tanımından ve ISO 4217 ile aynı.
+
+  Serbest sayı DEĞİL, işlem tipiyle aynı gerekçe: kod hem forma
+  (txncurrencycode) hem imzaya giriyor; 94 yazan biri geçerli GÖRÜNEN
+  bir imza üretir ve banka reddeder.
+
+  Listede mağaza ayarlarının sunduğu üç birim var (TRY, USD, EUR).
+  GOSAS ayrıca GBP ve JPY tanımlıyor; kullanmadığımız bir birimi
+  yazmak denenmemiş bir yolu açık bırakmak olurdu.
+*/
+export const PARA_BIRIMLERI = { TRY: 949, USD: 840, EUR: 978 } as const;
+
+export type ParaBirimi = (typeof PARA_BIRIMLERI)[keyof typeof PARA_BIRIMLERI];
+
 /** TRY'nin ISO 4217 sayısal kodu; belgedeki örneklerde currencycode. */
-export const TRY_KODU = 949;
+export const TRY_KODU = PARA_BIRIMLERI.TRY;
