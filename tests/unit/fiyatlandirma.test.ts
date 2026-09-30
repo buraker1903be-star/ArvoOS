@@ -17,6 +17,7 @@ import {
 import { PRICING_TR } from "@/app/(site)/_content/pricing";
 import { PRICING_EN } from "@/app/(site)/_content/pricing-en";
 import { LOCALES } from "@/lib/site/routes";
+import { readFileSync } from "node:fs";
 
 /*
   Yayımlanmış bir fiyat listesinde sessiz hata pahalıdır: yanlış rakam
@@ -201,5 +202,31 @@ describe("ücretler sayfası içeriği", () => {
         assert.ok(link.href.startsWith("/"), `${dil}: ${link.href} site içi olmalı`);
       }
     }
+  });
+});
+
+describe("ücretler sayfasının görünürlük kuralları", () => {
+  /*
+    Ürün sekmesi CSS ile çalışıyor: `.pricing[data-urun="X"] .pgroup[data-urun="X"]`.
+    CSS iki niteliği birbiriyle karşılaştıramadığı için her ürünün kendi
+    satırı gerekiyor. PRICED_PRODUCTS'a yeni ürün eklenip bu satır
+    unutulursa grup HİÇ görünmez — sekmeye basılır, sayfa boş kalır.
+  */
+  const css = readFileSync(new URL("../../app/(site)/site-pricing.css", import.meta.url), "utf8");
+
+  test("her ürünün kendi görünürlük satırı var", () => {
+    for (const product of PRICED_PRODUCTS) {
+      assert.ok(
+        css.includes(`.pricing[data-urun="${product}"] .pgroup[data-urun="${product}"]`),
+        `${product}: site-pricing.css'te görünürlük kuralı yok`,
+      );
+    }
+  });
+
+  test("JavaScript yokken bütün gruplar açık kalır", () => {
+    /* Gizleme kuralı data-urun'e bağlı olmalı; koşulsuz `.pgroup { display: none }`
+       yazılsaydı JS yüklenmeden sayfada tek bir fiyat görünmezdi. */
+    assert.ok(css.includes(".pricing[data-urun] .pgroup { display: none; }"));
+    assert.equal(/^\s*\.site \.pgroup \{[^}]*display:\s*none/m.test(css), false);
   });
 });

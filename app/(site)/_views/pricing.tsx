@@ -34,7 +34,7 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
     <>
       <PageHero {...c.hero} crumbs={crumbs} crumbLabel={tr ? "İçerik yolu" : "Breadcrumb"} />
 
-      <div className="scenes">
+      <div className="scenes pricing-page">
         <section className="section" aria-labelledby="ucret-title">
           <div className="wrap">
             <h2 className="sr-only" id="ucret-title">{c.meta.title}</h2>
@@ -43,13 +43,15 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
               yearly={c.cycle.yearly}
               badge={c.cycle.badge}
               label={tr ? "Ödeme dönemi" : "Billing period"}
+              productsLabel={tr ? "Ürün" : "Product"}
+              products={c.groups.map((g) => ({ code: g.product, label: urunAdi(g.product) }))}
             >
               <p className="vat-note">{c.vatNote}</p>
 
               {c.groups.map((group) => {
                 const link = urunAdresi(group.product, locale);
                 return (
-                  <section className="pgroup" key={group.product} aria-labelledby={`pg-${group.product}`}>
+                  <section className="pgroup" data-urun={group.product} key={group.product} aria-labelledby={`pg-${group.product}`}>
                     <div className="pgroup-head" data-reveal>
                       <div>
                         <p className="eyebrow">{group.tag}</p>
@@ -99,22 +101,23 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
         <section className="section" aria-labelledby="addon-title">
           <div className="wrap">
             <SectionHead eyebrow={c.addOns.eyebrow} title={c.addOns.title} lead={c.addOns.lead} split id="addon-title" />
-            <div className="fgrid four">
-              {c.addOns.items.map((item, i) => {
+            {/* Kart yerine satır: dört ek kalem, dört kutu kadar yer kaplamasın. */}
+            <dl className="addon-list" data-reveal>
+              {c.addOns.items.map((item) => {
                 const addOn = addOnByCode.get(item.code);
                 return (
-                  <article className="fcard acard" key={item.code} data-reveal style={{ ["--i" as string]: i % 3 }}>
-                    <h3>{item.name}</h3>
-                    <p className="price">
+                  <div className="addon-row" key={item.code}>
+                    <dt>{item.name}</dt>
+                    <dd className="addon-price">
                       {addOn?.aylikKurus
-                        ? <span className="price-m"><Fiyat kurus={addOn.aylikKurus} suffix={c.cycle.perMonth} locale={locale} /></span>
+                        ? <><b>{tutarYaz(addOn.aylikKurus, locale)} TL</b><small>{c.cycle.perMonth}</small></>
                         : <span className="price-quote">{c.addOns.quote}</span>}
-                    </p>
-                    <p>{item.text}</p>
-                  </article>
+                    </dd>
+                    <dd className="addon-text">{item.text}</dd>
+                  </div>
                 );
               })}
-            </div>
+            </dl>
           </div>
         </section>
 
@@ -122,14 +125,14 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
         <section className="section tint" id="kosullar" aria-labelledby="policy-title">
           <div className="wrap">
             <SectionHead eyebrow={c.policy.eyebrow} title={c.policy.title} lead={c.policy.lead} split id="policy-title" />
-            <div className="fgrid">
-              {c.policy.items.map((item, i) => (
-                <article className="fcard" key={item.title} data-reveal style={{ ["--i" as string]: i % 3 }}>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
-                </article>
+            <dl className="policy-list" data-reveal>
+              {c.policy.items.map((item) => (
+                <div key={item.title}>
+                  <dt>{item.title}</dt>
+                  <dd>{item.text}</dd>
+                </div>
               ))}
-            </div>
+            </dl>
             <Actions items={c.policy.links} className="policy-links" />
           </div>
         </section>

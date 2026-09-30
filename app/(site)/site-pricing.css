@@ -1,30 +1,58 @@
 /*
-  Ücretler sayfası. Kartların gövdesi .fcard'dan gelir; burada yalnızca
-  fiyat bloğu, aylık/yıllık seçici ve ürün grubu başlığı vardır.
+  Ücretler sayfası.
 
-  Aylık ve yıllık tutar İKİSİ DE basılır, biri gizlenir: JavaScript
-  yüklenmeden de sayfada okunabilir bir fiyat durur.
+  SAYFA ÇOK UZUNDU. Dört ürünün on iki basamağı alt alta diziliyordu:
+  masaüstünde 7.858px, telefonda 13.205px (ölçüldü). Fiyat bakmaya
+  gelen kişi on dört ekran kaydırıyordu. Artık kumanda çubuğundaki
+  ürün sekmesi tek seferde bir ürünün üç basamağını gösteriyor; ek
+  kalemler ve abonelik koşulları kart yerine satır düzeninde.
+
+  Aylık ve yıllık tutar İKİSİ DE basılıyor, biri gizleniyor: JavaScript
+  yüklenmeden de sayfada okunabilir bir fiyat duruyor. Aynı sebeple
+  JS yokken bütün ürün grupları açık kalır (aşağıdaki görünürlük
+  kuralları yalnızca `data-urun` varken devreye girer).
 */
 
-/* --- Aylık / yıllık seçici --- */
-.site .cycle {
-  display: inline-flex;
-  gap: 4px;
-  margin: 0 auto 28px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--g-100);
-  box-shadow: var(--hair);
-}
-.site .pricing { display: flex; flex-direction: column; align-items: center; }
-.site .pricing > * { width: 100%; }
-.site .pricing > .cycle { width: auto; }
+/*
+  Bölüm ritmi bir basamak sıkı. Sitenin `.section` ölçüsü her iki yanda
+  clamp(64px,8vw,136px): 1440px'te bölüm araları 230px eder ve beş
+  bölümlük bir sayfada bin pikselden fazlası boşluk olur. Anlatı
+  sayfalarında bu ritim doğru; fiyat sayfası ise karşılaştırma
+  sayfasıdır, okuyan kişi aşağı inmek değil yan yana koymak istiyor.
+  Aynı clamp deyimi ve aynı oran korunuyor, yalnızca bir basamak
+  aşağı — başka bir tasarım dili değil, aynı dilin sıkı hâli.
+*/
+.site .pricing-page .section { padding-block: clamp(48px, 5.5vw, 96px); }
+/* Kumanda çubuğu kahramanın hemen altında dursun. */
+.site .pricing-page > .section:first-child { padding-top: clamp(28px, 3vw, 48px); }
 
-.site .cycle-btn {
-  display: inline-flex;
+/* --- Kumanda çubuğu --- */
+.site .pricing { display: flex; flex-direction: column; }
+.site .pricing > * { width: 100%; }
+
+.site .pricing-bar {
+  position: sticky;
+  /* Üst menünün altına yapışır; kaydırırken hangi üründe olduğun kaybolmasın. */
+  top: calc(var(--header-h) + 10px);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 18px;
+  padding: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 82%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  box-shadow: var(--hair), var(--shadow-s);
+}
+
+.site .urun-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+
+.site .urun-tab {
+  padding: 9px 16px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -32,8 +60,40 @@
   font: inherit;
   font-size: 15px;
   font-weight: 550;
+  letter-spacing: -.01em;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background .4s var(--ease), color .4s var(--ease);
+  transition: background .35s var(--ease), color .35s var(--ease);
+}
+.site .urun-tab:hover { color: var(--ink); }
+.site .urun-tab[aria-selected="true"] {
+  background: var(--mid-800);
+  color: #fff;
+}
+
+/* --- Aylık / yıllık --- */
+.site .cycle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--g-100);
+}
+.site .cycle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .35s var(--ease), color .35s var(--ease);
 }
 .site .cycle-btn[aria-pressed="true"] {
   background: #fff;
@@ -45,56 +105,83 @@
   border-radius: 999px;
   background: var(--gold-100);
   color: var(--gold-600);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 650;
-  letter-spacing: -.01em;
 }
 
 .site .vat-note {
-  max-width: 70ch;
-  margin: 0 auto 48px;
+  max-width: 74ch;
+  margin: 0 0 28px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
-  text-align: center;
 }
 
+/*
+  Ürün görünürlüğü. `data-urun` YALNIZCA JavaScript çalışınca yazılır;
+  yokken bütün gruplar açıktır. Her ürün için ayrı bir satır gerekiyor
+  (CSS iki niteliği birbiriyle karşılaştıramaz); PRICED_PRODUCTS'a yeni
+  ürün eklenip buraya eklenmezse grup hiç görünmez, bu yüzden
+  tests/unit/fiyatlandirma.test.ts her ürünün kuralını arıyor.
+*/
+.site .pricing[data-urun] .pgroup { display: none; }
+.site .pricing[data-urun="arvoos"] .pgroup[data-urun="arvoos"],
+.site .pricing[data-urun="arc"] .pgroup[data-urun="arc"],
+.site .pricing[data-urun="randevu"] .pgroup[data-urun="randevu"],
+.site .pricing[data-urun="arvolab"] .pgroup[data-urun="arvolab"] { display: block; }
+
 /* --- Ürün grubu --- */
-.site .pgroup { margin-top: 72px; }
-.site .pgroup:first-of-type { margin-top: 0; }
+.site .pgroup { margin-top: 0; }
+.site .pgroup + .pgroup { margin-top: 56px; }
+.site .pricing[data-urun] .pgroup + .pgroup { margin-top: 0; }
+
 .site .pgroup-head {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px 32px;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--line);
+  gap: 8px 32px;
+  margin-bottom: 20px;
 }
-.site .pgroup-head .lead { max-width: 62ch; margin-top: 10px; }
+.site .pgroup-head .eyebrow { margin-bottom: 2px; }
+.site .pgroup-head .h2 { font-size: clamp(26px, 2.4vw, 34px); }
+.site .pgroup-head .lead { max-width: 64ch; margin-top: 8px; font-size: 15.5px; }
 .site .pgroup-head .link { flex: none; }
 
-/* --- Fiyat bloğu --- */
+/* --- Basamak kartı --- */
+.site .pcard {
+  gap: 10px;
+  padding: clamp(22px, 2vw, 28px);
+}
+.site .pcard h4 {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+.site .pcard p { font-size: 14.5px; line-height: 1.5; }
+.site .pcard ul { gap: 7px; margin-top: 4px; padding-top: 14px; }
+.site .pcard li { font-size: 14px; line-height: 1.4; }
+
 .site .price {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  min-height: 46px;
-  margin: 2px 0 6px;
+  min-height: 42px;
+  margin: 0 0 2px;
 }
 .site .price b {
   color: var(--ink);
-  font-size: clamp(30px, 3vw, 38px);
+  font-size: clamp(28px, 2.6vw, 34px);
   font-weight: 620;
   letter-spacing: -.03em;
   /* Tutarlar sütun sütun okunuyor; oransal rakamda basamaklar kayıyordu. */
   font-variant-numeric: tabular-nums;
 }
-.site .price small { color: var(--muted); font-size: 15px; }
+.site .price small { color: var(--muted); font-size: 14px; }
 .site .price-quote {
   color: var(--ink);
-  font-size: clamp(24px, 2.2vw, 30px);
+  font-size: clamp(22px, 2vw, 26px);
   font-weight: 620;
   letter-spacing: -.028em;
 }
@@ -104,26 +191,69 @@
 .site .pricing[data-cycle="yearly"] .price-m { display: none; }
 .site .price-m, .site .price-y { display: inline-flex; align-items: baseline; gap: 6px; }
 
-/* Ek kalem kartlarında dönem seçicisi yok; aylık tutar her zaman görünür. */
-.site .acard .price-m { display: inline-flex; }
-.site .acard .price b { font-size: clamp(22px, 2vw, 26px); }
-
 /* --- Öne çıkan basamak --- */
-.site .pcard[data-featured] {
-  box-shadow: var(--shadow-m), inset 0 0 0 2px var(--gold-400);
-}
-.site .pcard h4 {
-  font-size: clamp(20px, 1.8vw, 24px);
-  font-weight: 650;
-  letter-spacing: -.022em;
-  line-height: 1.2;
-}
+.site .pcard[data-featured] { box-shadow: var(--shadow-m), inset 0 0 0 2px var(--gold-400); }
 
-/* --- Koşullar bölümündeki yasal bağlantılar --- */
-.site .policy-links { justify-content: center; margin-top: 36px; }
+/* --- Ek kalemler: kart değil satır --- */
+.site .addon-list {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.site .addon-row {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 9rem) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.site .addon-row dt { color: var(--ink); font-size: 15.5px; font-weight: 620; letter-spacing: -.015em; }
+.site .addon-price { display: flex; align-items: baseline; gap: 5px; margin: 0; }
+.site .addon-price b { color: var(--ink); font-size: 19px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.site .addon-price small { color: var(--muted); font-size: 13px; }
+.site .addon-price .price-quote { font-size: 16px; font-weight: 620; }
+.site .addon-text { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
 
-@media (max-width: 700px) {
-  .site .cycle { margin-bottom: 20px; }
-  .site .vat-note { margin-bottom: 32px; text-align: left; }
-  .site .pgroup { margin-top: 56px; }
+/* --- Koşullar: kart değil iki sütunlu liste --- */
+.site .policy-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 48px;
+}
+.site .policy-list > div {
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.site .policy-list dt {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -.015em;
+}
+.site .policy-list dd { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+
+.site .policy-links { justify-content: flex-start; margin-top: 32px; }
+
+@media (max-width: 860px) {
+  .site .pricing-bar {
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+    border-radius: var(--radius-m);
+  }
+  /* Sekmeler taşarsa yatay kaysın; dört ürün telefonda tek satıra sığmıyor. */
+  .site .urun-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .site .urun-tabs::-webkit-scrollbar { display: none; }
+  .site .cycle { align-self: flex-start; }
+  .site .addon-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .site .addon-text { grid-column: 1 / -1; }
+  .site .policy-list { grid-template-columns: 1fr; gap: 0; }
+  .site .pgroup + .pgroup { margin-top: 44px; }
 }
