@@ -7,7 +7,13 @@
 .site .mock-chrome i{width:10px;height:10px;border-radius:50%;background:#ff5f57}
 .site .mock-chrome i:nth-child(2){background:#febc2e}.site .mock-chrome i:nth-child(3){background:#28c840}
 .site .mock-url{margin:0 auto;padding:4px 14px;border-radius:8px;background:#e7e7ec;color:#6e6e73;font-size:11.5px}
-.site .mock-cap{margin-top:14px;color:#86868b;font-size:12px;text-align:center}
+/*
+  Maket ALTYAZISI dekoratif değil: figure'ün ne gösterdiğini okura
+  anlatan gerçek metin (<figcaption>). Rengi elle yazılmış #86868b idi
+  ve beyaz üstünde 3.62 ediyordu — AA eşiğinin (4.5) belirgin altında,
+  üstelik 12px. Artık paletteki --muted (5.07).
+*/
+.site .mock-cap{margin-top:14px;color:var(--muted);font-size:12px;text-align:center}
 .site [data-tone="info"]{--tb:#e6f0fb;--tf:#1f5fa8}
 .site [data-tone="gold"]{--tb:#f5eddb;--tf:#74582a}
 .site [data-tone="brand"]{--tb:#e4e9f1;--tf:#1b3050}

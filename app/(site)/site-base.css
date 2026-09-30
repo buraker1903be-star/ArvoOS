@@ -6,7 +6,15 @@
 .site{
   --ink:#1d1d1f; --ink-soft:#424245; --muted:#6e6e73; --grey:#f5f5f7; --line:#d2d2d7; --line-soft:rgba(0,0,0,.08);
   --navy:#0b1b2e; --navy-2:#13243f; --link:#0066cc;
-  --green:#6f9548; --gold-600:#8e6d33; --gold-500:#b28a49; --gold-400:#c9a66a; --gold-300:#dcc28c; --gold-100:#f5eddb;
+  /*
+    --gold-600 KÜÇÜK METİN İÇİN KULLANILIYOR, o yüzden en koyu zemine
+    göre seçildi. Eski değer (#8e6d33) beyazda 4.79 ile geçiyordu ama
+    renkli zeminlerde düşüyordu: .eyebrow gri (#f5f5f7) üstünde 4.40,
+    "2 ay bedava" rozeti krem (--gold-100) üstünde 4.11 — ikisi de
+    AA eşiğinin (4.5) altında. 01.10.2026'da canlıda ölçüldü.
+    Yeni değer üçünde de geçiyor: beyaz 5.50, gri 5.05, krem 4.72.
+  */
+  --green:#6f9548; --gold-600:#85632e; --gold-500:#b28a49; --gold-400:#c9a66a; --gold-300:#dcc28c; --gold-100:#f5eddb;
   /* maketlerin iç renkleri */
   --mid-950:#050c1a; --mid-900:#08142a; --mid-800:#0b1b2e; --mid-700:#13243f; --mid-600:#1b3050; --mid-500:#2c4368; --mid-300:#8497b5;
   --g-0:#fff; --g-50:#f9f9fb; --g-100:#f2f2f7; --g-200:#e5e5ea; --g-300:#d1d1d6; --g-500:#6e6e73; --g-600:#515154;
