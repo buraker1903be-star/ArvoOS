@@ -61,6 +61,33 @@ describe("fiyat kaynağı", () => {
     }
   });
 
+  test("koltuk başı basamaklar tutarlı: yalnızca ArvoLab, hacim indirimi gerçek", () => {
+    /*
+      "Ekip" eskiden 5 kullanıcılık sabit bir paketti ve Kurum'dan farkı
+      yalnızca sayıydı. Koltuk başına geçince iki şey doğru kalmalı:
+      indirimli koltuk gerçekten ucuz olmalı ve en az kullanıcı şartı
+      bulunmalı — yoksa herkes ucuz basamağı tek kişilik alır.
+    */
+    const kisiBasiOlanlar = PLANS.filter((p) => p.kisiBasi);
+    assert.ok(kisiBasiOlanlar.length > 0, "koltuk başı basamak kalmamış");
+    for (const plan of kisiBasiOlanlar) {
+      assert.equal(plan.product, "arvolab", `${plan.code}: koltuk başı yalnızca ArvoLab'de olmalı`);
+    }
+    const tek = PLANS.find((p) => p.code === "arvolab-arastirmaci")!;
+    const ekip = PLANS.find((p) => p.code === "arvolab-ekip")!;
+    assert.ok(ekip.aylikKurus! < tek.aylikKurus!, "Ekip koltuğu tek kullanıcıdan ucuz olmalı");
+    assert.ok((ekip.enAzKullanici ?? 0) >= 2, "hacim indiriminin en az kullanıcı şartı yok");
+    assert.equal(tek.enAzKullanici, undefined, "tek kullanıcılı basamakta en az şartı olmamalı");
+  });
+
+  test("en az kullanıcı yalnızca koltuk başı basamaklarda anlamlı", () => {
+    for (const plan of PLANS) {
+      if (plan.enAzKullanici !== undefined) {
+        assert.equal(plan.kisiBasi, true, `${plan.code}: kurum başı basamakta en az kullanıcı şartı yanıltıcı`);
+      }
+    }
+  });
+
   test("her plan iki dilde de adlandırılmıştır", () => {
     for (const plan of PLANS) {
       for (const locale of LOCALES) {
@@ -154,6 +181,15 @@ describe("ücretler sayfası içeriği", () => {
     for (const [dil, c] of diller) {
       const metin = JSON.stringify(c);
       assert.equal(/\d\s*TL\b/.test(metin), false, `${dil}: içerikte elle yazılmış TL tutarı var`);
+    }
+  });
+
+  test("koltuk başı birim metni iki dilde de tanımlı", () => {
+    for (const [dil, c] of diller) {
+      for (const anahtar of ["perMonth", "perYear", "perMonthUser", "perYearUser"] as const) {
+        assert.ok(c.cycle[anahtar]?.trim(), `${dil}: ${anahtar} boş`);
+      }
+      assert.notEqual(c.cycle.perMonthUser, c.cycle.perMonth, `${dil}: koltuk başı birim kurum başıyla aynı`);
     }
   });
 

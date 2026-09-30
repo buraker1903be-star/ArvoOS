@@ -22,9 +22,13 @@ export const PRICING_TR: PricingContent = {
   },
   hero: {
     eyebrow: "Ücretler",
-    title: "Kullanıcı başına değil,",
+    /* Eskiden yalnızca "Kullanıcı başına değil, kurum başına." yazıyordu.
+       ArvoLab koltuk başı fiyatlanmaya geçince bu cümle sayfanın dörtte
+       biri için yanlış oldu; kapsam başlığa yazıldı ve istisna lead'de
+       gerekçesiyle söylendi. */
+    title: "İşletme ürünlerinde kullanıcı başına değil,",
     subtitle: "kurum başına.",
-    lead: "Dört ürünün de aylık ve yıllık ücretleri burada açıkça yazılıdır. Ekibiniz büyüdükçe fatura katlanmaz: paketler kurum başına fiyatlanır ve dahil olan kullanıcı sayısı her kartta yazar.",
+    lead: "ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır: ekibiniz büyüdükçe fatura katlanmaz, dahil olan kullanıcı sayısı her kartta yazar. ArvoLab bunun dışındadır — değeri kurumun akışında değil doğrudan yazan kişide olduğu için araştırmacı başına fiyatlanır.",
     actions: [demo, { label: "Abonelik koşulları", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -33,6 +37,8 @@ export const PRICING_TR: PricingContent = {
     badge: "2 ay bedava",
     perMonth: "/ay",
     perYear: "/yıl",
+    perMonthUser: "/kullanıcı/ay",
+    perYearUser: "/kullanıcı/yıl",
     quote: "Teklif",
     quoteAction: "Teklif isteyin",
   },
@@ -115,23 +121,23 @@ export const PRICING_TR: PricingContent = {
       /* Fiyat yükseldi (bkz. pricing.ts); değeri de yazmak gerekiyor.
          "Türkiye'de tek" gibi kanıtlanamaz bir üstünlük iddiası YAZILMAZ —
          yerine ölçülebilir olan söylenir: ayrı araçlar, ayrı abonelikler. */
-      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize ve özgünlük ön kontrolüne kadar araştırma sürecinin tamamı tek çalışma alanında — her adım için ayrı bir araca ve ayrı bir aboneliğe gerek kalmadan.",
+      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize ve özgünlük ön kontrolüne kadar araştırma sürecinin tamamı tek çalışma alanında — her adım için ayrı bir araca ve ayrı bir aboneliğe gerek kalmadan. Fiyat araştırmacı başınadır; ekipçe kullanımda koltuk ucuzlar.",
       linkLabel: "ArvoLab'i inceleyin",
       cards: [
         {
           code: "arvolab-arastirmaci",
           text: "Tezini, makalesini veya projesini tek başına yürüten araştırmacılar için.",
-          items: ["1 kullanıcı", "Literatür ve atıf yönetimi", "Akademik yazım", "Kılavuz kontrolü", "Özgünlük ön kontrolü"],
+          items: ["Tek araştırmacı", "Literatür ve atıf yönetimi", "Akademik yazım", "Kılavuz kontrolü", "Analiz merkezi (nicel ve nitel)", "Özgünlük ön kontrolü"],
         },
         {
           code: "arvolab-ekip",
-          text: "Ortak kaynak ve ortak yazım düzeni isteyen araştırma ekipleri için.",
-          items: ["5 kullanıcı", "Ortak kaynak kütüphanesi", "Analiz merkezi (nicel ve nitel)", "Akademik editör", "Öncelikli destek"],
+          text: "Ortak kaynak ve ortak yazım düzeni isteyen araştırma ekipleri için. Koltuk başına ödersiniz, kişi başı bedel düşer.",
+          items: ["En az 3 araştırmacı", "Araştırmacı basamağındaki her şey", "Ortak kaynak kütüphanesi", "Akademik editör", "Ekip ve erişim yönetimi", "Öncelikli destek"],
         },
         {
           code: "arvolab-kurum",
-          text: "Bölüm veya üniversite genelinde kullanmak isteyen kurumlar için.",
-          items: ["Bölüm veya kurum geneli kullanım", "Kurum içi kullanıcı yönetimi", "Kuruma özel alan adı", "Kurulum ve eğitim"],
+          text: "Koltuk saymak istemeyen bölüm ve üniversiteler için site lisansı.",
+          items: ["Sınırsız araştırmacı", "Bölüm veya üniversite geneli site lisansı", "Kurum içi kullanıcı yönetimi", "Kuruma özel alan adı", "Kurulum ve eğitim", "Faturalandırma kuruma"],
         },
       ],
     },
@@ -143,7 +149,7 @@ export const PRICING_TR: PricingContent = {
     lead: "Paketinizin sınırını aştığınızda ya da kuruma özel bir iş istediğinizde geçerlidir. Sürpriz kalem yoktur: aşağıdakiler dışında ek ücret alınmaz.",
     quote: "Teklif",
     items: [
-      { code: "ek-kullanici", name: "Ek kullanıcı", text: "ArvoOS ve ArvoLab paketlerinde dahil olan kullanıcı sayısını aşan her kullanıcı için." },
+      { code: "ek-kullanici", name: "Ek kullanıcı", text: "ArvoOS paketlerinde dahil olan kullanıcı sayısını aşan her kullanıcı için. ArvoLab zaten araştırmacı başına fiyatlandığı için bu kalem orada işlemez." },
       { code: "ek-sube", name: "Ek şube", text: "Arvo Randevu Çok şube paketindeki beş şubeyi aşan her şube için." },
       { code: "veri-aktarimi", name: "Veri aktarımı ve kurulum", text: "Mevcut sisteminizden veri taşıma, kullanıcı tanımlama ve ekip eğitimi. Kapsama göre tek seferlik ücretlendirilir." },
       { code: "ozel-gelistirme", name: "Kuruma özel geliştirme", text: "Kuruma özel iş akışı, ekran veya rapor geliştirmesi. Kapsam netleştikten sonra teklif edilir." },
@@ -174,7 +180,8 @@ export const PRICING_TR: PricingContent = {
     title: "Ücretler hakkında",
     items: [
       { q: "Fiyatlara KDV dahil mi?", a: "Hayır. Sayfadaki tutarlar KDV hariçtir; faturada yürürlükteki oranda KDV eklenir." },
-      { q: "Kullanıcı başına mı ödüyoruz?", a: "Hayır. Fiyatlar kurum başınadır; her paketin içinde belirli sayıda kullanıcı vardır. Bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz." },
+      { q: "Kullanıcı başına mı ödüyoruz?", a: "ArvoOS, ArvoARC ve Arvo Randevu'da hayır: fiyat kurum başınadır ve her pakette belirli sayıda kullanıcı vardır; bu sayıyı aşarsanız yalnızca ek kullanıcı ücreti işlenir, paket fiyatı katlanmaz. ArvoLab'de evet: araştırmacı başına fiyatlanır, çünkü orada değeri üreten doğrudan kullanan kişidir." },
+      { q: "ArvoLab'de Ekip ile Kurum arasındaki fark ne?", a: "Ekip koltuk başına ödenir: en az üç araştırmacı, kişi başı bedel Araştırmacı basamağından düşük ve istediğiniz zaman koltuk ekleyip çıkarırsınız. Kurum ise site lisansıdır: koltuk sayılmaz, bölüm ya da üniversite genelinde sınırsız araştırmacı kullanır, fatura kuruma kesilir." },
       { q: "Yıllık ödeme ne kazandırır?", a: "Yıllık seçenekte 12 aylık kullanım için 10 aylık bedel ödenir; iki ay bedavadır. Tutar dönem başında tek seferde faturalanır." },
       { q: "Abonelik otomatik yenileniyor mu?", a: "Hayır. Kartınızdan otomatik tahsilat yapılmaz; her dönem için ödeme bağlantısı gönderilir ve ödemeyi siz onaylarsınız." },
       { q: "Paketimi sonradan değiştirebilir miyim?", a: "Evet. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme mevcut dönemin sonunda uygulanır." },

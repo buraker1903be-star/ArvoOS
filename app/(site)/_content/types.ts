@@ -62,7 +62,8 @@ export type PricingContent = {
   meta: Meta;
   hero: Hero;
   /** Aylık / yıllık seçici ve yanındaki rozet. */
-  cycle: { monthly: string; yearly: string; badge: string; perMonth: string; perYear: string; quote: string; quoteAction: string };
+  /** perMonthUser / perYearUser: koltuk başı fiyatlanan basamaklarda kullanılır (ArvoLab). */
+  cycle: { monthly: string; yearly: string; badge: string; perMonth: string; perYear: string; perMonthUser: string; perYearUser: string; quote: string; quoteAction: string };
   vatNote: string;
   groups: PriceGroup[];
   addOns: Block & { items: { code: string; name: string; text: string }[]; quote: string };

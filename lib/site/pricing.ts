@@ -44,6 +44,16 @@ export type Plan = {
   ad: Record<Locale, string>;
   /** Aylık liste fiyatı (kuruş). null = teklif usulü, rakam yayımlanmaz. */
   aylikKurus: number | null;
+  /*
+    ArvoLab KİŞİ BAŞI fiyatlanır, ötekiler kurum başına. Sebep: ArvoOS,
+    ArvoARC ve Randevu'da değer kurumun akışındadır, ArvoLab'de değer
+    doğrudan yazan kişidedir — ikinci bir araştırmacı ikinci bir tez
+    demektir. Bu alan hem ekrandaki birimi ("/kullanıcı/ay") hem JSON-LD
+    referenceQuantity'sini belirler.
+  */
+  kisiBasi?: true;
+  /** Koltuk başı basamaklarda en az kullanıcı sayısı (hacim indiriminin şartı). */
+  enAzKullanici?: number;
   /** Kartta öne çıkan basamak (ürün başına en fazla bir tane). */
   oneCikan?: true;
 };
@@ -61,8 +71,15 @@ export type Plan = {
   $10-49, Scite $12-20, Paperpile ~$4 — dördü ayrı hesap, Türkçe kılavuz
   kontrolü yok) ve alıcının kaçındığı gerçek harcamadır (tez yazdırma
   yüksek lisansta 30.000-70.000 TL). Bu yüzden fiyat 399'dan 1.490'a
-  çıkarıldı (30.09.2026): kategoride tek olan ürünü rakip fiyatına göre
-  değil, yerine geçtiği harcamaya göre fiyatlıyoruz.
+  çıkarıldı, ardından koltuk başına 1.990'a taşındı (30.09.2026):
+  kategoride tek olan ürünü rakip fiyatına göre değil, yerine geçtiği
+  harcamaya göre fiyatlıyoruz.
+
+  "Ekip" basamağı eskiden 5 kullanıcılık sabit bir paketti ve Kurum'dan
+  farkı yalnızca sayıydı — iki basamak aynı şeyi anlatıyordu. Artık Ekip
+  koltuk başı hacim indirimi (en az 3 kullanıcı, koltuk %25 ucuz), Kurum
+  ise sınırsız kullanıcılı site lisansıdır. İkisi artık farklı şeyler
+  satıyor.
 
   Öğrenci indirimi YOK: ödeyen kitle zaten lisansüstü öğrencidir, indirim
   gelirin kendisini keserdi. Onlara dönük teklif yıllık pakettir — 10 ay
@@ -81,8 +98,8 @@ export const PLANS: Plan[] = [
   { code: "randevu-coklu", ad: { tr: "Çok şube", en: "Multi-branch" }, product: "randevu", aylikKurus: tl(1490) },
   { code: "randevu-zincir", ad: { tr: "Zincir", en: "Chain" }, product: "randevu", aylikKurus: null },
 
-  { code: "arvolab-arastirmaci", ad: { tr: "Araştırmacı", en: "Researcher" }, product: "arvolab", aylikKurus: tl(1490), oneCikan: true },
-  { code: "arvolab-ekip", ad: { tr: "Ekip", en: "Team" }, product: "arvolab", aylikKurus: tl(4990) },
+  { code: "arvolab-arastirmaci", ad: { tr: "Araştırmacı", en: "Researcher" }, product: "arvolab", aylikKurus: tl(1990), kisiBasi: true, oneCikan: true },
+  { code: "arvolab-ekip", ad: { tr: "Ekip", en: "Team" }, product: "arvolab", aylikKurus: tl(1490), kisiBasi: true, enAzKullanici: 3 },
   { code: "arvolab-kurum", ad: { tr: "Kurum", en: "Institution" }, product: "arvolab", aylikKurus: null },
 ];
 

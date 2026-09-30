@@ -79,8 +79,8 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
                               <p className="price"><span className="price-quote">{c.cycle.quote}</span></p>
                             ) : (
                               <p className="price">
-                                <span className="price-m"><Fiyat kurus={plan.aylikKurus} suffix={c.cycle.perMonth} locale={locale} /></span>
-                                <span className="price-y"><Fiyat kurus={yillik} suffix={c.cycle.perYear} locale={locale} /></span>
+                                <span className="price-m"><Fiyat kurus={plan.aylikKurus} suffix={plan.kisiBasi ? c.cycle.perMonthUser : c.cycle.perMonth} locale={locale} /></span>
+                                <span className="price-y"><Fiyat kurus={yillik} suffix={plan.kisiBasi ? c.cycle.perYearUser : c.cycle.perYear} locale={locale} /></span>
                               </p>
                             )}
                             <p>{card.text}</p>

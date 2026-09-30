@@ -41,8 +41,8 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "ArvoOS paketler", summary: "Üç basamak (Başlangıç, Kurumsal, Özel kurum). Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır; Özel kurum kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları)." },
   },
   pricing: {
-    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab. Priced per organization, not per user; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
-    tr: { name: "Ücretler", summary: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. Fiyat kurum başınadır, kullanıcı başına değil; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
+    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab. ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user; ArvoLab is priced per researcher; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
+    tr: { name: "Ücretler", summary: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
   },
   arvolab: {
     en: { name: "ArvoLab", summary: "Research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, an academic editor and an originality pre-check." },
@@ -105,10 +105,14 @@ function fiyatListesi(locale: Locale): string {
   return PRICED_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
       const yillik = yillikKurus(plan);
+      const birim = plan.kisiBasi ? (tr ? "kullanıcı/" : "user/") : "";
       const tutar = plan.aylikKurus === null || yillik === null
         ? (tr ? "teklif usulü" : "on request")
-        : `${tutarYaz(plan.aylikKurus, locale)} TL/${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${tr ? "yıl" : "yr"}`;
-      return `- ${plan.ad[locale]}: ${tutar}`;
+        : `${tutarYaz(plan.aylikKurus, locale)} TL/${birim}${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${birim}${tr ? "yıl" : "yr"}`;
+      const enAz = plan.enAzKullanici
+        ? tr ? ` (en az ${plan.enAzKullanici} kullanıcı)` : ` (from ${plan.enAzKullanici} users)`
+        : "";
+      return `- ${plan.ad[locale]}: ${tutar}${enAz}`;
     });
     return `### ${urunAdi(product)}\n${satirlar.join("\n")}`;
   }).join("\n\n");
@@ -237,7 +241,7 @@ Page: ${u("arvoos", "en")} · Modules: ${u("arvoos-modules", "en")} · Sign in: 
 
 Page: ${u("pricing", "en")}
 
-Prices are per organization, not per user — each plan includes a set number of users. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
+ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is priced per researcher (per seat); the Team tier is per-seat volume pricing from 3 users, and the Institution tier is an unlimited-user site licence. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
 
 ${fiyatListesi("en")}
 
@@ -409,7 +413,7 @@ Sayfa: ${u("arvoos", "tr")} · Modüller: ${u("arvoos-modules", "tr")} · Giriş
 
 Sayfa: ${u("pricing", "tr")}
 
-Fiyatlar kurum başınadır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
+ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: araştırmacı (koltuk) başına fiyatlanır; Ekip basamağı en az 3 kullanıcıyla koltuk başı hacim indirimidir, Kurum basamağı ise sınırsız kullanıcılı site lisansıdır. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
 
 ${fiyatListesi("tr")}
 

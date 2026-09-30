@@ -179,6 +179,10 @@ export function pricingLd(locale: Locale): Json[] {
         price: ldFiyat(plan.aylikKurus),
         availability: "https://schema.org/InStock",
         ...ortak,
+        // Koltuk başı basamaklarda fiyatın neyin başına olduğu yazılmalı;
+        // yazılmazsa arama motoru 1.990 TL'yi kurumun toplam bedeli sanır.
+        ...(plan.kisiBasi ? { referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitText: "user" } } : {}),
+        ...(plan.enAzKullanici ? { eligibleQuantity: { "@type": "QuantitativeValue", minValue: plan.enAzKullanici, unitText: "user" } } : {}),
         priceSpecification: [
           { "@type": "UnitPriceSpecification", price: ldFiyat(plan.aylikKurus), ...ortak, billingDuration: 1, billingIncrement: 1, unitCode: "MON" },
           // Yıllık bedel 10 aylık: billingDuration 12 ay, tutar dönem başında tek seferde.

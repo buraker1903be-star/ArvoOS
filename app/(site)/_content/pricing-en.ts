@@ -19,9 +19,9 @@ export const PRICING_EN: PricingContent = {
   },
   hero: {
     eyebrow: "Pricing",
-    title: "Per organization,",
+    title: "For business products, per organization —",
     subtitle: "not per seat.",
-    lead: "Monthly and annual prices for all four products, written out in full. Your bill does not multiply as the team grows: plans are priced per organization and every card states how many users are included.",
+    lead: "ArvoOS, ArvoARC and Arvo Randevu are priced per organization: your bill does not multiply as the team grows, and every card states how many users are included. ArvoLab is the exception — its value sits with the person doing the writing, not in the organization's flow, so it is priced per researcher.",
     actions: [demo, { label: "Subscription terms", href: "#kosullar", variant: "ghost" }],
   },
   cycle: {
@@ -30,6 +30,8 @@ export const PRICING_EN: PricingContent = {
     badge: "2 months free",
     perMonth: "/mo",
     perYear: "/yr",
+    perMonthUser: "/user/mo",
+    perYearUser: "/user/yr",
     quote: "On request",
     quoteAction: "Request a quote",
   },
@@ -109,23 +111,23 @@ export const PRICING_EN: PricingContent = {
     {
       product: "arvolab",
       tag: "Research workspace",
-      lead: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks — the whole research process in one workspace, without a separate tool and a separate subscription for every step.",
+      lead: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks — the whole research process in one workspace, without a separate tool and a separate subscription for every step. Priced per researcher; seats get cheaper when a team uses it.",
       linkLabel: "Explore ArvoLab",
       cards: [
         {
           code: "arvolab-arastirmaci",
           text: "For researchers carrying a thesis, paper or project on their own.",
-          items: ["1 user", "Literature and citation management", "Academic writing", "Guideline checks", "Originality pre-check"],
+          items: ["A single researcher", "Literature and citation management", "Academic writing", "Guideline checks", "Analysis centre (quantitative and qualitative)", "Originality pre-check"],
         },
         {
           code: "arvolab-ekip",
-          text: "For research teams that need a shared library and a shared writing order.",
-          items: ["5 users", "Shared source library", "Analysis centre (quantitative and qualitative)", "Academic editor", "Priority support"],
+          text: "For research teams that need a shared library and a shared writing order. You pay per seat, and the per-person rate drops.",
+          items: ["From 3 researchers", "Everything in Researcher", "Shared source library", "Academic editor", "Team and access management", "Priority support"],
         },
         {
           code: "arvolab-kurum",
-          text: "For departments or universities deploying it more widely.",
-          items: ["Department or institution-wide use", "In-house user management", "Custom domain", "Implementation and training"],
+          text: "A site licence for departments and universities that do not want to count seats.",
+          items: ["Unlimited researchers", "Department or university-wide site licence", "In-house user management", "Custom domain", "Implementation and training", "Invoiced to the institution"],
         },
       ],
     },
@@ -137,7 +139,7 @@ export const PRICING_EN: PricingContent = {
     lead: "These apply when you pass a plan limit or ask for something specific to your organization. Nothing else is added to the invoice.",
     quote: "On request",
     items: [
-      { code: "ek-kullanici", name: "Additional user", text: "For each user beyond the number included in an ArvoOS or ArvoLab plan." },
+      { code: "ek-kullanici", name: "Additional user", text: "For each user beyond the number included in an ArvoOS plan. It does not apply to ArvoLab, which is already priced per researcher." },
       { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the five included in the Arvo Randevu Multi-branch plan." },
       { code: "veri-aktarimi", name: "Data migration and setup", text: "Moving data from your current system, defining users and training the team. Charged once, based on scope." },
       { code: "ozel-gelistirme", name: "Custom development", text: "A workflow, screen or report specific to your organization. Quoted once the scope is clear." },
@@ -168,7 +170,8 @@ export const PRICING_EN: PricingContent = {
     title: "About pricing",
     items: [
       { q: "Do the prices include VAT?", a: "No. Amounts on this page exclude VAT; VAT is added on the invoice at the rate in force." },
-      { q: "Are we charged per user?", a: "No. Prices are per organization and each plan includes a set number of users. Beyond that number only the additional-user fee applies; the plan price does not multiply." },
+      { q: "Are we charged per user?", a: "For ArvoOS, ArvoARC and Arvo Randevu, no: prices are per organization and each plan includes a set number of users; beyond that number only the additional-user fee applies and the plan price does not multiply. For ArvoLab, yes: it is priced per researcher, because there the value is produced directly by the person using it." },
+      { q: "What is the difference between ArvoLab Team and Institution?", a: "Team is paid per seat: from three researchers, at a lower per-person rate than Researcher, and you add or remove seats as you go. Institution is a site licence: seats are not counted, the whole department or university uses it, and it is invoiced to the institution." },
       { q: "What does annual billing save?", a: "On the annual option you pay for 10 months and use 12 — two months free. The amount is invoiced once at the start of the period." },
       { q: "Does the subscription renew automatically?", a: "No. Your card is not charged automatically; a payment link is sent for each period and you approve the payment." },
       { q: "Can we change plan later?", a: "Yes. An upgrade takes effect the same day and only the remaining days of the period are charged; a downgrade applies at the end of the current period." },
