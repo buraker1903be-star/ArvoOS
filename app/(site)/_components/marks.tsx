@@ -10,7 +10,7 @@ const SIZE: Record<Brand, { w: number; h: number }> = {
   arc: { w: 1909, h: 373 },
   arvoculture: { w: 1920, h: 259 },
 };
-const ALT: Record<"ArvoOS" | "ArvoLab" | "ArvoARC", string> = { ArvoOS: "ArvoOS", ArvoLab: "ArvoLab", ArvoARC: "ArvoARC" };
+
 
 export function BrandLogo({ brand, tone = "light", height, alt = "", className = "", priority = false }: {
   brand: Brand; tone?: "light" | "dark"; height?: number; alt?: string; className?: string; priority?: boolean;
@@ -31,15 +31,34 @@ export function BrandLogo({ brand, tone = "light", height, alt = "", className =
   );
 }
 
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC" | "Arvo Randevu";
 
-const BRAND_OF: Record<ProductName, Brand> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc" };
+/*
+  Logo dosyası OLMAYAN ürün: Arvo Randevu'nun kırpılmış wordmark'ı henüz
+  yok. Yanlış bir logo (başka ürünün dosyası) ya da otomatik üretilmiş bir
+  şekil koymaktansa ürünün adı kendi tipografisiyle yazılıyor; dosya
+  public/brand/randevu.png olarak eklendiğinde buraya bir satır girer ve
+  bütün menüler kendiliğinden logoya döner.
+*/
+const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc" };
 
-/** Ürün kimliği: ürünün gerçek logosu, zemine göre sürümüyle. */
+/** Ürün kimliği: logosu varsa özgün logo, yoksa adının wordmark'ı. */
 export function ProductLogo({ name, tone = "light", height = 28, withAlt = true, className = "" }: {
   name: ProductName; tone?: "light" | "dark"; height?: number; withAlt?: boolean; className?: string;
 }) {
-  return <BrandLogo brand={BRAND_OF[name]} tone={tone} height={height} alt={withAlt ? ALT[name] : ""} className={className} />;
+  const brand = BRAND_OF[name];
+  if (!brand) {
+    return (
+      <span
+        className={`brand-word${tone === "dark" ? " on-dark" : ""} ${className}`.trim()}
+        style={{ ["--h" as string]: `${height}px` }}
+        aria-hidden={withAlt ? undefined : true}
+      >
+        {name}
+      </span>
+    );
+  }
+  return <BrandLogo brand={brand} tone={tone} height={height} alt={withAlt ? name : ""} className={className} />;
 }
 
 export function Chevron({ className }: { className?: string }) {

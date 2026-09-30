@@ -13,7 +13,10 @@ type Chrome = {
   footerTagline: string; footerCta: string; company: string; rights: string; addressLabel: string; group: string;
 };
 
-const signInLinks: NavLink[] = (["arvoos", "arvolab", "arc"] as const).map((key) => ({
+/* Dört ürünün de giriş adresi menüde: liste PRODUCT_APPS'ten geliyor,
+   yeni ürün eklenince menüye elle eklenmesi gerekmesin. Arvo Randevu
+   eskiden burada yoktu ve panele yalnızca adresi bilen girebiliyordu. */
+const signInLinks: NavLink[] = (["arvoos", "arvolab", "arc", "randevu"] as const).map((key) => ({
   label: PRODUCT_APPS[key].name,
   desc: PRODUCT_APPS[key].host,
   href: PRODUCT_APPS[key].url,
@@ -30,6 +33,9 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
       { label: "ArvoARC", desc: "E-ticaret ve mağaza yönetimi", href: ROUTES.arc.tr },
+      /* Arvo Randevu'nun tanıtım sayfası henüz yok; menüde ürün olarak
+         görünüyor ama bağlantı doğrudan panelin kendisine gidiyor. */
+      { label: "Arvo Randevu", desc: "Salon randevu yönetimi", href: PRODUCT_APPS.randevu.url, external: true },
     ],
     arvoosTitle: "ArvoOS’u keşfedin",
     arvoosLinks: [
@@ -58,6 +64,7 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },
       { label: "ArvoARC", desc: "E-commerce and store management", href: ROUTES.arc.en },
+      { label: "Arvo Randevu", desc: "Salon appointment management", href: PRODUCT_APPS.randevu.url, external: true },
     ],
     arvoosTitle: "Explore ArvoOS",
     arvoosLinks: [

@@ -183,6 +183,7 @@ export function buildLlmsFullTxt(): string {
   const os = PRODUCT_APPS.arvoos;
   const lab = PRODUCT_APPS.arvolab;
   const arc = PRODUCT_APPS.arc;
+  const rdv = PRODUCT_APPS.randevu;
   const mail = COMPANY.email;
   const address = `${COMPANY.address.display}, Türkiye`;
 
@@ -278,9 +279,19 @@ Page: ${u("arc", "en")} · Web app: ${arc.url}
 
 **How it works.** Stores sign up and set up ArvoARC themselves (self-service). It is cloud-based and runs in the browser. It is multi-tenant: each store has its own space.
 
+## Arvo Randevu — appointment management for salons
+
+Panel: ${rdv.url} · Pricing: ${u("pricing", "en")}
+
+**What it is.** Arvo Randevu is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
+
+**Who it is for.** Hairdressers, beauty salons and care centres — both single-location salons and multi-branch businesses.
+
+**How it works.** Cloud-based and used in a browser. Each salon works in its own space (multi-tenant). Working hours are defined in Türkiye local time. Double booking is prevented by the database itself, not only by the interface. Arvo Randevu does not have a separate marketing page yet; its prices are listed on the pricing page.
+
 ## How the products relate
 
-ArvoOS, ArvoLab and ArvoARC are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${arc.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoARC manages a store's products and orders.
+ArvoOS, ArvoLab, ArvoARC and Arvo Randevu are separate web applications, each on its own subdomain of arvo-os.com (${os.host}, ${lab.host}, ${arc.host}, ${rdv.host}), built by the same company under one brand and quality standard. ArvoOS runs a company's operations (CRM, proposals, contracts, jobs, finance, HR); ArvoLab supports academic research; ArvoARC manages a store's products and orders; Arvo Randevu runs a salon's appointment book.
 
 ## Services
 
@@ -450,9 +461,19 @@ Sayfa: ${u("arc", "tr")} · Uygulama: ${arc.url}
 
 **Nasıl çalışır?** Mağazalar ArvoARC'a kendileri kaydolur ve kurulumu kendileri yapar (self servis). Bulut tabanlıdır, tarayıcıda çalışır. Çok kiracılıdır: her mağazanın kendi alanı vardır.
 
+## Arvo Randevu — salonlar için randevu yönetimi
+
+Panel: ${rdv.url} · Ücretler: ${u("pricing", "tr")}
+
+**Nedir?** Arvo Randevu, kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
+
+**Kimler için?** Kuaförler, güzellik salonları ve bakım merkezleri; tek şubeli salonlar ve çok şubeli işletmeler.
+
+**Nasıl çalışır?** Bulut tabanlıdır, tarayıcıda çalışır. Her salon kendi çalışma alanında çalışır (çok kiracılı). Çalışma saatleri Türkiye saatiyle tanımlanır. Çakışan randevuyu arayüz değil veritabanının kendisi engeller. Arvo Randevu'nun ayrı bir tanıtım sayfası henüz yoktur; fiyatları Ücretler sayfasında yayımlanır.
+
 ## Ürünler arasındaki ilişki
 
-ArvoOS, ArvoLab ve ArvoARC; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${arc.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoARC bir mağazanın ürünlerini ve siparişlerini yönetir.
+ArvoOS, ArvoLab, ArvoARC ve Arvo Randevu; her biri arvo-os.com'un kendi alt alan adında (${os.host}, ${lab.host}, ${arc.host}, ${rdv.host}) çalışan ayrı web uygulamalarıdır ve aynı şirket tarafından ortak marka ve kalite standardıyla geliştirilir. ArvoOS bir şirketin operasyonunu (CRM, teklif, sözleşme, iş, finans, İK) yönetir; ArvoLab akademik araştırmayı destekler; ArvoARC bir mağazanın ürünlerini ve siparişlerini yönetir; Arvo Randevu bir salonun randevu defterini yönetir.
 
 ## Hizmetler
 

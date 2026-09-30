@@ -53,6 +53,8 @@ export function organizationLd(): Json {
       { "@type": "Brand", name: PRODUCT_APPS.arvoos.name, url: absoluteUrl(ROUTES.arvoos.tr) },
       { "@type": "Brand", name: PRODUCT_APPS.arvolab.name, url: absoluteUrl(ROUTES.arvolab.tr) },
       { "@type": "Brand", name: PRODUCT_APPS.arc.name, url: absoluteUrl(ROUTES.arc.tr) },
+      // Arvo Randevu'nun tanıtım sayfası yok; markanın adresi panelin kendisi.
+      { "@type": "Brand", name: PRODUCT_APPS.randevu.name, url: PRODUCT_APPS.randevu.url },
     ],
     knowsAbout: [
       "Business operating system",
@@ -63,6 +65,7 @@ export function organizationLd(): Json {
       "Research workspace software",
       "Academic writing",
       "E-commerce product and order management",
+      "Appointment scheduling for salons",
       "Web design",
       "Search engine optimization (SEO)",
       "Generative engine optimization (GEO)",

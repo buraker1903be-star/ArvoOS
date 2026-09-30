@@ -1,8 +1,8 @@
 // apple.com tarzı açık gri, küçük punto alt bilgi. Logolar özgün renkli ve küçük.
 import Link from "next/link";
-import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
+import { COMPANY, PRODUCT_APPS, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
-import { BrandLogo } from "./marks";
+import { BrandLogo, ProductLogo } from "./marks";
 import { LangLink } from "./lang-link";
 
 function Col({ title, links }: { title: string; links: NavLink[] }) {
@@ -30,6 +30,8 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           <Link href={ROUTES.arvoos[locale]}><BrandLogo brand="arvoos" alt="ArvoOS" /></Link>
           <Link href={ROUTES.arvolab[locale]}><BrandLogo brand="arvolab" alt="ArvoLab" /></Link>
           <Link href={ROUTES.arc[locale]}><BrandLogo brand="arc" alt="ArvoARC" /></Link>
+          {/* Arvo Randevu'nun logo dosyası yok; adı wordmark olarak basılır. */}
+          <a href={PRODUCT_APPS.randevu.url} target="_blank" rel="noopener"><ProductLogo name="Arvo Randevu" height={16} /></a>
           <span className="ftr-tag">{t.footerTagline}</span>
         </nav>
         <div className="ftr-cols">

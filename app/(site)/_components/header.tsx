@@ -80,12 +80,13 @@ export function SiteHeader({ locale }: { locale: Locale }) {
               {trigger("products", t.products, productsActive)}
               <div id="hdr-products" className="hdr-pop hdr-pop-products" hidden={open !== "products"}>
                 <div className="pop-products">
-                  {t.productLinks.map((l) => (
-                    <Link key={l.href} className="pop-product" href={l.href} onClick={close}>
-                      <ProductLogo name={l.label as ProductName} height={22} />
-                      <span><span>{l.desc}</span></span>
-                    </Link>
-                  ))}
+                  {t.productLinks.map((l) => {
+                    const ic = <><ProductLogo name={l.label as ProductName} height={22} /><span><span>{l.desc}</span></span></>;
+                    // Tanıtım sayfası olmayan ürün (Arvo Randevu) panele çıkar.
+                    return l.external
+                      ? <a key={l.href} className="pop-product" href={l.href} target="_blank" rel="noopener" onClick={close}>{ic}</a>
+                      : <Link key={l.href} className="pop-product" href={l.href} onClick={close}>{ic}</Link>;
+                  })}
                 </div>
                 <div className="pop-side">
                   <p className="pop-label">{t.arvoosTitle}</p>
@@ -123,7 +124,9 @@ export function SiteHeader({ locale }: { locale: Locale }) {
       <div id="hdr-sheet" className="hdr-sheet" hidden={!sheet}>
         <div className="wrap sheet-inner">
           <p className="sheet-label">{t.products}</p>
-          {t.productLinks.map((l) => <Link key={l.href} className="sheet-link" href={l.href} onClick={close}>{l.label}<small>{l.desc}</small></Link>)}
+          {t.productLinks.map((l) => (l.external
+            ? <a key={l.href} className="sheet-link" href={l.href} target="_blank" rel="noopener" onClick={close}>{l.label}<small>{l.desc}</small></a>
+            : <Link key={l.href} className="sheet-link" href={l.href} onClick={close}>{l.label}<small>{l.desc}</small></Link>))}
           <div className="sheet-sub">{t.arvoosLinks.map((l) => <Link key={l.href} href={l.href} onClick={close}>{l.label}</Link>)}</div>
           <p className="sheet-label">{t.services}</p>
           {t.serviceLinks.map((l) => <Link key={l.href} className="sheet-link sheet-link-s" href={l.href} onClick={close}>{l.label}</Link>)}

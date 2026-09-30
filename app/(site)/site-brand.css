@@ -11,3 +11,15 @@
 .site .ref .brand-logo{--h:auto;width:min(70%,380px);height:auto}
 .site .mo-brand .brand-logo{--h:16px}
 @media (max-width:767px){ .site .hdr-logo .brand-logo{--h:18px} }
+
+/* Logosu olmayan ürün (Arvo Randevu): ad, logoların optik boyutunda
+   yazılır. Logo dosyası eklenince bu kural kendiliğinden devre dışı
+   kalır — wordmark yalnızca BRAND_OF'ta karşılığı olmayan ürün için
+   basılıyor. */
+.site .brand-word{
+  display:inline-block;line-height:var(--h,28px);
+  color:var(--ink);font-size:calc(var(--h,28px) * .62);font-weight:620;letter-spacing:-.02em;white-space:nowrap
+}
+.site .brand-word.on-dark{color:#fff}
+.site .pop-product .brand-word{--h:20px}
+.site .ftr-brands .brand-word{--h:16px}
