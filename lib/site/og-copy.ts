@@ -5,7 +5,7 @@
 import type { Locale, PageId } from "./routes";
 
 export type OgCopy = { eyebrow: string; title: string; tagline: string };
-export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC";
+export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC" | "Arvo Randevu";
 
 export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   arvoos: "ArvoOS",
@@ -15,6 +15,7 @@ export const OG_PRODUCT: Partial<Record<PageId, ProductName>> = {
   "arvoos-plans": "ArvoOS",
   arvolab: "ArvoLab",
   arc: "ArvoARC",
+  randevu: "Arvo Randevu",
 };
 
 export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
@@ -41,6 +42,10 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
   "arvoos-plans": {
     tr: { eyebrow: "ARVOOS · PAKETLER", title: "İhtiyacınız kadar başlayın, gücünüz kadar büyüyün.", tagline: "Paketler; modüllere, kullanıcı sayısına ve şube yapısına göre birlikte belirlenir." },
     en: { eyebrow: "ARVOOS · PLANS", title: "Start with what you need. Grow as you scale.", tagline: "Plans are shaped together around your modules, users and branch structure." },
+  },
+  randevu: {
+    tr: { eyebrow: "ARVO RANDEVU · SALON RANDEVU YÖNETİMİ", title: "Randevu defteri telefonu meşgul etmesin.", tagline: "Müşteri kendi randevusunu alır; personel bazlı takvim, çalışma saati ve izin, WhatsApp hatırlatma." },
+    en: { eyebrow: "ARVO RANDEVU · SALON APPOINTMENT MANAGEMENT", title: "Let the booking page answer the phone.", tagline: "Customers book themselves; per-staff calendar, working hours and time off, WhatsApp reminders." },
   },
   pricing: {
     tr: { eyebrow: "ÜCRETLER", title: "İşletme ürünlerinde kurum başına fiyat.", tagline: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },

@@ -131,11 +131,10 @@ export function tutarYaz(kurus: number, locale: Locale): string {
 /** JSON-LD `price` alanı: ondalık noktalı, ayırıcısız ("2990.00"). */
 export const ldFiyat = (kurus: number): string => (kurus / 100).toFixed(2);
 
-/** Ürünün tanıtım sayfası; Arvo Randevu'da henüz sayfa yok, panel adresi verilir. */
+/* Dört ürünün de tanıtım sayfası var; Arvo Randevu'nunki 30.09.2026'da
+   açıldı (öncesinde burası panelin kendi adresine çıkıyordu). */
 export function urunAdresi(product: PricedProduct, locale: Locale): { href: string; external: boolean } {
-  if (product === "randevu") return { href: PRODUCT_APPS.randevu.url, external: true };
-  const id = product === "arc" ? "arc" : product === "arvolab" ? "arvolab" : "arvoos";
-  return { href: ROUTES[id][locale], external: false };
+  return { href: ROUTES[product === "arc" ? "arc" : product][locale], external: false };
 }
 
 export const urunAdi = (product: PricedProduct): string =>

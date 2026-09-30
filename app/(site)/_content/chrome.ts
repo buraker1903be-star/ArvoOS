@@ -33,9 +33,7 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "ArvoOS", desc: "İşletme işletim sistemi", href: ROUTES.arvoos.tr },
       { label: "ArvoLab", desc: "Araştırma çalışma alanı", href: ROUTES.arvolab.tr },
       { label: "ArvoARC", desc: "E-ticaret ve mağaza yönetimi", href: ROUTES.arc.tr },
-      /* Arvo Randevu'nun tanıtım sayfası henüz yok; menüde ürün olarak
-         görünüyor ama bağlantı doğrudan panelin kendisine gidiyor. */
-      { label: "Arvo Randevu", desc: "Salon randevu yönetimi", href: PRODUCT_APPS.randevu.url, external: true },
+      { label: "Arvo Randevu", desc: "Salon randevu yönetimi", href: ROUTES.randevu.tr },
     ],
     arvoosTitle: "ArvoOS’u keşfedin",
     arvoosLinks: [
@@ -64,7 +62,7 @@ export const CHROME: Record<Locale, Chrome> = {
       { label: "ArvoOS", desc: "Business operating system", href: ROUTES.arvoos.en },
       { label: "ArvoLab", desc: "Research workspace", href: ROUTES.arvolab.en },
       { label: "ArvoARC", desc: "E-commerce and store management", href: ROUTES.arc.en },
-      { label: "Arvo Randevu", desc: "Salon appointment management", href: PRODUCT_APPS.randevu.url, external: true },
+      { label: "Arvo Randevu", desc: "Salon appointment management", href: ROUTES.randevu.en },
     ],
     arvoosTitle: "Explore ArvoOS",
     arvoosLinks: [

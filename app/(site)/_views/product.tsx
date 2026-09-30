@@ -5,7 +5,7 @@ import { JsonLd, breadcrumbLd, faqLd, productLd, webPageLd } from "@/lib/site/st
 import type { ProductContent } from "../_content/types";
 import { Bento, hasBento } from "../_components/bento";
 import { HeroStage } from "../_components/hero-stage";
-import { Check, ProductLogo, type ProductName } from "../_components/marks";
+import { Check, ProductLogo, urunLogosuVar, type ProductName } from "../_components/marks";
 import { StoryStage } from "../_components/story-stage";
 import { ArvoosSubnav } from "../_components/subnav";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
@@ -15,8 +15,15 @@ export function ProductView({ locale, c }: { locale: Locale; c: ProductContent }
   const crumbs = [{ name: "Arvo", href: ROUTES.home[locale] }, { name: c.name, href: path }];
   return (
     <>
-      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} logo={<ProductLogo name={c.name as ProductName} height={40} />}>
-        <HeroStage locale={locale} product={c.id} />
+      <PageHero {...c.hero} crumbs={crumbs} crumbLabel={locale === "tr" ? "İçerik yolu" : "Breadcrumb"} logo={urunLogosuVar(c.name as ProductName)
+        ? <ProductLogo name={c.name as ProductName} height={40} />
+        /* Logo dosyası yoksa wordmark basılmaz: ürün adı zaten üst
+           etikette geçiyor ve iki kez yan yana yazılıyordu. */
+        : undefined}>
+        {/* Arvo Randevu'nun arayüz maketi henüz yok; sahnesiz kahraman
+            PageHero tarafından ortalanır. Uydurma bir ekran çizmektense
+            sahneyi hiç basmamak doğru. */}
+        {c.id === "randevu" ? null : <HeroStage locale={locale} product={c.id} />}
       </PageHero>
       {c.id === "arvoos" ? <ArvoosSubnav locale={locale} current="arvoos" /> : null}
 

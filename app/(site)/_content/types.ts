@@ -17,7 +17,7 @@ export type Hero = { eyebrow: string; title: string; subtitle?: string; lead: st
 export type Block = { eyebrow?: string; title: string; lead?: string };
 
 export type ProductContent = {
-  id: "arvoos" | "arvolab" | "arc";
+  id: "arvoos" | "arvolab" | "arc" | "randevu";
   name: string;
   category: string;
   appUrl: string;

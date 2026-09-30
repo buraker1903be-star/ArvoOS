@@ -19,6 +19,7 @@ export type PageId =
   | "pricing"
   | "arvolab"
   | "arc"
+  | "randevu"
   | "services"
   | "web-design"
   | "seo-geo"
@@ -43,6 +44,7 @@ export const ROUTES: Record<PageId, Record<Locale, string>> = {
   pricing: { tr: "/ucretler", en: "/en/pricing" },
   arvolab: { tr: "/urunler/arvolab", en: "/en/products/arvolab" },
   arc: { tr: "/urunler/arc", en: "/en/products/arc" },
+  randevu: { tr: "/urunler/randevu", en: "/en/products/randevu" },
   services: { tr: "/hizmetler", en: "/en/services" },
   "web-design": { tr: "/hizmetler/web-sitesi-tasarimi", en: "/en/services/web-design" },
   "seo-geo": { tr: "/hizmetler/seo-ve-geo", en: "/en/services/seo-geo" },
@@ -63,6 +65,7 @@ export const PAGE_PRIORITY: Record<PageId, number> = {
   arvoos: 0.9,
   arvolab: 0.9,
   arc: 0.9,
+  randevu: 0.9,
   "arvoos-modules": 0.8,
   "arvoos-industries": 0.7,
   "arvoos-solutions": 0.7,

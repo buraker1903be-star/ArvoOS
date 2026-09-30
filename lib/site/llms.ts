@@ -40,6 +40,10 @@ const PAGES: Record<PageId, PageInfo> = {
     en: { name: "ArvoOS plans", summary: "Three steps (Starter, Business, Enterprise). Starter and Business have published list prices; Enterprise is scoped per organization (modules, users, branches, workflows)." },
     tr: { name: "ArvoOS paketler", summary: "Üç basamak (Başlangıç, Kurumsal, Özel kurum). Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır; Özel kurum kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları)." },
   },
+  randevu: {
+    en: { name: "Arvo Randevu", summary: "Appointment system for hair and beauty salons: an online booking page where the customer picks the service, the stylist (or 'no preference') and the time without signing up, a per-staff calendar, service and staff definitions, weekly working hours and time off in local time, customer records, and a daily reminder list sent from WhatsApp in one tap. Clashing appointments are rejected at database level." },
+    tr: { name: "Arvo Randevu", summary: "Kuaför ve güzellik salonları için randevu sistemi: müşterinin üye olmadan hizmeti, personeli (ya da 'fark etmez') ve saati seçtiği çevrim içi randevu sayfası, personel bazlı takvim, hizmet ve personel tanımı, yerel saatle haftalık çalışma saatleri ve izinler, müşteri kaydı, tek tıkla WhatsApp'tan gönderilen günlük hatırlatma listesi. Çakışan randevu veritabanı düzeyinde reddedilir." },
+  },
   pricing: {
     en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab. ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user; ArvoLab is priced per researcher; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
     tr: { name: "Ücretler", summary: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil; ArvoLab araştırmacı başına fiyatlanır; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
@@ -125,7 +129,7 @@ function item(id: PageId, extra = ""): string {
 }
 
 const SECTIONS: { title: string; ids: PageId[] }[] = [
-  { title: "Products", ids: ["arvoos", "arvoos-modules", "arvoos-industries", "arvoos-solutions", "arvoos-plans", "arvolab", "arc"] },
+  { title: "Products", ids: ["arvoos", "arvoos-modules", "arvoos-industries", "arvoos-solutions", "arvoos-plans", "arvolab", "arc", "randevu"] },
   { title: "Pricing", ids: ["pricing"] },
   { title: "Services", ids: ["services", "web-design", "seo-geo", "custom-software"] },
   { title: "Company", ids: ["home", "about"] },
@@ -137,6 +141,7 @@ const SIGN_IN: Partial<Record<PageId, string>> = {
   arvoos: ` Sign in: ${PRODUCT_APPS.arvoos.url}.`,
   arvolab: ` Sign in: ${PRODUCT_APPS.arvolab.url}.`,
   arc: ` Web app: ${PRODUCT_APPS.arc.url}.`,
+  randevu: ` Panel: ${PRODUCT_APPS.randevu.url}.`,
 };
 
 export function buildLlmsTxt(): string {
@@ -281,13 +286,13 @@ Page: ${u("arc", "en")} · Web app: ${arc.url}
 
 ## Arvo Randevu — appointment management for salons
 
-Panel: ${rdv.url} · Pricing: ${u("pricing", "en")}
+Page: ${u("randevu", "en")} · Panel: ${rdv.url} · Pricing: ${u("pricing", "en")}
 
 **What it is.** Arvo Randevu is an appointment system for hair and beauty salons: an online booking page for customers, an appointment calendar, staff and service definitions, and customer records with history.
 
 **Who it is for.** Hairdressers, beauty salons and care centres — both single-location salons and multi-branch businesses.
 
-**How it works.** Cloud-based and used in a browser. Each salon works in its own space (multi-tenant). Working hours are defined in Türkiye local time. Double booking is prevented by the database itself, not only by the interface. Arvo Randevu does not have a separate marketing page yet; its prices are listed on the pricing page.
+**How it works.** Cloud-based and used in a browser. Each salon works in its own space (multi-tenant). Working hours are defined in Türkiye local time. Double booking is prevented by the database itself, not only by the interface. Its prices are listed on the pricing page.
 
 ## How the products relate
 
@@ -463,13 +468,13 @@ Sayfa: ${u("arc", "tr")} · Uygulama: ${arc.url}
 
 ## Arvo Randevu — salonlar için randevu yönetimi
 
-Panel: ${rdv.url} · Ücretler: ${u("pricing", "tr")}
+Sayfa: ${u("randevu", "tr")} · Panel: ${rdv.url} · Ücretler: ${u("pricing", "tr")}
 
 **Nedir?** Arvo Randevu, kuaför ve güzellik salonları için randevu sistemidir: müşteriye açık çevrim içi randevu sayfası, randevu takvimi, personel ve hizmet tanımları, geçmişiyle birlikte müşteri kaydı.
 
 **Kimler için?** Kuaförler, güzellik salonları ve bakım merkezleri; tek şubeli salonlar ve çok şubeli işletmeler.
 
-**Nasıl çalışır?** Bulut tabanlıdır, tarayıcıda çalışır. Her salon kendi çalışma alanında çalışır (çok kiracılı). Çalışma saatleri Türkiye saatiyle tanımlanır. Çakışan randevuyu arayüz değil veritabanının kendisi engeller. Arvo Randevu'nun ayrı bir tanıtım sayfası henüz yoktur; fiyatları Ücretler sayfasında yayımlanır.
+**Nasıl çalışır?** Bulut tabanlıdır, tarayıcıda çalışır. Her salon kendi çalışma alanında çalışır (çok kiracılı). Çalışma saatleri Türkiye saatiyle tanımlanır. Çakışan randevuyu arayüz değil veritabanının kendisi engeller. Fiyatları Ücretler sayfasında yayımlanır.
 
 ## Ürünler arasındaki ilişki
 

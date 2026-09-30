@@ -97,10 +97,17 @@ describe("fiyat kaynağı", () => {
     }
   });
 
-  test("ürün adresi: Arvo Randevu'nun tanıtım sayfası yok, dış adrese gider", () => {
-    assert.equal(urunAdresi("randevu", "tr").external, true);
-    assert.equal(urunAdresi("arvoos", "tr").external, false);
+  test("dört ürünün de tanıtım sayfası var, adresler site içi", () => {
+    /* Arvo Randevu 30.09.2026'ya kadar dışarı, panelin kendi adresine
+       çıkıyordu; sayfası açılınca içeri alındı. Bir ürünün sayfası
+       yoksa bu test onu yakalar. */
+    for (const product of PRICED_PRODUCTS) {
+      const adres = urunAdresi(product, "tr");
+      assert.equal(adres.external, false, `${product}: dış adrese gidiyor`);
+      assert.match(adres.href, /^\/[a-z]/, `${product}: ${adres.href}`);
+    }
     assert.equal(urunAdresi("arvoos", "tr").href, "/urunler/arvoos");
+    assert.equal(urunAdresi("randevu", "tr").href, "/urunler/randevu");
     assert.equal(urunAdresi("arc", "en").href, "/en/products/arc");
     assert.equal(urunAdi("arc"), "ArvoARC");
   });

@@ -42,6 +42,10 @@ export type ProductName = "ArvoOS" | "ArvoLab" | "ArvoARC" | "Arvo Randevu";
 */
 const BRAND_OF: Partial<Record<ProductName, Brand>> = { ArvoOS: "arvoos", ArvoLab: "arvolab", ArvoARC: "arc" };
 
+/** Ürünün kırpılmış logo dosyası var mı? Yoksa çağıran, adı iki kez
+ *  yazdırmamak için wordmark'ı hiç basmamayı seçebilir. */
+export const urunLogosuVar = (name: ProductName): boolean => Boolean(BRAND_OF[name]);
+
 /** Ürün kimliği: logosu varsa özgün logo, yoksa adının wordmark'ı. */
 export function ProductLogo({ name, tone = "light", height = 28, withAlt = true, className = "" }: {
   name: ProductName; tone?: "light" | "dark"; height?: number; withAlt?: boolean; className?: string;
