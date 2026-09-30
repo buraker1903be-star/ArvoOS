@@ -112,7 +112,10 @@ export const PRICING_TR: PricingContent = {
     {
       product: "arvolab",
       tag: "Araştırma çalışma alanı",
-      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize kadar araştırma süreci tek çalışma alanında.",
+      /* Fiyat yükseldi (bkz. pricing.ts); değeri de yazmak gerekiyor.
+         "Türkiye'de tek" gibi kanıtlanamaz bir üstünlük iddiası YAZILMAZ —
+         yerine ölçülebilir olan söylenir: ayrı araçlar, ayrı abonelikler. */
+      lead: "Literatür ve atıftan akademik yazıma, kılavuz kontrolünden analize ve özgünlük ön kontrolüne kadar araştırma sürecinin tamamı tek çalışma alanında — her adım için ayrı bir araca ve ayrı bir aboneliğe gerek kalmadan.",
       linkLabel: "ArvoLab'i inceleyin",
       cards: [
         {

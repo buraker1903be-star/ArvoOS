@@ -54,6 +54,19 @@ export type Plan = {
   ekipte fark belirgindir ve fiyat kartındaki "kullanıcı dahil" satırı bu
   yüzden vardır. E-ticaret tarafında ikas'ın ücretli paketleri ~3.300–3.900
   TL/ay bandındadır; ArvoARC'ın Büyüme basamağı bilerek bunun altındadır.
+
+  ArvoLab ayrı durur: Türkiye'de literatür + akademik yazım + kılavuz
+  kontrolü + analiz + özgünlük ön kontrolünü tek pakette veren bir sistem
+  yok. Karşılaştırma yurt dışı araç yığınıdır (Jenni ~$29/ay, Elicit
+  $10-49, Scite $12-20, Paperpile ~$4 — dördü ayrı hesap, Türkçe kılavuz
+  kontrolü yok) ve alıcının kaçındığı gerçek harcamadır (tez yazdırma
+  yüksek lisansta 30.000-70.000 TL). Bu yüzden fiyat 399'dan 1.490'a
+  çıkarıldı (30.09.2026): kategoride tek olan ürünü rakip fiyatına göre
+  değil, yerine geçtiği harcamaya göre fiyatlıyoruz.
+
+  Öğrenci indirimi YOK: ödeyen kitle zaten lisansüstü öğrencidir, indirim
+  gelirin kendisini keserdi. Onlara dönük teklif yıllık pakettir — 10 ay
+  bedeliyle 12 ay, yani bir tez dönemini kapsayan tek ödeme.
 */
 export const PLANS: Plan[] = [
   { code: "arvoos-baslangic", ad: { tr: "Başlangıç", en: "Starter" }, product: "arvoos", aylikKurus: tl(2990) },
@@ -68,8 +81,8 @@ export const PLANS: Plan[] = [
   { code: "randevu-coklu", ad: { tr: "Çok şube", en: "Multi-branch" }, product: "randevu", aylikKurus: tl(1490) },
   { code: "randevu-zincir", ad: { tr: "Zincir", en: "Chain" }, product: "randevu", aylikKurus: null },
 
-  { code: "arvolab-arastirmaci", ad: { tr: "Araştırmacı", en: "Researcher" }, product: "arvolab", aylikKurus: tl(399), oneCikan: true },
-  { code: "arvolab-ekip", ad: { tr: "Ekip", en: "Team" }, product: "arvolab", aylikKurus: tl(1490) },
+  { code: "arvolab-arastirmaci", ad: { tr: "Araştırmacı", en: "Researcher" }, product: "arvolab", aylikKurus: tl(1490), oneCikan: true },
+  { code: "arvolab-ekip", ad: { tr: "Ekip", en: "Team" }, product: "arvolab", aylikKurus: tl(4990) },
   { code: "arvolab-kurum", ad: { tr: "Kurum", en: "Institution" }, product: "arvolab", aylikKurus: null },
 ];
 

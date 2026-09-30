@@ -109,7 +109,7 @@ export const PRICING_EN: PricingContent = {
     {
       product: "arvolab",
       tag: "Research workspace",
-      lead: "Literature and citations, academic writing, guideline checks and analysis in one workspace.",
+      lead: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks — the whole research process in one workspace, without a separate tool and a separate subscription for every step.",
       linkLabel: "Explore ArvoLab",
       cards: [
         {
