@@ -99,6 +99,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                 {t.serviceLinks.map((l) => <Item key={l.href} link={l} onNavigate={close} />)}
               </div>
             </li>
+            <li><Link className="hdr-link" href={ROUTES.pricing[locale]} aria-current={isActive(ROUTES.pricing[locale]) ? "page" : undefined}>{t.pricing}</Link></li>
             <li><Link className="hdr-link" href={ROUTES.about[locale]} aria-current={isActive(ROUTES.about[locale]) ? "page" : undefined}>{t.about}</Link></li>
             <li><Link className="hdr-link" href={ROUTES.contact[locale]} aria-current={isActive(ROUTES.contact[locale]) ? "page" : undefined}>{t.contact}</Link></li>
           </ul>
@@ -127,6 +128,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           <p className="sheet-label">{t.services}</p>
           {t.serviceLinks.map((l) => <Link key={l.href} className="sheet-link sheet-link-s" href={l.href} onClick={close}>{l.label}</Link>)}
           <p className="sheet-label">{t.company}</p>
+          <Link className="sheet-link sheet-link-s" href={ROUTES.pricing[locale]} onClick={close}>{t.pricing}</Link>
           <Link className="sheet-link sheet-link-s" href={ROUTES.about[locale]} onClick={close}>{t.about}</Link>
           <Link className="sheet-link sheet-link-s" href={ROUTES.contact[locale]} onClick={close}>{t.contact}</Link>
           <p className="sheet-label">{t.signIn}</p>

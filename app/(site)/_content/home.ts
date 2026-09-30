@@ -117,7 +117,7 @@ export const HOME_TR: HomeContent = {
       { q: "Arvo nedir?", a: `Arvo, ${COMPANY.legalName} şirketinin yazılım markasıdır. İşletmeler için ArvoOS’u, araştırmacılar için ArvoLab’i ve mağazalar için ArvoARC’ı geliştirir; web sitesi tasarımı ve özel yazılım hizmetleri de sunar.` },
       { q: "ArvoOS, ArvoLab ve ArvoARC arasındaki fark nedir?", a: "ArvoOS bir işletmenin operasyonunu talepten tahsilata yönetir. ArvoLab akademik araştırma ve yazım sürecini destekler. ArvoARC ise mağazaların ürünlerini ve siparişlerini tek panelde toplar." },
       { q: "Arvo ürünlerine nereden giriş yapılır?", a: `ArvoOS ${PRODUCT_APPS.arvoos.host}, ArvoLab ${PRODUCT_APPS.arvolab.host}, ArvoARC ise ${PRODUCT_APPS.arc.host} adresinde çalışır. Üçü de tarayıcıda çalışan web uygulamalarıdır.` },
-      { q: "ArvoOS’un fiyatı nedir?", a: "Herkese açık bir fiyat listesi yoktur. Paketler; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir." },
+      { q: "ArvoOS’un fiyatı nedir?", a: `Aylık ve yıllık liste fiyatları ${ROUTES.pricing.tr} sayfasında yayımlanmıştır; fiyat kurum başınadır, kullanıcı başına değil. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre birlikte belirlenir.` },
       { q: "Nasıl demo talep edebilirim?", a: `İletişim sayfasındaki formu doldurabilir ya da ${COMPANY.email} adresine yazabilirsiniz; talebiniz ilgili ürün ekibine iletilir.` },
     ],
   },

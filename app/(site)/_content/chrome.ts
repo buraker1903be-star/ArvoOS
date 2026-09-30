@@ -5,7 +5,7 @@ export type NavLink = { label: string; href: string; desc?: string; external?: b
 
 type Chrome = {
   skip: string; home: string; nav: string; menu: string; close: string;
-  products: string; services: string; about: string; contact: string; privacy: string;
+  products: string; services: string; pricing: string; about: string; contact: string; privacy: string;
   legal: string; distanceSales: string; refund: string; delivery: string;
   signIn: string; demo: string; langName: string; langShort: string;
   productLinks: NavLink[]; arvoosTitle: string; arvoosLinks: NavLink[];
@@ -23,7 +23,7 @@ const signInLinks: NavLink[] = (["arvoos", "arvolab", "arc"] as const).map((key)
 export const CHROME: Record<Locale, Chrome> = {
   tr: {
     skip: "İçeriğe geç", home: "ArvoOS — Arvo ana sayfa", nav: "Ana menü", menu: "Menüyü aç", close: "Menüyü kapat",
-    products: "Ürünler", services: "Hizmetler", about: "Hakkımızda", contact: "İletişim", privacy: "Gizlilik ve KVKK",
+    products: "Ürünler", services: "Hizmetler", pricing: "Ücretler", about: "Hakkımızda", contact: "İletişim", privacy: "Gizlilik ve KVKK",
     legal: "Yasal", distanceSales: "Mesafeli Satış Sözleşmesi", refund: "İptal ve İade", delivery: "Teslimat",
     signIn: "Giriş", demo: "Demo talep et", langName: "English", langShort: "EN",
     productLinks: [
@@ -51,7 +51,7 @@ export const CHROME: Record<Locale, Chrome> = {
   },
   en: {
     skip: "Skip to content", home: "Arvo home", nav: "Main menu", menu: "Open menu", close: "Close menu",
-    products: "Products", services: "Services", about: "About", contact: "Contact", privacy: "Privacy",
+    products: "Products", services: "Services", pricing: "Pricing", about: "About", contact: "Contact", privacy: "Privacy",
     legal: "Legal", distanceSales: "Distance Sales Agreement", refund: "Cancellation & Refund", delivery: "Delivery",
     signIn: "Sign in", demo: "Request a demo", langName: "Türkçe", langShort: "TR",
     productLinks: [

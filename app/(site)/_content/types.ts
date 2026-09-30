@@ -1,5 +1,6 @@
 // Ürün / alt sayfa / hizmet sayfası içerik şekilleri (TR ve EN aynı şekli doldurur).
 import type { PageId } from "@/lib/site/routes";
+import type { PricedProduct } from "@/lib/site/pricing";
 import type { Cta, QA } from "../_components/ui";
 
 export type Meta = { title: string; description: string };
@@ -46,4 +47,26 @@ export type SubContent = {
   serviceName?: string;
   /** Organization JSON-LD eklensin mi (Hakkımızda) */
   org?: boolean;
+};
+
+/*
+  Ücretler sayfası. RAKAM YOK: tutarlar lib/site/pricing.ts'ten okunur,
+  buradaki `code` alanı karta hangi planın bağlandığını söyler. Metin ile
+  rakamın ayrı durması, iki dilin fiyatının ayrışmasını imkânsız kılar.
+*/
+/** `name` YOKTUR: basamak adı pricing.ts'teki Plan.ad'dan gelir. */
+export type PriceCard = { code: string; text: string; items: string[] };
+export type PriceGroup = { product: PricedProduct; tag: string; lead: string; linkLabel: string; cards: PriceCard[] };
+export type PricingContent = {
+  id: PageId;
+  meta: Meta;
+  hero: Hero;
+  /** Aylık / yıllık seçici ve yanındaki rozet. */
+  cycle: { monthly: string; yearly: string; badge: string; perMonth: string; perYear: string; quote: string; quoteAction: string };
+  vatNote: string;
+  groups: PriceGroup[];
+  addOns: Block & { items: { code: string; name: string; text: string }[]; quote: string };
+  policy: Block & { items: { title: string; text: string }[]; links: Cta[] };
+  faq: Block & { items: QA[] };
+  cta: Block & { actions: Cta[] };
 };

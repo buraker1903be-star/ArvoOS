@@ -1,0 +1,129 @@
+/*
+  Ücretler sayfası. Kartların gövdesi .fcard'dan gelir; burada yalnızca
+  fiyat bloğu, aylık/yıllık seçici ve ürün grubu başlığı vardır.
+
+  Aylık ve yıllık tutar İKİSİ DE basılır, biri gizlenir: JavaScript
+  yüklenmeden de sayfada okunabilir bir fiyat durur.
+*/
+
+/* --- Aylık / yıllık seçici --- */
+.site .cycle {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 auto 28px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--g-100);
+  box-shadow: var(--hair);
+}
+.site .pricing { display: flex; flex-direction: column; align-items: center; }
+.site .pricing > * { width: 100%; }
+.site .pricing > .cycle { width: auto; }
+
+.site .cycle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background .4s var(--ease), color .4s var(--ease);
+}
+.site .cycle-btn[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: var(--shadow-s);
+}
+.site .cycle-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold-100);
+  color: var(--gold-600);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+.site .vat-note {
+  max-width: 70ch;
+  margin: 0 auto 48px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* --- Ürün grubu --- */
+.site .pgroup { margin-top: 72px; }
+.site .pgroup:first-of-type { margin-top: 0; }
+.site .pgroup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.site .pgroup-head .lead { max-width: 62ch; margin-top: 10px; }
+.site .pgroup-head .link { flex: none; }
+
+/* --- Fiyat bloğu --- */
+.site .price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 46px;
+  margin: 2px 0 6px;
+}
+.site .price b {
+  color: var(--ink);
+  font-size: clamp(30px, 3vw, 38px);
+  font-weight: 620;
+  letter-spacing: -.03em;
+  /* Tutarlar sütun sütun okunuyor; oransal rakamda basamaklar kayıyordu. */
+  font-variant-numeric: tabular-nums;
+}
+.site .price small { color: var(--muted); font-size: 15px; }
+.site .price-quote {
+  color: var(--ink);
+  font-size: clamp(24px, 2.2vw, 30px);
+  font-weight: 620;
+  letter-spacing: -.028em;
+}
+
+/* Seçilen döneme göre biri görünür. */
+.site .pricing[data-cycle="monthly"] .price-y,
+.site .pricing[data-cycle="yearly"] .price-m { display: none; }
+.site .price-m, .site .price-y { display: inline-flex; align-items: baseline; gap: 6px; }
+
+/* Ek kalem kartlarında dönem seçicisi yok; aylık tutar her zaman görünür. */
+.site .acard .price-m { display: inline-flex; }
+.site .acard .price b { font-size: clamp(22px, 2vw, 26px); }
+
+/* --- Öne çıkan basamak --- */
+.site .pcard[data-featured] {
+  box-shadow: var(--shadow-m), inset 0 0 0 2px var(--gold-400);
+}
+.site .pcard h4 {
+  font-size: clamp(20px, 1.8vw, 24px);
+  font-weight: 650;
+  letter-spacing: -.022em;
+  line-height: 1.2;
+}
+
+/* --- Koşullar bölümündeki yasal bağlantılar --- */
+.site .policy-links { justify-content: center; margin-top: 36px; }
+
+@media (max-width: 700px) {
+  .site .cycle { margin-bottom: 20px; }
+  .site .vat-note { margin-bottom: 32px; text-align: left; }
+  .site .pgroup { margin-top: 56px; }
+}

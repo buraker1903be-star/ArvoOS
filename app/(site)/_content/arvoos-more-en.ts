@@ -82,12 +82,15 @@ export const PLANS_EN: SubContent = {
       { title: "Scalable transition plan", text: "We plan setup, data transfer and team onboarding step by step." },
     ],
   },
-  note: "There is no public price list; a proposal is prepared once the scope is clear.",
+  /* Used to read "there is no public price list"; list prices were published
+     on 30.09.2026 (ROUTES.pricing). Leaving it would have contradicted our
+     own pricing page. */
+  note: `Monthly and annual list prices for Starter and Business are published at ${R("pricing")}. For Enterprise, a proposal is prepared once the scope is clear.`,
   faq: { eyebrow: "FAQ", title: "About plans", items: [
-    { q: "How much does ArvoOS cost?", a: "There is no public price list. Pricing is scoped with each organization based on modules, number of users and branch structure." },
+    { q: "How much does ArvoOS cost?", a: `Monthly and annual prices for the Starter and Business plans are published at ${R("pricing")}. Pricing is per organization, not per user. For Enterprise, the fee is scoped with each organization based on modules, number of users and branch structure.` },
     { q: "Which plan should I start with?", a: "We decide together after a needs analysis; most organizations start with core modules and extend over time." },
     { q: "Can I change my plan later?", a: "Yes. Your plan can be extended as your modules, users and branch structure change." },
     { q: "Can we use our own domain?", a: "Yes. A custom domain is connected with DNS verification, and branded sign-in and customer pages run on that address." },
   ] },
-  cta: { title: "Let’s find the right plan for your organization.", actions: [demo, { label: "Write to us", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
+  cta: { title: "Let’s find the right plan for your organization.", actions: [demo, { label: "Pricing", href: R("pricing"), variant: "ghost" }] },
 };

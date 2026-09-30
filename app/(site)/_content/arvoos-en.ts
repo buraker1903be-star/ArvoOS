@@ -82,7 +82,7 @@ export const ARVOOS_EN: ProductContent = {
       { q: "Does ArvoOS support electronic signatures?", a: "Yes. Customers sign with a drawn signature and consent statements; the IP address, timestamp, device and a verification hash are recorded, and the content locks after signing." },
       { q: "Can ArvoOS run on our own domain with our branding?", a: "Yes. You can connect a custom domain verified via DNS and use your logo, brand colour, stamp and signature on sign-in pages, customer pages, proposals and contracts." },
       { q: "Does ArvoOS work on mobile?", a: "Yes. It can be installed as a PWA and works like a mobile app, with a bottom tab bar and bottom sheets." },
-      { q: "How much does ArvoOS cost?", a: "There is no public price list. Plans are scoped with each organization based on modules, number of users and branch structure." },
+      { q: "How much does ArvoOS cost?", a: `Monthly and annual prices for the Starter and Business plans are published at ${ROUTES.pricing.en}. Pricing is per organization, not per user. For Enterprise, the fee is scoped with each organization based on modules, number of users and branch structure.` },
     ],
   },
   cta: {

@@ -2,6 +2,7 @@
 // Sayfalar yalnızca bu yardımcıları çağırır; SEO/GEO ajanı içeriği
 // zenginleştirebilir ama İMZALARI DEĞİŞTİRMEZ.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, LOCALE_TAGS, resolvePath, type Locale } from "./routes";
+import { KDV_HARIC, PARA_BIRIMI, PRICED_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi, yillikKurus } from "./pricing";
 
 type Json = Record<string, unknown>;
 
@@ -149,4 +150,49 @@ export function webPageLd(p: { name: string; description: string; path: string; 
     publisher: { "@id": ORGANIZATION_ID },
     ...(ogImageFor(p.path) ? { primaryImageOfPage: ogImageFor(p.path) } : {}),
   };
+}
+
+/*
+  Ücretler sayfasının teklif grafiği. Fiyatlar lib/site/pricing.ts'ten okunur;
+  productLd'nin "fiyat uydurulmaz" kuralı bozulmaz — burada uydurma değil
+  yayımlanan liste fiyatı vardır.
+
+  `@id` ürün sayfasındaki SoftwareApplication ile AYNIDIR: iki sayfa aynı
+  varlığı tanımlar, ayrı iki ürün değil. Bu yüzden burada yalnızca teklifler
+  verilir; applicationCategory gibi alanlar ürün sayfasında kalır, iki yerde
+  farklı değer yazmak birleştirmeyi bozar.
+*/
+export function pricingLd(locale: Locale): Json[] {
+  const sayfa = absoluteUrl(ROUTES.pricing[locale]);
+  return PRICED_PRODUCTS.map((product) => {
+    const { href, external } = urunAdresi(product, locale);
+    const url = external ? href : absoluteUrl(href);
+    const teklifler = planlar(product).flatMap((plan) => {
+      const yillik = yillikKurus(plan);
+      if (plan.aylikKurus === null || yillik === null) return [];
+      const ortak = { priceCurrency: PARA_BIRIMI, valueAddedTaxIncluded: !KDV_HARIC };
+      return [{
+        "@type": "Offer",
+        sku: plan.code,
+        name: `${urunAdi(product)} ${plan.ad[locale]}`,
+        url: sayfa,
+        price: ldFiyat(plan.aylikKurus),
+        availability: "https://schema.org/InStock",
+        ...ortak,
+        priceSpecification: [
+          { "@type": "UnitPriceSpecification", price: ldFiyat(plan.aylikKurus), ...ortak, billingDuration: 1, billingIncrement: 1, unitCode: "MON" },
+          // Yıllık bedel 10 aylık: billingDuration 12 ay, tutar dönem başında tek seferde.
+          { "@type": "UnitPriceSpecification", price: ldFiyat(yillik), ...ortak, billingDuration: 12, billingIncrement: YILLIK_ODENEN_AY, unitCode: "MON" },
+        ],
+      }];
+    });
+    return {
+      "@type": "SoftwareApplication",
+      "@id": `${url}#software`,
+      name: urunAdi(product),
+      url,
+      publisher: { "@id": ORGANIZATION_ID },
+      ...(teklifler.length ? { offers: teklifler } : {}),
+    };
+  });
 }

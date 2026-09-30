@@ -13,6 +13,7 @@ import "./site-cinema.css";
 import "./site-layers.css";
 import "./site-story.css";
 import "./site-bento.css";
+import "./site-pricing.css";
 import "./site-polish.css";
 
 // arvo-os.com pazarlama sitesi kabuğu. Stil dosyaları yalnızca bu grupta

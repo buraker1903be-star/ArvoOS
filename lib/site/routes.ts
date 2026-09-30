@@ -16,6 +16,7 @@ export type PageId =
   | "arvoos-industries"
   | "arvoos-solutions"
   | "arvoos-plans"
+  | "pricing"
   | "arvolab"
   | "arc"
   | "services"
@@ -37,6 +38,9 @@ export const ROUTES: Record<PageId, Record<Locale, string>> = {
   "arvoos-industries": { tr: "/urunler/arvoos/sektorler", en: "/en/products/arvoos/industries" },
   "arvoos-solutions": { tr: "/urunler/arvoos/cozumler", en: "/en/products/arvoos/solutions" },
   "arvoos-plans": { tr: "/urunler/arvoos/paketler", en: "/en/products/arvoos/plans" },
+  // Ücretler tek sayfada: dört ürünün fiyatı ayrı sayfalara dağılırsa
+  // karşılaştırma yapılamıyor ve arama motoru hangisini göstereceğini seçemiyor.
+  pricing: { tr: "/ucretler", en: "/en/pricing" },
   arvolab: { tr: "/urunler/arvolab", en: "/en/products/arvolab" },
   arc: { tr: "/urunler/arc", en: "/en/products/arc" },
   services: { tr: "/hizmetler", en: "/en/services" },
@@ -63,6 +67,7 @@ export const PAGE_PRIORITY: Record<PageId, number> = {
   "arvoos-industries": 0.7,
   "arvoos-solutions": 0.7,
   "arvoos-plans": 0.8,
+  pricing: 0.9,
   services: 0.7,
   "web-design": 0.7,
   "seo-geo": 0.7,

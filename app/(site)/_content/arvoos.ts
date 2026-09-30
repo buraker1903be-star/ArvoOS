@@ -82,7 +82,7 @@ export const ARVOOS_TR: ProductContent = {
       { q: "ArvoOS elektronik imzayı destekliyor mu?", a: "Evet. Müşteri sözleşmeyi çizilen imza ve onay beyanlarıyla onaylar; IP adresi, zaman damgası, cihaz ve doğrulama özeti kaydedilir ve içerik imzadan sonra kilitlenir." },
       { q: "ArvoOS kendi alan adımızda ve markamızla çalışabilir mi?", a: "Evet. DNS ile doğrulanan özel alan adı bağlanabilir; logo, marka rengi, kaşe ve imza giriş sayfalarında, müşteri sayfalarında, teklif ve sözleşmelerde kullanılır." },
       { q: "ArvoOS mobilde çalışır mı?", a: "Evet. PWA olarak ana ekrana yüklenebilir; alt sekme çubuğu ve alt panellerle mobil uygulama gibi çalışır." },
-      { q: "ArvoOS’un fiyatı nedir?", a: "Herkese açık fiyat listesi yoktur. Paketler; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir." },
+      { q: "ArvoOS’un fiyatı nedir?", a: `Başlangıç ve Kurumsal paketlerin aylık ve yıllık fiyatları ${ROUTES.pricing.tr} sayfasında yayımlanmıştır. Fiyat kurum başınadır, kullanıcı başına değil. Özel kurum basamağında bedel; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir.` },
     ],
   },
   cta: {

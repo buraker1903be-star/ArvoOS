@@ -42,6 +42,10 @@ export const OG_COPY: Record<PageId, Record<Locale, OgCopy>> = {
     tr: { eyebrow: "ARVOOS · PAKETLER", title: "İhtiyacınız kadar başlayın, gücünüz kadar büyüyün.", tagline: "Paketler; modüllere, kullanıcı sayısına ve şube yapısına göre birlikte belirlenir." },
     en: { eyebrow: "ARVOOS · PLANS", title: "Start with what you need. Grow as you scale.", tagline: "Plans are shaped together around your modules, users and branch structure." },
   },
+  pricing: {
+    tr: { eyebrow: "ÜCRETLER", title: "Kullanıcı başına değil, kurum başına.", tagline: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için aylık ve yıllık fiyatlar; yıllık ödemede iki ay bedava." },
+    en: { eyebrow: "PRICING", title: "Per organization, not per seat.", tagline: "Monthly and annual prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab; two months free on annual billing." },
+  },
   arvolab: {
     tr: { eyebrow: "ARVOLAB · ARAŞTIRMA ÇALIŞMA ALANI", title: "Araştırma için daha güçlü bir alan.", tagline: "Literatür ve atıf, akademik yazım, kılavuz kontrolü, analiz ve özgünlük ön kontrolü." },
     en: { eyebrow: "ARVOLAB · RESEARCH WORKSPACE", title: "A stronger workspace for research.", tagline: "Literature and citations, academic writing, guideline checks, analysis and originality pre-checks." },

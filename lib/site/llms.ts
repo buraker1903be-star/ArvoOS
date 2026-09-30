@@ -1,11 +1,14 @@
 // llms.txt (llmstxt.org) ve llms-full.txt içerikleri. URL'ler yalnızca
 // ROUTES / PRODUCT_APPS / COMPANY'den türetilir. Uydurma istatistik, müşteri,
-// fiyat, deneme süresi veya ödül YAZMAYIN. ArvoOS özellikleri panelde
+// deneme süresi veya ödül YAZMAYIN. Fiyat 30.09.2026'dan beri yayımlanıyor
+// ama ELLE YAZILMAZ: tutarlar lib/site/pricing.ts'ten üretilir (fiyatListesi).
+// Eskiden "fiyat yazmayın" kuralı vardı; liste fiyatı olmadığı içindi. ArvoOS özellikleri panelde
 // arayüzü olan (doğrulanmış) özelliklerle sınırlıdır: stok, satın alma,
 // sevkiyat, e-fatura, banka mutabakatı, pazaryeri entegrasyonu YOK.
 // ArvoARC: e-ticaret ve mağazalar için self servis ürün + sipariş yönetimi;
 // entegrasyon/ödeme/kargo iddiası YOK.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, type Locale, type PageId } from "./routes";
+import { PRICED_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi, yillikKurus } from "./pricing";
 
 export const LLMS_UPDATED = "2026-09-13";
 
@@ -34,8 +37,12 @@ const PAGES: Record<PageId, PageInfo> = {
     tr: { name: "ArvoOS çözümler", summary: "Satış ve müşteri yönetimi, operasyon yönetimi, finansal kontrol ve kurumsal yönetişim kullanım senaryoları." },
   },
   "arvoos-plans": {
-    en: { name: "ArvoOS plans", summary: "Plans are scoped per organization (modules, users, branches, workflows). No public price list." },
-    tr: { name: "ArvoOS paketler", summary: "Paketler kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları). Herkese açık fiyat listesi yoktur." },
+    en: { name: "ArvoOS plans", summary: "Three steps (Starter, Business, Enterprise). Starter and Business have published list prices; Enterprise is scoped per organization (modules, users, branches, workflows)." },
+    tr: { name: "ArvoOS paketler", summary: "Üç basamak (Başlangıç, Kurumsal, Özel kurum). Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır; Özel kurum kuruma göre belirlenir (modüller, kullanıcılar, şubeler, iş akışları)." },
+  },
+  pricing: {
+    en: { name: "Pricing", summary: "Public monthly and annual subscription prices for ArvoOS, ArvoARC, Arvo Randevu and ArvoLab. Priced per organization, not per user; VAT excluded; annual billing costs 10 months for 12 months of use. Add-ons, and subscription terms (no automatic card charge, cancellation at period end, 30 days' notice before a price change)." },
+    tr: { name: "Ücretler", summary: "ArvoOS, ArvoARC, Arvo Randevu ve ArvoLab için herkese açık aylık ve yıllık abonelik fiyatları. Fiyat kurum başınadır, kullanıcı başına değil; KDV hariçtir; yıllık ödemede 12 ay kullanım için 10 aylık bedel ödenir. Ek kalemler ve abonelik koşulları (otomatik kart çekimi yok, iptal dönem sonunda, fiyat değişikliği en az 30 gün önce bildirilir)." },
   },
   arvolab: {
     en: { name: "ArvoLab", summary: "Research workspace for literature and citation management, academic writing, guideline checks, quantitative and qualitative analysis, an academic editor and an originality pre-check." },
@@ -89,6 +96,24 @@ const PAGES: Record<PageId, PageInfo> = {
 
 const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
 
+/*
+  Ücret satırları. Rakam ELLE YAZILMAZ: yapay zekâ motorlarının alıntıladığı
+  metinde yanlış fiyat, sayfadaki yanlış fiyattan daha uzun yaşar.
+*/
+function fiyatListesi(locale: Locale): string {
+  const tr = locale === "tr";
+  return PRICED_PRODUCTS.map((product) => {
+    const satirlar = planlar(product).map((plan) => {
+      const yillik = yillikKurus(plan);
+      const tutar = plan.aylikKurus === null || yillik === null
+        ? (tr ? "teklif usulü" : "on request")
+        : `${tutarYaz(plan.aylikKurus, locale)} TL/${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${tr ? "yıl" : "yr"}`;
+      return `- ${plan.ad[locale]}: ${tutar}`;
+    });
+    return `### ${urunAdi(product)}\n${satirlar.join("\n")}`;
+  }).join("\n\n");
+}
+
 /** "- [ArvoOS](en-url): özet Türkçe: [ArvoOS](tr-url)" */
 function item(id: PageId, extra = ""): string {
   const { en, tr } = PAGES[id];
@@ -97,6 +122,7 @@ function item(id: PageId, extra = ""): string {
 
 const SECTIONS: { title: string; ids: PageId[] }[] = [
   { title: "Products", ids: ["arvoos", "arvoos-modules", "arvoos-industries", "arvoos-solutions", "arvoos-plans", "arvolab", "arc"] },
+  { title: "Pricing", ids: ["pricing"] },
   { title: "Services", ids: ["services", "web-design", "seo-geo", "custom-software"] },
   { title: "Company", ids: ["home", "about"] },
   { title: "Contact", ids: ["contact"] },
@@ -205,7 +231,19 @@ Page: ${u("arvoos", "en")} · Modules: ${u("arvoos-modules", "en")} · Sign in: 
 
 **Industries** (${u("arvoos-industries", "en")}): healthcare, education, consulting and services, multi-branch businesses; modules, screens and permissions are configured to each organization's way of working.
 
-**Plans** (${u("arvoos-plans", "en")}): scoped together with each organization based on modules, number of users, branch structure and workflows. There is no public price list; request a demo via ${mail} or ${u("contact", "en")}.
+**Plans** (${u("arvoos-plans", "en")}): Starter and Business have published list prices (see Pricing below); Enterprise is scoped together with each organization based on modules, number of users, branch structure and workflows.
+
+## Pricing
+
+Page: ${u("pricing", "en")}
+
+Prices are per organization, not per user — each plan includes a set number of users. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
+
+${fiyatListesi("en")}
+
+Charged separately: additional user, additional branch (Arvo Randevu), data migration and setup, custom development.
+
+Subscription terms: the card is never charged automatically — a payment link is sent for each period and the subscriber approves it. Cancellation takes effect at the end of the paid period. Price changes are announced at least 30 days in advance and apply from the next period only; the current period is unaffected. An upgrade takes effect the same day, charging only the remaining days; a downgrade applies at the end of the period. If an annual plan is cancelled early, the months used are recalculated at the monthly list price and the remaining balance is refunded. Full text: ${u("distance-sales", "en")} and ${u("refund", "en")}.
 
 ## ArvoLab — research workspace
 
@@ -278,7 +316,7 @@ The proposal is shared as a link via WhatsApp or e-mail; the customer accepts or
 Yes. The customer tracking portal shows progress, stages, documents and a payment summary, lets customers message the operations team, and offers online payment links. Deliverable files stay locked until payment.
 
 **How much does ArvoOS cost?**
-Arvo does not publish a price list. Plans are scoped per organization based on modules, users and branches. Contact ${mail}.
+Monthly and annual prices for the Starter and Business plans are published at ${u("pricing", "en")}. Pricing is per organization, not per user, and excludes VAT. For Enterprise, the fee is scoped per organization based on modules, users and branches. Contact ${mail}.
 
 **Can ArvoOS run on our own domain with our branding?**
 Yes. Organizations can connect a custom domain (verified via DNS) and use their logo, brand colour, stamp / signature and legal and bank details on login pages, customer pages, proposals and contracts.
@@ -365,7 +403,19 @@ Sayfa: ${u("arvoos", "tr")} · Modüller: ${u("arvoos-modules", "tr")} · Giriş
 
 **Sektörler** (${u("arvoos-industries", "tr")}): sağlık, eğitim, danışmanlık ve hizmet, çok şubeli işletmeler; modüller, ekranlar ve yetkiler kurumun çalışma biçimine göre yapılandırılır.
 
-**Paketler** (${u("arvoos-plans", "tr")}): gerekli modüller, kullanıcı sayısı, şube yapısı ve iş akışlarına göre kurumla birlikte belirlenir. Herkese açık fiyat listesi yoktur; demo için ${mail} veya ${u("contact", "tr")}.
+**Paketler** (${u("arvoos-plans", "tr")}): Başlangıç ve Kurumsal basamaklarının liste fiyatı yayımlanmıştır (aşağıdaki Ücretler bölümü); Özel kurum basamağı gerekli modüller, kullanıcı sayısı, şube yapısı ve iş akışlarına göre kurumla birlikte belirlenir.
+
+## Ücretler
+
+Sayfa: ${u("pricing", "tr")}
+
+Fiyatlar kurum başınadır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
+
+${fiyatListesi("tr")}
+
+Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (Arvo Randevu), veri aktarımı ve kurulum, kuruma özel geliştirme.
+
+Abonelik koşulları: karttan otomatik tahsilat yapılmaz — her dönem için ödeme bağlantısı gönderilir ve abone onaylar. İptal, ödenmiş dönemin sonunda yürürlüğe girer. Fiyat değişikliği en az 30 gün önce bildirilir ve yalnızca sonraki dönemde uygulanır; yürürlükteki dönem etkilenmez. Yükseltme aynı gün yürürlüğe girer ve yalnızca dönemin kalan günleri için fark alınır; düşürme dönem sonunda uygulanır. Yıllık abonelik erken iptal edilirse kullanılan aylar aylık liste fiyatı üzerinden hesaplanır ve kalan bakiye iade edilir. Tam metin: ${u("distance-sales", "tr")} ve ${u("refund", "tr")}.
 
 ## ArvoLab — araştırma çalışma alanı
 
@@ -438,7 +488,7 @@ Teklif WhatsApp veya e-posta ile bağlantı olarak paylaşılır; müşteri tek 
 Evet. Müşteri takip portalı ilerlemeyi, aşamaları, belgeleri ve ödeme özetini gösterir, operasyon ekibiyle mesajlaşmayı ve çevrim içi ödeme bağlantılarını sunar. Teslim dosyaları ödeme yapılana kadar kilitli kalır.
 
 **ArvoOS'un fiyatı nedir?**
-Herkese açık fiyat listesi yoktur. Paketler modül, kullanıcı ve şube yapısına göre kurumla birlikte belirlenir. İletişim: ${mail}.
+Başlangıç ve Kurumsal paketlerin aylık ve yıllık fiyatları ${u("pricing", "tr")} sayfasında yayımlanmıştır. Fiyat kurum başınadır, kullanıcı başına değil; KDV hariçtir. Özel kurum basamağında bedel modül, kullanıcı ve şube yapısına göre kurumla birlikte belirlenir. İletişim: ${mail}.
 
 **ArvoOS kendi alan adımızda ve markamızla çalışabilir mi?**
 Evet. Kurum, DNS ile doğrulanan özel alan adını bağlayabilir; logo, marka rengi, kaşe / imza ile yasal ve banka bilgilerini giriş sayfalarında, müşteri sayfalarında, teklif ve sözleşmelerde kullanabilir.

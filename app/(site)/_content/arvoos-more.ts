@@ -83,12 +83,15 @@ export const PLANS_TR: SubContent = {
       { title: "Ölçeklenebilir geçiş planı", text: "Kurulumu, veri aktarımını ve ekip eğitimini adım adım planlarız." },
     ],
   },
-  note: "Herkese açık bir fiyat listesi yoktur; teklif, kapsam netleştikten sonra hazırlanır.",
+  /* Eskiden "herkese açık bir fiyat listesi yoktur" yazıyordu; 30.09.2026'da
+     liste fiyatları yayımlandı (ROUTES.pricing). Bu satır güncellenmeseydi
+     site kendi fiyat sayfasını yalanlıyordu. */
+  note: `Başlangıç ve Kurumsal basamaklarının aylık ve yıllık liste fiyatları ${R("pricing")} sayfasında yazılıdır. Özel kurum basamağında teklif, kapsam netleştikten sonra hazırlanır.`,
   faq: { eyebrow: "Sık sorulan sorular", title: "Paketler hakkında", items: [
-    { q: "ArvoOS’un fiyatı nedir?", a: "Herkese açık fiyat listesi yoktur. Fiyat; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir." },
+    { q: "ArvoOS’un fiyatı nedir?", a: `Başlangıç ve Kurumsal paketlerin aylık ve yıllık fiyatları ${R("pricing")} sayfasında açıkça yazılıdır. Fiyat kurum başınadır, kullanıcı başına değil. Özel kurum basamağında bedel; modüllere, kullanıcı sayısına ve şube yapısına göre kurumla birlikte belirlenir.` },
     { q: "Hangi paketle başlamalıyım?", a: "İhtiyaç analizinden sonra birlikte karar veririz; çoğu kurum temel modüllerle başlayıp zamanla genişletir." },
     { q: "Paketimi sonradan değiştirebilir miyim?", a: "Evet. Modül, kullanıcı ve şube yapınız değiştikçe paketiniz de genişletilebilir." },
     { q: "Kendi alan adımızı kullanabilir miyiz?", a: "Evet. Kuruma özel alan adı DNS doğrulamasıyla bağlanır ve markalı giriş ile müşteri sayfaları bu adreste çalışır." },
   ] },
-  cta: { title: "Kurumunuza uygun paketi birlikte belirleyelim.", actions: [demo, { label: "Bize yazın", href: "mailto:info@arvo-os.com", variant: "ghost" }] },
+  cta: { title: "Kurumunuza uygun paketi birlikte belirleyelim.", actions: [demo, { label: "Ücretler", href: R("pricing"), variant: "ghost" }] },
 };

@@ -101,7 +101,7 @@ export const HOME_EN: HomeContent = {
       { q: "What is Arvo?", a: `Arvo is the software brand of ${COMPANY.legalName}. It builds ArvoOS for businesses, ArvoLab for researchers and ArvoARC for stores, and also offers web design and custom software services.` },
       { q: "What is the difference between ArvoOS, ArvoLab and ArvoARC?", a: "ArvoOS runs a business’s operations from request to payment. ArvoLab supports academic research and writing. ArvoARC brings a store’s products and orders into one panel." },
       { q: "Where do I sign in to Arvo products?", a: `ArvoOS runs at ${PRODUCT_APPS.arvoos.host}, ArvoLab at ${PRODUCT_APPS.arvolab.host} and ArvoARC at ${PRODUCT_APPS.arc.host}. All three are web applications that run in the browser.` },
-      { q: "How much does ArvoOS cost?", a: "There is no public price list. Plans are scoped with each organization based on modules, number of users and branch structure." },
+      { q: "How much does ArvoOS cost?", a: `Monthly and annual list prices are published at ${ROUTES.pricing.en}; pricing is per organization, not per user. For Enterprise, the fee is scoped together with each organization.` },
       { q: "How do I request a demo?", a: `Fill in the form on the contact page or write to ${COMPANY.email}; your request goes to the relevant product team.` },
     ],
   },
