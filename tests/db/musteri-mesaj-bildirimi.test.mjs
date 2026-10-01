@@ -15,7 +15,14 @@
 */
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { islem, olarak, reddedilir, rol, veritabani } from "./ortam.mjs";
+
+const MIGRATION = path.resolve(
+  import.meta.dirname,
+  "../../supabase/migrations/20261001125021_musteri_mesaji_satisciya_da_gitsin.sql",
+);
 
 const KURUM = "00000000-0000-4000-8000-0000000000e1";
 const SAHIP = "00000000-0000-4000-8000-0000000000e2";
@@ -23,6 +30,7 @@ const YONETICI = "00000000-0000-4000-8000-0000000000e3";
 const MUDUR = "00000000-0000-4000-8000-0000000000e4";
 const UZMAN = "00000000-0000-4000-8000-0000000000e5";
 const UYE = "00000000-0000-4000-8000-0000000000e6";
+const SATISCI = "00000000-0000-4000-8000-0000000000ea";
 const FIRSAT = "00000000-0000-4000-8000-0000000000e7";
 const TEKLIF = "00000000-0000-4000-8000-0000000000e8";
 const SOZLESME = "00000000-0000-4000-8000-0000000000e9";
@@ -31,6 +39,8 @@ const KOD = "MSJ123";
 let db;
 before(async () => {
   db = await veritabani();
+  // Anlık görüntü canlıdan alınıyor; bu migration henüz uygulanmadı.
+  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -44,7 +54,8 @@ async function tohum({ isVar = true } = {}) {
       ('${YONETICI}', 'yonetici@akademikmerkez.com'),
       ('${MUDUR}', 'mudur@akademikmerkez.com'),
       ('${UZMAN}', 'uzman@akademikmerkez.com'),
-      ('${UYE}', 'uye@akademikmerkez.com');
+      ('${UYE}', 'uye@akademikmerkez.com'),
+      ('${SATISCI}', 'satisci@akademikmerkez.com');
     insert into public.plans (code, name, description) values ('starter', 'Başlangıç', '');
     insert into public.organizations (id, name, slug, status, plan_code)
       values ('${KURUM}', 'Akademik Merkez', 'akademik-merkez', 'active', 'starter');
@@ -53,7 +64,8 @@ async function tohum({ isVar = true } = {}) {
       ('${KURUM}', '${YONETICI}', 'admin'),
       ('${KURUM}', '${MUDUR}', 'manager'),
       ('${KURUM}', '${UZMAN}', 'member'),
-      ('${KURUM}', '${UYE}', 'member');
+      ('${KURUM}', '${UYE}', 'member'),
+      ('${KURUM}', '${SATISCI}', 'member');
     insert into public.crm_opportunities (id, organization_id, title, customer_name, created_by)
       values ('${FIRSAT}', '${KURUM}', 'Tez', 'Ayşe', '${SAHIP}');
     insert into public.crm_proposals (id, organization_id, opportunity_id, proposal_no, title, access_token_hash, created_by, status)
@@ -67,9 +79,14 @@ async function tohum({ isVar = true } = {}) {
   const uzman = await tek(
     `insert into public.hr_employees (organization_id, user_id, full_name, employment_type, employment_status)
      values ($1, $2, 'Uzman Kişi', 'full_time', 'active') returning id`, [KURUM, UZMAN]);
+  const satisci = await tek(
+    `insert into public.hr_employees (organization_id, user_id, full_name, employment_type, employment_status)
+     values ($1, $2, 'Satışçı Kişi', 'full_time', 'active') returning id`, [KURUM, SATISCI]);
+  await db.query(`update public.crm_opportunities set assigned_employee_id = $1 where id = $2`,
+    [satisci.id, FIRSAT]);
   if (!isVar) {
     await db.exec(`delete from public.notifications`);
-    return { isId: null, uzmanId: uzman.id };
+    return { isId: null, uzmanId: uzman.id, satisciId: satisci.id };
   }
   const is = await tek(
     `insert into public.operation_workflows (organization_id, contract_id, title, status, created_by, assigned_employee_id)
@@ -78,7 +95,7 @@ async function tohum({ isVar = true } = {}) {
   // İşi uzmana atamak kendi bildirimini ("iş sana atandı") üretir; sahnenin
   // kurulumu sayıma karışmasın diye temizleniyor.
   await db.exec(`delete from public.notifications`);
-  return { isId: is.id, uzmanId: uzman.id };
+  return { isId: is.id, uzmanId: uzman.id, satisciId: satisci.id };
 }
 
 /** Takip sayfasının gerçek yolu: sunucu eylemi service_role anahtarıyla çağırır. */
@@ -105,8 +122,8 @@ describe("müşteri mesajı bildirimi", () => {
            from public.notifications where organization_id = $1`, [KURUM]);
       assert.deepEqual(
         rows.map((r) => r.user_id).sort(),
-        [SAHIP, YONETICI, MUDUR, UZMAN].sort(),
-        "İşin sorumlusu ve owner/admin/manager haber almalı",
+        [SAHIP, YONETICI, MUDUR, UZMAN, SATISCI].sort(),
+        "İşin sorumlusu, fırsatın satışçısı ve owner/admin/manager haber almalı",
       );
       // Sıradan üye kendine atanmamış dosyayı zaten açamıyor; haber vermek
       // göremeyeceği bir kaydı bildirmek olurdu.
@@ -136,6 +153,54 @@ describe("müşteri mesajı bildirimi", () => {
       const uyeSayisi = await olarak(db, "authenticated", UYE, async () =>
         (await db.query(`select public.arvo_unread_notification_count($1) as n`, [KURUM])).rows[0].n);
       assert.equal(uyeSayisi, 0);
+    }));
+
+  test("satışçı iş operasyona geçtikten sonra da haber alıyor", () =>
+    islem(db, async () => {
+      // Asıl düzeltme bu: fırsatın sorumlusu eskiden yalnızca iş HENÜZ
+      // AÇILMAMIŞKEN bildirim alıyordu. Müşteriyi tanıyan kişi, iş
+      // operasyona düştü diye sessizleşmemeli.
+      const { isId } = await tohum();
+      assert.ok(isId, "Bu senaryoda iş açılmış olmalı");
+      await musteriYazdi();
+      const satir = await tek(
+        `select action_url from public.notifications where organization_id = $1 and user_id = $2`,
+        [KURUM, SATISCI]);
+      assert.ok(satir, "Satışçı bildirimi almalı");
+      assert.equal(satir.action_url, `/panel/operations/${isId}`);
+    }));
+
+  test("kurumdan ayrılan satışçıya bildirim gitmiyor; aynı kişiyse tek satır yazılıyor", () =>
+    islem(db, async () => {
+      const { satisciId } = await tohum();
+      // Üyeliği kapanmış satışçı: kaydı duruyor ama paneli açamıyor.
+      await db.query(
+        `update public.organization_memberships set is_active = false where organization_id = $1 and user_id = $2`,
+        [KURUM, SATISCI]);
+      await musteriYazdi();
+      const { rows } = await db.query(
+        `select user_id from public.notifications where organization_id = $1 and user_id = $2`,
+        [KURUM, SATISCI]);
+      assert.equal(rows.length, 0);
+
+      // Satışı yapan kişi işi de yürütüyorsa iki koldan da seçilir;
+      // 'select distinct' tek bildirim yazmalı.
+      await db.exec(`delete from public.notifications`);
+      await db.query(
+        `update public.organization_memberships set is_active = true where organization_id = $1 and user_id = $2`,
+        [KURUM, SATISCI]);
+      await db.query(`update public.operation_workflows set assigned_employee_id = $1 where organization_id = $2`,
+        [satisciId, KURUM]);
+      await db.query(
+        `delete from public.customer_file_messages where contract_id = $1`, [SOZLESME]);
+      await musteriYazdi("İkinci mesajım var");
+      // Atamanın kendi bildirimi ("iş sana atandı") de yazıldı; sayılan
+      // yalnızca müşteri mesajı.
+      const kendi = await db.query(
+        `select user_id from public.notifications
+          where organization_id = $1 and user_id = $2 and category = 'customer_message'`,
+        [KURUM, SATISCI]);
+      assert.equal(kendi.rows.length, 1, "Aynı kişi iki bildirim almamalı");
     }));
 
   test("iş açılmamışsa bağlantı sözleşmenin mesaj bölümüne gidiyor", () =>
