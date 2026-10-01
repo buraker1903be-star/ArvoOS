@@ -199,12 +199,8 @@ export default async function OperationDetailPage({
     {
       key: "musteri",
       label: "Müşteri",
-      rozet: unreadCustomerMessages
-        ? String(unreadCustomerMessages)
-        : brifingAlanlari.length
-          ? `${brifingSayisi.dolu}/${brifingSayisi.toplam}`
-          : null,
-      tone: unreadCustomerMessages ? "danger" : "neutral",
+      rozet: unreadCustomerMessages ? String(unreadCustomerMessages) : null,
+      tone: "danger",
     },
     { key: "kayitlar", label: "Kayıtlar", rozet: null, tone: "neutral" },
   ];
@@ -529,6 +525,42 @@ export default async function OperationDetailPage({
                 </p>
             </div>
           </section>
+
+          {/*
+            BRİFİNG, İŞ SEKMESİNDE VE KAPALI. Satıştan gelen bilgi işin
+            başında bir kez okunuyor; ayrı kart olarak yüz pikselden fazla
+            yer kaplıyordu ve Müşteri sekmesinde aranmıyordu — operasyoncu
+            işi burada yapıyor. Başlık satırı tek başına "satıştan geldi
+            mi, eksik var mı" sorusunu yanıtlıyor; düzenleme açıldıktan
+            sonra, nadiren.
+          */}
+          {brifingAlanlari.length ? (
+            <section className="opd-card opd-brifing">
+              <details className="opd-katla">
+                <summary>
+                  <span>Brifing</span>
+                  <small>
+                    {brifing?.source_opportunity_id ? "Satıştan geldi · " : ""}
+                    {brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı
+                  </small>
+                </summary>
+                <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+                {isArchived ? null : (
+                  <div className="opd-brifing-duzenle">
+                    <PanelDrawer triggerLabel={brifing ? "Brifingi düzenle" : "Brifingi doldur"} title="İş brifingi" triggerClassName="panel-secondary">
+                      {/* Operasyonun kopyası düzeltilebilir: satışçının o gün
+                          yazdığı metin fırsatta olduğu gibi duruyor. */}
+                      <form className="panel-form" action={saveWorkflowBrief}>
+                        <input type="hidden" name="workflow_id" value={workflow.id} />
+                        <BrifingAlanlari alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+                        <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Brifingi kaydet</button></div>
+                      </form>
+                    </PanelDrawer>
+                  </div>
+                )}
+              </details>
+            </section>
+          ) : null}
           <section className="opd-card">
             <header className="opd-card-head">
               <div><h2>Görevler</h2><p>{completedCount}/{steps.length} tamamlandı · tamamlamak için dokunun</p></div>
@@ -714,46 +746,6 @@ export default async function OperationDetailPage({
 
         {sekme === "musteri" ? (
           <>
-          <>
-            <section className="opd-card">
-              <header className="opd-card-head">
-                <div>
-                  <h2>Brifing</h2>
-                  <p>
-                    {brifing?.source_opportunity_id ? "Satıştan geldi" : "Operasyonda dolduruldu"} ·{" "}
-                    {brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı
-                  </p>
-                </div>
-                {isArchived ? null : (
-                  <PanelDrawer triggerLabel={brifing ? "Düzenle" : "Doldur"} title="İş brifingi" triggerClassName="panel-secondary">
-                    {/*
-                      Operasyonun kopyası düzeltilebilir: satışçının o gün
-                      yazdığı metin fırsatta olduğu gibi duruyor.
-                    */}
-                    <form className="panel-form" action={saveWorkflowBrief}>
-                      <input type="hidden" name="workflow_id" value={workflow.id} />
-                      <BrifingAlanlari alanlar={brifingAlanlari} values={brifing?.values ?? null} />
-                      <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Brifingi kaydet</button></div>
-                    </form>
-                  </PanelDrawer>
-                )}
-              </header>
-              {/*
-                Özet KATLI geliyor: on soruluk bir form kartı beş yüz piksel
-                ediyor ve brifing işin başında bir kez okunup sonra nadiren
-                açılan bir metin. Başlıktaki doluluk sayısı, açmadan da
-                "eksik var mı" sorusunu yanıtlıyor.
-              */}
-              <details className="opd-katla">
-                <summary>
-                  <span>Brifingi göster</span>
-                  <small>{brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı</small>
-                </summary>
-                <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
-              </details>
-            </section>
-</>
-          <>
             {portalSetupMissing ? (
               <section className="opd-card opd-pf" id="musteri-dosyalari">
                 <header className="opd-card-head"><div><h2>Müşteri portalı dosyaları</h2><p>Müşterinin takip ekranındaki “Dosyalarınız” bölümü</p></div></header>
@@ -788,11 +780,9 @@ export default async function OperationDetailPage({
               ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
             </section>
           </>
-          </>
         ) : null}
 
         {sekme === "kayitlar" ? (
-          <>
           <>
             {contract?.opportunity_id ? <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} /> : null}
             <section className="opd-card">
@@ -810,7 +800,6 @@ export default async function OperationDetailPage({
                 sözleşme güncellemeleri tutar bilgisi taşıyor, operasyon ekibi
                 fiyat görmemeli. */}
             <RecordHistory workflowId={workflow.id} />
-          </>
           </>
         ) : null}
       </div>

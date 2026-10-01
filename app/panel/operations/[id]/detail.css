@@ -374,3 +374,8 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 */
 .opd-panel .opd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 22px}
 .opd-panel .opd-list>div{display:grid;gap:1px;min-width:0}
+
+/* Brifing: kapalıyken tek satır. Kart dolgusu başlığı boğmasın diye dar. */
+.opd-brifing{padding-top:14px;padding-bottom:14px}
+.opd-brifing>.opd-katla>summary>span{font-size:14px}
+.opd-brifing-duzenle{padding-top:14px}
