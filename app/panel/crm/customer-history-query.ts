@@ -625,17 +625,30 @@ async function findCustomerHistoryViaRls(
 /* Talep kaydına otomatik not                                                */
 /* ------------------------------------------------------------------------ */
 
-/** Talep kaydına düşülecek not metni (yalnızca telefon eşleşmesi). */
+/**
+ * Talep kaydına düşülecek not metni (yalnızca telefon eşleşmesi).
+ *
+ * NOTTA TUTAR YOK. Bu not crm_internal_comments'e yazılıyor ve kurum
+ * içi yorumlar operasyon ekibine de açık — tasarım gereği, çünkü işi
+ * yürüten kişinin müşteriyle ne konuşulduğunu bilmesi gerekiyor. Ama
+ * tutar satış/finans bilgisi: veritabanı tarafında operasyon
+ * personelinden kapatıldı (20261001143617) ve aynı sayının yorum
+ * METNİNDEN sızması o korumayı anlamsız kılardı.
+ *
+ * Sayılar (kaç teklif, kaç sözleşme) kalıyor: satışçının "bu müşteri
+ * geri döndü" sinyali için yeterli, tutarı zaten kendi ekranında
+ * görüyor (crm-lookup / customer-history panelleri değişmedi).
+ */
 export function describeReturningCustomer(result: CustomerHistoryResult): string {
   const { counts } = result;
   const parts = [
-    counts.proposal ? `${counts.proposal} teklif${result.proposedLabel ? ` (toplam ${result.proposedLabel})` : ""}` : null,
-    counts.contract ? `${counts.contract} sözleşme${result.contractedLabel ? ` (toplam ${result.contractedLabel})` : ""}` : null,
+    counts.proposal ? `${counts.proposal} teklif` : null,
+    counts.contract ? `${counts.contract} sözleşme` : null,
     counts.job ? `${counts.job} iş${result.archivedJobs ? ` (${result.archivedJobs} tanesi arşivde)` : ""}` : null,
     counts.request ? `${counts.request} önceki talep` : null,
   ].filter(Boolean);
   const lines = result.items.slice(0, 5).map((item) =>
-    "• " + [item.kindLabel, item.title, item.amountLabel, item.statusLabel, item.dateLabel, item.person].filter(Boolean).join(" · "),
+    "• " + [item.kindLabel, item.title, item.statusLabel, item.dateLabel, item.person].filter(Boolean).join(" · "),
   );
   return [
     `Geri dönen müşteri: bu telefon numarasıyla geçmişte ${parts.join(", ")} bulundu.`,
