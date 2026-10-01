@@ -559,12 +559,20 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
   .trk-ring-label b{font-size:24px}
   .trk-ring-md .trk-ring-label b{font-size:17px}
   .trk-progress-summary{gap:16px}
-  .trk-progress-summary.has-yelpaze{flex-direction:column;align-items:flex-start;gap:12px}
-  .trk-yelpaze{width:100%}
-  .trk-yelpaze-satir{grid-template-columns:22px minmax(0,1fr);gap:8px}
-  .trk-gorev-ok{width:22px;height:22px}
-  .trk-yelpaze-satir.is-simdi strong{font-size:17px}
-  .trk-yelpaze-sayac{margin-left:30px!important}
+  /* Görevler telefonda da halkanın SAĞINDA kalır (kurumun isteği).
+     Alta indirmek yerine halka küçültülüyor; yüzde zaten tek başına
+     anlaşılır olduğu için halka içindeki "tamamlandı" etiketi düşüyor,
+     yazıyı 11px'in altına indirmek yerine. */
+  .trk-progress-summary.has-yelpaze{flex-direction:row;align-items:center;gap:10px}
+  .trk-progress-summary.has-yelpaze .trk-ring{width:84px;height:84px}
+  .trk-progress-summary.has-yelpaze .trk-ring-label b{font-size:21px}
+  .trk-progress-summary.has-yelpaze .trk-ring-label small{display:none}
+  .trk-yelpaze{width:auto}
+  .trk-yelpaze-satir{grid-template-columns:20px minmax(0,1fr);gap:7px;font-size:13px}
+  .trk-gorev-ok{width:20px;height:20px}
+  .trk-yelpaze-satir.is-simdi strong{font-size:15.5px}
+  .trk-gorev-asama{font-size:11px;letter-spacing:.03em}
+  .trk-yelpaze-sayac{margin-left:27px!important}
   .trk-phase-now{font-size:19px}
   .trk-phases li{font-size:11.5px}
   .trk-thread{height:clamp(280px,56vh,440px)}
