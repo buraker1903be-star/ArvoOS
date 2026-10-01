@@ -8,8 +8,8 @@ import { NEW_REQUEST_PREFILL_EVENT, type NewRequestPrefill } from "./customer-hi
 const serviceTypes = ["Tez Danışmanlığı","Akademik Çeviri","Literatür Danışmanlığı","Veri Analizi","Makale Danışmanlığı","Biçimsel Düzenleme","Araştırma Tasarımı","Doçentlik Başvuru Danışmanlığı","Diğer"];
 type SalesRepresentative={id:string;full_name:string;job_title:string|null};
 /*
-  Çalışma türü: işin görev listesini ve brifingin türe bağlı sorularını
-  belirliyor. Türü satışçı seçiyor çünkü tezle makaleyi bilen kişi odur;
+  Çalışma türü: işin görev listesini belirliyor. Türü satışçı seçiyor
+  çünkü tezle makaleyi bilen kişi odur;
   eskiden tür yalnızca iş açılırken seçilebiliyor ve makale işi kurumun
   öntanımlı seti (tez) ile açılıyordu.
 */

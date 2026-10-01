@@ -10,10 +10,6 @@ import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, 
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
-import { BrifingAlanlari, BrifingOzeti } from "../brifing-form";
-import "../brifing-form.css";
-import { saveWorkflowBrief } from "../brifing-actions";
-import { brifingDoluluk, gecerliAlanlar, type BriefField, type BriefValues } from "@/lib/is-brifingi";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -120,29 +116,6 @@ export default async function OperationDetailPage({
     her biri kendi satırında duruyor; iç içe kutular tarih, sorumlu ve durum
     denetimlerini dar ekranda iyice sıkıştırırdı.
   */
-  /*
-    BRİFİNG. Satışçının fırsatta yazdığı bilgi iş açılırken buraya
-    kopyalanıyor (private.arvo_brief_kopyala). Sorular kurumun kendi
-    formundan; tanımlı değilse bölüm hiç basılmıyor — boş bir kart
-    "burada bir şey eksik" hissi verir, oysa kurum o formu hiç istememiş
-    olabilir.
-  */
-  const [{ data: alanData }, { data: brifingData }] = await Promise.all([
-    supabase
-      .from("organization_brief_fields")
-      .select("code,label,field_type,options,hint,is_required,set_codes,sort_order,is_active")
-      .eq("organization_id", organizationId)
-      .eq("is_active", true)
-      .order("sort_order"),
-    supabase
-      .from("operation_workflow_briefs")
-      .select("values,source_opportunity_id,updated_at")
-      .eq("workflow_id", id)
-      .maybeSingle(),
-  ]);
-  const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], workflow.step_template_set);
-  const brifing = (brifingData ?? null) as { values: BriefValues; source_opportunity_id: string | null; updated_at: string } | null;
-  const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
 
   const bekleyenTaraf = bekleyenTarafMi(workflow.waiting_party) ? workflow.waiting_party : "us";
   /* Tamamlanmayan İLK görev: satırı kendiliğinden açık gelen tek satır. */
@@ -204,7 +177,7 @@ export default async function OperationDetailPage({
     },
     { key: "kayitlar", label: "Kayıtlar", rozet: null, tone: "neutral" },
   ];
-  /* Bilinmeyen ya da kapalı sekme (brifing formu yoksa) görevlere düşer. */
+  /* Bilinmeyen sekme İş sekmesine düşer. */
   const sekme = sekmeler.some((item) => item.key === istenenSekme) ? (istenenSekme as string) : VARSAYILAN_SEKME;
   const contract = contractData as Contract | null;
   const employees = (employeeData ?? []) as { id: string; full_name: string }[];
@@ -404,7 +377,7 @@ export default async function OperationDetailPage({
         SEKMELER. Sayfa yedi kart birden taşıyordu; görev listesi
         kısaltıldıktan sonra bile telefonda dört ekrandı. Operasyoncu aynı
         anda tek şeye bakıyor: ya görevleri işliyor, ya müşteriyle
-        yazışıyor, ya brifingi okuyor.
+        yazışıyor, ya geçmişe bakıyor.
 
         Sekme ADRESTE (?sekme=): sunucu bileşeni, istemci durumu yok;
         bağlantı paylaşılabiliyor, geri tuşu çalışıyor ve "Müşteri
@@ -526,41 +499,6 @@ export default async function OperationDetailPage({
             </div>
           </section>
 
-          {/*
-            BRİFİNG, İŞ SEKMESİNDE VE KAPALI. Satıştan gelen bilgi işin
-            başında bir kez okunuyor; ayrı kart olarak yüz pikselden fazla
-            yer kaplıyordu ve Müşteri sekmesinde aranmıyordu — operasyoncu
-            işi burada yapıyor. Başlık satırı tek başına "satıştan geldi
-            mi, eksik var mı" sorusunu yanıtlıyor; düzenleme açıldıktan
-            sonra, nadiren.
-          */}
-          {brifingAlanlari.length ? (
-            <section className="opd-card opd-brifing">
-              <details className="opd-katla">
-                <summary>
-                  <span>Brifing</span>
-                  <small>
-                    {brifing?.source_opportunity_id ? "Satıştan geldi · " : ""}
-                    {brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı
-                  </small>
-                </summary>
-                <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
-                {isArchived ? null : (
-                  <div className="opd-brifing-duzenle">
-                    <PanelDrawer triggerLabel={brifing ? "Brifingi düzenle" : "Brifingi doldur"} title="İş brifingi" triggerClassName="panel-secondary">
-                      {/* Operasyonun kopyası düzeltilebilir: satışçının o gün
-                          yazdığı metin fırsatta olduğu gibi duruyor. */}
-                      <form className="panel-form" action={saveWorkflowBrief}>
-                        <input type="hidden" name="workflow_id" value={workflow.id} />
-                        <BrifingAlanlari alanlar={brifingAlanlari} values={brifing?.values ?? null} />
-                        <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Brifingi kaydet</button></div>
-                      </form>
-                    </PanelDrawer>
-                  </div>
-                )}
-              </details>
-            </section>
-          ) : null}
           <section className="opd-card">
             <header className="opd-card-head">
               <div><h2>Görevler</h2><p>{completedCount}/{steps.length} tamamlandı · tamamlamak için dokunun</p></div>

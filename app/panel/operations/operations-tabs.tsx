@@ -10,7 +10,6 @@ const tabs = [
   { key: "takvim", href: "/panel/operations/takvim", label: "Takvim" },
   { key: "arsiv", href: "/panel/operations/arsiv", label: "Arşiv" },
   { key: "sablon", href: "/panel/operations/sablon", label: "Adım Şablonu" },
-  { key: "brifing", href: "/panel/operations/brifing", label: "Brifing Formu" },
 ] as const;
 
 export type OperationsTabKey = (typeof tabs)[number]["key"];

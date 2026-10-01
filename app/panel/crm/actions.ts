@@ -64,8 +64,8 @@ async function validateSalesEmployee(
 }
 
 /*
-  ÇALIŞMA TÜRÜ. İşin görev listesini ve brifingin türe bağlı sorularını
-  belirliyor (organization_step_template_sets). Bileşik yabancı anahtar
+  ÇALIŞMA TÜRÜ. İşin görev listesini belirliyor
+  (organization_step_template_sets). Bileşik yabancı anahtar
   zaten kurumun kendi türünü zorunlu tutuyor, ama hata "foreign key
   violation" olurdu; satışçı ne olduğunu anlamalı. Boş = öntanımlı tür.
 */
