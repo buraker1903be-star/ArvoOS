@@ -34,6 +34,7 @@
   kaydırma yalnızca listede kalıyor.
 */
 .panel-modal-body:has(>.opd-sohbet){display:flex;flex-direction:column;overflow:hidden;padding-bottom:22px}
+.panel-modal-body:has(>.opd-kayit){display:flex;flex-direction:column;overflow:hidden;padding-bottom:22px}
 .panel-modal-root[data-boy="sohbet"] .panel-modal{height:min(88dvh,760px)}
 
 /* Pencere içindeki kart ikinci bir çerçeve çizmesin: pencere zaten kart. */

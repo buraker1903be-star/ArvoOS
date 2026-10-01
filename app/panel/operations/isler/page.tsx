@@ -52,17 +52,25 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   const contractIds = [...new Set(workflows.map((workflow) => workflow.contract_id).filter((value): value is string => Boolean(value)))];
   const { data: workflowContracts, error: workflowContractsError } = contractIds.length
-    ? await supabase.from("crm_contracts").select("id,opportunity_id,invoice_id,crm_opportunities(contact_phone,contact_email)").in("id", contractIds)
+    ? await supabase.from("ops_contracts").select("id,opportunity_id,invoice_id").in("id", contractIds)
     : { data: [], error: null };
   if (workflowContractsError) throw new Error("İşlerin CRM bağlantıları okunamadı: " + workflowContractsError.message);
   const opportunityByContract = new Map((workflowContracts ?? []).map((contract) => [contract.id, contract.opportunity_id]));
   const operationOpportunityIds = [...new Set((workflowContracts ?? []).map((contract) => contract.opportunity_id))];
-  // Müşteri iletişimi ve son temas: CRM tablolarıyla aynı hücreler
-  const contactByContract = new Map((workflowContracts ?? []).map((contract) => {
-    const raw = (contract as { crm_opportunities?: unknown }).crm_opportunities;
-    const opportunity = (Array.isArray(raw) ? raw[0] : raw) as { contact_phone?: string | null; contact_email?: string | null } | null | undefined;
-    return [contract.id, { phone: opportunity?.contact_phone ?? null, email: opportunity?.contact_email ?? null }];
-  }));
+  /*
+    İletişim bilgisi AYRI SORGUYLA. Önce ops_contracts içine gömülüydü
+    (crm_opportunities(...)); operasyon artık tutarsız GÖRÜNÜMLERDEN
+    okuyor ve PostgREST iki görünüm arasında ilişki çıkaramıyor —
+    görünümlerin yabancı anahtarı yok, gömme sessizce boş dönerdi.
+  */
+  const { data: contactRows, error: contactError } = operationOpportunityIds.length
+    ? await supabase.from("ops_opportunities").select("id,contact_phone,contact_email").in("id", operationOpportunityIds)
+    : { data: [], error: null };
+  if (contactError) throw new Error("Müşteri iletişimi okunamadı: " + contactError.message);
+  const contactByOpportunity = new Map(((contactRows ?? []) as { id: string; contact_phone: string | null; contact_email: string | null }[])
+    .map((row) => [row.id, { phone: row.contact_phone, email: row.contact_email }]));
+  const contactByContract = new Map((workflowContracts ?? []).map((contract) =>
+    [contract.id, contactByOpportunity.get(contract.opportunity_id) ?? { phone: null, email: null }]));
   const lastContacts = await fetchLastContacts(supabase, membership.organization_id, operationOpportunityIds);
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);

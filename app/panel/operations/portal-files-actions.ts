@@ -32,7 +32,7 @@ async function loadWorkflow({ supabase, membership }: PortalContext, workflowId:
   const { data: workflow } = await supabase.from("operation_workflows").select("id,contract_id")
     .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı ya da bu iş için yetkiniz yok.");
-  const { data: contract } = await supabase.from("crm_contracts").select("id,tracking_code")
+  const { data: contract } = await supabase.from("ops_contracts").select("id,tracking_code")
     .eq("organization_id", membership.organization_id)
     .or(workflow.contract_id ? `workflow_id.eq.${workflowId},id.eq.${workflow.contract_id}` : `workflow_id.eq.${workflowId}`)
     .limit(1).maybeSingle();

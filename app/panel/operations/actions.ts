@@ -693,7 +693,7 @@ async function replyCustomerFileMessage__impl(formData: FormData) {
   // üzerinden gösteriyor (page.tsx:91). İki yön ayrıştığında ya form
   // görünmüyor ya da her gönderim hata veriyordu. portal-files-actions.ts
   // ikisini zaten birlikte arıyor; aynı kural buraya da uygulanıyor.
-  const { data: contract, error: contractError } = await supabase.from("crm_contracts").select("id")
+  const { data: contract, error: contractError } = await supabase.from("ops_contracts").select("id")
     .eq("organization_id", membership.organization_id)
     .or(workflow.contract_id ? `workflow_id.eq.${workflowId},id.eq.${workflow.contract_id}` : `workflow_id.eq.${workflowId}`)
     .limit(1).maybeSingle();

@@ -54,6 +54,13 @@ const ACTION_LABELS: Record<string, string> = {
   step_assign: "bir aşamaya sorumlu atadı",
   step_done: "bir aşamayı tamamladı",
   step_undone: "bir aşamayı yeniden açtı",
+  /*
+    Bu ikisi yoktu ve etiket bulunamayınca HAM eylem adı cümleye
+    giriyordu: "İş akışı kaydını waiting_party" (ekran görüntüsünde
+    görüldü). Operasyonun yazdığı sekiz eylemin hepsi artık burada.
+  */
+  waiting_party: "topun kimde olduğunu değiştirdi",
+  revision_days: "revizyon süresini değiştirdi",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -75,10 +82,18 @@ type LogRow = {
 export async function RecordHistory({
   opportunityId,
   workflowId,
+  baslik = true,
 }: {
   opportunityId?: string;
   /** İş akışı detayında: sözleşmeye bağlı olmayan işler için. */
   workflowId?: string;
+  /*
+    Kendi başlığını basmasın. Operasyon iş detayında bu liste
+    "Kayıt geçmişi" penceresinin içinde duruyor ve pencerenin başlığı
+    aynı iki kelimeyi zaten yazıyordu; bölümün adını çağıran veriyor.
+    CRM sayfalarında başlık yerinde kalıyor.
+  */
+  baslik?: boolean;
 }) {
   const { supabase, membership } = await getPanelContext();
 
@@ -117,10 +132,12 @@ export async function RecordHistory({
   if (!logs.length) {
     return (
       <section className="panel-card crm-record-history">
-        <header>
-          <small className="panel-kicker">KAYIT GEÇMİŞİ</small>
-          <h2>Değişiklik yok</h2>
-        </header>
+        {baslik ? (
+          <header>
+            <small className="panel-kicker">KAYIT GEÇMİŞİ</small>
+            <h2>Değişiklik yok</h2>
+          </header>
+        ) : null}
         <p className="panel-empty">
           Bu kayıtta henüz bir değişiklik yapılmadı. Düzenleme yaptığınızda kim
           neyi değiştirdi burada görünecek.
@@ -146,10 +163,12 @@ export async function RecordHistory({
 
   return (
     <section className="panel-card crm-record-history">
-      <header>
-        <small className="panel-kicker">KAYIT GEÇMİŞİ</small>
-        <h2>{logs.length} değişiklik</h2>
-      </header>
+      {baslik ? (
+        <header>
+          <small className="panel-kicker">KAYIT GEÇMİŞİ</small>
+          <h2>{logs.length} değişiklik</h2>
+        </header>
+      ) : null}
       <ol>
         {logs.map((log) => {
           const changes = log.metadata?.changes ?? [];

@@ -128,7 +128,7 @@ export default async function OperationDetailPage({
 
   const isArchived = workflow.status === "archived";
   const [{ data: contractData }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([
-    supabase.from("crm_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
+    supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
     workflow.assigned_employee_id
       ? supabase.from("hr_employees").select("id,full_name,job_title").eq("id", workflow.assigned_employee_id).eq("organization_id", organizationId).maybeSingle()
@@ -184,10 +184,10 @@ export default async function OperationDetailPage({
 
   const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult] = await Promise.all([
     contract?.opportunity_id
-      ? supabase.from("crm_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
+      ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
     contract?.proposal_id
-      ? supabase.from("crm_proposals").select("id,proposal_no,status").eq("id", contract.proposal_id).eq("organization_id", organizationId).maybeSingle()
+      ? supabase.from("ops_proposals").select("id,proposal_no,status").eq("id", contract.proposal_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
     contract?.opportunity_id
       ? supabase.from("crm_internal_comments").select("id,body,created_at,created_by,context_type").eq("organization_id", organizationId).eq("opportunity_id", contract.opportunity_id).order("created_at", { ascending: false })
@@ -621,27 +621,35 @@ export default async function OperationDetailPage({
                 title="Kayıt geçmişi"
                 description="İş akışının kendi olayları. Teklif ve sözleşme zinciri bilerek dışarıda: tutar bilgisi taşıyor."
                 kicker="OPERASYON"
-                boy="orta"
+                boy="sohbet"
                 baslangicAcik={acilacakPencere === "kayitlar"}
               >
-                <ul className="opd-activity">
-                  {activities.map((activity) => (
-                    <li key={activity.id} data-kind={activity.kind}>
-                      <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                      <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                    </li>
-                  ))}
-                </ul>
                 {/*
-                  Suspense ŞART. Kayıt geçmişi kendi sorgularını yapıyor ve
-                  pencere kapalıyken de sunucuda basılıyor (istemci bileşenine
-                  çocuk olarak geçen sunucu bileşeni her zaman çalışır).
-                  Sekmeliyken yalnızca o sekmede koşuyordu; sarmalamasaydık
-                  nadiren açılan bir pencere her sayfa açılışını geciktirirdi.
+                  TEK KAYDIRICI, İKİ BÖLÜM. Önce iki liste başlıksız
+                  art arda akıyordu ve "Kayıt geçmişi" iki kez
+                  yazıyordu (pencere başlığı + listenin kendi başlığı).
+                  Artık adları bölüm başlıklarında, kaydırma tek yerde.
                 */}
-                <Suspense fallback={<p className="opd-empty">Kayıt geçmişi yükleniyor…</p>}>
-                  <RecordHistory workflowId={workflow.id} />
-                </Suspense>
+                <div className="opd-kayit">
+                  <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
+                  <ul className="opd-activity">
+                    {activities.map((activity) => (
+                      <li key={activity.id} data-kind={activity.kind}>
+                        <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                        <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                      </li>
+                    ))}
+                  </ul>
+                  <h3 className="opd-kayit-baslik">Alan değişiklikleri</h3>
+                  {/*
+                    Suspense ŞART. Kayıt geçmişi kendi sorgularını yapıyor ve
+                    pencere kapalıyken de sunucuda basılıyor (istemci bileşenine
+                    çocuk olarak geçen sunucu bileşeni her zaman çalışır).
+                  */}
+                  <Suspense fallback={<p className="opd-empty">Yükleniyor…</p>}>
+                    <RecordHistory workflowId={workflow.id} baslik={false} />
+                  </Suspense>
+                </div>
               </PanelModal>
             </div>
           </div>

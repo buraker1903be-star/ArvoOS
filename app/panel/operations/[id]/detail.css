@@ -269,6 +269,19 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-list code{padding:2px 7px;border-radius:7px;background:var(--surface-2);font-family:var(--font-body);font-weight:700;letter-spacing:.06em}
 
 /* Son hareketler */
+/* ---------- Kayıt geçmişi penceresi ---------- */
+/*
+  Sohbetle aynı kalıp: pencere gövdesi sabit, kaydırma tek yerde.
+  Önce iki liste başlıksız art arda akıyordu; hangisinin nerede
+  bittiği belli olmuyordu.
+*/
+.opd-kayit{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px;padding-right:4px}
+.opd-kayit-baslik{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;margin:14px 0 6px;padding:6px 0;background:var(--surface);font:650 14px var(--font-heading);color:var(--ink)}
+.opd-kayit-baslik:first-child{margin-top:0}
+.opd-kayit-baslik small{padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700}
+/* Pencere zaten kart: içerideki kayıt listesi ikinci çerçeve çizmesin. */
+.opd-kayit .crm-record-history{margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+
 .opd-activity{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
 .opd-activity li{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft)}
 .opd-activity li:first-child{border-top:0}
