@@ -351,13 +351,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-tabs{max-width:100%;overflow-x:auto;scrollbar-width:none}
 .opd-tabs::-webkit-scrollbar{display:none}
 /*
-  Dar ekranda altı sekme sığmıyor; şerit kayıyor ama ölçüldüğünde son
-  sekme ("Bilgiler") ekran dışında kalıyor ve kaydırılabildiği
-  anlaşılmıyordu. Sağ kenardaki soluma, devamı olduğunu söylüyor.
+  Üç sekme 390px telefona sığıyor (ölçüldü), yani şerit kaymıyor. Altı
+  sekmeliyken son sekme ekran dışında kalıyordu ve sağ kenara soluma
+  konmuştu; sığan şeritte o soluma yalnızca son sekmeyi boşuna soldurur.
 */
-@media (max-width:720px){
-  .opd-tabs{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 26px),transparent)}
-}
 .opd-tabs a{display:inline-flex;align-items:center;gap:7px}
 /* Rozet: sekmeye basmadan "burada iş var mı" sorusunu yanıtlıyor. */
 .opd-tab-rozet{padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--ink) 9%,transparent);color:inherit;font-size:11px;font-weight:700;line-height:1.6}
@@ -366,3 +363,14 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-tabs a.active .opd-tab-rozet[data-tone="danger"]{background:var(--n-0);color:var(--danger)}
 .opd-panel{display:grid;gap:16px}
 .opd-panel>.opd-card{margin:0}
+
+/* Durum kartı üç blok oldu (iş durumu · top kimde · revizyon hakkı). */
+@media (min-width:1080px){
+  .opd-durum{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,0.9fr)}
+}
+/*
+  Künye artık görevlerle aynı sekmede: on satırlık tek sütunlu liste
+  300px yer kaplıyordu, yoğun ızgara üçte birine iniyor.
+*/
+.opd-panel .opd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 22px}
+.opd-panel .opd-list>div{display:grid;gap:1px;min-width:0}
