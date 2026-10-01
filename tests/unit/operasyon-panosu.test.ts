@@ -450,3 +450,72 @@ test("pano · kartı başka kolona taşımak", async (t) => {
     assert.deepEqual(plan.acilacak, ["s1", "s2", "s3"], "s1 hedef: ondan sonrakilerin hepsi açılıyor");
   });
 });
+
+/*
+  İKİ SEVİYELİ ŞABLON.
+
+  AkademikMerkez'in listesi sekiz aşama ve yirmi görev. Kolon görev olsaydı
+  pano yirmi kolona çıkar, bir bakışta görünmesi — bütün değeri — biterdi.
+  Aşaması olan satırda kolon AŞAMA; olmayanda eski davranış sürüyor.
+*/
+test("pano: aşamalı şablonda kolon sayısı aşama sayısıdır", () => {
+  const asamali = (sort_order: number, title: string, phase_title: string, is_completed = false) => ({
+    ...adim(sort_order, title, null, is_completed),
+    phase_title,
+  });
+  const sablon = [
+    { title: "Tez Öneri Formu", sort_order: 10, phase_title: "Hazırlık" },
+    { title: "Etik Kurul İzni", sort_order: 20, phase_title: "Hazırlık" },
+    { title: "Veri Toplama", sort_order: 30, phase_title: "Veri ve Analiz" },
+    { title: "Bulgular Bölümü", sort_order: 40, phase_title: "Veri ve Analiz" },
+  ];
+  const { kolonlar } = asamaPanosuKur(
+    [is({ steps: [
+      asamali(10, "Tez Öneri Formu", "Hazırlık", true),
+      asamali(20, "Etik Kurul İzni", "Hazırlık"),
+      asamali(30, "Veri Toplama", "Veri ve Analiz"),
+      asamali(40, "Bulgular Bölümü", "Veri ve Analiz"),
+    ] })],
+    sablon,
+    () => null,
+    "2026-10-10",
+  );
+
+  // Dolu kolon bir tane (iş "Hazırlık"ta); şablon dışına düşmemeli.
+  assert.deepEqual(kolonlar.map((k) => k.baslik), ["Hazırlık"]);
+  assert.equal(kolonlar[0].kartlar.length, 1);
+  // Kart hâlâ GÖREVİ yazıyor: kolon aşama, kart içindeki satır görev.
+  assert.equal(kolonlar[0].kartlar[0].guncelAsama, "Etik Kurul İzni");
+});
+
+test("pano: aşamalı kolona taşıma o aşamanın İLK görevini hedef alır", () => {
+  const adimlar = [
+    { ...adim(10, "Tez Öneri Formu", null, true), phase_title: "Hazırlık" },
+    { ...adim(20, "Etik Kurul İzni", null), phase_title: "Hazırlık" },
+    { ...adim(30, "Veri Toplama", null), phase_title: "Veri ve Analiz" },
+    { ...adim(40, "Bulgular Bölümü", null), phase_title: "Veri ve Analiz" },
+  ];
+  const plan = tasimaPlani(adimlar, "Veri ve Analiz");
+  assert.ok(plan);
+  // Aradaki açık görev kapanır; hedef aşamanın görevleri açık kalır.
+  assert.deepEqual(plan.tamamlanacak, ["s20"]);
+  assert.deepEqual(plan.acilacak, []);
+  // Kayıt geçmişi kullanıcının bıraktığı kolonun adını yazmalı.
+  assert.equal(plan.hedefAdi, "Veri ve Analiz");
+});
+
+test("pano: aşamasız şablonda davranış değişmedi", () => {
+  // Aşama tanımlamamış kurumlarda kolon yine görevin kendi başlığı.
+  const sablon = [
+    { title: "Hazırlık Yapılıyor", sort_order: 10 },
+    { title: "İç Kontrol Yapılıyor", sort_order: 20 },
+  ];
+  const { kolonlar } = asamaPanosuKur(
+    [is({ steps: [adim(10, "Hazırlık Yapılıyor", null, true), adim(20, "İç Kontrol Yapılıyor", null)] })],
+    sablon,
+    () => null,
+    "2026-10-10",
+  );
+  assert.deepEqual(kolonlar.map((k) => k.baslik), ["İç Kontrol Yapılıyor"]);
+  assert.notEqual(kolonlar[0].anahtar, SABLON_DISI_KOLONU);
+});

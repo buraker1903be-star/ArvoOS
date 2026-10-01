@@ -1,7 +1,10 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  ASAMA_EN_UZUN,
   VARSAYILAN_ADIMLAR,
+  asamaliMi,
+  asamalaraBol,
   hatirlatilacaklar,
   hatirlatmaDurumu,
   hatirlatmaMetni,
@@ -130,5 +133,69 @@ describe("varsayılan adımlar", () => {
     assert.equal(VARSAYILAN_ADIMLAR[7].title, "Evrak Teslimine Hazır");
     assert.equal(new Set(VARSAYILAN_ADIMLAR.map((a) => a.code)).size, 8);
     assert.ok(VARSAYILAN_ADIMLAR.every((a) => /^[a-z0-9_]{2,40}$/.test(a.code)));
+  });
+});
+
+describe("aşama grupları", () => {
+  const g = (phase_title: string | null, title: string) => ({ phase_title, title });
+
+  test("ardışık aynı aşamalar tek grup, numaralar sırayla", () => {
+    const gruplar = asamalaraBol([
+      g("Hazırlık", "Tez Öneri Formu"),
+      g("Hazırlık", "Etik Kurul İzin Dosyaları"),
+      g("Veri ve Analiz", "Veri Toplama"),
+      g("Veri ve Analiz", "Bulgular Bölümü"),
+      g("Teslim", "Nihai Teslim"),
+    ]);
+    assert.deepEqual(gruplar.map((grup) => [grup.no, grup.baslik, grup.adimlar.length]), [
+      [1, "Hazırlık", 2],
+      [2, "Veri ve Analiz", 2],
+      [3, "Teslim", 1],
+    ]);
+  });
+
+  test("büyük/küçük harf ve fazla boşluk aynı aşamadır", () => {
+    const gruplar = asamalaraBol([g("Veri ve Analiz", "a"), g("veri  ve analiz", "b")]);
+    assert.equal(gruplar.length, 1);
+    // Başlık İLK satırdan geliyor: kullanıcının yazdığı biçim korunmalı.
+    assert.equal(gruplar[0].baslik, "Veri ve Analiz");
+  });
+
+  test("aşamasız görev kendi başlıksız grubunda, bulunduğu yerde kalır", () => {
+    /*
+      Sonradan elle eklenen görev (ör. müşteri isterse hazırlanan sunum)
+      aşamasızdır. Listeden düşmemeli, başına da uydurma bir başlık
+      konmamalı; numarasız bir grupta sırasında duruyor.
+    */
+    const gruplar = asamalaraBol([g("Hazırlık", "a"), g(null, "sunum"), g("Teslim", "b")]);
+    assert.deepEqual(gruplar.map((grup) => [grup.no, grup.baslik]), [
+      [1, "Hazırlık"],
+      [null, null],
+      [2, "Teslim"],
+    ]);
+  });
+
+  test("aynı başlık listenin iki ayrı yerinde geçerse iki grup olur", () => {
+    // Başlığa göre toplamak görevlerin SIRASINI bozardı; sıra akışın kendisi.
+    const gruplar = asamalaraBol([g("Revizyon", "a"), g("Teslim", "b"), g("Revizyon", "c")]);
+    assert.deepEqual(gruplar.map((grup) => grup.no), [1, 2, 3]);
+  });
+
+  test("hiç aşama yoksa tek grup ve ekran başlık basmaz", () => {
+    const duz = [g(null, "a"), g(null, "b")];
+    assert.equal(asamalaraBol(duz).length, 1);
+    assert.equal(asamaliMi(duz), false);
+    assert.equal(asamaliMi([g("Hazırlık", "a")]), true);
+    // Yalnızca boşluktan ibaret başlık aşama sayılmaz.
+    assert.equal(asamaliMi([g("   ", "a")]), false);
+  });
+
+  test("şablonda aşama adı 2–80 karakter; boş bırakılabilir", () => {
+    const satir = (over = {}) => ({ code: "taslak", title: "Taslak", sort_order: 10, day_offset: 7, is_active: true, ...over });
+    assert.equal(sablonSorunu([satir({ phase_title: "Hazırlık" })]), null);
+    assert.equal(sablonSorunu([satir({ phase_title: "" })]), null);
+    assert.equal(sablonSorunu([satir({ phase_title: null })]), null);
+    assert.match(sablonSorunu([satir({ phase_title: "x" })]) ?? "", /aşama adı/);
+    assert.match(sablonSorunu([satir({ phase_title: "x".repeat(ASAMA_EN_UZUN + 1) })]) ?? "", /aşama adı/);
   });
 });

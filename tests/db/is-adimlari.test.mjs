@@ -10,11 +10,15 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, rol, veritabani } from "./ortam.mjs";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(
   import.meta.dirname,
   "../../supabase/migrations/20260925113839_is_adimlari_tarihli_ve_kiraci_sablonu.sql",
+);
+const MIGRATION_ASAMA = path.resolve(
+  import.meta.dirname,
+  "../../supabase/migrations/20261001060820_asama_gruplari_ve_firsat_adimlari.sql",
 );
 
 const SAHIP = "00000000-0000-4000-8000-000000000041";
@@ -36,11 +40,16 @@ before(async () => {
     diye Supabase'in davranışını burada tekrarlıyoruz.
   */
   await db.exec(`grant all on public.organization_step_templates to anon, authenticated, service_role;`);
+  const { rows: asama } = await db.query(
+    `select 1 as v from information_schema.columns
+      where table_schema = 'public' and table_name = 'operation_steps' and column_name = 'phase_title'`,
+  );
+  if (!asama.length) await db.exec(fs.readFileSync(MIGRATION_ASAMA, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
 const adimlar = (isId) =>
-  db.query(`select title, sort_order, due_date, status, is_completed from public.operation_steps
+  db.query(`select title, sort_order, due_date, status, is_completed, phase_title from public.operation_steps
               where workflow_id = $1 order by sort_order`, [isId]).then((r) => r.rows);
 
 async function tohum({ workPlan = null } = {}) {
@@ -343,3 +352,127 @@ describe("panodan toplu aşama taşıma", () => {
       assert.equal(yazilan.rows.length, 0, "yabancı kurum hiçbir adımı değiştirememeli");
     }));
 });
+
+/*
+  SATIŞTAN GELEN İŞ.
+
+  Fırsat "kazanıldı" yapılınca iş kendiliğinden açılıyor. Eskiden bu yol
+  işe DÖRT GENEL ADIM daha ekliyordu ("Müşteri ihtiyaçlarını ve kapsamı
+  doğrula", …); işi açan tetikleyici kurumun şablonunu zaten kurduğu için
+  operasyoncu iki listenin karışımını görüyordu ve genel adımlar
+  sort_order 0-3 ile şablonun ÜSTÜNDE duruyordu. Adım listesinin kaynağı
+  tek: add_standard_operation_steps.
+*/
+describe("fırsat kazanılınca açılan işin adımları", () => {
+  const firsatiKazan = async () => {
+    await rol(db, "postgres");
+    await db.query(
+      `update public.crm_opportunities set stage = 'won', estimated_value = 1200000 where id = $1`,
+      [FIRSAT],
+    );
+    return (await tek(
+      `select w.id from public.operation_workflows w
+         join public.crm_automation_runs a on a.workflow_id = w.id
+        where a.opportunity_id = $1`,
+      [FIRSAT],
+    )).id;
+  };
+
+  test("kurumun şablonu neyse o gelir; genel adımlar eklenmez", () =>
+    islem(db, async () => {
+      await tohum();
+      await db.exec(`
+        insert into public.organization_step_templates (organization_id, code, title, sort_order, day_offset) values
+          ('${KURUM}', 'tez_oneri', 'Tez Öneri Formunun Hazırlanması', 10, 7),
+          ('${KURUM}', 'literatur', 'Literatür Bölümünün Tamamının Gönderilmesi', 20, 30),
+          ('${KURUM}', 'savunma', 'Tez Savunma Sunumunun Hazırlanması', 30, 90);
+      `);
+      const liste = await adimlar(await firsatiKazan());
+
+      assert.deepEqual(liste.map((a) => a.title), [
+        "Tez Öneri Formunun Hazırlanması",
+        "Literatür Bölümünün Tamamının Gönderilmesi",
+        "Tez Savunma Sunumunun Hazırlanması",
+      ]);
+      // Eskiden liste yedi satırdı ve ilk dördü bunlardı.
+      assert.equal(
+        liste.some((a) => a.title.startsWith("Müşteri ihtiyaçlarını")),
+        false,
+        "genel adımlar şablonun üstüne eklenmemeli",
+      );
+      assert.ok(liste.every((a) => a.due_date), "şablonun gün ofseti tarihe çevrilmeli");
+    }));
+
+  test("şablon yoksa varsayılan sekiz adım gelir (dört genel adım değil)", () =>
+    islem(db, async () => {
+      await tohum();
+      const liste = await adimlar(await firsatiKazan());
+      assert.equal(liste.length, 8);
+      assert.equal(liste[0].title, "İş Kabul Edildi");
+    }));
+
+  test("fatura, otomasyon kaydı ve bildirim aynen üretiliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await firsatiKazan();
+      // Adım insert'i kaldırılırken gövdenin geri kalanı bozulmamalı.
+      const kayit = await tek(
+        `select invoice_id, workflow_id from public.crm_automation_runs where opportunity_id = $1`, [FIRSAT]);
+      assert.ok(kayit.invoice_id && kayit.workflow_id);
+      const fatura = await tek(`select total, status from public.billing_invoices where id = $1`, [kayit.invoice_id]);
+      assert.equal(Number(fatura.total), 1200000);
+      const bildirim = await tek(
+        `select count(*)::int as n from public.notifications
+          where organization_id = $1 and category = 'crm_won_automation'`, [KURUM]);
+      assert.equal(bildirim.n, 1);
+    }));
+});
+
+/*
+  AŞAMA GRUPLARI.
+
+  AkademikMerkez'in tablosu iki seviyeli: sekiz aşama, içlerinde yirmi
+  görev. Tarih, sorumlu ve durum görevin; aşama yalnızca başlık. Grup
+  NUMARASI saklanmıyor — ekran ardışık aynı başlıkları toplayıp
+  numaralandırıyor (lib/is-adimlari.ts: asamalaraBol).
+*/
+describe("aşama başlığı şablondan işe taşınıyor", () => {
+  test("her görev kendi aşamasını taşır; aşamasız satır boş kalır", () =>
+    islem(db, async () => {
+      await tohum();
+      await db.exec(`
+        insert into public.organization_step_templates (organization_id, code, title, sort_order, day_offset, phase_title) values
+          ('${KURUM}', 'oneri', 'Tez Öneri Formunun Hazırlanması', 10, 7, 'Hazırlık'),
+          ('${KURUM}', 'etik', 'Etik Kurul İzin Dosyaları', 20, 14, 'Hazırlık'),
+          ('${KURUM}', 'veri', 'Veri Toplama Sürecinin Tamamlanması', 30, 60, 'Veri ve Analiz'),
+          ('${KURUM}', 'sunum', 'Savunma Sunumu', 40, null, null);
+      `);
+      const liste = await adimlar(await isAc2());
+
+      assert.deepEqual(liste.map((a) => a.phase_title), ["Hazırlık", "Hazırlık", "Veri ve Analiz", null]);
+    }));
+
+  test("aşama başlığı 80 karakteri geçemez", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "postgres");
+      await reddedilir(
+        db,
+        `insert into public.organization_step_templates (organization_id, code, title, sort_order, phase_title)
+         values ($1, 'uzun', 'Adım', 10, $2)`,
+        [KURUM, "x".repeat(81)],
+        /organization_step_templates_phase_check/,
+      );
+    }));
+});
+
+/** Sözleşmesiz iş: adımlar kurum şablonundan gelsin. */
+async function isAc2() {
+  await rol(db, "postgres");
+  const satir = await tek(
+    `insert into public.operation_workflows (organization_id, title, status, start_date, created_by)
+     values ($1, 'Tez danışmanlığı', 'planned', current_date, $2) returning id`,
+    [KURUM, SAHIP],
+  );
+  return satir.id;
+}

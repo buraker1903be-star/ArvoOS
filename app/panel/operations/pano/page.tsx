@@ -55,6 +55,8 @@ type AdimSatiri = {
   assigned_employee_id: string | null;
   status: string;
   completed_at: string | null;
+  /** Görevin aşaması; kolon buradan çıkıyor (lib/operasyon-panosu.ts: kolonAdi). */
+  phase_title: string | null;
 };
 type Kayit = OperasyonIsi & { operation_steps: AdimSatiri[] };
 
@@ -66,7 +68,7 @@ export default async function OperationsPanoPage() {
     supabase
       .from("operation_workflows")
       .select(
-        "id,title,customer_name,status,priority,start_date,due_date,assigned_employee_id,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id,status,completed_at)",
+        "id,title,customer_name,status,priority,start_date,due_date,assigned_employee_id,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id,status,completed_at,phase_title)",
       )
       .eq("organization_id", membership.organization_id)
       // İptal edilen ve arşivdeki işler panoyu doldurmasın
@@ -75,7 +77,7 @@ export default async function OperationsPanoPage() {
     // Kolonlar kurumun şablonundan; yoksa varsayılan sekiz aşama.
     supabase
       .from("organization_step_templates")
-      .select("title,sort_order")
+      .select("title,sort_order,phase_title")
       .eq("organization_id", membership.organization_id)
       .eq("is_active", true)
       .order("sort_order"),

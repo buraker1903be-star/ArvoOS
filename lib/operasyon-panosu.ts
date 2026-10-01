@@ -24,6 +24,15 @@ export interface OperasyonAdimi {
   is_completed: boolean;
   assigned_employee_id: string | null;
   /*
+    Görevin ait olduğu aşama (operation_steps.phase_title). Panonun kolonu
+    buradan çıkıyor: şablon aşamalıysa yirmi görev sekiz kolona düşer,
+    değilse görev başlığı kolon olmaya devam eder — aşamasız kurumlarda
+    pano birebir eskisi gibi çalışıyor.
+
+    İsteğe bağlı: eski çağrılar (ve bu alanı seçmeyen sorgular) kırılmasın.
+  */
+  phase_title?: string | null;
+  /*
     Adımın dört durumundan biri (planned | in_progress | review | done).
     Pano kolonları buna göre ayrılıyor; is_completed yalnızca "bitti mi"
     diyor ve "kontrolde" ile "çalışılıyor" ayrımını kaybediyor.
@@ -166,9 +175,20 @@ export const SABLON_DISI_KOLONU = "__sablon_disi__";
 /** Aşama adlarını karşılaştırmak için: Türkçe küçük harf, boşluklar teklenir. */
 const asamaAnahtari = (baslik: string) => baslik.trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
 
+/*
+  KOLONUN ADI. Şablon iki seviyeli olabiliyor (AkademikMerkez'in tablosu:
+  sekiz aşama, yirmi görev). Kolon bu durumda AŞAMA; görev değil. Aksi
+  hâlde pano yirmi kolona çıkar ve bir bakışta görünmesi — bütün değeri —
+  biterdi. Aşaması olmayan satırda eski davranış sürüyor: kolon görevin
+  kendi başlığı.
+*/
+const kolonAdi = (satir: { title: string; phase_title?: string | null }) =>
+  (satir.phase_title ?? "").trim() || satir.title;
+
 export interface SablonAsamasi {
   title: string;
   sort_order: number;
+  phase_title?: string | null;
 }
 
 /*
@@ -201,9 +221,11 @@ export function asamaPanosuKur(
   const sirali = [...sablon].sort((a, b) => a.sort_order - b.sort_order);
   const kolonlar = new Map<string, PanoKolonu>();
   for (const asama of sirali) {
-    const anahtar = asamaAnahtari(asama.title);
+    // Aynı aşamanın görevleri tek kolon olur; teklenme zaten anahtar üzerinden.
+    const ad = kolonAdi(asama);
+    const anahtar = asamaAnahtari(ad);
     if (!kolonlar.has(anahtar)) {
-      kolonlar.set(anahtar, { anahtar, baslik: asama.title, tur: "asama", sira: kolonlar.size + 1, kartlar: [] });
+      kolonlar.set(anahtar, { anahtar, baslik: ad, tur: "asama", sira: kolonlar.size + 1, kartlar: [] });
     }
   }
   const asamaSayisi = kolonlar.size;
@@ -285,8 +307,8 @@ export function asamaPanosuKur(
       ? SABLON_DISI_KOLONU
       : !guncel
         ? TAMAMLANDI_KOLONU
-        : kolonlar.has(asamaAnahtari(guncel.title))
-          ? asamaAnahtari(guncel.title)
+        : kolonlar.has(asamaAnahtari(kolonAdi(guncel)))
+          ? asamaAnahtari(kolonAdi(guncel))
           : SABLON_DISI_KOLONU;
     kolonlar.get(hedef)!.kartlar.push(kart);
   }
@@ -385,13 +407,21 @@ export function tasimaPlani(adimlar: OperasyonAdimi[], hedefBaslik: string | nul
     tekrar eden aşama adları). İLK olanı hedef alınıyor: kartın kolonu da
     tamamlanmayan İLK adımdan türüyor, ikisi aynı adımı göstermeli.
   */
+  /*
+    Hedef bir AŞAMA olabilir (şablon iki seviyeliyse kolon odur): o aşamanın
+    İLK görevi hedef alınıyor. Kartın kolonu da tamamlanmayan ilk görevin
+    aşamasından türüyor; ikisi aynı görevi göstermeli, yoksa bırakılan kart
+    eski yerine zıplar.
+  */
   const anahtar = asamaAnahtari(hedefBaslik);
-  const hedef = sirali.find((adim) => asamaAnahtari(adim.title) === anahtar);
+  const hedef = sirali.find((adim) => asamaAnahtari(kolonAdi(adim)) === anahtar);
   if (!hedef) return null;
 
   return {
     tamamlanacak: sirali.filter((a) => a.sort_order < hedef.sort_order && !a.is_completed).map((a) => a.id),
     acilacak: sirali.filter((a) => a.sort_order >= hedef.sort_order && a.is_completed).map((a) => a.id),
-    hedefAdi: hedef.title,
+    // Kayıt geçmişi kullanıcının BIRAKTIĞI kolonun adını yazsın (aşamalı
+    // şablonda bu, görevin değil aşamanın adıdır).
+    hedefAdi: kolonAdi(hedef),
   };
 }

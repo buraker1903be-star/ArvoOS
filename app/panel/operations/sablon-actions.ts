@@ -40,10 +40,11 @@ async function saveStepTemplate__impl(formData: FormData) {
   const basliklar = formData.getAll("title").map((value) => String(value).trim());
   const gunler = formData.getAll("day_offset").map((value) => String(value).trim());
   const kodlar = formData.getAll("code").map((value) => String(value).trim());
+  const asamalar = formData.getAll("phase_title").map((value) => String(value).trim());
 
   const kullanilan = new Set<string>();
   const satirlar = basliklar
-    .map((title, index) => ({ title, gun: gunler[index] ?? "", kod: kodlar[index] ?? "" }))
+    .map((title, index) => ({ title, gun: gunler[index] ?? "", kod: kodlar[index] ?? "", asama: asamalar[index] ?? "" }))
     // Boş satır silme demektir: kullanıcı adı temizleyip kaydedince adım gider.
     .filter((satir) => satir.title.length > 0)
     .map((satir, index) => {
@@ -55,7 +56,14 @@ async function saveStepTemplate__impl(formData: FormData) {
       const kod = satir.kod || kodTuret(satir.title, kullanilan);
       kullanilan.add(kod);
       const gun = satir.gun === "" ? null : Number(satir.gun);
-      return { code: kod, title: satir.title, sort_order: (index + 1) * 10, day_offset: gun, is_active: true };
+      return {
+        code: kod,
+        title: satir.title,
+        sort_order: (index + 1) * 10,
+        day_offset: gun,
+        is_active: true,
+        phase_title: satir.asama || null,
+      };
     });
 
   if (satirlar.length > SABLON_EN_COK) throw new Error(`Şablona en fazla ${SABLON_EN_COK} adım eklenebilir.`);
@@ -106,6 +114,7 @@ async function copyDefaultStepTemplate__impl() {
       sort_order: (index + 1) * 10,
       day_offset: null,
       is_active: true,
+      phase_title: null,
     })),
   );
   if (error) throw new Error("Varsayılan şablon kopyalanamadı: " + error.message);

@@ -1,6 +1,6 @@
-/* Adım şablonu: iki sütunlu (adım adı + gün) düzenleme listesi. */
+/* Adım şablonu: üç sütunlu (aşama + görev + gün) düzenleme listesi. */
 .sablon-form{display:flex;flex-direction:column;gap:8px}
-.sablon-basliklar,.sablon-satir{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:10px;align-items:center}
+.sablon-basliklar,.sablon-satir{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr) 110px;gap:10px;align-items:center}
 .sablon-basliklar{padding:0 2px;color:var(--muted);font-size:12px;font-weight:650;letter-spacing:.02em;text-transform:uppercase}
 .sablon-satir input{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
 .sablon-satir input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -13,7 +13,9 @@
 .sablon-bos p{margin:0;color:var(--muted);font-size:13.5px;max-width:74ch}
 @media (max-width:640px){
   .sablon-basliklar{display:none}
+  /* Dar ekranda üç kutu yan yana okunmuyor: aşama kendi satırına çıkıyor. */
   .sablon-satir{grid-template-columns:minmax(0,1fr) 92px}
+  .sablon-satir input[name="phase_title"]{grid-column:1 / -1}
 }
 .sablon-card-head{margin-bottom:14px}
 .sablon-card-head h2{margin:0 0 4px;font-size:16px;font-weight:700}

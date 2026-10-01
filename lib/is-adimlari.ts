@@ -122,12 +122,15 @@ export interface StepTemplateRow {
   sort_order: number;
   day_offset: number | null;
   is_active: boolean;
+  /** Görevin ait olduğu aşama; boşsa görev gruplanmadan listelenir. */
+  phase_title: string | null;
 }
 
 /** Veritabanıyla aynı sınırlar (organization_step_templates CHECK'leri). */
 export const SABLON_KODU = /^[a-z0-9_]{2,40}$/;
 export const SABLON_EN_COK = 40;
 export const OFSET_EN_COK = 3650;
+export const ASAMA_EN_UZUN = 80;
 
 /*
   Kurum şablonu tanımlamamışsa add_standard_operation_steps bu sekiz adımı
@@ -160,6 +163,10 @@ export function sablonSorunu(satirlar: unknown): string | null {
     if (!SABLON_KODU.test(code)) return `${sira + 1}. adımın kodu geçersiz (küçük harf, rakam ve alt çizgi).`;
     if (kodlar.has(code)) return `“${code}” kodu iki kez kullanılmış; her adımın kodu benzersiz olmalı.`;
     kodlar.add(code);
+    const asama = String(satir.phase_title ?? "").trim();
+    if (asama.length === 1 || asama.length > ASAMA_EN_UZUN) {
+      return `${sira + 1}. satırın aşama adı 2–${ASAMA_EN_UZUN} karakter olmalı (boş bırakılabilir).`;
+    }
     const offset = satir.day_offset;
     if (offset !== null && offset !== undefined) {
       if (!Number.isInteger(offset) || offset < 0 || offset > OFSET_EN_COK) {
@@ -195,3 +202,56 @@ export function kodTuret(baslik: string, kullanilan: Set<string> = new Set()) {
   }
   return `${govde.slice(0, 34)}_${Date.now() % 1000}`;
 }
+
+// ---------- Aşama grupları ----------
+
+/*
+  AkademikMerkez'in operasyon tablosu iki seviyeli: sekiz AŞAMA, içlerinde
+  yirmi GÖREV; tarih, sorumlu ve durum görevin. Veritabanında yalnızca
+  görevin aşama BAŞLIĞI duruyor (operation_steps.phase_title) — numara
+  saklanmıyor, burada sıradan türetiliyor. İkinci bir sütun tutulsaydı sıra
+  ile numara birbirinden ayrı düşebilir, "3. aşama"nın altında 2 numaralı
+  görev görünebilirdi.
+
+  Aşamasız görevler de listeden düşmemeli: başlıksız bir grupta, numarasız
+  ve başlıksız olarak bulundukları yerde kalıyorlar (sonradan elle eklenen
+  "sunum dosyası" gibi).
+*/
+export interface AsamaGrubu<T> {
+  /** Aşama başlığı; null ise bu grup aşamasız görevlerden oluşuyor. */
+  baslik: string | null;
+  /** Ekranda görünen sıra numarası; aşamasız grupta null. */
+  no: number | null;
+  adimlar: T[];
+}
+
+/** Karşılaştırma anahtarı: "Veri ve  Analiz" ile "veri ve analiz" aynı aşamadır. */
+const asamaAnahtari = (baslik: string) => baslik.trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
+
+export function asamalaraBol<T extends { phase_title?: string | null }>(adimlar: T[]): AsamaGrubu<T>[] {
+  const gruplar: AsamaGrubu<T>[] = [];
+  let oncekiAnahtar: string | null = null;
+  let no = 0;
+
+  for (const adim of adimlar) {
+    const baslik = (adim.phase_title ?? "").trim();
+    const anahtar = baslik ? asamaAnahtari(baslik) : null;
+    /*
+      Grup ARDIŞIKLIKLA kuruluyor: aynı başlık listenin iki ayrı yerinde
+      geçiyorsa iki grup olur. Başlığa göre toplamak görevlerin sırasını
+      bozardı; sıra operasyonun akışıdır, aşama yalnızca onun başlığı.
+    */
+    if (gruplar.length === 0 || anahtar !== oncekiAnahtar) {
+      if (baslik) no += 1;
+      gruplar.push({ baslik: baslik || null, no: baslik ? no : null, adimlar: [adim] });
+    } else {
+      gruplar.at(-1)!.adimlar.push(adim);
+    }
+    oncekiAnahtar = anahtar;
+  }
+  return gruplar;
+}
+
+/** Listede hiç aşama tanımlı değilse ekran grup başlığı basmaz. */
+export const asamaliMi = (adimlar: { phase_title?: string | null }[]) =>
+  adimlar.some((adim) => (adim.phase_title ?? "").trim().length > 0);
