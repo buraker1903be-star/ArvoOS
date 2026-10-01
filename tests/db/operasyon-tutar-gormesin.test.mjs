@@ -23,6 +23,7 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 const MIGRATIONLAR = [
   "20261001143617_operasyon_personeli_tutar_gormesin.sql",
   "20261001145319_ops_gorunumleri_salt_okunur.sql",
+  "20261001150014_tutar_yazmayi_da_yetkili_yapsin.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-000000000101";
@@ -171,6 +172,63 @@ describe("operasyon personeli tutar görmesin", () => {
       await reddedilir(db, `update public.ops_opportunities set customer_name = 'HACK'`, [], /permission denied/);
       await reddedilir(db, `delete from public.ops_proposals`, [], /permission denied/);
       await rol(db, "postgres");
+    }));
+
+  test("uzman göremediği tutarı YAZAMIYOR da", () =>
+    islem(db, async () => {
+      await tohum();
+      /*
+        Okumayı kapatmak yetmiyordu: UPDATE politikaları hâlâ işin
+        sorumlusuna satırın tamamında yazma hakkı veriyor.
+
+        İNCELİK — saldırı WHERE'SİZ olanı. "where id = …" yazan bir
+        güncelleme zaten 0 satır buluyor, çünkü Postgres UPDATE'in
+        satırları bulurken SELECT politikasını da uyguluyor ve okuma
+        kapalı. Ama WHERE'siz güncelleme satırı buluyor ve ölçümde
+        "1 satır" yazıyordu. Göremediği bir alanı yazabilmek
+        okumaktan kötü: değişen tutar kimsenin gözüne çarpmaz.
+      */
+      /*
+        Sözleşme ve teklifte BAŞKA kurallar da var ve önce davranıyor:
+        imzalı sözleşme ve onaylı teklif tutar değişimini zaten
+        kilitliyor. Bu test YENİ korumayı kanıtlamalı, o yüzden ikisi
+        de kilitsiz duruma alınıyor; aksi hâlde test geçer ama yanlış
+        kuralı ölçmüş olur.
+      */
+      await rol(db, "postgres");
+      await db.query(`update public.crm_contracts set status = 'draft' where id = $1`, [SOZLESME]);
+      await db.query(`update public.crm_proposals set status = 'draft' where id = $1`, [TEKLIF]);
+
+      await rol(db, "authenticated", UZMAN);
+      await reddedilir(db, `update public.crm_contracts set amount = 1`, [], /yetkiniz yok/);
+      await reddedilir(db, `update public.crm_proposals set amount = 1`, [], /yetkiniz yok/);
+      await reddedilir(db, `update public.crm_opportunities set estimated_value = 1`, [], /yetkiniz yok|row-level security/);
+      await rol(db, "postgres");
+      const sozlesme = await tek(`select amount from public.crm_contracts where id = $1`, [SOZLESME]);
+      assert.equal(Number(sozlesme.amount), 3500000, "Tutar değişmemiş olmalı");
+    }));
+
+  test("tutara dokunmayan güncelleme ve yöneticinin tutar yazması serbest", () =>
+    islem(db, async () => {
+      await tohum();
+      // Operasyonun meşru yazması engellenmemeli: iş bağlantısını koparmak gibi.
+      await rol(db, "authenticated", UZMAN);
+      await db.query(`update public.crm_contracts set workflow_id = null`);
+      await rol(db, "postgres");
+      const kopuk = await tek(`select workflow_id from public.crm_contracts where id = $1`, [SOZLESME]);
+      assert.equal(kopuk.workflow_id, null, "Operasyonun tutarsız güncellemesi geçmeli");
+
+      /*
+        Yönetici tarafı FIRSAT ÜZERİNDEN sınanıyor: imzalanmış
+        sözleşmenin tutarını zaten ayrı bir kural kilitliyor
+        ("Bu sözleşme imzalandı; tutar ve içeriği değiştirilemez"),
+        yani orada yöneticiyi de tetikleyici değil o kural durdurur.
+      */
+      await rol(db, "authenticated", MUDUR);
+      await db.query(`update public.crm_opportunities set estimated_value = 4000000 where id = $1`, [FIRSAT]);
+      await rol(db, "postgres");
+      const firsat = await tek(`select estimated_value from public.crm_opportunities where id = $1`, [FIRSAT]);
+      assert.equal(Number(firsat.estimated_value), 4000000, "Yönetici tutarı değiştirebilmeli");
     }));
 
   test("görünümler anon'a kapalı", () =>
