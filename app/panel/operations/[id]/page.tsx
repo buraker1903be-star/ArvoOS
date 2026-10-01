@@ -11,6 +11,8 @@ import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, 
 import { OpsIcon, dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
+import { MusteriKunyesi } from "./musteri-kunyesi";
+import type { Kunye } from "@/lib/musteri-kunyesi";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -32,7 +34,7 @@ import "./detail.css";
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
 type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
-type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
+type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null; kunye: Kunye | null };
 type Proposal = { id: string; proposal_no: string; status: string };
 type Comment = { id: string; body: string; created_at: string; created_by: string; context_type: "request" | "proposal" | "contract" | "operation" };
 type CustomerMessage = { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null };
@@ -171,7 +173,7 @@ export default async function OperationDetailPage({
 
   const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult] = await Promise.all([
     contract?.opportunity_id
-      ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
+      ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage,kunye").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
     contract?.proposal_id
       ? supabase.from("ops_proposals").select("id,proposal_no,status").eq("id", contract.proposal_id).eq("organization_id", organizationId).maybeSingle()
@@ -683,6 +685,17 @@ export default async function OperationDetailPage({
             </dl>
             </details>
           </section>
+
+            {/*
+              Künyenin hemen altında: operasyon sözleşmeyi ve teklifi
+              göremiyor, müşteri hakkında bildikleri bu kart.
+            */}
+            <MusteriKunyesi
+              kunye={(opportunity?.kunye ?? null) as Kunye | null}
+              opportunityId={contract?.opportunity_id ?? null}
+              workflowId={workflow.id}
+              duzenlenebilir={canEditDue}
+            />
 
             {/*
               KURUM İÇİ YORUMLAR SOHBET OLARAK. Müşteri mesajlarıyla yan

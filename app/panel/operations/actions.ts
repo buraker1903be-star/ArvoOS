@@ -1,6 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
+import { kunyeyiDerle } from "@/lib/musteri-kunyesi";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -799,7 +800,37 @@ async function deleteWorkflow__impl(formData: FormData) {
   redirect("/panel/operations/isler");
 }
 
+/*
+  MÜŞTERİ KÜNYESİNİ GÜNCELLE.
+
+  Yazma crm_opportunities'e DOĞRUDAN yapılmıyor: o tabloya UPDATE
+  politikası açmak operasyona estimated_value'yu da yazılabilir yapardı
+  (RLS satır bazlı, sütun gizleyemiyor). Tek amaçlı veritabanı fonksiyonu
+  yalnızca künye anahtarlarını birleştiriyor ve yetkiyi kendisi
+  doğruluyor — bu işlem onun önündeki kapı, tek güvenlik katmanı değil.
+*/
+async function updateCustomerProfile__impl(formData: FormData) {
+  const { supabase } = await operationContext();
+  const opportunityId = String(formData.get("opportunity_id") ?? "").slice(0, 80);
+  const workflowId = String(formData.get("workflow_id") ?? "").slice(0, 80);
+  if (!opportunityId) throw new Error("Fırsat bulunamadı: künye bu kayda bağlı.");
+
+  const kunye = kunyeyiDerle((anahtar) => formData.get(anahtar) as string | null);
+
+  const { error } = await supabase.rpc("arvo_ops_musteri_kunyesi_yaz", {
+    p_opportunity: opportunityId,
+    p_kunye: kunye,
+  });
+  if (error) throw new Error("Künye kaydedilemedi: " + error.message);
+
+  revalidateOperations();
+  if (workflowId) revalidatePath(`/panel/operations/${workflowId}`);
+}
+
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+export async function updateCustomerProfile(...args: Parameters<typeof updateCustomerProfile__impl>) {
+  return runPanelAction(() => updateCustomerProfile__impl(...args), "Künye güncellendi");
+}
 export async function createWorkflow(...args: Parameters<typeof createWorkflow__impl>) {
   return runPanelAction(() => createWorkflow__impl(...args), "İş oluşturuldu");
 }

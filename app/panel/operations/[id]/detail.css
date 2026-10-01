@@ -573,3 +573,11 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   .opd-serit{position:static;backdrop-filter:none;box-shadow:none}
   .opd-ff-genis{min-width:100%}
 }
+
+/* ---------- Müşteri künyesi ---------- */
+/* Düğme başlığın sağ ucunda: kartın kendi başlık satırı zaten
+   space-between, ayrıca hizalamaya gerek yok. */
+.opd-kunye-duzenle{flex:none;min-height:32px;padding:0 14px;font-size:13px}
+.opd-kunye-form{display:flex;flex-direction:column;gap:12px}
+.opd-kunye-form label{display:flex;flex-direction:column;gap:5px}
+.opd-kunye-form label>span{color:var(--muted);font-size:12.5px;font-weight:650}

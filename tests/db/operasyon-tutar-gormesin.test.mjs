@@ -39,6 +39,14 @@ const SOZLESME = "00000000-0000-4000-8000-000000000109";
 let db;
 before(async () => {
   db = await veritabani();
+  /*
+    Görünümler önce düşürülüyor. Anlık görüntü artık ops_opportunities'ı
+    kunye sütunuyla taşıyor; bir migration dosyasını yeniden uygulamak
+    o sütunu düşürmeye çalışıyor ve Postgres "cannot drop columns from
+    view" diyor. Üretimde bir migration ikinci kez uygulanmaz, bu
+    yalnızca düzeneğin dosyaya bağlı kalma biçiminden doğuyor.
+  */
+  await db.exec(`drop view if exists public.ops_contracts, public.ops_opportunities, public.ops_proposals cascade;`);
   // Migration'lar anlık görüntüde zaten var; yeniden uygulamak
   // (drop … if exists + create) zararsız ve testi dosyalara bağlı tutuyor.
   for (const m of MIGRATIONLAR) await db.exec(fs.readFileSync(m, "utf8"));
