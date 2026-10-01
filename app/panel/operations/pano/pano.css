@@ -8,7 +8,19 @@
   görüldü). Üst sınır 300px: kolon ne kadar az olursa olsun kart
   ölçüsü sabit kalıyor, sağda boşluk kalması normal.
 */
-.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(252px,300px);gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:8px;align-items:start}
+.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(252px,300px);gap:10px;margin-top:14px;overflow-x:auto;padding:0 18px 8px;align-items:start;scroll-snap-type:x proximity;scroll-padding-inline:18px}
+/*
+  YAN DOLGU KENARLIK ÇAKIŞMASI İÇİN. Pano, kapsayıcı .module-tab-panel'in
+  İÇ KENARINA 0px'de oturuyordu: ilk kolonun 1px kenarlığı panelin 1px
+  kenarlığının tam üstüne biniyor, iki çizgi kalın tek çizgi gibi
+  görünüyordu (ölçüldü: panoSol - panelİç = 0). Kardeşlerinin hepsinde
+  18px boşluk var, yalnızca pano yapışıktı.
+
+  Dolgu margin DEĞİL: kaydırma şeridi tam genişlikte kalsın, kolonlar
+  içeride nefes alsın. scroll-padding aynı payı kaydırma hedefine de
+  uyguluyor.
+*/
+.ops-pano-kolon{scroll-snap-align:start}
 /*
   Boş kolon da bilgi ("Literatür'de iş yok") ama dolu kolonla aynı
   ağırlıkta durmamalı: kesik çerçeve ve soluk zemin.
