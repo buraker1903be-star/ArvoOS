@@ -20,10 +20,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const MIGRATION = path.resolve(
-  import.meta.dirname,
-  "../../supabase/migrations/20261001143617_operasyon_personeli_tutar_gormesin.sql",
-);
+const MIGRATIONLAR = [
+  "20261001143617_operasyon_personeli_tutar_gormesin.sql",
+  "20261001145319_ops_gorunumleri_salt_okunur.sql",
+].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-000000000101";
 const SAHIP = "00000000-0000-4000-8000-000000000102";
@@ -38,8 +38,16 @@ const SOZLESME = "00000000-0000-4000-8000-000000000109";
 let db;
 before(async () => {
   db = await veritabani();
-  // Anlık görüntü canlıdan alınıyor; bu migration henüz uygulanmadı.
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  // Migration'lar anlık görüntüde zaten var; yeniden uygulamak
+  // (drop … if exists + create) zararsız ve testi dosyalara bağlı tutuyor.
+  for (const m of MIGRATIONLAR) await db.exec(fs.readFileSync(m, "utf8"));
+  /*
+    Supabase yeni görünümlere 'authenticated' rolüne DOĞRUDAN yetki
+    veriyor; harness bunu taklit etmiyordu. Taklit ediyoruz ki ikinci
+    migration'ın bu yetkiyi gerçekten geri aldığı sınanabilsin.
+  */
+  await db.exec(`grant all on public.ops_contracts, public.ops_opportunities, public.ops_proposals to authenticated;`);
+  for (const m of MIGRATIONLAR) await db.exec(fs.readFileSync(m, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -146,6 +154,23 @@ describe("operasyon personeli tutar görmesin", () => {
       for (const [alan, deger] of Object.entries(r)) {
         assert.deepEqual(deger, [], `${alan} boş olmalı`);
       }
+    }));
+
+  test("görünümler SALT OKUNUR: üzerinden yazılamıyor", () =>
+    islem(db, async () => {
+      await tohum();
+      /*
+        Görünümler tek tablolu ve basit, yani otomatik güncellenebilir;
+        security_invoker kapalı olduğu için yazma görünümün SAHİBİ
+        olarak çalışır ve taban tablonun RLS'ini ATLAR. İlk sürümde
+        yetki yalnızca public ve anon'dan alınmıştı ve operasyon
+        personeli görünümden sözleşme adını değiştirebiliyordu.
+      */
+      await rol(db, "authenticated", UZMAN);
+      await reddedilir(db, `update public.ops_contracts set contract_no = 'HACK' where contract_no = 'SOZ-T-1'`, [], /permission denied/);
+      await reddedilir(db, `update public.ops_opportunities set customer_name = 'HACK'`, [], /permission denied/);
+      await reddedilir(db, `delete from public.ops_proposals`, [], /permission denied/);
+      await rol(db, "postgres");
     }));
 
   test("görünümler anon'a kapalı", () =>

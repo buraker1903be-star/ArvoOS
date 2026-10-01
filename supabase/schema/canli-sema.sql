@@ -632,14 +632,6 @@ create table if not exists public.crm_opportunities (
   step_template_set text
 );
 
-create table if not exists public.crm_opportunity_briefs (
-  organization_id uuid not null,
-  opportunity_id uuid not null,
-  "values" jsonb not null,
-  updated_by uuid,
-  updated_at timestamp with time zone not null
-);
-
 create table if not exists public.crm_proposals (
   id uuid not null,
   organization_id uuid not null,
@@ -1025,15 +1017,6 @@ create table if not exists public.operation_steps (
   phase_title text
 );
 
-create table if not exists public.operation_workflow_briefs (
-  organization_id uuid not null,
-  workflow_id uuid not null,
-  "values" jsonb not null,
-  source_opportunity_id uuid,
-  updated_by uuid,
-  updated_at timestamp with time zone not null
-);
-
 create table if not exists public.operation_workflow_comments (
   id uuid not null,
   organization_id uuid not null,
@@ -1080,21 +1063,6 @@ create table if not exists public.organization_bank_accounts (
   opening_balance bigint not null,
   is_active boolean not null,
   created_by uuid not null,
-  created_at timestamp with time zone not null,
-  updated_at timestamp with time zone not null
-);
-
-create table if not exists public.organization_brief_fields (
-  organization_id uuid not null,
-  code text not null,
-  label text not null,
-  field_type text not null,
-  options jsonb,
-  hint text,
-  is_required boolean not null,
-  set_codes text[],
-  sort_order integer not null,
-  is_active boolean not null,
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null
 );
@@ -2023,26 +1991,6 @@ begin
     new.waiting_note := null;
   end if;
   return new;
-end;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION private.arvo_brief_kopyala(p_organization_id uuid, p_opportunity_id uuid, p_workflow_id uuid)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-begin
-  if p_opportunity_id is null or p_workflow_id is null then
-    return;
-  end if;
-  insert into public.operation_workflow_briefs (organization_id, workflow_id, values, source_opportunity_id, updated_by)
-  select b.organization_id, p_workflow_id, b.values, b.opportunity_id, b.updated_by
-  from public.crm_opportunity_briefs b
-  where b.opportunity_id = p_opportunity_id and b.organization_id = p_organization_id
-  -- İşin kendi brifingi varsa dokunulmaz: operasyon onu düzeltmiş olabilir.
-  on conflict (workflow_id) do nothing;
 end;
 $function$
 ;
@@ -3839,27 +3787,6 @@ begin
   end loop;
   return edits + (la - i + 1) + (lb - j + 1) <= 1;
 end
-$function$
-;
-
-CREATE OR REPLACE FUNCTION private.arvo_workflow_brief_devral()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-declare
-  v_opportunity uuid;
-begin
-  if new.contract_id is null then
-    return new;
-  end if;
-  select c.opportunity_id into v_opportunity
-  from public.crm_contracts c
-  where c.id = new.contract_id and c.organization_id = new.organization_id;
-  perform private.arvo_brief_kopyala(new.organization_id, v_opportunity, new.id);
-  return new;
-end;
 $function$
 ;
 
@@ -11413,10 +11340,6 @@ alter table public.crm_opportunities alter column stage set default 'lead'::text
 
 alter table public.crm_opportunities alter column updated_at set default now();
 
-alter table public.crm_opportunity_briefs alter column "values" set default '{}'::jsonb;
-
-alter table public.crm_opportunity_briefs alter column updated_at set default now();
-
 alter table public.crm_proposals alter column amount set default 0;
 
 alter table public.crm_proposals alter column created_at set default now();
@@ -11619,10 +11542,6 @@ alter table public.operation_steps alter column sort_order set default 0;
 
 alter table public.operation_steps alter column status set default 'planned'::text;
 
-alter table public.operation_workflow_briefs alter column "values" set default '{}'::jsonb;
-
-alter table public.operation_workflow_briefs alter column updated_at set default now();
-
 alter table public.operation_workflow_comments alter column created_at set default now();
 
 alter table public.operation_workflow_comments alter column id set default gen_random_uuid();
@@ -11650,18 +11569,6 @@ alter table public.organization_bank_accounts alter column is_active set default
 alter table public.organization_bank_accounts alter column opening_balance set default 0;
 
 alter table public.organization_bank_accounts alter column updated_at set default now();
-
-alter table public.organization_brief_fields alter column created_at set default now();
-
-alter table public.organization_brief_fields alter column field_type set default 'text'::text;
-
-alter table public.organization_brief_fields alter column is_active set default true;
-
-alter table public.organization_brief_fields alter column is_required set default false;
-
-alter table public.organization_brief_fields alter column sort_order set default 0;
-
-alter table public.organization_brief_fields alter column updated_at set default now();
 
 alter table public.organization_crm_stages alter column is_active set default true;
 
@@ -12327,10 +12234,6 @@ alter table public.crm_opportunities add constraint crm_opportunities_stage_chec
 
 alter table public.crm_opportunities add constraint crm_opportunities_title_check CHECK (((char_length(title) >= 2) AND (char_length(title) <= 180)));
 
-alter table public.crm_opportunity_briefs add constraint crm_opportunity_briefs_pkey PRIMARY KEY (opportunity_id);
-
-alter table public.crm_opportunity_briefs add constraint crm_opportunity_briefs_values_check CHECK (((jsonb_typeof("values") = 'object'::text) AND (pg_column_size("values") <= 20000)));
-
 alter table public.crm_proposals add constraint crm_proposals_access_token_hash_key UNIQUE (access_token_hash);
 
 alter table public.crm_proposals add constraint crm_proposals_amount_check CHECK ((amount >= 0));
@@ -12527,10 +12430,6 @@ alter table public.operation_steps add constraint operation_steps_status_check C
 
 alter table public.operation_steps add constraint operation_steps_title_check CHECK (((char_length(title) >= 2) AND (char_length(title) <= 180)));
 
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_pkey PRIMARY KEY (workflow_id);
-
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_values_check CHECK (((jsonb_typeof("values") = 'object'::text) AND (pg_column_size("values") <= 20000)));
-
 alter table public.operation_workflow_comments add constraint operation_workflow_comments_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 2000)));
 
 alter table public.operation_workflow_comments add constraint operation_workflow_comments_pkey PRIMARY KEY (id);
@@ -12562,24 +12461,6 @@ alter table public.organization_bank_accounts add constraint organization_bank_a
 alter table public.organization_bank_accounts add constraint organization_bank_accounts_organization_id_iban_key UNIQUE (organization_id, iban);
 
 alter table public.organization_bank_accounts add constraint organization_bank_accounts_pkey PRIMARY KEY (id);
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_code_check CHECK ((code ~ '^[a-z0-9_]{2,40}$'::text));
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_hint_check CHECK (((hint IS NULL) OR (char_length(hint) <= 200)));
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_label_check CHECK (((char_length(label) >= 2) AND (char_length(label) <= 120)));
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_options_check CHECK (
-CASE
-    WHEN (field_type = ANY (ARRAY['select'::text, 'multi_select'::text])) THEN ((jsonb_typeof(options) = 'array'::text) AND ((jsonb_array_length(options) >= 2) AND (jsonb_array_length(options) <= 20)))
-    ELSE (options IS NULL)
-END);
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_pkey PRIMARY KEY (organization_id, code);
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_sort_check CHECK ((sort_order >= 0));
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_type_check CHECK ((field_type = ANY (ARRAY['text'::text, 'long_text'::text, 'date'::text, 'select'::text, 'multi_select'::text, 'bool'::text])));
 
 alter table public.organization_crm_stages add constraint organization_crm_stages_pkey PRIMARY KEY (organization_id, code);
 
@@ -12991,8 +12872,6 @@ CREATE INDEX crm_opportunities_org_stage_idx ON public.crm_opportunities USING b
 
 CREATE INDEX crm_opportunities_owner_idx ON public.crm_opportunities USING btree (organization_id, owner_user_id);
 
-CREATE INDEX crm_opportunity_briefs_org_idx ON public.crm_opportunity_briefs USING btree (organization_id);
-
 CREATE INDEX crm_proposals_opportunity_idx ON public.crm_proposals USING btree (opportunity_id);
 
 CREATE INDEX crm_proposals_org_idx ON public.crm_proposals USING btree (organization_id, created_at DESC);
@@ -13093,8 +12972,6 @@ CREATE INDEX operation_steps_due_idx ON public.operation_steps USING btree (due_
 
 CREATE INDEX operation_steps_workflow_order_idx ON public.operation_steps USING btree (workflow_id, sort_order, id);
 
-CREATE INDEX operation_workflow_briefs_org_idx ON public.operation_workflow_briefs USING btree (organization_id);
-
 CREATE INDEX operation_workflow_comments_workflow_created_idx ON public.operation_workflow_comments USING btree (workflow_id, created_at DESC);
 
 CREATE INDEX operation_workflow_comments_workflow_idx ON public.operation_workflow_comments USING btree (workflow_id, created_at DESC);
@@ -13112,8 +12989,6 @@ CREATE INDEX operation_workflows_revizyon_idx ON public.operation_workflows USIN
 CREATE UNIQUE INDEX operation_workflows_contract_id_unique ON public.operation_workflows USING btree (contract_id) WHERE (contract_id IS NOT NULL);
 
 CREATE INDEX organization_bank_accounts_org_idx ON public.organization_bank_accounts USING btree (organization_id, is_active);
-
-CREATE INDEX organization_brief_fields_org_idx ON public.organization_brief_fields USING btree (organization_id, sort_order);
 
 CREATE INDEX organization_crm_stages_org_idx ON public.organization_crm_stages USING btree (organization_id);
 
@@ -13383,12 +13258,6 @@ alter table public.crm_opportunities add constraint crm_opportunities_owner_user
 
 alter table public.crm_opportunities add constraint crm_opportunities_step_set_fkey FOREIGN KEY (organization_id, step_template_set) REFERENCES organization_step_template_sets(organization_id, code) ON DELETE SET NULL (step_template_set);
 
-alter table public.crm_opportunity_briefs add constraint crm_opportunity_briefs_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES crm_opportunities(id) ON DELETE CASCADE;
-
-alter table public.crm_opportunity_briefs add constraint crm_opportunity_briefs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-alter table public.crm_opportunity_briefs add constraint crm_opportunity_briefs_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
 alter table public.crm_proposals add constraint crm_proposals_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
 
 alter table public.crm_proposals add constraint crm_proposals_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES crm_opportunities(id) ON DELETE CASCADE;
@@ -13545,14 +13414,6 @@ alter table public.operation_steps add constraint operation_steps_organization_i
 
 alter table public.operation_steps add constraint operation_steps_workflow_org_fkey FOREIGN KEY (workflow_id, organization_id) REFERENCES operation_workflows(id, organization_id) ON DELETE CASCADE;
 
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_source_opportunity_id_fkey FOREIGN KEY (source_opportunity_id) REFERENCES crm_opportunities(id) ON DELETE SET NULL;
-
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE SET NULL;
-
-alter table public.operation_workflow_briefs add constraint operation_workflow_briefs_workflow_id_fkey FOREIGN KEY (workflow_id) REFERENCES operation_workflows(id) ON DELETE CASCADE;
-
 alter table public.operation_workflow_comments add constraint operation_workflow_comments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.operation_workflow_comments add constraint operation_workflow_comments_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
@@ -13574,8 +13435,6 @@ alter table public.operation_workflows add constraint operation_workflows_step_s
 alter table public.organization_bank_accounts add constraint organization_bank_accounts_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT;
 
 alter table public.organization_bank_accounts add constraint organization_bank_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
-
-alter table public.organization_brief_fields add constraint organization_brief_fields_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.organization_crm_stages add constraint organization_crm_stages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
@@ -13789,8 +13648,6 @@ alter table public.crm_internal_comments enable row level security;
 
 alter table public.crm_opportunities enable row level security;
 
-alter table public.crm_opportunity_briefs enable row level security;
-
 alter table public.crm_proposals enable row level security;
 
 alter table public.crm_requests enable row level security;
@@ -13843,15 +13700,11 @@ alter table public.operation_customer_files enable row level security;
 
 alter table public.operation_steps enable row level security;
 
-alter table public.operation_workflow_briefs enable row level security;
-
 alter table public.operation_workflow_comments enable row level security;
 
 alter table public.operation_workflows enable row level security;
 
 alter table public.organization_bank_accounts enable row level security;
-
-alter table public.organization_brief_fields enable row level security;
 
 alter table public.organization_crm_stages enable row level security;
 
@@ -13971,13 +13824,6 @@ create policy activity_logs_insert on public.activity_logs as PERMISSIVE for INS
   with check (((actor_user_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1
    FROM organization_memberships m
   WHERE ((m.organization_id = activity_logs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.is_active = true))))));
-
-create policy activity_logs_select_crm_chain on public.activity_logs as PERMISSIVE for SELECT to authenticated
-  using (((entity_type = ANY (ARRAY['crm_opportunity'::text, 'crm_proposal'::text, 'crm_contract'::text])) AND (EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = activity_logs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.is_active = true)))) AND (EXISTS ( SELECT 1
-   FROM crm_opportunities o
-  WHERE ((o.organization_id = activity_logs.organization_id) AND ((o.id)::text = COALESCE((activity_logs.metadata ->> 'opportunity_id'::text), activity_logs.entity_id)) AND private.arvo_can_access_opportunity(o.id))))));
 
 create policy activity_logs_select_operations on public.activity_logs as PERMISSIVE for SELECT to authenticated
   using (((entity_type = 'operation_workflow'::text) AND (EXISTS ( SELECT 1
@@ -14380,9 +14226,6 @@ create policy "members read contract addenda" on public.crm_contract_addenda as 
 create policy "members create assigned contracts" on public.crm_contracts as PERMISSIVE for INSERT to authenticated
   with check (((created_by = ( SELECT auth.uid() AS uid)) AND private.arvo_can_access_opportunity(opportunity_id)));
 
-create policy "members read assigned contracts" on public.crm_contracts as PERMISSIVE for SELECT to authenticated
-  using (private.arvo_can_access_opportunity(opportunity_id));
-
 create policy "members update assigned contracts" on public.crm_contracts as PERMISSIVE for UPDATE to authenticated
   using (private.arvo_can_access_opportunity(opportunity_id))
   with check (private.arvo_can_access_opportunity(opportunity_id));
@@ -14393,17 +14236,6 @@ create policy "owners admins delete crm contracts" on public.crm_contracts as PE
   WHERE ((membership.organization_id = crm_contracts.organization_id) AND (membership.user_id = ( SELECT auth.uid() AS uid)) AND (membership.is_active = true) AND ((membership.role)::text = ANY (ARRAY['owner'::text, 'admin'::text]))))));
 
 create policy "assigned members add crm internal comments" on public.crm_internal_comments as PERMISSIVE for INSERT to authenticated
-  with check (((created_by = ( SELECT auth.uid() AS uid)) AND (organization_id = ( SELECT o.organization_id
-   FROM crm_opportunities o
-  WHERE (o.id = crm_internal_comments.opportunity_id))) AND private.arvo_can_access_opportunity(opportunity_id)));
-
-create policy "assigned members read crm internal comments" on public.crm_internal_comments as PERMISSIVE for SELECT to authenticated
-  using (((organization_id = ( SELECT o.organization_id
-   FROM crm_opportunities o
-  WHERE (o.id = crm_internal_comments.opportunity_id))) AND private.arvo_can_access_opportunity(opportunity_id)));
-
-create policy "authors edit own crm internal comments" on public.crm_internal_comments as PERMISSIVE for UPDATE to authenticated
-  using (((created_by = ( SELECT auth.uid() AS uid)) AND private.arvo_can_access_opportunity(opportunity_id)))
   with check (((created_by = ( SELECT auth.uid() AS uid)) AND (organization_id = ( SELECT o.organization_id
    FROM crm_opportunities o
   WHERE (o.id = crm_internal_comments.opportunity_id))) AND private.arvo_can_access_opportunity(opportunity_id)));
@@ -14423,28 +14255,14 @@ create policy members_create_assigned_crm_opportunities on public.crm_opportunit
    FROM hr_employees e
   WHERE ((e.id = crm_opportunities.assigned_employee_id) AND (e.organization_id = crm_opportunities.organization_id) AND (e.user_id = ( SELECT auth.uid() AS uid)) AND (e.employment_status = 'active'::text)))))));
 
-create policy members_read_assigned_crm_opportunities on public.crm_opportunities as PERMISSIVE for SELECT to authenticated
-  using (private.arvo_can_access_opportunity(id));
-
 create policy members_update_assigned_crm_opportunities on public.crm_opportunities as PERMISSIVE for UPDATE to authenticated
   using (private.arvo_can_access_opportunity(id))
   with check ((private.arvo_is_privileged_member(organization_id) OR (EXISTS ( SELECT 1
    FROM hr_employees e
   WHERE ((e.id = crm_opportunities.assigned_employee_id) AND (e.organization_id = crm_opportunities.organization_id) AND (e.user_id = ( SELECT auth.uid() AS uid)) AND (e.employment_status = 'active'::text))))));
 
-create policy members_manage_opportunity_briefs on public.crm_opportunity_briefs as PERMISSIVE for ALL to authenticated
-  using ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = crm_opportunity_briefs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active))))
-  with check ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = crm_opportunity_briefs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active))));
-
 create policy "members create assigned proposals" on public.crm_proposals as PERMISSIVE for INSERT to authenticated
   with check (((created_by = ( SELECT auth.uid() AS uid)) AND private.arvo_can_access_opportunity(opportunity_id)));
-
-create policy "members read assigned proposals" on public.crm_proposals as PERMISSIVE for SELECT to authenticated
-  using ((private.arvo_can_access_opportunity(opportunity_id) AND ((status = 'draft'::text) OR ((status = 'sent'::text) AND ((valid_until IS NULL) OR (valid_until >= ((now() AT TIME ZONE 'Europe/Istanbul'::text))::date))) OR (status = 'archived'::text) OR (status = ANY (ARRAY['accepted'::text, 'rejected'::text])))));
 
 create policy "members update assigned proposals" on public.crm_proposals as PERMISSIVE for UPDATE to authenticated
   using (private.arvo_can_access_opportunity(opportunity_id))
@@ -14698,14 +14516,6 @@ create policy members_update_assigned_operation_steps on public.operation_steps 
   using (private.arvo_can_access_workflow(workflow_id))
   with check (private.arvo_can_access_workflow(workflow_id));
 
-create policy members_manage_workflow_briefs on public.operation_workflow_briefs as PERMISSIVE for ALL to authenticated
-  using ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = operation_workflow_briefs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active))))
-  with check ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = operation_workflow_briefs.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active))));
-
 create policy "operation comments deletable by creator" on public.operation_workflow_comments as PERMISSIVE for DELETE to authenticated
   using (((created_by = auth.uid()) AND arvo_is_member(organization_id)));
 
@@ -14746,19 +14556,6 @@ create policy owners_manage_bank_accounts on public.organization_bank_accounts a
   with check ((EXISTS ( SELECT 1
    FROM organization_memberships m
   WHERE ((m.organization_id = organization_bank_accounts.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active AND (m.role = ANY (ARRAY['owner'::membership_role, 'admin'::membership_role]))))));
-
-create policy admins_manage_brief_fields on public.organization_brief_fields as PERMISSIVE for ALL to authenticated
-  using ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = organization_brief_fields.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active AND (m.role = ANY (ARRAY['owner'::membership_role, 'admin'::membership_role]))))))
-  with check ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = organization_brief_fields.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active AND (m.role = ANY (ARRAY['owner'::membership_role, 'admin'::membership_role]))))));
-
-create policy members_read_brief_fields on public.organization_brief_fields as PERMISSIVE for SELECT to authenticated
-  using ((EXISTS ( SELECT 1
-   FROM organization_memberships m
-  WHERE ((m.organization_id = organization_brief_fields.organization_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.is_active))));
 
 create policy admins_manage_crm_stages on public.organization_crm_stages as PERMISSIVE for ALL to authenticated
   using ((EXISTS ( SELECT 1
@@ -15068,9 +14865,6 @@ revoke all on function private.arvo_activate_subscriber_period(p_subscriber_id u
 
 revoke all on function private.arvo_bekleyen_taraf_damgasi() from public;
 
-revoke all on function private.arvo_brief_kopyala(p_organization_id uuid, p_opportunity_id uuid, p_workflow_id uuid) from public;
-grant execute on function private.arvo_brief_kopyala(p_organization_id uuid, p_opportunity_id uuid, p_workflow_id uuid) to service_role;
-
 revoke all on function private.arvo_bump_message_channel() from public;
 grant execute on function private.arvo_bump_message_channel() to public;
 
@@ -15227,8 +15021,6 @@ revoke all on function private.arvo_try_date(p_value text) from public;
 revoke all on function private.arvo_unreconcile_party_installments(p_organization_id uuid, p_party_id uuid) from public;
 
 revoke all on function private.arvo_within_one_edit(a text, b text) from public;
-
-revoke all on function private.arvo_workflow_brief_devral() from public;
 
 revoke all on function private.arvo_workflow_turu_devral() from public;
 
@@ -15978,8 +15770,6 @@ CREATE TRIGGER arvo_guard_workflow_contract_link BEFORE INSERT OR UPDATE OF cont
 
 CREATE TRIGGER arvo_revizyon_penceresi BEFORE INSERT OR UPDATE OF status, delivered_at, revision_days ON public.operation_workflows FOR EACH ROW EXECUTE FUNCTION private.arvo_revizyon_penceresi();
 
-CREATE TRIGGER arvo_workflow_brief_devral AFTER INSERT ON public.operation_workflows FOR EACH ROW EXECUTE FUNCTION private.arvo_workflow_brief_devral();
-
 CREATE TRIGGER arvo_workflow_turu_devral BEFORE INSERT ON public.operation_workflows FOR EACH ROW EXECUTE FUNCTION private.arvo_workflow_turu_devral();
 
 CREATE TRIGGER guard_operation_workflow_archive BEFORE INSERT OR UPDATE OF status, archived_at, archived_by ON public.operation_workflows FOR EACH ROW EXECUTE FUNCTION guard_operation_workflow_archive();
@@ -16007,3 +15797,386 @@ CREATE TRIGGER arvo_step_template_set_ensure BEFORE INSERT ON public.organizatio
 CREATE TRIGGER create_default_organization_license AFTER INSERT ON public.organizations FOR EACH ROW EXECUTE FUNCTION private.create_default_organization_license();
 
 CREATE TRIGGER touch_support_ticket AFTER INSERT ON public.support_messages FOR EACH ROW EXECUTE FUNCTION private.touch_support_ticket();
+
+-- ===== 20261001121814_brifing_kaldirildi.sql =====
+-- ============================================================
+-- BRİFİNG KALDIRILDI
+--
+-- 01.10.2026 sabahı eklendi, aynı gün kaldırıldı: kurumun kararı. Satış
+-- tarafının topladığı bilgi fırsatın kendi alanlarında (konu, kapsam,
+-- notlar) zaten duruyor; ayrı bir form ekranı, iki ayrı doldurma yeri ve
+-- iki ekranda bölüm getiriyordu.
+--
+-- SIRA ÖNEMLİ: process_won_crm_opportunity, private.arvo_brief_kopyala'yı
+-- çağırıyor. plpgsql gövdesi çağrılan fonksiyonu ÇALIŞMA ANINDA çözüyor;
+-- önce gövdeyi temizlemeden fonksiyonu düşürürsek "fırsat kazanıldı"
+-- akışı sessizce değil, ilk kullanımda patlardı.
+--
+-- Veri kaybı bilerek: brifing alanları ve doldurulmuş brifingler gidiyor.
+-- Çalışma türü (step_template_set) ve iş adımları bu kaldırmadan
+-- ETKİLENMİYOR — aynı günün komşu migration'larıydılar.
+-- ============================================================
+
+-- ---------- 1. Fırsat kazanıldığında brifing kopyalanmasın ----------
+
+create or replace function private.process_won_crm_opportunity()
+returns trigger language plpgsql security definer set search_path to ''
+as $fn$
+declare
+  new_workflow_id uuid;
+  new_invoice_id uuid;
+  workflow_due_date date;
+begin
+  if new.stage <> 'won' or old.stage = 'won' then return new; end if;
+
+  if exists (select 1 from public.crm_contracts c
+             where c.opportunity_id = new.id and c.workflow_id is not null) then
+    return new;
+  end if;
+
+  if exists (select 1 from public.crm_automation_runs a
+             where a.opportunity_id = new.id) then
+    return new;
+  end if;
+
+  workflow_due_date := coalesce(new.expected_close_date, current_date + 30);
+
+  insert into public.operation_workflows (
+    organization_id, title, customer_name, description,
+    status, priority, start_date, due_date, created_by, step_template_set
+  ) values (
+    new.organization_id, new.title, new.customer_name,
+    concat('CRM fırsatından otomatik oluşturuldu. Fırsat: ', new.title),
+    'planned', 'normal', current_date, workflow_due_date, new.created_by,
+    new.step_template_set
+  ) returning id into new_workflow_id;
+
+  -- Adımlar operation_workflows_seed_standard_steps tetikleyicisinden gelir.
+
+  insert into public.billing_invoices (
+    organization_id, provider, status, currency, subtotal, tax, total, due_at
+  ) values (
+    new.organization_id, 'manual', 'open', 'TRY',
+    new.estimated_value, 0, new.estimated_value,
+    (workflow_due_date::timestamp at time zone 'Europe/Istanbul')
+  ) returning id into new_invoice_id;
+
+  insert into public.crm_automation_runs (opportunity_id, organization_id, workflow_id, invoice_id)
+  values (new.id, new.organization_id, new_workflow_id, new_invoice_id);
+
+  insert into public.notifications (
+    organization_id, audience, category, title, message, action_url, metadata
+  ) values (
+    new.organization_id, 'organization', 'crm_won_automation',
+    'Satış operasyona aktarıldı',
+    'Kazanılan fırsat için operasyon iş akışı ve açık ödeme kaydı otomatik oluşturuldu.',
+    '/panel/operations',
+    jsonb_build_object('opportunity_id', new.id, 'workflow_id', new_workflow_id, 'invoice_id', new_invoice_id)
+  );
+
+  return new;
+end;
+$fn$;
+
+revoke all on function private.process_won_crm_opportunity() from public, anon, authenticated;
+
+-- ---------- 2. Brifingin kendisi ----------
+
+drop trigger if exists arvo_workflow_brief_devral on public.operation_workflows;
+drop function if exists private.arvo_workflow_brief_devral();
+drop function if exists private.arvo_brief_kopyala(uuid, uuid, uuid);
+
+drop table if exists public.operation_workflow_briefs;
+drop table if exists public.crm_opportunity_briefs;
+drop table if exists public.organization_brief_fields;
+
+notify pgrst, 'reload schema';
+
+
+-- ===== 20261001125021_musteri_mesaji_satisciya_da_gitsin.sql =====
+-- Müşteri mesajı bildirimi satışçıya da gitsin.
+--
+-- Fırsatın sorumlusu (satışçı) bildirimi yalnızca iş HENÜZ AÇILMAMIŞKEN
+-- alıyordu: sözleşmeye bir operasyon işi bağlanır bağlanmaz müşteriyi
+-- satan kişi sessizleşiyordu. Oysa müşteri çoğunlukla hâlâ satışçıyı
+-- tanıyor ve mesajı ona yazdığını sanıyor; ilişkiyi kuran kişinin iş
+-- operasyona geçti diye haberi kesilmemeli.
+--
+-- Tek değişiklik: ikinci koldaki "target_contract.workflow_id is null"
+-- koşulu kalktı. Satışçı ile operasyoncu aynı kişiyse 'select distinct'
+-- zaten tek satır yazıyor. Kurum üyeliği denetimi yerinde duruyor:
+-- kurumdan ayrılmış satışçıya bildirim gitmez.
+
+create or replace function public.send_customer_file_message(p_tracking_code text, p_body text)
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+declare
+  target_contract public.crm_contracts%rowtype;
+  clean_body text := trim(p_body);
+begin
+  if char_length(clean_body) < 2 or char_length(clean_body) > 2000 then
+    raise exception 'Mesaj 2 ile 2000 karakter arasında olmalıdır.';
+  end if;
+
+  select contract.* into target_contract
+  from public.crm_contracts contract
+  where contract.tracking_code = upper(regexp_replace(trim(p_tracking_code), '[^A-Za-z0-9]', '', 'g'))
+    and private.arvo_contract_tracking_open(contract.status, contract.tracking_open_before_signature)
+  limit 1;
+
+  if target_contract.id is null then
+    raise exception 'Dosya bulunamadı.';
+  end if;
+
+  if exists (
+    select 1 from public.customer_file_messages recent
+    where recent.contract_id = target_contract.id
+      and recent.sender_type = 'customer'
+      and recent.created_at > now() - interval '20 seconds'
+  ) then
+    raise exception 'Yeni bir mesaj göndermeden önce kısa bir süre bekleyin.';
+  end if;
+
+  insert into public.customer_file_messages (
+    organization_id, contract_id, workflow_id, sender_type, sender_name, body
+  ) values (
+    target_contract.organization_id, target_contract.id, target_contract.workflow_id,
+    'customer', 'Müşteri', clean_body
+  );
+
+  insert into public.notifications (
+    organization_id, user_id, audience, category, title, message, action_url, metadata
+  )
+  select distinct
+    target_contract.organization_id,
+    recipient.user_id,
+    'organization',
+    'customer_message',
+    'Müşteriden yeni mesaj',
+    target_contract.contract_no || ' numaralı dosya için müşteri mesaj gönderdi.',
+    case when target_contract.workflow_id is not null
+      then '/panel/operations/' || target_contract.workflow_id::text
+      else '/panel/crm/contracts/' || target_contract.id::text || '#musteri-mesajlari' end,
+    jsonb_build_object('contract_id', target_contract.id, 'workflow_id', target_contract.workflow_id)
+  from (
+    -- İşin sorumlusu (operasyoncu)
+    select employee.user_id
+    from public.operation_workflows workflow
+    join public.hr_employees employee on employee.id = workflow.assigned_employee_id
+    where workflow.id = target_contract.workflow_id
+      and employee.user_id is not null
+      and employee.employment_status = 'active'
+    union
+    -- Fırsatın sorumlusu (satışçı) — iş açılmış olsa da haber alır
+    select employee.user_id
+    from public.crm_opportunities opportunity
+    join public.hr_employees employee on employee.id = opportunity.assigned_employee_id
+    where opportunity.id = target_contract.opportunity_id
+      and employee.user_id is not null
+      and employee.employment_status = 'active'
+      and exists (
+        select 1 from public.organization_memberships m
+        where m.organization_id = target_contract.organization_id and m.user_id = employee.user_id and m.is_active
+      )
+    union
+    select membership.user_id
+    from public.organization_memberships membership
+    where membership.organization_id = target_contract.organization_id
+      and membership.is_active = true
+      and membership.role::text in ('owner', 'admin', 'manager')
+  ) recipient
+  where recipient.user_id is not null;
+end;
+$function$;
+
+-- Postgres yeni/değiştirilmiş fonksiyonu PUBLIC'e açık bırakır; kapı
+-- yalnızca sunucuya (service_role) açık kalmalı: takip sayfası bu
+-- fonksiyonu kendi anahtarıyla çağırır, müşterinin tarayıcısı çağıramaz.
+revoke all on function public.send_customer_file_message(text, text) from public, anon, authenticated;
+grant execute on function public.send_customer_file_message(text, text) to service_role;
+
+
+-- ===== 20261001143617_operasyon_personeli_tutar_gormesin.sql =====
+-- ============================================================
+-- OPERASYON PERSONELİ TUTAR GÖRMESİN
+--
+-- Ekranda zaten gizliydi (portal_workflow_payment_status tutarları
+-- yalnızca owner/admin/manager'a döndürüyor) ama VERİ açıktı: işe
+-- atanmış bir 'member', kendi oturumuyla doğrudan sorgulayınca
+-- crm_contracts.amount, crm_proposals.amount ve
+-- crm_opportunities.estimated_value okuyabiliyordu. Ölçüldü.
+--
+-- Sebebi private.arvo_can_access_opportunity'nin üçüncü kolu: işin
+-- sorumlusuna fırsatın TÜM SATIRINA erişim veriyor, RLS ise satır
+-- bazlı — sütun gizleyemiyor.
+--
+-- ÇÖZÜM: satır erişimi tutarı görebilenlerle sınırlanıyor; operasyon
+-- personeli aynı kayıtları tutar içermeyen GÖRÜNÜMLERDEN okuyor.
+--
+-- DİKKAT — yan etki zinciri: yorum ve kayıt geçmişi politikaları
+-- fırsat satırına alt sorguyla bakıyor ("organization_id = (select
+-- o.organization_id from crm_opportunities o …)"). Bu alt sorgu da
+-- RLS'ten geçtiği için, satır erişimi daralınca operasyon personeli
+-- KENDİ işinin yorumlarını ve kayıt geçmişini kaybederdi. O yüzden
+-- bu alt sorgular security definer bir yardımcıya çevriliyor.
+-- ============================================================
+
+-- ---------- 1. Yardımcılar ----------
+
+-- Fırsatın kurumu; RLS'e takılmadan. Politikaların içindeki alt
+-- sorgular bunu kullanıyor.
+create or replace function private.arvo_firsat_kurumu(p_firsat uuid)
+returns uuid language sql stable security definer set search_path to ''
+as $$ select o.organization_id from public.crm_opportunities o where o.id = p_firsat $$;
+
+revoke all on function private.arvo_firsat_kurumu(uuid) from public, anon;
+grant execute on function private.arvo_firsat_kurumu(uuid) to authenticated, service_role;
+
+-- "Bu kullanıcı fırsatın TUTARINI görebilir mi?" — eski erişim
+-- fonksiyonunun operasyon kolu olmadan hâli: yöneticiler ve fırsatın
+-- satışçısı. Operasyon sorumlusu bilerek dışarıda.
+create or replace function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid)
+returns boolean language sql stable security definer set search_path to ''
+as $$ select exists (
+  select 1
+  from public.crm_opportunities o
+  join public.organization_memberships m on m.organization_id = o.organization_id
+    and m.user_id = (select auth.uid()) and m.is_active = true
+  left join public.hr_employees sales_employee on sales_employee.id = o.assigned_employee_id
+    and sales_employee.organization_id = o.organization_id
+    and sales_employee.employment_status = 'active'
+  where o.id = target_opportunity
+    and (m.role::text in ('owner','admin','manager') or sales_employee.user_id = (select auth.uid()))
+) $$;
+
+revoke all on function private.arvo_firsat_tutar_gorebilir(uuid) from public, anon;
+grant execute on function private.arvo_firsat_tutar_gorebilir(uuid) to authenticated, service_role;
+
+-- ---------- 2. Tutarlı tabloların SELECT erişimi daralıyor ----------
+
+drop policy if exists "members read assigned contracts" on public.crm_contracts;
+create policy "members read assigned contracts" on public.crm_contracts
+  as permissive for select to authenticated
+  using (private.arvo_firsat_tutar_gorebilir(opportunity_id));
+
+drop policy if exists members_read_assigned_crm_opportunities on public.crm_opportunities;
+create policy members_read_assigned_crm_opportunities on public.crm_opportunities
+  as permissive for select to authenticated
+  using (private.arvo_firsat_tutar_gorebilir(id));
+
+drop policy if exists "members read assigned proposals" on public.crm_proposals;
+create policy "members read assigned proposals" on public.crm_proposals
+  as permissive for select to authenticated
+  using (private.arvo_firsat_tutar_gorebilir(opportunity_id)
+    and (status = 'draft'
+      or (status = 'sent' and (valid_until is null or valid_until >= ((now() at time zone 'Europe/Istanbul')::date)))
+      or status = 'archived'
+      or status in ('accepted','rejected')));
+
+-- ---------- 3. Yorumlar ve kayıt geçmişi operasyonda açık kalsın ----------
+-- Alt sorgular artık fırsat satırını OKUMUYOR; kurumu definer
+-- yardımcıdan alıyor. Yetkiyi yine arvo_can_access_opportunity
+-- (operasyon kolu dahil) belirliyor, yani davranış aynı.
+
+drop policy if exists "assigned members read crm internal comments" on public.crm_internal_comments;
+create policy "assigned members read crm internal comments" on public.crm_internal_comments
+  as permissive for select to authenticated
+  using (organization_id = private.arvo_firsat_kurumu(opportunity_id)
+    and private.arvo_can_access_opportunity(opportunity_id));
+
+drop policy if exists "assigned members write crm internal comments" on public.crm_internal_comments;
+create policy "assigned members write crm internal comments" on public.crm_internal_comments
+  as permissive for insert to authenticated
+  with check (created_by = (select auth.uid())
+    and organization_id = private.arvo_firsat_kurumu(opportunity_id)
+    and private.arvo_can_access_opportunity(opportunity_id));
+
+drop policy if exists "authors edit own crm internal comments" on public.crm_internal_comments;
+create policy "authors edit own crm internal comments" on public.crm_internal_comments
+  as permissive for update to authenticated
+  using (created_by = (select auth.uid()) and private.arvo_can_access_opportunity(opportunity_id))
+  with check (created_by = (select auth.uid())
+    and organization_id = private.arvo_firsat_kurumu(opportunity_id)
+    and private.arvo_can_access_opportunity(opportunity_id));
+
+drop policy if exists activity_logs_select_crm_chain on public.activity_logs;
+create policy activity_logs_select_crm_chain on public.activity_logs
+  as permissive for select to authenticated
+  using (entity_type in ('crm_opportunity','crm_proposal','crm_contract')
+    and exists (
+      select 1 from public.organization_memberships m
+      where m.organization_id = activity_logs.organization_id
+        and m.user_id = (select auth.uid()) and m.is_active = true)
+    and private.arvo_firsat_kurumu(
+          nullif(coalesce(activity_logs.metadata ->> 'opportunity_id', activity_logs.entity_id), '')::uuid
+        ) = activity_logs.organization_id
+    and private.arvo_can_access_opportunity(
+          nullif(coalesce(activity_logs.metadata ->> 'opportunity_id', activity_logs.entity_id), '')::uuid
+        ));
+
+-- ---------- 4. Operasyonun okuma yolu: tutarsız görünümler ----------
+-- Görünümler security definer (varsayılan): taban tablonun RLS'ini
+-- atlıyorlar, kapıyı kendi where'leri tutuyor. Kapı eski erişim
+-- fonksiyonu, yani operasyon sorumlusu KENDİ işinin künyesini
+-- görmeye devam ediyor — sadece tutar sütunları hiç yok.
+-- security_barrier: kullanıcının eklediği koşullar görünümün
+-- kapısından önce çalışmasın.
+
+create or replace view public.ops_contracts with (security_barrier = true) as
+  select c.id, c.organization_id, c.opportunity_id, c.proposal_id, c.workflow_id,
+         c.invoice_id, c.contract_no, c.title, c.status, c.tracking_code, c.share_token,
+         c.start_date, c.due_date, c.signed_at, c.created_at, c.updated_at
+  from public.crm_contracts c
+  where private.arvo_can_access_opportunity(c.opportunity_id);
+
+create or replace view public.ops_opportunities with (security_barrier = true) as
+  select o.id, o.organization_id, o.title, o.customer_name, o.contact_email, o.contact_phone,
+         o.stage, o.assigned_employee_id, o.created_at, o.updated_at
+  from public.crm_opportunities o
+  where private.arvo_can_access_opportunity(o.id);
+
+create or replace view public.ops_proposals with (security_barrier = true) as
+  select p.id, p.organization_id, p.opportunity_id, p.proposal_no, p.title, p.status, p.created_at
+  from public.crm_proposals p
+  where private.arvo_can_access_opportunity(p.opportunity_id);
+
+revoke all on public.ops_contracts from public, anon;
+revoke all on public.ops_opportunities from public, anon;
+revoke all on public.ops_proposals from public, anon;
+grant select on public.ops_contracts to authenticated, service_role;
+grant select on public.ops_opportunities to authenticated, service_role;
+grant select on public.ops_proposals to authenticated, service_role;
+
+notify pgrst, 'reload schema';
+
+
+-- ===== 20261001145319_ops_gorunumleri_salt_okunur.sql =====
+-- ============================================================
+-- OPS GÖRÜNÜMLERİ SALT OKUNUR
+--
+-- Bir önceki migration görünümleri "revoke all … from public, anon"
+-- ile kapatmıştı; bu YETMİYOR. Supabase yeni tablolara/görünümlere
+-- varsayılan olarak 'authenticated' rolüne DOĞRUDAN yetki veriyor ve
+-- PUBLIC'ten revoke etmek doğrudan verilmiş yetkiyi kaldırmıyor.
+--
+-- Sonuç ciddi: ops_* görünümleri tek tablolu ve basit, yani Postgres
+-- onları OTOMATİK GÜNCELLENEBİLİR sayıyor; security_invoker kapalı
+-- (varsayılan) olduğu için yazma görünümün SAHİBİ olarak çalışıyor ve
+-- taban tablonun RLS'ini atlıyor. Ölçüldü: operasyon personeli
+-- "update public.ops_contracts set contract_no='HACK'" diyebiliyordu.
+--
+-- Görünümler yalnızca okuma yolu; yazma hiçbir zaman buradan geçmiyor.
+-- ============================================================
+
+revoke all on public.ops_contracts from public, anon, authenticated, service_role;
+revoke all on public.ops_opportunities from public, anon, authenticated, service_role;
+revoke all on public.ops_proposals from public, anon, authenticated, service_role;
+
+grant select on public.ops_contracts to authenticated, service_role;
+grant select on public.ops_opportunities to authenticated, service_role;
+grant select on public.ops_proposals to authenticated, service_role;
+
+notify pgrst, 'reload schema';

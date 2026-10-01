@@ -583,13 +583,6 @@
       "title",
       "updated_at"
     ],
-    "crm_opportunity_briefs": [
-      "opportunity_id",
-      "organization_id",
-      "updated_at",
-      "updated_by",
-      "values"
-    ],
     "crm_proposals": [
       "access_token_hash",
       "amount",
@@ -949,14 +942,6 @@
       "title",
       "workflow_id"
     ],
-    "operation_workflow_briefs": [
-      "organization_id",
-      "source_opportunity_id",
-      "updated_at",
-      "updated_by",
-      "values",
-      "workflow_id"
-    ],
     "operation_workflow_comments": [
       "body",
       "created_at",
@@ -991,6 +976,45 @@
       "waiting_party",
       "waiting_since"
     ],
+    "ops_contracts": [
+      "contract_no",
+      "created_at",
+      "due_date",
+      "id",
+      "invoice_id",
+      "opportunity_id",
+      "organization_id",
+      "proposal_id",
+      "share_token",
+      "signed_at",
+      "start_date",
+      "status",
+      "title",
+      "tracking_code",
+      "updated_at",
+      "workflow_id"
+    ],
+    "ops_opportunities": [
+      "assigned_employee_id",
+      "contact_email",
+      "contact_phone",
+      "created_at",
+      "customer_name",
+      "id",
+      "organization_id",
+      "stage",
+      "title",
+      "updated_at"
+    ],
+    "ops_proposals": [
+      "created_at",
+      "id",
+      "opportunity_id",
+      "organization_id",
+      "proposal_no",
+      "status",
+      "title"
+    ],
     "organization_bank_accounts": [
       "account_name",
       "bank_name",
@@ -1002,20 +1026,6 @@
       "is_active",
       "opening_balance",
       "organization_id",
-      "updated_at"
-    ],
-    "organization_brief_fields": [
-      "code",
-      "created_at",
-      "field_type",
-      "hint",
-      "is_active",
-      "is_required",
-      "label",
-      "options",
-      "organization_id",
-      "set_codes",
-      "sort_order",
       "updated_at"
     ],
     "organization_crm_stages": [

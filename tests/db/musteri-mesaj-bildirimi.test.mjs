@@ -39,7 +39,8 @@ const KOD = "MSJ123";
 let db;
 before(async () => {
   db = await veritabani();
-  // Anlık görüntü canlıdan alınıyor; bu migration henüz uygulanmadı.
+  // Migration anlık görüntüde zaten var; yeniden uygulamak create or
+  // replace olduğu için zararsız ve testi dosyaya bağlı tutuyor.
   await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 

@@ -51,8 +51,26 @@ export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/can
 export async function veritabani(semaDosyasi = SEMA) {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_KABUGU);
-  await db.exec(fs.readFileSync(semaDosyasi, "utf8"));
+  const sema = fs.readFileSync(semaDosyasi, "utf8");
+  await db.exec(sema);
   await db.exec(SUPABASE_VARSAYILAN_YETKI);
+  /*
+    DÖKÜMÜN YETKİ SATIRLARI SON SÖZÜ SÖYLER.
+
+    Yukarıdaki toplu grant Supabase'in varsayılanını taklit ediyor ama
+    dökümde bilerek yazılmış "revoke … from anon" satırlarını da
+    eziyordu: anlık görüntüde kapalı olan bir tablo/görünüm testte
+    anon'a açık görünüyordu ve "bu anon'a kapalı mı" diye soran test
+    yanlış yere geçiyordu.
+
+    Yalnızca revoke'ları tekrarlamak YETMEZ: bir revoke kendisinden
+    önce gelen grant'i de siler (ops_* görünümlerinde yaşandı). O
+    yüzden dökümdeki grant ve revoke satırlarının TAMAMI, özgün
+    sırasıyla tekrarlanıyor — canlıdaki son durum bu.
+  */
+  for (const satir of sema.match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? []) {
+    await db.exec(satir);
+  }
   return db;
 }
 
