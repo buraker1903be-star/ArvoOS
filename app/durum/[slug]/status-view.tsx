@@ -140,8 +140,7 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
   */
   if (asamalar?.asamalar.length) {
     return (
-      <>
-      <ol className="trk-phases" data-tone={tone} style={{ "--trk-asama-adet": asamalar.asamalar.length } as CSSProperties} aria-label="Süreç aşamaları">
+      <ol className="trk-phases" data-tone={tone} aria-label="Süreç aşamaları">
         {asamalar.asamalar.map((asama, index) => (
           <li
             key={`${asama.ad}-${index}`}
@@ -158,8 +157,6 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
           </li>
         ))}
       </ol>
-      <GorevAkisi gorevler={asamalar.gorevler} tone={tone} />
-      </>
     );
   }
   const { reached, current } = phaseProgress(progress, tone);
@@ -196,54 +193,97 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
   scrollIntoView yapsaydık ilk boyamada liste yanlış yerde durur,
   sonra zıplardı.
 */
-export function GorevAkisi({ gorevler, tone }: { gorevler?: GercekGorev[]; tone: StatusTone }) {
+/*
+  GÖREV YELPAZESİ — kurumun çizimindeki yerleşim: ilerleme halkasının
+  yanından oklarla açılan üç satır. En son biten iş üzeri çizili, şu an
+  yapılan iş kalın ve büyük, altında sıradaki iş.
+
+  Oklar SATIRIN İÇİNDE, her satıra bir tane. Tek bir büyük SVG çizip üç
+  ucu satırlara denk getirmek çizime daha sadık olurdu ama kırılgan:
+  görev adı sarınca satır yüksekliği değişir ve oklar kayar. Satır içi
+  ok, metin kaç satıra sarsa da kendi satırının dikey ortasında kalır.
+  Yelpaze görüntüsü okun eğriliğinden geliyor: üst satır yukarı, alt
+  satır aşağı kıvrılıyor.
+*/
+function GorevOku({ yon }: { yon: "yukari" | "duz" | "asagi" }) {
+  const govde =
+    yon === "yukari" ? "M2 20 C10 20 12 6 22 6" : yon === "asagi" ? "M2 6 C10 6 12 20 22 20" : "M2 13 H22";
+  const uc = yon === "yukari" ? "m19 3 4 3-4 3" : yon === "asagi" ? "m19 17 4 3-4 3" : "m19 10 4 3-4 3";
+  return (
+    <svg className="trk-gorev-ok" viewBox="0 0 28 26" aria-hidden="true" focusable="false">
+      <path d={govde} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d={uc} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function GorevYelpazesi({ gorevler, tone }: { gorevler?: GercekGorev[]; tone: StatusTone }) {
   const akis = gorevAkisi(gorevler);
   if (!akis) return null;
-  const { bitenlerDom, simdi, siradaki, kalan, tamamlanan, toplam } = akis;
+  const { sonBiten, simdi, siradaki, kalan, tamamlanan, toplam } = akis;
+  if (!sonBiten && !simdi && !siradaki) return null;
 
   return (
-    <div className="trk-gorevler" data-tone={tone}>
-      <p className="trk-overline trk-gorevler-baslik">
-        Görevler
-        <span>{tamamlanan}/{toplam} tamamlandı</span>
-      </p>
-
-      {bitenlerDom.length ? (
-        <ol className="trk-gorev-biten" aria-label="Tamamlanan görevler" tabIndex={0}>
-          {/* Sıra lib/takip-gorevleri.ts'te ters çevrildi; bkz. oradaki not. */}
-          {bitenlerDom.map((gorev, index) => (
-            <li key={`${gorev.ad}-${index}`}>
-              <IconCheck />
-              <span>{gorev.ad}</span>
-              <span className="trk-sr"> — tamamlandı</span>
-            </li>
-          ))}
-        </ol>
+    <div className="trk-yelpaze" data-tone={tone}>
+      {sonBiten ? (
+        <p className="trk-yelpaze-satir is-bitti">
+          <GorevOku yon="yukari" />
+          <span>{sonBiten.ad}</span>
+          <span className="trk-sr"> — tamamlandı</span>
+        </p>
       ) : null}
 
       {simdi ? (
-        <div className="trk-gorev-simdi" aria-current="step">
-          <span className="trk-gorev-nabiz" aria-hidden="true" />
-          <div>
-            <span className="trk-gorev-asama">{simdi.asama}</span>
+        <p className="trk-yelpaze-satir is-simdi" aria-current="step">
+          <GorevOku yon={sonBiten ? "duz" : "yukari"} />
+          <span>
+            <small className="trk-gorev-asama">{simdi.asama}</small>
             <strong>{simdi.ad}</strong>
-          </div>
-          <span className="trk-sr">şu an yapılan görev</span>
-        </div>
+          </span>
+          <span className="trk-sr"> — şu an yapılıyor</span>
+        </p>
       ) : null}
 
       {siradaki ? (
-        <div className="trk-gorev-sirada">
-          <span className="trk-gorev-asama">Sırada · {siradaki.asama}</span>
-          <span>{siradaki.ad}</span>
-          {kalan ? <small>+{kalan} görev daha</small> : null}
-        </div>
+        <p className="trk-yelpaze-satir is-sirada">
+          <GorevOku yon="asagi" />
+          <span>
+            {siradaki.ad}
+            {kalan ? <small> +{kalan} görev daha</small> : null}
+          </span>
+          <span className="trk-sr"> — sıradaki görev</span>
+        </p>
       ) : null}
+
+      <p className="trk-yelpaze-sayac">{tamamlanan}/{toplam} görev tamamlandı</p>
     </div>
   );
 }
 
-export function ProgressOverview({ progress, status, size = "lg" }: { progress: number; status: StatusInfo; size?: "lg" | "md" }) {
+export function ProgressOverview({
+  progress,
+  status,
+  size = "lg",
+  asamalar,
+}: {
+  progress: number;
+  status: StatusInfo;
+  size?: "lg" | "md";
+  asamalar?: TakipAsamalari | null;
+}) {
+  /*
+    Görev tanımları açıksa halkanın yanı yelpazeye ayrılıyor. Kapalıyken
+    (varsayılan; kurumların çoğu) eski metin bloğu duruyor — yelpazeyi
+    koşulsuz basmak o kurumların ekranını boşaltırdı.
+  */
+  if (gorevAkisi(asamalar?.gorevler)) {
+    return (
+      <div className="trk-progress-summary has-yelpaze">
+        <ProgressRing value={progress} tone={status.tone} size={size} />
+        <GorevYelpazesi gorevler={asamalar?.gorevler} tone={status.tone} />
+      </div>
+    );
+  }
   return (
     <div className="trk-progress-summary">
       <ProgressRing value={progress} tone={status.tone} size={size} />

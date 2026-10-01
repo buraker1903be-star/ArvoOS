@@ -1,8 +1,8 @@
 /*
-  Tamamlanan görev listesi DOM'da TERS basılır: CSS column-reverse
-  kullanıyor (kaydırıcıyı JS'siz sona dayamak için), orada DOM'daki ilk
-  eleman en altta görünür. Ters basmayı unutmak sessiz bir hata — liste
-  yine dolu görünür, yalnız sıra tersine döner. Test onu yakalıyor.
+  Halkanın yanındaki üç satır: en son biten iş, şu an yapılan iş, sıradaki.
+  "En son biten" done kayıtlarının SONUNCUSU'dur, ilki değil. Ters alınırsa
+  ekran yine dolu görünür ama müşteri haftalar önce biten işi güncel sanır
+  — sessiz hata. Test onu yakalıyor.
 */
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -20,15 +20,19 @@ const liste: TakipGorevi[] = [
 ];
 
 describe("takip görev akışı", () => {
-  test("tamamlananlar DOM'a ters basılır (ekranda kronolojik olsun diye)", () => {
+  test("üst satır EN SON biten iştir, ilki değil", () => {
     const a = gorevAkisi(liste)!;
-    assert.deepEqual(a.bitenlerDom.map((x) => x.ad), [
-      "Veri Toplama",
-      "Etik Kurul İzni",
-      "Tez Öneri Formu",
-    ]);
-    // Ekranda en altta duran = DOM'daki ilk = en son biten iş.
-    assert.equal(a.bitenlerDom[0].ad, "Veri Toplama");
+    assert.equal(a.sonBiten?.ad, "Veri Toplama");
+    assert.notEqual(a.sonBiten?.ad, "Tez Öneri Formu", "listenin ilki alınmamalı");
+  });
+
+  test("hiç biten iş yoksa üst satır çizilmez", () => {
+    const a = gorevAkisi([
+      g("Bulgular Bölümü", "current"),
+      g("Savunma Sunumu", "upcoming"),
+    ])!;
+    assert.equal(a.sonBiten, null);
+    assert.equal(a.simdi?.ad, "Bulgular Bölümü");
   });
 
   test("şu an yapılan iş tek ve veritabanının seçtiğidir", () => {
@@ -47,13 +51,14 @@ describe("takip görev akışı", () => {
   test("girdi bozulmaz", () => {
     const kopya = liste.map((x) => ({ ...x }));
     gorevAkisi(liste);
-    assert.deepEqual(liste, kopya, "reverse() yerinde çalışıp diziyi bozmamalı");
+    assert.deepEqual(liste, kopya);
   });
 
   test("hepsi bitince şu an ve sıradaki yok", () => {
     const a = gorevAkisi(liste.map((x) => g(x.ad, "done", x.asama)))!;
     assert.equal(a.simdi, null);
     assert.equal(a.siradaki, null);
+    assert.equal(a.sonBiten?.ad, "Teslim Dosyası", "hepsi bitince üst satır sonuncusu");
     assert.equal(a.kalan, 0);
     assert.deepEqual([a.tamamlanan, a.toplam], [6, 6]);
   });

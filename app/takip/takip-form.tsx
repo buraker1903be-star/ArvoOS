@@ -334,7 +334,7 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                   <h2 id="trk-progress-title">İlerleme</h2>
                   <span>Genel çalışma durumu</span>
                 </div>
-                <ProgressOverview progress={row.progress_percentage} status={status} />
+                <ProgressOverview progress={row.progress_percentage} status={status} asamalar={row.asamalar} />
                 <PhaseTimeline progress={row.progress_percentage} tone={status.tone} asamalar={row.asamalar} />
               </section>
             )}

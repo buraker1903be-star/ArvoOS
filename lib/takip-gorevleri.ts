@@ -5,19 +5,22 @@
   (kalın), sıradaki görev. Bu dosya yalnız o üçe ayırmayı yapar; görünüm
   status-view.tsx'te.
 
-  Burada ayrı bir modül olmasının nedeni DOM SIRASI: tamamlananlar listesi
-  CSS'te `flex-direction:column-reverse` ile kuruluyor (kaydırıcıyı JS'siz
-  sona dayamanın tek yolu; bu dosya hook kullanamaz). column-reverse'te
-  DOM'daki ilk eleman EN ALTTA görünür, yani listeyi ters basmak gerekir.
-  Ters basmayı unutmak sessiz bir hata: liste yine dolu görünür ama
-  tamamlanan işler tersten sıralanır. Test onu yakalıyor.
+  Kurumun çizimine göre ekranda ÜÇ satır var ve bunlar ilerleme halkasının
+  yanından oklarla açılıyor: en son biten iş (üzeri çizili), şu an yapılan
+  iş (kalın), sıradaki iş. İş ilerledikçe üç satır yukarı kayar — "kayan
+  sistem" budur.
+
+  Üç satırı burada seçiyoruz çünkü seçim göründüğünden incelikli:
+  "en son biten" listenin SONUNCU done kaydıdır, ilki değil; ters alırsak
+  müşteri haftalar önce biten işi güncel sanır. Sessiz bir hata, ekranda
+  dolu görünür. Test onu yakalıyor.
 */
 
 export type TakipGorevi = { ad: string; asama: string; durum: "done" | "current" | "upcoming" };
 
 export type GorevAkisiSonucu = {
-  /** DOM sırası: column-reverse yüzünden ters; ekranda kronolojik görünür. */
-  bitenlerDom: TakipGorevi[];
+  /** Halkanın yanındaki üç satırın ilki: EN SON biten iş. */
+  sonBiten: TakipGorevi | null;
   simdi: TakipGorevi | null;
   siradaki: TakipGorevi | null;
   /** Sıradakinden sonra kalan görev sayısı. */
@@ -31,7 +34,7 @@ export function gorevAkisi(gorevler: TakipGorevi[] | undefined | null): GorevAki
   const bitenler = gorevler.filter((g) => g.durum === "done");
   const siradakiler = gorevler.filter((g) => g.durum === "upcoming");
   return {
-    bitenlerDom: [...bitenler].reverse(),
+    sonBiten: bitenler.length ? bitenler[bitenler.length - 1] : null,
     // Şu anki görevi veritabanı seçiyor; burada yeniden türetilmez.
     simdi: gorevler.find((g) => g.durum === "current") ?? null,
     siradaki: siradakiler[0] ?? null,
