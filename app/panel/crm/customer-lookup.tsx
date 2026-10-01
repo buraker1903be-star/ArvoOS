@@ -10,6 +10,7 @@ import {
 } from "./customer-lookup-actions";
 import { NEW_REQUEST_PREFILL_EVENT, parseLookupQuery, type NewRequestPrefill } from "./customer-history-keys";
 import type { CustomerLookupSummary, LookupMatch } from "./customer-lookup-query";
+import type { HistoryKind } from "./customer-history-query";
 import { CustomerHistoryList, historyCountLine, historyNotes } from "./customer-history";
 import { formatPhone } from "@/lib/format-phone";
 import "./customer-lookup.css";
@@ -571,6 +572,18 @@ function CustomerDetail({
   const countLine = result ? historyCountLine(result) : "";
   const notes = result ? historyNotes(result) : [];
 
+  /*
+    SEKMELER. Liste dört tür kaydı (talep, teklif, sözleşme, iş) tarih
+    sırasına göre karıştırıyordu; "bu müşteriye kaç sözleşme yaptık"
+    sorusu için kullanıcı listede göz taraması yapmak zorundaydı.
+    Sekmeler kayıtların KENDİSİNİ değiştirmiyor, yalnızca süzüyor —
+    "Tümü" eski davranış ve varsayılan.
+  */
+  const [sekme, setSekme] = useState<"all" | HistoryKind>("all");
+  const gorunen = result
+    ? sekme === "all" ? result.items : result.items.filter((item) => item.kind === sekme)
+    : [];
+
   return (
     <div className="crm-lookup-detail">
       <section className="crm-lookup-profile">
@@ -596,14 +609,22 @@ function CustomerDetail({
         görünmüyor ve kullanıcı kayıtları tek tek açmak zorunda
         kalıyordu. Bilgi en güncel fırsat kaydından geliyor.
       */}
-      {result?.kunye && (result.kunye.email || result.kunye.phone || Object.keys(result.kunye.alanlar).length) ? (
+      {result ? (
         <dl className="crm-lookup-kunye">
-          {result.kunye.phone ? <div><dt>Telefon</dt><dd>{formatPhone(result.kunye.phone)}</dd></div> : null}
-          {result.kunye.email ? <div><dt>E-posta</dt><dd>{result.kunye.email}</dd></div> : null}
+          <div><dt>Telefon</dt><dd>{formatPhone(result.kunye?.phone) || formatPhone(customer.phone) || "—"}</dd></div>
+          <div><dt>E-posta</dt><dd>{result.kunye?.email || customer.email || "—"}</dd></div>
           {KUNYE_ETIKETLERI.map(([anahtar, etiket]) =>
             result.kunye?.alanlar[anahtar]
               ? <div key={anahtar}><dt>{etiket}</dt><dd>{result.kunye.alanlar[anahtar]}</dd></div>
               : null)}
+          {result.kunye && Object.keys(result.kunye.alanlar).length === 0 ? (
+            /* Bölüm hep çiziliyor: alan yoksa gizlemek "bu özellik yok"
+               gibi görünüyordu. Nerede doldurulacağı da yazılı. */
+            <div className="crm-lookup-kunye-bos">
+              <dt>Akademik bilgi</dt>
+              <dd>Girilmemiş · operasyonda iş detayındaki künyeden eklenebilir</dd>
+            </div>
+          ) : null}
         </dl>
       ) : null}
 
@@ -632,7 +653,33 @@ function CustomerDetail({
         </div>
       ) : (
         <>
-          <CustomerHistoryList items={result.items} flagNameOnly={customer.key.startsWith("p:")} />
+          <nav className="crm-lookup-tabs" aria-label="Kayıt türü">
+            {([
+              ["all", "Tümü", result.total],
+              ["request", "Talepler", result.counts.request],
+              ["proposal", "Teklifler", result.counts.proposal],
+              ["contract", "Sözleşmeler", result.counts.contract],
+              ["job", "İşler", result.counts.job],
+            ] as const).map(([deger, etiket, adet]) => (
+              <button
+                key={deger}
+                type="button"
+                data-active={sekme === deger || undefined}
+                aria-pressed={sekme === deger}
+                /* Boş sekme tıklanabilir ama sayısı sıfır görünüyor:
+                   gizlemek "bu müşteride sözleşme var mı" sorusunu
+                   cevapsız bırakırdı. */
+                onClick={() => setSekme(deger)}
+              >
+                {etiket}<span>{adet}</span>
+              </button>
+            ))}
+          </nav>
+          {gorunen.length ? (
+            <CustomerHistoryList items={gorunen} flagNameOnly={customer.key.startsWith("p:")} />
+          ) : (
+            <p className="crm-lookup-tab-bos">Bu türde kayıt yok.</p>
+          )}
           {notes.length ? <p className="crm-lookup-notes">{notes.join(" ")}</p> : null}
         </>
       )}

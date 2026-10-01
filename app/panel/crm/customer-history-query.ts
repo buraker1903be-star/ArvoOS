@@ -226,6 +226,10 @@ const KUNYE_ANAHTARLARI = [
   "department", "program", "advisor", "language",
 ] as const;
 
+/* Künye için taranan kayıt sayısı: aynı müşterinin bir elin parmaklarını
+   geçen talebi nadir, 20 fazlasıyla yetiyor. */
+const KUNYE_TARANAN_KAYIT = 20;
+
 /**
  * Müşterinin en güncel fırsat kaydından künye.
  *
@@ -245,7 +249,7 @@ async function musteriKunyesi(
     .select("customer_name,contact_email,contact_phone,request_details,created_at")
     .eq("organization_id", context.membership.organization_id)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(KUNYE_TARANAN_KAYIT);
 
   /* Telefonun yalnızca son 10 hanesi karşılaştırılıyor: kayıtlarda
      "0532…", "+90 532…" ve "532…" bir arada duruyor. */
@@ -253,21 +257,28 @@ async function musteriKunyesi(
     ? query.like("contact_phone", `%${anahtar.phone.slice(-10)}%`)
     : query.ilike("customer_name", anahtar.name);
 
-  const { data, error } = await query.maybeSingle();
-  if (error || !data) return null;
+  const { data, error } = await query;
+  if (error || !data?.length) return null;
 
-  const detay = (data.request_details ?? {}) as Record<string, unknown>;
-  const alanlar: Record<string, string> = {};
-  for (const anahtarAdi of KUNYE_ANAHTARLARI) {
-    const deger = detay[anahtarAdi];
-    if (typeof deger === "string" && deger.trim()) alanlar[anahtarAdi] = deger.trim();
+  /*
+    TEK KAYDA BAKILMIYOR, HEPSİ TARANIYOR. Aynı müşterinin birden çok
+    talebi oluyor ve her birinde farklı alanlar dolu: en yeni talepte
+    üniversite yazılmamış olabilir, bir öncekinde yazılıdır. Alan alan
+    "en yeni DOLU değer" alınıyor; kayıtlar zaten yeniden eskiye sıralı.
+  */
+  const kunye: CustomerKunye = { name: null, email: null, phone: null, alanlar: {} };
+  for (const satir of data) {
+    kunye.name ??= satir.customer_name || null;
+    kunye.email ??= satir.contact_email || null;
+    kunye.phone ??= satir.contact_phone || null;
+    const detay = (satir.request_details ?? {}) as Record<string, unknown>;
+    for (const anahtarAdi of KUNYE_ANAHTARLARI) {
+      if (kunye.alanlar[anahtarAdi]) continue;
+      const deger = detay[anahtarAdi];
+      if (typeof deger === "string" && deger.trim()) kunye.alanlar[anahtarAdi] = deger.trim();
+    }
   }
-  return {
-    name: data.customer_name ?? null,
-    email: data.contact_email ?? null,
-    phone: data.contact_phone ?? null,
-    alanlar,
-  };
+  return kunye;
 }
 
 /* ------------------------------------------------------------------------ */
