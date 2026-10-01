@@ -21,6 +21,10 @@ type Details = {
   university?: string;
   department?: string;
   scope?: string;
+  /* Talep formunda sorulmuyor; operasyon künye penceresinden giriyor. */
+  faculty?: string;
+  program?: string;
+  advisor?: string;
 };
 type Opportunity = {
   id: string;
@@ -223,6 +227,34 @@ export default async function RequestDetailPage({
             <dt>Bölüm</dt>
             <dd>{d.department || "Belirtilmedi"}</dd>
           </div>
+          {/*
+            Fakülte, program ve danışman YALNIZCA DOLUYSA gösteriliyor.
+            Bu üç alan talep formunda sorulmuyor; operasyon iş detayındaki
+            künye penceresinden giriyor (orada müşteriyle konuşan kişi
+            var). Boş olduklarında "Belirtilmedi" basmak, satışçıya
+            doldurması gereken bir alan varmış izlenimi verirdi.
+
+            Eklenmelerinin sebebi: operasyonun girdiği bilgi CRM'de hiç
+            görünmüyordu — aynı kayıt iki ekranda farklı görünüyordu.
+          */}
+          {d.faculty ? (
+            <div>
+              <dt>Fakülte</dt>
+              <dd>{d.faculty}</dd>
+            </div>
+          ) : null}
+          {d.program ? (
+            <div>
+              <dt>Program</dt>
+              <dd>{d.program}</dd>
+            </div>
+          ) : null}
+          {d.advisor ? (
+            <div>
+              <dt>Danışman</dt>
+              <dd>{d.advisor}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Teslim</dt>
             <dd>

@@ -229,7 +229,11 @@ export async function refreshCustomerFileMessages(code: string): Promise<Custome
   if (!access.ok) return [];
   try {
     return await listMessages(access.supabase, normalizedCode);
-  } catch {
+  } catch (error) {
+    /* Arka plan tazelemesi: müşteriye hata gösterilmiyor, önceki liste
+       ekranda kalıyor. Ama sessiz de kalmıyor — sürekli başarısız olan
+       bir tazeleme aksi hâlde hiçbir yerde görünmez. */
+    console.error("[takip] mesajlar tazelenemedi", error);
     return [];
   }
 }
@@ -313,7 +317,8 @@ export async function refreshCustomerPortalFiles(code: string): Promise<Customer
   if (!access.ok) return null;
   try {
     return await fetchCustomerPortalFiles(access.supabase, normalizedCode);
-  } catch {
+  } catch (error) {
+    console.error("[takip] dosya kilitleri tazelenemedi", error);
     return null;
   }
 }
