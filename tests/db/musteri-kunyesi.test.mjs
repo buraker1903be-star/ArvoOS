@@ -26,6 +26,7 @@ const MIGRATIONLAR = [
   "20261001145319_ops_gorunumleri_salt_okunur.sql",
   "20261001205922_musteri_kunyesi_operasyonda.sql",
   "20261001214623_musteri_iletisimi_operasyonda.sql",
+  "20261001221605_musteri_adi_ise_de_yansisin.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000002a1";
@@ -263,5 +264,48 @@ describe("müşteri künyesi operasyonda", () => {
       const f = await tek(`select contact_email, contact_phone from public.crm_opportunities where id=$1`, [FIRSAT]);
       assert.equal(f.contact_email, null);
       assert.equal(f.contact_phone, null);
+    }));
+
+  test("ad düzeltilince iş kaydındaki kopya da güncelleniyor", () =>
+    islem(db, async () => {
+      /*
+        operation_workflows.customer_name iş oluşturulurken alınmış bir
+        kopya; İşler listesi, pano, takvim ve arşiv onu gösteriyor.
+        Kopya güncellenmezse aynı müşteri iki ekranda iki ayrı adla
+        görünür — sözleşme ve finans fırsattan okuyor.
+      */
+      const isId = await tohum();
+      await db.query(`update public.operation_workflows set customer_name=$1 where id=$2`,
+        ["Ayşe Yılmaz", isId]);
+
+      await kunyeYaz(UZMAN, {}, { ...ILETISIM, customer_name: "Ayşe Yılmaz Demir" });
+
+      const is = await tek(`select customer_name from public.operation_workflows where id=$1`, [isId]);
+      assert.equal(is.customer_name, "Ayşe Yılmaz Demir");
+    }));
+
+  test("fırsatı olmayan işin kendi adı korunuyor", () =>
+    islem(db, async () => {
+      /* Kurum içi işte fırsat yok; oradaki ad tek kaynak ve
+         tetikleyici ona dokunmamalı. */
+      await tohum();
+      const kurumIci = await tek(
+        `insert into public.operation_workflows (organization_id,title,status,created_by,customer_name)
+         values ($1,'İç iş','in_progress',$2,'Dahili Müşteri') returning id`, [KURUM, SAHIP]);
+      await kunyeYaz(UZMAN, {}, { ...ILETISIM, customer_name: "Ayşe Yılmaz Demir" });
+      const is = await tek(`select customer_name from public.operation_workflows where id=$1`, [kurumIci.id]);
+      assert.equal(is.customer_name, "Dahili Müşteri");
+    }));
+
+  test("CRM'den yapılan ad değişikliği de işe yansıyor", () =>
+    islem(db, async () => {
+      /* Adı yalnızca operasyon değiştirmiyor; fırsat formu da
+         değiştiriyor. Tetikleyici kaynağa bağlı olduğu için yazma yolu
+         fark etmiyor. */
+      const isId = await tohum();
+      await db.query(`update public.crm_opportunities set customer_name=$1 where id=$2`,
+        ["Zeynep Kaya", FIRSAT]);
+      const is = await tek(`select customer_name from public.operation_workflows where id=$1`, [isId]);
+      assert.equal(is.customer_name, "Zeynep Kaya");
     }));
 });
