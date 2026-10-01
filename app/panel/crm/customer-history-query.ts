@@ -231,41 +231,35 @@ const KUNYE_ANAHTARLARI = [
 const KUNYE_TARANAN_KAYIT = 20;
 
 /**
- * Müşterinin en güncel fırsat kaydından künye.
+ * Müşterinin künyesi — geçmişte bulunan fırsat KAYITLARINDAN.
  *
- * Geçmiş listesi RPC'den geliyor ve orada request_details yok (yalnızca
- * service_type var). Ayrı ve küçük bir sorgu yapılıyor: fonksiyonu
- * değiştirip tüm geçmiş satırlarına jsonb taşımak, yalnızca bir satırın
- * kullanılacağı bir veriyi her kayıt için göndermek olurdu.
+ * Kimlikler geçmiş RPC'sinden geliyor. İlk sürüm telefonu/adı kendisi
+ * eşleştirmeye çalışıyordu ve TUTMUYORDU: telefon sütununda "+90 (535)
+ * 244 94 97" gibi biçimli değerler duruyor, ham sütunda rakam araması
+ * hiçbirini bulmuyordu. Operasyonda dolu görünen künye sorgulama
+ * penceresinde boş çıkıyordu (02.10.2026'da bildirildi). Eşleştirmeyi
+ * RPC zaten doğru yapıyor; ikinci bir eşleştirme yazmak onunla
+ * ayrışmaya mahkûmdu.
+ *
+ * TEK KAYDA BAKILMIYOR: aynı müşterinin birden çok talebi oluyor ve her
+ * birinde farklı alanlar dolu. Alan alan "en yeni DOLU değer" alınıyor.
  *
  * RLS'e güveniliyor: kullanıcının göremediği fırsat buraya da gelmez.
  */
 async function musteriKunyesi(
   context: PanelContext,
-  anahtar: { phone: string; name: string },
+  opportunityIds: string[],
 ): Promise<CustomerKunye | null> {
-  let query = context.supabase
+  if (!opportunityIds.length) return null;
+
+  const { data, error } = await context.supabase
     .from("crm_opportunities")
     .select("customer_name,contact_email,contact_phone,request_details,created_at")
     .eq("organization_id", context.membership.organization_id)
-    .order("created_at", { ascending: false })
-    .limit(KUNYE_TARANAN_KAYIT);
-
-  /* Telefonun yalnızca son 10 hanesi karşılaştırılıyor: kayıtlarda
-     "0532…", "+90 532…" ve "532…" bir arada duruyor. */
-  query = anahtar.phone
-    ? query.like("contact_phone", `%${anahtar.phone.slice(-10)}%`)
-    : query.ilike("customer_name", anahtar.name);
-
-  const { data, error } = await query;
+    .in("id", opportunityIds.slice(0, KUNYE_TARANAN_KAYIT))
+    .order("created_at", { ascending: false });
   if (error || !data?.length) return null;
 
-  /*
-    TEK KAYDA BAKILMIYOR, HEPSİ TARANIYOR. Aynı müşterinin birden çok
-    talebi oluyor ve her birinde farklı alanlar dolu: en yeni talepte
-    üniversite yazılmamış olabilir, bir öncekinde yazılıdır. Alan alan
-    "en yeni DOLU değer" alınıyor; kayıtlar zaten yeniden eskiye sıralı.
-  */
   const kunye: CustomerKunye = { name: null, email: null, phone: null, alanlar: {} };
   for (const satir of data) {
     kunye.name ??= satir.customer_name || null;
@@ -374,7 +368,9 @@ function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean): Dated {
   }
 }
 
-type RpcOutcome = { ok: true; items: Dated[] } | { ok: false; missing: boolean };
+type RpcOutcome =
+  | { ok: true; items: Dated[]; opportunityIds: string[] }
+  | { ok: false; missing: boolean };
 
 async function historyViaRpc(
   context: PanelContext,
@@ -394,7 +390,14 @@ async function historyViaRpc(
     return { ok: false, missing };
   }
   const operationsVisible = canSeeOperations(context);
-  return { ok: true, items: ((data ?? []) as HistoryRpcRow[]).map((row) => itemFromRow(row, operationsVisible)) };
+  const rows = (data ?? []) as HistoryRpcRow[];
+  return {
+    ok: true,
+    items: rows.map((row) => itemFromRow(row, operationsVisible)),
+    /* Künye bu kimliklerden okunuyor: eşleştirmeyi RPC zaten doğru
+       yapıyor, ikinci bir eşleştirme yazmak onunla ayrışırdı. */
+    opportunityIds: [...new Set(rows.map((row) => row.opportunity_id).filter((id): id is string => Boolean(id)))],
+  };
 }
 
 /**
@@ -424,20 +427,18 @@ export async function loadCustomerHistoryByKey(
 ): Promise<CustomerHistoryResult | null> {
   const maxItems = options.maxItems ?? LOOKUP_MAX_ITEMS;
   const value = customerKey.slice(2);
-  const anahtar = customerKey.startsWith("p:") ? { phone: value, name: "" } : { phone: "", name: value };
 
-  /* Künye geçmişle BİRLİKTE isteniyor: pencere ikisini de aynı anda
-     gösteriyor, art arda beklemek açılışı iki katına çıkarırdı. */
-  const [outcome, kunye] = await Promise.all([
-    historyViaRpc(context, { customerKey }),
-    musteriKunyesi(context, anahtar),
-  ]);
-
-  if (outcome.ok) return summarize(outcome.items, { scopedToAssigned: false, maxItems, kunye });
-  const sonuc = customerKey.startsWith("p:")
-    ? await findCustomerHistoryViaRls(context, { phone: value, name: "", excludeOpportunityId: null }, maxItems)
-    : await findCustomerHistoryViaRls(context, { phone: "", name: nameKey(value), excludeOpportunityId: null }, maxItems);
-  return sonuc ? { ...sonuc, kunye } : sonuc;
+  /* Künye geçmişten SONRA isteniyor: hangi fırsatların okunacağını
+     geçmişin kendisi söylüyor. Art arda iki sorgu, yanlış eşleşen tek
+     sorgudan iyidir. */
+  const outcome = await historyViaRpc(context, { customerKey });
+  if (outcome.ok) {
+    const kunye = await musteriKunyesi(context, outcome.opportunityIds);
+    return summarize(outcome.items, { scopedToAssigned: false, maxItems, kunye });
+  }
+  return customerKey.startsWith("p:")
+    ? findCustomerHistoryViaRls(context, { phone: value, name: "", excludeOpportunityId: null }, maxItems)
+    : findCustomerHistoryViaRls(context, { phone: "", name: nameKey(value), excludeOpportunityId: null }, maxItems);
 }
 
 /* ------------------------------------------------------------------------ */
