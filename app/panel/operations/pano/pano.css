@@ -70,7 +70,7 @@
 .ops-pano-oncelik[data-oncelik="high"],.ops-pano-oncelik[data-oncelik="urgent"]{background:var(--warning-soft);color:var(--warning)}
 .ops-pano-oncelik[data-oncelik="low"]{background:var(--info-soft);color:var(--info)}
 /* İŞİN termini: aşamanınkiyle karışmasın diye "Teslim" yazıyor ve soluk. */
-.ops-pano-termin{color:var(--dim);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ops-pano-termin{flex:none;padding:1px 7px;border-radius:var(--r-pill);background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted));font-size:11px;font-weight:800;white-space:nowrap}
 .ops-pano-bak{margin-left:auto;flex:none;padding:2px 7px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
 .ops-pano-bak:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
 
@@ -248,3 +248,14 @@
   .ops-pano-serit{flex-direction:column;align-items:stretch}
   .ops-pano-suzgec input,.ops-pano-suzgec select{flex:1 1 140px;max-width:none}
 }
+
+/* Termin rozetinin tonları (ops-shared/dueBadge ile aynı adlar). */
+.ops-pano-termin[data-tone="danger"]{--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.ops-pano-termin[data-tone="warning"]{--tone-bg:var(--warning-soft);--tone-fg:var(--warning)}
+.ops-pano-termin[data-tone="info"]{--tone-bg:var(--info-soft);--tone-fg:var(--info)}
+.ops-pano-termin[data-tone="success"]{--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.ops-pano-termin[data-tone="neutral"]{--tone-bg:var(--surface-2);--tone-fg:var(--dim)}
+/* Şu anki görev: kolon aşamayı söylüyor, bu satır görevi. */
+.ops-pano-asama{margin:0;padding:4px 8px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);font-size:11.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-pano-bekleme{margin:0;font-size:11px;font-weight:700;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ops-pano-bekleme[data-uzun="1"]{color:var(--warning)}

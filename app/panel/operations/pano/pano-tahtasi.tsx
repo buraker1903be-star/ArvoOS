@@ -13,7 +13,7 @@ import {
 } from "@/lib/operasyon-panosu";
 import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
 import { initials } from "@/lib/table-format";
-import { priorityNames } from "../ops-shared";
+import { dueBadge, priorityNames } from "../ops-shared";
 
 /*
   Panonun etkileşimli yüzü: SÜRÜKLE-BIRAK ve HIZLI BAKIŞ.
@@ -160,7 +160,6 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
                   <Kart
                     key={kart.isId}
                     kart={kart}
-                    kolon={kolon}
                     bugun={bugun}
                     yetkili={yetkili.has(kart.isId)}
                     okunmamis={okunmamis[kart.isId] ?? 0}
@@ -194,7 +193,6 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
 
 function Kart({
   kart,
-  kolon,
   bugun,
   yetkili,
   okunmamis,
@@ -205,7 +203,6 @@ function Kart({
   onDurum,
 }: {
   kart: PanoIsKarti;
-  kolon: PanoKolonu;
   bugun: string;
   yetkili: boolean;
   okunmamis: number;
@@ -216,6 +213,11 @@ function Kart({
   onDurum: (adimId: string, status: "done" | "in_progress") => void;
 }) {
   const uyari = hatirlatmaDurumu({ due_date: kart.tarih, is_completed: kart.tamamlandi }, bugun);
+  /*
+    Rozet AŞAMANIN tarihinden. Tarih yoksa dueBadge "Tarih yok" diyor
+    ve asıl sinyali aşağıdaki "kaç gündür bu aşamada" satırı taşıyor.
+  */
+  const termin = dueBadge(kart.tarih, bugun, kart.tamamlandi ? "completed" : undefined);
   const yuzde = kart.toplamAsama ? Math.round((kart.tamamlananAsama / kart.toplamAsama) * 100) : 0;
   const uzunBekleme = kart.bekleyenGun !== null && kart.bekleyenGun >= BEKLEME_ESIGI_GUN;
 
@@ -235,9 +237,18 @@ function Kart({
           </span>
         ) : null}
         {/* İŞİN termini, aşamanınki değil: ikisi ayrı ve operasyoncu ikisini de soruyor. */}
-        {kart.isTermini ? (
-          <span className="ops-pano-termin" title="İşin teslim tarihi">Teslim {kisaTarih(kart.isTermini)}</span>
-        ) : null}
+        {/*
+          AŞAMANIN TERMİNİ, işin değil. Panoda karar verdiren tarih bu:
+          "iş 27 Kasım'da teslim" kolonlar arasında gezinirken bir şey
+          söylemiyor, "bu aşama 2 gün gecikti" söylüyor. İşin termini
+          İşler tablosunda ve iş detayında duruyor.
+
+          Hesap ops-shared/dueBadge ile — işler, genel bakış ve iş
+          detayıyla AYNI fonksiyon, aynı sözler.
+        */}
+        <span className="ops-pano-termin" data-tone={termin.tone} title={kart.tarih ? `“${kart.guncelAsama}” aşamasının teslim tarihi` : undefined}>
+          {termin.label}
+        </span>
         <button type="button" className="ops-pano-bak" onClick={onAc} title="Bütün aşamaları göster">
           Aşamalar
         </button>
@@ -273,30 +284,32 @@ function Kart({
           Bekleme süresi tarihten BAĞIMSIZ ölçülüyor ve tarih girilmemiş
           işlerde panonun tek sinyali o. Bitmiş işte gösterilmiyor.
         */}
-        {kart.guncelAsamaId && kart.bekleyenGun !== null ? (
-          <span
-            className="ops-pano-bekleme"
-            data-uzun={uzunBekleme ? "1" : undefined}
-            title={
-              uzunBekleme
-                ? `${BEKLEME_ESIGI_GUN} günden uzun süredir “${kart.guncelAsama}” aşamasında`
-                : `“${kart.guncelAsama}” aşamasına geçileli ${kart.bekleyenGun} gün oldu`
-            }
-          >
-            {kart.bekleyenGun} gün
-          </span>
-        ) : null}
       </div>
+      {/*
+        "0 gün" yazıyordu ve geri sayım sanılıyordu; oysa AŞAMADA GEÇEN
+        günü sayıyor. Ne olduğu artık yazılı — ve bu yüzden uzun:
+        sorumluyla aynı satırda 232px'lik kartı dışarı itiyordu
+        (ölçüldü). Kendi satırında. Tarih varsa üstteki rozet zaten
+        kalanı söylüyor, bu satır tekrar olurdu: yalnızca tarihsiz
+        aşamada çıkıyor — orada panonun tek sinyali o.
+      */}
+      {kart.guncelAsamaId && !kart.tarih && kart.bekleyenGun !== null ? (
+        <p className="ops-pano-bekleme" data-uzun={uzunBekleme ? "1" : undefined}>
+          {kart.bekleyenGun} gündür bu aşamada
+        </p>
+      ) : null}
       <div className="ops-pano-tarih">
         {yetkili && kart.guncelAsamaId ? (
           <form action={setStepDueDate} className="ops-tarih-form">
             <input type="hidden" name="step_id" value={kart.guncelAsamaId} />
-            <input type="date" name="due_date" defaultValue={kart.tarih ?? ""} aria-label={`${kart.guncelAsama} teslim tarihi`} />
+            {/* key: React 19 eylemden sonra formu MOUNT değerine sıfırlıyor (bkz. iş detayı). */}
+            <input key={kart.tarih ?? "yok"} type="date" name="due_date" defaultValue={kart.tarih ?? ""} aria-label={`${kart.guncelAsama} teslim tarihi`} />
             <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
           </form>
         ) : (
+          /* Rozet kalan günü söylüyor; burada TARİHİN KENDİSİ yazıyor. */
           <span className="ops-pano-tarih-metin">
-            {kart.tarih ? kisaTarih(kart.tarih) : kart.guncelAsama ? "tarih yok" : isDurumAdi(kart.durum)}
+            {kart.tarih ? kisaTarih(kart.tarih) : kart.guncelAsama ? "tarih girilmedi" : isDurumAdi(kart.durum)}
           </span>
         )}
         {uyari ? (
@@ -305,10 +318,15 @@ function Kart({
           </em>
         ) : null}
       </div>
-      {/* Şablon dışı kolonda hangi aşamada olduğu yazılmalı: kolon adı söylemiyor. */}
-      {kolon.tur === "sablon_disi" ? (
-        <p className="ops-pano-asama">{kart.guncelAsama ?? "Aşama üretilmemiş"}</p>
-      ) : null}
+      {/*
+        ŞU ANKİ GÖREV HER KARTTA. Önce yalnızca "Şablon dışı" kolonunda
+        yazıyordu; oysa kolon AŞAMAYI söylüyor, aşamanın altında yirmi
+        görev olabiliyor ve "hangisindeyiz" kartta hiç görünmüyordu
+        (AkademikMerkez'in listesinde sekiz aşama, yirmi görev).
+      */}
+      <p className="ops-pano-asama" title={kart.guncelAsama ?? undefined}>
+        {kart.tamamlandi ? "Bütün görevler bitti" : kart.guncelAsama ?? "Görev üretilmemiş"}
+      </p>
       {/*
         TAŞIMA DÜĞMELERİ KENDİ SATIRINDA ve ikisi bir çift.
 

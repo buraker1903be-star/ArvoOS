@@ -366,7 +366,7 @@ export default async function OperationDetailPage({
               <AnindaForm action={setWorkflowStatus} className="opd-ff">
                 <input type="hidden" name="workflow_id" value={workflow.id} />
                 <label className="opd-ff-etiket" htmlFor="is-durumu">Durum</label>
-                <select id="is-durumu" name="status" defaultValue={workflow.status} disabled={isArchived} data-tone={statusTone(workflow.status)}>
+                <select key={workflow.status} id="is-durumu" name="status" defaultValue={workflow.status} disabled={isArchived} data-tone={statusTone(workflow.status)}>
                   {statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </AnindaForm>
@@ -374,14 +374,14 @@ export default async function OperationDetailPage({
               <AnindaForm action={setWaitingParty} className="opd-ff opd-ff-genis">
                 <input type="hidden" name="workflow_id" value={workflow.id} />
                 <label className="opd-ff-etiket" htmlFor="bekleyen-taraf">Top kimde</label>
-                <select id="bekleyen-taraf" name="waiting_party" defaultValue={bekleyenTaraf} disabled={isArchived} data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
+                <select key={bekleyenTaraf} id="bekleyen-taraf" name="waiting_party" defaultValue={bekleyenTaraf} disabled={isArchived} data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
                   {BEKLEYEN_TARAFLAR.map((taraf) => (
                     <option key={taraf} value={taraf}>{BEKLEYEN_TARAF_ADLARI[taraf]}</option>
                   ))}
                 </select>
                 {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
                 {bekleyenTaraf === "us" ? null : (
-                  <input type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
+                  <input key={workflow.waiting_note ?? "bos"} type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
                 )}
                 <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
               </AnindaForm>
@@ -389,7 +389,7 @@ export default async function OperationDetailPage({
               <AnindaForm action={setRevisionDays} className="opd-ff">
                 <input type="hidden" name="workflow_id" value={workflow.id} />
                 <label className="opd-ff-etiket" htmlFor="revizyon-gun">Revizyon</label>
-                <select id="revizyon-gun" name="revision_days" defaultValue={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}>
+                <select key={workflow.revision_days ?? "varsayilan"} id="revizyon-gun" name="revision_days" defaultValue={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}>
                   <option value="">Kurum varsayılanı</option>
                   {[30, 45, 60, 90, 180].map((gun) => <option key={gun} value={gun}>{gun} gün</option>)}
                 </select>
@@ -511,7 +511,7 @@ export default async function OperationDetailPage({
                       <div className="opd-step-meta">
                         <AnindaForm action={setStepStatus} className="opd-ff">
                           <input type="hidden" name="step_id" value={step.id} />
-                          <select name="status" defaultValue={step.status} data-tone={STEP_STATUS_TONES[step.status]} aria-label={`${step.title} durumu`}>
+                          <select key={step.status} name="status" defaultValue={step.status} data-tone={STEP_STATUS_TONES[step.status]} aria-label={`${step.title} durumu`}>
                             {STEP_STATUSES.map((value) => (
                               <option key={value} value={value}>{STEP_STATUS_LABELS[value]}</option>
                             ))}
@@ -520,13 +520,23 @@ export default async function OperationDetailPage({
                         {canEditDue ? (
                           <AnindaForm action={setStepDueDate} className="opd-ff">
                             <input type="hidden" name="step_id" value={step.id} />
-                            <input type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
+                            <input key={step.due_date ?? "yok"} type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
                           </AnindaForm>
                         ) : null}
                         {canAssign ? (
                           <AnindaForm action={assignStep} className="opd-ff">
                             <input type="hidden" name="step_id" value={step.id} />
-                            <select name="assigned_employee_id" defaultValue={step.assigned_employee_id ?? ""} aria-label={`${step.title} sorumlusu`}>
+                            {/*
+                            REACT 19 EYLEMDEN SONRA FORMU SIFIRLIYOR ve
+                            kontrolsüz alanda sıfırlama MOUNT anındaki
+                            değere dönüyor; defaultValue sonradan değişse
+                            de DOM'u güncellemiyor. Sunucu doğru değeri
+                            döndürüyordu ama ekran eskisini gösteriyor,
+                            sayfa yenilenince düzeliyordu. key sunucudan
+                            gelen değere bağlı: değer değişince alan
+                            yeniden kuruluyor.
+                          */}
+                            <select key={step.assigned_employee_id ?? "yok"} name="assigned_employee_id" defaultValue={step.assigned_employee_id ?? ""} aria-label={`${step.title} sorumlusu`}>
                               <option value="">Sorumlu yok</option>
                               {employees.map((employee) => (
                                 <option key={employee.id} value={employee.id}>{formatPersonName(employee.full_name)}</option>

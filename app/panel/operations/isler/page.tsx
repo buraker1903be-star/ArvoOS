@@ -9,7 +9,7 @@ import { PanelDrawer } from "../../components/panel-drawer";
 import { archiveWorkflow } from "../actions";
 import { OperationsTabs } from "../operations-tabs";
 import { WorkflowCreateForm } from "../workflow-create-form";
-import { OpsIcon, addDaysKey, priorityNames, priorityTones, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "../ops-shared";
+import { OpsIcon, addDaysKey, dueBadge, priorityNames, priorityTones, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "../ops-shared";
 import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import "../../crm/crm.css";
 import "../operations.css";
@@ -148,7 +148,14 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
       const { done, percentage } = stepProgress(steps);
       const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
       const contact = workflow.contract_id ? contactByContract.get(workflow.contract_id) : null;
-      const late = Boolean(workflow.due_date && workflow.due_date < today && workflow.status !== "completed");
+      /*
+        Termin metni ops-shared/dueBadge'den: pano, genel bakış ve iş
+        detayı da aynı fonksiyonu kullanıyor. Burada yalnızca "Gecikti"
+        yazıyordu, panoda hiç yoktu, detayda "Bugün teslim" diyordu —
+        aynı iş üç ekranda üç farklı cümle kuruyordu.
+      */
+      const termin = dueBadge(workflow.due_date, today, workflow.status);
+      const late = termin.late;
       const unreadMessages = unreadByWorkflow.get(workflow.id) ?? 0;
       const canAct = canActOn(workflow);
       return <tr key={workflow.id} className={unreadMessages ? "has-alert" : undefined}>
@@ -178,7 +185,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
           {workflow.status === "completed" && readyForArchive(workflow) ? <small className="ops-ready-hint">Ödeme kapandı</small> : null}
         </td>
         <td data-label="İlerleme" className="crm-col-progress"><span className="ops-progress-mini" aria-hidden="true"><i style={{ "--p": `${percentage}%` } as CSSProperties} /></span><b>%{percentage}</b></td>
-        <td data-label="Termin" className={`crm-col-date${late ? " is-late" : ""}`}>{workflow.due_date ? shortDate(workflow.due_date) : canAct ? <Link className="crm-inline-action" href={`/panel/operations/${workflow.id}#termin`}>+ Termin ekle</Link> : "—"}{late ? <small>Gecikti</small> : null}</td>
+        <td data-label="Termin" className={`crm-col-date${late ? " is-late" : ""}`}>{workflow.due_date ? shortDate(workflow.due_date) : canAct ? <Link className="crm-inline-action" href={`/panel/operations/${workflow.id}#termin`}>+ Termin ekle</Link> : "—"}{workflow.due_date ? <small>{termin.label}</small> : null}</td>
         <LastContactCell contact={opportunityId ? lastContacts.get(opportunityId) : null} />
         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
       </tr>;
