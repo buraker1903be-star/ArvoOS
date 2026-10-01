@@ -243,21 +243,7 @@ export default async function OperationsPanoPage({
       </div>
       <OperationsTabs active="pano" />
       <div className="module-tab-panel">
-        {turler.length > 1 ? (
-          <nav className="pano-turler" aria-label="Çalışma türü">
-            {turler.map((tur) => (
-              <Link
-                key={tur.code}
-                href={`/panel/operations/pano?tur=${encodeURIComponent(tur.code)}`}
-                className={`pano-tur${tur.code === seciliTur ? " is-active" : ""}`}
-                aria-current={tur.code === seciliTur ? "page" : undefined}
-              >
-                {tur.name}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-        {/*
+                {/*
           ÖLÇÜLER VE SÜZGEÇ TEK ŞERİTTE.
 
           İlk denemede İşler sayfasının birebir kopyasıydı: dört ölçü
@@ -279,7 +265,22 @@ export default async function OperationsPanoPage({
             {tamamlanan ? <span><b>{tamamlanan}</b> tamamlandı</span> : null}
           </div>
           <form method="get" className="ops-pano-suzgec">
-            {seciliTur ? <input type="hidden" name="tur" value={seciliTur} /> : null}
+            {/*
+              ÇALIŞMA TÜRÜ SÜZGECİN İÇİNDE. Üstte ayrı bir düğme şeridiydi
+              ("Varsayılan · Tez · Standart") ve iki sorunu vardı: panelin
+              kenarlığına yapışıyordu (sistem kuralı yalnızca section ve
+              .panel-card'ı içeri alıyor, nav listede yok) ve aynı işi
+              yapan dört denetimden biri tek başına başka bir biçimdeydi.
+              Tür de bir süzgeç: hangi işleri ve hangi kolonları
+              göreceğini seçiyor.
+            */}
+            {turler.length > 1 ? (
+              <select name="tur" defaultValue={seciliTur ?? ""} aria-label="Çalışma türü">
+                {turler.map((tur) => <option key={tur.code} value={tur.code}>{tur.name}</option>)}
+              </select>
+            ) : seciliTur ? (
+              <input type="hidden" name="tur" value={seciliTur} />
+            ) : null}
             <input name="arama" defaultValue={arama ?? ""} placeholder="İş / müşteri ara" aria-label="İş ya da müşteri ara" />
             <select name="sorumlu" defaultValue={seciliSorumlu ?? ""} aria-label="Sorumlu">
               <option value="">Sorumlu: tümü</option>
