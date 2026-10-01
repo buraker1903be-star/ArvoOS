@@ -53,8 +53,14 @@ export const formatDay = (value: string) => dayFormat.format(new Date(value));
 export const formatTime = (value: string) => timeFormat.format(new Date(value));
 
 /* --- Aşamalar ---
-   Veritabanı adım adlarını müşteriye açmaz; aşamalar genel ilerleme
-   yüzdesinden türetilir (eski ekranla aynı eşikler: her aşama %25). */
+   Veritabanı ADIM adlarını müşteriye açmaz; genel aşamalar ilerleme
+   yüzdesinden türetilir (eski ekranla aynı eşikler: her aşama %25).
+
+   Kurum isterse (organizations.tracking_show_phases) işin KENDİ aşama
+   başlıkları gösteriliyor: "Literatür", "Yöntem, Veri ve Analiz" — tezini
+   takip eden müşteri için "Çalışma"dan çok daha bilgilendirici. Aşama
+   başlıkları gruplamak için yazılmış okunabilir adlar; adım başlıkları
+   yine hiçbir durumda dışarı çıkmıyor (arvo_tracking_asamalar). */
 export const PHASES = ["Sözleşme", "Planlama", "Çalışma", "Kontrol", "Teslim"] as const;
 
 export function phaseProgress(progress: number, tone: StatusTone) {
@@ -68,9 +74,13 @@ export function phaseProgress(progress: number, tone: StatusTone) {
   return { reached: tone === "cancelled" ? reached : current, current };
 }
 
-export function currentPhaseLabel(progress: number, status: StatusInfo) {
+export type GercekAsama = { ad: string; durum: "done" | "current" | "upcoming" };
+export type TakipAsamalari = { asamalar: GercekAsama[]; toplam: number; tamamlanan: number; guncel: string | null };
+
+export function currentPhaseLabel(progress: number, status: StatusInfo, asamalar?: TakipAsamalari | null) {
   if (status.tone === "done") return "Teslim edildi";
   if (status.tone === "cancelled") return "İptal edildi";
+  if (asamalar?.guncel) return `${asamalar.guncel} aşaması`;
   const { current } = phaseProgress(progress, status.tone);
   return current >= 0 ? `${PHASES[current]} aşaması` : "Teslime hazır";
 }
@@ -102,7 +112,33 @@ export function ProgressRing({ value, tone, size = "lg" }: { value: number; tone
   );
 }
 
-export function PhaseTimeline({ progress, tone }: { progress: number; tone: StatusTone }) {
+export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; tone: StatusTone; asamalar?: TakipAsamalari | null }) {
+  /*
+    Kurumun kendi aşamaları varsa onlar basılıyor. Durumu veritabanı
+    hesaplıyor (aşamanın bütün görevleri bitti mi); yüzdeden yeniden
+    türetmek iki ayrı doğru üretirdi.
+  */
+  if (asamalar?.asamalar.length) {
+    return (
+      <ol className="trk-phases" data-tone={tone} aria-label="Süreç aşamaları">
+        {asamalar.asamalar.map((asama, index) => (
+          <li
+            key={`${asama.ad}-${index}`}
+            className={asama.durum === "current" ? "is-current" : asama.durum === "done" ? "is-done" : undefined}
+            aria-current={asama.durum === "current" ? "step" : undefined}
+          >
+            <span className="trk-phase-dot" aria-hidden="true">
+              {asama.durum === "done" ? <IconCheck /> : asama.durum === "current" ? null : index + 1}
+            </span>
+            <span className="trk-phase-name">{asama.ad}</span>
+            <span className="trk-sr">
+              {asama.durum === "done" ? " — tamamlandı" : asama.durum === "current" ? " — şu anki aşama" : " — sırada"}
+            </span>
+          </li>
+        ))}
+      </ol>
+    );
+  }
   const { reached, current } = phaseProgress(progress, tone);
   return (
     <ol className="trk-phases" data-tone={tone} aria-label="Süreç aşamaları">

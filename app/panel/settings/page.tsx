@@ -41,7 +41,7 @@ export default async function SettingsPage() {
   // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
   const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
-  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days").eq("id",membership.organization_id).single();
+  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id",membership.organization_id).single();
   // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
   const {data:legalRow,error:legalError}=await supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id",membership.organization_id).maybeSingle();
   const legalAvailable=!legalError;
@@ -152,6 +152,16 @@ export default async function SettingsPage() {
               placeholder="Örn. 60 — boş: revizyon penceresi yok"
               disabled={!canManage}
             />
+          </label>
+          <label className="stg-check stg-check-wide">
+            <input type="checkbox" name="tracking_show_phases" value="1" defaultChecked={branding?.tracking_show_phases ?? false} disabled={!canManage} />
+            <span>
+              Takip sayfasında işin kendi aşamalarını göster
+              <small>
+                Kapalıyken müşteri genel beş aşamayı görür (Sözleşme · Planlama · Çalışma · Kontrol · Teslim).
+                Açıkken adım şablonunuzdaki aşama başlıkları görünür; görev adları hiçbir durumda gösterilmez.
+              </small>
+            </span>
           </label>
           <label className="wide">Belge alt bilgisi<textarea name="document_footer" defaultValue={branding?.document_footer ?? ""} placeholder="Kısa kurumsal açıklama veya yasal not. Adres ve vergi bilgileri “Resmi bilgiler ve banka” bölümünden gelir; o bölüm boşsa bu metin adres yerine kullanılır." disabled={!canManage} /></label>
           {canManage ? <div className="wide panel-form-actions"><button className="panel-primary">Kurumsal Kimliği Kaydet</button></div> : null}

@@ -67,7 +67,7 @@ export function StatusLookupForm({ orgSlug, prefillCode }: { orgSlug: string; pr
                 </div>
                 <h2 className="trk-result-title">{row.contract_title}</h2>
                 <ProgressOverview progress={row.progress_percentage} status={status} size="md" />
-                <PhaseTimeline progress={row.progress_percentage} tone={status.tone} />
+                <PhaseTimeline progress={row.progress_percentage} tone={status.tone} asamalar={state.asamalar} />
                 <FinanceSummary total={row.total_amount} paid={row.paid_amount} remaining={row.remaining_amount} />
                 <p className="trk-updated"><IconClock />Son güncelleme {formatDateTime(row.last_update)}</p>
               </article>

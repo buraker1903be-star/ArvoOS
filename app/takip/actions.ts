@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { openTrackingAccess, trackingAccessMessage } from "@/lib/tracking-access";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "./portal-files-data";
 import { normalizeWorkPlan } from "@/lib/work-plan";
+import type { TakipAsamalari } from "../durum/[slug]/status-view";
 import { installmentLabel } from "@/lib/payment-schedule";
 
 // DİKKAT: "use server" dosyasında `export type { X }` (yeniden dışa aktarma)
@@ -39,6 +40,8 @@ export type TakipState = {
     messages: CustomerFileMessage[];
     /** Müşteri portalı dosyaları; null → bölüm gösterilmez (okunamadı). */
     files: CustomerPortalFile[] | null;
+    /** İşin kendi aşamaları; null → genel beş aşama gösterilir. */
+    asamalar: TakipAsamalari | null;
     /** Müşterinin erişebileceği belge bağlantıları (teklif + sözleşme). */
     documentLinks: {
       proposal_share_token: string | null;
@@ -266,6 +269,16 @@ export async function lookupTracking(
   if (linkError) console.error("[takip] belge bağlantıları okunamadı", { code: linkError.code, message: linkError.message });
   const documentLinks = (Array.isArray(linkRows) ? linkRows[0] : linkRows) ?? null;
 
+  /*
+    İşin kendi aşamaları — kurum açtıysa (organizations.tracking_show_phases).
+    Okunamazsa sayfa genel beş aşamayla çalışmaya devam ediyor.
+  */
+  const { data: asamaData, error: asamaError } = await supabase.rpc("arvo_tracking_asamalar", {
+    p_tracking_code: code,
+  });
+  if (asamaError) console.error("[takip] aşamalar okunamadı", { code: asamaError.code, message: asamaError.message });
+  const asamalar = (asamaError ? null : (asamaData ?? null)) as TakipAsamalari | null;
+
   // İş planı ve ödeme takvimi; okunamazsa bölüm gösterilmez.
   const { data: planData, error: planError } = await supabase.rpc("arvo_tracking_work_plan", {
     p_tracking_code: code,
@@ -289,7 +302,7 @@ export async function lookupTracking(
     files = null;
   }
 
-  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks, workPlan, documents } };
+  return { error: null, result: { ...row, tracking_code: code, messages, files, documentLinks, workPlan, documents, asamalar } };
 }
 
 /** Sekmeye dönüldüğünde (ör. PAYTR ödemesinden sonra) dosya kilitlerini tazeler. */

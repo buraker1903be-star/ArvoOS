@@ -2,14 +2,17 @@
 
 import { openTrackingAccess, trackingAccessMessage } from "@/lib/tracking-access";
 import { fetchCustomerPortalFiles, type CustomerPortalFile } from "../../takip/portal-files-data";
+import type { TakipAsamalari } from "./status-view";
 
 export type LookupState={error:string|null;results:{contract_no:string;contract_title:string;contract_status:string;workflow_status:string|null;last_update:string;total_amount:number;paid_amount:number;remaining_amount:number;progress_percentage:number}[]|null;
  /** Sorgulanan (normalize) takip kodu; dosya indirme isteğinde kullanılır. */
  code:string|null;
  /** Müşteri portalı dosyaları; null → bölüm gösterilmez. */
- files:CustomerPortalFile[]|null};
+ files:CustomerPortalFile[]|null;
+ /** İşin kendi aşamaları; null → genel beş aşama gösterilir. */
+ asamalar:TakipAsamalari|null};
 
-const empty={code:null,files:null} as const;
+const empty={code:null,files:null,asamalar:null} as const;
 
 export async function lookupStatus(orgSlug:string,_previousState:LookupState,formData:FormData):Promise<LookupState>{
  const code=String(formData.get("tracking_code")??"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
@@ -23,7 +26,17 @@ export async function lookupStatus(orgSlug:string,_previousState:LookupState,for
  // Dosyalar yalnızca bu kurumda eşleşen bir sözleşme bulunduğunda okunur.
  let files:CustomerPortalFile[]|null=null;
  try{files=await fetchCustomerPortalFiles(supabase,code)}catch(fileError){console.error("[durum] müşteri portalı dosyaları okunamadı",fileError);files=null}
- return {error:null,results:data,code,files};
+ /*
+   İşin kendi aşamaları — kurum açtıysa. Okunamazsa sayfa genel beş
+   aşamayla çalışmaya devam ediyor; bu bölüm için sorgulamayı düşürmek
+   müşteriye hiç sonuç göstermemek olurdu.
+ */
+ let asamalar:TakipAsamalari|null=null;
+ try{
+  const {data:asamaData}=await supabase.rpc("arvo_tracking_asamalar",{p_tracking_code:code});
+  asamalar=(asamaData??null) as TakipAsamalari|null;
+ }catch(asamaError){console.error("[durum] aşamalar okunamadı",asamaError);asamalar=null}
+ return {error:null,results:data,code,files,asamalar};
 }
 
 export async function refreshLookupPortalFiles(code:string):Promise<CustomerPortalFile[]|null>{

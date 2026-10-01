@@ -68,6 +68,12 @@ async function updateDocumentBranding__impl(formData: FormData) {
       website_url: text(formData, "website_url", 500) || null,
       signature_stamp_url: signatureStampUrl,
       revision_days: revizyonGun,
+      /*
+        Takip sayfası genel beş aşama yerine işin kendi aşamalarını
+        göstersin mi. Adım başlıkları hiçbir durumda dışarı çıkmıyor;
+        yalnızca aşama başlıkları (arvo_tracking_asamalar).
+      */
+      tracking_show_phases: formData.get("tracking_show_phases") === "1",
       updated_at: new Date().toISOString(),
     })
     .eq("id", membership.organization_id)

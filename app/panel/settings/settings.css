@@ -107,6 +107,15 @@
 .stg-signature-preview span{color:var(--muted);font-size:13px}
 .panel-root .stg .stg-check{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:0;color:var(--ink);font-size:13.5px;font-weight:600}
 .panel-root .stg .stg-check input{flex:none;width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--danger)}
+/*
+  Açıklamalı anahtar: tek satırlık onay kutusundan farkı, altındaki kısa
+  açıklama. "Kapalıyken ne olur" bilgisi olmadan bu seçim körlemesine
+  yapılır — müşteriye ne gösterdiğini değiştiriyor.
+*/
+.panel-root .stg .stg-check-wide{align-items:flex-start}
+.panel-root .stg .stg-check-wide input{margin-top:2px;accent-color:var(--accent-600)}
+.panel-root .stg .stg-check-wide span{display:grid;gap:3px}
+.panel-root .stg .stg-check-wide small{color:var(--muted);font-size:12.5px;font-weight:500;line-height:1.5;max-width:76ch}
 
 /* ---------- Yetkilendirme matrisi ---------- */
 .stg-roles{display:flex;flex-wrap:wrap;gap:8px}
