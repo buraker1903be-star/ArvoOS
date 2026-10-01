@@ -49,6 +49,23 @@ html[data-theme="dark"] .fin [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .fin-card-head .status-pill{flex:none}
 .fin-card-body{padding:4px 20px 20px}
 
+/* ---------- Arşiv (bakiyesi kapanan cariler) ----------
+   <details> olduğu için başlık bir <summary>: tarayıcı ona display:list-item
+   ve kendi oku verir, .fin-card-head'in flex'i bu yüzden uygulanmaz. İşaret
+   kaldırılıp yerine kendi oku konuyor; ok açılınca döner. */
+.fin-arsiv{background:color-mix(in srgb,var(--surface-2) 60%,var(--surface))}
+.fin-arsiv>summary{display:flex;align-items:flex-start;gap:12px;cursor:pointer;list-style:none;user-select:none}
+.fin-arsiv>summary::-webkit-details-marker{display:none}
+.fin-arsiv>summary::after{
+  content:"";flex:none;align-self:center;width:9px;height:9px;margin-left:2px;
+  border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s ease;
+}
+.fin-arsiv[open]>summary::after{transform:rotate(225deg) translate(-2px,-2px)}
+.fin-arsiv>summary>div{flex:1 1 auto;min-width:0}
+.fin-arsiv>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:22px}
+@media(hover:hover) and (pointer:fine){.fin-arsiv>summary:hover h2{color:var(--accent-strong)}}
+
 /* ---------- Araç çubuğu (arama ve filtreler) ---------- */
 .fin-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line-soft);background:color-mix(in srgb,var(--surface-2) 55%,var(--surface))}
 .fin-field{display:flex;flex-direction:column;gap:6px;flex:1 1 150px;min-width:0;margin:0;color:var(--muted);font-size:12px;font-weight:600}

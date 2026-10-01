@@ -298,6 +298,77 @@ export async function deleteEntry(formData: FormData) {
   revalidatePath("/panel/hr/commissions");
 }
 
+/*
+  CARİ SİLME — ÖNCE BAĞLI MALİ KAYITLARA BAKILIR.
+
+  account_entries carinin peşinden CASCADE ile siliniyor; yani silme
+  işlemi hareket dökümünü de götürür. Bu yüzden sözleşmesi, ödeme planı
+  ya da eşleşmiş banka hareketi olan cari SİLİNMEZ: bunlar ya yabancı
+  anahtarla silmeyi zaten engeller (payment_plans, bank_transactions) ya
+  da sessizce öksüz kalır (crm_contracts.party_id'de FK yok, satır
+  kalır ama kimi gösterdiği kaybolur). Kullanıcıya "silinemedi" demek
+  yerine NEDEN silinemediğini söylüyoruz.
+*/
+export async function deleteParty(formData: FormData) {
+  return runPanelAction(() => deleteParty__impl(formData), "Cari silindi");
+}
+
+async function deleteParty__impl(formData: FormData) {
+  const { supabase, membership } = await accountsContext();
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  if (!partyId) throw new Error("Cari seçilmedi.");
+
+  const organizationId = membership.organization_id;
+  const { data: party, error: partyError } = await supabase
+    .from("account_parties")
+    .select("id,name")
+    .eq("id", partyId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (partyError) throw new Error("Cari okunamadı: " + partyError.message);
+  if (!party) throw new Error("Cari bulunamadı.");
+
+  const [contracts, plans, bank] = await Promise.all([
+    supabase
+      .from("crm_contracts")
+      .select("contract_no")
+      .eq("party_id", partyId)
+      .eq("organization_id", organizationId)
+      .limit(3),
+    supabase
+      .from("payment_plans")
+      .select("id")
+      .eq("party_id", partyId)
+      .eq("organization_id", organizationId)
+      .limit(1),
+    supabase
+      .from("bank_transactions")
+      .select("id")
+      .eq("matched_party_id", partyId)
+      .eq("organization_id", organizationId)
+      .limit(1),
+  ]);
+
+  const engeller: string[] = [];
+  if (contracts.data?.length)
+    engeller.push(`sözleşmesi var (${contracts.data.map((c) => c.contract_no).join(", ")})`);
+  if (plans.data?.length) engeller.push("ödeme planı var");
+  if (bank.data?.length) engeller.push("eşleşmiş banka hareketi var");
+  if (engeller.length)
+    throw new Error(
+      `${party.name} silinemez: ${engeller.join(", ")}. Mali geçmişi olan cari silinmez; bakiyesi kapandığında arşive düşer.`,
+    );
+
+  const { error } = await supabase
+    .from("account_parties")
+    .delete()
+    .eq("id", partyId)
+    .eq("organization_id", organizationId);
+  if (error) throw new Error("Cari silinemedi: " + error.message);
+  revalidateLedger();
+  revalidatePath("/panel/accounts");
+}
+
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function createCollection(...args: Parameters<typeof createCollection__impl>) {
   return runPanelAction(() => createCollection__impl(...args), "Tahsilat kaydedildi");

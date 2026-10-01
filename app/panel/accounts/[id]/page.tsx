@@ -6,7 +6,10 @@ import {
   createAdditionalService,
   createCollection,
   createRefund,
+  deleteParty,
 } from "../actions";
+import { ConfirmDeleteButton } from "../confirm-delete-button";
+import { cariDurumu } from "@/lib/cari-arsiv";
 import { FinEmpty, FinIcon, FinWidget, type FinTone } from "../../finance/finance-ui";
 import "../../finance/finance.css";
 
@@ -63,7 +66,7 @@ export default async function AccountDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
   if (!modules.some((m) => m.code === "accounts"))
     throw new Error("Cari hesap modülüne erişiminiz yok.");
   const [{ data: party, error }, { data: contracts, error: contractError }] =
@@ -118,12 +121,21 @@ export default async function AccountDetailPage({
   const collections = Math.min(recorded, debt + refunds);
   const balance = Math.max(0, debt + refunds - collections);
   const refundable = Math.max(0, collections - refunds);
+  const durum = cariDurumu({ debt, collections, refunds, balance });
+  // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi
+  // ayrıca denetliyor; buradaki kontrol düğmeyi boşuna göstermemek için.
+  const canDelete = isPlatformOwner || ["owner", "admin"].includes(membership.role);
   return (
     <main className="fin">
       <header className="panel-pagehead">
         <div>
           <small className="panel-kicker">CARİ HESAP</small>
-          <h1>{current.name}</h1>
+          <h1>
+            {current.name}
+            {durum === "arsiv" ? (
+              <span className="status-pill" data-tone="neutral">Arşivde</span>
+            ) : null}
+          </h1>
           <p>
             {[current.phone, current.email, current.tax_number]
               .filter(Boolean)
@@ -272,6 +284,19 @@ export default async function AccountDetailPage({
               </div>
             </form>
           </PanelDrawer>
+          {canDelete ? (
+            <form action={deleteParty}>
+              <input type="hidden" name="party_id" value={id} />
+              <ConfirmDeleteButton
+                label="Cariyi sil"
+                confirmMessage={
+                  entries.length
+                    ? `${current.name} ve ${entries.length} hareketi kalıcı olarak silinsin mi?`
+                    : `${current.name} kalıcı olarak silinsin mi?`
+                }
+              />
+            </form>
+          ) : null}
         </div>
       </header>
 
