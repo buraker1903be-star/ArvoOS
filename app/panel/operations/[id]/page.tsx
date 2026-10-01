@@ -70,6 +70,8 @@ function dueInfo(due: string | null, status: string) {
   return { tone: "success", hint: `${days} gün kaldı`, late: false };
 }
 
+const VARSAYILAN_SEKME = "gorevler";
+
 /* Kapalı satırda tek çizgilik özet: durum · tarih · sorumlu. */
 function adimOzeti(step: Step, sorumlu: string | null) {
   const parcalar: string[] = [STEP_STATUS_LABELS[step.status] ?? step.status];
@@ -82,8 +84,15 @@ const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
 );
 
-export default async function OperationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OperationDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ sekme?: string }>;
+}) {
   const { id } = await params;
+  const { sekme: istenenSekme } = await searchParams;
   const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
@@ -174,6 +183,29 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   if (customerMessagesError) throw new Error("Müşteri mesajları okunamadı: " + customerMessagesError.message);
   const customerMessages = (customerMessagesData ?? []) as CustomerMessage[];
   const unreadCustomerMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
+
+  /*
+    SEKMELER. Rozetler sekmeye basmadan da "burada iş var mı" sorusunu
+    yanıtlıyor; okunmamış müşteri mesajı tek dikkat çeken olsun diye
+    yalnızca o renkli.
+  */
+  const sekmeler = [
+    { key: "gorevler", label: "Görevler", rozet: steps.length ? `${completedCount}/${steps.length}` : null, tone: "neutral" },
+    ...(brifingAlanlari.length
+      ? [{ key: "brifing", label: "Brifing", rozet: `${brifingSayisi.dolu}/${brifingSayisi.toplam}`, tone: "neutral" }]
+      : []),
+    { key: "durum", label: "Durum", rozet: null, tone: "neutral" },
+    {
+      key: "musteri",
+      label: "Müşteri",
+      rozet: unreadCustomerMessages ? String(unreadCustomerMessages) : null,
+      tone: "danger",
+    },
+    { key: "kayitlar", label: "Kayıtlar", rozet: null, tone: "neutral" },
+    { key: "bilgiler", label: "Bilgiler", rozet: null, tone: "neutral" },
+  ];
+  /* Bilinmeyen ya da kapalı sekme (brifing formu yoksa) görevlere düşer. */
+  const sekme = sekmeler.some((item) => item.key === istenenSekme) ? (istenenSekme as string) : VARSAYILAN_SEKME;
   const contract = contractData as Contract | null;
   const employees = (employeeData ?? []) as { id: string; full_name: string }[];
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
@@ -264,7 +296,13 @@ export default async function OperationDetailPage({ params }: { params: Promise<
 
   return (
     <div className="opd">
-      <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
+      {/*
+        Okundu işareti YALNIZCA Müşteri sekmesinde. Sekmeler gelmeden önce
+        mesajlar sayfanın içindeydi ve sayfayı açmak okumak sayılıyordu;
+        artık mesaj gizli bir sekmedeyken okundu saymak, okunmamış rozetini
+        kimse görmeden silerdi.
+      */}
+      {sekme === "musteri" ? <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} /> : null}
 
       <header className="opd-hero">
         <div className="opd-hero-main">
@@ -362,8 +400,33 @@ export default async function OperationDetailPage({ params }: { params: Promise<
         </article>
       </section>
 
-      <div className="opd-grid">
-        <div className="opd-main">
+      {/*
+        SEKMELER. Sayfa yedi kart birden taşıyordu; görev listesi
+        kısaltıldıktan sonra bile telefonda dört ekrandı. Operasyoncu aynı
+        anda tek şeye bakıyor: ya görevleri işliyor, ya müşteriyle
+        yazışıyor, ya brifingi okuyor.
+
+        Sekme ADRESTE (?sekme=): sunucu bileşeni, istemci durumu yok;
+        bağlantı paylaşılabiliyor, geri tuşu çalışıyor ve "Müşteri
+        mesajları"na doğrudan bağlanan ekranlar (genel bakış) hedefe
+        düşüyor.
+      */}
+      <nav className="module-tabs opd-tabs" aria-label="İş detayı bölümleri">
+        {sekmeler.map((item) => (
+          <Link
+            key={item.key}
+            href={item.key === VARSAYILAN_SEKME ? `/panel/operations/${workflow.id}` : `/panel/operations/${workflow.id}?sekme=${item.key}`}
+            className={item.key === sekme ? "active" : ""}
+            aria-current={item.key === sekme ? "page" : undefined}
+          >
+            {item.label}
+            {item.rozet ? <small className="opd-tab-rozet" data-tone={item.tone ?? "neutral"}>{item.rozet}</small> : null}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="module-tab-panel opd-panel">
+        {sekme === "gorevler" ? (
           <section className="opd-card">
             <header className="opd-card-head">
               <div><h2>Görevler</h2><p>{completedCount}/{steps.length} tamamlandı · tamamlamak için dokunun</p></div>
@@ -517,8 +580,10 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <button className="panel-primary" type="submit">Ekle</button>
             </form>
           </section>
+        ) : null}
 
-          {brifingAlanlari.length ? (
+        {sekme === "brifing" ? (
+          <>
             <section className="opd-card">
               <header className="opd-card-head">
                 <div>
@@ -556,124 +621,168 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                 <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
               </details>
             </section>
-          ) : null}
+</>
+        ) : null}
 
-          {/*
-            TOP KİMDE. İşin durumundan ayrı duruyor: 'Beklemede' işin
-            ilerlemediğini söyler, bu ise ilerlemeyi KİMİN sürdüreceğini.
-            Müşteriden veri bekleyen iş, uzmanın geciktirdiği iş gibi
-            görünmemeli — termin hatırlatması da bu alana bakıyor
-            (app/api/cron/adim-terminleri).
-          */}
-          {/*
-            DURUM KARTI. "İş durumu" ile "top kimde" aynı soruyu iki
-            yarıdan yanıtlıyor: iş nerede ve kimin elinde. Ayrı kartlarda
-            dururken iki başlık, iki açıklama ve iki kart boşluğu
-            harcıyorlardı.
-          */}
-          <section className="opd-card opd-durum">
-            <header className="opd-card-head">
-              <div>
-                <h2>Durum</h2>
-                <p>{isArchived ? beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul) : "İş kimin elinde bekliyor"}</p>
-              </div>
-              <span className="opd-wait-pill" data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
-                {beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}
-              </span>
-            </header>
-            <div className="opd-durum-bolum">
-              <h3>İş durumu</h3>
-              {isArchived ? (
-                <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
-              ) : (
-              <div className="opd-segment" role="group" aria-label="İş durumu">
-                {statusOptions.map(([value, label]) => (
-                  <form action={setWorkflowStatus} key={value}>
-                    <input type="hidden" name="workflow_id" value={workflow.id} />
-                    <input type="hidden" name="status" value={value} />
-                    <button type="submit" className={workflow.status === value ? "is-active" : ""} data-tone={statusTone(value)} aria-pressed={workflow.status === value}>{label}</button>
-                  </form>
-                ))}
-              </div>
-              )}
-            </div>
-            <div className="opd-durum-bolum">
-              <h3>Top kimde</h3>
-            {isArchived ? null : (
-              <form className="opd-wait" action={setWaitingParty}>
-                <input type="hidden" name="workflow_id" value={workflow.id} />
-                <div className="opd-wait-seg" role="group" aria-label="Bekleyen taraf">
-                  {BEKLEYEN_TARAFLAR.map((taraf) => (
-                    <label key={taraf} data-tone={BEKLEYEN_TARAF_TONLARI[taraf]} className={taraf === bekleyenTaraf ? "is-active" : ""}>
-                      <input type="radio" name="waiting_party" value={taraf} defaultChecked={taraf === bekleyenTaraf} />
-                      {BEKLEYEN_TARAF_ADLARI[taraf]}
-                    </label>
+        {sekme === "durum" ? (
+          <>
+            <section className="opd-card opd-durum">
+              <header className="opd-card-head">
+                <div>
+                  <h2>Durum</h2>
+                  <p>{isArchived ? beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul) : "İş kimin elinde bekliyor"}</p>
+                </div>
+                <span className="opd-wait-pill" data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
+                  {beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}
+                </span>
+              </header>
+              <div className="opd-durum-bolum">
+                <h3>İş durumu</h3>
+                {isArchived ? (
+                  <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
+                ) : (
+                <div className="opd-segment" role="group" aria-label="İş durumu">
+                  {statusOptions.map(([value, label]) => (
+                    <form action={setWorkflowStatus} key={value}>
+                      <input type="hidden" name="workflow_id" value={workflow.id} />
+                      <input type="hidden" name="status" value={value} />
+                      <button type="submit" className={workflow.status === value ? "is-active" : ""} data-tone={statusTone(value)} aria-pressed={workflow.status === value}>{label}</button>
+                    </form>
                   ))}
                 </div>
-                <div className="opd-wait-note">
+                )}
+              </div>
+              <div className="opd-durum-bolum">
+                <h3>Top kimde</h3>
+              {isArchived ? null : (
+                <form className="opd-wait" action={setWaitingParty}>
+                  <input type="hidden" name="workflow_id" value={workflow.id} />
+                  <div className="opd-wait-seg" role="group" aria-label="Bekleyen taraf">
+                    {BEKLEYEN_TARAFLAR.map((taraf) => (
+                      <label key={taraf} data-tone={BEKLEYEN_TARAF_TONLARI[taraf]} className={taraf === bekleyenTaraf ? "is-active" : ""}>
+                        <input type="radio" name="waiting_party" value={taraf} defaultChecked={taraf === bekleyenTaraf} />
+                        {BEKLEYEN_TARAF_ADLARI[taraf]}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="opd-wait-note">
+                    <input
+                      name="waiting_note"
+                      defaultValue={workflow.waiting_note ?? ""}
+                      maxLength={200}
+                      placeholder="Ne bekleniyor? (ham veri dosyası, danışman onayı…)"
+                      aria-label="Beklenen şey"
+                    />
+                    <button className="panel-secondary" type="submit">Kaydet</button>
+                  </div>
+                  <p className="opd-wait-hint">
+                    Top bizde değilken termin hatırlatması uzmana değil kuruma gider; gecikme raporunda da
+                    bekleyen taraf görünür.
+                  </p>
+                </form>
+              )}
+              {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
+              </div>
+            </section>
+            <section className="opd-card">
+              <header className="opd-card-head">
+                <div>
+                  <h2>Revizyon hakkı</h2>
+                  <p>
+                    {workflow.delivered_at
+                      ? `Teslim ${formatDate(workflow.delivered_at, true)}`
+                      : "İş tamamlandığında pencere kendiliğinden açılır"}
+                  </p>
+                </div>
+                {revizyon ? (
+                  <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
+                ) : null}
+              </header>
+              {isArchived ? null : (
+                <form className="opd-wait-note" action={setRevisionDays}>
+                  <input type="hidden" name="workflow_id" value={workflow.id} />
                   <input
-                    name="waiting_note"
-                    defaultValue={workflow.waiting_note ?? ""}
-                    maxLength={200}
-                    placeholder="Ne bekleniyor? (ham veri dosyası, danışman onayı…)"
-                    aria-label="Beklenen şey"
+                    name="revision_days"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    defaultValue={workflow.revision_days ?? ""}
+                    placeholder="Kurum varsayılanı"
+                    aria-label="Bu işe özel revizyon süresi (gün)"
                   />
                   <button className="panel-secondary" type="submit">Kaydet</button>
-                </div>
-                <p className="opd-wait-hint">
-                  Top bizde değilken termin hatırlatması uzmana değil kuruma gider; gecikme raporunda da
-                  bekleyen taraf görünür.
-                </p>
-              </form>
-            )}
-            {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
-            </div>
-          </section>
-
-
-
-          {portalSetupMissing ? (
-            <section className="opd-card opd-pf" id="musteri-dosyalari">
-              <header className="opd-card-head"><div><h2>Müşteri portalı dosyaları</h2><p>Müşterinin takip ekranındaki “Dosyalarınız” bölümü</p></div></header>
-              <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+                </form>
+              )}
+              <p className="opd-wait-hint">
+                {workflow.revision_days
+                  ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
+                  : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
+                {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
+              </p>
             </section>
-          ) : (
-            <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
-          )}
+          </>
+        ) : null}
 
-          <section className="opd-card opd-messages" id="musteri-mesajlari">
-            <header className="opd-card-head">
-              <div><h2>Müşteri mesajları</h2><p>Müşterinin takip ekranından yazdıkları ve ekibin yanıtları</p></div>
-              {unreadCustomerMessages ? <span className="status-pill" data-tone="danger">{unreadCustomerMessages} yeni</span> : <span className="status-pill">{customerMessages.length} mesaj</span>}
-            </header>
-            <div className="opd-chat">
-              {customerMessages.length ? customerMessages.map((message) => {
-                const isCustomer = message.sender_type === "customer";
-                const isNew = isCustomer && !message.read_at;
-                return (
-                  <article className={`opd-bubble ${isCustomer ? "is-customer" : "is-staff"}${isNew ? " is-new" : ""}`} key={message.id}>
-                    <header><b>{isCustomer ? customerName : formatPersonName(message.sender_name)}</b><time>{formatDate(message.created_at, true)}</time>{isNew ? <em>Yeni</em> : null}</header>
-                    <p>{message.body}</p>
-                  </article>
-                );
-              }) : <p className="opd-empty">Müşteriden henüz mesaj gelmedi. Takip kodunu paylaştığınızda müşteri buradan yazabilir.</p>}
-            </div>
-            {contract ? (
-              <form className="opd-reply" action={replyCustomerFileMessage}>
-                <input type="hidden" name="workflow_id" value={workflow.id} />
-                <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-                <div><small>Yanıt müşterinin takip ekranında görünür.</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
-              </form>
-            ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
-          </section>
+        {sekme === "musteri" ? (
+          <>
+            {portalSetupMissing ? (
+              <section className="opd-card opd-pf" id="musteri-dosyalari">
+                <header className="opd-card-head"><div><h2>Müşteri portalı dosyaları</h2><p>Müşterinin takip ekranındaki “Dosyalarınız” bölümü</p></div></header>
+                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+              </section>
+            ) : (
+              <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+            )}
+            <section className="opd-card opd-messages" id="musteri-mesajlari">
+              <header className="opd-card-head">
+                <div><h2>Müşteri mesajları</h2><p>Müşterinin takip ekranından yazdıkları ve ekibin yanıtları</p></div>
+                {unreadCustomerMessages ? <span className="status-pill" data-tone="danger">{unreadCustomerMessages} yeni</span> : <span className="status-pill">{customerMessages.length} mesaj</span>}
+              </header>
+              <div className="opd-chat">
+                {customerMessages.length ? customerMessages.map((message) => {
+                  const isCustomer = message.sender_type === "customer";
+                  const isNew = isCustomer && !message.read_at;
+                  return (
+                    <article className={`opd-bubble ${isCustomer ? "is-customer" : "is-staff"}${isNew ? " is-new" : ""}`} key={message.id}>
+                      <header><b>{isCustomer ? customerName : formatPersonName(message.sender_name)}</b><time>{formatDate(message.created_at, true)}</time>{isNew ? <em>Yeni</em> : null}</header>
+                      <p>{message.body}</p>
+                    </article>
+                  );
+                }) : <p className="opd-empty">Müşteriden henüz mesaj gelmedi. Takip kodunu paylaştığınızda müşteri buradan yazabilir.</p>}
+              </div>
+              {contract ? (
+                <form className="opd-reply" action={replyCustomerFileMessage}>
+                  <input type="hidden" name="workflow_id" value={workflow.id} />
+                  <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+                  <div><small>Yanıt müşterinin takip ekranında görünür.</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
+                </form>
+              ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
+            </section>
+          </>
+        ) : null}
 
-          {/* Yalnızca iş akışı olayları. CRM zinciri bilerek dışarıda: teklif ve
-              sözleşme güncellemeleri tutar bilgisi taşıyor, operasyon ekibi
-              fiyat görmemeli. */}
-          <RecordHistory workflowId={workflow.id} />
-        </div>
+        {sekme === "kayitlar" ? (
+          <>
+            {contract?.opportunity_id ? <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} /> : null}
+            <section className="opd-card">
+              <header className="opd-card-head"><div><h2>Son hareketler</h2></div></header>
+              <ul className="opd-activity">
+                {activities.map((activity) => (
+                  <li key={activity.id} data-kind={activity.kind}>
+                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            {/* Yalnızca iş akışı olayları. CRM zinciri bilerek dışarıda: teklif ve
+                sözleşme güncellemeleri tutar bilgisi taşıyor, operasyon ekibi
+                fiyat görmemeli. */}
+            <RecordHistory workflowId={workflow.id} />
+          </>
+        ) : null}
 
-        <aside className="opd-side">
+        {sekme === "bilgiler" ? (
           <section className="opd-card">
             <header className="opd-card-head"><div><h2>Bilgiler</h2></div></header>
             <dl className="opd-list">
@@ -689,55 +798,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <div><dt>Son güncelleme</dt><dd>{formatDate(workflow.updated_at, true)}</dd></div>
             </dl>
           </section>
-          <section className="opd-card">
-            <header className="opd-card-head">
-              <div>
-                <h2>Revizyon hakkı</h2>
-                <p>
-                  {workflow.delivered_at
-                    ? `Teslim ${formatDate(workflow.delivered_at, true)}`
-                    : "İş tamamlandığında pencere kendiliğinden açılır"}
-                </p>
-              </div>
-              {revizyon ? (
-                <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
-              ) : null}
-            </header>
-            {isArchived ? null : (
-              <form className="opd-wait-note" action={setRevisionDays}>
-                <input type="hidden" name="workflow_id" value={workflow.id} />
-                <input
-                  name="revision_days"
-                  type="number"
-                  min={1}
-                  max={3650}
-                  defaultValue={workflow.revision_days ?? ""}
-                  placeholder="Kurum varsayılanı"
-                  aria-label="Bu işe özel revizyon süresi (gün)"
-                />
-                <button className="panel-secondary" type="submit">Kaydet</button>
-              </form>
-            )}
-            <p className="opd-wait-hint">
-              {workflow.revision_days
-                ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
-                : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
-              {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
-            </p>
-          </section>
-          {contract?.opportunity_id ? <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} /> : null}
-          <section className="opd-card">
-            <header className="opd-card-head"><div><h2>Son hareketler</h2></div></header>
-            <ul className="opd-activity">
-              {activities.map((activity) => (
-                <li key={activity.id} data-kind={activity.kind}>
-                  <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                  <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </aside>
+        ) : null}
       </div>
     </div>
   );

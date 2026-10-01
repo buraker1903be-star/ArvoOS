@@ -380,7 +380,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
                   const sender = formatPersonName(latest.sender_name || latest.workflow?.customer_name) || "Müşteri";
                   return (
                     <li key={latest.workflow_id} className="is-flagged" data-flag="danger">
-                      <Link className="opsov-row opsov-message" href={`/panel/operations/${latest.workflow_id}#musteri-mesajlari`}>
+                      <Link className="opsov-row opsov-message" href={`/panel/operations/${latest.workflow_id}?sekme=musteri#musteri-mesajlari`}>
                         <span className="opsov-avatar" aria-hidden="true">{initials(sender)}</span>
                         <span className="opsov-row-main">
                           <b>{sender}<small> · {formatSubject(latest.workflow?.title ?? "İş")}</small></b>
