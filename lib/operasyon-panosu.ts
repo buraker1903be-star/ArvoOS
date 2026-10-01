@@ -332,21 +332,31 @@ export function asamaPanosuKur(
   }
 
   /*
-    BOŞ KOLONLAR GİZLENİYOR.
+    BÜTÜN AŞAMALAR GÖSTERİLİYOR — boş olanlar dahil.
 
-    Önce akışın tamamı gösteriliyordu; canlıda sekiz aşama + Tamamlandı
-    dokuz kolon etti ve pano yatay kaydırmadan görünmez oldu. Panonun
-    bütün değeri bir bakışta görünmesi, dolayısıyla içinde iş olmayan
-    aşama yer kaplamamalı.
+    Bir dönem boşlar gizlendi: sekiz aşama + Tamamlandı dokuz kolon
+    ediyordu ve pano yatay kaydırma istiyordu. Gizlemek daha kötüsünü
+    getirdi: iki işi de ilk aşamada olan kurumda panodan GERİYE TEK
+    KOLON kalıyor, o da ızgarada 1fr olduğu için ekranı baştan sona
+    kaplıyor ve pano kanban olmaktan çıkıp tuhaf bir listeye dönüyor
+    (canlıda böyle görüldü).
 
-    Gizlenen aşamaların adları ayrıca dönüyor: ekran onları tek satırda
-    sayıyor. Sessizce yok etmek "İç Kontrol nerede?" sorusunu doğururdu.
+    Boş kolon zaten BİLGİ: "Literatür'de hiç iş yok" panonun
+    söylemesi gereken şey. Yatay kaydırma da kanban'ın olağan
+    davranışı; süzgeç geldiğinden beri (pano/page.tsx) daraltmanın
+    yolu da var.
   */
-  const dolu = [...kolonlar.values()].filter((kolon) => kolon.kartlar.length > 0);
-  const bosAsamalar = [...kolonlar.values()]
+  const hepsi = [...kolonlar.values()];
+  const bosAsamalar = hepsi
     .filter((kolon) => kolon.tur === "asama" && !kolon.kartlar.length)
     .map((kolon) => kolon.baslik);
-  return { kolonlar: dolu, bosAsamalar };
+  /*
+    "Şablon dışı" kolonu YALNIZCA doluyken: akışın bir aşaması değil,
+    eşleşmeyenlerin düştüğü yer. Boşken göstermek her panoya anlamsız
+    bir kolon eklerdi.
+  */
+  const gosterilen = hepsi.filter((kolon) => kolon.tur !== "sablon_disi" || kolon.kartlar.length > 0);
+  return { kolonlar: gosterilen, bosAsamalar };
 }
 
 /** Varsayılan şablon (add_standard_operation_steps ile aynı sekiz aşama). */

@@ -189,7 +189,7 @@ export default async function OperationsPanoPage({
     .map((kayit) => kayit.id);
 
   const bugun = todayIstanbul();
-  const { kolonlar, bosAsamalar } = asamaPanosuKur(tumIsler, sablon, (id) => sorumlular.get(id) ?? null, bugun);
+  const { kolonlar } = asamaPanosuKur(tumIsler, sablon, (id) => sorumlular.get(id) ?? null, bugun);
   const kartlar = kolonlar.flatMap((kolon) => kolon.kartlar);
   const toplamKart = kartlar.length;
   const sablonDisi = kolonlar.find((kolon) => kolon.anahtar === SABLON_DISI_KOLONU)?.kartlar.length ?? 0;
@@ -332,16 +332,6 @@ export default async function OperationsPanoPage({
         {toplamKart ? (
           <>
             <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} okunmamis={Object.fromEntries(okunmamis)} />
-            {bosAsamalar.length ? (
-              /*
-                Gizlenen aşamalar sayılıyor: adı geçmezse "İç Kontrol kolonu
-                nerede?" sorusu doğuyor ve kullanıcı panonun eksik olduğunu
-                düşünüyor.
-              */
-              <p className="ops-pano-gizli">
-                İçinde iş olmayan {bosAsamalar.length} aşama gizlendi: {bosAsamalar.join(" · ")}
-              </p>
-            ) : null}
           </>
         ) : (
           <p className="panel-empty">

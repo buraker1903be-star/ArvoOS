@@ -1,11 +1,24 @@
 /*
-  Pano düzeni. Kolonlar yatay kayan bir şerit: dört kolon dar ekranda yan
-  yana sığmıyor ve sıkıştırmak kartları okunmaz yapıyor. Boş kolonlar
-  gizlendiği için (lib/operasyon-panosu.ts) şerit çoğu kurumda kaydırmaya
-  gerek kalmadan sığıyor; 224px alt sınır dört kolonu 1024px'te yan yana
-  getiriyor.
+  Pano düzeni. Kolonlar yatay kayan bir şerit.
+
+  KOLON GENİŞLİĞİ ÜST SINIRLI. Önce minmax(224px,1fr) yazılıydı ve az
+  kolonda 1fr onları ekran boyunca geriyordu: iki işi de ilk aşamada
+  olan kurumda TEK kolon kalıyor, o da 1660px'e yayılıp kartları
+  içinde yüzdürüyordu — pano kanban olmaktan çıkıyordu (canlıda
+  görüldü). Üst sınır 300px: kolon ne kadar az olursa olsun kart
+  ölçüsü sabit kalıyor, sağda boşluk kalması normal.
 */
-.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(224px,1fr);gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:8px;align-items:start}
+.ops-pano{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(252px,300px);gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:8px;align-items:start}
+/*
+  Boş kolon da bilgi ("Literatür'de iş yok") ama dolu kolonla aynı
+  ağırlıkta durmamalı: kesik çerçeve ve soluk zemin.
+*/
+.ops-pano-kolon[data-bos="1"]{border-style:dashed;border-color:var(--line);background:color-mix(in srgb,var(--surface-2) 45%,transparent)}
+/* Boş kolon kart yüksekliği kadar yer tutuyor: hat boyunca aynı ritim. */
+.ops-pano-kolon[data-bos="1"] .ops-pano-kartlar{min-height:96px;display:grid;place-items:center}
+.ops-pano-kolon[data-bos="1"] header{background:transparent}
+.ops-pano-kolon[data-bos="1"] header b{color:var(--muted)}
+.ops-pano-bos-not{margin:0;padding:14px 11px;color:var(--dim);font-size:12px;text-align:center}
 /* Taşıma sunucuya giderken pano donuk: ikinci bir sürükleme yarıda kalırdı. */
 .ops-pano[data-bekliyor="1"]{opacity:.65;pointer-events:none}
 .ops-pano-kolon{display:flex;flex-direction:column;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2);transition:border-color .12s,background .12s}

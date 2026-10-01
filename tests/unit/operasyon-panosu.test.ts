@@ -80,9 +80,9 @@ test("pano · şablon aşamaları kolon", async (t) => {
     const kolon = (baslik: string) => pano.find((k) => k.baslik === baslik)!;
     assert.deepEqual(kolon("Hazırlık Yapılıyor").kartlar.map((c) => c.baslik), ["Makale"]);
     assert.deepEqual(kolon("İç Kontrol Yapılıyor").kartlar.map((c) => c.baslik), ["Tez"]);
-    // İçinde iş olmayan aşama gösterilmiyor; numarası sırayı söylüyor.
-    assert.equal(pano.some((k) => k.baslik === "Evrak Teslimine Hazır"), false);
-    assert.deepEqual(pano.map((k) => k.sira), [1, 2], "numara ŞABLONDAKİ sıra: 3 atlandı");
+    // Boş aşama da kolon: "Evrak Teslimine Hazır'da iş yok" panonun söylemesi gereken şey.
+    assert.deepEqual(kolon("Evrak Teslimine Hazır").kartlar, []);
+    assert.deepEqual(pano.filter((k) => k.tur === "asama").map((k) => k.sira), [1, 2, 3]);
   });
 
   await t.test("kolonlar şablon sırasında, sonda Tamamlandı", () => {
@@ -98,25 +98,28 @@ test("pano · şablon aşamaları kolon", async (t) => {
     ]);
   });
 
-  await t.test("BOŞ KOLON GİZLENİYOR, adı ayrıca dönüyor", () => {
+  await t.test("BOŞ KOLON DA GÖSTERİLİYOR", () => {
     /*
-      Önce akışın tamamı gösteriliyordu; canlıda sekiz aşama + Tamamlandı
-      dokuz kolon etti ve pano yatay kaydırmadan görünmez oldu. Gizlenen
-      aşamaların adı dönmeli: sessizce yok etmek "İç Kontrol nerede?"
-      sorusunu doğuruyor.
+      Bir dönem boşlar gizlendi (dokuz kolon yatay kaydırma istiyordu).
+      Gizlemek daha kötüsünü getirdi: iki işi de ilk aşamada olan
+      kurumda geriye TEK kolon kalıyor, o da ızgarada ekranı baştan sona
+      kaplıyor ve pano kanban olmaktan çıkıyor — canlıda böyle görüldü.
+      Hattın tamamını görmek panonun işi; boş kolon da bilgi.
     */
     const bos = asamaPanosuKur([], SABLON, adCoz, BUGUN);
-    assert.deepEqual(bos.kolonlar, [], "iş yoksa hiç kolon yok");
+    assert.deepEqual(bos.kolonlar.map((k) => k.baslik), [...SABLON.map((a) => a.title), "Tamamlandı"]);
     assert.deepEqual(bos.bosAsamalar, SABLON.map((a) => a.title));
 
     const dolu = asamaPanosuKur(
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "İç Kontrol Yapılıyor", "2026-10-05")])],
       SABLON, adCoz, BUGUN,
     );
-    assert.deepEqual(dolu.kolonlar.map((k) => k.baslik), ["İç Kontrol Yapılıyor"]);
+    assert.deepEqual(dolu.kolonlar.map((k) => k.baslik), [...SABLON.map((a) => a.title), "Tamamlandı"]);
+    assert.deepEqual(dolu.kolonlar.find((k) => k.baslik === "İç Kontrol Yapılıyor")!.kartlar.map((c) => c.baslik), ["Tez"]);
+    // Boş aşamaların adı yine dönüyor (ekran kullanmıyor, bilgi olarak duruyor).
     assert.deepEqual(dolu.bosAsamalar, ["Hazırlık Yapılıyor", "Evrak Teslimine Hazır"]);
-    // "Tamamlandı" ve "Şablon dışı" akışın aşaması değil: sayıma girmiyor.
-    assert.equal(dolu.bosAsamalar.length, 2);
+    // "Şablon dışı" akışın aşaması değil: BOŞKEN kolon da açılmıyor.
+    assert.equal(dolu.kolonlar.some((k) => k.anahtar === SABLON_DISI_KOLONU), false);
   });
 
   await t.test("bütün aşamaları bitmiş iş Tamamlandı kolonunda", () => {
@@ -141,7 +144,7 @@ test("pano · şablon aşamaları kolon", async (t) => {
       [isAsamalarla("w1", "Tez", "Emine", [adim(1, "Literatür taraması", "2026-10-05")])],
       SABLON, adCoz, BUGUN,
     );
-    assert.equal(pano.some((k) => k.baslik === "Hazırlık Yapılıyor"), false, "kart oraya düşmedi");
+    assert.deepEqual(pano.find((k) => k.baslik === "Hazırlık Yapılıyor")!.kartlar, [], "kart oraya düşmedi");
     const disi = pano.find((k) => k.anahtar === SABLON_DISI_KOLONU)!;
     assert.deepEqual(disi.kartlar.map((c) => c.guncelAsama), ["Literatür taraması"]);
   });
@@ -352,13 +355,21 @@ test("pano · kartı başka kolona taşımak", async (t) => {
     adim(2, "İç Kontrol Yapılıyor", null),
     adim(3, "Evrak Teslimine Hazır", null),
   ];
-  /** Taşıma uygulandıktan sonra kart hangi kolona düşüyor? */
+  /*
+    Taşıma uygulandıktan sonra kart hangi kolona düşüyor?
+
+    Kartı BARINDIRAN kolonu arıyor. Önce [0] yazılıydı; boş kolonlar
+    gizliyken geriye tek kolon kaldığı için bu doğru çalışıyordu. Boşlar
+    da gösterilmeye başlayınca [0] her zaman ilk aşama oldu ve test
+    taşımanın kendisini değil ızgaranın ilk elemanını ölçer hale geldi.
+  */
   const uygulaSonrasiKolon = (adimlar: ReturnType<typeof adim>[], plan: NonNullable<ReturnType<typeof tasimaPlani>>) => {
     const sonrasi = adimlar.map((a) => ({
       ...a,
       is_completed: plan.tamamlanacak.includes(a.id) ? true : plan.acilacak.includes(a.id) ? false : a.is_completed,
     }));
-    return panoKolonlari([is({ steps: sonrasi })], SABLON, adCoz, BUGUN)[0].baslik;
+    const pano = panoKolonlari([is({ steps: sonrasi })], SABLON, adCoz, BUGUN);
+    return pano.find((kolon) => kolon.kartlar.length)!.baslik;
   };
 
   await t.test("İLERİ taşıma aradaki aşamaları da kapatıyor", () => {
@@ -481,11 +492,12 @@ test("pano: aşamalı şablonda kolon sayısı aşama sayısıdır", () => {
     "2026-10-10",
   );
 
-  // Dolu kolon bir tane (iş "Hazırlık"ta); şablon dışına düşmemeli.
-  assert.deepEqual(kolonlar.map((k) => k.baslik), ["Hazırlık"]);
-  assert.equal(kolonlar[0].kartlar.length, 1);
+  // Kolon sayısı AŞAMA sayısı (görev sayısı değil): dört görev, iki aşama.
+  assert.deepEqual(kolonlar.map((k) => k.baslik), ["Hazırlık", "Veri ve Analiz", "Tamamlandı"]);
+  const hazirlik = kolonlar.find((k) => k.baslik === "Hazırlık")!;
+  assert.equal(hazirlik.kartlar.length, 1, "iş Hazırlık'ta; şablon dışına düşmemeli");
   // Kart hâlâ GÖREVİ yazıyor: kolon aşama, kart içindeki satır görev.
-  assert.equal(kolonlar[0].kartlar[0].guncelAsama, "Etik Kurul İzni");
+  assert.equal(hazirlik.kartlar[0].guncelAsama, "Etik Kurul İzni");
 });
 
 test("pano: aşamalı kolona taşıma o aşamanın İLK görevini hedef alır", () => {
@@ -516,6 +528,8 @@ test("pano: aşamasız şablonda davranış değişmedi", () => {
     () => null,
     "2026-10-10",
   );
-  assert.deepEqual(kolonlar.map((k) => k.baslik), ["İç Kontrol Yapılıyor"]);
-  assert.notEqual(kolonlar[0].anahtar, SABLON_DISI_KOLONU);
+  assert.deepEqual(kolonlar.map((k) => k.baslik), ["Hazırlık Yapılıyor", "İç Kontrol Yapılıyor", "Tamamlandı"]);
+  const dolu = kolonlar.find((k) => k.kartlar.length)!;
+  assert.equal(dolu.baslik, "İç Kontrol Yapılıyor");
+  assert.notEqual(dolu.anahtar, SABLON_DISI_KOLONU);
 });

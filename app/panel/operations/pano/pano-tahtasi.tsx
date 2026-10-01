@@ -154,6 +154,8 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
               </header>
               {ozet ? <p className="ops-pano-birak">Buraya bırak · {ozet}</p> : null}
               <div className="ops-pano-kartlar">
+                {/* Boş kolon da gösteriliyor; neden boş olduğu değil, boş olduğu yazılı. */}
+                {kolon.kartlar.length ? null : <p className="ops-pano-bos-not">Bu aşamada iş yok</p>}
                 {kolon.kartlar.map((kart) => (
                   <Kart
                     key={kart.isId}
