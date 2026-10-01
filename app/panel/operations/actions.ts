@@ -1,7 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
-import { kunyeyiDerle } from "@/lib/musteri-kunyesi";
+import { iletisimiDerle, kunyeyiDerle } from "@/lib/musteri-kunyesi";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -816,10 +816,14 @@ async function updateCustomerProfile__impl(formData: FormData) {
   if (!opportunityId) throw new Error("Fırsat bulunamadı: künye bu kayda bağlı.");
 
   const kunye = kunyeyiDerle((anahtar) => formData.get(anahtar) as string | null);
+  /* Künye ve iletişim TEK çağrıda: iki ayrı çağrı yarısı yazılıp yarısı
+     yazılmamış bir kayıt bırakabilirdi. */
+  const iletisim = iletisimiDerle((anahtar) => formData.get(anahtar) as string | null);
 
   const { error } = await supabase.rpc("arvo_ops_musteri_kunyesi_yaz", {
     p_opportunity: opportunityId,
     p_kunye: kunye,
+    p_iletisim: iletisim,
   });
   if (error) throw new Error("Künye kaydedilemedi: " + error.message);
 

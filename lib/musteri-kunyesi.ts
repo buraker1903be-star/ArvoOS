@@ -62,3 +62,33 @@ export function doluAlanlar(kunye: Kunye | null | undefined): Array<KunyeAlani &
     return deger ? [{ ...alan, deger }] : [];
   });
 }
+
+/*
+  İLETİŞİM ALANLARI — künyeden ayrı tutuluyor çünkü bunlar jsonb değil,
+  fırsat kaydının kendi sütunları. SÖZLEŞME DE BU SÜTUNLARDAN OKUYOR:
+  belge müşteri adını kendi kopyasında tutmuyor, fırsattan birleştirerek
+  alıyor. Dolayısıyla buradaki düzeltme sözleşmeye de yansıyor.
+*/
+export const ILETISIM_ALANLARI: Array<KunyeAlani & { tur?: string; zorunlu?: boolean }> = [
+  { anahtar: "customer_name", etiket: "Ad soyad", ornek: "Ayşe Yılmaz", zorunlu: true },
+  { anahtar: "contact_email", etiket: "E-posta", ornek: "ayse@ornek.com", tur: "email" },
+  { anahtar: "contact_phone", etiket: "Telefon", ornek: "0532 000 00 00", tur: "tel" },
+];
+
+export type Iletisim = Record<string, string | undefined>;
+
+/**
+ * Formdan gelen iletişim bilgileri.
+ *
+ * Ad KIRPILMIŞ hâliyle gidiyor ama boşsa boş gönderiliyor: doğrulamayı
+ * veritabanı yapıyor ve hatayı kullanıcıya gösteriyor. Burada sessizce
+ * eski değere dönmek, yanlışlıkla silindiğini gizlerdi.
+ */
+export function iletisimiDerle(oku: (anahtar: string) => string | null | undefined): Iletisim {
+  const iletisim: Iletisim = {};
+  for (const alan of ILETISIM_ALANLARI) {
+    const ham = String(oku(alan.anahtar) ?? "").trim();
+    iletisim[alan.anahtar] = ham ? ham.slice(0, KUNYE_EN_UZUN) : "";
+  }
+  return iletisim;
+}

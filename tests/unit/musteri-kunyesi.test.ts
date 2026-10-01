@@ -8,9 +8,11 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  ILETISIM_ALANLARI,
   KUNYE_ALANLARI,
   KUNYE_EN_UZUN,
   doluAlanlar,
+  iletisimiDerle,
   kunyeyiDerle,
 } from "@/lib/musteri-kunyesi";
 
@@ -52,5 +54,29 @@ describe("müşteri künyesi", () => {
   test("künye yoksa kart boş", () => {
     assert.deepEqual(doluAlanlar(null), []);
     assert.deepEqual(doluAlanlar({}), []);
+  });
+});
+
+describe("iletişim bilgileri", () => {
+  test("ad zorunlu, diğerleri değil", () => {
+    /* Ad sütunu NOT NULL ve sözleşme belgesi bu addan çiziliyor. */
+    const ad = ILETISIM_ALANLARI.find((a) => a.anahtar === "customer_name");
+    assert.equal(ad?.zorunlu, true);
+    assert.equal(ILETISIM_ALANLARI.find((a) => a.anahtar === "contact_email")?.zorunlu, undefined);
+  });
+
+  test("boş alan boş gidiyor, sessizce eskiye dönülmüyor", () => {
+    /* Doğrulamayı veritabanı yapıyor ve hatayı kullanıcı görüyor;
+       burada eski değere dönmek yanlışlıkla silindiğini gizlerdi. */
+    const i = iletisimiDerle((a) => ({ customer_name: "  Ayşe Yılmaz  ", contact_email: "" }[a] ?? null));
+    assert.equal(i.customer_name, "Ayşe Yılmaz");
+    assert.equal(i.contact_email, "");
+    assert.equal(i.contact_phone, "");
+  });
+
+  test("künye ve iletişim alanları karışmıyor", () => {
+    /* İkisi ayrı yere yazılıyor: künye jsonb'ye, iletişim sütunlara. */
+    const kunyeAnahtarlari = new Set(KUNYE_ALANLARI.map((a) => a.anahtar));
+    assert.ok(!ILETISIM_ALANLARI.some((a) => kunyeAnahtarlari.has(a.anahtar)));
   });
 });

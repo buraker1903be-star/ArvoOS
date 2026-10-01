@@ -692,6 +692,9 @@ export default async function OperationDetailPage({
             */}
             <MusteriKunyesi
               kunye={(opportunity?.kunye ?? null) as Kunye | null}
+              iletisim={opportunity ?? null}
+              /* İmzalı sözleşmede ad ve e-posta belgede de değişiyor. */
+              sozlesmeImzali={contract?.status === "signed"}
               opportunityId={contract?.opportunity_id ?? null}
               workflowId={workflow.id}
               duzenlenebilir={canEditDue}

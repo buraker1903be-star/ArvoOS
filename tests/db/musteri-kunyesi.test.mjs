@@ -25,6 +25,7 @@ const MIGRATIONLAR = [
   "20261001143617_operasyon_personeli_tutar_gormesin.sql",
   "20261001145319_ops_gorunumleri_salt_okunur.sql",
   "20261001205922_musteri_kunyesi_operasyonda.sql",
+  "20261001214623_musteri_iletisimi_operasyonda.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000002a1";
@@ -97,11 +98,13 @@ const kunyeOku = async (kisi) => {
   return rows.map((r) => r.kunye);
 };
 
-const kunyeYaz = async (kisi, kunye) => {
+const ILETISIM = { customer_name: "Ayşe Yılmaz", contact_email: "ayse@example.com", contact_phone: "05324628098" };
+
+const kunyeYaz = async (kisi, kunye, iletisim = ILETISIM) => {
   await rol(db, "authenticated", kisi);
   try {
-    return await db.query(`select public.arvo_ops_musteri_kunyesi_yaz($1,$2::jsonb) as sonuc`,
-      [FIRSAT, JSON.stringify(kunye)]);
+    return await db.query(`select public.arvo_ops_musteri_kunyesi_yaz($1,$2::jsonb,$3::jsonb) as sonuc`,
+      [FIRSAT, JSON.stringify(kunye), JSON.stringify(iletisim)]);
   } finally {
     await rol(db, "postgres");
   }
@@ -170,7 +173,7 @@ describe("müşteri künyesi operasyonda", () => {
       assert.deepEqual(await kunyeOku(YABANCI), []);
       await rol(db, "authenticated", YABANCI);
       await reddedilir(db,
-        `select public.arvo_ops_musteri_kunyesi_yaz($1,'{"university":"X"}'::jsonb)`,
+        `select public.arvo_ops_musteri_kunyesi_yaz($1,'{"university":"X"}'::jsonb,'{"customer_name":"X"}'::jsonb)`,
         [FIRSAT], /yetkiniz yok/i);
       await rol(db, "postgres");
       const satir = await tek(`select request_details from public.crm_opportunities where id=$1`, [FIRSAT]);
@@ -185,5 +188,80 @@ describe("müşteri künyesi operasyonda", () => {
       await kunyeYaz(UZMAN, { service_type: "odev", university: "Ege Üniversitesi" });
       const satir = await tek(`select request_details from public.crm_opportunities where id=$1`, [FIRSAT]);
       assert.equal(satir.request_details.service_type, "tez");
+    }));
+
+  test("ad, telefon ve e-posta güncelleniyor — sözleşme de aynı kayıttan okuyor", () =>
+    islem(db, async () => {
+      /*
+        Sözleşme belgesi müşteri adını kendi sütununda tutmuyor;
+        crm_opportunities'ten birleştirerek alıyor. Bu yüzden burada
+        yapılan düzeltme sözleşmeye de yansıyor — testin asıl söylediği
+        bu: iki kayıt ayrışamaz.
+      */
+      await tohum();
+      await kunyeYaz(UZMAN, {}, {
+        customer_name: "Ayşe Yılmaz Demir",
+        contact_email: "ayse.demir@example.com",
+        contact_phone: "0532 462 80 98",
+      });
+      const firsat = await tek(
+        `select customer_name, contact_email, contact_phone from public.crm_opportunities where id=$1`, [FIRSAT]);
+      assert.equal(firsat.customer_name, "Ayşe Yılmaz Demir");
+      assert.equal(firsat.contact_email, "ayse.demir@example.com");
+      assert.equal(firsat.contact_phone, "0532 462 80 98");
+
+      const sozlesme = await tek(
+        `select o.customer_name, o.contact_email
+           from public.crm_contracts c join public.crm_opportunities o on o.id = c.opportunity_id
+          where c.id=$1`, [SOZLESME]);
+      assert.equal(sozlesme.customer_name, "Ayşe Yılmaz Demir");
+      assert.equal(sozlesme.contact_email, "ayse.demir@example.com");
+    }));
+
+  test("imza kanıtına dokunulmuyor", () =>
+    islem(db, async () => {
+      /* signed_name imza anında müşterinin yazdığı addır; ad düzeltilse
+         bile kanıt olduğu gibi kalmalı. */
+      await tohum();
+      await db.query(`update public.crm_contracts set signed_name=$1, signed_at=now() where id=$2`,
+        ["Ayşe Yılmaz", SOZLESME]);
+      await kunyeYaz(UZMAN, {}, { ...ILETISIM, customer_name: "Ayşe Yılmaz Demir" });
+      const c = await tek(`select signed_name from public.crm_contracts where id=$1`, [SOZLESME]);
+      assert.equal(c.signed_name, "Ayşe Yılmaz");
+    }));
+
+  test("ad boşaltılamıyor", () =>
+    islem(db, async () => {
+      /* Sütun NOT NULL ve sözleşme bu addan çiziliyor; sessizce eski
+         değeri bırakmak yerine hata veriliyor ki kullanıcı öğrensin. */
+      await tohum();
+      await rol(db, "authenticated", UZMAN);
+      await reddedilir(db,
+        `select public.arvo_ops_musteri_kunyesi_yaz($1,'{}'::jsonb,'{"customer_name":"   "}'::jsonb)`,
+        [FIRSAT], /boş olamaz/i);
+      await rol(db, "postgres");
+    }));
+
+  test("geçersiz e-posta reddediliyor", () =>
+    islem(db, async () => {
+      /* Sözleşme bağlantısı bu adrese gidiyor; "ali" sessizce
+         kaydedilirse e-posta hiç ulaşmaz ve kimse fark etmez. */
+      await tohum();
+      await rol(db, "authenticated", UZMAN);
+      await reddedilir(db,
+        `select public.arvo_ops_musteri_kunyesi_yaz($1,'{}'::jsonb,'{"customer_name":"Ayşe","contact_email":"ali"}'::jsonb)`,
+        [FIRSAT], /e-posta adresi geçersiz/i);
+      await rol(db, "postgres");
+      const f = await tek(`select contact_email from public.crm_opportunities where id=$1`, [FIRSAT]);
+      assert.equal(f.contact_email, null, "Reddedilen kayıt yazılmamalı");
+    }));
+
+  test("e-posta ve telefon boşaltılabiliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await kunyeYaz(UZMAN, {}, { customer_name: "Ayşe Yılmaz", contact_email: "", contact_phone: "" });
+      const f = await tek(`select contact_email, contact_phone from public.crm_opportunities where id=$1`, [FIRSAT]);
+      assert.equal(f.contact_email, null);
+      assert.equal(f.contact_phone, null);
     }));
 });
