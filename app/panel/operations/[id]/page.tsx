@@ -20,6 +20,7 @@ import { statusTone } from "@/lib/status-tone";
 import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
+import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
 import type { PortalAccessRule } from "../portal-files-shared";
 import "../operations.css";
@@ -68,14 +69,6 @@ function dueInfo(due: string | null, status: string) {
 
 const VARSAYILAN_SEKME = "is";
 
-/* Kapalı satırda tek çizgilik özet: durum · tarih · sorumlu. */
-function adimOzeti(step: Step, sorumlu: string | null) {
-  const parcalar: string[] = [STEP_STATUS_LABELS[step.status] ?? step.status];
-  if (step.due_date) parcalar.push(formatDate(step.due_date));
-  if (sorumlu) parcalar.push(formatPersonName(sorumlu));
-  return parcalar.join(" · ");
-}
-
 const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
 );
@@ -118,8 +111,6 @@ export default async function OperationDetailPage({
   */
 
   const bekleyenTaraf = bekleyenTarafMi(workflow.waiting_party) ? workflow.waiting_party : "us";
-  /* Tamamlanmayan İLK görev: satırı kendiliğinden açık gelen tek satır. */
-  const guncelAdimId = steps.find((step) => !step.is_completed)?.id ?? null;
 
   const grupBaslari = new Map<string, { no: number | null; baslik: string; biten: number; toplam: number }>();
   for (const grup of asamalaraBol(steps)) {
@@ -269,6 +260,7 @@ export default async function OperationDetailPage({
 
   return (
     <div className="opd">
+      <AnindaYedek />
       {/*
         Okundu işareti YALNIZCA Müşteri sekmesinde. Sekmeler gelmeden önce
         mesajlar sayfanın içindeydi ve sayfayı açmak okumak sayılıyordu;
@@ -401,103 +393,50 @@ export default async function OperationDetailPage({
       <div className="module-tab-panel opd-panel">
         {sekme === "is" ? (
           <>
-            <section className="opd-card opd-durum">
-              <header className="opd-card-head">
-                <div>
-                  <h2>Durum</h2>
-                  <p>{isArchived ? beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul) : "İş kimin elinde bekliyor"}</p>
-                </div>
-                <span className="opd-wait-pill" data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
-                  {beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}
-                </span>
-              </header>
-              <div className="opd-durum-bolum">
-                <h3>İş durumu</h3>
-                {isArchived ? (
-                  <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
-                ) : (
-                <div className="opd-segment" role="group" aria-label="İş durumu">
-                  {statusOptions.map(([value, label]) => (
-                    <form action={setWorkflowStatus} key={value}>
-                      <input type="hidden" name="workflow_id" value={workflow.id} />
-                      <input type="hidden" name="status" value={value} />
-                      <button type="submit" className={workflow.status === value ? "is-active" : ""} data-tone={statusTone(value)} aria-pressed={workflow.status === value}>{label}</button>
-                    </form>
+            {/*
+              DURUM ŞERİDİ. Burada üç segmentli denetim ve kendini
+              paragraflarla açıklayan bir kart vardı; 300px yer kaplıyor,
+              asıl iş olan görev listesini ekranın altına itiyordu. Oysa bu
+              üç alan NADİREN değişir, sürekli GÖRÜNMESİ gerekir — kart
+              değil şerit işi.
+
+              Şerit yapışkan: görev listesinde aşağı inerken "top kimde" ve
+              iş durumu gözden kaybolmuyor.
+            */}
+            <div className="opd-serit">
+              <AnindaForm action={setWorkflowStatus} className="opd-ff">
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <label className="opd-ff-etiket" htmlFor="is-durumu">Durum</label>
+                <select id="is-durumu" name="status" defaultValue={workflow.status} disabled={isArchived} data-tone={statusTone(workflow.status)}>
+                  {statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </AnindaForm>
+
+              <AnindaForm action={setWaitingParty} className="opd-ff opd-ff-genis">
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <label className="opd-ff-etiket" htmlFor="bekleyen-taraf">Top kimde</label>
+                <select id="bekleyen-taraf" name="waiting_party" defaultValue={bekleyenTaraf} disabled={isArchived} data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
+                  {BEKLEYEN_TARAFLAR.map((taraf) => (
+                    <option key={taraf} value={taraf}>{BEKLEYEN_TARAF_ADLARI[taraf]}</option>
                   ))}
-                </div>
+                </select>
+                {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
+                {bekleyenTaraf === "us" ? null : (
+                  <input type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
                 )}
-              </div>
-              <div className="opd-durum-bolum">
-                <h3>Top kimde</h3>
-              {isArchived ? null : (
-                <form className="opd-wait" action={setWaitingParty}>
-                  <input type="hidden" name="workflow_id" value={workflow.id} />
-                  <div className="opd-wait-seg" role="group" aria-label="Bekleyen taraf">
-                    {BEKLEYEN_TARAFLAR.map((taraf) => (
-                      <label key={taraf} data-tone={BEKLEYEN_TARAF_TONLARI[taraf]} className={taraf === bekleyenTaraf ? "is-active" : ""}>
-                        <input type="radio" name="waiting_party" value={taraf} defaultChecked={taraf === bekleyenTaraf} />
-                        {BEKLEYEN_TARAF_ADLARI[taraf]}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="opd-wait-note">
-                    <input
-                      name="waiting_note"
-                      defaultValue={workflow.waiting_note ?? ""}
-                      maxLength={200}
-                      placeholder="Ne bekleniyor? (ham veri dosyası, danışman onayı…)"
-                      aria-label="Beklenen şey"
-                    />
-                    <button className="panel-secondary" type="submit">Kaydet</button>
-                  </div>
-                  <p className="opd-wait-hint">
-                    Top bizde değilken termin hatırlatması uzmana değil kuruma gider; gecikme raporunda da
-                    bekleyen taraf görünür.
-                  </p>
-                </form>
-              )}
-              {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
-              </div>
-              <div className="opd-durum-bolum">
-              <h3>Revizyon hakkı</h3>
-              {/*
-                Revizyon ayrı bir kart olmaktan çıktı: tek sayı alanı için
-                başlık, açıklama ve kart boşluğu harcıyordu. Durumun üçüncü
-                bloğu — "iş nerede, kim ilerletecek, hak ne zaman doluyor"
-                aynı soruların devamı.
-              */}
-              {revizyon ? (
-                <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
-              ) : (
-                <p className="opd-wait-hint">
-                  {workflow.delivered_at
-                    ? `Teslim ${formatDate(workflow.delivered_at, true)}`
-                    : "İş tamamlandığında pencere kendiliğinden açılır"}
-                </p>
-              )}
-                {isArchived ? null : (
-                  <form className="opd-wait-note" action={setRevisionDays}>
-                    <input type="hidden" name="workflow_id" value={workflow.id} />
-                    <input
-                      name="revision_days"
-                      type="number"
-                      min={1}
-                      max={3650}
-                      defaultValue={workflow.revision_days ?? ""}
-                      placeholder="Kurum varsayılanı"
-                      aria-label="Bu işe özel revizyon süresi (gün)"
-                    />
-                    <button className="panel-secondary" type="submit">Kaydet</button>
-                  </form>
-                )}
-                <p className="opd-wait-hint">
-                  {workflow.revision_days
-                    ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
-                    : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
-                  {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
-                </p>
+                <span className="opd-ff-not">{beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}</span>
+              </AnindaForm>
+
+              <AnindaForm action={setRevisionDays} className="opd-ff">
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <label className="opd-ff-etiket" htmlFor="revizyon-gun">Revizyon</label>
+                <select id="revizyon-gun" name="revision_days" defaultValue={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}>
+                  <option value="">Kurum varsayılanı</option>
+                  {[30, 45, 60, 90, 180].map((gun) => <option key={gun} value={gun}>{gun} gün</option>)}
+                </select>
+                {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
+              </AnindaForm>
             </div>
-          </section>
 
           <section className="opd-card">
             <header className="opd-card-head">
@@ -570,11 +509,9 @@ export default async function OperationDetailPage({
                               gereksizleşti, durum ve sorumlu ise ancak satır
                               açılınca görünüyordu.
                             */}
-                            <small>
-                              {step.is_completed
-                                ? `Tamamlandı · ${formatDate(step.completed_at, true)}`
-                                : adimOzeti(step, stepAssignee)}
-                            </small>
+                            {step.is_completed ? (
+                              <small>Tamamlandı · {formatDate(step.completed_at, true)}</small>
+                            ) : null}
                           </span>
                           {uyari ? (
                             <span className="opd-step-flag" data-tone={uyari === "overdue" ? "danger" : "warning"}>
@@ -585,58 +522,47 @@ export default async function OperationDetailPage({
                       </form>
                       {isArchived ? null : (
                       /*
-                        DENETİMLER İSTENİNCE AÇILIYOR. Her satırda dört durum
-                        düğmesi, tarih formu ve sorumlu seçicisi sürekli
-                        açıktı; yirmi görevlik bir tezde görev listesi tek
-                        başına 2337px (telefonda 4745px) ediyor, sayfa sekiz
-                        ekrana çıkıyordu.
+                        DENETİMLER SATIRIN İÇİNDE VE ANINDA KAYDEDİYOR.
 
-                        <details>: istemci JS'i yok (sunucu bileşeni),
-                        klavyeyle açılıyor ve ekran okuyucu durumu söylüyor.
-                        ŞU ANKİ görev kendiliğinden açık — operasyoncunun
-                        dokunacağı satır odur.
+                        Önce dört durum düğmesi + tarih formu + sorumlu
+                        seçicisi vardı; her birinin kendi "Kaydet"i, hepsi
+                        ayrı satırda. Bir görevi planlamak üç tıklama ve üç
+                        sayfa gidiş-gelişi, yirmi görevde altmış tıklama
+                        demekti. Sonra bunları açılır bölüme koydum; yer
+                        kazandı ama tıklama sayısı arttı.
+
+                        Şimdi üçü de satırın sağında, değişince kaydeden
+                        alanlar. Durum dört düğme yerine tek seçim: dört
+                        düğme 240px yer kaplıyor ve aynı anda yalnızca biri
+                        anlamlı.
                       */
-                      <details className="opd-step-more" open={step.id === guncelAdimId}>
-                        {/*
-                          Yalnızca ok: satırın altındaki küçük satır zaten
-                          durumu, tarihi ve sorumluyu yazıyor. "Düzenle"
-                          etiketi 84px yer kaplıyor ve başlık kutusuyla
-                          çakışıyordu (ölçüldü: 6px bindirme).
-                        */}
-                        <summary aria-label={`${step.title}: durum, tarih ve sorumlu`} />
-                        <div className="opd-step-meta">
-                          <div className="opd-step-states" role="group" aria-label={`${step.title} durumu`}>
+                      <div className="opd-step-meta">
+                        <AnindaForm action={setStepStatus} className="opd-ff">
+                          <input type="hidden" name="step_id" value={step.id} />
+                          <select name="status" defaultValue={step.status} data-tone={STEP_STATUS_TONES[step.status]} aria-label={`${step.title} durumu`}>
                             {STEP_STATUSES.map((value) => (
-                              <form action={setStepStatus} key={value}>
-                                <input type="hidden" name="step_id" value={step.id} />
-                                <input type="hidden" name="status" value={value} />
-                                <button type="submit" data-tone={STEP_STATUS_TONES[value]} className={step.status === value ? "is-active" : ""} aria-pressed={step.status === value}>
-                                  {STEP_STATUS_LABELS[value]}
-                                </button>
-                              </form>
+                              <option key={value} value={value}>{STEP_STATUS_LABELS[value]}</option>
                             ))}
-                          </div>
-                          {canEditDue ? (
-                            <form action={setStepDueDate} className="opd-step-date">
-                              <input type="hidden" name="step_id" value={step.id} />
-                              <input type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
-                              <button type="submit">Kaydet</button>
-                            </form>
-                          ) : step.due_date ? null : <span className="opd-step-hint">Tarihi yönetici ya da işin sorumlusu girer.</span>}
-                          {canAssign ? (
-                            <form action={assignStep} className="opd-step-who">
-                              <input type="hidden" name="step_id" value={step.id} />
-                              <select name="assigned_employee_id" defaultValue={step.assigned_employee_id ?? ""} aria-label={`${step.title} sorumlusu`}>
-                                <option value="">Sorumlu yok</option>
-                                {employees.map((employee) => (
-                                  <option key={employee.id} value={employee.id}>{formatPersonName(employee.full_name)}</option>
-                                ))}
-                              </select>
-                              <button type="submit">Ata</button>
-                            </form>
-                          ) : stepAssignee ? <span className="opd-step-hint">Sorumlu: {formatPersonName(stepAssignee)}</span> : null}
-                        </div>
-                      </details>
+                          </select>
+                        </AnindaForm>
+                        {canEditDue ? (
+                          <AnindaForm action={setStepDueDate} className="opd-ff">
+                            <input type="hidden" name="step_id" value={step.id} />
+                            <input type="date" name="due_date" defaultValue={step.due_date ?? ""} aria-label={`${step.title} teslim tarihi`} />
+                          </AnindaForm>
+                        ) : null}
+                        {canAssign ? (
+                          <AnindaForm action={assignStep} className="opd-ff">
+                            <input type="hidden" name="step_id" value={step.id} />
+                            <select name="assigned_employee_id" defaultValue={step.assigned_employee_id ?? ""} aria-label={`${step.title} sorumlusu`}>
+                              <option value="">Sorumlu yok</option>
+                              {employees.map((employee) => (
+                                <option key={employee.id} value={employee.id}>{formatPersonName(employee.full_name)}</option>
+                              ))}
+                            </select>
+                          </AnindaForm>
+                        ) : stepAssignee ? <span className="opd-step-hint">{formatPersonName(stepAssignee)}</span> : null}
+                      </div>
                       )}
                     </div>
                   </Fragment>

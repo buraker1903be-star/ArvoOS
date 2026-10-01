@@ -175,21 +175,6 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   "Çalışılıyor · 12.10.2026 · Ayşe Yılmaz". Sürekli açık dururken yirmi
   görevlik liste 2337px (telefonda 4745px) ediyordu.
 */
-/*
-  Açma düğmesi satırın SAĞINDA, kendi satırını kaplamıyor: kapalı görev
-  hiç yer kaybettirmiyor. Görevin özeti (durum · tarih · sorumlu) zaten
-  başlığın altındaki küçük satırda yazıyor.
-*/
-.opd-step-more{margin:0}
-.opd-step-more>summary{position:absolute;top:8px;right:6px;display:grid;place-items:center;width:32px;height:32px;border-radius:9px;list-style:none;color:var(--muted);font-size:13px;cursor:pointer;transition:background-color .18s ease,color .18s ease}
-.opd-step-more>summary::-webkit-details-marker{display:none}
-.opd-step-more>summary::after{content:"▾"}
-.opd-step-more[open]>summary::after{content:"▴"}
-.opd-step-more>summary:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
-.opd-step-more>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.opd-step-more[open]>summary{color:var(--ink)}
-/* Başlık düğmesi açma okunun altına girmesin (32px düğme + iki yan boşluk). */
-.opd-step>form>button{padding-right:46px}
 .opd-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding-top:4px}
 .opd-add input{height:42px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px}
 .opd-add input:focus,.opd-reply textarea:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
@@ -268,7 +253,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
    ".opd-step button" kuralı bütün butonları tam genişlik yapıyor ve
    eşit özgüllükte bir kural sıraya bağlı kalırdı. */
 .opd-step-flag{flex:none;align-self:center;padding:2px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:11.5px;font-weight:650;letter-spacing:.01em}
-.opd-step-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:0 8px 10px 52px}
+
 .opd-step.is-done .opd-step-meta{opacity:.62}
 .opd-step-states{display:flex;flex-wrap:wrap;gap:4px}
 .opd-step .opd-step-meta button{display:inline-flex;align-items:center;width:auto;min-height:0;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;line-height:1.7;cursor:pointer}
@@ -315,18 +300,6 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-wait-hint{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
 .opd-wait-pill{display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border-radius:999px;background:color-mix(in srgb,var(--tone-fg) 12%,transparent);color:var(--tone-fg);font-size:12.5px;font-weight:650;white-space:nowrap}
 
-/*
-  DURUM KARTI: "iş durumu" ile "top kimde" aynı sorunun iki yarısı (iş
-  nerede, kim ilerletecek). Ayrı kartlarda iki başlık, iki açıklama ve iki
-  kart boşluğu harcıyorlardı; geniş ekranda yan yana duruyorlar.
-*/
-.opd-durum{display:grid;gap:18px}
-.opd-durum>.opd-card-head{grid-column:1/-1;margin-bottom:0}
-.opd-durum-bolum{display:grid;gap:10px;align-content:start}
-.opd-durum-bolum>h3{margin:0;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-@media (min-width:900px){
-  .opd-durum{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:24px}
-}
 
 /*
   Katlanan okuma bölümü (künye). Referans bilgi her açılışta yer
@@ -374,3 +347,54 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-panel .opd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 22px}
 .opd-panel .opd-list>div{display:grid;gap:1px;min-width:0}
 
+/*
+  GÖREV SATIRI: tek sıra, denetimler sağda, hepsi anında kaydediyor.
+
+  Önce dört durum düğmesi + tarih formu + sorumlu seçicisi ayrı bir satır
+  kaplıyordu (yirmi görevde 2337px, telefonda 4745px). Sonra açılır bölüme
+  aldım: yer kazandı ama her görev için fazladan bir tıklama getirdi.
+  Şimdi üçü de satırın içinde — denetimler kendi genişliğinde, başlık
+  kalan yeri alıyor.
+*/
+.opd-step{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 14px}
+.opd-step>form:first-child{min-width:0}
+.opd-step>form:first-child>button{padding-right:0}
+.opd-step-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px}
+.opd-ff{display:inline-flex;align-items:center;gap:7px;margin:0}
+.opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:32px;max-width:100%;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;transition:border-color .18s ease,box-shadow .18s ease}
+.opd-ff select:hover,.opd-ff input:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.opd-ff select:focus-visible,.opd-ff input:focus-visible{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.opd-ff select:disabled,.opd-ff input:disabled{background:var(--surface-2);color:var(--muted)}
+/* Durum seçimi tonunu taşıyor: satıra bakınca renk de bilgi veriyor. */
+.opd-ff select[data-tone="info"]{border-color:color-mix(in srgb,var(--info) 45%,var(--line));color:var(--info)}
+.opd-ff select[data-tone="warning"]{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));color:var(--warning)}
+.opd-ff select[data-tone="success"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success)}
+.opd-ff select[data-tone="danger"]{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
+/* Anında kaydediliyor; düğme yalnızca JS kapalıyken çıkıyor (aninda.tsx). */
+.aninda-kaydet{display:none;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
+.opd-step .opd-step-hint{color:var(--muted);font-size:12.5px}
+
+/*
+  DURUM ŞERİDİ: üç alan, tek satır, yapışkan. Kart hâlindeyken 300px
+  kaplıyor ve görev listesini ekranın altına itiyordu; oysa bu alanlar
+  nadiren değişir ama sürekli görünmelidir.
+*/
+.opd-serit{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:11px 16px;border:1px solid var(--line);border-radius:var(--r-sm);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px)}
+.opd-ff-etiket{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.opd-ff-genis{flex:1;min-width:260px}
+.opd-ff-genis input[type="text"]{flex:1;min-width:120px}
+.opd-ff-not{color:var(--muted);font-size:12px;white-space:nowrap}
+.opd-ff-not[data-tone="warning"]{color:var(--warning);font-weight:650}
+.opd-ff-not[data-tone="success"]{color:var(--success)}
+
+@media (max-width:860px){
+  /* Dar ekranda denetimler başlığın altına geçiyor: yan yana sıkışıp
+     okunmaz olmaktansa ikinci sırada tam genişlik. */
+  .opd-step{grid-template-columns:minmax(0,1fr)}
+  .opd-step-meta{justify-content:flex-start;padding:0 8px 10px 52px}
+  /* Parmakla kullanılıyor: 32px dokunulabilir ama rahat değil. */
+  .opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:38px;font-size:13.5px}
+  /* Yapışkan şerit telefonda ekranın beşte birini yerdi. */
+  .opd-serit{position:static;backdrop-filter:none}
+  .opd-ff-genis{min-width:100%}
+}
