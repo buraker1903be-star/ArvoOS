@@ -18,7 +18,7 @@ type PanelModalProps = {
   description?: string;
   kicker?: string;
   /** Pencerenin genişliği: dar (sohbet) ya da genis (dosya yükleme). */
-  boy?: "dar" | "orta" | "genis";
+  boy?: "dar" | "orta" | "sohbet" | "genis";
   /** Adresten gelen derin bağlantı pencereyi açık başlatır. */
   baslangicAcik?: boolean;
   children: ReactNode;

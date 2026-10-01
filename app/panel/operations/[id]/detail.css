@@ -190,7 +190,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 */
 .opd-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding-top:4px}
 .opd-add input{height:42px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px}
-.opd-add input:focus,.opd-reply textarea:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.opd-add input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
 .opd-add button{min-height:42px;padding:0 18px}
 
 /* Durum: bölümlü seçici */
@@ -202,21 +202,62 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-segment button.is-active{background:var(--surface);color:var(--tone-fg);box-shadow:0 1px 2px rgba(11,27,46,.08),0 4px 12px rgba(11,27,46,.07),0 0 0 1px color-mix(in srgb,var(--tone-fg) 26%,var(--line))}
 
 /* Müşteri mesajları: sohbet balonları */
-.opd-chat{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow-y:auto;padding:14px;border-radius:16px;background:var(--surface-2)}
-.opd-bubble{max-width:82%;padding:10px 13px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm)}
-.opd-bubble.is-customer{align-self:flex-start;border-bottom-left-radius:6px}
-.opd-bubble.is-staff{align-self:flex-end;border-bottom-right-radius:6px;background:linear-gradient(180deg,var(--brand-500),var(--brand-700));color:var(--n-0)}
-.opd-bubble.is-new{box-shadow:0 0 0 2px color-mix(in srgb,var(--danger) 45%,transparent),var(--shadow-sm)}
-.opd-bubble header{display:flex;align-items:center;gap:8px;margin-bottom:3px}
-.opd-bubble header b{font-size:13px}
-.opd-bubble header time{color:var(--muted);font-size:12px}
-.opd-bubble.is-staff header time{color:color-mix(in srgb,var(--n-0) 70%,transparent)}
-.opd-bubble header em{padding:1px 7px;border-radius:999px;background:var(--danger);color:var(--n-0);font-size:11px;font-style:normal;font-weight:700}
-.opd-bubble p{margin:0;font-size:14.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
-.opd-reply{display:flex;flex-direction:column;gap:8px}
-.opd-reply textarea{min-height:92px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;line-height:1.45;resize:vertical}
-.opd-reply>div{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.opd-reply small{color:var(--muted);font-size:12.5px}
+/* ============================================================
+   MÜŞTERİ SOHBETİ (musteri-sohbet.tsx)
+
+   Baloncuk listesi uzun yazışmada dağılıyordu: iç içe iki kaydırıcı,
+   açılışta en eski mesaj, aynı kişinin üç mesajında üç kez ad ve saat,
+   günler ayrışmıyor, "nereye kadar okumuştum" belirsiz. Hepsi burada
+   çözülüyor; kaydırma, gün ayracı ve okunmamış çizgisi bileşende.
+   ============================================================ */
+.opd-sohbet{display:flex;flex-direction:column;gap:14px;min-height:0;height:100%}
+.opd-sohbet-liste{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:3px;padding:14px;border-radius:16px;background:var(--surface-2)}
+
+/* Gün ayracı ve okunmamış çizgisi: ikisi de ortadan geçen ince bir çizgi. */
+.opd-sohbet-gun,.opd-sohbet-yeni{display:flex;align-items:center;gap:10px;margin:12px 0 8px}
+.opd-sohbet-gun::before,.opd-sohbet-gun::after,.opd-sohbet-yeni::before,.opd-sohbet-yeni::after{content:"";flex:1;height:1px;background:var(--line)}
+.opd-sohbet-gun span{color:var(--muted);font-size:12px;font-weight:650}
+.opd-sohbet-yeni::before,.opd-sohbet-yeni::after{background:color-mix(in srgb,var(--danger) 40%,transparent)}
+.opd-sohbet-yeni span{color:var(--danger);font-size:12px;font-weight:700}
+
+/* Satır: avatar + baloncuk. Blok başı değilse avatar yeri boş kalır
+   (hiza bozulmasın) ve ad tekrar yazılmaz. */
+.opd-sohbet-satir{display:flex;align-items:flex-end;gap:8px;max-width:84%}
+.opd-sohbet-satir.is-bas{margin-top:10px}
+.opd-sohbet-satir.is-staff{flex-direction:row-reverse;margin-left:auto}
+.opd-sohbet-avatar{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--surface);color:var(--muted);font-size:11.5px;font-style:normal;font-weight:800;box-shadow:inset 0 0 0 1px var(--line)}
+.opd-sohbet-satir:not(.is-bas) .opd-sohbet-avatar{visibility:hidden}
+.opd-sohbet-govde{min-width:0}
+.opd-sohbet-govde b{display:block;margin:0 0 3px 2px;color:var(--muted);font-size:12px;font-weight:700}
+.opd-sohbet-satir.is-staff .opd-sohbet-govde b{text-align:right;margin-right:2px}
+/*
+  display:flow-root ŞART: saat float ile metnin son satırına oturuyor;
+  satır doluysa aşağı düşüyor ve kapsayıcı float'ı içermediği için
+  baloncuğun DIŞINA, gri zemine taşıyordu (ölçümde görüldü).
+*/
+.opd-sohbet-govde p{display:flow-root;margin:0;padding:8px 12px 8px;border-radius:16px 16px 16px 5px;background:var(--surface);color:var(--ink);font-size:14.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:var(--shadow-sm)}
+.opd-sohbet-satir.is-staff .opd-sohbet-govde p{border-radius:16px 16px 5px;background:linear-gradient(180deg,var(--brand-500),var(--brand-700));color:var(--n-0)}
+/* Saat metnin içinde akıyor: ayrı satır her baloncuğa 18px ekliyordu. */
+.opd-sohbet-govde time{float:right;margin:6px 0 0 10px;color:var(--muted);font-size:11.5px;line-height:1}
+.opd-sohbet-satir.is-staff .opd-sohbet-govde time{color:color-mix(in srgb,var(--n-0) 72%,transparent)}
+
+.opd-sohbet-bos{display:flex;flex-direction:column;gap:5px;margin:auto;padding:24px;text-align:center}
+.opd-sohbet-bos b{font-size:15px}
+.opd-sohbet-bos span{color:var(--muted);font-size:13.5px;line-height:1.5}
+
+/* Yazma alanı: listeyle birlikte kaymıyor, altta sabit. */
+.opd-sohbet-yaz{flex:none;display:flex;flex-direction:column;gap:8px}
+.opd-sohbet-yaz textarea{min-height:46px;max-height:160px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;line-height:1.45;resize:none;overflow-y:auto}
+.opd-sohbet-yaz textarea:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.opd-sohbet-yaz>div{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.opd-sohbet-yaz small{color:var(--muted);font-size:12.5px}
+.opd-sohbet-kapali{flex:none;margin:0;color:var(--muted);font-size:13.5px}
+
+@media (max-width:620px){
+  .opd-sohbet-satir{max-width:94%}
+  .opd-sohbet-yaz>div{flex-direction:column;align-items:stretch}
+  .opd-sohbet-yaz .panel-primary{width:100%;justify-content:center}
+}
 
 /* Bilgiler: gruplanmış liste */
 .opd-list{display:flex;flex-direction:column;margin:0}
@@ -247,7 +288,6 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   .opd-widgets{grid-template-columns:minmax(0,1fr)}
   .opd-segment{grid-template-columns:repeat(2,minmax(0,1fr))}
   .opd-card{padding:16px;border-radius:20px}
-  .opd-bubble{max-width:92%}
 }
 @media(prefers-reduced-motion:reduce){.opd-alert-dot,.opd-bar i,.opd-widget:target{animation:none}}
 

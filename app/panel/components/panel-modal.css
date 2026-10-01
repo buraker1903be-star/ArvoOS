@@ -12,6 +12,7 @@
 .panel-modal{position:relative;display:flex;flex-direction:column;width:min(var(--modal-w,720px),100%);max-height:min(88dvh,940px);border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);box-shadow:0 32px 90px rgba(6,13,25,.34);overflow:hidden;animation:panel-modal-in .26s cubic-bezier(.2,.8,.3,1) both}
 .panel-modal-root[data-boy="dar"]{--modal-w:560px}
 .panel-modal-root[data-boy="orta"]{--modal-w:720px}
+.panel-modal-root[data-boy="sohbet"]{--modal-w:780px}
 .panel-modal-root[data-boy="genis"]{--modal-w:940px}
 
 @keyframes panel-modal-fade{from{opacity:0}to{opacity:1}}
@@ -26,6 +27,14 @@
 .panel-modal-close{position:absolute;top:22px;right:26px;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:22px;line-height:1;cursor:pointer;transition:.18s ease}
 .panel-modal-close:hover{border-color:var(--accent-500);color:var(--accent-600)}
 .panel-modal-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 28px 28px}
+/*
+  SOHBET PENCERESİNDE TEK KAYDIRICI. Gövde de kayarken listenin de
+  kendi kaydırıcısı vardı: iç içe iki çubuk, ve yazma alanı listeyle
+  birlikte yukarı kaçıyordu. Sohbet varken gövde sabitleniyor,
+  kaydırma yalnızca listede kalıyor.
+*/
+.panel-modal-body:has(>.opd-sohbet){display:flex;flex-direction:column;overflow:hidden;padding-bottom:22px}
+.panel-modal-root[data-boy="sohbet"] .panel-modal{height:min(88dvh,760px)}
 
 /* Pencere içindeki kart ikinci bir çerçeve çizmesin: pencere zaten kart. */
 .panel-modal-body>.opd-card,.panel-modal-body>.panel-card{padding:0;border:0;border-radius:0;background:none;box-shadow:none}

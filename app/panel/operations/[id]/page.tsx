@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -21,6 +21,7 @@ import { statusTone } from "@/lib/status-tone";
 import { contractStatusLabel, proposalStatusLabel } from "../../crm/status-labels";
 import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
+import { MusteriSohbeti } from "./musteri-sohbet";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
 import type { PortalAccessRule } from "../portal-files-shared";
@@ -592,7 +593,7 @@ export default async function OperationDetailPage({
                 title="Müşteri mesajları"
                 description="Müşterinin takip ekranından yazdıkları ve ekibin yanıtları."
                 kicker="MÜŞTERİ"
-                boy="dar"
+                boy="sohbet"
                 baslangicAcik={acilacakPencere === "mesajlar"}
               >
                 {/*
@@ -602,25 +603,13 @@ export default async function OperationDetailPage({
                   açıkken basıldığı için bu etki de yalnızca o an çalışır.
                 */}
                 <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
-                <div className="opd-chat" id="musteri-mesajlari">
-                  {customerMessages.length ? customerMessages.map((message) => {
-                    const isCustomer = message.sender_type === "customer";
-                    const isNew = isCustomer && !message.read_at;
-                    return (
-                      <article className={`opd-bubble ${isCustomer ? "is-customer" : "is-staff"}${isNew ? " is-new" : ""}`} key={message.id}>
-                        <header><b>{isCustomer ? customerName : formatPersonName(message.sender_name)}</b><time>{formatDate(message.created_at, true)}</time>{isNew ? <em>Yeni</em> : null}</header>
-                        <p>{message.body}</p>
-                      </article>
-                    );
-                  }) : <p className="opd-empty">Müşteriden henüz mesaj gelmedi. Takip kodunu paylaştığınızda müşteri buradan yazabilir.</p>}
-                </div>
-                {contract ? (
-                  <form className="opd-reply" action={replyCustomerFileMessage}>
-                    <input type="hidden" name="workflow_id" value={workflow.id} />
-                    <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-                    <div><small>Yanıt müşterinin takip ekranında görünür.</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
-                  </form>
-                ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
+                <MusteriSohbeti
+                  workflowId={workflow.id}
+                  messages={customerMessages}
+                  customerName={customerName}
+                  canReply={Boolean(contract)}
+                  bugun={bugunIstanbul}
+                />
               </PanelModal>
 
               {/* Kayıt geçmişi okunur bir kayıt: rengi değişmiyor, bekleyen iş taşımıyor. */}
