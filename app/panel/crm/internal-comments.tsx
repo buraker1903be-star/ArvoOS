@@ -23,10 +23,20 @@ export async function InternalComments({
   opportunityId,
   contextType,
   contextId,
+  gorunum = "kart",
 }: {
   opportunityId: string;
   contextType: ContextType;
   contextId: string;
+  /*
+    SOHBET GÖRÜNÜMÜ. Operasyon iş detayında kurum içi yorumlar müşteri
+    mesajlarının yanında duruyor; ikisi aynı işi yapıp farklı
+    göründüğünde hangisinin müşteriye gittiği karışıyor. "sohbet"te
+    sıra eskiden yeniye ve yazma alanı altta — mesajlaşma uygulaması
+    nerede durduğunu öğrenmek gerekmeyen tek kalıp. CRM sayfaları
+    "kart" ile olduğu gibi kalıyor.
+  */
+  gorunum?: "kart" | "sohbet";
 }) {
   const { supabase, membership, userId } = await getPanelContext();
   const { data, error } = await supabase
@@ -34,7 +44,7 @@ export async function InternalComments({
     .select("id,body,context_type,created_by,created_at,edited_at")
     .eq("organization_id", membership.organization_id)
     .eq("opportunity_id", opportunityId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: gorunum === "sohbet" });
   if (error) throw new Error("Kurum içi yorumlar okunamadı: " + error.message);
 
   const comments = (data ?? []) as Comment[];
@@ -57,7 +67,7 @@ export async function InternalComments({
   const isManager = ["owner", "admin", "manager"].includes(membership.role);
 
   return (
-    <section className="panel-card crm-internal-comments">
+    <section className={`panel-card crm-internal-comments${gorunum === "sohbet" ? " ic-sohbet" : ""}`}>
       <div className="crm-internal-comments-head">
         <div>
           <small className="panel-kicker">KURUM İÇİ · GİZLİ</small>
@@ -88,7 +98,9 @@ export async function InternalComments({
       <div className="crm-internal-comment-list">
         {comments.map((comment) => {
           const name = authorName(comment.created_by);
-          return <article key={comment.id}>
+          // Sohbet görünümü kendi notlarını sağa yaslıyor (CSS); kart
+          // görünümünde bu veri okunmuyor.
+          return <article key={comment.id} data-benim={comment.created_by === userId ? "evet" : undefined}>
             <div className="crm-internal-comment-avatar" aria-hidden="true">{initials(name)}</div>
             <div className="crm-internal-comment-content">
               <div className="crm-internal-comment-meta">

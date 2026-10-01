@@ -304,36 +304,91 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-katla>summary small{margin-left:auto;color:var(--muted);font-size:12.5px;font-weight:600}
 .opd-katla[open]>summary{margin-bottom:14px}
 
+/* ============================================================
+   İKİ SÜTUNLU DÜZEN
+
+   Sekmeler yerini buna bıraktı. Sekmeler sayfayı kısaltmıştı ama
+   operasyoncu görevleri işlerken müşterinin yazdığını ya da evrağın
+   gidip gitmediğini göremiyordu — hepsi bir tık ötedeydi ve aynı anda
+   yalnızca biri görünüyordu. Şimdi asıl iş solda kalıcı, "başka ne var"
+   sağ rayda tek bakışta.
+   ============================================================ */
 /*
-  SEKMELER. Modülün kutulu sekme şeridi (.module-tabs) sayfa içinde ağır
-  duruyordu: her sekme çerçeveli bir kutu, etkin olan dolu bir blok ve
-  rozet alt satıra kayıyordu. Sayfa içi sekme bir kademe aşağıda; alt
-  çizgili, çerçevesiz bir şerit hem hafif hem de modül sekmesiyle
-  karışmıyor.
+  Izgara ADLANDIRILMIŞ ALANLARLA. Düğmeler rayın içinde dursaydı dar
+  ekranda tek sütuna inerken ya görev listesinin altında kalırdı (yirmi
+  görevin ardında kimse görmez) ya da künye ve yorumlarla birlikte
+  listenin önüne geçerdi. Ayrı alan olunca sıra dar ekranda
+  düğmeler → görevler → ray oluyor.
 */
-.opd-tabs{display:flex;gap:4px;margin:0 0 16px;padding:0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;overflow:visible}
-.opd-tabs a{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border:0;border-radius:0;background:none;color:var(--muted);font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap;transition:color .18s ease}
-.opd-tabs a+a{border-left:0}
-.opd-tabs a::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:transparent;transition:background-color .18s ease}
-.opd-tabs a:hover{background:none;color:var(--ink)}
-.opd-tabs a.active{background:none;color:var(--ink)}
-.opd-tabs a.active::after{background:var(--accent-600)}
-.opd-tabs a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:8px}
-/* Rozet: yalnızca dikkat isteyen sayı (okunmamış mesaj) basılıyor. */
-.opd-tab-rozet{padding:1px 7px;border-radius:999px;background:var(--danger);color:var(--n-0);font-size:11px;font-weight:700;line-height:1.6}
-.opd-panel{display:grid;gap:16px}
-.opd-panel>.opd-card{margin:0}
+/*
+  grid-template-rows ŞART: görev listesi iki satıra yayıldığı için fazla
+  yükseklik satırlara paylaştırılıyordu ve düğmelerle künye arasında
+  200px'lik boşluk açılıyordu. "auto 1fr" ilk satırı düğmelerin boyuna
+  sabitler.
+*/
+.opd-duzen{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);grid-template-rows:auto 1fr;grid-template-areas:"gorevler dugmeler" "gorevler ray";gap:16px;align-items:start}
+.opd-dugmeler{grid-area:dugmeler;display:grid;gap:10px;min-width:0}
+.opd-gorevler{grid-area:gorevler;min-width:0}
+.opd-ray{grid-area:ray;display:grid;gap:12px;align-content:start;min-width:0}
+.opd-ray-ikili{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opd-ray-ikili .opd-ray-btn{padding:10px 12px;font-size:13.5px;line-height:1.25}
+
+/*
+  1180px altında iki sütun görev listesini 500px'e sıkıştırıyordu:
+  görev başlığı ile üç denetim aynı satıra sığmıyor, satır iki kata
+  çıkıyordu. Tek sütuna inmek listeyi geri açıyor.
+*/
+@media (max-width:1180px){
+  .opd-duzen{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-template-areas:"dugmeler" "gorevler" "ray"}
+}
+@media (max-width:520px){
+  /* İki düğme yan yana 150px'e düşüyor; "Müşteri Mesajları" sığmıyor. */
+  .opd-ray-ikili{grid-template-columns:1fr}
+}
+
+/* ---------- Rayın pencere açan düğmeleri ---------- */
+.opd-ray-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:10px 14px;border:1px solid var(--tone-line);border-radius:14px;background:var(--tone-bg);color:var(--tone-fg);font:inherit;font-size:14px;font-weight:700;text-align:left;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,transform .12s ease}
+.opd-ray-btn:hover{border-color:var(--tone-fg);box-shadow:var(--shadow-sm)}
+.opd-ray-btn:active{transform:translateY(1px)}
+.opd-ray-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.opd-ray-btn-genis{min-height:58px;font-size:14.5px}
+/*
+  Ton: kenarlık ve yazı doygun, zemin yumuşak. Dolu kırmızı/yeşil düğme
+  rayda üç tane yan yana gelince panel bir uyarı tahtasına dönüyordu;
+  renk yine ilk bakışta okunuyor ama sayfayı ele geçirmiyor.
+*/
+.opd-ray-btn{--tone-line:var(--line);--tone-bg:var(--surface);--tone-fg:var(--ink)}
+.opd-ray-btn[data-tone="danger"]{--tone-line:color-mix(in srgb,var(--danger) 45%,var(--line));--tone-bg:var(--danger-soft);--tone-fg:var(--danger)}
+.opd-ray-btn[data-tone="success"]{--tone-line:color-mix(in srgb,var(--success) 45%,var(--line));--tone-bg:var(--success-soft);--tone-fg:var(--success)}
+.opd-ray-btn[data-tone="brand"]{--tone-line:color-mix(in srgb,var(--brand-500) 36%,var(--line));--tone-bg:color-mix(in srgb,var(--brand-500) 10%,var(--surface));--tone-fg:var(--brand-600)}
+.opd-ray-btn .panel-modal-trigger-rozet{background:var(--danger);color:var(--n-0)}
+
+/* Künye rayda: iki sütunlu yoğun ızgara dar sütunda tek sütuna iner. */
+.opd-kunye .opd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px 18px}
+.opd-kunye .opd-list>div{display:grid;gap:1px;min-width:0;padding:0;border-top:0}
+/* Izgarada etiket üstte, değer altta: tek sütunlu listenin sağa yaslaması
+   burada değeri etiketinden koparıyordu ("Sözleşme durumu … İmzalandı"). */
+.opd-kunye .opd-list dd{text-align:left}
+
+/* ---------- Kurum içi yorumlar: sohbet görünümü ---------- */
+/*
+  Aynı bileşen CRM'de kart olarak kalıyor (gorunum="kart"). Burada
+  müşteri mesajlaşmasının yanında durduğu için aynı kalıpta: sıra
+  eskiden yeniye, yazma alanı altta.
+*/
+.ic-sohbet{display:flex;flex-direction:column;gap:12px}
+.ic-sohbet .crm-internal-comments-head{order:1}
+.ic-sohbet .crm-internal-comment-list{order:2;display:flex;flex-direction:column;gap:9px;max-height:420px;overflow-y:auto;padding:12px;border-radius:16px;background:var(--surface-2)}
+.ic-sohbet .crm-internal-comment-form{order:3}
+.ic-sohbet .crm-internal-comment-list>article{max-width:88%;margin:0;padding:9px 12px;border:0;border-radius:16px;border-bottom-left-radius:6px;background:var(--surface);box-shadow:var(--shadow-sm)}
+.ic-sohbet .crm-internal-comment-list>article[data-benim]{align-self:flex-end;border-bottom-left-radius:16px;border-bottom-right-radius:6px;background:color-mix(in srgb,var(--brand-500) 20%,var(--surface))}
+.ic-sohbet .crm-internal-comment-avatar{display:none}
+.ic-sohbet .crm-internal-comment-meta{gap:8px;margin-bottom:3px;font-size:12px}
 
 /* Durum kartı üç blok oldu (iş durumu · top kimde · revizyon hakkı). */
 @media (min-width:1080px){
   .opd-durum{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,0.9fr)}
 }
-/*
-  Künye artık görevlerle aynı sekmede: on satırlık tek sütunlu liste
-  300px yer kaplıyordu, yoğun ızgara üçte birine iniyor.
-*/
-.opd-panel .opd-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 22px}
-.opd-panel .opd-list>div{display:grid;gap:1px;min-width:0}
 
 /*
   GÖREV SATIRI: tek sıra, denetimler sağda, hepsi anında kaydediyor.
@@ -373,7 +428,15 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   kaplıyor ve görev listesini ekranın altına itiyordu; oysa bu alanlar
   nadiren değişir ama sürekli görünmelidir.
 */
-.opd-serit{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:11px 16px;border:1px solid var(--line);border-radius:var(--r-sm);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px)}
+/*
+  YAPIŞKANLIK ÜST ÇUBUĞUN ALTINDAN BAŞLAR. top:0 yazılıydı ve panelin
+  kendi üst çubuğu da yapışkan (position:sticky, z-index:40, 72px):
+  sayfa kaydırılınca şerit çubuğun ARKASINA giriyor, üst kenarı ve
+  köşeleri çubuğun alt çizgisiyle çakışıyordu. Şerit z-index'i 2 olduğu
+  için yarısı görünmez oluyordu. Artık çubuğun bittiği yerde duruyor.
+*/
+.opd{--opd-serit-ust:80px}
+.opd-serit{position:sticky;top:var(--opd-serit-ust);z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:11px 16px;border:1px solid var(--line);border-radius:var(--r-sm);background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(8px);box-shadow:var(--shadow-sm)}
 .opd-ff-etiket{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
 .opd-ff-genis{flex:1;min-width:260px}
 .opd-ff-genis input[type="text"]{flex:1;min-width:120px}
@@ -381,6 +444,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-ff-not[data-tone="warning"]{color:var(--warning);font-weight:650}
 .opd-ff-not[data-tone="success"]{color:var(--success)}
 
+@media (max-width:900px){
+  /* Üst çubuk bu genişlikte 64px'e iniyor (panel-premium.css). */
+  .opd{--opd-serit-ust:72px}
+}
 @media (max-width:860px){
   /* Dar ekranda denetimler başlığın altına geçiyor: yan yana sıkışıp
      okunmaz olmaktansa ikinci sırada tam genişlik. */
@@ -389,6 +456,6 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   /* Parmakla kullanılıyor: 32px dokunulabilir ama rahat değil. */
   .opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:38px;font-size:13.5px}
   /* Yapışkan şerit telefonda ekranın beşte birini yerdi. */
-  .opd-serit{position:static;backdrop-filter:none}
+  .opd-serit{position:static;backdrop-filter:none;box-shadow:none}
   .opd-ff-genis{min-width:100%}
 }

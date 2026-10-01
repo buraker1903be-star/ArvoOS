@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fragment, type CSSProperties } from "react";
+import { Fragment, Suspense, type CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
@@ -10,6 +10,7 @@ import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, 
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { PanelModal } from "../../components/panel-modal";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -67,7 +68,6 @@ function dueInfo(due: string | null, status: string) {
   return { tone: "success", hint: `${days} gün kaldı`, late: false };
 }
 
-const VARSAYILAN_SEKME = "is";
 
 const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
@@ -78,10 +78,10 @@ export default async function OperationDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sekme?: string }>;
+  searchParams: Promise<{ sekme?: string; pencere?: string }>;
 }) {
   const { id } = await params;
-  const { sekme: istenenSekme } = await searchParams;
+  const { sekme: istenenSekme, pencere: istenenPencere } = await searchParams;
   const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
@@ -149,27 +149,19 @@ export default async function OperationDetailPage({
   const unreadCustomerMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
 
   /*
-    SEKMELER. Rozetler sekmeye basmadan da "burada iş var mı" sorusunu
-    yanıtlıyor; okunmamış müşteri mesajı tek dikkat çeken olsun diye
-    yalnızca o renkli.
+    DERİN BAĞLANTI. Sekmeler kalktı; yerlerine ortada açılan pencereler
+    geldi. Adres yine hangi pencerenin açılacağını söyleyebiliyor:
+    genel bakıştaki "müşteri mesajı var" satırı buraya bağlanıyor.
+    Eski ?sekme=musteri bağlantıları çalışmaya devam ediyor.
   */
-  const sekmeler = [
-    /*
-      ÜÇ SEKME. Altı sekme telefonda şeride sığmıyordu ve "Bilgiler" ile
-      "Durum" tek satırlık içerik için birer sekme harcıyordu. İş sekmesi
-      operasyoncunun çalıştığı yer: durum, görevler ve künye bir arada.
-    */
-    { key: "is", label: "İş", rozet: null, tone: "neutral" },
-    {
-      key: "musteri",
-      label: "Müşteri",
-      rozet: unreadCustomerMessages ? String(unreadCustomerMessages) : null,
-      tone: "danger",
-    },
-    { key: "kayitlar", label: "Kayıtlar", rozet: null, tone: "neutral" },
-  ];
-  /* Bilinmeyen sekme İş sekmesine düşer. */
-  const sekme = sekmeler.some((item) => item.key === istenenSekme) ? (istenenSekme as string) : VARSAYILAN_SEKME;
+  const acilacakPencere =
+    istenenPencere === "evrak" || istenenPencere === "mesajlar" || istenenPencere === "kayitlar"
+      ? istenenPencere
+      : istenenSekme === "musteri"
+        ? "mesajlar"
+        : istenenSekme === "kayitlar"
+          ? "kayitlar"
+          : null;
   const contract = contractData as Contract | null;
   const employees = (employeeData ?? []) as { id: string; full_name: string }[];
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
@@ -261,13 +253,6 @@ export default async function OperationDetailPage({
   return (
     <div className="opd">
       <AnindaYedek />
-      {/*
-        Okundu işareti YALNIZCA Müşteri sekmesinde. Sekmeler gelmeden önce
-        mesajlar sayfanın içindeydi ve sayfayı açmak okumak sayılıyordu;
-        artık mesaj gizli bir sekmedeyken okundu saymak, okunmamış rozetini
-        kimse görmeden silerdi.
-      */}
-      {sekme === "musteri" ? <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} /> : null}
 
       <header className="opd-hero">
         <div className="opd-hero-main">
@@ -318,11 +303,13 @@ export default async function OperationDetailPage({
       </header>
 
       {unreadCustomerMessages ? (
-        <a className="opd-alert" href="#musteri-mesajlari">
+        /* Çapa değil ADRES: mesajlar artık kapalı bir pencerenin içinde,
+           #musteri-mesajlari hiçbir yere kaydırmaz. */
+        <Link className="opd-alert" href={`/panel/operations/${workflow.id}?pencere=mesajlar`}>
           <span className="opd-alert-dot" aria-hidden="true" />
           <span><b>Müşteriden {unreadCustomerMessages} yeni mesaj var</b><small>Okuyup yanıtlamak için mesajlara gidin</small></span>
           <span aria-hidden="true">›</span>
-        </a>
+        </Link>
       ) : null}
 
       {isArchived ? (
@@ -366,44 +353,15 @@ export default async function OperationDetailPage({
       </section>
 
       {/*
-        SEKMELER. Sayfa yedi kart birden taşıyordu; görev listesi
-        kısaltıldıktan sonra bile telefonda dört ekrandı. Operasyoncu aynı
-        anda tek şeye bakıyor: ya görevleri işliyor, ya müşteriyle
-        yazışıyor, ya geçmişe bakıyor.
+        DURUM ŞERİDİ. Burada üç segmentli denetim ve kendini paragraflarla
+        açıklayan bir kart vardı; 300px yer kaplıyor, asıl iş olan görev
+        listesini ekranın altına itiyordu. Oysa bu üç alan NADİREN değişir,
+        sürekli GÖRÜNMESİ gerekir — kart değil şerit işi.
 
-        Sekme ADRESTE (?sekme=): sunucu bileşeni, istemci durumu yok;
-        bağlantı paylaşılabiliyor, geri tuşu çalışıyor ve "Müşteri
-        mesajları"na doğrudan bağlanan ekranlar (genel bakış) hedefe
-        düşüyor.
+        Şerit yapışkan: görev listesinde aşağı inerken "top kimde" ve iş
+        durumu gözden kaybolmuyor.
       */}
-      <nav className="module-tabs opd-tabs" aria-label="İş detayı bölümleri">
-        {sekmeler.map((item) => (
-          <Link
-            key={item.key}
-            href={item.key === VARSAYILAN_SEKME ? `/panel/operations/${workflow.id}` : `/panel/operations/${workflow.id}?sekme=${item.key}`}
-            className={item.key === sekme ? "active" : ""}
-            aria-current={item.key === sekme ? "page" : undefined}
-          >
-            {item.label}
-            {item.rozet ? <small className="opd-tab-rozet" data-tone={item.tone ?? "neutral"}>{item.rozet}</small> : null}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="module-tab-panel opd-panel">
-        {sekme === "is" ? (
-          <>
-            {/*
-              DURUM ŞERİDİ. Burada üç segmentli denetim ve kendini
-              paragraflarla açıklayan bir kart vardı; 300px yer kaplıyor,
-              asıl iş olan görev listesini ekranın altına itiyordu. Oysa bu
-              üç alan NADİREN değişir, sürekli GÖRÜNMESİ gerekir — kart
-              değil şerit işi.
-
-              Şerit yapışkan: görev listesinde aşağı inerken "top kimde" ve
-              iş durumu gözden kaybolmuyor.
-            */}
-            <div className="opd-serit">
+      <div className="opd-serit">
               <AnindaForm action={setWorkflowStatus} className="opd-ff">
                 <input type="hidden" name="workflow_id" value={workflow.id} />
                 <label className="opd-ff-etiket" htmlFor="is-durumu">Durum</label>
@@ -434,11 +392,24 @@ export default async function OperationDetailPage({
                   <option value="">Kurum varsayılanı</option>
                   {[30, 45, 60, 90, 180].map((gun) => <option key={gun} value={gun}>{gun} gün</option>)}
                 </select>
-                {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
-              </AnindaForm>
-            </div>
+        {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
+        </AnindaForm>
+      </div>
 
-          <section className="opd-card">
+      {/*
+        İKİ SÜTUN. Sekmeler bir şeyi çözmüş, bir şeyi bozmuştu: sayfa
+        kısaldı ama operasyoncu görevleri işlerken müşterinin ne yazdığını
+        ya da evrağın gidip gitmediğini göremiyordu — her biri bir tık
+        ötede, aynı anda ikisi birden görünmüyor.
+
+        Şimdi asıl iş (görevler) solda kalıcı; sağ ray "bu işte başka ne
+        var" sorusunu tek bakışta yanıtlıyor. Nadiren açılan ama açılınca
+        içinde vakit geçirilen üç ekran (evrak teslimi, müşteri
+        mesajlaşması, kayıt geçmişi) sayfada yer tutmak yerine ortada
+        açılan pencereye taşındı.
+      */}
+      <div className="opd-duzen">
+          <section className="opd-card opd-gorevler">
             <header className="opd-card-head">
               <div><h2>Görevler</h2><p>{completedCount}/{steps.length} tamamlandı · tamamlamak için dokunun</p></div>
               <strong className="opd-big">%{progress}</strong>
@@ -578,15 +549,123 @@ export default async function OperationDetailPage({
               <button className="panel-primary" type="submit">Ekle</button>
             </form>
           </section>
-          <section className="opd-card">
+
+          <div className="opd-dugmeler">
             {/*
-              Künye KATLI: sözleşme numarası, takip kodu ve tarihler
-              referans bilgi — iş sekmesinde görevlerle birlikte duruyor
-              ama her açılışta 300px yer kaplamasına gerek yok. Başlıkta
-              sözleşme numarası yazdığı için çoğu zaman açmaya da gerek
-              kalmıyor.
+              MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ödeme durumunu
+              söylüyor: kırmızıysa müşterinin ödemesi kapanmamış ve
+              "ödeme tamamlanınca açılır" kuralındaki dosyalar müşteride
+              kilitli görünecek. Bunu öğrenmek için pencereyi açmak
+              gerekmesin diye renk dışarıda.
             */}
-            <details className="opd-katla">
+            <PanelModal
+              triggerClassName="opd-ray-btn opd-ray-btn-genis"
+              triggerTone={!portalPayment.hasContract ? "neutral" : portalPayment.settled ? "success" : "danger"}
+              triggerLabel="Müşteri Nihai Evrak Teslimi"
+              triggerNote={
+                !portalPayment.hasContract
+                  ? "Sözleşmesiz iş"
+                  : portalPayment.settled
+                    ? `Ödeme tamamlandı · ${portalFiles.length} dosya`
+                    : `Ödeme bekleniyor · ${portalFiles.length} dosya`
+              }
+              title="Müşteri nihai evrak teslimi"
+              description="Müşterinin takip ekranındaki “Dosyalarınız” bölümüne giden dosyalar."
+              kicker="OPERASYON"
+              boy="genis"
+              baslangicAcik={acilacakPencere === "evrak"}
+            >
+              {portalSetupMissing ? (
+                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
+              ) : (
+                <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+              )}
+            </PanelModal>
+
+            <div className="opd-ray-ikili">
+              <PanelModal
+                triggerClassName="opd-ray-btn"
+                triggerTone={unreadCustomerMessages ? "danger" : "brand"}
+                triggerLabel="Müşteri Mesajları"
+                triggerBadge={unreadCustomerMessages ? String(unreadCustomerMessages) : null}
+                triggerNote={customerMessages.length ? `${customerMessages.length} mesaj` : "Mesaj yok"}
+                title="Müşteri mesajları"
+                description="Müşterinin takip ekranından yazdıkları ve ekibin yanıtları."
+                kicker="MÜŞTERİ"
+                boy="dar"
+                baslangicAcik={acilacakPencere === "mesajlar"}
+              >
+                {/*
+                  Okundu işareti PENCERE AÇILINCA. Mesajlar sayfanın içinde
+                  dururken sayfayı açmak okumak sayılıyordu; okunmamış
+                  rozeti kimse görmeden sönüyordu. Pencere içeriği yalnızca
+                  açıkken basıldığı için bu etki de yalnızca o an çalışır.
+                */}
+                <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
+                <div className="opd-chat" id="musteri-mesajlari">
+                  {customerMessages.length ? customerMessages.map((message) => {
+                    const isCustomer = message.sender_type === "customer";
+                    const isNew = isCustomer && !message.read_at;
+                    return (
+                      <article className={`opd-bubble ${isCustomer ? "is-customer" : "is-staff"}${isNew ? " is-new" : ""}`} key={message.id}>
+                        <header><b>{isCustomer ? customerName : formatPersonName(message.sender_name)}</b><time>{formatDate(message.created_at, true)}</time>{isNew ? <em>Yeni</em> : null}</header>
+                        <p>{message.body}</p>
+                      </article>
+                    );
+                  }) : <p className="opd-empty">Müşteriden henüz mesaj gelmedi. Takip kodunu paylaştığınızda müşteri buradan yazabilir.</p>}
+                </div>
+                {contract ? (
+                  <form className="opd-reply" action={replyCustomerFileMessage}>
+                    <input type="hidden" name="workflow_id" value={workflow.id} />
+                    <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+                    <div><small>Yanıt müşterinin takip ekranında görünür.</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
+                  </form>
+                ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
+              </PanelModal>
+
+              {/* Kayıt geçmişi okunur bir kayıt: rengi değişmiyor, bekleyen iş taşımıyor. */}
+              <PanelModal
+                triggerClassName="opd-ray-btn"
+                triggerTone="neutral"
+                triggerLabel="Kayıt Geçmişi"
+                triggerNote={`${activities.length} hareket`}
+                title="Kayıt geçmişi"
+                description="İş akışının kendi olayları. Teklif ve sözleşme zinciri bilerek dışarıda: tutar bilgisi taşıyor."
+                kicker="OPERASYON"
+                boy="orta"
+                baslangicAcik={acilacakPencere === "kayitlar"}
+              >
+                <ul className="opd-activity">
+                  {activities.map((activity) => (
+                    <li key={activity.id} data-kind={activity.kind}>
+                      <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
+                      <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
+                    </li>
+                  ))}
+                </ul>
+                {/*
+                  Suspense ŞART. Kayıt geçmişi kendi sorgularını yapıyor ve
+                  pencere kapalıyken de sunucuda basılıyor (istemci bileşenine
+                  çocuk olarak geçen sunucu bileşeni her zaman çalışır).
+                  Sekmeliyken yalnızca o sekmede koşuyordu; sarmalamasaydık
+                  nadiren açılan bir pencere her sayfa açılışını geciktirirdi.
+                */}
+                <Suspense fallback={<p className="opd-empty">Kayıt geçmişi yükleniyor…</p>}>
+                  <RecordHistory workflowId={workflow.id} />
+                </Suspense>
+              </PanelModal>
+            </div>
+          </div>
+
+          <aside className="opd-ray">
+          <section className="opd-card opd-kunye">
+          {/*
+            Künye içerik olarak aynı kaldı, yeri değişti: görev listesinin
+            altında değil sağ rayda. Katlanabilirliği duruyor ama varsayılan
+            AÇIK — rayda yer var ve sözleşme numarasıyla takip kodu en çok
+            bakılan iki alan.
+          */}
+          <details className="opd-katla" open>
               <summary>
                 <span>Künye ve bağlantılar</span>
                 <small>{contract?.contract_no ?? "Sözleşmesiz"}</small>
@@ -605,67 +684,17 @@ export default async function OperationDetailPage({
             </dl>
             </details>
           </section>
-          </>
-        ) : null}
 
-        {sekme === "musteri" ? (
-          <>
-            {portalSetupMissing ? (
-              <section className="opd-card opd-pf" id="musteri-dosyalari">
-                <header className="opd-card-head"><div><h2>Müşteri portalı dosyaları</h2><p>Müşterinin takip ekranındaki “Dosyalarınız” bölümü</p></div></header>
-                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
-              </section>
-            ) : (
-              <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
-            )}
-            <section className="opd-card opd-messages" id="musteri-mesajlari">
-              <header className="opd-card-head">
-                <div><h2>Müşteri mesajları</h2><p>Müşterinin takip ekranından yazdıkları ve ekibin yanıtları</p></div>
-                {unreadCustomerMessages ? <span className="status-pill" data-tone="danger">{unreadCustomerMessages} yeni</span> : <span className="status-pill">{customerMessages.length} mesaj</span>}
-              </header>
-              <div className="opd-chat">
-                {customerMessages.length ? customerMessages.map((message) => {
-                  const isCustomer = message.sender_type === "customer";
-                  const isNew = isCustomer && !message.read_at;
-                  return (
-                    <article className={`opd-bubble ${isCustomer ? "is-customer" : "is-staff"}${isNew ? " is-new" : ""}`} key={message.id}>
-                      <header><b>{isCustomer ? customerName : formatPersonName(message.sender_name)}</b><time>{formatDate(message.created_at, true)}</time>{isNew ? <em>Yeni</em> : null}</header>
-                      <p>{message.body}</p>
-                    </article>
-                  );
-                }) : <p className="opd-empty">Müşteriden henüz mesaj gelmedi. Takip kodunu paylaştığınızda müşteri buradan yazabilir.</p>}
-              </div>
-              {contract ? (
-                <form className="opd-reply" action={replyCustomerFileMessage}>
-                  <input type="hidden" name="workflow_id" value={workflow.id} />
-                  <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-                  <div><small>Yanıt müşterinin takip ekranında görünür.</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
-                </form>
-              ) : <p className="opd-empty">Bu iş bir sözleşmeye bağlı olmadığı için müşteri mesajlaşması kapalı.</p>}
-            </section>
-          </>
-        ) : null}
-
-        {sekme === "kayitlar" ? (
-          <>
-            {contract?.opportunity_id ? <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} /> : null}
-            <section className="opd-card">
-              <header className="opd-card-head"><div><h2>Son hareketler</h2></div></header>
-              <ul className="opd-activity">
-                {activities.map((activity) => (
-                  <li key={activity.id} data-kind={activity.kind}>
-                    <i aria-hidden="true">{activity.kind === "created" ? "+" : activity.kind === "step" ? <CheckIcon /> : "•"}</i>
-                    <span><b>{activity.title}</b><small>{activity.detail}</small><time>{formatDate(activity.at, true)}</time></span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            {/* Yalnızca iş akışı olayları. CRM zinciri bilerek dışarıda: teklif ve
-                sözleşme güncellemeleri tutar bilgisi taşıyor, operasyon ekibi
-                fiyat görmemeli. */}
-            <RecordHistory workflowId={workflow.id} />
-          </>
-        ) : null}
+            {/*
+              KURUM İÇİ YORUMLAR SOHBET OLARAK. Müşteri mesajlarıyla yan
+              yana durduğu için aynı kalıpta: eskiden yeniye sıralı,
+              yazma alanı altta. İki ekran farklı göründüğünde hangisinin
+              müşteriye gittiği karışıyordu.
+            */}
+            {contract?.opportunity_id ? (
+              <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="sohbet" />
+            ) : null}
+          </aside>
       </div>
     </div>
   );
