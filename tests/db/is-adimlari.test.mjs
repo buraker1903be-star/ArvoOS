@@ -20,6 +20,10 @@ const MIGRATION_ASAMA = path.resolve(
   import.meta.dirname,
   "../../supabase/migrations/20261001060820_asama_gruplari_ve_firsat_adimlari.sql",
 );
+const MIGRATION_SET = path.resolve(
+  import.meta.dirname,
+  "../../supabase/migrations/20261001062623_sablon_setleri.sql",
+);
 
 const SAHIP = "00000000-0000-4000-8000-000000000041";
 const KURUM = "00000000-0000-4000-8000-000000000042";
@@ -45,6 +49,17 @@ before(async () => {
       where table_schema = 'public' and table_name = 'operation_steps' and column_name = 'phase_title'`,
   );
   if (!asama.length) await db.exec(fs.readFileSync(MIGRATION_ASAMA, "utf8"));
+  const { rows: set } = await db.query(
+    `select 1 as v from information_schema.columns
+      where table_schema = 'public' and table_name = 'organization_step_templates' and column_name = 'set_code'`,
+  );
+  if (!set.length) await db.exec(fs.readFileSync(MIGRATION_SET, "utf8"));
+  /*
+    Supabase yeni tabloyu üç role de açar; migration bunun ardından anon'u
+    geri alıyor. Harness blanket grant'i tablo yokken çalıştığı için burada
+    tekrarlanıyor — anon bilerek dışarıda, kapı o migration'ın kendisi.
+  */
+  await db.exec(`grant all on public.organization_step_template_sets to authenticated, service_role;`);
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -476,3 +491,126 @@ async function isAc2() {
   );
   return satir.id;
 }
+
+/*
+  ÇALIŞMA TÜRÜNE GÖRE ŞABLON.
+
+  Kuruma tek liste düşüyordu (birincil anahtar organization_id + code);
+  tezin yirmi maddesi makale işine de iniyordu. Artık her çalışma türünün
+  kendi seti var ve iş açılırken tür seçiliyor.
+*/
+describe("şablon setleri", () => {
+  const setKur = async () => {
+    await rol(db, "postgres");
+    await db.exec(`
+      insert into public.organization_step_template_sets (organization_id, code, name, sort_order, is_default) values
+        ('${KURUM}', 'tez', 'Tez', 10, true),
+        ('${KURUM}', 'makale', 'Makale', 20, false);
+      insert into public.organization_step_templates (organization_id, set_code, code, title, sort_order, phase_title) values
+        ('${KURUM}', 'tez', 'oneri', 'Tez Öneri Formu', 10, 'Hazırlık'),
+        ('${KURUM}', 'tez', 'savunma', 'Tez Savunma Sunumu', 20, 'Savunma'),
+        ('${KURUM}', 'makale', 'dergi', 'Hedef Dergi Seçimi', 10, null),
+        ('${KURUM}', 'makale', 'gonderim', 'Dergiye Gönderim', 20, null);
+    `);
+  };
+
+  const turluIsAc = async (tur) => {
+    await rol(db, "postgres");
+    const satir = await tek(
+      `insert into public.operation_workflows (organization_id, title, status, start_date, created_by, step_template_set)
+       values ($1, 'Çalışma', 'planned', current_date, $2, $3) returning id`,
+      [KURUM, SAHIP, tur],
+    );
+    return satir.id;
+  };
+
+  test("iş kendi türünün listesini alır", () =>
+    islem(db, async () => {
+      await tohum();
+      await setKur();
+      assert.deepEqual(
+        (await adimlar(await turluIsAc("makale"))).map((a) => a.title),
+        ["Hedef Dergi Seçimi", "Dergiye Gönderim"],
+        "makale işine tezin adımları inmemeli",
+      );
+      assert.deepEqual(
+        (await adimlar(await turluIsAc("tez"))).map((a) => a.title),
+        ["Tez Öneri Formu", "Tez Savunma Sunumu"],
+      );
+    }));
+
+  test("türü seçilmeyen iş kurumun öntanımlı setini kullanır", () =>
+    islem(db, async () => {
+      await tohum();
+      await setKur();
+      // CRM fırsatından otomatik açılan iş tür seçmiyor; boş kalmamalı.
+      assert.deepEqual(
+        (await adimlar(await turluIsAc(null))).map((a) => a.title),
+        ["Tez Öneri Formu", "Tez Savunma Sunumu"],
+      );
+    }));
+
+  test("kurumun olmayan seti işe yazılamaz", () =>
+    islem(db, async () => {
+      await tohum();
+      await setKur();
+      await rol(db, "postgres");
+      await reddedilir(
+        db,
+        `insert into public.operation_workflows (organization_id, title, status, created_by, step_template_set)
+         values ($1, 'Çalışma', 'planned', $2, 'odev')`,
+        [KURUM, SAHIP],
+        /operation_workflows_step_set_fkey/,
+      );
+    }));
+
+  test("öntanımlı set kurum başına tektir", () =>
+    islem(db, async () => {
+      await tohum();
+      await setKur();
+      await rol(db, "postgres");
+      await reddedilir(
+        db,
+        `update public.organization_step_template_sets set is_default = true where organization_id = $1 and code = 'makale'`,
+        [KURUM],
+        /organization_step_template_sets_default_idx/,
+      );
+    }));
+
+  test("set silinince satırları da gider, işler kalır", () =>
+    islem(db, async () => {
+      await tohum();
+      await setKur();
+      const isId = await turluIsAc("makale");
+      await rol(db, "postgres");
+      await db.query(`delete from public.organization_step_template_sets where organization_id = $1 and code = 'makale'`, [KURUM]);
+
+      const kalan = await tek(
+        `select count(*)::int as n from public.organization_step_templates where organization_id = $1 and set_code = 'makale'`, [KURUM]);
+      assert.equal(kalan.n, 0, "setin satırları da silinmeli");
+      // Açılmış işin adımları şablona bağlı değil; silinen set onları götürmemeli.
+      assert.equal((await adimlar(isId)).length, 2);
+      const is = await tek(`select step_template_set from public.operation_workflows where id = $1`, [isId]);
+      assert.equal(is.step_template_set, null, "işin türü boşalmalı, iş silinmemeli");
+    }));
+
+  test("eski satırlar 'varsayilan' setine taşındı ve o set öntanımlı", () =>
+    islem(db, async () => {
+      /*
+        Migration geçmişe dokunmamalı: bu satır set sütunu olmadan yazılmış
+        gibi, kodu verilmeden ekleniyor ve öntanımlıya düşüyor.
+      */
+      await tohum();
+      await rol(db, "postgres");
+      await db.exec(`
+        insert into public.organization_step_template_sets (organization_id, code, name, is_default)
+          values ('${KURUM}', 'varsayilan', 'Varsayılan', true);
+        insert into public.organization_step_templates (organization_id, code, title, sort_order)
+          values ('${KURUM}', 'eski', 'Eski tek liste', 10);
+      `);
+      const satir = await tek(
+        `select set_code from public.organization_step_templates where organization_id = $1 and code = 'eski'`, [KURUM]);
+      assert.equal(satir.set_code, "varsayilan");
+      assert.deepEqual((await adimlar(await turluIsAc(null))).map((a) => a.title), ["Eski tek liste"]);
+    }));
+});

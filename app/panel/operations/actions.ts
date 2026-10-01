@@ -56,6 +56,7 @@ async function createWorkflow__impl(formData: FormData) {
   const startDate = String(formData.get("start_date") ?? "") || null;
   const dueDate = String(formData.get("due_date") ?? "") || null;
   const assignedEmployeeId = String(formData.get("assigned_employee_id") ?? "") || null;
+  const templateSet = String(formData.get("step_template_set") ?? "").trim() || null;
   if (title.length < 2 || title.length > 180) throw new Error("İş başlığı 2–180 karakter olmalı.");
   if (!statuses.has(status) || status === "completed" || status === "cancelled") throw new Error("Geçersiz başlangıç durumu.");
   if (!priorities.has(priority)) throw new Error("Geçersiz öncelik.");
@@ -65,7 +66,18 @@ async function createWorkflow__impl(formData: FormData) {
     const { data: employee } = await supabase.from("hr_employees").select("id").eq("id", assignedEmployeeId).eq("organization_id", membership.organization_id).eq("employment_status", "active").maybeSingle();
     if (!employee) throw new Error("Atanacak aktif personel bulunamadı.");
   }
-  const { error } = await supabase.from("operation_workflows").insert({ organization_id: membership.organization_id, title, customer_name: customerName || null, description: description || null, status, priority, start_date: startDate, due_date: dueDate, assigned_employee_id: assignedEmployeeId, created_by: userId });
+  /*
+    Çalışma türü işin görev listesini belirliyor (add_standard_operation_steps).
+    Bileşik yabancı anahtar zaten kurumun kendi türünü zorunlu tutuyor, ama
+    hata mesajı "foreign key violation" olurdu; kullanıcı ne olduğunu
+    anlamalı. Boş = kurumun öntanımlı türü.
+  */
+  if (templateSet) {
+    const { data: tur } = await supabase.from("organization_step_template_sets").select("code")
+      .eq("organization_id", membership.organization_id).eq("code", templateSet).maybeSingle();
+    if (!tur) throw new Error("Seçilen çalışma türü bulunamadı.");
+  }
+  const { error } = await supabase.from("operation_workflows").insert({ organization_id: membership.organization_id, title, customer_name: customerName || null, description: description || null, status, priority, start_date: startDate, due_date: dueDate, assigned_employee_id: assignedEmployeeId, step_template_set: templateSet, created_by: userId });
   if (error) throw new Error("İş akışı oluşturulamadı: " + error.message);
   revalidateOperations();
 }

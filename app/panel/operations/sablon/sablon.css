@@ -20,3 +20,21 @@
 .sablon-card-head{margin-bottom:14px}
 .sablon-card-head h2{margin:0 0 4px;font-size:16px;font-weight:700}
 .sablon-card-head p{margin:0;color:var(--muted);font-size:13px;max-width:78ch}
+
+/* Çalışma türleri: sekme şeridi + tür işlemleri. */
+.sablon-tur-seritleri{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.sablon-tur{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:650;text-decoration:none;transition:background-color .2s ease,color .2s ease,border-color .2s ease}
+.sablon-tur:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.sablon-tur.is-active{background:var(--ink);border-color:var(--ink);color:var(--n-0)}
+.sablon-tur small{padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-700);font-size:11px;font-weight:700}
+.sablon-tur.is-active small{background:color-mix(in srgb,var(--n-0) 22%,transparent);color:var(--n-0)}
+.sablon-tur-islemleri{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.sablon-tur-islemleri form{margin:0}
+.sablon-tur-ekle{display:flex;gap:8px}
+.sablon-tur-ekle input{height:38px;min-width:0;width:220px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.sablon-tur-ekle input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.sablon-turler{margin-bottom:16px}
+@media (max-width:640px){
+  .sablon-tur-ekle{width:100%}
+  .sablon-tur-ekle input{flex:1}
+}

@@ -2,6 +2,8 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ASAMA_EN_UZUN,
+  SET_EN_COK,
+  setAdiSorunu,
   VARSAYILAN_ADIMLAR,
   asamaliMi,
   asamalaraBol,
@@ -197,5 +199,20 @@ describe("aşama grupları", () => {
     assert.equal(sablonSorunu([satir({ phase_title: null })]), null);
     assert.match(sablonSorunu([satir({ phase_title: "x" })]) ?? "", /aşama adı/);
     assert.match(sablonSorunu([satir({ phase_title: "x".repeat(ASAMA_EN_UZUN + 1) })]) ?? "", /aşama adı/);
+  });
+});
+
+describe("çalışma türü", () => {
+  test("ad 2–80 karakter olmalı", () => {
+    assert.equal(setAdiSorunu("Tez"), null);
+    assert.equal(setAdiSorunu("  Makale  "), null, "baştaki boşluk ayıklanmalı");
+    assert.match(setAdiSorunu("T") ?? "", /2–80/);
+    assert.match(setAdiSorunu("") ?? "", /2–80/);
+    assert.match(setAdiSorunu("x".repeat(81)) ?? "", /2–80/);
+  });
+
+  test("tür sayısı sınırlı: sekmeler kaydırmalı şeride dönmesin", () => {
+    assert.ok(SET_EN_COK >= 4, "tez, makale, ödev ve analiz en azından sığmalı");
+    assert.ok(SET_EN_COK <= 20);
   });
 });

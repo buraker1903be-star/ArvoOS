@@ -131,6 +131,13 @@ export const SABLON_KODU = /^[a-z0-9_]{2,40}$/;
 export const SABLON_EN_COK = 40;
 export const OFSET_EN_COK = 3650;
 export const ASAMA_EN_UZUN = 80;
+/*
+  Kurum başına çalışma türü sayısı. Sınır keyfi değil: türler panoda ve
+  şablon ekranında SEKME olarak duruyor; onu aşan bir liste sekmeleri
+  kaydırmalı bir şeride çevirir ve seçimi zorlaştırır. Gerçek ihtiyaç
+  bugün dört (tez, makale, ödev, analiz).
+*/
+export const SET_EN_COK = 12;
 
 /*
   Kurum şablonu tanımlamamışsa add_standard_operation_steps bu sekiz adımı
@@ -255,3 +262,10 @@ export function asamalaraBol<T extends { phase_title?: string | null }>(adimlar:
 /** Listede hiç aşama tanımlı değilse ekran grup başlığı basmaz. */
 export const asamaliMi = (adimlar: { phase_title?: string | null }[]) =>
   adimlar.some((adim) => (adim.phase_title ?? "").trim().length > 0);
+
+/** Çalışma türünün adı: boş ya da aşırı uzun ad reddedilir. Hata metni ya da null. */
+export function setAdiSorunu(ad: string): string | null {
+  const temiz = ad.trim();
+  if (temiz.length < 2 || temiz.length > 80) return "Çalışma türünün adı 2–80 karakter olmalı.";
+  return null;
+}

@@ -180,3 +180,13 @@
 
 /* Gizlenen aşamaların adı: pano eksik sanılmasın. */
 .ops-pano-gizli{margin:10px 0 0;color:var(--dim);font-size:11px;line-height:1.5}
+
+/*
+  Çalışma türü sekmeleri. Kurumun birden çok görev listesi varsa kolonlar
+  listeye göre değişiyor; her tür kendi panosunda. Tek tür varsa şerit hiç
+  basılmıyor — tek seçenekli bir sekme karar değil, gürültü.
+*/
+.pano-turler{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.pano-tur{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:650;text-decoration:none;transition:background-color .2s ease,color .2s ease,border-color .2s ease}
+.pano-tur:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.pano-tur.is-active{background:var(--ink);border-color:var(--ink);color:var(--n-0)}

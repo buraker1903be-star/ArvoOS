@@ -58,17 +58,18 @@ type AdimSatiri = {
   /** Görevin aşaması; kolon buradan çıkıyor (lib/operasyon-panosu.ts: kolonAdi). */
   phase_title: string | null;
 };
-type Kayit = OperasyonIsi & { operation_steps: AdimSatiri[] };
+type Kayit = OperasyonIsi & { operation_steps: AdimSatiri[]; step_template_set: string | null };
 
-export default async function OperationsPanoPage() {
+export default async function OperationsPanoPage({ searchParams }: { searchParams: Promise<{ tur?: string }> }) {
+  const { tur: istenenTur } = await searchParams;
   const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
-  const [{ data, error }, { data: employees }, { data: sablonSatirlari }, { data: benimKaydim }] = await Promise.all([
+  const [{ data, error }, { data: employees }, { data: sablonSatirlari }, { data: turSatirlari }, { data: benimKaydim }] = await Promise.all([
     supabase
       .from("operation_workflows")
       .select(
-        "id,title,customer_name,status,priority,start_date,due_date,assigned_employee_id,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id,status,completed_at,phase_title)",
+        "id,title,customer_name,status,priority,start_date,due_date,assigned_employee_id,step_template_set,operation_steps(id,title,sort_order,due_date,is_completed,assigned_employee_id,status,completed_at,phase_title)",
       )
       .eq("organization_id", membership.organization_id)
       // İptal edilen ve arşivdeki işler panoyu doldurmasın
@@ -77,10 +78,17 @@ export default async function OperationsPanoPage() {
     // Kolonlar kurumun şablonundan; yoksa varsayılan sekiz aşama.
     supabase
       .from("organization_step_templates")
-      .select("title,sort_order,phase_title")
+      .select("title,sort_order,phase_title,set_code")
       .eq("organization_id", membership.organization_id)
       .eq("is_active", true)
       .order("sort_order"),
+    supabase
+      .from("organization_step_template_sets")
+      .select("code,name,is_default")
+      .eq("organization_id", membership.organization_id)
+      .eq("is_active", true)
+      .order("sort_order")
+      .order("code"),
     // Taşıma ve tarih yetkisi için: işin sorumlusu ben miyim?
     supabase
       .from("hr_employees")
@@ -92,14 +100,31 @@ export default async function OperationsPanoPage() {
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
 
-  const kurumSablonu = (sablonSatirlari ?? []) as SablonAsamasi[];
+  /*
+    ÇALIŞMA TÜRÜ SEKMESİ. Kurumun birden çok görev listesi olabiliyor (tez,
+    makale, ödev) ve kolonlar listeye göre değişiyor; tek bir panoda
+    hepsini göstermek, tez işlerini makalenin kolonlarına ya da "şablon
+    dışı"na düşürürdü. Her tür kendi panosunda.
+
+    Türü seçilmemiş iş öntanımlı türün panosunda görünür —
+    add_standard_operation_steps da adımlarını oradan üretiyor.
+  */
+  const turler = (turSatirlari ?? []) as { code: string; name: string; is_default: boolean }[];
+  const ontanimliTur = turler.find((tur) => tur.is_default)?.code ?? turler[0]?.code ?? null;
+  const seciliTur = turler.find((tur) => tur.code === istenenTur)?.code ?? ontanimliTur;
+
+  const tumSablon = (sablonSatirlari ?? []) as (SablonAsamasi & { set_code?: string | null })[];
+  const kurumSablonu = seciliTur ? tumSablon.filter((satir) => (satir.set_code ?? "varsayilan") === seciliTur) : tumSablon;
   const sablon = kurumSablonu.length ? kurumSablonu : VARSAYILAN_PANO_SABLONU;
   const kendiSablonu = kurumSablonu.length > 0;
 
   const sorumlular = new Map(
     ((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]),
   );
-  const kayitlar = (data ?? []) as Kayit[];
+  const tumKayitlar = (data ?? []) as Kayit[];
+  const kayitlar = seciliTur
+    ? tumKayitlar.filter((kayit) => (kayit.step_template_set ?? ontanimliTur) === seciliTur)
+    : tumKayitlar;
   const tumIsler: OperasyonIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
 
   /*
@@ -131,7 +156,9 @@ export default async function OperationsPanoPage() {
           <h1>Pano</h1>
           <p>
             İşler bulundukları aşamanın kolonunda. Kolonlar{" "}
-            {kendiSablonu ? "kurumunuzun adım şablonundan" : "varsayılan sekiz aşamadan"} geliyor; kartı sürükleyerek
+            {kendiSablonu
+              ? `kurumunuzun ${turler.length > 1 ? `“${turler.find((tur) => tur.code === seciliTur)?.name ?? ""}” ` : ""}görev listesinden`
+              : "varsayılan sekiz aşamadan"} geliyor; kartı sürükleyerek
             ya da düğmeyle başka aşamaya taşıyabilir, “Aşamalar” ile işin tamamını panodan çıkmadan görebilirsiniz.
           </p>
         </div>
@@ -142,6 +169,20 @@ export default async function OperationsPanoPage() {
       </div>
       <OperationsTabs active="pano" />
       <div className="module-tab-panel">
+        {turler.length > 1 ? (
+          <nav className="pano-turler" aria-label="Çalışma türü">
+            {turler.map((tur) => (
+              <Link
+                key={tur.code}
+                href={`/panel/operations/pano?tur=${encodeURIComponent(tur.code)}`}
+                className={`pano-tur${tur.code === seciliTur ? " is-active" : ""}`}
+                aria-current={tur.code === seciliTur ? "page" : undefined}
+              >
+                {tur.name}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
         {tarihsiz ? (
           /*
             Panonun en önemli uyarısı bu: tarih yoksa gecikme uyarısı,
