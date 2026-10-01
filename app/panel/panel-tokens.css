@@ -57,8 +57,19 @@
   --focus:#b28a4966;
 
   /* semantic */
-  --success:#2f7d57; --success-soft:#e7f3ec;
-  --warning:#a8741c; --warning-soft:#faf0dc;
+  /*
+    DURUM RENKLERİ KENDİ YUMUŞAK ZEMİNİNE GÖRE SEÇİLDİ. Bu ikililer
+    panelde 48'den fazla yerde "rozet" olarak birlikte kullanılıyor
+    (öncelik, talep durumu, satın alma durumu…) ve yazı 11–12,5px.
+    02.10.2026'da ölçüldü: success 4.40, warning 3.58 — ikisi de AA
+    eşiğinin (4.5) altındaydı; en kötüsü uyarı rengiydi, yani en çok
+    okunması gereken rozet en az okunanıydı. danger (4.76) ve info
+    (5.58) zaten geçiyordu, onlara dokunulmadı.
+    Yeni değerler: success 4.69, warning 4.62. Koyu temanın ikilileri
+    (6.31 / 6.79 / 5.87) zaten geçiyor.
+  */
+  --success:#2d7854; --success-soft:#e7f3ec;
+  --warning:#906418; --warning-soft:#faf0dc;
   --danger:#b83c3c; --danger-soft:#f9e9e7;
   --info:#2f5f9e; --info-soft:#e8eff8;
 
