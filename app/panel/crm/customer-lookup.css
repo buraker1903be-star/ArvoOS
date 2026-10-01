@@ -11,7 +11,13 @@
 /* Kök — talep penceresiyle (1000) aynı katmanda, geçmiş penceresinin (1100) altında değil */
 .panel-root .crm-lookup-root{position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-start;justify-content:center;padding:max(48px,8vh) 20px 24px}
 .panel-root .crm-lookup-backdrop{position:absolute;inset:0;border:0;padding:0;background:color-mix(in srgb,var(--brand-950) 52%,transparent);-webkit-backdrop-filter:blur(6px) saturate(115%);backdrop-filter:blur(6px) saturate(115%);cursor:pointer;animation:crm-lookup-fade .18s ease both}
-.panel-root .crm-lookup-dialog{position:relative;display:flex;flex-direction:column;width:min(760px,100%);height:min(80dvh,760px);overflow:hidden;border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);animation:crm-lookup-pop .22s cubic-bezier(.2,.8,.3,1) both}
+.panel-root .crm-lookup-dialog{position:relative;display:flex;flex-direction:column;width:min(1100px,96vw);height:min(86dvh,860px);overflow:hidden;border:1px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg);animation:crm-lookup-pop .22s cubic-bezier(.2,.8,.3,1) both}
+/*
+  PENCERE GENİŞLEDİ (760 → 1100px). Müşteri künyesi eklenince içerik
+  760px'de ikiye katlanıyor ve geçmiş listesi ekranın altına itiliyordu;
+  sorgulamanın işi "tek bakışta müşteriyi görmek", kaydırmak değil.
+  Telefonda ölçü zaten tam ekran, oraya dokunulmadı.
+*/
 .panel-root .crm-lookup-dialog::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 20%,transparent))}
 
 /* Başlık ve arama alanı */
@@ -146,3 +152,11 @@
   .panel-root .crm-lookup-dialog,.panel-root .crm-lookup-backdrop{animation-duration:.01ms}
   .panel-root .crm-lookup-spinner,.panel-root .crm-lookup-bone{animation:none}
 }
+
+/* ---------- Müşteri künyesi ---------- */
+/* İki sütun: etiket/değer çiftleri 1100px'de yan yana sığıyor, dar
+   ekranda tek sütuna düşüyor. */
+.panel-root .crm-lookup-kunye{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:2px 18px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.panel-root .crm-lookup-kunye>div{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:5px 0}
+.panel-root .crm-lookup-kunye dt{color:var(--muted);font-size:12.5px}
+.panel-root .crm-lookup-kunye dd{margin:0;color:var(--ink);font-size:13.5px;font-weight:600;text-align:right;overflow-wrap:anywhere}

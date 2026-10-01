@@ -63,6 +63,26 @@ export type CustomerHistoryResult = {
   limited: boolean;
   /** Eski yol: satış personeli yalnızca kendisine atanmış kayıtları görür */
   scopedToAssigned: boolean;
+  /**
+   * Müşterinin künyesi ve iletişim bilgisi — EN GÜNCEL fırsat kaydından.
+   *
+   * Sorgulama penceresi bugüne kadar yalnızca "kaç kayıt, ne kadar
+   * tutar" gösteriyordu; müşterinin kim olduğu (üniversite, bölüm,
+   * telefon) görünmüyordu ve kullanıcı ayrı ayrı kayıtları açmak
+   * zorunda kalıyordu.
+   *
+   * Aynı kişinin birden çok talebi olabiliyor ve bilgileri zamanla
+   * düzeliyor; en yenisi doğru kabul ediliyor.
+   */
+  kunye: CustomerKunye | null;
+};
+
+export type CustomerKunye = {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  /** request_details içindeki akademik alanlar; boşlar hiç gelmiyor. */
+  alanlar: Record<string, string>;
 };
 
 const PRIVILEGED = new Set(["owner", "admin", "manager"]);
@@ -159,7 +179,10 @@ function publicItem(dated: Dated): CustomerHistoryItem {
   return item as CustomerHistoryItem;
 }
 
-function summarize(items: Dated[], options: { scopedToAssigned: boolean; maxItems: number }): CustomerHistoryResult | null {
+function summarize(
+  items: Dated[],
+  options: { scopedToAssigned: boolean; maxItems: number; kunye?: CustomerKunye | null },
+): CustomerHistoryResult | null {
   if (!items.length) return null;
   items.sort((a, b) => timeOf(b.at) - timeOf(a.at));
 
@@ -189,6 +212,61 @@ function summarize(items: Dated[], options: { scopedToAssigned: boolean; maxItem
     customerName: primary.customerName,
     limited: items.length > options.maxItems,
     scopedToAssigned: options.scopedToAssigned,
+    kunye: options.kunye ?? null,
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Künye: müşterinin kim olduğu                                             */
+/* ------------------------------------------------------------------------ */
+
+/** request_details içinden ekranda gösterilen akademik alanlar. */
+const KUNYE_ANAHTARLARI = [
+  "service_type", "academic_level", "university", "faculty",
+  "department", "program", "advisor", "language",
+] as const;
+
+/**
+ * Müşterinin en güncel fırsat kaydından künye.
+ *
+ * Geçmiş listesi RPC'den geliyor ve orada request_details yok (yalnızca
+ * service_type var). Ayrı ve küçük bir sorgu yapılıyor: fonksiyonu
+ * değiştirip tüm geçmiş satırlarına jsonb taşımak, yalnızca bir satırın
+ * kullanılacağı bir veriyi her kayıt için göndermek olurdu.
+ *
+ * RLS'e güveniliyor: kullanıcının göremediği fırsat buraya da gelmez.
+ */
+async function musteriKunyesi(
+  context: PanelContext,
+  anahtar: { phone: string; name: string },
+): Promise<CustomerKunye | null> {
+  let query = context.supabase
+    .from("crm_opportunities")
+    .select("customer_name,contact_email,contact_phone,request_details,created_at")
+    .eq("organization_id", context.membership.organization_id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  /* Telefonun yalnızca son 10 hanesi karşılaştırılıyor: kayıtlarda
+     "0532…", "+90 532…" ve "532…" bir arada duruyor. */
+  query = anahtar.phone
+    ? query.like("contact_phone", `%${anahtar.phone.slice(-10)}%`)
+    : query.ilike("customer_name", anahtar.name);
+
+  const { data, error } = await query.maybeSingle();
+  if (error || !data) return null;
+
+  const detay = (data.request_details ?? {}) as Record<string, unknown>;
+  const alanlar: Record<string, string> = {};
+  for (const anahtarAdi of KUNYE_ANAHTARLARI) {
+    const deger = detay[anahtarAdi];
+    if (typeof deger === "string" && deger.trim()) alanlar[anahtarAdi] = deger.trim();
+  }
+  return {
+    name: data.customer_name ?? null,
+    email: data.contact_email ?? null,
+    phone: data.contact_phone ?? null,
+    alanlar,
   };
 }
 
@@ -334,12 +412,21 @@ export async function loadCustomerHistoryByKey(
   options: { maxItems?: number } = {},
 ): Promise<CustomerHistoryResult | null> {
   const maxItems = options.maxItems ?? LOOKUP_MAX_ITEMS;
-  const outcome = await historyViaRpc(context, { customerKey });
-  if (outcome.ok) return summarize(outcome.items, { scopedToAssigned: false, maxItems });
   const value = customerKey.slice(2);
-  return customerKey.startsWith("p:")
-    ? findCustomerHistoryViaRls(context, { phone: value, name: "", excludeOpportunityId: null }, maxItems)
-    : findCustomerHistoryViaRls(context, { phone: "", name: nameKey(value), excludeOpportunityId: null }, maxItems);
+  const anahtar = customerKey.startsWith("p:") ? { phone: value, name: "" } : { phone: "", name: value };
+
+  /* Künye geçmişle BİRLİKTE isteniyor: pencere ikisini de aynı anda
+     gösteriyor, art arda beklemek açılışı iki katına çıkarırdı. */
+  const [outcome, kunye] = await Promise.all([
+    historyViaRpc(context, { customerKey }),
+    musteriKunyesi(context, anahtar),
+  ]);
+
+  if (outcome.ok) return summarize(outcome.items, { scopedToAssigned: false, maxItems, kunye });
+  const sonuc = customerKey.startsWith("p:")
+    ? await findCustomerHistoryViaRls(context, { phone: value, name: "", excludeOpportunityId: null }, maxItems)
+    : await findCustomerHistoryViaRls(context, { phone: "", name: nameKey(value), excludeOpportunityId: null }, maxItems);
+  return sonuc ? { ...sonuc, kunye } : sonuc;
 }
 
 /* ------------------------------------------------------------------------ */

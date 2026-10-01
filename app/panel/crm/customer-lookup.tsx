@@ -11,7 +11,21 @@ import {
 import { NEW_REQUEST_PREFILL_EVENT, parseLookupQuery, type NewRequestPrefill } from "./customer-history-keys";
 import type { CustomerLookupSummary, LookupMatch } from "./customer-lookup-query";
 import { CustomerHistoryList, historyCountLine, historyNotes } from "./customer-history";
+import { formatPhone } from "@/lib/format-phone";
 import "./customer-lookup.css";
+
+/* Künye etiketleri: sorgulama penceresi operasyonun künye kartıyla aynı
+   adları kullanıyor ki iki ekranda aynı bilgi aynı adla okunsun. */
+const KUNYE_ETIKETLERI: Array<[string, string]> = [
+  ["service_type", "Çalışma türü"],
+  ["university", "Üniversite"],
+  ["faculty", "Fakülte"],
+  ["department", "Bölüm"],
+  ["program", "Program"],
+  ["academic_level", "Akademik düzey"],
+  ["advisor", "Danışman"],
+  ["language", "Dil"],
+];
 
 /**
  * "Müşteri sorgula": talep girmeden önce müşterinin kurumdaki tüm
@@ -575,6 +589,23 @@ function CustomerDetail({
           </button>
         ) : null}
       </section>
+
+      {/*
+        KÜNYE. Pencere bugüne kadar yalnızca "kaç kayıt, ne kadar tutar"
+        gösteriyordu; müşterinin kim olduğu (üniversite, bölüm, iletişim)
+        görünmüyor ve kullanıcı kayıtları tek tek açmak zorunda
+        kalıyordu. Bilgi en güncel fırsat kaydından geliyor.
+      */}
+      {result?.kunye && (result.kunye.email || result.kunye.phone || Object.keys(result.kunye.alanlar).length) ? (
+        <dl className="crm-lookup-kunye">
+          {result.kunye.phone ? <div><dt>Telefon</dt><dd>{formatPhone(result.kunye.phone)}</dd></div> : null}
+          {result.kunye.email ? <div><dt>E-posta</dt><dd>{result.kunye.email}</dd></div> : null}
+          {KUNYE_ETIKETLERI.map(([anahtar, etiket]) =>
+            result.kunye?.alanlar[anahtar]
+              ? <div key={anahtar}><dt>{etiket}</dt><dd>{result.kunye.alanlar[anahtar]}</dd></div>
+              : null)}
+        </dl>
+      ) : null}
 
       <dl className="crm-lookup-stats">
         <div><dt>Kayıt</dt><dd>{result ? result.total : "…"}</dd></div>
