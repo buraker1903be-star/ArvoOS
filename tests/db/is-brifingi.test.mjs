@@ -20,6 +20,7 @@ const SIRA = [
   "20261001060820_asama_gruplari_ve_firsat_adimlari.sql",
   "20261001062623_sablon_setleri.sql",
   "20261001064709_is_brifingi.sql",
+  "20261001070615_firsatta_calisma_turu.sql",
 ];
 
 const SAHIP = "00000000-0000-4000-8000-000000000071";
@@ -42,6 +43,7 @@ before(async () => {
   if (!(await sutun("operation_steps", "phase_title"))) await db.exec(fs.readFileSync(migration(SIRA[1]), "utf8"));
   if (!(await sutun("organization_step_templates", "set_code"))) await db.exec(fs.readFileSync(migration(SIRA[2]), "utf8"));
   if (!(await kurulu("public.organization_brief_fields"))) await db.exec(fs.readFileSync(migration(SIRA[3]), "utf8"));
+  if (!(await sutun("crm_opportunities", "step_template_set"))) await db.exec(fs.readFileSync(migration(SIRA[4]), "utf8"));
   /*
     Supabase yeni tabloyu üç role de açar; migration'lar ardından anon'u
     geri alıyor. Harness blanket grant'i tablolar yokken çalıştığı için
@@ -221,5 +223,106 @@ describe("brifing verisinin kapısı", () => {
         [KURUM],
       );
       assert.equal(yazilan.rows.length, 1);
+    }));
+});
+
+/*
+  ÇALIŞMA TÜRÜ FIRSATTA SEÇİLİYOR.
+
+  Tür yalnızca iş açılırken seçilebiliyordu: makale işi, kurumun
+  öntanımlı seti tez olduğu için tezin görev listesiyle açılıyordu.
+  Satışçı türü biliyor; fırsatta seçiyor ve iş onu devralıyor.
+*/
+describe("fırsattaki çalışma türü işe taşınıyor", () => {
+  const setKur = () =>
+    db.exec(`
+      insert into public.organization_step_template_sets (organization_id, code, name, is_default) values
+        ('${KURUM}', 'tez', 'Tez', true),
+        ('${KURUM}', 'makale', 'Makale', false);
+      insert into public.organization_step_templates (organization_id, set_code, code, title, sort_order) values
+        ('${KURUM}', 'tez', 'oneri', 'Tez Öneri Formu', 10),
+        ('${KURUM}', 'makale', 'dergi', 'Hedef Dergi Seçimi', 10);
+    `);
+
+  const adimlar = (isId) =>
+    db.query(`select title from public.operation_steps where workflow_id = $1 order by sort_order`, [isId])
+      .then((r) => r.rows.map((a) => a.title));
+
+  test("fırsat kazanılınca iş, fırsatın türüyle açılıyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "postgres");
+      await setKur();
+      await db.query(`update public.crm_opportunities set step_template_set = 'makale' where id = $1`, [FIRSAT]);
+      const isId = await firsatiKazan();
+      assert.deepEqual(await adimlar(isId), ["Hedef Dergi Seçimi"], "makale işi tezin listesiyle açılmamalı");
+      assert.equal(
+        (await tek(`select step_template_set from public.operation_workflows where id = $1`, [isId])).step_template_set,
+        "makale",
+      );
+    }));
+
+  test("sözleşmeden açılan iş türü fırsattan devralıyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "postgres");
+      await setKur();
+      await db.query(`update public.crm_opportunities set step_template_set = 'makale' where id = $1`, [FIRSAT]);
+      await db.exec(`
+        insert into public.crm_proposals (id, organization_id, opportunity_id, proposal_no, title, access_token_hash, created_by, status)
+          values ('${TEKLIF}', '${KURUM}', '${FIRSAT}', 'TKF-T-1', 'Makale', 'x', '${SAHIP}', 'accepted');
+        insert into public.crm_contracts
+          (id, organization_id, opportunity_id, proposal_id, contract_no, title, access_token_hash,
+           amount, status, start_date, created_by)
+          values ('${SOZLESME}', '${KURUM}', '${FIRSAT}', '${TEKLIF}', 'SOZ-T-1', 'Makale', 'x',
+                  500000, 'signed', current_date, '${SAHIP}');
+      `);
+      const is = await tek(
+        `insert into public.operation_workflows (organization_id, contract_id, title, status, created_by)
+         values ($1, $2, 'Makale', 'planned', $3) returning id`,
+        [KURUM, SOZLESME, SAHIP],
+      );
+      /*
+        Tür BEFORE INSERT'te yazılmalı: adımları üreten tetikleyici AFTER
+        INSERT'te çalışıyor. Sonradan yazılsaydı liste yanlış setten
+        üretilmiş olurdu ve bu assert "Tez Öneri Formu" görürdü.
+      */
+      assert.deepEqual(await adimlar(is.id), ["Hedef Dergi Seçimi"]);
+    }));
+
+  test("işte tür zaten seçilmişse fırsatınki ezmiyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "postgres");
+      await setKur();
+      await db.query(`update public.crm_opportunities set step_template_set = 'makale' where id = $1`, [FIRSAT]);
+      await db.exec(`
+        insert into public.crm_proposals (id, organization_id, opportunity_id, proposal_no, title, access_token_hash, created_by, status)
+          values ('${TEKLIF}', '${KURUM}', '${FIRSAT}', 'TKF-T-2', 'Makale', 'x', '${SAHIP}', 'accepted');
+        insert into public.crm_contracts
+          (id, organization_id, opportunity_id, proposal_id, contract_no, title, access_token_hash,
+           amount, status, start_date, created_by)
+          values ('${SOZLESME}', '${KURUM}', '${FIRSAT}', '${TEKLIF}', 'SOZ-T-2', 'Makale', 'x',
+                  500000, 'signed', current_date, '${SAHIP}');
+      `);
+      const is = await tek(
+        `insert into public.operation_workflows (organization_id, contract_id, title, status, created_by, step_template_set)
+         values ($1, $2, 'Elle tür seçilmiş iş', 'planned', $3, 'tez') returning id`,
+        [KURUM, SOZLESME, SAHIP],
+      );
+      assert.deepEqual(await adimlar(is.id), ["Tez Öneri Formu"]);
+    }));
+
+  test("kurumun olmayan türü fırsata yazılamaz", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "postgres");
+      await setKur();
+      await reddedilir(
+        db,
+        `update public.crm_opportunities set step_template_set = 'odev' where id = $1`,
+        [FIRSAT],
+        /crm_opportunities_step_set_fkey/,
+      );
     }));
 });

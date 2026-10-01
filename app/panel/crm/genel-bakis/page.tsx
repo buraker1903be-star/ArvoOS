@@ -101,6 +101,16 @@ export default async function CrmOverviewPage() {
   const employeeName = new Map(employees.map((row) => [row.id, formatPersonName(row.full_name)]));
   const salesRepresentatives = employees.filter((row) => row.can_receive_sales_requests).map(({ id, full_name, job_title }) => ({ id, full_name, job_title }));
   const academicMode = (stageData ?? []).some((row: { code: string }) => row.code === "academic_review");
+  // Çalışma türleri: "Yeni talep" formundaki seçim bunlardan geliyor.
+  const { data: turData } = await supabase
+    .from("organization_step_template_sets")
+    .select("code,name,is_default")
+    .eq("organization_id", membership.organization_id)
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("code");
+  const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
+
 
   // ---- Yeni talepler: atanmamışlar üstte, sonra en yeni
   const newRequests = opportunities
@@ -172,7 +182,7 @@ export default async function CrmOverviewPage() {
         <div className="panel-page-actions">
           <Link className="panel-secondary" href="/panel/crm">Tüm talepler</Link>
           <PanelDrawer triggerLabel="+ Yeni talep" kicker="YENİ KAYIT" triggerClassName="panel-primary" title={academicMode ? "Talep Girişi" : "Yeni talep"} description="Müşteri ve talep bilgilerini kaydedin.">
-            <RequestEntryForm academicMode={academicMode} salesRepresentatives={salesRepresentatives} canAssign={canAssign} />
+            <RequestEntryForm academicMode={academicMode} salesRepresentatives={salesRepresentatives} canAssign={canAssign} calismaTurleri={calismaTurleri} />
           </PanelDrawer>
         </div>
       </div>

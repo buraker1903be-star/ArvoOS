@@ -104,6 +104,16 @@ export default async function RequestsPage({
     representatives.map((item) => [item.id, item.full_name]),
   );
   const academicMode = (stages ?? []).some((s) => s.code === "academic_review");
+  // Çalışma türleri: "Yeni talep" formundaki seçim bunlardan geliyor.
+  const { data: turData } = await supabase
+    .from("organization_step_template_sets")
+    .select("code,name,is_default")
+    .eq("organization_id", membership.organization_id)
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("code");
+  const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
+
   const all = (data ?? []) as Opportunity[];
   const rows = all.filter((i) => {
     const hay = [
@@ -166,6 +176,7 @@ export default async function RequestsPage({
               academicMode={academicMode}
               salesRepresentatives={representatives}
               canAssign={canAssign}
+              calismaTurleri={calismaTurleri}
             />
           </PanelDrawer>
         </div>

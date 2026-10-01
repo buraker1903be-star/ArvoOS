@@ -63,6 +63,26 @@ async function validateSalesEmployee(
   return { employeeId: data.id, userId: data.user_id ?? null };
 }
 
+/*
+  ÇALIŞMA TÜRÜ. İşin görev listesini ve brifingin türe bağlı sorularını
+  belirliyor (organization_step_template_sets). Bileşik yabancı anahtar
+  zaten kurumun kendi türünü zorunlu tutuyor, ama hata "foreign key
+  violation" olurdu; satışçı ne olduğunu anlamalı. Boş = öntanımlı tür.
+*/
+async function calismaTuruCoz(
+  supabase: Awaited<ReturnType<typeof crmContext>>["supabase"],
+  organizationId: string,
+  formData: FormData,
+): Promise<string | null> {
+  const kod = text(formData, "step_template_set", 40);
+  if (!kod) return null;
+  const { data } = await supabase
+    .from("organization_step_template_sets").select("code")
+    .eq("organization_id", organizationId).eq("code", kod).maybeSingle();
+  if (!data) throw new Error("Seçilen çalışma türü bulunamadı.");
+  return kod;
+}
+
 async function createOpportunity__impl(formData: FormData) {
   const context = await crmContext();
   const { supabase, userId, membership } = context;
@@ -117,8 +137,10 @@ async function createOpportunity__impl(formData: FormData) {
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };
+  const calismaTuru = await calismaTuruCoz(supabase, membership.organization_id, formData);
   const { error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
+    step_template_set: calismaTuru,
     title,
     customer_name: customerName,
     contact_email: text(formData, "contact_email", 240) || null,
@@ -213,6 +235,11 @@ async function updateOpportunity__impl(formData: FormData) {
     request_details: requestDetails,
     updated_at: new Date().toISOString(),
   };
+  // Formda yoksa dokunulmuyor: türü olan bir fırsat, türü sormayan bir
+  // düzenleme formundan geçince türünü kaybetmemeli.
+  if (formData.has("step_template_set")) {
+    updates.step_template_set = await calismaTuruCoz(supabase, membership.organization_id, formData);
+  }
   for (const [key, max, nullable] of [
     ["title", 180, false], ["customer_name", 180, false],
     ["contact_email", 240, true], ["contact_phone", 80, true],

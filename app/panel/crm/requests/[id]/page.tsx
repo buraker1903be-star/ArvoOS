@@ -37,6 +37,7 @@ type Opportunity = {
   source: string | null;
   notes: string | null;
   request_details: Details | null;
+  step_template_set: string | null;
   assigned_employee_id: string | null;
 };
 
@@ -49,12 +50,12 @@ export default async function RequestDetailPage({
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
-  const [{ data, error }, { data: employees, error: employeeError }, { data: alanData }, { data: brifingData }] =
+  const [{ data, error }, { data: employees, error: employeeError }, { data: alanData }, { data: brifingData }, { data: turData }] =
     await Promise.all([
       supabase
         .from("crm_opportunities")
         .select(
-          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id",
+          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id,step_template_set",
         )
         .eq("id", id)
         .eq("organization_id", membership.organization_id)
@@ -82,18 +83,27 @@ export default async function RequestDetailPage({
         .select("values")
         .eq("opportunity_id", id)
         .maybeSingle(),
+      supabase
+        .from("organization_step_template_sets")
+        .select("code,name,is_default")
+        .eq("organization_id", membership.organization_id)
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("code"),
     ]);
   if (error || !data) notFound();
   if (employeeError) throw new Error("Satış temsilcileri okunamadı.");
   const item = data as Opportunity;
   const d = item.request_details ?? {};
   const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
   /*
-    Fırsat aşamasında çalışma türü henüz seçilmemiş olabilir; türe bağlı
-    sorular bu yüzden burada sorulmuyor (gecerliAlanlar(…, null)). Türe
-    özel sorular işin detayında, tür belli olduğunda görünüyor.
+    Brifingin türe bağlı soruları ("veri ne zaman gelecek", yalnızca tez
+    ve analizde) fırsatın türüne göre süzülüyor. Tür seçilmemişse yalnızca
+    her türde sorulan sorular görünür — uydurma bir türle soru göstermek,
+    satışçıya yanlış formu doldurtmak olurdu.
   */
-  const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], null);
+  const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], item.step_template_set);
   const brifing = (brifingData ?? null) as { values: BriefValues } | null;
   const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
   // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
@@ -134,6 +144,16 @@ export default async function RequestDetailPage({
         Hizmet türü
         <input name="service_type" defaultValue={d.service_type || ""} />
       </label>
+      {calismaTurleri.length ? (
+        /* Görev listesini ve brifingin türe bağlı sorularını bu belirliyor. */
+        <label>
+          Çalışma türü
+          <select name="step_template_set" defaultValue={item.step_template_set ?? ""}>
+            <option value="">Öntanımlı</option>
+            {calismaTurleri.map((tur) => <option value={tur.code} key={tur.code}>{tur.name}</option>)}
+          </select>
+        </label>
+      ) : null}
       {canManage ? (
         <label>
           Satış temsilcisi

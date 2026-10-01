@@ -7,8 +7,15 @@ import { NEW_REQUEST_PREFILL_EVENT, type NewRequestPrefill } from "./customer-hi
 
 const serviceTypes = ["Tez Danışmanlığı","Akademik Çeviri","Literatür Danışmanlığı","Veri Analizi","Makale Danışmanlığı","Biçimsel Düzenleme","Araştırma Tasarımı","Doçentlik Başvuru Danışmanlığı","Diğer"];
 type SalesRepresentative={id:string;full_name:string;job_title:string|null};
+/*
+  Çalışma türü: işin görev listesini ve brifingin türe bağlı sorularını
+  belirliyor. Türü satışçı seçiyor çünkü tezle makaleyi bilen kişi odur;
+  eskiden tür yalnızca iş açılırken seçilebiliyor ve makale işi kurumun
+  öntanımlı seti (tez) ile açılıyordu.
+*/
+type CalismaTuru={code:string;name:string;is_default:boolean};
 
-export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign }: { academicMode: boolean; salesRepresentatives: SalesRepresentative[]; canAssign: boolean }) {
+export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign, calismaTurleri = [] }: { academicMode: boolean; salesRepresentatives: SalesRepresentative[]; canAssign: boolean; calismaTurleri?: CalismaTuru[] }) {
   const [serviceType, setServiceType] = useState("");
   // Geri dönen müşteri kontrolü için ad ve telefon izlenir (alanlar yine kontrolsüz)
   const [customerName, setCustomerName] = useState("");
@@ -48,6 +55,14 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
   }, []);
 
   return <form ref={formRef} className="panel-form request-entry-form" action={createOpportunity} onReset={resetLookup}>
+    {calismaTurleri.length ? (
+      <label>Çalışma türü
+        <select name="step_template_set" defaultValue="">
+          <option value="">Öntanımlı{calismaTurleri.find((tur) => tur.is_default) ? ` (${calismaTurleri.find((tur) => tur.is_default)!.name})` : ""}</option>
+          {calismaTurleri.map((tur) => <option value={tur.code} key={tur.code}>{tur.name}</option>)}
+        </select>
+      </label>
+    ) : null}
     {academicMode ? <>
       <label>Müşteri türü<select name="customer_type" defaultValue="Bireysel"><option>Bireysel</option><option>Kurumsal</option></select></label>
       <label>Hizmet türü<b className="req" aria-hidden="true">*</b><select name="service_type" required value={serviceType} onChange={(event) => setServiceType(event.target.value)}><option value="" disabled>Seçin</option>{serviceTypes.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
