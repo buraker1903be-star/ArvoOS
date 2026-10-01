@@ -8,7 +8,7 @@ import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
-import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
+import { OpsIcon, dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
@@ -56,19 +56,6 @@ const formatDate = (value?: string | null, withTime = false) =>
         new Date(value.includes("T") ? value : `${value}T12:00:00`),
       )
     : "—";
-
-/** Termin durumu: kalan / geciken gün (İstanbul gününe göre) */
-function dueInfo(due: string | null, status: string) {
-  if (!due) return { tone: "neutral", hint: "Teslim tarihi girilmemiş", late: false };
-  if (status === "completed" || status === "archived") return { tone: "success", hint: "İş tamamlandı", late: false };
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
-  const days = Math.round((Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  if (days < 0) return { tone: "danger", hint: `${-days} gün gecikti`, late: true };
-  if (days === 0) return { tone: "warning", hint: "Bugün teslim", late: false };
-  if (days <= 3) return { tone: "warning", hint: `${days} gün kaldı`, late: false };
-  return { tone: "success", hint: `${days} gün kaldı`, late: false };
-}
-
 
 const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
@@ -242,7 +229,12 @@ export default async function OperationDetailPage({
   const comments = (commentsResult.data ?? []) as Comment[];
   const customerName = formatPersonName(opportunity?.customer_name || workflow.customer_name) || "Kurum içi iş";
   const contactLine = formatPhone(opportunity?.contact_phone) || opportunity?.contact_email || "İletişim bilgisi yok";
-  const due = dueInfo(workflow.due_date, workflow.status);
+  /*
+    Termin ops-shared/dueBadge'den. Burada dördüncü bir kopya duruyordu
+    ("İş tamamlandı", "Teslim tarihi girilmemiş", uzak termin yeşil) ve
+    pano, işler, genel bakış hep başka cümle kuruyordu. Tek kaynak.
+  */
+  const due = dueBadge(workflow.due_date, bugunIstanbul, workflow.status);
   const activities: Activity[] = [
     { id: `created-${workflow.id}`, title: "İş akışı oluşturuldu", detail: customerName, at: workflow.created_at, kind: "created" as const },
     ...steps.filter((step) => step.completed_at).map((step) => ({ id: `step-${step.id}`, title: "Görev tamamlandı", detail: step.title, at: step.completed_at!, kind: "step" as const })),
@@ -335,11 +327,11 @@ export default async function OperationDetailPage({
         <article className="opd-widget" data-tone={due.tone} id="termin">
           <small>Termin</small>
           <strong>{workflow.due_date ? formatDate(workflow.due_date) : "Belirlenmedi"}</strong>
-          <span>{due.hint}</span>
+          <span>{due.label}</span>
           {canEditDue ? (
             <form className="opd-due-form" action={setWorkflowDueDate}>
               <input type="hidden" name="workflow_id" value={workflow.id} />
-              <input type="date" name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
+              <input key={workflow.due_date ?? "yok"} type="date" name="due_date" defaultValue={workflow.due_date ?? ""} min={workflow.start_date ?? undefined} required aria-label="Termin tarihi" />
               <button className={workflow.due_date ? "panel-secondary" : "panel-primary"} type="submit">{workflow.due_date ? "Güncelle" : "Termin belirle"}</button>
             </form>
           ) : !workflow.due_date ? <span className="opd-note">Termini yönetici ya da işin sorumlusu belirleyebilir.</span> : null}
