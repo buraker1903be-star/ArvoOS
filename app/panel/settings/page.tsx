@@ -41,7 +41,7 @@ export default async function SettingsPage() {
   // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
   const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
-  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification").eq("id",membership.organization_id).single();
+  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days").eq("id",membership.organization_id).single();
   // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
   const {data:legalRow,error:legalError}=await supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id",membership.organization_id).maybeSingle();
   const legalAvailable=!legalError;
@@ -136,6 +136,23 @@ export default async function SettingsPage() {
             {branding?.signature_stamp_url ? <label className="stg-check"><input name="remove_signature" type="checkbox" disabled={!canManage} />Mevcut kaşe-imza görselini kaldır</label> : null}
           </div>
 
+          {/*
+            Teslim sonrası ücretsiz revizyon süresi. Bugüne kadar yalnızca
+            sözleşme metninde bir cümleydi; hakkın ne zaman dolduğunu kimse
+            görmüyordu. Pencere teslim anından türetiliyor, bitimine bir
+            hafta kala bildirim düşüyor.
+          */}
+          <label>Revizyon süresi (gün)
+            <input
+              name="revision_days"
+              type="number"
+              min={1}
+              max={3650}
+              defaultValue={branding?.revision_days ?? ""}
+              placeholder="Örn. 60 — boş: revizyon penceresi yok"
+              disabled={!canManage}
+            />
+          </label>
           <label className="wide">Belge alt bilgisi<textarea name="document_footer" defaultValue={branding?.document_footer ?? ""} placeholder="Kısa kurumsal açıklama veya yasal not. Adres ve vergi bilgileri “Resmi bilgiler ve banka” bölümünden gelir; o bölüm boşsa bu metin adres yerine kullanılır." disabled={!canManage} /></label>
           {canManage ? <div className="wide panel-form-actions"><button className="panel-primary">Kurumsal Kimliği Kaydet</button></div> : null}
         </form>

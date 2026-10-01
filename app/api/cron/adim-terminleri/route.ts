@@ -7,6 +7,7 @@ import {
   type HatirlatilacakAdim,
 } from "@/lib/is-adimlari";
 import { beklemeGunu, bekleyenTarafMi, hatirlatmaKarari } from "@/lib/bekleyen-taraf";
+import { revizyonUyarilari, type RevizyonSatiri } from "@/lib/revizyon";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -181,5 +182,64 @@ export async function GET(request: Request) {
     gonderilen += 1;
   }
 
-  return Response.json({ aday: acikIsler.length, gonderilen }, { headers: { "Cache-Control": "no-store" } });
+  const revizyon = await revizyonHatirlat(admin, bugun);
+
+  return Response.json(
+    { aday: acikIsler.length, gonderilen, revizyon },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+/*
+  REVİZYON PENCERESİ. Aynı gece işi; ayrı bir cron yolu açmak Vercel'de
+  ikinci bir zamanlama ve ikinci bir sır demekti, oysa iki uyarı da
+  "bugünden bakınca süresi dolan şeyler" sorusunun cevabı.
+
+  "2 ay ücretsiz revizyon" bugüne kadar yalnızca sözleşme metninde bir
+  cümleydi; dolduğunu kimse görmüyordu. Uyarı kuruma gidiyor: hakkın
+  dolması bir kişinin değil kurumun bilmesi gereken bir şey, müşteriyi
+  arayacak olan da satış tarafı.
+*/
+async function revizyonHatirlat(admin: NonNullable<ReturnType<typeof createAdminClient>>, bugun: string) {
+  // Bitişine bir haftadan az kalanlar ve geçmişte kalanlar.
+  const ustSinir = new Date(`${bugun}T00:00:00Z`);
+  ustSinir.setUTCDate(ustSinir.getUTCDate() + 7);
+
+  const { data, error } = await admin
+    .from("operation_workflows")
+    .select("id,organization_id,title,customer_name,revision_until,revision_reminder_state,assigned_employee_id")
+    .not("revision_until", "is", null)
+    .lte("revision_until", ustSinir.toISOString().slice(0, 10))
+    .limit(TEK_SEFERDE);
+  if (error) {
+    console.error("[adim-terminleri] revizyon pencereleri okunamadı", error.message);
+    return { aday: 0, gonderilen: 0 };
+  }
+
+  const uyarilar = revizyonUyarilari((data ?? []) as RevizyonSatiri[], bugun);
+  let gonderilen = 0;
+  for (const uyari of uyarilar) {
+    const { error: bildirimHatasi } = await admin.from("notifications").insert({
+      organization_id: uyari.is.organization_id,
+      user_id: null,
+      audience: "organization",
+      category: "operation_revision_window",
+      title: uyari.baslik,
+      message: uyari.mesaj,
+      action_url: `/panel/operations/${uyari.is.id}`,
+      metadata: { workflow_id: uyari.is.id, revision_until: uyari.is.revision_until, state: uyari.durum },
+    });
+    if (bildirimHatasi) {
+      console.error("[adim-terminleri] revizyon bildirimi yazılamadı", uyari.is.id, bildirimHatasi.message);
+      continue;
+    }
+    // İşaret bildirimden SONRA: tersi olsaydı düşmeyen uyarı sessizce kaybolurdu.
+    const { error: isaretHatasi } = await admin
+      .from("operation_workflows")
+      .update({ revision_reminder_state: uyari.durum })
+      .eq("id", uyari.is.id);
+    if (isaretHatasi) console.error("[adim-terminleri] revizyon işareti yazılamadı", uyari.is.id, isaretHatasi.message);
+    gonderilen += 1;
+  }
+  return { aday: (data ?? []).length, gonderilen };
 }

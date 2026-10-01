@@ -509,6 +509,49 @@ async function setWaitingParty__impl(formData: FormData) {
   revalidateOperations();
 }
 
+/*
+  İşe özel revizyon süresi. Boş bırakılırsa kurumun varsayılanı geçerli;
+  pencereyi veritabanı türetiyor (teslim anı + gün), burada yalnızca gün
+  sayısı yazılıyor. Elle tarih yazdırsaydık teslim ertelendiğinde o tarih
+  sessizce yanlış kalırdı.
+*/
+async function setRevisionDays__impl(formData: FormData) {
+  const context = await operationContext();
+  const { supabase, membership } = context;
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const ham = String(formData.get("revision_days") ?? "").trim();
+  const gun = ham === "" ? null : Number(ham);
+  if (gun !== null && (!Number.isInteger(gun) || gun < 1 || gun > 3650)) {
+    throw new Error("Revizyon süresi 1 ile 3650 gün arasında olmalı; boş bırakırsanız kurum varsayılanı geçerli olur.");
+  }
+  const { data: workflow } = await supabase
+    .from("operation_workflows").select("id,status,assigned_employee_id,revision_days")
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+    throw new Error("Revizyon süresini yönetici ya da işin sorumlusu değiştirebilir.");
+  }
+  const { data, error } = await supabase
+    .from("operation_workflows")
+    .update({ revision_days: gun, updated_at: new Date().toISOString() })
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).select("id");
+  if (error) throw new Error("Revizyon süresi güncellenemedi: " + error.message);
+  if (!data?.length) throw new Error("Revizyon süresi güncellenemedi: bu iş için yetkiniz yok.");
+  if (workflow.revision_days !== gun) {
+    await kayitDus(context, {
+      workflowId,
+      action: "revision_days",
+      changes: [{
+        field: "revision_days",
+        label: "Revizyon süresi",
+        from: workflow.revision_days ? `${workflow.revision_days} gün` : "Kurum varsayılanı",
+        to: gun ? `${gun} gün` : "Kurum varsayılanı",
+      }],
+    });
+  }
+  revalidateOperations();
+}
+
 async function setWorkflowStatus__impl(formData: FormData) {
   const context = await operationContext();
   const { supabase, membership } = context;
@@ -768,6 +811,9 @@ export async function addWorkflowStep(...args: Parameters<typeof addWorkflowStep
 }
 export async function toggleWorkflowStep(...args: Parameters<typeof toggleWorkflowStep__impl>) {
   return runPanelAction(() => toggleWorkflowStep__impl(...args));
+}
+export async function setRevisionDays(...args: Parameters<typeof setRevisionDays__impl>) {
+  return runPanelAction(() => setRevisionDays__impl(...args), "Revizyon süresi güncellendi");
 }
 export async function setWaitingParty(...args: Parameters<typeof setWaitingParty__impl>) {
   return runPanelAction(() => setWaitingParty__impl(...args), "Bekleyen taraf güncellendi");

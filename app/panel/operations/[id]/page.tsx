@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -15,6 +15,7 @@ import "../brifing-form.css";
 import { saveWorkflowBrief } from "../brifing-actions";
 import { brifingDoluluk, gecerliAlanlar, type BriefField, type BriefValues } from "@/lib/is-brifingi";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
+import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
 import { formatPhone } from "@/lib/format-phone";
@@ -30,7 +31,7 @@ import "../../crm/request-page.css";
 import "./detail.css";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
-type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
+type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
 type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
 type Proposal = { id: string; proposal_no: string; status: string };
@@ -80,7 +81,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,revision_days,delivered_at,revision_until,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -168,6 +169,13 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   // Saat bileşen gövdesinde okunmaz (react-hooks/purity); yardımcı ops-shared'da.
   const bugunIstanbul = todayIstanbul();
+  /*
+    Revizyon penceresi TÜRETİLMİŞ: teslim anı + gün sayısı (veritabanı
+    yazıyor). Ekran yalnızca gün sayısını değiştirtiyor; elle tarih
+    yazdırsaydık teslim ertelendiğinde o tarih sessizce yanlış kalırdı.
+  */
+  const revizyon = revizyonBilgisi(workflow.revision_until, bugunIstanbul);
+  const revizyonYazi = revizyonOzeti(workflow.revision_until, bugunIstanbul);
   const assigneeRow = assignee as { id: string; full_name: string; job_title: string | null } | null;
   // Termini yöneticiler ve işin sorumlusu girebilir (actions.ts ile aynı kural)
   const canEditDue = canAssign || Boolean((me as { id?: string } | null)?.id && (me as { id: string }).id === workflow.assigned_employee_id);
@@ -547,6 +555,43 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               </form>
             )}
             {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
+          </section>
+
+          <section className="opd-card">
+            <header className="opd-card-head">
+              <div>
+                <h2>Revizyon hakkı</h2>
+                <p>
+                  {workflow.delivered_at
+                    ? `Teslim ${formatDate(workflow.delivered_at, true)}`
+                    : "İş tamamlandığında pencere kendiliğinden açılır"}
+                </p>
+              </div>
+              {revizyon ? (
+                <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
+              ) : null}
+            </header>
+            {isArchived ? null : (
+              <form className="opd-wait-note" action={setRevisionDays}>
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <input
+                  name="revision_days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  defaultValue={workflow.revision_days ?? ""}
+                  placeholder="Kurum varsayılanı"
+                  aria-label="Bu işe özel revizyon süresi (gün)"
+                />
+                <button className="panel-secondary" type="submit">Kaydet</button>
+              </form>
+            )}
+            <p className="opd-wait-hint">
+              {workflow.revision_days
+                ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
+                : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
+              {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
+            </p>
           </section>
 
           <section className="opd-card">

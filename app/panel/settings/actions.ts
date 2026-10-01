@@ -43,6 +43,17 @@ async function updateDocumentBranding__impl(formData: FormData) {
   const uploadedSignature = await uploadOrganizationImage(supabase, membership.organization_id, signatureFile, "signature-stamp", "Kaşe ve imza görseli");
   if (uploadedSignature) signatureStampUrl = uploadedSignature;
 
+  /*
+    Teslim sonrası ücretsiz revizyon süresi (gün). Boş = kurumun revizyon
+    penceresi yok. İşin kendi istisnası iş detayından yazılıyor; pencereyi
+    veritabanı türetiyor (teslim anı + gün).
+  */
+  const revizyonHam = text(formData, "revision_days", 10);
+  const revizyonGun = revizyonHam === "" ? null : Number(revizyonHam);
+  if (revizyonGun !== null && (!Number.isInteger(revizyonGun) || revizyonGun < 1 || revizyonGun > 3650)) {
+    throw new Error("Revizyon süresi 1 ile 3650 gün arasında olmalı; boş bırakırsanız revizyon penceresi kapalı olur.");
+  }
+
   // Logo dosyası yüklendiyse adres alanının yerine geçer
   const uploadedLogo = await uploadOrganizationImage(supabase, membership.organization_id, formData.get("logo_file"), "logo", "Logo");
 
@@ -56,6 +67,7 @@ async function updateDocumentBranding__impl(formData: FormData) {
       contact_phone: text(formData, "contact_phone", 80) || null,
       website_url: text(formData, "website_url", 500) || null,
       signature_stamp_url: signatureStampUrl,
+      revision_days: revizyonGun,
       updated_at: new Date().toISOString(),
     })
     .eq("id", membership.organization_id)
