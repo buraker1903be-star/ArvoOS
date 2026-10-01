@@ -250,7 +250,24 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-step-flag{flex:none;align-self:center;padding:2px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:11.5px;font-weight:650;letter-spacing:.01em}
 
 .opd-step.is-done .opd-step-meta{opacity:.62}
-.opd-step-meta input[type="date"],.opd-step-meta select{height:30px;max-width:190px;padding:0 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px}
+/*
+  DENETİMLERİN GENİŞLİĞİ İÇERİĞİN KENDİSİ.
+
+  İki sütun eşitlenince görev sütunu 1048px'den 704px'e indi ve 369px'lik
+  denetim bloğu başlığa 243px bırakıyor. İlk denemede denetimlere
+  max-width verdim; ölçünce metni KIRPTIĞI görüldü ("Planland",
+  "Sorumlu y", tarih alanı taşmış). Kırpılmış bir seçim kutusu sarılmış
+  bir başlıktan kötü.
+
+  Yazıyı 11px'e kadar indirip dolguyu kısmak bile yalnızca 48px
+  kazandırıyor (369→321). Kalan ayar kırpmayan en küçüğü: 12px yazı,
+  6px dolgu — 369→340px. Gerisini başlık sarması karşılıyor; uzun tez
+  görev adları dar sütunda iki satıra iniyor ve bu bilinçli.
+*/
+/* .opd-step ön eki: ".opd-ff select" ile eşit özgüllükte (0,1,1) kalırsa
+   o kural dosyada sonra geldiği için 12.5px/9px geri geliyor. */
+.opd-step .opd-step-meta input[type="date"],.opd-step .opd-step-meta select{height:30px;padding:0 6px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px}
+.opd-step .opd-step-meta{gap:5px}
 .opd-step-meta input[type="date"]:focus,.opd-step-meta select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
 .opd-step-hint{color:var(--muted);font-size:12px}
 .opd-add{grid-template-columns:minmax(0,1fr) auto auto}
@@ -326,7 +343,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   200px'lik boşluk açılıyordu. "auto 1fr" ilk satırı düğmelerin boyuna
   sabitler.
 */
-.opd-duzen{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);grid-template-rows:auto 1fr;grid-template-areas:"gorevler dugmeler" "gorevler ray";gap:16px;align-items:start}
+.opd-duzen{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:"gorevler dugmeler" "gorevler ray";gap:16px;align-items:start}
 .opd-dugmeler{grid-area:dugmeler;display:grid;gap:10px;min-width:0}
 .opd-gorevler{grid-area:gorevler;min-width:0}
 .opd-ray{grid-area:ray;display:grid;gap:12px;align-content:start;min-width:0}
@@ -334,11 +351,20 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-ray-ikili .opd-ray-btn{padding:10px 12px;font-size:13.5px;line-height:1.25}
 
 /*
-  1180px altında iki sütun görev listesini 500px'e sıkıştırıyordu:
-  görev başlığı ile üç denetim aynı satıra sığmıyor, satır iki kata
-  çıkıyordu. Tek sütuna inmek listeyi geri açıyor.
+  EŞİK ÖLÇÜMLE SEÇİLDİ. Sütunlar eşitlenince görev satırının taşıdığı
+  yük sabit (denetimler 340px + onay kutusu), değişen tek şey başlığa
+  kalan yer. Genişlik taraması (20 görevlik tez işi, gerçek CSS):
+
+      1200px → sütun 555  liste 2062px  en yüksek satır 120px (3 satır)
+      1280px → sütun 593  liste 1756px  en yüksek satır 100px
+      1366px → sütun 634  liste 1599px  en yüksek satır  81px
+      1440px → sütun 669  liste 1514px  en yüksek satır  81px
+      1920px → sütun 908  liste 1278px  en yüksek satır  48px
+
+  1300px altında iki sütun listeyi tek sütundakinin (1278px) %40
+  üstüne çıkarıyor; o genişlikte tek sütun daha iyi.
 */
-@media (max-width:1180px){
+@media (max-width:1300px){
   .opd-duzen{grid-template-columns:minmax(0,1fr);grid-template-rows:none;grid-template-areas:"dugmeler" "gorevler" "ray"}
 }
 @media (max-width:520px){
