@@ -250,25 +250,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-step-flag{flex:none;align-self:center;padding:2px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:11.5px;font-weight:650;letter-spacing:.01em}
 
 .opd-step.is-done .opd-step-meta{opacity:.62}
-/*
-  DENETİMLERİN GENİŞLİĞİ İÇERİĞİN KENDİSİ.
-
-  İki sütun eşitlenince görev sütunu 1048px'den 704px'e indi ve 369px'lik
-  denetim bloğu başlığa 243px bırakıyor. İlk denemede denetimlere
-  max-width verdim; ölçünce metni KIRPTIĞI görüldü ("Planland",
-  "Sorumlu y", tarih alanı taşmış). Kırpılmış bir seçim kutusu sarılmış
-  bir başlıktan kötü.
-
-  Yazıyı 11px'e kadar indirip dolguyu kısmak bile yalnızca 48px
-  kazandırıyor (369→321). Kalan ayar kırpmayan en küçüğü: 12px yazı,
-  6px dolgu — 369→340px. Gerisini başlık sarması karşılıyor; uzun tez
-  görev adları dar sütunda iki satıra iniyor ve bu bilinçli.
-*/
-/* .opd-step ön eki: ".opd-ff select" ile eşit özgüllükte (0,1,1) kalırsa
-   o kural dosyada sonra geldiği için 12.5px/9px geri geliyor. */
-.opd-step .opd-step-meta input[type="date"],.opd-step .opd-step-meta select{height:30px;padding:0 6px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px}
-.opd-step .opd-step-meta{gap:5px}
-.opd-step-meta input[type="date"]:focus,.opd-step-meta select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+/* Denetimlerin görünümü ve ölçüsü "ALAN DENETİMLERİ" bölümünde. */
 .opd-step-hint{color:var(--muted);font-size:12px}
 .opd-add{grid-template-columns:minmax(0,1fr) auto auto}
 @media (max-width:640px){
@@ -428,25 +410,65 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-step{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 14px}
 .opd-step>form:first-child{min-width:0}
 .opd-step>form:first-child>button{padding-right:0}
-.opd-step-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px}
-.opd-ff{display:inline-flex;align-items:center;gap:7px;margin:0}
-.opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:32px;max-width:100%;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;transition:border-color .18s ease,box-shadow .18s ease}
+/* ============================================================
+   ALAN DENETİMLERİ — TEK YER
+
+   Bu dosyada aynı hataya İKİ KEZ düşüldü: görev satırının denetim
+   kuralları .opd-ff tabanından ÖNCE yazılmıştı ve ikisi eşit
+   özgüllükte (".opd-step-meta select" = ".opd-ff select" = 0,1,1).
+   Sonra gelen taban, bağlam kuralını eziyordu; yazılan daraltma hiç
+   uygulanmadı. Ön ek ekleyerek (".opd-step ...") çözmek özgüllüğü
+   yükseltiyor ve bu sefer TERS yönde kırıyor: telefonda taban
+   38px'e çıkarken görev satırı 30px'te kalmıştı — yirmi kez dokunulan
+   asıl hedef, ölçene kadar fark edilmedi.
+
+   Çözüm özgüllük değil DEĞİŞKEN. Görünümü tek kural çiziyor; bağlamlar
+   (durum şeridi, görev satırı, telefon) yalnızca değişkeni
+   değiştiriyor. Değişken kalıtımla çözülür, özgüllük yarışı yoktur:
+   .opd-step-meta, .opd'den daha yakın olduğu için kazanır. Yeni bir
+   bağlam eklerken de kural değil değişken yazılır.
+   ============================================================ */
+.opd{--ff-boy:32px;--ff-dolgu:9px;--ff-yazi:12.5px;--ff-aralik:7px}
+
+.opd-ff{display:inline-flex;align-items:center;gap:var(--ff-aralik);margin:0}
+.opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:var(--ff-boy);max-width:100%;padding:0 var(--ff-dolgu);border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--ff-yazi);transition:border-color .18s ease,box-shadow .18s ease}
 .opd-ff select:hover,.opd-ff input:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
-.opd-ff select:focus-visible,.opd-ff input:focus-visible{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.opd-ff select:focus-visible,.opd-ff input:focus-visible,.opd-ff select:focus,.opd-ff input:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
 .opd-ff select:disabled,.opd-ff input:disabled{background:var(--surface-2);color:var(--muted)}
 /* Durum seçimi tonunu taşıyor: satıra bakınca renk de bilgi veriyor. */
 .opd-ff select[data-tone="info"]{border-color:color-mix(in srgb,var(--info) 45%,var(--line));color:var(--info)}
 .opd-ff select[data-tone="warning"]{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));color:var(--warning)}
 .opd-ff select[data-tone="success"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success)}
 .opd-ff select[data-tone="danger"]{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
+
+/* Şeritteki yardımcılar (etiket · geniş alan · açıklama) */
+.opd-ff-etiket{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.opd-ff-genis{flex:1;min-width:260px}
+.opd-ff-genis input[type="text"]{flex:1;min-width:120px}
+.opd-ff-not{color:var(--muted);font-size:12px;white-space:nowrap}
+.opd-ff-not[data-tone="warning"]{color:var(--warning);font-weight:650}
+.opd-ff-not[data-tone="success"]{color:var(--success)}
+
 /*
   Anında kaydediliyor; düğme yalnızca JS kapalıyken çıkıyor (aninda.tsx).
 
   Seçici ".opd ..." ile yazılıyor: ".opd-step button{display:flex}" kuralı
   daha özgül (bir sınıf + bir tür) ve gizlemeyi eziyordu — canlıda her
-  alanın yanında "Kaydet" görünüyordu.
+  alanın yanında "Kaydet" görünüyordu. Ölçü değişkenlerden geliyor ama
+  .opd dışında da basılabildiği için yedek değerli.
 */
-.opd .aninda-kaydet,.aninda-kaydet{display:none;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
+.opd .aninda-kaydet,.aninda-kaydet{display:none;height:var(--ff-boy,32px);padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--ff-yazi,12.5px);cursor:pointer}
+
+/* ---------- Bağlam: görev satırı ---------- */
+/*
+  DENETİMLERİN GENİŞLİĞİ İÇERİĞİN KENDİSİ. İki sütun eşitlenince görev
+  sütunu 1048→704px'e indi ve 369px'lik denetim bloğu başlığa 243px
+  bırakıyor. İlk denemede max-width verdim; ölçünce metni KIRPTIĞI
+  görüldü ("Planland", "Sorumlu y"). Kırpılmış seçim kutusu sarılmış
+  başlıktan kötü. Yazıyı 11px'e indirmek bile yalnızca 48px kazandırıyor
+  (369→321), yani sınır burası: 12px yazı + 6px dolgu ile 340px.
+*/
+.opd-step-meta{--ff-boy:30px;--ff-dolgu:6px;--ff-yazi:12px;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:5px}
 .opd-step .opd-step-hint{color:var(--muted);font-size:12.5px}
 
 /*
@@ -463,12 +485,6 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 */
 .opd{--opd-serit-ust:80px}
 .opd-serit{position:sticky;top:var(--opd-serit-ust);z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:11px 16px;border:1px solid var(--line);border-radius:var(--r-sm);background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(8px);box-shadow:var(--shadow-sm)}
-.opd-ff-etiket{color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-.opd-ff-genis{flex:1;min-width:260px}
-.opd-ff-genis input[type="text"]{flex:1;min-width:120px}
-.opd-ff-not{color:var(--muted);font-size:12px;white-space:nowrap}
-.opd-ff-not[data-tone="warning"]{color:var(--warning);font-weight:650}
-.opd-ff-not[data-tone="success"]{color:var(--success)}
 
 @media (max-width:900px){
   /* Üst çubuk bu genişlikte 64px'e iniyor (panel-premium.css). */
@@ -479,8 +495,14 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
      okunmaz olmaktansa ikinci sırada tam genişlik. */
   .opd-step{grid-template-columns:minmax(0,1fr)}
   .opd-step-meta{justify-content:flex-start;padding:0 8px 10px 52px}
-  /* Parmakla kullanılıyor: 32px dokunulabilir ama rahat değil. */
-  .opd-ff select,.opd-ff input[type="date"],.opd-ff input[type="text"]{height:38px;font-size:13.5px}
+  /*
+    Parmakla kullanılıyor: 32px dokunulabilir ama rahat değil. Eskiden
+    bu kural .opd-ff tabanına yazılıyordu ve görev satırının daha özgül
+    kuralı onu eziyordu — ŞERİT 38px'e çıkarken asıl dokunulan GÖREV
+    SATIRI 30px'te kalıyordu (ölçüldü). Değişken olunca ikisi de artıyor.
+  */
+  .opd{--ff-boy:38px;--ff-yazi:13.5px}
+  .opd-step-meta{--ff-boy:38px;--ff-yazi:13px;--ff-dolgu:8px}
   /* Yapışkan şerit telefonda ekranın beşte birini yerdi. */
   .opd-serit{position:static;backdrop-filter:none;box-shadow:none}
   .opd-ff-genis{min-width:100%}
