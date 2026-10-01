@@ -70,6 +70,14 @@ function dueInfo(due: string | null, status: string) {
   return { tone: "success", hint: `${days} gün kaldı`, late: false };
 }
 
+/* Kapalı satırda tek çizgilik özet: durum · tarih · sorumlu. */
+function adimOzeti(step: Step, sorumlu: string | null) {
+  const parcalar: string[] = [STEP_STATUS_LABELS[step.status] ?? step.status];
+  if (step.due_date) parcalar.push(formatDate(step.due_date));
+  if (sorumlu) parcalar.push(formatPersonName(sorumlu));
+  return parcalar.join(" · ");
+}
+
 const CheckIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
 );
@@ -128,6 +136,8 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
 
   const bekleyenTaraf = bekleyenTarafMi(workflow.waiting_party) ? workflow.waiting_party : "us";
+  /* Tamamlanmayan İLK görev: satırı kendiliğinden açık gelen tek satır. */
+  const guncelAdimId = steps.find((step) => !step.is_completed)?.id ?? null;
 
   const grupBaslari = new Map<string, { no: number | null; baslik: string; biten: number; toplam: number }>();
   for (const grup of asamalaraBol(steps)) {
@@ -391,7 +401,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               </div>
             ) : null}
             <div className="opd-steps">
-              {steps.map((step, index) => {
+              {steps.map((step) => {
                 /*
                   Adımın kendi gecikmesi. İşin termini bir tarihti; oysa
                   dokuz parçalı bir tezde geciken şey genelde iş değil, tek
@@ -418,12 +428,17 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                           <span className="opd-check" aria-hidden="true">{step.is_completed ? <CheckIcon /> : null}</span>
                           <span className="opd-step-body">
                             <b>{step.title}</b>
+                            {/*
+                              Alt satır artık görevin ÖZETİ: durum, tarih,
+                              sorumlu. Eskiden "Adım 7 · Teslim 12.10" yazıyordu;
+                              sıra numarası aşama başlıkları gelince
+                              gereksizleşti, durum ve sorumlu ise ancak satır
+                              açılınca görünüyordu.
+                            */}
                             <small>
                               {step.is_completed
                                 ? `Tamamlandı · ${formatDate(step.completed_at, true)}`
-                                : step.due_date
-                                  ? `Adım ${index + 1} · Teslim ${formatDate(step.due_date)}`
-                                  : `Adım ${index + 1} · Tarih girilmedi`}
+                                : adimOzeti(step, stepAssignee)}
                             </small>
                           </span>
                           {uyari ? (
@@ -434,6 +449,26 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                         </button>
                       </form>
                       {isArchived ? null : (
+                      /*
+                        DENETİMLER İSTENİNCE AÇILIYOR. Her satırda dört durum
+                        düğmesi, tarih formu ve sorumlu seçicisi sürekli
+                        açıktı; yirmi görevlik bir tezde görev listesi tek
+                        başına 2337px (telefonda 4745px) ediyor, sayfa sekiz
+                        ekrana çıkıyordu.
+
+                        <details>: istemci JS'i yok (sunucu bileşeni),
+                        klavyeyle açılıyor ve ekran okuyucu durumu söylüyor.
+                        ŞU ANKİ görev kendiliğinden açık — operasyoncunun
+                        dokunacağı satır odur.
+                      */
+                      <details className="opd-step-more" open={step.id === guncelAdimId}>
+                        {/*
+                          Yalnızca ok: satırın altındaki küçük satır zaten
+                          durumu, tarihi ve sorumluyu yazıyor. "Düzenle"
+                          etiketi 84px yer kaplıyor ve başlık kutusuyla
+                          çakışıyordu (ölçüldü: 6px bindirme).
+                        */}
+                        <summary aria-label={`${step.title}: durum, tarih ve sorumlu`} />
                         <div className="opd-step-meta">
                           <div className="opd-step-states" role="group" aria-label={`${step.title} durumu`}>
                             {STEP_STATUSES.map((value) => (
@@ -466,6 +501,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                             </form>
                           ) : stepAssignee ? <span className="opd-step-hint">Sorumlu: {formatPersonName(stepAssignee)}</span> : null}
                         </div>
+                      </details>
                       )}
                     </div>
                   </Fragment>
@@ -506,7 +542,19 @@ export default async function OperationDetailPage({ params }: { params: Promise<
                   </PanelDrawer>
                 )}
               </header>
-              <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+              {/*
+                Özet KATLI geliyor: on soruluk bir form kartı beş yüz piksel
+                ediyor ve brifing işin başında bir kez okunup sonra nadiren
+                açılan bir metin. Başlıktaki doluluk sayısı, açmadan da
+                "eksik var mı" sorusunu yanıtlıyor.
+              */}
+              <details className="opd-katla">
+                <summary>
+                  <span>Brifingi göster</span>
+                  <small>{brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı</small>
+                </summary>
+                <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+              </details>
             </section>
           ) : null}
 
@@ -517,16 +565,40 @@ export default async function OperationDetailPage({ params }: { params: Promise<
             görünmemeli — termin hatırlatması da bu alana bakıyor
             (app/api/cron/adim-terminleri).
           */}
-          <section className="opd-card">
+          {/*
+            DURUM KARTI. "İş durumu" ile "top kimde" aynı soruyu iki
+            yarıdan yanıtlıyor: iş nerede ve kimin elinde. Ayrı kartlarda
+            dururken iki başlık, iki açıklama ve iki kart boşluğu
+            harcıyorlardı.
+          */}
+          <section className="opd-card opd-durum">
             <header className="opd-card-head">
               <div>
-                <h2>Top kimde</h2>
+                <h2>Durum</h2>
                 <p>{isArchived ? beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul) : "İş kimin elinde bekliyor"}</p>
               </div>
               <span className="opd-wait-pill" data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
                 {beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}
               </span>
             </header>
+            <div className="opd-durum-bolum">
+              <h3>İş durumu</h3>
+              {isArchived ? (
+                <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
+              ) : (
+              <div className="opd-segment" role="group" aria-label="İş durumu">
+                {statusOptions.map(([value, label]) => (
+                  <form action={setWorkflowStatus} key={value}>
+                    <input type="hidden" name="workflow_id" value={workflow.id} />
+                    <input type="hidden" name="status" value={value} />
+                    <button type="submit" className={workflow.status === value ? "is-active" : ""} data-tone={statusTone(value)} aria-pressed={workflow.status === value}>{label}</button>
+                  </form>
+                ))}
+              </div>
+              )}
+            </div>
+            <div className="opd-durum-bolum">
+              <h3>Top kimde</h3>
             {isArchived ? null : (
               <form className="opd-wait" action={setWaitingParty}>
                 <input type="hidden" name="workflow_id" value={workflow.id} />
@@ -555,61 +627,10 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               </form>
             )}
             {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
-          </section>
-
-          <section className="opd-card">
-            <header className="opd-card-head">
-              <div>
-                <h2>Revizyon hakkı</h2>
-                <p>
-                  {workflow.delivered_at
-                    ? `Teslim ${formatDate(workflow.delivered_at, true)}`
-                    : "İş tamamlandığında pencere kendiliğinden açılır"}
-                </p>
-              </div>
-              {revizyon ? (
-                <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
-              ) : null}
-            </header>
-            {isArchived ? null : (
-              <form className="opd-wait-note" action={setRevisionDays}>
-                <input type="hidden" name="workflow_id" value={workflow.id} />
-                <input
-                  name="revision_days"
-                  type="number"
-                  min={1}
-                  max={3650}
-                  defaultValue={workflow.revision_days ?? ""}
-                  placeholder="Kurum varsayılanı"
-                  aria-label="Bu işe özel revizyon süresi (gün)"
-                />
-                <button className="panel-secondary" type="submit">Kaydet</button>
-              </form>
-            )}
-            <p className="opd-wait-hint">
-              {workflow.revision_days
-                ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
-                : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
-              {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
-            </p>
-          </section>
-
-          <section className="opd-card">
-            <header className="opd-card-head"><div><h2>İş durumu</h2><p>{isArchived ? "Arşivdeki işin durumu değiştirilemez" : workflow.status === "completed" ? "İş tamamlandı; arşive gönderip aktif listeden kaldırabilirsiniz" : "Durumu tek dokunuşla değiştirin"}</p></div></header>
-            {isArchived ? (
-              <p className="opd-empty">Durumu değiştirmek için önce işi arşivden çıkarın; iş tamamlandı durumuna döner.</p>
-            ) : (
-            <div className="opd-segment" role="group" aria-label="İş durumu">
-              {statusOptions.map(([value, label]) => (
-                <form action={setWorkflowStatus} key={value}>
-                  <input type="hidden" name="workflow_id" value={workflow.id} />
-                  <input type="hidden" name="status" value={value} />
-                  <button type="submit" className={workflow.status === value ? "is-active" : ""} data-tone={statusTone(value)} aria-pressed={workflow.status === value}>{label}</button>
-                </form>
-              ))}
             </div>
-            )}
           </section>
+
+
 
           {portalSetupMissing ? (
             <section className="opd-card opd-pf" id="musteri-dosyalari">
@@ -667,6 +688,42 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at, true)}</dd></div>
               <div><dt>Son güncelleme</dt><dd>{formatDate(workflow.updated_at, true)}</dd></div>
             </dl>
+          </section>
+          <section className="opd-card">
+            <header className="opd-card-head">
+              <div>
+                <h2>Revizyon hakkı</h2>
+                <p>
+                  {workflow.delivered_at
+                    ? `Teslim ${formatDate(workflow.delivered_at, true)}`
+                    : "İş tamamlandığında pencere kendiliğinden açılır"}
+                </p>
+              </div>
+              {revizyon ? (
+                <span className="opd-wait-pill" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span>
+              ) : null}
+            </header>
+            {isArchived ? null : (
+              <form className="opd-wait-note" action={setRevisionDays}>
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <input
+                  name="revision_days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  defaultValue={workflow.revision_days ?? ""}
+                  placeholder="Kurum varsayılanı"
+                  aria-label="Bu işe özel revizyon süresi (gün)"
+                />
+                <button className="panel-secondary" type="submit">Kaydet</button>
+              </form>
+            )}
+            <p className="opd-wait-hint">
+              {workflow.revision_days
+                ? `Bu işe özel: teslimden sonra ${workflow.revision_days} gün.`
+                : "Boş bırakıldı: kurumun varsayılan süresi geçerli (Ayarlar → Revizyon süresi)."}
+              {" "}Süre teslim anından işler; revizyon için yeniden açılan iş pencereyi uzatmaz.
+            </p>
           </section>
           {contract?.opportunity_id ? <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} /> : null}
           <section className="opd-card">

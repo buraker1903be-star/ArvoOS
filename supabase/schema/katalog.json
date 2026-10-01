@@ -579,8 +579,16 @@
       "request_details",
       "source",
       "stage",
+      "step_template_set",
       "title",
       "updated_at"
+    ],
+    "crm_opportunity_briefs": [
+      "opportunity_id",
+      "organization_id",
+      "updated_at",
+      "updated_by",
+      "values"
     ],
     "crm_proposals": [
       "access_token_hash",
@@ -933,11 +941,20 @@
       "id",
       "is_completed",
       "organization_id",
+      "phase_title",
       "reminder_sent_at",
       "reminder_state",
       "sort_order",
       "status",
       "title",
+      "workflow_id"
+    ],
+    "operation_workflow_briefs": [
+      "organization_id",
+      "source_opportunity_id",
+      "updated_at",
+      "updated_by",
+      "values",
       "workflow_id"
     ],
     "operation_workflow_comments": [
@@ -956,15 +973,23 @@
       "created_at",
       "created_by",
       "customer_name",
+      "delivered_at",
       "description",
       "due_date",
       "id",
       "organization_id",
       "priority",
+      "revision_days",
+      "revision_reminder_state",
+      "revision_until",
       "start_date",
       "status",
+      "step_template_set",
       "title",
-      "updated_at"
+      "updated_at",
+      "waiting_note",
+      "waiting_party",
+      "waiting_since"
     ],
     "organization_bank_accounts": [
       "account_name",
@@ -977,6 +1002,20 @@
       "is_active",
       "opening_balance",
       "organization_id",
+      "updated_at"
+    ],
+    "organization_brief_fields": [
+      "code",
+      "created_at",
+      "field_type",
+      "hint",
+      "is_active",
+      "is_required",
+      "label",
+      "options",
+      "organization_id",
+      "set_codes",
+      "sort_order",
       "updated_at"
     ],
     "organization_crm_stages": [
@@ -1121,12 +1160,24 @@
       "updated_at",
       "updated_by"
     ],
+    "organization_step_template_sets": [
+      "code",
+      "created_at",
+      "is_active",
+      "is_default",
+      "name",
+      "organization_id",
+      "sort_order",
+      "updated_at"
+    ],
     "organization_step_templates": [
       "code",
       "created_at",
       "day_offset",
       "is_active",
       "organization_id",
+      "phase_title",
+      "set_code",
       "sort_order",
       "title",
       "updated_at"
@@ -1169,12 +1220,14 @@
       "plan_code",
       "primary_color",
       "provisioning_state",
+      "revision_days",
       "sector",
       "signature_stamp_url",
       "slug",
       "status",
       "tax_number",
       "tax_office",
+      "tracking_show_phases",
       "updated_at",
       "website_url"
     ],
@@ -1516,6 +1569,7 @@
     "arvo_record_proposal_response_agent",
     "arvo_respond_contract_addendum",
     "arvo_storage_usage",
+    "arvo_tracking_asamalar",
     "arvo_tracking_attempts_prune",
     "arvo_tracking_confirm_proposal",
     "arvo_tracking_document_links",
