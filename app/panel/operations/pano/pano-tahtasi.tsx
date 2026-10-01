@@ -40,6 +40,8 @@ export interface TahtaProps {
   bugun: string;
   /** İşin aşamalarını değiştirme/tarih girme yetkisi olan işlerin kimlikleri. */
   yetkiliIsler: string[];
+  /** İş kimliği → okunmamış müşteri mesajı sayısı. */
+  okunmamis: Record<string, number>;
 }
 
 const kisaTarih = (gun: string) =>
@@ -50,7 +52,7 @@ const kisaTarih = (gun: string) =>
 /** Kolonun taşıma hedefi olarak karşılığı: "Tamamlandı" başlık değil, sentinel. */
 const kolonHedefi = (kolon: PanoKolonu) => (kolon.tur === "tamamlandi" ? TAMAMLANDI_KOLONU : kolon.baslik);
 
-export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler }: TahtaProps) {
+export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaProps) {
   const router = useRouter();
   const [bekliyor, basla] = useTransition();
   const [suruklenen, setSuruklenen] = useState<PanoIsKarti | null>(null);
@@ -159,6 +161,7 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler }: TahtaProps) {
                     kolon={kolon}
                     bugun={bugun}
                     yetkili={yetkili.has(kart.isId)}
+                    okunmamis={okunmamis[kart.isId] ?? 0}
                     suruklenebilir={yetkili.has(kart.isId) && !bekliyor}
                     onSurukle={() => setSuruklenen(kart)}
                     onBitti={() => {
@@ -192,6 +195,7 @@ function Kart({
   kolon,
   bugun,
   yetkili,
+  okunmamis,
   suruklenebilir,
   onSurukle,
   onBitti,
@@ -202,6 +206,7 @@ function Kart({
   kolon: PanoKolonu;
   bugun: string;
   yetkili: boolean;
+  okunmamis: number;
   suruklenebilir: boolean;
   onSurukle: () => void;
   onBitti: () => void;
@@ -240,6 +245,16 @@ function Kart({
         sürüklenebilir ve kartın başlığından tutan kullanıcı kartı değil
         BAĞLANTIYI sürüklüyordu — kart hiç kıpırdamıyordu.
       */}
+      {/*
+        Okunmamış müşteri mesajı kartta. İşler sayfasında en görünür
+        sinyaldi ama panoda hiç yoktu; oysa operasyoncu gün içinde bu
+        ekrana bakıyor ve müşteri yazdığında haberi olması gerekiyor.
+      */}
+      {okunmamis ? (
+        <Link className="ops-pano-mesaj" href={`/panel/operations/${kart.isId}?pencere=mesajlar`} draggable={false}>
+          {okunmamis} yeni müşteri mesajı
+        </Link>
+      ) : null}
       <Link href={`/panel/operations/${kart.isId}`} draggable={false}>
         {/* Uzun başlık iki satıra kırpılıyor; tamamı title'da. */}
         <b title={kart.baslik}>{kart.baslik}</b>

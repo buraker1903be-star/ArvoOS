@@ -8,7 +8,9 @@ import {
   type OperasyonIsi,
   type SablonAsamasi,
 } from "@/lib/operasyon-panosu";
-import { todayIstanbul } from "../ops-shared";
+import { todayIstanbul, priorityNames } from "../ops-shared";
+import { PanelDrawer } from "../../components/panel-drawer";
+import { WorkflowCreateForm } from "../workflow-create-form";
 import { PanoTahtasi } from "./pano-tahtasi";
 import "./pano.css";
 
@@ -35,12 +37,13 @@ import "./pano.css";
   Yetkisi olmayana alan gösterilmiyor (actions.ts isManagerOrAssignee ile
   aynı kural) — kaydetmeyen bir alan göstermek yanıltıcı olurdu.
 
-  SÜZGEÇ YOK. Denendi ve kaldırıldı: müşteri adları şirket unvanı olduğunda
-  ("… LİMİTED ŞİRKETİ") rozetler iki satıra taşıyor ve panonun kendisini
-  ekranın dışına itiyor — oysa panonun bütün değeri bir bakışta görünmesi.
-  Süzme ihtiyacı o sırada Çalışma Çizelgesi'nde karşılanıyordu; o ekran
-  27.09.2026'da kaldırıldı, yani ŞU AN modülde kişiye/müşteriye göre süzme
-  hiçbir yerde yok. Geri gelirse burada değil, kendi görünümünde olmalı.
+  SÜZGEÇ GERİ GELDİ — ama rozet olarak değil. İlk denemede süzgeçler
+  tıklanabilir rozetlerdi; müşteri adları şirket unvanı olunca
+  ("… LİMİTED ŞİRKETİ") iki satıra taşıyor ve panonun kendisini ekranın
+  dışına itiyorlardı. Bu sefer İşler sayfasıyla AYNI kalıpta: sabit
+  yükseklikte tek satırlık form kartı. Panonun bir bakışta görünmesi
+  bozulmuyor, üstelik süzme modülde yeniden mümkün (Çalışma Çizelgesi
+  27.09.2026'da kaldırılmıştı, o günden beri hiçbir yerde yoktu).
 
   Bu dosya yalnızca VERİYİ hazırlıyor; sürükle-bırak, hızlı bakış ve
   düğmeler pano-tahtasi.tsx'te (istemci bileşeni).
@@ -60,8 +63,14 @@ type AdimSatiri = {
 };
 type Kayit = OperasyonIsi & { operation_steps: AdimSatiri[]; step_template_set: string | null };
 
-export default async function OperationsPanoPage({ searchParams }: { searchParams: Promise<{ tur?: string }> }) {
-  const { tur: istenenTur } = await searchParams;
+export default async function OperationsPanoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tur?: string; arama?: string; sorumlu?: string; oncelik?: string; mesaj?: string }>;
+}) {
+  const { tur: istenenTur, arama, sorumlu: seciliSorumlu, oncelik: seciliOncelik, mesaj } = await searchParams;
+  const aranan = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
+  const yalnizOkunmamis = mesaj === "yeni";
   const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
@@ -101,6 +110,27 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
 
   /*
+    OKUNMAMIŞ MÜŞTERİ MESAJI. İşler sayfasında en görünür sinyal buydu ama
+    panoda hiç yoktu: pano operasyoncunun gün içinde baktığı ekran, müşteri
+    yazdığında burada da görünmeli. Sayım İşler'dekiyle aynı sorgu.
+  */
+  const panoIsIdleri = ((data ?? []) as { id: string }[]).map((satir) => satir.id);
+  const [{ data: okunmamisSatirlar }, { count: arsivSayisi }] = await Promise.all([
+    panoIsIdleri.length
+      ? supabase.from("customer_file_messages").select("workflow_id")
+          .eq("organization_id", membership.organization_id).eq("sender_type", "customer")
+          .is("read_at", null).in("workflow_id", panoIsIdleri)
+      : Promise.resolve({ data: [] as { workflow_id: string | null }[] }),
+    supabase.from("operation_workflows").select("id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id).eq("status", "archived"),
+  ]);
+  const okunmamis = new Map<string, number>();
+  for (const satir of (okunmamisSatirlar ?? []) as { workflow_id: string | null }[]) {
+    if (satir.workflow_id) okunmamis.set(satir.workflow_id, (okunmamis.get(satir.workflow_id) ?? 0) + 1);
+  }
+  const toplamOkunmamis = [...okunmamis.values()].reduce((a, c) => a + c, 0);
+
+  /*
     ÇALIŞMA TÜRÜ SEKMESİ. Kurumun birden çok görev listesi olabiliyor (tez,
     makale, ödev) ve kolonlar listeye göre değişiyor; tek bir panoda
     hepsini göstermek, tez işlerini makalenin kolonlarına ya da "şablon
@@ -122,9 +152,28 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
     ((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]),
   );
   const tumKayitlar = (data ?? []) as Kayit[];
-  const kayitlar = seciliTur
+  const turKayitlari = seciliTur
     ? tumKayitlar.filter((kayit) => (kayit.step_template_set ?? ontanimliTur) === seciliTur)
     : tumKayitlar;
+
+  /*
+    SÜZGEÇ PANO KURULMADAN ÖNCE. Kartları sonradan elemek kolon
+    başlıklarındaki sayıyı ve "içinde iş olmayan aşama gizlendi"
+    satırını yanlış yapardı: süzgeçten sonra boşalan kolon "aşama yok"
+    diye görünürdü. Eleme kaynakta.
+  */
+  const kayitlar = turKayitlari.filter((kayit) => {
+    if (aranan) {
+      const saman = [kayit.title, kayit.customer_name].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR");
+      if (!saman.includes(aranan)) return false;
+    }
+    if (seciliSorumlu) {
+      if (seciliSorumlu === "yok" ? kayit.assigned_employee_id : kayit.assigned_employee_id !== seciliSorumlu) return false;
+    }
+    if (seciliOncelik && kayit.priority !== seciliOncelik) return false;
+    if (yalnizOkunmamis && !okunmamis.get(kayit.id)) return false;
+    return true;
+  });
   const tumIsler: OperasyonIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
 
   /*
@@ -147,6 +196,19 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
   // Sürmekte olan işler arasında tarihi girilmemiş olanlar (bitmiş işte aşama yok).
   const tarihsiz = kartlar.filter((kart) => kart.guncelAsamaId && !kart.tarih).length;
   const surmekte = kartlar.filter((kart) => kart.guncelAsamaId).length;
+  const geciken = kartlar.filter((kart) => kart.guncelAsamaId && kart.tarih && kart.tarih < bugun).length;
+  const tamamlanan = kartlar.filter((kart) => kart.tamamlandi).length;
+  /*
+    İlerleme İşler sayfasıyla AYNI hesap: bütün adımların kaçı bitti.
+    Kart başına ortalama almak az adımlı işi çok adımlıyla eşitlerdi.
+  */
+  const tumAdimlar = kayitlar.flatMap((kayit) => kayit.operation_steps ?? []);
+  const ilerleme = tumAdimlar.length
+    ? Math.round((tumAdimlar.filter((adim) => adim.is_completed).length / tumAdimlar.length) * 100)
+    : 0;
+  const suzuluyor = Boolean(aranan || seciliSorumlu || seciliOncelik || yalnizOkunmamis);
+  const sorumluSecenekleri = [...sorumlular.entries()].sort((a, b) => a[1].localeCompare(b[1], "tr"));
+  const turSorgusu = seciliTur ? `tur=${encodeURIComponent(seciliTur)}` : "";
 
   return (
     <div className="crm-page-stack">
@@ -162,9 +224,21 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
             ya da düğmeyle başka aşamaya taşıyabilir, “Aşamalar” ile işin tamamını panodan çıkmadan görebilirsiniz.
           </p>
         </div>
+        {/* Başlık eylemleri İşler sayfasıyla aynı: sayı · yeni mesaj · arşiv · yeni iş. */}
         <div className="panel-page-actions">
           <span className="status-pill">{toplamKart} iş</span>
+          {toplamOkunmamis ? (
+            <Link className="status-pill" data-tone="danger" href={`/panel/operations/pano?${[turSorgusu, "mesaj=yeni"].filter(Boolean).join("&")}`}>
+              {toplamOkunmamis} yeni müşteri mesajı
+            </Link>
+          ) : null}
           <Link className="panel-secondary" href="/panel/operations/sablon">Adım şablonu</Link>
+          <Link className="panel-secondary" href="/panel/operations/arsiv">Arşiv ({arsivSayisi ?? 0})</Link>
+          {yonetici ? (
+            <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">
+              <WorkflowCreateForm />
+            </PanelDrawer>
+          ) : null}
         </div>
       </div>
       <OperationsTabs active="pano" />
@@ -183,6 +257,52 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
             ))}
           </nav>
         ) : null}
+        {/*
+          ÖLÇÜLER VE SÜZGEÇ TEK ŞERİTTE.
+
+          İlk denemede İşler sayfasının birebir kopyasıydı: dört ölçü
+          KARTI (214px) + süzgeç kartı (108px). Ölçtüm, panoyu 764px
+          aşağı itiyordu — 950px'lik ekranda panodan 186px görünüyor.
+          Panonun bütün değeri bir bakışta görünmesi; kartları olduğu
+          gibi taşımak İşler'in kalitesini değil, İşler'in BİÇİMİNİ
+          kopyalamak olurdu.
+
+          Aynı bilgi, tek satırlık şeritte: solda sayılar, sağda
+          süzgeç. Tablo sayfasında kart doğru, kanban'da şerit.
+        */}
+        <section className="panel-card ops-pano-serit">
+          <div className="ops-pano-olculer">
+            <span><b>{surmekte}</b> süren</span>
+            <span data-tone={geciken ? "danger" : undefined}><b>{geciken}</b> geciken aşama</span>
+            <span data-tone={tarihsiz ? "warning" : undefined}><b>{tarihsiz}</b> tarihsiz aşama</span>
+            <span><b>%{ilerleme}</b> ilerleme</span>
+            {tamamlanan ? <span><b>{tamamlanan}</b> tamamlandı</span> : null}
+          </div>
+          <form method="get" className="ops-pano-suzgec">
+            {seciliTur ? <input type="hidden" name="tur" value={seciliTur} /> : null}
+            <input name="arama" defaultValue={arama ?? ""} placeholder="İş / müşteri ara" aria-label="İş ya da müşteri ara" />
+            <select name="sorumlu" defaultValue={seciliSorumlu ?? ""} aria-label="Sorumlu">
+              <option value="">Sorumlu: tümü</option>
+              <option value="yok">Atanmamış</option>
+              {sorumluSecenekleri.map(([id, ad]) => <option key={id} value={id}>{ad}</option>)}
+            </select>
+            <select name="oncelik" defaultValue={seciliOncelik ?? ""} aria-label="Öncelik">
+              <option value="">Öncelik: tümü</option>
+              {["urgent", "high", "normal", "low"].map((deger) => (
+                <option key={deger} value={deger}>{priorityNames[deger] ?? deger}</option>
+              ))}
+            </select>
+            <select name="mesaj" defaultValue={yalnizOkunmamis ? "yeni" : ""} aria-label="Müşteri mesajı">
+              <option value="">Mesaj: tümü</option>
+              <option value="yeni">Okunmamış mesajı olan</option>
+            </select>
+            <button className="panel-primary">Filtrele</button>
+            {suzuluyor ? (
+              <Link className="panel-secondary" href={`/panel/operations/pano${turSorgusu ? `?${turSorgusu}` : ""}`}>Temizle</Link>
+            ) : null}
+          </form>
+        </section>
+
         {tarihsiz ? (
           /*
             Panonun en önemli uyarısı bu: tarih yoksa gecikme uyarısı,
@@ -190,10 +310,9 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
             "tarih girin" demek eksiğin büyüklüğünü göstermezdi.
           */
           <p className="ops-pano-uyari">
-            Süren {surmekte} işin {tarihsiz === surmekte ? "hepsinde" : `${tarihsiz} tanesinde`} şu anki aşamanın
-            tarihi girilmemiş. Tarih olmadan pano “gecikti / yaklaştı” uyarısı üretemiyor ve Takvim bu işleri
-            göstermiyor. Kartlardaki tarih alanına tek tek yazabilir, ya da işin detayındaki “Tarihleri dağıt”
-            ile bütün aşamaları işin takvimine bir kerede yayabilirsiniz.
+            Tarihi girilmemiş aşamalar “gecikti / yaklaştı” uyarısı üretmiyor ve Takvim’de görünmüyor. Kartlardaki
+            tarih alanına tek tek yazabilir, ya da işin detayındaki “Tarihleri dağıt” ile bütün aşamaları işin
+            takvimine bir kerede yayabilirsiniz.
           </p>
         ) : null}
         {sablonDisi ? (
@@ -212,7 +331,7 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
 
         {toplamKart ? (
           <>
-            <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} />
+            <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} okunmamis={Object.fromEntries(okunmamis)} />
             {bosAsamalar.length ? (
               /*
                 Gizlenen aşamalar sayılıyor: adı geçmezse "İç Kontrol kolonu
@@ -225,7 +344,9 @@ export default async function OperationsPanoPage({ searchParams }: { searchParam
             ) : null}
           </>
         ) : (
-          <p className="panel-empty">Panoda gösterilecek iş bulunmuyor.</p>
+          <p className="panel-empty">
+            {suzuluyor ? "Eşleşen iş bulunamadı. Süzgeci temizleyip tekrar deneyin." : "Panoda gösterilecek iş bulunmuyor."}
+          </p>
         )}
       </div>
     </div>

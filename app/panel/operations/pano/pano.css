@@ -190,3 +190,35 @@
 .pano-tur{display:inline-flex;align-items:center;min-height:34px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:650;text-decoration:none;transition:background-color .2s ease,color .2s ease,border-color .2s ease}
 .pano-tur:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .pano-tur.is-active{background:var(--ink);border-color:var(--ink);color:var(--n-0)}
+
+/*
+  Okunmamış müşteri mesajı rozeti. İşler sayfasındaki .crm-alert-chip'in
+  pano karşılığı: kartta başlıktan ÖNCE duruyor, çünkü "bu işte yeni bir
+  şey var" bilgisi başlığı okumadan görünmeli.
+*/
+.ops-pano-mesaj{display:block;margin:0 0 6px;padding:3px 8px;border-radius:8px;background:var(--danger-soft);color:var(--danger);font-size:11.5px;font-weight:700;text-decoration:none}
+.ops-pano-mesaj:hover{background:color-mix(in srgb,var(--danger) 18%,var(--surface))}
+
+/* ============================================================
+   PANO ŞERİDİ: ölçüler + süzgeç tek satırda
+
+   İşler sayfasının dört ölçü KARTI (214px) ve süzgeç kartı (108px)
+   olduğu gibi taşındığında pano 764px aşağı iniyordu; 950px'lik
+   ekranda panodan 186px kalıyor. Tablo sayfasında kart doğru,
+   kanban'da şerit: aynı bilgi, 322px yerine ~64px.
+   ============================================================ */
+.ops-pano-serit{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;padding:10px 14px}
+.ops-pano-olculer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;color:var(--muted);font-size:13px}
+.ops-pano-olculer span{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}
+.ops-pano-olculer b{color:var(--ink);font:750 17px var(--font-heading);font-variant-numeric:tabular-nums}
+.ops-pano-olculer span[data-tone="danger"] b{color:var(--danger)}
+.ops-pano-olculer span[data-tone="warning"] b{color:var(--warning)}
+.ops-pano-suzgec{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.ops-pano-suzgec input,.ops-pano-suzgec select{height:34px;max-width:170px;padding:0 9px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
+.ops-pano-suzgec input{min-width:160px}
+.ops-pano-suzgec input:focus,.ops-pano-suzgec select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.ops-pano-suzgec .panel-primary,.ops-pano-suzgec .panel-secondary{height:34px;padding:0 14px;font-size:13px}
+@media (max-width:900px){
+  .ops-pano-serit{flex-direction:column;align-items:stretch}
+  .ops-pano-suzgec input,.ops-pano-suzgec select{flex:1 1 140px;max-width:none}
+}
