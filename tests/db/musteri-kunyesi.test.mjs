@@ -27,6 +27,7 @@ const MIGRATIONLAR = [
   "20261001205922_musteri_kunyesi_operasyonda.sql",
   "20261001214623_musteri_iletisimi_operasyonda.sql",
   "20261001221605_musteri_adi_ise_de_yansisin.sql",
+  "20261001222733_musteri_bilgisi_her_yerde.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000002a1";
@@ -307,5 +308,70 @@ describe("müşteri künyesi operasyonda", () => {
         ["Zeynep Kaya", FIRSAT]);
       const is = await tek(`select customer_name from public.operation_workflows where id=$1`, [isId]);
       assert.equal(is.customer_name, "Zeynep Kaya");
+    }));
+
+  /** Sözleşmenin ödeme planı ve carisi — imza akışının kurduğu bağ. */
+  async function cariKur(ad = "Ayşe Yılmaz", eposta = "ayse@example.com", tel = "05324628098") {
+    /* Üretimde cari fırsattan DOĞUYOR; değerleri aynı başlıyor. Fırsatı
+       da aynı değerlere getirmezsek kural haklı olarak "bu alan elle
+       değiştirilmiş" deyip dokunmaz. */
+    await db.query(
+      `update public.crm_opportunities set contact_email=$1, contact_phone=$2 where id=$3`,
+      [eposta === "fatura@yilmaz.com" ? "ayse@example.com" : eposta, tel, FIRSAT]);
+    const cari = await tek(
+      `insert into public.account_parties (organization_id,party_type,name,email,phone,is_active,created_by)
+       values ($1,'customer',$2,$3,$4,true,$5) returning id`, [KURUM, ad, eposta, tel, SAHIP]);
+    await db.query(
+      `insert into public.payment_plans (organization_id,contract_id,party_id,total_amount,currency,status,created_by)
+       values ($1,$2,$3,100000,'TRY','active',$4)`, [KURUM, SOZLESME, cari.id, SAHIP]);
+    return cari.id;
+  }
+
+  test("cari de güncelleniyor: ad, e-posta, telefon", () =>
+    islem(db, async () => {
+      /* Cari sözleşme imzalanırken fırsattan doğuyor; sonradan
+         düzeltilen bilgi oraya da gitmeli, yoksa finans ekranı eski
+         adı gösterir. */
+      await tohum();
+      const cariId = await cariKur();
+      await kunyeYaz(UZMAN, {}, {
+        customer_name: "Ayşe Yılmaz Demir",
+        contact_email: "ayse.demir@example.com",
+        contact_phone: "05551112233",
+      });
+      const cari = await tek(`select name,email,phone from public.account_parties where id=$1`, [cariId]);
+      assert.equal(cari.name, "Ayşe Yılmaz Demir");
+      assert.equal(cari.email, "ayse.demir@example.com");
+      assert.equal(cari.phone, "05551112233");
+    }));
+
+  test("elle düzeltilmiş cari bilgisi ezilmiyor", () =>
+    islem(db, async () => {
+      /* Muhasebe cariyi kendi ekranından değiştirebiliyor (ticari unvan,
+         fatura e-postası). CRM'den gelen düzeltme onu ezmemeli. */
+      await tohum();
+      const cariId = await cariKur("Yılmaz Danışmanlık Ltd.", "fatura@yilmaz.com");
+      await kunyeYaz(UZMAN, {}, {
+        customer_name: "Ayşe Yılmaz Demir",
+        contact_email: "ayse.demir@example.com",
+        contact_phone: "05551112233",
+      });
+      const cari = await tek(`select name,email,phone from public.account_parties where id=$1`, [cariId]);
+      assert.equal(cari.name, "Yılmaz Danışmanlık Ltd.", "Elle verilen unvan korunmalı");
+      assert.equal(cari.email, "fatura@yilmaz.com", "Elle verilen e-posta korunmalı");
+      assert.equal(cari.phone, "05551112233", "Dokunulmamış alan güncellenmeli");
+    }));
+
+  test("başka müşterinin carisine dokunulmuyor", () =>
+    islem(db, async () => {
+      await tohum();
+      const yabanciCari = await tek(
+        `insert into public.account_parties (organization_id,party_type,name,email,is_active,created_by)
+         values ($1,'customer','Başka Müşteri','baska@example.com',true,$2) returning id`, [KURUM, SAHIP]);
+      await cariKur();
+      await kunyeYaz(UZMAN, {}, { ...ILETISIM, customer_name: "Ayşe Yılmaz Demir" });
+      const c = await tek(`select name,email from public.account_parties where id=$1`, [yabanciCari.id]);
+      assert.equal(c.name, "Başka Müşteri");
+      assert.equal(c.email, "baska@example.com");
     }));
 });
