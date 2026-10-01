@@ -1,0 +1,19 @@
+/* Brifing formunun TANIMI: soru satırları (başlık, tip, seçenekler, zorunlu). */
+.brifing-form{display:flex;flex-direction:column;gap:10px}
+.brifing-basliklar,.brifing-satir{display:grid;grid-template-columns:minmax(0,1.4fr) 150px minmax(0,1fr) 96px;gap:10px;align-items:start}
+.brifing-basliklar{padding:0 2px;color:var(--muted);font-size:12px;font-weight:650;letter-spacing:.02em;text-transform:uppercase}
+.brifing-satir input,.brifing-satir select,.brifing-satir textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.brifing-satir textarea{min-height:40px;resize:vertical}
+.brifing-satir input:focus,.brifing-satir select:focus,.brifing-satir textarea:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
+.brifing-satir input:disabled,.brifing-satir select:disabled,.brifing-satir textarea:disabled{background:var(--surface-2);color:var(--muted)}
+.brifing-zorunlu{display:flex;align-items:center;gap:7px;min-height:40px;color:var(--muted);font-size:13px}
+.brifing-grup{display:grid;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line-soft)}
+.brifing-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding-top:6px}
+.brifing-hint{color:var(--muted);font-size:12.5px}
+.brifing-bos{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.brifing-bos h2{display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.brifing-bos p{margin:0;color:var(--muted);font-size:13.5px;max-width:74ch}
+@media (max-width:860px){
+  .brifing-basliklar{display:none}
+  .brifing-satir{grid-template-columns:minmax(0,1fr)}
+}

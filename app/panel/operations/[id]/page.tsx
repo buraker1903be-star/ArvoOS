@@ -10,6 +10,10 @@ import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, 
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { BrifingAlanlari, BrifingOzeti } from "../brifing-form";
+import "../brifing-form.css";
+import { saveWorkflowBrief } from "../brifing-actions";
+import { brifingDoluluk, gecerliAlanlar, type BriefField, type BriefValues } from "@/lib/is-brifingi";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
 import { formatPhone } from "@/lib/format-phone";
@@ -25,7 +29,7 @@ import "../../crm/request-page.css";
 import "./detail.css";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
-type Workflow = { id: string; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
+type Workflow = { id: string; step_template_set: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
 type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
 type Proposal = { id: string; proposal_no: string; status: string };
@@ -75,7 +79,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -97,6 +101,30 @@ export default async function OperationDetailPage({ params }: { params: Promise<
     her biri kendi satırında duruyor; iç içe kutular tarih, sorumlu ve durum
     denetimlerini dar ekranda iyice sıkıştırırdı.
   */
+  /*
+    BRİFİNG. Satışçının fırsatta yazdığı bilgi iş açılırken buraya
+    kopyalanıyor (private.arvo_brief_kopyala). Sorular kurumun kendi
+    formundan; tanımlı değilse bölüm hiç basılmıyor — boş bir kart
+    "burada bir şey eksik" hissi verir, oysa kurum o formu hiç istememiş
+    olabilir.
+  */
+  const [{ data: alanData }, { data: brifingData }] = await Promise.all([
+    supabase
+      .from("organization_brief_fields")
+      .select("code,label,field_type,options,hint,is_required,set_codes,sort_order,is_active")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("operation_workflow_briefs")
+      .select("values,source_opportunity_id,updated_at")
+      .eq("workflow_id", id)
+      .maybeSingle(),
+  ]);
+  const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], workflow.step_template_set);
+  const brifing = (brifingData ?? null) as { values: BriefValues; source_opportunity_id: string | null; updated_at: string } | null;
+  const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
+
   const grupBaslari = new Map<string, { no: number | null; baslik: string; biten: number; toplam: number }>();
   for (const grup of asamalaraBol(steps)) {
     if (!grup.baslik) continue;
@@ -442,6 +470,34 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <button className="panel-primary" type="submit">Ekle</button>
             </form>
           </section>
+
+          {brifingAlanlari.length ? (
+            <section className="opd-card">
+              <header className="opd-card-head">
+                <div>
+                  <h2>Brifing</h2>
+                  <p>
+                    {brifing?.source_opportunity_id ? "Satıştan geldi" : "Operasyonda dolduruldu"} ·{" "}
+                    {brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı
+                  </p>
+                </div>
+                {isArchived ? null : (
+                  <PanelDrawer triggerLabel={brifing ? "Düzenle" : "Doldur"} title="İş brifingi" triggerClassName="panel-secondary">
+                    {/*
+                      Operasyonun kopyası düzeltilebilir: satışçının o gün
+                      yazdığı metin fırsatta olduğu gibi duruyor.
+                    */}
+                    <form className="panel-form" action={saveWorkflowBrief}>
+                      <input type="hidden" name="workflow_id" value={workflow.id} />
+                      <BrifingAlanlari alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+                      <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Brifingi kaydet</button></div>
+                    </form>
+                  </PanelDrawer>
+                )}
+              </header>
+              <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+            </section>
+          ) : null}
 
           <section className="opd-card">
             <header className="opd-card-head"><div><h2>İş durumu</h2><p>{isArchived ? "Arşivdeki işin durumu değiştirilemez" : workflow.status === "completed" ? "İş tamamlandı; arşive gönderip aktif listeden kaldırabilirsiniz" : "Durumu tek dokunuşla değiştirin"}</p></div></header>

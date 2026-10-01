@@ -13,8 +13,12 @@ import {
   updateOpportunity,
 } from "../../actions";
 import { requestStageNames } from "../../request-status";
+import { BrifingAlanlari, BrifingOzeti } from "../../../operations/brifing-form";
+import { saveOpportunityBrief } from "../../../operations/brifing-actions";
+import { brifingDoluluk, gecerliAlanlar, type BriefField, type BriefValues } from "@/lib/is-brifingi";
 import "../../crm.css";
 import "../../request-page.css";
+import "../../../operations/brifing-form.css";
 
 type Details = {
   service_type?: string;
@@ -45,7 +49,7 @@ export default async function RequestDetailPage({
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
-  const [{ data, error }, { data: employees, error: employeeError }] =
+  const [{ data, error }, { data: employees, error: employeeError }, { data: alanData }, { data: brifingData }] =
     await Promise.all([
       supabase
         .from("crm_opportunities")
@@ -62,12 +66,36 @@ export default async function RequestDetailPage({
         .eq("employment_status", "active")
         .eq("can_receive_sales_requests", true)
         .order("full_name"),
+      /*
+        BRİFİNG. Satışçının operasyona aktardığı bilgi burada doldurulur ve
+        iş açılırken işe kopyalanır. Sorular kurumun kendi formundan
+        (Operasyon → Brifing Formu); tanımlı değilse bölüm hiç basılmaz.
+      */
+      supabase
+        .from("organization_brief_fields")
+        .select("code,label,field_type,options,hint,is_required,set_codes,sort_order,is_active")
+        .eq("organization_id", membership.organization_id)
+        .eq("is_active", true)
+        .order("sort_order"),
+      supabase
+        .from("crm_opportunity_briefs")
+        .select("values")
+        .eq("opportunity_id", id)
+        .maybeSingle(),
     ]);
   if (error || !data) notFound();
   if (employeeError) throw new Error("Satış temsilcileri okunamadı.");
   const item = data as Opportunity;
   const d = item.request_details ?? {};
   const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  /*
+    Fırsat aşamasında çalışma türü henüz seçilmemiş olabilir; türe bağlı
+    sorular bu yüzden burada sorulmuyor (gecerliAlanlar(…, null)). Türe
+    özel sorular işin detayında, tür belli olduğunda görünüyor.
+  */
+  const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], null);
+  const brifing = (brifingData ?? null) as { values: BriefValues } | null;
+  const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
   // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
   // okuyup seçenek olarak ekliyoruz, yoksa form kaydı atamayı sessizce siliyordu.
   const listedAssignee = (employees ?? []).find(
@@ -318,6 +346,28 @@ export default async function RequestDetailPage({
           </div>
         </div>
       </section>
+          {brifingAlanlari.length ? (
+            <section className="panel-card">
+              <header className="brifing-head">
+                <div>
+                  <h2>İş brifingi</h2>
+                  <p>
+                    Operasyona geçecek bilgi · {brifingSayisi.dolu}/{brifingSayisi.toplam} yanıtlandı.
+                    İş açıldığında bu metin operasyonun ekranına düşer.
+                  </p>
+                </div>
+                <PanelDrawer triggerLabel={brifing ? "Düzenle" : "Doldur"} title="İş brifingi" triggerClassName="panel-secondary">
+                  <form className="panel-form" action={saveOpportunityBrief}>
+                    <input type="hidden" name="opportunity_id" value={item.id} />
+                    <BrifingAlanlari alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+                    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Brifingi kaydet</button></div>
+                  </form>
+                </PanelDrawer>
+              </header>
+              <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
+            </section>
+          ) : null}
+
           <RecordHistory opportunityId={item.id} />
         </div>
         <aside className="crm-detail-side">
