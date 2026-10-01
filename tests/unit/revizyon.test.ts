@@ -87,4 +87,39 @@ describe("hatırlatma", () => {
   test("penceresi olmayan iş hiç uyarı üretmiyor", () => {
     assert.deepEqual(revizyonUyarilari([is({ revision_until: null })], "2026-10-01"), []);
   });
+
+  /*
+    CRON SORGUSUNUN DAYANDIĞI KOŞUL. Bildirimi gönderilmiş ("ended")
+    işler artık SQL'de eleniyor; aksi hâlde revizyon penceresi geçmişte
+    kalan her iş sonsuza kadar sorguya giriyor, 200 satırlık partiyi
+    dolduruyor ve yeni dolan bir pencere hiç sıraya giremiyordu.
+
+    Bu eleme ancak "ended" gerçekten SON durumsa güvenli. Test onu
+    sabitliyor: tarih ne kadar geride olursa olsun, durumu "ended" olan
+    iş bir daha uyarı üretmiyor. Bu doğru olmaktan çıkarsa sorgudan
+    eleme sessizce bildirim kaybına dönüşür.
+  */
+  test("ended sonlanmış durumdur: bir daha uyarı üretmiyor", () => {
+    for (const bugun of ["2026-10-01", "2026-11-15", "2027-06-30", "2030-01-01"]) {
+      assert.deepEqual(
+        revizyonUyarilari(
+          [is({ revision_until: "2026-09-28", revision_reminder_state: "ended" })],
+          bugun,
+        ),
+        [],
+        bugun,
+      );
+    }
+  });
+
+  test("ending_soon işleri sorguda kalmalı: ended bildirimini sonra alıyorlar", () => {
+    /* SQL elemesi yalnızca "ended" olanları çıkarıyor; bu test neden
+       "ending_soon"un da çıkarılamayacağını gösteriyor. */
+    const dolan = revizyonUyarilari(
+      [is({ revision_until: "2026-09-28", revision_reminder_state: "ending_soon" })],
+      "2026-10-01",
+    );
+    assert.equal(dolan.length, 1);
+    assert.equal(dolan[0].durum, "ended");
+  });
 });

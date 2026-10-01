@@ -205,11 +205,33 @@ async function revizyonHatirlat(admin: NonNullable<ReturnType<typeof createAdmin
   const ustSinir = new Date(`${bugun}T00:00:00Z`);
   ustSinir.setUTCDate(ustSinir.getUTCDate() + 7);
 
+  /*
+    BİTMİŞ PENCERELER SORGUDAN ÇIKIYOR, yoksa parti sonsuza kadar
+    şişiyordu. "revision_until <= bugün+7" koşulu bir kez sağlandı mı bir
+    daha DÜŞMÜYOR: revizyon penceresi geçmişte kalan her iş, yıllar sonra
+    bile bu sorguya giriyor. Eleme ("bu duruma zaten bildirim gitti")
+    JavaScript'te, 200 satırlık sınırdan SONRA yapılıyordu; yani bir
+    süre sonra sınırı tamamen bildirilmiş satırlar dolduruyor ve yeni
+    dolan bir pencere hiç sıraya giremiyordu. Hata zamanla ortaya
+    çıkıyor, hiçbir belirti vermiyor ve dönen sayılar da sorunu
+    göstermiyor: `aday` yine 200 diyor.
+
+    `ended` sonlanmış bir durum — kalan gün negatife düştükten sonra
+    başka bildirim üretmiyor (tests/unit/revizyon.test.ts bunu
+    sabitliyor), o yüzden sorgudan çıkarmak güvenli. `ending_soon`
+    kalıyor: o işler sonra `ended` bildirimini alacak.
+
+    Sıralama da eklendi: sınır varken ORDER BY olmaması, hangi 200
+    satırın geleceğini Postgres'in keyfine bırakıyordu. Ana yol
+    (operation_steps) zaten `due_date` artan sıralı okuyor.
+  */
   const { data, error } = await admin
     .from("operation_workflows")
     .select("id,organization_id,title,customer_name,revision_until,revision_reminder_state,assigned_employee_id")
     .not("revision_until", "is", null)
     .lte("revision_until", ustSinir.toISOString().slice(0, 10))
+    .or("revision_reminder_state.is.null,revision_reminder_state.neq.ended")
+    .order("revision_until", { ascending: true })
     .limit(TEK_SEFERDE);
   if (error) {
     console.error("[adim-terminleri] revizyon pencereleri okunamadı", error.message);
@@ -217,7 +239,14 @@ async function revizyonHatirlat(admin: NonNullable<ReturnType<typeof createAdmin
   }
 
   const uyarilar = revizyonUyarilari((data ?? []) as RevizyonSatiri[], bugun);
+  /*
+    tuzak-tamam: bu sayı bir TOPLAM değil, bu turda yapılan iş.
+    Cron partiler hâlinde çalışıyor; sınıra dayanırsa kalanı bir sonraki
+    tur alıyor (bildirilen satır artık sorguya girmiyor). Ekranda "toplam
+    uyarı" diye bir yer yok, sayı yalnızca çalışma kaydına yazılıyor.
+  */
   let gonderilen = 0;
+  // tuzak-tamam: toplam değil, bu turda gönderilen; kalanı sonraki tur alır.
   for (const uyari of uyarilar) {
     const { error: bildirimHatasi } = await admin.from("notifications").insert({
       organization_id: uyari.is.organization_id,
