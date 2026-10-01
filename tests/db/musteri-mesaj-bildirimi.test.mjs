@@ -17,7 +17,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, olarak, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(
   import.meta.dirname,
@@ -145,14 +145,24 @@ describe("müşteri mesajı bildirimi", () => {
     islem(db, async () => {
       await tohum();
       await musteriYazdi();
-      // Rozet bu RPC ile hesaplanıyor (app/panel/notifications/count.ts);
-      // satırın yazılması yetmez, sayaç da görmeli.
-      const sayi = await olarak(db, "authenticated", UZMAN, async () =>
-        (await db.query(`select public.arvo_unread_notification_count($1) as n`, [KURUM])).rows[0].n);
-      assert.equal(sayi, 1);
-      const uyeSayisi = await olarak(db, "authenticated", UYE, async () =>
-        (await db.query(`select public.arvo_unread_notification_count($1) as n`, [KURUM])).rows[0].n);
-      assert.equal(uyeSayisi, 0);
+      /*
+        Rozet bu RPC ile hesaplanıyor (app/panel/notifications/count.ts);
+        satırın yazılması yetmez, sayaç da görmeli.
+
+        Rol değişimi "rol()" ile: işlem İÇİNDE "olarak()" çağırmak iç içe
+        bir begin açıyor ve onun rollback'i DIŞ işlemi de geri alıyor.
+        İlk yazımda böyleydi ve ikinci ölçüm (sıradan üye) tohum
+        silindiği için 0 dönüyordu — iddia doğru görünüyordu ama yanlış
+        sebeple geçiyordu.
+      */
+      const say = async (kisi) => {
+        await rol(db, "authenticated", kisi);
+        const n = (await db.query(`select public.arvo_unread_notification_count($1) as n`, [KURUM])).rows[0].n;
+        await rol(db, "postgres");
+        return n;
+      };
+      assert.equal(await say(UZMAN), 1, "İşin sorumlusunun zili 1 göstermeli");
+      assert.equal(await say(UYE), 0, "İlgisiz üyenin zili sönük kalmalı");
     }));
 
   test("satışçı iş operasyona geçtikten sonra da haber alıyor", () =>
