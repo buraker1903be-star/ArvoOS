@@ -48,6 +48,9 @@ export function MusteriKunyesi({
             description="Operasyonun müşteri hakkında gördüğü bilgiler. Boş bıraktığınız alan künyeden kalkar."
             kicker="OPERASYON"
             boy="dar"
+            /* Tek seferlik form: kaydedince kapanmalı. Sohbet ve dosya
+               pencereleri bunu bilerek istemiyor. */
+            basaridaKapan
           >
             <form action={updateCustomerProfile} className="opd-kunye-form">
               <input type="hidden" name="opportunity_id" value={opportunityId} />

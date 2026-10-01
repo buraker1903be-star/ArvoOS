@@ -21,6 +21,15 @@ type PanelModalProps = {
   boy?: "dar" | "orta" | "sohbet" | "genis";
   /** Adresten gelen derin bağlantı pencereyi açık başlatır. */
   baslangicAcik?: boolean;
+  /**
+   * Form kaydedilince pencere kapansın mı?
+   *
+   * Varsayılan HAYIR: sohbet ve dosya yükleme pencereleri her işlemden
+   * sonra açık kalmalı (mesaj gönderince sohbet kapanmamalı, dosya
+   * yükleyince liste görünmeli). Tek seferlik bir formda ise tersi
+   * doğru — kaydedip kapanmak bekleniyor.
+   */
+  basaridaKapan?: boolean;
   children: ReactNode;
 };
 
@@ -48,12 +57,21 @@ const subscribeNothing = () => () => undefined;
 */
 export function PanelModal({
   triggerLabel, triggerNote, triggerBadge, triggerTone = "neutral", triggerClassName = "panel-secondary",
-  title, description, kicker, boy = "orta", baslangicAcik = false, children,
+  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, children,
 }: PanelModalProps) {
   const [open, setOpen] = useState(baslangicAcik);
   const titleId = useId();
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
+
+  /* İşlem başarıyla bitince (FlashToast "arvo:action-success" yayar)
+     pencere kapanır — yalnızca bunu isteyen pencerelerde. */
+  useEffect(() => {
+    if (!open || !basaridaKapan) return;
+    const onSuccess = () => setOpen(false);
+    window.addEventListener("arvo:action-success", onSuccess);
+    return () => window.removeEventListener("arvo:action-success", onSuccess);
+  }, [open, basaridaKapan]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,10 +79,25 @@ export function PanelModal({
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
+
+    /*
+      KİLİT HEM <html> HEM <body> ÜZERİNDE.
+
+      Yalnızca body kilitleniyordu ve arka sayfa pencere açıkken tekerlekle
+      kayıyordu. Sebep panel.css'in ilk satırı: html'e de body'ye de
+      overflow-x veriliyor. html'in overflow'u "visible" olmaktan çıkınca
+      body'ninki görünüm alanına YAYILMIYOR; belge html üzerinden kayıyor
+      ve body'yi kilitlemek hiçbir şey yapmıyor.
+    */
+    const kok = document.documentElement;
+    const oncekiKok = kok.style.overflow;
+    const oncekiGovde = document.body.style.overflow;
+    kok.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      kok.style.overflow = oncekiKok;
+      document.body.style.overflow = oncekiGovde;
     };
   }, [open]);
 
