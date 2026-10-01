@@ -156,10 +156,12 @@ export default async function SettingsPage() {
           <label className="stg-check stg-check-wide">
             <input type="checkbox" name="tracking_show_phases" value="1" defaultChecked={branding?.tracking_show_phases ?? false} disabled={!canManage} />
             <span>
-              Takip sayfasında işin kendi aşamalarını göster
+              Takip sayfasında işin kendi aşamalarını ve görevlerini göster
               <small>
                 Kapalıyken müşteri genel beş aşamayı görür (Sözleşme · Planlama · Çalışma · Kontrol · Teslim).
-                Açıkken adım şablonunuzdaki aşama başlıkları görünür; görev adları hiçbir durumda gösterilmez.
+                Açıkken adım şablonunuzdaki aşama başlıkları <b>ve görev adları</b> müşteriye görünür:
+                tamamlananlar üzeri çizili, şu an yapılan iş ve sıradaki görev. Görev adlarınız müşteriye
+                gösterilmeye uygun değilse bu ayarı kapalı tutun.
               </small>
             </span>
           </label>

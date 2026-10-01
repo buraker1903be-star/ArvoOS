@@ -54,14 +54,19 @@ export const formatDay = (value: string) => dayFormat.format(new Date(value));
 export const formatTime = (value: string) => timeFormat.format(new Date(value));
 
 /* --- Aşamalar ---
-   Veritabanı ADIM adlarını müşteriye açmaz; genel aşamalar ilerleme
-   yüzdesinden türetilir (eski ekranla aynı eşikler: her aşama %25).
+   Kurum ayarı kapalıyken (varsayılan) genel beş aşama gösterilir ve
+   bunlar ilerleme yüzdesinden türetilir (her aşama %25); işin kendi
+   adları hiç dışarı çıkmaz.
 
-   Kurum isterse (organizations.tracking_show_phases) işin KENDİ aşama
+   Kurum açtıysa (organizations.tracking_show_phases) işin KENDİ aşama
    başlıkları gösteriliyor: "Literatür", "Yöntem, Veri ve Analiz" — tezini
-   takip eden müşteri için "Çalışma"dan çok daha bilgilendirici. Aşama
-   başlıkları gruplamak için yazılmış okunabilir adlar; adım başlıkları
-   yine hiçbir durumda dışarı çıkmıyor (arvo_tracking_asamalar). */
+   takip eden müşteri için "Çalışma"dan çok daha bilgilendirici.
+
+   01.10.2026'dan beri AYNI ayar görev (adım) adlarını da açıyor; eskiden
+   adım başlıkları hiçbir durumda dışarı çıkmıyordu. Bilerek tek anahtar:
+   iki ayrı anahtar olsaydı kurum birini açıp diğerini kapalı sanabilir,
+   görev adları beklenmedik şekilde müşteriye gidebilirdi. Ayarın yanındaki
+   açıklama bunu söylüyor (panel/settings). */
 export const PHASES = ["Sözleşme", "Planlama", "Çalışma", "Kontrol", "Teslim"] as const;
 
 export function phaseProgress(progress: number, tone: StatusTone) {
