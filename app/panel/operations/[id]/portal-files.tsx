@@ -200,14 +200,14 @@ export function PortalFilesCard({
   const totalProgress = queue.length ? Math.round((queue.reduce((sum, item) => sum + (item.error && item.status !== "failed" ? 0 : item.progress), 0) / Math.max(validCount, 1)) * 100) : 0;
 
   return (
-    <section className="opd-card opd-pf" id="musteri-dosyalari" aria-labelledby="opd-pf-title">
-      <header className="opd-card-head">
-        <div>
-          <h2 id="opd-pf-title">Müşteri portalı dosyaları</h2>
-          <p>Müşterinin takip ekranındaki “Dosyalarınız” bölümünde görünür</p>
-        </div>
-        <span className="status-pill">{files.length} dosya</span>
-      </header>
+    /*
+      KART BAŞLIĞI YOK. Bu kart artık ortada açılan pencerenin içinde
+      yaşıyor ve pencerenin başlığı ("Müşteri nihai evrak teslimi" +
+      "Müşterinin takip ekranındaki Dosyalarınız bölümüne giden
+      dosyalar") aynı iki cümleyi zaten söylüyordu; dosya sayısı da
+      pencereyi açan düğmede yazıyor. Üç yerde aynı bilgi vardı.
+    */
+    <section className="opd-card opd-pf" id="musteri-dosyalari">
 
       {!payment.hasContract ? (
         <p className="opd-pf-banner" data-tone="info">
@@ -215,12 +215,17 @@ export function PortalFilesCard({
           <span>Bu iş bir sözleşmeye bağlı değil; müşterinin takip kodu olmadığı için dosya gönderilemez.</span>
         </p>
       ) : (
+        /*
+          Şerit artık yalnızca SONUCU söylüyor. "Ödeme bekleniyor"
+          başlığı pencereyi açan düğmede ve düğmenin renginde zaten
+          var; burada tekrarlamak yerine o durumun bu ekranda ne
+          anlama geldiğini yazıyor.
+        */
         <div className="opd-pf-banner" data-tone={payment.settled ? "success" : "warning"} role="status">
-          <b>{payment.settled ? "Ödeme tamamlandı" : "Ödeme bekleniyor"}</b>
           <span>
             {payment.settled
-              ? "“Ödeme tamamlanınca açılır” kuralındaki dosyalar müşteriye açık."
-              : `“Ödeme tamamlanınca açılır” kuralındaki dosyalar müşteride kilitli görünür${payment.remainingLabel ? ` · kalan ${payment.remainingLabel}` : ""}.`}
+              ? "Ödeme tamamlandı: “ödeme tamamlanınca açılır” kuralındaki dosyalar müşteriye açık."
+              : `Ödeme bekleniyor: “ödeme tamamlanınca açılır” kuralındaki dosyalar müşteride kilitli görünür${payment.remainingLabel ? ` · kalan ${payment.remainingLabel}` : ""}.`}
           </span>
           {payment.paidPercent !== null ? (
             <span className="opd-pf-meter" aria-hidden="true"><i style={{ width: `${payment.paidPercent}%` }} /></span>
@@ -299,6 +304,8 @@ export function PortalFilesCard({
       ) : null}
 
       {files.length ? (
+        <>
+        <h3 className="opd-pf-liste-baslik">Gönderilen dosyalar <small>{files.length}</small></h3>
         <ul className="opd-pf-list">
           {files.map((file) => {
             const ext = portalExtension(file.fileName);
@@ -343,8 +350,10 @@ export function PortalFilesCard({
             );
           })}
         </ul>
+        </>
       ) : payment.hasContract ? (
-        <p className="opd-empty">Henüz dosya gönderilmedi. Teslim dosyalarını buradan müşterinin takip ekranına iletebilirsiniz.</p>
+        /* Nasıl gönderileceğini hemen üstteki bırakma alanı anlatıyor. */
+        <p className="opd-empty">Henüz dosya gönderilmedi.</p>
       ) : null}
     </section>
   );
