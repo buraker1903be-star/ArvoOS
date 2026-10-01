@@ -10,6 +10,7 @@ import { archiveWorkflow } from "../actions";
 import { OperationsTabs } from "../operations-tabs";
 import { WorkflowCreateForm } from "../workflow-create-form";
 import { OpsIcon, addDaysKey, priorityNames, priorityTones, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "../ops-shared";
+import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import "../../crm/crm.css";
 import "../operations.css";
 
@@ -29,7 +30,7 @@ const dueFilters = [
 ];
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
 type Employee = { id: string; full_name: string; job_title: string | null; user_id: string | null };
-type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; contract_id: string | null; assigned_employee_id: string | null; operation_steps: Step[] };
+type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; contract_id: string | null; assigned_employee_id: string | null; waiting_party: string; waiting_since: string | null; operation_steps: Step[] };
 
 export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string }> }) {
   const { arama, durum, termin, mesaj } = await searchParams;
@@ -40,7 +41,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const { supabase, membership, modules, userId } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const [{ data, error }, { data: employeeData, error: employeeError }, { count: archivedCount }] = await Promise.all([
-    supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).not("status", "in", "(cancelled,archived)").order("created_at", { ascending: false }),
+    supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,waiting_party,waiting_since,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).not("status", "in", "(cancelled,archived)").order("created_at", { ascending: false }),
     supabase.from("hr_employees").select("id,full_name,job_title,user_id").eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
     supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("status", "archived"),
   ]);
@@ -150,6 +151,16 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
         <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
         <td data-label="Durum" className="ops-status-cell">
           <span className="status-pill" data-tone={statusTone(workflow.status)}>{workflowStatusNames[workflow.status] ?? workflow.status}</span>
+          {/*
+            Top bizde değilse listede görünmeli: gecikmiş gibi duran bir iş
+            aslında müşteriden yanıt bekliyor olabilir ve bu, detaya
+            girmeden anlaşılmalı.
+          */}
+          {bekleyenTarafMi(workflow.waiting_party) && workflow.waiting_party !== "us" ? (
+            <span className="status-pill" data-tone={BEKLEYEN_TARAF_TONLARI[workflow.waiting_party]}>
+              {beklemeOzeti(workflow.waiting_party, workflow.waiting_since, today)}
+            </span>
+          ) : null}
           {workflow.status === "completed" && canAct ? (
             <form action={archiveWorkflow} className="ops-archive-form">
               <input type="hidden" name="workflow_id" value={workflow.id} />

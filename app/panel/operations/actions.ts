@@ -8,6 +8,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PORTAL_BUCKET } from "./portal-files-shared";
 import { isDurumAdi, isStepStatus, STEP_STATUS_LABELS } from "@/lib/is-adimlari";
+import { BEKLEYEN_TARAF_ADLARI, bekleyenTarafMi, type BekleyenTaraf } from "@/lib/bekleyen-taraf";
 import { tasimaPlani } from "@/lib/operasyon-panosu";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
@@ -456,6 +457,58 @@ async function toggleWorkflowStep__impl(formData: FormData) {
   revalidateOperations();
 }
 
+/*
+  "Top kimde". İşin durumundan (status) ayrı: 'blocked' işin ilerlemediğini
+  söyler, bekleyen taraf ilerlemeyi KİMİN sürdüreceğini. Devam eden bir iş
+  de müşteriden yanıt bekliyor olabilir.
+
+  Yetki işin durumuyla aynı: yönetici ya da işin sorumlusu. Bekleyen tarafı
+  değiştirmek gecikmenin kime yazıldığını değiştiriyor — herkese açık
+  olsaydı bir işin gecikmesi tek tıkla müşterinin üstüne atılabilirdi.
+*/
+async function setWaitingParty__impl(formData: FormData) {
+  const context = await operationContext();
+  const { supabase, membership } = context;
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const taraf = String(formData.get("waiting_party") ?? "");
+  const not = String(formData.get("waiting_note") ?? "").trim().slice(0, 200);
+  if (!bekleyenTarafMi(taraf)) throw new Error("Geçersiz bekleyen taraf.");
+
+  const { data: workflow } = await supabase
+    .from("operation_workflows").select("id,status,assigned_employee_id,waiting_party")
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  if (workflow.status === "archived") throw new Error("Arşivdeki iş güncellenemez; önce arşivden çıkarın.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+    throw new Error("Bekleyen tarafı yönetici ya da işin sorumlusu değiştirebilir.");
+  }
+
+  const { data, error } = await supabase
+    .from("operation_workflows")
+    // Not yalnızca beklenen taraf bizim dışımızdayken anlamlı; tetikleyici
+    // 'us' durumunda zaten temizliyor.
+    .update({ waiting_party: taraf, waiting_note: taraf === "us" ? null : not || null, updated_at: new Date().toISOString() })
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).neq("status", "archived")
+    .select("id");
+  if (error) throw new Error("Bekleyen taraf güncellenemedi: " + error.message);
+  if (!data?.length) throw new Error("Bekleyen taraf güncellenemedi: bu iş için yetkiniz yok.");
+
+  if (workflow.waiting_party !== taraf) {
+    await kayitDus(context, {
+      workflowId,
+      action: "waiting_party",
+      changes: [{
+        field: "waiting_party",
+        label: "Bekleyen taraf",
+        from: BEKLEYEN_TARAF_ADLARI[workflow.waiting_party as BekleyenTaraf] ?? String(workflow.waiting_party),
+        to: BEKLEYEN_TARAF_ADLARI[taraf],
+      }],
+      note: taraf === "us" ? undefined : not || undefined,
+    });
+  }
+  revalidateOperations();
+}
+
 async function setWorkflowStatus__impl(formData: FormData) {
   const context = await operationContext();
   const { supabase, membership } = context;
@@ -715,6 +768,9 @@ export async function addWorkflowStep(...args: Parameters<typeof addWorkflowStep
 }
 export async function toggleWorkflowStep(...args: Parameters<typeof toggleWorkflowStep__impl>) {
   return runPanelAction(() => toggleWorkflowStep__impl(...args));
+}
+export async function setWaitingParty(...args: Parameters<typeof setWaitingParty__impl>) {
+  return runPanelAction(() => setWaitingParty__impl(...args), "Bekleyen taraf güncellendi");
 }
 export async function setWorkflowStatus(...args: Parameters<typeof setWorkflowStatus__impl>) {
   return runPanelAction(() => setWorkflowStatus__impl(...args));

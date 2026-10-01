@@ -6,6 +6,7 @@ import {
   hatirlatmaMetni,
   type HatirlatilacakAdim,
 } from "@/lib/is-adimlari";
+import { beklemeGunu, bekleyenTarafMi, hatirlatmaKarari } from "@/lib/bekleyen-taraf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,12 @@ export const dynamic = "force-dynamic";
   sahipsiz gecikmeyi görebilmeli; sessizce atlamak, uyarının hiç olmamasıyla
   aynı kapıya çıkardı.
 
+  TOP BİZDE DEĞİLSE uyarı kişiye gitmiyor. Müşteriden veri bekleyen bir
+  adım için uzmana "gecikti" demek yanlış: yapabileceği bir şey yok ve her
+  gecikme ona yazılıyormuş gibi görünür. O uyarı kuruma gidiyor, metni de
+  farklı ("3 gündür müşteride bekliyor") — müşteriyi arayacak olan görsün
+  (lib/bekleyen-taraf.ts).
+
   Aynı uyarı iki kez gitmiyor: adımda en son hangi durum için gönderildiği
   yazılı (reminder_state) ve yalnızca değiştiğinde yeniden gidiyor
   (lib/is-adimlari.ts). Adımın tarihi ya da tamamlanması değişirse işareti
@@ -43,7 +50,11 @@ function authorized(request: Request) {
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
-type IsSatiri = { id: string; title: string | null; customer_name: string | null; status: string; assigned_employee_id: string | null };
+type IsSatiri = {
+  id: string; title: string | null; customer_name: string | null; status: string;
+  assigned_employee_id: string | null;
+  waiting_party: string; waiting_note: string | null; waiting_since: string | null;
+};
 
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("Yetkisiz", { status: 401 });
@@ -84,7 +95,7 @@ export async function GET(request: Request) {
   */
   const { data: isler, error: isHatasi } = await admin
     .from("operation_workflows")
-    .select("id,title,customer_name,status,assigned_employee_id")
+    .select("id,title,customer_name,status,assigned_employee_id,waiting_party,waiting_note,waiting_since")
     .in("id", [...new Set(satirlar.map((satir) => satir.workflow_id))]);
   if (isHatasi) {
     console.error("[adim-terminleri] işler okunamadı", isHatasi.message);
@@ -120,16 +131,27 @@ export async function GET(request: Request) {
 
   let gonderilen = 0;
   for (const { adim: satir, durum } of gonderilecek) {
-    const hedefCalisan = satir.assigned_employee_id ?? isHaritasi.get(satir.workflow_id)?.assigned_employee_id ?? null;
+    const is = isHaritasi.get(satir.workflow_id);
+    const hedefCalisan = satir.assigned_employee_id ?? is?.assigned_employee_id ?? null;
     const hedefKullanici = hedefCalisan ? kullanicilar.get(hedefCalisan) ?? null : null;
+
+    const taraf = bekleyenTarafMi(is?.waiting_party) ? is.waiting_party : "us";
+    const karar = hatirlatmaKarari({
+      durum,
+      adimBasligi: satir.title,
+      gecikmeMetni: hatirlatmaMetni(satir.title, satir.due_date as string, bugun),
+      taraf,
+      not: is?.waiting_note ?? null,
+      bekleyenGun: beklemeGunu(is?.waiting_since ?? null, bugun),
+    });
 
     const { error: bildirimHatasi } = await admin.from("notifications").insert({
       organization_id: satir.organization_id,
-      user_id: hedefKullanici,
+      user_id: karar.kisiye ? hedefKullanici : null,
       audience: "organization",
-      category: "operation_step_due",
-      title: durum === "overdue" ? "İş adımı gecikti" : "İş adımının teslimi yaklaştı",
-      message: hatirlatmaMetni(satir.title, satir.due_date as string, bugun),
+      category: karar.category,
+      title: karar.title,
+      message: karar.message,
       action_url: `/panel/operations/${satir.workflow_id}`,
       metadata: {
         workflow_id: satir.workflow_id,
@@ -137,6 +159,7 @@ export async function GET(request: Request) {
         step_title: satir.title,
         due_date: satir.due_date,
         state: durum,
+        waiting_party: taraf,
       },
     });
     if (bildirimHatasi) {

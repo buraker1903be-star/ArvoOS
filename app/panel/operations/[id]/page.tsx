@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, replyCustomerFileMessage, setStepDueDate, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { IS_DURUM_ADLARI, STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { OpsIcon, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -14,6 +14,7 @@ import { BrifingAlanlari, BrifingOzeti } from "../brifing-form";
 import "../brifing-form.css";
 import { saveWorkflowBrief } from "../brifing-actions";
 import { brifingDoluluk, gecerliAlanlar, type BriefField, type BriefValues } from "@/lib/is-brifingi";
+import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { formatPersonName } from "@/lib/format-name";
 import { formatPhone } from "@/lib/format-phone";
@@ -29,7 +30,7 @@ import "../../crm/request-page.css";
 import "./detail.css";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
-type Workflow = { id: string; step_template_set: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
+type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
 type Contract = { id: string; contract_no: string; proposal_id: string | null; opportunity_id: string; status: string; tracking_code: string | null; share_token: string | null };
 type Opportunity = { customer_name: string; contact_email: string | null; contact_phone: string | null; title: string | null; stage: string | null };
 type Proposal = { id: string; proposal_no: string; status: string };
@@ -79,7 +80,7 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -124,6 +125,8 @@ export default async function OperationDetailPage({ params }: { params: Promise<
   const brifingAlanlari = gecerliAlanlar((alanData ?? []) as BriefField[], workflow.step_template_set);
   const brifing = (brifingData ?? null) as { values: BriefValues; source_opportunity_id: string | null; updated_at: string } | null;
   const brifingSayisi = brifingDoluluk(brifingAlanlari, brifing?.values ?? null);
+
+  const bekleyenTaraf = bekleyenTarafMi(workflow.waiting_party) ? workflow.waiting_party : "us";
 
   const grupBaslari = new Map<string, { no: number | null; baslik: string; biten: number; toplam: number }>();
   for (const grup of asamalaraBol(steps)) {
@@ -498,6 +501,53 @@ export default async function OperationDetailPage({ params }: { params: Promise<
               <BrifingOzeti alanlar={brifingAlanlari} values={brifing?.values ?? null} />
             </section>
           ) : null}
+
+          {/*
+            TOP KİMDE. İşin durumundan ayrı duruyor: 'Beklemede' işin
+            ilerlemediğini söyler, bu ise ilerlemeyi KİMİN sürdüreceğini.
+            Müşteriden veri bekleyen iş, uzmanın geciktirdiği iş gibi
+            görünmemeli — termin hatırlatması da bu alana bakıyor
+            (app/api/cron/adim-terminleri).
+          */}
+          <section className="opd-card">
+            <header className="opd-card-head">
+              <div>
+                <h2>Top kimde</h2>
+                <p>{isArchived ? beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul) : "İş kimin elinde bekliyor"}</p>
+              </div>
+              <span className="opd-wait-pill" data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
+                {beklemeOzeti(bekleyenTaraf, workflow.waiting_since, bugunIstanbul)}
+              </span>
+            </header>
+            {isArchived ? null : (
+              <form className="opd-wait" action={setWaitingParty}>
+                <input type="hidden" name="workflow_id" value={workflow.id} />
+                <div className="opd-wait-seg" role="group" aria-label="Bekleyen taraf">
+                  {BEKLEYEN_TARAFLAR.map((taraf) => (
+                    <label key={taraf} data-tone={BEKLEYEN_TARAF_TONLARI[taraf]} className={taraf === bekleyenTaraf ? "is-active" : ""}>
+                      <input type="radio" name="waiting_party" value={taraf} defaultChecked={taraf === bekleyenTaraf} />
+                      {BEKLEYEN_TARAF_ADLARI[taraf]}
+                    </label>
+                  ))}
+                </div>
+                <div className="opd-wait-note">
+                  <input
+                    name="waiting_note"
+                    defaultValue={workflow.waiting_note ?? ""}
+                    maxLength={200}
+                    placeholder="Ne bekleniyor? (ham veri dosyası, danışman onayı…)"
+                    aria-label="Beklenen şey"
+                  />
+                  <button className="panel-secondary" type="submit">Kaydet</button>
+                </div>
+                <p className="opd-wait-hint">
+                  Top bizde değilken termin hatırlatması uzmana değil kuruma gider; gecikme raporunda da
+                  bekleyen taraf görünür.
+                </p>
+              </form>
+            )}
+            {isArchived && workflow.waiting_note ? <p className="opd-wait-hint">Beklenen: {workflow.waiting_note}</p> : null}
+          </section>
 
           <section className="opd-card">
             <header className="opd-card-head"><div><h2>İş durumu</h2><p>{isArchived ? "Arşivdeki işin durumu değiştirilemez" : workflow.status === "completed" ? "İş tamamlandı; arşive gönderip aktif listeden kaldırabilirsiniz" : "Durumu tek dokunuşla değiştirin"}</p></div></header>
