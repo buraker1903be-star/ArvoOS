@@ -246,20 +246,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-archived b{font-size:15px}
 .opd-archived small{color:var(--muted);font-size:13px;line-height:1.45}
 
-/* ---------- Adımın tarihi, durumu ve sorumlusu ----------
-   Adım satırı artık iki katlı: üstte tek dokunuşla tamamlama (eski
-   davranış aynen duruyor), altta düzenleme. Alt kat arşivdeki işte hiç
-   çizilmiyor. Seçiciler ".opd-step .opd-step-meta …" ile yazıldı: yalın
-   ".opd-step button" kuralı bütün butonları tam genişlik yapıyor ve
-   eşit özgüllükte bir kural sıraya bağlı kalırdı. */
+/* ---------- Adımın tarihi, durumu ve sorumlusu ---------- */
 .opd-step-flag{flex:none;align-self:center;padding:2px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:11.5px;font-weight:650;letter-spacing:.01em}
 
 .opd-step.is-done .opd-step-meta{opacity:.62}
-.opd-step-states{display:flex;flex-wrap:wrap;gap:4px}
-.opd-step .opd-step-meta button{display:inline-flex;align-items:center;width:auto;min-height:0;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:600;line-height:1.7;cursor:pointer}
-.opd-step .opd-step-meta button:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--surface)}
-.opd-step .opd-step-meta button.is-active{background:var(--tone-bg);border-color:color-mix(in srgb,var(--tone-fg) 35%,var(--line));color:var(--tone-fg)}
-.opd-step-date,.opd-step-who{display:flex;align-items:center;gap:6px}
 .opd-step-meta input[type="date"],.opd-step-meta select{height:30px;max-width:190px;padding:0 8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px}
 .opd-step-meta input[type="date"]:focus,.opd-step-meta select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent)}
 .opd-step-hint{color:var(--muted);font-size:12px}
@@ -315,24 +305,22 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-katla[open]>summary{margin-bottom:14px}
 
 /*
-  SEKMELER. Sayfa yedi kart birden taşıyordu; görev listesi kısaltıldıktan
-  sonra bile telefonda dört ekrandı. Operasyoncu aynı anda tek şeye
-  bakıyor. Görünüm modül sekmeleriyle aynı (.module-tabs) — panelde ikinci
-  bir sekme dili üretmiyoruz.
+  SEKMELER. Modülün kutulu sekme şeridi (.module-tabs) sayfa içinde ağır
+  duruyordu: her sekme çerçeveli bir kutu, etkin olan dolu bir blok ve
+  rozet alt satıra kayıyordu. Sayfa içi sekme bir kademe aşağıda; alt
+  çizgili, çerçevesiz bir şerit hem hafif hem de modül sekmesiyle
+  karışmıyor.
 */
-.opd-tabs{max-width:100%;overflow-x:auto;scrollbar-width:none}
-.opd-tabs::-webkit-scrollbar{display:none}
-/*
-  Üç sekme 390px telefona sığıyor (ölçüldü), yani şerit kaymıyor. Altı
-  sekmeliyken son sekme ekran dışında kalıyordu ve sağ kenara soluma
-  konmuştu; sığan şeritte o soluma yalnızca son sekmeyi boşuna soldurur.
-*/
-.opd-tabs a{display:inline-flex;align-items:center;gap:7px}
-/* Rozet: sekmeye basmadan "burada iş var mı" sorusunu yanıtlıyor. */
-.opd-tab-rozet{padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--ink) 9%,transparent);color:inherit;font-size:11px;font-weight:700;line-height:1.6}
-.opd-tab-rozet[data-tone="danger"]{background:var(--danger);color:var(--n-0)}
-.opd-tabs a.active .opd-tab-rozet{background:color-mix(in srgb,var(--n-0) 24%,transparent)}
-.opd-tabs a.active .opd-tab-rozet[data-tone="danger"]{background:var(--n-0);color:var(--danger)}
+.opd-tabs{display:flex;gap:4px;margin:0 0 16px;padding:0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;overflow:visible}
+.opd-tabs a{position:relative;display:inline-flex;align-items:center;gap:7px;min-height:42px;padding:0 14px;border:0;border-radius:0;background:none;color:var(--muted);font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap;transition:color .18s ease}
+.opd-tabs a+a{border-left:0}
+.opd-tabs a::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:transparent;transition:background-color .18s ease}
+.opd-tabs a:hover{background:none;color:var(--ink)}
+.opd-tabs a.active{background:none;color:var(--ink)}
+.opd-tabs a.active::after{background:var(--accent-600)}
+.opd-tabs a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:8px}
+/* Rozet: yalnızca dikkat isteyen sayı (okunmamış mesaj) basılıyor. */
+.opd-tab-rozet{padding:1px 7px;border-radius:999px;background:var(--danger);color:var(--n-0);font-size:11px;font-weight:700;line-height:1.6}
 .opd-panel{display:grid;gap:16px}
 .opd-panel>.opd-card{margin:0}
 
@@ -370,8 +358,14 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-ff select[data-tone="warning"]{border-color:color-mix(in srgb,var(--warning) 45%,var(--line));color:var(--warning)}
 .opd-ff select[data-tone="success"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success)}
 .opd-ff select[data-tone="danger"]{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
-/* Anında kaydediliyor; düğme yalnızca JS kapalıyken çıkıyor (aninda.tsx). */
-.aninda-kaydet{display:none;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
+/*
+  Anında kaydediliyor; düğme yalnızca JS kapalıyken çıkıyor (aninda.tsx).
+
+  Seçici ".opd ..." ile yazılıyor: ".opd-step button{display:flex}" kuralı
+  daha özgül (bir sınıf + bir tür) ve gizlemeyi eziyordu — canlıda her
+  alanın yanında "Kaydet" görünüyordu.
+*/
+.opd .aninda-kaydet,.aninda-kaydet{display:none;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
 .opd-step .opd-step-hint{color:var(--muted);font-size:12.5px}
 
 /*

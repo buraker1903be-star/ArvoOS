@@ -159,7 +159,7 @@ export default async function OperationDetailPage({
       "Durum" tek satırlık içerik için birer sekme harcıyordu. İş sekmesi
       operasyoncunun çalıştığı yer: durum, görevler ve künye bir arada.
     */
-    { key: "is", label: "İş", rozet: steps.length ? `${completedCount}/${steps.length}` : null, tone: "neutral" },
+    { key: "is", label: "İş", rozet: null, tone: "neutral" },
     {
       key: "musteri",
       label: "Müşteri",
