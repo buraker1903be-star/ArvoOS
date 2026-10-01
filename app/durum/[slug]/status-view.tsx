@@ -7,6 +7,7 @@
    müşteriye yeni bir veri açılmaz. */
 
 import type { CSSProperties, ReactNode } from "react";
+import { gorevAkisi } from "@/lib/takip-gorevleri";
 
 export type StatusTone = "live" | "planned" | "waiting" | "done" | "cancelled";
 export type StatusInfo = { label: string; tone: StatusTone; note: string };
@@ -74,8 +75,22 @@ export function phaseProgress(progress: number, tone: StatusTone) {
   return { reached: tone === "cancelled" ? reached : current, current };
 }
 
-export type GercekAsama = { ad: string; durum: "done" | "current" | "upcoming" };
-export type TakipAsamalari = { asamalar: GercekAsama[]; toplam: number; tamamlanan: number; guncel: string | null };
+export type AsamaDurumu = "done" | "current" | "upcoming";
+export type GercekAsama = { ad: string; durum: AsamaDurumu };
+export type GercekGorev = { ad: string; asama: string; durum: AsamaDurumu };
+export type TakipAsamalari = {
+  asamalar: GercekAsama[];
+  toplam: number;
+  tamamlanan: number;
+  guncel: string | null;
+  /* Görev tanımları: kurum aşamaları açtıysa (aynı bayrak) dolu gelir.
+     Eski sürüm bu alanları döndürmüyordu; isteğe bağlı bırakıldı ki
+     migration uygulanmadan önce ekran çökmesin. */
+  gorevler?: GercekGorev[];
+  gorevToplam?: number;
+  gorevTamamlanan?: number;
+  guncelGorev?: string | null;
+};
 
 export function currentPhaseLabel(progress: number, status: StatusInfo, asamalar?: TakipAsamalari | null) {
   if (status.tone === "done") return "Teslim edildi";
@@ -120,7 +135,8 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
   */
   if (asamalar?.asamalar.length) {
     return (
-      <ol className="trk-phases" data-tone={tone} aria-label="Süreç aşamaları">
+      <>
+      <ol className="trk-phases" data-tone={tone} style={{ "--trk-asama-adet": asamalar.asamalar.length } as CSSProperties} aria-label="Süreç aşamaları">
         {asamalar.asamalar.map((asama, index) => (
           <li
             key={`${asama.ad}-${index}`}
@@ -137,6 +153,8 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
           </li>
         ))}
       </ol>
+      <GorevAkisi gorevler={asamalar.gorevler} tone={tone} />
+      </>
     );
   }
   const { reached, current } = phaseProgress(progress, tone);
@@ -156,6 +174,67 @@ export function PhaseTimeline({ progress, tone, asamalar }: { progress: number; 
         );
       })}
     </ol>
+  );
+}
+
+/*
+  GÖREV AKIŞI — tamamlananlar üstte çizili, şu an yapılan kalın, altında
+  sıradaki görev.
+
+  "Kayan" kısım HOOK'SUZ çözüldü: bu dosya hem sunucu hem istemci
+  bileşenlerinden içe aktarılıyor, useEffect ekleyemez. Tamamlananlar
+  listesi `flex-direction:column-reverse` ile kuruluyor; tarayıcı böyle
+  bir kaydırıcıyı kendiliğinden SONA (görsel olarak en alta) dayalı
+  açar. Bu yüzden diziyi ters basıyoruz: DOM'daki ilk eleman en altta,
+  yani en son biten görev tam "şu an" satırının üstünde duruyor ve
+  müşteri yukarı kaydırarak geçmişi görüyor. JavaScript ile
+  scrollIntoView yapsaydık ilk boyamada liste yanlış yerde durur,
+  sonra zıplardı.
+*/
+export function GorevAkisi({ gorevler, tone }: { gorevler?: GercekGorev[]; tone: StatusTone }) {
+  const akis = gorevAkisi(gorevler);
+  if (!akis) return null;
+  const { bitenlerDom, simdi, siradaki, kalan, tamamlanan, toplam } = akis;
+
+  return (
+    <div className="trk-gorevler" data-tone={tone}>
+      <p className="trk-overline trk-gorevler-baslik">
+        Görevler
+        <span>{tamamlanan}/{toplam} tamamlandı</span>
+      </p>
+
+      {bitenlerDom.length ? (
+        <ol className="trk-gorev-biten" aria-label="Tamamlanan görevler" tabIndex={0}>
+          {/* Sıra lib/takip-gorevleri.ts'te ters çevrildi; bkz. oradaki not. */}
+          {bitenlerDom.map((gorev, index) => (
+            <li key={`${gorev.ad}-${index}`}>
+              <IconCheck />
+              <span>{gorev.ad}</span>
+              <span className="trk-sr"> — tamamlandı</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+
+      {simdi ? (
+        <div className="trk-gorev-simdi" aria-current="step">
+          <span className="trk-gorev-nabiz" aria-hidden="true" />
+          <div>
+            <span className="trk-gorev-asama">{simdi.asama}</span>
+            <strong>{simdi.ad}</strong>
+          </div>
+          <span className="trk-sr">şu an yapılan görev</span>
+        </div>
+      ) : null}
+
+      {siradaki ? (
+        <div className="trk-gorev-sirada">
+          <span className="trk-gorev-asama">Sırada · {siradaki.asama}</span>
+          <span>{siradaki.ad}</span>
+          {kalan ? <small>+{kalan} görev daha</small> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

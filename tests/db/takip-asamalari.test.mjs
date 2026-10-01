@@ -1,12 +1,19 @@
 /*
   MÜŞTERİ TAKİP SAYFASINDA GERÇEK AŞAMALAR.
 
-  Takip sayfası yüzdeden türetilmiş genel beş aşama gösteriyordu ve bu
-  bilinçliydi: adım adları ("İç Kontrol Yapılıyor") müşteriye açılmaz.
-  Aşama başlıkları gruplamak için yazılmış, okunabilir adlar — ama karar
-  yine kurumun. Burada sabitlenen üç şey: varsayılan KAPALI, adım
-  başlıkları hiçbir durumda dışarı çıkmıyor, ve kapı mevcut takip
-  fonksiyonlarıyla aynı.
+  Takip sayfası yüzdeden türetilmiş genel beş aşama gösteriyordu.
+  Aşama başlıkları kurumun açtığı bir bayrakla (tracking_show_phases)
+  müşteriye açıldı.
+
+  01.10.2026: KARAR DEĞİŞTİ. Adım (görev) başlıkları da gösteriliyor —
+  kurum "Planlama aşaması" yerine müşterinin tam olarak hangi işin
+  bittiğini görmesini istedi. Bu, önceki "adım başlıkları hiçbir durumda
+  dışarı çıkmaz" kuralının bilinçli olarak geri alınmasıdır; eski testi
+  silmedim, YENİ kuralı sabitleyecek biçimde değiştirdim ki ileride biri
+  "görev adları sızıyor" diye geri almasın.
+
+  Sabitlenenler: varsayılan KAPALI, görev adları AYNI bayrağa bağlı
+  (ikinci bir anahtar yok), kapı mevcut takip fonksiyonlarıyla aynı.
 */
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -37,6 +44,8 @@ before(async () => {
   if (!(await sutun("organizations", "tracking_show_phases"))) {
     await db.exec(fs.readFileSync(migration("20261001100249_musteri_takip_asamalari.sql"), "utf8"));
   }
+  // Görev tanımlarını ekleyen sürüm (create or replace; yeniden koşması zararsız).
+  await db.exec(fs.readFileSync(migration("20261001173620_gorev_tanimlari_takipte.sql"), "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
@@ -94,13 +103,52 @@ describe("takip sayfası aşamaları", () => {
       assert.deepEqual([j.toplam, j.tamamlanan], [3, 1]);
     }));
 
-  test("ADIM başlıkları müşteriye hiç çıkmıyor", () =>
+  test("görev tanımları aşamasıyla ve durumuyla dönüyor", () =>
     islem(db, async () => {
       await tohum({ goster: true });
-      const metin = JSON.stringify(await asamalar());
-      for (const adim of ["Tez Öneri Formu", "Etik Kurul İzni", "Veri Toplama", "Bulgular Bölümü", "Savunma Sunumu"]) {
-        assert.equal(metin.includes(adim), false, `adım başlığı sızdı: ${adim}`);
-      }
+      const j = await asamalar();
+      assert.deepEqual(j.gorevler, [
+        { ad: "Tez Öneri Formu", asama: "Hazırlık", durum: "done" },
+        { ad: "Etik Kurul İzni", asama: "Hazırlık", durum: "done" },
+        { ad: "Veri Toplama", asama: "Yöntem, Veri ve Analiz", durum: "done" },
+        { ad: "Bulgular Bölümü", asama: "Yöntem, Veri ve Analiz", durum: "current" },
+        { ad: "Savunma Sunumu", asama: "Savunma", durum: "upcoming" },
+      ]);
+      assert.equal(j.guncelGorev, "Bulgular Bölümü");
+      assert.deepEqual([j.gorevToplam, j.gorevTamamlanan], [5, 3]);
+    }));
+
+  test("şu anki görevi veritabanı seçer: in_progress öne geçer", () =>
+    islem(db, async () => {
+      const isId = await tohum({ goster: true });
+      await rol(db, "postgres");
+      // Sıradaki "Bulgular Bölümü" iken ekip "Savunma Sunumu"na başladı.
+      await db.query(
+        `update public.operation_steps set status = 'in_progress'
+         where workflow_id = $1 and title = 'Savunma Sunumu'`, [isId]);
+      const j = await asamalar();
+      assert.equal(j.guncelGorev, "Savunma Sunumu");
+      const simdiki = j.gorevler.filter((g) => g.durum === "current");
+      assert.equal(simdiki.length, 1, "şu an yapılan iş tek olmalı");
+    }));
+
+  test("bayrak kapalıyken görev adları da çıkmıyor", () =>
+    islem(db, async () => {
+      await tohum({ goster: false });
+      // Aynı anahtar: aşamalar kapalıysa görev adları da kapalı.
+      assert.equal(await asamalar(), null);
+    }));
+
+  test("bütün görevler bitince şu anki görev kalmıyor", () =>
+    islem(db, async () => {
+      const isId = await tohum({ goster: true });
+      await rol(db, "postgres");
+      await db.query(
+        `update public.operation_steps set is_completed = true, completed_at = now()
+         where workflow_id = $1`, [isId]);
+      const j = await asamalar();
+      assert.equal(j.guncelGorev, null);
+      assert.equal(j.gorevler.every((g) => g.durum === "done"), true);
     }));
 
   test("varsayılan kapalı: kurum açmadıysa hiçbir şey dönmüyor", () =>
