@@ -309,25 +309,38 @@ function Kart({
       {kolon.tur === "sablon_disi" ? (
         <p className="ops-pano-asama">{kart.guncelAsama ?? "Aşama üretilmemiş"}</p>
       ) : null}
+      {/*
+        TAŞIMA DÜĞMELERİ KENDİ SATIRINDA ve ikisi bir çift.
+
+        Önce sayaçla aynı sırada, flex-wrap ile duruyorlardı: 232px'lik
+        kartta "Tamamla →" sığıp "← Geri al" alt satıra tek başına
+        düşüyordu — öksüz, hizasız ve 22px'lik dokunma hedefiyle
+        (ölçüldü). Artık sayaç üstte, düğmeler altta tam genişlikte bir
+        ızgarada. Sıra oklara uyuyor: geri solda, ileri sağda.
+      */}
       <div className="ops-pano-tasi">
         <span className="ops-pano-sayac">
           {kart.tamamlananAsama}/{kart.toplamAsama} aşama
         </span>
         {/* Dokunmatik ve klavye için: sürükleme oralarda çalışmıyor. */}
-        {yetkili && kart.guncelAsamaId ? (
-          <button
-            type="button"
-            data-tone="success"
-            onClick={() => onDurum(kart.guncelAsamaId!, "done")}
-            title={`“${kart.guncelAsama}” aşamasını tamamla`}
-          >
-            Tamamla →
-          </button>
-        ) : null}
-        {yetkili && kart.oncekiAsamaId ? (
-          <button type="button" onClick={() => onDurum(kart.oncekiAsamaId!, "in_progress")} title="Bir önceki aşamayı yeniden aç">
-            ← Geri al
-          </button>
+        {yetkili && (kart.oncekiAsamaId || kart.guncelAsamaId) ? (
+          <div className="ops-pano-eylem" data-tek={kart.oncekiAsamaId && kart.guncelAsamaId ? undefined : "1"}>
+            {yetkili && kart.oncekiAsamaId ? (
+              <button type="button" onClick={() => onDurum(kart.oncekiAsamaId!, "in_progress")} title="Bir önceki aşamayı yeniden aç">
+                ← Geri al
+              </button>
+            ) : null}
+            {yetkili && kart.guncelAsamaId ? (
+              <button
+                type="button"
+                data-tone="success"
+                onClick={() => onDurum(kart.guncelAsamaId!, "done")}
+                title={`“${kart.guncelAsama}” aşamasını tamamla`}
+              >
+                Tamamla →
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {/*

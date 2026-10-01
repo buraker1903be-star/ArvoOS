@@ -124,12 +124,25 @@
 .ops-pano-bekleme[data-uzun="1"]{background:var(--warning-soft);color:var(--warning)}
 
 /* Kolon değiştirme düğmeleri: dokunmatik ve klavye için (sürükleme orada yok). */
-.ops-pano-tasi{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-top:7px;border-top:1px solid var(--line-soft)}
-.ops-pano-tasi button{padding:3px 7px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
-.ops-pano-tasi button:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
-.ops-pano-tasi button[data-tone="success"]{border-color:var(--success);color:var(--success)}
-.ops-pano-tasi button[data-tone="success"]:hover{background:var(--success);color:var(--paper)}
-.ops-pano-sayac{margin-right:auto;font-size:11px;font-weight:700;color:var(--dim)}
+/*
+  Sayaç üstte, düğmeler altta. Önce hepsi tek flex sırasındaydı ve
+  flex-wrap ile sarıyordu: 232px'lik kartta "Tamamla →" sığıp
+  "← Geri al" alt satıra TEK BAŞINA düşüyordu (ölçüldü). Izgara hem
+  hizayı hem de dokunma hedefini sabitliyor.
+*/
+.ops-pano-tasi{display:grid;gap:7px;padding-top:7px;border-top:1px solid var(--line-soft)}
+.ops-pano-sayac{font-size:11px;font-weight:700;color:var(--dim)}
+/*
+  "Geri al" içeriği kadar, "Tamamla" kalanı alıyor: asıl eylem o ve
+  büyük hedef ona düşmeli. Tek düğme varsa satırı o kaplıyor.
+*/
+.ops-pano-eylem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px}
+.ops-pano-eylem[data-tek="1"]{grid-template-columns:minmax(0,1fr)}
+.ops-pano-eylem button{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font:inherit;font-size:11.5px;font-weight:700;white-space:nowrap;cursor:pointer;transition:border-color .12s,color .12s,background .12s}
+.ops-pano-eylem button:hover{border-color:var(--accent-500);color:var(--accent-600);background:var(--surface)}
+.ops-pano-eylem button:focus-visible{outline:2px solid var(--accent-500);outline-offset:1px}
+.ops-pano-eylem button[data-tone="success"]{border-color:var(--success);color:var(--success);background:var(--success-soft)}
+.ops-pano-eylem button[data-tone="success"]:hover{background:var(--success);color:var(--paper)}
 
 /*
   İlerleme çubuğu kartın ALT KENARINDA, tam genişlikte: kolonu tarayan göz
