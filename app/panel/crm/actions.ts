@@ -499,7 +499,25 @@ async function addInternalComment__impl(formData: FormData) {
       throw new Error(
         `Yorumun bağlı olduğu kayıt okunamadı (${contextError.code ?? "kodsuz"}): ${contextError.message}`,
       );
-    throw new Error("Yorumun bağlı olduğu CRM kaydı bulunamadı veya bu kayda erişiminiz yok.");
+    /*
+      HANGİ KAYIT OLDUĞU MESAJDA YAZIYOR. Eski cümle "CRM kaydı" diyordu
+      ve dört ayrı kaynağa (talep, teklif, sözleşme, iş) karşılık
+      geliyordu; kullanıcı hatayı bildirdiğinde hangisinde düştüğü
+      anlaşılmıyor, sebep ancak sunucu günlüğünden okunabiliyordu.
+      02.10.2026'da üç personelin yorum yazamaması tam bu yüzden
+      tahminle aranmaya başlandı.
+    */
+    const kaynakAdi: Record<string, string> = {
+      request: "talep",
+      proposal: "teklif",
+      contract: "sözleşme",
+      operation: "iş",
+    };
+    throw new Error(
+      `Yorumun bağlı olduğu ${kaynakAdi[contextType] ?? contextType} kaydı bulunamadı ` +
+        "veya bu kayda erişiminiz yok. (Bu işin sorumlusu siz değilseniz yöneticinizden " +
+        "sizi işe atamasını isteyin.)",
+    );
   }
 
   const { error } = await supabase.from("crm_internal_comments").insert({
