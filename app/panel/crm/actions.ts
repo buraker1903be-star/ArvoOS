@@ -484,6 +484,16 @@ async function addInternalComment__impl(formData: FormData) {
       contextType,
       kaynak: "ops_opportunities",
     });
+    /*
+      "Satır gelmedi" ile "sorgu hata verdi" AYNI mesajı veriyordu ve bu
+      teşhisi kördüğüm yaptı: veritabanında her şey yeşilken ekranda aynı
+      cümle çıkıyordu. İkisi artık ayrı konuşuyor; hata kodu (PostgREST
+      ya da Postgres) doğrudan ekrana geliyor.
+    */
+    if (opportunityError)
+      throw new Error(
+        `Talep zinciri okunamadı (${opportunityError.code ?? "kodsuz"}): ${opportunityError.message}`,
+      );
     throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
   }
 
@@ -515,7 +525,10 @@ async function addInternalComment__impl(formData: FormData) {
       contextId,
       kaynak: contextTables[contextType],
     });
-    if (contextError) throw new Error("Yorumun bağlı olduğu kayıt doğrulanamadı: " + contextError.message);
+    if (contextError)
+      throw new Error(
+        `Yorumun bağlı olduğu kayıt okunamadı (${contextError.code ?? "kodsuz"}): ${contextError.message}`,
+      );
     throw new Error("Yorumun bağlı olduğu CRM kaydı bulunamadı veya bu kayda erişiminiz yok.");
   }
 
