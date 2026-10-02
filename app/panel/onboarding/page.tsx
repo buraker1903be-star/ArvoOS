@@ -9,8 +9,8 @@ import "../platform/platform.css";
 const DEFAULT_BRAND_COLOR = "#8e6d33";
 
 export default async function OnboardingPage() {
-  const { supabase, organization, membership } = await getPanelContext();
-  if (!membership || !["owner", "admin"].includes(membership.role)) redirect("/panel");
+  const { supabase, organization, membership, izin } = await getPanelContext();
+  if (!membership || !izin("settings.kurulum.yonet")) redirect("/panel");
 
   const [{ data: onboarding }, { data: current }] = await Promise.all([
     supabase.from("organization_onboarding").select("legal_name,phone,website,logo_url,primary_color,completed_at").eq("organization_id", organization.id).maybeSingle(),

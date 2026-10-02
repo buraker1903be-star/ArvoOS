@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { toFeedItem, type NotificationFeedResult } from "./feed";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
+import { assertYetki } from "@/lib/yetkiler";
 
 // Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel ve
 // notification_user_reads tablosunda tutulur; eskiden bildirimin kendi
@@ -108,8 +109,8 @@ async function deleteReadNotification__impl(formData: FormData) {
 }
 
 async function sendManagementAnnouncement__impl(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Duyuru gönderme yetkiniz yok.");
+  const { supabase, membership, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "bildirim.duyuru.gonder");
   const title = String(formData.get("title") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const recipient = String(formData.get("recipient_user_id") ?? "all");

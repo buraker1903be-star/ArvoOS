@@ -68,12 +68,12 @@ function CrmIcon({ name, size = 18 }: { name: string; size?: number }) {
 }
 
 export default async function CrmOverviewPage() {
-  const { supabase, membership, modules, hiddenModuleKeys, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
+  const canAssign = izin("crm.kayit.ata");
   // Raporlar Finans sekmesi: Finans kapısından (sahip/yönetici) geçemeyene bağlantı gösterilmez
-  const canSeeReports = (isPlatformOwner || ["owner", "admin"].includes(membership.role)) && canSeeFinanceReports({ membership, modules, hiddenModuleKeys });
+  const canSeeReports = (isPlatformOwner || izin("finance.gor")) && canSeeFinanceReports({ modules, yetkiler });
   const time = timeWindow();
 
   const [

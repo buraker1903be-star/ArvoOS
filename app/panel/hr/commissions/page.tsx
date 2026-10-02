@@ -53,9 +53,9 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const period = params.donem || "bu-ay";
   const { start, end, startKey, endKey } = dateRange(period, params.baslangic, params.bitis);
-  const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  if (!isPlatformOwner && !["owner", "admin", "manager"].includes(membership.role)) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
+  if (!isPlatformOwner && !izin("hr.prim.gor")) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
 
   const orgId = membership.organization_id;
   const [{ data: employeeData, error: employeeError }, { data: opportunityData, error: opportunityError }, { data: contractData, error: contractError }, { data: operationData, error: operationError }, { data: collectionData, error: collectionError }, { data: rateHistoryData }] = await Promise.all([
@@ -124,7 +124,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Prim Hesaplama</h1><p>Satış ve operasyon hak edişlerini personel ve dönem bazında takip edin.</p></div>
     </div>
-    <HrTabs active="prim" access={{ membership, isPlatformOwner }} />
+    <HrTabs active="prim" access={{ yetkiler, isPlatformOwner }} />
 
     <section className="hr-card hr-cm-filter" aria-label="Dönem ve personel filtresi">
       <div className="hr-cm-filter-head">

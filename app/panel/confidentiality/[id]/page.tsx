@@ -9,12 +9,12 @@ type Agreement = { id:string; organization_id:string; employee_id:string; agreem
 export default async function ConfidentialityAgreementPage({ params, searchParams }: { params: Promise<{id:string}>; searchParams: Promise<{signed?:string}> }) {
   const { id } = await params;
   const query = await searchParams;
-  const { supabase, userId, membership, organization } = await getPanelContext();
+  const { supabase, userId, membership, organization, izin } = await getPanelContext();
   const { data } = await supabase.from("hr_confidentiality_agreements").select("id,organization_id,employee_id,agreement_no,content_snapshot,status,signer_name,signature_path,signed_at,created_at,hr_employees!inner(full_name,user_id,job_title)").eq("id",id).maybeSingle();
   if (!data) notFound();
   const agreement = data as unknown as Agreement;
   const employee = Array.isArray(agreement.hr_employees) ? agreement.hr_employees[0] : agreement.hr_employees;
-  const isManager = agreement.organization_id === membership.organization_id && ["owner","admin","manager"].includes(membership.role);
+  const isManager = agreement.organization_id === membership.organization_id && izin("hr.gizlilik.gor");
   const isEmployee = employee.user_id === userId;
   if (!isManager && !isEmployee) notFound();
 

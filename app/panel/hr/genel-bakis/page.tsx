@@ -36,11 +36,11 @@ function clock() {
 }
 
 export default async function HrOverviewPage() {
-  const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
-  const access = { membership, isPlatformOwner };
-  const canManageTeam = ["owner", "admin"].includes(membership.role);
+  const access = { yetkiler, isPlatformOwner };
+  const canManageTeam = izin("hr.ekip.yonet");
   const canSeeRecords = canSeeHrRecords(access);
   const time = clock();
   const none = Promise.resolve({ data: [] as never[], error: null });

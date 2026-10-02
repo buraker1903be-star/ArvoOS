@@ -11,11 +11,12 @@ import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { syncArvolabMembers } from "@/lib/arvolab";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { assertYetki } from "@/lib/yetkiler";
 import { davetEngeli } from "@/lib/kota-durumu";
 
 async function teamContext() {
   const context = await getPanelContext();
-  if (!["owner", "admin"].includes(context.membership.role)) throw new Error("Ekip yönetimi için yönetici yetkisi gerekiyor.");
+  assertYetki(context.yetkiler, "hr.ekip.yonet");
   assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
   return context;
 }

@@ -84,9 +84,9 @@ function groupByDay(sessions: Session[]) {
 
 export default async function PersonnelActivityPage({ searchParams }: { searchParams: Promise<{ aralik?: string; kisi?: string; sayfa?: string }> }) {
   const { aralik, kisi, sayfa } = await searchParams;
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, yetkiler, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  if (!["owner", "admin", "manager"].includes(membership.role)) throw new Error("Personel hareketlerini görme yetkiniz yok.");
+  if (!izin("hr.hareket.gor")) throw new Error("Personel hareketlerini görme yetkiniz yok.");
 
   const secilenAralik = ARALIKLAR.find((item) => item.value === aralik) ?? ARALIKLAR.find((item) => item.value === VARSAYILAN_ARALIK)!;
   const secilenKisi = typeof kisi === "string" && kisi ? kisi : "";
@@ -229,7 +229,7 @@ export default async function PersonnelActivityPage({ searchParams }: { searchPa
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Personel Hareketleri</h1><p>Çevrimiçi durum, son görülme ve giriş-çıkış geçmişi.{sayfaNo === 1 && !suzgecVar ? " Sayfa 30 saniyede bir kendiliğinden yenilenir." : " Süzgeç açıkken kendiliğinden yenilenmez."}</p></div>
       <div className="panel-page-actions">{sayfaNo === 1 && !suzgecVar ? <span className="hr-live" role="status"><i aria-hidden="true" />Canlı · 30 sn</span> : <Link className="panel-secondary" href="/panel/hr/activity">Canlı görünüme dön</Link>}</div>
     </div>
-    <HrTabs active="hareketler" access={{ membership }} />
+    <HrTabs active="hareketler" access={{ yetkiler }} />
 
     <section className="hr-widgets" aria-label="Özet">
       {widgets.map((widget) => (

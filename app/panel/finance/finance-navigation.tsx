@@ -5,23 +5,23 @@ import Link from "next/link";
 // Banka) hiçbir sayfada kullanılmıyordu ve "?tab=banka" okunmuyordu.
 export type FinanceTabKey = "genel-bakis" | "cari" | "paytr" | "maliyet" | "raporlar";
 
+/*
+  Sekme görünürlüğü artık rol listesinden değil yetenek anahtarından geliyor.
+  Eskiden "İş Maliyetleri" ve "Raporlar" sabit olarak Kurum Sahibi +
+  Yönetici'ye açıktı; bir kurum kendi yöneticisinden maliyeti almak ya da
+  satış şefine raporu açmak isterse yapamıyordu — kural koddaydı.
+*/
 type PanelAccess = {
-  membership: { role: string };
   modules: { code: string }[];
-  hiddenModuleKeys: ReadonlySet<string>;
+  yetkiler: ReadonlySet<string>;
 };
 
-/** İş maliyetleri yalnızca Kurum Sahibi ve Yönetici'ye açık. */
-export const canManageCosts = (context: PanelAccess) => ["owner", "admin"].includes(context.membership.role);
+export const canManageCosts = (context: PanelAccess) => context.yetkiler.has("finance.maliyet.yonet");
 
-/**
- * Raporlar sekmesi: kurumda Raporlar modülü açık olmalı ve rolün "Raporlar"
- * yetkisi kapatılmamış olmalı (Kurum Sahibi kısıtlanamaz). Finans kapısı
- * (sahip/yönetici) zaten ayrıca uygulanıyor.
- */
+/** Raporlar sekmesi: kurumda Raporlama modülü açık + rolde rapor yetkisi var. */
 export const canSeeFinanceReports = (context: PanelAccess) =>
   context.modules.some((module) => module.code === "reporting") &&
-  (context.membership.role === "owner" || !context.hiddenModuleKeys.has("reports"));
+  context.yetkiler.has("finance.rapor.gor");
 
 export function FinanceTabs({ active, context }: { active: FinanceTabKey; context: PanelAccess }) {
   const tabs: { key: FinanceTabKey; href: string; label: string }[] = [

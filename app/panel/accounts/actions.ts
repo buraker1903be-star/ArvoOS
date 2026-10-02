@@ -13,7 +13,7 @@ async function accountsContext() {
     throw new Error("Cari hesap modülüne erişiminiz yok.");
   if (
     !context.isPlatformOwner &&
-    !["owner", "admin"].includes(context.membership.role)
+    !context.izin("finance.cari.yonet")
   )
     throw new Error("Bu işlem için yönetici yetkisi gerekli.");
   assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);

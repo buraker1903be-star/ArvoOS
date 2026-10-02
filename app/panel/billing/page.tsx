@@ -17,7 +17,7 @@ function formatIban(iban: string) {
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
-  const { supabase, organization, membership } = await getPanelContext();
+  const { supabase, organization, membership, izin } = await getPanelContext();
   const params = await searchParams;
 
   const [{ data: bankAccounts }, { data: payments }, { data: license }, { data: productLicenses }] = await Promise.all([
@@ -27,7 +27,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     supabase.from("organization_product_licenses").select("product,status,monthly_fee,current_period_end").eq("organization_id", organization.id),
   ]);
 
-  const canSubmit = membership && ["owner", "admin"].includes(membership.role);
+  const canSubmit = membership && izin("finance.lisans.yonet");
   // Kartla ödeme: ürünün aylık ücreti girilmiş + ArvoOS'un PayTR mağazası bağlı olmalı
   const platformId = canSubmit ? await getPlatformOrganizationId() : null;
   const platformPaytr = platformId && platformId !== organization.id ? await getPaytrStatus(platformId) : null;

@@ -6,15 +6,14 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { LEGAL_FIELDS, firstLegalError, legalDetailsFrom, normalizeLegalDetails, validateLegalDetails } from "./legal-details";
 import { uploadOrganizationImage } from "@/lib/organization-assets";
+import { assertYetki } from "@/lib/yetkiler";
 
 const text = (formData: FormData, key: string, max = 500) =>
   String(formData.get(key) ?? "").trim().slice(0, max);
 
 async function updateDocumentBranding__impl(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) {
-    throw new Error("Kurumsal kimlik ayarlarını değiştirme yetkiniz yok.");
-  }
+  const { supabase, membership, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "settings.kurum.yonet");
 
   // Varsayılan: panelin şampanya vurgusu (eskiden yeşil #183f31 yazılıyordu)
   const primaryColor = text(formData, "primary_color", 20) || "#8e6d33";
@@ -88,10 +87,8 @@ async function updateDocumentBranding__impl(formData: FormData) {
 }
 
 async function updateLegalDetails__impl(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) {
-    throw new Error("Kurumun resmi bilgilerini değiştirme yetkiniz yok.");
-  }
+  const { supabase, membership, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "settings.kurum.yonet");
 
   const raw = legalDetailsFrom(Object.fromEntries(LEGAL_FIELDS.map((field) => [field, String(formData.get(field) ?? "").slice(0, 1000)])));
   const invalid = firstLegalError(validateLegalDetails(raw));
@@ -131,8 +128,8 @@ function cleanDomain(value: string) {
 }
 
 async function updateCustomDomain__impl(formData: FormData) {
-  const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) throw new Error("Alan adı ayarlarını değiştirme yetkiniz yok.");
+  const { supabase, membership, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "settings.kurum.yonet");
 
   const { connectDomainToVercel, disconnectDomainFromVercel, isPlatformDomain } = await import("@/lib/vercel-domains");
   const domain = cleanDomain(String(formData.get("custom_domain") ?? ""));
@@ -184,8 +181,8 @@ async function updateCustomDomain__impl(formData: FormData) {
 }
 
 async function checkCustomDomainStatus__impl() {
-  const { supabase, membership } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yetkiniz yok.");
+  const { supabase, membership, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "settings.kurum.yonet");
 
   const { data: org } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
   if (!org?.custom_domain) throw new Error("Tanımlı bir özel alan adı yok.");

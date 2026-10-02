@@ -10,7 +10,6 @@ import {
   scheduleDateIssue,
 } from "@/lib/payment-schedule";
 import {
-  DELETE_ROLES,
   amount,
   ensureRepresentative,
   getPanelContext,
@@ -337,8 +336,8 @@ async function issueProposalLink__impl(formData: FormData) {
 // Aynı, zaten kanıtlanmış kabul mantığını (respond_to_crm_proposal) müşteri
 // linkine gitmeden, personel adına tetikler.
 async function fastTrackProposalToContract__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.teklif.yonet"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   if (!proposalId) throw new Error("Teklif seçilmedi.");
@@ -407,8 +406,8 @@ async function fastTrackProposalToContract__impl(formData: FormData) {
 // işaretlemek için — kabul edilmiş veya zaten kilitli tekliflerde
 // kullanılamaz.
 export async function markProposalStatus(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.teklif.yonet"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   const status = text(formData, "status", 20);
@@ -456,8 +455,8 @@ export async function markProposalStatus(formData: FormData) {
 // Teklifi kalıcı olarak siler. Kabul edilip gerçek bir sözleşmeye
 // dönüşmüş teklifler, veri bütünlüğünü bozmamak için silinemez.
 async function deleteProposal__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!DELETE_ROLES.includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.teklif.sil"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   if (!proposalId) throw new Error("Teklif seçilmedi.");
@@ -520,8 +519,8 @@ async function deleteProposal__impl(formData: FormData) {
  * olduğu için ayrı bir onay adımından geçmeli (deleteProposal).
  */
 async function resolveProposal__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.teklif.yonet"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const proposalId = text(formData, "proposal_id", 80);
   const resolution = text(formData, "resolution", 20);

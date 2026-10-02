@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { assertYetki } from "@/lib/yetkiler";
 
 async function bankingContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "banking")) throw new Error("Banka modülüne erişiminiz yok.");
-  if (!['owner','admin'].includes(context.membership.role)) throw new Error("Bu işlem için yönetici yetkisi gerekir.");
+  assertYetki(context.yetkiler, "finance.banka.yonet");
   assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);
   return context;
 }

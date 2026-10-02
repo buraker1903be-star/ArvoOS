@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
+import { assertYetki } from "@/lib/yetkiler";
 
 // PayTR taksit ödeme bağlantısı (Finans → PAYTR Tahsilatları). Yalnızca
 // Kurum Sahibi ve Yönetici.
@@ -20,7 +21,7 @@ import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId,
 
 async function paytrContext() {
   const context = await getPanelContext();
-  if (!["owner", "admin"].includes(context.membership.role)) throw new Error("PayTR işlemlerini yalnızca Kurum Sahibi ve Yönetici yapabilir.");
+  assertYetki(context.yetkiler, "finance.odeme.saglayici");
   assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı olmadığı için PayTR kullanılamıyor.");

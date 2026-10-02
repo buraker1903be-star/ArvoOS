@@ -32,10 +32,10 @@ const sections = [
 ];
 
 export default async function SettingsPage() {
-  const { organization, membership, modules, supabase } = await getPanelContext();
+  const { organization, membership, modules, supabase, izin } = await getPanelContext();
   const enabledCodes = new Set(modules.map((module) => module.code));
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
-  const canManage = ["owner", "admin"].includes(membership.role);
+  const canManage = izin("settings.kurum.yonet");
   // Ödeme sağlayıcıları yalnızca sahip/yöneticiye (anahtarlar hiç okunmaz)
   const odemeSaglayicilari = canManage ? await saglayiciDurumlari(membership.organization_id) : [];
   // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
@@ -56,7 +56,7 @@ export default async function SettingsPage() {
 
   const teamLinks = [
     enabledCodes.has("hr") ? { href: "/panel/hr", icon: "users", tone: "info" as const, title: "İnsan Kaynakları", note: "Personel, davetler ve roller" } : null,
-    canManage ? { href: "/panel/settings/permissions", icon: "shield", tone: "success" as const, title: "Yetkilendirme", note: "Rollerin hangi modülleri göreceği" } : null,
+    izin("settings.yetki.yonet") ? { href: "/panel/settings/permissions", icon: "shield", tone: "success" as const, title: "Yetkilendirme", note: "Rol ve kişi bazlı modül/işlem yetkileri" } : null,
     enabledCodes.has("support") ? { href: "/panel/support", icon: "support", tone: "gold" as const, title: "Destek Merkezi", note: "Destek talepleri ve yanıtlar" } : null,
   ].filter((link): link is NonNullable<typeof link> => link !== null);
 

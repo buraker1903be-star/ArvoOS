@@ -25,11 +25,11 @@ const dateText = (value: string) => new Date(`${value}T00:00:00+03:00`).toLocale
 type Employee = { id: string; full_name: string; job_title: string | null; employment_status: string; commission_rate: number };
 
 export default async function PrimHesabiPage({ searchParams }: { searchParams: Promise<{ personel?: string }> }) {
-  const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  const access = { membership, isPlatformOwner };
+  const access = { yetkiler, isPlatformOwner };
   if (!canSeeCommissions(access)) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
-  const canManage = ["owner", "admin"].includes(membership.role);
+  const canManage = izin("hr.prim.yonet");
 
   const orgId = membership.organization_id;
   const [employeeResult, opportunityResult, contractResult, operationResult, collectionResult, rateResult, paymentResult] = await Promise.all([

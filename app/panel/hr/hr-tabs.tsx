@@ -6,14 +6,20 @@ import Link from "next/link";
 // Her sekme, açtığı sayfanın kendi yetki kuralıyla görünür.
 export type HrTabKey = "genel-bakis" | "personel" | "prim" | "prim-hesabi" | "gizlilik" | "hareketler";
 
-type HrAccess = { membership: { role: string }; isPlatformOwner?: boolean };
+/*
+  Sekmelerin görünürlüğü rol listesinden değil yetenek anahtarından geliyor.
+  Eskiden "Prim", "Gizlilik" ve "Hareketler" sabit olarak Kurum Sahibi +
+  Yönetici + Yönetici (sınırlı) için açıktı; kurum bunu değiştiremiyordu.
+*/
+type HrAccess = { yetkiler: ReadonlySet<string>; isPlatformOwner?: boolean };
 
 /** Prim hesaplama: commissions/page.tsx ile aynı kural. */
 export const canSeeCommissions = (access: HrAccess) =>
-  Boolean(access.isPlatformOwner) || ["owner", "admin", "manager"].includes(access.membership.role);
+  Boolean(access.isPlatformOwner) || access.yetkiler.has("hr.prim.gor");
 
 /** Gizlilik sözleşmeleri ve personel hareketleri: ilgili sayfalarla aynı kural. */
-export const canSeeHrRecords = (access: HrAccess) => ["owner", "admin", "manager"].includes(access.membership.role);
+export const canSeeHrRecords = (access: HrAccess) =>
+  access.yetkiler.has("hr.gizlilik.gor") || access.yetkiler.has("hr.hareket.gor");
 
 export function HrTabs({ active, access }: { active: HrTabKey; access: HrAccess }) {
   const tabs: { key: HrTabKey; href: string; label: string }[] = [

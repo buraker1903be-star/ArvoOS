@@ -112,7 +112,7 @@ async function calismaTuruCoz(
 
 async function createOpportunity__impl(formData: FormData) {
   const context = await crmContext();
-  const { supabase, userId, membership } = context;
+  const { supabase, userId, membership, yetkiler } = context;
   const title = text(formData, "title", 180);
   const customerName = text(formData, "customer_name", 180);
   const selectedServiceType = text(formData, "service_type", 120);
@@ -123,7 +123,7 @@ async function createOpportunity__impl(formData: FormData) {
     throw new Error("Müşteri veya kurum adı en az 2 karakter olmalıdır.");
   if (selectedServiceType === "Diğer" && customServiceType.length < 2)
     throw new Error("Diğer hizmet türünü yazmalısınız.");
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
+  const canAssign = yetkiler.has("crm.kayit.ata");
   let assignment;
   if (canAssign) {
     assignment = await validateSalesEmployee(
@@ -234,7 +234,7 @@ async function createOpportunity__impl(formData: FormData) {
 }
 
 async function updateOpportunity__impl(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
+  const { supabase, membership, userId, yetkiler } = await crmContext();
   const opportunityId = text(formData, "opportunity_id", 80);
   // Değişikliği yazabilmek için önceki hali gerekiyor.
   const { data: before } = await supabase
@@ -278,7 +278,7 @@ async function updateOpportunity__impl(formData: FormData) {
   // Temsilci yalnızca gerçekten değiştiyse güncellenir. Eskiden atanmış
   // temsilci listede yoksa (pasif / satışa kapalı) açılır liste boş değer
   // gönderiyor ve alakasız her kayıtta talep sessizce atamasız kalıyordu.
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
+  const canAssign = yetkiler.has("crm.kayit.ata");
   const requestedAssignee = text(formData, "assigned_employee_id", 80);
   if (
     canAssign &&
@@ -343,8 +343,8 @@ async function updateOpportunity__impl(formData: FormData) {
 }
 
 async function archiveOpportunity__impl(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await crmContext();
+  if (!yetkiler.has("crm.talep.yonet"))
     throw new Error(
       "Talep silme işlemi yalnızca yöneticiler tarafından yapılabilir.",
     );
@@ -595,8 +595,8 @@ async function addInternalComment__impl(formData: FormData) {
  * boşalırdı. Bu yüzden ayrı ve dar kapsamlı bir action.
  */
 async function assignOpportunity__impl(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
-  if (!["owner", "admin", "manager"].includes(membership.role)) {
+  const { supabase, membership, userId, yetkiler } = await crmContext();
+  if (!yetkiler.has("crm.kayit.ata")) {
     throw new Error("Temsilci atama yetkiniz yok.");
   }
   const opportunityId = text(formData, "opportunity_id", 80);

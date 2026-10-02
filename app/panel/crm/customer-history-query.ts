@@ -85,7 +85,6 @@ export type CustomerKunye = {
   alanlar: Record<string, string>;
 };
 
-const PRIVILEGED = new Set(["owner", "admin", "manager"]);
 /** Talep formundaki pencere */
 export const NOTICE_MAX_ITEMS = 20;
 /** Müşteri sorgulama penceresi */
@@ -498,7 +497,7 @@ async function findCustomerHistoryViaRls(
   input: { phone: string; name: string; excludeOpportunityId: string | null },
   maxItems: number,
 ): Promise<CustomerHistoryResult | null> {
-  const { supabase, membership } = context;
+  const { supabase, membership, izin } = context;
   const organizationId = membership.organization_id;
   const queryPhone = input.phone;
   const queryName = input.name;
@@ -717,7 +716,7 @@ async function findCustomerHistoryViaRls(
     });
   }
 
-  return summarize(items, { scopedToAssigned: !PRIVILEGED.has(membership.role), maxItems });
+  return summarize(items, { scopedToAssigned: !izin("crm.musteri.sorgula"), maxItems });
 }
 
 /* ------------------------------------------------------------------------ */

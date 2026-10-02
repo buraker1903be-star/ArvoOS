@@ -13,13 +13,13 @@ import { BEKLEYEN_TARAF_ADLARI, bekleyenTarafMi, type BekleyenTaraf } from "@/li
 import { tasimaPlani } from "@/lib/operasyon-panosu";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
+import { assertYetki } from "@/lib/yetkiler";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
 // archiveWorkflow ile (ve yalnızca tamamlanan iş) gidilir, veritabanı
 // (guard_operation_workflow_archive) da aynı kuralı uygular.
 const statuses = new Set(["planned", "in_progress", "blocked", "completed", "cancelled"]);
 const priorities = new Set(["low", "normal", "high", "urgent"]);
-const MANAGER_ROLES = ["owner", "admin", "manager"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type OperationContext = Awaited<ReturnType<typeof getPanelContext>>;
@@ -41,15 +41,15 @@ function revalidateOperations() {
 // Yöneticiler her işte, diğerleri yalnızca sorumlusu oldukları işte
 // yetkili (termin ve arşiv işlemleri). RLS (members_update_assigned_operation_workflows)
 // da aynı kuralı uygular.
-async function isManagerOrAssignee({ supabase, membership, userId }: OperationContext, assignedEmployeeId: string | null) {
-  if (MANAGER_ROLES.includes(membership.role)) return true;
+async function isManagerOrAssignee({ supabase, membership, userId, izin }: OperationContext, assignedEmployeeId: string | null) {
+  if (izin("operations.is.yonet")) return true;
   if (!assignedEmployeeId) return false;
   const { data: me } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle();
   return Boolean(me?.id && me.id === assignedEmployeeId);
 }
 
 async function createWorkflow__impl(formData: FormData) {
-  const { supabase, userId, membership } = await operationContext();
+  const { supabase, userId, membership, yetkiler } = await operationContext();
   const title = String(formData.get("title") ?? "").trim();
   const customerName = String(formData.get("customer_name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -63,7 +63,7 @@ async function createWorkflow__impl(formData: FormData) {
   if (!statuses.has(status) || status === "completed" || status === "cancelled") throw new Error("Geçersiz başlangıç durumu.");
   if (!priorities.has(priority)) throw new Error("Geçersiz öncelik.");
   if (startDate && dueDate && dueDate < startDate) throw new Error("Termin başlangıç tarihinden önce olamaz.");
-  if (!MANAGER_ROLES.includes(membership.role)) throw new Error("İş oluşturmak için yönetici yetkisi gerekiyor.");
+  assertYetki(yetkiler, "operations.is.yonet");
   if (assignedEmployeeId) {
     const { data: employee } = await supabase.from("hr_employees").select("id").eq("id", assignedEmployeeId).eq("organization_id", membership.organization_id).eq("employment_status", "active").maybeSingle();
     if (!employee) throw new Error("Atanacak aktif personel bulunamadı.");
@@ -85,8 +85,8 @@ async function createWorkflow__impl(formData: FormData) {
 }
 
 async function assignWorkflow__impl(formData: FormData) {
-  const { supabase, membership } = await operationContext();
-  if (!MANAGER_ROLES.includes(membership.role)) throw new Error("Operasyon atamak için yönetici yetkisi gerekiyor.");
+  const { supabase, membership, yetkiler } = await operationContext();
+  assertYetki(yetkiler, "operations.gorev.ata");
   const workflowId = String(formData.get("workflow_id") ?? "");
   const assignedEmployeeId = String(formData.get("assigned_employee_id") ?? "") || null;
   if (assignedEmployeeId) {
@@ -401,7 +401,7 @@ async function setStepDueDate__impl(formData: FormData) {
 async function assignStep__impl(formData: FormData) {
   const context = await operationContext();
   const { supabase, membership } = context;
-  if (!MANAGER_ROLES.includes(membership.role)) throw new Error("Adıma sorumlu atamak için yönetici yetkisi gerekiyor.");
+  assertYetki(context.yetkiler, "operations.gorev.ata");
   const stepId = String(formData.get("step_id") ?? "");
   const employeeId = String(formData.get("assigned_employee_id") ?? "") || null;
   const step = await stepRow(supabase, membership.organization_id, stepId);
@@ -724,8 +724,8 @@ async function replyCustomerFileMessage__impl(formData: FormData) {
 // silinir, bağlı bir sözleşme varsa o sözleşmenin iş akışı bağlantısı
 // (workflow_id) kopartılır ki sözleşme kaydı bozulmasın.
 async function deleteWorkflow__impl(formData: FormData) {
-  const { supabase, membership, userId } = await operationContext();
-  if (!["owner", "admin"].includes(membership.role)) throw new Error("Bu işlem için yönetici yetkisi gerekiyor.");
+  const { supabase, membership, userId, yetkiler } = await operationContext();
+  assertYetki(yetkiler, "operations.is.sil");
   const workflowId = String(formData.get("workflow_id") ?? "");
   if (!workflowId) throw new Error("İş akışı seçilmedi.");
 

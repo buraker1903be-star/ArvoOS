@@ -17,8 +17,8 @@ function sanitizeFileName(name: string) {
 }
 
 async function submitBankTransferPayment__impl(formData: FormData) {
-  const { supabase, organization, membership, hiddenModuleKeys } = await getPanelContext();
-  if (!membership || !["owner", "admin"].includes(membership.role)) {
+  const { supabase, organization, membership, hiddenModuleKeys, yetkiler } = await getPanelContext();
+  if (!membership || !yetkiler.has("finance.lisans.yonet")) {
     throw new Error("Ödeme bildirimi yalnızca kurum sahibi veya yöneticisi tarafından gönderilebilir.");
   }
   assertModuleKeyAccess(membership.role, "finance", hiddenModuleKeys);

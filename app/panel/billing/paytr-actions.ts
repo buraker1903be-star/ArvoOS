@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createLicenseCheckout } from "@/lib/license-checkout";
 import { createAiKrediCheckout } from "@/lib/ai-kredi-checkout";
 import { PRODUCTS, type ProductCode } from "@/lib/products";
+import { assertYetki } from "@/lib/yetkiler";
 
 // Müşteri kurumun aboneliğini kartla (PayTR Link) ödemesi. ArvoOS, ArvoLab,
 // ArvoARC ve Randevu ayrı ayrı ödenir. Bağlantıyı lib/license-checkout.ts kurar
@@ -16,8 +17,8 @@ async function payLicenseWithCard__impl(formData: FormData) {
   const product = String(formData.get("product") ?? "arvoos").trim();
   if (!PRODUCTS.some((item) => item.code === product)) throw new Error("Geçerli bir ürün seçilmedi.");
 
-  const { organization, membership, userId } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) throw new Error("Lisans ödemesini yalnızca Kurum Sahibi veya Yönetici yapabilir.");
+  const { organization, userId, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "finance.lisans.yonet");
   const admin = createAdminClient();
   if (!admin) throw new Error("Kartla ödeme şu an kullanılamıyor. Havale ile ödeyebilirsiniz.");
 
@@ -38,8 +39,8 @@ export async function payLicenseWithCard(formData: FormData) {
 async function buyAiCredit__impl(formData: FormData) {
   const paketKodu = String(formData.get("paket") ?? "").trim();
 
-  const { organization, membership, userId } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) throw new Error("Kredi satın almayı yalnızca Kurum Sahibi veya Yönetici yapabilir.");
+  const { organization, userId, yetkiler } = await getPanelContext();
+  assertYetki(yetkiler, "finance.lisans.yonet");
   const admin = createAdminClient();
   if (!admin) throw new Error("Kartla ödeme şu an kullanılamıyor. ArvoOS ile iletişime geçin.");
 

@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { createClient } from "@/lib/supabase/server";
+import { etkinYetkiler, gizliModulleriHesapla, type ModulKurali, type YetkiKurali } from "@/lib/yetkiler";
 
 export type PanelModule = { code: string; name: string; description: string };
 export const panelModules: Record<string, PanelModule & { icon: string }> = {
@@ -110,22 +111,67 @@ export const getPanelContext = cache(async () => {
 
   const isPlatformOwner = membership.role === "owner" && organization.slug === "arvo-os";
 
-  // Panelden ayarlanabilir, rol bazlı modül yetkilendirmesi. Kurum Sahibi
-  // hiçbir zaman kısıtlanamaz; diğer roller için açıkça can_access=false
-  // olarak işaretlenmiş modüller gizli kabul edilir.
+  /*
+    Panelden ayarlanabilir yetkilendirme. Üç soru, aynı yerden:
+      hangi modüller gizli, hangi yetenekler açık, kişiye özel istisna var mı.
+
+    Kurum Sahibi hiçbir zaman kısıtlanamaz; diğer roller için önce rol
+    satırı, sonra kişi satırı okunur — kişi satırı rolü ezer. Eskiden
+    yalnızca rol satırları ve yalnızca `can_access = false` olanlar
+    okunuyordu: bu yüzden "rolde kapalı ama bu kişide açık" ifade
+    edilemiyordu ve tek bir kişiye istisna tanımanın yolu yoktu.
+  */
   let hiddenModuleKeys = new Set<string>();
+  let yetkiler = etkinYetkiler({ rol: "owner" });
   if (membership.role !== "owner") {
-    const { data: permissionRows, error: permissionError } = await supabase
-      .from("role_module_permissions")
-      .select("module_key,can_access")
-      .eq("organization_id", membership.organization_id)
-      .eq("role", membership.role)
-      .eq("can_access", false);
-    // Okunamazsa kısıt YOK sayılamaz: boş küme, kapatılmış modülleri açar.
-    // Satır 89'daki organization_modules okuması da aynı şekilde fırlatıyor.
-    if (permissionError) throw new Error("Rol yetkileri okunamadı.");
-    hiddenModuleKeys = new Set((permissionRows ?? []).map((row) => row.module_key as string));
+    const [rolModulleri, kisiModulleri, rolYetkileri, kisiYetkileri] = await Promise.all([
+      supabase.from("role_module_permissions").select("module_key,can_access")
+        .eq("organization_id", membership.organization_id).eq("role", membership.role),
+      supabase.from("member_module_permissions").select("module_key,can_access")
+        .eq("organization_id", membership.organization_id).eq("user_id", userId),
+      supabase.from("role_capability_permissions").select("capability_key,allowed")
+        .eq("organization_id", membership.organization_id).eq("role", membership.role),
+      supabase.from("member_capability_permissions").select("capability_key,allowed")
+        .eq("organization_id", membership.organization_id).eq("user_id", userId),
+    ]);
+    /*
+      Okunamazsa kısıt YOK sayılamaz: boş küme kapatılmış her şeyi açar.
+      Yukarıdaki organization_modules okuması da aynı şekilde fırlatıyor.
+
+      TEK İSTİSNA: tablonun henüz OLMAMASI. Üç istisna tablosu 02.10.2026
+      migration'ıyla geldi; kod canlıya migration'dan önce çıkarsa her panel
+      isteği "relation does not exist" ile düşerdi — kimse içeri giremez.
+      Tablo yoksa istisna da yoktur ve doğru cevap boş kümedir (migration
+      hiç satır yazmıyor, yani tablo yeni geldiğinde de küme boş). Bu
+      yalnızca "tablo bulunamadı" koduna açık; başka her hata fırlatır.
+    */
+    const tabloYok = (hata: { code?: string } | null) => hata?.code === "42P01" || hata?.code === "PGRST205";
+    for (const [sonuc, ad, yeniTablo] of [
+      [rolModulleri, "Rol modül yetkileri", false],
+      [kisiModulleri, "Kişi modül istisnaları", true],
+      [rolYetkileri, "Rol yetkileri", true],
+      [kisiYetkileri, "Kişi yetki istisnaları", true],
+    ] as const) {
+      if (!sonuc.error) continue;
+      if (yeniTablo && tabloYok(sonuc.error)) continue;
+      throw new Error(`${ad} okunamadı: ${sonuc.error.message}`);
+    }
+
+    hiddenModuleKeys = gizliModulleriHesapla({
+      rol: membership.role,
+      rolSatirlari: (rolModulleri.data ?? []) as ModulKurali[],
+      kisiSatirlari: (kisiModulleri.data ?? []) as ModulKurali[],
+    });
+    yetkiler = etkinYetkiler({
+      rol: membership.role,
+      gizliModuller: hiddenModuleKeys,
+      rolKurallari: (rolYetkileri.data ?? []) as YetkiKurali[],
+      kisiKurallari: (kisiYetkileri.data ?? []) as YetkiKurali[],
+    });
   }
 
-  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys };
+  /** Tek yetenek sorusu. Sayfalarda `izin("crm.teklif.sil")` biçiminde okunur. */
+  const izin = (key: string) => yetkiler.has(key);
+
+  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, yetkiler, izin };
 });

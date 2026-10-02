@@ -36,7 +36,7 @@ const date = (value: string | null) =>
 
 export default async function ProposalDetailPage({ params }: Props) {
   const { id } = await params;
-  const { supabase, membership, modules, organization } = await getPanelContext();
+  const { supabase, membership, modules, organization, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
 
@@ -93,7 +93,7 @@ export default async function ProposalDetailPage({ params }: Props) {
 
   const locked = ["accepted", "rejected", "archived"].includes(data.status);
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
-  const canDelete = ["owner", "admin"].includes(membership.role);
+  const canDelete = izin("crm.teklif.sil");
   // Formdaki tutar, teklif oluşturulurken girildiği anlamda gösterilir:
   // KDV dahilse brüt, hariç/istisnaysa net. KDV durumu olmayan eski
   // kayıtlarda tutar olduğu gibi (brüt) düzenlenir.

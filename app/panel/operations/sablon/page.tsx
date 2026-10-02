@@ -42,9 +42,9 @@ const BOS_SATIR = 3;
 
 export default async function StepTemplatePage({ searchParams }: { searchParams: Promise<{ tur?: string }> }) {
   const { tur: istenenTur } = await searchParams;
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
-  const canManage = ["owner", "admin"].includes(membership.role);
+  const canManage = izin("operations.sablon.yonet");
 
   const { data: turData, error: turHatasi } = await supabase
     .from("organization_step_template_sets")

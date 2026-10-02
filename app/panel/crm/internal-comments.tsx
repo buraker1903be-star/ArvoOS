@@ -38,7 +38,7 @@ export async function InternalComments({
   */
   gorunum?: "kart" | "sohbet";
 }) {
-  const { supabase, membership, userId } = await getPanelContext();
+  const { supabase, membership, userId, izin } = await getPanelContext();
   const { data, error } = await supabase
     .from("crm_internal_comments")
     .select("id,body,context_type,created_by,created_at,edited_at")
@@ -64,7 +64,7 @@ export async function InternalComments({
   const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("") || "--";
   const currentAuthorName = authorName(userId);
   // Yönetici başkasının yorumunu silebilir ama düzenleyemez.
-  const isManager = ["owner", "admin", "manager"].includes(membership.role);
+  const isManager = izin("crm.yorum.yonet");
 
   return (
     <section className={`panel-card crm-internal-comments${gorunum === "sohbet" ? " ic-sohbet" : ""}`}>

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { CONFIDENTIALITY_AGREEMENT_TEXT, CONFIDENTIALITY_AGREEMENT_VERSION, confidentialityAgreementNumber } from "@/lib/confidentiality-agreement";
+import { assertYetki } from "@/lib/yetkiler";
 
 const text=(formData:FormData,key:string,max=300)=>String(formData.get(key)??"").trim().slice(0,max);
 const number=(formData:FormData,key:string)=>Number(String(formData.get(key)??"0").replace(",","."))||0;
@@ -16,7 +17,7 @@ const number=(formData:FormData,key:string)=>Number(String(formData.get(key)??"0
 async function hrContext(){
   const context=await getPanelContext();
   if(!context.modules.some((module)=>module.code==="hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  if(!["owner","admin"].includes(context.membership.role)) throw new Error("Personel ve departman kayıtlarını yalnızca Kurum Sahibi veya Yönetici değiştirebilir.");
+  assertYetki(context.yetkiler, "hr.personel.yonet");
   assertModuleKeyAccess(context.membership.role,"hr",context.hiddenModuleKeys);
   return context;
 }

@@ -47,7 +47,7 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, izin } = await getPanelContext();
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   const [{ data, error }, { data: employees, error: employeeError }, { data: turData }] =
@@ -79,7 +79,7 @@ export default async function RequestDetailPage({
   if (employeeError) throw new Error("Satış temsilcileri okunamadı.");
   const item = data as Opportunity;
   const d = item.request_details ?? {};
-  const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  const canManage = izin("crm.talep.yonet");
   const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
   // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
   // okuyup seçenek olarak ekliyoruz, yoksa form kaydı atamayı sessizce siliyordu.

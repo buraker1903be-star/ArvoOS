@@ -18,7 +18,7 @@ type ArchivedWorkflow = { id: string; title: string; customer_name: string | nul
 export default async function OperationsArchivePage({ searchParams }: { searchParams: Promise<{ arama?: string }> }) {
   const { arama } = await searchParams;
   const search = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
-  const { supabase, membership, modules, userId } = await getPanelContext();
+  const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
 
@@ -38,7 +38,7 @@ export default async function OperationsArchivePage({ searchParams }: { searchPa
   const employees = (employeeData ?? []) as { id: string; full_name: string; user_id: string | null; employment_status: string }[];
   const nameById = new Map(employees.map((employee) => [employee.id, employee.full_name]));
   const nameByUser = new Map(employees.filter((employee) => employee.user_id).map((employee) => [employee.user_id as string, formatPersonName(employee.full_name)]));
-  const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  const canManage = izin("operations.arsiv.yonet");
   const myEmployeeId = employees.find((employee) => employee.user_id === userId && employee.employment_status === "active")?.id ?? null;
 
   // Arşivdeki işe müşteri yeniden yazmış olabilir: satırda kırmızı belirteç

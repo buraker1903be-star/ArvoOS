@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { MEDYA_SINIRI, gorunenDosyaAdi, medyayiYukle, uzanti } from "@/lib/whatsapp-medya";
 import { decryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { verifyWhatsappNumber } from "@/lib/whatsapp-cloud";
+import { assertYetki } from "@/lib/yetkiler";
 
 /*
   Gelen kutusundan yanıt. Kapının kendisini (lib/whatsapp-gateway.ts) aynı
@@ -44,10 +45,8 @@ async function inboxContext() {
 /** Bağlantı kontrolü yapılandırmadır; o yetki dar kalıyor. */
 async function ayarContext() {
   const context = await getPanelContext();
-  if (!["owner", "admin"].includes(context.membership.role)) {
-    throw new Error("Bu işlemi yalnızca Kurum Sahibi ve Yönetici yapabilir.");
-  }
-  assertModuleKeyAccess(context.membership.role, "integrations", context.hiddenModuleKeys);
+  // "integrations" hiç yazılmayan bir modül anahtarıydı; kapı sahteydi.
+  assertYetki(context.yetkiler, "settings.entegrasyon.yonet");
   return context;
 }
 

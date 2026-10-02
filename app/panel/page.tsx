@@ -162,7 +162,7 @@ export default async function PanelPage() {
   */
   if (isManagementHost(hostFromHeaders(await headers()))) return <KonsolAnaSayfa />;
 
-  const { supabase, organization, isPlatformOwner, membership, hiddenModuleKeys, userId } = await getPanelContext();
+  const { supabase, organization, isPlatformOwner, membership, hiddenModuleKeys, userId, izin } = await getPanelContext();
   const organizationId = organization.id;
   const window = dateWindow();
 
@@ -171,9 +171,9 @@ export default async function PanelPage() {
   const canSeeCrm = canSee("crm");
   const canSeeOperations = canSee("operations");
   const canSeeReports = canSee("reports");
-  const canSeeFinance = isPlatformOwner || (["owner", "admin"].includes(membership.role) && canSee("finance"));
+  const canSeeFinance = isPlatformOwner || (izin("finance.gor") && canSee("finance"));
   // Kurulum kartı yalnızca kurum sahibi/yöneticisine; platform kurucusu görmez.
-  const canSetup = !isPlatformOwner && ["owner", "admin"].includes(membership.role);
+  const canSetup = !isPlatformOwner && izin("settings.kurulum.yonet");
   const none = Promise.resolve({ data: null, count: 0, error: null });
 
   const { data: verticalProfile } = await supabase

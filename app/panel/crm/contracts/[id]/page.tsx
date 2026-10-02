@@ -39,7 +39,7 @@ const INSTALLMENT_LABELS: Record<string, string> = { paid: "Ödendi", pending: "
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
-  const { supabase, membership, modules, organization } = await getPanelContext();
+  const { supabase, membership, modules, organization, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
@@ -123,7 +123,7 @@ export default async function ContractDetailPage({ params }: Props) {
       })
     : null;
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
-  const canDelete = ["owner", "admin"].includes(membership.role);
+  const canDelete = izin("crm.sozlesme.sil");
   return (
     <div className="crm-request-detail-page">
       <div className="panel-pagehead">

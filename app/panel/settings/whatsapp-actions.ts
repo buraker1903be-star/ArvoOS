@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
-import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { removeWhatsappAccountRow, saveWhatsappAccountRow, verifyWhatsappAccountRow } from "@/lib/whatsapp-account";
+import { assertYetki } from "@/lib/yetkiler";
 
 /*
   Kurumun kendi WhatsApp numarasını bağlaması (Ayarlar → Entegrasyonlar).
@@ -20,10 +20,11 @@ import { removeWhatsappAccountRow, saveWhatsappAccountRow, verifyWhatsappAccount
 
 async function whatsappContext() {
   const context = await getPanelContext();
-  if (!["owner", "admin"].includes(context.membership.role)) {
-    throw new Error("WhatsApp bağlantısını yalnızca Kurum Sahibi ve Yönetici yönetebilir.");
-  }
-  assertModuleKeyAccess(context.membership.role, "integrations", context.hiddenModuleKeys);
+  /* Eskiden burada iki kapı vardı ve ikincisi sahteydi: "integrations"
+     hiçbir zaman role_module_permissions'a yazılmayan bir anahtar olduğu
+     için assertModuleKeyAccess hiçbir şeyi engellemiyordu. Tek gerçek kapı
+     kaldı ve kurum onu panelden kapatabiliyor. */
+  assertYetki(context.yetkiler, "settings.entegrasyon.yonet");
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı olmadığı için WhatsApp bağlantısı kullanılamıyor.");
   if (!paymentCredentialsConfigured()) throw new Error("PAYMENT_CREDENTIALS_KEY tanımlı değil; WhatsApp erişim anahtarı güvenle saklanamıyor.");

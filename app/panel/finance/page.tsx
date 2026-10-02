@@ -284,7 +284,7 @@ export default async function FinancePage({
   searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string }>;
 }) {
   const params = await searchParams;
-  const { supabase, membership, modules, organization, hiddenModuleKeys } = await getPanelContext();
+  const { supabase, membership, modules, organization, yetkiler, izin } = await getPanelContext();
   if (
     !modules.some((m) => m.code === "finance") ||
     !modules.some((m) => m.code === "accounts")
@@ -315,7 +315,7 @@ export default async function FinancePage({
   if (contractError)
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if(installmentError) throw new Error("Ödeme taksitleri okunamadı: "+installmentError.message);
-  if(costItemError&&["owner","admin"].includes(membership.role))throw new Error("İş maliyetleri okunamadı: "+costItemError.message);
+  if(costItemError&&izin("finance.maliyet.yonet"))throw new Error("İş maliyetleri okunamadı: "+costItemError.message);
   const contracts = (contractData ?? []) as unknown as Contract[];
   // Cari bakiyeleri: Finans genel bakışla aynı kural (account-balances.ts)
   const { accounts, totals } = buildAccountBalances((data ?? []) as Party[], contracts);
@@ -338,7 +338,7 @@ export default async function FinancePage({
   */
   const { aktif, arsiv } = cariBolumle(filtered);
   const arsivAcik = params.durum === "kapali" || params.durum === "arsiv";
-  const canManageCosts = ["owner", "admin"].includes(membership.role);
+  const canManageCosts = izin("finance.maliyet.yonet");
   const totalServiceCost = contracts.reduce((sum, contract) => sum + Number(contract.service_cost || 0), 0);
   const costItems=(costItemData??[]) as CostItem[];const costTotals=new Map<string,number>();for(const item of costItems)costTotals.set(item.contract_id,(costTotals.get(item.contract_id)??0)+Number(item.amount));
   const installments=(installmentData??[]) as Installment[];
@@ -367,7 +367,7 @@ export default async function FinancePage({
           <p>{copy.text}</p>
         </div>
       </header>
-      <FinanceTabs active={mode} context={{ membership, modules, hiddenModuleKeys }} />
+      <FinanceTabs active={mode} context={{ modules, yetkiler }} />
 
       {mode === "cari" ? (
         <>

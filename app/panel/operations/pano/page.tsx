@@ -71,7 +71,7 @@ export default async function OperationsPanoPage({
   const { tur: istenenTur, arama, sorumlu: seciliSorumlu, oncelik: seciliOncelik, mesaj } = await searchParams;
   const aranan = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
   const yalnizOkunmamis = mesaj === "yeni";
-  const { supabase, membership, modules, userId } = await getPanelContext();
+  const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
   const [{ data, error }, { data: employees }, { data: sablonSatirlari }, { data: turSatirlari }, { data: benimKaydim }] = await Promise.all([
@@ -183,7 +183,7 @@ export default async function OperationsPanoPage({
     göstermek yanıltıcı olurdu. Asıl karar yine sunucuda ve RLS'te.
   */
   const benimPersonelId = (benimKaydim as { id?: string } | null)?.id ?? null;
-  const yonetici = ["owner", "admin", "manager"].includes(membership.role);
+  const yonetici = izin("operations.is.yonet");
   const yetkiliIsler = kayitlar
     .filter((kayit) => yonetici || Boolean(benimPersonelId && benimPersonelId === kayit.assigned_employee_id))
     .map((kayit) => kayit.id);

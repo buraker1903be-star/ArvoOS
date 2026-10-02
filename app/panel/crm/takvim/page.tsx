@@ -7,7 +7,6 @@ import { updateAppointmentStatus, deleteAppointment } from "./actions";
 import { CrmTabs } from "../crm-tabs";
 import "../takvim.css";
 
-const managerRoles = new Set(["owner", "admin", "manager"]);
 const weekdayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const statusLabels: Record<string, string> = { planned: "Planlandı", done: "Tamamlandı", cancelled: "İptal" };
 
@@ -90,9 +89,9 @@ function AppointmentRow({ appointment, canManageAll, employeeName }: { appointme
 export default async function CrmCalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; ay?: string; tarih?: string; calisan?: string }> }) {
   const params = await searchParams;
   const explicitView = params.view === "liste" ? "liste" : params.view === "ay" ? "ay" : null;
-  const { supabase, membership, userId, modules } = await getPanelContext();
+  const { supabase, membership, userId, modules, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
-  const isManager = managerRoles.has(membership.role);
+  const isManager = izin("crm.takvim.tum");
 
   const { data: ownEmployee } = await supabase.from("hr_employees").select("id,full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
 

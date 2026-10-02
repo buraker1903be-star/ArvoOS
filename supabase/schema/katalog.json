@@ -847,6 +847,22 @@
       "organization_id",
       "sender_id"
     ],
+    "member_capability_permissions": [
+      "allowed",
+      "capability_key",
+      "organization_id",
+      "updated_at",
+      "updated_by",
+      "user_id"
+    ],
+    "member_module_permissions": [
+      "can_access",
+      "module_key",
+      "organization_id",
+      "updated_at",
+      "updated_by",
+      "user_id"
+    ],
     "message_channel_members": [
       "channel_created_by",
       "channel_direct_key",
@@ -1383,6 +1399,14 @@
       "organization_id",
       "result",
       "state"
+    ],
+    "role_capability_permissions": [
+      "allowed",
+      "capability_key",
+      "organization_id",
+      "role",
+      "updated_at",
+      "updated_by"
     ],
     "role_module_permissions": [
       "can_access",

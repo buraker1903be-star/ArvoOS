@@ -38,7 +38,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const selectedStatus = statusFilters.some((filter) => filter.value === durum) ? durum! : "";
   const selectedDue = dueFilters.some((filter) => filter.value === termin) ? termin! : "";
   const onlyUnread = mesaj === "yeni";
-  const { supabase, membership, modules, userId } = await getPanelContext();
+  const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const [{ data, error }, { data: employeeData, error: employeeError }, { count: archivedCount }] = await Promise.all([
     supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,created_at,contract_id,assigned_employee_id,waiting_party,waiting_since,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).not("status", "in", "(cancelled,archived)").order("created_at", { ascending: false }),
@@ -85,7 +85,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   }
   const totalUnreadMessages = [...unreadByWorkflow.values()].reduce((sum, count) => sum + count, 0);
   // Termini ve arşivi yöneticiler ve işin sorumlusu yönetebilir (actions.ts isManagerOrAssignee)
-  const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  const canManage = izin("operations.is.yonet");
   const myEmployeeId = employees.find((employee) => employee.user_id === userId)?.id ?? null;
   const canActOn = (workflow: Workflow) => canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
 

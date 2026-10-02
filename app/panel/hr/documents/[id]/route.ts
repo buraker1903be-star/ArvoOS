@@ -4,8 +4,8 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase, membership, hiddenModuleKeys } = await getPanelContext();
-  if (!["owner", "admin"].includes(membership.role)) {
+  const { supabase, membership, hiddenModuleKeys, izin } = await getPanelContext();
+  if (!izin("hr.ozluk.yonet")) {
     return NextResponse.json({ error: "Bu dosyaya erişim yetkiniz yok." }, { status: 403 });
   }
   // Route handler'lar app/panel/hr/layout.tsx'i çalıştırmaz; Yetkilendirme'den

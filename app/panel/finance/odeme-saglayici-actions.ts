@@ -18,7 +18,7 @@ import { identifierKeys, isProviderCode, kimlikSorunu, providerSpec, secretKeys 
 
 async function saglayiciContext() {
   const context = await getPanelContext();
-  if (!["owner", "admin"].includes(context.membership.role)) {
+  if (!context.izin("finance.odeme.saglayici")) {
     throw new Error("Ödeme ayarlarını yalnızca Kurum Sahibi ve Yönetici değiştirebilir.");
   }
   assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);

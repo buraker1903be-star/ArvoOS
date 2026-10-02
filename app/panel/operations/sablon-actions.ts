@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { runPanelAction } from "@/lib/panel-action";
 import { SABLON_EN_COK, SET_EN_COK, VARSAYILAN_ADIMLAR, kodTuret, sablonSorunu, setAdiSorunu } from "@/lib/is-adimlari";
+import { assertYetki } from "@/lib/yetkiler";
 
 /*
   Kurumun iş adımı şablonu.
@@ -26,13 +27,12 @@ import { SABLON_EN_COK, SET_EN_COK, VARSAYILAN_ADIMLAR, kodTuret, sablonSorunu, 
   seti üretiyor).
 */
 
-const YONETICI = ["owner", "admin"];
 
 async function sablonContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   assertModuleKeyAccess(context.membership.role, "operations", context.hiddenModuleKeys);
-  if (!YONETICI.includes(context.membership.role)) throw new Error("Adım şablonunu yalnızca kurum sahibi ve yöneticiler değiştirebilir.");
+  assertYetki(context.yetkiler, "operations.sablon.yonet");
   return context;
 }
 

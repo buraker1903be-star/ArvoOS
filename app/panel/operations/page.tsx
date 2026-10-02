@@ -66,7 +66,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   if (params.durum) legacy.set("durum", params.durum);
   if (legacy.size) redirect(`${ISLER}?${legacy.toString()}`);
 
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
   const today = todayIstanbul();
@@ -111,7 +111,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const workflows = (data ?? []) as Workflow[];
   const employeeName = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((row) => [row.id, formatPersonName(row.full_name)]));
   const assigneeOf = (workflow: Workflow) => (workflow.assigned_employee_id ? employeeName.get(workflow.assigned_employee_id) ?? "Pasif personel" : null);
-  const canManage = ["owner", "admin", "manager"].includes(membership.role);
+  const canManage = izin("operations.is.yonet");
 
   // Kartlar
   const planned = workflows.filter((workflow) => workflow.status === "planned");

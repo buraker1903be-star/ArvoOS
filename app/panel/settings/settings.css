@@ -185,3 +185,24 @@
 @media (prefers-reduced-motion:reduce){
   .stg-widget,.stg-nav a,.stg-link-row,.stg-link-row>svg,.stg-perm tbody tr,.stg-switch>span,.stg-switch>span::after{transition:none}
 }
+
+/* --- Yetkilendirme: yetenek grupları ve kişi istisnaları --- */
+.stg-perm-group+.stg-perm-group{margin-top:22px;padding-top:18px;border-top:1px solid var(--line-soft)}
+.stg-perm-group h3{margin:0 0 10px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+/* Modülü kapalı rolde yetki kutucuğu açık olsa da işe yaramaz; sönük
+   gösteriliyor. Devre dışı BIRAKILMIYOR: disabled bir kutucuk form
+   gönderiminde hiç yer almaz ve kayıt onu "kapat" diye yazardı. */
+.stg-switch>span[data-pasif="evet"]{opacity:.45}
+.stg-ucdurum{min-height:36px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600}
+.stg-ucdurum:focus-visible{outline:none;border-color:var(--accent-500);box-shadow:0 0 0 3px var(--focus)}
+.stg-ucdurum[data-deger="acik"]{border-color:color-mix(in srgb,var(--success) 45%,var(--line));color:var(--success)}
+.stg-ucdurum[data-deger="kapali"]{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
+.stg-list dt b{display:block;color:var(--ink);font-size:14px;font-weight:600}
+.stg-list dt small{display:block;margin-top:1px;color:var(--muted);font-size:12.5px}
+.stg-list>div:has(.stg-ucdurum){align-items:flex-start;gap:20px;padding-top:12px;padding-bottom:12px}
+@media (max-width:560px){
+  .stg-list>div:has(.stg-ucdurum){flex-direction:column;align-items:stretch;gap:8px}
+  .stg-list>div:has(.stg-ucdurum) dd{text-align:left}
+  .stg-ucdurum{width:100%}
+}
+.stg-kilit{display:inline-grid;place-items:center;width:30px;height:28px;border:1px dashed var(--line);border-radius:9px;color:var(--dim)}

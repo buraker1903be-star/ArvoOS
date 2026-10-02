@@ -36,10 +36,10 @@ function liveInvitations(rows: Invitation[]) {
 }
 
 export default async function HrPage() {
-  const { supabase, membership, userId, modules, organization, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, userId, modules, organization, isPlatformOwner, yetkiler, izin } = await getPanelContext();
   const organizationName = organization.display_name || organization.name;
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  const canManageTeam = ["owner", "admin"].includes(membership.role);
+  const canManageTeam = izin("hr.ekip.yonet");
 
   const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData }, { data: invitationData }, { data: docData }] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate,operation_commission_rate").eq("organization_id", membership.organization_id).order("full_name"),
@@ -102,7 +102,7 @@ export default async function HrPage() {
       {/* Prim, Gizlilik ve Hareketler artık sekmelerde */}
       <div className="panel-page-actions">{canManageTeam ? <PanelDrawer triggerLabel="+ Yeni Personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}</div>
     </div>
-    <HrTabs active="personel" access={{ membership, isPlatformOwner }} />
+    <HrTabs active="personel" access={{ yetkiler, isPlatformOwner }} />
 
     <section className="hr-widgets" aria-label="Özet">
       {widgets.map((widget) => (

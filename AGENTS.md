@@ -24,9 +24,20 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
 (`npm run test:unit`).
 
 - **Yetki üç yerdedir, üçü de gerekir.** RLS + sunucu (`assertModuleAccess` /
-  `assertModuleKeyAccess`) + menüde gizleme. Yeni bir server action yazarken
-  modülün yetki kontrolünü çağırmayı unutmayın: yalnızca sayfada kontrol etmek
-  işlemi açıkta bırakır.
+  `assertModuleKeyAccess` / `assertYetki`) + menüde gizleme. Yeni bir server
+  action yazarken yetki kontrolünü çağırmayı unutmayın: yalnızca sayfada
+  kontrol etmek işlemi açıkta bırakır.
+- **Yetki kararı rol listesiyle verilmez.** `["owner","admin"].includes(role)`
+  yazmak kararı koda gömer ve kiracı onu değiştiremez; seksen kadar yerde
+  böyleydi. Karar `lib/yetkiler.ts`teki yetenek anahtarlarında: sayfada
+  `izin("crm.teklif.sil")`, sunucu işleminde `assertYetki(yetkiler, "…")`.
+  Kurum bunları Ayarlar → Yetkilendirme'de rol ve kişi düzeyinde değiştirir.
+  Birim testi (`yetkiler.test.ts`) eski kalıba dönüşü yakalar.
+- **RLS de uyguluyorsa yetki gevşetilemez.** Katalogdaki `rlsBagli` işareti
+  "yalnızca kısıtlanabilir" demek. Silme politikası owner/admin'e açık olan
+  bir işlemi panelden manager'a açmak düğmeyi gösterir, RLS satırı sessizce
+  eler, kullanıcı "sildim ama silinmedi" ile kalır — bu bir kez yaşandı.
+  RLS'i de gevşetmek gerekiyorsa politikayı migration'la değiştirin.
 - **Kurum Sahibi (`owner`) hiçbir zaman kısıtlanamaz.** Kendi panelinden
   kilitlenip dışarıda kalmasını önlemek için.
 - **Para kuruş cinsinden tamsayıdır.** Kullanıcı girdisi için

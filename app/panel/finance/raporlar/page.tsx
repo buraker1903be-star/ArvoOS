@@ -112,9 +112,9 @@ type AccountEntry={entry_type:"debit"|"credit";source_type:string;amount:number;
 
 export default async function ReportingPage({ searchParams }: { searchParams: Promise<{ aralik?: string; baslangic?: string; bitis?: string }> }) {
   const params = await searchParams;
-  const { supabase, membership, modules, hiddenModuleKeys } = await getPanelContext();
+  const { supabase, membership, modules, yetkiler } = await getPanelContext();
   // Finans kapısı (sahip/yönetici) layout'ta; burada Raporlar modülü ve rol yetkisi
-  const access = { membership, modules, hiddenModuleKeys };
+  const access = { modules, yetkiler };
   if (!canSeeFinanceReports(access)) throw new Error("Raporlar modülüne erişiminiz yok.");
   const { start, end, key } = resolveRange(params.aralik, params.baslangic, params.bitis);
   const startKey = dateKey(start); const endKey = dateKey(end);

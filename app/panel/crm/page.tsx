@@ -65,8 +65,8 @@ export default async function RequestsPage({
   const search = clean(arama).toLocaleLowerCase("tr-TR");
   const selected = clean(durum);
   const selectedRepresentative = clean(temsilci);
-  const { supabase, membership, modules } = await getPanelContext();
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
+  const { supabase, membership, modules, izin } = await getPanelContext();
+  const canAssign = izin("crm.kayit.ata");
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   const [

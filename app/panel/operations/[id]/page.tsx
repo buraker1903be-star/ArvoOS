@@ -73,7 +73,7 @@ export default async function OperationDetailPage({
 }) {
   const { id } = await params;
   const { sekme: istenenSekme, pencere: istenenPencere } = await searchParams;
-  const { supabase, membership, modules, userId } = await getPanelContext();
+  const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
   const { data: workflowData, error: workflowError } = await supabase
@@ -113,8 +113,8 @@ export default async function OperationDetailPage({
       toplam: grup.adimlar.length,
     });
   }
-  const canAssign = ["owner", "admin", "manager"].includes(membership.role);
-  const canDelete = ["owner", "admin"].includes(membership.role);
+  const canAssign = izin("operations.gorev.ata");
+  const canDelete = izin("operations.is.sil");
 
   const isArchived = workflow.status === "archived";
   const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([

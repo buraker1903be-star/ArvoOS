@@ -8,8 +8,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { uploadOrganizationImage } from "@/lib/organization-assets";
 
 async function completeOnboarding__impl(formData: FormData) {
-  const { supabase, organization, membership } = await getPanelContext();
-  if (!membership || !["owner", "admin"].includes(membership.role)) {
+  const { supabase, organization, membership, yetkiler } = await getPanelContext();
+  if (!membership || !yetkiler.has("settings.kurulum.yonet")) {
     throw new Error("Onboarding işlemini yalnızca kurum sahibi veya yöneticisi tamamlayabilir.");
   }
 

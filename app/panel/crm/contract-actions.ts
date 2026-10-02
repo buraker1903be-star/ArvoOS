@@ -10,8 +10,6 @@ import {
   scheduleDateIssue,
 } from "@/lib/payment-schedule";
 import {
-  DELETE_ROLES,
-  MANAGER_ROLES,
   amount,
   ensureRepresentative,
   getPanelContext,
@@ -62,8 +60,8 @@ export async function createContractDirectly(
   const scheduleIssue = scheduleDateIssue(paymentSchedule);
   if (scheduleIssue) return { error: scheduleIssue };
 
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.yonet"))
     return { error: "Bu işlem için yetkiniz yok." };
 
   const representativeError = await ensureRepresentative(supabase, membership.organization_id, opportunityId, text(formData, "assigned_employee_id", 80));
@@ -150,7 +148,7 @@ export async function createContractDirectly(
 
 
 async function updateContract__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
   const contractId = text(formData, "contract_id", 80);
 
   /*
@@ -185,7 +183,7 @@ async function updateContract__impl(formData: FormData) {
     değil 0 SATIR döndürüyor: kontrol burada olmasaydı kullanıcı "kaydedildi"
     görüp değişikliğini kaybederdi.
   */
-  if (before && !MANAGER_ROLES.includes(membership.role)) {
+  if (before && !yetkiler.has("crm.sozlesme.yonet")) {
     const { data: assigned, error: assignedError } = await supabase
       .rpc("arvo_can_access_opportunity", { target_opportunity: before.opportunity_id });
     if (assignedError) throw new Error("Sözleşme yetkisi doğrulanamadı: " + assignedError.message);
@@ -459,8 +457,8 @@ async function issueContractLink__impl(formData: FormData) {
 // kullanılamaz (bu ikisinin gerçek finans/operasyon etkisi var, tek
 // tıkla değiştirilmemeli).
 async function markContractStatus__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!["owner", "admin", "manager"].includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.yonet"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   const status = text(formData, "status", 20);
@@ -510,8 +508,8 @@ async function markContractStatus__impl(formData: FormData) {
 // ödeme planı varsa, gerçek finans/operasyon verisi kaybolmasın diye
 // silinemez.
 async function deleteContract__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
-  if (!DELETE_ROLES.includes(membership.role))
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.sil"))
     throw new Error("Bu işlem için yetkiniz yok.");
   const contractId = text(formData, "contract_id", 80);
   if (!contractId) throw new Error("Sözleşme seçilmedi.");

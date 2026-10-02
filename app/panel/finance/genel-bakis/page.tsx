@@ -59,11 +59,11 @@ function FinOvIcon({ name, size = 18 }: { name: string; size?: number }) {
 
 export default async function FinanceOverviewPage() {
   const context = await getPanelContext();
-  const { supabase, membership, modules, hiddenModuleKeys } = context;
+  const { supabase, membership, modules, yetkiler } = context;
   if (!modules.some((m) => m.code === "finance") || !modules.some((m) => m.code === "accounts"))
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
   const organizationId = membership.organization_id;
-  const access = { membership, modules, hiddenModuleKeys };
+  const access = { modules, yetkiler };
   const showCosts = canManageCosts(access);
   const today = todayInIstanbul();
   const monthKey = today.slice(0, 7);

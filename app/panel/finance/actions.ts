@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { assertYetki } from "@/lib/yetkiler";
 
 const types = new Set(["income", "expense"]);
 const statuses = new Set(["planned", "paid", "canceled"]);
@@ -14,7 +15,7 @@ const invoiceStatuses = new Set(["draft", "open", "paid", "void"]);
 async function financeContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "finance")) throw new Error("Finans modülüne erişiminiz yok.");
-  if (!context.isPlatformOwner && !["owner", "admin"].includes(context.membership.role)) throw new Error("Finans kayıtlarını yönetme yetkiniz yok.");
+  if (!context.isPlatformOwner) assertYetki(context.yetkiler, "finance.kayit.yonet");
   assertModuleKeyAccess(context.membership.role, "finance", context.hiddenModuleKeys);
   return context;
 }

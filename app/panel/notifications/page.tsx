@@ -38,8 +38,8 @@ function groupByDay(items: DescribedNotification[]) {
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ kategori?: string }> }) {
   const { kategori } = await searchParams;
   const selectedFilter = filters.find((filter) => filter.key === kategori) ?? null;
-  const { supabase, userId, organization, isPlatformOwner, membership } = await getPanelContext();
-  const canAnnounce = ["owner", "admin", "manager"].includes(membership.role) && !isPlatformOwner;
+  const { supabase, userId, organization, isPlatformOwner, izin } = await getPanelContext();
+  const canAnnounce = izin("bildirim.duyuru.gonder") && !isPlatformOwner;
 
   // Liste sorgusu ve metin kurgusu çekmeceyle ortak (load-notifications.ts)
   const [allNotifications, { data: employeeRows }] = await Promise.all([

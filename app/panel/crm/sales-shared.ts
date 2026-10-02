@@ -31,14 +31,16 @@ export const text = (formData: FormData, key: string, max = 4000) =>
 export const amount = (formData: FormData, key: string) =>
   Math.round(Number(formData.get(key) ?? 0) * 100);
 
-// Silme RLS politikası (crm_delete_policies) yalnızca owner/admin'e izin
-// veriyor. Uygulama tarafı da aynı listeyi kullanmalı; aksi halde manager
-// "Sil"e basıyor, RLS satırı sessizce eliyor ve kayıt silinmemiş oluyor.
-export const DELETE_ROLES = ["owner", "admin"];
-/* Yönetici rolleri kuruma ait her kayda erişir; diğerleri yalnızca
-   kendilerine atanmış olanlara (private.arvo_can_access_opportunity ile
-   aynı ayrım). */
-export const MANAGER_ROLES = ["owner", "admin", "manager"];
+/*
+  Rol listeleri kaldırıldı; karar lib/yetkiler.ts'teki yetenek anahtarlarında
+  ve kurum onları panelden değiştirebiliyor.
+
+  Silme yetkileri RLS'e BAĞLI işaretli (rlsBagli): silme politikası
+  yalnızca owner/admin'e izin verdiği için panelden bir role "aç" demek
+  düğmeyi gösterir, RLS satırı sessizce eler ve kullanıcı "sildim ama
+  silinmedi" ile kalır — bu hata bir kez yaşandı. O yüzden o anahtarlar
+  yalnızca kısıtlanabiliyor.
+*/
 
 // Teklif / direkt sözleşme oluşturmadan önce talebin satış temsilcisi
 // olmalı. Atanmamışsa formdaki seçim zorunlu; seçilen temsilci talebe atanır

@@ -66,7 +66,7 @@ export default async function AccountDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, membership, modules, isPlatformOwner } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, izin } = await getPanelContext();
   if (!modules.some((m) => m.code === "accounts"))
     throw new Error("Cari hesap modülüne erişiminiz yok.");
   const [{ data: party, error }, { data: contracts, error: contractError }] =
@@ -124,7 +124,7 @@ export default async function AccountDetailPage({
   const durum = cariDurumu({ debt, collections, refunds, balance });
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi
   // ayrıca denetliyor; buradaki kontrol düğmeyi boşuna göstermemek için.
-  const canDelete = isPlatformOwner || ["owner", "admin"].includes(membership.role);
+  const canDelete = isPlatformOwner || izin("finance.cari.sil");
   return (
     <main className="fin">
       <header className="panel-pagehead">

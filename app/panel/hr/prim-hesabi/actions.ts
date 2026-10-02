@@ -6,6 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { assertYetki } from "@/lib/yetkiler";
 
 /*
   Prim ödemesi kaydı. Para hareketi olduğu için yalnızca Kurum Sahibi ve
@@ -24,7 +25,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 async function primContext() {
   const context = await getPanelContext();
   if (!context.modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
-  if (!["owner", "admin"].includes(context.membership.role)) throw new Error("Prim ödemesini yalnızca Kurum Sahibi veya Yönetici kaydedebilir.");
+  assertYetki(context.yetkiler, "hr.prim.yonet");
   assertModuleKeyAccess(context.membership.role, "hr", context.hiddenModuleKeys);
   return context;
 }

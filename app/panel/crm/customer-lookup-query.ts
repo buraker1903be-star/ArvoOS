@@ -40,7 +40,6 @@ export type CustomerSearchResult = {
 };
 
 export const LOOKUP_RESULT_LIMIT = 12;
-const PRIVILEGED = new Set(["owner", "admin", "manager"]);
 
 type SearchRpcRow = {
   customer_key: string;
@@ -97,7 +96,7 @@ export async function searchCustomers(context: PanelContext, query: Exclude<Look
   if (!isMissingRpc(error)) reportActionFailure("customerLookup.rpc", error, { organizationId: context.membership.organization_id });
   const customers = await searchCustomersViaRls(context, query);
   // Yönetici zaten tüm kurumu görür; kısıt uyarısı yalnızca satış personeline
-  return { customers, fullHistory: PRIVILEGED.has(context.membership.role) };
+  return { customers, fullHistory: context.izin("crm.musteri.sorgula") };
 }
 
 /* ------------------------------------------------------------------------ */
