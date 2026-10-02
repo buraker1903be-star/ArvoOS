@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib/arc-bridge-plan";
+import { KURUM_KOPRU_SECIMI } from "@/lib/kurum-kopru-alanlari";
 
 // ArvoARC köprüsü.
 //
@@ -60,7 +61,7 @@ async function loadSource(admin: Client, organizationId?: string): Promise<ArcSo
   if (!ids.length) return { organizations: [], memberships: [], licenses: licenseResult.data ?? [], modules: moduleResult.data ?? [] };
 
   const [organizations, memberships] = await Promise.all([
-    admin.from("organizations").select("*").in("id", ids),
+    admin.from("organizations").select(KURUM_KOPRU_SECIMI).in("id", ids),
     admin.from("organization_memberships").select("*").in("organization_id", ids),
   ]);
   if (organizations.error) throw new Error("kurumlar okunamadı: " + organizations.error.message);

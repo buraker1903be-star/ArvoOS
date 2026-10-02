@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planRandevuSync, randevuOrganizationIds, type RandevuSource } from "@/lib/randevu-bridge-plan";
 import type { Row } from "@/lib/arc-bridge-plan";
+import { KURUM_KOPRU_SECIMI } from "@/lib/kurum-kopru-alanlari";
 
 // Randevu köprüsü.
 //
@@ -54,7 +55,7 @@ async function loadSource(admin: Client, organizationId?: string): Promise<Rande
   if (!ids.length) return { organizations: [], memberships: [], licenses: [] };
 
   const [organizations, memberships] = await Promise.all([
-    admin.from("organizations").select("*").in("id", ids),
+    admin.from("organizations").select(KURUM_KOPRU_SECIMI).in("id", ids),
     admin.from("organization_memberships").select("*").in("organization_id", ids),
   ]);
   if (organizations.error) throw new Error("kurumlar okunamadı: " + organizations.error.message);
