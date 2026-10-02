@@ -448,8 +448,24 @@ async function addInternalComment__impl(formData: FormData) {
     throw new Error("Yorumun bağlı olduğu CRM kaydı geçersiz.");
   if (!body) throw new Error("Yorum metni boş bırakılamaz.");
 
+  /*
+    BU KONTROL ops_* GÖRÜNÜMLERİNDEN OKUR, TUTARLI TABLOLARDAN DEĞİL.
+
+    01.10.2026'da tutar daraltması crm_opportunities/crm_contracts/
+    crm_proposals satırlarını operasyon personeline kapattı (tutarı
+    yalnızca yönetici ve satışçı görür). RLS tarafında yorum
+    politikaları definer yardımcıya çevrilmişti ama BURASI atlandı:
+    yazmadan önceki bu kapı hâlâ tutarlı tabloyu okuduğu için boş
+    dönüyor, personel iş detayından kurum içi not yazamıyordu
+    ("Talep zinciri bulunamadı veya bu kayda erişiminiz yok." —
+    02.10.2026 canlı hata).
+
+    Görünümlerin kapısı arvo_can_access_opportunity, yani yorum
+    INSERT politikasının kullandığı fonksiyonun ta kendisi: kontrol
+    artık izinle aynı şeyi soruyor, bir adım fazlasını değil.
+  */
   const { data: opportunity, error: opportunityError } = await supabase
-    .from("crm_opportunities")
+    .from("ops_opportunities")
     .select("id")
     .eq("id", opportunityId)
     .eq("organization_id", membership.organization_id)
@@ -462,8 +478,11 @@ async function addInternalComment__impl(formData: FormData) {
   // hiçbir ekranda görünmeyen, silinemeyen bir kayıt.
   const contextTables: Record<string, string> = {
     request: "crm_requests",
-    proposal: "crm_proposals",
-    contract: "crm_contracts",
+    // Teklif ve sözleşme de tutarsız görünümden doğrulanıyor; yukarıdaki
+    // nota bakın. Aksi hâlde sözleşme sayfasından yazılan yorum da
+    // operasyon personeline kapalı kalırdı.
+    proposal: "ops_proposals",
+    contract: "ops_contracts",
     operation: "operation_workflows",
   };
   const { data: context, error: contextError } = await supabase

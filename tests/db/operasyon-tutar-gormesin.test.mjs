@@ -143,6 +143,50 @@ describe("operasyon personeli tutar görmesin", () => {
       assert.deepEqual(r.kayit, ["update"], "Kayıt geçmişi açık kalmalı");
     }));
 
+  test("uzman kurum içi yorum YAZABİLİYOR (uygulama kontrolü dahil)", () =>
+    islem(db, async () => {
+      await tohum();
+      await rol(db, "authenticated", UZMAN);
+
+      /*
+        CANLI HATA (02.10.2026): personel iş detayından kurum içi not
+        yazamıyor, "Talep zinciri bulunamadı veya bu kayda erişiminiz yok."
+        alıyordu. Sunucu eylemi (addInternalComment) yazmadan önce
+        crm_opportunities'i okuyarak kontrol ediyordu; tutar daraltması o
+        satırı operasyon personeline kapattığı için kontrol boş dönüyordu.
+        RLS yazmaya izin veriyordu — engelleyen uygulamanın kendi kapısıydı.
+      */
+      const kapali = await db.query(
+        `select id from public.crm_opportunities where id = $1 and organization_id = $2`,
+        [FIRSAT, KURUM]);
+      assert.equal(kapali.rows.length, 0, "tutarlı tablo operasyona kapalı kalmalı");
+
+      // Uygulamanın kullanması gereken kaynak: tutarsız görünüm.
+      const acik = await db.query(
+        `select id from public.ops_opportunities where id = $1 and organization_id = $2`,
+        [FIRSAT, KURUM]);
+      assert.equal(acik.rows.length, 1, "görünüm uzmana açık olmalı");
+
+      // Sözleşme bağlamı da aynı: yorum sözleşme sayfasından da yazılıyor.
+      const sozKapali = await db.query(
+        `select id from public.crm_contracts where id = $1`, [SOZLESME]);
+      const sozAcik = await db.query(
+        `select id from public.ops_contracts where id = $1`, [SOZLESME]);
+      assert.equal(sozKapali.rows.length, 0);
+      assert.equal(sozAcik.rows.length, 1);
+
+      // Ve yazma gerçekten serbest: engel yalnızca uygulamadaydı.
+      await db.query(
+        `insert into public.crm_internal_comments
+           (organization_id, opportunity_id, context_type, context_id, body, created_by)
+         values ($1,$2,'operation',$3,'Uzman notu',$4)`,
+        [KURUM, FIRSAT, SOZLESME, UZMAN]);
+      const yazilan = await db.query(
+        `select body from public.crm_internal_comments where created_by = $1`, [UZMAN]);
+      assert.deepEqual(yazilan.rows.map((r) => r.body), ["Uzman notu"]);
+      await rol(db, "postgres");
+    }));
+
   test("yönetici ve fırsatın satışçısı tutarı görmeye devam ediyor", () =>
     islem(db, async () => {
       await tohum();
