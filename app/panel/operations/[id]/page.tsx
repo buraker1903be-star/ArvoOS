@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Fragment, Suspense, type CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { reportActionFailure } from "@/lib/action-diagnostics";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
@@ -116,7 +117,7 @@ export default async function OperationDetailPage({
   const canDelete = ["owner", "admin"].includes(membership.role);
 
   const isArchived = workflow.status === "archived";
-  const [{ data: contractData }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([
+  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([
     supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
     workflow.assigned_employee_id
@@ -152,6 +153,20 @@ export default async function OperationDetailPage({
         : istenenSekme === "kayitlar"
           ? "kayitlar"
           : null;
+  /*
+    Bu okumanın hatası YUTULUYORDU: ops_contracts okunamazsa contract null
+    kalıyor, sayfa sessizce sözleşmesiz çiziliyor (kurum içi yorumlar ve
+    müşteri künyesi hiç görünmüyor) ve sunucuda tek satır iz kalmıyordu.
+    Sayfayı kırmıyoruz — eksik sözleşme meşru bir durum — ama hata varsa
+    artık günlüğe düşüyor.
+  */
+  if (contractError)
+    reportActionFailure("operasyonIsDetayi.sozlesmeOkumasi", contractError, {
+      organizationId,
+      role: membership.role,
+      workflowId: workflow.id,
+      kaynak: "ops_contracts",
+    });
   const contract = contractData as Contract | null;
   const employees = (employeeData ?? []) as { id: string; full_name: string }[];
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.full_name]));
