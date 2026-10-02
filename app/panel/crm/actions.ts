@@ -28,6 +28,33 @@ async function crmContext() {
   assertModuleKeyAccess(context.membership.role, "crm", context.hiddenModuleKeys);
   return context;
 }
+/*
+  YORUM İŞLEMİNİN MODÜL KAPISI.
+
+  Kurum içi yorum kutusu iki yüzeyde birden duruyor: CRM kayıtlarında
+  (talep, teklif, sözleşme) ve OPERASYONDAKİ iş detayında. İşlem ise
+  hepsi için crmContext() çağırıyordu, yani CRM modülü olmayan bir
+  operasyon personeli işi açabiliyor ama o sayfadaki yoruma yazamıyordu
+  — hata RLS'e varmadan, modül kapısında dönüyordu. 02.10.2026'da üç
+  kişi tam bu yüzden yazamadı ve sebep RLS'te arandı.
+
+  Kapı artık yüzeye göre: iş bağlamındaki yorum operasyon modülünü,
+  geri kalanı CRM'i istiyor. Yetkiyi yine veritabanı politikası
+  belirliyor; bu yalnızca "bu ekran bu kullanıcıda açık mı" sorusu.
+*/
+async function yorumContext(contextType: string) {
+  const context = await getPanelContext();
+  const modul = contextType === "operation" ? "operations" : "crm";
+  if (!context.modules.some((module) => module.code === modul))
+    throw new Error(
+      modul === "operations"
+        ? "Operasyon modülüne erişiminiz yok."
+        : "CRM modülüne erişiminiz yok.",
+    );
+  assertModuleKeyAccess(context.membership.role, modul, context.hiddenModuleKeys);
+  return context;
+}
+
 async function getStageConfiguration(
   supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
   organizationId: string,
@@ -439,9 +466,9 @@ export async function moveOpportunity(formData: FormData) {
 }
 
 async function addInternalComment__impl(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
-  const opportunityId = text(formData, "opportunity_id", 80);
   const contextType = text(formData, "context_type", 20);
+  const { supabase, membership, userId } = await yorumContext(contextType);
+  const opportunityId = text(formData, "opportunity_id", 80);
   const contextId = text(formData, "context_id", 80);
   const body = text(formData, "body", 4000);
   if (!opportunityId || !contextId || !new Set(["request", "proposal", "contract", "operation"]).has(contextType))
@@ -637,11 +664,11 @@ function revalidateCommentChain(opportunityId: string, contextType: string, cont
  * eşleşmeyen satırı hiç döndürmüyor.
  */
 export async function updateInternalComment(formData: FormData) {
-  const { supabase, membership, userId } = await crmContext();
+  const contextType = text(formData, "context_type", 20);
+  const { supabase, membership, userId } = await yorumContext(contextType);
   const commentId = text(formData, "comment_id", 80);
   const body = text(formData, "body", 4000);
   const opportunityId = text(formData, "opportunity_id", 80);
-  const contextType = text(formData, "context_type", 20);
   const contextId = text(formData, "context_id", 80);
   if (!commentId) throw new Error("Yorum seçilmedi.");
   if (!body) throw new Error("Yorum metni boş bırakılamaz.");
@@ -665,10 +692,10 @@ export async function updateInternalComment(formData: FormData) {
  * ayrımı RLS politikası yapıyor.
  */
 async function deleteInternalComment__impl(formData: FormData) {
-  const { supabase, membership } = await crmContext();
+  const contextType = text(formData, "context_type", 20);
+  const { supabase, membership } = await yorumContext(contextType);
   const commentId = text(formData, "comment_id", 80);
   const opportunityId = text(formData, "opportunity_id", 80);
-  const contextType = text(formData, "context_type", 20);
   const contextId = text(formData, "context_id", 80);
   if (!commentId) throw new Error("Yorum seçilmedi.");
 
