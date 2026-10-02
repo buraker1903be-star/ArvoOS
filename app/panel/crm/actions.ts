@@ -449,54 +449,24 @@ async function addInternalComment__impl(formData: FormData) {
   if (!body) throw new Error("Yorum metni boş bırakılamaz.");
 
   /*
-    BU KONTROL ops_* GÖRÜNÜMLERİNDEN OKUR, TUTARLI TABLOLARDAN DEĞİL.
+    FIRSAT ÖN KONTROLÜ KALDIRILDI.
 
-    01.10.2026'da tutar daraltması crm_opportunities/crm_contracts/
-    crm_proposals satırlarını operasyon personeline kapattı (tutarı
-    yalnızca yönetici ve satışçı görür). RLS tarafında yorum
-    politikaları definer yardımcıya çevrilmişti ama BURASI atlandı:
-    yazmadan önceki bu kapı hâlâ tutarlı tabloyu okuduğu için boş
-    dönüyor, personel iş detayından kurum içi not yazamıyordu
-    ("Talep zinciri bulunamadı veya bu kayda erişiminiz yok." —
-    02.10.2026 canlı hata).
+    Burada yazmadan önce fırsat satırı okunuyordu. Bu okuma, INSERT
+    politikasının birebir kopyasıydı:
+      created_by = auth.uid()
+      AND organization_id = private.arvo_firsat_kurumu(opportunity_id)
+      AND private.arvo_can_access_opportunity(opportunity_id)
+    Yani güvenliğe hiçbir şey eklemiyordu — ama kendi başına kırılabilen
+    fazladan bir kapıydı ve 01–02.10.2026'da iki kez tam olarak onu yaptı:
+    önce tutar daraltması yüzünden crm_opportunities'i okuyamaz oldu,
+    sonra ops_* görünümüne çevrilmesine rağmen üretimde yine boş döndü.
+    Operasyon personeli kendi işine not yazamadı.
 
-    Görünümlerin kapısı arvo_can_access_opportunity, yani yorum
-    INSERT politikasının kullandığı fonksiyonun ta kendisi: kontrol
-    artık izinle aynı şeyi soruyor, bir adım fazlasını değil.
+    Karar: yetkiyi TEK yer söylesin, o da politikanın kendisi. Veritabanı
+    reddederse 42501 ile geri döner ve aşağıda anlaşılır bir cümleye
+    çevrilir. Elle yazılmış ikinci bir kapı, veritabanının izin verdiği
+    işi sessizce engelleyebiliyor.
   */
-  const { data: opportunity, error: opportunityError } = await supabase
-    .from("ops_opportunities")
-    .select("id")
-    .eq("id", opportunityId)
-    .eq("organization_id", membership.organization_id)
-    .maybeSingle();
-  if (opportunityError || !opportunity) {
-    /*
-      Bu kapı iki kez canlıda yanlış yeri işaret etti ve ikisinde de
-      sunucuda hiç iz bırakmadı: hata doğrudan fırlatılıyordu, günlükte
-      satır yoktu, elimizde yalnız kullanıcının ekran görüntüsü vardı.
-      Nedenini kestirmek için saatler harcandı. Artık iz bırakıyor.
-    */
-    reportActionFailure("addInternalComment.firsatKapisi", opportunityError, {
-      organizationId: membership.organization_id,
-      role: membership.role,
-      opportunityId,
-      contextType,
-      kaynak: "ops_opportunities",
-    });
-    /*
-      "Satır gelmedi" ile "sorgu hata verdi" AYNI mesajı veriyordu ve bu
-      teşhisi kördüğüm yaptı: veritabanında her şey yeşilken ekranda aynı
-      cümle çıkıyordu. İkisi artık ayrı konuşuyor; hata kodu (PostgREST
-      ya da Postgres) doğrudan ekrana geliyor.
-    */
-    if (opportunityError)
-      throw new Error(
-        `Talep zinciri okunamadı (${opportunityError.code ?? "kodsuz"}): ${opportunityError.message}`,
-      );
-    throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
-  }
-
   // context_id formdan geliyor ve doğrulanmıyordu: yalnızca opportunity_id
   // denetleniyordu. Satır kendi organization_id'mizle yazıldığı için sızıntı
   // yok, ama yorum kuruma ait olmayan bir belge kimliğine bağlanabiliyordu —
@@ -541,6 +511,16 @@ async function addInternalComment__impl(formData: FormData) {
     created_by: userId,
   });
   if (error) {
+    // 42501: satır düzeyi güvenlik reddetti — yetki gerçekten yok.
+    if (error.code === "42501") {
+      reportActionFailure("addInternalComment.rlsRed", error, {
+        organizationId: membership.organization_id,
+        role: membership.role,
+        opportunityId,
+        contextType,
+      });
+      throw new Error("Bu kaydın yorumlarını yazma yetkiniz yok.");
+    }
     reportActionFailure("addInternalComment", error, {
       organizationId: membership.organization_id,
       role: membership.role,
