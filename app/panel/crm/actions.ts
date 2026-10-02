@@ -470,7 +470,22 @@ async function addInternalComment__impl(formData: FormData) {
     .eq("id", opportunityId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
-  if (opportunityError || !opportunity) throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
+  if (opportunityError || !opportunity) {
+    /*
+      Bu kapı iki kez canlıda yanlış yeri işaret etti ve ikisinde de
+      sunucuda hiç iz bırakmadı: hata doğrudan fırlatılıyordu, günlükte
+      satır yoktu, elimizde yalnız kullanıcının ekran görüntüsü vardı.
+      Nedenini kestirmek için saatler harcandı. Artık iz bırakıyor.
+    */
+    reportActionFailure("addInternalComment.firsatKapisi", opportunityError, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      contextType,
+      kaynak: "ops_opportunities",
+    });
+    throw new Error("Talep zinciri bulunamadı veya bu kayda erişiminiz yok.");
+  }
 
   // context_id formdan geliyor ve doğrulanmıyordu: yalnızca opportunity_id
   // denetleniyordu. Satır kendi organization_id'mizle yazıldığı için sızıntı
@@ -491,8 +506,18 @@ async function addInternalComment__impl(formData: FormData) {
     .eq("id", contextId)
     .eq("organization_id", membership.organization_id)
     .maybeSingle();
-  if (contextError) throw new Error("Yorumun bağlı olduğu kayıt doğrulanamadı: " + contextError.message);
-  if (!context) throw new Error("Yorumun bağlı olduğu CRM kaydı bulunamadı veya bu kayda erişiminiz yok.");
+  if (contextError || !context) {
+    reportActionFailure("addInternalComment.baglamKapisi", contextError, {
+      organizationId: membership.organization_id,
+      role: membership.role,
+      opportunityId,
+      contextType,
+      contextId,
+      kaynak: contextTables[contextType],
+    });
+    if (contextError) throw new Error("Yorumun bağlı olduğu kayıt doğrulanamadı: " + contextError.message);
+    throw new Error("Yorumun bağlı olduğu CRM kaydı bulunamadı veya bu kayda erişiminiz yok.");
+  }
 
   const { error } = await supabase.from("crm_internal_comments").insert({
     organization_id: membership.organization_id,
