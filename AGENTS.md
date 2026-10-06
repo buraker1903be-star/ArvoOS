@@ -127,6 +127,13 @@ yapmalıdır.
 `tests/unit/` yalnızca saf mantık modülleri içindir (Next/React/Supabase'e
 dokunmayanlar). Bir hata düzeltince onu sabitleyen testi de ekleyin.
 
+**`olarak()` bir `islem()` içinde çağrılmaz.** `olarak` kendi işlemini
+açıp sonunda geri alıyor; bir `islem`'in içinde çağrıldığında DIŞ işlemi de
+geri alıyor ve o noktadan sonraki her ifade kuralsız duruma bakıyor. Kuralı
+kurup iki kez okuyan bir test ikinci okumada yanlış şeyi ölçüyor ve yeşil
+kalıyor (06.10.2026'da üç dosyada vardı). `islem` içinde rol değiştirmek
+için `rol(db, "authenticated", kullanici)` kullanın.
+
 `tests/db/` (`npm run test:db`) canlı şemayı PGlite'a kurar ve akışları gerçek
 fonksiyon/tetikleyicilerle, Supabase rolleriyle (anon, authenticated) koşar.
 Bir tabloya koruma (tetikleyici, RLS) eklerken o tabloya yazan **meşru** yolların

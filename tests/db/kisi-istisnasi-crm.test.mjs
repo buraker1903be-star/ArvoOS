@@ -14,7 +14,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, olarak, rol, veritabani } from "./ortam.mjs";
+import { islem, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATIONLAR = [
   "20261002173447_kisi_bazli_yetki.sql",
@@ -54,12 +54,12 @@ before(async () => {
   kurumda eşleşen bir müşteri var, satır gelmiyorsa kapı kapalı demektir.
 */
 const sorgulayabiliyorMu = async (userId) => {
-  let sonuc;
-  await olarak(db, "authenticated", userId, async () => {
-    const { rows } = await db.query(`select * from public.crm_customer_search($1, $2, 5)`, [KURUM, "ayşe"]);
-    sonuc = rows.length > 0;
-  });
-  return sonuc;
+  /* Rol değişimi islem() içinde rol() ile: olarak() kendi işlemini açıp
+     geri alıyor ve bir islem()'in içinde dış işlemi de götürüyor. */
+  await rol(db, "authenticated", userId);
+  const { rows } = await db.query(`select * from public.crm_customer_search($1, $2, 5)`, [KURUM, "ayşe"]);
+  await rol(db, "postgres");
+  return rows.length > 0;
 };
 
 const rolKurali = (rolAdi, acik) => db.query(
@@ -78,7 +78,8 @@ const kisiKurali = (userId, acik) => db.query(
 
 describe("müşteri sorgulama kapısı kişi istisnasını okuyor", () => {
   test("hiç kural yoksa açık", async () => {
-    assert.equal(await sorgulayabiliyorMu(SATISCI), true);
+    await rol(db, "postgres");
+    await islem(db, async () => { assert.equal(await sorgulayabiliyorMu(SATISCI), true); });
   });
 
   test("rolde kapatılınca kapanıyor", async () => {

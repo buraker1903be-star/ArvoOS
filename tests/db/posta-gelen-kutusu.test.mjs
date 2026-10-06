@@ -18,7 +18,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, olarak, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATIONLAR = [
   // mail_accounts anlık görüntüden ÖNCE uygulandığı için dökümde yok;
@@ -76,22 +76,27 @@ const kisiKurali = (userId, acik) => db.query(
    on conflict (organization_id,user_id,module_key) do update set can_access = excluded.can_access`,
   [KURUM, userId, acik]);
 
+/*
+  Rol değişimi islem() İÇİNDE rol() ile. olarak() kendi işlemini açıp
+  geri alıyor; bir islem()'in içinde çağrıldığında dış işlemi de geri
+  alıyor ve sonraki ifadeler kuralsız duruma bakıyor.
+*/
 const konusmaSayisi = async (userId) => {
-  let sayi;
-  await olarak(db, "authenticated", userId, async () => {
-    const { rows } = await db.query(`select thread_id from public.mail_threads`);
-    sayi = rows.length;
-  });
-  return sayi;
+  await rol(db, "authenticated", userId);
+  const { rows } = await db.query(`select thread_id from public.mail_threads`);
+  await rol(db, "postgres");
+  return rows.length;
 };
 
 describe("ortak posta kutusu erişimi", () => {
   test("kurumun personeli konuşmaları görüyor", async () => {
-    assert.equal(await konusmaSayisi(PERSONEL), 1);
+    await rol(db, "postgres");
+    await islem(db, async () => { assert.equal(await konusmaSayisi(PERSONEL), 1); });
   });
 
   test("başka kurumun üyesi hiçbir şey görmüyor", async () => {
-    assert.equal(await konusmaSayisi(YABANCI), 0);
+    await rol(db, "postgres");
+    await islem(db, async () => { assert.equal(await konusmaSayisi(YABANCI), 0); });
   });
 
   test("posta modülü rolde kapatılınca konuşmalar da kapanıyor", async () => {
@@ -118,7 +123,7 @@ describe("ortak posta kutusu erişimi", () => {
     // ortak kutunun tek anlamlı özelliği kullanılamaz hâle gelir.
     await rol(db, "postgres");
     await islem(db, async () => {
-      await olarak(db, "authenticated", PERSONEL, async () => {
+      await rol(db, "authenticated", PERSONEL);
         const { rows } = await db.query(
           `update public.mail_threads set durum = 'yanitlandi', ilgilenen_user_id = $1
             where organization_id = $2 and thread_id = $3 returning durum, ilgilenen_user_id`,
@@ -126,35 +131,35 @@ describe("ortak posta kutusu erişimi", () => {
         assert.equal(rows.length, 1);
         assert.equal(rows[0].durum, "yanitlandi");
         assert.equal(rows[0].ilgilenen_user_id, PERSONEL);
-      });
+      await rol(db, "postgres");
     });
   });
 
   test("posta alanları panelden değiştirilemiyor", async () => {
     await rol(db, "postgres");
     await islem(db, async () => {
-      await olarak(db, "authenticated", PERSONEL, async () => {
+      await rol(db, "authenticated", PERSONEL);
         await reddedilir(
           db,
           `update public.mail_threads set konu = 'Başka konu' where organization_id = $1 and thread_id = $2`,
           [KURUM, KONUSMA],
           /panelden değiştirilemez/i,
         );
-      });
+      await rol(db, "postgres");
     });
   });
 
   test("MEŞRU AKIŞ: personel konuşmayı müşteri kaydına bağlayabiliyor", async () => {
     await rol(db, "postgres");
     await islem(db, async () => {
-      await olarak(db, "authenticated", PERSONEL, async () => {
+      await rol(db, "authenticated", PERSONEL);
         const { rows } = await db.query(
           `update public.mail_threads set opportunity_id = $1
             where organization_id = $2 and thread_id = $3 returning opportunity_id`,
           [FIRSAT, KURUM, KONUSMA]);
         assert.equal(rows.length, 1);
         assert.equal(rows[0].opportunity_id, FIRSAT);
-      });
+      await rol(db, "postgres");
     });
   });
 
@@ -165,14 +170,14 @@ describe("ortak posta kutusu erişimi", () => {
     */
     await rol(db, "postgres");
     await islem(db, async () => {
-      await olarak(db, "authenticated", PERSONEL, async () => {
+      await rol(db, "authenticated", PERSONEL);
         await reddedilir(
           db,
           `update public.mail_threads set opportunity_id = $1 where organization_id = $2 and thread_id = $3`,
           [BASKA_FIRSAT, KURUM, KONUSMA],
           /kendi kurumunuzun bir kaydına/i,
         );
-      });
+      await rol(db, "postgres");
     });
   });
 
