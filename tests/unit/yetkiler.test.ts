@@ -53,7 +53,7 @@ test("ayar yapılmamış kurumda bugünkü davranış birebir korunuyor", () => 
     varsayılan özelliği kurulduğu anda kullanılamaz yapardı.
   */
   for (const yetkiler of [member, operasyoncu]) {
-    assert.deepEqual([...yetkiler].sort(), ["posta.gor"]);
+    assert.deepEqual([...yetkiler].sort(), ["posta.gor", "posta.yanitla"]);
   }
 });
 

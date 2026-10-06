@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { konusmayiOzetle, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type GmailMesaji } from "@/lib/posta-ayristirma";
+import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderim";
 
 /*
   ORTAK POSTA KUTUSU — Gmail'den eşitleme.
@@ -199,4 +200,84 @@ export async function postaGovdesiniGetir(organizationId: string, messageId: str
   const sonuc = await gmailGetir(`/messages/${messageId}?format=full`, belirtec);
   if ("hata" in sonuc) return sonuc;
   return mesajGovdesi((sonuc.govde as { payload?: unknown }).payload);
+}
+
+/**
+ * Konuşmaya yanıt gönderir ve giden mesajı tabloya yazar.
+ *
+ * Zincir başlıkları (In-Reply-To / References) için son mesajın
+ * Message-ID'si Gmail'den okunuyor; o başlığı saklamıyoruz ve
+ * olmadan yanıt alıcının kutusunda AYRI bir konuşma olarak açılıyor —
+ * Gmail'in threadId'si yalnızca bizim tarafımızı birleştiriyor.
+ */
+export async function postaYanitiGonder(girdi: {
+  organizationId: string;
+  kutuAdresi: string;
+  gonderenAd: string;
+  threadId: string;
+  sonMesajId: string;
+  alici: string;
+  konu: string;
+  govde: string;
+}): Promise<{ messageId: string } | { hata: string }> {
+  const belirtec = await postaErisimBelirteci(girdi.organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const basliklar = await gmailGetir(
+    `/messages/${girdi.sonMesajId}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References`,
+    belirtec,
+  );
+  if ("hata" in basliklar) return basliklar;
+  const satirlar = (basliklar.govde as { payload?: { headers?: { name?: string; value?: string }[] } }).payload?.headers;
+  const basliktanAl = (ad: string) =>
+    satirlar?.find((satir) => (satir.name ?? "").toLowerCase() === ad)?.value ?? null;
+
+  const ham = yanitMesajiKur({
+    gonderenAd: girdi.gonderenAd,
+    gonderenAdres: girdi.kutuAdresi,
+    alici: girdi.alici,
+    konu: girdi.konu,
+    govde: girdi.govde,
+    sonMesajId: basliktanAl("message-id"),
+    referanslar: basliktanAl("references"),
+  });
+
+  const yanit = await fetch(`${GMAIL}/messages/send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-type": "application/json" },
+    body: JSON.stringify({ raw: base64UrlKodla(ham), threadId: girdi.threadId }),
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; yanıt gönderilemedi." };
+
+  const govde = await yanit.json().catch(() => ({}));
+  if (!yanit.ok) {
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Yanıt gönderilemedi: ${sebep}` };
+  }
+  const messageId = (govde as { id?: string }).id;
+  if (!messageId) return { hata: "Gmail yanıtı kabul etti ama mesaj kimliği dönmedi." };
+
+  /*
+    Giden mesaj hemen tabloya yazılıyor; eşitlemeyi beklemek, personelin
+    gönderdiği yanıtı on dakika boyunca ekranda görmemesi demekti ve
+    "gitti mi?" diye ikinci kez gönderilmesine yol açardı.
+  */
+  const admin = createAdminClient();
+  if (admin) {
+    await admin.from("mail_messages").upsert({
+      organization_id: girdi.organizationId,
+      message_id: messageId,
+      thread_id: girdi.threadId,
+      gonderen_ad: girdi.gonderenAd,
+      gonderen_adres: girdi.kutuAdresi,
+      alici: girdi.alici,
+      konu: yanitKonusu(girdi.konu),
+      ozet: girdi.govde.slice(0, 200),
+      tarih: new Date().toISOString(),
+      yon: "giden",
+      ekli_dosya: false,
+    }, { onConflict: "organization_id,message_id" });
+  }
+
+  return { messageId };
 }

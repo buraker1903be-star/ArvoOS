@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayiUstlen } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiUstlen } from "../actions";
 import { istanbulTarihSaat } from "../bicim";
+import { yanitAlicisi } from "@/lib/posta-gonderim";
+import { postaDurumu } from "@/lib/posta-hesabi";
 import "../posta.css";
 
 /*
@@ -44,6 +46,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   if (konusmaHatasi) throw new Error("Konuşma okunamadı: " + konusmaHatasi.message);
   if (mesajHatasi) throw new Error("Mesajlar okunamadı: " + mesajHatasi.message);
   if (!konusma) notFound();
+  const kutuAdi = (await postaDurumu(membership.organization_id)).adres ?? "ortak kutu";
 
   const mesajlar = (mesajVerisi ?? []) as Mesaj[];
 
@@ -58,6 +61,13 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   })));
 
   const yonetebilir = izin("posta.yonet");
+  /* Yanıt son GELEN mesajın göndereneine gider; son giden mesaja bakmak
+     kendi adresimize cevap yazdırırdı. */
+  const yanitlanacakAdres = yanitAlicisi(mesajlar.map((mesaj) => ({
+    gonderenAdres: mesaj.gonderen_adres,
+    yon: mesaj.yon,
+    tarih: mesaj.tarih ? new Date(mesaj.tarih) : null,
+  })));
   const bendeMi = konusma.ilgilenen_user_id === userId;
 
   return <div className="posta">
@@ -108,9 +118,27 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       ))}
     </ol>
 
-    <p className="posta-not">
-      Yanıtlama henüz açık değil; bu aşamada kutu yalnızca okunuyor. Yanıt vermek için Gmail&apos;den devam edin.
-      Ekli dosyalar da Gmail&apos;de — panelde yalnızca varlığı gösteriliyor.
-    </p>
+    {izin("posta.yanitla") && yanitlanacakAdres ? (
+      <form className="posta-yanit" action={konusmayaYanitla}>
+        <input type="hidden" name="thread_id" value={threadId} />
+        <label htmlFor="posta-yanit-metni">
+          <b>Yanıt yaz</b>
+          <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
+        </label>
+        <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} placeholder="Yanıtınızı yazın…" />
+        <div className="posta-yanit-alt">
+          <small>Düz metin olarak gönderilir. Ekli dosya için Gmail&apos;den devam edin.</small>
+          <button className="panel-primary" type="submit">Yanıtı gönder</button>
+        </div>
+      </form>
+    ) : (
+      <p className="posta-not">
+        {yanitlanacakAdres
+          ? "Bu kutudan yanıt yazma yetkiniz yok."
+          : "Bu konuşmada yanıtlanacak bir gönderen yok (yalnızca giden mesajlar var)."}
+      </p>
+    )}
+
+    <p className="posta-not">Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.</p>
   </div>;
 }

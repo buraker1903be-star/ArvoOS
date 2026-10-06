@@ -46,3 +46,12 @@
   .posta-mesajlar header{flex-direction:column;gap:6px}
   .posta-mesaj-yan{justify-items:start;text-align:left}
 }
+
+/* Yanıt kutusu. Konuşmanın altında, gönderme eylemi sağda. */
+.posta-yanit{margin-top:16px;padding:16px;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);display:grid;gap:10px}
+.posta-yanit label b{display:block;font-size:14px;font-weight:600;color:var(--ink)}
+.posta-yanit label small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.posta-yanit textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;line-height:1.6;resize:vertical}
+.posta-yanit textarea:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+.posta-yanit-alt{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.posta-yanit-alt small{color:var(--muted);font-size:12.5px}
