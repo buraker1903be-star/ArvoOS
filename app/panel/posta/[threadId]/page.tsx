@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiUstlen } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiUstlen } from "../actions";
 import { istanbulTarihSaat } from "../bicim";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -36,7 +36,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
-      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi")
+      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
     supabase.from("mail_messages")
       .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon,ekli_dosya")
@@ -47,6 +47,20 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   if (mesajHatasi) throw new Error("Mesajlar okunamadı: " + mesajHatasi.message);
   if (!konusma) notFound();
   const kutuAdi = (await postaDurumu(membership.organization_id)).adres ?? "ortak kutu";
+
+  /*
+    Bağlanabilecek kayıtlar: en son dokunulan 100 fırsat. Kurumun bütün
+    geçmişini açılır listeye koymak, listeyi kullanılamaz yapardı; elle
+    bağlama zaten istisna, asıl bağ eşleşmeyle kuruluyor.
+  */
+  const { data: firsatVerisi } = izin("posta.yonet")
+    ? await supabase.from("crm_opportunities")
+        .select("id,customer_name,title,contact_email")
+        .eq("organization_id", membership.organization_id)
+        .order("updated_at", { ascending: false }).limit(100)
+    : { data: [] };
+  const firsatlar = (firsatVerisi ?? []) as { id: string; customer_name: string | null; title: string | null; contact_email: string | null }[];
+  const bagliFirsat = firsatlar.find((firsat) => firsat.id === konusma.opportunity_id) ?? null;
 
   const mesajlar = (mesajVerisi ?? []) as Mesaj[];
 
@@ -79,6 +93,32 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       </div>
       <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link></div>
     </div>
+
+    {yonetebilir ? (
+      <form className="posta-bag" action={konusmayiKayitBagla}>
+        <input type="hidden" name="thread_id" value={threadId} />
+        <label htmlFor="posta-firsat">
+          <b>Müşteri kaydı</b>
+          <small>{konusma.opportunity_id
+            ? (bagliFirsat
+                ? `Bağlı: ${bagliFirsat.customer_name ?? "adsız"}${bagliFirsat.title ? ` · ${bagliFirsat.title}` : ""}`
+                : "Bağlı kayıt bu listede değil (eski kayıt olabilir)")
+            : "Bağlı kayıt yok. Gönderen adresi bir fırsatın iletişim adresiyle eşleşirse bağ kendiliğinden kurulur."}</small>
+        </label>
+        <div className="posta-bag-alt">
+          <select id="posta-firsat" name="opportunity_id" defaultValue={konusma.opportunity_id ?? ""}>
+            <option value="">— Bağ yok —</option>
+            {firsatlar.map((firsat) => (
+              <option key={firsat.id} value={firsat.id}>
+                {firsat.customer_name ?? "Adsız müşteri"}{firsat.title ? ` · ${firsat.title}` : ""}
+              </option>
+            ))}
+          </select>
+          <button className="panel-secondary" type="submit">Kaydet</button>
+          {konusma.opportunity_id ? <Link className="panel-secondary" href={`/panel/crm/requests/${konusma.opportunity_id}`}>Kaydı aç</Link> : null}
+        </div>
+      </form>
+    ) : null}
 
     {yonetebilir ? (
       <div className="posta-durum-cubugu">

@@ -145,3 +145,34 @@ async function konusmayaYanitla__impl(formData: FormData) {
 export async function konusmayaYanitla(...args: Parameters<typeof konusmayaYanitla__impl>) {
   return runPanelAction(() => konusmayaYanitla__impl(...args), "Yanıt gönderildi");
 }
+
+/*
+  CRM BAĞI.
+
+  Ortak kutuya gelen posta çoğu zaman var olan bir müşteriye ait ama
+  panelde iki ayrı yerde duruyordu: yazışma postada, kayıt CRM'de.
+  Eşitleme gönderen adresi fırsatın iletişim adresiyle eşleşirse bağı
+  kendiliğinden kuruyor; burası elle düzeltme yolu — eşleşmeyen ya da
+  yanlış eşleşen konuşmalar için.
+*/
+async function konusmayiKayitBagla__impl(formData: FormData) {
+  const { supabase, membership } = await postaContext();
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  const firsat = String(formData.get("opportunity_id") ?? "").trim();
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+
+  const { data, error } = await supabase.from("mail_threads")
+    .update({ opportunity_id: firsat || null })
+    .eq("organization_id", membership.organization_id)
+    .eq("thread_id", threadId)
+    .select("thread_id");
+  if (error) throw new Error("Müşteri bağı güncellenemedi: " + error.message);
+  if (!data?.length) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+
+  revalidatePath("/panel/posta");
+  revalidatePath(`/panel/posta/${threadId}`);
+}
+
+export async function konusmayiKayitBagla(...args: Parameters<typeof konusmayiKayitBagla__impl>) {
+  return runPanelAction(() => konusmayiKayitBagla__impl(...args), "Müşteri bağı güncellendi");
+}

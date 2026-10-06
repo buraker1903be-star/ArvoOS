@@ -20,7 +20,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { islem, olarak, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261006190207_posta_gelen_kutusu.sql");
+const MIGRATIONLAR = [
+  // mail_accounts anlık görüntüden ÖNCE uygulandığı için dökümde yok;
+  // geçmiş sütunları ona ekleniyor, o yüzden bu da kurulmalı.
+  "20261006171515_ortak_posta_kutusu.sql",
+  "20261006190207_posta_gelen_kutusu.sql",
+  "20261006193918_posta_gecmis_ve_crm_bagi.sql",
+].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
 const BASKA_KURUM = "00000000-0000-4000-8000-0000000006a2";
@@ -28,11 +34,13 @@ const SAHIP = "00000000-0000-4000-8000-0000000006b1";
 const PERSONEL = "00000000-0000-4000-8000-0000000006b2";
 const YABANCI = "00000000-0000-4000-8000-0000000006b3";
 const KONUSMA = "thread-001";
+const FIRSAT = "00000000-0000-4000-8000-0000000006c1";
+const BASKA_FIRSAT = "00000000-0000-4000-8000-0000000006c2";
 
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  for (const m of MIGRATIONLAR) await db.exec(fs.readFileSync(m, "utf8"));
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values
@@ -49,6 +57,10 @@ before(async () => {
       values ('${KURUM}','${KONUSMA}','Teklif talebi','musteri@x.com',now(),'Merhaba',2);
     insert into public.mail_messages (organization_id,message_id,thread_id,gonderen_adres,konu,tarih,yon)
       values ('${KURUM}','msg-1','${KONUSMA}','musteri@x.com','Teklif talebi',now(),'gelen');
+    insert into public.crm_opportunities (id,organization_id,title,customer_name,contact_email,created_by,estimated_value)
+      values ('${FIRSAT}','${KURUM}','Tez danışmanlığı','Ayşe Yılmaz','musteri@x.com','${SAHIP}',100000);
+    insert into public.crm_opportunities (id,organization_id,title,customer_name,created_by,estimated_value)
+      values ('${BASKA_FIRSAT}','${BASKA_KURUM}','Başka iş','Başka Müşteri','${YABANCI}',5000);
   `);
 });
 
@@ -127,6 +139,38 @@ describe("ortak posta kutusu erişimi", () => {
           `update public.mail_threads set konu = 'Başka konu' where organization_id = $1 and thread_id = $2`,
           [KURUM, KONUSMA],
           /panelden değiştirilemez/i,
+        );
+      });
+    });
+  });
+
+  test("MEŞRU AKIŞ: personel konuşmayı müşteri kaydına bağlayabiliyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await olarak(db, "authenticated", PERSONEL, async () => {
+        const { rows } = await db.query(
+          `update public.mail_threads set opportunity_id = $1
+            where organization_id = $2 and thread_id = $3 returning opportunity_id`,
+          [FIRSAT, KURUM, KONUSMA]);
+        assert.equal(rows.length, 1);
+        assert.equal(rows[0].opportunity_id, FIRSAT);
+      });
+    });
+  });
+
+  test("konuşma başka kurumun kaydına bağlanamıyor", async () => {
+    /*
+      RLS yazarın yetkisini denetliyor ama hedefi denetlemiyor: posta
+      modülüne erişen biri başka kurumun fırsat kimliğini yazabilirdi.
+    */
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await olarak(db, "authenticated", PERSONEL, async () => {
+        await reddedilir(
+          db,
+          `update public.mail_threads set opportunity_id = $1 where organization_id = $2 and thread_id = $3`,
+          [BASKA_FIRSAT, KURUM, KONUSMA],
+          /kendi kurumunuzun bir kaydına/i,
         );
       });
     });

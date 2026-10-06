@@ -18,8 +18,11 @@ import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderi
 */
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-/** Her turda bakılacak mesaj sayısı. 10 dakikalık turda fazlasıyla yeter. */
+/** Her turda bakılacak YENİ mesaj sayısı. 10 dakikalık turda fazlasıyla yeter. */
 const PENCERE = 60;
+/* Geçmiş taramada tur başına bir sayfa. 100 mesaj onarlı kümelerle
+   ~10 turda iniyor; daha büyüğü sunucunun zaman sınırını zorluyor. */
+const GECMIS_SAYFA = 100;
 
 export type EsitlemeSonucu = {
   durum: "tamam" | "kismi" | "basarisiz";
@@ -41,45 +44,41 @@ async function gmailGetir(yol: string, belirtec: string): Promise<GmailCevabi> {
   return { govde };
 }
 
-/** Tek kurumun kutusunu eşitler. Hata metni döner, yoksa null. */
-export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: string): Promise<string | null> {
-  const admin = createAdminClient();
-  if (!admin) return "Sunucu anahtarı tanımlı değil.";
+/*
+  Mesaj kimliklerinden tabloya yazma. Üst veri biçiminde okunuyor
+  (format=metadata): gövde indirilmiyor, yalnızca üç başlık.
 
-  const belirtec = await postaErisimBelirteci(organizationId);
-  if (typeof belirtec !== "string") return belirtec.hata;
+  İstekler ONARLI KÜMELER hâlinde paralel. Tek tek beklendiğinde 100
+  mesajlık bir geçmiş sayfası sunucunun zaman sınırını zorluyordu;
+  sınırsız paralellik ise Gmail'in hız sınırına çarpıyor.
+*/
+const KUME = 10;
 
-  const liste = await gmailGetir(`/messages?maxResults=${PENCERE}&labelIds=INBOX&labelIds=SENT`, belirtec);
-  if ("hata" in liste) return liste.hata;
-
-  const kimlikler = ((liste.govde as { messages?: { id?: string }[] }).messages ?? [])
-    .map((satir) => satir.id)
-    .filter((id): id is string => Boolean(id));
-  if (!kimlikler.length) {
-    await admin.from("mail_accounts")
-      .update({ last_sync_at: new Date().toISOString(), last_error: null })
-      .eq("organization_id", organizationId);
-    return null;
-  }
-
-  /*
-    Mesajlar tek tek okunuyor ama ÜST VERİ biçiminde (format=metadata):
-    gövde indirilmiyor, yalnızca dört başlık. Gmail'in toplu ucu yok;
-    60 küçük istek, kutunun tamamını gövdeleriyle çekmekten hem hızlı
-    hem ucuz.
-  */
+async function mesajlariIsle(
+  organizationId: string,
+  kutuAdresi: string,
+  kimlikler: readonly string[],
+  belirtec: string,
+): Promise<{ cozulenler: CozulmusMesaj[] } | { hata: string }> {
   const cozulenler: CozulmusMesaj[] = [];
-  for (const id of kimlikler) {
-    const mesaj = await gmailGetir(
+  for (let i = 0; i < kimlikler.length; i += KUME) {
+    const kume = kimlikler.slice(i, i + KUME);
+    const sonuclar = await Promise.all(kume.map((id) => gmailGetir(
       `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject`,
       belirtec,
-    );
-    if ("hata" in mesaj) return mesaj.hata;
-    const cozulen = mesajiCoz(mesaj.govde as GmailMesaji, kutuAdresi);
-    if (cozulen) cozulenler.push(cozulen);
+    )));
+    for (const sonuc of sonuclar) {
+      if ("hata" in sonuc) return { hata: sonuc.hata };
+      const cozulen = mesajiCoz(sonuc.govde as GmailMesaji, kutuAdresi);
+      if (cozulen) cozulenler.push(cozulen);
+    }
   }
+  if (!cozulenler.length) return { cozulenler };
 
-  const { error: mesajHatasi } = await admin.from("mail_messages").upsert(
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+
+  const { error } = await admin.from("mail_messages").upsert(
     cozulenler.map((mesaj) => ({
       organization_id: organizationId,
       message_id: mesaj.messageId,
@@ -95,21 +94,31 @@ export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: s
     })),
     { onConflict: "organization_id,message_id" },
   );
-  if (mesajHatasi) return "Mesajlar yazılamadı: " + mesajHatasi.message;
+  if (error) return { hata: "Mesajlar yazılamadı: " + error.message };
+  return { cozulenler };
+}
 
-  /*
-    Konuşma satırı mesajlardan TÜRETİLİYOR, Gmail'in thread ucundan
-    değil: pencerede olmayan eski mesajlar da sayıma girsin diye
-    veritabanındaki tüm mesajlar okunuyor. Ortak durum (ilgilenen,
-    durum) korunuyor — upsert yalnızca posta alanlarını yazıyor.
-  */
+/*
+  Konuşma satırları mesajlardan TÜRETİLİYOR, Gmail'in thread ucundan
+  değil: pencerede olmayan eski mesajlar da sayıma girsin diye
+  veritabanındaki tüm mesajlar okunuyor. Ortak durum (ilgilenen, durum,
+  müşteri bağı) korunuyor — upsert yalnızca posta alanlarını yazıyor.
+*/
+async function konusmalariGuncelle(
+  organizationId: string,
+  cozulenler: readonly CozulmusMesaj[],
+): Promise<string | null> {
+  const admin = createAdminClient();
+  if (!admin) return "Sunucu anahtarı tanımlı değil.";
   const threadIds = [...new Set(cozulenler.map((mesaj) => mesaj.threadId))];
-  const { data: tumMesajlar, error: okumaHatasi } = await admin
+  if (!threadIds.length) return null;
+
+  const { data: tumMesajlar, error } = await admin
     .from("mail_messages")
     .select("message_id,thread_id,gonderen_ad,gonderen_adres,alici,konu,ozet,tarih,yon,ekli_dosya")
     .eq("organization_id", organizationId)
     .in("thread_id", threadIds);
-  if (okumaHatasi) return "Konuşmalar okunamadı: " + okumaHatasi.message;
+  if (error) return "Konuşmalar okunamadı: " + error.message;
 
   const okunmamisKonusmalar = new Set(cozulenler.filter((mesaj) => mesaj.okunmamis).map((mesaj) => mesaj.threadId));
   const satirlar = threadIds.map((threadId) => {
@@ -143,13 +152,131 @@ export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: s
     } : null;
   }).filter((satir): satir is NonNullable<typeof satir> => satir !== null);
 
-  const { error: konusmaHatasi } = await admin.from("mail_threads")
+  const { error: yazmaHatasi } = await admin.from("mail_threads")
     .upsert(satirlar, { onConflict: "organization_id,thread_id" });
-  if (konusmaHatasi) return "Konuşmalar yazılamadı: " + konusmaHatasi.message;
+  if (yazmaHatasi) return "Konuşmalar yazılamadı: " + yazmaHatasi.message;
 
-  await admin.from("mail_accounts")
-    .update({ last_sync_at: new Date().toISOString(), last_error: null })
-    .eq("organization_id", organizationId);
+  await firsatlaraBagla(organizationId, threadIds);
+  return null;
+}
+
+/*
+  KENDİLİĞİNDEN CRM BAĞI.
+
+  Gelen postanın göndereni zaten bir fırsatın iletişim adresiyse konuşma
+  o kayda bağlanıyor. Elle bağlamayı beklemek, ortak kutudaki yazışmanın
+  müşteri kaydına hiç ulaşmaması demekti — kimse her konuşmayı tek tek
+  bağlamıyor.
+
+  İki sınır: (1) yalnızca TEK bir fırsat eşleşiyorsa bağlanıyor, birden
+  çoksa karar insanın; (2) bağı olan konuşmaya dokunulmuyor, personelin
+  elle kurduğu doğru bağ bir sonraki eşitlemede ezilmemeli.
+*/
+async function firsatlaraBagla(organizationId: string, threadIds: readonly string[]) {
+  const admin = createAdminClient();
+  if (!admin) return;
+
+  const { data: bagsizlar } = await admin
+    .from("mail_threads")
+    .select("thread_id,son_gonderen_adres")
+    .eq("organization_id", organizationId)
+    .in("thread_id", threadIds)
+    .is("opportunity_id", null);
+  const adresler = [...new Set((bagsizlar ?? [])
+    .map((satir) => (satir.son_gonderen_adres as string | null)?.toLowerCase())
+    .filter((adres): adres is string => Boolean(adres)))];
+  if (!adresler.length) return;
+
+  const { data: firsatlar } = await admin
+    .from("crm_opportunities")
+    .select("id,contact_email")
+    .eq("organization_id", organizationId)
+    .in("contact_email", adresler);
+
+  const adreseGore = new Map<string, string[]>();
+  for (const firsat of firsatlar ?? []) {
+    const adres = (firsat.contact_email as string | null)?.toLowerCase();
+    if (!adres) continue;
+    adreseGore.set(adres, [...(adreseGore.get(adres) ?? []), firsat.id as string]);
+  }
+
+  for (const satir of bagsizlar ?? []) {
+    const adres = (satir.son_gonderen_adres as string | null)?.toLowerCase();
+    const eslesen = adres ? adreseGore.get(adres) : undefined;
+    if (!eslesen || eslesen.length !== 1) continue;
+    await admin.from("mail_threads")
+      .update({ opportunity_id: eslesen[0] })
+      .eq("organization_id", organizationId)
+      .eq("thread_id", satir.thread_id as string)
+      .is("opportunity_id", null);
+  }
+}
+
+/** Tek kurumun kutusunu eşitler. Hata metni döner, yoksa null. */
+export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: string): Promise<string | null> {
+  const admin = createAdminClient();
+  if (!admin) return "Sunucu anahtarı tanımlı değil.";
+
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec.hata;
+
+  // ---------- 1) Yeni mesajlar ----------
+  const liste = await gmailGetir(`/messages?maxResults=${PENCERE}&labelIds=INBOX&labelIds=SENT`, belirtec);
+  if ("hata" in liste) return liste.hata;
+  const yeniKimlikler = ((liste.govde as { messages?: { id?: string }[] }).messages ?? [])
+    .map((satir) => satir.id)
+    .filter((id): id is string => Boolean(id));
+
+  const yeniSonuc = await mesajlariIsle(organizationId, kutuAdresi, yeniKimlikler, belirtec);
+  if ("hata" in yeniSonuc) return yeniSonuc.hata;
+  const konusmaHatasi = await konusmalariGuncelle(organizationId, yeniSonuc.cozulenler);
+  if (konusmaHatasi) return konusmaHatasi;
+
+  // ---------- 2) Geçmişten bir sayfa ----------
+  const { data: hesap } = await admin
+    .from("mail_accounts")
+    .select("gecmis_belirteci,gecmis_bitti,gecmis_mesaj_sayisi")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  let gecmisBelirteci = (hesap?.gecmis_belirteci as string | null) ?? null;
+  let gecmisBitti = Boolean(hesap?.gecmis_bitti);
+  let gecmisSayac = (hesap?.gecmis_mesaj_sayisi as number | null) ?? 0;
+
+  if (!gecmisBitti) {
+    /*
+      Kutunun tamamı tek turda indirilmiyor: her mesaj ayrı istek ve
+      yıllık bir kutuda bu, sunucunun zaman sınırını aşıyor. Tur başına
+      bir sayfa ilerliyoruz; 10 dakikada bir çalışan zamanlayıcıyla
+      günde on binlerce mesaj taranabiliyor ve ilk eşitleme kimseyi
+      bekletmiyor.
+    */
+    const sayfa = await gmailGetir(
+      `/messages?maxResults=${GECMIS_SAYFA}${gecmisBelirteci ? `&pageToken=${encodeURIComponent(gecmisBelirteci)}` : ""}`,
+      belirtec,
+    );
+    if ("hata" in sayfa) return sayfa.hata;
+    const govde = sayfa.govde as { messages?: { id?: string }[]; nextPageToken?: string };
+    const kimlikler = (govde.messages ?? []).map((satir) => satir.id).filter((id): id is string => Boolean(id));
+
+    const gecmisSonuc = await mesajlariIsle(organizationId, kutuAdresi, kimlikler, belirtec);
+    if ("hata" in gecmisSonuc) return gecmisSonuc.hata;
+    const gecmisKonusma = await konusmalariGuncelle(organizationId, gecmisSonuc.cozulenler);
+    if (gecmisKonusma) return gecmisKonusma;
+
+    gecmisSayac += gecmisSonuc.cozulenler.length;
+    gecmisBelirteci = govde.nextPageToken ?? null;
+    // Sayfa belirteci gelmediyse kutunun sonuna gelinmiştir.
+    gecmisBitti = !govde.nextPageToken;
+  }
+
+  await admin.from("mail_accounts").update({
+    last_sync_at: new Date().toISOString(),
+    last_error: null,
+    gecmis_belirteci: gecmisBelirteci,
+    gecmis_bitti: gecmisBitti,
+    gecmis_mesaj_sayisi: gecmisSayac,
+  }).eq("organization_id", organizationId);
   return null;
 }
 

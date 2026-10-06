@@ -26,7 +26,18 @@ type Konusma = {
   okunmamis: boolean;
   durum: string;
   ilgilenen_user_id: string | null;
+  opportunity_id: string | null;
+  /* Gömülü ilişki: PostgREST tek kayıtta nesne, bazı sürümlerde dizi
+     döndürüyor — ikisini de karşılayan tip. */
+  crm_opportunities: { customer_name: string | null } | { customer_name: string | null }[] | null;
 };
+
+/** Bağlı CRM kaydının müşteri adı; yoksa null. */
+function musteriAdi(konusma: Konusma): string | null {
+  const bag = konusma.crm_opportunities;
+  const kayit = Array.isArray(bag) ? bag[0] : bag;
+  return kayit?.customer_name ?? null;
+}
 
 const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   acik: { ad: "Açık", ton: "warning" },
@@ -41,7 +52,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   let sorgu = supabase
     .from("mail_threads")
-    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id")
+    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,crm_opportunities(customer_name)")
     .eq("organization_id", membership.organization_id)
     .order("son_mesaj_at", { ascending: false })
     .limit(100);
@@ -101,6 +112,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                   <small>{konusma.ozet}</small>
                 </span>
                 <span className="posta-yan">
+                  {musteriAdi(konusma) ? <small className="posta-musteri">{musteriAdi(konusma)}</small> : null}
                   <span className="status-pill" data-tone={etiket.ton}>{etiket.ad}</span>
                   {ilgilenen ? <small>{konusma.ilgilenen_user_id === userId ? "Siz ilgileniyorsunuz" : ilgilenen}</small> : null}
                   <small>{istanbulTarihSaat(konusma.son_mesaj_at)}</small>

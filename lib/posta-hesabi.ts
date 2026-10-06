@@ -23,11 +23,16 @@ export type PostaDurumu = {
   sonEsitleme: string | null;
   sonHata: string | null;
   guncellendi: string | null;
+  /* Geçmiş tarama turlara yayılıyor; ekranda "hâlâ iniyor" demek,
+     eksik görünen kutuyu hata sanmayı engelliyor. */
+  gecmisBitti: boolean;
+  gecmisMesajSayisi: number;
 };
 
 const bos = (kullanilabilir: boolean): PostaDurumu => ({
   kullanilabilir, kayitliMi: false, durum: null, adres: null,
   sonEsitleme: null, sonHata: null, guncellendi: null,
+  gecmisBitti: false, gecmisMesajSayisi: 0,
 });
 
 export async function postaDurumu(organizationId: string): Promise<PostaDurumu> {
@@ -37,7 +42,7 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
 
   const { data } = await admin
     .from("mail_accounts")
-    .select("email,status,last_sync_at,last_error,updated_at")
+    .select("email,status,last_sync_at,last_error,updated_at,gecmis_bitti,gecmis_mesaj_sayisi")
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (!data) return bos(kullanilabilir);
@@ -50,6 +55,8 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
     sonEsitleme: data.last_sync_at ?? null,
     sonHata: data.last_error ?? null,
     guncellendi: data.updated_at ?? null,
+    gecmisBitti: Boolean(data.gecmis_bitti),
+    gecmisMesajSayisi: (data.gecmis_mesaj_sayisi as number | null) ?? 0,
   };
 }
 

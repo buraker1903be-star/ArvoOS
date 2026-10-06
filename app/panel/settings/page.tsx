@@ -254,6 +254,9 @@ export default async function SettingsPage() {
                     {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                     <a className="panel-primary" href="/panel/settings/mail/baglan">{posta.durum === "bagli" ? "Google iznini yenile" : "Google ile bağlan"}</a>
                     <span>Son eşitleme: <b>{paytrDate(posta.sonEsitleme)}</b></span>
+                    {/* Geçmiş tarama turlara yayılıyor; "hâlâ iniyor" demek
+                        eksik görünen kutuyu hata sanmayı engelliyor. */}
+                    <span>Geçmiş: <b>{posta.gecmisBitti ? "tamamlandı" : `iniyor (${posta.gecmisMesajSayisi} mesaj)`}</b></span>
                     <form action={removePostaHesabi}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
                   </div>
                 ) : null}
