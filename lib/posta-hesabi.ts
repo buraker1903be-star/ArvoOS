@@ -135,6 +135,49 @@ async function hatayaAl(organizationId: string, mesaj: string) {
     .eq("organization_id", organizationId);
 }
 
+
+/*
+  Bağlanan kutunun adresi, Gmail'in kendi profil ucundan.
+
+  Hata mesajı Google'ın SÖYLEDİĞİNİ taşıyor. İlk sürümde her başarısızlık
+  tek bir cümleye düşüyordu — "Bağlanan posta kutusunun adresi okunamadı."
+  — ve o cümle hiçbir şey anlatmıyordu: API kapalı mı, kutu yok mu, yetki
+  mi yetmedi, ağ mı düştü, hepsi aynı görünüyordu (06.10.2026). Durum
+  kodunu ve Google'ın gerekçesini yazmak, sebebi aramayı saatlerden
+  saniyelere indiriyor.
+*/
+async function postaKutusuAdresi(erisimBelirteci: string): Promise<{ adres: string } | { hata: string }> {
+  const yanit = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+    headers: { authorization: `Bearer ${erisimBelirteci}` },
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı. Birazdan tekrar deneyin." };
+
+  const govde = (await yanit.json().catch(() => ({}))) as {
+    emailAddress?: unknown;
+    error?: { message?: string; status?: string; errors?: { reason?: string }[] };
+  };
+
+  if (yanit.ok && typeof govde.emailAddress === "string" && govde.emailAddress) {
+    return { adres: govde.emailAddress };
+  }
+
+  const sebep = govde.error?.errors?.[0]?.reason ?? govde.error?.status ?? "";
+  const googleMesaji = govde.error?.message ?? "";
+
+  /* En sık iki sebep kendi cümlesini hak ediyor; ikisinin de çözümü
+     paneldeki bir ayar değil, Google tarafındaki bir adım. */
+  if (sebep === "accessNotConfigured" || googleMesaji.includes("has not been used in project")) {
+    return { hata: "Gmail API bu Google Cloud projesinde etkin değil. Projede Gmail API'yi etkinleştirip birkaç dakika sonra tekrar deneyin." };
+  }
+  if (sebep === "failedPrecondition" || yanit.status === 400) {
+    return { hata: "Bu hesabın Gmail posta kutusu yok. Google Grubu adresleri (dağıtım listeleri) bağlanamaz; ortak kutu, Gmail'i açık gerçek bir kullanıcı hesabı olmalı." };
+  }
+  if (yanit.status === 403) {
+    return { hata: `Gmail erişimi reddedildi (403${sebep ? ` · ${sebep}` : ""}). ${googleMesaji || "Workspace yöneticisi bu hesapta Gmail'i kapatmış olabilir."}` };
+  }
+  return { hata: `Gmail profili okunamadı (HTTP ${yanit.status}${sebep ? ` · ${sebep}` : ""}).${googleMesaji ? " " + googleMesaji : ""}` };
+}
+
 /**
  * Google'ın geri dönüşündeki kodu belirteçle değiştirir ve bağlantıyı
  * tamamlar. Üç şey doğrulanmadan "bağlandı" yazılmıyor:
@@ -177,11 +220,9 @@ export async function postaBaglantisiniTamamla(girdi: {
   const kapsamSorunu = kapsamEksigi(okunan.kapsamlar);
   if (kapsamSorunu) return { hata: kapsamSorunu };
 
-  const profil = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
-    headers: { authorization: `Bearer ${okunan.erisimBelirteci}` },
-  }).then((yanit) => yanit.json()).catch(() => null);
-  const baglananAdres = typeof profil?.emailAddress === "string" ? profil.emailAddress : "";
-  if (!baglananAdres) return { hata: "Bağlanan posta kutusunun adresi okunamadı." };
+  const kutu = await postaKutusuAdresi(okunan.erisimBelirteci);
+  if ("hata" in kutu) return kutu;
+  const baglananAdres = kutu.adres;
   if (!adresUyusuyorMu(hesap.email as string, baglananAdres)) {
     return { hata: `Ayarlarda ${hesap.email} yazıyor ama ${baglananAdres} hesabıyla izin verildi. Doğru hesapla bağlanın ya da ayardaki adresi düzeltin.` };
   }
