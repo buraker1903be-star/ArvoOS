@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPanelContext } from "@/lib/panel-context";
 import { flashError } from "@/lib/panel-action";
 import { postaIstemcisi } from "@/lib/posta-hesabi";
 import { durumuKur, yetkilendirmeUrl } from "@/lib/posta-oauth";
-import { POSTA_GERI_DONUS, postaDurumCerezi } from "../ortak";
+import { postaDurumCerezi, postaGeriDonusAdresi } from "../ortak";
 
 /*
   ORTAK POSTA KUTUSU — Google izin akışının başlangıcı.
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
   const adres = yetkilendirmeUrl({
     clientId: istemci.clientId,
-    redirectUri: new URL(POSTA_GERI_DONUS, request.url).toString(),
+    redirectUri: postaGeriDonusAdresi(await headers()),
     state: durumuKur(tekSeferlik, membership.organization_id),
     loginHint: istemci.adres,
   });

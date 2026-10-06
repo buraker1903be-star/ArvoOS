@@ -109,3 +109,30 @@ test("bağlanan kutu ayardaki adresle karşılaştırılıyor", () => {
   assert.equal(adresUyusuyorMu("info@firma.com", "baska@firma.com"), false);
   assert.equal(adresUyusuyorMu("info@firma.com", ""), false);
 });
+
+test("geri dönüş adresi isteğin geldiği alan adından kuruluyor", async () => {
+  /*
+    Gerileme: adres sabit "app.arvo-os.com" yazılıydı. Panel çok kiracılı
+    ve kurum kendi doğrulanmış alan adından giriyor; ekran yanlış adresi
+    kaydettiriyor, Google'a bulunulan alan adı gidiyor ve bağlantı daha
+    ilk denemede redirect_uri_mismatch ile düşüyordu (06.10.2026,
+    app.akademikmerkez.com).
+  */
+  const { postaGeriDonusAdresi } = await import("@/app/panel/settings/mail/ortak");
+  const basliklar = (deger: Record<string, string>) => ({ get: (ad: string) => deger[ad] ?? null });
+
+  assert.equal(
+    postaGeriDonusAdresi(basliklar({ "x-forwarded-host": "app.akademikmerkez.com" })),
+    "https://app.akademikmerkez.com/panel/settings/mail/geri-donus",
+  );
+  // Proxy arkasında x-forwarded-host kazanır; host iç adresi taşıyabiliyor.
+  assert.equal(
+    postaGeriDonusAdresi(basliklar({ "x-forwarded-host": "app.arvo-os.com", host: "ic-adres.vercel.app" })),
+    "https://app.arvo-os.com/panel/settings/mail/geri-donus",
+  );
+  // Büyük harf ve port temizleniyor: Google birebir eşleşme istiyor.
+  assert.equal(
+    postaGeriDonusAdresi(basliklar({ host: "App.Arvo-OS.com:443" })),
+    "https://app.arvo-os.com/panel/settings/mail/geri-donus",
+  );
+});

@@ -1,10 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPanelContext } from "@/lib/panel-context";
 import { flashError, flashSuccess } from "@/lib/panel-action";
 import { postaBaglantisiniTamamla } from "@/lib/posta-hesabi";
 import { durumuDogrula } from "@/lib/posta-oauth";
-import { POSTA_GERI_DONUS, postaDurumCerezi } from "../ortak";
+import { postaDurumCerezi, postaGeriDonusAdresi } from "../ortak";
 
 /*
   ORTAK POSTA KUTUSU — Google izin akışının dönüşü.
@@ -56,7 +56,8 @@ export async function GET(request: Request) {
     organizationId: membership.organization_id,
     kod,
     // Başlangıçtakiyle BİREBİR aynı olmalı; Google aksi hâlde kodu kabul etmiyor.
-    redirectUri: new URL(POSTA_GERI_DONUS, request.url).toString(),
+    // İkisi de aynı fonksiyondan geçiyor ki ayrışamasınlar.
+    redirectUri: postaGeriDonusAdresi(await headers()),
     userId,
   });
 

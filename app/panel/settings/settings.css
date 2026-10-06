@@ -206,3 +206,5 @@
   .stg-ucdurum{width:100%}
 }
 .stg-kilit{display:inline-grid;place-items:center;width:30px;height:28px;border:1px dashed var(--line);border-radius:9px;color:var(--dim)}
+/* Google'a kaydedilecek adres: birebir kopyalanacağı için tek aralıklı. */
+.stg-paytr-note b.is-mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}

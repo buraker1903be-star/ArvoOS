@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { getPanelContext } from "@/lib/panel-context";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
@@ -10,8 +11,7 @@ import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
 import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { POSTA_GERI_DONUS } from "./mail/ortak";
-import { PLATFORM_HOST } from "@/lib/public-host";
+import { postaGeriDonusAdresi } from "./mail/ortak";
 import { arvoWhatsappKontrol } from "./whatsapp/actions";
 import "./settings-legal.css";
 import "./settings.css";
@@ -46,6 +46,10 @@ export default async function SettingsPage() {
   const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
   // Ortak posta kutusu: WhatsApp ile aynı kural — yalnızca yönetici, anahtar hiç okunmaz.
   const posta = canManage ? await postaDurumu(membership.organization_id) : null;
+  /* Cloud'a kaydedilecek adres, kurumun O AN bulunduğu alan adına göre.
+     Sabit yazıldığında kendi alan adından giren kurum yanlış adresi
+     kaydediyor ve bağlantı redirect_uri_mismatch ile düşüyordu. */
+  const postaGeriDonus = posta ? postaGeriDonusAdresi(await headers()) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
   const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id",membership.organization_id).single();
   // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
@@ -227,7 +231,14 @@ export default async function SettingsPage() {
                   <p className="wide stg-paytr-note">
                     Bu değerler sizin Google Cloud projenizden gelir, Arvo&apos;dan değil. Kendi Workspace&apos;inizde bir proje açıp Gmail API&apos;sini etkinleştirin,
                     OAuth onay ekranını <b>Internal</b> seçin ve bir Web istemcisi oluşturun. Onay ekranı Internal olduğu sürece Google doğrulaması ve güvenlik
-                    denetimi gerekmez. İstemciye şu yönlendirme adresini ekleyin: <b>https://{PLATFORM_HOST}{POSTA_GERI_DONUS}</b>
+                    denetimi gerekmez.
+                  </p>
+                  <p className="wide stg-paytr-note">
+                    İstemcideki <b>Authorized redirect URIs</b> alanına tam olarak şunu ekleyin:
+                    <br /><b className="is-mono">{postaGeriDonus}</b>
+                    <br />Bu adres şu an kullandığınız alan adına göre yazıldı. Ekibiniz panele birden fazla adresten giriyorsa
+                    (örneğin hem kendi alan adınız hem app.arvo-os.com), <b>her biri için ayrı satır ekleyin</b> — Google yalnızca
+                    isteğin geldiği adresle birebir eşleşen kaydı kabul ediyor.
                   </p>
                   <p className="wide stg-paytr-note">Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
                   <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
