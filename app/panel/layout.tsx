@@ -31,6 +31,7 @@ import "./panel-compact.css";
 import "./panel-premium.css";
 import "./panel-tables.css";
 import "./panel-motion.css";
+import { postaDurumu } from "@/lib/posta-hesabi";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -49,7 +50,7 @@ const roleNames: Record<string, string> = {
 const DEFAULT_APP_HOST = "app.arvo-os.com";
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys } = await getPanelContext();
+  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, izin } = await getPanelContext();
 
   /*
     Kurucu konsolu (yonetim.arvo-os.com) normal panel kabuğunu KULLANMAZ.
@@ -147,7 +148,18 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     Bağlantı yeni sekmede: konsol tek bir kurumun paneli değil, platformun
     kendisi — kurum panelindeki işin üstüne açılmamalı.
   */
+  /*
+    Ortak posta kutusu da uygulama ızgarasında ama diğerlerinden farklı:
+    ArvoOS'un KENDİ ekranı, ayrı bir ürün değil — o yüzden aynı sekmede
+    açılıyor, kişi panelden çıkmıyor. Yalnızca kutu bağlıyken ve yetkisi
+    olana görünür: bağlanacak bir şey yokken menüye boş bir girdi koymak,
+    tıklayana "burada ne var" diye sordurup geri döndürürdü.
+  */
+  const postaGorunur = !konsolHostu && izin("posta.gor")
+    && (await postaDurumu(membership.organization_id)).durum === "bagli";
+
   const digerUygulamalar = [
+    ...(postaGorunur ? [{ kod: "posta", ad: "Posta", href: "/panel/posta", ayniSekme: true }] : []),
     ...lisansliUrunler,
     ...(isPlatformOwner
       ? [{ kod: "yonetim", ad: "Kurucu Konsolu", href: `https://${MANAGEMENT_HOST}/panel`, ayniSekme: false, marka: "yonetim" as const }]

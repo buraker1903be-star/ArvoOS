@@ -12,6 +12,7 @@ const moduleMeta: Record<string, { icon: string; note: string }> = {
   finance: { icon: "wallet", note: "Cari, tahsilat, maliyet" },
   hr: { icon: "building", note: "Personel, prim, gizlilik" },
   documents: { icon: "folder", note: "Belge merkezi" },
+  posta: { icon: "chat", note: "Ortak gelen kutusu" },
   reports: { icon: "chart", note: "Finans → Raporlar sekmesi" },
 };
 

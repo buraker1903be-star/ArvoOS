@@ -12,6 +12,7 @@ export const PERMISSION_MODULES = [
   { key: "finance", label: "Finans" },
   { key: "hr", label: "İnsan Kaynakları" },
   { key: "documents", label: "Dokümanlar" },
+  { key: "posta", label: "Posta" },
   { key: "reports", label: "Raporlar" },
 ] as const;
 
@@ -41,6 +42,7 @@ const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
   "/panel/ekip": "hr",
   "/panel/reporting": "reports",
   "/panel/documents": "documents",
+  "/panel/posta": "posta",
 };
 
 export function modulesKeyForPath(pathname: string): string | null {

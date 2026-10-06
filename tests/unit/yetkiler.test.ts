@@ -47,9 +47,13 @@ test("ayar yapılmamış kurumda bugünkü davranış birebir korunuyor", () => 
   assert.ok(!manager.has("finance.kayit.yonet"));
   assert.ok(!manager.has("settings.kurum.yonet"));
 
-  // Satış ve operasyon personelinde yönetim yetkisi yok
+  /*
+    Satış ve operasyon personelinde YÖNETİM yetkisi yok. Tek istisna ortak
+    posta kutusu: amacı zaten "ekibin tamamı aynı kutuyu görsün", dar
+    varsayılan özelliği kurulduğu anda kullanılamaz yapardı.
+  */
   for (const yetkiler of [member, operasyoncu]) {
-    assert.equal(yetkiler.size, 0);
+    assert.deepEqual([...yetkiler].sort(), ["posta.gor"]);
   }
 });
 
@@ -160,7 +164,7 @@ test("hata metni hangi yetkinin eksik olduğunu söylüyor", () => {
 test("katalog tutarlı: anahtarlar tekil, modüller bilinen küme", () => {
   const anahtarlar = TUM_YETKILER.map((yetki) => yetki.key);
   assert.equal(new Set(anahtarlar).size, anahtarlar.length, "yinelenen yetki anahtarı");
-  const modulAnahtarlari = new Set(["crm", "operations", "finance", "hr", "documents", "reports"]);
+  const modulAnahtarlari = new Set(["crm", "operations", "finance", "hr", "documents", "reports", "posta"]);
   for (const yetki of TUM_YETKILER) {
     if (yetki.modul !== null) assert.ok(modulAnahtarlari.has(yetki.modul), `bilinmeyen modül: ${yetki.modul}`);
     assert.ok(yetki.varsayilan.every((rol) => ["admin", "manager", "member", "operasyoncu"].includes(rol)),

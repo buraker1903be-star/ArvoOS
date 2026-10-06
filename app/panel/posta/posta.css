@@ -1,0 +1,48 @@
+/* Ortak posta kutusu. Renkler panel-tokens.css'ten; burada palet tanımlanmaz. */
+
+.posta-uyari{margin:0 0 14px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--danger) 8%,transparent);color:var(--danger);font-size:13px}
+
+.posta-bos{display:grid;justify-items:center;gap:6px;padding:40px 16px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center}
+.posta-bos p{margin:0;font-size:14px;font-weight:600;color:var(--ink)}
+.posta-bos small{font-size:13px}
+
+.posta-liste{margin:14px 0 0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);overflow:hidden}
+.posta-liste>li+li{border-top:1px solid var(--line-soft)}
+.posta-liste a{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) auto;align-items:center;gap:16px;padding:14px 16px;color:var(--ink);text-decoration:none;transition:background-color .15s ease}
+.posta-liste a:hover{background:color-mix(in srgb,var(--accent-soft) 40%,transparent)}
+.posta-liste a:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+
+/* Okunmamış konuşma: ağırlık ve sol şerit. Yalnızca renkle ayırmak
+   renk körlüğünde kayboluyordu. */
+.posta-liste>li[data-okunmamis="evet"] a{box-shadow:inset 3px 0 0 var(--accent-500)}
+.posta-liste>li[data-okunmamis="evet"] b{font-weight:700}
+
+.posta-kisi,.posta-icerik{min-width:0}
+.posta-kisi b,.posta-icerik b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.posta-kisi small,.posta-icerik small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.posta-yan{display:grid;justify-items:end;gap:4px;flex:none}
+.posta-yan small{color:var(--muted);font-size:12px;white-space:nowrap}
+
+.posta-durum-cubugu{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+
+.posta-mesajlar{margin:0;padding:0;list-style:none;display:grid;gap:12px}
+.posta-mesajlar>li{border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);padding:14px 16px}
+/* Giden mesaj görsel olarak ayrışıyor: ortak kutuda "biz mi yazdık,
+   müşteri mi" sorusu listede sürekli soruluyor. */
+.posta-mesajlar>li[data-yon="giden"]{background:color-mix(in srgb,var(--accent-soft) 30%,var(--surface-2));border-color:color-mix(in srgb,var(--accent-500) 22%,var(--line-soft))}
+.posta-mesajlar header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px}
+.posta-mesajlar header b{display:block;font-size:14px;font-weight:600}
+.posta-mesajlar header small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.posta-mesaj-yan{display:grid;justify-items:end;gap:2px;flex:none;text-align:right}
+
+/* Gövde düz metin: satır sonları korunuyor, uzun bağlantılar taşmıyor. */
+.posta-govde{margin:0;color:var(--ink);font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+
+.posta-not{margin:16px 0 0;color:var(--muted);font-size:13px}
+
+@media (max-width:760px){
+  .posta-liste a{grid-template-columns:minmax(0,1fr);gap:6px}
+  .posta-yan{justify-items:start;grid-auto-flow:column;gap:10px}
+  .posta-mesajlar header{flex-direction:column;gap:6px}
+  .posta-mesaj-yan{justify-items:start;text-align:left}
+}

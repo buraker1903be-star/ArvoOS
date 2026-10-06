@@ -52,6 +52,10 @@ export type YetkiTanimi = {
 
 const YONETIM = ["admin"] as const;              // owner zaten her şeyi yapar
 const YONETIM_VE_SEF = ["admin", "manager"] as const;
+/* Ortak posta kutusunun amacı zaten "ekibin tamamı aynı kutuyu görsün":
+   varsayılanı dar tutmak, özelliği kurduğumuz anda kullanılamaz yapardı.
+   Kısıtlamak isteyen kurum rol ya da kişi düzeyinde kapatır. */
+const HERKES = ["admin", "manager", "member", "operasyoncu"] as const;
 
 export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; yetkiler: readonly YetkiTanimi[] }[] = [
   {
@@ -107,6 +111,14 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
       { key: "hr.prim.yonet", modul: "hr", label: "Prim ödemesi", aciklama: "Prim ödemesi kaydeder", varsayilan: YONETIM, rlsBagli: true },
       { key: "hr.hareket.gor", modul: "hr", label: "Personel hareketleri", aciklama: "Personelin panel hareket geçmişini görür", varsayilan: YONETIM_VE_SEF },
       { key: "hr.gizlilik.gor", modul: "hr", label: "Gizlilik arşivi", aciklama: "İmzalı gizlilik sözleşmelerini görür", varsayilan: YONETIM_VE_SEF },
+    ],
+  },
+  {
+    modul: "posta",
+    baslik: "Posta",
+    yetkiler: [
+      { key: "posta.gor", modul: "posta", label: "Ortak posta kutusu", aciklama: "Kurumun ortak gelen kutusunu görür", varsayilan: HERKES },
+      { key: "posta.yonet", modul: "posta", label: "Konuşma yönetimi", aciklama: "Konuşmayı birine atar, yanıtlandı/kapandı olarak işaretler", varsayilan: YONETIM_VE_SEF },
     ],
   },
   {

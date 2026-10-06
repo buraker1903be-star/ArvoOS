@@ -861,6 +861,35 @@
       "status",
       "updated_at"
     ],
+    "mail_messages": [
+      "alici",
+      "created_at",
+      "ekli_dosya",
+      "gonderen_ad",
+      "gonderen_adres",
+      "konu",
+      "message_id",
+      "organization_id",
+      "ozet",
+      "tarih",
+      "thread_id",
+      "yon"
+    ],
+    "mail_threads": [
+      "created_at",
+      "durum",
+      "ilgilenen_user_id",
+      "konu",
+      "mesaj_sayisi",
+      "okunmamis",
+      "organization_id",
+      "ozet",
+      "son_gonderen_ad",
+      "son_gonderen_adres",
+      "son_mesaj_at",
+      "thread_id",
+      "updated_at"
+    ],
     "member_capability_permissions": [
       "allowed",
       "capability_key",

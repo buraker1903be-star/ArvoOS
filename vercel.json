@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/cron/arc-sync",
@@ -13,6 +15,10 @@
     {
       "path": "/api/cron/adim-terminleri",
       "schedule": "50 4 * * *"
+    },
+    {
+      "path": "/api/cron/posta-esitleme",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
