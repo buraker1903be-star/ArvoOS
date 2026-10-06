@@ -8,6 +8,10 @@ import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
+import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
+import { postaDurumu } from "@/lib/posta-hesabi";
+import { POSTA_GERI_DONUS } from "./mail/ortak";
+import { PLATFORM_HOST } from "@/lib/public-host";
 import { arvoWhatsappKontrol } from "./whatsapp/actions";
 import "./settings-legal.css";
 import "./settings.css";
@@ -40,6 +44,8 @@ export default async function SettingsPage() {
   const odemeSaglayicilari = canManage ? await saglayiciDurumlari(membership.organization_id) : [];
   // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
   const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
+  // Ortak posta kutusu: WhatsApp ile aynı kural — yalnızca yönetici, anahtar hiç okunmaz.
+  const posta = canManage ? await postaDurumu(membership.organization_id) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
   const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id",membership.organization_id).single();
   // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
@@ -199,6 +205,54 @@ export default async function SettingsPage() {
         {odemeSaglayicilari.map((status) => (
           <OdemeSaglayiciKarti key={status.spec.code} status={status} />
         ))}
+        {posta ? (
+          <div className="stg-paytr" id="posta">
+            <div className="stg-paytr-head">
+              <div>
+                <b>Ortak posta kutusu (Gmail)</b>
+                <small>Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar. Gelen kutusu ve yanıtlama sonraki aşamada açılır.</small>
+              </div>
+              <span className="status-pill" data-tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}>
+                {posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
+                  : posta.durum === "hata" ? "Yetkilendirme düştü"
+                  : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
+              </span>
+            </div>
+            {posta.kullanilabilir ? (
+              <>
+                <form className="panel-form" action={savePostaHesabi}>
+                  <label className="wide">Ortak posta adresi<input name="adres" type="email" required defaultValue={posta.adres ?? ""} autoComplete="off" placeholder="info@firmaniz.com" /></label>
+                  <label className="wide">Google istemci kimliği (client ID)<input name="client_id" required autoComplete="off" /></label>
+                  <label className="wide">Google gizli anahtarı (client secret)<input name="client_secret" type="password" required autoComplete="new-password" placeholder={posta.kayitliMi ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+                  <p className="wide stg-paytr-note">
+                    Bu değerler sizin Google Cloud projenizden gelir, Arvo&apos;dan değil. Kendi Workspace&apos;inizde bir proje açıp Gmail API&apos;sini etkinleştirin,
+                    OAuth onay ekranını <b>Internal</b> seçin ve bir Web istemcisi oluşturun. Onay ekranı Internal olduğu sürece Google doğrulaması ve güvenlik
+                    denetimi gerekmez. İstemciye şu yönlendirme adresini ekleyin: <b>https://{PLATFORM_HOST}{POSTA_GERI_DONUS}</b>
+                  </p>
+                  <p className="wide stg-paytr-note">Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
+                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
+                </form>
+                {posta.kayitliMi ? (
+                  <div className="stg-paytr-foot">
+                    {/*
+                      Bilerek <a>, <Link> değil. Hedef bir sayfa değil, Google'a
+                      302 dönen bir yol; Link istemci tarafı gezinmeyi dener,
+                      RSC yanıtı bulamaz ve izin ekranı hiç açılmaz. Yönlendirme
+                      tarayıcının adres çubuğunda olmak zorunda.
+                    */}
+                    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                    <a className="panel-primary" href="/panel/settings/mail/baglan">{posta.durum === "bagli" ? "Google iznini yenile" : "Google ile bağlan"}</a>
+                    <span>Son eşitleme: <b>{paytrDate(posta.sonEsitleme)}</b></span>
+                    <form action={removePostaHesabi}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="stg-muted"><StgIcon name="lock" size={16} />Posta için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
+            )}
+            {posta.sonHata ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {posta.sonHata}</p> : null}
+          </div>
+        ) : null}
         {whatsapp ? (
           <div className="stg-paytr">
             <div className="stg-paytr-head">

@@ -847,6 +847,20 @@
       "organization_id",
       "sender_id"
     ],
+    "mail_accounts": [
+      "client_id",
+      "client_secret_enc",
+      "connected_by",
+      "created_at",
+      "email",
+      "last_error",
+      "last_history_id",
+      "last_sync_at",
+      "organization_id",
+      "refresh_token_enc",
+      "status",
+      "updated_at"
+    ],
     "member_capability_permissions": [
       "allowed",
       "capability_key",
