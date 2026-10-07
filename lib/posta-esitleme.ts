@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
-import { konusmayiOzetle, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type GmailMesaji } from "@/lib/posta-ayristirma";
+import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji } from "@/lib/posta-ayristirma";
 import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderim";
 
 /*
@@ -18,8 +18,15 @@ import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderi
 */
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-/** Her turda bakılacak YENİ mesaj sayısı. 10 dakikalık turda fazlasıyla yeter. */
+/** Artımlı imleç yokken bakılacak son mesaj sayısı (ilk tur ve imleç düşünce). */
 const PENCERE = 60;
+/* Bir turda okunacak en fazla değişiklik sayfası. Çok birikmişse kalanı
+   bir sonraki tur alır; imleç ancak okunan yere kadar ilerliyor. */
+const DEGISIM_SAYFASI = 5;
+/* Tur kilidinin ömrü. Sunucu tur ortasında düşerse kilit asılı kalır;
+   bu süreden eskisi düşmüş sayılıyor, yoksa kutu bir daha hiç
+   eşitlenmezdi. 300 saniyelik işlev sınırının biraz üstü. */
+const KILIT_OMRU_MS = 6 * 60 * 1000;
 /* Geçmiş taramada tur başına bir sayfa. 100 mesaj onarlı kümelerle
    ~10 turda iniyor; daha büyüğü sunucunun zaman sınırını zorluyor. */
 const GECMIS_SAYFA = 100;
@@ -69,7 +76,10 @@ async function mesajlariIsle(
     )));
     for (const sonuc of sonuclar) {
       if ("hata" in sonuc) return { hata: sonuc.hata };
-      const cozulen = mesajiCoz(sonuc.govde as GmailMesaji, kutuAdresi);
+      const ham = sonuc.govde as GmailMesaji;
+      // Taslak/spam/çöp elenir (lib/posta-ayristirma.ts · kutudaGorunurMu).
+      if (!kutudaGorunurMu(ham.labelIds)) continue;
+      const cozulen = mesajiCoz(ham, kutuAdresi);
       if (cozulen) cozulenler.push(cozulen);
     }
   }
@@ -212,20 +222,163 @@ async function firsatlaraBagla(organizationId: string, threadIds: readonly strin
   }
 }
 
-/** Tek kurumun kutusunu eşitler. Hata metni döner, yoksa null. */
+/*
+  ARTIMLI TUR — Gmail'in history ucu.
+
+  Sıklık arttığında asıl maliyet listeleme değil, listedeki HER mesajın
+  ayrı ayrı çekilmesi: pencere 60 mesajsa her tur 61 istek, hiçbir şey
+  değişmemiş olsa bile. 2 dakikada bir bu, günde 44 bin istek.
+
+  history ucu "şu imleçten beri ne değişti" diye soruyor: değişiklik
+  yoksa cevap TEK istek ve boş. Yalnızca eklenen/etiketi değişen mesajlar
+  çekiliyor — okundu işareti de etiket değişikliği olarak geliyor, yani
+  biri Gmail'den bir postayı okuduğunda panel de görüyor.
+
+  İmleç yoksa ya da Gmail "çok eski" diyorsa (404) null dönüyor ve
+  çağıran tam pencereye düşüyor. Gmail history kayıtlarını sınırlı süre
+  tutuyor; tek güvencemiz buysa, bir hafta kapalı kalan kutu sessizce
+  eksik eşitlenirdi.
+*/
+async function degisenMesajlar(
+  belirtec: string,
+  imlec: string,
+): Promise<{ kimlikler: string[]; yeniImlec: string | null } | null | { hata: string }> {
+  const sayfalar: DegisimSayfasi[] = [];
+  let sayfaBelirteci: string | null = null;
+
+  for (let sayac = 0; sayac < DEGISIM_SAYFASI; sayac += 1) {
+    const yanit = await gmailGetir(
+      `/history?startHistoryId=${encodeURIComponent(imlec)}`
+      + `&historyTypes=messageAdded&historyTypes=labelAdded&historyTypes=labelRemoved`
+      + (sayfaBelirteci ? `&pageToken=${encodeURIComponent(sayfaBelirteci)}` : ""),
+      belirtec,
+    );
+    if ("hata" in yanit) {
+      /* İmleç çok eskiyse Gmail 404 veriyor. Hata değil: tam pencereye
+         dönülecek, bu yüzden null. */
+      if (/not found|404/i.test(yanit.hata)) return null;
+      return { hata: yanit.hata };
+    }
+    const govde = yanit.govde as DegisimSayfasi;
+    sayfalar.push(govde);
+    sayfaBelirteci = govde.nextPageToken ?? null;
+    if (!sayfaBelirteci) break;
+  }
+
+  // İmleci ilerletme kararı dahil: lib/posta-ayristirma.ts · degisimleriTopla
+  return degisimleriTopla(sayfalar);
+}
+
+/** Kutunun o anki history imleci (artımlı turun başlangıç noktası). */
+async function guncelImlec(belirtec: string): Promise<string | null> {
+  const yanit = await gmailGetir("/profile", belirtec);
+  if ("hata" in yanit) return null;
+  const kimlik = (yanit.govde as { historyId?: string }).historyId;
+  return kimlik ? String(kimlik) : null;
+}
+
+/*
+  TUR KİLİDİ.
+
+  10 dakikalık turda bir eşitlemenin bir sonrakine yetişmesi mümkün
+  değildi. 2 dakikada ve üstüne açık sekmenin tetiklemesiyle mümkün:
+  geçmiş taraması süren bir kurumda tur uzuyor, ikinci tur aynı
+  mesajları yeniden çekip aynı satırlara yazıyor — Gmail kotası boşa
+  gidiyor ve iki tur aynı history imlecini farklı yerlere taşıyor.
+
+  Kilit, satırın kendi koşuluyla alınıyor (tek update, şartı WHERE'de):
+  iki tur aynı anda denerse biri satırı günceller, diğerinin güncellemesi
+  hiçbir satıra denk gelmez. Önce okuyup sonra yazmak, tam da engellemek
+  istediğimiz yarışı bırakırdı (AGENTS.md: "önce kontrol et sonra yaz"
+  yeterli sayılmaz).
+
+  Kilit ZAMAN AŞIMLI: sunucu tur ortasında düşerse kilit asılı kalır ve
+  kutu bir daha hiç eşitlenmezdi. Sessizce duran bir kutu, hata veren
+  kutudan beterdir — en azından hata ekranda görünüyor.
+*/
+async function kilidiAl(organizationId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  if (!admin) return false;
+  const simdi = new Date();
+  const eskiSayilir = new Date(simdi.getTime() - KILIT_OMRU_MS).toISOString();
+  const { data } = await admin.from("mail_accounts")
+    .update({ esitleniyor_at: simdi.toISOString() })
+    .eq("organization_id", organizationId)
+    .or(`esitleniyor_at.is.null,esitleniyor_at.lt.${eskiSayilir}`)
+    .select("organization_id");
+  return Boolean(data?.length);
+}
+
+async function kilidiBirak(organizationId: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  await admin.from("mail_accounts")
+    .update({ esitleniyor_at: null })
+    .eq("organization_id", organizationId);
+}
+
+/**
+ * Tek kurumun kutusunu eşitler. Hata metni döner, yoksa null.
+ *
+ * Başka bir tur sürüyorsa hiçbir şey yapmadan null döner: "şu an
+ * eşitleniyor" bir hata değil, çağıran taraf için de sonuç aynı.
+ */
 export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: string): Promise<string | null> {
+  if (!(await kilidiAl(organizationId))) return null;
+  try {
+    return await turuKos(organizationId, kutuAdresi);
+  } finally {
+    /* finally: hata da atılsa kilit kalkıyor. Kalkmazsa kutu altı dakika
+       boyunca eşitlenmez. */
+    await kilidiBirak(organizationId);
+  }
+}
+
+async function turuKos(organizationId: string, kutuAdresi: string): Promise<string | null> {
   const admin = createAdminClient();
   if (!admin) return "Sunucu anahtarı tanımlı değil.";
 
   const belirtec = await postaErisimBelirteci(organizationId);
   if (typeof belirtec !== "string") return belirtec.hata;
 
-  // ---------- 1) Yeni mesajlar ----------
-  const liste = await gmailGetir(`/messages?maxResults=${PENCERE}&labelIds=INBOX&labelIds=SENT`, belirtec);
-  if ("hata" in liste) return liste.hata;
-  const yeniKimlikler = ((liste.govde as { messages?: { id?: string }[] }).messages ?? [])
-    .map((satir) => satir.id)
-    .filter((id): id is string => Boolean(id));
+  const { data: oncekiDurum } = await admin
+    .from("mail_accounts").select("last_history_id").eq("organization_id", organizationId).maybeSingle();
+  const imlec = (oncekiDurum?.last_history_id as string | null) ?? null;
+
+  // ---------- 1) Yeni ve değişen mesajlar ----------
+  let yeniKimlikler: string[];
+  let yeniImlec: string | null = null;
+
+  const artimli = imlec ? await degisenMesajlar(belirtec, imlec) : null;
+  if (artimli && "hata" in artimli) return artimli.hata;
+
+  if (artimli) {
+    yeniKimlikler = artimli.kimlikler;
+    yeniImlec = artimli.yeniImlec;
+  } else {
+    /* İmleç yok ya da düştü: son N mesaja bak ve imleci yeniden kur.
+       İmleç ÖNCE alınıyor — tarama sırasında gelen bir posta, imleç
+       sonra alınsaydı iki turda da atlanırdı. */
+    yeniImlec = await guncelImlec(belirtec);
+    /*
+      İKİ AYRI SORGU, çünkü Gmail'de labelIds VE anlamına geliyor:
+      "Only return messages with labels that match ALL of the specified
+      label IDs". Tek sorguda labelIds=INBOX&labelIds=SENT yazmak "hem
+      gelen kutusunda hem gönderilmişlerde olan mesajlar" demekti —
+      pratikte yalnızca kişinin kendine attığı postalar. Gelen postanın
+      hiçbiri bu pencereden geçmiyordu; kutuyu dolduran şey geçmiş
+      taramasıydı ve o bitince yeni posta hiç görünmeyecekti.
+    */
+    const kimlikKumesi = new Set<string>();
+    for (const etiket of ["INBOX", "SENT"]) {
+      const liste = await gmailGetir(`/messages?maxResults=${PENCERE}&labelIds=${etiket}`, belirtec);
+      if ("hata" in liste) return liste.hata;
+      for (const satir of (liste.govde as { messages?: { id?: string }[] }).messages ?? []) {
+        if (satir.id) kimlikKumesi.add(satir.id);
+      }
+    }
+    yeniKimlikler = [...kimlikKumesi];
+  }
 
   const yeniSonuc = await mesajlariIsle(organizationId, kutuAdresi, yeniKimlikler, belirtec);
   if ("hata" in yeniSonuc) return yeniSonuc.hata;
@@ -276,6 +429,10 @@ export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: s
     gecmis_belirteci: gecmisBelirteci,
     gecmis_bitti: gecmisBitti,
     gecmis_mesaj_sayisi: gecmisSayac,
+    /* İmleç yalnızca BAŞARILI turun sonunda ilerliyor: arada bir hata
+       olsa yukarıda çıkılmış olurdu ve bir sonraki tur aynı
+       değişiklikleri yeniden ister. */
+    ...(yeniImlec ? { last_history_id: yeniImlec } : {}),
   }).eq("organization_id", organizationId);
   return null;
 }

@@ -203,3 +203,56 @@ export function mesajGovdesi(payload: unknown): string {
   const html = parcaBul(kok, "text/html");
   return html ? htmlDenMetin(html) : "";
 }
+
+/*
+  GMAIL DEĞİŞİKLİK SAYFALARINI TEK SONUCA İNDİRGEME.
+
+  Artımlı eşitleme "şu imleçten beri ne değişti" diye soruyor; cevap
+  sayfalı gelebiliyor. Burada iki şey oluyor: değişen mesaj kimlikleri
+  tekilleşiyor, ve imlecin nereye taşınacağına karar veriliyor.
+
+  İMLEÇ, SAYFALAR BİTMEDİYSE TAŞINMIYOR (null). Tur başına okunacak
+  sayfa sayısı sınırlı; çok değişiklik birikmişse son okunan sayfanın
+  historyId'sine atlamak, okunmayan sayfalardaki mesajları KALICI olarak
+  atlamak demekti — bir daha hiçbir tur onları istemezdi. null dönünce
+  çağıran imleci olduğu yerde bırakıyor ve sonraki tur aynı yerden
+  devam ediyor; tekrar okunan birkaç değişikliğin maliyeti, sessizce
+  kaybolan bir postanın yanında hiçbir şey.
+*/
+export type DegisimSayfasi = {
+  history?: { messages?: { id?: string }[] }[];
+  historyId?: string;
+  nextPageToken?: string;
+};
+
+export function degisimleriTopla(
+  sayfalar: readonly DegisimSayfasi[],
+): { kimlikler: string[]; yeniImlec: string | null } {
+  const kimlikler = new Set<string>();
+  let imlec: string | null = null;
+  for (const sayfa of sayfalar) {
+    for (const kayit of sayfa.history ?? []) {
+      for (const mesaj of kayit.messages ?? []) if (mesaj.id) kimlikler.add(mesaj.id);
+    }
+    if (sayfa.historyId) imlec = String(sayfa.historyId);
+  }
+  const yarimKaldi = Boolean(sayfalar.at(-1)?.nextPageToken);
+  return { kimlikler: [...kimlikler], yeniImlec: yarimKaldi ? null : imlec };
+}
+
+/*
+  ORTAK KUTUDA GÖRÜNMESİ GEREKEN MESAJ MI.
+
+  Eskiden bu kararı Gmail'in liste sorgusu veriyordu. Artımlı eşitlemede
+  öyle bir süzgeç yok: history ucu TÜM değişiklikleri döndürüyor —
+  taslaklar, çöp kutusuna atılanlar, spam. Süzgeçsiz bırakmak, ekibin
+  ortak kutusuna yarım kalmış taslakları konuşma diye yazmak demekti.
+
+  Karar mesajın kendi etiketlerinden veriliyor, listeyi kimin ürettiğinden
+  bağımsız: aynı kural hem artımlı tura hem geçmiş taramasına uyuyor.
+*/
+export function kutudaGorunurMu(etiketler: readonly string[] | undefined): boolean {
+  const kume = new Set(etiketler ?? []);
+  if (kume.has("DRAFT") || kume.has("SPAM") || kume.has("TRASH")) return false;
+  return kume.has("INBOX") || kume.has("SENT");
+}

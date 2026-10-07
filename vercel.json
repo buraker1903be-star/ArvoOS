@@ -18,7 +18,7 @@
     },
     {
       "path": "/api/cron/posta-esitleme",
-      "schedule": "*/10 * * * *"
+      "schedule": "*/2 * * * *"
     }
   ]
 }

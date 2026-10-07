@@ -96,6 +96,9 @@ export async function postaAnahtarlariniKaydet(girdi: {
     client_id: girdi.clientId.trim(),
     client_secret_enc: encryptSecret(girdi.clientSecret.trim()),
     refresh_token_enc: null,
+    /* Yeni istemciyle eski erişim belirteci de geçersiz. */
+    erisim_belirteci_enc: null,
+    erisim_belirteci_biter: null,
     status: "beklemede",
     last_error: null,
     connected_by: girdi.userId,
@@ -126,7 +129,7 @@ async function hesabiOku(organizationId: string) {
   const admin = sunucuHazirMi();
   const { data, error } = await admin
     .from("mail_accounts")
-    .select("email,client_id,client_secret_enc,refresh_token_enc,status")
+    .select("email,client_id,client_secret_enc,refresh_token_enc,status,erisim_belirteci_enc,erisim_belirteci_biter")
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (error) throw new Error("Posta hesabı okunamadı: " + error.message);
@@ -138,7 +141,12 @@ async function hatayaAl(organizationId: string, mesaj: string) {
   const admin = createAdminClient();
   if (!admin) return;
   await admin.from("mail_accounts")
-    .update({ status: "hata", last_error: mesaj, updated_at: new Date().toISOString() })
+    /* Önbellekteki erişim belirteci de düşüyor: yenileme reddedildiyse
+       elimizdeki belirteç de ya ölü ya da yanlış hesabın. */
+    .update({
+      status: "hata", last_error: mesaj, updated_at: new Date().toISOString(),
+      erisim_belirteci_enc: null, erisim_belirteci_biter: null,
+    })
     .eq("organization_id", organizationId);
 }
 
@@ -240,6 +248,10 @@ export async function postaBaglantisiniTamamla(girdi: {
     last_error: null,
     connected_by: girdi.userId,
     updated_at: new Date().toISOString(),
+    /* İzin akışının bu turda aldığı belirteç doğrudan önbelleğe: ilk
+       eşitleme Google'a ikinci kez gitmeden başlayabilsin. */
+    erisim_belirteci_enc: encryptSecret(okunan.erisimBelirteci),
+    erisim_belirteci_biter: okunan.sonaErme.toISOString(),
   }).eq("organization_id", girdi.organizationId);
   if (error) return { hata: "Bağlantı kaydedilemedi: " + error.message };
 
@@ -249,15 +261,34 @@ export async function postaBaglantisiniTamamla(girdi: {
 /**
  * Geçerli bir erişim belirteci (gelen kutusu ve gönderim için).
  *
- * Erişim belirteci SAKLANMIYOR, her seferinde yenilemeden üretiliyor.
- * Saklamak bir alan daha şifrelemek, bir sona erme daha yönetmek ve
- * yenileme belirteci düştüğünde iki yerde temizlemek demekti; Google'ın
- * yenileme çağrısı zaten tek ve hızlı bir istek.
+ * BELİRTEÇ ÖNBELLEKLİ. Önceki sürüm her çağrıda Google'a gidip yeni bir
+ * belirteç alıyor, bir saat geçerli olanı tek istekte kullanıp atıyordu.
+ * 10 dakikalık turda bu görünmüyordu; eşitleme 2 dakikaya inip açık
+ * sekme de kendi turunu tetikleyince günde bir avuç yenileme binlerce
+ * oluyor. Google yenileme isteklerini kısıtlıyor ve aşırı kullanımda
+ * belirteci düşürebiliyor — yani sıklığı artırmanın ön koşulu buydu.
+ *
+ * Saklanan belirteç şifreli (diğer sırlarla aynı anahtar). Kısa ömürlü
+ * olması düz metin saklamak için gerekçe değil: o belirteçle kutunun
+ * tamamı okunabiliyor.
  */
 export async function postaErisimBelirteci(organizationId: string): Promise<string | { hata: string }> {
-  const { hesap } = await hesabiOku(organizationId);
+  const { admin, hesap } = await hesabiOku(organizationId);
   if (hesap.status === "kapali") return { hata: "Posta bağlantısı kapalı." };
   if (!hesap.refresh_token_enc) return { hata: "Posta kutusuna Google izni verilmemiş." };
+
+  /* Saklanan belirtecin bitişinde zaten 60 saniye pay var
+     (tokenCevabiniOku); burada ikinci bir pay bırakmıyoruz. */
+  const biter = hesap.erisim_belirteci_biter ? new Date(hesap.erisim_belirteci_biter as string) : null;
+  if (hesap.erisim_belirteci_enc && biter && biter.getTime() > Date.now()) {
+    try {
+      return decryptSecret(hesap.erisim_belirteci_enc as string);
+    } catch {
+      /* Şifre anahtarı dönmüş ya da satır bozulmuş: yenilemeye düşüyoruz.
+         Burada hata vermek, kendi kendine düzelecek bir durumu kutuyu
+         durduran bir arızaya çevirirdi. */
+    }
+  }
 
   const cevap = await fetch(TOKEN_UCU, {
     method: "POST",
@@ -280,5 +311,13 @@ export async function postaErisimBelirteci(organizationId: string): Promise<stri
     await hatayaAl(organizationId, okunan.hata);
     return { hata: okunan.hata };
   }
+
+  /* Yazma hatası turu durdurmuyor: belirteç elimizde ve geçerli, yalnızca
+     bir sonraki tur yeniden yenileyecek. */
+  await admin.from("mail_accounts").update({
+    erisim_belirteci_enc: encryptSecret(okunan.erisimBelirteci),
+    erisim_belirteci_biter: okunan.sonaErme.toISOString(),
+  }).eq("organization_id", organizationId);
+
   return okunan.erisimBelirteci;
 }

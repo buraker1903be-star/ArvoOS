@@ -33,6 +33,7 @@ before(async () => {
     "20261006171515_ortak_posta_kutusu.sql",
     "20261006190207_posta_gelen_kutusu.sql",
     "20261006193918_posta_gecmis_ve_crm_bagi.sql",
+    "20261007123751_sik_esitleme.sql",
   ]) {
     await db.exec(fs.readFileSync(migration(ad), "utf8"));
   }
@@ -56,6 +57,29 @@ const okunmamisMi = async () =>
   (await db.query(
     `select okunmamis from public.mail_threads where organization_id=$1 and thread_id=$2`,
     [KURUM, KONUSMA])).rows[0].okunmamis;
+
+describe("posta hesabı sunucuya kapalı kalıyor", () => {
+  /* mail_accounts kurumun Google anahtarlarını ve artık erişim
+     belirtecini de tutuyor. Tablo grant'sız ve politikasız RLS ile
+     kapalı; sütun eklerken bunun sessizce gevşemediği burada sabit. */
+  test("yeni sütunlar duruyor", () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      const { rows } = await db.query(
+        `select column_name from information_schema.columns
+           where table_schema='public' and table_name='mail_accounts'
+             and column_name = any($1)`,
+        [["erisim_belirteci_enc", "erisim_belirteci_biter", "esitleniyor_at", "last_history_id"]],
+      );
+      assert.equal(rows.length, 4, "sık eşitleme sütunları eksik");
+    }));
+
+  test("oturum posta hesabını OKUYAMIYOR", () =>
+    islem(db, async () => {
+      await rol(db, "authenticated", SAHIP);
+      await reddedilir(db, `select erisim_belirteci_enc from public.mail_accounts`, [], /permission denied/i);
+    }));
+});
 
 describe("posta okundu bilgisi", () => {
   test("oturum okunmamis sütununu DEĞİŞTİREMİYOR", () =>

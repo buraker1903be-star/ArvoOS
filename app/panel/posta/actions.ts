@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, postaYanitiGonder } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder } from "@/lib/posta-esitleme";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
 
 /*
@@ -220,4 +220,49 @@ async function konusmayiOkundu__impl(formData: FormData) {
 
 export async function konusmayiOkundu(...args: Parameters<typeof konusmayiOkundu__impl>) {
   return runPanelAction(() => konusmayiOkundu__impl(...args));
+}
+
+/*
+  AÇIK SEKME KENDİ TURUNU TETİKLİYOR.
+
+  Zamanlayıcı iki dakikada bir koşuyor, ama kutuya BAKAN kişi için iki
+  dakika uzun: yanıt beklediği postanın geldiğini görmek için sayfayı
+  elle yeniliyordu. Sekme açıkken dakikada bir bu eylem çağrılıyor
+  (app/panel/posta/canli-yenileme.tsx).
+
+  İKİ SINIR, ikisi de "açık sekme Gmail'i dövmesin" diye:
+
+   - ALT SINIR: son eşitlemenin üstünden ASGARI_ARALIK geçmediyse tur
+     atlanıyor. Sınır olmasaydı beş açık sekme beş ayrı tur demekti;
+     kişi başına değil KURUM başına sayıyoruz, çünkü kutu ortak.
+   - KİLİT: eşzamanlı çağrılar kurumPostasiniEsitle içinde eleniyor.
+
+  Hata YUTULUYOR. Bu eylem kimsenin istediği bir iş değil, arka planda
+  dönen bir tazeleme; Gmail bir turda erişilemezse ekrana hata atmak,
+  kişinin yaptığı işin ortasına alakasız bir uyarı düşürürdü. Kalıcı
+  hata zaten ayarlar ekranında ve bir sonraki zamanlayıcı turunda
+  görünüyor.
+*/
+const ASGARI_ARALIK_MS = 30 * 1000;
+
+async function kutuyuYenile__impl(): Promise<void> {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.gor");
+
+  const durum = await postaDurumu(context.membership.organization_id);
+  if (durum.durum !== "bagli") return;
+  if (durum.sonEsitleme && Date.now() - new Date(durum.sonEsitleme).getTime() < ASGARI_ARALIK_MS) return;
+  if (!durum.adres) return;
+
+  await kurumPostasiniEsitle(context.membership.organization_id, durum.adres);
+  revalidatePath("/panel", "layout");
+  revalidatePath("/panel/posta");
+}
+
+export async function kutuyuYenile() {
+  try {
+    await kutuyuYenile__impl();
+  } catch {
+    /* Bkz. yukarısı: arka plan tazelemesi ekrana hata düşürmemeli. */
+  }
 }
