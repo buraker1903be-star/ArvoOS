@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { postaYanitiGonder } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, postaYanitiGonder } from "@/lib/posta-esitleme";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
 
 /*
@@ -175,4 +175,44 @@ async function konusmayiKayitBagla__impl(formData: FormData) {
 
 export async function konusmayiKayitBagla(...args: Parameters<typeof konusmayiKayitBagla__impl>) {
   return runPanelAction(() => konusmayiKayitBagla__impl(...args), "Müşteri bağı güncellendi");
+}
+
+/*
+  OKUNDU İŞARETLEME.
+
+  Kutuyu GÖREBİLEN herkes okundu yapabilir: okumak zaten yetkisi
+  dahilinde ve "okundu" o okumanın kaydı. posta.yonet istemek,
+  konuşmayı okuyan ama üstlenemeyen personelde sayacı kalıcı olarak
+  şişik bırakırdı.
+
+  Konuşma kullanıcının KENDİ oturumuyla okunuyor: kurum kapısını RLS
+  tutsun, "başka kurumun konuşmasını okundu yap" denemesi veritabanında
+  elensin.
+*/
+async function konusmayiOkundu__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.gor");
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+
+  const { data: konusma, error } = await context.supabase.from("mail_threads")
+    .select("thread_id,okunmamis")
+    .eq("organization_id", context.membership.organization_id)
+    .eq("thread_id", threadId)
+    .maybeSingle();
+  if (error) throw new Error("Konuşma okunamadı: " + error.message);
+  if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+  // Zaten okunmuşsa Gmail'e gitmiyoruz: her açılışta bir API çağrısı
+  // demek olurdu ve hiçbir şeyi değiştirmezdi.
+  if (!konusma.okunmamis) return;
+
+  const hata = await konusmayiOkunduYap(context.membership.organization_id, threadId);
+  if (hata) throw new Error(hata);
+
+  revalidatePath("/panel/posta");
+  revalidatePath(`/panel/posta/${threadId}`);
+}
+
+export async function konusmayiOkundu(...args: Parameters<typeof konusmayiOkundu__impl>) {
+  return runPanelAction(() => konusmayiOkundu__impl(...args));
 }

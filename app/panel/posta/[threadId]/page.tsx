@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiUstlen } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiUstlen } from "../actions";
+import { OkunduIsaretle } from "../okundu-isaretle";
 import { istanbulTarihSaat } from "../bicim";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -36,7 +37,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
-      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id")
+      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
     supabase.from("mail_messages")
       .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon,ekli_dosya")
@@ -85,6 +86,13 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   const bendeMi = konusma.ilgilenen_user_id === userId;
 
   return <div className="posta">
+    {/*
+      Konuşma açılınca okundu olur. Sunucuda değil tarayıcıda: Next
+      listedeki bağlantıları önden yüklüyor ve bu sayfayı çalıştırıyor;
+      render sırasında işaretleseydik kutuda kaydıran personel hiç
+      açmadığı postaları okundu yapardı.
+    */}
+    <OkunduIsaretle threadId={threadId} okunmamis={Boolean(konusma.okunmamis)} isaretle={konusmayiOkundu} />
     <div className="panel-pagehead">
       <div>
         <small className="panel-kicker">ORTAK POSTA KUTUSU</small>

@@ -408,3 +408,48 @@ export async function postaYanitiGonder(girdi: {
 
   return { messageId };
 }
+
+/**
+ * Konuşmayı OKUNDU yapar: önce Gmail'de UNREAD etiketini kaldırır,
+ * sonra yereldeki kopyayı günceller.
+ *
+ * SIRA ÖNEMLİ VE YEREL TEK BAŞINA YETMEZ. Eşitleme her turda
+ * mail_threads.okunmamis'i Gmail'in UNREAD etiketinden yeniden yazıyor
+ * (bkz. konusmalariGuncelle). Yalnızca yereli işaretleseydik posta,
+ * personel okuduktan en geç on dakika sonra yeniden okunmamış görünürdü
+ * — düzeltilmiş gibi duran, kendini geri alan bir hata.
+ *
+ * Gmail reddederse yerel kopyaya da dokunulmuyor: ekranda okundu görünüp
+ * bir sonraki turda geri dönmesindense hiç değişmemesi dürüst.
+ *
+ * Yerel yazma service_role ile: mail_threads tetikleyicisi okunmamis
+ * sütununu oturumdan değiştirmeyi bilerek yasaklıyor, çünkü o bilgi
+ * Gmail'den gelir.
+ */
+export async function konusmayiOkunduYap(
+  organizationId: string,
+  threadId: string,
+): Promise<string | null> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec.hata;
+
+  const yanit = await fetch(`${GMAIL}/threads/${encodeURIComponent(threadId)}/modify`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-type": "application/json" },
+    body: JSON.stringify({ removeLabelIds: ["UNREAD"] }),
+  }).catch(() => null);
+  if (!yanit) return "Gmail'e ulaşılamadı; konuşma okundu olarak işaretlenemedi.";
+  if (!yanit.ok) {
+    const govde = await yanit.json().catch(() => ({}));
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return `Konuşma okundu olarak işaretlenemedi: ${sebep}`;
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return "Sunucu anahtarı tanımlı değil.";
+  const { error } = await admin.from("mail_threads")
+    .update({ okunmamis: false, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId)
+    .eq("thread_id", threadId);
+  return error ? "Konuşma Gmail'de okundu yapıldı ama kayda yazılamadı: " + error.message : null;
+}
