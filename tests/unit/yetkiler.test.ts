@@ -48,13 +48,26 @@ test("ayar yapılmamış kurumda bugünkü davranış birebir korunuyor", () => 
   assert.ok(!manager.has("settings.kurum.yonet"));
 
   /*
-    Satış ve operasyon personelinde YÖNETİM yetkisi yok. Tek istisna ortak
-    posta kutusu: amacı zaten "ekibin tamamı aynı kutuyu görsün", dar
-    varsayılan özelliği kurulduğu anda kullanılamaz yapardı.
+    Satış ve operasyon personelinde YÖNETİM yetkisi yok. İki istisna:
+
+    1. Ortak posta kutusu — amacı zaten "ekibin tamamı aynı kutuyu görsün",
+       dar varsayılan özelliği kurulduğu anda kullanılamaz yapardı.
+    2. Talep arşivleme (yalnız SATIŞ personeli, 07.10.2026) — arşivleme
+       kaydı SİLMİYOR: aşamayı "lost" yapıp sebebini yazıyor ve kayıt
+       geçmişiyle birlikte duruyor. Satışçının kendi talebini kapatabilmesi
+       günlük iş akışının parçası. Hangi talebi kapatabileceğini RLS
+       söylüyor: yalnızca kendisine atanmış olanı. Operasyon personeline
+       verilmedi; satış talebi onun işi değil.
   */
-  for (const yetkiler of [member, operasyoncu]) {
-    assert.deepEqual([...yetkiler].sort(), ["posta.gor", "posta.yanitla"]);
-  }
+  assert.deepEqual([...member].sort(), [
+    "crm.talep.arsivle",
+    "posta.gor",
+    "posta.yanitla",
+  ]);
+  assert.deepEqual([...operasyoncu].sort(), ["posta.gor", "posta.yanitla"]);
+  // Arşivleme silme DEĞİL: silme yetkisi satışçıda yok.
+  assert.ok(!member.has("crm.firsat.sil"));
+  assert.ok(!member.has("crm.talep.yonet"));
 });
 
 test("rol kuralı varsayılanı ezer, kişi kuralı rolü ezer", () => {

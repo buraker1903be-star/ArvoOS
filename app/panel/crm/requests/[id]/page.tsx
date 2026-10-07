@@ -80,6 +80,9 @@ export default async function RequestDetailPage({
   const item = data as Opportunity;
   const d = item.request_details ?? {};
   const canManage = izin("crm.talep.yonet");
+  // Arşivleme ayrı yetenek: kayıt silinmediği için satış personeli de
+  // kendi talebini kapatabiliyor (hangisini kapatabileceğini RLS söyler).
+  const canArchive = izin("crm.talep.arsivle");
   const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
   // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
   // okuyup seçenek olarak ekliyoruz, yoksa form kaydı atamayı sessizce siliyordu.
@@ -355,7 +358,7 @@ export default async function RequestDetailPage({
                 />
               </PanelDrawer>
             ) : null}
-            {canManage ? (
+            {canArchive ? (
               /*
                 Düğme "Sil" yazıyordu ama kayıt SİLİNMİYOR: aşaması "lost"
                 yapılıp arşive düşüyor (request-status.ts'te adı

@@ -52,6 +52,10 @@ export type YetkiTanimi = {
 
 const YONETIM = ["admin"] as const;              // owner zaten her şeyi yapar
 const YONETIM_VE_SEF = ["admin", "manager"] as const;
+/* Satış personeli kendi talebini kapatabilsin: arşivleme kaydı SİLMİYOR,
+   aşamayı "lost" yapıp sebebini yazıyor. Hangi talebi kapatabileceğini
+   RLS söylüyor — yalnızca kendisine atanmış olanları. */
+const YONETIM_SEF_VE_SATIS = ["admin", "manager", "member"] as const;
 /* Ortak posta kutusunun amacı zaten "ekibin tamamı aynı kutuyu görsün":
    varsayılanı dar tutmak, özelliği kurduğumuz anda kullanılamaz yapardı.
    Kısıtlamak isteyen kurum rol ya da kişi düzeyinde kapatır. */
@@ -64,6 +68,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     yetkiler: [
       { key: "crm.kayit.ata", modul: "crm", label: "Kayıt atama", aciklama: "Talep, teklif ve sözleşmeyi başka bir personele atar", varsayilan: YONETIM_VE_SEF, rlsBagli: true },
       { key: "crm.talep.yonet", modul: "crm", label: "Talep yönetimi", aciklama: "Talep durumunu ve aşamasını değiştirir", varsayilan: YONETIM_VE_SEF },
+      { key: "crm.talep.arsivle", modul: "crm", label: "Talep arşivleme", aciklama: "Talebi sebebiyle birlikte arşivler; kayıt silinmez, aşaması \"Arşivlendi\" olur", varsayilan: YONETIM_SEF_VE_SATIS },
       { key: "crm.teklif.yonet", modul: "crm", label: "Teklif yönetimi", aciklama: "Teklif oluşturur, revize eder, gönderir", varsayilan: YONETIM_VE_SEF },
       { key: "crm.teklif.sil", modul: "crm", label: "Teklif silme", aciklama: "Teklif kaydını siler", varsayilan: YONETIM, rlsBagli: true },
       { key: "crm.sozlesme.yonet", modul: "crm", label: "Sözleşme yönetimi", aciklama: "Sözleşme hazırlar, imzaya gönderir, ek düzenler", varsayilan: YONETIM_VE_SEF },

@@ -310,7 +310,12 @@ async function updateOpportunity__impl(formData: FormData) {
     });
     throw new Error("Talep güncellenemedi: " + error.message);
   }
-  if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+  // RLS eledi: satışçı yalnızca KENDİSİNE atanmış talebi arşivleyebilir.
+  if (!data)
+    throw new Error(
+      "Talep bulunamadı veya bu talebi arşivleme yetkiniz yok. " +
+        "Talep size atanmamışsa yöneticinize başvurun.",
+    );
 
   // Geçmişte "a1b2c3… → d4e5f6…" yazmasın diye temsilci id'lerini
   // okunabilir isme çeviriyoruz.
@@ -344,10 +349,15 @@ async function updateOpportunity__impl(formData: FormData) {
 
 async function archiveOpportunity__impl(formData: FormData) {
   const { supabase, membership, userId, yetkiler } = await crmContext();
-  if (!yetkiler.has("crm.talep.yonet"))
-    throw new Error(
-      "Talep silme işlemi yalnızca yöneticiler tarafından yapılabilir.",
-    );
+  /*
+    Arşivleme artık "talep yönetimi"nden ayrı bir yetenek. Kayıt silinmiyor
+    (aşama "lost", sebep lost_reason'a yazılıyor), bu yüzden satış personeli
+    de kendi talebini kapatabiliyor. HANGİ talebi kapatabileceğini RLS
+    söylüyor: yönetici hepsini, satışçı yalnızca kendisine atanmış olanı
+    (members_update_assigned_crm_opportunities).
+  */
+  if (!yetkiler.has("crm.talep.arsivle"))
+    throw new Error("Talep arşivleme yetkiniz yok.");
   const opportunityId = text(formData, "opportunity_id", 80);
   // Silinen kaydın adı geçmişte görünsün diye önceden okuyoruz;
   // sonrasında satır artık okunamayacak.
@@ -380,7 +390,12 @@ async function archiveOpportunity__impl(formData: FormData) {
     });
     throw new Error("Talep arşivlenemedi: " + error.message);
   }
-  if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+  // RLS eledi: satışçı yalnızca KENDİSİNE atanmış talebi arşivleyebilir.
+  if (!data)
+    throw new Error(
+      "Talep bulunamadı veya bu talebi arşivleme yetkiniz yok. " +
+        "Talep size atanmamışsa yöneticinize başvurun.",
+    );
 
   await logActivity(supabase, {
     organizationId: membership.organization_id,
@@ -646,7 +661,12 @@ async function assignOpportunity__impl(formData: FormData) {
     });
     throw new Error("Temsilci atanamadı: " + error.message);
   }
-  if (!data) throw new Error("Talep bulunamadı veya yetkiniz yok.");
+  // RLS eledi: satışçı yalnızca KENDİSİNE atanmış talebi arşivleyebilir.
+  if (!data)
+    throw new Error(
+      "Talep bulunamadı veya bu talebi arşivleme yetkiniz yok. " +
+        "Talep size atanmamışsa yöneticinize başvurun.",
+    );
 
   const { data: assigned } = await supabase
     .from("hr_employees")
