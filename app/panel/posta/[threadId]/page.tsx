@@ -192,8 +192,12 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
           <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
         </label>
         <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} placeholder="Yanıtınızı yazın…" />
+        <label className="posta-ek-sec">
+          <span>Ek dosya</span>
+          <input type="file" name="ekler" multiple />
+        </label>
         <div className="posta-yanit-alt">
-          <small>Düz metin olarak gönderilir. Ekli dosya için Gmail&apos;den devam edin.</small>
+          <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.</small>
           <button className="panel-primary" type="submit">Yanıtı gönder</button>
         </div>
       </form>

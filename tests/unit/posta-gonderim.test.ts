@@ -7,6 +7,8 @@ import {
   baslikKodla,
   yanitAlicisi,
   yanitKonusu,
+  ekBoyutuEngeli,
+  guvenliEkAdi,
   yanitMesajiKur,
   yeniMesajiKur,
   zincirBasliklari,
@@ -221,4 +223,58 @@ test("arındırma yalnızca denetim karakterlerini alıyor", () => {
   // Noktalama ve çoklu boşluk meşru; konuyu tanınmaz hâle getirmemeli.
   assert.equal(baslikDegeri("Fatura #123 — 50% indirim"), "Fatura #123 — 50% indirim");
   assert.equal(baslikDegeri("  boşluklu  konu  "), "boşluklu konu");
+});
+
+test("ekli mesaj çok parçalı kuruluyor", () => {
+  const ham = yeniMesajiKur({
+    gonderenAd: "Akademik Merkez",
+    gonderenAdres: "info@akademikmerkez.com",
+    alicilar: ["musteri@x.com"],
+    konu: "Teklif",
+    govde: "Ektedir.",
+    ekler: [{ ad: "Sözleşme Ücreti.pdf", tur: "application/pdf", veri: Buffer.from("PDF-icerik") }],
+    sinir: "SINIR123",
+  });
+
+  assert.match(ham, /Content-Type: multipart\/mixed; boundary="SINIR123"/);
+  // Metin ve dosya ayrı parçalarda, sonda kapanış sınırı var.
+  assert.equal(ham.match(/--SINIR123\r\n/g)?.length, 2);
+  assert.match(ham, /--SINIR123--/);
+  assert.match(ham, /Content-Type: application\/pdf; name="Sözleşme Ücreti\.pdf"/);
+  /* Dosya adı iki kez: sade filename eski istemciler için, filename*
+     Türkçe harfleri taşımak için. Yalnızca sade yazmak adı bozuyordu. */
+  assert.match(ham, /filename\*=UTF-8''S%C3%B6zle%C5%9Fme%20%C3%9Ccreti\.pdf/);
+  const parcalar = ham.split("--SINIR123");
+  assert.ok(parcalar[2].includes(Buffer.from("PDF-icerik").toString("base64")));
+});
+
+test("eksiz mesaj çok parçalı kurulmuyor", () => {
+  // Tek parçalık mesajı multipart'a sarmak, bazı istemcilerde boş bir
+  // ek olarak görünüyor.
+  const ham = yeniMesajiKur({
+    gonderenAd: "A", gonderenAdres: "a@b.com", alicilar: ["c@d.com"], konu: "K", govde: "G",
+  });
+  assert.ok(!ham.includes("multipart/mixed"));
+  assert.match(ham, /Content-Type: text\/plain; charset="UTF-8"/);
+});
+
+test("ek adı MIME başlığına girmeden temizleniyor", () => {
+  // Addaki tırnak ya da satır sonu başlığı bölüp parçanın sınırını
+  // kaydırıyor ve mesaj alıcıda bozuk görünüyor.
+  assert.equal(guvenliEkAdi('rapor".pdf\r\nX: 1'), "rapor .pdf X: 1");
+  assert.equal(guvenliEkAdi("  Sözleşme.pdf  "), "Sözleşme.pdf");
+  assert.equal(guvenliEkAdi(""), "ek");
+});
+
+test("ek boyutu sınırı gönderimden önce söyleniyor", () => {
+  /*
+    Gmail'in reddi "Request entity too large" diye dönüyor ve neyin
+    büyük olduğunu söylemiyor; sessizce düşen bir gönderim, kullanıcının
+    gittiğini sandığı bir teklif demek.
+  */
+  assert.equal(ekBoyutuEngeli([{ ad: "a.pdf", boyut: 1024 * 1024 }]), null);
+  const engel = ekBoyutuEngeli([{ ad: "a.pdf", boyut: 2 * 1024 * 1024 }, { ad: "b.pdf", boyut: 2 * 1024 * 1024 }]);
+  assert.match(engel ?? "", /4,0 MB/);
+  assert.match(engel ?? "", /en fazla 3 MB/);
+  assert.equal(ekBoyutuEngeli([]), null);
 });

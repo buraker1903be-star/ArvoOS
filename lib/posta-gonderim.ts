@@ -125,6 +125,23 @@ export type YanitGirdisi = {
  * satır sınırı ve Türkçe karakterler yüzünden düz metin olarak gönderilen
  * uzun paragraflar bazı sunucularda bozuluyordu.
  */
+/** Gönderilecek ek: adı, türü ve içeriği. */
+export type EkDosya = { ad: string; tur: string; veri: Buffer };
+
+const b64satirli = (veri: Buffer) => veri.toString("base64").replace(/(.{76})/g, "$1\r\n");
+
+/*
+  Ekli mesaj çok parçalı (multipart/mixed): metin bir parça, her dosya
+  ayrı bir parça. Parçaları ayıran SINIR dışarıdan veriliyor — rastgele
+  üretmek bu dosyayı saf olmaktan çıkarır ve testten import edilemez
+  hâle getirirdi. Çağıran her mesaj için yeni bir sınır üretiyor: sınır
+  içerikte geçerse mesaj alıcıda parçalanmış görünür.
+
+  Dosya adı iki kez yazılıyor: sade `filename` eski istemciler için,
+  `filename*` (RFC 5987) Türkçe harfleri taşımak için. Yalnızca sadeyi
+  yazmak "Sözleşme.pdf" dosyasını "Sözlesme.pdf" ya da bozuk bir adla
+  indirtiyordu.
+*/
 function mesajiKur(girdi: {
   gonderenAd: string;
   gonderenAdres: string;
@@ -132,24 +149,71 @@ function mesajiKur(girdi: {
   konu: string;
   govde: string;
   zincir?: string[];
+  ekler?: readonly EkDosya[];
+  sinir?: string;
 }): string {
+  const ekler = girdi.ekler ?? [];
   /* Adres alanları da aynı kapıdan: alıcı listesi doğrulanmış geliyor
      ama gönderen adresi ve yanıt alıcısı Gmail'den okunan veriden
      türüyor — oradan gelen bir satır sonu da başlık açardı. */
-  const basliklar = [
+  const ustBasliklar = [
     `From: ${baslikKodla(girdi.gonderenAd)} <${baslikDegeri(girdi.gonderenAdres)}>`,
     `To: ${baslikDegeri(girdi.alici)}`,
     `Subject: ${baslikKodla(girdi.konu)}`,
     ...(girdi.zincir ?? []),
     "MIME-Version: 1.0",
+  ];
+
+  if (!ekler.length) {
+    return [
+      ...ustBasliklar,
+      'Content-Type: text/plain; charset="UTF-8"',
+      "Content-Transfer-Encoding: base64",
+      "",
+      b64satirli(Buffer.from(girdi.govde, "utf8")),
+    ].join("\r\n");
+  }
+
+  const sinir = girdi.sinir || "arvo-sinir";
+  const parcalar = [
+    `--${sinir}`,
     'Content-Type: text/plain; charset="UTF-8"',
     "Content-Transfer-Encoding: base64",
+    "",
+    b64satirli(Buffer.from(girdi.govde, "utf8")),
   ];
-  const govde = Buffer.from(girdi.govde, "utf8").toString("base64").replace(/(.{76})/g, "$1\r\n");
-  return `${basliklar.join("\r\n")}\r\n\r\n${govde}`;
+  for (const ek of ekler) {
+    const ad = guvenliEkAdi(ek.ad);
+    parcalar.push(
+      `--${sinir}`,
+      `Content-Type: ${ek.tur}; name="${ad}"`,
+      `Content-Disposition: attachment; filename="${ad}"; filename*=UTF-8''${encodeURIComponent(ek.ad)}`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      b64satirli(ek.veri),
+    );
+  }
+  parcalar.push(`--${sinir}--`, "");
+
+  return [
+    ...ustBasliklar,
+    `Content-Type: multipart/mixed; boundary="${sinir}"`,
+    "",
+    ...parcalar,
+  ].join("\r\n");
 }
 
-export function yanitMesajiKur(girdi: YanitGirdisi): string {
+/*
+  Ek adı MIME başlığına girmeden temizleniyor. Ad kullanıcının seçtiği
+  dosyadan geliyor: içindeki tırnak ya da satır sonu başlığı bölüp
+  parçanın sınırını kaydırıyor ve mesaj alıcıda bozuk görünüyor.
+*/
+export function guvenliEkAdi(ham: string): string {
+  const sade = (ham ?? "").replace(/[\r\n"\\]/g, " ").replace(/\s+/g, " ").trim();
+  return sade.slice(0, 180) || "ek";
+}
+
+export function yanitMesajiKur(girdi: YanitGirdisi & { ekler?: readonly EkDosya[]; sinir?: string }): string {
   return mesajiKur({
     ...girdi,
     konu: yanitKonusu(girdi.konu),
@@ -168,6 +232,8 @@ export function yeniMesajiKur(girdi: {
   alicilar: readonly string[];
   konu: string;
   govde: string;
+  ekler?: readonly EkDosya[];
+  sinir?: string;
 }): string {
   return mesajiKur({
     gonderenAd: girdi.gonderenAd,
@@ -175,7 +241,28 @@ export function yeniMesajiKur(girdi: {
     alici: girdi.alicilar.join(", "),
     konu: girdi.konu,
     govde: girdi.govde,
+    ekler: girdi.ekler,
+    sinir: girdi.sinir,
   });
+}
+
+/*
+  TOPLAM EK BOYUTU.
+
+  Gmail'in basit gönderim ucu 5 MB'lık bir istek kabul ediyor ve mesaj
+  base64'e çevrilince ~%37 büyüyor. 3 MB ham ek, base64'ten sonra ~4,1
+  MB ediyor ve metinle birlikte sınırın altında kalıyor. Daha büyüğü
+  Google'ın parçalı yükleme ucunu gerektiriyor; o gelene kadar sınırı
+  SÖYLEYEREK kesiyoruz — sessizce düşen bir gönderim, kullanıcının
+  gittiğini sandığı bir teklif demek.
+*/
+export const EK_SINIRI_BAYT = 3 * 1024 * 1024;
+
+export function ekBoyutuEngeli(ekler: readonly { ad: string; boyut: number }[]): string | null {
+  const toplam = ekler.reduce((birikim, ek) => birikim + ek.boyut, 0);
+  if (toplam <= EK_SINIRI_BAYT) return null;
+  const mb = (toplam / (1024 * 1024)).toFixed(1).replace(".", ",");
+  return `Ekler toplam ${mb} MB; tek postada en fazla 3 MB gönderilebiliyor. Büyük dosyaları bağlantıyla paylaşın.`;
 }
 
 /** Yanıt kimin adresine gidecek: zincirdeki son GELEN mesajın göndereni. */

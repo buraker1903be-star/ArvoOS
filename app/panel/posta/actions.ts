@@ -7,7 +7,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder } from "@/lib/posta-esitleme";
-import { aliciListesi, yanitAlicisi } from "@/lib/posta-gonderim";
+import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
 /*
   ORTAK KUTUNUN ORTAK DURUMU.
@@ -23,6 +23,32 @@ import { aliciListesi, yanitAlicisi } from "@/lib/posta-gonderim";
 */
 
 const DURUMLAR = new Set(["acik", "yanitlandi", "kapali"]);
+
+/*
+  Formdan gelen dosyalar.
+
+  Boyut sınırı gönderimden ÖNCE kontrol ediliyor: Gmail'in reddi
+  kullanıcıya "Posta gönderilemedi: Request entity too large" diye
+  dönüyor ve neyin büyük olduğunu söylemiyor. Burada hangi sınırın
+  aşıldığı Türkçe yazılıyor.
+
+  Boş dosya girişleri atılıyor: tarayıcı dosya seçilmemiş bir
+  <input type="file"> için de boyutu sıfır bir File gönderiyor ve o,
+  adsız boş bir ek olarak mesaja giriyordu.
+*/
+async function formdanEkler(formData: FormData): Promise<EkDosya[]> {
+  const dosyalar = formData.getAll("ekler").filter((aday): aday is File => aday instanceof File && aday.size > 0);
+  if (!dosyalar.length) return [];
+
+  const engel = ekBoyutuEngeli(dosyalar.map((dosya) => ({ ad: dosya.name, boyut: dosya.size })));
+  if (engel) throw new Error(engel);
+
+  return Promise.all(dosyalar.map(async (dosya) => ({
+    ad: dosya.name,
+    tur: dosya.type || "application/octet-stream",
+    veri: Buffer.from(await dosya.arrayBuffer()),
+  })));
+}
 
 async function postaContext() {
   const context = await getPanelContext();
@@ -116,6 +142,8 @@ async function konusmayaYanitla__impl(formData: FormData) {
   const hesap = await postaDurumu(membership.organization_id);
   if (hesap.durum !== "bagli" || !hesap.adres) throw new Error("Ortak posta kutusu bağlı değil.");
 
+  const ekler = await formdanEkler(formData);
+
   const sonuc = await postaYanitiGonder({
     organizationId: membership.organization_id,
     kutuAdresi: hesap.adres,
@@ -126,6 +154,7 @@ async function konusmayaYanitla__impl(formData: FormData) {
     alici,
     konu: mesajlar.find((mesaj) => mesaj.konu)?.konu ?? "",
     govde,
+    ekler,
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
 
@@ -308,6 +337,7 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     konu,
     govde,
     opportunityId: firsat,
+    ekler: await formdanEkler(formData),
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
 

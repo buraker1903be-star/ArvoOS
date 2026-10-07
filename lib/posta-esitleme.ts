@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
-import { base64UrlKodla, yanitKonusu, yanitMesajiKur, yeniMesajiKur } from "@/lib/posta-gonderim";
+import { base64UrlKodla, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
+import { randomBytes } from "node:crypto";
 
 /*
   ORTAK POSTA KUTUSU — Gmail'den eşitleme.
@@ -18,6 +19,12 @@ import { base64UrlKodla, yanitKonusu, yanitMesajiKur, yeniMesajiKur } from "@/li
 */
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+
+/*
+  Her ekli mesaj için yeni bir parça sınırı. Sabit bir sınır, içerikte
+  aynı dizgi geçen bir ekte mesajı alıcıda parçalanmış gösterirdi.
+*/
+const mesajSiniri = () => `arvo-${randomBytes(16).toString("hex")}`;
 /** Artımlı imleç yokken bakılacak son mesaj sayısı (ilk tur ve imleç düşünce). */
 const PENCERE = 60;
 /* Bir turda okunacak en fazla değişiklik sayfası. Çok birikmişse kalanı
@@ -541,6 +548,7 @@ export async function postaYanitiGonder(girdi: {
   alici: string;
   konu: string;
   govde: string;
+  ekler?: readonly EkDosya[];
 }): Promise<{ messageId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -562,6 +570,8 @@ export async function postaYanitiGonder(girdi: {
     govde: girdi.govde,
     sonMesajId: basliktanAl("message-id"),
     referanslar: basliktanAl("references"),
+    ekler: girdi.ekler,
+    sinir: mesajSiniri(),
   });
 
   const yanit = await fetch(`${GMAIL}/messages/send`, {
@@ -597,7 +607,7 @@ export async function postaYanitiGonder(girdi: {
       ozet: girdi.govde.slice(0, 200),
       tarih: new Date().toISOString(),
       yon: "giden",
-      ekli_dosya: false,
+      ekli_dosya: Boolean(girdi.ekler?.length),
     }, { onConflict: "organization_id,message_id" });
   }
 
@@ -669,6 +679,7 @@ export async function postaYeniGonder(girdi: {
   konu: string;
   govde: string;
   opportunityId?: string | null;
+  ekler?: readonly EkDosya[];
 }): Promise<{ threadId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -679,6 +690,8 @@ export async function postaYeniGonder(girdi: {
     alicilar: girdi.alicilar,
     konu: girdi.konu,
     govde: girdi.govde,
+    ekler: girdi.ekler,
+    sinir: mesajSiniri(),
   });
 
   const yanit = await fetch(`${GMAIL}/messages/send`, {
@@ -717,7 +730,7 @@ export async function postaYeniGonder(girdi: {
     ozet: girdi.govde.slice(0, 200),
     tarih: simdi,
     yon: "giden",
-    ekli_dosya: false,
+    ekli_dosya: Boolean(girdi.ekler?.length),
   }, { onConflict: "organization_id,message_id" });
   if (mesajHatasi) return { hata: "Posta gönderildi ama kaydedilemedi: " + mesajHatasi.message };
 

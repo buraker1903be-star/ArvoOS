@@ -67,8 +67,13 @@ export default async function YeniPostaPage({ searchParams }: {
       <label htmlFor="posta-metin"><b>Mesaj</b></label>
       <textarea id="posta-metin" name="govde" rows={10} required maxLength={20000} placeholder="Mesajınızı yazın…" />
 
+      <label className="posta-ek-sec">
+        <span>Ek dosya</span>
+        <input type="file" name="ekler" multiple />
+      </label>
+
       <div className="posta-yanit-alt">
-        <small>Düz metin olarak gönderilir. Ek göndermek için Gmail&apos;den devam edin.{firsat ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}</small>
+        <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.{firsat ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}</small>
         <button className="panel-primary" type="submit">Gönder</button>
       </div>
     </form>

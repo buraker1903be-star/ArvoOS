@@ -77,3 +77,10 @@
 .posta-ekler a{color:var(--accent-strong);font-size:13px;font-weight:600;text-decoration:none;overflow-wrap:anywhere}
 .posta-ekler a:hover{text-decoration:underline}
 .posta-ekler small{color:var(--muted);font-size:12px;white-space:nowrap}
+
+/* Gönderimde ek seçimi. Dosya girişi tarayıcıya göre değişiyor; kutuyu
+   biz çiziyoruz, düğmeyi tarayıcıya bırakıyoruz. */
+.posta-ek-sec{display:grid;gap:6px}
+.posta-ek-sec>span{font-size:13px;font-weight:600;color:var(--ink)}
+.posta-ek-sec input[type="file"]{padding:9px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font:inherit;font-size:13px}
+.posta-ek-sec input[type="file"]:focus-visible{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
