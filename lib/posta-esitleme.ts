@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
-import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderim";
+import { base64UrlKodla, yanitKonusu, yanitMesajiKur, yeniMesajiKur } from "@/lib/posta-gonderim";
 
 /*
   ORTAK POSTA KUTUSU — Gmail'den eşitleme.
@@ -647,4 +647,95 @@ export async function konusmayiOkunduYap(
     .eq("organization_id", organizationId)
     .eq("thread_id", threadId);
   return error ? "Konuşma Gmail'de okundu yapıldı ama kayda yazılamadı: " + error.message : null;
+}
+
+/**
+ * Sıfırdan posta gönderir ve konuşmayı tabloya yazar.
+ *
+ * Yanıttan ayrı bir yol: zincir başlığı yok (var olmayan bir mesaja
+ * atıf, alıcının istemcisinde konuşmayı boş bir dala asıyor) ve
+ * konuşma satırı Gmail'in döndürdüğü threadId ile SIFIRDAN kuruluyor.
+ *
+ * Durum "yanıtlandı" olarak açılıyor. Ortak kutuda durum "ekibin ne
+ * yapması gerektiği" demek; biz başlattığımız ve cevabını beklediğimiz
+ * bir konuşmada yapılacak bir şey yok. "Açık" bırakmak listeyi, kimsenin
+ * dokunması gerekmeyen satırlarla doldururdu.
+ */
+export async function postaYeniGonder(girdi: {
+  organizationId: string;
+  kutuAdresi: string;
+  gonderenAd: string;
+  alicilar: readonly string[];
+  konu: string;
+  govde: string;
+  opportunityId?: string | null;
+}): Promise<{ threadId: string } | { hata: string }> {
+  const belirtec = await postaErisimBelirteci(girdi.organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const ham = yeniMesajiKur({
+    gonderenAd: girdi.gonderenAd,
+    gonderenAdres: girdi.kutuAdresi,
+    alicilar: girdi.alicilar,
+    konu: girdi.konu,
+    govde: girdi.govde,
+  });
+
+  const yanit = await fetch(`${GMAIL}/messages/send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-type": "application/json" },
+    body: JSON.stringify({ raw: base64UrlKodla(ham) }),
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; posta gönderilemedi." };
+
+  const govde = await yanit.json().catch(() => ({}));
+  if (!yanit.ok) {
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Posta gönderilemedi: ${sebep}` };
+  }
+  const { id: messageId, threadId } = govde as { id?: string; threadId?: string };
+  if (!messageId || !threadId) return { hata: "Gmail postayı kabul etti ama mesaj kimliği dönmedi." };
+
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil; gönderildi ama kaydedilemedi." };
+
+  const simdi = new Date().toISOString();
+  const alici = girdi.alicilar.join(", ");
+  /*
+    Gönderilen mesaj HEMEN yazılıyor; eşitlemeyi beklemek, personelin
+    az önce yazdığı postayı listede görememesi ve "gitti mi?" diye
+    ikinci kez göndermesi demekti.
+  */
+  const { error: mesajHatasi } = await admin.from("mail_messages").upsert({
+    organization_id: girdi.organizationId,
+    message_id: messageId,
+    thread_id: threadId,
+    gonderen_ad: girdi.gonderenAd,
+    gonderen_adres: girdi.kutuAdresi,
+    alici,
+    konu: girdi.konu,
+    ozet: girdi.govde.slice(0, 200),
+    tarih: simdi,
+    yon: "giden",
+    ekli_dosya: false,
+  }, { onConflict: "organization_id,message_id" });
+  if (mesajHatasi) return { hata: "Posta gönderildi ama kaydedilemedi: " + mesajHatasi.message };
+
+  const { error: konusmaHatasi } = await admin.from("mail_threads").upsert({
+    organization_id: girdi.organizationId,
+    thread_id: threadId,
+    konu: girdi.konu,
+    son_gonderen_ad: girdi.gonderenAd,
+    son_gonderen_adres: girdi.kutuAdresi,
+    son_mesaj_at: simdi,
+    ozet: girdi.govde.slice(0, 200),
+    mesaj_sayisi: 1,
+    okunmamis: false,
+    durum: "yanitlandi",
+    opportunity_id: girdi.opportunityId ?? null,
+    updated_at: simdi,
+  }, { onConflict: "organization_id,thread_id" });
+  if (konusmaHatasi) return { hata: "Posta gönderildi ama konuşma kaydedilemedi: " + konusmaHatasi.message };
+
+  return { threadId };
 }

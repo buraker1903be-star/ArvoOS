@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  aliciListesi,
   base64UrlKodla,
   baslikKodla,
   yanitAlicisi,
   yanitKonusu,
   yanitMesajiKur,
+  yeniMesajiKur,
   zincirBasliklari,
 } from "@/lib/posta-gonderim";
 
@@ -88,4 +90,47 @@ test("yanıt son GELEN mesajın göndereneine gidiyor", () => {
   // Yalnızca giden mesaj varsa yanıtlanacak kimse yok.
   assert.equal(yanitAlicisi([{ gonderenAdres: "info@biz.com", yon: "giden", tarih: new Date() }]), null);
   assert.equal(yanitAlicisi([]), null);
+});
+
+test("alıcı listesi ayrıştırılıyor ve temizleniyor", () => {
+  /*
+    Listeler çoğu zaman başka bir yerden kopyalanıp yapıştırılıyor ve
+    "Ad Soyad <adres>" biçiminde geliyor. Adı başlığa olduğu gibi
+    yazmak, adında virgül olan bir kopyada mesajı yanlış kişiye
+    gönderirdi.
+  */
+  const sonuc = aliciListesi('Ayşe Yılmaz <Ayse@Firma.com>; bilgi@x.com , Ayse@firma.com');
+  assert.ok(!("hata" in sonuc));
+  if ("hata" in sonuc) return;
+  // Yinelenen adres bir kez: aynı kişiye iki kopya gitmesin.
+  assert.deepEqual(sonuc.adresler, ["ayse@firma.com", "bilgi@x.com"]);
+});
+
+test("geçersiz adres sessizce atılmıyor", () => {
+  // Yazdığı adrese gönderdiğini sanan biri, gitmediğini günler sonra öğrenir.
+  const sonuc = aliciListesi("dogru@x.com, bozuk-adres");
+  assert.ok("hata" in sonuc);
+  assert.match((sonuc as { hata: string }).hata, /bozuk-adres/);
+  assert.match((aliciListesi("") as { hata: string }).hata, /En az bir alıcı/);
+  assert.match((aliciListesi("   ,  ") as { hata: string }).hata, /En az bir alıcı/);
+});
+
+test("yeni postada Re: ve zincir başlığı yok", () => {
+  /*
+    Var olmayan bir mesaja atıf (In-Reply-To), alıcının istemcisinde
+    konuşmayı boş bir dala asıyor.
+  */
+  const ham = yeniMesajiKur({
+    gonderenAd: "Akademik Merkez",
+    gonderenAdres: "info@akademikmerkez.com",
+    alicilar: ["musteri@x.com", "ikinci@x.com"],
+    konu: "Tez danışmanlığı teklifi",
+    govde: "Merhaba",
+  });
+  assert.match(ham, /\r\nTo: musteri@x\.com, ikinci@x\.com\r\n/);
+  assert.ok(!ham.includes("In-Reply-To"));
+  assert.ok(!ham.includes("References:"));
+  assert.ok(!/Subject: Re:/.test(ham));
+  // Türkçe harf başlıkta kodlanıyor.
+  assert.match(ham, /Subject: =\?UTF-8\?B\?/);
 });

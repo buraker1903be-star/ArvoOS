@@ -27,7 +27,14 @@ type Konusma = {
 
 const DURUM_ADI: Record<string, string> = { acik: "Açık", yanitlandi: "Yanıtlandı", kapali: "Kapalı" };
 
-export async function TalepPostalari({ opportunityId }: { opportunityId: string }) {
+export async function TalepPostalari({ opportunityId, musteriAdresi, konu }: {
+  opportunityId: string;
+  /* CRM kaydındaki iletişim adresi: "Posta gönder" bağlantısını
+     doldurmak için. Adres yoksa bağlantı hiç çizilmiyor — boş bir
+     alıcıyla açılan form, kullanıcıya adresi başka yerden aratır. */
+  musteriAdresi?: string | null;
+  konu?: string | null;
+}) {
   const { supabase, membership, izin } = await getPanelContext();
   if (!izin("posta.gor")) return null;
 
@@ -39,7 +46,13 @@ export async function TalepPostalari({ opportunityId }: { opportunityId: string 
     .order("son_mesaj_at", { ascending: false })
     .limit(20);
   const konusmalar = (data ?? []) as Konusma[];
-  if (!konusmalar.length) return null;
+
+  const yeniPostaBaglantisi = izin("posta.yanitla") && musteriAdresi
+    ? `/panel/posta/yeni?alici=${encodeURIComponent(musteriAdresi)}&firsat=${encodeURIComponent(opportunityId)}${konu ? `&konu=${encodeURIComponent(konu)}` : ""}`
+    : null;
+
+  /* Yazışma da yoksa ve gönderilecek adres de yoksa bölüm hiç çizilmiyor. */
+  if (!konusmalar.length && !yeniPostaBaglantisi) return null;
 
   return (
     <section className="panel-card">
@@ -48,9 +61,15 @@ export async function TalepPostalari({ opportunityId }: { opportunityId: string 
           <small className="panel-kicker">ORTAK POSTA KUTUSU</small>
           <h2>Bu müşteriyle yazışmalar</h2>
         </div>
-        <Link className="panel-secondary" href="/panel/posta">Gelen kutusu</Link>
+        <div className="panel-page-actions">
+          {yeniPostaBaglantisi ? <Link className="panel-primary" href={yeniPostaBaglantisi}>Posta gönder</Link> : null}
+          <Link className="panel-secondary" href="/panel/posta">Gelen kutusu</Link>
+        </div>
       </header>
-      <ul className="posta-liste">
+      {konusmalar.length === 0
+        ? <p className="posta-not">Bu müşteriyle henüz yazışma yok.</p>
+        : null}
+      {konusmalar.length ? <ul className="posta-liste">
         {konusmalar.map((konusma) => (
           <li key={konusma.thread_id} data-okunmamis={konusma.okunmamis ? "evet" : undefined}>
             <Link href={`/panel/posta/${konusma.thread_id}`}>
@@ -66,7 +85,7 @@ export async function TalepPostalari({ opportunityId }: { opportunityId: string 
             </Link>
           </li>
         ))}
-      </ul>
+      </ul> : null}
     </section>
   );
 }

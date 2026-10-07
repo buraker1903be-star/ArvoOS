@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder } from "@/lib/posta-esitleme";
-import { yanitAlicisi } from "@/lib/posta-gonderim";
+import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder } from "@/lib/posta-esitleme";
+import { aliciListesi, yanitAlicisi } from "@/lib/posta-gonderim";
 
 /*
   ORTAK KUTUNUN ORTAK DURUMU.
@@ -265,4 +266,60 @@ export async function kutuyuYenile() {
   } catch {
     /* Bkz. yukarısı: arka plan tazelemesi ekrana hata düşürmemeli. */
   }
+}
+
+/*
+  YENİ POSTA.
+
+  Yanıtla aynı yetkiyi istiyor (posta.yanitla): ikisinde de kutudan
+  kurumun kimliğiyle mesaj çıkıyor, aradaki fark yalnızca bir zincire
+  bağlı olup olmaması. Ayrı bir anahtar, kuruma aynı kararı iki kez
+  sordururdu.
+
+  Gönderim BAŞARILIYSA konuşmaya yönlendiriliyor: yazdığı postayı
+  listede arayan biri, gittiğinden emin olmak için kutuyu tarıyordu.
+*/
+async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.yanitla");
+  const { membership, organization } = context;
+
+  const aliciSonucu = aliciListesi(String(formData.get("alici") ?? ""));
+  if ("hata" in aliciSonucu) throw new Error(aliciSonucu.hata);
+
+  const konu = String(formData.get("konu") ?? "").trim();
+  const govde = String(formData.get("govde") ?? "").trim();
+  if (konu.length < 2) throw new Error("Konu yazın.");
+  if (konu.length > 300) throw new Error("Konu çok uzun (en fazla 300 karakter).");
+  if (govde.length < 2) throw new Error("Mesaj metni boş olamaz.");
+  if (govde.length > 20000) throw new Error("Mesaj metni çok uzun (en fazla 20.000 karakter).");
+
+  const hesap = await postaDurumu(membership.organization_id);
+  if (hesap.durum !== "bagli" || !hesap.adres) throw new Error("Ortak posta kutusu bağlı değil.");
+
+  const firsat = String(formData.get("opportunity_id") ?? "").trim() || null;
+
+  const sonuc = await postaYeniGonder({
+    organizationId: membership.organization_id,
+    kutuAdresi: hesap.adres,
+    // Alıcının gördüğü ad kurumun adı: kutudan çıkan mesaj kurum adına gidiyor.
+    gonderenAd: organization.display_name || organization.name,
+    alicilar: aliciSonucu.adresler,
+    konu,
+    govde,
+    opportunityId: firsat,
+  });
+  if ("hata" in sonuc) throw new Error(sonuc.hata);
+
+  revalidatePath("/panel/posta");
+  if (firsat) revalidatePath(`/panel/crm/requests/${firsat}`);
+  return `/panel/posta/${sonuc.threadId}`;
+}
+
+export async function yeniPostaGonder(formData: FormData) {
+  const hedef = await runPanelAction(() => yeniPostaGonder__impl(formData), "Posta gönderildi");
+  /* Yönlendirme runPanelAction'ın DIŞINDA: redirect bir istisna
+     fırlatarak çalışıyor ve sarmalayıcının içinde atılırsa hata gibi
+     yakalanıp kullanıcıya "gönderilemedi" diye gösterilirdi. */
+  if (typeof hedef === "string") redirect(hedef);
 }

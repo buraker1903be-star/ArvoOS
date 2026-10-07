@@ -48,7 +48,7 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
 
 export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string }> }) {
   const { durum: suzgec, q: aranan } = await searchParams;
-  const { supabase, membership, userId } = await getPanelContext();
+  const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
   let sorgu = supabase
@@ -96,6 +96,9 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         <h1>{hesap.adres ?? "Posta"}</h1>
         <p>{okunmamisSayisi ? `${okunmamisSayisi} okunmamış konuşma` : "Okunmamış konuşma yok"} · son eşitleme {istanbulTarihSaat(hesap.sonEsitleme)}</p>
       </div>
+      {izin("posta.yanitla")
+        ? <div className="panel-page-actions"><Link className="panel-primary" href="/panel/posta/yeni">Yeni posta</Link></div>
+        : null}
     </div>
 
     {hesap.sonHata ? <p className="posta-uyari">Son eşitleme hatası: {hesap.sonHata}</p> : null}

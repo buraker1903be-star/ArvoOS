@@ -413,7 +413,7 @@ export default async function RequestDetailPage({
           <RecordHistory opportunityId={item.id} />
         </div>
         <aside className="crm-detail-side">
-  <TalepPostalari opportunityId={item.id} />
+  <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} />
   <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
         </aside>
       </div>
