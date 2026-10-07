@@ -183,27 +183,40 @@ export default async function RequestsPage({
       </div>
       <CrmTabs active="talepler" />
       <div className="module-tab-panel">
+        {/*
+          Sayaçlar artık LİSTEYE GÖTÜRÜYOR. Arşivlenen talepler listede
+          vardı ama varsayılan görünüm yalnızca aktif aşamaları (lead,
+          qualified) gösteriyor; arşive ulaşmanın tek yolu "Durum" açılır
+          menüsünü bilmekti. Sayıyı görüp tıklayamamak, kayıtların yok
+          sanılmasına yol açtı.
+
+          Bağlantılar arama ve temsilci süzgecini koruyor: kullanıcı
+          daraltılmış bir listeden sayaca tıklayınca daralması kaybolmasın.
+        */}
         <section className="crm-metrics">
-          <article>
-            <small>YENİ TALEP</small>
-            <strong>{counts("lead")}</strong>
-            <span>İlk değerlendirme</span>
-          </article>
-          <article>
-            <small>TALEP İNCELENİYOR</small>
-            <strong>{counts("qualified")}</strong>
-            <span>İnceleme sürecinde</span>
-          </article>
-          <article>
-            <small>TEKLİFLERE DEVREDİLDİ</small>
-            <strong>{counts("proposal")}</strong>
-            <span>Teklifler bölümünde</span>
-          </article>
-          <article>
-            <small>ARŞİVLENDİ</small>
-            <strong>{counts("lost")}</strong>
-            <span>İptal edilen kayıtlar</span>
-          </article>
+          {[
+            { kod: "lead", baslik: "YENİ TALEP", alt: "İlk değerlendirme" },
+            { kod: "qualified", baslik: "TALEP İNCELENİYOR", alt: "İnceleme sürecinde" },
+            { kod: "proposal", baslik: "TEKLİFLERE DEVREDİLDİ", alt: "Teklifler bölümünde" },
+            { kod: "lost", baslik: "ARŞİVLENDİ", alt: "İptal edilen kayıtlar" },
+          ].map((kart) => {
+            const sorgu = new URLSearchParams();
+            sorgu.set("durum", kart.kod);
+            if (arama) sorgu.set("arama", arama);
+            if (selectedRepresentative) sorgu.set("temsilci", selectedRepresentative);
+            return (
+              <Link
+                key={kart.kod}
+                href={`/panel/crm?${sorgu.toString()}`}
+                className="crm-metric-link"
+                aria-current={selected === kart.kod ? "true" : undefined}
+              >
+                <small>{kart.baslik}</small>
+                <strong>{counts(kart.kod)}</strong>
+                <span>{kart.alt}</span>
+              </Link>
+            );
+          })}
         </section>
         <section className="panel-card crm-filter-card">
           <form action="/panel/crm" className="crm-filter-form">
