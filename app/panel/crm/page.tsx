@@ -48,6 +48,8 @@ type Opportunity = {
   notes: string | null;
   request_details: Details | null;
   assigned_employee_id: string | null;
+  /** Arşiv sebebi; listede durum rozetinin altında görünür. */
+  lost_reason: string | null;
 };
 type SalesRepresentative = {
   id: string;
@@ -77,7 +79,7 @@ export default async function RequestsPage({
     supabase
       .from("crm_opportunities")
       .select(
-        "id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,notes,request_details,assigned_employee_id",
+        "id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,notes,request_details,assigned_employee_id,lost_reason",
       )
       .eq("organization_id", membership.organization_id)
       .order("updated_at", { ascending: false }),
@@ -300,6 +302,18 @@ export default async function RequestsPage({
                         <span className="status-pill" data-tone={statusTone(item.stage)}>
                           {requestStageNames[item.stage] ?? item.stage}
                         </span>
+                        {/*
+                          Arşiv sebebi listede de görünüyor: arşiv listesinde
+                          hepsi aynı "Arşivlendi" rozetini taşıyor, hangisinin
+                          neden kapandığını görmek için tek tek kayıt açmak
+                          gerekiyordu. Uzun sebep iki satıra kırpılıyor, tamamı
+                          title ile okunuyor.
+                        */}
+                        {item.stage === "lost" && item.lost_reason ? (
+                          <small className="crm-liste-sebep" title={item.lost_reason}>
+                            {item.lost_reason}
+                          </small>
+                        ) : null}
                       </td>
                       <DateCell label="Teslim" value={item.expected_close_date} />
                       <LastContactCell contact={lastContacts.get(item.id)} />
