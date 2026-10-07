@@ -359,6 +359,12 @@ async function archiveOpportunity__impl(formData: FormData) {
   if (!yetkiler.has("crm.talep.arsivle"))
     throw new Error("Talep arşivleme yetkiniz yok.");
   const opportunityId = text(formData, "opportunity_id", 80);
+  /*
+    Sebep artık formdan geliyor (talep detayındaki arşiv çekmecesi). Boş
+    gelirse eski sabit metne düşüyor: eylem başka bir yerden sebepsiz
+    çağrılsa bile lost_reason boş kalmasın.
+  */
+  const sebep = text(formData, "archive_reason", 500) || "Talep iptal edilerek arşivlendi.";
   // Silinen kaydın adı geçmişte görünsün diye önceden okuyoruz;
   // sonrasında satır artık okunamayacak.
   const { data: archivedRow } = await supabase
@@ -373,9 +379,7 @@ async function archiveOpportunity__impl(formData: FormData) {
     .update({
       stage: "lost",
       probability: 0,
-      lost_reason:
-        text(formData, "archive_reason", 500) ||
-        "Talep iptal edilerek arşivlendi.",
+      lost_reason: sebep,
       updated_at: new Date().toISOString(),
     })
     .eq("id", opportunityId)
@@ -404,9 +408,17 @@ async function archiveOpportunity__impl(formData: FormData) {
     entityType: "crm_opportunity",
     entityId: opportunityId,
     opportunityId,
-    note: archivedRow
-      ? `${archivedRow.customer_name} · ${archivedRow.title} arşivlendi`
-      : "Talep arşivlendi",
+    /*
+      Sebep kayıt geçmişine de yazılıyor: aşama sonradan değişse bile
+      talebin neden kapandığı kaybolmasın. lost_reason tek satır, geçmiş
+      ise zaman damgalı ve aktörlü.
+    */
+    note: [
+      archivedRow
+        ? `${archivedRow.customer_name} · ${archivedRow.title} arşivlendi`
+        : "Talep arşivlendi",
+      sebep,
+    ].join(" · "),
   });
 
   revalidatePath("/panel/crm");

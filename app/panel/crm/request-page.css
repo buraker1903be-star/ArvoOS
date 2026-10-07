@@ -1228,3 +1228,21 @@ html[data-theme="dark"] .crm-internal-comments {
   font-size: 13px;
   line-height: 1.55;
 }
+
+/* Arşiv sebebi — başlığın altında, talep kapandığında görünür.
+
+   .panel-root ÖN EKİ GEREKLİ: kutu sayfa başlığının içinde duruyor ve
+   ".panel-pagehead p" (0,1,1) tek sınıflı kuralı (0,1,0) eziyor; yazı
+   --muted'a düşüp açık temada kontrast 4.0'a iniyordu (AA eşiği 4.5).
+   Ölçülerek görüldü. */
+.panel-root .crm-arsiv-sebebi{
+  margin-top:8px!important;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  background:color-mix(in srgb, var(--warning) 10%, transparent);
+  color:var(--ink);
+  font-size:13.5px;
+  line-height:1.5;
+}
+.panel-root .crm-arsiv-sebebi strong{color:color-mix(in srgb, var(--warning) 78%, var(--ink))}

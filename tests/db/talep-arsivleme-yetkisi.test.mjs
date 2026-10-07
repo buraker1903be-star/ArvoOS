@@ -53,13 +53,13 @@ async function tohum() {
 }
 
 /** Uygulamanın arşivleme güncellemesinin aynısı. */
-async function arsivle(kisi, firsat) {
+async function arsivle(kisi, firsat, sebep = "Müşteri vazgeçti") {
   await rol(db, "authenticated", kisi);
   const r = await db.query(
     `update public.crm_opportunities
-       set stage = 'lost', probability = 0, lost_reason = 'Müşteri vazgeçti'
+       set stage = 'lost', probability = 0, lost_reason = $3
      where id = $1 and organization_id = $2
-     returning id`, [firsat, KURUM]);
+     returning id`, [firsat, KURUM, sebep]);
   await rol(db, "postgres");
   return r.rows.length;
 }
@@ -87,6 +87,21 @@ describe("talep arşivleme yetkisi", () => {
     islem(db, async () => {
       await tohum();
       assert.equal(await arsivle(SAHIP, BASKASININ), 1);
+    }));
+
+  test("sebep kayda yazılıyor ve okunabiliyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await arsivle(SATISCI, KENDI, "Müşteri bütçe nedeniyle vazgeçti");
+      // Sebep ekranda gösterilebilsin diye satıcının kendisi de okuyabilmeli.
+      await rol(db, "authenticated", SATISCI);
+      const r = await db.query(
+        `select stage, lost_reason from public.crm_opportunities where id = $1`, [KENDI]);
+      await rol(db, "postgres");
+      assert.deepEqual(r.rows[0], {
+        stage: "lost",
+        lost_reason: "Müşteri bütçe nedeniyle vazgeçti",
+      });
     }));
 
   test("arşivleme SİLME değil: kayıt ve geçmişi duruyor", () =>

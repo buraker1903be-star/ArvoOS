@@ -39,6 +39,8 @@ type Opportunity = {
   request_details: Details | null;
   step_template_set: string | null;
   assigned_employee_id: string | null;
+  /** Arşivleme sebebi. Yazılıyordu ama hiçbir ekranda görünmüyordu. */
+  lost_reason: string | null;
 };
 
 export default async function RequestDetailPage({
@@ -55,7 +57,7 @@ export default async function RequestDetailPage({
       supabase
         .from("crm_opportunities")
         .select(
-          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id,step_template_set",
+          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id,step_template_set,lost_reason",
         )
         .eq("id", id)
         .eq("organization_id", membership.organization_id)
@@ -182,6 +184,16 @@ export default async function RequestDetailPage({
             {item.customer_name} için oluşturulan talebin bilgileri ve işlem
             adımları.
           </p>
+          {/*
+            Arşiv sebebi yazılıyordu ama hiçbir ekranda görünmüyordu: yazan
+            kişi dışında kimse neden kapandığını bilmiyordu. Arşivlenmiş
+            talepte başlığın hemen altında duruyor.
+          */}
+          {item.stage === "lost" && item.lost_reason ? (
+            <p className="crm-arsiv-sebebi">
+              <strong>Arşiv sebebi:</strong> {item.lost_reason}
+            </p>
+          ) : null}
         </div>
         <div className="panel-page-actions">
           <Link className="panel-secondary" href="/panel/crm">
@@ -363,18 +375,35 @@ export default async function RequestDetailPage({
                 Düğme "Sil" yazıyordu ama kayıt SİLİNMİYOR: aşaması "lost"
                 yapılıp arşive düşüyor (request-status.ts'te adı
                 "Arşivlendi") ve kayıt geçmişiyle birlikte duruyor. Yanlış
-                ad, ayrı bir "iptal" düğmesi istenmesine yol açtı — oysa
-                istenen davranış zaten buydu.
+                Sebep eskiden sabit bir metindi ("Talep arşivlendi."), yani
+                her arşiv aynı görünüyor ve neden kapandığı kayboluyordu.
+                Artık arşivleyen kişi sebebini yazıyor.
               */
-              <form action={archiveOpportunity}>
-                <input type="hidden" name="opportunity_id" value={item.id} />
-                <input
-                  type="hidden"
-                  name="archive_reason"
-                  value="Talep arşivlendi."
-                />
-                <button className="panel-danger">Sil / Arşivle</button>
-              </form>
+              <PanelDrawer
+                triggerLabel="Sil / Arşivle"
+                triggerClassName="panel-danger"
+                kicker="ARŞİVLE"
+                title={`${item.customer_name} · Talebi arşivle`}
+                description="Kayıt silinmez: aşaması “Arşivlendi” olur, sebebi talebin üstünde ve kayıt geçmişinde kalır."
+              >
+                <form className="panel-form" action={archiveOpportunity}>
+                  <input type="hidden" name="opportunity_id" value={item.id} />
+                  <label className="wide">
+                    İptal / arşiv sebebi
+                    <textarea
+                      name="archive_reason"
+                      required
+                      minLength={3}
+                      maxLength={500}
+                      rows={3}
+                      placeholder="Örn. Müşteri bütçe nedeniyle vazgeçti."
+                    />
+                  </label>
+                  <div className="panel-form-actions wide">
+                    <button className="panel-danger">Talebi arşivle</button>
+                  </div>
+                </form>
+              </PanelDrawer>
             ) : null}
           </div>
         </div>
