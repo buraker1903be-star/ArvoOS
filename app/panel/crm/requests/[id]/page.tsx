@@ -356,6 +356,13 @@ export default async function RequestDetailPage({
               </PanelDrawer>
             ) : null}
             {canManage ? (
+              /*
+                Düğme "Sil" yazıyordu ama kayıt SİLİNMİYOR: aşaması "lost"
+                yapılıp arşive düşüyor (request-status.ts'te adı
+                "Arşivlendi") ve kayıt geçmişiyle birlikte duruyor. Yanlış
+                ad, ayrı bir "iptal" düğmesi istenmesine yol açtı — oysa
+                istenen davranış zaten buydu.
+              */
               <form action={archiveOpportunity}>
                 <input type="hidden" name="opportunity_id" value={item.id} />
                 <input
@@ -363,7 +370,7 @@ export default async function RequestDetailPage({
                   name="archive_reason"
                   value="Talep arşivlendi."
                 />
-                <button className="panel-danger">Sil</button>
+                <button className="panel-danger">Sil / Arşivle</button>
               </form>
             ) : null}
           </div>
