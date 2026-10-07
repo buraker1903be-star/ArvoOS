@@ -10,7 +10,7 @@ import {
   resolveNavigationGroups,
 } from "./panel-navigation-config";
 import { NotificationsNavButton } from "./notifications-drawer";
-import { MARKA_OLCU, type DigerUygulama } from "./panel-navigation";
+import { MARKA_OLCU, type DigerUygulama, type PostaGirdisi } from "./panel-navigation";
 
 // match: grubun alt modül önekleri. Grup bağlantısı genel bakışa gittiği
 // için (ör. /panel/finance/genel-bakis) cari veya talepler sayfasındayken
@@ -29,6 +29,7 @@ export function MobileDrawer({
   notificationUnreadCount = 0,
   messageUnreadCount: initialMessageUnreadCount = 0,
   digerUygulamalar = [],
+  posta = null,
 }: {
   modules: PanelModule[];
   organizationName: string;
@@ -41,6 +42,7 @@ export function MobileDrawer({
   notificationUnreadCount?: number;
   messageUnreadCount?: number;
   digerUygulamalar?: DigerUygulama[];
+  posta?: PostaGirdisi | null;
 }) {
   const pathname = usePathname();
   // Menü açıldığı sayfaya bağlı: başka sayfaya geçilince kendiliğinden
@@ -115,6 +117,16 @@ export function MobileDrawer({
         <nav className="mobile-drawer-nav" aria-label="Mobil ana menü">
           {hasMessages?<button type="button" onClick={()=>{setOpen(false);window.dispatchEvent(new Event("arvo:open-messages"));}}><i>M</i><span>Mesajlar</span>{messageUnreadCount?<em className="mobile-unread-badge">{messageUnreadCount>99?"99+":messageUnreadCount}</em>:null}<b>›</b></button>:null}
           <NotificationsNavButton variant="menu" initialCount={notificationUnreadCount} onOpen={() => setOpen(false)} />
+          {/* Posta, Mesajlar ve Bildirimler'in yanında: üçü de "bana gelen"
+              ve üçü de rozetli. Diğer uygulamalarla aynı listede olduğu
+              sürece ↗ işaretiyle duruyordu, oysa aynı sekmede açılıyor. */}
+          {posta ? (
+            <Link href="/panel/posta" onClick={() => setOpen(false)} className={active("/panel/posta") ? "active" : ""} aria-current={active("/panel/posta") ? "page" : undefined}>
+              <i>✉</i><span>Posta</span>
+              {posta.okunmamis ? <em className="mobile-unread-badge">{posta.okunmamis > 99 ? "99+" : posta.okunmamis}</em> : null}
+              <b>›</b>
+            </Link>
+          ) : null}
           {items.map((item) => (
             <Link key={`${item.href}-${item.label}`} href={item.href} onClick={() => setOpen(false)} className={active(item.href, item.match) ? "active" : ""} aria-current={active(item.href, item.match) ? "page" : undefined}>
               <i>{item.icon}</i><span>{item.label}</span><b>›</b>

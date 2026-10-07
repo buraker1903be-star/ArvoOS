@@ -209,7 +209,12 @@ async function konusmayiOkundu__impl(formData: FormData) {
   const hata = await konusmayiOkunduYap(context.membership.organization_id, threadId);
   if (hata) throw new Error(hata);
 
-  revalidatePath("/panel/posta");
+  /*
+    Kabuk da yenileniyor ("layout"): okunmamış rozeti panel yerleşiminde,
+    yani /panel/* sayfalarının tamamında duruyor. Yalnızca posta yollarını
+    yenilemek, kişi başka bir modüle geçtiğinde eski sayıyı gösterirdi.
+  */
+  revalidatePath("/panel", "layout");
   revalidatePath(`/panel/posta/${threadId}`);
 }
 

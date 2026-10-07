@@ -149,17 +149,35 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     kendisi — kurum panelindeki işin üstüne açılmamalı.
   */
   /*
-    Ortak posta kutusu da uygulama ızgarasında ama diğerlerinden farklı:
-    ArvoOS'un KENDİ ekranı, ayrı bir ürün değil — o yüzden aynı sekmede
-    açılıyor, kişi panelden çıkmıyor. Yalnızca kutu bağlıyken ve yetkisi
-    olana görünür: bağlanacak bir şey yokken menüye boş bir girdi koymak,
-    tıklayana "burada ne var" diye sordurup geri döndürürdü.
+    ORTAK POSTA KUTUSU MENÜDE, "UYGULAMALAR" PENCERESİNDE DEĞİL.
+
+    Önce diğer ürünlerle aynı ızgaradaydı; ama o pencere ayrı ürünlere
+    geçmek için ve ArvoOS'un kendi ekranı değil. Okunmamış sayısı da orada
+    hiç işe yaramıyordu: rozetin bütün anlamı hiçbir şey açmadan görünmek,
+    pencerenin içindeki rozeti görmek içinse pencereyi açmak gerekiyordu.
+
+    Yalnızca kutu bağlıyken ve yetkisi olana görünür: bağlanacak bir şey
+    yokken menüye boş bir girdi koymak, tıklayana "burada ne var" diye
+    sordurup geri döndürürdü.
   */
   const postaGorunur = !konsolHostu && izin("posta.gor")
     && (await postaDurumu(membership.organization_id)).durum === "bagli";
 
+  /*
+    Okunmamış konuşma sayısı menüdeki rozette. Sayı KUTUNUN tamamı için,
+    kişinin kendisine göre değil: kutu ortak, bir konuşmayı kim açarsa
+    ekibin tamamı için okundu oluyor (okunmamis sütunu Gmail'in UNREAD
+    etiketinin kopyası, kişi başına bilgi yok).
+
+    Süzgeç yok — /panel/posta'nın varsayılan görünümü de süzgeçsiz; rozete
+    basan kişi tam o sayıyı görsün.
+  */
+  const postaOkunmamis = postaGorunur
+    ? (await supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
+        .eq("organization_id", membership.organization_id).eq("okunmamis", true)).count ?? 0
+    : 0;
+
   const digerUygulamalar = [
-    ...(postaGorunur ? [{ kod: "posta", ad: "Posta", href: "/panel/posta", ayniSekme: true }] : []),
     ...lisansliUrunler,
     ...(isPlatformOwner
       ? [{ kod: "yonetim", ad: "Kurucu Konsolu", href: `https://${MANAGEMENT_HOST}/panel`, ayniSekme: false, marka: "yonetim" as const }]
@@ -178,7 +196,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} digerUygulamalar={digerUygulamalar} />}
+    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} digerUygulamalar={digerUygulamalar} posta={postaGorunur ? { okunmamis: postaOkunmamis } : null} />}
     <aside id="panel-sidebar" className="panel-sidebar">
       {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
           paneli açılmıyor, hepsinin yönetimi açılıyor. */}
@@ -195,7 +213,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       )}
       {konsolHostu
         ? <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
-        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} digerUygulamalar={digerUygulamalar} />}
+        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} digerUygulamalar={digerUygulamalar} posta={postaGorunur ? { okunmamis: postaOkunmamis } : null} />}
       <div className="panel-sidebar-footer">
         <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>

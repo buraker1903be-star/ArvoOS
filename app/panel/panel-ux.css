@@ -153,3 +153,42 @@
   .permissions-table{min-width:420px}
   .permissions-table th,.permissions-table td{padding:9px 8px;font-size:12px}
 }
+
+/*
+  MENÜDEKİ OKUNMAMIŞ ROZETİ (şimdilik yalnızca Posta).
+
+  Rozetin tek işi hiçbir şey açmadan görünmek, bu yüzden menü
+  daraltıldığında da KALIYOR. Daraltma kuralı .panel-nav-group-link b'yi
+  topluca gizliyor (panel-motion.css); buradaki seçici bir sınıf
+  fazlasıyla onu geçiyor, aynı özgüllükte yazmak kaybetmek demekti.
+
+  DARALTILMIŞ ŞERİTTE SAYI DEĞİL NOKTA. Sayıyı da taşıyan sürüm denendi
+  ve bırakıldı: 84px'lik şeritte "99+" rozeti 33px, zarf ikonu 28px —
+  rozet ikonun üstünü örtüyor, menüde hangi satırda olduğu okunmuyordu.
+  Sayı gizli değil, yalnızca yerini değiştiriyor: başlıkta (ipucu),
+  şerit açıkken rozette, mobil çekmecede ve sayfanın kendisinde. Rakam
+  DOM'da duruyor, ekran okuyucu "7" diyor; görsel olarak kırpılıyor.
+
+  900px altında bu rozet hiç çizilmiyor: orada masaüstü şeridi tamamen
+  kapalı (mobile-drawer.css) ve iş mobil çekmecedeki .mobile-unread-badge'de.
+
+  Renk marka vurgusu DEĞİL, mobil çekmecedeki okunmamış rozetiyle aynı
+  kırmızı: ikisi aynı bilgiyi gösteriyor, ayrı renk "bunlar farklı şeyler"
+  derdi. Marka vurgusu (--accent-500) üstünde beyaz yazının kontrastı
+  3.2'de kalıyordu, 11px kalın yazı için yetersiz.
+*/
+.panel-nav-rozet{
+  --rozet-zemin:#dc2626; --rozet-yazi:#fff;
+  margin-left:auto;min-width:20px;padding:2px 6px;border-radius:var(--r-pill);
+  background:var(--rozet-zemin);color:var(--rozet-yazi);
+  font-size:11px;font-weight:800;font-style:normal;line-height:1.5;text-align:center;
+}
+@media(min-width:901px){
+  .panel-root.is-nav-collapsed .panel-nav-group-link .panel-nav-rozet{
+    display:block;position:absolute;top:7px;right:9px;margin:0;
+    width:10px;height:10px;min-width:0;padding:0;
+    overflow:hidden;text-indent:-999px;
+    /* Halka: nokta ikonun köşesine binince kenarı zeminden ayrılsın. */
+    box-shadow:0 0 0 2px var(--brand-900);
+  }
+}

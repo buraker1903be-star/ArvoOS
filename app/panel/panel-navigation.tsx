@@ -81,11 +81,20 @@ function MarkaLogosu({ marka, ad }: { marka: MarkaKodu; ad: string }) {
   );
 }
 
-export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulamalar = [] }: {
+/*
+  Ortak posta kutusu menünün kendi girdisi — "UYGULAMALAR" penceresinde
+  değil (gerekçe app/panel/layout.tsx'te). Okunmamış sayısı rozette, ve
+  rozet menü daraltıldığında da duruyor: hiçbir şey açmadan görünmek
+  rozetin tek işi.
+*/
+export type PostaGirdisi = { okunmamis: number };
+
+export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulamalar = [], posta = null }: {
   modules: PanelModule[];
   role?: string;
   hiddenModuleKeys?: string[];
   digerUygulamalar?: DigerUygulama[];
+  posta?: PostaGirdisi | null;
 }) {
   const pathname = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
@@ -124,6 +133,19 @@ export function PanelNavigation({ modules, role, hiddenModuleKeys, digerUygulama
         </details>;
       })}
     </div>
+    {posta ? (
+      <Link
+        className={pathname.startsWith("/panel/posta") ? "panel-nav-group-link panel-nav-posta active" : "panel-nav-group-link panel-nav-posta"}
+        href="/panel/posta"
+        title={posta.okunmamis ? `Posta — ${posta.okunmamis} okunmamış konuşma` : "Posta"}
+      >
+        <i>✉</i>
+        <span>Posta</span>
+        {/* 99+ eşiği: dar şeritte dört haneli sayı ikonun üstüne sığmıyor
+            ve asıl bilgi "çok birikmiş", kesin sayı değil. */}
+        {posta.okunmamis ? <b className="panel-nav-rozet">{posta.okunmamis > 99 ? "99+" : posta.okunmamis}</b> : null}
+      </Link>
+    ) : null}
     {digerUygulamalar.length ? (
       <div className="panel-nav-apps" role="group" aria-label="Diğer uygulamalar">
         <button
