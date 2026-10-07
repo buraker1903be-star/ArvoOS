@@ -65,3 +65,15 @@
 .posta-bag select:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
 /* Listede bağlı müşteri adı: yazışmanın hangi kayda ait olduğu. */
 .posta-musteri{color:var(--accent-strong)!important;font-weight:600}
+
+/* Arama çubuğu: liste süzgeçlerinin üstünde, tam genişlik. */
+.posta-arama{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.posta-arama input[type="search"]{flex:1 1 280px;min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
+.posta-arama input[type="search"]:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+
+/* Ek listesi: gövdenin altında, indirilebilir bağlantılar. */
+.posta-ekler{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;padding:0;list-style:none}
+.posta-ekler li{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface)}
+.posta-ekler a{color:var(--accent-strong);font-size:13px;font-weight:600;text-decoration:none;overflow-wrap:anywhere}
+.posta-ekler a:hover{text-decoration:underline}
+.posta-ekler small{color:var(--muted);font-size:12px;white-space:nowrap}

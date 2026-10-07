@@ -4,7 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
 import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiUstlen } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
-import { istanbulTarihSaat } from "../bicim";
+import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import "../posta.css";
@@ -70,9 +70,11 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
     konuşmada ekranı on ağ turu kadar geciktiriyordu. Biri düşerse
     yalnızca o mesaj sebebini yazar; konuşmanın tamamı kaybolmaz.
   */
-  const govdeler = new Map(await Promise.all(mesajlar.map(async (mesaj) => {
+  const icerikler = new Map(await Promise.all(mesajlar.map(async (mesaj) => {
     const sonuc = await postaGovdesiniGetir(membership.organization_id, mesaj.message_id);
-    return [mesaj.message_id, typeof sonuc === "string" ? sonuc : `(Mesaj gövdesi okunamadı: ${sonuc.hata})`] as const;
+    return [mesaj.message_id, "hata" in sonuc
+      ? { govde: `(Mesaj gövdesi okunamadı: ${sonuc.hata})`, ekler: [] }
+      : sonuc] as const;
   })));
 
   const yonetebilir = izin("posta.yonet");
@@ -156,12 +158,28 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
               <small>{mesaj.gonderen_adres}{mesaj.alici ? ` → ${mesaj.alici}` : ""}</small>
             </span>
             <span className="posta-mesaj-yan">
-              {mesaj.ekli_dosya ? <small>Ekli dosya var</small> : null}
               <small>{istanbulTarihSaat(mesaj.tarih)}</small>
             </span>
           </header>
           {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor. */}
-          <p className="posta-govde">{govdeler.get(mesaj.message_id) || "(boş mesaj)"}</p>
+          <p className="posta-govde">{icerikler.get(mesaj.message_id)?.govde || "(boş mesaj)"}</p>
+          {/*
+            Ekler panelden iniyor. Eskiden yalnızca "ekli dosya var"
+            yazıyordu ve dosyayı almak için Gmail'e geçmek gerekiyordu —
+            ortak kutunun amacı tam da bunu gerektirmemekti.
+          */}
+          {icerikler.get(mesaj.message_id)?.ekler.length ? (
+            <ul className="posta-ekler">
+              {icerikler.get(mesaj.message_id)!.ekler.map((ek) => (
+                <li key={ek.ekId}>
+                  <a href={`/panel/posta/ek/${encodeURIComponent(mesaj.message_id)}/${encodeURIComponent(ek.ekId)}`}>
+                    {ek.dosyaAdi}
+                  </a>
+                  <small>{dosyaBoyutu(ek.boyut)}</small>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </li>
       ))}
     </ol>

@@ -256,3 +256,75 @@ export function kutudaGorunurMu(etiketler: readonly string[] | undefined): boole
   if (kume.has("DRAFT") || kume.has("SPAM") || kume.has("TRASH")) return false;
   return kume.has("INBOX") || kume.has("SENT");
 }
+
+/*
+  EKLİ DOSYALAR.
+
+  İlk sürüm yalnızca "ek var mı" diyordu; indirmek için Gmail'e geçmek
+  gerekiyordu ve ortak kutunun amacı tam da bunu gerektirmemekti.
+  Gmail ekleri gövdeyle aynı ağaçta taşıyor: filename'i olan her parça
+  bir ek, verisi ayrı bir attachmentId'nin arkasında.
+*/
+export type MesajEki = { ekId: string; dosyaAdi: string; tur: string; boyut: number };
+
+type EkliParca = {
+  filename?: string;
+  mimeType?: string;
+  body?: { attachmentId?: string; size?: number };
+  parts?: EkliParca[];
+};
+
+export function mesajEkleri(payload: unknown): MesajEki[] {
+  const topla = (parca: EkliParca | undefined, biriken: MesajEki[]) => {
+    if (!parca) return biriken;
+    if (parca.filename && parca.body?.attachmentId) {
+      biriken.push({
+        ekId: parca.body.attachmentId,
+        dosyaAdi: parca.filename,
+        tur: parca.mimeType || "application/octet-stream",
+        boyut: parca.body.size ?? 0,
+      });
+    }
+    for (const alt of parca.parts ?? []) topla(alt, biriken);
+    return biriken;
+  };
+  return topla(payload as EkliParca | undefined, []);
+}
+
+/**
+ * Dosya adı indirme başlığına girmeden önce temizlenir.
+ *
+ * Ad gönderenden geliyor: içindeki satır sonu Content-Disposition
+ * başlığını bölüp ikinci bir başlık enjekte etmeye yarar, eğik çizgi ise
+ * kaydedilen dosyayı başka bir dizine yazdırmaya çalışır. Türkçe
+ * harfler korunuyor; başlık zaten UTF-8 olarak kodlanıyor.
+ */
+export function guvenliDosyaAdi(ham: string): string {
+  const sade = (ham ?? "")
+    .replace(/[\r\n"\\]/g, " ")
+    .replace(/[/\\]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  return sade.slice(0, 180) || "ek";
+}
+
+/*
+  ARAMA DESENİ.
+
+  Liste PostgREST'in `or` süzgeciyle aranıyor ve o süzgeç virgülle
+  ayrılmış bir METİN: terimdeki virgül ya da parantez süzgecin kendi
+  dilbilgisini bozup sorguyu hataya düşürüyor — aranan kelimenin içinde
+  olması yeterli. Yüzde ve alt çizgi ise LIKE joker karakterleri; "%"
+  yazan biri bütün kutuyu getirirdi.
+
+  İki karakterden kısa terim aranmıyor: tek harf bütün kutuyu getirir ve
+  kullanıcıya arama yapılmamış gibi görünür.
+*/
+export function postaAramaDeseni(ham: string): string | null {
+  const sade = (ham ?? "")
+    .replace(/[,()%_*\\"']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (sade.length < 2) return null;
+  return sade.slice(0, 80);
+}

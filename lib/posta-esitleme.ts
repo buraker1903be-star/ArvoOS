@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
-import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji } from "@/lib/posta-ayristirma";
+import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
 import { base64UrlKodla, yanitKonusu, yanitMesajiKur } from "@/lib/posta-gonderim";
 
 /*
@@ -478,12 +478,50 @@ export async function postalariEsitle(): Promise<EsitlemeSonucu> {
  * göstermiyor, saklamak kurumun yazışmasını ikinci bir veritabanında
  * çoğaltmak olurdu.
  */
-export async function postaGovdesiniGetir(organizationId: string, messageId: string): Promise<string | { hata: string }> {
+export async function postaGovdesiniGetir(
+  organizationId: string,
+  messageId: string,
+): Promise<{ govde: string; ekler: MesajEki[] } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(organizationId);
   if (typeof belirtec !== "string") return belirtec;
   const sonuc = await gmailGetir(`/messages/${messageId}?format=full`, belirtec);
   if ("hata" in sonuc) return sonuc;
-  return mesajGovdesi((sonuc.govde as { payload?: unknown }).payload);
+  /* Gövde ve ekler AYNI çağrıdan: ikisi için ayrı ayrı mesajı çekmek,
+     on mesajlık bir konuşmada yirmi istek demekti. */
+  const payload = (sonuc.govde as { payload?: unknown }).payload;
+  return { govde: mesajGovdesi(payload), ekler: mesajEkleri(payload) };
+}
+
+/**
+ * Tek bir ekin içeriği. İndirme yolundan çağrılıyor.
+ *
+ * Dosya adı ve türü URL'den DEĞİL, Gmail'den okunuyor: adresteki değere
+ * güvenmek, indirilen dosyanın adını ve türünü dışarıdan yazdırmaya
+ * açık bırakırdı.
+ */
+export async function postaEkiniGetir(
+  organizationId: string,
+  messageId: string,
+  ekId: string,
+): Promise<{ veri: Buffer; dosyaAdi: string; tur: string } | { hata: string }> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const mesaj = await gmailGetir(`/messages/${messageId}?format=full`, belirtec);
+  if ("hata" in mesaj) return mesaj;
+  const ek = mesajEkleri((mesaj.govde as { payload?: unknown }).payload).find((aday) => aday.ekId === ekId);
+  if (!ek) return { hata: "Ek bu mesajda bulunamadı." };
+
+  const icerik = await gmailGetir(`/messages/${messageId}/attachments/${ekId}`, belirtec);
+  if ("hata" in icerik) return icerik;
+  const veri = (icerik.govde as { data?: string }).data;
+  if (!veri) return { hata: "Ekin içeriği okunamadı." };
+
+  return {
+    veri: Buffer.from(veri.replace(/-/g, "+").replace(/_/g, "/"), "base64"),
+    dosyaAdi: ek.dosyaAdi,
+    tur: ek.tur,
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
+import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { istanbulTarihSaat } from "./bicim";
 import "./posta.css";
 
@@ -45,8 +46,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
-  const { durum: suzgec } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string }> }) {
+  const { durum: suzgec, q: aranan } = await searchParams;
   const { supabase, membership, userId } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -57,6 +58,22 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     .order("son_mesaj_at", { ascending: false })
     .limit(100);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
+
+  /*
+    ARAMA. Binlerce konuşmanın biriktiği bir kutuda liste tek başına
+    kullanılamaz hâle geliyor; "geçen ay şu müşteri ne yazmıştı" sorusunun
+    cevabı yoktu.
+
+    Gmail'in arama ucuna değil KENDİ üst verimize soruluyor: liste zaten
+    buradan çiziliyor, Gmail'e gitmek her tuşta bir ağ turu ve kota
+    demekti. Karşılığında arama gövdede değil konu, gönderen ve özette.
+  */
+  const desen = postaAramaDeseni(aranan ?? "");
+  if (desen) {
+    sorgu = sorgu.or(
+      `konu.ilike.*${desen}*,son_gonderen_ad.ilike.*${desen}*,son_gonderen_adres.ilike.*${desen}*,ozet.ilike.*${desen}*`,
+    );
+  }
 
   const { data, error } = await sorgu;
   if (error) throw new Error("Konuşmalar okunamadı: " + error.message);
@@ -83,16 +100,27 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
     {hesap.sonHata ? <p className="posta-uyari">Son eşitleme hatası: {hesap.sonHata}</p> : null}
 
+    {/* Arama sunucuda: form GET ile kendi sayfasına gönderiyor, böylece
+        sonuç paylaşılabilir bir adres oluyor ve geri tuşu çalışıyor. */}
+    <form className="posta-arama" method="get" action="/panel/posta" role="search">
+      {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
+      <input type="search" name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen veya özette ara…" aria-label="Postalarda ara" />
+      <button className="panel-secondary" type="submit">Ara</button>
+      {desen ? <Link className="panel-secondary" href={suzgec ? `/panel/posta?durum=${suzgec}` : "/panel/posta"}>Temizle</Link> : null}
+    </form>
+
     <nav className="module-tabs" aria-label="Duruma göre süzgeç">
-      <Link href="/panel/posta" className={!suzgec ? "active" : ""}>Tümü</Link>
+      {/* Süzgeç değişirken arama korunuyor: "kapalı olanlarda aynı kelimeyi
+          ara" en sık istenen ikinci adım ve kutuyu yeniden yazdırmak gerekmesin. */}
+      <Link href={desen ? `/panel/posta?q=${encodeURIComponent(desen)}` : "/panel/posta"} className={!suzgec ? "active" : ""}>Tümü</Link>
       {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
-        <Link key={anahtar} href={`/panel/posta?durum=${anahtar}`} className={suzgec === anahtar ? "active" : ""}>{etiket.ad}</Link>
+        <Link key={anahtar} href={`/panel/posta?durum=${anahtar}${desen ? `&q=${encodeURIComponent(desen)}` : ""}`} className={suzgec === anahtar ? "active" : ""}>{etiket.ad}</Link>
       ))}
     </nav>
 
     {konusmalar.length === 0 ? (
       <div className="posta-bos">
-        <p>Bu süzgeçte konuşma yok.</p>
+        <p>{desen ? `"${desen}" için sonuç yok.` : "Bu süzgeçte konuşma yok."}</p>
         <small>Kutu 10 dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin.</small>
       </div>
     ) : (

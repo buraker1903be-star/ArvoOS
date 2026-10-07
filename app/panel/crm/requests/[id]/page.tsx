@@ -6,6 +6,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ProposalBuilderForm } from "../../proposal-builder-form";
 import { InternalComments } from "../../internal-comments";
+import { TalepPostalari } from "../../talep-postalari";
+import "../../../posta/posta.css";
 import { RecordHistory } from "../../record-history";
 import {
   archiveOpportunity,
@@ -411,6 +413,7 @@ export default async function RequestDetailPage({
           <RecordHistory opportunityId={item.id} />
         </div>
         <aside className="crm-detail-side">
+  <TalepPostalari opportunityId={item.id} />
   <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
         </aside>
       </div>

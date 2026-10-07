@@ -9,6 +9,9 @@ import {
   mesajTarihi,
   mesajYonu,
   mesajiCoz,
+  mesajEkleri,
+  guvenliDosyaAdi,
+  postaAramaDeseni,
   type CozulmusMesaj,
 } from "@/lib/posta-ayristirma";
 
@@ -128,4 +131,49 @@ test("ekli dosya iç içe parçalarda da bulunuyor", () => {
     payload: { parts: [{ parts: [{ filename: "teklif.pdf" }] } as never] },
   }, "info@biz.com");
   assert.equal(cozulen?.ekliDosya, true);
+});
+
+test("ekler iç içe parçalardan toplanıyor", () => {
+  const ekler = mesajEkleri({
+    mimeType: "multipart/mixed",
+    parts: [
+      { mimeType: "text/plain", body: { data: "x" } },
+      { filename: "teklif.pdf", mimeType: "application/pdf", body: { attachmentId: "ek1", size: 2048 } },
+      { parts: [{ filename: "sözleşme.docx", mimeType: "application/vnd", body: { attachmentId: "ek2", size: 10 } }] },
+    ],
+  });
+  assert.deepEqual(ekler.map((ek) => ek.ekId), ["ek1", "ek2"]);
+  assert.equal(ekler[0].dosyaAdi, "teklif.pdf");
+  assert.equal(ekler[0].boyut, 2048);
+  // Gövde parçası ek sayılmıyor: dosya adı YOK ve attachmentId yok.
+  assert.equal(ekler.length, 2);
+});
+
+test("ek dosya adı indirme başlığına girmeden temizleniyor", () => {
+  /*
+    Ad gönderenden geliyor: satır sonu Content-Disposition başlığını
+    bölüp ikinci bir başlık enjekte etmeye yarar, eğik çizgi dosyayı
+    başka bir dizine yazdırmaya çalışır.
+  */
+  assert.equal(guvenliDosyaAdi('rapor"\r\nX-Kotu: 1.pdf'), "rapor X-Kotu: 1.pdf");
+  assert.equal(guvenliDosyaAdi("../../etc/passwd"), "..-..-etc-passwd");
+  // Türkçe harf korunuyor: başlık UTF-8 olarak da kodlanıyor.
+  assert.equal(guvenliDosyaAdi(" Sözleşme Ücreti.pdf "), "Sözleşme Ücreti.pdf");
+  assert.equal(guvenliDosyaAdi(""), "ek");
+});
+
+test("arama terimi süzgeç dilbilgisini bozmuyor", () => {
+  /*
+    Liste PostgREST'in `or` süzgeciyle aranıyor ve o süzgeç virgülle
+    ayrılmış bir METİN: terimdeki virgül ya da parantez sorguyu hataya
+    düşürüyor. Yüzde ve alt çizgi LIKE jokeri; "%" yazan bütün kutuyu
+    getirirdi.
+  */
+  assert.equal(postaAramaDeseni("Yılmaz, Ayşe (teklif)"), "Yılmaz Ayşe teklif");
+  assert.equal(postaAramaDeseni("%"), null);
+  assert.equal(postaAramaDeseni("a_b%c"), "a b c");
+  // Tek harf bütün kutuyu getirir ve arama yapılmamış gibi görünür.
+  assert.equal(postaAramaDeseni("a"), null);
+  assert.equal(postaAramaDeseni("   "), null);
+  assert.equal(postaAramaDeseni("tez danışmanlığı"), "tez danışmanlığı");
 });
