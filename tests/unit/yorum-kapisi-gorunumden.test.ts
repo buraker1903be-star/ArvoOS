@@ -38,14 +38,18 @@ const yorumsuz = () => govde().replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$
 
 describe("kurum içi yorum yazma kapısı", () => {
   test("yazmadan önce fırsat satırı okunmuyor", () => {
-    // Politikanın kopyası olan ön kontrol geri gelmesin.
+    // Politikanın kopyası olan ön kontrol geri gelmesin. "request"
+    // yüzeyinde context_id fırsatın kendisi olduğu için onu SORGUYLA
+    // doğrulamak da aynı kapıyı kurar; eşitlikle karşılanıyor.
     for (const tablo of ["crm_opportunities", "ops_opportunities"]) {
       assert.equal(
         yorumsuz().includes(`"${tablo}"`),
         false,
-        `${tablo} yetki ön kontrolü için okunuyor — yetkiyi INSERT politikası söylemeli`,
+        `${tablo} okunuyor — yetkiyi INSERT politikası söylemeli`,
       );
     }
+    assert.match(govde(), /request:\s*null/);
+    assert.match(govde(), /contextType === "request" && contextId !== opportunityId/);
   });
 
   test("tutar taşıyan tablolar hiç okunmuyor", () => {
@@ -56,14 +60,24 @@ describe("kurum içi yorum yazma kapısı", () => {
     }
   });
 
-  test("bağlam doğrulaması duruyor: yorum başka kurumun kaydına bağlanamaz", () => {
-    // Bu kontrol politikanın kopyası DEĞİL: INSERT politikası context_id'ye
-    // bakmıyor, yani öksüz kayıt ancak burada engelleniyor.
+  test("ayrı kayda bağlanan yüzeylerde doğrulama duruyor", () => {
+    // Teklif, sözleşme ve iş AYRI kayıtlar: INSERT politikası context_id'ye
+    // bakmadığı için öksüz kayıt ancak burada engelleniyor.
     const g = govde();
     assert.match(g, /proposal:\s*"ops_proposals"/);
     assert.match(g, /contract:\s*"ops_contracts"/);
     assert.match(g, /operation:\s*"operation_workflows"/);
     assert.match(g, /\.eq\("organization_id", membership\.organization_id\)/);
+  });
+
+  test("crm_requests bir daha bağlam kaynağı olmuyor", () => {
+    /*
+      CRM talep sayfası contextId olarak FIRSATIN kimliğini gönderiyor;
+      crm_requests ayrı bir tablo ve o kimlik orada hiçbir zaman yok.
+      Ölçüldü: crm_requests 0 satır, fırsat 1 satır. Bu eşleme yüzünden
+      o sayfadan yorum yazmak role bakmaksızın herkese kapalıydı.
+    */
+    assert.equal(yorumsuz().includes('"crm_requests"'), false);
   });
 
   test("RLS reddi anlaşılır cümleye çevriliyor", () => {

@@ -498,53 +498,74 @@ async function addInternalComment__impl(formData: FormData) {
   // denetleniyordu. Satır kendi organization_id'mizle yazıldığı için sızıntı
   // yok, ama yorum kuruma ait olmayan bir belge kimliğine bağlanabiliyordu —
   // hiçbir ekranda görünmeyen, silinemeyen bir kayıt.
-  const contextTables: Record<string, string> = {
-    request: "crm_requests",
-    // Teklif ve sözleşme de tutarsız görünümden doğrulanıyor; yukarıdaki
-    // nota bakın. Aksi hâlde sözleşme sayfasından yazılan yorum da
-    // operasyon personeline kapalı kalırdı.
+  /*
+    "request" YÜZEYİNDE context_id FIRSATIN KENDİSİDİR.
+
+    CRM talep detay sayfası kaydı crm_opportunities'ten okuyor ve
+    bileşene contextId olarak o fırsatın kimliğini veriyor
+    (requests/[id]/page.tsx). Burada crm_requests'e bakılıyordu; o ayrı
+    bir tablo, fırsatla hiçbir bağı yok, aranan kimlik orada hiçbir zaman
+    bulunamıyor. Sonuç: bu sayfadan yorum yazmak role bakmaksızın
+    HERKESE kapalıydı, kurum sahibi dahil. Ölçüldü: crm_requests 0 satır.
+
+    Doğru kaynağa (ops_opportunities) çevirmek de yanlış olurdu: context_id
+    ile opportunity_id aynı kayıt olduğundan o okuma INSERT politikasının
+    kopyası olur — yukarıda kaldırdığım kapının aynısı. Burada SORGU değil
+    EŞİTLİK denetleniyor: veritabanına gitmeden, kırılacak bir şey olmadan.
+  */
+  if (contextType === "request" && contextId !== opportunityId)
+    throw new Error("Yorumun bağlı olduğu CRM kaydı geçersiz.");
+
+  // context_id formdan geliyor ve doğrulanmıyordu: yalnızca opportunity_id
+  // denetleniyordu. Satır kendi organization_id'mizle yazıldığı için sızıntı
+  // yok, ama yorum kuruma ait olmayan bir belge kimliğine bağlanabiliyordu —
+  // hiçbir ekranda görünmeyen, silinemeyen bir kayıt. Fırsatın KENDİSİ olan
+  // "request" yüzeyi yukarıda eşitlikle karşılandı.
+  const contextTables: Record<string, string | null> = {
+    request: null,
+    // Teklif, sözleşme ve iş AYRI kayıtlar: bunlarda okuma gerçekten
+    // gerekiyor, çünkü INSERT politikası context_id'ye bakmıyor.
     proposal: "ops_proposals",
     contract: "ops_contracts",
     operation: "operation_workflows",
   };
-  const { data: context, error: contextError } = await supabase
-    .from(contextTables[contextType])
-    .select("id")
-    .eq("id", contextId)
-    .eq("organization_id", membership.organization_id)
-    .maybeSingle();
-  if (contextError || !context) {
-    reportActionFailure("addInternalComment.baglamKapisi", contextError, {
-      organizationId: membership.organization_id,
-      role: membership.role,
-      opportunityId,
-      contextType,
-      contextId,
-      kaynak: contextTables[contextType],
-    });
-    if (contextError)
+  const contextTable = contextTables[contextType];
+  if (contextTable) {
+    const { data: context, error: contextError } = await supabase
+      .from(contextTable)
+      .select("id")
+      .eq("id", contextId)
+      .eq("organization_id", membership.organization_id)
+      .maybeSingle();
+    if (contextError || !context) {
+      reportActionFailure("addInternalComment.baglamKapisi", contextError, {
+        organizationId: membership.organization_id,
+        role: membership.role,
+        opportunityId,
+        contextType,
+        contextId,
+        kaynak: contextTable,
+      });
+      if (contextError)
+        throw new Error(
+          `Yorumun bağlı olduğu kayıt okunamadı (${contextError.code ?? "kodsuz"}): ${contextError.message}`,
+        );
+      /*
+        HANGİ KAYIT OLDUĞU MESAJDA YAZIYOR. Eski cümle "CRM kaydı" diyordu
+        ve dört ayrı kaynağa karşılık geliyordu; kullanıcı hatayı
+        bildirdiğinde hangisinde düştüğü anlaşılmıyordu.
+      */
+      const kaynakAdi: Record<string, string> = {
+        proposal: "teklif",
+        contract: "sözleşme",
+        operation: "iş",
+      };
       throw new Error(
-        `Yorumun bağlı olduğu kayıt okunamadı (${contextError.code ?? "kodsuz"}): ${contextError.message}`,
+        `Yorumun bağlı olduğu ${kaynakAdi[contextType] ?? contextType} kaydı bulunamadı ` +
+          "veya bu kayda erişiminiz yok. (Bu işin sorumlusu siz değilseniz yöneticinizden " +
+          "sizi işe atamasını isteyin.)",
       );
-    /*
-      HANGİ KAYIT OLDUĞU MESAJDA YAZIYOR. Eski cümle "CRM kaydı" diyordu
-      ve dört ayrı kaynağa (talep, teklif, sözleşme, iş) karşılık
-      geliyordu; kullanıcı hatayı bildirdiğinde hangisinde düştüğü
-      anlaşılmıyor, sebep ancak sunucu günlüğünden okunabiliyordu.
-      02.10.2026'da üç personelin yorum yazamaması tam bu yüzden
-      tahminle aranmaya başlandı.
-    */
-    const kaynakAdi: Record<string, string> = {
-      request: "talep",
-      proposal: "teklif",
-      contract: "sözleşme",
-      operation: "iş",
-    };
-    throw new Error(
-      `Yorumun bağlı olduğu ${kaynakAdi[contextType] ?? contextType} kaydı bulunamadı ` +
-        "veya bu kayda erişiminiz yok. (Bu işin sorumlusu siz değilseniz yöneticinizden " +
-        "sizi işe atamasını isteyin.)",
-    );
+    }
   }
 
   const { error } = await supabase.from("crm_internal_comments").insert({
