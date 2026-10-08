@@ -27,8 +27,14 @@ type Konusma = {
 
 const DURUM_ADI: Record<string, string> = { acik: "Açık", yanitlandi: "Yanıtlandı", kapali: "Kapalı" };
 
-export async function TalepPostalari({ opportunityId, musteriAdresi, konu }: {
+export async function TalepPostalari({ opportunityId, musteriAdresi, konu, gorunum = "kart" }: {
   opportunityId: string;
+  /*
+    AKIŞ GÖRÜNÜMÜ (talep detayının "Postalar" sekmesi): sekme zaten
+    "Postalar" diyor; "Ortak posta kutusu / Bu müşteriyle yazışmalar"
+    başlığı tekrar ediyordu. Başlık yerine tek satırlık araç çubuğu.
+  */
+  gorunum?: "kart" | "akis";
   /* CRM kaydındaki iletişim adresi: "Posta gönder" bağlantısını
      doldurmak için. Adres yoksa bağlantı hiç çizilmiyor — boş bir
      alıcıyla açılan form, kullanıcıya adresi başka yerden aratır. */
@@ -53,6 +59,33 @@ export async function TalepPostalari({ opportunityId, musteriAdresi, konu }: {
 
   /* Yazışma da yoksa ve gönderilecek adres de yoksa bölüm hiç çizilmiyor. */
   if (!konusmalar.length && !yeniPostaBaglantisi) return null;
+
+  if (gorunum === "akis") {
+    return (
+      <section className="posta-akis">
+        <div className="posta-akis-arac">
+          <p>{konusmalar.length ? `${konusmalar.length} yazışma` : "Bu müşteriyle henüz yazışma yok."}</p>
+          <div>
+            <Link className="panel-secondary" href="/panel/posta">Gelen kutusu</Link>
+            {yeniPostaBaglantisi ? <Link className="panel-primary" href={yeniPostaBaglantisi}>Posta gönder</Link> : null}
+          </div>
+        </div>
+        {konusmalar.length ? <ul className="posta-akis-liste">
+          {konusmalar.map((konusma) => (
+            <li key={konusma.thread_id} className={konusma.okunmamis ? "is-unread" : undefined}>
+              <Link href={`/panel/posta/${konusma.thread_id}`}>
+                <span className="posta-akis-metin">
+                  <b>{konusma.konu || "(konu yok)"}{konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}</b>
+                  <small>{konusma.son_gonderen_ad || konusma.son_gonderen_adres || "Bilinmeyen gönderen"} · {DURUM_ADI[konusma.durum] ?? konusma.durum}</small>
+                </span>
+                <small className="posta-akis-zaman">{istanbulTarihSaat(konusma.son_mesaj_at)}</small>
+              </Link>
+            </li>
+          ))}
+        </ul> : null}
+      </section>
+    );
+  }
 
   return (
     <section className="panel-card">

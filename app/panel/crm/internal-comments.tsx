@@ -88,14 +88,17 @@ export async function InternalComments({
         <input type="hidden" name="context_id" value={contextId} />
         <div className="crm-internal-comment-composer-avatar" aria-hidden="true">{initials(currentAuthorName)}</div>
         <div className="crm-internal-comment-composer">
-          <label htmlFor={`internal-comment-${contextId}`}>
-            <strong>{currentAuthorName}</strong>
-            <span>adına kurum içi not</span>
-          </label>
-          <textarea id={`internal-comment-${contextId}`} name="body" required maxLength={4000} placeholder="Müşteriyle ne konuşuldu? Müşteri ne söyledi? Bir sonraki adımı ekleyin…" />
+          {/* Akış görünümünde yazan kişi avatarda; "… adına kurum içi not" tekrar etmez. */}
+          {gorunum === "akis" ? null : (
+            <label htmlFor={`internal-comment-${contextId}`}>
+              <strong>{currentAuthorName}</strong>
+              <span>adına kurum içi not</span>
+            </label>
+          )}
+          <textarea id={`internal-comment-${contextId}`} name="body" required maxLength={4000} aria-label={`${currentAuthorName} adına kurum içi not`} placeholder="Müşteriyle ne konuşuldu? Müşteri ne söyledi? Bir sonraki adımı ekleyin…" />
           <div>
-            <small>Yalnızca kurum içinde görünür</small>
-            <button className="panel-primary" type="submit">Yorumu Kaydet</button>
+            <small>{gorunum === "akis" ? "Yalnızca ekibiniz görür" : "Yalnızca kurum içinde görünür"}</small>
+            <button className="panel-primary" type="submit">{gorunum === "akis" ? "Kaydet" : "Yorumu Kaydet"}</button>
           </div>
         </div>
       </form>

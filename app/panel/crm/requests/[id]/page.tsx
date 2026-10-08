@@ -470,7 +470,7 @@ export default async function RequestDetailPage({
         {/* Akış */}
         <TalepAkis sekmeler={postaGorur ? ["Yorumlar", "Postalar", "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
           <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
-          {postaGorur ? <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} /> : null}
+          {postaGorur ? <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} gorunum="akis" /> : null}
           <RecordHistory opportunityId={item.id} />
         </TalepAkis>
       </div>
