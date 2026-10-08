@@ -353,3 +353,31 @@
   .os-root .talep-tablo .crm-data-table tbody td{flex-wrap:wrap;column-gap:var(--sp-2)}
   .os-root .talep-tablo .crm-data-table tbody td>:is(.crm-table-sub,.crm-waiting,.crm-liste-sebep){flex-basis:100%;text-align:right;margin-top:0}
 }
+
+/*
+  SATIRIN TAMAMI TIKLANABİLİR. Kural panel-premium.css'te .crm-page-stack
+  altına yazılıydı; yeni liste sayfalarında o sarmalayıcı olmadığı için
+  yalnızca numara hücresi tıklanıyordu. Aynı yöntem: ilk hücredeki gerçek
+  <a> bir ::after ile satırı kaplar (klavye, orta tık, yeni sekme çalışır).
+*/
+.os-root .talep-tablo .crm-data-table tbody tr{position:relative;cursor:pointer}
+.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link{position:static;color:inherit;text-decoration:none}
+.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link::after{content:"";position:absolute;inset:0;z-index:0}
+.os-root .talep-tablo .crm-data-table tbody td :is(a:not(.crm-row-link),button,select,input,summary,details,form){position:relative;z-index:1}
+.os-root .talep-tablo .crm-data-table tbody tr:focus-within td{background:var(--surface-2)}
+/* Eski tablo kuralı 920px en az genişlik veriyordu; kartın içinde tablo
+   taşıyor, son sütun (ok) istatistik kartının altında kalıyordu. Tablo
+   kart genişliğinde; uzun ad ve konu üç noktayla kısalır. */
+.os-root .talep-tablo .crm-data-table{min-width:0}
+.os-root .talep-tablo .crm-data-table .crm-table-title,.os-root .talep-tablo .crm-data-table .crm-table-sub{max-width:190px}
+.os-root .talep-tablo .crm-rep>span{max-width:110px}
+.os-root .talep-tablo .crm-data-table :is(th,td).crm-col-contact{white-space:nowrap}
+/* Sütunlar içeriğe göre daralabilsin: ad, konu, alt satır ve temsilci en
+   çok iki satıra sarılır (tek satıra zorlamak tabloyu kartın dışına
+   itiyordu). Hücre aralığı sıkılaştı; istatistik kartı sabit 340px. */
+.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr) 340px}
+.os-root .talep-tablo .crm-data-table :is(thead th,tbody td){padding-left:var(--sp-2);padding-right:var(--sp-2)}
+.os-root .talep-tablo .crm-data-table :is(.crm-table-title,.crm-table-sub,.crm-waiting,.crm-liste-sebep){max-width:none;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.os-root .talep-tablo .crm-rep>span{max-width:none;white-space:normal;line-height:var(--lh-tight)}
+@media (max-width:1200px){.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.os-root .talep-tablo .crm-data-table :is(.crm-table-title,.crm-table-sub,.crm-waiting,.crm-liste-sebep){display:block;-webkit-line-clamp:unset}}
