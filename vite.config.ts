@@ -1,5 +1,5 @@
 import vinext from "vinext";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -10,6 +10,31 @@ const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
+
+/*
+  Windows'ta Google Fonts yolu (vinext 0.0.50 hatası, 1.x'te düzeltildi).
+
+  vinext indirdiği yazı tipini CSS'e `C:/…/.vinext/fonts/…` diye eğik çizgiyle
+  yazıyor, sonra bu yolu `/assets/_vinext_fonts` adresine çevirmek için ters
+  eğik çizgili `C:\…\.vinext\fonts` arıyor; bulamıyor. Eskiden tarayıcı
+  dosyayı diskten istiyor ("Not allowed to load local resource"), Inter hiç
+  yüklenmiyor, sayfalar yedek yazı tipiyle görünüyordu. Çeviriyi burada
+  yapıyoruz; dosyaları o adreste vinext'in kendi ara katmanı sunuyor.
+  vinext 1.x'e geçince bu eklenti silinebilir.
+*/
+function windowsFontYolu(): Plugin {
+  let diskYolu = "";
+  return {
+    name: "arvo:windows-font-yolu",
+    configResolved(config) {
+      diskYolu = `${config.root.replaceAll("\\", "/")}/.vinext/fonts`;
+    },
+    transform(code) {
+      if (process.platform !== "win32" || !code.includes(diskYolu)) return null;
+      return { code: code.split(diskYolu).join("/assets/_vinext_fonts"), map: null };
+    },
+  };
+}
 
 const localBindingConfig = {
   main: "./worker/index.ts",
@@ -60,6 +85,7 @@ export default defineConfig(async () => {
     },
     plugins: [
       vinext(),
+      windowsFontYolu(),
       sites(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
