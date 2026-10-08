@@ -14,7 +14,8 @@ import { relativeTime } from "./crm/last-contact";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
-import "./dashboard.css";
+import { gunlukSeri } from "@/lib/gunluk-seri";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
 
 /*
   ANA EKRAN (2026-10, şirket işletim sistemi).
@@ -34,11 +35,7 @@ import "./dashboard.css";
 */
 
 const TZ = "Europe/Istanbul";
-const DAY = 24 * 60 * 60 * 1000;
-const LISTE = 6;
-
-const dayKey = (value: string | number) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+const LISTE = GENEL_BAKIS_SATIR;
 
 // Zamana bağlı yardımcılar bileşen gövdesinin dışında (saat gövdede okunmaz).
 function greetingLine() {
@@ -47,38 +44,6 @@ function greetingLine() {
   const greeting = hour < 5 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : hour < 23 ? "İyi akşamlar" : "İyi geceler";
   const date = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" }).format(now);
   return { greeting, date };
-}
-/** Trend için son 28 günün başlangıcı (önceki 14 günle kıyas). */
-const yirmiSekizGunOnce = () => new Date(Date.now() - 28 * DAY).toISOString();
-/** Son 3 dakikadaki kayıt "yeni" sayılır: anlık tazelemeyle gelen satır vurgulu belirir. */
-const yeniMi = (zaman: string | null | undefined) => Boolean(zaman) && Date.now() - Date.parse(zaman!) < 3 * 60_000;
-
-function requestTrend(createdAt: string[]) {
-  const now = Date.now();
-  const keys = new Map<string, number>();
-  const days = Array.from({ length: 14 }, (_, index) => {
-    const at = now - (13 - index) * DAY;
-    const key = dayKey(at);
-    keys.set(key, index);
-    return {
-      key,
-      count: 0,
-      day: new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric" }).format(new Date(at)),
-      title: new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, weekday: "short", day: "numeric", month: "short" }).format(new Date(at)),
-      isToday: index === 13,
-    };
-  });
-  let previous = 0;
-  for (const value of createdAt) {
-    const index = keys.get(dayKey(value));
-    if (index !== undefined) days[index].count += 1;
-    else {
-      const age = now - Date.parse(value);
-      if (age >= 14 * DAY && age < 28 * DAY) previous += 1;
-    }
-  }
-  const total = days.reduce((sum, day) => sum + day.count, 0);
-  return { days, total, previous, today: days[13].count, max: Math.max(1, ...days.map((day) => day.count)) };
 }
 
 /** "8 Eki" — kısa tarih, Türkiye saatiyle. */
@@ -89,7 +54,6 @@ const kisaTarih = (deger: string | null | undefined) =>
 // Simgeler
 // ---------------------------------------------------------------
 const iconPaths: Record<string, ReactNode> = {
-  alert: <><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" /><path d="M12 9.5v4" /><path d="M12 17h.01" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
@@ -102,25 +66,6 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
 const Chevron = () => (
   <svg className="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
 );
-
-/* Dört sütunun ortak kartı: başlık, alt başlık, liste ya da boş durum, alt bağlantı. */
-function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, children }: {
-  baslik: string;
-  alt: string;
-  bos: string;
-  href?: string;
-  hrefEtiket?: string;
-  sayi: number;
-  children: ReactNode;
-}) {
-  return (
-    <article className="dash-card dash-col">
-      <header className="dash-card-head"><div><h2>{baslik}</h2><p>{alt}</p></div></header>
-      {sayi ? <ul className="dash-col-list">{children}</ul> : <p className="dash-empty">{bos}</p>}
-      {href ? <Link className="dash-card-link" href={href}>{hrefEtiket} <Chevron /></Link> : null}
-    </article>
-  );
-}
 
 type IsSatiri = { id: string; title: string; customer_name: string | null; status: string; due_date: string | null; updated_at: string };
 type AsamaSatiri = { id: string; title: string; due_date: string; workflow_id: string; operation_workflows: { title: string; customer_name: string | null } | null };
@@ -166,7 +111,7 @@ export default async function PanelPage() {
     { count: talepToplami },
   ] = await Promise.all([
     // Trend: yalnızca son 28 günün oluşturulma tarihleri (sınırsız, sayım doğru).
-    canSeeCrm ? supabase.from("crm_opportunities").select("created_at").eq("organization_id", organizationId).gte("created_at", yirmiSekizGunOnce()) : none,
+    canSeeCrm ? supabase.from("crm_opportunities").select("created_at").eq("organization_id", organizationId).gte("created_at", seriBaslangici()) : none,
     canSeeOperations
       ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date,updated_at")
           .eq("organization_id", organizationId).in("status", [...activeStatuses])
@@ -221,8 +166,7 @@ export default async function PanelPage() {
       failures: failedQueries.map(([label, error]) => `${label}: ${error.message}`),
     });
 
-  const trend = requestTrend(((talepTarihleri ?? []) as { created_at: string }[]).map((row) => row.created_at).filter(Boolean));
-  const delta = trend.previous ? Math.round(((trend.total - trend.previous) / trend.previous) * 100) : null;
+  const trend = gunlukSeri(((talepTarihleri ?? []) as { created_at: string }[]).map((row) => row.created_at), simdi());
   const isler = (isRows ?? []) as IsSatiri[];
   const asamalar = (asamaRows ?? []) as unknown as AsamaSatiri[];
   const mesajlar = (mesajRows ?? []) as unknown as MesajSatiri[];
@@ -258,25 +202,11 @@ export default async function PanelPage() {
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
 
   return (
-    <div className="dash dash-v2">
-      <header className="dash-hero">
-        <div>
-          {/* Tarih durum çubuğunda saatin üstünde; telefonda saat gizli olduğu için burada. */}
-          <small className="panel-kicker dash-tarih">{date}</small>
-          <h1>{greeting}{firstName ? `, ${firstName}` : ""}</h1>
-        </div>
-      </header>
-
-      {failedQueries.length ? (
-        <p className="dash-uyari" data-tone="danger" role="alert">
-          <span aria-hidden="true"><Icon name="alert" size={16} /></span>
-          <span>
-            <b>Bazı veriler okunamadı</b>
-            <small>{failedQueries.map(([label]) => label).join(", ")} yüklenemedi; aşağıdaki listeler eksik olabilir. Sorun sürerse destek kaydı açın.</small>
-          </span>
-        </p>
-      ) : null}
-
+    <GenelBakis
+      ust={<span className="dash-tarih">{date}</span>}
+      baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
+      uyari={failedQueries.map(([label]) => label)}
+    >
       {showSetup ? (
         <section className="dash-card dash-setup" aria-label="Kurulum">
           <header className="dash-card-head">
@@ -313,47 +243,23 @@ export default async function PanelPage() {
         </section>
       ) : null}
 
-      {canSeeCrm ? (
-        <article className="dash-card dash-chart">
-          <header className="dash-card-head">
-            <div>
-              <h2>Yeni talepler</h2>
-              <p>Son 14 gün</p>
-            </div>
-            <div className="dash-stat">
-              <strong>{trend.total}</strong>
-              {delta !== null ? (
-                <span data-tone={delta >= 0 ? "success" : "danger"}>{delta >= 0 ? "+" : ""}{delta}% önceki 14 güne göre</span>
-              ) : trend.total ? <span data-tone="neutral">önceki dönemde talep yok</span> : null}
-            </div>
-          </header>
-          <div className="dash-bars" role="img" aria-label={`Son 14 günde ${trend.total} yeni talep`}>
-            {trend.days.map((day) => (
-              <div className={`dash-bar${day.isToday ? " is-today" : ""}${day.count ? "" : " is-empty"}`} key={day.key} title={`${day.title}: ${day.count} talep`}>
-                <span className="dash-bar-value">{day.count || ""}</span>
-                <span className="dash-bar-fill" style={{ "--h": `${day.count ? Math.max(10, (day.count / trend.max) * 100) : 4}%` } as CSSProperties} />
-                <small>{day.day}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-      ) : null}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" /> : null}
 
-      <section className="dash-cols" aria-label="Güncel işler">
+      <ListeIzgarasi>
         {canSeeOperations ? (
           <ListeKarti baslik="Operasyon" alt={`Son ${LISTE} operasyon`} bos="Açık operasyon yok." href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
             {isler.map((is) => {
               const rozet = dueBadge(is.due_date, today, is.status);
               return (
-                <li key={is.id} className={yeniMi(is.updated_at) ? "is-new" : undefined}>
-                  <Link className="dash-col-row" href={`/panel/operations/${is.id}`}>
-                    <span className="dash-col-main">
-                      <b title={is.title}>{formatSubject(is.title)}</b>
-                      <small>{is.customer_name || "Kurum içi iş"} · {workflowStatusNames[is.status] ?? is.status}</small>
-                    </span>
-                    {is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
-                  </Link>
-                </li>
+                <ListeSatiri
+                  key={is.id}
+                  href={`/panel/operations/${is.id}`}
+                  baslik={formatSubject(is.title)}
+                  baslikIpucu={is.title}
+                  alt={`${is.customer_name || "Kurum içi iş"} · ${workflowStatusNames[is.status] ?? is.status}`}
+                  sag={is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
+                  yeni={yeniMi(is.updated_at)}
+                />
               );
             })}
           </ListeKarti>
@@ -362,19 +268,18 @@ export default async function PanelPage() {
         {canSeeOperations ? (
           <ListeKarti baslik="Yaklaşan aşama tarihleri" alt={`Yaklaşan ${LISTE} aşama`} bos="Tarihi girilmiş açık aşama yok." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}>
             {asamalar.map((asama) => {
+              // Gecikme yalnızca rozetle (kırmızı) gösterilir; satır zemini diğer kartlarla aynı.
               const rozet = dueBadge(asama.due_date, today);
               return (
-                // Gecikme yalnızca rozetle (kırmızı) gösterilir; satır zemini diğer kartlarla aynı.
-                <li key={asama.id}>
-                  <Link className="dash-col-row" href={`/panel/operations/${asama.workflow_id}`}>
-                    <span className="dash-col-main">
-                      <b title={asama.title}>{formatSubject(asama.title)}</b>
-                      {/* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */}
-                      <small>{asama.operation_workflows?.customer_name || "Kurum içi iş"} · {formatSubject(asama.operation_workflows?.title)}</small>
-                    </span>
-                    <span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>
-                  </Link>
-                </li>
+                <ListeSatiri
+                  key={asama.id}
+                  href={`/panel/operations/${asama.workflow_id}`}
+                  baslik={formatSubject(asama.title)}
+                  baslikIpucu={asama.title}
+                  /* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */
+                  alt={`${asama.operation_workflows?.customer_name || "Kurum içi iş"} · ${formatSubject(asama.operation_workflows?.title)}`}
+                  sag={<span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>}
+                />
               );
             })}
           </ListeKarti>
@@ -383,16 +288,17 @@ export default async function PanelPage() {
         {canSeeOperations ? (
           <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos="Müşterilerden mesaj yok." href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
             {mesajlar.map((mesaj) => (
-              <li key={mesaj.id} className={[mesaj.read_at ? "" : "is-unread", yeniMi(mesaj.created_at) ? "is-new" : ""].filter(Boolean).join(" ") || undefined}>
-                {/* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */}
-                <Link className="dash-col-row" href={`/panel/operations/${mesaj.workflow_id}?pencere=mesajlar`}>
-                  <span className="dash-col-main">
-                    <b>{formatPersonName(musteriMesajGondereni(mesaj.operation_workflows?.customer_name, mesaj.sender_name))}</b>
-                    <small className="dash-col-preview">{mesaj.body}</small>
-                  </span>
-                  <small className="dash-col-time">{relativeTime(mesaj.created_at)}</small>
-                </Link>
-              </li>
+              /* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */
+              <ListeSatiri
+                key={mesaj.id}
+                href={`/panel/operations/${mesaj.workflow_id}?pencere=mesajlar`}
+                baslik={formatPersonName(musteriMesajGondereni(mesaj.operation_workflows?.customer_name, mesaj.sender_name))}
+                alt={mesaj.body}
+                onizleme
+                zaman={relativeTime(mesaj.created_at)}
+                okunmamis={!mesaj.read_at}
+                yeni={yeniMi(mesaj.created_at)}
+              />
             ))}
           </ListeKarti>
         ) : null}
@@ -400,15 +306,16 @@ export default async function PanelPage() {
         {canSeePosta ? (
           <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length}>
             {postalar.map((posta) => (
-              <li key={posta.thread_id} className={[posta.okunmamis ? "is-unread" : "", yeniMi(posta.son_mesaj_at) ? "is-new" : ""].filter(Boolean).join(" ") || undefined}>
-                <Link className="dash-col-row" href={`/panel/posta/${posta.thread_id}`}>
-                  <span className="dash-col-main">
-                    <b>{posta.son_gonderen_ad || posta.son_gonderen_adres || "Bilinmeyen gönderen"}</b>
-                    <small className="dash-col-preview">{posta.konu || "(konu yok)"}</small>
-                  </span>
-                  {posta.son_mesaj_at ? <small className="dash-col-time">{relativeTime(posta.son_mesaj_at)}</small> : null}
-                </Link>
-              </li>
+              <ListeSatiri
+                key={posta.thread_id}
+                href={`/panel/posta/${posta.thread_id}`}
+                baslik={posta.son_gonderen_ad || posta.son_gonderen_adres || "Bilinmeyen gönderen"}
+                alt={posta.konu || "(konu yok)"}
+                onizleme
+                zaman={posta.son_mesaj_at ? relativeTime(posta.son_mesaj_at) : undefined}
+                okunmamis={posta.okunmamis}
+                yeni={yeniMi(posta.son_mesaj_at)}
+              />
             ))}
           </ListeKarti>
         ) : postaYetkisi ? (
@@ -419,9 +326,9 @@ export default async function PanelPage() {
             href={postaBaglayabilir ? "/panel/settings#posta" : undefined}
             hrefEtiket="Posta kutusunu bağla"
             sayi={0}
-          >{null}</ListeKarti>
+          />
         ) : null}
-      </section>
-    </div>
+      </ListeIzgarasi>
+    </GenelBakis>
   );
 }

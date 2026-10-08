@@ -218,3 +218,4 @@ a.dash-setup-step:active{transform:scale(.985)}
   .dash-v2 .dash-col-row{padding:4px var(--sp-2)}
   .dash-cols{gap:var(--sp-3)}
 }
+@media (min-width:901px){.dash-v2 .panel-kicker:has(> .dash-tarih:only-child){display:none}}
