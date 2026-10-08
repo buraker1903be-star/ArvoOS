@@ -6,10 +6,13 @@ import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { waMeAdresi } from "@/lib/wa-me";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { TEKLIF_ADIMLARI, teklifAdimi } from "@/lib/teklif-asamalari";
+import { TEKLIF_GRUP_ADLARI, teklifGrubu } from "@/lib/teklif-grubu";
+import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedule";
+import { formatSubject } from "@/lib/table-format";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
-import { PROPOSAL_STATUS_LABELS as labels } from "../../status-labels";
+import { PROPOSAL_STATUS_LABELS as labels, contractStatusLabel } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { organizationBrandName, proposalMessages } from "@/lib/customer-message-templates";
@@ -63,7 +66,7 @@ export default async function ProposalDetailPage({ params }: Props) {
   const [{ data, error }, { data: sozlesmeData }] = await Promise.all([
     supabase
       .from("crm_proposals")
-      .select("id,proposal_no,title,scope,amount,net_amount,gross_amount,tax_status,currency,payment_plan,valid_until,status,archive_reason,superseded_by,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,root_proposal_id,share_token,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+      .select("id,proposal_no,title,scope,amount,net_amount,gross_amount,tax_status,currency,payment_plan,payment_schedule,valid_until,status,archive_reason,superseded_by,previous_revision_id,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,revision_no,root_proposal_id,share_token,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
       .eq("id", id)
       .eq("organization_id", membership.organization_id)
       .maybeSingle(),
@@ -81,6 +84,25 @@ export default async function ProposalDetailPage({ params }: Props) {
   if (error) throw new Error("Teklif bilgileri okunamadı: " + error.message);
   if (!data) notFound();
   const sozlesme = ((sozlesmeData ?? []) as { id: string; contract_no: string; status: string }[])[0] ?? null;
+
+  /*
+    REVİZYON ZİNCİRİ (2026-10, sözleşme detayıyla eşitleme): aynı kökten
+    çıkan bütün sürümler. Eskiden yalnızca "⋯ → Revizyon geçmişi" ayrı bir
+    sayfaya gidiyordu; hangi sürümde olunduğu ve yenisinin olup olmadığı
+    detayda görünmüyordu.
+  */
+  const kok = data.root_proposal_id ?? data.id;
+  const { data: revizyonData } = await supabase
+    .from("crm_proposals")
+    .select("id,proposal_no,revision_no,status,archive_reason,superseded_by,amount,currency,created_at")
+    .eq("organization_id", membership.organization_id)
+    .or(`id.eq.${kok},root_proposal_id.eq.${kok}`)
+    .order("revision_no", { ascending: true });
+  const revizyonlar = (revizyonData ?? []) as { id: string; proposal_no: string; revision_no: number; status: string; archive_reason: string | null; superseded_by: string | null; amount: number; currency: string; created_at: string }[];
+  const oncekiRevizyon = data.previous_revision_id ? revizyonlar.find((r) => r.id === data.previous_revision_id) ?? null : null;
+  const sonrakiRevizyon = data.superseded_by ? revizyonlar.find((r) => r.id === data.superseded_by) ?? null : null;
+  // Ödeme takvimi: teklifte kayıtlı taksitler (tutar kuruş; eski kayıtlarda TL, normalize ediyor).
+  const odemeTakvimi = normalizePaymentSchedule(data.payment_schedule ?? [], Number(data.amount));
 
   const customer = Array.isArray(data.crm_opportunities)
     ? data.crm_opportunities[0]
@@ -385,6 +407,39 @@ export default async function ProposalDetailPage({ params }: Props) {
               <p className="talep-bos">Henüz oluşturulmadı. “Müşteriye gönder” bağlantıyı oluşturur; sonra e-posta ya da WhatsApp ile gönderilir.</p>
             )}
           </div>
+
+          {/* BAĞLANTILAR: sözleşme detayındaki gibi, kaydın zinciri tek yerde. */}
+          <div className="talep-gecmis">
+            <h3>Bağlantılar</h3>
+            <ul>
+              <li>
+                <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
+                  <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
+                </Link>
+              </li>
+              {sozlesme ? (
+                <li>
+                  <Link href={`/panel/crm/contracts/${sozlesme.id}`}>
+                    <span className="talep-gecmis-metin"><b>Sözleşme {sozlesme.contract_no}</b><small>{contractStatusLabel(sozlesme.status)}</small></span>
+                  </Link>
+                </li>
+              ) : null}
+              {oncekiRevizyon ? (
+                <li>
+                  <Link href={`/panel/crm/proposals/${oncekiRevizyon.id}`}>
+                    <span className="talep-gecmis-metin"><b>Önceki sürüm{oncekiRevizyon.revision_no ? ` · R${oncekiRevizyon.revision_no}` : ""}</b><small>{money(Number(oncekiRevizyon.amount), oncekiRevizyon.currency || "TRY")}</small></span>
+                  </Link>
+                </li>
+              ) : null}
+              {sonrakiRevizyon ? (
+                <li>
+                  <Link href={`/panel/crm/proposals/${sonrakiRevizyon.id}`}>
+                    <span className="talep-gecmis-metin"><b>Yeni sürüm · R{sonrakiRevizyon.revision_no}</b><small>Bu teklif yeni sürümle değiştirildi</small></span>
+                  </Link>
+                </li>
+              ) : null}
+            </ul>
+          </div>
         </section>
 
         {/* Teklif */}
@@ -423,11 +478,49 @@ export default async function ProposalDetailPage({ params }: Props) {
             <h3>Kapsam</h3>
             {data.scope ? <p>{data.scope}</p> : <p className="talep-bos">Kapsam yazılmamış.</p>}
           </div>
+
+          {/* ÖDEME TAKVİMİ: sözleşme detayındaki gibi taksit, tutar ve vade/koşul. */}
+          <div className="talep-not">
+            <h3>Ödeme takvimi</h3>
+            {odemeTakvimi.length ? (
+              <ol className="plan-timeline">
+                {odemeTakvimi.map((taksit) => (
+                  <li key={taksit.sequence}>
+                    <time>{taksit.due_date ? tarih(taksit.due_date) : taksit.trigger || "Tarih yok"}</time>
+                    <span>{installmentLabel(taksit.label, taksit.sequence)} · {money(taksit.amount, data.currency || "TRY")}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="talep-bos">Taksit girilmemiş{data.payment_plan ? `; ödeme planı: ${data.payment_plan}` : ""}.</p>
+            )}
+          </div>
         </section>
 
-        {/* Akış */}
-        <TalepAkis sekmeler={["Yorumlar", "Geçmiş"]}>
+        {/* Akış: revizyon zinciri birden çok sürümse "Revizyonlar" sekmesi. */}
+        <TalepAkis sekmeler={revizyonlar.length > 1 ? ["Yorumlar", `Revizyonlar · ${revizyonlar.length}`, "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
           <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} gorunum="akis" />
+          {revizyonlar.length > 1 ? (
+            <ul className="ekip-liste teklif-revizyonlar">
+              {[...revizyonlar].reverse().map((r) => {
+                const grup = teklifGrubu(r);
+                const bu = r.id === data.id;
+                return (
+                  <li key={r.id}>
+                    <Link href={`/panel/crm/proposals/${r.id}`} className={bu ? "is-active" : undefined} aria-current={bu ? "page" : undefined}>
+                      <span className="ekip-dep-kod">{r.revision_no ? `R${r.revision_no}` : "İlk"}</span>
+                      <span className="cari-hareket-metin">
+                        <b>{r.proposal_no}{bu ? " · bu sürüm" : ""}</b>
+                        <small>{tarih(r.created_at)}</small>
+                      </span>
+                      <strong className="teklif-tutar-satir">{money(Number(r.amount), r.currency || "TRY")}</strong>
+                      <span className="status-pill">{TEKLIF_GRUP_ADLARI[grup]}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           <RecordHistory opportunityId={data.opportunity_id} />
         </TalepAkis>
       </div>

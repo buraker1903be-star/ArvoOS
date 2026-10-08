@@ -469,3 +469,6 @@
 .os-root .talep-tablo .crm-data-table td[data-label="Personel"]{min-width:200px}
 .os-root .talep-tablo .crm-data-table td[data-label="Personel"] .crm-row-link{display:block}
 @media (max-width:760px){.os-root .talep-tablo .crm-data-table tbody td.crm-col-date>small{flex-basis:100%;text-align:right}}
+/* Teklif detayı: akıştaki revizyon listesi. */
+.os-root .talep-akis-panel>.teklif-revizyonlar{margin:0;padding:var(--sp-2) var(--sp-4)}
+.ekip-liste a.is-active{background:var(--primary-soft)}
