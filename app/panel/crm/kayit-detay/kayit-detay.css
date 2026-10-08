@@ -58,9 +58,19 @@
 .talep-akis-sekmeler button.is-active{color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
 .talep-akis-sekmeler button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
 .talep-akis-panel{max-height:calc(100dvh - 370px);min-height:240px;overflow:auto}
-/* Uzun kapsam ve notlar sayfayı uzatmasın: orta sütun kendi içinde kayar. Sınırlar
-   dock'un üstünde bitecek şekilde: başlık + aşama çizgisi ~216px, dock ~100px. */
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 320px);overflow:auto}
+/* Uzun kapsam ve notlar sayfayı uzatmasın: KAYIT DETAYINDA orta sütun kendi
+   içinde kayar. Sınırlar dock'un üstünde bitecek şekilde: başlık + aşama
+   çizgisi ~216px, dock ~100px.
+
+   LİSTE SAYFALARI DIŞARIDA (.ekip-izgara). Talepler, teklifler, sözleşmeler,
+   işler, ekip ve finans listeleri aynı .talep-izgara/.talep-bilgi sınıflarını
+   yeniden kullanıyor ve bu kural onlara da uyguluyordu: liste sabit
+   yükseklikli bir kutu oluyor, kendi içinde kayıyor ve kaydırma çubuğu fare
+   değene kadar saydam olduğu için (aşağıda) "liste aşağıya kaymıyor" diye
+   görünüyordu. Listede doğru davranış sayfanın kayması: kaç satır olduğunu
+   sayfanın uzunluğu söyler ve alttaki satırlara ulaşmak için kutunun içini
+   keşfetmek gerekmez. */
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 320px);overflow:auto}
 .os-root .talep-akis-panel>.panel-card,.os-root .talep-akis-panel>section{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent}
 .talep-akis-panel:empty::after{content:"Bu talebe bağlı yazışma yok.";display:block;padding:var(--sp-8) var(--sp-5);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
 
@@ -266,9 +276,8 @@
   .talep-satir-durum small{display:none}
   .talep-ara{flex-basis:100%;margin-left:0}
 }
-/* Liste sayfasının başlık + şerit + süzgeç satırı detaydakinden ~30px uzun. */
-.os-root .ekip .ekip-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 350px)}
-@media (max-width:1200px){.os-root .ekip .ekip-izgara>:is(.talep-bilgi,.talep-musteri){max-height:none}}
+/* Liste kartlarının yüksekliği sınırlanmıyor; sayfa kayar (yukarıdaki nota
+   bakın). Eskiden burada listeye özel bir sınır vardı ve sorun oradaydı. */
 
 /* Teklifler listesi: tutar sütunu ve bağlantı hazır şeridi. */
 .teklif-tutar-satir{flex:none;width:120px;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}

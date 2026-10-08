@@ -282,3 +282,9 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
   .os-subdock a{min-height:40px}
 }
 @keyframes os-alt-ac-dar{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Liste sayfalarında kayan şey KART değil SAYFA (bkz. kayit-detay.css'teki
+   .ekip-izgara notu), dolayısıyla yapışkan tablo başlığının sıfır noktası
+   sayfanın üstü. top:0 bırakılsa başlık bu çubuğun ALTINA girer ve sütun
+   adları kaybolur. Kural burada çünkü --os-bar-h bu dosyada tanımlı. */
+.os-root .ekip-izgara .talep-tablo .crm-data-table thead th{top:var(--os-bar-h);z-index:2}
