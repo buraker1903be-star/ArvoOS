@@ -482,3 +482,7 @@
 /* Cari detayı: başlık + bakiye şeridi detaylardaki aşama çizgisinden uzun; sütunlar dock'un üstünde bitsin. */
 .os-root .cari:not(.ekip) .talep-izgara>:is(.talep-bilgi,.talep-musteri,.cari-sag){max-height:calc(100dvh - 350px)}
 @media (max-width:1200px){.os-root .cari:not(.ekip) .talep-izgara>:is(.talep-bilgi,.talep-musteri,.cari-sag){max-height:none}}
+/* Personel detayı: performans kutuları dört sütun, liste başlığında "listede aç". */
+.personel-performans{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))!important;margin-bottom:var(--sp-2)}
+.personel-tumu{color:var(--primary);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none}
+.personel-tumu:hover{text-decoration:underline}

@@ -14,7 +14,11 @@ import { uploadEmployeeDocument, deleteEmployeeDocument } from "../documents-act
 import { roleNames } from "../role-names";
 import { HrIcon, initials } from "../hr-icons";
 import { requestStageNames } from "../../crm/request-status";
-import { workflowStatusNames, activeStatuses } from "../../operations/ops-shared";
+import { workflowStatusNames } from "../../operations/ops-shared";
+import { teklifGrubu } from "@/lib/teklif-grubu";
+import { gunOnce, oran } from "@/lib/liste-istatistik";
+import { tamPara } from "../../crm/istatistik-karti";
+import { simdi } from "../../os/genel-bakis";
 import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 
@@ -61,13 +65,24 @@ function canliDavet(rows: Invitation[], email: string | null) {
   const aranan = email?.toLowerCase();
   return aranan ? rows.find((invite) => invite.email.toLowerCase() === aranan && Date.parse(invite.expires_at) > now) : undefined;
 }
-// Açık talep: kaybedilen ve kazanılan dışındaki aşamalar.
-const KAPALI_ASAMALAR = "(lost,won)";
+/*
+  Açık talep: talepler listesinin "Aktif" kümesi (yeni + inceleniyor).
+  Eskiden kazanılan ve kaybedilen dışındaki her aşama sayılıyordu
+  (teklif ve sözleşme aşamaları dahil): başlıkta 58 yazıp "tümünü gör"
+  talepler listesinde 4 kayıt açıyordu.
+*/
+const AKTIF_ASAMALAR = ["lead", "qualified"];
+/*
+  Üstündeki iş: işler listesinde görünen küme (arşivlenmemiş, iptal
+  edilmemiş; tamamlanıp arşive gönderilmeyi bekleyen dahil). Eskiden
+  tamamlananlar sayılmıyordu: burada 10, "tümünü gör"de 11 iş çıkıyordu.
+*/
+const LISTEDEKI_IS_DURUMLARI = ["planned", "in_progress", "blocked", "completed"];
 const LISTE = 6;
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase, membership, userId, modules, organization, izin } = await getPanelContext();
+  const { supabase, membership, userId, modules, organization, izin, isPlatformOwner } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = izin("hr.ekip.yonet");
   const crmVar = modules.some((module) => module.code === "crm");
@@ -94,10 +109,10 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     canManageTeam && employee.user_id ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", org).eq("user_id", employee.user_id).maybeSingle() : Promise.resolve({ data: null }),
     canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at").eq("organization_id", org).in("status", ["pending", "sent"]) : Promise.resolve({ data: [] as Invitation[] }),
     canManageTeam ? supabase.from("hr_employee_documents").select("id,file_name,file_size,created_at").eq("organization_id", org).eq("employee_id", employee.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as Doc[] }),
-    crmVar ? supabase.from("crm_opportunities").select("id,title,customer_name,stage,created_at").eq("organization_id", org).eq("assigned_employee_id", employee.id).not("stage", "in", KAPALI_ASAMALAR).order("created_at", { ascending: false }).limit(LISTE) : bos,
-    crmVar ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).not("stage", "in", KAPALI_ASAMALAR) : bos,
-    opsVar ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date").eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", [...activeStatuses]).order("due_date", { ascending: true, nullsFirst: false }).limit(LISTE) : bos,
-    opsVar ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", [...activeStatuses]) : bos,
+    crmVar ? supabase.from("crm_opportunities").select("id,title,customer_name,stage,created_at").eq("organization_id", org).eq("assigned_employee_id", employee.id).in("stage", AKTIF_ASAMALAR).order("created_at", { ascending: false }).limit(LISTE) : bos,
+    crmVar ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).in("stage", AKTIF_ASAMALAR) : bos,
+    opsVar ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date").eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", LISTEDEKI_IS_DURUMLARI).order("due_date", { ascending: true, nullsFirst: false }).limit(LISTE) : bos,
+    opsVar ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", LISTEDEKI_IS_DURUMLARI) : bos,
   ]);
   const member = memberResult.data as Member | null;
   const pendingInvite = canliDavet((invitationResult.data ?? []) as Invitation[], employee.email);
@@ -106,6 +121,31 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const isler = (isResult.data ?? []) as Is[];
   const acikTalep = talepSayisi.count ?? 0;
   const acikIs = isSayisi.count ?? 0;
+
+  /*
+    PERFORMANS (2026-10, liste sayfalarındaki istatistik kartıyla aynı
+    hesaplar): satışta imzalanan sözleşmeler ve teklif kabul oranı (bu
+    personele atanmış taleplerden), operasyonda teslim edilen işler ve
+    zamanında teslim oranı. Okunamayan modül (RLS) boş kalır.
+  */
+  const [sozlesmeSonuc, teklifSonuc, isSonuc] = await Promise.all([
+    crmVar ? supabase.from("crm_contracts").select("amount,signed_at,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", employee.id).in("status", ["signed", "completed"]) : bos,
+    crmVar ? supabase.from("crm_proposals").select("status,archive_reason,superseded_by,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", employee.id) : bos,
+    opsVar ? supabase.from("operation_workflows").select("due_date,delivered_at").eq("organization_id", org).eq("assigned_employee_id", employee.id).not("delivered_at", "is", null) : bos,
+  ]);
+  const an = simdi();
+  const imzalananlar = (sozlesmeSonuc.data ?? []) as { amount: number; signed_at: string | null }[];
+  const son90Imza = imzalananlar.filter((s) => s.signed_at && gunOnce(s.signed_at, an) < 90);
+  const son90Deger = son90Imza.reduce((sum, s) => sum + Number(s.amount), 0);
+  const teklifGruplari = ((teklifSonuc.data ?? []) as { status: string; archive_reason: string | null; superseded_by: string | null }[]).map(teklifGrubu);
+  const kabul = teklifGruplari.filter((g) => g === "accepted").length;
+  const kabulOrani = oran(kabul, teklifGruplari.filter((g) => g === "accepted" || g === "rejected" || g === "expired").length);
+  const teslimler = (isSonuc.data ?? []) as { due_date: string | null; delivered_at: string }[];
+  const son90Teslim = teslimler.filter((t) => gunOnce(t.delivered_at, an) < 90).length;
+  const teslimGunu = (deger: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(Date.parse(deger));
+  const terminli = teslimler.filter((t) => t.due_date);
+  const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
+  const primGorebilir = isPlatformOwner || izin("hr.prim.gor");
 
   const isOwner = membership.role === "owner";
   // Yönetici departmanındaki aktif/izinli çalışanın rolü departmandan gelir
@@ -149,6 +189,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               <Link className="os-menu-item" href="/panel/hr">Ekip listesi</Link>
+              {primGorebilir ? <Link className="os-menu-item" href={`/panel/hr/prim-hesabi?personel=${employee.id}`}>Prim hesabı</Link> : null}
               <Link className="os-menu-item" href="/panel/hr/activity">Personel hareketleri</Link>
             </div>
           </details>
@@ -162,7 +203,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           <div><dt>Çalışma tipi</dt><dd>{typeNames[employee.employment_type] ?? "—"}</dd></div>
           <div><dt>Kıdem</dt><dd>{employee.start_date ? kidem(employee.start_date, bugun) : "—"}</dd></div>
           {crmVar ? <div><dt>Açık talep</dt><dd>{acikTalep}</dd></div> : null}
-          {opsVar ? <div><dt>Aktif iş</dt><dd>{acikIs}</dd></div> : null}
+          {opsVar ? <div><dt>Üstündeki iş</dt><dd>{acikIs}</dd></div> : null}
           {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{erisim}</dd></div> : null}
         </dl>
       </section>
@@ -200,11 +241,31 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         </section>
 
         <section className="panel-card talep-bilgi" aria-label="Üstündeki işler">
-          {crmVar ? (
+          {crmVar || opsVar ? (
             <>
+              <div className="cari-baslik"><h2>Performans</h2><small>son 90 gün</small></div>
+              <dl className="istat-kutular personel-performans">
+                {crmVar ? (
+                  <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
+                ) : null}
+                {crmVar ? (
+                  <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
+                ) : null}
+                {opsVar ? (
+                  <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
+                ) : null}
+                {opsVar ? (
+                  <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
+                ) : null}
+              </dl>
+            </>
+          ) : null}
+          {crmVar ? (
+            <div className="talep-not">
               <div className="cari-baslik">
                 <h2>Açık talepler</h2>
-                <small>{acikTalep > talepler.length ? `${talepler.length} / ${acikTalep}` : acikTalep}</small>
+                {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
+                <Link className="personel-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `${talepler.length} / ${acikTalep} · tümünü gör` : `${acikTalep} · listede aç`}</Link>
               </div>
               {talepler.length ? (
                 <ul className="cari-hareketler">
@@ -221,13 +282,14 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                   ))}
                 </ul>
               ) : <p className="talep-bos cari-not">Üstünde açık talep yok.</p>}
-            </>
+            </div>
           ) : null}
           {opsVar ? (
-            <div className={crmVar ? "talep-not" : undefined}>
+            <div className="talep-not">
               <div className="cari-baslik">
                 <h2>Yürüttüğü işler</h2>
-                <small>{acikIs > isler.length ? `${isler.length} / ${acikIs}` : acikIs}</small>
+                {/* İşler listesinin sorumlu süzgeci. */}
+                <Link className="personel-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `${isler.length} / ${acikIs} · tümünü gör` : `${acikIs} · listede aç`}</Link>
               </div>
               {isler.length ? (
                 <ul className="cari-hareketler">
@@ -243,7 +305,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                     </li>
                   ))}
                 </ul>
-              ) : <p className="talep-bos cari-not">Üstünde aktif iş yok.</p>}
+              ) : <p className="talep-bos cari-not">Üstünde iş yok.</p>}
             </div>
           ) : null}
           {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
