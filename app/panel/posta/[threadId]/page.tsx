@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiGeriAl, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
@@ -37,7 +37,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
-      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis")
+      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis,silindi_at,silen_user_id")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
     supabase.from("mail_messages")
       .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon,ekli_dosya")
@@ -89,6 +89,15 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   })));
 
   const yonetebilir = izin("posta.yonet");
+  /* Çöpteki yazışma okunur ama üzerinde iş yapılmaz: yanıt, durum ve
+     müşteri bağı kapalı. Önce geri alınır. */
+  const copte = Boolean(konusma.silindi_at);
+  /* "Bunu kim sildi" ortak kutuda sorulan ilk soru; kimlik yerine ad. */
+  const { data: silenKayit } = copte && konusma.silen_user_id
+    ? await supabase.from("hr_employees").select("full_name")
+        .eq("organization_id", membership.organization_id).eq("user_id", konusma.silen_user_id).maybeSingle()
+    : { data: null };
+  const silenAd = konusma.silen_user_id === userId ? "Siz" : (silenKayit?.full_name as string | undefined) ?? "ekipten biri";
   /* Yanıt son GELEN mesajın göndereneine gider; son giden mesaja bakmak
      kendi adresimize cevap yazdırırdı. */
   const sonGelen = [...mesajlar].reverse().find((mesaj) => mesaj.yon === "gelen");
@@ -111,7 +120,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       render sırasında işaretleseydik kutuda kaydıran personel hiç
       açmadığı postaları okundu yapardı.
     */}
-    <OkunduIsaretle threadId={threadId} okunmamis={Boolean(konusma.okunmamis)} isaretle={konusmayiOkundu} />
+    <OkunduIsaretle threadId={threadId} okunmamis={Boolean(konusma.okunmamis) && !copte} isaretle={konusmayiOkundu} />
 
     <header className="talep-bas">
       <div className="talep-bas-metin">
@@ -120,21 +129,38 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
         <p>{mesajlar.length} mesaj · {kutuAdi}</p>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link>
+        <Link className="panel-secondary" href={copte ? "/panel/posta?kutu=cop" : "/panel/posta"}>← {copte ? "Çöp kutusu" : "Gelen kutusu"}</Link>
         {/* Silme burada, listede değil: liste satırındaki bir silme düğmesi
-            yanlış satıra basmayı kolaylaştırır. */}
-        <form action={konusmayiOkunmadiYap}>
-          <input type="hidden" name="thread_id" value={threadId} />
-          <button className="panel-secondary" type="submit">Okunmadı yap</button>
-        </form>
-        {izin("posta.sil") ? (
-          <form action={konusmayiSil}>
+            yanlış satıra basmayı kolaylaştırır. Çöpteki yazışmada yerini
+            geri alma düğmesi tutuyor. */}
+        {copte ? null : (
+          <form action={konusmayiOkunmadiYap}>
             <input type="hidden" name="thread_id" value={threadId} />
-            <button className="panel-secondary posta-sil" type="submit">Çöp kutusuna taşı</button>
+            <button className="panel-secondary" type="submit">Okunmadı yap</button>
           </form>
+        )}
+        {izin("posta.sil") ? (
+          copte ? (
+            <form action={konusmayiGeriAl}>
+              <input type="hidden" name="thread_id" value={threadId} />
+              <button className="panel-primary" type="submit">Çöpten geri al</button>
+            </form>
+          ) : (
+            <form action={konusmayiSil}>
+              <input type="hidden" name="thread_id" value={threadId} />
+              <button className="panel-secondary posta-sil" type="submit">Çöp kutusuna taşı</button>
+            </form>
+          )
         ) : null}
       </div>
     </header>
+
+    {copte ? (
+      <p className="posta-uyari posta-cop-uyari">
+        Bu yazışma çöp kutusunda ({silenAd}, {istanbulTarihSaat(konusma.silindi_at as string)}). Okunabilir ama
+        yanıtlanamaz; önce geri alın. Gmail çöpü otuz günde kendisi boşaltır.
+      </p>
+    ) : null}
 
     {/*
       İki sütun: solda yazışma, sağda yazışmanın DURUMU. Eskiden durum
@@ -179,7 +205,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
           ))}
         </ol>
 
-        {izin("posta.yanitla") && yanitlanacakAdres ? (
+        {copte ? null : izin("posta.yanitla") && yanitlanacakAdres ? (
           <form className="posta-yanit" action={konusmayaYanitla}>
             <input type="hidden" name="thread_id" value={threadId} />
             <label htmlFor="posta-yanit-metni">
@@ -227,7 +253,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       </section>
 
       <aside className="panel-card talep-musteri posta-yan" aria-label="Yazışma bilgileri">
-        {yonetebilir ? (
+        {yonetebilir && !copte ? (
           <div className="posta-durum-cubugu">
             <form action={konusmayiUstlen}>
               <input type="hidden" name="thread_id" value={threadId} />
@@ -246,7 +272,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
           </div>
         ) : null}
 
-        {yonetebilir ? (
+        {yonetebilir && !copte ? (
           <form className="posta-bag" action={konusmayiKayitBagla}>
             <input type="hidden" name="thread_id" value={threadId} />
             <label htmlFor="posta-firsat">
@@ -274,7 +300,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
 
         <p className="posta-not">
           Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.
-          {izin("posta.sil") ? " Silinen yazışma Gmail'in çöp kutusuna gider, kalıcı olarak silinmez." : ""}
+          {izin("posta.sil") ? " Çöpe atılan yazışma Gmail'in çöp kutusuna gider ve panelden geri alınabilir; kalıcı olarak silinmez." : ""}
         </p>
       </aside>
     </div>

@@ -6,7 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
 /*
@@ -425,14 +425,15 @@ async function konusmayiSil__impl(formData: FormData) {
      service_role ile yapılıyor ve o RLS'i atlıyor. */
   const { data: konusma, error } = await supabase
     .from("mail_threads")
-    .select("thread_id")
+    .select("thread_id,silindi_at")
     .eq("organization_id", membership.organization_id)
     .eq("thread_id", threadId)
     .maybeSingle();
   if (error) throw new Error("Konuşma okunamadı: " + error.message);
   if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+  if (konusma.silindi_at) throw new Error("Bu yazışma zaten çöp kutusunda.");
 
-  const sonuc = await postaKonusmasiniCopeAt(membership.organization_id, threadId);
+  const sonuc = await postaKonusmasiniCopeAt(membership.organization_id, threadId, context.userId);
   if (sonuc) throw new Error(sonuc.hata);
 
   revalidatePath("/panel/posta");
@@ -442,6 +443,47 @@ async function konusmayiSil__impl(formData: FormData) {
 export async function konusmayiSil(formData: FormData) {
   await runPanelAction(() => konusmayiSil__impl(formData), "Yazışma çöp kutusuna taşındı");
   redirect("/panel/posta");
+}
+
+/*
+  ÇÖPTEN GERİ ALMA.
+
+  Silmeyle aynı yetki: yazışmayı çöpe atabilen geri de alabilmeli.
+  Ayrı bir yetenek anahtarı, "sildim ama geri alamıyorum" durumunu
+  üretirdi.
+*/
+async function konusmayiGeriAl__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.sil");
+  const { supabase, membership } = context;
+
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+
+  const { data: konusma, error } = await supabase
+    .from("mail_threads")
+    .select("thread_id,silindi_at")
+    .eq("organization_id", membership.organization_id)
+    .eq("thread_id", threadId)
+    .maybeSingle();
+  if (error) throw new Error("Konuşma okunamadı: " + error.message);
+  if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+  if (!konusma.silindi_at) throw new Error("Bu yazışma çöp kutusunda değil.");
+
+  const sonuc = await postaKonusmasiniGeriAl(membership.organization_id, threadId);
+  if (sonuc) throw new Error(sonuc.hata);
+
+  revalidatePath("/panel/posta");
+  revalidatePath("/panel", "layout");
+}
+
+export async function konusmayiGeriAl(formData: FormData) {
+  /* Çöp listesinden geri alınca listeye, yazışmanın içinden geri alınca
+     yazışmaya dönülüyor: ikisinde de kullanıcı baktığı yerde kalıyor. */
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  const listeden = String(formData.get("donus") ?? "") === "liste";
+  await runPanelAction(() => konusmayiGeriAl__impl(formData), "Yazışma gelen kutusuna geri alındı");
+  redirect(!listeden && threadId ? `/panel/posta/${threadId}` : "/panel/posta");
 }
 
 /*

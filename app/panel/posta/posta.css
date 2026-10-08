@@ -103,3 +103,7 @@
 .posta-cc input:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
 .posta-alinti-sec{display:flex;align-items:center;gap:var(--sp-2);color:var(--muted);font-size:var(--fs-sm)}
 .posta-alinti-sec input{width:16px;height:16px;margin:0}
+
+/* Çöpteki yazışmanın uyarısı akışın üstünde: sayfanın geri kalanı
+   okunur görünüyor, "neden yanıtlayamıyorum" sorusunun cevabı burada. */
+.os-root .posta-cop-uyari{margin:0 0 var(--sp-3)}

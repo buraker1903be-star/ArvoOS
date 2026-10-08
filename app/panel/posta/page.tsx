@@ -4,7 +4,7 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
-import { postaImzasi, taslakSil } from "./actions";
+import { konusmayiGeriAl, postaImzasi, taslakSil } from "./actions";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 
@@ -31,6 +31,8 @@ type Konusma = {
   durum: string;
   ilgilenen_user_id: string | null;
   opportunity_id: string | null;
+  silindi_at: string | null;
+  silen_user_id: string | null;
   /* Gömülü ilişki: PostgREST tek kayıtta nesne, bazı sürümlerde dizi
      döndürüyor — ikisini de karşılayan tip. */
   crm_opportunities: { customer_name: string | null } | { customer_name: string | null }[] | null;
@@ -65,12 +67,17 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
+  /* Çöp kutusu kendi görünümü: silinen yazışma öteki kutuların
+     hiçbirinde çıkmamalı, yalnızca burada. */
+  const copGorunumu = kutu === "cop";
+
   let sorgu = supabase
     .from("mail_threads")
-    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,crm_opportunities(customer_name)")
+    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,crm_opportunities(customer_name)")
     .eq("organization_id", membership.organization_id)
-    .order("son_mesaj_at", { ascending: false })
+    .order(copGorunumu ? "silindi_at" : "son_mesaj_at", { ascending: false })
     .limit(100);
+  sorgu = copGorunumu ? sorgu.not("silindi_at", "is", null) : sorgu.is("silindi_at", null);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
 
   const secilenKutu = KUTULAR.find((aday) => aday.anahtar === kutu);
@@ -106,9 +113,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     .limit(50);
   const taslaklar = (taslakVerisi ?? []) as { id: string; thread_id: string | null; alici: string | null; konu: string | null; govde: string; updated_at: string; olusturan: string | null }[];
 
-  // Ekip adları: "ilgilenen" sütunu kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
+  // Ekip adları: "ilgilenen" ve "silen" sütunları kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
   const ilgilenenler = [...new Set([
     ...konusmalar.map((satir) => satir.ilgilenen_user_id),
+    ...konusmalar.map((satir) => satir.silen_user_id),
     ...taslaklar.map((satir) => satir.olusturan),
   ].filter(Boolean))] as string[];
   const { data: personeller } = ilgilenenler.length
@@ -140,16 +148,22 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   */
   const say = async (sutun?: "gelen_var" | "giden_var" | "okunmamis", durum?: string) => {
     let q = supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
-      .eq("organization_id", membership.organization_id);
+      .eq("organization_id", membership.organization_id)
+      /* Çöptekiler hiçbir sayıya girmiyor: silinen yazışmanın okunmamışı
+         kapatılamaz bir rakam bırakıyordu. Çöp kutusunun kendi sayacı
+         aşağıda, ters süzgeçle. */
+      .is("silindi_at", null);
     if (sutun) q = q.eq(sutun, true);
     if (durum) q = q.eq("durum", durum);
     return (await q).count ?? 0;
   };
-  const [tumu, gelen, giden, okunmamis, acik, yanitlandi, { count: taslakSayisi }] = await Promise.all([
+  const [tumu, gelen, giden, okunmamis, acik, yanitlandi, { count: taslakSayisi }, { count: copSayisi }] = await Promise.all([
     say(), say("gelen_var"), say("giden_var"), say("okunmamis"), say(undefined, "acik"), say(undefined, "yanitlandi"),
     supabase.from("mail_drafts").select("id", { count: "exact", head: true }).eq("organization_id", membership.organization_id),
+    supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id).not("silindi_at", "is", null),
   ]);
-  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, listelenen: konusmalar.length };
+  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, cop: copSayisi ?? 0, listelenen: konusmalar.length };
 
   return <main className="talep cari ekip talepler liste-sayfa">
     <header className="talep-bas">
@@ -179,6 +193,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         <div className={kutu === "taslak" ? "is-active" : undefined}>
           <dt>Taslaklar</dt>
           <dd><Link href={`/panel/posta${adresEki({ kutu: kutu === "taslak" ? "" : "taslak" })}`}>{sayi.taslak}</Link></dd>
+        </div>
+        <div className={copGorunumu ? "is-active" : undefined}>
+          <dt>Çöp kutusu</dt>
+          <dd><Link href={`/panel/posta${adresEki({ kutu: copGorunumu ? "" : "cop" })}`}>{sayi.cop}</Link></dd>
         </div>
         <div className={suzgec === "acik" ? "is-active" : undefined}>
           <dt>Açık</dt>
@@ -242,18 +260,28 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           )
         ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
-            <p>{desen ? `"${desen}" için sonuç yok.` : "Bu süzgeçte yazışma yok."}</p>
-            <small>Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin.</small>
+            <p>{desen ? `"${desen}" için sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : "Bu süzgeçte yazışma yok."}</p>
+            <small>{copGorunumu
+              ? "Çöpe atılan yazışma burada durur; geri alınabilir. Gmail çöpü otuz günde kendisi boşaltır."
+              : "Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin."}</small>
           </div>
         ) : (
           <div className="talep-tablo">
             <table className="crm-data-table">
-              <thead><tr><th>Gönderen</th><th>Konu</th><th>Müşteri</th><th>Durum</th><th>İlgilenen</th><th className="crm-col-date">Son mesaj</th><th></th></tr></thead>
+              <thead><tr>
+                <th>Gönderen</th><th>Konu</th><th>Müşteri</th>
+                {copGorunumu ? <th>Silen</th> : <><th>Durum</th><th>İlgilenen</th></>}
+                <th className="crm-col-date">{copGorunumu ? "Çöpe atıldı" : "Son mesaj"}</th>
+                <th></th>
+              </tr></thead>
               <tbody>
                 {konusmalar.map((konusma) => {
                   const etiket = DURUM_ETIKETI[konusma.durum] ?? DURUM_ETIKETI.acik;
                   const ilgilenen = konusma.ilgilenen_user_id ? adlar.get(konusma.ilgilenen_user_id) ?? "Ekipten biri" : null;
                   const gonderen = konusma.son_gonderen_ad || konusma.son_gonderen_adres || "Bilinmeyen gönderen";
+                  const silen = konusma.silen_user_id
+                    ? (konusma.silen_user_id === userId ? "Siz" : adlar.get(konusma.silen_user_id) ?? "Ekipten biri")
+                    : null;
                   return (
                     <tr key={konusma.thread_id} data-okunmamis={konusma.okunmamis ? "evet" : undefined}>
                       <td data-label="Gönderen">
@@ -269,14 +297,34 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                         <span className="crm-table-sub">{konusma.ozet}</span>
                       </td>
                       <td data-label="Müşteri">{musteriAdi(konusma) ?? <span className="talep-bos">—</span>}</td>
-                      <td data-label="Durum"><span className="status-pill" data-tone={etiket.ton}>{etiket.ad}</span></td>
-                      <td data-label="İlgilenen">
-                        {ilgilenen
-                          ? <span className="crm-table-sub">{konusma.ilgilenen_user_id === userId ? "Siz" : ilgilenen}</span>
-                          : <span className="talep-bos">—</span>}
+                      {copGorunumu ? (
+                        <td data-label="Silen">
+                          <span className="crm-table-sub">{silen ?? "—"}</span>
+                        </td>
+                      ) : (
+                        <>
+                          <td data-label="Durum"><span className="status-pill" data-tone={etiket.ton}>{etiket.ad}</span></td>
+                          <td data-label="İlgilenen">
+                            {ilgilenen
+                              ? <span className="crm-table-sub">{konusma.ilgilenen_user_id === userId ? "Siz" : ilgilenen}</span>
+                              : <span className="talep-bos">—</span>}
+                          </td>
+                        </>
+                      )}
+                      <td data-label={copGorunumu ? "Çöpe atıldı" : "Son mesaj"} className="crm-table-mono">
+                        {istanbulTarihSaat(copGorunumu ? konusma.silindi_at : konusma.son_mesaj_at)}
                       </td>
-                      <td data-label="Son mesaj" className="crm-table-mono">{istanbulTarihSaat(konusma.son_mesaj_at)}</td>
-                      <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <td className="crm-table-actions">
+                        {/* Geri alma satırda: çöp kutusunda yapılacak tek iş bu,
+                            yazışmayı açmayı şart koşmak gereksiz bir adım olurdu. */}
+                        {copGorunumu && izin("posta.sil") ? (
+                          <form action={konusmayiGeriAl}>
+                            <input type="hidden" name="thread_id" value={konusma.thread_id} />
+                            <input type="hidden" name="donus" value="liste" />
+                            <button className="panel-secondary" type="submit">Geri al</button>
+                          </form>
+                        ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
+                      </td>
                     </tr>
                   );
                 })}

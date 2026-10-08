@@ -134,7 +134,8 @@ export default async function PanelPage() {
       : none,
     canSeePosta
       ? supabase.from("mail_threads").select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,okunmamis")
-          .eq("organization_id", organizationId).order("son_mesaj_at", { ascending: false, nullsFirst: false }).limit(LISTE)
+          .eq("organization_id", organizationId).is("silindi_at", null)
+          .order("son_mesaj_at", { ascending: false, nullsFirst: false }).limit(LISTE)
       : none,
     supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
     canSetup ? supabase.from("organization_onboarding").select("completed_at").eq("organization_id", organizationId).maybeSingle() : none,

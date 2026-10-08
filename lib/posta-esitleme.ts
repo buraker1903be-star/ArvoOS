@@ -172,6 +172,12 @@ async function konusmalariGuncelle(
          o yazışma iki kutuya da aittir. */
       gelen_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "gelen"),
       giden_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "giden"),
+      /* Buraya gelen konuşmanın çöpte OLMAYAN en az bir mesajı var
+         (çöp/spam mesajlar mesajlariIsle'de eleniyor). Yazışma Gmail'de
+         çöpten çıkarıldıysa ya da çöpe atılmış bir yazışmaya müşteri
+         yeniden yazdıysa panelde de kutuya dönmeli. */
+      silindi_at: null,
+      silen_user_id: null,
       updated_at: new Date().toISOString(),
     } : null;
   }).filter((satir): satir is NonNullable<typeof satir> => satir !== null);
@@ -796,20 +802,26 @@ export async function postaYeniGonder(girdi: {
 }
 
 /**
- * Konuşmayı Gmail'in ÇÖP KUTUSUNA taşır.
+ * Konuşmayı Gmail'in ÇÖP KUTUSUNA taşır ve bizde ÇÖPTE işaretler.
  *
  * Kalıcı silme bilerek yok: yanlışlıkla silinen bir müşteri yazışması
- * Gmail'den geri alınabilmeli. Eşitleme çöpe atılanı geri getirmiyor —
- * Gmail'in liste ucu çöp ve spam'i varsayılan olarak dışarıda bırakıyor.
+ * geri alınabilmeli. Eşitleme çöptekini kendiliğinden geri getirmiyor —
+ * Gmail'in liste ucu çöp ve spam'i varsayılan olarak dışarıda bırakıyor,
+ * mesajlar da etiketlerine bakılarak eleniyor.
  *
- * Önce Gmail, sonra bizim satırlar: ters sırada olsaydı Gmail çağrısı
- * düştüğünde konuşma panelden kaybolur ama kutuda durmaya devam eder ve
- * bir sonraki eşitlemede geri gelirdi — kullanıcı "sildim, geri geldi"
- * ile kalırdı.
+ * Eskiden satırlar siliniyordu; panelde Çöp kutusu da geri alma da yoktu,
+ * kullanıcı Gmail'e geçmek zorundaydı. Satır artık duruyor, yalnızca
+ * işaretleniyor: mesaj gövdeleri de yerinde kalıyor, çöpteki yazışma
+ * okunabiliyor.
+ *
+ * Önce Gmail, sonra bizim satır: ters sırada olsaydı Gmail çağrısı
+ * düştüğünde konuşma panelden kaybolur ama kutuda durmaya devam ederdi —
+ * kullanıcı "sildim, geri geldi" ile kalırdı.
  */
 export async function postaKonusmasiniCopeAt(
   organizationId: string,
   threadId: string,
+  silenUserId: string | null,
 ): Promise<{ hata: string } | null> {
   const belirtec = await postaErisimBelirteci(organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -827,23 +839,55 @@ export async function postaKonusmasiniCopeAt(
 
   const admin = createAdminClient();
   if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
-  /* Mesaj satırları konuşmayla birlikte gidiyor; aralarında yabancı
-     anahtar yok (thread_id Gmail'in kimliği), o yüzden ayrı ayrı. Taslak
-     da: silinen yazışmanın yarım cevabı Taslaklar'da var olmayan bir
-     konuşmaya bağlantı olarak kalıyordu.
+  /* Konuşma satırı duruyor, yalnızca işaretleniyor (çöp kutusu). Yarım
+     kalmış cevap siliniyor: çöpe atılan yazışmaya yazılmış bir taslak
+     Taslaklar'da yanıtlanamayan bir konuşmaya bağlantı olarak kalıyordu.
 
      Hatalar okunuyor. Eskiden sonuç bakılmadan "çöp kutusuna taşındı"
-     deniyordu; bizim silme düşerse satır kalıyor ve eşitleme çöpü
-     listelemediği için onu bir daha hiç temizlemiyordu. */
-  const silinecekler = [
-    admin.from("mail_messages").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
-    admin.from("mail_drafts").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
-    admin.from("mail_threads").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
-  ];
-  for (const silme of silinecekler) {
-    const { error } = await silme;
-    if (error) return { hata: "Yazışma Gmail'de çöp kutusuna taşındı ama panelden kaldırılamadı: " + error.message };
+     deniyordu; bizim yazma düşerse yazışma kutuda duruyormuş gibi
+     görünüyor ama Gmail'de çöpte oluyordu. */
+  const { error: taslakHatasi } = await admin.from("mail_drafts").delete()
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  if (taslakHatasi) return { hata: "Yazışma Gmail'de çöpe gitti ama taslağı silinemedi: " + taslakHatasi.message };
+  const { error } = await admin.from("mail_threads")
+    .update({ silindi_at: new Date().toISOString(), silen_user_id: silenUserId, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  if (error) return { hata: "Yazışma Gmail'de çöpe gitti ama panelde işaretlenemedi: " + error.message };
+  return null;
+}
+
+/**
+ * Çöpteki konuşmayı geri alır: Gmail'de çöpten çıkarır, bizdeki işareti
+ * kaldırır.
+ *
+ * Gmail'de de geri alınıyor çünkü yalnızca bizim işareti kaldırmak,
+ * panelde duran ama kutuda çöpte olan bir yazışma bırakırdı: bir sonraki
+ * eşitleme mesajlarını eleyip konuşmayı yine geride bırakırdı.
+ */
+export async function postaKonusmasiniGeriAl(
+  organizationId: string,
+  threadId: string,
+): Promise<{ hata: string } | null> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const yanit = await fetch(`${GMAIL}/threads/${threadId}/untrash`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-length": "0" },
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; yazışma geri alınmadı." };
+  if (!yanit.ok) {
+    const govde = await yanit.json().catch(() => ({}));
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Yazışma Gmail'de geri alınamadı: ${sebep}` };
   }
+
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+  const { error } = await admin.from("mail_threads")
+    .update({ silindi_at: null, silen_user_id: null, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  if (error) return { hata: "Yazışma Gmail'de geri alındı ama panelde işaret kalktı sayılmadı: " + error.message };
   return null;
 }
 

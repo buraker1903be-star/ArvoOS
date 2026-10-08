@@ -135,7 +135,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     varsayılan görünümü de süzgeçsiz; rozete basan kişi tam o sayıyı görsün.
   */
   const postaSayimSorgusu = postaYetkisi
-    ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("okunmamis", true)
+    /* Çöptekiler sayılmıyor: silinen bir yazışmanın okunmamış rozeti
+       kapatılamaz bir sayı bırakıyordu. */
+    ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("okunmamis", true).is("silindi_at", null)
     : Promise.resolve({ count: 0 });
   const ucDakikaOnce = cevrimiciEsigi();
   const [

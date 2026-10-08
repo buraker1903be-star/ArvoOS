@@ -26,8 +26,9 @@ const MIGRATIONLAR = [
   "20261006171515_ortak_posta_kutusu.sql",
   "20261006190207_posta_gelen_kutusu.sql",
   "20261006193918_posta_gecmis_ve_crm_bagi.sql",
-  // 20261008180253, 20261008185029 ve 20261009061218 anlık görüntüde
-  // (09.10.2026); yeniden uygulamak silme iznini geri açardı.
+  // 20261008180253, 20261008185029, 20261008201548 (çöp kutusu) ve
+  // 20261009061218 anlık görüntüde (09.10.2026); yeniden uygulamak silme
+  // iznini geri açardı.
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
@@ -204,16 +205,45 @@ describe("ortak posta kutusu erişimi", () => {
     });
   });
 
-  test("MEŞRU AKIŞ: sunucu (service_role) yazışmayı ve taslağını siliyor", async () => {
+  test("çöp işareti panelden yazılamıyor", async () => {
+    /* Çöpe atma önce Gmail'e gidiyor, sonra bu sütunu yazıyor. Panelden
+       yazılabilseydi Gmail'de kutuda duran bir yazışma panelde çöpte
+       görünürdü ve bir sonraki eşitleme onu geri getirirdi. */
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await rol(db, "authenticated", PERSONEL);
+      await reddedilir(
+        db,
+        `update public.mail_threads set silindi_at = now() where organization_id = $1 and thread_id = $2`,
+        [KURUM, KONUSMA],
+        /panelden değiştirilemez/i,
+      );
+      await rol(db, "postgres");
+    });
+  });
+
+  test("MEŞRU AKIŞ: sunucu çöpe atıyor, taslağı siliyor, ortak durum yazılabiliyor", async () => {
+    /* Çöpe atma service_role ile: satır duruyor, yalnızca işaretleniyor;
+       yarım kalmış cevap gidiyor. Koruma eklenirken personelin meşru
+       güncellemesi de yeşil kalmalı — 19.09.2026'da benzer bir koruma
+       müşterinin onayını canlıda kırmıştı. */
     await rol(db, "postgres");
     await islem(db, async () => {
       await db.query(`insert into public.mail_drafts (organization_id,thread_id,govde,cc) values ($1,$2,'yarım cevap','bilgi@x.com')`, [KURUM, KONUSMA]);
       await rol(db, "service_role");
-      const silinen = await db.query(`delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`, [KURUM, KONUSMA]);
+      const isaret = await db.query(
+        `update public.mail_threads set silindi_at = now(), silen_user_id = $3
+         where organization_id = $1 and thread_id = $2 returning silindi_at`,
+        [KURUM, KONUSMA, PERSONEL]);
       const taslak = await db.query(`delete from public.mail_drafts where organization_id = $1 and thread_id = $2 returning id`, [KURUM, KONUSMA]);
+      await rol(db, "authenticated", PERSONEL);
+      const durumSatiri = await db.query(
+        `update public.mail_threads set durum = 'kapali' where organization_id = $1 and thread_id = $2 returning durum`,
+        [KURUM, KONUSMA]);
       await rol(db, "postgres");
-      assert.equal(silinen.rows.length, 1);
-      assert.equal(taslak.rows.length, 1);
+      assert.equal(isaret.rows.length, 1, "sunucu yazışmayı çöpe atamıyor");
+      assert.equal(taslak.rows.length, 1, "çöpe atılan yazışmanın taslağı kalıyor");
+      assert.equal(durumSatiri.rows.length, 1, "çöpteki yazışmanın ortak durumu yazılamıyor");
     });
   });
 
@@ -229,6 +259,7 @@ describe("ortak posta kutusu erişimi", () => {
       assert.deepEqual([rows[0].govde, rows[0].cc], ["son", "b@x.com"]);
     });
   });
+
 
   test("kutular mevcut satırlar için dolduruldu", async () => {
     /* Migration bir kerelik doldurma yapmasaydı, eşitleme o konuşmaya

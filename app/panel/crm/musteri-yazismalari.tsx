@@ -68,6 +68,10 @@ export async function musteriPostalari(supabase: Supabase, organizationId: strin
   const { data } = await supabase.from("mail_threads")
     .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum")
     .eq("organization_id", organizationId).in("thread_id", idler.slice(0, 200))
+    /* Çöptekiler kayıt sayfasında görünmüyor: yazışma Posta'da çöp
+       kutusunda ama müşteri sekmesinde duruyor olsaydı, silindiği
+       sanılan bir konuşma iki yerden birinde yaşamaya devam ederdi. */
+    .is("silindi_at", null)
     .order("son_mesaj_at", { ascending: false }).limit(30);
   return (data ?? []) as PostaKonusmasi[];
 }
