@@ -114,6 +114,7 @@ export default async function OperationDetailPage({
     });
   }
   const canAssign = izin("operations.gorev.ata");
+  const crmVar = modules.some((module) => module.code === "crm");
   const canDelete = izin("operations.is.sil");
 
   const isArchived = workflow.status === "archived";
@@ -243,6 +244,7 @@ export default async function OperationDetailPage({
   const portalDownloadsConfigured = Boolean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
   const opportunity = opportunityResult.data as Opportunity | null;
   const proposal = proposalResult.data as Proposal | null;
+  const teklifDurumu = proposal ? (proposal.status === "archived" && contract ? "Kabul edildi" : proposalStatusLabel(proposal.status)) : "";
   const comments = (commentsResult.data ?? []) as Comment[];
   const customerName = formatPersonName(opportunity?.customer_name || workflow.customer_name) || "Kurum içi iş";
   /*
@@ -430,6 +432,55 @@ export default async function OperationDetailPage({
           </div>
 
           {/*
+            BAĞLANTILAR (teklif ve sözleşme detayıyla eşitleme): talep, teklif
+            ve sözleşme. Eskiden düz metindi ve sütunun en altındaydı.
+            Sözleşme ve teklif tutar taşıyor: bağlantı yalnızca atama yetkisi
+            olana (önceki kural); operasyon personeli numarayı ve durumu görür.
+            Görünüm (ops_proposals) arşiv sebebini taşımıyor; işi olan teklif
+            imzalı sözleşmeden geldiği için arşivdeyse "Kabul edildi" yazılır.
+          */}
+          <div className="talep-gecmis">
+            <h3>Bağlantılar</h3>
+            <ul>
+              {contract?.opportunity_id ? (
+                <li>
+                  {crmVar && canAssign ? (
+                    <Link href={`/panel/crm/requests/${contract.opportunity_id}`}>
+                      <span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : formatSubject(opportunity?.title) || "Talep"}</small></span>
+                    </Link>
+                  ) : (
+                    <div><span className="talep-gecmis-metin"><b>Talep</b><small>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : "—"}</small></span></div>
+                  )}
+                </li>
+              ) : null}
+              {proposal ? (
+                <li>
+                  {crmVar && canAssign ? (
+                    <Link href={`/panel/crm/proposals/${proposal.id}`}>
+                      <span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span>
+                    </Link>
+                  ) : (
+                    <div><span className="talep-gecmis-metin"><b>Teklif {proposal.proposal_no}</b><small>{teklifDurumu}</small></span></div>
+                  )}
+                </li>
+              ) : null}
+              {contract ? (
+                <li>
+                  {crmVar && canAssign ? (
+                    <Link href={`/panel/crm/contracts/${contract.id}`}>
+                      <span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span>
+                    </Link>
+                  ) : (
+                    <div><span className="talep-gecmis-metin"><b>Sözleşme {contract.contract_no}</b><small>{contractStatusLabel(contract.status)}</small></span></div>
+                  )}
+                </li>
+              ) : (
+                <li><div><span className="talep-gecmis-metin"><b>Sözleşme</b><small>Bağlı değil (kurum içi iş)</small></span></div></li>
+              )}
+            </ul>
+          </div>
+
+          {/*
             MÜŞTERİ NİHAİ EVRAK TESLİMİ. Düğmenin rengi ödeme durumunu
             söylüyor: kırmızıysa ödeme kapanmamış ve "ödeme tamamlanınca
             açılır" kuralındaki dosyalar müşteride kilitli görünecek.
@@ -470,18 +521,11 @@ export default async function OperationDetailPage({
             opportunityId={contract?.opportunity_id ?? null}
             workflowId={workflow.id}
             duzenlenebilir={canEditDue}
+            /* Ad, e-posta ve telefon kartın üstünde zaten yazıyor; künyede
+               ikinci kez yazılması sütunu uzatıyordu. */
+            iletisimGoster={false}
           />
-
-          <div className="talep-gecmis">
-            <h3>Bağlantılar</h3>
-            <dl className="talep-liste">
-              <div><dt>Sözleşme</dt><dd>{contract ? `${contract.contract_no} · ${contractStatusLabel(contract.status)}` : <em>Bağlı değil</em>}</dd></div>
-              <div><dt>Teklif</dt><dd>{proposal ? `${proposal.proposal_no} · ${proposalStatusLabel(proposal.status)}` : <em>Bağlı değil</em>}</dd></div>
-              <div><dt>CRM aşaması</dt><dd>{opportunity?.stage ? (requestStageNames[opportunity.stage] ?? opportunity.stage) : <em>—</em>}</dd></div>
-              <div><dt>Oluşturulma</dt><dd>{formatDate(workflow.created_at, true)}</dd></div>
-              <div><dt>Son güncelleme</dt><dd>{formatDate(workflow.updated_at, true)}</dd></div>
-            </dl>
-          </div>
+          <p className="opd-zaman">Oluşturuldu {formatDate(workflow.created_at, true)} · güncellendi {formatDate(workflow.updated_at, true)}</p>
         </section>
 
         <section className="panel-card talep-bilgi opd-gorevler" aria-label="Görevler">

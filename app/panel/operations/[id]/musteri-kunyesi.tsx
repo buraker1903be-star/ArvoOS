@@ -26,6 +26,7 @@ export function MusteriKunyesi({
   opportunityId,
   workflowId,
   duzenlenebilir,
+  iletisimGoster = true,
 }: {
   kunye: Kunye | null;
   /** Fırsat kaydının kendi sütunları: ad, e-posta, telefon. */
@@ -36,6 +37,8 @@ export function MusteriKunyesi({
   workflowId: string;
   /** Fırsat bağlı değilse düzenlenecek kayıt da yok. */
   duzenlenebilir: boolean;
+  /** Ad, e-posta, telefon satırları; iletişim sayfada başka yerde yazıyorsa kapatılır. */
+  iletisimGoster?: boolean;
 }) {
   const satirlar = doluAlanlar(kunye);
   const calismaTuru = String(kunye?.service_type ?? "").trim();
@@ -108,11 +111,13 @@ export function MusteriKunyesi({
         ) : null}
       </div>
 
-      <dl className="opd-list">
-        <div><dt>Ad soyad</dt><dd>{iletisim?.customer_name || "—"}</dd></div>
-        <div><dt>E-posta</dt><dd>{iletisim?.contact_email || "—"}</dd></div>
-        <div><dt>Telefon</dt><dd>{formatPhone(iletisim?.contact_phone) || "—"}</dd></div>
-      </dl>
+      {iletisimGoster ? (
+        <dl className="opd-list">
+          <div><dt>Ad soyad</dt><dd>{iletisim?.customer_name || "—"}</dd></div>
+          <div><dt>E-posta</dt><dd>{iletisim?.contact_email || "—"}</dd></div>
+          <div><dt>Telefon</dt><dd>{formatPhone(iletisim?.contact_phone) || "—"}</dd></div>
+        </dl>
+      ) : null}
 
       {satirlar.length ? (
         <dl className="opd-list">

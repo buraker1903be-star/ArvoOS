@@ -629,3 +629,9 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 @media (max-width:760px){
   .opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(0,1fr)}
 }
+/* Künye satırları sol sütunda diğer listeler gibi: etiket solda, değer
+   sağda (alt alta iki satır, sütunu 244px uzatıyordu). */
+.opd-v3 .talep-musteri .opd-kunye .opd-list{display:flex;flex-direction:column;gap:0}
+.opd-v3 .talep-musteri .opd-kunye .opd-list>div{display:flex;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
+.opd-v3 .talep-musteri .opd-kunye .opd-list dt{color:var(--muted);font-size:var(--fs-sm)}
+.opd-v3 .talep-musteri .opd-kunye .opd-list dd{margin:0;text-align:right;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium);overflow-wrap:anywhere}

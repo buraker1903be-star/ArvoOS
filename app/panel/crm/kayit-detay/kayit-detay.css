@@ -477,3 +477,4 @@
 .sozlesme-odeme-ozet b{color:var(--ink);font-weight:var(--fw-semibold)}
 .sozlesme-odeme-ozet>i{flex:1 1 100%;display:block;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .sozlesme-odeme-ozet>i>b{display:block;height:100%;border-radius:inherit;background:var(--success)}
+.opd-zaman{margin:var(--sp-3) 0 0;color:var(--dim);font-size:var(--fs-micro)}
