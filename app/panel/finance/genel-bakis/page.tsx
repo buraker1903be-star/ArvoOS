@@ -100,7 +100,7 @@ export default async function FinanceOverviewPage() {
       <SeriKarti baslik="Tahsilat" alt={monthCollections ? `Son 14 gün · bu ay ${money(monthCollections)}` : "Son 14 gün"} seri={seri} birim={money} adet="tahsilat" />
 
       <ListeIzgarasi etiket="Tahsilat işleri">
-        <ListeKarti baslik="Gecikmiş ödemeler" alt={overdue.length ? `${money(overdueSum)} vadesi geçmiş tahsilat` : "Vadesi geçmiş taksit yok"} bos="Vadesi geçmiş ödeme yok." href="/panel/finance?gorunum=paytr" hrefEtiket="Tümünü gör" sayi={overdue.length}>
+        <ListeKarti baslik="Gecikmiş ödemeler" alt={overdue.length ? `${money(overdueSum)} vadesi geçmiş tahsilat` : "Vadesi geçmiş taksit yok"} bos="Vadesi geçmiş ödeme yok." href="/panel/finance" hrefEtiket="Tümünü gör" sayi={overdue.length}>
           {overdue.slice(0, GENEL_BAKIS_SATIR).map((row) => (
             <ListeSatiri
               key={row.id}
@@ -112,7 +112,7 @@ export default async function FinanceOverviewPage() {
           ))}
         </ListeKarti>
 
-        <ListeKarti baslik="Yaklaşan vadeler" alt={upcoming.length ? `${UPCOMING_DAYS} gün içinde ${money(upcomingSum)} tahsilat` : `Önümüzdeki ${UPCOMING_DAYS} gün`} bos={`Önümüzdeki ${UPCOMING_DAYS} günde vadesi gelen taksit yok.`} href="/panel/finance?gorunum=paytr" hrefEtiket="Tümünü gör" sayi={upcoming.length}>
+        <ListeKarti baslik="Yaklaşan vadeler" alt={upcoming.length ? `${UPCOMING_DAYS} gün içinde ${money(upcomingSum)} tahsilat` : `Önümüzdeki ${UPCOMING_DAYS} gün`} bos={`Önümüzdeki ${UPCOMING_DAYS} günde vadesi gelen taksit yok.`} href="/panel/finance" hrefEtiket="Tümünü gör" sayi={upcoming.length}>
           {upcoming.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const left = dayDiff(today, row.due_date!);
             return (

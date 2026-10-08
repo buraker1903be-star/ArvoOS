@@ -62,7 +62,6 @@ export function finansBolumleri(e: BolumErisimi): Bolum[] {
   return [
     { key: "genel-bakis", href: "/panel/finance/genel-bakis", label: "Genel Bakış" },
     { key: "cari", href: "/panel/finance", label: "Cari Hesaplar" },
-    { key: "paytr", href: "/panel/finance?gorunum=paytr", label: "PAYTR Tahsilatları" },
     ...(maliyetGorur(e) ? [{ key: "maliyet", href: "/panel/finance?gorunum=maliyet", label: "İş Maliyetleri" }] : []),
     ...(finansRaporGorur(e) ? [{ key: "raporlar", href: "/panel/finance/raporlar", label: "Raporlar" }] : []),
   ];

@@ -6,6 +6,23 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { randomUUID } from "node:crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
+import { paytrKimligi } from "@/lib/payments/kimlik";
+import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId } from "@/lib/paytr";
+import { resolvePublicHost } from "@/lib/public-host";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { ODEME_SABLONU, odemeBaglantisiMesaji, odemeTutari, paytrBaglantiParcasi } from "@/lib/odeme-baglantisi";
+import { organizationBrandName } from "@/lib/customer-message-templates";
+import { postaDurumu } from "@/lib/posta-hesabi";
+import { postaYeniGonder } from "@/lib/posta-esitleme";
+import { sendThroughGateway } from "@/lib/whatsapp-gateway";
+import { loadConversation } from "@/lib/whatsapp-inbox";
+import { normalizePhone } from "@/lib/whatsapp-send";
+import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
+import { arvoKurumuMu } from "@/lib/arvo-kurumu";
+import { getWhatsappStatus } from "@/lib/whatsapp-status";
 
 async function accountsContext() {
   const context = await getPanelContext();
@@ -378,4 +395,185 @@ export async function createRefund(...args: Parameters<typeof createRefund__impl
 }
 export async function createAdditionalService(...args: Parameters<typeof createAdditionalService__impl>) {
   return runPanelAction(() => createAdditionalService__impl(...args), "Ek hizmet eklendi");
+}
+
+/*
+  CARİ ÖDEME BAĞLANTISI (2026-10).
+
+  Müşteri ödeyeceği tutarı söylüyor, tutar girilince PayTR bağlantısı
+  oluşuyor ve istenirse aynı adımda WhatsApp ya da e-postayla gidiyor.
+  Eskiden bağlantı yalnızca bir taksite açılabiliyordu (Finans → PAYTR
+  Tahsilatları, kaldırıldı) ve müşteriye wa.me/mailto ile personelin kendi
+  hesabından gidiyordu; gönderildi mi bilinmiyordu.
+
+  payment_links'e kullanıcının yazma yetkisi yok (RLS politikası yok); kayıt
+  service_role ile. Yetki burada: accountsContext (finance.cari.yonet) ve
+  carinin bu kuruma ait olduğu (getPartyLedger, kullanıcının kendi RLS'iyle).
+  Ödeme gelince arvo_record_paytr_payment tutarı cariye tahsilat yazar.
+*/
+async function odemeBaglantisiBaglami() {
+  const admin = createAdminClient();
+  if (!admin) throw new Error("Sunucu anahtarı tanımlı olmadığı için PayTR kullanılamıyor.");
+  if (!paymentCredentialsConfigured()) throw new Error("PAYMENT_CREDENTIALS_KEY tanımlı değil; PayTR bilgileri güvenle saklanamıyor.");
+  return admin;
+}
+
+async function createPaymentLink__impl(formData: FormData) {
+  const partyId = String(formData.get("party_id") ?? "").trim();
+  const tutar = Math.round(parseTurkishAmount(String(formData.get("amount") ?? "")) * 100);
+  if (!partyId || !Number.isFinite(tutar) || tutar <= 0) throw new Error("Geçerli bir tutar girin.");
+  const aciklama = String(formData.get("note") ?? "").trim().slice(0, 200) || null;
+
+  const { supabase, membership, userId, debit, credit, refunds } = await getPartyLedger(partyId);
+  // Elle tahsilatla aynı kural: cari bakiyesini aşan ödeme alınmaz.
+  const acik = debit + refunds - credit;
+  if (tutar > acik) throw new Error(`Tutar açık bakiyeyi (${odemeTutari(Math.max(0, acik))}) aşamaz.`);
+
+  const admin = await odemeBaglantisiBaglami();
+  const credentials = await paytrKimligi(admin, membership.organization_id);
+  const { data: party } = await supabase.from("account_parties").select("name").eq("id", partyId).eq("organization_id", membership.organization_id).maybeSingle();
+
+  const id = randomUUID();
+  // Bildirim adresi kurumun kalıcı alan adı: bağlantı haftalarca açık kalabiliyor
+  // ve PayTR mağazasının kayıtlı sitesiyle aynı alan adı olmalı.
+  const host = await resolvePublicHost(supabase, membership.organization_id);
+  const expiry = paytrExpiry(null);
+  const link = await createPaytrInstallmentLink(credentials, {
+    name: `${party?.name ?? "Cari"} · ${aciklama ?? "Ödeme"}`,
+    amountKurus: tutar,
+    expiry,
+    callbackUrl: `https://${host}/api/paytr/callback`,
+    callbackId: toCallbackId(id),
+  });
+
+  const { error } = await admin.from("payment_links").insert({
+    id, organization_id: membership.organization_id, purpose: "account", party_id: partyId, note: aciklama,
+    provider_link_id: link.id, url: link.url, amount: tutar, expires_at: expiry, created_by: userId,
+  });
+  if (error) {
+    try { await deletePaytrLink(credentials, link.id); } catch { /* en iyi çaba */ }
+    throw new Error("Ödeme bağlantısı kaydedilemedi: " + error.message);
+  }
+  revalidatePath(`/panel/accounts/${partyId}`);
+  revalidatePath("/panel/finance");
+
+  const kanal = String(formData.get("gonder") ?? "");
+  if (kanal === "whatsapp" || kanal === "eposta") {
+    // Bağlantı oluştu; gönderim düşerse bunu söyleyelim ki ikinci bağlantı açılmasın.
+    try {
+      await odemeBaglantisiniGonder(id, kanal);
+    } catch (hata) {
+      throw new Error(`Bağlantı oluşturuldu ama gönderilemedi: ${hata instanceof Error ? hata.message : "bilinmeyen hata"} Listeden yeniden gönderebilir ya da kopyalayabilirsiniz.`);
+    }
+    return kanal === "whatsapp" ? "Ödeme bağlantısı oluşturuldu ve WhatsApp'tan gönderildi" : "Ödeme bağlantısı oluşturuldu ve e-postayla gönderildi";
+  }
+  return "Ödeme bağlantısı oluşturuldu";
+}
+
+/*
+  Bağlantıyı müşteriye gönderir. ALICI ekrandan gelmiyor, caride kayıtlı
+  telefon/e-postadan okunuyor (crm/whatsapp-gonder.ts ile aynı gerekçe:
+  ekranı değiştirebilen biri mesajı istediği numaraya yollamasın).
+*/
+async function odemeBaglantisiniGonder(linkId: string, kanal: "whatsapp" | "eposta") {
+  const context = await accountsContext();
+  const { supabase, membership, organization } = context;
+  const admin = await odemeBaglantisiBaglami();
+  const { data: link } = await admin.from("payment_links").select("id,party_id,url,amount,note,status")
+    .eq("id", linkId).eq("organization_id", membership.organization_id).eq("purpose", "account").maybeSingle();
+  if (!link?.party_id) throw new Error("Ödeme bağlantısı bulunamadı.");
+  if (link.status !== "active") throw new Error(link.status === "paid" ? "Bu bağlantı zaten ödendi." : "Bu bağlantı iptal edilmiş.");
+  // Cari kullanıcının kendi RLS'iyle okunuyor: görmediği cariye gönderemesin.
+  const { data: party } = await supabase.from("account_parties").select("name,phone,email")
+    .eq("id", link.party_id).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!party) throw new Error("Cari bulunamadı.");
+
+  const kurum = organizationBrandName({ slug: organization.slug, displayName: organization.display_name, legalName: organization.name });
+  const { konu, metin } = odemeBaglantisiMesaji({ kurum, musteri: party.name, tutarKurus: Number(link.amount), aciklama: link.note, url: link.url });
+
+  if (kanal === "eposta") {
+    const adres = String(party.email ?? "").trim();
+    if (!adres) throw new Error("Carinin e-posta adresi kayıtlı değil.");
+    const hesap = await postaDurumu(membership.organization_id);
+    if (hesap.durum !== "bagli" || !hesap.adres) throw new Error("Ortak posta kutusu bağlı değil (Ayarlar → Entegrasyonlar).");
+    const sonuc = await postaYeniGonder({
+      organizationId: membership.organization_id,
+      kutuAdresi: hesap.adres,
+      gonderenAd: organization.display_name || organization.name,
+      alicilar: [adres],
+      konu,
+      govde: metin,
+    });
+    if ("hata" in sonuc) throw new Error(sonuc.hata);
+    return;
+  }
+
+  const telefon = normalizePhone(String(party.phone ?? ""));
+  if (!telefon) throw new Error("Carinin cep telefonu kayıtlı değil ya da biçimi tanınmıyor (05XX XXX XX XX).");
+  const durum = await getWhatsappStatus(membership.organization_id);
+  const yol = belgeGonderimYolu({
+    kendiNumarasiBagli: durum.connected && durum.status !== "disabled",
+    arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
+  });
+  if (yol !== "panel") {
+    throw new Error("Panelden göndermek için kendi WhatsApp Business numaranızı bağlayın (Ayarlar → Entegrasyonlar). O zamana kadar bağlantıyı kopyalayıp gönderebilirsiniz.");
+  }
+
+  // Serbest metin yalnızca müşterinin son mesajından sonraki 24 saatte; değilse onaylı şablon.
+  const { windowOpen } = await loadConversation(membership.organization_id, telefon);
+  const mesaj: Parameters<typeof sendThroughGateway>[0]["messages"][number] = { to: telefon, ref: link.id };
+  if (windowOpen) {
+    mesaj.text = metin;
+  } else {
+    const parca = paytrBaglantiParcasi(link.url);
+    if (!parca) throw new Error("PayTR bağlantısının biçimi tanınmadı; bağlantıyı kopyalayıp gönderin.");
+    mesaj.template = ODEME_SABLONU;
+    mesaj.params = { musteri: party.name || "Yetkili", kurum, tutar: odemeTutari(Number(link.amount)) };
+    mesaj.urlButtonParam = parca;
+    mesaj.body = `${odemeTutari(Number(link.amount))} tutarında ödeme bağlantısı gönderildi. (onaylı şablon)`;
+  }
+  const sonuc = await sendThroughGateway({ product: "arvoos", organizationId: membership.organization_id, sender: "organization", messages: [mesaj] });
+  const ilk = sonuc.results[0];
+  if (!ilk?.sent) {
+    const sebep = ilk?.error ?? "Mesaj gönderilemedi.";
+    throw new Error(windowOpen ? sebep : `${sebep} (Şablon: ${ODEME_SABLONU})`);
+  }
+}
+
+async function sendPaymentLink__impl(formData: FormData) {
+  const kanal = String(formData.get("kanal") ?? "");
+  if (kanal !== "whatsapp" && kanal !== "eposta") throw new Error("Gönderim yolu seçilmedi.");
+  await odemeBaglantisiniGonder(String(formData.get("link_id") ?? "").trim(), kanal);
+  await flashSuccess(kanal === "whatsapp" ? "Ödeme bağlantısı WhatsApp'tan gönderildi" : "Ödeme bağlantısı e-postayla gönderildi");
+}
+
+async function cancelPaymentLink__impl(formData: FormData) {
+  const { membership } = await accountsContext();
+  const admin = await odemeBaglantisiBaglami();
+  const linkId = String(formData.get("link_id") ?? "").trim();
+  const { data: link } = await admin.from("payment_links").select("id,party_id,provider_link_id,status")
+    .eq("id", linkId).eq("organization_id", membership.organization_id).eq("purpose", "account").maybeSingle();
+  if (!link) throw new Error("Ödeme bağlantısı bulunamadı.");
+  if (link.status !== "active") throw new Error("Bu bağlantı zaten kapalı.");
+  try {
+    await deletePaytrLink(await paytrKimligi(admin, membership.organization_id), link.provider_link_id);
+  } catch {
+    // PayTR'de süresi dolmuş/kapanmış olabilir; bizde yine iptal edilir.
+  }
+  const { error } = await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() })
+    .eq("id", link.id).eq("status", "active");
+  if (error) throw new Error("Bağlantı iptal edilemedi: " + error.message);
+  revalidatePath(`/panel/accounts/${link.party_id}`);
+}
+
+export async function createPaymentLink(formData: FormData) {
+  // Başarı mesajı gönderim yoluna göre değiştiği için işlem kendisi döndürüyor.
+  const mesaj = await runPanelAction(() => createPaymentLink__impl(formData));
+  if (mesaj) await flashSuccess(mesaj);
+}
+export async function sendPaymentLink(formData: FormData) {
+  await runPanelAction(() => sendPaymentLink__impl(formData));
+}
+export async function cancelPaymentLink(formData: FormData) {
+  await runPanelAction(() => cancelPaymentLink__impl(formData), "Ödeme bağlantısı iptal edildi");
 }

@@ -505,3 +505,14 @@
 .os-root .talep-tablo .crm-data-table td.crm-col-progress{min-width:0}
 .os-root .talep-tablo .ops-progress-mini{width:44px}
 .os-root .talep-tablo .ops-status-cell .status-pill{white-space:normal;text-align:left;line-height:var(--lh-tight)}
+
+/* Cari ödeme bağlantıları (accounts/odeme-baglantisi.tsx): işlemler satırın altında, durum rozetinin hizasından başlar. */
+.cari-odeme-linkleri li{flex-wrap:wrap}
+.cari-link-eylem{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1);padding-left:calc(76px + var(--sp-3))}
+.cari-link-eylem form{margin:0;display:flex;gap:var(--sp-1)}
+.os-root .cari-link-eylem :is(.panel-primary,.panel-secondary){width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}
+.os-root .cari-link-eylem .is-danger:hover{border-color:var(--danger);color:var(--danger)}
+.os-root .talep-tablo td.cari-satir-eylem .cari-tahsilat-btn+.cari-tahsilat-btn{margin-left:var(--sp-1)}
+.os-root .cari-link-form .panel-form-actions{flex-wrap:wrap}
+.os-root .cari-link-form .panel-form-actions>button{flex:1 1 auto;width:auto}
+@media (max-width:620px){.cari-link-eylem{padding-left:0}}

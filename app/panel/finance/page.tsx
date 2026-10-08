@@ -3,7 +3,9 @@ import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCollection } from "../accounts/actions";
-import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow } from "./finance-workspaces";
+import { ProfitabilityWorkspace, type ProfitRow } from "./finance-workspaces";
+import { OdemeBaglantisiFormu } from "../accounts/odeme-baglantisi";
+import { normalizePhone } from "@/lib/whatsapp-send";
 import { FinWidget } from "./finance-ui";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
@@ -67,7 +69,6 @@ type CostItem={contract_id:string;amount:number;status:string};
 
 const pageCopy = {
   cari: { title: "Cari Hesaplar", text: "Sözleşme borçları, tahsilatlar ve iadeler tek ekranda." },
-  paytr: { title: "PAYTR Tahsilatları", text: "Ödeme bağlantılarını yönetin, müşteriye iletin ve gecikmeleri takip edin." },
   maliyet: { title: "İş Maliyetleri", text: "Sözleşme bazında maliyet, kâr ve kâr oranı." },
 } as const;
 
@@ -78,7 +79,7 @@ const pageCopy = {
   ek hizmet ve iade cari detayının "⋯" menüsünde. Açık bakiyeli caride sık
   kullanılan "Tahsilat" satırda kaldı.
 */
-function CariTablosu({ rows }: { rows: Hesap[] }) {
+function CariTablosu({ rows, paytrHazir }: { rows: Hesap[]; paytrHazir: boolean }) {
   return (
     <div className="talep-tablo">
       <table className="crm-data-table" data-cols="ledger">
@@ -113,6 +114,17 @@ function CariTablosu({ rows }: { rows: Hesap[] }) {
                 </td>
                 <td className="crm-col-date" data-label="Son hareket">{sonHareket ? new Date(`${sonHareket}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
                 <td className="crm-table-actions cari-satir-eylem">
+                  {a.balance > 0 && paytrHazir ? (
+                    <PanelDrawer
+                      triggerLabel="Ödeme linki"
+                      triggerClassName="panel-secondary cari-tahsilat-btn"
+                      kicker="ÖDEME BAĞLANTISI"
+                      title={`${a.name} · Ödeme linki`}
+                      description="Müşterinin söylediği tutarla PayTR bağlantısı oluşturun ve gönderin."
+                    >
+                      <OdemeBaglantisiFormu partyId={a.id} acikBakiye={a.balance} telefonVar={Boolean(normalizePhone(String(a.phone ?? "")))} epostaVar={Boolean(a.email?.trim())} hazir />
+                    </PanelDrawer>
+                  ) : null}
                   {a.balance > 0 ? (
                     <PanelDrawer
                       triggerLabel="Tahsilat"
@@ -163,7 +175,7 @@ export default async function FinancePage({
   searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string }>;
 }) {
   const params = await searchParams;
-  const { supabase, membership, modules, organization, izin } = await getPanelContext();
+  const { supabase, membership, modules, izin } = await getPanelContext();
   if (
     !modules.some((m) => m.code === "finance") ||
     !modules.some((m) => m.code === "accounts")
@@ -220,10 +232,12 @@ export default async function FinancePage({
   const costItems=(costItemData??[]) as CostItem[];const costTotals=new Map<string,number>();for(const item of costItems)costTotals.set(item.contract_id,(costTotals.get(item.contract_id)??0)+Number(item.amount));
   const installments=(installmentData??[]) as Installment[];
   const employeeMap=new Map((employeeData??[]).map(employee=>[employee.id,employee.full_name]));const workflowMap=new Map((workflowData??[]).map(workflow=>[workflow.id,workflow.assigned_employee_id]));
-  const mode=params.gorunum==="paytr"?"paytr":params.gorunum==="maliyet"&&canManageCosts?"maliyet":"cari";
-  const today=todayInIstanbul(); const brandName=organization.display_name||organization.name||"ArvoOS";
+  /* Eski "PAYTR Tahsilatları" görünümü (?gorunum=paytr) kaldırıldı: ödeme
+     bağlantısı artık cari satırından, müşterinin söylediği tutarla açılıyor.
+     Eski bağlantılar cari listesine düşer. */
+  const mode=params.gorunum==="maliyet"&&canManageCosts?"maliyet":"cari";
+  const today=todayInIstanbul();
   const profitRows:ProfitRow[]=contracts.map(contract=>{const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const cost=costTotals.get(contract.id)??Number(contract.service_cost);const profit=Number(contract.amount)-cost;const operationEmployeeId=contract.workflow_id?workflowMap.get(contract.workflow_id):null;return{id:contract.id,contractNo:contract.contract_no,customer:relation?.customer_name||contract.title,title:contract.title,sales:relation?.assigned_employee_id?employeeMap.get(relation.assigned_employee_id)||"Pasif personel":"Atanmamış",operation:operationEmployeeId?employeeMap.get(operationEmployeeId)||"Pasif personel":"Atanmamış",amount:Number(contract.amount),cost,profit,margin:Number(contract.amount)?profit/Number(contract.amount)*100:0,date:(contract.signed_at||contract.created_at).slice(0,10)}});
-  const paymentRows:PaymentRow[]=contracts.flatMap(contract=>{const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;return installments.filter(item=>item.payment_plan_id===contract.payment_plan_id).map(item=>{const overdue=item.status!=="paid"&&Boolean(item.due_date&&item.due_date<today);const link=item.payment_url;const message=overdue?`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizin vadesi dolmuştur.\n\nÖdeme bağlantısı:\n${link||""}\n\nÖdeme yaptıysanız bu mesajı dikkate almayınız.\n\nSaygılarımızla,\n${brandName}`:`Sayın ${customer?.customer_name||"Müşterimiz"},\n\n${contract.contract_no} numaralı sözleşmenize ait ${money(item.amount)} tutarındaki ödemenizi aşağıdaki bağlantıdan tamamlayabilirsiniz:\n${link||""}\n\nSaygılarımızla,\n${brandName}`;const phone=String(customer?.contact_phone||"").replace(/\D/g,"").replace(/^0/,"90");return{id:item.id,contractId:contract.id,contractNo:contract.contract_no,installmentNo:item.installment_no,customer:customer?.customer_name||contract.title,amount:Number(item.amount),dueDate:item.due_date,status:item.status,paymentUrl:link,linkSource:item.payment_link_source??null,overdue,whatsappUrl:link&&phone?`https://wa.me/${phone}?text=${encodeURIComponent(message)}`:null,emailUrl:link&&customer?.contact_email?`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${contract.contract_no} ödeme bilgilendirmesi`)}&body=${encodeURIComponent(message)}`:null}})});
 
   // İş maliyetleri özeti (yalnızca gösterim; değerler tablodakiyle aynı kuralla)
   const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
@@ -281,8 +295,9 @@ export default async function FinancePage({
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query);
   const copy = pageCopy[mode];
-  // PayTR bağlıysa taksit satırında "PayTR bağlantısı oluştur" çıkar
-  const paytr = mode === "paytr" ? await getPaytrStatus(membership.organization_id) : null;
+  // PayTR bağlı ve açıksa satırda "Ödeme linki" çıkar.
+  const paytr = mode === "cari" ? await getPaytrStatus(membership.organization_id) : null;
+  const paytrHazir = Boolean(paytr?.available && paytr.connected && paytr.enabled);
 
   return (
     <main className={mode === "cari" ? "fin talep cari ekip talepler teklifler" : "fin"}>
@@ -324,7 +339,7 @@ export default async function FinancePage({
                 </form>
               </div>
               {gorunenCariler.length ? (
-                <CariTablosu rows={gorunenCariler} />
+                <CariTablosu rows={gorunenCariler} paytrHazir={paytrHazir} />
               ) : (
                 <div className="crm-empty-state talep-bos-kutu">
                   <h2>{isFiltered ? "Aramaya uygun cari yok" : cariGorunum === "" && arsiv.length ? "Açık bakiyesi olan cari yok" : "Henüz müşteri carisi yok"}</h2>
@@ -356,7 +371,6 @@ export default async function FinancePage({
         </>
       ) : null}
 
-      {mode === "paytr" ? <PaytrWorkspace rows={paymentRows} paytrReady={Boolean(paytr?.available && paytr.connected && paytr.enabled)} /> : null}
 
       {mode === "maliyet" && canManageCosts ? (
         <>

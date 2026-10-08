@@ -11,9 +11,9 @@ import { etkinBolum, finansBolumleri, ikBolumleri, uygulamaBolumleri } from "@/a
 const bos = { modules: [], yetkiler: new Set<string>() };
 
 test("Finans: maliyet ve raporlar yalnızca yetkiyle (raporlar modülle birlikte)", () => {
-  assert.deepEqual(finansBolumleri(bos).map((b) => b.key), ["genel-bakis", "cari", "paytr"]);
+  assert.deepEqual(finansBolumleri(bos).map((b) => b.key), ["genel-bakis", "cari"]);
   const tam = { modules: [{ code: "reporting" }], yetkiler: new Set(["finance.maliyet.yonet", "finance.rapor.gor"]) };
-  assert.deepEqual(finansBolumleri(tam).map((b) => b.key), ["genel-bakis", "cari", "paytr", "maliyet", "raporlar"]);
+  assert.deepEqual(finansBolumleri(tam).map((b) => b.key), ["genel-bakis", "cari", "maliyet", "raporlar"]);
   // Rapor yetkisi var ama Raporlama modülü kapalı: sekme yok
   assert.ok(!finansBolumleri({ modules: [], yetkiler: new Set(["finance.rapor.gor"]) }).some((b) => b.key === "raporlar"));
 });
@@ -40,7 +40,8 @@ test("açık bölüm: tam yol, alt sayfa ve sorgu dizesi", () => {
 
   const fin = finansBolumleri({ modules: [], yetkiler: new Set(["finance.maliyet.yonet"]) });
   assert.equal(etkinBolum(fin, "/panel/finance")?.key, "cari");
-  assert.equal(etkinBolum(fin, "/panel/finance", "gorunum=paytr")?.key, "paytr");
+  // PAYTR Tahsilatları kaldırıldı (ödeme bağlantısı cari satırında); eski bağlantı cariye düşer.
+  assert.equal(etkinBolum(fin, "/panel/finance", "gorunum=paytr")?.key, "cari");
   assert.equal(etkinBolum(fin, "/panel/finance", "gorunum=maliyet&durum=acik")?.key, "maliyet");
   assert.equal(etkinBolum(fin, "/panel/finance/genel-bakis")?.key, "genel-bakis");
 });

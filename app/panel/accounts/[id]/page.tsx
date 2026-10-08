@@ -5,6 +5,10 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getPaytrStatus } from "@/lib/paytr-status";
+import { normalizePhone } from "@/lib/whatsapp-send";
+import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } from "../odeme-baglantisi";
 import { PanelDrawer } from "../../components/panel-drawer";
 import {
   createAdditionalService,
@@ -135,6 +139,25 @@ export default async function AccountDetailPage({
     ? await supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", membership.organization_id).in("payment_plan_id", [...planlar.keys()]).order("due_date", { ascending: true, nullsFirst: false })
     : { data: [] };
   const taksitler = (taksitData ?? []) as Taksit[];
+  /*
+    Ödeme bağlantıları (PayTR): payment_links kullanıcıya kapalı (RLS
+    politikası yok), service_role ile okunuyor. Cari yukarıda kullanıcının
+    kendi RLS'iyle bu kurumda bulundu; sorgu da kurum ve cariyle sınırlı.
+    Son 10 bağlantı yalnızca listeleniyor, toplam alınmıyor.
+  */
+  const admin = createAdminClient();
+  const [paytr, { data: linkData }, { count: bekleyenLink }] = await Promise.all([
+    getPaytrStatus(membership.organization_id),
+    admin
+      ? admin.from("payment_links").select("id,url,amount,note,status,created_at,paid_at").eq("organization_id", membership.organization_id).eq("party_id", id).eq("purpose", "account").order("created_at", { ascending: false }).limit(10)
+      : Promise.resolve({ data: [] }),
+    // Bekleyen sayısı ayrı sayılıyor: listedeki son 10 kayıttan saymak, 10'u aşınca eksik gösterirdi.
+    admin
+      ? admin.from("payment_links").select("id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("party_id", id).eq("purpose", "account").eq("status", "active")
+      : Promise.resolve({ count: 0 }),
+  ]);
+  const odemeLinkleri = (linkData ?? []) as OdemeBaglantisiSatiri[];
+  const paytrHazir = Boolean(paytr.available && paytr.connected && paytr.enabled);
   const entries = [...(current.account_entries ?? [])].sort(
     (a, b) =>
       b.transaction_date.localeCompare(a.transaction_date) ||
@@ -177,6 +200,8 @@ export default async function AccountDetailPage({
   const crmVar = modules.some((m) => m.code === "crm");
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
   const durumBilgisi = DURUM[durum] ?? DURUM.hareketsiz;
+  const telefonVar = Boolean(normalizePhone(String(current.phone ?? "")));
+  const epostaVar = Boolean(current.email?.trim());
   const basHarf = current.name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("");
 
   return (
@@ -187,6 +212,17 @@ export default async function AccountDetailPage({
           <h1>{current.name}</h1>
         </div>
         <div className="talep-bas-eylem">
+          {balance > 0 ? (
+            <PanelDrawer
+              triggerLabel="Ödeme linki"
+              triggerClassName="panel-secondary"
+              kicker="ÖDEME BAĞLANTISI"
+              title={`${current.name} · Ödeme linki`}
+              description="Müşterinin söylediği tutarla PayTR bağlantısı oluşturun ve gönderin."
+            >
+              <OdemeBaglantisiFormu partyId={id} acikBakiye={balance} telefonVar={telefonVar} epostaVar={epostaVar} hazir={paytrHazir} />
+            </PanelDrawer>
+          ) : null}
           <PanelDrawer
             triggerLabel="Tahsilat"
             kicker="TAHSİLAT"
@@ -417,6 +453,13 @@ export default async function AccountDetailPage({
           ) : (
             <p className="talep-bos cari-not">Bu cariye bağlı imzalı sözleşme yok.</p>
           )}
+
+          {odemeLinkleri.length ? (
+            <div className="talep-not">
+              <div className="cari-baslik"><h3>Ödeme bağlantıları</h3><small>{bekleyenLink ?? 0} bekliyor</small></div>
+              <OdemeBaglantilari linkler={odemeLinkleri} telefonVar={telefonVar} epostaVar={epostaVar} />
+            </div>
+          ) : null}
 
           {taksitler.length ? (
             <div className="talep-not">

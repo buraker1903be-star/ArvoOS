@@ -215,48 +215,6 @@ export async function rebuildPaymentPlan(formData: FormData) {
   revalidatePath("/panel");
 }
 
-async function saveInstallmentPaymentLink__impl(formData: FormData) {
-  const { supabase, membership } = await financeContext();
-  const installmentId = String(formData.get("installment_id") ?? "").trim();
-  const contractId = String(formData.get("contract_id") ?? "").trim();
-  const paymentUrl = String(formData.get("payment_url") ?? "").trim();
-  if (!installmentId || !contractId) throw new Error("Taksit seçilemedi.");
-  if (paymentUrl) {
-    let parsed: URL;
-    try { parsed = new URL(paymentUrl); } catch { throw new Error("Geçerli bir ödeme bağlantısı girin."); }
-    if (parsed.protocol !== "https:") throw new Error("Ödeme bağlantısı HTTPS olmalıdır.");
-  }
-  const { data: installment } = await supabase.from("payment_installments").select("id,payment_plan_id")
-    .eq("id", installmentId).eq("organization_id", membership.organization_id).maybeSingle();
-  const { data: plan } = installment ? await supabase.from("payment_plans").select("id,contract_id")
-    .eq("id", installment.payment_plan_id).eq("organization_id", membership.organization_id).eq("contract_id", contractId).maybeSingle() : { data: null };
-  if (!installment || !plan) throw new Error("Taksit bu sözleşmeye ait değil.");
-  const { error } = await supabase.from("payment_installments").update({ payment_url: paymentUrl || null })
-    .eq("id", installmentId).eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Ödeme bağlantısı kaydedilemedi: " + error.message);
-  revalidatePath(`/panel/crm/contracts/${contractId}`);
-}
-
-export async function recordInstallmentNotice(formData: FormData) {
-  const { supabase, membership, userId } = await financeContext();
-  const installmentId = String(formData.get("installment_id") ?? "").trim();
-  const contractId = String(formData.get("contract_id") ?? "").trim();
-  const kind = String(formData.get("kind") ?? "notice");
-  if (!installmentId || !contractId || !new Set(["notice", "reminder"]).has(kind)) throw new Error("Bildirim bilgisi geçersiz.");
-  const { data: installment } = await supabase.from("payment_installments").select("id,payment_url,payment_plan_id")
-    .eq("id", installmentId).eq("organization_id", membership.organization_id).maybeSingle();
-  const { data: plan } = installment ? await supabase.from("payment_plans").select("id")
-    .eq("id", installment.payment_plan_id).eq("contract_id", contractId).eq("organization_id", membership.organization_id).maybeSingle() : { data: null };
-  if (!installment?.payment_url || !plan) throw new Error("Ödeme bağlantısı bulunamadı.");
-  const now = new Date().toISOString();
-  const payload = kind === "reminder" ? { reminder_sent_at: now, notice_sent_by: userId } : { notice_sent_at: now, notice_sent_by: userId };
-  const { error } = await supabase.from("payment_installments").update(payload)
-    .eq("id", installmentId).eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Bildirim kaydedilemedi: " + error.message);
-  revalidatePath(`/panel/crm/contracts/${contractId}`);
-  return { success: true };
-}
-
 export async function saveContractServiceCost(formData: FormData) {
   const { supabase, membership, userId } = await financeContext();
   const contractId = String(formData.get("contract_id") ?? "").trim();
@@ -362,7 +320,4 @@ export async function deleteContractCostItem(...args: Parameters<typeof deleteCo
 }
 export async function updateContractCostItem(...args: Parameters<typeof updateContractCostItem__impl>) {
   return runPanelAction(() => updateContractCostItem__impl(...args), "Maliyet kalemi güncellendi");
-}
-export async function saveInstallmentPaymentLink(...args: Parameters<typeof saveInstallmentPaymentLink__impl>) {
-  return runPanelAction(() => saveInstallmentPaymentLink__impl(...args), "Ödeme bağlantısı kaydedildi");
 }
