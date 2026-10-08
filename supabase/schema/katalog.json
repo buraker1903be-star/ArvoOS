@@ -859,12 +859,25 @@
       "gecmis_belirteci",
       "gecmis_bitti",
       "gecmis_mesaj_sayisi",
+      "imza",
       "last_error",
       "last_history_id",
       "last_sync_at",
       "organization_id",
       "refresh_token_enc",
       "status",
+      "updated_at"
+    ],
+    "mail_drafts": [
+      "alici",
+      "created_at",
+      "govde",
+      "id",
+      "konu",
+      "olusturan",
+      "opportunity_id",
+      "organization_id",
+      "thread_id",
       "updated_at"
     ],
     "mail_messages": [

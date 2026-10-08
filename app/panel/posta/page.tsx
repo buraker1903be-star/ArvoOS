@@ -4,6 +4,7 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
+import { taslakSil } from "./actions";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 
@@ -95,8 +96,21 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   if (error) throw new Error("Konuşmalar okunamadı: " + error.message);
   const konusmalar = (data ?? []) as Konusma[];
 
+  /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
+     karışmamalı ama kaybolmamalı da. */
+  const { data: taslakVerisi } = await supabase
+    .from("mail_drafts")
+    .select("id,thread_id,alici,konu,govde,updated_at,olusturan")
+    .eq("organization_id", membership.organization_id)
+    .order("updated_at", { ascending: false })
+    .limit(50);
+  const taslaklar = (taslakVerisi ?? []) as { id: string; thread_id: string | null; alici: string | null; konu: string | null; govde: string; updated_at: string; olusturan: string | null }[];
+
   // Ekip adları: "ilgilenen" sütunu kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
-  const ilgilenenler = [...new Set(konusmalar.map((satir) => satir.ilgilenen_user_id).filter(Boolean))] as string[];
+  const ilgilenenler = [...new Set([
+    ...konusmalar.map((satir) => satir.ilgilenen_user_id),
+    ...taslaklar.map((satir) => satir.olusturan),
+  ].filter(Boolean))] as string[];
   const { data: personeller } = ilgilenenler.length
     ? await supabase.from("hr_employees").select("user_id,full_name")
         .eq("organization_id", membership.organization_id).in("user_id", ilgilenenler)
@@ -123,6 +137,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     okunmamis: okunmamisSayisi,
     acik: konusmalar.filter((satir) => satir.durum === "acik").length,
     yanitlandi: konusmalar.filter((satir) => satir.durum === "yanitlandi").length,
+    taslak: taslaklar.length,
   };
 
   return <main className="talep cari ekip talepler liste-sayfa">
@@ -150,6 +165,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
             <dd><Link href={`/panel/posta${adresEki({ kutu: kutuSecenegi.anahtar })}`} aria-current={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "page" : undefined}>{kutuSecenegi.anahtar === "gelen" ? sayi.acik + sayi.yanitlandi : sayi.tumu}</Link></dd>
           </div>
         ))}
+        <div className={kutu === "taslak" ? "is-active" : undefined}>
+          <dt>Taslaklar</dt>
+          <dd><Link href={`/panel/posta${adresEki({ kutu: kutu === "taslak" ? "" : "taslak" })}`}>{sayi.taslak}</Link></dd>
+        </div>
         <div className={suzgec === "acik" ? "is-active" : undefined}>
           <dt>Açık</dt>
           <dd><Link href={`/panel/posta${adresEki({ durum: suzgec === "acik" ? "" : "acik" })}`}>{sayi.acik}</Link></dd>
@@ -177,7 +196,40 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           </form>
         </div>
 
-        {konusmalar.length === 0 ? (
+        {kutu === "taslak" ? (
+          taslaklar.length === 0 ? (
+            <div className="crm-empty-state talep-bos-kutu"><p>Kayıtlı taslak yok.</p></div>
+          ) : (
+            <div className="talep-tablo">
+              <table className="crm-data-table">
+                <thead><tr><th>Alıcı</th><th>Konu</th><th>Başlangıç</th><th className="crm-col-date">Güncellendi</th><th></th></tr></thead>
+                <tbody>
+                  {taslaklar.map((satir) => (
+                    <tr key={satir.id}>
+                      <td data-label="Alıcı">
+                        <Link className="crm-row-link" href={satir.thread_id ? `/panel/posta/${satir.thread_id}` : `/panel/posta/yeni?taslak=${satir.id}`}>
+                          <span className="crm-table-title">{satir.alici || (satir.thread_id ? "Yanıt taslağı" : "Alıcı yazılmamış")}</span>
+                          <span className="crm-table-sub">{satir.govde.slice(0, 90)}</span>
+                        </Link>
+                      </td>
+                      <td data-label="Konu">{satir.konu || <span className="talep-bos">—</span>}</td>
+                      <td data-label="Başlangıç">
+                        <span className="crm-table-sub">{satir.olusturan ? adlar.get(satir.olusturan) ?? "Ekipten biri" : "—"}</span>
+                      </td>
+                      <td data-label="Güncellendi" className="crm-table-mono">{istanbulTarihSaat(satir.updated_at)}</td>
+                      <td className="crm-table-actions">
+                        <form action={taslakSil}>
+                          <input type="hidden" name="taslak_id" value={satir.id} />
+                          <button className="panel-secondary posta-sil" type="submit">Sil</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
             <p>{desen ? `"${desen}" için sonuç yok.` : "Bu süzgeçte yazışma yok."}</p>
             <small>Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin.</small>

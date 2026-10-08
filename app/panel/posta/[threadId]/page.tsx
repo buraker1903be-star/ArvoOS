@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiSil, konusmayiUstlen } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
@@ -47,7 +47,18 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   if (konusmaHatasi) throw new Error("Konuşma okunamadı: " + konusmaHatasi.message);
   if (mesajHatasi) throw new Error("Mesajlar okunamadı: " + mesajHatasi.message);
   if (!konusma) notFound();
-  const kutuAdi = (await postaDurumu(membership.organization_id)).adres ?? "ortak kutu";
+  const hesap = await postaDurumu(membership.organization_id);
+  const kutuAdi = hesap.adres ?? "ortak kutu";
+
+  /* Yarım kalmış cevap: ekipten biri başlatmış olabilir, metin kutuda
+     hazır gelsin. Konuşma başına tek taslak (veritabanında benzersiz
+     indeks) — iki kişinin iki ayrı yarım cevabı en sık çakışma biçimi. */
+  const { data: taslak } = await supabase
+    .from("mail_drafts")
+    .select("id,govde,olusturan,updated_at")
+    .eq("organization_id", membership.organization_id)
+    .eq("thread_id", threadId)
+    .maybeSingle();
 
   /*
     Bağlanabilecek kayıtlar: en son dokunulan 100 fırsat. Kurumun bütün
@@ -165,14 +176,23 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
               <b>Yanıt yaz</b>
               <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
             </label>
-            <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} placeholder="Yanıtınızı yazın…" />
+            <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} defaultValue={taslak?.govde ?? ""} placeholder="Yanıtınızı yazın…" />
             <label className="posta-ek-sec">
               <span>Ek dosya</span>
               <input type="file" name="ekler" multiple />
             </label>
             <div className="posta-yanit-alt">
-              <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.</small>
-              <button className="panel-primary" type="submit">Yanıtı gönder</button>
+              <small>
+                Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.
+                {hesap.imza ? " Kurum imzası sonuna eklenir." : ""}
+                {taslak ? ` Kayıtlı taslaktan devam ediyorsunuz (${istanbulTarihSaat(taslak.updated_at)}).` : ""}
+              </small>
+              {/* Taslak aynı formdan, formAction ile: metni ikinci bir kutuya
+                  kopyalamak ya da iki ayrı form kurmak yazılanı kaybetme yollarıydı. */}
+              <span className="posta-yanit-dugmeler">
+                <button className="panel-secondary" type="submit" formAction={taslakKaydet} formNoValidate>Taslak kaydet</button>
+                <button className="panel-primary" type="submit">Yanıtı gönder</button>
+              </span>
             </div>
           </form>
         ) : (

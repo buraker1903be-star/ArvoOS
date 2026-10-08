@@ -84,3 +84,6 @@
    körlüğünde kayboluyordu. */
 .os-root .talep-tablo .crm-data-table tbody tr[data-okunmamis="evet"]{box-shadow:inset 3px 0 0 var(--primary)}
 .os-root .talep-tablo .crm-data-table tbody tr[data-okunmamis="evet"] .crm-table-title{font-weight:var(--fw-semibold)}
+
+/* Gönder ve taslak yan yana: taslak ikincil, gönder birincil. */
+.posta-yanit-dugmeler{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}

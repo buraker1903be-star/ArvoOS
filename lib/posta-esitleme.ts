@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
-import { base64UrlKodla, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
+import { base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
 import { randomBytes } from "node:crypto";
 
 /*
@@ -556,6 +556,7 @@ export async function postaYanitiGonder(girdi: {
   konu: string;
   govde: string;
   ekler?: readonly EkDosya[];
+  imza?: string | null;
 }): Promise<{ messageId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -574,7 +575,7 @@ export async function postaYanitiGonder(girdi: {
     gonderenAdres: girdi.kutuAdresi,
     alici: girdi.alici,
     konu: girdi.konu,
-    govde: girdi.govde,
+    govde: imzaliGovde(girdi.govde, girdi.imza),
     sonMesajId: basliktanAl("message-id"),
     referanslar: basliktanAl("references"),
     ekler: girdi.ekler,
@@ -687,6 +688,7 @@ export async function postaYeniGonder(girdi: {
   govde: string;
   opportunityId?: string | null;
   ekler?: readonly EkDosya[];
+  imza?: string | null;
 }): Promise<{ threadId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -696,7 +698,7 @@ export async function postaYeniGonder(girdi: {
     gonderenAdres: girdi.kutuAdresi,
     alicilar: girdi.alicilar,
     konu: girdi.konu,
-    govde: girdi.govde,
+    govde: imzaliGovde(girdi.govde, girdi.imza),
     ekler: girdi.ekler,
     sinir: mesajSiniri(),
   });

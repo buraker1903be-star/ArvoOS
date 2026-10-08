@@ -27,12 +27,15 @@ export type PostaDurumu = {
      eksik görünen kutuyu hata sanmayı engelliyor. */
   gecmisBitti: boolean;
   gecmisMesajSayisi: number;
+  /* Giden mesajların sonuna eklenen kurum imzası. Ekranda düzenlenebilir;
+     gönderime sunucu ekliyor. */
+  imza: string | null;
 };
 
 const bos = (kullanilabilir: boolean): PostaDurumu => ({
   kullanilabilir, kayitliMi: false, durum: null, adres: null,
   sonEsitleme: null, sonHata: null, guncellendi: null,
-  gecmisBitti: false, gecmisMesajSayisi: 0,
+  gecmisBitti: false, gecmisMesajSayisi: 0, imza: null,
 });
 
 export async function postaDurumu(organizationId: string): Promise<PostaDurumu> {
@@ -42,7 +45,7 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
 
   const { data } = await admin
     .from("mail_accounts")
-    .select("email,status,last_sync_at,last_error,updated_at,gecmis_bitti,gecmis_mesaj_sayisi")
+    .select("email,status,last_sync_at,last_error,updated_at,gecmis_bitti,gecmis_mesaj_sayisi,imza")
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (!data) return bos(kullanilabilir);
@@ -57,6 +60,7 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
     guncellendi: data.updated_at ?? null,
     gecmisBitti: Boolean(data.gecmis_bitti),
     gecmisMesajSayisi: (data.gecmis_mesaj_sayisi as number | null) ?? 0,
+    imza: (data.imza as string | null) ?? null,
   };
 }
 
@@ -320,4 +324,19 @@ export async function postaErisimBelirteci(organizationId: string): Promise<stri
   }).eq("organization_id", organizationId);
 
   return okunan.erisimBelirteci;
+}
+
+/**
+ * Kurum imzasını kaydeder. Ayarlar ekranından çağrılıyor.
+ *
+ * Boş metin imzayı KALDIRIYOR (null): "imzayı sil" için ayrı bir düğme
+ * koymak, alanı boşaltıp kaydedenin beklediği şeyi yapmamak olurdu.
+ */
+export async function postaImzasiniKaydet(organizationId: string, imza: string) {
+  const admin = sunucuHazirMi();
+  const sade = imza.trim().slice(0, 2000);
+  const { error } = await admin.from("mail_accounts")
+    .update({ imza: sade || null, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId);
+  if (error) throw new Error("İmza kaydedilemedi: " + error.message);
 }

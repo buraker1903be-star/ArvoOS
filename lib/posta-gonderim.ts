@@ -276,3 +276,23 @@ export function yanitAlicisi(
      kutudan gönderilen son mesaj çoğu zaman bizim cevabımız. */
   return gelenler[gelenler.length - 1]?.gonderenAdres ?? null;
 }
+
+/*
+  KURUM İMZASI.
+
+  Gönderilen metnin sonuna, RFC 3676'nın imza ayıracıyla ("-- " ve satır
+  sonu) ekleniyor. Ayıraç önemli: posta istemcileri imzayı bununla
+  tanıyıp yanıtta alıntıdan düşürüyor, yoksa her yanıtta bir kopya daha
+  birikip yazışmanın yarısı imza oluyor.
+
+  İmza METNE DEĞİL GÖNDERİME ekleniyor: personelin yazdığı kutuda
+  görünmemesi bilinçli — iki kez eklenmesinin (bir kez elle, bir kez
+  sunucuda) en kolay yolu onu kutuya önceden yazmaktı.
+*/
+export function imzaliGovde(govde: string, imza: string | null | undefined): string {
+  const sadeImza = (imza ?? "").trim();
+  if (!sadeImza) return govde;
+  // Zaten eklenmişse (taslaktan gelen metin olabilir) ikinci kez eklenmiyor.
+  if (govde.includes(`\n-- \n${sadeImza}`)) return govde;
+  return `${govde.replace(/\s+$/, "")}\n\n-- \n${sadeImza}`;
+}

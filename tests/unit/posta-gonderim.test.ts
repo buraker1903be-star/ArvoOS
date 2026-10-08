@@ -9,6 +9,7 @@ import {
   yanitKonusu,
   ekBoyutuEngeli,
   guvenliEkAdi,
+  imzaliGovde,
   yanitMesajiKur,
   yeniMesajiKur,
   zincirBasliklari,
@@ -277,4 +278,25 @@ test("ek boyutu sınırı gönderimden önce söyleniyor", () => {
   assert.match(engel ?? "", /4,0 MB/);
   assert.match(engel ?? "", /en fazla 3 MB/);
   assert.equal(ekBoyutuEngeli([]), null);
+});
+
+test("kurum imzası standart ayıraçla ekleniyor", () => {
+  /*
+    "-- " + satır sonu RFC 3676'nın imza ayıracı: posta istemcileri
+    imzayı bununla tanıyıp yanıtta alıntıdan düşürüyor. Ayıraç olmadan
+    her yanıtta bir kopya daha birikip yazışmanın yarısı imza oluyor.
+  */
+  const sonuc = imzaliGovde("Merhaba,\nteklifimiz ektedir.", "Akademik Merkez\nuzman@akademikmerkez.com");
+  assert.equal(sonuc, "Merhaba,\nteklifimiz ektedir.\n\n-- \nAkademik Merkez\nuzman@akademikmerkez.com");
+});
+
+test("imza iki kez eklenmiyor", () => {
+  // Taslaktan gelen metin imzayı zaten taşıyor olabilir.
+  const birKez = imzaliGovde("Merhaba", "Arvo");
+  assert.equal(imzaliGovde(birKez, "Arvo"), birKez);
+});
+
+test("imza yoksa gövdeye dokunulmuyor", () => {
+  assert.equal(imzaliGovde("Merhaba", null), "Merhaba");
+  assert.equal(imzaliGovde("Merhaba", "   "), "Merhaba");
 });

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { yeniPostaGonder } from "../actions";
+import { taslakKaydet, yeniPostaGonder } from "../actions";
 import "../posta.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 
@@ -21,11 +21,18 @@ import "../../crm/kayit-detay/kayit-detay.css";
 export const dynamic = "force-dynamic";
 
 export default async function YeniPostaPage({ searchParams }: {
-  searchParams: Promise<{ alici?: string; konu?: string; firsat?: string }>;
+  searchParams: Promise<{ alici?: string; konu?: string; firsat?: string; taslak?: string }>;
 }) {
-  const { alici, konu, firsat } = await searchParams;
-  const { membership, izin } = await getPanelContext();
+  const { alici, konu, firsat, taslak: taslakId } = await searchParams;
+  const { supabase, membership, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
+
+  /* Kayıtlı taslaktan devam. Adresten gelen ön doldurma yalnızca yeni
+     posta için; taslak varsa onun metni kazanır. */
+  const { data: taslak } = taslakId
+    ? await supabase.from("mail_drafts").select("id,alici,konu,govde,opportunity_id")
+        .eq("organization_id", membership.organization_id).eq("id", taslakId).maybeSingle()
+    : { data: null };
 
   if (!izin("posta.yanitla")) {
     return <main className="talep cari">
@@ -57,18 +64,19 @@ export default async function YeniPostaPage({ searchParams }: {
     </header>
 
     <form className="panel-card posta-yanit" action={yeniPostaGonder}>
-      {firsat ? <input type="hidden" name="opportunity_id" value={firsat} /> : null}
+      {taslak ? <input type="hidden" name="taslak_id" value={taslak.id} /> : null}
+      {(taslak?.opportunity_id ?? firsat) ? <input type="hidden" name="opportunity_id" value={(taslak?.opportunity_id ?? firsat) as string} /> : null}
       <label htmlFor="posta-alici">
         <b>Alıcı</b>
         <small>Birden çok adres için virgülle ayırın.</small>
       </label>
-      <input id="posta-alici" name="alici" type="text" required defaultValue={alici ?? ""} autoComplete="off" placeholder="musteri@ornek.com" />
+      <input id="posta-alici" name="alici" type="text" required defaultValue={taslak?.alici ?? alici ?? ""} autoComplete="off" placeholder="musteri@ornek.com" />
 
       <label htmlFor="posta-konu"><b>Konu</b></label>
-      <input id="posta-konu" name="konu" type="text" required maxLength={300} defaultValue={konu ?? ""} autoComplete="off" />
+      <input id="posta-konu" name="konu" type="text" required maxLength={300} defaultValue={taslak?.konu ?? konu ?? ""} autoComplete="off" />
 
       <label htmlFor="posta-metin"><b>Mesaj</b></label>
-      <textarea id="posta-metin" name="govde" rows={10} required maxLength={20000} placeholder="Mesajınızı yazın…" />
+      <textarea id="posta-metin" name="govde" rows={10} required maxLength={20000} defaultValue={taslak?.govde ?? ""} placeholder="Mesajınızı yazın…" />
 
       <label className="posta-ek-sec">
         <span>Ek dosya</span>
@@ -76,8 +84,11 @@ export default async function YeniPostaPage({ searchParams }: {
       </label>
 
       <div className="posta-yanit-alt">
-        <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.{firsat ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}</small>
-        <button className="panel-primary" type="submit">Gönder</button>
+        <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.{hesap.imza ? " Kurum imzası sonuna eklenir." : ""}{(taslak?.opportunity_id ?? firsat) ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}</small>
+        <span className="posta-yanit-dugmeler">
+          <button className="panel-secondary" type="submit" formAction={taslakKaydet} formNoValidate>Taslak kaydet</button>
+          <button className="panel-primary" type="submit">Gönder</button>
+        </span>
       </div>
     </form>
   </main>;

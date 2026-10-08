@@ -155,6 +155,7 @@ async function konusmayaYanitla__impl(formData: FormData) {
     konu: mesajlar.find((mesaj) => mesaj.konu)?.konu ?? "",
     govde,
     ekler,
+    imza: hesap.imza,
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
 
@@ -167,6 +168,11 @@ async function konusmayaYanitla__impl(formData: FormData) {
     .update({ durum: "yanitlandi" })
     .eq("organization_id", membership.organization_id)
     .eq("thread_id", threadId);
+
+  /* Gönderilen taslak duruyorsa listede yarım bir cevap gibi görünür ve
+     biri onu yeniden gönderir. */
+  await supabase.from("mail_drafts").delete()
+    .eq("organization_id", membership.organization_id).eq("thread_id", threadId);
 
   revalidatePath("/panel/posta");
   revalidatePath(`/panel/posta/${threadId}`);
@@ -338,8 +344,15 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     govde,
     opportunityId: firsat,
     ekler: await formdanEkler(formData),
+    imza: hesap.imza,
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
+
+  const taslakId = String(formData.get("taslak_id") ?? "").trim();
+  if (taslakId) {
+    await context.supabase.from("mail_drafts").delete()
+      .eq("organization_id", membership.organization_id).eq("id", taslakId);
+  }
 
   revalidatePath("/panel/posta");
   if (firsat) revalidatePath(`/panel/crm/requests/${firsat}`);
@@ -394,4 +407,84 @@ async function konusmayiSil__impl(formData: FormData) {
 export async function konusmayiSil(formData: FormData) {
   await runPanelAction(() => konusmayiSil__impl(formData), "Yazışma çöp kutusuna taşındı");
   redirect("/panel/posta");
+}
+
+/*
+  TASLAKLAR.
+
+  Ortak kutuda yarım kalmış bir cevap, başlatanın değil EKİBİN: taslağı
+  kim açarsa sürdürebiliyor. Kimin başlattığı yazılıyor ama erişimi
+  kısıtlamıyor.
+
+  Yanıt taslağında konuşma başına tek taslak var (veritabanında benzersiz
+  indeks): aynı yazışmaya iki kişinin iki ayrı yarım cevap bırakması,
+  ortak kutuda çakışmanın en sık biçimi.
+*/
+async function taslakKaydet__impl(formData: FormData): Promise<string> {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.yanitla");
+  const { supabase, membership, userId } = context;
+
+  const threadId = String(formData.get("thread_id") ?? "").trim() || null;
+  const govde = String(formData.get("govde") ?? "").trim();
+  if (!govde) throw new Error("Taslak metni boş olamaz.");
+
+  const satir = {
+    organization_id: membership.organization_id,
+    thread_id: threadId,
+    alici: String(formData.get("alici") ?? "").trim() || null,
+    konu: String(formData.get("konu") ?? "").trim() || null,
+    govde: govde.slice(0, 20000),
+    opportunity_id: String(formData.get("opportunity_id") ?? "").trim() || null,
+    olusturan: userId,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (threadId) {
+    /* Konuşma taslağı: aynı konuşmanın taslağı varsa üzerine yazılıyor.
+       onConflict yerine açık kontrol, çünkü benzersiz indeks kısmi
+       (thread_id dolu olanlar) ve upsert kısmi indeksi kullanamıyor. */
+    const { data: mevcut } = await supabase.from("mail_drafts").select("id")
+      .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle();
+    if (mevcut) {
+      const { error } = await supabase.from("mail_drafts").update(satir).eq("id", mevcut.id);
+      if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
+      revalidatePath(`/panel/posta/${threadId}`);
+      return `/panel/posta/${threadId}`;
+    }
+  }
+
+  const kimlik = String(formData.get("taslak_id") ?? "").trim();
+  if (kimlik) {
+    const { error } = await supabase.from("mail_drafts").update(satir)
+      .eq("organization_id", membership.organization_id).eq("id", kimlik);
+    if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
+    return threadId ? `/panel/posta/${threadId}` : `/panel/posta/yeni?taslak=${kimlik}`;
+  }
+
+  const { data, error } = await supabase.from("mail_drafts").insert(satir).select("id").single();
+  if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
+  revalidatePath("/panel/posta");
+  return threadId ? `/panel/posta/${threadId}` : `/panel/posta/yeni?taslak=${data.id}`;
+}
+
+export async function taslakKaydet(formData: FormData) {
+  const hedef = await runPanelAction(() => taslakKaydet__impl(formData), "Taslak kaydedildi");
+  if (typeof hedef === "string") redirect(hedef);
+}
+
+async function taslakSil__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.yanitla");
+  const kimlik = String(formData.get("taslak_id") ?? "").trim();
+  if (!kimlik) throw new Error("Taslak seçilmedi.");
+  const { error } = await context.supabase.from("mail_drafts").delete()
+    .eq("organization_id", context.membership.organization_id).eq("id", kimlik);
+  if (error) throw new Error("Taslak silinemedi: " + error.message);
+  revalidatePath("/panel/posta");
+}
+
+export async function taslakSil(formData: FormData) {
+  await runPanelAction(() => taslakSil__impl(formData), "Taslak silindi");
+  redirect("/panel/posta?kutu=taslak");
 }
