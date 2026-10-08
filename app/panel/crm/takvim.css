@@ -1,67 +1,90 @@
-/* ============================================================
-   ArvoOS Panel — CRM Sales Calendar
-   ============================================================ */
-
-.calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.calendar-view-toggle{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);overflow:hidden}
-.calendar-view-toggle a{padding:9px 16px;font-size:13px;font-weight:800;color:var(--muted);text-decoration:none;transition:.18s ease}
-.calendar-view-toggle a+a{border-left:1px solid var(--line)}
-.calendar-view-toggle a:hover{background:var(--surface-2);color:var(--ink)}
-.calendar-view-toggle a.active{background:var(--brand-700);color:#fff}
-.calendar-filter{display:flex;gap:8px;align-items:center}
-.calendar-filter select{min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:13px}
-
-.calendar-card{padding:20px}
-.calendar-month-nav{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:16px}
-.calendar-month-nav b{font:750 16px var(--font-heading);color:var(--ink);text-transform:capitalize;min-width:160px;text-align:center}
-
-.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-.calendar-weekdays{margin-bottom:6px}
-.calendar-weekdays span{text-align:center;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);padding:4px 0}
-.calendar-day{min-height:88px;display:flex;flex-direction:column;gap:3px;padding:8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);text-decoration:none;color:var(--ink);overflow:hidden;transition:.18s ease}
-.calendar-day:hover{border-color:color-mix(in srgb, var(--primary) 40%, var(--line));background:var(--surface-2)}
-.calendar-day.outside{opacity:.38}
-.calendar-day.today .calendar-day-number{background:var(--primary);color:var(--primary-on)}
-.calendar-day.selected{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
-.calendar-day-number{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;font-size:13px;font-weight:800}
-.calendar-day em{display:block;padding:2px 5px;border-radius:5px;background:var(--primary-soft);color:var(--primary);font-size:11px;font-style:normal;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /*
-  Operasyon takviminde iki tür madde var: işin termini ve bir aşamanın
-  teslimi. Aynı görünürlerse takvim "bugün ne teslim edilecek" sorusunu
-  yanıtlamıyor — aşama daha soluk ve girintili.
+  TAKVİM (2026-10, panel kalitesi): satış takvimi ve iş takvimi.
+  Sayfa ekran yüksekliğinde: başlık, araç satırı (ay gezinme, süzgeç,
+  sayılar) ve altında iki sütun: solda ay ızgarası kutusunu dolduruyor,
+  sağda seçili gün ve önümüzdeki 14 gün. Eskiden ızgara (88px'lik
+  hücreler) ve altındaki seçili gün paneli alt alta duruyordu; seçili
+  gün ekranın altında kalıyordu. Değerler panel-tokens.css'ten.
 */
-.calendar-day em[data-tur="asama"]{background:var(--surface-2);color:var(--muted);font-weight:600}
-.calendar-day em[data-tone="warning"]{background:var(--warning-soft);color:var(--ink)}
-.calendar-day em[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
-.calendar-day small{color:var(--dim);font-size:11px}
+.os-root .tk-sayfa{height:calc(100dvh - 192px);min-height:520px;display:flex;flex-direction:column;gap:var(--sp-3)}
+.tk-sayfa>.talep-bas,.tk-sayfa>.tk-arac{flex:none}
 
-/* ---------- Appointment rows (shared by month "selected day" panel and list view) ---------- */
-.appointment-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
-.appointment-day-groups{display:flex;flex-direction:column;gap:22px}
-.appointment-day-group h3{display:flex;align-items:center;gap:10px;margin:0 0 4px;font:700 13px var(--font-heading);color:var(--ink);text-transform:capitalize}
-.appointment-row{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:14px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface-2)}
-.appointment-row.status-done{opacity:.65}
-.appointment-row.status-cancelled{opacity:.5;text-decoration:line-through}
-.appointment-time{display:flex;flex-direction:column;gap:2px}
-.appointment-time b{font-size:13px;color:var(--ink)}
-.appointment-time small{color:var(--muted);font-size:12px}
-.appointment-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.appointment-heading h4{margin:0;font-size:12px;color:var(--ink)}
-.appointment-body>p{margin:4px 0 0;color:var(--muted);font-size:13px}
-.appointment-note{font-style:italic}
-.appointment-actions{display:flex;flex-direction:column;gap:6px}
-.appointment-actions form{margin:0}
-.appointment-actions button{white-space:nowrap;min-height:30px;padding:0 10px;font-size:11px}
+/* Araç satırı: gezinme solda, sayılar ve süzgeç sağda. */
+.tk-arac{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);padding:var(--sp-2) var(--sp-4)}
+.tk-arac dl{gap:var(--sp-5)}
+.tk-arac dd{font-size:var(--fs-md)}
+.tk-gezinme{display:flex;align-items:center;gap:var(--sp-2)}
+.tk-gezinme b{min-width:140px;text-align:center;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold);text-transform:capitalize}
+.tk-ok{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);font-size:var(--fs-lg);text-decoration:none}
+.tk-ok:hover{border-color:var(--primary);color:var(--primary)}
+.tk-bugun{margin-left:var(--sp-1);padding:0 var(--sp-3);height:32px;display:inline-flex;align-items:center;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none}
+.tk-bugun:hover{background:var(--primary-soft);color:var(--primary-strong)}
+.tk-sag{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5)}
 
-@media(max-width:900px){
-  .calendar-day{min-height:70px}
-  .appointment-row{grid-template-columns:56px minmax(0,1fr);}
-  .appointment-actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+/* İki sütun: ızgara + gün paneli; ikisi de kalan yüksekliği doldurur. */
+.tk-izgara-alan{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:var(--sp-4)}
+.os-root .tk-izgara-alan>.panel-card{min-height:0;margin:0;padding:var(--sp-4)}
+.tk-takvim-kart{display:flex;flex-direction:column}
+
+/* Ay ızgarası: satır sayısı (5 ya da 6) kutunun yüksekliğini paylaşır. */
+.tk-ay{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--sp-1)}
+.tk-gunler{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--sp-1)}
+.tk-gunler span{padding:var(--sp-1) 0;color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);text-align:center}
+.tk-izgara{flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(var(--tk-satir,6),minmax(0,1fr));gap:var(--sp-1)}
+.tk-gun{min-width:0;min-height:0;display:flex;flex-direction:column;gap:2px;padding:var(--sp-1) var(--sp-2);border:1px solid var(--line-soft);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);text-decoration:none;overflow:hidden;transition:border-color .12s,background .12s}
+.tk-gun:hover{border-color:var(--line);background:var(--surface-2)}
+.tk-gun.is-disinda{background:transparent;opacity:.45}
+.tk-gun.is-secili{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.tk-gun-no{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--ink-soft)}
+.tk-gun.is-bugun .tk-gun-no{background:var(--primary);color:var(--primary-on)}
+.tk-gun em{display:block;padding:1px var(--sp-1);border-radius:4px;background:var(--primary-soft);color:var(--primary-strong);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-medium);line-height:var(--lh-tight);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* İş takvimi: aşama teslimi işin termininden soluk; uyarı tonları. */
+.tk-gun em[data-tur="asama"]{background:var(--surface-2);color:var(--ink-soft)}
+.tk-gun em[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
+.tk-gun em[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
+.tk-gun em[data-tone="done"]{background:var(--surface-2);color:var(--dim);text-decoration:line-through}
+.tk-gun small{color:var(--dim);font-size:var(--fs-micro)}
+
+/* Gün paneli: seçili gün ve önümüzdeki günler; kendi içinde kayar. */
+.tk-panel{display:flex;flex-direction:column;overflow:auto;scrollbar-width:thin}
+.tk-gun-bolum+.tk-gun-bolum{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
+.tk-gun-bolum h3{display:flex;align-items:center;gap:var(--sp-2);margin:0 0 var(--sp-2);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);text-transform:capitalize}
+.tk-gun-bolum h3.tk-alt{margin-top:var(--sp-3);color:var(--muted);font-weight:var(--fw-medium)}
+.tk-bos{margin:0;color:var(--dim);font-size:var(--fs-sm)}
+.tk-liste{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
+.tk-liste li+li{border-top:1px solid var(--line-soft)}
+.tk-satir{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-2);border-radius:var(--r-sm)}
+.tk-satir.is-link{position:relative}
+.tk-satir.is-link:hover{background:var(--surface-2)}
+.tk-satir-link{color:inherit;text-decoration:none}
+.tk-satir-link::after{content:"";position:absolute;inset:0}
+.tk-saat{flex:none;width:48px;display:flex;flex-direction:column;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.tk-saat small{color:var(--muted);font-size:var(--fs-micro);font-weight:400}
+.tk-govde{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tk-govde b{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium);line-height:var(--lh-tight)}
+.tk-govde small{color:var(--muted);font-size:var(--fs-micro)}
+.tk-govde .tk-not{color:var(--ink-soft);font-style:italic}
+.tk-satir.is-done .tk-govde b{color:var(--muted)}
+.tk-satir.is-cancelled .tk-govde b{color:var(--dim);text-decoration:line-through}
+.tk-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
+.tk-eylem form{margin:0}
+.tk-eylem button{height:26px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer}
+.tk-eylem button:hover{border-color:var(--primary);color:var(--primary)}
+.tk-eylem button.is-danger:hover{border-color:var(--danger);color:var(--danger)}
+.tk-satir .status-pill{flex:none;position:relative;z-index:1}
+
+@media (max-width:1100px){
+  .tk-izgara-alan{grid-template-columns:minmax(0,1fr) 300px}
 }
-@media(max-width:620px){
-  .calendar-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-  .calendar-day{min-height:52px;padding:5px}
-  .calendar-day em,.calendar-day small{display:none}
-  .calendar-toolbar{flex-direction:column;align-items:stretch}
-  .calendar-filter{flex-direction:column;align-items:stretch}
+@media (max-width:900px){
+  .os-root .tk-sayfa{height:auto;min-height:0}
+  .tk-izgara-alan{grid-template-columns:minmax(0,1fr)}
+  .tk-ay{min-height:420px}
+}
+@media (max-width:620px){
+  .tk-ay{min-height:320px}
+  .tk-gun{padding:2px}
+  .tk-gun em,.tk-gun small{display:none}
+  .tk-gun{align-items:center}
+  .tk-gun.is-dolu::after{content:"";width:6px;height:6px;margin-top:2px;border-radius:50%;background:var(--primary)}
 }
