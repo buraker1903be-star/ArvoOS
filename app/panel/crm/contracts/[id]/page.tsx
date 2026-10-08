@@ -12,6 +12,7 @@ import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
 import { workflowStatusNames } from "../../../operations/ops-shared";
 import { todayInIstanbul } from "@/lib/istanbul-date";
+import { netTahsilat, taksitleriDagit, type TaksitDurumu } from "@/lib/taksit-dagitimi";
 import { formatSubject } from "@/lib/table-format";
 import { proposalStatusLabel } from "../../status-labels";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
@@ -59,7 +60,8 @@ const tarih = (value: string | null) =>
 const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" }) : "—";
 // Ek protokol rozet tonu: bekleyen sarı, onaylı yeşil, değişiklik talebi turuncu, geri çekilen gri.
 const ADDENDUM_TONES: Record<string, string> = { sent: "pending", accepted: "accepted", rejected: "blocked", cancelled: "archived" };
-const INSTALLMENT_LABELS: Record<string, string> = { paid: "Ödendi", pending: "Bekliyor", cancelled: "İptal" };
+// Taksit durumu cari dökümünden türetiliyor (lib/taksit-dagitimi.ts).
+const TAKSIT_ADLARI: Record<TaksitDurumu, string> = { odendi: "Ödendi", kismi: "Kısmen ödendi", bekliyor: "Bekliyor", gecikti: "Gecikti", iptal: "İptal" };
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
@@ -67,7 +69,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,party_id,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -111,13 +113,38 @@ export default async function ContractDetailPage({ params }: Props) {
     return { sequence: row.installment_no, label: installmentLabel(item?.label, row.installment_no), amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
   });
   /*
-    ÖDEME ÖZETİ: taksitler ödeme planına bağlandıysa kaç tanesinin ve ne
-    kadarının ödendiği; vadesi geçen ödenmemiş taksit uyarı tonunda.
+    ÖDEME ÖZETİ: kaç taksitin ve ne kadarının ödendiği, vadesi geçen.
+    Taksitin kendi status sütunu cari tahsilatıyla güncellenmiyor (tahsil
+    edilmiş taksit "ödenmedi" görünüyordu). Sözleşmenin carisi varsa
+    durumlar cari dökümünden türetilir: carinin net tahsilatı, carinin
+    BÜTÜN sözleşmelerinin taksitlerine en eski vadeden dağıtılır (cari
+    detayıyla aynı kural, lib/taksit-dagitimi.ts); burada bu sözleşmenin
+    taksitlerine düşen sonuç gösterilir. Carisi yoksa taksitin kendi durumu.
   */
-  const odenen = installments.filter((row) => row.status === "paid");
-  const odenenTutar = odenen.reduce((sum, row) => sum + row.amount, 0);
-  const taksitToplami = installments.reduce((sum, row) => sum + row.amount, 0);
   const bugunAnahtari = todayInIstanbul();
+  let taksitSonucu: Map<number, { odenen: number; kalan: number; durum: TaksitDurumu }> | null = null;
+  if (data.party_id && data.payment_plan_id && installments.length) {
+    const [{ data: hareketler }, { data: cariSozlesmeler }] = await Promise.all([
+      supabase.from("account_entries").select("entry_type,source_type,amount").eq("organization_id", membership.organization_id).eq("party_id", data.party_id),
+      supabase.from("crm_contracts").select("payment_plan_id").eq("organization_id", membership.organization_id).eq("party_id", data.party_id).in("status", ["signed", "completed"]),
+    ]);
+    const planIds = [...new Set([data.payment_plan_id, ...((cariSozlesmeler ?? []) as { payment_plan_id: string | null }[]).map((c) => c.payment_plan_id).filter((v): v is string => Boolean(v))])];
+    const { data: tumTaksitler } = await supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", membership.organization_id).in("payment_plan_id", planIds);
+    if (hareketler && tumTaksitler) {
+      const dagilim = taksitleriDagit(tumTaksitler as { id: string; payment_plan_id: string; installment_no: number; due_date: string | null; amount: number; status: string }[], netTahsilat(hareketler as { entry_type: string; source_type: string | null; amount: number }[]), bugunAnahtari);
+      taksitSonucu = new Map(dagilim.filter((t) => t.payment_plan_id === data.payment_plan_id).map((t) => [t.installment_no, { odenen: t.odenen, kalan: t.kalan, durum: t.durum }]));
+    }
+  }
+  const taksitDurumu = (row: AddendumInstallment): { odenen: number; durum: TaksitDurumu } => {
+    const sonuc = taksitSonucu?.get(row.sequence);
+    if (sonuc) return sonuc;
+    if (row.status === "paid") return { odenen: row.amount, durum: "odendi" };
+    if (row.status === "cancelled") return { odenen: 0, durum: "iptal" };
+    return { odenen: 0, durum: row.due_date && row.due_date < bugunAnahtari ? "gecikti" : "bekliyor" };
+  };
+  const odenen = installments.filter((row) => taksitDurumu(row).durum === "odendi");
+  const odenenTutar = installments.reduce((sum, row) => sum + taksitDurumu(row).odenen, 0);
+  const taksitToplami = installments.reduce((sum, row) => sum + row.amount, 0);
   /*
     BAĞLANTILAR (teklif detayıyla eşitleme): talep, kaynak teklif ve iş.
     İşin durumu ve ilerlemesi ayrı okunur; okunamazsa (yetki, RLS) yalnızca
@@ -130,9 +157,9 @@ export default async function ContractDetailPage({ params }: Props) {
   const isAdimlari = is?.operation_steps ?? [];
   const isIlerleme = isAdimlari.length ? Math.round((isAdimlari.filter((a) => a.is_completed).length / isAdimlari.length) * 100) : null;
   const kaynakTeklif = proposalJoin as { id?: string; proposal_no?: string; status?: string; archive_reason?: string | null } | null;
-  const gecikenTaksit = installments.filter((row) => row.status !== "paid" && row.status !== "cancelled" && row.due_date && row.due_date < bugunAnahtari).length;
+  const gecikenTaksit = installments.filter((row) => taksitDurumu(row).durum === "gecikti").length;
   const paymentRows = installments.length
-    ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: INSTALLMENT_LABELS[row.status ?? ""] ?? null, missing: false }))
+    ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: TAKSIT_ADLARI[taksitDurumu(row).durum] + (taksitDurumu(row).durum !== "odendi" && taksitDurumu(row).odenen > 0 ? ` (${money(taksitDurumu(row).odenen, data.currency)} ödendi)` : ""), missing: false }))
     : storedSchedule.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: row.due_date ? date(row.due_date) : row.trigger || "Tarih ve koşul yok", status: null, missing: !row.due_date && !row.trigger }));
   /* Kendi numarasını bağlamamış kurumda eski usul sürüyor: sözleşmeyi
      Arvo'nun numarasından yollamak, müşteriye tanımadığı bir numaradan

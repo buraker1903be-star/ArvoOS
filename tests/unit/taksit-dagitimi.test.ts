@@ -29,3 +29,15 @@ test("tahsilat yoksa vadesi geçen gecikti, gelecek bekliyor", () => {
   const sonuc = taksitleriDagit([t("a", "2026-10-01", 100), t("b", "2026-11-01", 100)], 0, bugun);
   assert.deepEqual(sonuc.map((x) => x.durum), ["gecikti", "bekliyor"]);
 });
+
+test("net tahsilat: tahsilat eksi iade; sözleşme borcu ve ek hizmet sayılmaz", async () => {
+  const { netTahsilat } = await import("@/lib/taksit-dagitimi");
+  assert.equal(netTahsilat([
+    { entry_type: "credit", source_type: "manual", amount: 1000 },
+    { entry_type: "credit", source_type: "paytr", amount: 500 },
+    { entry_type: "debit", source_type: "adjustment", amount: 200 },
+    { entry_type: "debit", source_type: "contract", amount: 9999 },
+    { entry_type: "debit", source_type: "manual", amount: 300 },
+  ]), 1300);
+  assert.equal(netTahsilat([{ entry_type: "debit", source_type: "adjustment", amount: 50 }]), 0);
+});

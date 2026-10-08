@@ -28,3 +28,16 @@ export function taksitleriDagit<T extends DagitilacakTaksit>(taksitler: T[], net
     return { ...taksit, odenen, kalan, durum };
   });
 }
+
+/**
+ * Cari dökümünden dağıtılacak net tahsilat: tahsilatlar (credit) eksi
+ * iadeler (adjustment kaynaklı debit). Cari detayı ve listesiyle aynı kural.
+ */
+export function netTahsilat(hareketler: { entry_type: string; source_type: string | null; amount: number }[]): number {
+  let net = 0;
+  for (const h of hareketler) {
+    if (h.entry_type === "credit") net += Number(h.amount);
+    else if (h.entry_type === "debit" && h.source_type === "adjustment") net -= Number(h.amount);
+  }
+  return Math.max(0, Math.round(net));
+}

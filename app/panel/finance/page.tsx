@@ -8,6 +8,7 @@ import { FinWidget } from "./finance-ui";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
+import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
 import { aylik, gunAraliginda, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../os/genel-bakis";
@@ -252,8 +253,31 @@ export default async function FinancePage({
   const tahsilOrani = oran(totals.collections, totals.debt + totals.refunds);
   const aylikTahsilat = aylik(tahsilatlar.map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), 6, an);
   const enYuksek = [...accounts].filter((a) => a.balance > 0).sort((x, y) => y.balance - x.balance).slice(0, 5);
-  const gecenTaksit = installments.filter((item) => item.status !== "paid" && item.status !== "cancelled" && Boolean(item.due_date && item.due_date < today));
-  const gecenTaksitTutari = gecenTaksit.reduce((sum, item) => sum + Number(item.amount), 0);
+  /*
+    Vadesi geçen taksit: taksitin kendi status sütunu cari tahsilatıyla
+    güncellenmiyor; kısmen ya da tamamen tahsil edilmiş taksit "ödenmedi"
+    sayılıyor ve toplam şişiyordu (285 bin TL). Her carinin net tahsilatı
+    o carinin taksitlerine en eski vadeden dağıtılır (lib/taksit-dagitimi.ts,
+    cari detayıyla aynı kural); gecikmiş sayılan yalnızca kalan tutar.
+    Carisi olmayan sözleşmenin taksiti kendi durumuyla sayılır.
+  */
+  const planSahibi = new Map(contracts.filter((c) => c.payment_plan_id && c.party_id).map((c) => [c.payment_plan_id as string, c.party_id as string]));
+  const cariTaksitleri = new Map<string, Installment[]>();
+  const carisizTaksitler: Installment[] = [];
+  for (const item of installments) {
+    const sahip = planSahibi.get(item.payment_plan_id);
+    if (sahip && accounts.some((a) => a.id === sahip)) cariTaksitleri.set(sahip, [...(cariTaksitleri.get(sahip) ?? []), item]);
+    else carisizTaksitler.push(item);
+  }
+  const gecenTaksit: { kalan: number }[] = [];
+  for (const a of accounts) {
+    const liste = cariTaksitleri.get(a.id);
+    if (!liste) continue;
+    for (const t of taksitleriDagit(liste, netTahsilat(a.entries), today)) if (t.durum === "gecikti") gecenTaksit.push({ kalan: t.kalan });
+  }
+  for (const item of carisizTaksitler)
+    if (item.status !== "paid" && item.status !== "cancelled" && item.due_date && item.due_date < today) gecenTaksit.push({ kalan: Number(item.amount) });
+  const gecenTaksitTutari = gecenTaksit.reduce((sum, item) => sum + item.kalan, 0);
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query);
   const copy = pageCopy[mode];
