@@ -213,7 +213,7 @@ export default async function RequestsPage({
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
-    <main className="talep cari ekip talepler">
+    <main className="talep cari ekip talepler liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">CRM</small>

@@ -283,42 +283,54 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 }
 @keyframes os-alt-ac-dar{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-/* ---------- Liste sayfaları: sayfa sabit, liste kartı kendi içinde kayar ----------
+/* ---------- Liste sayfaları: sayfa sabit, satırlar tablonun içinde kayar ----------
 
-   Talepler, teklifler, sözleşmeler, işler, ekip ve finans listelerinde liste
-   aşağıya kaymıyordu. Kart kendi içinde kayan bir kutuydu ama yüksekliği sabit
-   bir sayıyla veriliyordu (100dvh - 350px) ve o sayı liste sayfalarının üst
-   bölümünü (başlık + durum şeridi + süzgeç satırı) karşılamıyordu: kartın alt
-   kenarı ekranın altından taşıyor, taşan kısımda kalan satırlara ve kartın
-   kendi kaydırma çubuğuna ulaşılamıyordu.
+   Talepler, teklifler, sözleşmeler, işler, ekip ve finans listelerinde alttaki
+   satırlara ulaşılamıyordu. Kartın yüksekliği sabit bir sayıyla veriliyordu
+   (100dvh - 350px); o sayı kayıt detayına göre ölçülmüş, liste sayfalarının
+   üst bölümü ise daha uzun. Kartın alt kenarı ekranın altından taşıyor, taşan
+   kısımdaki satırlara da kartın kaydırma çubuğuna da erişilemiyordu.
 
-   Yükseklik artık sayıyla değil KALAN ALANLA belirleniyor: sayfa, üst çubuk ve
-   dock arasındaki boşluğu birebir dolduruyor, kart da o boşluğun artanını
-   alıyor. Üst bölüm uzadığında kart kendiliğinden kısalıyor; bir daha
-   ölçülecek sihirli sayı yok.
+   ÜÇ BAĞIMLILIK BİLEREK KULLANILMIYOR, çünkü iki denemede de sorun sürdü ve
+   ikisi de Safari'de doğrulanamadı:
 
-   Kaydırma çubuğu da burada görünür: kayıt detayında fare değene kadar saydam
-   (kayit-detay.css) ve o, listede "hiç kaymıyor" izlenimi veren şeyin ta
-   kendisiydi. */
-.os-root main:has(>.talep-izgara.ekip-izgara){
+     - `:has()` seçicisi: sayfa artık kendi sınıfını taşıyor (.liste-sayfa),
+       kural neyin liste olduğunu tahmin etmiyor.
+     - Izgara öğesinin esneyip uzaması: kaydırma ızgara öğesinde (kart) değil,
+       onun içindeki TABLO SARMALAYICISINDA. Zincirin her halkası düz flex ve
+       her birinde min-height:0 var — Safari'nin taşmayı kısaltmayı reddettiği
+       klasik durum bu kuralla kapanır.
+     - Sihirli sayı: yükseklik --os-bar-h, --sp-6 ve --os-dock-space'ten
+       türüyor, yani üst çubuk ya da dock değişirse kendiliğinden uyar.
+
+   Kaydırmanın tabloda olmasının ikinci bir faydası: süzgeç satırı yerinde
+   kalıyor, yalnızca satırlar kayıyor. */
+.os-root main.liste-sayfa{
   display:flex;flex-direction:column;
   height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
-  /* Çok kısa pencerede kart okunamayacak kadar incelmesin; o durumda sayfa kayar. */
+  /* Çok kısa pencerede liste okunamayacak kadar incelmesin; orada sayfa kayar. */
   min-height:420px;
 }
-.os-root .talep-izgara.ekip-izgara{flex:1;min-height:0;grid-template-rows:minmax(0,1fr)}
-.os-root .ekip-izgara>.talep-bilgi{
-  align-self:stretch;min-height:0;max-height:none;overflow:auto;
-  scrollbar-width:thin;scrollbar-color:var(--n-300) transparent;scrollbar-gutter:stable;
+.os-root main.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0;align-items:stretch;grid-template-rows:minmax(0,1fr)}
+.os-root main.liste-sayfa>.talep-izgara>.talep-bilgi{
+  display:flex;flex-direction:column;align-self:stretch;
+  min-height:0;max-height:none;overflow:hidden;
 }
-.os-root .ekip-izgara>.talep-bilgi::-webkit-scrollbar{width:8px}
-.os-root .ekip-izgara>.talep-bilgi::-webkit-scrollbar-thumb{border-radius:8px;background:var(--n-300)}
-/* Yan sütun (istatistik, ekip sağ paneli) kendi boyunda kalır, taşarsa kayar. */
-.os-root .ekip-izgara>:not(.talep-bilgi){align-self:start;max-height:100%;overflow:auto}
+/* Asıl kaydırma alanı. Negatif alt kenar boşluğu kaldırılıyor: kart artık
+   taşmayı gizlediği için o boşluk son satırı kırpıyordu. */
+.os-root main.liste-sayfa .talep-bilgi>.talep-tablo{
+  flex:1 1 auto;min-height:0;margin-bottom:0;overflow:auto;
+  scrollbar-width:thin;scrollbar-color:var(--n-300) transparent;
+}
+.os-root main.liste-sayfa .talep-bilgi>.talep-tablo::-webkit-scrollbar{width:9px}
+.os-root main.liste-sayfa .talep-bilgi>.talep-tablo::-webkit-scrollbar-thumb{border-radius:9px;background:var(--n-300)}
+/* Yan sütun kendi boyunda kalır, taşarsa kendi içinde kayar. */
+.os-root main.liste-sayfa>.talep-izgara>:not(.talep-bilgi){align-self:start;max-height:100%;overflow:auto}
 
 @media (max-width:1200px){
-  /* Tek sütuna düşen dar ekranda kart kendi içinde kaymaz; sayfa kayar.
-     Dar ekranda iki ayrı kaydırma alanı birbirine giriyor. */
-  .os-root main:has(>.talep-izgara.ekip-izgara){display:block;height:auto;min-height:0}
-  .os-root .ekip-izgara>.talep-bilgi{max-height:none;overflow:visible}
+  /* Tek sütuna düşen dar ekranda iki ayrı kaydırma alanı birbirine giriyor:
+     orada sayfa kayar, tablo değil. */
+  .os-root main.liste-sayfa{display:block;height:auto;min-height:0}
+  .os-root main.liste-sayfa>.talep-izgara>.talep-bilgi{display:block;overflow:visible}
+  .os-root main.liste-sayfa .talep-bilgi>.talep-tablo{overflow:visible}
 }

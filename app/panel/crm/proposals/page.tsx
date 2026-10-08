@@ -229,7 +229,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const filtered = Boolean(search || temsilci || status);
 
   return (
-    <main className="talep cari ekip talepler teklifler">
+    <main className="talep cari ekip talepler teklifler liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">CRM</small>

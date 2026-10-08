@@ -178,7 +178,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const aylikTeslim = aylik(tumu.map((workflow) => ({ tarih: workflow.delivered_at })), 6, an);
   const sorumluYuku = enCok(aktifIsler.map((workflow) => workflow.assigned_employee_id ? formatPersonName(employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel") : "Atanmamış"), 5);
 
-  return <main className="talep cari ekip talepler teklifler">
+  return <main className="talep cari ekip talepler teklifler liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">OPERASYON</small>

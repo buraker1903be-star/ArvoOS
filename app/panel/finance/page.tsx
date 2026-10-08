@@ -300,7 +300,7 @@ export default async function FinancePage({
   const paytrHazir = Boolean(paytr?.available && paytr.connected && paytr.enabled);
 
   return (
-    <main className={mode === "cari" ? "fin talep cari ekip talepler teklifler" : "fin"}>
+    <main className={mode === "cari" ? "fin talep cari ekip talepler teklifler liste-sayfa" : "fin"}>
       <header className={mode === "cari" ? "talep-bas" : "panel-pagehead"}>
         <div className={mode === "cari" ? "talep-bas-metin" : undefined}>
           <small className="panel-kicker">FİNANS</small>

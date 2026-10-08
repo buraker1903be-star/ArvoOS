@@ -244,7 +244,7 @@ export default async function ContractsPage({ searchParams }: Props) {
   const seciliEtiket = status === "signed" ? "İmzalı" : GRUPLAR.includes(status as SozlesmeGrubu) ? SOZLESME_GRUP_ADLARI[status as SozlesmeGrubu] : null;
 
   return (
-    <main className="talep cari ekip talepler teklifler">
+    <main className="talep cari ekip talepler teklifler liste-sayfa">
       <header className="talep-bas">
         <div className="talep-bas-metin">
           <small className="panel-kicker">CRM</small>

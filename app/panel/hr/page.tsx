@@ -137,7 +137,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const departmanDagilimi = enCok(calisanlar.map((item) => (item.department_id && departmentMap.get(item.department_id)) || "Departmansız"), 6);
   const tipDagilimi = enCok(calisanlar.map((item) => typeNames[item.employment_type] ?? "Belirtilmedi"), 4);
 
-  return <main className="talep cari ekip talepler teklifler">
+  return <main className="talep cari ekip talepler teklifler liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">İNSAN KAYNAKLARI</small>
