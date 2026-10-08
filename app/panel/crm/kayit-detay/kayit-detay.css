@@ -140,3 +140,21 @@
 .teklif-baglanti{margin:0 0 var(--sp-1);color:var(--ink-soft);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-micro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Menüdeki form düğmeleri (Sözleşmeye dönüştür) tam genişlikte */
 .os-root .os-menu-list form{display:contents}
+
+/* Sözleşme detayı: takip kodu ve akıştaki müşteri mesajları. Mesajlar
+   panelin içinde kayar, yanıt kutusu panelin altına yapışık durur
+   (yorumlardaki yazma kutusuyla aynı görünüm). */
+.sozlesme-takip-kod{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-lg);font-weight:var(--fw-semibold);letter-spacing:.18em;color:var(--ink)}
+.sozlesme-mesaj{display:flex;flex-direction:column;min-height:100%}
+.os-root .sozlesme-mesaj .contract-chat{flex:1;max-height:none;overflow:visible;padding:var(--sp-4);gap:var(--sp-3)}
+.os-root .sozlesme-mesaj .contract-bubble{border-color:var(--line);border-radius:var(--r-md)}
+.os-root .sozlesme-mesaj .contract-bubble.is-staff{background:var(--primary-soft);border-color:transparent}
+.os-root .sozlesme-mesaj .contract-bubble p{font-size:var(--fs-sm);color:var(--ink)}
+.os-root .sozlesme-mesaj .contract-reply{position:sticky;bottom:0;gap:0;margin:0 var(--sp-4) var(--sp-4);border:1px solid var(--n-300);border-radius:var(--r-md);background:var(--surface)}
+.os-root .sozlesme-mesaj .contract-reply:focus-within{border-color:var(--primary);box-shadow:var(--shadow-glow)}
+.os-root .sozlesme-mesaj .contract-reply textarea{min-height:64px;border:0 !important;border-radius:var(--r-md) var(--r-md) 0 0;box-shadow:none !important;resize:none;font-size:var(--fs-base);color:var(--ink)}
+.os-root .sozlesme-mesaj .contract-reply>div{flex-wrap:nowrap;padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.os-root .sozlesme-mesaj .contract-reply small{color:var(--dim);font-size:var(--fs-micro)}
+.os-root .sozlesme-mesaj .contract-reply .panel-primary{width:auto;flex:none;min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
+.os-root .talep-bilgi .plan-addenda li{border-color:var(--line);border-radius:var(--r-md)}
+.os-root .talep-bilgi .plan-timeline li{font-size:var(--fs-sm)}

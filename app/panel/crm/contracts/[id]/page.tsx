@@ -5,6 +5,7 @@ import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { BelgeMetniDugmesi } from "../../belge-metni-dugmesi";
 import { waMeAdresi } from "@/lib/wa-me";
+import { SOZLESME_ADIMLARI, sozlesmeAdimi } from "@/lib/sozlesme-asamalari";
 import { AbonelikAlanlari } from "./abonelik-alanlari";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
@@ -26,12 +27,30 @@ import { ADDENDUM_STATUS_LABELS, normalizeAddenda, normalizeWorkPlan } from "@/l
 import { contractMessages, organizationBrandName } from "@/lib/customer-message-templates";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
+import { TalepAkis } from "../../kayit-detay/kayit-akis";
 import "../../request-page.css";
 import "../../crm.css";
+import "../../kayit-detay/kayit-detay.css";
+
+/*
+  SÖZLEŞME DETAYI (2026-10): talep ve teklif detayıyla aynı üç sütun.
+
+  Üstte sözleşme no, başlık, durumuna göre asıl işlem (taslakta "İmzaya
+  gönder", iş akışı açıldıysa "İşe git") ve "⋯" menüsü; altında aşama
+  çizgisi. Solda müşteri, imza bağlantısı ve takip kodu; ortada tutar,
+  tarihler, kapsam, iş planı ve ödeme takvimi; sağda müşteri mesajları,
+  yorumlar ve kayıt geçmişi.
+
+  Eskiden bağlantı kartı en üstte ayrı duruyor, on bir işlem düğmesi
+  10 alanlık tablonun altında yan yana diziliyor, mesajlar ve kayıt
+  geçmişi sayfanın en altındaydı.
+*/
 
 type Props = { params: Promise<{ id: string }> };
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR") : "—";
+const tarih = (value: string | null) =>
+  value ? new Date(value).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : null;
 const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" }) : "—";
 // Ek protokol rozet tonu: bekleyen sarı, onaylı yeşil, değişiklik talebi turuncu, geri çekilen gri.
 const ADDENDUM_TONES: Record<string, string> = { sent: "pending", accepted: "accepted", rejected: "blocked", cancelled: "archived" };
@@ -48,7 +67,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
   const customer = Array.isArray(data.crm_opportunities) ? data.crm_opportunities[0] : data.crm_opportunities;
-  let representative = "Atanmamış";
+  let representative: string | null = null;
   if (customer?.assigned_employee_id) {
     const { data: employee } = await supabase.from("hr_employees").select("full_name").eq("id", customer.assigned_employee_id).eq("organization_id", membership.organization_id).maybeSingle();
     representative = employee?.full_name ?? "Pasif personel";
@@ -103,7 +122,7 @@ export default async function ContractDetailPage({ params }: Props) {
 
   const publicHost = await resolvePublicHost(supabase, membership.organization_id);
   // Sözleşme bağlantısı token'ı sabit; bir kez üretildikten sonra
-  // sayfanın üstünde kalıcı gösteriliyor (teklif detayıyla aynı davranış).
+  // kalıcı gösteriliyor (teklif detayıyla aynı davranış).
   const shareUrl = data.share_token
     ? `https://${publicHost}/sozlesme/${data.share_token}`
     : "";
@@ -112,6 +131,7 @@ export default async function ContractDetailPage({ params }: Props) {
     displayName: organization.display_name,
     legalName: organization.name,
   });
+  const musteri: string = formatPersonName(customer?.customer_name) || customer?.customer_name || "Müşteri";
   const messages = shareUrl
     ? contractMessages({
         organizationName: brandName,
@@ -124,449 +144,444 @@ export default async function ContractDetailPage({ params }: Props) {
     : null;
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
   const canDelete = izin("crm.sozlesme.sil");
+  const { adim, kapanis } = sozlesmeAdimi({ status: data.status, view_count: data.view_count, workflow_id: data.workflow_id });
+  const trackingUrl = `https://${publicHost}/takip`;
+  const takipMetni = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
+  const imzayaGonder = (
+    <form action={issueContractLink}>
+      <input type="hidden" name="contract_id" value={data.id} />
+      <input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`} />
+      <button className="panel-primary">İmzaya gönder</button>
+    </form>
+  );
+
+  const bilgiler: [string, React.ReactNode][] = [
+    ["Başlangıç", tarih(data.start_date) ?? <em>Belirtilmedi</em>],
+    ["Teslim", tarih(data.due_date) ?? <em>Belirtilmedi</em>],
+    ["İmzalayan", data.signed_name ? `${data.signed_name}${data.signed_at ? ` · ${dateTime(data.signed_at)}` : ""}` : <em>Bekleniyor</em>],
+    ["Ödeme planı", data.payment_plan || <em>Belirtilmedi</em>],
+    ["Gönderim", tarih(data.sent_at) ?? <em>Gönderilmedi</em>],
+    ["Görüntülenme", data.view_count ? `${data.view_count} kez${data.last_viewed_at ? ` · son ${tarih(data.last_viewed_at)}` : ""}` : <em>Açılmadı</em>],
+  ];
+
   return (
-    <div className="crm-request-detail-page">
-      <div className="panel-pagehead">
-        <div><small className="panel-kicker">CRM / SÖZLEŞME DETAYI</small><h1>{data.contract_no}</h1><p>{formatPersonName(customer?.customer_name)} · {data.title}</p></div>
-        <Link className="panel-secondary" href="/panel/crm/contracts">Sözleşmelere Dön</Link>
-      </div>
-      {shareUrl ? (
-        <section className="panel-card share-ready-card">
-          <div className="share-ready-icon">✓</div>
-          <div className="share-ready-body">
-            <small className="panel-kicker">MÜŞTERİ BAĞLANTISI</small>
-            <h2>Sözleşme bağlantısı</h2>
-            <div className="share-ready-link">
-              <span style={{ wordBreak: "break-all" }}>{shareUrl}</span>
-            </div>
-            <div className="panel-page-actions">
-              {customer?.contact_email && messages ? (
-                <ShareSendLink kind="contract" token={data.share_token} className="panel-primary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
-                  ✉ E-posta ile gönder
-                </ShareSendLink>
+    <main className="crm-page-stack crm-request-detail-page talep">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">{data.contract_no}</small>
+          <h1>{data.title}</h1>
+        </div>
+        <div className="talep-bas-eylem">
+          {data.workflow_id ? (
+            <Link className="panel-primary" href={`/panel/operations/${data.workflow_id}`}>İşe git</Link>
+          ) : !locked && !shareUrl ? imzayaGonder : null}
+          <details className="os-menu talep-menu">
+            <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
+            <div className="os-menu-list" role="menu">
+              {!locked ? (
+                <PanelDrawer triggerLabel="Düzenle" title={data.contract_no} description="Sözleşme bilgilerini kontrol edin." triggerClassName="os-menu-item">
+                  <form className="panel-form" action={updateContract}>
+                    <input type="hidden" name="contract_id" value={data.id} />
+                    <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
+                    <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
+                    <p className="wide panel-form-note">Müşteri / Talep Bilgileri</p>
+                    <label>
+                      Müşteri adı
+                      <input name="customer_name" defaultValue={customer?.customer_name ?? ""} />
+                    </label>
+                    <label>
+                      Telefon
+                      <input name="contact_phone" defaultValue={customer?.contact_phone ?? ""} />
+                    </label>
+                    <label>
+                      E-posta
+                      <input name="contact_email" defaultValue={customer?.contact_email ?? ""} />
+                    </label>
+                    <label>
+                      Hizmet türü
+                      <input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} />
+                    </label>
+                    <label>
+                      Akademik seviye
+                      <input name="academic_level" defaultValue={String(customer?.request_details?.academic_level ?? "")} />
+                    </label>
+                    <label>
+                      Üniversite
+                      <input name="university" defaultValue={String(customer?.request_details?.university ?? "")} />
+                    </label>
+                    <label>
+                      Bölüm
+                      <input name="department" defaultValue={String(customer?.request_details?.department ?? "")} />
+                    </label>
+                    <p className="wide panel-form-note">Sözleşme Bilgileri</p>
+                    <label>
+                      Başlık
+                      <input name="title" defaultValue={data.title} required />
+                    </label>
+                    <label>
+                      Tutar
+                      <input name="amount" type="number" step="0.01" min="0" defaultValue={(data.amount / 100).toFixed(2)} required />
+                    </label>
+                    <label className="wide">
+                      Kapsam
+                      <textarea name="scope" defaultValue={data.scope ?? ""} required />
+                    </label>
+                    <label>
+                      Ödeme planı
+                      <input name="payment_plan" defaultValue={data.payment_plan ?? ""} />
+                    </label>
+                    <label>
+                      Başlangıç
+                      <input name="start_date" type="date" defaultValue={data.start_date ?? ""} />
+                    </label>
+                    <label>
+                      Teslim
+                      <input name="due_date" type="date" defaultValue={data.due_date ?? ""} />
+                    </label>
+                    <label className="wide">
+                      Adres{" "}
+                      <small style={{ fontWeight: 400, color: "var(--muted)" }}>(kurumsal müşteri için)</small>
+                      <input name="customer_address" defaultValue={data.customer_address ?? ""} placeholder="Fatura/sözleşme adresi" />
+                    </label>
+                    <label>
+                      Vergi numarası
+                      <input name="customer_tax_number" defaultValue={data.customer_tax_number ?? ""} placeholder="VKN / TCKN" />
+                    </label>
+                    <label>
+                      Vergi dairesi
+                      <input name="customer_tax_office" defaultValue={data.customer_tax_office ?? ""} />
+                    </label>
+                    {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
+                        müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
+                    {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
+                    <div className="wide panel-form-actions">
+                      <button className="panel-primary">Kaydet</button>
+                    </div>
+                  </form>
+                </PanelDrawer>
               ) : null}
-              {/* Kendi numarasını bağlamamış kurumda eski usul sürüyor. */}
-              {gonderimYolu === "panel" ? (
-                <WhatsappGonderDugmesi kind="contract" token={data.share_token} musteriAdi={formatPersonName(customer?.customer_name)} />
-              ) : messages ? (
-                <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={waMeAdresi(customer?.contact_phone, messages.whatsapp)}>
-                  💬 WhatsApp ile gönder
-                </ShareSendLink>
+              {/* İmzalı sözleşme veritabanında donmuş; değişiklik Ek Protokol ile */}
+              {!locked ? (
+                <PanelDrawer triggerLabel="Ödeme planı" title={data.contract_no} description="Müşteri talebiyle ödeme planını ve vade tarihlerini revize edin." triggerClassName="os-menu-item">
+                  <ContractPaymentPlanForm
+                    contractId={data.id}
+                    amountCents={data.amount}
+                    currentPlanType={data.payment_plan_type}
+                    currentSchedule={data.payment_schedule ?? proposalJoin?.payment_schedule ?? []}
+                  />
+                </PanelDrawer>
               ) : null}
-              <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>
-                👁 Önizle
-              </a>
-            </div>
-          </div>
-        </section>
-      ) : null}
-      <div className="crm-detail-split">
-        <div className="crm-detail-main">
-      <section className="panel-card crm-request-detail-card">
-        <div className="crm-request-detail-heading"><div><span className="status-pill" data-tone={statusTone(data.status)}>{labels[data.status] ?? data.status}</span><h2>{data.title}</h2></div><strong>{money(data.amount, data.currency)}</strong></div>
-        <dl className="crm-request-detail-grid">
-          <div><dt>Müşteri</dt><dd>{customer?.customer_name || "—"}</dd></div>
-          <div><dt>Temsilci</dt><dd>{representative}</dd></div>
-          <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || "—"}</dd></div>
-          <div><dt>E-posta</dt><dd>{customer?.contact_email || "—"}</dd></div>
-          <div><dt>Ödeme planı</dt><dd>{data.payment_plan || "—"}</dd></div>
-          <div><dt>Başlangıç</dt><dd>{date(data.start_date)}</dd></div>
-          <div><dt>Teslim</dt><dd>{date(data.due_date)}</dd></div>
-          <div><dt>İmzalayan</dt><dd>{data.signed_name || "Bekleniyor"}</dd></div>
-          <div><dt>Takip kodu</dt><dd>{data.tracking_code || "—"}</dd></div>
-          <div><dt>Görüntülenme</dt><dd>{data.view_count || 0} kez</dd></div>
-        </dl>
-        {data.scope ? <div className="crm-request-detail-note"><small>KAPSAM</small><p>{data.scope}</p></div> : null}
-        <div className="crm-request-detail-actions">
-          <small className="panel-kicker">İŞLEMLER</small>
-          <div>
-          {!locked ? <form action={issueContractLink}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`}/><button className="panel-primary">İmzaya Gönder</button></form> : null}
-          {data.workflow_id ? <Link className="panel-secondary" href={`/panel/operations/${data.workflow_id}`}>İş Akışını Aç</Link> : null}
-          {!locked ? (
-            <PanelDrawer triggerLabel="Düzenle" title={data.contract_no} description="Sözleşme bilgilerini kontrol edin.">
-            <form className="panel-form" action={updateContract}>
-              <input type="hidden" name="contract_id" value={data.id} />
-              <input
-                type="hidden"
-                name="opportunity_id"
-                value={customer?.id ?? ""}
-              />
-              <input
-                type="hidden"
-                name="current_details"
-                value={JSON.stringify(customer?.request_details ?? {})}
-              />
-              <p className="wide panel-form-note">
-                Müşteri / Talep Bilgileri
-              </p>
-              <label>
-                Müşteri adı
-                <input
-                  name="customer_name"
-                  defaultValue={customer?.customer_name ?? ""}
-                />
-              </label>
-              <label>
-                Telefon
-                <input
-                  name="contact_phone"
-                  defaultValue={customer?.contact_phone ?? ""}
-                />
-              </label>
-              <label>
-                E-posta
-                <input
-                  name="contact_email"
-                  defaultValue={customer?.contact_email ?? ""}
-                />
-              </label>
-              <label>
-                Hizmet türü
-                <input
-                  name="service_type"
-                  defaultValue={String(
-                    customer?.request_details?.service_type ?? "",
+              {!locked && planFeature ? (
+                <PanelDrawer triggerLabel="İş planı" title={data.contract_no} description="Ara teslim takvimini sözleşmeye yazın (madde 4)." triggerClassName="os-menu-item">
+                  <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
+                </PanelDrawer>
+              ) : null}
+              {signed && planFeature ? (
+                <PanelDrawer triggerLabel="Ek protokol" title={`${data.contract_no} · Ek Protokol`} description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." triggerClassName="os-menu-item">
+                  {pendingAddendum ? (
+                    <p className="plan-form-hint">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
+                  ) : (
+                    <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
                   )}
-                />
-              </label>
-              <label>
-                Akademik seviye
-                <input
-                  name="academic_level"
-                  defaultValue={String(
-                    customer?.request_details?.academic_level ?? "",
-                  )}
-                />
-              </label>
-              <label>
-                Üniversite
-                <input
-                  name="university"
-                  defaultValue={String(
-                    customer?.request_details?.university ?? "",
-                  )}
-                />
-              </label>
-              <label>
-                Bölüm
-                <input
-                  name="department"
-                  defaultValue={String(
-                    customer?.request_details?.department ?? "",
-                  )}
-                />
-              </label>
-              <p className="wide panel-form-note">Sözleşme Bilgileri</p>
-              <label>
-                Başlık
-                <input name="title" defaultValue={data.title} required />
-              </label>
-              <label>
-                Tutar
-                <input
-                  name="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  defaultValue={(data.amount / 100).toFixed(2)}
-                  required
-                />
-              </label>
-              <label className="wide">
-                Kapsam
-                <textarea
-                  name="scope"
-                  defaultValue={data.scope ?? ""}
-                  required
-                />
-              </label>
-              <label>
-                Ödeme planı
-                <input
-                  name="payment_plan"
-                  defaultValue={data.payment_plan ?? ""}
-                />
-              </label>
-              <label>
-                Başlangıç
-                <input
-                  name="start_date"
-                  type="date"
-                  defaultValue={data.start_date ?? ""}
-                />
-              </label>
-              <label>
-                Teslim
-                <input
-                  name="due_date"
-                  type="date"
-                  defaultValue={data.due_date ?? ""}
-                />
-              </label>
-              <label className="wide">
-                Adres{" "}
-                <small
-                  style={{ fontWeight: 400, color: "var(--muted)" }}
+                </PanelDrawer>
+              ) : null}
+              <Link className="os-menu-item" href={`/panel/crm/requests/${data.opportunity_id}`}>Talebe git</Link>
+              {!locked || canDelete ? (
+                <PanelDrawer
+                  triggerLabel={locked ? "Sözleşmeyi sil" : "Sözleşmeyi kapat"}
+                  title={locked ? "Sözleşmeyi sil" : "Sözleşmeyi kapat"}
+                  description={locked ? "Silme geri alınamaz." : "Sözleşmenin neden kapatıldığını seçin. Bu bilgi raporlarda kullanılıyor."}
+                  triggerClassName="os-menu-item is-danger"
                 >
-                  (kurumsal müşteri için)
-                </small>
-                <input
-                  name="customer_address"
-                  defaultValue={data.customer_address ?? ""}
-                  placeholder="Fatura/sözleşme adresi"
-                />
-              </label>
-              <label>
-                Vergi numarası
-                <input
-                  name="customer_tax_number"
-                  defaultValue={data.customer_tax_number ?? ""}
-                  placeholder="VKN / TCKN"
-                />
-              </label>
-              <label>
-                Vergi dairesi
-                <input
-                  name="customer_tax_office"
-                  defaultValue={data.customer_tax_office ?? ""}
-                />
-              </label>
-              {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
-                  müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
-              {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
-              <div className="wide panel-form-actions">
-                <button className="panel-primary">Kaydet</button>
-              </div>
-            </form>
-            </PanelDrawer>
-          ) : null}
-            <PanelDrawer
-                                      triggerLabel="Takip Kodu"
-                                      title={data.contract_no}
-                                      description="Müşteri bu kodla kendi iş durumunu görebilir."
-                                    >
-                                      {(() => {
-                                        const trackingUrl = `https://${publicHost}/takip`;
-                                        const waText = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
-                                        return (
-                                          <div className="crm-request-preview">
-                                            <p>
-                                              <b>Takip Kodu</b>
-                                            </p>
-                                            <p
-                                              style={{
-                                                fontSize: 20,
-                                                fontWeight: 800,
-                                                letterSpacing: 3,
-                                              }}
-                                            >
-                                              {data.tracking_code}
-                                            </p>
-                                            <p style={{ wordBreak: "break-all" }}>
-                                              {trackingUrl}
-                                            </p>
-                                            {trackingToggleable ? (
-                                              <div className="tracking-toggle">
-                                                <p>
-                                                  <b>İmza öncesi takip: {trackingOpen ? "Açık" : "Kapalı"}</b>
-                                                  <br />
-                                                  {trackingOpen
-                                                    ? "Müşteri sözleşmeyi imzalamadan takip ekranına girebilir; teklifi onaylayabilir, soru sorabilir ve sözleşmeyi oradan imzalamaya gidebilir."
-                                                    : "Müşteri takip ekranına sözleşmeyi imzaladıktan sonra girebilir. Bu müşteriye imzadan önce açmak için takibi açın."}
-                                                </p>
-                                                <form action={setTrackingBeforeSignature}>
-                                                  <input type="hidden" name="contract_id" value={data.id} />
-                                                  <input type="hidden" name="open" value={trackingOpen ? "0" : "1"} />
-                                                  <button className={trackingOpen ? "panel-secondary" : "panel-primary"} type="submit">{trackingOpen ? "Takibi kapat" : "Takibi aç"}</button>
-                                                </form>
-                                              </div>
-                                            ) : null}
-                                            {trackingOpen || !trackingToggleable ? (
-                                            <div className="panel-page-actions">
-                                              {/* Numara bağlamamış kurumda eski usul sürüyor. */}
-                                              {gonderimYolu === "panel" ? (
-                                                <BelgeMetniDugmesi
-                                                  kind="contract"
-                                                  token={data.share_token}
-                                                  metin={waText}
-                                                  className="panel-primary"
-                                                  etiket="WhatsApp ile gönder"
-                                                  onayMetni={`Takip kodu ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
-                                                />
-                                              ) : (
-                                                <a
-                                                  className="panel-primary"
-                                                  target="_blank"
-                                                  rel="noreferrer"
-                                                  href={waMeAdresi(customer?.contact_phone, waText)}
-                                                >
-                                                  WhatsApp ile gönder
-                                                </a>
-                                              )}
-                                              <a
-                                                className="panel-secondary"
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                href={`${trackingUrl}?code=${encodeURIComponent(data.tracking_code)}`}
-                                              >
-                                                Önizle
-                                              </a>
-                                            </div>
-                                            ) : null}
-                                          </div>
-                                        );
-                                      })()}
-                                    </PanelDrawer>
-          {/* İmzalı sözleşme veritabanında donmuş; değişiklik Ek Protokol ile */}
-          {!locked ? (
-            <PanelDrawer
-              triggerLabel="Ödeme Planı"
-              title={data.contract_no}
-              description="Müşteri talebiyle ödeme planını ve vade tarihlerini revize edin."
-            >
-              <ContractPaymentPlanForm
-                contractId={data.id}
-                amountCents={data.amount}
-                currentPlanType={data.payment_plan_type}
-                currentSchedule={data.payment_schedule ?? proposalJoin?.payment_schedule ?? []}
-              />
-            </PanelDrawer>
-          ) : null}
-          {!locked && planFeature ? (
-            <PanelDrawer triggerLabel="İş Planı" title={data.contract_no} description="Ara teslim takvimini sözleşmeye yazın (madde 4).">
-              <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
-            </PanelDrawer>
-          ) : null}
-          {signed && planFeature ? (
-            <PanelDrawer triggerLabel="Ek Protokol" title={`${data.contract_no} · Ek Protokol`} description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun.">
-              {pendingAddendum ? (
-                <p className="plan-form-hint">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
-              ) : (
-                <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
-              )}
-            </PanelDrawer>
-          ) : null}
-          {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="rejected"/><button className="panel-secondary">Reddedildi</button></form> : null}
-          {!locked ? <form action={markContractStatus}><input type="hidden" name="contract_id" value={data.id}/><input type="hidden" name="status" value="cancelled"/><button className="panel-secondary">İptal</button></form> : null}
-          {canDelete ? <form action={deleteContract}><input type="hidden" name="contract_id" value={data.id}/><ConfirmDeleteButton label="Sil" confirmMessage={`${data.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz?`}/></form> : null}
+                  {!locked ? (
+                    <form className="panel-form" action={markContractStatus}>
+                      <input type="hidden" name="contract_id" value={data.id} />
+                      <label className="wide">
+                        Kapanış sebebi
+                        <select name="status" defaultValue="rejected" required>
+                          <option value="rejected">Müşteri reddetti</option>
+                          <option value="cancelled">İptal edildi</option>
+                        </select>
+                      </label>
+                      <div className="wide panel-form-actions">
+                        <button className="panel-primary">Sözleşmeyi kapat</button>
+                      </div>
+                    </form>
+                  ) : null}
+                  {canDelete ? (
+                    <div className="panel-danger-zone">
+                      <small className="panel-kicker">KALICI İŞLEM</small>
+                      <p>Silme geri alınamaz ve sözleşme raporlardan da düşer. Kaydı yalnızca yanlışlıkla oluşturulduysa silin.</p>
+                      <form action={deleteContract}>
+                        <input type="hidden" name="contract_id" value={data.id} />
+                        <ConfirmDeleteButton label="Sil" confirmMessage={`${data.contract_no} sözleşmesini kalıcı olarak silmek istediğinize emin misiniz?`} />
+                      </form>
+                    </div>
+                  ) : null}
+                </PanelDrawer>
+              ) : null}
+            </div>
+          </details>
+        </div>
+      </header>
+
+      {/* Aşama çizgisi; reddedilen ve iptal edilende çizgi yerine sebep. */}
+      {kapanis ? (
+        <p className="talep-arsiv">
+          <span className="status-pill" data-tone={statusTone(data.status)}>{labels[data.status] ?? data.status}</span>
+          <span>{kapanis}</span>
+        </p>
+      ) : (
+        <ol className="talep-asama" aria-label={`Durum: ${labels[data.status] ?? data.status}`}>
+          {SOZLESME_ADIMLARI.map((ad, sira) => (
+            <li key={ad} className={adim === null ? undefined : sira < adim ? "is-done" : sira === adim ? "is-current" : undefined} aria-current={sira === adim ? "step" : undefined}>
+              <i aria-hidden="true" />
+              <span>{ad}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <div className="talep-izgara">
+        {/* Müşteri, imza bağlantısı ve takip kodu */}
+        <section className="panel-card talep-musteri" aria-label="Müşteri">
+          <div className="talep-musteri-kimlik">
+            <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
+            <div>
+              <h2>{musteri}</h2>
+              <small>Müşteri</small>
+            </div>
           </div>
-        </div>
-      </section>
-      <section className="panel-card crm-request-detail-card" aria-labelledby="contract-plan-title">
-        <div className="crm-request-detail-heading">
-          <div><small className="panel-kicker">ARA TESLİMLER VE VADELER</small><h2 id="contract-plan-title">İş planı ve ödeme takvimi</h2></div>
-          {pendingAddendum ? <span className="status-pill" data-tone={statusTone("pending")}>Ek protokol onay bekliyor</span> : null}
-        </div>
-        {!planFeature ? (
-          <p className="plan-form-hint">İş planı ve ek protokol için veritabanı güncellemesi (20260914090000_contract_work_plan_addenda) henüz uygulanmadı.</p>
-        ) : (
-          <>
-            {currentPlan.length ? (
+          <div className="talep-iletisim">
+            {customer?.contact_phone ? <a className="panel-secondary" href={`tel:${customer.contact_phone}`}>Ara</a> : null}
+            {customer?.contact_email ? <a className="panel-secondary" href={`mailto:${customer.contact_email}`}>E-posta</a> : null}
+          </div>
+          <dl className="talep-liste">
+            <div><dt>Telefon</dt><dd>{formatPhone(customer?.contact_phone) || <em>Yok</em>}</dd></div>
+            <div><dt>E-posta</dt><dd>{customer?.contact_email || <em>Yok</em>}</dd></div>
+            <div><dt>Temsilci</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
+            {data.customer_tax_number ? <div><dt>Vergi no</dt><dd>{data.customer_tax_number}{data.customer_tax_office ? ` · ${data.customer_tax_office}` : ""}</dd></div> : null}
+            {data.customer_address ? <div><dt>Adres</dt><dd>{data.customer_address}</dd></div> : null}
+          </dl>
+
+          {/* İMZA BAĞLANTISI. Eskiden sayfanın en üstünde ayrı bir kart ve
+              tam adresle duruyordu; teklif detayında olduğu gibi müşteri
+              kartının içinde. */}
+          <div className="talep-gecmis">
+            <h3>İmza bağlantısı</h3>
+            {shareUrl ? (
+              <>
+                <p className="teklif-baglanti" title={shareUrl}>{shareUrl.replace(/^https:\/\//, "")}</p>
+                <div className="talep-iletisim">
+                  {customer?.contact_email && messages ? (
+                    <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
+                      E-posta ile gönder
+                    </ShareSendLink>
+                  ) : null}
+                  {gonderimYolu === "panel" ? (
+                    <WhatsappGonderDugmesi kind="contract" token={data.share_token} musteriAdi={musteri} />
+                  ) : messages ? (
+                    <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" newTab href={waMeAdresi(customer?.contact_phone, messages.whatsapp)}>
+                      WhatsApp ile gönder
+                    </ShareSendLink>
+                  ) : null}
+                  <a className="panel-secondary" target="_blank" rel="noreferrer" href={shareUrl}>Önizle</a>
+                </div>
+              </>
+            ) : locked ? (
+              <p className="talep-bos">Bu sözleşme için bağlantı oluşturulmamış.</p>
+            ) : (
+              <p className="talep-bos">Henüz oluşturulmadı. “İmzaya gönder” bağlantıyı oluşturur; sonra e-posta ya da WhatsApp ile gönderilir.</p>
+            )}
+          </div>
+
+          {/* TAKİP KODU. Müşteri bu kodla takip ekranında iş durumunu görür
+              ve mesaj yazar. Eskiden işlem düğmelerinin arasında duruyordu. */}
+          {data.tracking_code ? (
+            <div className="talep-gecmis">
+              <h3>Takip ekranı</h3>
+              <p className="sozlesme-takip-kod">{data.tracking_code}</p>
+              <p className="talep-gecmis-ozet">{trackingOpen ? "Müşteri takip ekranına girebilir." : "İmzadan sonra açılır."}</p>
+              <div className="talep-iletisim">
+                <PanelDrawer triggerLabel="Takip kodunu gönder" title={data.contract_no} description="Müşteri bu kodla kendi iş durumunu görebilir." triggerClassName="panel-secondary">
+                  <div className="crm-request-preview">
+                    <p><b>Takip Kodu</b></p>
+                    <p style={{ fontSize: 20, fontWeight: 800, letterSpacing: 3 }}>{data.tracking_code}</p>
+                    <p style={{ wordBreak: "break-all" }}>{trackingUrl}</p>
+                    {trackingToggleable ? (
+                      <div className="tracking-toggle">
+                        <p>
+                          <b>İmza öncesi takip: {trackingOpen ? "Açık" : "Kapalı"}</b>
+                          <br />
+                          {trackingOpen
+                            ? "Müşteri sözleşmeyi imzalamadan takip ekranına girebilir; teklifi onaylayabilir, soru sorabilir ve sözleşmeyi oradan imzalamaya gidebilir."
+                            : "Müşteri takip ekranına sözleşmeyi imzaladıktan sonra girebilir. Bu müşteriye imzadan önce açmak için takibi açın."}
+                        </p>
+                        <form action={setTrackingBeforeSignature}>
+                          <input type="hidden" name="contract_id" value={data.id} />
+                          <input type="hidden" name="open" value={trackingOpen ? "0" : "1"} />
+                          <button className={trackingOpen ? "panel-secondary" : "panel-primary"} type="submit">{trackingOpen ? "Takibi kapat" : "Takibi aç"}</button>
+                        </form>
+                      </div>
+                    ) : null}
+                    {trackingOpen || !trackingToggleable ? (
+                      <div className="panel-page-actions">
+                        {/* Numara bağlamamış kurumda eski usul sürüyor. */}
+                        {gonderimYolu === "panel" ? (
+                          <BelgeMetniDugmesi
+                            kind="contract"
+                            token={data.share_token}
+                            metin={takipMetni}
+                            className="panel-primary"
+                            etiket="WhatsApp ile gönder"
+                            onayMetni={`Takip kodu ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
+                          />
+                        ) : (
+                          <a className="panel-primary" target="_blank" rel="noreferrer" href={waMeAdresi(customer?.contact_phone, takipMetni)}>WhatsApp ile gönder</a>
+                        )}
+                        <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${trackingUrl}?code=${encodeURIComponent(data.tracking_code)}`}>Önizle</a>
+                      </div>
+                    ) : null}
+                  </div>
+                </PanelDrawer>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        {/* Sözleşme */}
+        <section className="panel-card talep-bilgi" aria-label="Sözleşme bilgileri">
+          <div className="teklif-tutar">
+            <div>
+              <h2>Sözleşme tutarı</h2>
+              <strong>{money(Number(data.amount), data.currency || "TRY")}</strong>
+            </div>
+            {pendingAddendum ? <span className="status-pill" data-tone={statusTone("pending")}>Ek protokol onay bekliyor</span> : null}
+          </div>
+          {signed ? (
+            <p className="teklif-kilit">İmzalı sözleşme değiştirilemez. İş planı ve vade değişikliği “⋯ → Ek protokol” ile müşterinin onayına sunulur.</p>
+          ) : null}
+          <dl className="talep-liste talep-liste--iki">
+            {bilgiler.map(([ad, deger]) => (
+              <div key={ad}><dt>{ad}</dt><dd>{deger}</dd></div>
+            ))}
+          </dl>
+          <div className="talep-not">
+            <h3>Kapsam</h3>
+            {data.scope ? <p>{data.scope}</p> : <p className="talep-bos">Kapsam yazılmamış.</p>}
+          </div>
+
+          <div className="talep-not">
+            <h3>İş planı</h3>
+            {!planFeature ? (
+              <p className="plan-form-hint">İş planı ve ek protokol için veritabanı güncellemesi (20260914090000_contract_work_plan_addenda) henüz uygulanmadı.</p>
+            ) : currentPlan.length ? (
               <ol className="plan-timeline">
                 {currentPlan.map((item) => <li key={item.sequence}><time dateTime={item.due_date}>{date(item.due_date)}</time><span>{item.title}</span></li>)}
               </ol>
             ) : (
-              <p className="plan-form-hint">
+              <p className="talep-bos">
                 {signed
-                  ? "Bu sözleşmede ara teslim takvimi yok. Müşteriyle netleştirdiğiniz takvimi “Ek Protokol” ile onaya sunun."
-                  : "Henüz ara teslim takvimi yok. “İş Planı” ile ekleyin; takvim sözleşmenin 4. maddesinde gösterilir."}
+                  ? "Bu sözleşmede ara teslim takvimi yok. Müşteriyle netleştirdiğiniz takvimi “Ek protokol” ile onaya sunun."
+                  : "Henüz ara teslim takvimi yok. “⋯ → İş planı” ile ekleyin; takvim sözleşmenin 4. maddesinde gösterilir."}
               </p>
             )}
             {acceptedPlan ? <p className="plan-form-hint">Geçerli takvim Ek Protokol {acceptedPlan.addendum_no} ile belirlendi ({dateTime(acceptedPlan.responded_at)} tarihinde müşteri onayladı).</p> : null}
-          </>
-        )}
-        {paymentRows.length ? (
-          <div className="crm-request-detail-note">
-            <small>ÖDEME TAKVİMİ</small>
-            <ol className="plan-timeline">
-              {paymentRows.map((row) => (
-                <li key={row.sequence}>
-                  <time>{row.when}</time>
-                  <span>{row.label} · {money(row.amount, data.currency)}{row.status ? ` · ${row.status}` : ""}{row.missing ? " · ödeme planından vade tarihi girin" : ""}</span>
-                </li>
-              ))}
-            </ol>
           </div>
-        ) : null}
-        {planFeature && addenda.length ? (
-          <ul className="plan-addenda">
-            {addenda.map((addendum) => {
-              const reminder = shareUrl
-                ? `Merhaba ${formatPersonName(customer?.customer_name)},\n\n${data.contract_no} numaralı sözleşmenize ait Ek Protokol ${addendum.addendum_no} (iş planı ve ödeme takvimi) onayınıza sunulmuştur. Aşağıdaki bağlantıdan inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz:\n\n${shareUrl}#ek-protokoller\n\n${brandName}`
-                : "";
-              return (
-                <li key={addendum.id}>
-                  <div className="plan-addenda-head">
-                    <strong>Ek Protokol {addendum.addendum_no}</strong>
-                    <span className="status-pill" data-tone={statusTone(ADDENDUM_TONES[addendum.status])}>{ADDENDUM_STATUS_LABELS[addendum.status]}</span>
-                  </div>
-                  <small>{dateTime(addendum.created_at)} · {addendum.work_plan.length} ara teslim · {addendum.payment_dates.length} vade değişikliği</small>
-                  {addendum.status === "accepted" ? <p>{addendum.responder_name} · {dateTime(addendum.responded_at)} · IP {addendum.responder_ip || "—"}</p> : null}
-                  {addendum.status === "rejected" ? <p>Müşterinin talebi: “{addendum.response_note || "—"}” · {dateTime(addendum.responded_at)}. Takvimi güncelleyip yeni bir ek protokol gönderin.</p> : null}
-                  {addendum.status === "sent" ? (
-                    <div className="panel-page-actions">
-                      {reminder && customer?.contact_email ? (
-                        <a className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${data.contract_no} · Ek Protokol ${addendum.addendum_no} onayınıza sunuldu`)}&body=${encodeURIComponent(reminder)}`}>✉ E-posta ile gönder</a>
+
+          {paymentRows.length ? (
+            <div className="talep-not">
+              <h3>Ödeme takvimi</h3>
+              <ol className="plan-timeline">
+                {paymentRows.map((row) => (
+                  <li key={row.sequence}>
+                    <time>{row.when}</time>
+                    <span>{row.label} · {money(row.amount, data.currency)}{row.status ? ` · ${row.status}` : ""}{row.missing ? " · ödeme planından vade tarihi girin" : ""}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+
+          {planFeature && addenda.length ? (
+            <div className="talep-not">
+              <h3>Ek protokoller</h3>
+              <ul className="plan-addenda">
+                {addenda.map((addendum) => {
+                  const reminder = shareUrl
+                    ? `Merhaba ${formatPersonName(customer?.customer_name)},\n\n${data.contract_no} numaralı sözleşmenize ait Ek Protokol ${addendum.addendum_no} (iş planı ve ödeme takvimi) onayınıza sunulmuştur. Aşağıdaki bağlantıdan inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz:\n\n${shareUrl}#ek-protokoller\n\n${brandName}`
+                    : "";
+                  return (
+                    <li key={addendum.id}>
+                      <div className="plan-addenda-head">
+                        <strong>Ek Protokol {addendum.addendum_no}</strong>
+                        <span className="status-pill" data-tone={statusTone(ADDENDUM_TONES[addendum.status])}>{ADDENDUM_STATUS_LABELS[addendum.status]}</span>
+                      </div>
+                      <small>{dateTime(addendum.created_at)} · {addendum.work_plan.length} ara teslim · {addendum.payment_dates.length} vade değişikliği</small>
+                      {addendum.status === "accepted" ? <p>{addendum.responder_name} · {dateTime(addendum.responded_at)} · IP {addendum.responder_ip || "—"}</p> : null}
+                      {addendum.status === "rejected" ? <p>Müşterinin talebi: “{addendum.response_note || "—"}” · {dateTime(addendum.responded_at)}. Takvimi güncelleyip yeni bir ek protokol gönderin.</p> : null}
+                      {addendum.status === "sent" ? (
+                        <div className="panel-page-actions">
+                          {reminder && customer?.contact_email ? (
+                            <a className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(`${data.contract_no} · Ek Protokol ${addendum.addendum_no} onayınıza sunuldu`)}&body=${encodeURIComponent(reminder)}`}>E-posta ile gönder</a>
+                          ) : null}
+                          {reminder ? (
+                            gonderimYolu === "panel" ? (
+                              <BelgeMetniDugmesi
+                                kind="contract"
+                                token={data.share_token}
+                                metin={reminder}
+                                onayMetni={`Ek Protokol ${addendum.addendum_no} hatırlatması ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
+                              />
+                            ) : (
+                              <a className="panel-secondary" target="_blank" rel="noreferrer" href={waMeAdresi(customer?.contact_phone, reminder)}>WhatsApp ile gönder</a>
+                            )
+                          ) : null}
+                          <form action={cancelContractAddendum}><input type="hidden" name="addendum_id" value={addendum.id} /><button className="panel-secondary">Geri çek</button></form>
+                        </div>
                       ) : null}
-                      {reminder ? (
-                        gonderimYolu === "panel" ? (
-                          <BelgeMetniDugmesi
-                            kind="contract"
-                            token={data.share_token}
-                            metin={reminder}
-                            onayMetni={`Ek Protokol ${addendum.addendum_no} hatırlatması ${formatPersonName(customer?.customer_name) || "müşteriye"} WhatsApp'tan gönderilsin mi?`}
-                          />
-                        ) : (
-                          <a className="panel-secondary" target="_blank" rel="noreferrer" href={waMeAdresi(customer?.contact_phone, reminder)}>💬 WhatsApp ile gönder</a>
-                        )
-                      ) : null}
-                      <form action={cancelContractAddendum}><input type="hidden" name="addendum_id" value={addendum.id} /><button className="panel-secondary">Geri çek</button></form>
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-      </section>
-      <section className="panel-card crm-request-detail-card" id="musteri-mesajlari" aria-labelledby="contract-messages-title">
-        <div className="crm-request-detail-heading">
-          <div><small className="panel-kicker">TAKİP EKRANI</small><h2 id="contract-messages-title">Müşteri mesajları</h2></div>
-          {unreadMessages ? <span className="status-pill" data-tone="danger">{unreadMessages} yeni</span> : <span className="status-pill">{customerMessages.length} mesaj</span>}
-        </div>
-        {customerMessages.length ? (
-          <div className="contract-chat">
-            {customerMessages.map((message) => {
-              const fromCustomer = message.sender_type === "customer";
-              return (
-                <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
-                  <header>
-                    <b>{fromCustomer ? formatPersonName(customer?.customer_name) || "Müşteri" : formatPersonName(message.sender_name)}</b>
-                    <time>{dateTime(message.created_at)}</time>
-                    {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
-                  </header>
-                  <p>{message.body}</p>
-                </article>
-              );
-            })}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+
+        {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, kayıt geçmişi */}
+        <TalepAkis sekmeler={[unreadMessages ? `Mesajlar · ${unreadMessages}` : "Mesajlar", "Yorumlar", "Geçmiş"]}>
+          <div className="sozlesme-mesaj" id="musteri-mesajlari">
+            {customerMessages.length ? (
+              <div className="contract-chat">
+                {customerMessages.map((message) => {
+                  const fromCustomer = message.sender_type === "customer";
+                  return (
+                    <article key={message.id} className={`contract-bubble ${fromCustomer ? "is-customer" : "is-staff"}`}>
+                      <header>
+                        <b>{fromCustomer ? musteri : formatPersonName(message.sender_name)}</b>
+                        <time>{dateTime(message.created_at)}</time>
+                        {fromCustomer && !message.read_at ? <em>Yeni</em> : null}
+                      </header>
+                      <p>{message.body}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="ic-akis-bos">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri takip ekranından soru sorabilir.</p>
+            )}
+            {messagingOpen ? (
+              <form className="contract-reply" action={replyContractMessage}>
+                <input type="hidden" name="contract_id" value={data.id} />
+                <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
+                <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Gönder</button></div>
+              </form>
+            ) : null}
           </div>
-        ) : (
-          <p className="plan-form-hint">Müşteri henüz mesaj yazmadı. Takip kodunu paylaştığınızda müşteri, sözleşmeyi imzalamadan önce de takip ekranından soru sorabilir.</p>
-        )}
-        {messagingOpen ? (
-          <form className="contract-reply" action={replyContractMessage}>
-            <input type="hidden" name="contract_id" value={data.id} />
-            <textarea name="body" required minLength={2} maxLength={2000} placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt" />
-            <div><small>Yanıt müşterinin takip ekranında görünür.{data.workflow_id ? " İş başladığı için mesajlar iş detayında da görünür." : ""}</small><button className="panel-primary" type="submit">Yanıtı gönder</button></div>
-          </form>
-        ) : null}
-      </section>
+          <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
           <RecordHistory opportunityId={data.opportunity_id} />
-        </div>
-        <aside className="crm-detail-side">
-  <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} />
-        </aside>
+        </TalepAkis>
       </div>
-    </div>
+    </main>
   );
 }
