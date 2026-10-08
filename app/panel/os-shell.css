@@ -223,3 +223,20 @@ html[data-theme="dark"] .os-brand>img{padding:3px 8px;border-radius:var(--r-sm);
 .os-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:44px;line-height:1.2;font-family:inherit}
 .os-clock-date{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap}
 .os-clock time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);color:var(--ink);font-weight:var(--fw-medium)}
+
+/* Hesap menüsünde çalışma alanları listesi */
+.os-user-label{display:block;padding:0 var(--sp-1) var(--sp-1);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted)}
+.os-ws-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto}
+.os-ws-item{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none}
+a.os-ws-item:hover{background:var(--surface-2)}
+a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.os-ws-item.is-active{background:var(--primary-soft)}
+.os-ws-mark{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-bold)}
+.os-ws-item.is-active .os-ws-mark{background:var(--primary);color:var(--primary-on)}
+.os-ws-text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:var(--lh-tight)}
+.os-ws-text b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-ws-text small{font-size:var(--fs-micro);color:var(--muted);text-transform:capitalize}
+.os-ws-check{flex:none;color:var(--primary);font-weight:var(--fw-bold)}
+/* Saatin iki satırlı stili yukarıdaki dar ekran kuralından sonra geldiği
+   için onu eziyordu; telefonda saat ve tarih yine gizli (yer yok). */
+@media (max-width:900px){.os-clock{display:none}}

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { PanelWorkspace } from "@/lib/panel-context";
-import { WorkspaceSwitcher } from "../workspace-switcher";
 import { basHarfler } from "./os-apps";
 import { OsSimge } from "./os-icons";
 
@@ -41,8 +40,38 @@ export function OsKullaniciMenusu({
           </div>
         </div>
         {workspaces.length > 1 ? (
+          /*
+            ÇALIŞMA ALANLARI: liste. Eskiden kenar menüsünün koyu zemini için
+            yazılmış açılır seçici (beyaz yazı) buraya konmuştu; beyaz menüde
+            görünmüyor, telefonda da tamamen gizleniyordu.
+
+            Bilerek düz <a>, Link DEĞİL: Link bağlantıyı önceden yükler ve
+            /panel/switch GET isteği çalışma alanını çerezle değiştirir — menü
+            açılınca kişi fark etmeden başka kuruma geçerdi. Üyelik kontrolü
+            yolun kendisinde (app/panel/switch/route.ts).
+          */
           <div className="os-user-section">
-            <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={aktifKurumId} variant="card" />
+            <small className="os-user-label">Çalışma alanı</small>
+            <ul className="os-ws-list">
+              {workspaces.map((alan) => {
+                const ad = alan.organization.display_name || alan.organization.name;
+                const aktif = alan.organizationId === aktifKurumId;
+                const icerik = (
+                  <>
+                    <span className="os-ws-mark" aria-hidden="true">{ad.slice(0, 1).toLocaleUpperCase("tr")}</span>
+                    <span className="os-ws-text"><b>{ad}</b><small>{alan.organization.plan_code} paket</small></span>
+                    {aktif ? <span className="os-ws-check" aria-hidden="true">✓</span> : null}
+                  </>
+                );
+                return (
+                  <li key={alan.organizationId}>
+                    {aktif
+                      ? <span className="os-ws-item is-active" aria-current="true">{icerik}</span>
+                      : <a className="os-ws-item" href={`/panel/switch?organization_id=${encodeURIComponent(alan.organizationId)}`}>{icerik}</a>}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ) : null}
         <nav className="os-user-links" aria-label="Hesap">
@@ -52,7 +81,8 @@ export function OsKullaniciMenusu({
         <form action={cikis} className="os-user-logout">
           <button type="submit"><OsSimge ad="logout" boyut={16} />Çıkış yap</button>
         </form>
-        <p className="os-user-foot">{paket.toUpperCase()} paket</p>
+        {/* Birden çok çalışma alanında paket listede yazıyor; tekrar etme. */}
+        {workspaces.length > 1 ? null : <p className="os-user-foot">{paket.toUpperCase()} paket</p>}
       </div>
     </details>
   );
