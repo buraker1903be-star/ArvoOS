@@ -435,3 +435,15 @@
    kelime sınırında kırılamadıkları için sütun 310px'e çıkıyordu. Yalnızca bu
    hücrede her yerden kırılır; en az 180px olduğu için aşırı daralmaz. */
 .os-root .talep-tablo .crm-data-table td[data-label="İş"] :is(.crm-table-title,.crm-table-sub){overflow-wrap:anywhere}
+/* İlerleme hücresi: çubuğun düzeni (flex satır) eski .crm-page-stack
+   kuralındaydı; yeni tabloda çubuk satır içi bir span olarak kalıyor ve
+   yeşil bir lekeye dönüşüyordu. Sabit genişlikte ince çubuk, yanında yüzde. */
+.os-root .talep-tablo .crm-data-table td.crm-col-progress{white-space:nowrap;min-width:104px}
+.os-root .talep-tablo .ops-progress-mini{display:inline-block;vertical-align:middle;flex:none;width:56px;min-width:0;height:6px;border-radius:999px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);overflow:hidden}
+.os-root .talep-tablo .ops-progress-mini i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:var(--success)}
+.os-root .talep-tablo .crm-data-table td.crm-col-progress b{display:inline-block;vertical-align:middle;min-width:0;margin-left:var(--sp-2);color:var(--ink-soft);font-size:var(--fs-micro);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+
+/* Yapışkan başlık kartın iç boşluğunun üstüne yapışıyordu; kayarken
+   satırlar başlığın üstündeki 20px'lik boşlukta görünüyordu. */
+.os-root .talep-tablo .crm-data-table thead th{top:calc(var(--sp-5) * -1)}
+.os-root .talep-izgara>.talep-bilgi:has(.talep-tablo){scroll-padding-top:var(--sp-5)}
