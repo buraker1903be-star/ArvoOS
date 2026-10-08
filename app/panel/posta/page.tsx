@@ -4,7 +4,7 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
-import { taslakSil } from "./actions";
+import { postaImzasi, taslakSil } from "./actions";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 
@@ -276,16 +276,17 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
-      <IstatistikKarti hesap={hesap} sayi={sayi} />
+      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet")} />
     </div>
   </main>;
 }
 
 /* Kutunun durumu listenin yanında: eşitleme durduğunda liste eskiyor ve
    bunu ancak Ayarlar'a giden fark ediyordu. */
-function IstatistikKarti({ hesap, sayi }: {
+function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir }: {
   hesap: Awaited<ReturnType<typeof postaDurumu>>;
-  sayi: { tumu: number; okunmamis: number; acik: number; yanitlandi: number };
+  sayi: { tumu: number; okunmamis: number; acik: number; yanitlandi: number; taslak: number };
+  imzaDuzenlenebilir: boolean;
 }) {
   return (
     <section className="panel-card talep-musteri talep-istatistik" aria-label="Kutu durumu">
@@ -302,6 +303,27 @@ function IstatistikKarti({ hesap, sayi }: {
         <div><dt>Geçmiş</dt><dd>{hesap.gecmisBitti ? "tamamlandı" : `iniyor (${hesap.gecmisMesajSayisi})`}</dd></div>
       </dl>
       {hesap.sonHata ? <p className="posta-uyari">Son eşitleme hatası: {hesap.sonHata}</p> : null}
+
+      {/*
+        İmza burada, Ayarlar'da değil: orası bağlantı ayarı (Google
+        anahtarları, yetkilendirme), imza ise posta yazarken düşünülen bir
+        şey. İlk sürümde Ayarlar'a konmuştu ve kullanıcı bulamadı.
+      */}
+      {imzaDuzenlenebilir ? (
+        <form className="panel-form posta-imza" action={postaImzasi}>
+          <label className="wide">
+            Kurum imzası
+            <textarea name="imza" rows={4} maxLength={2000} defaultValue={hesap.imza ?? ""} placeholder={"Akademik Merkez\nuzman@akademikmerkez.com"} />
+          </label>
+          <p className="wide posta-not">
+            Giden her mesajın sonuna eklenir; personelin ayrıca yazmasına gerek kalmaz. Yazdığınız kutuda görünmez.
+            Boş bırakıp kaydetmek imzayı kaldırır.
+          </p>
+          <div className="wide panel-form-actions"><button className="panel-secondary" type="submit">İmzayı kaydet</button></div>
+        </form>
+      ) : hesap.imza ? (
+        <p className="posta-not">Giden mesajlara kurum imzası ekleniyor.</p>
+      ) : null}
     </section>
   );
 }

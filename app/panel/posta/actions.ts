@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
-import { postaDurumu } from "@/lib/posta-hesabi";
+import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
 import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
@@ -487,4 +487,27 @@ async function taslakSil__impl(formData: FormData) {
 export async function taslakSil(formData: FormData) {
   await runPanelAction(() => taslakSil__impl(formData), "Taslak silindi");
   redirect("/panel/posta?kutu=taslak");
+}
+
+/*
+  KURUM İMZASI.
+
+  İmza önce Ayarlar → Bağlantılar'daki posta kartındaydı ve kullanıcı onu
+  bulamadı (08.10.2026). Haklı bir kaybolma: orası BAĞLANTI ayarı — Google
+  anahtarları, yetkilendirme. İmza ise postayı yazarken düşünülen bir şey,
+  yeri posta ekranı.
+
+  Yetki posta.yonet: imza kurumun bütün giden postasını etkiliyor, yanıt
+  yazabilen herkesin değiştirebilmesi gereken bir şey değil.
+*/
+async function postaImzasi__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.yonet");
+  await postaImzasiniKaydet(context.membership.organization_id, String(formData.get("imza") ?? ""));
+  revalidatePath("/panel/posta");
+  revalidatePath("/panel/settings");
+}
+
+export async function postaImzasi(...args: Parameters<typeof postaImzasi__impl>) {
+  return runPanelAction(() => postaImzasi__impl(...args), "İmza kaydedildi");
 }

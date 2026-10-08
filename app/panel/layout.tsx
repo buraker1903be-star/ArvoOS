@@ -39,6 +39,7 @@ import "./panel-motion.css";
 import "./os-shell.css";
 import "./panel-ui.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
+import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -251,6 +252,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <OsCanli organizationId={membership.organization_id} benimId={userId} ekip={ekip} baslangic={varlik} />
           <OsSaat />
           <div className="os-bar-actions">
+            {postaGorunur ? <OsPostaDugmesi okunmamis={postaOkunmamis} /> : null}
             {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
             <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
             <ThemeToggle />

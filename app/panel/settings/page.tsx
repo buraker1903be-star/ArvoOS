@@ -9,7 +9,7 @@ import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
-import { removePostaHesabi, savePostaHesabi, savePostaImzasi } from "./posta-actions";
+import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaGeriDonusAdresi } from "./mail/ortak";
 import { arvoWhatsappKontrol } from "./whatsapp/actions";
@@ -240,22 +240,9 @@ export default async function SettingsPage() {
                     (örneğin hem kendi alan adınız hem app.arvo-os.com), <b>her biri için ayrı satır ekleyin</b> — Google yalnızca
                     isteğin geldiği adresle birebir eşleşen kaydı kabul ediyor.
                   </p>
-                  <p className="wide stg-paytr-note">Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
+                  <p className="wide stg-paytr-note">Kurum imzası posta ekranında düzenlenir (Posta → Kutu durumu). Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
                   <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
                 </form>
-                {posta.durum === "bagli" ? (
-                  <form className="panel-form" action={savePostaImzasi}>
-                    <label className="wide">
-                      Kurum imzası
-                      <textarea name="imza" rows={4} maxLength={2000} defaultValue={posta.imza ?? ""} placeholder={"Akademik Merkez\nuzman@akademikmerkez.com\n+90 ..."} />
-                    </label>
-                    <p className="wide stg-paytr-note">
-                      Giden her mesajın sonuna eklenir; personelin ayrıca yazmasına gerek kalmaz. Posta istemcilerinin
-                      imzayı tanıyıp yanıtta alıntıdan düşürmesi için araya standart ayıraç konur. Boş bırakıp kaydetmek imzayı kaldırır.
-                    </p>
-                    <div className="wide panel-form-actions"><button className="panel-secondary" type="submit">İmzayı kaydet</button></div>
-                  </form>
-                ) : null}
                 {posta.kayitliMi ? (
                   <div className="stg-paytr-foot">
                     {/*

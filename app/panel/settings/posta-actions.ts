@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
-import { postaAnahtarlariniKaydet, postaBaglantisiniKaldir, postaImzasiniKaydet } from "@/lib/posta-hesabi";
+import { postaAnahtarlariniKaydet, postaBaglantisiniKaldir } from "@/lib/posta-hesabi";
 import { assertYetki } from "@/lib/yetkiler";
 
 /*
@@ -45,15 +45,4 @@ export async function savePostaHesabi(...args: Parameters<typeof savePostaHesabi
 
 export async function removePostaHesabi(...args: Parameters<typeof removePostaHesabi__impl>) {
   return runPanelAction(() => removePostaHesabi__impl(...args), "Posta bağlantısı kaldırıldı");
-}
-
-async function savePostaImzasi__impl(formData: FormData) {
-  const { membership } = await postaContext();
-  await postaImzasiniKaydet(membership.organization_id, String(formData.get("imza") ?? ""));
-  revalidatePath("/panel/settings");
-  revalidatePath("/panel/posta");
-}
-
-export async function savePostaImzasi(...args: Parameters<typeof savePostaImzasi__impl>) {
-  return runPanelAction(() => savePostaImzasi__impl(...args), "İmza kaydedildi");
 }

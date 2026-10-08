@@ -87,3 +87,7 @@
 
 /* Gönder ve taslak yan yana: taslak ikincil, gönder birincil. */
 .posta-yanit-dugmeler{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+
+/* Yan paneldeki imza formu: kart içinde dar bir alanda duruyor. */
+.os-root .posta-imza{gap:var(--sp-2)}
+.os-root .posta-imza textarea{min-height:88px;resize:vertical}
