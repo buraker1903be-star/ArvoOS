@@ -8,8 +8,7 @@ import { belgeAliciTelefonu } from "../alici-telefonu";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
 import { phoneSearchTerms } from "@/lib/format-phone";
-import { initials } from "@/lib/table-format";
-import { daysSince, fetchLastContacts, relativeTime, waitingLabel } from "../last-contact";
+import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
@@ -18,13 +17,19 @@ import {
   proposalMessages,
 } from "@/lib/customer-message-templates";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
+import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "../table-cells";
+import { OtomatikSecim } from "../otomatik-secim";
+import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
+import { aylik, enCok, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
+import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
 
 /*
   TEKLİFLER LİSTESİ (2026-10): talepler listesiyle aynı kalıp. Üstte
   başlık, altında durum şeridi (her sayı o duruma süzer, aktif tekliflerin
-  toplam değeri dahil); solda teklifler, sağda temsilcilere göre dağılım.
+  toplam değeri dahil); solda teklif tablosu (önceki sürümün sütunları),
+  sağda istatistikler (son 30 gün, kabul oranı, aylık teklif değeri).
 
   Eskiden dört sayaç kutusu, ayrı süzgeç kartı, dokuz sütunlu tablo ve
   sayfanın en altında katlanmış bir arşiv vardı. Üç de hata vardı:
@@ -73,6 +78,7 @@ type Proposal = {
     contact_email: string | null;
     contact_phone: string | null;
     assigned_employee_id: string | null;
+    request_details: Record<string, unknown> | null;
   } | null;
 };
 /** Adresteki durum değeri; eski bağlantılar (?status=sent) çalışmaya devam ediyor. */
@@ -80,8 +86,6 @@ const DURUMLAR = ["", "draft", "sent", "accepted", "rejected", "expired", "arsiv
 const SERIT: TeklifGrubu[] = ["draft", "sent", "accepted", "rejected", "expired"];
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(v / 100);
-const kisaTarih = (value: string | null) =>
-  value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : null;
 const GRUP_TONU: Record<TeklifGrubu, string> = { draft: "neutral", sent: "info", accepted: "success", rejected: "danger", expired: "warning", eski: "neutral", arsiv: "neutral" };
 
 export default async function ProposalsPage({ searchParams }: Props) {
@@ -100,7 +104,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
     supabase
       .from("crm_proposals")
-      .select("id,proposal_no,title,amount,currency,valid_until,status,sent_at,view_count,created_at,revision_no,superseded_by,archived_at,archive_reason,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,assigned_employee_id)")
+      .select("id,proposal_no,title,amount,currency,valid_until,status,sent_at,view_count,created_at,revision_no,superseded_by,archived_at,archive_reason,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,assigned_employee_id,request_details)")
       .eq("organization_id", membership.organization_id)
       .order("created_at", { ascending: false }),
     supabase
@@ -201,14 +205,27 @@ export default async function ProposalsPage({ searchParams }: Props) {
     const s = q.toString();
     return s ? `/panel/crm/proposals?${s}` : "/panel/crm/proposals";
   };
-  // Temsilci dağılımı aktif teklifler üzerinden (arama süzgeci dahil, temsilci süzgeci hariç).
-  const aktifTum = all.filter(({ row, grup }) => aktifMi(grup) && aramaUyar(row));
-  const temsilciler = [...new Set(aktifTum.map(({ row }) => row.crm_opportunities?.assigned_employee_id ?? null))]
-    .map((id) => {
-      const satirlar = aktifTum.filter(({ row }) => (row.crm_opportunities?.assigned_employee_id ?? null) === id);
-      return { id, ad: id ? formatPersonName(representativeMap.get(id) ?? "Pasif personel") : "Atanmamış", sayi: satirlar.length, deger: satirlar.reduce((s, { row }) => s + Number(row.amount), 0) };
-    })
-    .sort((a, b) => (a.id ? 0 : 1) - (b.id ? 0 : 1) || b.sayi - a.sayi);
+  /*
+    İSTATİSTİKLER (sağ kart). Eskiden burada temsilcilere göre dağılım
+    vardı; temsilci süzgeci listenin üstüne geldi. Sayılar tüm tekliflerden
+    (eski revizyonlar hariç), süzgeçten bağımsız.
+  */
+  const an = simdi();
+  const gecerli = all.filter(({ grup }) => grup !== "eski");
+  const { son30, degisim } = son30Degisim(gecerli.map(({ row }) => row.created_at), an);
+  const kabul = gecerli.filter(({ grup }) => grup === "accepted").length;
+  const karara = gecerli.filter(({ grup }) => grup === "accepted" || grup === "rejected" || grup === "expired").length;
+  const kabulOrani = oran(kabul, karara);
+  const tipikTutar = ortanca(gecerli.map(({ row }) => Number(row.amount)));
+  const bekleyen = gecerli.filter(({ grup }) => grup === "sent");
+  const bekleyenGec = bekleyen.filter(({ row }) => (daysSince(row.sent_at) ?? 0) >= 7).length;
+  const aylikDeger = aylik(gecerli.map(({ row }) => ({ tarih: row.created_at, tutar: Number(row.amount) })), 6, an);
+  const hizmetler = enCok(gecerli.map(({ row }) => String(row.crm_opportunities?.request_details?.service_type ?? "").trim() || "Belirtilmedi"), 5);
+  // Temsilci seçimi: satış talebi alabilen aktif personel ve listede adı geçen herkes.
+  const atananlar = new Set(all.map(({ row }) => row.crm_opportunities?.assigned_employee_id).filter(Boolean));
+  const temsilciSecenekleri = employees
+    .filter((e) => (e.employment_status === "active" && e.can_receive_sales_requests) || atananlar.has(e.id))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, "tr"));
   const filtered = Boolean(search || temsilci || status);
 
   return (
@@ -245,52 +262,69 @@ export default async function ProposalsPage({ searchParams }: Props) {
             <Link href={adres({ status: "arsiv" })} className={status === "arsiv" ? "is-active" : undefined}>Kapanan <small>{kapsam.length - aktifler.length}</small></Link>
             <Link href={adres({ status: "tumu" })} className={status === "tumu" ? "is-active" : undefined}>Tümü <small>{kapsam.length}</small></Link>
             {SERIT.includes(status as TeklifGrubu) ? <span className="talep-suzgec-etiket">{TEKLIF_GRUP_ADLARI[status as TeklifGrubu]}</span> : null}
-            {temsilci ? (
-              <Link className="ekip-suzgec-dep" href={adres({ temsilci: "" })}>
-                {temsilci === "atanmamis" ? "Atanmamış" : formatPersonName(representativeMap.get(temsilci) ?? "Temsilci")} ✕
-              </Link>
-            ) : null}
-            <form action="/panel/crm/proposals" className="talep-ara" role="search">
+            {/* Temsilci süzgeci eskiden sağdaki temsilci kartındaydı; o kartın
+                yerini istatistikler aldı, süzgeç buraya geldi. */}
+            <form action="/panel/crm/proposals" className="talep-ara talep-ara--secimli" role="search">
               {status ? <input type="hidden" name="status" value={status} /> : null}
-              {temsilci ? <input type="hidden" name="temsilci" value={temsilci} /> : null}
+              <OtomatikSecim name="temsilci" defaultValue={temsilci} className="talep-temsilci-sec" label="Satış temsilcisi">
+                <option value="">Tüm temsilciler</option>
+                <option value="atanmamis">Atanmamış</option>
+                {temsilciSecenekleri.map((e) => (
+                  <option key={e.id} value={e.id}>{formatPersonName(e.full_name)}</option>
+                ))}
+              </OtomatikSecim>
               <input name="search" defaultValue={search} placeholder="Teklif no, müşteri, konu ara" aria-label="Teklif / müşteri ara" />
             </form>
           </div>
 
           {rows.length ? (
-            <ul className="ekip-liste">
-              {rows.map(({ row, grup }) => {
-                const customer = row.crm_opportunities;
-                const musteri = formatPersonName(customer?.customer_name) || "—";
-                const repId = customer?.assigned_employee_id;
-                const temsilciAdi = repId ? formatPersonName(representativeMap.get(repId) ?? "Pasif personel") : null;
-                const temas = lastContacts.get(row.opportunity_id);
-                const bekleme = grup === "sent" ? waitingLabel(row.sent_at) : null;
-                const gecikti = grup === "sent" && (daysSince(row.sent_at) ?? 0) >= 7;
-                const gecerlilik = kisaTarih(row.valid_until);
-                return (
-                  <li key={row.id}>
-                    <Link href={`/panel/crm/proposals/${row.id}`}>
-                      <span className="talep-avatar" aria-hidden="true">{initials(musteri)}</span>
-                      <span className="cari-hareket-metin">
-                        <b>{musteri}</b>
-                        <small>{row.proposal_no}{row.revision_no > 0 ? ` · R${row.revision_no}` : ""} · {row.title}</small>
-                      </span>
-                      <span className="talep-satir-yan">
-                        <span className={temsilciAdi ? undefined : "is-bos"}>{temsilciAdi ?? "Atanmamış"}</span>
-                        <small title={temas?.preview}>{temas ? `Not ${relativeTime(temas.at)}` : "Not yok"}{gecerlilik && aktifMi(grup) ? ` · geçerli ${gecerlilik}` : ""}</small>
-                      </span>
-                      <strong className="teklif-tutar-satir">{money(Number(row.amount), row.currency || "TRY")}</strong>
-                      <span className="talep-satir-durum">
-                        <span className="status-pill" data-tone={GRUP_TONU[grup] ?? statusTone(row.status)}>{TEKLIF_GRUP_ADLARI[grup]}</span>
-                        {bekleme ? <small className={gecikti ? "talep-uyari" : undefined}>{bekleme}</small> : row.view_count && grup === "sent" ? <small>{row.view_count} kez görüldü</small> : null}
-                      </span>
-                      <span className="ekip-ok" aria-hidden="true">›</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            /* Önceki sürümün sütunları; satırın tamamı ilk hücredeki
+               bağlantıyla tıklanır (panel-premium.css). */
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="proposals">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Müşteri</th>
+                    <th>Konu</th>
+                    <th className="crm-col-rep">Temsilci</th>
+                    <th className="crm-col-amount">Tutar</th>
+                    <th>Durum</th>
+                    <th className="crm-col-date">Geçerlilik</th>
+                    <th className="crm-col-contact">Son temas</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ row, grup }) => {
+                    const customer = row.crm_opportunities;
+                    const repId = customer?.assigned_employee_id;
+                    const representativeName = repId ? (representativeMap.get(repId) ?? "Pasif personel") : null;
+                    return (
+                      <tr key={row.id}>
+                        <td className="crm-table-mono" data-label="Teklif No">
+                          <Link className="crm-row-link" href={`/panel/crm/proposals/${row.id}`}>{row.proposal_no}</Link>
+                          {row.revision_no > 0 ? <span className="status-pill talep-revizyon" data-tone="gold">R{row.revision_no}</span> : null}
+                        </td>
+                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} />
+                        <SubjectCell title={row.title} service={String(customer?.request_details?.service_type ?? "")} />
+                        <RepresentativeCell name={representativeName} />
+                        <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>
+                        <td data-label="Durum">
+                          <span className="status-pill" data-tone={GRUP_TONU[grup] ?? statusTone(row.status)}>{TEKLIF_GRUP_ADLARI[grup]}</span>
+                          {grup === "sent" && row.sent_at ? (
+                            <small className={(daysSince(row.sent_at) ?? 0) >= 7 ? "crm-waiting is-late" : "crm-waiting"}>{waitingLabel(row.sent_at)}</small>
+                          ) : null}
+                        </td>
+                        <DateCell label="Geçerlilik" value={row.valid_until} />
+                        <LastContactCell contact={lastContacts.get(row.opportunity_id)} />
+                        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="crm-empty-state talep-bos-kutu">
               <h2>{all.length === 0 ? "Henüz teklif yok" : filtered ? "Eşleşen teklif yok" : "Aktif teklif yok"}</h2>
@@ -309,28 +343,19 @@ export default async function ProposalsPage({ searchParams }: Props) {
           )}
         </section>
 
-        <section className="panel-card talep-musteri" aria-label="Temsilciler">
-          <div className="cari-baslik">
-            <h2>Temsilciler</h2>
-            <small>aktif teklif</small>
-          </div>
-          {temsilciler.length ? (
-            <ul className="cari-hareketler">
-              {temsilciler.map((t) => {
-                const anahtar = t.id ?? "atanmamis";
-                return (
-                  <li key={anahtar}>
-                    <Link href={adres({ temsilci: temsilci === anahtar ? "" : anahtar })} className={temsilci === anahtar ? "is-active" : undefined}>
-                      <span className="ekip-dep-kod" data-pasif={t.id ? undefined : ""}>{t.id ? initials(t.ad) : "—"}</span>
-                      <span className="cari-hareket-metin"><b>{t.ad}</b><small>{money(t.deger, "TRY")}</small></span>
-                      <strong>{t.sayi}</strong>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : <p className="talep-bos cari-not">Aktif teklif yok.</p>}
-        </section>
+        <IstatistikKarti
+          kapsam="tüm teklifler"
+          kutular={[
+            { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni teklif", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
+            { ad: "Kabul oranı", deger: kabulOrani === null ? "—" : `%${kabulOrani}`, alt: `${kabul} kabul · ${karara - kabul} red/süre` },
+            { ad: "Tipik teklif", deger: money(tipikTutar, "TRY"), alt: `ortanca · ${gecerli.length} teklif` },
+            { ad: "Yanıt bekleyen", deger: String(bekleyen.length), alt: bekleyenGec ? `${bekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: bekleyenGec ? "uyari" : undefined },
+          ]}
+          gruplar={[
+            { baslik: "Son 6 ay · teklif değeri", satirlar: aylikDeger.map((ay) => ({ ad: `${ay.ad} · ${ay.adet} teklif`, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
+            { baslik: "Hizmet türüne göre", satirlar: hizmetler.map(([ad, adet]) => ({ ad, adet })) },
+          ]}
+        />
       </div>
     </main>
   );

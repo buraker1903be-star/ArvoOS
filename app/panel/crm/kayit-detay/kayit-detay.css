@@ -308,7 +308,7 @@
 .istat-kutular dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
 .istat-kutular small{color:var(--muted);font-size:var(--fs-micro)}
 .istat-cubuklar{list-style:none;margin:var(--sp-2) 0 0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
-.istat-cubuklar li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 32px;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm)}
+.istat-cubuklar li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(32px,auto);align-items:center;gap:var(--sp-2);font-size:var(--fs-sm)}
 .istat-cubuklar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 .istat-cubuklar i{display:block;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .istat-cubuklar b{display:block;height:100%;border-radius:inherit;background:var(--primary)}
@@ -316,4 +316,40 @@
 @media (max-width:760px){
   .talep-tablo{margin:0}
   .os-root .talep-tablo .crm-data-table,.os-root .talep-tablo .crm-data-table tbody{display:block;min-width:0;width:100%}
+}
+
+/*
+  LİSTE TABLOSU TİPOGRAFİSİ (talepler, teklifler, sözleşmeler). Eski
+  tablo kuralları (panel-premium.css, panel-tables.css) 12–15px ve
+  650–780 kalınlıkla yazıyordu; yeni tasarımın ölçeğine çekildi: ad
+  satırı --fs-sm/orta, alt satır --fs-micro/normal, satır ~56px, başlık
+  sessiz. Liste satırlarıyla (ekip, cari) aynı yoğunluk.
+*/
+.os-root .talep-tablo .crm-data-table thead th{padding:var(--sp-2) var(--sp-3);background:var(--surface);border-bottom:1px solid var(--line);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);letter-spacing:0;text-transform:none;white-space:nowrap}
+.os-root .talep-tablo .crm-data-table thead th:first-child,.os-root .talep-tablo .crm-data-table tbody td:first-child{padding-left:var(--sp-5)}
+.os-root .talep-tablo .crm-data-table tbody td{height:56px;padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft);border-bottom:0;color:var(--ink);font-size:var(--fs-sm);font-weight:400;line-height:var(--lh-tight);vertical-align:middle}
+.os-root .talep-tablo .crm-data-table tbody tr:first-child td{border-top:0}
+.os-root .talep-tablo .crm-data-table tbody tr:hover td{background:var(--surface-2)}
+.os-root .talep-tablo .crm-data-table .crm-table-mono{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);letter-spacing:.01em}
+.os-root .talep-tablo .crm-data-table .crm-table-title{display:block;max-width:240px;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-root .talep-tablo .crm-data-table .crm-table-sub{display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-micro);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-root .talep-tablo .crm-rep{gap:var(--sp-2);font-size:var(--fs-sm);font-weight:400}
+.os-root .talep-tablo .crm-rep>i{width:26px;height:26px;background:var(--primary-soft);color:var(--primary-strong);box-shadow:none;font-size:var(--fs-micro);font-weight:var(--fw-semibold)}
+.os-root .talep-tablo .crm-col-amount{font-variant-numeric:tabular-nums;font-weight:var(--fw-semibold);white-space:nowrap}
+.os-root .talep-tablo .crm-col-date{color:var(--ink-soft);font-size:var(--fs-sm);white-space:nowrap}
+.os-root .talep-tablo :is(.crm-waiting,.crm-liste-sebep){display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-micro);font-weight:400}
+.os-root .talep-tablo .crm-waiting.is-late{color:var(--warning)}
+.os-root .talep-tablo .crm-last-contact,.os-root .talep-tablo .crm-last-contact-none{font-size:var(--fs-micro);font-weight:400;color:var(--muted)}
+.os-root .talep-tablo .crm-row-chevron{font-size:var(--fs-lg);color:var(--dim)}
+.os-root .talep-tablo .talep-revizyon{margin-left:var(--sp-1);font-size:var(--fs-micro)}
+@media (max-width:760px){
+  .os-root .talep-tablo .crm-data-table tbody td{height:auto}
+  .os-root .talep-tablo .crm-data-table tbody td:first-child{padding-left:var(--sp-3)}
+  .os-root .talep-tablo .crm-data-table .crm-table-title,.os-root .talep-tablo .crm-data-table .crm-table-sub{max-width:none;white-space:normal}
+}
+/* Telefonda kart görünümü: hücre değeri sağda, ikinci satırı (telefon,
+   bekleme notu) altına sarılır; yan yana sıkışıp üst üste biniyordu. */
+@media (max-width:760px){
+  .os-root .talep-tablo .crm-data-table tbody td{flex-wrap:wrap;column-gap:var(--sp-2)}
+  .os-root .talep-tablo .crm-data-table tbody td>:is(.crm-table-sub,.crm-waiting,.crm-liste-sebep){flex-basis:100%;text-align:right;margin-top:0}
 }

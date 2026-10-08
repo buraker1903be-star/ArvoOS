@@ -4,6 +4,9 @@ import { phoneSearchTerms } from "@/lib/format-phone";
 import { fetchLastContacts } from "./last-contact";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "./table-cells";
 import { OtomatikSecim } from "./otomatik-secim";
+import { IstatistikKarti, degisimYazisi } from "./istatistik-karti";
+import { enCok, gunOnce, oran, son30Degisim } from "@/lib/liste-istatistik";
+import { simdi } from "../os/genel-bakis";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -79,21 +82,6 @@ function kaynakAdi(kaynak: string | null) {
   const anahtar = (kaynak ?? "").trim().toLocaleLowerCase("tr");
   if (!anahtar) return "Belirtilmedi";
   return KAYNAK_ADLARI[anahtar] ?? anahtar.charAt(0).toLocaleUpperCase("tr") + anahtar.slice(1);
-}
-/** Kayıt bugünden kaç gün önce açıldı (saat bileşen gövdesinde okunmaz). */
-function gunOnce(deger: string) {
-  return Math.max(0, Math.floor((Date.now() - Date.parse(deger)) / 86_400_000));
-}
-/** Kayıt [enAz, enCok) gün önce mi açıldı. */
-function gunAraliginda(deger: string, enAz: number, enCok: number) {
-  const gun = gunOnce(deger);
-  return gun >= enAz && gun < enCok;
-}
-/** En sık geçen değerler ve sayıları, çoktan aza. */
-function enCok(degerler: string[], adet: number): [string, number][] {
-  const sayac = new Map<string, number>();
-  for (const deger of degerler) sayac.set(deger, (sayac.get(deger) ?? 0) + 1);
-  return [...sayac.entries()].sort((x, y) => y[1] - x[1]).slice(0, adet);
 }
 const clean = (v?: string) => (v ?? "").trim().slice(0, 100);
 const active = new Set(["lead", "qualified"]);
@@ -215,16 +203,13 @@ export default async function RequestsPage({
     vardı; temsilci süzgeci listenin üstünde. Sayılar tüm kayıtlardan
     (sınırsız sorgu), süzgeçten bağımsız: kart kurumun genel tablosu.
   */
-  const son30 = all.filter((item) => gunAraliginda(item.created_at, 0, 30)).length;
-  const onceki30 = all.filter((item) => gunAraliginda(item.created_at, 30, 60)).length;
-  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const an = simdi();
+  const { son30, degisim } = son30Degisim(all.map((item) => item.created_at), an);
   const ilerleyen = all.filter((item) => ILERLEYEN.has(item.stage)).length;
   const kaybedilen = counts("lost");
-  const donusum = ilerleyen + kaybedilen ? Math.round((ilerleyen / (ilerleyen + kaybedilen)) * 100) : null;
+  const donusum = oran(ilerleyen, ilerleyen + kaybedilen);
   const notsuz = aktifler.filter((item) => !lastContacts.get(item.id)).length;
-  const ortalamaYas = aktifler.length ? Math.round(aktifler.reduce((s, item) => s + gunOnce(item.created_at), 0) / aktifler.length) : 0;
-  const hizmetler = enCok(all.map((item) => item.request_details?.service_type?.trim() || "Belirtilmedi"), 5);
-  const kaynaklar = enCok(all.map((item) => kaynakAdi(item.source)), 4);
+  const ortalamaYas = aktifler.length ? Math.round(aktifler.reduce((s, item) => s + gunOnce(item.created_at, an), 0) / aktifler.length) : 0;
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
@@ -376,60 +361,19 @@ export default async function RequestsPage({
           )}
         </section>
 
-        <section className="panel-card talep-musteri talep-istatistik" aria-label="İstatistikler">
-          <div className="cari-baslik">
-            <h2>İstatistikler</h2>
-            <small>tüm kayıtlar</small>
-          </div>
-          <dl className="istat-kutular">
-            <div>
-              <dt>Son 30 gün</dt>
-              <dd>{son30}</dd>
-              <small className={degisim === null ? undefined : degisim >= 0 ? "cari-arti" : "talep-uyari"}>
-                {degisim === null ? "yeni talep" : `önceki 30 güne göre ${degisim >= 0 ? "+" : ""}%${degisim}`}
-              </small>
-            </div>
-            <div>
-              <dt>Teklife dönüşüm</dt>
-              <dd>{donusum === null ? "—" : `%${donusum}`}</dd>
-              <small>{ilerleyen} ilerledi · {kaybedilen} arşiv</small>
-            </div>
-            <div>
-              <dt>Aktif taleplerin yaşı</dt>
-              <dd>{ortalamaYas} gün</dd>
-              <small>ortalama · {aktifler.length} aktif</small>
-            </div>
-            <div>
-              <dt>Notsuz aktif talep</dt>
-              <dd className={notsuz ? "talep-uyari" : undefined}>{notsuz}</dd>
-              <small>hiç not girilmemiş</small>
-            </div>
-          </dl>
-          <div className="talep-not">
-            <h3>Hizmet türüne göre</h3>
-            <ul className="istat-cubuklar">
-              {hizmetler.map(([ad, adet]) => (
-                <li key={ad}>
-                  <span>{ad}</span>
-                  <i aria-hidden="true"><b style={{ width: `${Math.max(4, Math.round((adet / (hizmetler[0]?.[1] || 1)) * 100))}%` }} /></i>
-                  <strong>{adet}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="talep-not">
-            <h3>Kaynağa göre</h3>
-            <ul className="istat-cubuklar">
-              {kaynaklar.map(([ad, adet]) => (
-                <li key={ad}>
-                  <span>{ad}</span>
-                  <i aria-hidden="true"><b style={{ width: `${Math.max(4, Math.round((adet / (kaynaklar[0]?.[1] || 1)) * 100))}%` }} /></i>
-                  <strong>{adet}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+        <IstatistikKarti
+          kapsam="tüm kayıtlar"
+          kutular={[
+            { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni talep", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
+            { ad: "Teklife dönüşüm", deger: donusum === null ? "—" : `%${donusum}`, alt: `${ilerleyen} ilerledi · ${kaybedilen} arşiv` },
+            { ad: "Aktif taleplerin yaşı", deger: `${ortalamaYas} gün`, alt: `ortalama · ${aktifler.length} aktif` },
+            { ad: "Notsuz aktif talep", deger: String(notsuz), alt: "hiç not girilmemiş", ton: notsuz ? "uyari" : undefined },
+          ]}
+          gruplar={[
+            { baslik: "Hizmet türüne göre", satirlar: enCok(all.map((item) => item.request_details?.service_type?.trim() || "Belirtilmedi"), 5).map(([ad, adet]) => ({ ad, adet })) },
+            { baslik: "Kaynağa göre", satirlar: enCok(all.map((item) => kaynakAdi(item.source)), 4).map(([ad, adet]) => ({ ad, adet })) },
+          ]}
+        />
       </div>
     </main>
   );
