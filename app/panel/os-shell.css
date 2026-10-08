@@ -214,3 +214,7 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 .os-bar .panel-quick-icon{width:auto;height:auto;background:transparent;color:inherit;border-radius:0}
 .os-bar .panel-unread-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}
 .os-live-pill.is-taze{background:var(--primary-soft);color:var(--primary)}
+/* Kurum logoları çoğunlukla açık zemin için çizilmiş (koyu yazı); koyu
+   temada okunmuyordu. Logo açık bir rozetin üstüne alınır. */
+html[data-theme="dark"] .os-brand>img{padding:3px 8px;border-radius:var(--r-sm);background:var(--n-0);box-sizing:content-box;height:24px}
+@media (max-width:520px){.os-brand>img{max-width:120px}}

@@ -36,6 +36,7 @@ import "./panel-premium.css";
 import "./panel-tables.css";
 import "./panel-motion.css";
 import "./os-shell.css";
+import "./panel-ui.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
 
 export const metadata: Metadata = {
