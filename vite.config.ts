@@ -14,6 +14,13 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // worker/index.ts görselleri `/_vinext/image` üzerinden env.ASSETS ile okuyup
+  // env.IMAGES ile küçültüyor. Eskiden bu iki bağlama burada tanımlı değildi;
+  // yerelde her görsel isteği "Cannot read properties of undefined (reading
+  // 'fetch')" ile 500 dönüyor, logolar boş kutu görünüyordu. Canlı Vercel'de
+  // `next build` kendi görsel ucunu kullandığı için bu yalnızca yereli etkiliyordu.
+  assets: { binding: "ASSETS" },
+  images: { binding: "IMAGES" },
   d1_databases: d1
     ? [
         {
