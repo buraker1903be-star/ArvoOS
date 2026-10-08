@@ -447,3 +447,10 @@
    satırlar başlığın üstündeki 20px'lik boşlukta görünüyordu. */
 .os-root .talep-tablo .crm-data-table thead th{top:calc(var(--sp-5) * -1)}
 .os-root .talep-izgara>.talep-bilgi:has(.talep-tablo){scroll-padding-top:var(--sp-5)}
+
+/* Cari hesaplar tablosu: sıfır tutar soluk, satırda küçük "Tahsilat". */
+.os-root .talep-tablo .crm-data-table td.cari-sifir{color:var(--dim);font-weight:400}
+.os-root .talep-tablo .crm-data-table td.crm-col-amount small{display:block;margin-top:2px;font-weight:400}
+.os-root .talep-tablo td.cari-satir-eylem{white-space:nowrap;text-align:right}
+.os-root .talep-tablo td.cari-satir-eylem .crm-row-chevron{display:inline-block;width:auto;margin-left:var(--sp-2);vertical-align:middle}
+.os-root .talep-tablo .cari-tahsilat-btn{min-height:30px;padding:0 var(--sp-3);font-size:var(--fs-micro)}

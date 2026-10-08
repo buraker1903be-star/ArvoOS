@@ -2,17 +2,18 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { PanelDrawer } from "../components/panel-drawer";
-import {
-  createAdditionalService,
-  createCollection,
-  createRefund,
-} from "../accounts/actions";
+import { createCollection } from "../accounts/actions";
 import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow } from "./finance-workspaces";
-import { FinEmpty, FinIcon, FinWidget } from "./finance-ui";
+import { FinWidget } from "./finance-ui";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
+import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
+import { aylik, gunAraliginda, oran } from "@/lib/liste-istatistik";
+import { simdi } from "../os/genel-bakis";
 import "./finance.css";
+import "../crm/crm.css";
+import "../crm/kayit-detay/kayit-detay.css";
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
@@ -70,207 +71,85 @@ const pageCopy = {
 } as const;
 
 /*
-  Cari satırları hem aktif listede hem arşivde aynı görünür: tek bir
-  tablo bileşeni iki yerde kullanılıyor. Kopyalanırsa ikisi zamanla
-  ayrışır (tahsilat çekmecesi birinde güncellenip diğerinde kalır).
+  Cari tablosu (2026-10): talepler/teklifler/sözleşmeler listeleriyle aynı
+  sütunlu tablo; satırın tamamı cari detayına gider. Eskiden her satırda
+  üç çekmece (tahsilat, ek hizmet, iade) ve "Hareketler" bağlantısı vardı;
+  ek hizmet ve iade cari detayının "⋯" menüsünde. Açık bakiyeli caride sık
+  kullanılan "Tahsilat" satırda kaldı.
 */
 function CariTablosu({ rows }: { rows: Hesap[] }) {
   return (
-    <div className="fin-table-wrap">
-      <table className="fin-table" data-cols="ledger">
+    <div className="talep-tablo">
+      <table className="crm-data-table" data-cols="ledger">
         <thead>
           <tr>
-            <th scope="col">Müşteri</th>
-            <th scope="col" className="fin-num">Sözleşme</th>
-            <th scope="col" className="fin-num">Tahsilat</th>
-            <th scope="col" className="fin-num">İade</th>
-            <th scope="col" className="fin-num">Kalan bakiye</th>
-            <th scope="col"><span className="fin-sr">İşlemler</span></th>
+            <th>Müşteri</th>
+            <th className="crm-col-amount">Sözleşme</th>
+            <th className="crm-col-amount">Tahsilat</th>
+            <th className="crm-col-amount">İade</th>
+            <th className="crm-col-amount">Kalan bakiye</th>
+            <th className="crm-col-date">Son hareket</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((a) => (
-            <tr key={a.id}>
-              <td className="fin-col-main">
-                <Link className="fin-entity" href={`/panel/accounts/${a.id}`}>
-                  <span className="fin-avatar" aria-hidden="true">
-                    {a.name.slice(0, 2).toLocaleUpperCase("tr-TR")}
-                  </span>
-                  <span className="fin-entity-text">
-                    <b>{a.name}</b>
-                    <small>{a.phone || a.email || a.tax_number || "Müşteri cari hesabı"}</small>
-                  </span>
-                </Link>
-              </td>
-              <td className={a.debt ? "fin-num" : "fin-num is-zero"} data-label="Sözleşme">{money(a.debt)}</td>
-              <td className={a.collections ? "fin-num fin-pos" : "fin-num is-zero"} data-label="Tahsilat">{money(a.collections)}</td>
-              <td className={a.refunds ? "fin-num fin-warn" : "fin-num is-zero"} data-label="İade">{money(a.refunds)}</td>
-              <td className="fin-num" data-label="Kalan bakiye">
-                <span className="fin-balance">
-                  <strong>{money(a.balance)}</strong>
-                  <span className="status-pill" data-tone={a.balance > 0 ? "warning" : "success"}>
-                    {a.balance > 0 ? "Tahsilat bekliyor" : "Kapandı"}
-                  </span>
-                </span>
-              </td>
-              <td className="fin-col-actions">
-                <PanelDrawer
-                  triggerLabel="+ Tahsilat"
-                  kicker="TAHSİLAT"
-                  title={`${a.name} · Tahsilat`}
-                  description={`Açık bakiye: ${money(a.balance)}`}
-                >
-                  <form className="panel-form fin-form" action={createCollection}>
-                    <input type="hidden" name="party_id" value={a.id} />
-                    <label>
-                      Tahsilat tutarı (₺)
-                      <input
-                        name="amount"
-                        type="number"
-                        min="0.01"
-                        max={a.balance / 100}
-                        step="0.01"
-                        required
-                      />
-                    </label>
-                    <label>
-                      Tarih
-                      <input name="transaction_date" type="date" />
-                    </label>
-                    <label>
-                      Referans / dekont no
-                      <input name="reference_no" maxLength={100} />
-                    </label>
-                    <label className="wide">
-                      Açıklama
-                      <input
-                        name="description"
-                        defaultValue="Müşteri tahsilatı"
-                        minLength={2}
-                        maxLength={500}
-                        required
-                      />
-                    </label>
-                    <p className="fin-form-note">
-                      {a.balance === 0
-                        ? "Bu carinin açık bakiyesi yok; yeni tahsilat kaydedilemez."
-                        : `En fazla açık bakiye kadar (${money(a.balance)}) tahsilat kaydedebilirsiniz.`}
-                    </p>
-                    <div className="panel-form-actions wide">
-                      <button
-                        className="panel-primary"
-                        disabled={a.balance === 0}
-                      >
-                        Tahsilatı kaydet
-                      </button>
-                    </div>
-                  </form>
-                </PanelDrawer>
-                <PanelDrawer
-                  triggerLabel="Ek hizmet"
-                  triggerClassName="panel-secondary"
-                  kicker="EK HİZMET"
-                  title={`${a.name} · Ek Hizmet`}
-                  description="Yeni hizmeti cari bakiyeye ekleyin."
-                >
-                  <form className="panel-form fin-form" action={createAdditionalService}>
-                    <input type="hidden" name="party_id" value={a.id} />
-                    <label>
-                      Hizmet tutarı (₺)
-                      <input
-                        name="amount"
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        required
-                      />
-                    </label>
-                    <label>
-                      İşlem tarihi
-                      <input name="transaction_date" type="date" />
-                    </label>
-                    <label>
-                      Vade tarihi
-                      <input name="due_date" type="date" />
-                    </label>
-                    <label>
-                      Referans
-                      <input name="reference_no" maxLength={100} />
-                    </label>
-                    <label className="wide">
-                      Hizmet açıklaması
-                      <input
-                        name="description"
-                        minLength={2}
-                        maxLength={500}
-                        required
-                      />
-                    </label>
-                    <div className="panel-form-actions wide">
-                      <button className="panel-primary">Cari hesaba ekle</button>
-                    </div>
-                  </form>
-                </PanelDrawer>
-                <PanelDrawer
-                  triggerLabel="İade"
-                  triggerClassName="panel-secondary"
-                  kicker="İADE"
-                  title={`${a.name} · İade`}
-                  description={`İade edilebilir: ${money(Math.max(0, a.collections - a.refunds))}`}
-                >
-                  <form className="panel-form fin-form" action={createRefund}>
-                    <input type="hidden" name="party_id" value={a.id} />
-                    <label>
-                      İade tutarı (₺)
-                      <input
-                        name="amount"
-                        type="number"
-                        min="0.01"
-                        max={Math.max(0, a.collections - a.refunds) / 100}
-                        step="0.01"
-                        required
-                      />
-                    </label>
-                    <label>
-                      Tarih
-                      <input name="transaction_date" type="date" />
-                    </label>
-                    <label>
-                      Referans / dekont no
-                      <input name="reference_no" maxLength={100} />
-                    </label>
-                    <label className="wide">
-                      İade nedeni
-                      <input
-                        name="description"
-                        minLength={2}
-                        maxLength={500}
-                        required
-                      />
-                    </label>
-                    {a.collections <= a.refunds ? (
-                      <p className="fin-form-note">İade edilebilecek tahsilat yok.</p>
-                    ) : null}
-                    <div className="panel-form-actions wide">
-                      <button
-                        className="panel-primary"
-                        disabled={a.collections <= a.refunds}
-                      >
-                        İadeyi kaydet
-                      </button>
-                    </div>
-                  </form>
-                </PanelDrawer>
-                <Link
-                  className="fin-link"
-                  href={`/panel/accounts/${a.id}`}
-                >
-                  Hareketler
-                  <FinIcon name="chevron" size={15} />
-                </Link>
-              </td>
-            </tr>
-          ))}
+          {rows.map((a) => {
+            const sonHareket = a.entries.reduce<string | null>((son, e) => (!son || e.transaction_date > son ? e.transaction_date : son), null);
+            return (
+              <tr key={a.id}>
+                <td data-label="Müşteri">
+                  <Link className="crm-row-link" href={`/panel/accounts/${a.id}`} aria-label={`${a.name} carisini aç`}>
+                    <span className="crm-table-title" title={a.name}>{a.name}</span>
+                    <span className="crm-table-sub">{a.phone || a.email || a.tax_number || "Müşteri cari hesabı"}</span>
+                  </Link>
+                </td>
+                <td className="crm-col-amount" data-label="Sözleşme">{money(a.debt)}</td>
+                <td className={a.collections ? "crm-col-amount cari-arti" : "crm-col-amount cari-sifir"} data-label="Tahsilat">{money(a.collections)}</td>
+                <td className={a.refunds ? "crm-col-amount talep-uyari" : "crm-col-amount cari-sifir"} data-label="İade">{money(a.refunds)}</td>
+                <td className="crm-col-amount" data-label="Kalan bakiye">
+                  {money(a.balance)}
+                  <small className={a.balance > 0 ? "crm-waiting is-late" : "crm-waiting"}>{a.balance > 0 ? "tahsilat bekliyor" : "kapandı"}</small>
+                </td>
+                <td className="crm-col-date" data-label="Son hareket">{sonHareket ? new Date(`${sonHareket}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
+                <td className="crm-table-actions cari-satir-eylem">
+                  {a.balance > 0 ? (
+                    <PanelDrawer
+                      triggerLabel="Tahsilat"
+                      triggerClassName="panel-secondary cari-tahsilat-btn"
+                      kicker="TAHSİLAT"
+                      title={`${a.name} · Tahsilat`}
+                      description={`Açık bakiye: ${money(a.balance)}`}
+                    >
+                      <form className="panel-form fin-form" action={createCollection}>
+                        <input type="hidden" name="party_id" value={a.id} />
+                        <label>
+                          Tahsilat tutarı (₺)
+                          <input name="amount" type="number" min="0.01" max={a.balance / 100} step="0.01" required />
+                        </label>
+                        <label>
+                          Tarih
+                          <input name="transaction_date" type="date" />
+                        </label>
+                        <label>
+                          Referans / dekont no
+                          <input name="reference_no" maxLength={100} />
+                        </label>
+                        <label className="wide">
+                          Açıklama
+                          <input name="description" defaultValue="Müşteri tahsilatı" minLength={2} maxLength={500} required />
+                        </label>
+                        <p className="fin-form-note">En fazla açık bakiye kadar ({money(a.balance)}) tahsilat kaydedebilirsiniz.</p>
+                        <div className="panel-form-actions wide">
+                          <button className="panel-primary">Tahsilatı kaydet</button>
+                        </div>
+                      </form>
+                    </PanelDrawer>
+                  ) : null}
+                  <span className="crm-row-chevron" aria-hidden="true">›</span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -335,8 +214,6 @@ export default async function FinancePage({
     iki ayrı yerden yapan iki kural olurdu. Eski bağlantılar çalışmaya
     devam etsin diye ?durum=kapali arşivi açık getiriyor.
   */
-  const { aktif, arsiv } = cariBolumle(filtered);
-  const arsivAcik = params.durum === "kapali" || params.durum === "arsiv";
   const canManageCosts = izin("finance.maliyet.yonet");
   const totalServiceCost = contracts.reduce((sum, contract) => sum + Number(contract.service_cost || 0), 0);
   const costItems=(costItemData??[]) as CostItem[];const costTotals=new Map<string,number>();for(const item of costItems)costTotals.set(item.contract_id,(costTotals.get(item.contract_id)??0)+Number(item.amount));
@@ -351,6 +228,32 @@ export default async function FinancePage({
   const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
   const profitSum = contracts.reduce((s, c) => s + Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost)), 0);
   const averageMargin = Math.round(contracts.reduce((s, c) => s + (Number(c.amount) ? ((Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost))) / Number(c.amount)) * 100 : 0), 0) / (contracts.length || 1));
+  const { aktif, arsiv } = cariBolumle(filtered);
+  // ?durum=: "" açık cariler, "arsiv" (eski bağlantılarda "kapali") kapananlar, "tumu" hepsi.
+  const cariGorunum = params.durum === "kapali" || params.durum === "arsiv" ? "arsiv" : params.durum === "tumu" ? "tumu" : "";
+  const gorunenCariler = cariGorunum === "arsiv" ? arsiv : cariGorunum === "tumu" ? filtered : aktif;
+  const cariAdres = (durum: string) => {
+    const q = new URLSearchParams();
+    if (params.arama) q.set("arama", params.arama);
+    if (durum) q.set("durum", durum);
+    const s = q.toString();
+    return s ? `/panel/finance?${s}` : "/panel/finance";
+  };
+  /*
+    İSTATİSTİKLER (sağ kart): tüm carilerden, aramadan bağımsız. Tahsilat
+    hareketleri cari dökümündeki "credit" kayıtları; vadesi geçen taksit
+    ödenmemiş ve vadesi bugünden önce olan taksitler.
+  */
+  const an = simdi();
+  const tahsilatlar = accounts.flatMap((a) => a.entries.filter((e) => e.entry_type === "credit"));
+  const tahsilat30 = tahsilatlar.filter((e) => gunAraliginda(e.transaction_date, 0, 30, an)).reduce((s, e) => s + Number(e.amount), 0);
+  const tahsilatOnceki = tahsilatlar.filter((e) => gunAraliginda(e.transaction_date, 30, 60, an)).reduce((s, e) => s + Number(e.amount), 0);
+  const tahsilatDegisim = tahsilatOnceki ? Math.round(((tahsilat30 - tahsilatOnceki) / tahsilatOnceki) * 100) : null;
+  const tahsilOrani = oran(totals.collections, totals.debt + totals.refunds);
+  const aylikTahsilat = aylik(tahsilatlar.map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), 6, an);
+  const enYuksek = [...accounts].filter((a) => a.balance > 0).sort((x, y) => y.balance - x.balance).slice(0, 5);
+  const gecenTaksit = installments.filter((item) => item.status !== "paid" && item.status !== "cancelled" && Boolean(item.due_date && item.due_date < today));
+  const gecenTaksitTutari = gecenTaksit.reduce((sum, item) => sum + Number(item.amount), 0);
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query);
   const copy = pageCopy[mode];
@@ -358,80 +261,74 @@ export default async function FinancePage({
   const paytr = mode === "paytr" ? await getPaytrStatus(membership.organization_id) : null;
 
   return (
-    <main className="fin">
-      <header className="panel-pagehead">
-        <div>
+    <main className={mode === "cari" ? "fin talep cari ekip talepler teklifler" : "fin"}>
+      <header className={mode === "cari" ? "talep-bas" : "panel-pagehead"}>
+        <div className={mode === "cari" ? "talep-bas-metin" : undefined}>
           <small className="panel-kicker">FİNANS</small>
           <h1>{copy.title}</h1>
-          <p>{copy.text}</p>
+          {mode === "cari" ? null : <p>{copy.text}</p>}
         </div>
       </header>
 
       {mode === "cari" ? (
         <>
-          <section className="fin-widgets" aria-label="Cari hesap özeti">
-            <FinWidget tone="brand" icon="doc" label="Sözleşme toplamı" value={money(totals.debt)} note="İmzalı sözleşmelerden oluşan borç" />
-            <FinWidget tone="success" icon="wallet" label="Toplam tahsilat" value={money(totals.collections)} note="Müşterilerden alınan" />
-            <FinWidget tone="warning" icon="refund" label="Toplam iade" value={money(totals.refunds)} note="Müşteriye geri ödenen" />
-            <FinWidget tone="gold" icon="scale" label="Açık bakiye" value={money(totals.balance)} note={openCount ? `${openCount} caride tahsilat bekliyor` : "Tüm cariler kapalı"} emphasis />
-          </section>
+          <nav className="kayit-serit talep-serit" aria-label="Cari özeti">
+            <dl>
+              <div><dt>Sözleşme toplamı</dt><dd>{money(totals.debt)}</dd></div>
+              <div><dt>Tahsilat</dt><dd className="cari-arti">{money(totals.collections)}</dd></div>
+              <div><dt>İade</dt><dd>{money(totals.refunds)}</dd></div>
+              <div className="cari-bakiye" data-tone={totals.balance > 0 ? "warning" : "success"}><dt>Açık bakiye</dt><dd>{money(totals.balance)}</dd></div>
+              <div className={cariGorunum === "" ? "is-active" : undefined}><dt>Açık cari</dt><dd><Link href={cariAdres("")}>{openCount}</Link></dd></div>
+              <div className={cariGorunum === "arsiv" ? "is-active" : undefined}><dt>Kapanan cari</dt><dd><Link href={cariAdres("arsiv")}>{accounts.length - openCount}</Link></dd></div>
+            </dl>
+          </nav>
 
-          <section className="fin-card" aria-label="Müşteri carileri">
-            <header className="fin-card-head">
-              <div>
-                <h2>Müşteri carileri</h2>
-                <p>Bakiyesi açık olan cariler. Bakiye kapanınca cari arşive düşer.</p>
+          <div className="talep-izgara personel-iki ekip-izgara">
+            <section className="panel-card talep-bilgi" aria-label="Müşteri carileri">
+              {/*
+                Açık / Kapanan / Tümü. Bakiyesi kapanan cari kendiliğinden arşive
+                düşer (lib/cari-arsiv.ts); eskiden arşiv sayfanın altında katlanmış
+                ayrı bir karttaydı. Eski ?durum=kapali bağlantısı kapananları açar.
+              */}
+              <div className="ekip-suzgec talep-suzgec">
+                <Link href={cariAdres("")} className={cariGorunum === "" ? "is-active" : undefined}>Açık <small>{aktif.length}</small></Link>
+                <Link href={cariAdres("arsiv")} className={cariGorunum === "arsiv" ? "is-active" : undefined}>Kapanan <small>{arsiv.length}</small></Link>
+                <Link href={cariAdres("tumu")} className={cariGorunum === "tumu" ? "is-active" : undefined}>Tümü <small>{filtered.length}</small></Link>
+                <form action="/panel/finance" className="talep-ara" role="search">
+                  {cariGorunum ? <input type="hidden" name="durum" value={cariGorunum} /> : null}
+                  <input name="arama" defaultValue={params.arama ?? ""} placeholder="Müşteri, telefon veya vergi no" aria-label="Cari ara" />
+                </form>
               </div>
-              <span className="status-pill">{aktif.length} cari</span>
-            </header>
-            <form className="fin-toolbar" role="search">
-              <label className="fin-field is-grow">
-                <span>Ara</span>
-                <span className="fin-search">
-                  <FinIcon name="search" size={16} />
-                  <input
-                    name="arama"
-                    defaultValue={params.arama}
-                    placeholder="Müşteri, telefon veya vergi no"
-                  />
-                </span>
-              </label>
-              <button className="panel-secondary">Ara</button>
-            </form>
-            {aktif.length ? (
-              <CariTablosu rows={aktif} />
-            ) : (
-              <FinEmpty
-                icon={isFiltered ? "search" : arsiv.length ? "check" : "users"}
-                title={
-                  isFiltered
-                    ? "Aramaya uygun cari yok"
-                    : arsiv.length
-                      ? "Açık bakiyesi olan cari yok"
-                      : "Henüz müşteri carisi yok"
-                }
-              >
-                {isFiltered
-                  ? "Aramayı değiştirip yeniden deneyin."
-                  : arsiv.length
-                    ? "Tüm cariler kapandı; hepsi aşağıdaki arşivde."
-                    : "Bir sözleşme imzalandığında müşterinin cari hesabı burada oluşur."}
-              </FinEmpty>
-            )}
-          </section>
-
-          {arsiv.length ? (
-            <details className="fin-card fin-arsiv" open={arsivAcik}>
-              <summary className="fin-card-head">
-                <div>
-                  <h2>Arşiv</h2>
-                  <p>Bakiyesi kapanan cariler. Yeni borç girilirse cari yukarı döner.</p>
+              {gorunenCariler.length ? (
+                <CariTablosu rows={gorunenCariler} />
+              ) : (
+                <div className="crm-empty-state talep-bos-kutu">
+                  <h2>{isFiltered ? "Aramaya uygun cari yok" : cariGorunum === "" && arsiv.length ? "Açık bakiyesi olan cari yok" : "Henüz müşteri carisi yok"}</h2>
+                  <p>
+                    {isFiltered
+                      ? "Aramayı değiştirip yeniden deneyin."
+                      : cariGorunum === "" && arsiv.length
+                        ? "Tüm cariler kapandı; hepsi “Kapanan”da."
+                        : "Bir sözleşme imzalandığında müşterinin cari hesabı burada oluşur."}
+                  </p>
                 </div>
-                <span className="status-pill" data-tone="success">{arsiv.length} kapandı</span>
-              </summary>
-              <CariTablosu rows={arsiv} />
-            </details>
-          ) : null}
+              )}
+            </section>
+
+            <IstatistikKarti
+              kapsam="tüm cariler"
+              kutular={[
+                { ad: "Son 30 gün tahsilat", deger: kisaPara(tahsilat30), alt: degisimYazisi(tahsilatDegisim) ?? "önceki dönem yok", ton: tahsilatDegisim !== null && tahsilatDegisim < 0 ? "uyari" : tahsilatDegisim !== null ? "arti" : undefined },
+                { ad: "Tahsil oranı", deger: tahsilOrani === null ? "—" : `%${tahsilOrani}`, alt: "borç ve iadeye göre" },
+                { ad: "Vadesi geçen taksit", deger: String(gecenTaksit.length), alt: gecenTaksit.length ? kisaPara(gecenTaksitTutari) : "gecikme yok", ton: gecenTaksit.length ? "uyari" : undefined },
+                { ad: "Ortalama açık bakiye", deger: openCount ? kisaPara(Math.round(totals.balance / openCount)) : "—", alt: `${openCount} açık cari` },
+              ]}
+              gruplar={[
+                { baslik: "Son 6 ay · tahsilat", satirlar: aylikTahsilat.map((ay) => ({ ad: ay.ad, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
+                { baslik: "En yüksek açık bakiye", satirlar: enYuksek.map((a) => ({ ad: a.name, adet: a.balance, etiket: kisaPara(a.balance) })) },
+              ]}
+            />
+          </div>
         </>
       ) : null}
 
