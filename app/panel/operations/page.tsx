@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
+import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { formatSubject, initials } from "@/lib/table-format";
 import { statusTone } from "@/lib/status-tone";
 import { relativeTime } from "../crm/last-contact";
@@ -377,7 +378,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
             {threadList.length ? (
               <ul className="opsov-list">
                 {threadList.slice(0, LIST_LIMIT).map(({ latest, count }) => {
-                  const sender = formatPersonName(latest.sender_name || latest.workflow?.customer_name) || "Müşteri";
+                  const sender = formatPersonName(musteriMesajGondereni(latest.workflow?.customer_name, latest.sender_name));
                   return (
                     <li key={latest.workflow_id} className="is-flagged" data-flag="danger">
                       <Link className="opsov-row opsov-message" href={`/panel/operations/${latest.workflow_id}?pencere=mesajlar`}>

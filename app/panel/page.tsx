@@ -11,6 +11,7 @@ import { dueBadge } from "@/lib/operasyon-termin";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { activeStatuses, workflowStatusNames } from "./operations/ops-shared";
 import { relativeTime } from "./crm/last-contact";
+import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import "./dashboard.css";
@@ -381,9 +382,10 @@ export default async function PanelPage() {
           <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos="Müşterilerden mesaj yok." href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
             {mesajlar.map((mesaj) => (
               <li key={mesaj.id} className={[mesaj.read_at ? "" : "is-unread", yeniMi(mesaj.created_at) ? "is-new" : ""].filter(Boolean).join(" ") || undefined}>
-                <Link className="dash-col-row" href={`/panel/operations/${mesaj.workflow_id}`}>
+                {/* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */}
+                <Link className="dash-col-row" href={`/panel/operations/${mesaj.workflow_id}?pencere=mesajlar`}>
                   <span className="dash-col-main">
-                    <b>{formatPersonName(mesaj.sender_name) || mesaj.operation_workflows?.customer_name || "Müşteri"}</b>
+                    <b>{formatPersonName(musteriMesajGondereni(mesaj.operation_workflows?.customer_name, mesaj.sender_name))}</b>
                     <small className="dash-col-preview">{mesaj.body}</small>
                   </span>
                   <small className="dash-col-time">{relativeTime(mesaj.created_at)}</small>
