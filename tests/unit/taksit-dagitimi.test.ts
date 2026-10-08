@@ -41,18 +41,3 @@ test("net tahsilat: tahsilat eksi iade; sözleşme borcu ve ek hizmet sayılmaz"
   ]), 1300);
   assert.equal(netTahsilat([{ entry_type: "debit", source_type: "adjustment", amount: 50 }]), 0);
 });
-
-test("kurumun vadesi geçenleri: cari tahsilatı düşülür, carisiz taksit kendi durumuyla", async () => {
-  const { vadesiGecenler } = await import("@/lib/taksit-dagitimi");
-  const sonuc = vadesiGecenler({
-    cariler: [{ id: "c1", entries: [{ entry_type: "credit", source_type: "manual", amount: 3_150_000 }] }],
-    sozlesmeler: [{ party_id: "c1", payment_plan_id: "p1" }, { party_id: null, payment_plan_id: "p2" }],
-    taksitler: [
-      { id: "a", payment_plan_id: "p1", due_date: "2026-08-07", amount: 4_700_000, status: "pending" },
-      { id: "b", payment_plan_id: "p2", due_date: "2026-09-01", amount: 100_000, status: "pending" },
-      { id: "c", payment_plan_id: "p2", due_date: "2026-09-02", amount: 100_000, status: "paid" },
-    ],
-    bugun: "2026-10-08",
-  });
-  assert.deepEqual(sonuc, { adet: 2, tutar: 1_550_000 + 100_000 });
-});

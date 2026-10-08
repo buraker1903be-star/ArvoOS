@@ -16,10 +16,6 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
-import { vadesiGecenler } from "@/lib/taksit-dagitimi";
-import { kisaPara } from "./crm/istatistik-karti";
-import { requestStageNames } from "./crm/request-status";
-import "./crm/kayit-detay/kayit-detay.css";
 
 /*
   ANA EKRAN (2026-10, şirket işletim sistemi).
@@ -140,7 +136,7 @@ export default async function PanelPage() {
       ? supabase.from("mail_threads").select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,okunmamis")
           .eq("organization_id", organizationId).order("son_mesaj_at", { ascending: false, nullsFirst: false }).limit(LISTE)
       : none,
-    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
+    supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
     canSetup ? supabase.from("organization_onboarding").select("completed_at").eq("organization_id", organizationId).maybeSingle() : none,
     canSetup ? supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},logo_url,signature_stamp_url`).eq("id", organizationId).maybeSingle() : none,
     canSetup ? supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("is_active", true) : none,
@@ -175,92 +171,6 @@ export default async function PanelPage() {
   const asamalar = (asamaRows ?? []) as unknown as AsamaSatiri[];
   const mesajlar = (mesajRows ?? []) as unknown as MesajSatiri[];
   const postalar = (postaRows ?? []) as PostaSatiri[];
-  const benimId = (me as { id?: string } | null)?.id ?? null;
-
-  /*
-    GÜNLÜK ÖZET ŞERİDİ (2026-10, liste ve detay sayfalarındaki şerit):
-    bekleyen işlerin sayısı, her biri ilgili listeyi süzülmüş açar. Sayılar
-    ayrı "count" sorgularından (sınırlı listeden sayım yanlış olur,
-    check:rakamlar). Vadesi geçen tahsilat cari listesiyle aynı kuralla
-    (lib/taksit-dagitimi.ts vadesiGecenler).
-  */
-  const canSeeFinance = canSee("finance") && modulAcik("finance") && modulAcik("accounts");
-  const haftaSonu = new Date(Date.parse(`${today}T12:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
-  const [
-    { count: yeniTalep },
-    { count: bekleyenTeklif },
-    { count: imzaBekleyen },
-    { count: gecikenIs },
-    { count: okunmamisMesaj },
-    { data: cariRows },
-    { data: cariSozlesmeRows },
-    { data: taksitRows },
-    { data: benimAdimRows },
-    { data: benimTalepRows },
-    { count: benimTalepSayisi },
-    { count: benimIsSayisi },
-  ] = await Promise.all([
-    canSeeCrm ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("stage", "lead") : none,
-    canSeeCrm ? supabase.from("crm_proposals").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "sent").is("superseded_by", null) : none,
-    canSeeCrm ? supabase.from("crm_contracts").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "sent") : none,
-    canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", [...activeStatuses]).lt("due_date", today) : none,
-    canSeeOperations ? supabase.from("customer_file_messages").select("id,operation_workflows!inner(status)", { count: "exact", head: true }).eq("organization_id", organizationId).eq("sender_type", "customer").is("read_at", null).neq("operation_workflows.status", "cancelled") : none,
-    canSeeFinance ? supabase.from("account_parties").select("id,account_entries(entry_type,source_type,amount)").eq("organization_id", organizationId).eq("is_active", true).in("party_type", ["customer", "both"]) : none,
-    canSeeFinance ? supabase.from("crm_contracts").select("party_id,payment_plan_id").eq("organization_id", organizationId).in("status", ["signed", "completed"]) : none,
-    canSeeFinance ? supabase.from("payment_installments").select("id,payment_plan_id,due_date,amount,status").eq("organization_id", organizationId) : none,
-    /* BANA DÜŞENLER: giriş yapanın üstündeki, bu hafta tarihi gelen ya da
-       geçen açık aşamalar ve yeni/incelenen talepleri. */
-    canSeeOperations && benimId
-      ? supabase.from("operation_steps").select("id,title,due_date,workflow_id,operation_workflows!inner(title,customer_name,status)")
-          .eq("organization_id", organizationId).eq("assigned_employee_id", benimId).eq("is_completed", false)
-          .not("due_date", "is", null).lte("due_date", haftaSonu).in("operation_workflows.status", [...activeStatuses])
-          .order("due_date", { ascending: true }).limit(LISTE)
-      : none,
-    canSeeCrm && benimId
-      ? supabase.from("crm_opportunities").select("id,customer_name,title,stage,created_at").eq("organization_id", organizationId).eq("assigned_employee_id", benimId).in("stage", ["lead", "qualified"]).order("created_at", { ascending: false }).limit(LISTE)
-      : none,
-    canSeeCrm && benimId ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("assigned_employee_id", benimId).in("stage", ["lead", "qualified"]) : none,
-    canSeeOperations && benimId ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("assigned_employee_id", benimId).in("status", [...activeStatuses]) : none,
-  ]);
-  const vadesiGecen = canSeeFinance
-    ? vadesiGecenler({
-        cariler: ((cariRows ?? []) as { id: string; account_entries: { entry_type: string; source_type: string | null; amount: number }[] | null }[]).map((c) => ({ id: c.id, entries: c.account_entries ?? [] })),
-        sozlesmeler: (cariSozlesmeRows ?? []) as { party_id: string | null; payment_plan_id: string | null }[],
-        taksitler: (taksitRows ?? []) as { id: string; payment_plan_id: string; due_date: string | null; amount: number; status: string }[],
-        bugun: today,
-      })
-    : null;
-  const benimAdimlar = (benimAdimRows ?? []) as unknown as AsamaSatiri[];
-  const benimTalepler = (benimTalepRows ?? []) as { id: string; customer_name: string; title: string | null; stage: string; created_at: string }[];
-  const ozet: { ad: string; deger: string; href: string; uyari?: boolean }[] = [
-    ...(canSeeCrm ? [
-      { ad: "Yeni talep", deger: String(yeniTalep ?? 0), href: "/panel/crm?durum=lead" },
-      { ad: "Yanıt bekleyen teklif", deger: String(bekleyenTeklif ?? 0), href: "/panel/crm/proposals?status=sent" },
-      { ad: "İmza bekleyen sözleşme", deger: String(imzaBekleyen ?? 0), href: "/panel/crm/contracts?status=sent" },
-    ] : []),
-    ...(canSeeOperations ? [
-      { ad: "Termini geçen iş", deger: String(gecikenIs ?? 0), href: "/panel/operations/isler?termin=geciken", uyari: Boolean(gecikenIs) },
-      { ad: "Okunmamış mesaj", deger: String(okunmamisMesaj ?? 0), href: "/panel/operations/isler?mesaj=yeni", uyari: Boolean(okunmamisMesaj) },
-    ] : []),
-    ...(vadesiGecen ? [{ ad: "Vadesi geçen tahsilat", deger: vadesiGecen.adet ? kisaPara(vadesiGecen.tutar) : "Yok", href: "/panel/finance", uyari: Boolean(vadesiGecen.adet) }] : []),
-  ];
-
-  /*
-    Müşteri adları müşteri sayfasına bağlanır (/panel/crm/musteri/[talep id]):
-    işin sözleşmesinden talebi bulunur. Sayfa CRM kayıtlarını okuduğu için
-    bağlantı yalnızca CRM'i ve müşteri sorgulama ya da iş yönetme yetkisi
-    olana (işler listesindeki kural).
-  */
-  const musteriBaglantisi = canSeeCrm && modulAcik("crm") && (izin("crm.musteri.sorgula") || izin("operations.is.yonet"));
-  const isKimlikleri = [...new Set([...isler.map((is) => is.id), ...asamalar.map((a) => a.workflow_id), ...benimAdimlar.map((a) => a.workflow_id)])];
-  const { data: talepBaglari } = musteriBaglantisi && isKimlikleri.length
-    ? await supabase.from("ops_contracts").select("workflow_id,opportunity_id").eq("organization_id", organizationId).in("workflow_id", isKimlikleri)
-    : { data: [] };
-  const isinTalebi = new Map(((talepBaglari ?? []) as { workflow_id: string | null; opportunity_id: string }[]).filter((r) => r.workflow_id).map((r) => [r.workflow_id as string, r.opportunity_id]));
-  const musteri = (ad: string | null | undefined, isId: string) => {
-    const talep = isinTalebi.get(isId);
-    return { ad: formatPersonName(ad) || ad || "Kurum içi iş", href: talep ? `/panel/crm/musteri/${talep}` : null };
-  };
 
   // Kurulum adımları: belgeler ve müşteri ekranı eksiksiz görünene kadar
   // gösterilir; hepsi tamamlanınca kart kendiliğinden kaybolur. Ölçütler
@@ -295,19 +205,6 @@ export default async function PanelPage() {
     <GenelBakis
       ust={<span className="dash-tarih">{date}</span>}
       baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
-      /* Günlük özet selamlamanın yanında: ayrı satırda dört kartı dock'un altına itiyordu. */
-      sag={ozet.length ? (
-        <nav className="kayit-serit talep-serit dash-ozet" aria-label="Günlük özet">
-          <dl>
-            {ozet.map((o) => (
-              <div key={o.ad}>
-                <dt>{o.ad}</dt>
-                <dd className={o.uyari ? "talep-uyari" : undefined}><Link href={o.href}>{o.deger}</Link></dd>
-              </div>
-            ))}
-          </dl>
-        </nav>
-      ) : null}
       uyari={failedQueries.map(([label]) => label)}
     >
       {showSetup ? (
@@ -359,8 +256,7 @@ export default async function PanelPage() {
                   href={`/panel/operations/${is.id}`}
                   baslik={formatSubject(is.title)}
                   baslikIpucu={is.title}
-                  musteri={musteri(is.customer_name, is.id)}
-                  alt={workflowStatusNames[is.status] ?? is.status}
+                  alt={`${is.customer_name || "Kurum içi iş"} · ${workflowStatusNames[is.status] ?? is.status}`}
                   sag={is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
                   yeni={yeniMi(is.updated_at)}
                 />
@@ -381,8 +277,7 @@ export default async function PanelPage() {
                   baslik={formatSubject(asama.title)}
                   baslikIpucu={asama.title}
                   /* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */
-                  musteri={musteri(asama.operation_workflows?.customer_name, asama.workflow_id)}
-                  alt={formatSubject(asama.operation_workflows?.title)}
+                  alt={`${asama.operation_workflows?.customer_name || "Kurum içi iş"} · ${formatSubject(asama.operation_workflows?.title)}`}
                   sag={<span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>}
                 />
               );
@@ -420,47 +315,6 @@ export default async function PanelPage() {
                 zaman={posta.son_mesaj_at ? relativeTime(posta.son_mesaj_at) : undefined}
                 okunmamis={posta.okunmamis}
                 yeni={yeniMi(posta.son_mesaj_at)}
-              />
-            ))}
-          </ListeKarti>
-        ) : canSeeCrm || canSeeOperations ? (
-          /*
-            BANA DÜŞENLER (2026-10): posta kutusu bağlı değilken dördüncü
-            sütun boş bir "bağlayın" kartıydı. Artık giriş yapanın bu hafta
-            tarihi gelen (ya da geçen) aşamaları ve yeni/incelenen talepleri.
-            Posta kutusunu bağlama yolu Ayarlar → Posta'da duruyor; kart
-            altında da bağlantısı var.
-          */
-          <ListeKarti
-            baslik="Bana düşenler"
-            alt={benimId ? [canSeeCrm ? `${benimTalepSayisi ?? 0} talep` : null, canSeeOperations ? `${benimIsSayisi ?? 0} iş` : null].filter(Boolean).join(" · ") || "Size atanan kayıtlar" : "Personel kaydınız yok"}
-            bos={benimId ? "Bu hafta tarihi gelen aşamanız ve yeni talebiniz yok." : "Size iş atanabilmesi için İK'da personel kaydınız olmalı."}
-            href={benimId ? (canSeeCrm ? `/panel/crm?temsilci=${benimId}` : `/panel/operations/isler?sorumlu=${benimId}`) : undefined}
-            hrefEtiket={canSeeCrm ? "Taleplerim" : "İşlerim"}
-            sayi={benimAdimlar.length + benimTalepler.length}
-          >
-            {benimAdimlar.map((asama) => {
-              const rozet = dueBadge(asama.due_date, today);
-              return (
-                <ListeSatiri
-                  key={`a:${asama.id}`}
-                  href={`/panel/operations/${asama.workflow_id}`}
-                  baslik={formatSubject(asama.title)}
-                  baslikIpucu={asama.title}
-                  musteri={musteri(asama.operation_workflows?.customer_name, asama.workflow_id)}
-                  alt={formatSubject(asama.operation_workflows?.title)}
-                  sag={<span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>}
-                />
-              );
-            })}
-            {benimTalepler.slice(0, Math.max(0, LISTE - benimAdimlar.length)).map((talep) => (
-              <ListeSatiri
-                key={`t:${talep.id}`}
-                href={`/panel/crm/requests/${talep.id}`}
-                baslik={formatPersonName(talep.customer_name) || talep.customer_name}
-                alt={formatSubject(talep.title) || "Talep"}
-                sag={<span className="status-pill" data-tone={talep.stage === "lead" ? "info" : "neutral"}>{requestStageNames[talep.stage] ?? talep.stage}</span>}
-                zaman={relativeTime(talep.created_at)}
               />
             ))}
           </ListeKarti>
