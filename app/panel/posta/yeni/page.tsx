@@ -3,6 +3,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { yeniPostaGonder } from "../actions";
 import "../posta.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   YENİ POSTA.
@@ -27,33 +28,35 @@ export default async function YeniPostaPage({ searchParams }: {
   const hesap = await postaDurumu(membership.organization_id);
 
   if (!izin("posta.yanitla")) {
-    return <div className="posta">
-      <div className="panel-pagehead"><div><small className="panel-kicker">ORTAK POSTA KUTUSU</small><h1>Yeni posta</h1></div></div>
-      <div className="posta-bos"><p>Bu kutudan posta gönderme yetkiniz yok.</p></div>
-    </div>;
+    return <main className="talep cari">
+      <header className="talep-bas"><div className="talep-bas-metin"><small className="panel-kicker">ORTAK POSTA KUTUSU</small><h1>Yeni posta</h1></div></header>
+      <section className="panel-card"><div className="crm-empty-state"><p>Bu kutudan posta gönderme yetkiniz yok.</p></div></section>
+    </main>;
   }
 
   if (hesap.durum !== "bagli") {
-    return <div className="posta">
-      <div className="panel-pagehead"><div><small className="panel-kicker">ORTAK POSTA KUTUSU</small><h1>Yeni posta</h1></div></div>
-      <div className="posta-bos">
-        <p>Ortak posta kutusu bağlı değil.</p>
-        <small>Ayarlar → Bağlantılar bölümünden kutuyu bağlayın.</small>
-      </div>
-    </div>;
+    return <main className="talep cari">
+      <header className="talep-bas"><div className="talep-bas-metin"><small className="panel-kicker">ORTAK POSTA KUTUSU</small><h1>Yeni posta</h1></div></header>
+      <section className="panel-card">
+        <div className="crm-empty-state">
+          <p>Ortak posta kutusu bağlı değil.</p>
+          <small>Ayarlar → Bağlantılar bölümünden kutuyu bağlayın.</small>
+        </div>
+      </section>
+    </main>;
   }
 
-  return <div className="posta">
-    <div className="panel-pagehead">
-      <div>
+  return <main className="talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
         <small className="panel-kicker">ORTAK POSTA KUTUSU</small>
         <h1>Yeni posta</h1>
         <p>{hesap.adres} adresinden gidecek.</p>
       </div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link></div>
-    </div>
+      <div className="talep-bas-eylem"><Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link></div>
+    </header>
 
-    <form className="posta-yanit" action={yeniPostaGonder}>
+    <form className="panel-card posta-yanit" action={yeniPostaGonder}>
       {firsat ? <input type="hidden" name="opportunity_id" value={firsat} /> : null}
       <label htmlFor="posta-alici">
         <b>Alıcı</b>
@@ -77,5 +80,5 @@ export default async function YeniPostaPage({ searchParams }: {
         <button className="panel-primary" type="submit">Gönder</button>
       </div>
     </form>
-  </div>;
+  </main>;
 }

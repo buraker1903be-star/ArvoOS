@@ -2,26 +2,11 @@
 
 .posta-uyari{margin:0 0 14px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--danger) 8%,transparent);color:var(--danger);font-size:13px}
 
-.posta-bos{display:grid;justify-items:center;gap:6px;padding:40px 16px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);text-align:center}
-.posta-bos p{margin:0;font-size:14px;font-weight:600;color:var(--ink)}
-.posta-bos small{font-size:13px}
 
-.posta-liste{margin:14px 0 0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);overflow:hidden}
-.posta-liste>li+li{border-top:1px solid var(--line-soft)}
-.posta-liste a{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) auto;align-items:center;gap:16px;padding:14px 16px;color:var(--ink);text-decoration:none;transition:background-color .15s ease}
-.posta-liste a:hover{background:color-mix(in srgb,var(--accent-soft) 40%,transparent)}
-.posta-liste a:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
 
 /* Okunmamış konuşma: ağırlık ve sol şerit. Yalnızca renkle ayırmak
    renk körlüğünde kayboluyordu. */
-.posta-liste>li[data-okunmamis="evet"] a{box-shadow:inset 3px 0 0 var(--primary)}
-.posta-liste>li[data-okunmamis="evet"] b{font-weight:700}
 
-.posta-kisi,.posta-icerik{min-width:0}
-.posta-kisi b,.posta-icerik b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.posta-kisi small,.posta-icerik small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.posta-yan{display:grid;justify-items:end;gap:4px;flex:none}
-.posta-yan small{color:var(--muted);font-size:12px;white-space:nowrap}
 
 .posta-durum-cubugu{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 
@@ -41,9 +26,7 @@
 .posta-not{margin:16px 0 0;color:var(--muted);font-size:13px}
 
 @media (max-width:760px){
-  .posta-liste a{grid-template-columns:minmax(0,1fr);gap:6px}
-  .posta-yan{justify-items:start;grid-auto-flow:column;gap:10px}
-  .posta-mesajlar header{flex-direction:column;gap:6px}
+      .posta-mesajlar header{flex-direction:column;gap:6px}
   .posta-mesaj-yan{justify-items:start;text-align:left}
 }
 
@@ -64,12 +47,8 @@
 .posta-bag select{flex:1 1 280px;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
 .posta-bag select:focus{outline:none;border-color:var(--primary);box-shadow:var(--shadow-glow)}
 /* Listede bağlı müşteri adı: yazışmanın hangi kayda ait olduğu. */
-.posta-musteri{color:var(--accent-strong)!important;font-weight:600}
 
 /* Arama çubuğu: liste süzgeçlerinin üstünde, tam genişlik. */
-.posta-arama{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.posta-arama input[type="search"]{flex:1 1 280px;min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
-.posta-arama input[type="search"]:focus{outline:none;border-color:var(--primary);box-shadow:var(--shadow-glow)}
 
 /* Ek listesi: gövdenin altında, indirilebilir bağlantılar. */
 .posta-ekler{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;padding:0;list-style:none}
@@ -90,3 +69,18 @@
    gösterirdi. */
 .os-root .posta-sil{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
 .os-root .posta-sil:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+
+/* ---------- Konuşma ekranı: solda yazışma, sağda durum ---------- */
+.posta-izgara{grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)}
+@media (max-width:1100px){.posta-izgara{grid-template-columns:minmax(0,1fr)}}
+.os-root .posta-akis{display:flex;flex-direction:column;gap:var(--sp-3)}
+.os-root .posta-yan{display:flex;flex-direction:column;gap:var(--sp-4)}
+.os-root .posta-yan h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+
+/* Kutu durumu listesi (liste ekranındaki yan panel). */
+.posta-durum-listesi dd{font-size:var(--fs-sm);font-weight:var(--fw-medium);overflow-wrap:anywhere}
+
+/* Okunmamış konuşma: ağırlık + sol şerit. Yalnızca renkle ayırmak renk
+   körlüğünde kayboluyordu. */
+.os-root .talep-tablo .crm-data-table tbody tr[data-okunmamis="evet"]{box-shadow:inset 3px 0 0 var(--primary)}
+.os-root .talep-tablo .crm-data-table tbody tr[data-okunmamis="evet"] .crm-table-title{font-weight:var(--fw-semibold)}

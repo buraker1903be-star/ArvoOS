@@ -87,7 +87,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   })));
   const bendeMi = konusma.ilgilenen_user_id === userId;
 
-  return <div className="posta">
+  return <main className="talep cari posta-konusma">
     {/*
       Konuşma açılınca okundu olur. Sunucuda değil tarayıcıda: Next
       listedeki bağlantıları önden yüklüyor ve bu sayfayı çalıştırıyor;
@@ -95,19 +95,17 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       açmadığı postaları okundu yapardı.
     */}
     <OkunduIsaretle threadId={threadId} okunmamis={Boolean(konusma.okunmamis)} isaretle={konusmayiOkundu} />
-    <div className="panel-pagehead">
-      <div>
+
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
         <small className="panel-kicker">ORTAK POSTA KUTUSU</small>
         <h1>{konusma.konu || "(konu yok)"}</h1>
-        <p>{mesajlar.length} mesaj</p>
+        <p>{mesajlar.length} mesaj · {kutuAdi}</p>
       </div>
-      <div className="panel-page-actions">
+      <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link>
-        {/*
-          Silme burada, listede değil: liste satırındaki bir silme düğmesi
-          yanlış satıra basmayı kolaylaştırır. Yazışma Gmail'in çöp
-          kutusuna gidiyor, kalıcı silinmiyor — not düğmenin yanında.
-        */}
+        {/* Silme burada, listede değil: liste satırındaki bir silme düğmesi
+            yanlış satıra basmayı kolaylaştırır. */}
         {izin("posta.sil") ? (
           <form action={konusmayiSil}>
             <input type="hidden" name="thread_id" value={threadId} />
@@ -115,116 +113,128 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
           </form>
         ) : null}
       </div>
-    </div>
+    </header>
 
-    {yonetebilir ? (
-      <form className="posta-bag" action={konusmayiKayitBagla}>
-        <input type="hidden" name="thread_id" value={threadId} />
-        <label htmlFor="posta-firsat">
-          <b>Müşteri kaydı</b>
-          <small>{konusma.opportunity_id
-            ? (bagliFirsat
-                ? `Bağlı: ${bagliFirsat.customer_name ?? "adsız"}${bagliFirsat.title ? ` · ${bagliFirsat.title}` : ""}`
-                : "Bağlı kayıt bu listede değil (eski kayıt olabilir)")
-            : "Bağlı kayıt yok. Gönderen adresi bir fırsatın iletişim adresiyle eşleşirse bağ kendiliğinden kurulur."}</small>
-        </label>
-        <div className="posta-bag-alt">
-          <select id="posta-firsat" name="opportunity_id" defaultValue={konusma.opportunity_id ?? ""}>
-            <option value="">— Bağ yok —</option>
-            {firsatlar.map((firsat) => (
-              <option key={firsat.id} value={firsat.id}>
-                {firsat.customer_name ?? "Adsız müşteri"}{firsat.title ? ` · ${firsat.title}` : ""}
-              </option>
-            ))}
-          </select>
-          <button className="panel-secondary" type="submit">Kaydet</button>
-          {konusma.opportunity_id ? <Link className="panel-secondary" href={`/panel/crm/requests/${konusma.opportunity_id}`}>Kaydı aç</Link> : null}
-        </div>
-      </form>
-    ) : null}
+    {/*
+      İki sütun: solda yazışma, sağda yazışmanın DURUMU. Eskiden durum
+      düğmeleri ve müşteri bağı mesaj akışının üstüne serpilmişti ve
+      okumayı bölüyordu; panelin kayıt detayı düzeni de bu ayrımı
+      kullanıyor.
+    */}
+    <div className="talep-izgara posta-izgara">
+      <section className="panel-card talep-bilgi posta-akis" aria-label="Mesajlar">
+        <ol className="posta-mesajlar">
+          {mesajlar.map((mesaj) => (
+            <li key={mesaj.message_id} data-yon={mesaj.yon}>
+              <header>
+                <span>
+                  <b>{mesaj.gonderen_ad || mesaj.gonderen_adres || "Bilinmeyen gönderen"}</b>
+                  <small>{mesaj.gonderen_adres}{mesaj.alici ? ` → ${mesaj.alici}` : ""}</small>
+                </span>
+                <span className="posta-mesaj-yan">
+                  <small>{istanbulTarihSaat(mesaj.tarih)}</small>
+                </span>
+              </header>
+              {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor. */}
+              <p className="posta-govde">{icerikler.get(mesaj.message_id)?.govde || "(boş mesaj)"}</p>
+              {/*
+                Ekler panelden iniyor. Eskiden yalnızca "ekli dosya var"
+                yazıyordu ve dosyayı almak için Gmail'e geçmek gerekiyordu —
+                ortak kutunun amacı tam da bunu gerektirmemekti.
+              */}
+              {icerikler.get(mesaj.message_id)?.ekler.length ? (
+                <ul className="posta-ekler">
+                  {icerikler.get(mesaj.message_id)!.ekler.map((ek) => (
+                    <li key={ek.ekId}>
+                      <a href={`/panel/posta/ek/${encodeURIComponent(mesaj.message_id)}/${encodeURIComponent(ek.ekId)}`}>
+                        {ek.dosyaAdi}
+                      </a>
+                      <small>{dosyaBoyutu(ek.boyut)}</small>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ol>
 
-    {yonetebilir ? (
-      <div className="posta-durum-cubugu">
-        <form action={konusmayiUstlen}>
-          <input type="hidden" name="thread_id" value={threadId} />
-          <input type="hidden" name="kime" value={bendeMi ? "bosalt" : "ben"} />
-          <button className="panel-secondary" type="submit">{bendeMi ? "İlgilenmeyi bırak" : "Ben ilgileniyorum"}</button>
-        </form>
-        {(["acik", "yanitlandi", "kapali"] as const).map((durum) => (
-          <form key={durum} action={konusmaDurumu}>
+        {izin("posta.yanitla") && yanitlanacakAdres ? (
+          <form className="posta-yanit" action={konusmayaYanitla}>
             <input type="hidden" name="thread_id" value={threadId} />
-            <input type="hidden" name="durum" value={durum} />
-            <button className={konusma.durum === durum ? "panel-primary" : "panel-secondary"} type="submit">
-              {durum === "acik" ? "Açık" : durum === "yanitlandi" ? "Yanıtlandı" : "Kapalı"}
-            </button>
+            <label htmlFor="posta-yanit-metni">
+              <b>Yanıt yaz</b>
+              <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
+            </label>
+            <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} placeholder="Yanıtınızı yazın…" />
+            <label className="posta-ek-sec">
+              <span>Ek dosya</span>
+              <input type="file" name="ekler" multiple />
+            </label>
+            <div className="posta-yanit-alt">
+              <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.</small>
+              <button className="panel-primary" type="submit">Yanıtı gönder</button>
+            </div>
           </form>
-        ))}
-      </div>
-    ) : null}
+        ) : (
+          <p className="posta-not">
+            {yanitlanacakAdres
+              ? "Bu kutudan yanıt yazma yetkiniz yok."
+              : "Bu konuşmada yanıtlanacak bir gönderen yok (yalnızca giden mesajlar var)."}
+          </p>
+        )}
+      </section>
 
-    <ol className="posta-mesajlar">
-      {mesajlar.map((mesaj) => (
-        <li key={mesaj.message_id} data-yon={mesaj.yon}>
-          <header>
-            <span>
-              <b>{mesaj.gonderen_ad || mesaj.gonderen_adres || "Bilinmeyen gönderen"}</b>
-              <small>{mesaj.gonderen_adres}{mesaj.alici ? ` → ${mesaj.alici}` : ""}</small>
-            </span>
-            <span className="posta-mesaj-yan">
-              <small>{istanbulTarihSaat(mesaj.tarih)}</small>
-            </span>
-          </header>
-          {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor. */}
-          <p className="posta-govde">{icerikler.get(mesaj.message_id)?.govde || "(boş mesaj)"}</p>
-          {/*
-            Ekler panelden iniyor. Eskiden yalnızca "ekli dosya var"
-            yazıyordu ve dosyayı almak için Gmail'e geçmek gerekiyordu —
-            ortak kutunun amacı tam da bunu gerektirmemekti.
-          */}
-          {icerikler.get(mesaj.message_id)?.ekler.length ? (
-            <ul className="posta-ekler">
-              {icerikler.get(mesaj.message_id)!.ekler.map((ek) => (
-                <li key={ek.ekId}>
-                  <a href={`/panel/posta/ek/${encodeURIComponent(mesaj.message_id)}/${encodeURIComponent(ek.ekId)}`}>
-                    {ek.dosyaAdi}
-                  </a>
-                  <small>{dosyaBoyutu(ek.boyut)}</small>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </li>
-      ))}
-    </ol>
+      <aside className="panel-card talep-musteri posta-yan" aria-label="Yazışma bilgileri">
+        {yonetebilir ? (
+          <div className="posta-durum-cubugu">
+            <form action={konusmayiUstlen}>
+              <input type="hidden" name="thread_id" value={threadId} />
+              <input type="hidden" name="kime" value={bendeMi ? "bosalt" : "ben"} />
+              <button className="panel-secondary" type="submit">{bendeMi ? "İlgilenmeyi bırak" : "Ben ilgileniyorum"}</button>
+            </form>
+            {(["acik", "yanitlandi", "kapali"] as const).map((durum) => (
+              <form key={durum} action={konusmaDurumu}>
+                <input type="hidden" name="thread_id" value={threadId} />
+                <input type="hidden" name="durum" value={durum} />
+                <button className={konusma.durum === durum ? "panel-primary" : "panel-secondary"} type="submit">
+                  {durum === "acik" ? "Açık" : durum === "yanitlandi" ? "Yanıtlandı" : "Kapalı"}
+                </button>
+              </form>
+            ))}
+          </div>
+        ) : null}
 
-    {izin("posta.yanitla") && yanitlanacakAdres ? (
-      <form className="posta-yanit" action={konusmayaYanitla}>
-        <input type="hidden" name="thread_id" value={threadId} />
-        <label htmlFor="posta-yanit-metni">
-          <b>Yanıt yaz</b>
-          <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
-        </label>
-        <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} placeholder="Yanıtınızı yazın…" />
-        <label className="posta-ek-sec">
-          <span>Ek dosya</span>
-          <input type="file" name="ekler" multiple />
-        </label>
-        <div className="posta-yanit-alt">
-          <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.</small>
-          <button className="panel-primary" type="submit">Yanıtı gönder</button>
-        </div>
-      </form>
-    ) : (
-      <p className="posta-not">
-        {yanitlanacakAdres
-          ? "Bu kutudan yanıt yazma yetkiniz yok."
-          : "Bu konuşmada yanıtlanacak bir gönderen yok (yalnızca giden mesajlar var)."}
-      </p>
-    )}
+        {yonetebilir ? (
+          <form className="posta-bag" action={konusmayiKayitBagla}>
+            <input type="hidden" name="thread_id" value={threadId} />
+            <label htmlFor="posta-firsat">
+              <b>Müşteri kaydı</b>
+              <small>{konusma.opportunity_id
+                ? (bagliFirsat
+                    ? `Bağlı: ${bagliFirsat.customer_name ?? "adsız"}${bagliFirsat.title ? ` · ${bagliFirsat.title}` : ""}`
+                    : "Bağlı kayıt bu listede değil (eski kayıt olabilir)")
+                : "Bağlı kayıt yok. Gönderen adresi bir fırsatın iletişim adresiyle eşleşirse bağ kendiliğinden kurulur."}</small>
+            </label>
+            <div className="posta-bag-alt">
+              <select id="posta-firsat" name="opportunity_id" defaultValue={konusma.opportunity_id ?? ""}>
+                <option value="">— Bağ yok —</option>
+                {firsatlar.map((firsat) => (
+                  <option key={firsat.id} value={firsat.id}>
+                    {firsat.customer_name ?? "Adsız müşteri"}{firsat.title ? ` · ${firsat.title}` : ""}
+                  </option>
+                ))}
+              </select>
+              <button className="panel-secondary" type="submit">Kaydet</button>
+              {konusma.opportunity_id ? <Link className="panel-secondary" href={`/panel/crm/requests/${konusma.opportunity_id}`}>Kaydı aç</Link> : null}
+            </div>
+          </form>
+        ) : null}
 
-    <p className="posta-not">
-      Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.
-      {izin("posta.sil") ? " Silinen yazışma Gmail'in çöp kutusuna gider, kalıcı olarak silinmez." : ""}
-    </p>
-  </div>;
+        <p className="posta-not">
+          Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.
+          {izin("posta.sil") ? " Silinen yazışma Gmail'in çöp kutusuna gider, kalıcı olarak silinmez." : ""}
+        </p>
+      </aside>
+    </div>
+  </main>;
 }
