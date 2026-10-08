@@ -151,3 +151,15 @@ html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"])
 @media(max-width:900px){
   .os-root :is(.dash-widget,.fin-widget,.hr-widget,.opsov-widget,.rpt-widget,.stg-widget) strong{font-size:var(--fs-lg);overflow-wrap:normal;white-space:nowrap}
 }
+
+/* ---------- Sayfa genişliği ----------
+   İç sayfalar panel genişliğinde (2026-10). Modül sarmalayıcıları kendi
+   içinde 1500–1680px'e sınırlıydı; geniş ekranda iki yanda boşluk
+   kalıyordu. Belge gibi okunan sayfalar (gizlilik sözleşmesi .nda-page)
+   bilerek dar kalır: uzun satır okunmuyor. */
+.os-root .panel-content>:is(main,.dash,.crm-page-stack,.finance-page-stack,.finance-ledger-page,.operations-page,.reporting-page,.crm-page,.finance-page,.work-page,.structure-page,.audit-page,.inventory-page){
+  width:100%;max-width:none;margin-inline:0
+}
+@media (min-width:1600px){
+  .os-root .panel-content{padding-inline:var(--sp-8)}
+}

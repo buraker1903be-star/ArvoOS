@@ -89,7 +89,8 @@
 /* ---------- Çalışma alanı ---------- */
 .os-workspace{min-width:0}
 .os-root .panel-content{
-  max-width:1360px;margin:0 auto;box-sizing:border-box;
+  /* Panel genişliğinde (kurum sahibinin isteği, 2026-10): eskiden 1360px. */
+  max-width:none;margin:0;box-sizing:border-box;
   padding:var(--sp-6) var(--sp-6) calc(var(--os-dock-space) + env(safe-area-inset-bottom));
 }
 
