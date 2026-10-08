@@ -219,3 +219,8 @@ a.dash-setup-step:active{transform:scale(.985)}
   .dash-cols{gap:var(--sp-3)}
 }
 @media (min-width:901px){.dash-v2 .panel-kicker:has(> .dash-tarih:only-child){display:none}}
+/* Modül genel bakışlarında başlığın altında sekme çubuğu var (~44px); tek
+   ekrana sığması için sekme boşluğu ve grafik biraz daha alçak. */
+.dash-v2 > .module-tabs{margin:0}
+.dash-v2:has(> .module-tabs) .dash-hero h1{font-size:var(--fs-xl)}
+.dash-v2:has(> .module-tabs) .dash-bars{height:52px}
