@@ -240,7 +240,10 @@ const SOURCE_DIRS = kaynakArg
 const problems = [];
 for (const dir of SOURCE_DIRS) {
   for (const file of walk(path.resolve(root, dir))) {
-    const rel = path.relative(root, file);
+    // Liste eğik çizgiyle yazılı. Eskiden Windows'ta path.relative
+    // "lib\arvolab.ts" döndürüyor, dosya listede bulunmuyor ve ArvoLab'ın
+    // kendi tabloları bu şemada aranıp 4 sahte sorun çıkıyordu (CI'da yeşil).
+    const rel = path.relative(root, file).replaceAll(path.sep, "/");
     if (OTHER_DATABASE_FILES.has(rel)) continue;
     problems.push(...dosyaSorunlari(fs.readFileSync(file, "utf8"), { tables, functions, etiket: rel }));
   }
