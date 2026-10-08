@@ -20,7 +20,7 @@ import { uygulamaBolumleri, type Bolum, type BolumErisimi } from "./os-bolumler"
 
 export type OsIkon =
   | "home" | "crm" | "operations" | "finance" | "hr" | "documents"
-  | "posta" | "messages" | "settings" | "apps" | "notifications";
+  | "posta" | "messages" | "settings" | "apps" | "notifications" | "whatsapp";
 
 export type OsUygulama = {
   key: string;
@@ -33,6 +33,8 @@ export type OsUygulama = {
   rozet?: number;
   /** Uygulamanın bölümleri (os-bolumler.ts): ikinci dock ve Ctrl+K. */
   bolumler?: Bolum[];
+  /** Yalnızca "Tüm uygulamalar"da (ve Ctrl+K'da); dock'ta yer kaplamaz. */
+  yalnizBaslatici?: boolean;
 };
 
 export type OsSayfa = { label: string; href: string; uygulama: string };
@@ -78,6 +80,14 @@ export function osUygulamalari({
     const bolumler = uygulamaBolumleri(grup.key, bolumErisimi);
     uygulamalar.push({ key: grup.key, label: grup.label, href, ikon: GRUP_IKONU[grup.key] ?? "apps", yollar, ...(bolumler.length ? { bolumler } : {}) });
   }
+  /*
+    WhatsApp (2026-10): eskiden CRM'in ikinci dock'unda bir bölümdü; kurum
+    sahibinin isteğiyle "Tüm uygulamalar"da ayrı uygulama. Sayfası CRM'in
+    içinde (/panel/crm/whatsapp), CRM açıksa görünür; dock'ta yer kaplamaz.
+  */
+  if (gruplar.some((grup) => grup.key === "crm")) {
+    uygulamalar.push({ key: "whatsapp", label: "WhatsApp", href: "/panel/crm/whatsapp", ikon: "whatsapp", yollar: ["/panel/crm/whatsapp"], yalnizBaslatici: true });
+  }
   if (posta) {
     uygulamalar.push({ key: "posta", label: "Posta", href: "/panel/posta", ikon: "posta", yollar: ["/panel/posta"], rozet: posta.okunmamis });
   }
@@ -115,6 +125,8 @@ export function etkinUygulama(uygulamalar: OsUygulama[], yol: string): OsUygulam
 */
 export function osSayfalari(uygulamalar: OsUygulama[]): OsSayfa[] {
   const sayfalar: OsSayfa[] = uygulamalar.flatMap((u) => (u.bolumler ?? []).map((b) => ({ label: b.label === "Genel Bakış" ? `${u.label} genel bakış` : b.label, href: b.href, uygulama: u.key })));
+  // Bölümü olmayan, yalnızca başlatıcıdaki uygulamalar (WhatsApp) Ctrl+K'da da bulunsun.
+  for (const u of uygulamalar) if (u.yalnizBaslatici) sayfalar.push({ label: u.label, href: u.href, uygulama: u.key });
   sayfalar.push({ label: "Bildirimler", href: "/panel/notifications", uygulama: "home" });
   return sayfalar;
 }

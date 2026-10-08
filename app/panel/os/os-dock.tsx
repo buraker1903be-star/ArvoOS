@@ -28,12 +28,19 @@ import { etkinBolum } from "./os-bolumler";
   kurumun bütün uygulamaları büyük ikonlarla, altta kurumun lisanslı diğer
   Arvo ürünleri. Ürünler yeni sekmede açılır (gerekçe panel-navigation.tsx).
 */
+/*
+  İkinci dock'ta Genel Bakış yok: uygulamanın simgesine basmak zaten genel
+  bakışı açıyor, ayrıca yer kaplıyordu (kurum sahibinin isteği, 2026-10).
+  Ctrl+K'da "CRM genel bakış" olarak duruyor.
+*/
+const altBolumler = (u: OsUygulama) => (u.bolumler ?? []).filter((b) => b.key !== "genel-bakis");
+
 export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygulama[]; digerUygulamalar: DigerUygulama[] }) {
   const yol = usePathname();
   const pencere = useRef<HTMLDialogElement>(null);
   const etkin = etkinUygulama(uygulamalar, yol);
   const home = uygulamalar.find((u) => u.key === "home");
-  const dockta = uygulamalar.filter((u) => u.key !== "home" && u.key !== "settings");
+  const dockta = uygulamalar.filter((u) => u.key !== "home" && u.key !== "settings" && !u.yalnizBaslatici);
 
   const zaman = useGecikme();
   /* Açıldığı sayfa da tutulur: sayfa değişince ikinci dock kendiliğinden
@@ -51,7 +58,7 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
     zaman.kur(() => setAlt(null), gecikme);
   };
   const ac = (uygulama: OsUygulama, oge: HTMLElement, gecikme = 90) => {
-    if (!uygulama.bolumler?.length) { kapat(0); return; }
+    if (!altBolumler(uygulama).length) { kapat(0); return; }
     const yer = konum(oge);
     zaman.kur(() => setAlt({ key: uygulama.key, ...yer }), gecikme);
   };
@@ -78,7 +85,7 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
 
   const fareMi = (olay: ReactPointerEvent) => olay.pointerType === "mouse";
   const ikonKlavye = (uygulama: OsUygulama) => (olay: ReactKeyboardEvent<HTMLElement>) => {
-    if (olay.key === "ArrowUp" && uygulama.bolumler?.length) {
+    if (olay.key === "ArrowUp" && altBolumler(uygulama).length) {
       olay.preventDefault();
       zaman.iptal();
       setAlt({ key: uygulama.key, ...konum(olay.currentTarget) });
@@ -97,14 +104,14 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
         className={["os-dock-item", acik ? "is-active" : "", alt?.key === uygulama.key ? "is-sub-open" : ""].filter(Boolean).join(" ")}
         aria-label={uygulama.rozet ? `${uygulama.label}, ${uygulama.rozet} okunmamış` : uygulama.label}
         aria-current={acik ? "page" : undefined}
-        aria-haspopup={uygulama.bolumler?.length ? "true" : undefined}
-        aria-expanded={uygulama.bolumler?.length ? alt?.key === uygulama.key : undefined}
+        aria-haspopup={altBolumler(uygulama).length ? "true" : undefined}
+        aria-expanded={altBolumler(uygulama).length ? alt?.key === uygulama.key : undefined}
         onPointerEnter={(olay) => { if (fareMi(olay)) ac(uygulama, olay.currentTarget); }}
         onPointerLeave={(olay) => { if (fareMi(olay)) kapat(); }}
         onKeyDown={ikonKlavye(uygulama)}
         onPointerDown={(olay) => zaman.isaretciKaydet(olay.pointerType)}
         onClick={(olay) => {
-          if (!zaman.dokunmaMi() || !uygulama.bolumler?.length) return;
+          if (!zaman.dokunmaMi() || !altBolumler(uygulama).length) return;
           olay.preventDefault();
           if (alt?.key === uygulama.key) kapat(0);
           else { zaman.iptal(); setAlt({ key: uygulama.key, ...konum(olay.currentTarget) }); }
@@ -135,7 +142,7 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
           }}
         >
           <span className="os-subdock-title">{altUygulama.label}</span>
-          {altUygulama.bolumler.map((bolum) => (
+          {altBolumler(altUygulama).map((bolum) => (
             <Link
               key={bolum.key}
               href={bolum.href}

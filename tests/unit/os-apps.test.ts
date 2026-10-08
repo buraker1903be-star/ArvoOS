@@ -19,7 +19,8 @@ const modules = [
 
 test("kurumun açık modülleri sırayla uygulama olur; ana ekran başta, ayarlar sonda", () => {
   const keys = osUygulamalari({ modules, role: "admin" }).map((u) => u.key);
-  assert.deepEqual(keys, ["home", "crm", "operations", "finance", "hr", "settings"]);
+  // WhatsApp yalnızca başlatıcıda (CRM açıksa), ayarlardan önce.
+  assert.deepEqual(keys, ["home", "crm", "operations", "finance", "hr", "whatsapp", "settings"]);
 });
 
 test("rol için gizlenen modül dock'ta görünmez; owner hiç kısıtlanmaz", () => {
@@ -30,7 +31,7 @@ test("rol için gizlenen modül dock'ta görünmez; owner hiç kısıtlanmaz", (
 
 test("açık olmayan modülün uygulaması yok", () => {
   const keys = osUygulamalari({ modules: [{ code: "crm", name: "CRM" }], role: "admin" }).map((u) => u.key);
-  assert.deepEqual(keys, ["home", "crm", "settings"]);
+  assert.deepEqual(keys, ["home", "crm", "whatsapp", "settings"]);
 });
 
 test("posta ve mesajlar yalnızca verildiğinde, rozetiyle", () => {
@@ -77,4 +78,19 @@ test("anlık tazeleme yalnızca liste ve özet ekranlarında", () => {
   assert.deepEqual(canliTablolar("/panel/crm/requests/abc"), []);
   assert.deepEqual(canliTablolar("/panel/operations/pano"), []);
   assert.deepEqual(canliTablolar("/panel/settings"), []);
+});
+
+test("WhatsApp yalnızca başlatıcıda: CRM açıksa uygulama, dock'ta değil, Ctrl+K'da var", () => {
+  const apps = osUygulamalari({ modules, role: "admin" });
+  const wa = apps.find((u) => u.key === "whatsapp");
+  assert.ok(wa);
+  assert.equal(wa.href, "/panel/crm/whatsapp");
+  assert.equal(wa.yalnizBaslatici, true);
+  // Eskiden CRM'in ikinci dock'unda bir bölümdü
+  assert.ok(!apps.find((u) => u.key === "crm")?.bolumler?.some((b) => b.key === "whatsapp"));
+  assert.ok(osSayfalari(apps).some((s) => s.href === "/panel/crm/whatsapp"));
+  // WhatsApp sayfasında etkin uygulama WhatsApp (en uzun yol)
+  assert.equal(etkinUygulama(apps, "/panel/crm/whatsapp")?.key, "whatsapp");
+  // CRM kapalıysa yok
+  assert.ok(!osUygulamalari({ modules: [{ code: "operations", name: "Operasyon" }], role: "admin" }).some((u) => u.key === "whatsapp"));
 });

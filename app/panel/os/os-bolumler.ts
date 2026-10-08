@@ -40,8 +40,7 @@ export function crmBolumleri(): Bolum[] {
     { key: "genel-bakis", href: "/panel/crm/genel-bakis", label: "Genel Bakış" },
     // Talepler tablosu modülün giriş adresinde: panelin birçok yeri oraya bağlanıyor.
     { key: "talepler", href: "/panel/crm", label: "Talepler" },
-    // WhatsApp talebin hemen ardında: yazışmaların çoğu talepten önce ya da onunla birlikte geliyor.
-    { key: "whatsapp", href: "/panel/crm/whatsapp", label: "WhatsApp" },
+    // WhatsApp burada bir bölümdü; artık "Tüm uygulamalar"da ayrı uygulama (os-apps.ts).
     { key: "teklifler", href: "/panel/crm/proposals", label: "Teklifler" },
     { key: "sozlesmeler", href: "/panel/crm/contracts", label: "Sözleşmeler" },
     { key: "takvim", href: "/panel/crm/takvim", label: "Takvim" },

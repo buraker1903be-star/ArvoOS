@@ -26,7 +26,8 @@ test("İK: prim ve kayıt sekmeleri yetkiyle; kurucu prim görür", () => {
 
 test("bölümü olmayan uygulama boş", () => {
   assert.deepEqual(uygulamaBolumleri("settings", bos), []);
-  assert.equal(uygulamaBolumleri("crm", bos).length, 6);
+  // WhatsApp bölüm değil, ayrı uygulama (os-apps.ts).
+  assert.equal(uygulamaBolumleri("crm", bos).length, 5);
 });
 
 test("açık bölüm: tam yol, alt sayfa ve sorgu dizesi", () => {
