@@ -422,3 +422,16 @@
 @media (max-width:1600px) and (min-width:1201px){.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr) 340px}}
 /* 1360px altında dokuz sütun sığmıyor: "Son temas" gizlenir (kayıt detayında var). */
 @media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table .crm-col-contact{display:none}.os-root .talep-tablo .crm-data-table td[data-label="Müşteri"]{min-width:130px}}
+/* İşler tablosu: iş adı hücresi sarılabilir (bağlantı tek satıra
+   zorluyordu, sütun 310px oluyordu); termin etiketi tarihin altında. */
+.os-root .talep-tablo .crm-data-table td[data-label="İş"]{min-width:180px}
+.os-root .talep-tablo .crm-data-table td[data-label="İş"] .crm-row-link{display:block;white-space:normal}
+.os-root .talep-tablo .crm-data-table td.crm-col-date small{display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-micro);white-space:nowrap}
+.os-root .talep-tablo .crm-data-table td.crm-col-date.is-late small{color:var(--danger)}
+.os-root .talep-tablo .ops-status-cell{white-space:normal}
+.os-root .talep-tablo .ops-status-cell .status-pill+.status-pill{margin-top:var(--sp-1)}
+.os-root .talep-tablo .crm-alert-chip{display:inline-block;margin-top:var(--sp-1)}
+/* İş adlarında boşluksuz uzun zincirler var ("Teslim+Analiz+T.Makale+Savunma");
+   kelime sınırında kırılamadıkları için sütun 310px'e çıkıyordu. Yalnızca bu
+   hücrede her yerden kırılır; en az 180px olduğu için aşırı daralmaz. */
+.os-root .talep-tablo .crm-data-table td[data-label="İş"] :is(.crm-table-title,.crm-table-sub){overflow-wrap:anywhere}
