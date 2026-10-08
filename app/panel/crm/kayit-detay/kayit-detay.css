@@ -269,3 +269,22 @@
 /* Liste sayfasının başlık + şerit + süzgeç satırı detaydakinden ~30px uzun. */
 .os-root .ekip .ekip-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 350px)}
 @media (max-width:1200px){.os-root .ekip .ekip-izgara>:is(.talep-bilgi,.talep-musteri){max-height:none}}
+
+/* Teklifler listesi: tutar sütunu ve bağlantı hazır şeridi. */
+.teklif-tutar-satir{flex:none;width:120px;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.teklif-paylasim{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;padding:var(--sp-3) var(--sp-4);border:1px solid color-mix(in srgb,var(--success) 35%,var(--line));border-radius:var(--r-lg);background:var(--success-soft)}
+.teklif-paylasim-ikon{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--success);color:var(--n-0);font-weight:var(--fw-bold)}
+.teklif-paylasim-metin{flex:1;min-width:0;display:flex;flex-direction:column}
+.teklif-paylasim-metin b{font-size:var(--fs-sm);color:var(--ink)}
+.teklif-paylasim-metin small{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.teklif-paylasim .talep-iletisim{margin:0}
+.os-root .teklif-paylasim .talep-iletisim>:is(a,button){flex:none;min-height:34px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
+@media (max-width:760px){.teklif-tutar-satir{width:auto}}
+/* Telefonda teklif satırı iki sütun: solda müşteri ve teklif, sağda tutar ve durum alt alta. */
+@media (max-width:760px){
+  .teklifler .ekip-liste a{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--sp-3);row-gap:2px}
+  .teklifler .ekip-liste .talep-avatar{display:none}
+  .teklifler .ekip-liste .cari-hareket-metin{grid-column:1;grid-row:1/3}
+  .teklifler .teklif-tutar-satir{grid-column:2;grid-row:1}
+  .teklifler .talep-satir-durum{grid-column:2;grid-row:2}
+}
