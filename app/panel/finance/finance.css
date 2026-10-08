@@ -302,3 +302,7 @@ a.fin-entity:hover b{color:var(--accent)}
 
 /* Sorumlular: iki satırlık bilgi için tam bölüm ayırmak ekranı uzatıyordu. */
 .os-root .maliyet-sorumlular{display:flex;flex-wrap:wrap;gap:var(--sp-5)}
+
+/* Maliyet listesinin yan paneli yok: özet zaten üstteki şeritte. Tek
+   sütun — iki sütunlu ızgara ekranın sağ yarısını boş bırakıyordu. */
+.maliyet-liste-izgara{grid-template-columns:minmax(0,1fr)}

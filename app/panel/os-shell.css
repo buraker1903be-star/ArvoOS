@@ -311,6 +311,14 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
   /* Çok kısa pencerede liste okunamayacak kadar incelmesin; orada sayfa kayar. */
   min-height:420px;
 }
+/*
+  Başlık ve şerit KENDİ boylarında kalır, yalnızca liste esner. Flex
+  öğeleri varsayılan olarak kısalabiliyor; sabit yükseklikli bir sütunda
+  bu, uzun başlığın kırpılması ve bir sonraki bloğun üstüne binmesi
+  demekti (08.10.2026, iş maliyetleri ekranı: açıklama satırı özet
+  şeridinin altında kaldı).
+*/
+.os-root main.liste-sayfa>:not(.talep-izgara){flex:0 0 auto}
 .os-root main.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0;align-items:stretch;grid-template-rows:minmax(0,1fr)}
 .os-root main.liste-sayfa>.talep-izgara>.talep-bilgi{
   display:flex;flex-direction:column;align-self:stretch;

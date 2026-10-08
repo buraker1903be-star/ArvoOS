@@ -388,7 +388,7 @@ export default async function FinancePage({
             </dl>
           </nav>
 
-          <div className="talep-izgara personel-iki ekip-izgara">
+          <div className="talep-izgara maliyet-liste-izgara">
             <ProfitabilityWorkspace rows={profitRows} />
           </div>
         </>
