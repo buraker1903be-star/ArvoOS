@@ -8,6 +8,8 @@ import {
   yanitAlicisi,
   yanitKonusu,
   ekBoyutuEngeli,
+  alintiliGovde,
+  ccAdaylari,
   guvenliEkAdi,
   imzaliGovde,
   yanitMesajiKur,
@@ -299,4 +301,59 @@ test("imza iki kez eklenmiyor", () => {
 test("imza yoksa gövdeye dokunulmuyor", () => {
   assert.equal(imzaliGovde("Merhaba", null), "Merhaba");
   assert.equal(imzaliGovde("Merhaba", "   "), "Merhaba");
+});
+
+test("alıntı standart biçimde ekleniyor", () => {
+  /*
+    Yanıt tek başına gidince müşteri neye cevap verildiğini çoğu zaman
+    anlamıyor: kendi mesajını başka bir kutudan, günler sonra okuyor.
+  */
+  const sonuc = alintiliGovde("Teşekkürler, inceliyoruz.", {
+    gonderenAd: "Ayşe Yılmaz",
+    gonderenAdres: "ayse@firma.com",
+    tarih: new Date("2026-10-05T09:30:00Z"),
+    metin: "Merhaba,\nteklifi bekliyorum.",
+  });
+  assert.match(sonuc, /^Teşekkürler, inceliyoruz\.\n\n/);
+  assert.match(sonuc, /Ayşe Yılmaz <ayse@firma\.com> şöyle yazdı:/);
+  assert.match(sonuc, /\n> Merhaba,\n> teklifi bekliyorum\./);
+});
+
+test("alıntı yoksa gövdeye dokunulmuyor", () => {
+  assert.equal(alintiliGovde("Merhaba", null), "Merhaba");
+  assert.equal(alintiliGovde("Merhaba", { gonderenAd: null, gonderenAdres: "a@b.com", tarih: null, metin: "   " }), "Merhaba");
+});
+
+test("uzun alıntı kısaltılıyor", () => {
+  /* Yirmi turluk bir yazışmanın tamamını her mesaja eklemek hem okunamaz
+     hem Gmail'in "kırpıldı" uyarısını getiriyor. */
+  const uzun = "x".repeat(5000);
+  const sonuc = alintiliGovde("Cevap", { gonderenAd: null, gonderenAdres: "a@b.com", tarih: null, metin: uzun });
+  assert.ok(sonuc.includes("…"));
+  assert.ok(sonuc.length < 5000);
+});
+
+test("tümünü yanıtla adaylarından kutu ve asıl alıcı çıkarılıyor", () => {
+  /*
+    Kutunun kendi adresi Cc'ye girerse gelen kutusuna kendi yanıtımızın
+    kopyası düşer; asıl alıcı girerse ona iki kopya gider.
+  */
+  const adaylar = ccAdaylari(
+    "info@biz.com, musteri@x.com, Muhasebe <muhasebe@x.com>",
+    "info@biz.com",
+    "musteri@x.com",
+  );
+  assert.deepEqual(adaylar, ["muhasebe@x.com"]);
+  assert.deepEqual(ccAdaylari(null, "info@biz.com", "musteri@x.com"), []);
+  // Bozuk başlıkta sessizce boş dönüyor: Cc kullanıcı girdisi değil, türetilmiş bir öneri.
+  assert.deepEqual(ccAdaylari("bozuk-adres", "info@biz.com", "musteri@x.com"), []);
+});
+
+test("Cc başlığı yalnızca adres varsa yazılıyor", () => {
+  const ccli = yeniMesajiKur({
+    gonderenAd: "A", gonderenAdres: "a@b.com", alicilar: ["c@d.com"], konu: "K", govde: "G", cc: ["e@f.com"],
+  });
+  assert.match(ccli, /\r\nCc: e@f\.com\r\n/);
+  const ccsiz = yeniMesajiKur({ gonderenAd: "A", gonderenAdres: "a@b.com", alicilar: ["c@d.com"], konu: "K", govde: "G" });
+  assert.ok(!ccsiz.includes("Cc:"));
 });

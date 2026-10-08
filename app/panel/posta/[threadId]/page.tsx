@@ -2,10 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
-import { yanitAlicisi } from "@/lib/posta-gonderim";
+import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import "../posta.css";
 
@@ -91,11 +91,17 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   const yonetebilir = izin("posta.yonet");
   /* Yanıt son GELEN mesajın göndereneine gider; son giden mesaja bakmak
      kendi adresimize cevap yazdırırdı. */
+  const sonGelen = [...mesajlar].reverse().find((mesaj) => mesaj.yon === "gelen");
   const yanitlanacakAdres = yanitAlicisi(mesajlar.map((mesaj) => ({
     gonderenAdres: mesaj.gonderen_adres,
     yon: mesaj.yon,
     tarih: mesaj.tarih ? new Date(mesaj.tarih) : null,
   })));
+  /* "Tümünü yanıtla": özgün mesajın diğer alıcıları Cc'ye hazır gelir.
+     Kutunun kendi adresi ve asıl alıcı çıkarılıyor — biri kendi
+     yanıtımızın kopyasını gelen kutumuza düşürür, öteki alıcıya iki
+     kopya gönderir. */
+  const ccHazir = ccAdaylari(sonGelen?.alici ?? null, kutuAdi, yanitlanacakAdres ?? "");
   const bendeMi = konusma.ilgilenen_user_id === userId;
 
   return <main className="talep cari posta-konusma">
@@ -117,6 +123,10 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
         <Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link>
         {/* Silme burada, listede değil: liste satırındaki bir silme düğmesi
             yanlış satıra basmayı kolaylaştırır. */}
+        <form action={konusmayiOkunmadiYap}>
+          <input type="hidden" name="thread_id" value={threadId} />
+          <button className="panel-secondary" type="submit">Okunmadı yap</button>
+        </form>
         {izin("posta.sil") ? (
           <form action={konusmayiSil}>
             <input type="hidden" name="thread_id" value={threadId} />
@@ -176,7 +186,19 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
               <b>Yanıt yaz</b>
               <small>{yanitlanacakAdres} adresine, {kutuAdi} adına gidecek.</small>
             </label>
+            <label className="posta-cc">
+              <span>Bilgi (Cc)<small> — isteğe bağlı, virgülle ayırın</small></span>
+              <input name="cc" type="text" autoComplete="off" defaultValue={ccHazir.join(", ")} placeholder="bilgi@ornek.com" />
+            </label>
             <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} defaultValue={taslak?.govde ?? ""} placeholder="Yanıtınızı yazın…" />
+            {/* Alıntı varsayılan açık: yanıt tek başına gidince müşteri neye
+                cevap verildiğini çoğu zaman anlamıyor. */}
+            {sonGelen ? (
+              <label className="posta-alinti-sec">
+                <input type="checkbox" name="alinti" defaultChecked />
+                <span>Özgün mesajı yanıtın altına alıntıla</span>
+              </label>
+            ) : null}
             <label className="posta-ek-sec">
               <span>Ek dosya</span>
               <input type="file" name="ekler" multiple />

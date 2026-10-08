@@ -151,6 +151,7 @@ function mesajiKur(girdi: {
   zincir?: string[];
   ekler?: readonly EkDosya[];
   sinir?: string;
+  cc?: readonly string[];
 }): string {
   const ekler = girdi.ekler ?? [];
   /* Adres alanları da aynı kapıdan: alıcı listesi doğrulanmış geliyor
@@ -159,6 +160,7 @@ function mesajiKur(girdi: {
   const ustBasliklar = [
     `From: ${baslikKodla(girdi.gonderenAd)} <${baslikDegeri(girdi.gonderenAdres)}>`,
     `To: ${baslikDegeri(girdi.alici)}`,
+    ...(girdi.cc?.length ? [`Cc: ${baslikDegeri(girdi.cc.join(", "))}`] : []),
     `Subject: ${baslikKodla(girdi.konu)}`,
     ...(girdi.zincir ?? []),
     "MIME-Version: 1.0",
@@ -213,7 +215,7 @@ export function guvenliEkAdi(ham: string): string {
   return sade.slice(0, 180) || "ek";
 }
 
-export function yanitMesajiKur(girdi: YanitGirdisi & { ekler?: readonly EkDosya[]; sinir?: string }): string {
+export function yanitMesajiKur(girdi: YanitGirdisi & { ekler?: readonly EkDosya[]; sinir?: string; cc?: readonly string[] }): string {
   return mesajiKur({
     ...girdi,
     konu: yanitKonusu(girdi.konu),
@@ -234,6 +236,7 @@ export function yeniMesajiKur(girdi: {
   govde: string;
   ekler?: readonly EkDosya[];
   sinir?: string;
+  cc?: readonly string[];
 }): string {
   return mesajiKur({
     gonderenAd: girdi.gonderenAd,
@@ -243,6 +246,7 @@ export function yeniMesajiKur(girdi: {
     govde: girdi.govde,
     ekler: girdi.ekler,
     sinir: girdi.sinir,
+    cc: girdi.cc,
   });
 }
 
@@ -295,4 +299,57 @@ export function imzaliGovde(govde: string, imza: string | null | undefined): str
   // Zaten eklenmişse (taslaktan gelen metin olabilir) ikinci kez eklenmiyor.
   if (govde.includes(`\n-- \n${sadeImza}`)) return govde;
   return `${govde.replace(/\s+$/, "")}\n\n-- \n${sadeImza}`;
+}
+
+/*
+  ALINTILI YANIT.
+
+  Yanıt tek başına gidince müşteri neye cevap verildiğini çoğu zaman
+  anlamıyor: kendi mesajını başka bir kutudan, günler sonra, başka bir
+  konuyla karışık okuyor. Posta istemcilerinin kuralı yüz yıllık:
+  yanıtın altına "Şu tarihte X şöyle yazdı:" ve her satırı "> " ile
+  başlayan özgün metin.
+
+  İmzadan ÖNCE değil SONRA eklenmiyor — sıra: yanıt, imza, alıntı. İmza
+  alıntının içinde kalırsa her turda bir kopya daha birikiyor.
+
+  Alıntı uzunluğu sınırlı: yirmi turluk bir yazışmanın tamamını her
+  mesaja eklemek, hem okunamaz hem Gmail'in "kırpıldı" uyarısını
+  getiriyor.
+*/
+const ALINTI_SINIRI = 4000;
+
+export function alintiliGovde(govde: string, alinti: {
+  gonderenAd: string | null;
+  gonderenAdres: string;
+  tarih: Date | null;
+  metin: string;
+} | null): string {
+  const metin = (alinti?.metin ?? "").trim();
+  if (!alinti || !metin) return govde;
+
+  const kim = alinti.gonderenAd ? `${alinti.gonderenAd} <${alinti.gonderenAdres}>` : alinti.gonderenAdres;
+  const ne_zaman = alinti.tarih
+    ? alinti.tarih.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+  const baslik = ne_zaman ? `${ne_zaman} tarihinde ${kim} şöyle yazdı:` : `${kim} şöyle yazdı:`;
+
+  const kisaltilmis = metin.length > ALINTI_SINIRI ? `${metin.slice(0, ALINTI_SINIRI)}\n…` : metin;
+  const alintiliMetin = kisaltilmis.split("\n").map((satir) => `> ${satir}`.trimEnd()).join("\n");
+  return `${govde.replace(/\s+$/, "")}\n\n${baslik}\n${alintiliMetin}`;
+}
+
+/*
+  TÜMÜNÜ YANITLA adayları.
+
+  Özgün mesajın alıcıları arasından ORTAK KUTUNUN KENDİSİ ve asıl
+  yanıtlanan kişi çıkarılıyor: kutunun kendi adresini Cc'ye koymak
+  gelen kutusuna kendi yanıtımızın kopyasını düşürür, asıl alıcıyı
+  koymak ise ona iki kopya gönderir.
+*/
+export function ccAdaylari(aliciBasligi: string | null, kutuAdresi: string, asilAlici: string): string[] {
+  const sonuc = aliciListesi(aliciBasligi ?? "");
+  if ("hata" in sonuc) return [];
+  const disarida = new Set([kutuAdresi.toLowerCase(), asilAlici.toLowerCase()]);
+  return sonuc.adresler.filter((adres) => !disarida.has(adres));
 }

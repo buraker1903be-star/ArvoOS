@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
-import { base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
+import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
 import { randomBytes } from "node:crypto";
 
 /*
@@ -557,6 +557,10 @@ export async function postaYanitiGonder(girdi: {
   govde: string;
   ekler?: readonly EkDosya[];
   imza?: string | null;
+  cc?: readonly string[];
+  /* Yanıtlanan mesajın gövdesi: alıntı için. Gönderim anında Gmail'den
+     okunuyor; saklamıyoruz (bkz. migration başlığı). */
+  alinti?: { gonderenAd: string | null; gonderenAdres: string; tarih: Date | null } | null;
 }): Promise<{ messageId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -570,12 +574,25 @@ export async function postaYanitiGonder(girdi: {
   const basliktanAl = (ad: string) =>
     satirlar?.find((satir) => (satir.name ?? "").toLowerCase() === ad)?.value ?? null;
 
+  /*
+    Sıra: yanıt → imza → alıntı. İmza alıntının İÇİNDE kalırsa her turda
+    bir kopya daha birikiyor ve yazışmanın yarısı imza oluyor.
+  */
+  let gonderilecek = imzaliGovde(girdi.govde, girdi.imza);
+  if (girdi.alinti) {
+    const alintiGovdesi = await postaGovdesiniGetir(girdi.organizationId, girdi.sonMesajId);
+    if (!("hata" in alintiGovdesi)) {
+      gonderilecek = alintiliGovde(gonderilecek, { ...girdi.alinti, metin: alintiGovdesi.govde });
+    }
+  }
+
   const ham = yanitMesajiKur({
     gonderenAd: girdi.gonderenAd,
     gonderenAdres: girdi.kutuAdresi,
     alici: girdi.alici,
+    cc: girdi.cc,
     konu: girdi.konu,
-    govde: imzaliGovde(girdi.govde, girdi.imza),
+    govde: gonderilecek,
     sonMesajId: basliktanAl("message-id"),
     referanslar: basliktanAl("references"),
     ekler: girdi.ekler,
@@ -689,6 +706,7 @@ export async function postaYeniGonder(girdi: {
   opportunityId?: string | null;
   ekler?: readonly EkDosya[];
   imza?: string | null;
+  cc?: readonly string[];
 }): Promise<{ threadId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -697,6 +715,7 @@ export async function postaYeniGonder(girdi: {
     gonderenAd: girdi.gonderenAd,
     gonderenAdres: girdi.kutuAdresi,
     alicilar: girdi.alicilar,
+    cc: girdi.cc,
     konu: girdi.konu,
     govde: imzaliGovde(girdi.govde, girdi.imza),
     ekler: girdi.ekler,
@@ -722,7 +741,7 @@ export async function postaYeniGonder(girdi: {
   if (!admin) return { hata: "Sunucu anahtarı tanımlı değil; gönderildi ama kaydedilemedi." };
 
   const simdi = new Date().toISOString();
-  const alici = girdi.alicilar.join(", ");
+  const alici = [...girdi.alicilar, ...(girdi.cc ?? [])].join(", ");
   /*
     Gönderilen mesaj HEMEN yazılıyor; eşitlemeyi beklemek, personelin
     az önce yazdığı postayı listede görememesi ve "gitti mi?" diye
@@ -801,4 +820,40 @@ export async function postaKonusmasiniCopeAt(
   await admin.from("mail_threads").delete()
     .eq("organization_id", organizationId).eq("thread_id", threadId);
   return null;
+}
+
+/**
+ * Konuşmayı okunmadı yapar (Gmail'in UNREAD etiketi + yerel kopya).
+ *
+ * Ortak kutuda sık istenen şey: açtım ama ben halledemiyorum, listede
+ * yeni gibi dursun ki biri görsün. İşaret önce GMAIL'e yazılıyor; yerel
+ * kopyayla yetinmek, bir sonraki eşitlemede geri "okundu" olurdu —
+ * kendini geri alan bir değişiklik.
+ */
+export async function konusmayiOkunmadiIsaretle(
+  organizationId: string,
+  threadId: string,
+): Promise<{ hata: string } | null> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const yanit = await fetch(`${GMAIL}/threads/${encodeURIComponent(threadId)}/modify`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-type": "application/json" },
+    body: JSON.stringify({ addLabelIds: ["UNREAD"] }),
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; işaretlenemedi." };
+  if (!yanit.ok) {
+    const govde = await yanit.json().catch(() => ({}));
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Okunmadı olarak işaretlenemedi: ${sebep}` };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+  const { error } = await admin.from("mail_threads")
+    .update({ okunmamis: true, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId)
+    .eq("thread_id", threadId);
+  return error ? { hata: "Gmail'de işaretlendi ama kayda yazılamadı: " + error.message } : null;
 }

@@ -6,7 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
 /*
@@ -23,6 +23,15 @@ import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/
 */
 
 const DURUMLAR = new Set(["acik", "yanitlandi", "kapali"]);
+
+/** Formdaki Cc alanı. Boşsa boş dizi; geçersiz adres hata olarak döner. */
+function ccListesi(formData: FormData): string[] {
+  const metin = String(formData.get("cc") ?? "").trim();
+  if (!metin) return [];
+  const sonuc = aliciListesi(metin);
+  if ("hata" in sonuc) throw new Error("Bilgi (Cc) alanı: " + sonuc.hata);
+  return sonuc.adresler;
+}
 
 /*
   Formdan gelen dosyalar.
@@ -124,12 +133,12 @@ async function konusmayaYanitla__impl(formData: FormData) {
 
   const { data: mesajVerisi, error } = await supabase
     .from("mail_messages")
-    .select("message_id,gonderen_adres,konu,tarih,yon")
+    .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon")
     .eq("organization_id", membership.organization_id)
     .eq("thread_id", threadId)
     .order("tarih", { ascending: true });
   if (error) throw new Error("Konuşma okunamadı: " + error.message);
-  const mesajlar = (mesajVerisi ?? []) as { message_id: string; gonderen_adres: string | null; konu: string | null; tarih: string | null; yon: string }[];
+  const mesajlar = (mesajVerisi ?? []) as { message_id: string; gonderen_ad: string | null; gonderen_adres: string | null; alici: string | null; konu: string | null; tarih: string | null; yon: string }[];
   if (!mesajlar.length) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
 
   const alici = yanitAlicisi(mesajlar.map((mesaj) => ({
@@ -144,6 +153,23 @@ async function konusmayaYanitla__impl(formData: FormData) {
 
   const ekler = await formdanEkler(formData);
 
+  /* Cc isteğe bağlı; boşsa hiç başlık yazılmıyor. Geçersiz adres sessizce
+     atılmıyor — kullanıcı gittiğini sanır. */
+  const ccMetni = String(formData.get("cc") ?? "").trim();
+  let cc: string[] = [];
+  if (ccMetni) {
+    const ccSonucu = aliciListesi(ccMetni);
+    if ("hata" in ccSonucu) throw new Error("Bilgi (Cc) alanı: " + ccSonucu.hata);
+    cc = ccSonucu.adresler;
+  }
+
+  /* Alıntı varsayılan AÇIK: yanıt tek başına gidince müşteri neye cevap
+     verildiğini çoğu zaman anlamıyor. Kutucuk kaldırılabiliyor. */
+  const sonGelen = [...mesajlar].reverse().find((mesaj) => mesaj.yon === "gelen");
+  const alinti = String(formData.get("alinti") ?? "on") === "on" && sonGelen
+    ? { gonderenAd: sonGelen.gonderen_ad ?? null, gonderenAdres: sonGelen.gonderen_adres ?? "", tarih: sonGelen.tarih ? new Date(sonGelen.tarih) : null }
+    : null;
+
   const sonuc = await postaYanitiGonder({
     organizationId: membership.organization_id,
     kutuAdresi: hesap.adres,
@@ -156,6 +182,8 @@ async function konusmayaYanitla__impl(formData: FormData) {
     govde,
     ekler,
     imza: hesap.imza,
+    cc,
+    alinti,
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
 
@@ -345,6 +373,7 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     opportunityId: firsat,
     ekler: await formdanEkler(formData),
     imza: hesap.imza,
+    cc: ccListesi(formData),
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);
 
@@ -510,4 +539,36 @@ async function postaImzasi__impl(formData: FormData) {
 
 export async function postaImzasi(...args: Parameters<typeof postaImzasi__impl>) {
   return runPanelAction(() => postaImzasi__impl(...args), "İmza kaydedildi");
+}
+
+/*
+  OKUNMADI OLARAK İŞARETLEME.
+
+  Ortak kutuda sık istenen şey: açtım ama ben halledemiyorum, listede
+  yeni gibi dursun ki biri görsün. Gmail'de de aynı kural — işaret
+  Gmail'in UNREAD etiketine yazılıyor, yoksa bir sonraki eşitleme
+  bizim satırı geri "okundu" yapardı.
+*/
+async function konusmayiOkunmadiYap__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.gor");
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+
+  const { data: konusma, error } = await context.supabase
+    .from("mail_threads").select("thread_id")
+    .eq("organization_id", context.membership.organization_id).eq("thread_id", threadId).maybeSingle();
+  if (error) throw new Error("Konuşma okunamadı: " + error.message);
+  if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+
+  const sonuc = await konusmayiOkunmadiIsaretle(context.membership.organization_id, threadId);
+  if (sonuc) throw new Error(sonuc.hata);
+
+  revalidatePath("/panel/posta");
+  revalidatePath("/panel", "layout");
+}
+
+export async function konusmayiOkunmadiYap(formData: FormData) {
+  await runPanelAction(() => konusmayiOkunmadiYap__impl(formData), "Okunmadı olarak işaretlendi");
+  redirect("/panel/posta");
 }

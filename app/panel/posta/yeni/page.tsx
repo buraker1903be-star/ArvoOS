@@ -72,6 +72,9 @@ export default async function YeniPostaPage({ searchParams }: {
       </label>
       <input id="posta-alici" name="alici" type="text" required defaultValue={taslak?.alici ?? alici ?? ""} autoComplete="off" placeholder="musteri@ornek.com" />
 
+      <label htmlFor="posta-cc"><b>Bilgi (Cc)</b><small> — isteğe bağlı</small></label>
+      <input id="posta-cc" name="cc" type="text" autoComplete="off" placeholder="bilgi@ornek.com" />
+
       <label htmlFor="posta-konu"><b>Konu</b></label>
       <input id="posta-konu" name="konu" type="text" required maxLength={300} defaultValue={taslak?.konu ?? konu ?? ""} autoComplete="off" />
 

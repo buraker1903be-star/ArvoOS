@@ -91,3 +91,12 @@
 /* Yan paneldeki imza formu: kart içinde dar bir alanda duruyor. */
 .os-root .posta-imza{gap:var(--sp-2)}
 .os-root .posta-imza textarea{min-height:88px;resize:vertical}
+
+/* Cc ve alıntı seçimi: yanıt kutusunun yardımcı alanları. */
+.posta-cc{display:grid;gap:4px}
+.posta-cc>span{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.posta-cc>span small{font-weight:400;color:var(--muted)}
+.posta-cc input{min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
+.posta-cc input:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+.posta-alinti-sec{display:flex;align-items:center;gap:var(--sp-2);color:var(--muted);font-size:var(--fs-sm)}
+.posta-alinti-sec input{width:16px;height:16px;margin:0}
