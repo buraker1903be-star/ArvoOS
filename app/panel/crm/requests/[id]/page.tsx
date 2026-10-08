@@ -424,7 +424,8 @@ export default async function RequestDetailPage({
             <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
               <h2>{musteri}</h2>
-              <small>Müşteri</small>
+              {/* Müşterinin bütün kayıtları tek sayfada (/panel/crm/musteri). */}
+              <small><Link className="personel-tumu" href={`/panel/crm/musteri/${item.id}`}>Müşteri sayfası</Link></small>
             </div>
           </div>
           <div className="talep-iletisim">

@@ -6,6 +6,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { reportActionFailure } from "@/lib/action-diagnostics";
 import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
 import { requestStageNames } from "./request-status";
+import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { nameKey, nameReady, phoneKey, phoneReady } from "./customer-history-keys";
 
 /**
@@ -103,6 +104,13 @@ const JOB_STATUS_LABELS: Record<string, string> = {
 };
 // lib/status-tone.ts'te 'archived' yoksa bile arşiv işi nötr görünsün
 const toneFor = (status: string): StatusTone => (status === "archived" ? "neutral" : statusTone(status));
+
+/*
+  Teklif durumu teklifler listesiyle aynı gruplamayla (lib/teklif-grubu.ts):
+  kabul ve ret arşivde archive_reason'da saklanıyor; eskiden yalnızca
+  "süresi doldu" ayrılıyor, kabul edilmiş teklif "Arşiv" görünüyordu.
+*/
+const TEKLIF_GRUP_TONU: Record<TeklifGrubu, StatusTone> = { draft: "neutral", sent: "info", accepted: "success", rejected: "danger", expired: "warning", eski: "neutral", arsiv: "neutral" };
 
 const KIND_LABELS: Record<HistoryKind, string> = { request: "Talep", proposal: "Teklif", contract: "Sözleşme", job: "İş" };
 
@@ -321,12 +329,12 @@ function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean): Dated {
   };
   switch (row.kind) {
     case "proposal": {
-      const expired = status === "archived" && row.archive_reason === "expired";
+      const grup = teklifGrubu({ status, archive_reason: row.archive_reason, superseded_by: null });
       return {
         ...base,
         detail: joinParts(row.service_type, row.record_no),
-        statusLabel: expired ? "Süresi doldu" : proposalStatusLabel(status),
-        tone: expired ? "warning" : toneFor(status),
+        statusLabel: TEKLIF_GRUP_ADLARI[grup] ?? proposalStatusLabel(status),
+        tone: TEKLIF_GRUP_TONU[grup] ?? toneFor(status),
         person: rep,
         personRole: rep ? "Satış" : null,
         href: `/panel/crm/proposals/${row.record_id}`,
@@ -603,7 +611,7 @@ async function findCustomerHistoryViaRls(
     const cents = Number(proposal.amount) || 0;
     const currency = (proposal.currency || "TRY").toUpperCase();
     const at = proposal.responded_at ?? proposal.sent_at ?? proposal.created_at;
-    const expired = proposal.status === "archived" && proposal.archive_reason === "expired";
+    const grup = teklifGrubu({ status: proposal.status, archive_reason: proposal.archive_reason, superseded_by: null });
     const rep = salesRep(proposal.opportunity_id);
     items.push({
       key: `proposal:${proposal.id}`,
@@ -613,8 +621,8 @@ async function findCustomerHistoryViaRls(
       detail: joinParts(serviceOf(parent.row.request_details), proposal.proposal_no),
       customerName: formatPersonName(parent.row.customer_name),
       amountLabel: cents ? formatMoney(cents, currency) : null,
-      statusLabel: expired ? "Süresi doldu" : proposalStatusLabel(proposal.status),
-      tone: expired ? "warning" : toneFor(proposal.status),
+      statusLabel: TEKLIF_GRUP_ADLARI[grup] ?? proposalStatusLabel(proposal.status),
+      tone: TEKLIF_GRUP_TONU[grup] ?? toneFor(proposal.status),
       dateLabel: formatHistoryDate(at),
       person: rep,
       personRole: rep ? "Satış" : null,
