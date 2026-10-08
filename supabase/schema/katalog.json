@@ -884,6 +884,8 @@
     "mail_threads": [
       "created_at",
       "durum",
+      "gelen_var",
+      "giden_var",
       "ilgilenen_user_id",
       "konu",
       "mesaj_sayisi",

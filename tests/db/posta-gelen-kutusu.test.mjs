@@ -26,6 +26,7 @@ const MIGRATIONLAR = [
   "20261006171515_ortak_posta_kutusu.sql",
   "20261006190207_posta_gelen_kutusu.sql",
   "20261006193918_posta_gecmis_ve_crm_bagi.sql",
+  "20261008180253_posta_kutulari_ve_silme.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
@@ -179,6 +180,48 @@ describe("ortak posta kutusu erişimi", () => {
         );
       await rol(db, "postgres");
     });
+  });
+
+  test("MEŞRU AKIŞ: personel yazışmayı silebiliyor", async () => {
+    /* Silme sunucu işleminde ayrı bir yetki istiyor (posta.sil) ama RLS
+       katmanında kural modül kapısı: modülü açık olan kendi kurumunun
+       yazışmasını silebilmeli, yoksa işlem RLS'te takılırdı. */
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await rol(db, "authenticated", PERSONEL);
+      const { rows } = await db.query(
+        `delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`,
+        [KURUM, KONUSMA]);
+      await rol(db, "postgres");
+      assert.equal(rows.length, 1);
+    });
+  });
+
+  test("posta modülü kapalıyken silinemiyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await db.query(
+        `insert into public.role_module_permissions (organization_id,role,module_key,can_access)
+         values ($1,'member','posta',false)
+         on conflict (organization_id,role,module_key) do update set can_access = false`, [KURUM]);
+      await rol(db, "authenticated", PERSONEL);
+      const { rows } = await db.query(
+        `delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`,
+        [KURUM, KONUSMA]);
+      await rol(db, "postgres");
+      assert.equal(rows.length, 0, "modülü kapalı personel silebiliyor");
+    });
+  });
+
+  test("kutular mevcut satırlar için dolduruldu", async () => {
+    /* Migration bir kerelik doldurma yapmasaydı, eşitleme o konuşmaya
+       yeniden dokunana kadar gönderilenler kutusu boş görünürdü. */
+    await rol(db, "postgres");
+    const { rows } = await db.query(
+      `select gelen_var, giden_var from public.mail_threads where organization_id = $1 and thread_id = $2`,
+      [KURUM, KONUSMA]);
+    assert.equal(rows[0].gelen_var, true, "gelen mesajı olan konuşma gelen kutusunda değil");
+    assert.equal(rows[0].giden_var, false);
   });
 
   test("sunucu eşitlemesi posta alanlarını yazabiliyor", async () => {

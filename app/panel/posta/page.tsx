@@ -40,14 +40,25 @@ function musteriAdi(konusma: Konusma): string | null {
   return kayit?.customer_name ?? null;
 }
 
+/*
+  KUTULAR. Bir konuşma ikisinde birden görünebilir: müşteri yazmış, biz
+  cevaplamışsak o yazışma hem gelen hem gönderilen kutusuna aittir.
+  Gmail de böyle davranıyor; "gönderilenler" ayrı bir yığın değil, bir
+  süzgeç.
+*/
+const KUTULAR = [
+  { anahtar: "gelen", ad: "Gelen kutusu", sutun: "gelen_var" as const },
+  { anahtar: "giden", ad: "Gönderilenler", sutun: "giden_var" as const },
+];
+
 const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   acik: { ad: "Açık", ton: "warning" },
   yanitlandi: { ad: "Yanıtlandı", ton: "success" },
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string }> }) {
-  const { durum: suzgec, q: aranan } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -58,6 +69,9 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     .order("son_mesaj_at", { ascending: false })
     .limit(100);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
+
+  const secilenKutu = KUTULAR.find((aday) => aday.anahtar === kutu);
+  if (secilenKutu) sorgu = sorgu.eq(secilenKutu.sutun, true);
 
   /*
     ARAMA. Binlerce konuşmanın biriktiği bir kutuda liste tek başına
@@ -89,6 +103,19 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   const okunmamisSayisi = konusmalar.filter((satir) => satir.okunmamis).length;
 
+  /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
+     Elle dizilen adreslerde bu üç kez unutulmuştu. */
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string }) => {
+    const p = new URLSearchParams();
+    const al = (ad: "durum" | "q" | "kutu", simdiki: string | undefined) =>
+      (ad in degisen ? degisen[ad] : simdiki) || "";
+    const d = al("durum", suzgec), a = al("q", desen ?? undefined), k = al("kutu", kutu);
+    if (d) p.set("durum", d);
+    if (a) p.set("q", a);
+    if (k) p.set("kutu", k);
+    return p.size ? `?${p}` : "";
+  };
+
   return <div className="posta">
     <div className="panel-pagehead">
       <div>
@@ -107,17 +134,27 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         sonuç paylaşılabilir bir adres oluyor ve geri tuşu çalışıyor. */}
     <form className="posta-arama" method="get" action="/panel/posta" role="search">
       {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
+      {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
       <input type="search" name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen veya özette ara…" aria-label="Postalarda ara" />
       <button className="panel-secondary" type="submit">Ara</button>
-      {desen ? <Link className="panel-secondary" href={suzgec ? `/panel/posta?durum=${suzgec}` : "/panel/posta"}>Temizle</Link> : null}
+      {desen ? <Link className="panel-secondary" href={`/panel/posta${adresEki({ q: "" })}`}>Temizle</Link> : null}
     </form>
+
+    {/* Kutu seçimi durumdan ve aramadan ayrı: üçü birlikte kullanılabiliyor. */}
+    <nav className="module-tabs" aria-label="Posta kutusu">
+      <Link href={`/panel/posta${adresEki({ kutu: "" })}`} className={!secilenKutu ? "active" : ""}>Tümü</Link>
+      {KUTULAR.map((kutuSecenegi) => (
+        <Link key={kutuSecenegi.anahtar} href={`/panel/posta${adresEki({ kutu: kutuSecenegi.anahtar })}`}
+          className={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "active" : ""}>{kutuSecenegi.ad}</Link>
+      ))}
+    </nav>
 
     <nav className="module-tabs" aria-label="Duruma göre süzgeç">
       {/* Süzgeç değişirken arama korunuyor: "kapalı olanlarda aynı kelimeyi
           ara" en sık istenen ikinci adım ve kutuyu yeniden yazdırmak gerekmesin. */}
-      <Link href={desen ? `/panel/posta?q=${encodeURIComponent(desen)}` : "/panel/posta"} className={!suzgec ? "active" : ""}>Tümü</Link>
+      <Link href={`/panel/posta${adresEki({ durum: "" })}`} className={!suzgec ? "active" : ""}>Tümü</Link>
       {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
-        <Link key={anahtar} href={`/panel/posta?durum=${anahtar}${desen ? `&q=${encodeURIComponent(desen)}` : ""}`} className={suzgec === anahtar ? "active" : ""}>{etiket.ad}</Link>
+        <Link key={anahtar} href={`/panel/posta${adresEki({ durum: anahtar })}`} className={suzgec === anahtar ? "active" : ""}>{etiket.ad}</Link>
       ))}
     </nav>
 

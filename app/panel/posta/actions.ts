@@ -6,7 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
 /*
@@ -352,4 +352,46 @@ export async function yeniPostaGonder(formData: FormData) {
      fırlatarak çalışıyor ve sarmalayıcının içinde atılırsa hata gibi
      yakalanıp kullanıcıya "gönderilemedi" diye gösterilirdi. */
   if (typeof hedef === "string") redirect(hedef);
+}
+
+/*
+  YAZIŞMAYI SİLME.
+
+  Ayrı bir yetki (posta.sil) ve varsayılanı dar: okuma ve yanıtlama
+  ekibin tamamında, silme yöneticide. Ortak kutuda bir yazışmayı silmek
+  herkesi etkiliyor ve geri alma yolu panelde değil Gmail'de.
+
+  Silinen yazışma Gmail'in ÇÖP KUTUSUNA gidiyor, kalıcı olarak
+  silinmiyor: yanlışlıkla silinen bir müşteri yazışması geri
+  alınabilmeli.
+*/
+async function konusmayiSil__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.sil");
+  const { supabase, membership } = context;
+
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+
+  /* Konuşmanın bu kuruma ait olduğu KENDİ oturumuyla doğrulanıyor; silme
+     service_role ile yapılıyor ve o RLS'i atlıyor. */
+  const { data: konusma, error } = await supabase
+    .from("mail_threads")
+    .select("thread_id")
+    .eq("organization_id", membership.organization_id)
+    .eq("thread_id", threadId)
+    .maybeSingle();
+  if (error) throw new Error("Konuşma okunamadı: " + error.message);
+  if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+
+  const sonuc = await postaKonusmasiniCopeAt(membership.organization_id, threadId);
+  if (sonuc) throw new Error(sonuc.hata);
+
+  revalidatePath("/panel/posta");
+  revalidatePath("/panel", "layout");
+}
+
+export async function konusmayiSil(formData: FormData) {
+  await runPanelAction(() => konusmayiSil__impl(formData), "Yazışma çöp kutusuna taşındı");
+  redirect("/panel/posta");
 }

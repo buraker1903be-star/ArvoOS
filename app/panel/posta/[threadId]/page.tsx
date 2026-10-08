@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiUstlen } from "../actions";
+import { konusmaDurumu, konusmayaYanitla, konusmayiKayitBagla, konusmayiOkundu, konusmayiSil, konusmayiUstlen } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { yanitAlicisi } from "@/lib/posta-gonderim";
@@ -101,7 +101,20 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
         <h1>{konusma.konu || "(konu yok)"}</h1>
         <p>{mesajlar.length} mesaj</p>
       </div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link></div>
+      <div className="panel-page-actions">
+        <Link className="panel-secondary" href="/panel/posta">← Gelen kutusu</Link>
+        {/*
+          Silme burada, listede değil: liste satırındaki bir silme düğmesi
+          yanlış satıra basmayı kolaylaştırır. Yazışma Gmail'in çöp
+          kutusuna gidiyor, kalıcı silinmiyor — not düğmenin yanında.
+        */}
+        {izin("posta.sil") ? (
+          <form action={konusmayiSil}>
+            <input type="hidden" name="thread_id" value={threadId} />
+            <button className="panel-secondary posta-sil" type="submit">Çöp kutusuna taşı</button>
+          </form>
+        ) : null}
+      </div>
     </div>
 
     {yonetebilir ? (
@@ -209,6 +222,9 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       </p>
     )}
 
-    <p className="posta-not">Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.</p>
+    <p className="posta-not">
+      Ekli dosyalar Gmail&apos;de kalıyor; panelde yalnızca varlığı gösteriliyor.
+      {izin("posta.sil") ? " Silinen yazışma Gmail'in çöp kutusuna gider, kalıcı olarak silinmez." : ""}
+    </p>
   </div>;
 }

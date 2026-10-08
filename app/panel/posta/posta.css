@@ -84,3 +84,9 @@
 .posta-ek-sec>span{font-size:13px;font-weight:600;color:var(--ink)}
 .posta-ek-sec input[type="file"]{padding:9px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font:inherit;font-size:13px}
 .posta-ek-sec input[type="file"]:focus-visible{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+
+/* Silme düğmesi: yıkıcı ama geri alınabilir (Gmail çöp kutusu). Kırmızı
+   kenar yeterli uyarı; dolgu kırmızı yapmak onu birincil eylem gibi
+   gösterirdi. */
+.os-root .posta-sil{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
+.os-root .posta-sil:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}

@@ -165,6 +165,13 @@ async function konusmalariGuncelle(
       ozet: ozet.ozet,
       mesaj_sayisi: ozet.mesajSayisi,
       okunmamis: okunmamisKonusmalar.has(ozet.threadId),
+      /* Gelen/gönderilen kutusu süzgeci bu iki bayrağı okuyor. Listeyi
+         çizerken mesajlara bakmak yüz satırda yüz alt sorgu demekti;
+         burada zaten elimizdeki mesajlardan bedava çıkıyor. Bir konuşma
+         ikisinde birden görünebilir — müşteri yazmış, biz cevaplamışsak
+         o yazışma iki kutuya da aittir. */
+      gelen_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "gelen"),
+      giden_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "giden"),
       updated_at: new Date().toISOString(),
     } : null;
   }).filter((satir): satir is NonNullable<typeof satir> => satir !== null);
@@ -751,4 +758,45 @@ export async function postaYeniGonder(girdi: {
   if (konusmaHatasi) return { hata: "Posta gönderildi ama konuşma kaydedilemedi: " + konusmaHatasi.message };
 
   return { threadId };
+}
+
+/**
+ * Konuşmayı Gmail'in ÇÖP KUTUSUNA taşır.
+ *
+ * Kalıcı silme bilerek yok: yanlışlıkla silinen bir müşteri yazışması
+ * Gmail'den geri alınabilmeli. Eşitleme çöpe atılanı geri getirmiyor —
+ * Gmail'in liste ucu çöp ve spam'i varsayılan olarak dışarıda bırakıyor.
+ *
+ * Önce Gmail, sonra bizim satırlar: ters sırada olsaydı Gmail çağrısı
+ * düştüğünde konuşma panelden kaybolur ama kutuda durmaya devam eder ve
+ * bir sonraki eşitlemede geri gelirdi — kullanıcı "sildim, geri geldi"
+ * ile kalırdı.
+ */
+export async function postaKonusmasiniCopeAt(
+  organizationId: string,
+  threadId: string,
+): Promise<{ hata: string } | null> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const yanit = await fetch(`${GMAIL}/threads/${threadId}/trash`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-length": "0" },
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; yazışma silinmedi." };
+  if (!yanit.ok) {
+    const govde = await yanit.json().catch(() => ({}));
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Yazışma Gmail'de silinemedi: ${sebep}` };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+  /* Mesaj satırları konuşmayla birlikte gidiyor; aralarında yabancı
+     anahtar yok (thread_id Gmail'in kimliği), o yüzden ikisi ayrı ayrı. */
+  await admin.from("mail_messages").delete()
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  await admin.from("mail_threads").delete()
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  return null;
 }

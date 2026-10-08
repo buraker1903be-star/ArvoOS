@@ -124,6 +124,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     yetkiler: [
       { key: "posta.gor", modul: "posta", label: "Ortak posta kutusu", aciklama: "Kurumun ortak gelen kutusunu görür", varsayilan: HERKES },
       { key: "posta.yanitla", modul: "posta", label: "Posta yazma", aciklama: "Ortak kutudan yanıt ve yeni posta gönderir", varsayilan: HERKES },
+      { key: "posta.sil", modul: "posta", label: "Yazışma silme", aciklama: "Yazışmayı Gmail'in çöp kutusuna taşır", varsayilan: YONETIM_VE_SEF },
       { key: "posta.yonet", modul: "posta", label: "Konuşma yönetimi", aciklama: "Konuşmayı birine atar, yanıtlandı/kapandı olarak işaretler", varsayilan: YONETIM_VE_SEF },
     ],
   },
