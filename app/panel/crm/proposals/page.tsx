@@ -306,7 +306,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                           <Link className="crm-row-link" href={`/panel/crm/proposals/${row.id}`}>{row.proposal_no}</Link>
                           {row.revision_no > 0 ? <span className="status-pill talep-revizyon" data-tone="gold">R{row.revision_no}</span> : null}
                         </td>
-                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} />
+                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
                         <ServiceCell service={String(customer?.request_details?.service_type ?? "")} />
                         <RepresentativeCell name={representativeName} />
                         <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>

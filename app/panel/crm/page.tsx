@@ -310,7 +310,7 @@ export default async function RequestsPage({
                             TLP-{item.id.slice(0, 8).toUpperCase()}
                           </Link>
                         </td>
-                        <CustomerCell name={item.customer_name} phone={item.contact_phone} email={item.contact_email} />
+                        <CustomerCell name={item.customer_name} phone={item.contact_phone} email={item.contact_email} href={`/panel/crm/musteri/${item.id}`} />
                         <ServiceCell service={d.service_type} />
                         <RepresentativeCell name={ownerName} />
                         <td data-label="Durum">

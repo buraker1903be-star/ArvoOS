@@ -327,7 +327,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                         <td className="crm-table-mono" data-label="Sözleşme No">
                           <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`} aria-label={`${row.contract_no} sözleşmesini aç`}>{row.contract_no}</Link>
                         </td>
-                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} />
+                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
                         <ServiceCell service={String(customer?.request_details?.service_type ?? "")} />
                         <RepresentativeCell name={representativeName} />
                         <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>
