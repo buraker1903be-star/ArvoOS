@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
+import { todayInIstanbul } from "@/lib/istanbul-date";
+import { taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { PanelDrawer } from "../../components/panel-drawer";
 import {
   createAdditionalService,
@@ -66,7 +68,9 @@ type Contract = {
   amount: number;
   status: string;
   signed_at: string | null;
+  payment_plan_id: string | null;
 };
+type Taksit = { id: string; payment_plan_id: string; installment_no: number; due_date: string | null; amount: number; status: string };
 
 // Hareketin türü ve rozet tonu (etiket kuralı öncekiyle aynı)
 function entryKind(e: Entry): { label: string; tone: FinTone } {
@@ -77,6 +81,13 @@ function entryKind(e: Entry): { label: string; tone: FinTone } {
   return { label: "Sözleşme", tone: "info" };
 }
 
+const TAKSIT_DURUMU: Record<string, { ad: string; ton: string }> = {
+  odendi: { ad: "Ödendi", ton: "success" },
+  kismi: { ad: "Kısmen ödendi", ton: "info" },
+  bekliyor: { ad: "Bekliyor", ton: "neutral" },
+  gecikti: { ad: "Gecikti", ton: "danger" },
+  iptal: { ad: "İptal", ton: "neutral" },
+};
 const DURUM: Record<string, { ad: string; ton: string }> = {
   acik: { ad: "Açık bakiye", ton: "warning" },
   arsiv: { ad: "Kapandı · arşivde", ton: "neutral" },
@@ -104,7 +115,7 @@ export default async function AccountDetailPage({
         .maybeSingle(),
       supabase
         .from("crm_contracts")
-        .select("id,contract_no,title,amount,status,signed_at")
+        .select("id,contract_no,title,amount,status,signed_at,payment_plan_id")
         .eq("party_id", id)
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"])
@@ -114,6 +125,16 @@ export default async function AccountDetailPage({
   if (contractError)
     throw new Error("Sözleşmeler okunamadı: " + contractError.message);
   const current = party as Party;
+  /*
+    ÖDEME TAKVİMİ (sözleşme detayıyla eşitleme): bu carinin sözleşmelerine
+    bağlı taksitler, vade sırasıyla. Eskiden vadesi geçen taksiti görmek
+    için her sözleşmeyi tek tek açmak gerekiyordu. Okunamazsa bölüm boş.
+  */
+  const planlar = new Map(((contracts ?? []) as Contract[]).filter((c) => c.payment_plan_id).map((c) => [c.payment_plan_id as string, c]));
+  const { data: taksitData } = planlar.size
+    ? await supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", membership.organization_id).in("payment_plan_id", [...planlar.keys()]).order("due_date", { ascending: true, nullsFirst: false })
+    : { data: [] };
+  const taksitler = (taksitData ?? []) as Taksit[];
   const entries = [...(current.account_entries ?? [])].sort(
     (a, b) =>
       b.transaction_date.localeCompare(a.transaction_date) ||
@@ -145,6 +166,10 @@ export default async function AccountDetailPage({
   const balance = Math.max(0, debt + refunds - collections);
   const refundable = Math.max(0, collections - refunds);
   const durum = cariDurumu({ debt, collections, refunds, balance });
+  // Taksit durumları cari dökümünden türetilir (lib/taksit-dagitimi.ts): net tahsilat en eski vadeden dağıtılır.
+  const dagitilmis = taksitleriDagit(taksitler, collections - refunds, todayInIstanbul());
+  const gecikenTaksitler = dagitilmis.filter((t) => t.durum === "gecikti");
+  const gecikenTutar = gecikenTaksitler.reduce((sum, t) => sum + t.kalan, 0);
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi
   // ayrıca denetliyor; buradaki kontrol düğmeyi boşuna göstermemek için.
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
@@ -301,6 +326,10 @@ export default async function AccountDetailPage({
           <div><dt>Tahsilat</dt><dd className="cari-arti">{money(collections)}</dd></div>
           <div><dt>İade</dt><dd>{money(refunds)}</dd></div>
           <div className="cari-bakiye" data-tone={balance > 0 ? "warning" : "success"}><dt>Açık bakiye</dt><dd>{money(balance)}</dd></div>
+          {/* Yalnızca gecikme varsa: şerit 1440px ekranda iki satıra taşıyordu. */}
+          {gecikenTaksitler.length ? (
+            <div><dt>Vadesi geçen</dt><dd className="talep-uyari">{money(gecikenTutar)}</dd></div>
+          ) : null}
         </dl>
         <div className="cari-oran">
           <span>Tahsil edilen %{tahsilOrani}</span>
@@ -388,6 +417,28 @@ export default async function AccountDetailPage({
           ) : (
             <p className="talep-bos cari-not">Bu cariye bağlı imzalı sözleşme yok.</p>
           )}
+
+          {taksitler.length ? (
+            <div className="talep-not">
+              <div className="cari-baslik"><h3>Ödeme takvimi</h3><small>{dagitilmis.filter((t) => t.durum === "odendi").length}/{dagitilmis.filter((t) => t.durum !== "iptal").length} ödendi</small></div>
+              <ul className="cari-hareketler">
+                {dagitilmis.map((t) => {
+                  const sozlesme = planlar.get(t.payment_plan_id);
+                  const durum = TAKSIT_DURUMU[t.durum];
+                  return (
+                    <li key={t.id}>
+                      <span className="cari-hareket-metin">
+                        <b>{t.due_date ? date(t.due_date) : "Vade yok"}</b>
+                        <small>{sozlesme?.contract_no ?? "Sözleşme"} · {t.installment_no}. taksit{t.odenen > 0 && t.kalan > 0 ? ` · ${money(t.odenen)} ödendi, kalan ${money(t.kalan)}` : ""}</small>
+                      </span>
+                      <strong>{money(Number(t.amount))}</strong>
+                      <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
 
           {/* Bakiyenin nasıl çıktığı: dört kutudaki sayıların ilişkisi
               ekranda yazmıyordu, "açık bakiye neden bu" sorusu kalıyordu. */}
