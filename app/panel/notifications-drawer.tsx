@@ -1,5 +1,6 @@
 "use client";
 
+import { OsSimge } from "./os/os-icons";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -353,7 +354,7 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
     <>
       {onPage ? (
         <Link className="panel-quick-action" href={PAGE} aria-current="page" aria-label={label}>
-          <span className="panel-quick-icon" aria-hidden="true">♢</span>
+          <span className="panel-quick-icon" aria-hidden="true"><OsSimge ad="bell" boyut={20} /></span>
           <b>Bildirimler</b>
           {badge}
         </Link>
@@ -373,7 +374,7 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
           aria-expanded={open}
           aria-controls="notifications-drawer"
         >
-          <span className="panel-quick-icon" aria-hidden="true">♢</span>
+          <span className="panel-quick-icon" aria-hidden="true"><OsSimge ad="bell" boyut={20} /></span>
           <b>Bildirimler</b>
           {badge}
         </button>

@@ -71,7 +71,7 @@ export type MarkaKodu = keyof typeof MARKA_OLCU;
   değişiyor. Tek dosyayı süzgeçle koyulaştırmak marka kılavuzuna aykırı;
   JavaScript ile seçmek ise tema değişiminde bir kare yanlış logo demek.
 */
-function MarkaLogosu({ marka, ad }: { marka: MarkaKodu; ad: string }) {
+export function MarkaLogosu({ marka, ad }: { marka: MarkaKodu; ad: string }) {
   const { w, h, uzanti } = MARKA_OLCU[marka];
   return (
     <>

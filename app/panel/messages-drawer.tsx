@@ -1,5 +1,6 @@
 "use client";
 
+import { OsSimge } from "./os/os-icons";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -60,7 +61,7 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
     <>
       {onPage ? (
         <Link className="panel-quick-action" href="/panel/messages" aria-current="page" aria-label={label}>
-          <span className="panel-quick-icon" aria-hidden="true">◇</span>
+          <span className="panel-quick-icon" aria-hidden="true"><OsSimge ad="messages" boyut={20} /></span>
           <b>Mesajlar</b>
           {badge}
         </Link>
@@ -80,7 +81,7 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
           aria-expanded={open}
           aria-controls="messages-drawer"
         >
-          <span className="panel-quick-icon" aria-hidden="true">◇</span>
+          <span className="panel-quick-icon" aria-hidden="true"><OsSimge ad="messages" boyut={20} /></span>
           <b>Mesajlar</b>
           {badge}
         </button>

@@ -1,0 +1,215 @@
+/* ============================================================
+   ŞİRKET İŞLETİM SİSTEMİ KABUĞU (2026-10)
+   Durum çubuğu (üst) + dock (alt) + başlatıcı + Ctrl+K paleti.
+   Yalnızca panel-tokens.css değerleri kullanılır; kurum rengi --primary.
+   Sınıflar os- önekli: eski kabuğun (.panel-sidebar, .panel-topbar)
+   kurallarıyla çakışmasın diye. Kurucu konsolu eski kabukta kalıyor.
+   ============================================================ */
+
+.os-root{--os-bar-h:60px;--os-dock-space:104px}
+.os-root .os-frame{display:block;min-height:100dvh}
+
+/* ---------- Durum çubuğu ---------- */
+.os-bar{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;gap:var(--sp-3);
+  min-height:var(--os-bar-h);padding:var(--sp-2) var(--sp-5);box-sizing:border-box;
+  background:color-mix(in srgb,var(--surface) 86%,transparent);
+  border-bottom:1px solid var(--line);
+  -webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);
+}
+.os-brand{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;min-width:0;color:var(--ink);text-decoration:none}
+.os-brand>i,.os-brand>img{flex:none;width:34px;height:34px;border-radius:var(--r-md);object-fit:cover}
+.os-brand>i{display:grid;place-items:center;background:var(--primary);color:var(--primary-on);font-style:normal;font-weight:var(--fw-bold);font-size:var(--fs-base)}
+.os-brand>span{display:flex;flex-direction:column;min-width:0;line-height:var(--lh-tight)}
+.os-brand b{font-size:var(--fs-base);font-weight:var(--fw-semibold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-brand-app{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap}
+
+.os-search{
+  flex:1 1 320px;max-width:520px;margin-inline:auto;
+  display:flex;align-items:center;gap:var(--sp-3);
+  height:40px;padding:0 var(--sp-3);
+  border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface-2);color:var(--muted);font:inherit;font-size:var(--fs-sm);text-align:left;cursor:pointer;
+  transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease);
+}
+.os-search:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line));background:var(--surface)}
+.os-search:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.os-search-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-root kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-micro);padding:1px 6px;border:1px solid var(--line);border-radius:var(--r-xs);background:var(--surface);color:var(--ink-soft)}
+
+.os-bar-right{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto}
+.os-bar-actions{display:flex;align-items:center;gap:var(--sp-1)}
+/* Eski kabuk telefonda .panel-icon-button'ı gizliyordu (panel.css); durum
+   çubuğunda tema, mesaj ve bildirim düğmeleri her ekranda kalır. */
+.os-bar .panel-icon-button{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-soft)}
+.os-bar .panel-icon-button:hover{background:var(--surface-2);color:var(--ink)}
+.os-clock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);color:var(--ink-soft);min-width:44px;text-align:center}
+
+.os-live{display:flex;align-items:center;gap:var(--sp-2)}
+.os-live-pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--r-pill);font-size:var(--fs-micro);font-weight:var(--fw-semibold);white-space:nowrap}
+.os-live-pill>i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.os-live-pill.is-canli{background:var(--success-soft);color:var(--success)}
+.os-live-pill.is-canli>i{animation:os-nabiz 2s ease-in-out infinite}
+.os-live-pill.is-baglaniyor{background:var(--surface-2);color:var(--muted)}
+.os-live-pill.is-kopuk{background:var(--danger-soft);color:var(--danger)}
+@keyframes os-nabiz{0%,100%{opacity:1}50%{opacity:.35}}
+
+.os-avatar{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--surface);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.02em}
+.os-avatar--sm{width:28px;height:28px;border:2px solid var(--surface);background:var(--primary-soft);color:var(--primary-strong)}
+.os-avatar--sm+.os-avatar--sm{margin-left:-8px}
+.os-avatar--more{background:var(--surface-2);color:var(--ink-soft)}
+.os-avatar--lg{width:44px;height:44px;font-size:var(--fs-sm)}
+.os-online{display:flex;align-items:center}
+
+/* ---------- Kullanıcı menüsü ---------- */
+.os-user{position:relative}
+.os-user>summary{list-style:none;display:grid;place-items:center;width:44px;height:44px;border-radius:50%;cursor:pointer}
+.os-user>summary::-webkit-details-marker{display:none}
+.os-user>summary:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.os-user-menu{
+  position:absolute;right:0;top:calc(100% + 8px);z-index:70;width:300px;max-width:calc(100vw - 24px);
+  padding:var(--sp-2);box-sizing:border-box;
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-raised);box-shadow:var(--shadow-lg);
+}
+.os-user-head{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3)}
+.os-user-head b{display:block;font-weight:var(--fw-semibold)}
+.os-user-head small{display:block;color:var(--muted);font-size:var(--fs-sm)}
+.os-user-section{padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.os-user-links{display:flex;flex-direction:column;padding:var(--sp-1) 0;border-top:1px solid var(--line-soft)}
+.os-user-links a,.os-user-logout button{
+  display:flex;align-items:center;gap:var(--sp-3);min-height:40px;padding:0 var(--sp-3);
+  border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink);font:inherit;text-decoration:none;cursor:pointer;width:100%;text-align:left
+}
+.os-user-links a:hover,.os-user-logout button:hover{background:var(--surface-2)}
+.os-user-logout{padding-top:var(--sp-1);border-top:1px solid var(--line-soft)}
+.os-user-logout button{color:var(--danger)}
+.os-user-foot{margin:var(--sp-1) var(--sp-3) var(--sp-2);font-size:var(--fs-micro);color:var(--dim)}
+
+/* ---------- Çalışma alanı ---------- */
+.os-workspace{min-width:0}
+.os-root .panel-content{
+  max-width:1360px;margin:0 auto;box-sizing:border-box;
+  padding:var(--sp-6) var(--sp-6) calc(var(--os-dock-space) + env(safe-area-inset-bottom));
+}
+
+/* ---------- Dock ---------- */
+.os-dock{
+  position:fixed;left:50%;bottom:max(var(--sp-4),env(safe-area-inset-bottom));transform:translateX(-50%);z-index:55;
+  display:flex;align-items:center;gap:var(--sp-1);
+  max-width:calc(100vw - var(--sp-6));padding:var(--sp-2);box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
+  border:1px solid var(--line);border-radius:var(--r-xl);
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
+  box-shadow:var(--shadow-lg);
+}
+.os-dock::-webkit-scrollbar{display:none}
+.os-dock-sep{flex:none;width:1px;height:28px;margin:0 var(--sp-1);background:var(--line)}
+.os-dock-item{
+  position:relative;flex:none;display:grid;place-items:center;width:48px;height:48px;
+  border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-soft);cursor:pointer;text-decoration:none;
+  transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.os-dock-item:hover{background:var(--surface-2);color:var(--ink);transform:translateY(-3px)}
+.os-dock-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.os-dock-item.is-active{background:var(--primary-soft);color:var(--primary)}
+.os-dock-item.is-active::after{content:"";position:absolute;bottom:3px;width:4px;height:4px;border-radius:50%;background:var(--primary)}
+/* Ad, fareyle üstüne gelince ipucu olarak; ekran okuyucu aria-label'ı okur. */
+.os-dock-label{
+  position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(4px);
+  padding:4px 8px;border-radius:var(--r-xs);background:var(--ink);color:var(--surface);
+  font-size:var(--fs-micro);font-weight:var(--fw-medium);white-space:nowrap;pointer-events:none;opacity:0;
+  transition:opacity var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease);
+}
+@media(hover:hover){.os-dock-item:hover .os-dock-label{opacity:1;transform:translateX(-50%)}}
+.os-dock-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}
+
+/* ---------- Başlatıcı ve Ctrl+K: ortak pencere ---------- */
+.os-launcher,.os-palette{
+  border:1px solid var(--line);border-radius:var(--r-xl);padding:0;
+  background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
+}
+.os-launcher::backdrop,.os-palette::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.os-launcher[open],.os-palette[open]{animation:os-ac .22s var(--ease)}
+@keyframes os-ac{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+
+.os-launcher{width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 64px);overflow:auto}
+.os-launcher-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);padding:var(--sp-6) var(--sp-6) var(--sp-2)}
+.os-launcher-head h2{margin:0;font-size:var(--fs-lg);font-weight:var(--fw-semibold)}
+.os-launcher-head p{margin:var(--sp-1) 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.os-launcher-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:var(--sp-6) var(--sp-3);padding:var(--sp-4) var(--sp-6) var(--sp-6)}
+.os-launcher-app{display:flex;flex-direction:column;align-items:center;gap:var(--sp-2);color:var(--ink);text-decoration:none;font-size:var(--fs-sm);font-weight:var(--fw-medium);text-align:center}
+.os-launcher-app>span:last-child{display:inline-flex;align-items:center;gap:4px}
+.os-app-tile{
+  display:grid;place-items:center;width:64px;height:64px;border-radius:18px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);box-shadow:var(--shadow-xs);
+  transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+}
+.os-launcher-app:hover .os-app-tile{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.os-launcher-app:focus-visible{outline:none}
+.os-launcher-app:focus-visible .os-app-tile{box-shadow:var(--shadow-glow)}
+.os-app-tile.is-active{background:var(--primary);border-color:var(--primary);color:var(--primary-on)}
+.os-app-tile--product{padding:10px;box-sizing:border-box}
+.os-app-tile--product img{width:100%;height:auto}
+.os-app-tile--product>i{font-style:normal;font-weight:var(--fw-bold);font-size:var(--fs-lg)}
+.os-launcher-products{border-top:1px solid var(--line-soft)}
+.os-launcher-products h3{margin:0;padding:var(--sp-5) var(--sp-6) 0;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+.os-launcher .marka-koyu{display:none}
+html[data-theme="dark"] .os-launcher .marka-acik{display:none}
+html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
+.os-icon-btn{display:grid;place-items:center;flex:none;width:40px;height:40px;border:0;border-radius:var(--r-md);background:transparent;color:var(--muted);cursor:pointer}
+.os-icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+
+/* Ctrl+K */
+.os-palette{width:min(640px,calc(100vw - 32px));margin-top:12vh;overflow:hidden}
+.os-palette-input{display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-4);border-bottom:1px solid var(--line);color:var(--muted)}
+.os-palette-input input{flex:1;min-width:0;height:56px;border:0;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-md)}
+.os-palette-list{list-style:none;margin:0;padding:var(--sp-2);max-height:min(420px,60dvh);overflow:auto}
+.os-palette-group{padding:var(--sp-2) var(--sp-2) var(--sp-1);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted)}
+.os-palette-item{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:44px;padding:0 var(--sp-2);border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.os-palette-item.is-active{background:var(--primary-soft)}
+.os-palette-item.is-active .os-palette-icon{background:var(--primary);color:var(--primary-on)}
+.os-palette-icon{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink-soft)}
+.os-palette-label{flex:1}
+.os-palette-item small{font-size:var(--fs-micro);color:var(--muted)}
+.os-palette-empty{padding:var(--sp-6) var(--sp-2);text-align:center;color:var(--muted)}
+.os-palette-foot{display:flex;gap:var(--sp-4);padding:var(--sp-2) var(--sp-4);border-top:1px solid var(--line);background:var(--surface-2);font-size:var(--fs-micro);color:var(--muted)}
+
+/* ---------- Dar ekran ---------- */
+@media (max-width:900px){
+  .os-root{--os-bar-h:56px;--os-dock-space:96px}
+  .os-bar{padding:var(--sp-2) var(--sp-3);gap:var(--sp-2)}
+  .os-brand-app,.os-clock,.os-online,.os-search-text,.os-search kbd{display:none}
+  .os-search{flex:0 0 40px;width:40px;margin:0 0 0 auto;padding:0;justify-content:center;border-color:transparent;background:transparent}
+  .os-bar-right{margin-left:0}
+  .os-live-pill{padding:0 8px}
+  .os-root .panel-content{padding:var(--sp-4) var(--sp-3) calc(var(--os-dock-space) + env(safe-area-inset-bottom))}
+  .os-dock{left:var(--sp-3);right:var(--sp-3);transform:none;max-width:none;justify-content:flex-start;border-radius:var(--r-lg)}
+  .os-dock-item{width:46px;height:46px}
+}
+@media (max-width:520px){
+  .os-brand>span{display:none}
+  .os-live-pill{font-size:0;gap:0;width:28px;padding:0;justify-content:center}
+  .os-bar .panel-theme-toggle{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .os-dock-item,.os-app-tile,.os-launcher[open],.os-palette[open]{transition:none;animation:none}
+  .os-live-pill.is-canli>i{animation:none}
+}
+
+/* Kurum logosu çoğunlukla kelime logosu (geniş): kare kutuya kırpılırsa
+   okunmuyordu. Yüksekliğe sığdırılır; ad zaten logoda yazdığı için metin
+   yalnızca ekran okuyucuya kalır, altında açık uygulamanın adı görünür. */
+.os-brand>img{width:auto;max-width:150px;height:28px;border-radius:0;object-fit:contain}
+.os-brand>img+span b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Mesaj ve bildirim çekmecelerinin tetikleyicileri (eski üst çubuktan):
+   durum çubuğunda yalnızca ikon + rozet. */
+.os-bar .panel-quick-action{
+  position:relative;display:grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;
+  border:0;border-radius:var(--r-md);background:transparent;color:var(--ink-soft);box-shadow:none
+}
+.os-bar .panel-quick-action:hover{background:var(--surface-2);color:var(--ink)}
+.os-bar .panel-quick-action>b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.os-bar .panel-quick-icon{width:auto;height:auto;background:transparent;color:inherit;border-radius:0}
+.os-bar .panel-unread-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}

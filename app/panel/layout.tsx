@@ -3,14 +3,11 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { tenantTheme } from "@/lib/tenant-theme";
 import { logout } from "./actions";
-import { PanelNavigation } from "./panel-navigation";
-import { WorkspaceSwitcher } from "./workspace-switcher";
 import { PanelBreadcrumb } from "./panel-breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
 import { FlashToast } from "./flash-toast";
-import { MobileDrawer } from "./mobile-drawer";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
 import { NotificationsDrawer } from "./notifications-drawer";
@@ -19,6 +16,12 @@ import { SidebarToggle } from "./sidebar-toggle";
 import { cookies, headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
 import { KonsolNavigasyon } from "./konsol-navigasyon";
+import { formatPersonName } from "@/lib/format-name";
+import { osUygulamalari } from "./os/os-apps";
+import { OsDock } from "./os/os-dock";
+import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
+import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
+import { OsKullaniciMenusu } from "./os/os-user-menu";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -31,6 +34,7 @@ import "./panel-compact.css";
 import "./panel-premium.css";
 import "./panel-tables.css";
 import "./panel-motion.css";
+import "./os-shell.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
 
 export const metadata: Metadata = {
@@ -48,6 +52,9 @@ const roleNames: Record<string, string> = {
 
 /** Konsoldan müşteri paneline geçiş için; proxy'deki adresle aynı. */
 const DEFAULT_APP_HOST = "app.arvo-os.com";
+
+/** Çevrimiçi sayılmak için son görülme sınırı (PresenceHeartbeat dakikada bir yazar). */
+const cevrimiciEsigi = () => new Date(Date.now() - 3 * 60_000).toISOString();
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, izin } = await getPanelContext();
@@ -95,8 +102,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const isPlatformOrg = organization.slug === "arvo-os";
   const brandName = organization.display_name || organization.name;
   const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
-  const brandTagline = isPlatformOrg ? "BUSINESS OPERATING SYSTEM" : "YÖNETİM PANELİ";
-  const ownEmployeeQuery = supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
+  const ownEmployeeQuery = supabase.from("hr_employees").select("id,full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   // Mesaj çekmecesi ve /panel/messages aynı yükleyiciyi kullanır; okunmamış
   // sayısı sunucuda hesaplanır (eskiden son 1000 mesaj tarayıcıya çekiliyordu).
   const messagesQuery = hasMessages ? loadMessagesInit(supabase, membership.organization_id, userId) : Promise.resolve(null);
@@ -191,29 +197,84 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // Daraltılmış menü tercihi (sidebar-toggle.tsx yazar): ilk çizimde doğru genişlik.
   const navCollapsed = (await cookies()).get("arvo_nav")?.value === "collapsed";
 
+  const agreementBanner = pendingAgreement
+    ? <Link href={`/panel/confidentiality/${pendingAgreement.id}`} className="panel-agreement-banner"><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>
+    : null;
+
+  /*
+    ŞİRKET İŞLETİM SİSTEMİ KABUĞU (2026-10).
+
+    Kenar menüsü + üst çubuk yerine: üstte durum çubuğu (kurum, açık
+    uygulama, Ctrl+K araması, canlı bağlantı, çevrimiçi ekip, saat,
+    mesajlar, bildirimler, hesap), altta uygulama dock'u. Her modül bir
+    uygulama; liste os/os-apps.ts'te eski menünün yetki kuralıyla aynı.
+    Kurucu konsolu aşağıdaki eski kabukta kalıyor: orası tek bir kurumun
+    çalışma alanı değil.
+  */
+  if (!konsolHostu) {
+    const uygulamalar = osUygulamalari({
+      modules,
+      role: membership.role,
+      hiddenModuleKeys,
+      posta: postaGorunur ? { okunmamis: postaOkunmamis } : null,
+      mesajlar: messagesInit ? { okunmamis: messageUnreadCount } : null,
+    });
+    /* Çevrimiçi ekip: son 3 dakikada görülenler ve adları. Çalışan
+       listesini görme yetkisi olmayan rolde RLS boş döner; avatarlar
+       "Ekip üyesi" olur, kabuk bozulmaz. */
+    const ucDakikaOnce = cevrimiciEsigi();
+    const [{ data: varlikSatirlari }, { data: ekipSatirlari }] = await Promise.all([
+      supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce),
+      supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
+    ]);
+    const varlik = Object.fromEntries(((varlikSatirlari ?? []) as { user_id: string; last_seen_at: string }[]).map((s) => [s.user_id, s.last_seen_at]));
+    const ekip = ((ekipSatirlari ?? []) as { user_id: string; full_name: string | null }[])
+      .map((s) => ({ userId: s.user_id, ad: formatPersonName(s.full_name) || "Ekip üyesi" }));
+    const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
+
+    return <div className="panel-root os-root" style={tenantStyle}><main className="panel-frame os-frame">
+      <PresenceHeartbeat />
+      <NavProgress />
+      <GlobalActionFeedback />
+      <FlashToast />
+      <header className="os-bar">
+        <Link className="os-brand" href="/panel" aria-label={`${brandName} ana ekran`}>
+          {brandLogoUrl ? <img src={brandLogoUrl} alt="" /> : <i aria-hidden="true">{brandName.slice(0, 1).toLocaleUpperCase("tr")}</i>}
+          <span><b>{brandName}</b><OsUygulamaAdi uygulamalar={uygulamalar} /></span>
+        </Link>
+        <OsAramaDugmesi />
+        <div className="os-bar-right">
+          <OsCanli organizationId={membership.organization_id} benimId={userId} ekip={ekip} baslangic={varlik} />
+          <OsSaat />
+          <div className="os-bar-actions">
+            {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
+            <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
+            <ThemeToggle />
+          </div>
+          <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} />
+        </div>
+      </header>
+      <section className="os-workspace">
+        <div className="panel-content">{agreementBanner}{children}</div>
+      </section>
+      <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />
+      <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />
+    </main></div>;
+  }
+
+  /* Buradan sonrası yalnızca kurucu konsolu (yonetim.arvo-os.com): marka
+     platformun, çalışma alanı seçici ve mesaj çekmecesi yok. */
   return <div className={navCollapsed ? "panel-root is-nav-collapsed" : "panel-root"} style={tenantStyle}><main className="panel-frame">
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    {konsolHostu ? null : <MobileDrawer modules={modules} organizationName={brandName} roleName={roleName} role={membership.role} brandName={brandName} brandLogoUrl={brandLogoUrl} brandTagline={brandTagline} hiddenModuleKeys={[...hiddenModuleKeys]} notificationUnreadCount={notificationUnreadCount??0} messageUnreadCount={messageUnreadCount} digerUygulamalar={digerUygulamalar} posta={postaGorunur ? { okunmamis: postaOkunmamis } : null} />}
     <aside id="panel-sidebar" className="panel-sidebar">
-      {/* Konsolda marka kurumun değil platformun: burada tek bir kurumun
-          paneli açılmıyor, hepsinin yönetimi açılıyor. */}
       <Link className="panel-brand" href="/panel">
-        {konsolHostu || !brandLogoUrl ? <i>{konsolHostu ? "◇" : brandName.slice(0, 1).toUpperCase()}</i> : <img src={brandLogoUrl} alt={brandName} />}
-        <span><b>{konsolHostu ? "Kurucu Konsolu" : brandName}</b><small>{konsolHostu ? "PLATFORM YÖNETİMİ" : brandTagline}</small></span>
+        <i>◇</i>
+        <span><b>Kurucu Konsolu</b><small>PLATFORM YÖNETİMİ</small></span>
       </Link>
-      {/* Konsolda çalışma alanı seçici yok: bu alan adında çalışma alanı
-          zorla Arvo'nun kendi kurumu (lib/panel-context.ts). */}
-      {konsolHostu ? null : (
-        <div className="panel-org panel-org-switchable">
-          <WorkspaceSwitcher workspaces={workspaces} activeOrganizationId={organization.id} variant="card" />
-        </div>
-      )}
-      {konsolHostu
-        ? <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
-        : <PanelNavigation modules={modules} role={membership.role} hiddenModuleKeys={[...hiddenModuleKeys]} digerUygulamalar={digerUygulamalar} posta={postaGorunur ? { okunmamis: postaOkunmamis } : null} />}
+      <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
       <div className="panel-sidebar-footer">
         <SidebarToggle initialCollapsed={navCollapsed} />
         <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
@@ -225,16 +286,13 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <PanelBreadcrumb brandName={isPlatformOwner ? "Kurucu Merkezi" : brandName} />
         <div className="panel-top-actions">
           <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            {/* Mesaj çekmecesi kurum içi yazışma; konsol tek bir kurumun
-                paneli değil. Bildirimler kurucuya ait olduğu için kalıyor. */}
-            {messagesInit && !konsolHostu ? <MessagesDrawer init={messagesInit} /> : null}
             <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
           </div>
           <ThemeToggle />
           <div className="panel-user"><span>{brandName[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
       </header>
-      <div className="panel-content">{pendingAgreement?<Link href={`/panel/confidentiality/${pendingAgreement.id}`} className="panel-agreement-banner"><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>:null}{children}</div>
+      <div className="panel-content">{agreementBanner}{children}</div>
     </section>
   </main></div>;
 }
