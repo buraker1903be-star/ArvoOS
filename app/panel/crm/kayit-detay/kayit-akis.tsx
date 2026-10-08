@@ -3,8 +3,8 @@
 import { Children, useState, type ReactNode } from "react";
 
 /*
-  Talep detayının sağ sütunu: yorumlar, postalar ve kayıt geçmişi tek
-  akışta, sekmelerle. Eskiden yorumlar ve postalar yan sütunda alt alta,
+  Kayıt detaylarının (talep, teklif) sağ sütunu: yorumlar, postalar ve
+  kayıt geçmişi tek akışta, sekmelerle. Eskiden yorumlar ve postalar yan sütunda alt alta,
   kayıt geçmişi sol sütunun en altındaydı; sayfa 1400px boyuna çıkıyor,
   geçmişe ulaşmak için kaydırmak gerekiyordu.
 

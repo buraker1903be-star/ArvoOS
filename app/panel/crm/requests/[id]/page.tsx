@@ -19,10 +19,10 @@ import {
   updateOpportunity,
 } from "../../actions";
 import { requestStageNames } from "../../request-status";
-import { TalepAkis } from "./talep-akis";
+import { TalepAkis } from "../../kayit-detay/kayit-akis";
 import "../../crm.css";
 import "../../request-page.css";
-import "./talep.css";
+import "../../kayit-detay/kayit-detay.css";
 
 /*
   TALEP DETAYI (2026-10): üç sütun.

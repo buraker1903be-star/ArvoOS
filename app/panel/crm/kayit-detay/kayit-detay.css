@@ -1,6 +1,8 @@
 /* ============================================================
-   TALEP DETAYI (2026-10) — üç sütun: müşteri · talep · akış.
-   Yalnızca panel-tokens.css değerleri.
+   KAYIT DETAYI (2026-10) — üç sütun: müşteri · kayıt · akış.
+   Talep detayıyla başladı, teklif detayı da aynı düzeni kullanıyor;
+   sınıf adları bu yüzden talep- önekli. Yalnızca panel-tokens.css
+   değerleri.
    ============================================================ */
 .os-root .talep{display:flex;flex-direction:column;gap:var(--sp-4)}
 
@@ -101,3 +103,14 @@
 .os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar,.talep-akis-panel::-webkit-scrollbar{width:6px}
 .os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar-thumb,.talep-akis-panel::-webkit-scrollbar-thumb{border-radius:6px;background:transparent}
 .os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri):hover::-webkit-scrollbar-thumb,.talep-akis-panel:hover::-webkit-scrollbar-thumb{background:var(--n-300)}
+
+/* ---------- Teklif detayı ---------- */
+.teklif-tutar{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;padding-bottom:var(--sp-4);border-bottom:1px solid var(--line-soft)}
+.teklif-tutar strong{display:block;margin-top:var(--sp-1);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.teklif-tutar small{display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-sm)}
+.teklif-gecerlilik{display:flex;flex-direction:column;align-items:flex-end;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--ink)}
+.teklif-gecerlilik h3{margin:0}
+.teklif-kilit{margin:var(--sp-3) 0 0;padding:var(--sp-3);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm)}
+.teklif-baglanti{margin:0 0 var(--sp-1);color:var(--ink-soft);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-micro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Menüdeki form düğmeleri (Sözleşmeye dönüştür) tam genişlikte */
+.os-root .os-menu-list form{display:contents}
