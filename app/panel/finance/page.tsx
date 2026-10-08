@@ -8,7 +8,7 @@ import { FinWidget } from "./finance-ui";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
-import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { vadesiGecenler } from "@/lib/taksit-dagitimi";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
 import { aylik, gunAraliginda, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../os/genel-bakis";
@@ -261,23 +261,7 @@ export default async function FinancePage({
     cari detayıyla aynı kural); gecikmiş sayılan yalnızca kalan tutar.
     Carisi olmayan sözleşmenin taksiti kendi durumuyla sayılır.
   */
-  const planSahibi = new Map(contracts.filter((c) => c.payment_plan_id && c.party_id).map((c) => [c.payment_plan_id as string, c.party_id as string]));
-  const cariTaksitleri = new Map<string, Installment[]>();
-  const carisizTaksitler: Installment[] = [];
-  for (const item of installments) {
-    const sahip = planSahibi.get(item.payment_plan_id);
-    if (sahip && accounts.some((a) => a.id === sahip)) cariTaksitleri.set(sahip, [...(cariTaksitleri.get(sahip) ?? []), item]);
-    else carisizTaksitler.push(item);
-  }
-  const gecenTaksit: { kalan: number }[] = [];
-  for (const a of accounts) {
-    const liste = cariTaksitleri.get(a.id);
-    if (!liste) continue;
-    for (const t of taksitleriDagit(liste, netTahsilat(a.entries), today)) if (t.durum === "gecikti") gecenTaksit.push({ kalan: t.kalan });
-  }
-  for (const item of carisizTaksitler)
-    if (item.status !== "paid" && item.status !== "cancelled" && item.due_date && item.due_date < today) gecenTaksit.push({ kalan: Number(item.amount) });
-  const gecenTaksitTutari = gecenTaksit.reduce((sum, item) => sum + item.kalan, 0);
+  const { adet: gecenTaksitAdedi, tutar: gecenTaksitTutari } = vadesiGecenler({ cariler: accounts, sozlesmeler: contracts, taksitler: installments, bugun: today });
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query);
   const copy = pageCopy[mode];
@@ -344,7 +328,7 @@ export default async function FinancePage({
               kutular={[
                 { ad: "Son 30 gün tahsilat", deger: kisaPara(tahsilat30), alt: degisimYazisi(tahsilatDegisim) ?? "önceki dönem yok", ton: tahsilatDegisim !== null && tahsilatDegisim < 0 ? "uyari" : tahsilatDegisim !== null ? "arti" : undefined },
                 { ad: "Tahsil oranı", deger: tahsilOrani === null ? "—" : `%${tahsilOrani}`, alt: "borç ve iadeye göre" },
-                { ad: "Vadesi geçen taksit", deger: String(gecenTaksit.length), alt: gecenTaksit.length ? kisaPara(gecenTaksitTutari) : "gecikme yok", ton: gecenTaksit.length ? "uyari" : undefined },
+                { ad: "Vadesi geçen taksit", deger: String(gecenTaksitAdedi), alt: gecenTaksitAdedi ? kisaPara(gecenTaksitTutari) : "gecikme yok", ton: gecenTaksitAdedi ? "uyari" : undefined },
                 { ad: "Ortalama açık bakiye", deger: openCount ? kisaPara(Math.round(totals.balance / openCount)) : "—", alt: `${openCount} açık cari` },
               ]}
               gruplar={[

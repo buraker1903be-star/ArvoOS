@@ -17,7 +17,7 @@ import "../dashboard.css";
 
 export const GENEL_BAKIS_SATIR = 6;
 
-export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
+export function GenelBakis({ baslik, gizliBaslik, ust, sag, uyari, children }: {
   /** Görünen başlık (ana ekranda selamlama). Modül genel bakışlarında yok. */
   baslik?: ReactNode;
   /*
@@ -29,6 +29,8 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
   gizliBaslik?: string;
   /** Başlığın üstündeki küçük etiket; ana ekranda telefonda tarih. */
   ust?: ReactNode;
+  /** Başlığın yanında (sağında) duran içerik; ana ekranda günlük özet şeridi. */
+  sag?: ReactNode;
   /** Okunamayan veriler için uyarı satırı. */
   uyari?: string[];
   children: ReactNode;
@@ -41,6 +43,7 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
             {ust ? <small className="panel-kicker">{ust}</small> : null}
             <h1>{baslik}</h1>
           </div>
+          {sag}
         </header>
       ) : <h1 className="dash-gizli-baslik">{gizliBaslik}</h1>}
       {uyari?.length ? (
@@ -128,12 +131,19 @@ export function ListeIzgarasi({ children, etiket = "Güncel işler" }: { childre
 /*
   Liste satırı. "yeni": son birkaç dakikada gelen kayıt kurum renginde
   belirir (anlık tazeleme); "okunmamis": kalın ad ve nokta.
+
+  Satırın tamamı başlıktaki bağlantıyla tıklanır (::after kaplaması);
+  "musteri" verilirse alt satırın başındaki müşteri adı kendi bağlantısıyla
+  müşteri sayfasına gider (kaplamanın üstünde). Eskiden satırın kendisi
+  tek bir <a> idi; içine ikinci bağlantı konamıyordu.
 */
-export function ListeSatiri({ href, baslik, baslikIpucu, alt, onizleme, sag, zaman, okunmamis, yeni }: {
+export function ListeSatiri({ href, baslik, baslikIpucu, alt, musteri, onizleme, sag, zaman, okunmamis, yeni }: {
   href: string;
   baslik: ReactNode;
   baslikIpucu?: string;
   alt?: ReactNode;
+  /** Alt satırın başındaki müşteri adı; href varsa müşteri sayfasına bağlanır. */
+  musteri?: { ad: string; href?: string | null };
   /** Alt satır bir mesaj önizlemesiyse (tek satıra kırpılır). */
   onizleme?: boolean;
   /** Sağdaki rozet (status-pill) ya da tutar. */
@@ -146,14 +156,24 @@ export function ListeSatiri({ href, baslik, baslikIpucu, alt, onizleme, sag, zam
   const sinif = [okunmamis ? "is-unread" : "", yeni ? "is-new" : ""].filter(Boolean).join(" ") || undefined;
   return (
     <li className={sinif}>
-      <Link className="dash-col-row" href={href}>
+      <div className="dash-col-row">
         <span className="dash-col-main">
-          <b title={baslikIpucu}>{baslik}</b>
-          {alt ? <small className={onizleme ? "dash-col-preview" : undefined}>{alt}</small> : null}
+          <Link className="dash-col-link" href={href}><b title={baslikIpucu}>{baslik}</b></Link>
+          {alt || musteri ? (
+            <small className={onizleme ? "dash-col-preview" : undefined}>
+              {musteri ? (
+                <>
+                  {musteri.href ? <Link className="dash-col-musteri" href={musteri.href}>{musteri.ad}</Link> : musteri.ad}
+                  {alt ? " · " : ""}
+                </>
+              ) : null}
+              {alt}
+            </small>
+          ) : null}
         </span>
         {sag}
         {zaman ? <small className="dash-col-time">{zaman}</small> : null}
-      </Link>
+      </div>
     </li>
   );
 }

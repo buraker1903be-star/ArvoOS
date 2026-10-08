@@ -241,3 +241,27 @@ a.dash-setup-step:active{transform:scale(.985)}
 @media (max-width:700px){.dash-v2 .dash-bar-value{display:none}}
 /* Modül genel bakışlarının yalnızca ekran okuyucuya görünen başlığı. */
 .dash-gizli-baslik{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* Liste satırı (2026-10): satır bir kap; başlık bağlantısı ::after ile
+   satırı kaplar, müşteri adı bağlantısı kaplamanın üstünde kalır. */
+.dash-col-row{position:relative}
+.dash-col-link{display:block;min-width:0;color:inherit;text-decoration:none}
+.dash-col-link::after{content:"";position:absolute;inset:0;border-radius:inherit}
+.dash-col-link:focus-visible{outline:none}
+.dash-col-row:has(.dash-col-link:focus-visible){box-shadow:var(--shadow-glow)}
+.dash-col-row .status-pill,.dash-col-time{position:relative;pointer-events:none}
+.dash-col-musteri{position:relative;z-index:1;color:var(--ink-soft);text-decoration:none}
+.dash-col-musteri:hover{color:var(--primary);text-decoration:underline;text-underline-offset:2px}
+/* Kart satırları liste tablolarının ölçeğinde: biraz daha ferah. */
+.dash-v2 .dash-col-row{min-height:48px}
+
+/* Ana ekran: günlük özet şeridi (liste ve detay sayfalarındaki şerit). */
+.dash-v2 .dash-ozet{margin:0}
+.dash-v2 .dash-ozet dd a{color:inherit;text-decoration:none}
+.dash-v2 .dash-ozet dd a:hover{color:var(--primary)}
+/* Özet şeridi selamlamanın sağında; dar ekranda alta iner. Kompakt. */
+.dash-v2 .dash-hero{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+.dash-v2 .dash-hero>.dash-ozet{flex:0 1 auto;padding:var(--sp-2) var(--sp-4)}
+.dash-v2 .dash-ozet dl{gap:var(--sp-5)}
+.dash-v2 .dash-ozet dd{font-size:var(--fs-md)}
+@media (max-width:1100px){.dash-v2 .dash-hero>.dash-ozet{flex-basis:100%}}
