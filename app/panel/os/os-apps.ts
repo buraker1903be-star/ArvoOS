@@ -88,11 +88,22 @@ export function osUygulamalari({
   if (gruplar.some((grup) => grup.key === "crm")) {
     uygulamalar.push({ key: "whatsapp", label: "WhatsApp", href: "/panel/crm/whatsapp", ikon: "whatsapp", yollar: ["/panel/crm/whatsapp"], yalnizBaslatici: true });
   }
+  /*
+    Posta ve Mesajlar dock'ta değil, "Tüm uygulamalar"da (kurum sahibinin
+    isteği, 2026-10). Dock gün içinde sürekli girilen bölümler için;
+    ikisi de gün boyu açık tutulan değil, gidip gelinen ekranlar.
+
+    Mesajlar zaten üst çubukta kendi çekmecesiyle duruyor
+    (MessagesDrawer) ve okunmamış sayısı orada görünüyor, yani dock'taki
+    girdi ikinci bir kopyaydı. Postanın okunmamış rozeti ise yalnızca
+    dock'ta çiziliyordu; kaldırınca o sayı hiçbir yerde görünmüyor —
+    gerekirse üst çubuğa kendi düğmesi eklenir.
+  */
   if (posta) {
-    uygulamalar.push({ key: "posta", label: "Posta", href: "/panel/posta", ikon: "posta", yollar: ["/panel/posta"], rozet: posta.okunmamis });
+    uygulamalar.push({ key: "posta", label: "Posta", href: "/panel/posta", ikon: "posta", yollar: ["/panel/posta"], rozet: posta.okunmamis, yalnizBaslatici: true });
   }
   if (mesajlar) {
-    uygulamalar.push({ key: "messages", label: "Mesajlar", href: "/panel/messages", ikon: "messages", yollar: ["/panel/messages"], rozet: mesajlar.okunmamis });
+    uygulamalar.push({ key: "messages", label: "Mesajlar", href: "/panel/messages", ikon: "messages", yollar: ["/panel/messages"], rozet: mesajlar.okunmamis, yalnizBaslatici: true });
   }
   uygulamalar.push({ key: "settings", label: "Ayarlar", href: "/panel/settings", ikon: "settings", yollar: ["/panel/settings"] });
   return uygulamalar;
