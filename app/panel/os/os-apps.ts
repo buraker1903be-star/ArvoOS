@@ -16,6 +16,7 @@ import {
   resolveNavigationGroups,
   type PanelModule,
 } from "../panel-navigation-config";
+import { uygulamaBolumleri, type Bolum, type BolumErisimi } from "./os-bolumler";
 
 export type OsIkon =
   | "home" | "crm" | "operations" | "finance" | "hr" | "documents"
@@ -30,6 +31,8 @@ export type OsUygulama = {
   yollar: string[];
   /** Okunmamış sayısı gibi rozet; 0 ya da yoksa gösterilmez. */
   rozet?: number;
+  /** Uygulamanın bölümleri (os-bolumler.ts): ikinci dock ve Ctrl+K. */
+  bolumler?: Bolum[];
 };
 
 export type OsSayfa = { label: string; href: string; uygulama: string };
@@ -48,13 +51,17 @@ export function osUygulamalari({
   hiddenModuleKeys,
   posta,
   mesajlar,
+  erisim,
 }: {
   modules: PanelModule[];
   role?: string;
   hiddenModuleKeys?: Iterable<string>;
   posta?: { okunmamis: number } | null;
   mesajlar?: { okunmamis: number } | null;
+  /** Bölümlerin yetki kuralları için; verilmezse yalnızca herkese açık bölümler. */
+  erisim?: Omit<BolumErisimi, "modules">;
 }): OsUygulama[] {
+  const bolumErisimi: BolumErisimi = { modules, yetkiler: erisim?.yetkiler ?? new Set(), isPlatformOwner: erisim?.isPlatformOwner };
   const gruplar = resolveNavigationGroups(modules, role, new Set(hiddenModuleKeys ?? []))
     .filter((grup) => grup.items.length > 0);
 
@@ -68,7 +75,8 @@ export function osUygulamalari({
       ...grup.items.map((item) => `/panel/${item.code}`),
       ...grup.items.map((item) => `/panel/${normalizeModuleCode(item.code)}`),
     ])];
-    uygulamalar.push({ key: grup.key, label: grup.label, href, ikon: GRUP_IKONU[grup.key] ?? "apps", yollar });
+    const bolumler = uygulamaBolumleri(grup.key, bolumErisimi);
+    uygulamalar.push({ key: grup.key, label: grup.label, href, ikon: GRUP_IKONU[grup.key] ?? "apps", yollar, ...(bolumler.length ? { bolumler } : {}) });
   }
   if (posta) {
     uygulamalar.push({ key: "posta", label: "Posta", href: "/panel/posta", ikon: "posta", yollar: ["/panel/posta"], rozet: posta.okunmamis });
@@ -100,28 +108,15 @@ export function etkinUygulama(uygulamalar: OsUygulama[], yol: string): OsUygulam
 }
 
 /*
-  Ctrl+K'da uygulamaların içindeki sık kullanılan sayfalar. Yalnızca
-  kişinin dock'unda olan uygulamaların sayfaları gösterilir: CRM'i
-  görmeyen birine "Teklifler" önermek, açınca yetki hatası verir.
+  Ctrl+K'daki sayfalar uygulamaların BÖLÜMLERİNDEN (os-bolumler.ts) gelir;
+  eskiden burada elle yazılmış ayrı bir liste vardı ve sekmelerle
+  ayrışıyordu. Yalnızca kişinin dock'unda olan uygulamaların, yetkisinin
+  yettiği bölümleri önerilir.
 */
-const SAYFALAR: OsSayfa[] = [
-  { label: "Talepler", href: "/panel/crm", uygulama: "crm" },
-  { label: "Teklifler", href: "/panel/crm/proposals", uygulama: "crm" },
-  { label: "Sözleşmeler", href: "/panel/crm/contracts", uygulama: "crm" },
-  { label: "CRM takvimi", href: "/panel/crm/takvim", uygulama: "crm" },
-  { label: "WhatsApp", href: "/panel/crm/whatsapp", uygulama: "crm" },
-  { label: "İşler", href: "/panel/operations/isler", uygulama: "operations" },
-  { label: "İş panosu", href: "/panel/operations/pano", uygulama: "operations" },
-  { label: "Operasyon takvimi", href: "/panel/operations/takvim", uygulama: "operations" },
-  { label: "Cari hesaplar", href: "/panel/finance", uygulama: "finance" },
-  { label: "Finans raporları", href: "/panel/finance/raporlar", uygulama: "finance" },
-  { label: "Ekip ve personel", href: "/panel/hr", uygulama: "hr" },
-  { label: "Bildirimler", href: "/panel/notifications", uygulama: "home" },
-];
-
 export function osSayfalari(uygulamalar: OsUygulama[]): OsSayfa[] {
-  const acik = new Set(uygulamalar.map((u) => u.key));
-  return SAYFALAR.filter((sayfa) => acik.has(sayfa.uygulama));
+  const sayfalar: OsSayfa[] = uygulamalar.flatMap((u) => (u.bolumler ?? []).map((b) => ({ label: b.label === "Genel Bakış" ? `${u.label} genel bakış` : b.label, href: b.href, uygulama: u.key })));
+  sayfalar.push({ label: "Bildirimler", href: "/panel/notifications", uygulama: "home" });
+  return sayfalar;
 }
 
 /** Avatar için baş harfler: "burak erdoğan" → "BE". Türkçe büyük harf (i → İ). */

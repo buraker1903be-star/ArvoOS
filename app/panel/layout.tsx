@@ -60,7 +60,7 @@ const DEFAULT_APP_HOST = "app.arvo-os.com";
 const cevrimiciEsigi = () => new Date(Date.now() - 3 * 60_000).toISOString();
 
 export default async function PanelLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, izin } = await getPanelContext();
+  const { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, izin, yetkiler } = await getPanelContext();
 
   /*
     Kurucu konsolu (yonetim.arvo-os.com) normal panel kabuğunu KULLANMAZ.
@@ -221,6 +221,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       hiddenModuleKeys,
       posta: postaGorunur ? { okunmamis: postaOkunmamis } : null,
       mesajlar: messagesInit ? { okunmamis: messageUnreadCount } : null,
+      erisim: { yetkiler, isPlatformOwner },
     });
     /* Çevrimiçi ekip: son 3 dakikada görülenler ve adları. Çalışan
        listesini görme yetkisi olmayan rolde RLS boş döner; avatarlar

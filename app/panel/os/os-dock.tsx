@@ -1,17 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { usePathname } from "next/navigation";
 import { MarkaLogosu, type DigerUygulama } from "../panel-navigation";
 import { etkinUygulama, type OsUygulama } from "./os-apps";
 import { OsSimge } from "./os-icons";
+import { etkinBolum } from "./os-bolumler";
 
 /*
   DOCK. Eski kenar menüsünün yerini alır: ekranın altında yüzen tek sıra
   uygulama. Açık uygulamanın altında kurum renginde bir nokta durur.
   Telefonda da aynı dock alt gezinme çubuğu olur; sığmayan uygulamalar
   yana kayar, hepsi başlatıcıda.
+
+  İKİNCİ DOCK. Fareyle bir uygulamanın üstüne gelince dock'un hemen
+  üstünde o uygulamanın bölümleri açılır (CRM: Genel Bakış, Talepler,
+  Teklifler…). Liste sayfa sekmeleriyle aynı kaynaktan (os-bolumler.ts),
+  açık bölüm vurgulu. Dokunmatikte üstüne gelme olmadığı için açılmaz;
+  ikona dokunmak eskisi gibi uygulamayı açar. Klavyede ikondayken ↑ açar
+  ve ilk bölüme geçer, Esc kapatır. İkon ile ikinci dock arasında imleç
+  gezerken kapanmasın diye kapanma kısa bir gecikmeyle.
 
   BAŞLATICI. Sağdaki ızgara düğmesi ekranın ortasında bir pencere açar:
   kurumun bütün uygulamaları büyük ikonlarla, altta kurumun lisanslı diğer
@@ -24,16 +33,60 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
   const home = uygulamalar.find((u) => u.key === "home");
   const dockta = uygulamalar.filter((u) => u.key !== "home" && u.key !== "settings");
 
+  const zaman = useGecikme();
+  /* Açıldığı sayfa da tutulur: sayfa değişince ikinci dock kendiliğinden
+     gizlenir (efektte state yazmadan). */
+  const [altDurum, setAlt] = useState<{ key: string; x: number; alt: number; yol: string } | null>(null);
+  const alt = altDurum && altDurum.yol === yol ? altDurum : null;
+
+  const konum = (oge: HTMLElement) => {
+    const r = oge.getBoundingClientRect();
+    const d = oge.closest(".os-dock")?.getBoundingClientRect();
+    return { x: r.left + r.width / 2, alt: d ? window.innerHeight - d.top + 10 : 96, yol };
+  };
+  const kapat = (gecikme = 220) => {
+    if (gecikme === 0) { zaman.iptal(); setAlt(null); return; }
+    zaman.kur(() => setAlt(null), gecikme);
+  };
+  const ac = (uygulama: OsUygulama, oge: HTMLElement, gecikme = 90) => {
+    if (!uygulama.bolumler?.length) { kapat(0); return; }
+    const yer = konum(oge);
+    zaman.kur(() => setAlt({ key: uygulama.key, ...yer }), gecikme);
+  };
+
+  // Pencere boyu değişince konum bayatlar: kapanır.
+  useEffect(() => {
+    const yeniden = () => setAlt(null);
+    window.addEventListener("resize", yeniden);
+    return () => window.removeEventListener("resize", yeniden);
+  }, []);
+
+  const fareMi = (olay: ReactPointerEvent) => olay.pointerType === "mouse";
+  const ikonKlavye = (uygulama: OsUygulama) => (olay: ReactKeyboardEvent<HTMLElement>) => {
+    if (olay.key === "ArrowUp" && uygulama.bolumler?.length) {
+      olay.preventDefault();
+      zaman.iptal();
+      setAlt({ key: uygulama.key, ...konum(olay.currentTarget) });
+      window.requestAnimationFrame(() => document.querySelector<HTMLElement>(".os-subdock a")?.focus());
+    } else if (olay.key === "Escape") kapat(0);
+  };
+  const altUygulama = alt ? uygulamalar.find((u) => u.key === alt.key) : null;
+  const altEtkin = altUygulama?.bolumler ? etkinBolum(altUygulama.bolumler, yol, typeof window === "undefined" ? "" : window.location.search) : null;
+
   const simge = (uygulama: OsUygulama) => {
     const acik = etkin?.key === uygulama.key;
     return (
       <Link
         key={uygulama.key}
         href={uygulama.href}
-        className={acik ? "os-dock-item is-active" : "os-dock-item"}
+        className={["os-dock-item", acik ? "is-active" : "", alt?.key === uygulama.key ? "is-sub-open" : ""].filter(Boolean).join(" ")}
         aria-label={uygulama.rozet ? `${uygulama.label}, ${uygulama.rozet} okunmamış` : uygulama.label}
         aria-current={acik ? "page" : undefined}
-        title={uygulama.label}
+        aria-haspopup={uygulama.bolumler?.length ? "true" : undefined}
+        aria-expanded={uygulama.bolumler?.length ? alt?.key === uygulama.key : undefined}
+        onPointerEnter={(olay) => { if (fareMi(olay)) ac(uygulama, olay.currentTarget); }}
+        onPointerLeave={(olay) => { if (fareMi(olay)) kapat(); }}
+        onKeyDown={ikonKlavye(uygulama)}
       >
         <OsSimge ad={uygulama.ikon} boyut={22} />
         <span className="os-dock-label">{uygulama.label}</span>
@@ -44,7 +97,37 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
 
   return (
     <>
-      <nav className="os-dock" aria-label="Uygulamalar">
+      {altUygulama?.bolumler && alt ? (
+        <nav
+          className="os-subdock"
+          aria-label={`${altUygulama.label} bölümleri`}
+          style={{ left: Math.min(Math.max(alt.x, 160), (typeof window === "undefined" ? 1280 : window.innerWidth) - 160), bottom: alt.alt }}
+          onPointerEnter={() => zaman.iptal()}
+          onPointerLeave={(olay) => { if (fareMi(olay)) kapat(); }}
+          onKeyDown={(olay) => {
+            if (olay.key === "Escape") {
+              const ikon = document.querySelector<HTMLElement>(".os-dock .os-dock-item.is-sub-open");
+              kapat(0);
+              ikon?.focus();
+            }
+          }}
+        >
+          <span className="os-subdock-title">{altUygulama.label}</span>
+          {altUygulama.bolumler.map((bolum) => (
+            <Link
+              key={bolum.key}
+              href={bolum.href}
+              className={altEtkin?.key === bolum.key ? "is-active" : undefined}
+              aria-current={altEtkin?.key === bolum.key ? "page" : undefined}
+              onClick={() => kapat(0)}
+            >
+              {bolum.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
+      <nav className="os-dock" aria-label="Uygulamalar" onPointerLeave={(olay) => { if (fareMi(olay)) kapat(); }}>
         {home ? simge(home) : null}
         <span className="os-dock-sep" aria-hidden="true" />
         {dockta.map(simge)}
@@ -105,4 +188,23 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
       </dialog>
     </>
   );
+}
+
+/*
+  Gecikmeli aç/kapa: tek zamanlayıcı. Yeni bir istek öncekini iptal eder
+  (fare ikondan ikona geçerken önceki açma ya da kapama düşer). Zamanlayıcı
+  ref'te; yalnızca olay işleyicilerinden çağrılır.
+*/
+function useGecikme() {
+  const kimlik = useRef(0);
+  useEffect(() => () => window.clearTimeout(kimlik.current), []);
+  return useMemo(() => ({
+    kur(is: () => void, ms: number) {
+      window.clearTimeout(kimlik.current);
+      kimlik.current = window.setTimeout(is, ms);
+    },
+    iptal() {
+      window.clearTimeout(kimlik.current);
+    },
+  }), []);
 }

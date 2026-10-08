@@ -240,3 +240,36 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 /* Saatin iki satırlı stili yukarıdaki dar ekran kuralından sonra geldiği
    için onu eziyordu; telefonda saat ve tarih yine gizli (yer yok). */
 @media (max-width:900px){.os-clock{display:none}}
+
+/* ---------- İkinci dock (uygulamanın bölümleri) ----------
+   Fareyle dock'taki bir uygulamanın üstüne gelince hemen üstünde açılır.
+   Ana dock'la aynı cam dil; açık bölüm kurum renginde. Yatay konum
+   ikonun ortası, ekran kenarına taşmaz (os-dock.tsx). */
+.os-subdock{
+  position:fixed;z-index:56;transform:translateX(-50%);
+  display:flex;align-items:center;gap:2px;max-width:calc(100vw - var(--sp-6));
+  padding:var(--sp-1);box-sizing:border-box;overflow-x:auto;scrollbar-width:none;
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
+  box-shadow:var(--shadow-lg);
+  animation:os-alt-ac .16s var(--ease);
+}
+.os-subdock::-webkit-scrollbar{display:none}
+/* İkon ile şerit arasındaki boşlukta imleç düşmesin diye görünmez köprü */
+.os-subdock::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px}
+@keyframes os-alt-ac{from{opacity:0;transform:translateX(-50%) translateY(6px)}to{opacity:1;transform:translateX(-50%)}}
+.os-subdock-title{flex:none;padding:0 var(--sp-3) 0 var(--sp-2);font-size:var(--fs-micro);font-weight:var(--fw-semibold);color:var(--muted);border-right:1px solid var(--line);margin-right:var(--sp-1);white-space:nowrap}
+.os-subdock a{
+  flex:none;display:flex;align-items:center;min-height:36px;padding:0 var(--sp-3);
+  border-radius:var(--r-md);color:var(--ink-soft);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
+  transition:background-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
+}
+.os-subdock a:hover{background:var(--surface-2);color:var(--ink)}
+.os-subdock a:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.os-subdock a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+/* İkinci dock açıkken o ikonun ad ipucu gizli (üst üste binmesin) */
+.os-dock-item.is-sub-open .os-dock-label{display:none}
+.os-dock-item.is-sub-open{background:var(--surface-2);color:var(--ink)}
+.os-dock-item.is-sub-open.is-active{background:var(--primary-soft);color:var(--primary)}
+@media (prefers-reduced-motion:reduce){.os-subdock{animation:none}}
