@@ -99,6 +99,13 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const unreadWorkflowCount = [...unreadByWorkflow.values()].filter(Boolean).length;
   // Termini ve arşivi yöneticiler ve işin sorumlusu yönetebilir (actions.ts isManagerOrAssignee)
   const canManage = izin("operations.is.yonet");
+  /*
+    Müşteri adı müşteri sayfasına bağlanır (/panel/crm/musteri/[talep id]).
+    Sayfa CRM kayıtlarını okuyor: operasyon personeli CRM'i göremediği
+    için bağlantı yalnızca CRM modülü olan ve müşteri sorgulama ya da iş
+    yönetme yetkisi olana çıkar; diğerlerinde ad düz yazı.
+  */
+  const musteriBaglantisi = modules.some((module) => module.code === "crm") && (izin("crm.musteri.sorgula") || canManage);
   const myEmployeeId = employees.find((employee) => employee.user_id === userId)?.id ?? null;
   const canActOn = (workflow: Workflow) => canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
 
@@ -241,7 +248,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                 return <tr key={workflow.id} className={unreadMessages ? "has-alert" : undefined}>
                   {/* Satırın tamamı bu bağlantıyla tıklanır (kayit-detay.css, ilk hücre) */}
                   <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{steps.length ? `${done}/${steps.length} adım tamamlandı` : "Adım yok"}</span>{unreadMessages ? <span className="crm-alert-chip">{unreadMessages} yeni müşteri mesajı</span> : null}</Link></td>
-                  <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} />
+                  <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} href={musteriBaglantisi && opportunityId ? `/panel/crm/musteri/${opportunityId}` : null} />
                   <RepresentativeCell label="Sorumlu" name={workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null} />
                   <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
                   <td data-label="Durum" className="ops-status-cell">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { initials } from "@/lib/table-format";
@@ -6,22 +7,30 @@ import { relativeTime, type LastContact } from "./last-contact";
 // Talepler, Teklifler ve Sözleşmeler tabloları aynı hücreleri kullanır;
 // böylece üç tabloda sütunlar aynı sırada ve aynı biçimde görünür:
 // No · Müşteri · Hizmet türü · Temsilci · [Tutar] · Durum · Tarih · Son temas.
-// Satırın tamamı ilk hücredeki bağlantıyla tıklanır (panel-premium.css),
-// bu yüzden hücrelerde ayrıca bağlantı yok.
+// Satırın tamamı ilk hücredeki bağlantıyla tıklanır (kayit-detay.css). Hücre
+// içindeki başka bir bağlantı (müşteri adı) kaplamanın üstünde kalır ve
+// kendi sayfasına gider.
 
 export function CustomerCell({
   name,
   phone,
   email,
+  href,
 }: {
   name?: string | null;
   phone?: string | null;
   email?: string | null;
+  /** Verilirse müşteri adı bu sayfaya bağlanır (müşteri sayfası). */
+  href?: string | null;
 }) {
   const display = formatPersonName(name) || "—";
   return (
     <td data-label="Müşteri">
-      <span className="crm-table-title" title={display}>{display}</span>
+      {href ? (
+        <Link className="crm-table-title crm-musteri-link" href={href} title={`${display}: müşteri sayfası`}>{display}</Link>
+      ) : (
+        <span className="crm-table-title" title={display}>{display}</span>
+      )}
       <span className="crm-table-sub">{formatPhone(phone) || email || "İletişim yok"}</span>
     </td>
   );

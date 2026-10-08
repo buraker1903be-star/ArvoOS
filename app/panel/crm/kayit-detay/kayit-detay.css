@@ -498,3 +498,10 @@
 .musteri-sayfa .talep-izgara{grid-template-columns:minmax(260px,1fr) minmax(0,2fr) minmax(300px,1.1fr)}
 @media (max-width:1200px){.musteri-sayfa .talep-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}}
 @media (max-width:760px){.musteri-sayfa .talep-izgara{grid-template-columns:minmax(0,1fr)}}
+/* Tablodaki müşteri adı bağlantısı (müşteri sayfası); satır bağlantısının üstünde. */
+.os-root .talep-tablo .crm-musteri-link{color:var(--ink);text-decoration:none}
+.os-root .talep-tablo .crm-musteri-link:hover{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+/* İşler tablosu 1440px'te 27px taşıyordu: ilerleme sütunu ve "1 gündür müşteride" rozeti daraldı. */
+.os-root .talep-tablo .crm-data-table td.crm-col-progress{min-width:0}
+.os-root .talep-tablo .ops-progress-mini{width:44px}
+.os-root .talep-tablo .ops-status-cell .status-pill{white-space:normal;text-align:left;line-height:var(--lh-tight)}
