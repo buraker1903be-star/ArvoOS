@@ -7,6 +7,7 @@ import { KonsolAnaSayfa } from "./konsol-ana-sayfa";
 import { formatPersonName } from "@/lib/format-name";
 import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 import { requestStageNames } from "./crm/request-status";
+import { agirlikliTahmin, aktifTalepler, teklifBekleyen } from "@/lib/talep-rakamlari";
 import { relativeTime } from "./crm/last-contact";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
@@ -274,9 +275,9 @@ export default async function PanelPage() {
   const monthlyRevenue = ((paidInvoices ?? []) as { total?: number | null; amount?: number | null }[])
     .reduce((sum, satir) => sum + Number(satir.total ?? satir.amount ?? 0), 0);
   const stageCount = (stage: string) => items.filter((item) => item.stage === stage).length;
-  const activeOpportunities = items.filter((item) => !["won", "lost", "completed"].includes(item.stage));
+  const activeOpportunities = aktifTalepler(items);
   const pipelineValue = activeOpportunities.reduce((sum, item) => sum + Number(item.estimated_value ?? 0), 0);
-  const weightedForecast = activeOpportunities.reduce((sum, item) => sum + Math.round(Number(item.estimated_value ?? 0) * Number(item.probability ?? 0) / 100), 0);
+  const weightedForecast = agirlikliTahmin(activeOpportunities);
   const trend = requestTrend(items.map((item) => item.created_at).filter(Boolean));
   const overdue = overdueWorkflowCount ?? 0;
   const unread = unreadNotificationCount ?? 0;
@@ -308,7 +309,7 @@ export default async function PanelPage() {
   const showSetup = requiredSteps.length > 0 && setupDone < requiredSteps.length;
 
   // Widget'lar ve odak listesi (kurum türüne göre)
-  const proposalWaiting = stageCount("proposal_ready") + stageCount("proposal_approved");
+  const { adet: proposalWaiting, tahmin: proposalForecast } = teklifBekleyen(items);
   const widgets: Widget[] = [];
   const focus: FocusItem[] = [];
   if (isAcademic) {
@@ -316,7 +317,7 @@ export default async function PanelPage() {
       widgets.push(
         { label: "Yeni talep", value: stageCount("lead"), note: "İlk incelemeyi bekliyor", href: "/panel/crm", icon: "inbox", tone: "info" },
         { label: "Değerlendirme", value: stageCount("pre_review") + stageCount("academic_review"), note: "Ön ve akademik inceleme", href: "/panel/crm", icon: "review", tone: "brand" },
-        { label: "Teklif bekleyen", value: proposalWaiting, note: `${money(weightedForecast)} tahmini değer`, href: "/panel/crm/proposals", icon: "doc", tone: "gold" },
+        { label: "Teklif bekleyen", value: proposalWaiting, note: `${money(proposalForecast)} tahmini değer`, href: "/panel/crm/proposals", icon: "doc", tone: "gold" },
         { label: "Tahsilat bekleyen", value: stageCount("payment_pending"), note: canSeeFinance ? `${money(monthlyRevenue)} bu ay tahsilat` : "Ödeme bekleyen dosya", href: canSeeFinance ? "/panel/finance" : "/panel/crm", icon: "wallet", tone: "success" },
       );
       focus.push(
