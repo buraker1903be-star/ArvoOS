@@ -19,6 +19,11 @@ import {
   updateOpportunity,
 } from "../../actions";
 import { requestStageNames } from "../../request-status";
+import { contractStatusLabel } from "../../status-labels";
+import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
+import { workflowStatusNames } from "../../../operations/ops-shared";
+
+const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
 import { TalepAkis } from "../../kayit-detay/kayit-akis";
 import "../../crm.css";
 import "../../request-page.css";
@@ -132,13 +137,36 @@ export default async function RequestDetailPage({
   const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
   const calismaTuru = calismaTurleri.find((tur) => tur.code === item.step_template_set)?.name ?? null;
   const adim = talepAdimi(item.stage);
+
+  /*
+    BAĞLANTILAR (teklif, sözleşme ve iş detayıyla eşitleme): bu talepten
+    çıkan teklif, sözleşme ve iş. Eskiden detayda yalnızca müşterinin
+    DİĞER kayıtları vardı; bu talebin kendi zinciri için listelere
+    gidilip aranması gerekiyordu. Okunamazsa (RLS) bölüm boş kalır.
+  */
+  const [{ data: teklifData }, { data: sozlesmeData }] = await Promise.all([
+    context.supabase.from("crm_proposals").select("id,proposal_no,status,archive_reason,superseded_by,amount,currency,revision_no").eq("organization_id", context.membership.organization_id).eq("opportunity_id", item.id).order("created_at", { ascending: false }),
+    context.supabase.from("crm_contracts").select("id,contract_no,status,amount,currency,workflow_id").eq("organization_id", context.membership.organization_id).eq("opportunity_id", item.id).order("created_at", { ascending: false }),
+  ]);
+  const teklifler = (teklifData ?? []) as { id: string; proposal_no: string; status: string; archive_reason: string | null; superseded_by: string | null; amount: number; currency: string; revision_no: number }[];
+  // Geçerli teklif: yeni revizyonla değişmemiş en son teklif.
+  const gecerliTeklif = teklifler.find((t) => !t.superseded_by) ?? teklifler[0] ?? null;
+  const sozlesmeler = (sozlesmeData ?? []) as { id: string; contract_no: string; status: string; amount: number; currency: string; workflow_id: string | null }[];
+  const gecerliSozlesme = sozlesmeler.find((s) => s.status !== "cancelled" && s.status !== "rejected") ?? sozlesmeler[0] ?? null;
+  const { data: isData } = gecerliSozlesme?.workflow_id
+    ? await context.supabase.from("operation_workflows").select("id,status,operation_steps(is_completed)").eq("id", gecerliSozlesme.workflow_id).eq("organization_id", context.membership.organization_id).maybeSingle()
+    : { data: null };
+  const is = isData as { id: string; status: string; operation_steps: { is_completed: boolean }[] | null } | null;
+  const isAdimlari = is?.operation_steps ?? [];
+  const isIlerleme = isAdimlari.length ? Math.round((isAdimlari.filter((a) => a.is_completed).length / isAdimlari.length) * 100) : null;
   const arsivde = item.stage === "lost";
   const musteri = formatPersonName(item.customer_name) || item.customer_name;
   const temsilciler = (employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }));
   /* Teklif aşamasından sonra asıl işlem talebin bulunduğu yere gitmek. */
-  const ileri = adim === 2 ? { href: "/panel/crm/proposals", label: "Tekliflere git" }
-    : adim === 3 ? { href: "/panel/crm/contracts", label: "Sözleşmelere git" }
-    : adim === 4 ? { href: "/panel/operations/isler", label: "İşlere git" }
+  // Kaydın kendisi biliniyorsa doğrudan ona; eskiden hep listeye gidiyordu.
+  const ileri = adim === 2 ? (gecerliTeklif ? { href: `/panel/crm/proposals/${gecerliTeklif.id}`, label: "Teklife git" } : { href: "/panel/crm/proposals", label: "Tekliflere git" })
+    : adim === 3 ? (gecerliSozlesme ? { href: `/panel/crm/contracts/${gecerliSozlesme.id}`, label: "Sözleşmeye git" } : { href: "/panel/crm/contracts", label: "Sözleşmelere git" })
+    : adim === 4 ? (is ? { href: `/panel/operations/${is.id}`, label: "İşe git" } : gecerliSozlesme ? { href: `/panel/crm/contracts/${gecerliSozlesme.id}`, label: "Sözleşmeye git" } : { href: "/panel/operations/isler", label: "İşlere git" })
     : null;
   const teklifCekmecesi = (etiket: string, sinif: string) => (
     <PanelDrawer triggerLabel={etiket} title="Teklif Oluştur" triggerClassName={sinif}>
@@ -412,6 +440,48 @@ export default async function RequestDetailPage({
             <div><dt>Satış temsilcisi</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
             <div><dt>Kaynak</dt><dd>{item.source || <em>Belirtilmedi</em>}</dd></div>
           </dl>
+          {/* BAĞLANTILAR: bu talebin teklifi, sözleşmesi ve işi. */}
+          {gecerliTeklif || gecerliSozlesme ? (
+            <div className="talep-gecmis">
+              <h3>Bağlantılar</h3>
+              <ul>
+                {gecerliTeklif ? (
+                  <li>
+                    <Link href={`/panel/crm/proposals/${gecerliTeklif.id}`}>
+                      <span className="talep-gecmis-metin">
+                        <b>Teklif {gecerliTeklif.proposal_no}{gecerliTeklif.revision_no ? ` · R${gecerliTeklif.revision_no}` : ""}</b>
+                        <small>{money(Number(gecerliTeklif.amount), gecerliTeklif.currency || "TRY")}{teklifler.length > 1 ? ` · ${teklifler.length} teklif` : ""}</small>
+                      </span>
+                      <span className="status-pill">{TEKLIF_GRUP_ADLARI[teklifGrubu(gecerliTeklif)]}</span>
+                    </Link>
+                  </li>
+                ) : null}
+                {gecerliSozlesme ? (
+                  <li>
+                    <Link href={`/panel/crm/contracts/${gecerliSozlesme.id}`}>
+                      <span className="talep-gecmis-metin">
+                        <b>Sözleşme {gecerliSozlesme.contract_no}</b>
+                        <small>{money(Number(gecerliSozlesme.amount), gecerliSozlesme.currency || "TRY")}</small>
+                      </span>
+                      <span className="status-pill">{contractStatusLabel(gecerliSozlesme.status)}</span>
+                    </Link>
+                  </li>
+                ) : null}
+                {is ? (
+                  <li>
+                    <Link href={`/panel/operations/${is.id}`}>
+                      <span className="talep-gecmis-metin">
+                        <b>İş</b>
+                        <small>{isIlerleme !== null ? `%${isIlerleme} tamamlandı` : "Adım yok"}</small>
+                      </span>
+                      <span className="status-pill">{workflowStatusNames[is.status] ?? is.status}</span>
+                    </Link>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+
           {/* Müşterinin diğer kayıtları: sol sütun kısa kalıyordu, bu bilgi
               yalnızca "Müşteri sorgula" penceresindeydi. */}
           <div className="talep-gecmis">
