@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
+import { waMeAdresi } from "@/lib/wa-me";
+import { TALEP_ADIMLARI, talepAdimi } from "@/lib/talep-asamalari";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
@@ -15,8 +17,24 @@ import {
   updateOpportunity,
 } from "../../actions";
 import { requestStageNames } from "../../request-status";
+import { TalepAkis } from "./talep-akis";
 import "../../crm.css";
 import "../../request-page.css";
+import "./talep.css";
+
+/*
+  TALEP DETAYI (2026-10): üç sütun.
+
+  Üstte konu, asıl işlem (Teklif oluştur) ve "⋯" menüsü (düzenle,
+  temsilci ata, direkt sözleşme, arşivle); altında talebin aşama çizgisi.
+  Solda müşteri kartı (tek dokunuşla ara / WhatsApp / e-posta), ortada
+  talep bilgileri, kapsam ve notlar, sağda yorumlar · postalar · kayıt
+  geçmişi tek akışta.
+
+  Eskiden tek uzun kart vardı: işlem düğmeleri en altta, kayıt geçmişi
+  onun da altında; sayfa ~1400px boyundaydı ve en sık kullanılan "Teklif
+  oluştur" görünmek için kaydırma istiyordu.
+*/
 
 type Details = {
   service_type?: string;
@@ -44,6 +62,9 @@ type Opportunity = {
   /** Arşivleme sebebi. Yazılıyordu ama hiçbir ekranda görünmüyordu. */
   lost_reason: string | null;
 };
+
+const tarih = (deger: string | null) =>
+  deger ? new Date(`${deger}T00:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : null;
 
 export default async function RequestDetailPage({
   params,
@@ -87,6 +108,7 @@ export default async function RequestDetailPage({
   // Arşivleme ayrı yetenek: kayıt silinmediği için satış personeli de
   // kendi talebini kapatabiliyor (hangisini kapatabileceğini RLS söyler).
   const canArchive = izin("crm.talep.arsivle");
+  const postaGorur = izin("posta.gor");
   const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
   // Atanmış temsilci pasif veya satışa kapalıysa listede yok; adını ayrıca
   // okuyup seçenek olarak ekliyoruz, yoksa form kaydı atamayı sessizce siliyordu.
@@ -104,8 +126,13 @@ export default async function RequestDetailPage({
             .maybeSingle()
         ).data?.full_name ?? "Pasif personel")
       : null;
-  const representative =
-    listedAssignee?.full_name ?? unlistedAssignee ?? "Atanmamış";
+  const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
+  const calismaTuru = calismaTurleri.find((tur) => tur.code === item.step_template_set)?.name ?? null;
+  const adim = talepAdimi(item.stage);
+  const arsivde = item.stage === "lost";
+  const musteri = formatPersonName(item.customer_name) || item.customer_name;
+  const temsilciler = (employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }));
+
   const edit = (
     <form className="panel-form" action={updateOpportunity}>
       <input type="hidden" name="opportunity_id" value={item.id} />
@@ -174,248 +201,210 @@ export default async function RequestDetailPage({
       </div>
     </form>
   );
+
+  /* Bilgi satırı: boş alanlar "Belirtilmedi" yazmaz, satır hiç çizilmez
+     (yalnızca hizmet ve teslim boşken bile görünür: satışçının doldurması
+     gereken alanlar). */
+  const bilgiler: [string, string | null, boolean?][] = [
+    ["Hizmet", d.service_type || null, true],
+    ["Çalışma türü", calismaTuru],
+    ["Teslim", tarih(item.expected_close_date), true],
+    ["Üniversite", d.university || null],
+    ["Fakülte", d.faculty || null],
+    ["Bölüm", d.department || null],
+    ["Program", d.program || null],
+    ["Danışman", d.advisor || null],
+  ];
+
   return (
-    <main className="crm-page-stack crm-request-detail-page">
-      <header className="panel-pagehead">
-        <div>
-          <small className="panel-kicker">
-            İŞ DETAYI · TLP-{item.id.slice(0, 8).toUpperCase()}
-          </small>
+    <main className="crm-page-stack crm-request-detail-page talep">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">TLP-{item.id.slice(0, 8).toUpperCase()}</small>
           <h1>{item.title}</h1>
-          <p>
-            {item.customer_name} için oluşturulan talebin bilgileri ve işlem
-            adımları.
-          </p>
-          {/*
-            Arşiv sebebi yazılıyordu ama hiçbir ekranda görünmüyordu: yazan
-            kişi dışında kimse neden kapandığını bilmiyordu. Arşivlenmiş
-            talepte başlığın hemen altında duruyor.
-          */}
-          {item.stage === "lost" && item.lost_reason ? (
-            <p className="crm-arsiv-sebebi">
-              <strong>Arşiv sebebi:</strong> {item.lost_reason}
-            </p>
-          ) : null}
         </div>
-        <div className="panel-page-actions">
-          <Link className="panel-secondary" href="/panel/crm">
-            ← Taleplere dön
-          </Link>
-          <span className="status-pill">
-            {requestStageNames[item.stage] ?? item.stage}
-          </span>
+        <div className="talep-bas-eylem">
+          {item.stage === "proposal" ? (
+            <Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link>
+          ) : !arsivde ? (
+            <PanelDrawer triggerLabel="Teklif oluştur" title="Teklif Oluştur" triggerClassName="panel-primary">
+              <ProposalBuilderForm
+                opportunityId={item.id}
+                customerName={item.customer_name}
+                title={item.title}
+                scope={d.scope || item.notes || item.title}
+                representatives={temsilciler}
+                needsRepresentative={!item.assigned_employee_id}
+              />
+            </PanelDrawer>
+          ) : null}
+          {/*
+            Diğer işlemler menüde. Çekmeceler sayfanın köküne çiziliyor
+            (panel-drawer.tsx): menü kapansa da açık kalıyorlar.
+          */}
+          <details className="os-menu talep-menu">
+            <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
+            <div className="os-menu-list" role="menu">
+              <PanelDrawer triggerLabel="Düzenle" title="Talebi Düzenle" triggerClassName="os-menu-item">
+                {edit}
+              </PanelDrawer>
+              {canManage ? (
+                <PanelDrawer
+                  triggerLabel="Temsilci ata"
+                  title="Satış Temsilcisi Ata"
+                  description="Talebi yürütecek temsilciyi seçin."
+                  triggerClassName="os-menu-item"
+                >
+                  <form className="panel-form" action={assignOpportunity}>
+                    <input type="hidden" name="opportunity_id" value={item.id} />
+                    <label className="wide">
+                      Satış temsilcisi
+                      <select
+                        name="assigned_employee_id"
+                        defaultValue={item.assigned_employee_id ?? ""}
+                        required
+                      >
+                        <option value="">Seçiniz</option>
+                        {(employees ?? []).map((e) => (
+                          <option value={e.id} key={e.id}>
+                            {e.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="wide panel-form-actions">
+                      <button className="panel-primary">Temsilciyi Kaydet</button>
+                    </div>
+                  </form>
+                </PanelDrawer>
+              ) : null}
+              {item.stage !== "proposal" && !arsivde ? (
+                <PanelDrawer
+                  triggerLabel="Direkt sözleşme oluştur"
+                  title="Direkt Sözleşme Oluştur"
+                  triggerClassName="os-menu-item"
+                >
+                  <ProposalBuilderForm
+                    opportunityId={item.id}
+                    customerName={item.customer_name}
+                    title={item.title}
+                    scope={d.scope || item.notes || item.title}
+                    representatives={temsilciler}
+                    needsRepresentative={!item.assigned_employee_id}
+                    mode="contract"
+                  />
+                </PanelDrawer>
+              ) : null}
+              {canArchive && !arsivde ? (
+                /*
+                  Kayıt SİLİNMİYOR: aşaması "lost" yapılıp arşive düşüyor
+                  (request-status.ts'te adı "Arşivlendi") ve kayıt
+                  geçmişiyle birlikte duruyor. Düğme eskiden "Sil" yazıyordu.
+                  Sebebi arşivleyen kişi yazıyor; eskiden sabit bir metindi.
+                */
+                <PanelDrawer
+                  triggerLabel="Arşivle"
+                  triggerClassName="os-menu-item is-danger"
+                  kicker="ARŞİVLE"
+                  title={`${item.customer_name} · Talebi arşivle`}
+                  description="Kayıt silinmez: aşaması “Arşivlendi” olur, sebebi talebin üstünde ve kayıt geçmişinde kalır."
+                >
+                  <form className="panel-form" action={archiveOpportunity}>
+                    <input type="hidden" name="opportunity_id" value={item.id} />
+                    <label className="wide">
+                      İptal / arşiv sebebi
+                      <textarea
+                        name="archive_reason"
+                        required
+                        minLength={3}
+                        maxLength={500}
+                        rows={3}
+                        placeholder="Örn. Müşteri bütçe nedeniyle vazgeçti."
+                      />
+                    </label>
+                    <div className="panel-form-actions wide">
+                      <button className="panel-danger">Talebi arşivle</button>
+                    </div>
+                  </form>
+                </PanelDrawer>
+              ) : null}
+            </div>
+          </details>
         </div>
       </header>
-      <div className="crm-detail-split">
-        <div className="crm-detail-main">
-      <section className="panel-card crm-request-detail-card">
-        <div className="crm-request-detail-heading">
-          <div>
-            <small className="panel-kicker">MÜŞTERİ VE İŞ BİLGİLERİ</small>
-            <h2>{formatPersonName(item.customer_name)}</h2>
-            <p>{item.title}</p>
-          </div>
-          <span className="status-pill">
-            {requestStageNames[item.stage] ?? item.stage}
-          </span>
-        </div>
-        <dl className="crm-request-detail-grid">
-          <div>
-            <dt>Hizmet</dt>
-            <dd>{d.service_type || "Belirtilmedi"}</dd>
-          </div>
-          <div>
-            <dt>Satış temsilcisi</dt>
-            <dd>{representative}</dd>
-          </div>
-          <div>
-            <dt>Telefon</dt>
-            <dd>{formatPhone(item.contact_phone) || "Belirtilmedi"}</dd>
-          </div>
-          <div>
-            <dt>E-posta</dt>
-            <dd>{item.contact_email || "Belirtilmedi"}</dd>
-          </div>
-          <div>
-            <dt>Üniversite</dt>
-            <dd>{d.university || "Belirtilmedi"}</dd>
-          </div>
-          <div>
-            <dt>Bölüm</dt>
-            <dd>{d.department || "Belirtilmedi"}</dd>
-          </div>
-          {/*
-            Fakülte, program ve danışman YALNIZCA DOLUYSA gösteriliyor.
-            Bu üç alan talep formunda sorulmuyor; operasyon iş detayındaki
-            künye penceresinden giriyor (orada müşteriyle konuşan kişi
-            var). Boş olduklarında "Belirtilmedi" basmak, satışçıya
-            doldurması gereken bir alan varmış izlenimi verirdi.
 
-            Eklenmelerinin sebebi: operasyonun girdiği bilgi CRM'de hiç
-            görünmüyordu — aynı kayıt iki ekranda farklı görünüyordu.
+      {/* Aşama çizgisi. Arşivlenen talepte çizgi yerine sebep. */}
+      {arsivde ? (
+        <p className="talep-arsiv">
+          <span className="status-pill" data-tone="neutral">{requestStageNames.lost}</span>
+          {/*
+            Arşiv sebebi yazılıyordu ama hiçbir ekranda görünmüyordu: yazan
+            kişi dışında kimse neden kapandığını bilmiyordu.
           */}
-          {d.faculty ? (
+          {item.lost_reason ? <span><strong>Sebep:</strong> {item.lost_reason}</span> : null}
+        </p>
+      ) : (
+        <ol className="talep-asama" aria-label={`Aşama: ${requestStageNames[item.stage] ?? item.stage}`}>
+          {TALEP_ADIMLARI.map((ad, sira) => (
+            <li key={ad} className={adim === null ? undefined : sira < adim ? "is-done" : sira === adim ? "is-current" : undefined} aria-current={sira === adim ? "step" : undefined}>
+              <i aria-hidden="true" />
+              <span>{ad}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <div className="talep-izgara">
+        {/* Müşteri */}
+        <section className="panel-card talep-musteri" aria-label="Müşteri">
+          <div className="talep-musteri-kimlik">
+            <span className="talep-avatar" aria-hidden="true">{musteri.split(/\s+/).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase("tr")).join("")}</span>
             <div>
-              <dt>Fakülte</dt>
-              <dd>{d.faculty}</dd>
+              <h2>{musteri}</h2>
+              <small>Müşteri</small>
+            </div>
+          </div>
+          <div className="talep-iletisim">
+            {item.contact_phone ? <a className="panel-secondary" href={`tel:${item.contact_phone}`}>Ara</a> : null}
+            {item.contact_phone ? (
+              <a className="panel-secondary" href={waMeAdresi(item.contact_phone, `Merhaba ${musteri},`)} target="_blank" rel="noreferrer">WhatsApp</a>
+            ) : null}
+            {item.contact_email ? <a className="panel-secondary" href={`mailto:${item.contact_email}`}>E-posta</a> : null}
+          </div>
+          <dl className="talep-liste">
+            <div><dt>Telefon</dt><dd>{formatPhone(item.contact_phone) || <em>Yok</em>}</dd></div>
+            <div><dt>E-posta</dt><dd>{item.contact_email || <em>Yok</em>}</dd></div>
+            <div><dt>Satış temsilcisi</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
+            <div><dt>Kaynak</dt><dd>{item.source || <em>Belirtilmedi</em>}</dd></div>
+          </dl>
+        </section>
+
+        {/* Talep */}
+        <section className="panel-card talep-bilgi" aria-label="Talep bilgileri">
+          <h2>Talep bilgileri</h2>
+          <dl className="talep-liste talep-liste--iki">
+            {bilgiler.filter(([, deger, hep]) => deger || hep).map(([ad, deger]) => (
+              <div key={ad}><dt>{ad}</dt><dd>{deger || <em>Belirtilmedi</em>}</dd></div>
+            ))}
+          </dl>
+          <div className="talep-not">
+            <h3>Kapsam</h3>
+            {d.scope ? <p>{d.scope}</p> : <p className="talep-bos">Kapsam yazılmamış. “⋯ → Düzenle” ile eklenir.</p>}
+          </div>
+          {item.notes ? (
+            <div className="talep-not">
+              <h3>Notlar</h3>
+              <p>{item.notes}</p>
             </div>
           ) : null}
-          {d.program ? (
-            <div>
-              <dt>Program</dt>
-              <dd>{d.program}</dd>
-            </div>
-          ) : null}
-          {d.advisor ? (
-            <div>
-              <dt>Danışman</dt>
-              <dd>{d.advisor}</dd>
-            </div>
-          ) : null}
-          <div>
-            <dt>Teslim</dt>
-            <dd>
-              {item.expected_close_date
-                ? new Date(
-                    item.expected_close_date + "T00:00:00",
-                  ).toLocaleDateString("tr-TR")
-                : "Belirtilmedi"}
-            </dd>
-          </div>
-          <div>
-            <dt>Kaynak</dt>
-            <dd>{item.source || "Belirtilmedi"}</dd>
-          </div>
-        </dl>
-        {d.scope ? (
-          <div className="crm-request-detail-note">
-            <small>KAPSAM</small>
-            <p>{d.scope}</p>
-          </div>
-        ) : null}
-        {item.notes ? (
-          <div className="crm-request-detail-note">
-            <small>NOTLAR</small>
-            <p>{item.notes}</p>
-          </div>
-        ) : null}
-        <div className="crm-request-detail-actions">
-          <small className="panel-kicker">İŞLEMLER</small>
-          <div>
-            <PanelDrawer triggerLabel="Düzenle" title="Talebi Düzenle">
-              {edit}
-            </PanelDrawer>
-            {canManage ? (
-              <PanelDrawer
-                triggerLabel="Temsilci Ata"
-                title="Satış Temsilcisi Ata"
-                description="Talebi yürütecek temsilciyi seçin."
-                triggerClassName="panel-secondary"
-              >
-                <form className="panel-form" action={assignOpportunity}>
-                  <input type="hidden" name="opportunity_id" value={item.id} />
-                  <label className="wide">
-                    Satış temsilcisi
-                    <select
-                      name="assigned_employee_id"
-                      defaultValue={item.assigned_employee_id ?? ""}
-                      required
-                    >
-                      <option value="">Seçiniz</option>
-                      {(employees ?? []).map((e) => (
-                        <option value={e.id} key={e.id}>
-                          {e.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <div className="wide panel-form-actions">
-                    <button className="panel-primary">Temsilciyi Kaydet</button>
-                  </div>
-                </form>
-              </PanelDrawer>
-            ) : null}
-            {item.stage === "proposal" ? (
-              <Link className="panel-secondary" href="/panel/crm/proposals">
-                Tekliflere Git
-              </Link>
-            ) : (
-              <PanelDrawer
-                triggerLabel="Teklif Oluştur"
-                title="Teklif Oluştur"
-                triggerClassName="panel-secondary"
-              >
-                <ProposalBuilderForm
-                  opportunityId={item.id}
-                  customerName={item.customer_name}
-                  title={item.title}
-                  scope={d.scope || item.notes || item.title}
-                  representatives={(employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }))}
-                  needsRepresentative={!item.assigned_employee_id}
-                />
-              </PanelDrawer>
-            )}
-            {item.stage !== "proposal" ? (
-              <PanelDrawer
-                triggerLabel="Direkt Sözleşme Oluştur"
-                title="Direkt Sözleşme Oluştur"
-                triggerClassName="panel-secondary"
-              >
-                <ProposalBuilderForm
-                  opportunityId={item.id}
-                  customerName={item.customer_name}
-                  title={item.title}
-                  scope={d.scope || item.notes || item.title}
-                  representatives={(employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }))}
-                  needsRepresentative={!item.assigned_employee_id}
-                  mode="contract"
-                />
-              </PanelDrawer>
-            ) : null}
-            {canArchive ? (
-              /*
-                Düğme "Sil" yazıyordu ama kayıt SİLİNMİYOR: aşaması "lost"
-                yapılıp arşive düşüyor (request-status.ts'te adı
-                "Arşivlendi") ve kayıt geçmişiyle birlikte duruyor. Yanlış
-                Sebep eskiden sabit bir metindi ("Talep arşivlendi."), yani
-                her arşiv aynı görünüyor ve neden kapandığı kayboluyordu.
-                Artık arşivleyen kişi sebebini yazıyor.
-              */
-              <PanelDrawer
-                triggerLabel="Sil / Arşivle"
-                triggerClassName="panel-danger"
-                kicker="ARŞİVLE"
-                title={`${item.customer_name} · Talebi arşivle`}
-                description="Kayıt silinmez: aşaması “Arşivlendi” olur, sebebi talebin üstünde ve kayıt geçmişinde kalır."
-              >
-                <form className="panel-form" action={archiveOpportunity}>
-                  <input type="hidden" name="opportunity_id" value={item.id} />
-                  <label className="wide">
-                    İptal / arşiv sebebi
-                    <textarea
-                      name="archive_reason"
-                      required
-                      minLength={3}
-                      maxLength={500}
-                      rows={3}
-                      placeholder="Örn. Müşteri bütçe nedeniyle vazgeçti."
-                    />
-                  </label>
-                  <div className="panel-form-actions wide">
-                    <button className="panel-danger">Talebi arşivle</button>
-                  </div>
-                </form>
-              </PanelDrawer>
-            ) : null}
-          </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Akış */}
+        <TalepAkis sekmeler={postaGorur ? ["Yorumlar", "Postalar", "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
+          <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
+          {postaGorur ? <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} /> : null}
           <RecordHistory opportunityId={item.id} />
-        </div>
-        <aside className="crm-detail-side">
-  <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} />
-  <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
-        </aside>
+        </TalepAkis>
       </div>
     </main>
   );

@@ -1,0 +1,75 @@
+/* ============================================================
+   TALEP DETAYI (2026-10) — üç sütun: müşteri · talep · akış.
+   Yalnızca panel-tokens.css değerleri.
+   ============================================================ */
+.os-root .talep{display:flex;flex-direction:column;gap:var(--sp-4)}
+
+/* Baş: konu + asıl işlem + ⋯ */
+.talep-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+.talep-bas-metin{min-width:0}
+.talep-bas h1{margin:2px 0 0;font-size:clamp(20px,1.8vw,var(--fs-xl));font-weight:var(--fw-semibold);line-height:var(--lh-tight);letter-spacing:-.015em;color:var(--ink)}
+.talep-bas-eylem{display:flex;align-items:center;gap:var(--sp-2)}
+
+/* Aşama çizgisi */
+.talep-asama{list-style:none;margin:0;padding:var(--sp-3) var(--sp-4);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.talep-asama li{position:relative;display:flex;align-items:center;gap:var(--sp-2);color:var(--dim);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.talep-asama li::after{content:"";flex:1;height:2px;margin:0 var(--sp-2);border-radius:2px;background:var(--line)}
+.talep-asama li:last-child::after{display:none}
+.talep-asama i{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--n-300);background:var(--surface)}
+.talep-asama li.is-done{color:var(--ink-soft)}
+.talep-asama li.is-done i{border-color:var(--primary);background:var(--primary)}
+.talep-asama li.is-done::after{background:var(--primary)}
+.talep-asama li.is-current{color:var(--primary);font-weight:var(--fw-semibold)}
+.talep-asama li.is-current i{border-color:var(--primary);background:var(--surface);box-shadow:0 0 0 4px var(--primary-soft)}
+.talep-arsiv{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin:0;padding:var(--sp-3) var(--sp-4);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm)}
+
+/* Üç sütun */
+.talep-izgara{display:grid;grid-template-columns:minmax(260px,1fr) minmax(0,1.6fr) minmax(320px,1.4fr);gap:var(--sp-4);align-items:start}
+.os-root .talep-izgara>.panel-card{padding:var(--sp-5);min-width:0}
+.talep-izgara h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
+.talep-izgara h3{margin:0 0 var(--sp-1);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+
+.talep-musteri-kimlik{display:flex;align-items:center;gap:var(--sp-3)}
+.talep-musteri-kimlik small{color:var(--muted);font-size:var(--fs-sm)}
+.talep-avatar{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:50%;background:var(--primary-soft);color:var(--primary-strong);font-weight:var(--fw-semibold)}
+.talep-iletisim{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin:var(--sp-4) 0}
+.os-root .talep-iletisim>a{flex:1 1 auto;min-height:36px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
+
+.talep-liste{margin:0;display:flex;flex-direction:column}
+.talep-liste>div{display:flex;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
+.talep-liste dt{color:var(--muted);font-size:var(--fs-sm)}
+.talep-liste dd{margin:0;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink);overflow-wrap:anywhere}
+.talep-liste em{font-style:normal;color:var(--dim);font-weight:400}
+.talep-liste--iki{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-6);margin-top:var(--sp-3)}
+.talep-liste--iki>div{flex-direction:column;gap:2px}
+.talep-liste--iki dd{text-align:left}
+.talep-not{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
+.talep-not p{margin:0;color:var(--ink);font-size:var(--fs-base);line-height:var(--lh-base);white-space:pre-line}
+.talep-bos{color:var(--dim) !important}
+
+/* Akış: sekmeler + panel. İçteki bileşenlerin kendi kart çerçevesi
+   kaldırılır: zaten bir kartın içindeler. */
+.os-root .talep-akis{padding:0 !important;overflow:hidden}
+.talep-akis-sekmeler{display:flex;gap:var(--sp-1);padding:0 var(--sp-3);border-bottom:1px solid var(--line)}
+.talep-akis-sekmeler button{min-height:44px;padding:0 var(--sp-3);border:0;background:transparent;color:var(--muted);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
+.talep-akis-sekmeler button:hover{color:var(--ink)}
+.talep-akis-sekmeler button.is-active{color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
+.talep-akis-sekmeler button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+.talep-akis-panel{max-height:calc(100dvh - 370px);min-height:240px;overflow:auto}
+/* Uzun kapsam ve notlar sayfayı uzatmasın: orta sütun kendi içinde kayar. Sınırlar
+   dock'un üstünde bitecek şekilde: başlık + aşama çizgisi ~216px, dock ~100px. */
+.os-root .talep-izgara>.talep-bilgi{max-height:calc(100dvh - 320px);overflow:auto}
+.os-root .talep-akis-panel>.panel-card,.os-root .talep-akis-panel>section{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent}
+.talep-akis-panel:empty::after{content:"Bu talebe bağlı yazışma yok.";display:block;padding:var(--sp-8) var(--sp-5);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
+
+@media (max-width:1200px){
+  .talep-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
+  .talep-izgara>.talep-akis{grid-column:1/-1}
+  .talep-akis-panel,.os-root .talep-izgara>.talep-bilgi{max-height:none}
+}
+@media (max-width:760px){
+  .talep-izgara{grid-template-columns:minmax(0,1fr)}
+  .talep-asama{grid-template-columns:none;grid-auto-flow:column;overflow-x:auto}
+  .talep-asama li span{white-space:nowrap}
+  .talep-liste--iki{grid-template-columns:minmax(0,1fr)}
+}
