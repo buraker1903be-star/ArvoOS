@@ -24,6 +24,7 @@ import { aylik, enCok, oran, ortanca, son30Degisim } from "@/lib/liste-istatisti
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "../satir-tiklama";
 
 /*
   TEKLİFLER LİSTESİ (2026-10): talepler listesiyle aynı kalıp. Üstte
@@ -324,6 +325,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                   })}
                 </tbody>
               </table>
+              <SatirTiklama />
             </div>
           ) : (
             <div className="crm-empty-state talep-bos-kutu">

@@ -13,6 +13,7 @@ import { simdi } from "../os/genel-bakis";
 import "./hr.css";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 
 /*
   EKİP LİSTESİ (2026-10): talepler, teklifler, sözleşmeler, işler ve
@@ -239,6 +240,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                 })}
               </tbody>
             </table>
+            <SatirTiklama />
           </div>
         ) : (
           <div className="crm-empty-state talep-bos-kutu">

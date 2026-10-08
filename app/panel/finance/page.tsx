@@ -17,6 +17,7 @@ import { simdi } from "../os/genel-bakis";
 import "./finance.css";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
@@ -165,6 +166,7 @@ function CariTablosu({ rows, paytrHazir }: { rows: Hesap[]; paytrHazir: boolean 
           })}
         </tbody>
       </table>
+      <SatirTiklama />
     </div>
   );
 }

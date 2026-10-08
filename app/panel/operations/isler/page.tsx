@@ -18,6 +18,7 @@ import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bek
 import "../../crm/crm.css";
 import "../operations.css";
 import "../../crm/kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 
 /*
   İŞLER LİSTESİ (2026-10): talepler, teklifler ve sözleşmelerle aynı
@@ -277,6 +278,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                 </tr>;
               })}</tbody>
             </table>
+            <SatirTiklama />
           </div>
         ) : (
           <div className="crm-empty-state talep-bos-kutu">

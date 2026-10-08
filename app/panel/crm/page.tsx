@@ -17,6 +17,7 @@ import { EmptyNewRequestButton } from "./empty-new-request";
 import "./crm.css";
 import "./request-page.css";
 import "./kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "./satir-tiklama";
 
 /*
   TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
@@ -330,6 +331,7 @@ export default async function RequestsPage({
                   })}
                 </tbody>
               </table>
+              <SatirTiklama />
             </div>
           ) : all.length === 0 ? (
             // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine

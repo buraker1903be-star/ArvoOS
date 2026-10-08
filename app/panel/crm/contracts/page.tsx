@@ -23,6 +23,7 @@ import { aylik, enCok, oran, son30Degisim } from "@/lib/liste-istatistik";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
+import { SatirTiklama } from "../satir-tiklama";
 
 /*
   SÖZLEŞMELER LİSTESİ (2026-10): teklifler listesiyle aynı kalıp. Üstte
@@ -343,6 +344,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                   })}
                 </tbody>
               </table>
+              <SatirTiklama />
             </div>
           ) : (
             <div className="crm-empty-state talep-bos-kutu">

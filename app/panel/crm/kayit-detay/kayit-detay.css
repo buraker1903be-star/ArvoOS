@@ -381,7 +381,10 @@
   dolduruyor. Satır genişliğinde tıklama bir kolaylıktı; kartın her yerinin
   yanlışlıkla kayıt açması ve listenin kaymaması kullanılamazlıktı.
 */
-.os-root .talep-tablo .crm-data-table tbody tr{position:static;cursor:default}
+/* Satırın tamamı yine tıklanabilir ama kaplamayla değil: tabloya bağlı tek
+   bir dinleyici satırdaki gerçek bağlantıya gidiyor (crm/satir-tiklama.tsx).
+   position:static bilerek — konumlanmış <tr>'ye güvenmek Safari'de kırılıyordu. */
+.os-root .talep-tablo .crm-data-table tbody tr{position:static;cursor:pointer}
 .os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link{
   display:flex;flex-direction:column;justify-content:center;gap:2px;
   margin:calc(var(--sp-2) * -1) calc(var(--sp-3) * -1);
