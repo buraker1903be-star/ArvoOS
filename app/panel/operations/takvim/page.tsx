@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { OperationsTabs } from "../operations-tabs";
 import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
 import { todayIstanbul } from "../ops-shared";
 import "../../crm/takvim.css";
@@ -150,7 +149,6 @@ export default async function OperationsCalendarPage({ searchParams }: { searchP
       <div><small className="panel-kicker">OPERASYON / TAKVİM</small><h1>İş Takvimi</h1><p>İşlerin terminleri ve aşamalarının teslim tarihleri. Yaklaşan ve geciken aşamalar işaretli. (CRM randevu takviminden ayrıdır.)</p></div>
       <div className="panel-page-actions"><span className="status-pill">{maddeler.length} madde</span></div>
     </div>
-    <OperationsTabs active="takvim" />
     <div className="module-tab-panel">
 
     <section className="panel-card calendar-card">

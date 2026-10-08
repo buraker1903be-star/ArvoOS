@@ -20,7 +20,6 @@ import { PROPOSAL_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
-import { CrmTabs } from "../crm-tabs";
 import {
   organizationBrandName,
   proposalMessages,
@@ -214,7 +213,6 @@ export default async function ProposalsPage({ searchParams }: Props) {
           </Link>
         </div>
       </div>
-      <CrmTabs active="teklifler" />
       <div className="module-tab-panel">
         {shareUrl ? (
           <section className="panel-card share-ready-card">

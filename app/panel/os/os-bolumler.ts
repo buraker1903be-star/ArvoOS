@@ -1,9 +1,10 @@
 /*
   MODÜL BÖLÜMLERİ — tek kaynak.
 
-  Her uygulamanın bölümleri (CRM: Genel Bakış, Talepler, WhatsApp…) üç
-  yerde görünür: sayfanın içindeki sekme çubuğu (CrmTabs vb.), dock'ta
-  ikonun üstüne gelince açılan ikinci dock ve Ctrl+K araması. Eskiden
+  Her uygulamanın bölümleri (CRM: Genel Bakış, Talepler, WhatsApp…) iki
+  yerde görünür: dock'ta ikonun üstüne gelince (dokunmatikte ikona
+  dokununca) açılan ikinci dock ve Ctrl+K araması. Sayfa içi sekme
+  çubukları 2026-10'da kalktı. Eskiden
   sekmeler her modülün kendi dosyasında, Ctrl+K'nın listesi ayrı bir
   yerde elle yazılıydı; bir sekme eklenince öteki unutuluyordu.
 

@@ -9,7 +9,6 @@ import {
 } from "../accounts/actions";
 import { PaytrWorkspace, ProfitabilityWorkspace, type PaymentRow, type ProfitRow } from "./finance-workspaces";
 import { FinEmpty, FinIcon, FinWidget } from "./finance-ui";
-import { FinanceTabs } from "./finance-navigation";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
@@ -284,7 +283,7 @@ export default async function FinancePage({
   searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string }>;
 }) {
   const params = await searchParams;
-  const { supabase, membership, modules, organization, yetkiler, izin } = await getPanelContext();
+  const { supabase, membership, modules, organization, izin } = await getPanelContext();
   if (
     !modules.some((m) => m.code === "finance") ||
     !modules.some((m) => m.code === "accounts")
@@ -367,7 +366,6 @@ export default async function FinancePage({
           <p>{copy.text}</p>
         </div>
       </header>
-      <FinanceTabs active={mode} context={{ modules, yetkiler }} />
 
       {mode === "cari" ? (
         <>

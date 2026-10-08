@@ -7,7 +7,6 @@ import { CustomerCell, LastContactCell, RepresentativeCell } from "../../crm/tab
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { archiveWorkflow } from "../actions";
-import { OperationsTabs } from "../operations-tabs";
 import { WorkflowCreateForm } from "../workflow-create-form";
 import { OpsIcon, addDaysKey, dueBadge, priorityNames, priorityTones, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "../ops-shared";
 import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
@@ -128,7 +127,6 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
 
   return <div className="crm-page-stack">
     <div className="panel-pagehead"><div><small className="panel-kicker">OPERASYON / İŞ AKIŞI</small><h1>İşler</h1><p>Aktif işleri, adımları ve terminleri tek yerden takip edin. Tamamlanan işleri arşive gönderebilirsiniz.</p></div><div className="panel-page-actions"><span className="status-pill">{workflows.length} iş</span>{totalUnreadMessages ? <Link className="status-pill" data-tone="danger" href="/panel/operations/isler?mesaj=yeni">{totalUnreadMessages} yeni müşteri mesajı</Link> : null}<Link className="panel-secondary" href="/panel/operations/arsiv">Arşiv ({archivedCount ?? 0})</Link>{canManage ? <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin."><WorkflowCreateForm /></PanelDrawer> : null}</div></div>
-    <OperationsTabs active="is-akisi" />
     <div className="module-tab-panel">
     <section className="crm-metrics">
       <article><small>DEVAM EDEN</small><strong>{activeCount}</strong><span>Aktif iş</span></article>

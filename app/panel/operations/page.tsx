@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
@@ -7,9 +6,6 @@ import { formatSubject } from "@/lib/table-format";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "../os/genel-bakis";
 import { relativeTime } from "../crm/last-contact";
-import { PanelDrawer } from "../components/panel-drawer";
-import { OperationsTabs } from "./operations-tabs";
-import { WorkflowCreateForm } from "./workflow-create-form";
 import { activeStatuses, addDaysKey, dueBadge, stepProgress, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
 import "./operations.css";
@@ -63,13 +59,13 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   if (params.durum) legacy.set("durum", params.durum);
   if (legacy.size) redirect(`${ISLER}?${legacy.toString()}`);
 
-  const { supabase, membership, modules, izin } = await getPanelContext();
+  const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);
 
-  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }, { count: okunmamisSayisi }, { data: tamamlananData, error: tamamlananError }] = await Promise.all([
+  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: okunmamisSayisi }, { data: tamamlananData, error: tamamlananError }] = await Promise.all([
     supabase.from("operation_workflows")
       // Adımın kendi alanları da geliyor: "yaklaşan aşamalar" kartı AŞAMA
       // düzeyinde, işin termini düzeyinde değil.
@@ -87,7 +83,6 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
       .neq("operation_workflows.status", "cancelled")
       .order("created_at", { ascending: false })
       .limit(MESAJ_ONIZLEME),
-    supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "archived"),
     /*
       Okunmamış mesaj sayısı AYRI ve sınırsız sorguda. Yukarıdaki liste
       önizleme için sınırlı; sayısını ondan almak, sınır aşıldığında
@@ -116,7 +111,6 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const workflows = (data ?? []) as Workflow[];
   const employeeName = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((row) => [row.id, formatPersonName(row.full_name)]));
   const assigneeOf = (workflow: Workflow) => (workflow.assigned_employee_id ? employeeName.get(workflow.assigned_employee_id) ?? "Pasif personel" : null);
-  const canManage = izin("operations.is.yonet");
 
   // Kartlar
   const planned = workflows.filter((workflow) => workflow.status === "planned");
@@ -191,13 +185,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
 
   return (
     <GenelBakis
-      baslik="Genel bakış"
-      eylemler={<>
-        <Link className="panel-secondary" href="/panel/operations/arsiv">Arşiv ({archivedCount ?? 0})</Link>
-        <Link className="panel-secondary" href={ISLER}>Tüm işler</Link>
-        {canManage ? <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin."><WorkflowCreateForm /></PanelDrawer> : null}
-      </>}
-      sekmeler={<OperationsTabs active="genel-bakis" />}
+      gizliBaslik="Operasyon genel bakış"
       uyari={uyarilar}
     >
       <SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" />

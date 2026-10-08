@@ -6,7 +6,6 @@ import { listConversations, listQuickReplies, loadConversation } from "@/lib/wha
 import { hazirMesajListesi } from "@/lib/whatsapp-hazir-mesaj";
 import { basHarfler, numaraYaz, renkTonu } from "@/lib/whatsapp-kisi-gorunumu";
 import { StgIcon } from "../../settings/settings-ui";
-import { CrmTabs } from "../crm-tabs";
 import { sohbetMusterisi } from "./musteri-bagi";
 import Sohbet from "./sohbet";
 import SohbetListesi from "./sohbet-listesi";
@@ -89,7 +88,6 @@ export default async function WhatsappInboxPage({
 
   return <div className="stg">
     {baslik}
-    <CrmTabs active="whatsapp" />
 
     {!durum.connected ? (
       <p className="wa-note"><StgIcon name="plug" size={16} />

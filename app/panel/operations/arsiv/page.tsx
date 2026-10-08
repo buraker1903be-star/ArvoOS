@@ -4,7 +4,6 @@ import { formatPersonName } from "@/lib/format-name";
 import { formatSubject } from "@/lib/table-format";
 import { RepresentativeCell } from "../../crm/table-cells";
 import { unarchiveWorkflow } from "../actions";
-import { OperationsTabs } from "../operations-tabs";
 import { OpsIcon, shortDate } from "../ops-shared";
 import "../../crm/crm.css";
 import "../operations.css";
@@ -59,7 +58,6 @@ export default async function OperationsArchivePage({ searchParams }: { searchPa
       <div><small className="panel-kicker">OPERASYON / ARŞİV</small><h1>Arşiv</h1><p>Tamamlanıp arşive gönderilen işler aktif listede görünmez. Gerekirse arşivden çıkarıp tamamlandı durumuna geri alabilirsiniz.</p></div>
       <div className="panel-page-actions"><span className="status-pill" data-tone="neutral">{total} arşivlenmiş iş</span><Link className="panel-secondary" href="/panel/operations/isler">Aktif işler</Link></div>
     </div>
-    <OperationsTabs active="arsiv" />
     <div className="module-tab-panel">
       <section className="panel-card crm-filter-card"><form method="get" className="crm-filter-form ops-archive-filter">
         <label><span>İş / müşteri ara</span><input name="arama" defaultValue={arama ?? ""} placeholder="İş başlığı ya da müşteri adı" /></label>

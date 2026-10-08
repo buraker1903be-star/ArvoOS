@@ -17,7 +17,6 @@ import {
 import { RequestEntryForm } from "./request-entry-form";
 import { CustomerLookupButton } from "./customer-lookup";
 import { requestStageNames, requestStages } from "./request-status";
-import { CrmTabs } from "./crm-tabs";
 import { EmptyNewRequestButton } from "./empty-new-request";
 import "./crm.css";
 import "./request-page.css";
@@ -183,7 +182,6 @@ export default async function RequestsPage({
           </PanelDrawer>
         </div>
       </div>
-      <CrmTabs active="talepler" />
       <div className="module-tab-panel">
         {/*
           Sayaçlar artık LİSTEYE GÖTÜRÜYOR. Arşivlenen talepler listede

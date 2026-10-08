@@ -6,7 +6,6 @@ import { type RateHistoryRow } from "@/lib/commission-allocation";
 import { buildAccrualRows, inPeriod } from "@/lib/commission-accruals";
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { HrIcon, initials } from "../hr-icons";
-import { HrTabs } from "../hr-tabs";
 import "../hr.css";
 import "./commissions.css";
 
@@ -53,7 +52,7 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const period = params.donem || "bu-ay";
   const { start, end, startKey, endKey } = dateRange(period, params.baslangic, params.bitis);
-  const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
+  const { supabase, membership, modules, isPlatformOwner, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   if (!isPlatformOwner && !izin("hr.prim.gor")) throw new Error("Prim hesaplarını görüntüleme yetkiniz yok.");
 
@@ -124,7 +123,6 @@ export default async function CommissionsPage({ searchParams }: { searchParams: 
     <div className="panel-pagehead">
       <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Prim Hesaplama</h1><p>Satış ve operasyon hak edişlerini personel ve dönem bazında takip edin.</p></div>
     </div>
-    <HrTabs active="prim" access={{ yetkiler, isPlatformOwner }} />
 
     <section className="hr-card hr-cm-filter" aria-label="Dönem ve personel filtresi">
       <div className="hr-cm-filter-head">

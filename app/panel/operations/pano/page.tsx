@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { OperationsTabs } from "../operations-tabs";
 import {
   asamaPanosuKur,
   SABLON_DISI_KOLONU,
@@ -241,7 +240,6 @@ export default async function OperationsPanoPage({
           ) : null}
         </div>
       </div>
-      <OperationsTabs active="pano" />
       <div className="module-tab-panel">
                 {/*
           ÖLÇÜLER VE SÜZGEÇ TEK ŞERİTTE.

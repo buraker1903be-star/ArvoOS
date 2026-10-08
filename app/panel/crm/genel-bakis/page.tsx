@@ -1,12 +1,8 @@
-import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { formatSubject } from "@/lib/table-format";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../../os/genel-bakis";
-import { PanelDrawer } from "../../components/panel-drawer";
-import { RequestEntryForm } from "../request-entry-form";
-import { CrmTabs } from "../crm-tabs";
 import { daysSince, relativeTime, waitingLabel } from "../last-contact";
 import "../crm.css";
 
@@ -51,10 +47,9 @@ function timeWindow() {
 const daysUntil = (dateKey: string, today: string) => Math.round((Date.parse(dateKey) - Date.parse(today)) / 86400000);
 
 export default async function CrmOverviewPage() {
-  const { supabase, membership, modules, izin } = await getPanelContext();
+  const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
-  const canAssign = izin("crm.kayit.ata");
   const time = timeWindow();
 
   const [
@@ -62,13 +57,11 @@ export default async function CrmOverviewPage() {
     { data: proposalData, error: proposalError },
     { data: contractData, error: contractError },
     { data: employeeData, error: employeeError },
-    { data: stageData },
   ] = await Promise.all([
     supabase.from("crm_opportunities").select("id,title,customer_name,stage,assigned_employee_id,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }),
     supabase.from("crm_proposals").select("id,proposal_no,amount,currency,status,archive_reason,valid_until,sent_at,view_count,responded_at,created_at,superseded_by,opportunity_id,crm_opportunities(customer_name)").eq("organization_id", organizationId),
     supabase.from("crm_contracts").select("id,contract_no,amount,currency,status,proposal_id,sent_at,view_count,signed_at,created_at,crm_opportunities(customer_name)").eq("organization_id", organizationId),
-    supabase.from("hr_employees").select("id,full_name,job_title,can_receive_sales_requests").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
-    supabase.from("organization_crm_stages").select("code").eq("organization_id", organizationId).eq("is_active", true),
+    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
   ]);
   if (opportunityError) throw new Error("Talepler okunamadı: " + opportunityError.message);
   if (proposalError) throw new Error("Teklifler okunamadı: " + proposalError.message);
@@ -80,17 +73,6 @@ export default async function CrmOverviewPage() {
   const contracts = (contractData ?? []) as unknown as Contract[];
   const employees = (employeeData ?? []) as Representative[];
   const employeeName = new Map(employees.map((row) => [row.id, formatPersonName(row.full_name)]));
-  const salesRepresentatives = employees.filter((row) => row.can_receive_sales_requests).map(({ id, full_name, job_title }) => ({ id, full_name, job_title }));
-  const academicMode = (stageData ?? []).some((row: { code: string }) => row.code === "academic_review");
-  // Çalışma türleri: "Yeni talep" formundaki seçim bunlardan geliyor.
-  const { data: turData } = await supabase
-    .from("organization_step_template_sets")
-    .select("code,name,is_default")
-    .eq("organization_id", membership.organization_id)
-    .eq("is_active", true)
-    .order("sort_order")
-    .order("code");
-  const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
 
 
   // ---- Yeni talepler: atanmamışlar üstte, sonra en yeni
@@ -125,14 +107,7 @@ export default async function CrmOverviewPage() {
 
   return (
     <GenelBakis
-      baslik="Genel bakış"
-      eylemler={<>
-        <Link className="panel-secondary" href="/panel/crm">Tüm talepler</Link>
-        <PanelDrawer triggerLabel="+ Yeni talep" kicker="YENİ KAYIT" triggerClassName="panel-primary" title={academicMode ? "Talep Girişi" : "Yeni talep"} description="Müşteri ve talep bilgilerini kaydedin.">
-          <RequestEntryForm academicMode={academicMode} salesRepresentatives={salesRepresentatives} canAssign={canAssign} calismaTurleri={calismaTurleri} />
-        </PanelDrawer>
-      </>}
-      sekmeler={<CrmTabs active="genel-bakis" />}
+      gizliBaslik="CRM genel bakış"
     >
       <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" />
 

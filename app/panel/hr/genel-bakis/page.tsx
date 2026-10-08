@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
-import { HrTabs, canSeeHrRecords } from "../hr-tabs";
+import { canSeeHrRecords } from "../hr-tabs";
 import { relativeTime } from "../../crm/last-contact";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "../../os/genel-bakis";
@@ -123,9 +122,7 @@ export default async function HrOverviewPage() {
 
   return (
     <GenelBakis
-      baslik="Genel bakış"
-      eylemler={<Link className="panel-primary" href="/panel/hr">Personel listesi</Link>}
-      sekmeler={<HrTabs active="genel-bakis" access={access} />}
+      gizliBaslik="İnsan Kaynakları genel bakış"
       uyari={girisError ? ["Panel girişleri"] : []}
     >
       {canSeeActivity ? <SeriKarti baslik="Panele giren kişi" alt="Son 14 gün · günde farklı kişi" seri={seri} adet="kişi" /> : null}

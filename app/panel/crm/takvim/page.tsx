@@ -4,7 +4,6 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { AppointmentForm } from "./appointment-form";
 import { updateAppointmentStatus, deleteAppointment } from "./actions";
-import { CrmTabs } from "../crm-tabs";
 import "../takvim.css";
 
 const weekdayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -166,7 +165,6 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
           {drawer}
         </div>
       </div>
-      <CrmTabs active="takvim" />
       <div className="module-tab-panel">
 
       <div className="calendar-toolbar">

@@ -6,7 +6,6 @@ import { createDepartment, createEmployee, updateEmployee } from "./actions";
 import { updateTeamMemberAccess, cancelInvitation } from "./team-actions";
 import { InviteTeamForm } from "./invite-team-form";
 import { TeamInviteLink } from "./invite-link";
-import { HrTabs } from "./hr-tabs";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "./documents-actions";
 import { roleNames } from "./role-names";
 import { HrIcon, initials } from "./hr-icons";
@@ -36,7 +35,7 @@ function liveInvitations(rows: Invitation[]) {
 }
 
 export default async function HrPage() {
-  const { supabase, membership, userId, modules, organization, isPlatformOwner, yetkiler, izin } = await getPanelContext();
+  const { supabase, membership, userId, modules, organization, izin } = await getPanelContext();
   const organizationName = organization.display_name || organization.name;
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = izin("hr.ekip.yonet");
@@ -102,7 +101,6 @@ export default async function HrPage() {
       {/* Prim, Gizlilik ve Hareketler artık sekmelerde */}
       <div className="panel-page-actions">{canManageTeam ? <PanelDrawer triggerLabel="+ Yeni Personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}</div>
     </div>
-    <HrTabs active="personel" access={{ yetkiler, isPlatformOwner }} />
 
     <section className="hr-widgets" aria-label="Özet">
       {widgets.map((widget) => (

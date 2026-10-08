@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
-import { FinanceTabs, canSeeFinanceReports } from "../finance-navigation";
+import { canSeeFinanceReports } from "../finance-navigation";
 import { PrintReportButton } from "./print-report-button";
 import "./reporting.css";
 
@@ -224,7 +224,6 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       <div><small className="panel-kicker">FİNANS / RAPORLAR</small><h1>Satış ve Gerçek Kârlılık</h1><p>İmzalı sözleşme, tahsilat ve iş maliyeti kayıtlarından hazırlanan finansal yönetim özeti.</p></div>
       <div className="panel-page-actions"><span className="status-pill rpt-range-pill" data-tone="gold">{rangeLabel}</span><PrintReportButton /></div>
     </div>
-    <FinanceTabs active="raporlar" context={access} />
 
     <section className="rpt-toolbar" aria-label="Rapor dönemi">
       <nav className="rpt-segment" aria-label="Hazır dönemler">

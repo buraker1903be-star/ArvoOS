@@ -16,9 +16,11 @@ import { etkinBolum } from "./os-bolumler";
 
   İKİNCİ DOCK. Fareyle bir uygulamanın üstüne gelince dock'un hemen
   üstünde o uygulamanın bölümleri açılır (CRM: Genel Bakış, Talepler,
-  Teklifler…). Liste sayfa sekmeleriyle aynı kaynaktan (os-bolumler.ts),
-  açık bölüm vurgulu. Dokunmatikte üstüne gelme olmadığı için açılmaz;
-  ikona dokunmak eskisi gibi uygulamayı açar. Klavyede ikondayken ↑ açar
+  Teklifler…). Liste os-bolumler.ts'ten, açık bölüm vurgulu. Sayfa içi
+  sekme çubukları kalktığı için bölümlere giden yol bu: dokunmatikte
+  üstüne gelme olmadığından bölümü olan ikona DOKUNMAK uygulamayı açmaz,
+  ikinci dock'u açar (tekrar dokunmak ya da dışarı dokunmak kapatır).
+  Klavyede ikondayken ↑ açar
   ve ilk bölüme geçer, Esc kapatır. İkon ile ikinci dock arasında imleç
   gezerken kapanmasın diye kapanma kısa bir gecikmeyle.
 
@@ -54,6 +56,19 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
     zaman.kur(() => setAlt({ key: uygulama.key, ...yer }), gecikme);
   };
 
+  // Dokunmatikte açıkken dışarıya dokunmak kapatır (fareyle ayrılınca zaten kapanıyor).
+  const acikAnahtar = alt?.key ?? null;
+  useEffect(() => {
+    if (!acikAnahtar) return;
+    const disari = (olay: PointerEvent) => {
+      const hedef = olay.target as Element | null;
+      if (hedef?.closest(".os-subdock, .os-dock-item.is-sub-open")) return;
+      setAlt(null);
+    };
+    document.addEventListener("pointerdown", disari);
+    return () => document.removeEventListener("pointerdown", disari);
+  }, [acikAnahtar]);
+
   // Pencere boyu değişince konum bayatlar: kapanır.
   useEffect(() => {
     const yeniden = () => setAlt(null);
@@ -87,6 +102,13 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
         onPointerEnter={(olay) => { if (fareMi(olay)) ac(uygulama, olay.currentTarget); }}
         onPointerLeave={(olay) => { if (fareMi(olay)) kapat(); }}
         onKeyDown={ikonKlavye(uygulama)}
+        onPointerDown={(olay) => zaman.isaretciKaydet(olay.pointerType)}
+        onClick={(olay) => {
+          if (!zaman.dokunmaMi() || !uygulama.bolumler?.length) return;
+          olay.preventDefault();
+          if (alt?.key === uygulama.key) kapat(0);
+          else { zaman.iptal(); setAlt({ key: uygulama.key, ...konum(olay.currentTarget) }); }
+        }}
       >
         <OsSimge ad={uygulama.ikon} boyut={22} />
         <span className="os-dock-label">{uygulama.label}</span>
@@ -197,8 +219,12 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
 */
 function useGecikme() {
   const kimlik = useRef(0);
+  const isaretci = useRef("mouse");
   useEffect(() => () => window.clearTimeout(kimlik.current), []);
   return useMemo(() => ({
+    /** Son basışın türü: dokunmatikte tıklama ikinci dock'u açar. */
+    isaretciKaydet(tur: string) { isaretci.current = tur; },
+    dokunmaMi() { return isaretci.current !== "mouse"; },
     kur(is: () => void, ms: number) {
       window.clearTimeout(kimlik.current);
       kimlik.current = window.setTimeout(is, ms);

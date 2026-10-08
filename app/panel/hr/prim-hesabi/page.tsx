@@ -5,7 +5,7 @@ import { employeeLedger, ledgerTotals, type CommissionPayment } from "@/lib/comm
 import type { RateHistoryRow } from "@/lib/commission-allocation";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { HrIcon, initials } from "../hr-icons";
-import { HrTabs, canSeeCommissions } from "../hr-tabs";
+import { canSeeCommissions } from "../hr-tabs";
 import { primOdemesiKaydet, primOdemesiSil } from "./actions";
 import "../hr.css";
 import "./prim-hesabi.css";
@@ -75,7 +75,6 @@ export default async function PrimHesabiPage({ searchParams }: { searchParams: P
       <div className="panel-pagehead">
         <div><small className="panel-kicker">İNSAN KAYNAKLARI</small><h1>Prim Hesabı</h1></div>
       </div>
-      <HrTabs active="prim-hesabi" access={access} />
 
       <p className="hr-note">
         Hak edilen primler ile yapılan ödemelerin cari hesabı. Prim, müşteriden <b>tahsilat yapıldıkça</b> hak edilir;

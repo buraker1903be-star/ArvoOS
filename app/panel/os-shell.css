@@ -273,3 +273,12 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .os-dock-item.is-sub-open{background:var(--surface-2);color:var(--ink)}
 .os-dock-item.is-sub-open.is-active{background:var(--primary-soft);color:var(--primary)}
 @media (prefers-reduced-motion:reduce){.os-subdock{animation:none}}
+/* Telefonda ikinci dock ekran genişliğinde, bölümler sığmazsa alt satıra
+   iner: altı bölümlü CRM şeridi 375px'te ekrandan taşıyordu. Yatay konum
+   satır içi stilde (ikonun ortası); burada ezilir. */
+@media (max-width:900px){
+  .os-subdock{left:var(--sp-3) !important;right:var(--sp-3);transform:none;max-width:none;flex-wrap:wrap;justify-content:flex-start;overflow:visible;animation:os-alt-ac-dar .16s var(--ease)}
+  .os-subdock-title{flex-basis:100%;border-right:0;margin:0;padding:var(--sp-1) var(--sp-2)}
+  .os-subdock a{min-height:40px}
+}
+@keyframes os-alt-ac-dar{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}

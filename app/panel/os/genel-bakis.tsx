@@ -7,7 +7,7 @@ import "../dashboard.css";
   GENEL BAKIŞ ŞABLONU (2026-10).
 
   Kurum sahibinin ana ekran için çizdiği düzen bütün modüllerin genel
-  bakış sayfasının şablonu: başlık · tam genişlikte bir grafik kartı ·
+  bakış sayfasının şablonu: (ana ekranda selamlama) · tam genişlikte bir grafik kartı ·
   altında yan yana dört liste kartı, her biri en fazla 6 satır ve kendi
   sayfasına bağlantı. Tek ekrana sığar (dashboard.css, .dash-v2).
 
@@ -17,27 +17,32 @@ import "../dashboard.css";
 
 export const GENEL_BAKIS_SATIR = 6;
 
-export function GenelBakis({ baslik, ust, eylemler, sekmeler, uyari, children }: {
-  baslik: ReactNode;
-  /** Başlığın üstündeki küçük etiket (ör. "CRM"); ana ekranda telefonda tarih. */
+export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
+  /** Görünen başlık (ana ekranda selamlama). Modül genel bakışlarında yok. */
+  baslik?: ReactNode;
+  /*
+    Modül genel bakışlarında görünür başlık, düğmeler ve sekme çubuğu yok
+    (kurum sahibinin isteği, 2026-10): uygulamanın adı durum çubuğunda,
+    bölümler dock'un ikinci katında. Ekran okuyucu için sayfa başlığı
+    yine verilir.
+  */
+  gizliBaslik?: string;
+  /** Başlığın üstündeki küçük etiket; ana ekranda telefonda tarih. */
   ust?: ReactNode;
-  eylemler?: ReactNode;
-  /** Modülün sekme çubuğu (CrmTabs vb.), başlığın altında. */
-  sekmeler?: ReactNode;
   /** Okunamayan veriler için uyarı satırı. */
   uyari?: string[];
   children: ReactNode;
 }) {
   return (
     <div className="dash dash-v2">
-      <header className="dash-hero">
-        <div>
-          {ust ? <small className="panel-kicker">{ust}</small> : null}
-          <h1>{baslik}</h1>
-        </div>
-        {eylemler ? <div className="panel-page-actions">{eylemler}</div> : null}
-      </header>
-      {sekmeler}
+      {baslik ? (
+        <header className="dash-hero">
+          <div>
+            {ust ? <small className="panel-kicker">{ust}</small> : null}
+            <h1>{baslik}</h1>
+          </div>
+        </header>
+      ) : <h1 className="dash-gizli-baslik">{gizliBaslik}</h1>}
       {uyari?.length ? (
         <p className="dash-uyari" data-tone="danger" role="alert">
           <span aria-hidden="true"><Simge ad="alert" /></span>

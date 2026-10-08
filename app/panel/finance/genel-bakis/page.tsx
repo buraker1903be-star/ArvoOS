@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatPersonName } from "@/lib/format-name";
-import { FinanceTabs } from "../finance-navigation";
 import { buildAccountBalances } from "../account-balances";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi } from "../../os/genel-bakis";
@@ -39,11 +37,10 @@ const shortDate = (value: string) => new Intl.DateTimeFormat("tr-TR", { day: "nu
 
 export default async function FinanceOverviewPage() {
   const context = await getPanelContext();
-  const { supabase, membership, modules, yetkiler } = context;
+  const { supabase, membership, modules } = context;
   if (!modules.some((m) => m.code === "finance") || !modules.some((m) => m.code === "accounts"))
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
   const organizationId = membership.organization_id;
-  const access = { modules, yetkiler };
   const today = todayInIstanbul();
   const monthKey = today.slice(0, 7);
 
@@ -98,12 +95,7 @@ export default async function FinanceOverviewPage() {
 
   return (
     <GenelBakis
-      baslik="Genel bakış"
-      eylemler={<>
-        <Link className="panel-secondary" href="/panel/finance">Cari hesaplar</Link>
-        <Link className="panel-primary" href="/panel/finance?gorunum=paytr">Tahsilatlar</Link>
-      </>}
-      sekmeler={<FinanceTabs active="genel-bakis" context={access} />}
+      gizliBaslik="Finans genel bakış"
     >
       <SeriKarti baslik="Tahsilat" alt={monthCollections ? `Son 14 gün · bu ay ${money(monthCollections)}` : "Son 14 gün"} seri={seri} birim={money} adet="tahsilat" />
 

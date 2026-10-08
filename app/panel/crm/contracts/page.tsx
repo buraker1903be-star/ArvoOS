@@ -20,7 +20,6 @@ import { CONTRACT_STATUS_LABELS as labels } from "../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
-import { CrmTabs } from "../crm-tabs";
 import {
   contractMessages,
   organizationBrandName,
@@ -225,7 +224,6 @@ export default async function ContractsPage({ searchParams }: Props) {
           </Link>
         </div>
       </div>
-      <CrmTabs active="sozlesmeler" />
       <div className="module-tab-panel">
         {shareUrl ? (
           <section className="panel-card share-ready-card">

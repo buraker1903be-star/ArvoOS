@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { OperationsTabs } from "../operations-tabs";
 import { OpsIcon } from "../ops-shared";
 import {
   clearStepTemplate,
@@ -96,7 +95,6 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
           {seciliTur ? <span className="status-pill">{satirlar.length} görev</span> : null}
         </div>
       </div>
-      <OperationsTabs active="sablon" />
       <div className="module-tab-panel">
 
       <section className="panel-card sablon-turler">
