@@ -11,7 +11,7 @@
   --tbl-head-bg:var(--surface-2);
   --tbl-head-ink:var(--muted);
   --tbl-line:var(--line-soft);
-  --tbl-row-hover:color-mix(in srgb,var(--accent-100) 42%,var(--surface));
+  --tbl-row-hover:color-mix(in srgb,var(--primary-soft) 42%,var(--surface));
 }
 
 /* ------------------------------------------------------------
@@ -30,14 +30,14 @@
 .panel-root .status-pill[data-tone="info"]{background:var(--info-soft);color:var(--info);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--info) 22%,transparent)}
 .panel-root .status-pill:is([data-tone="warning"],.domain-status-pending){background:var(--warning-soft);color:color-mix(in srgb,var(--warning) 78%,var(--ink));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warning) 28%,transparent)}
 .panel-root .status-pill:is([data-tone="danger"],.is-late,.domain-status-failed){background:var(--danger-soft);color:var(--danger);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 24%,transparent)}
-.panel-root .status-pill[data-tone="gold"]{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 32%,transparent)}
+.panel-root .status-pill[data-tone="gold"]{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 32%,transparent)}
 .panel-root .ops-archive-row .status-pill{background:var(--success-soft);color:var(--success)}
 
 /* Prim ve oturum durumları da aynı rozet dilinde */
 .panel-root :is(.commission-status,.activity-status){display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font-size:12px;font-weight:700;white-space:nowrap}
 .panel-root .commission-status.paid,.panel-root .activity-status.online{background:var(--success-soft);color:var(--success);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--success) 24%,transparent)}
 .panel-root .commission-status.approved{background:var(--info-soft);color:var(--info);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--info) 22%,transparent)}
-.panel-root .commission-status.accrued{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 32%,transparent)}
+.panel-root .commission-status.accrued{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 32%,transparent)}
 
 /* ------------------------------------------------------------
    CRM VE OPERASYON LİSTELERİ (table.crm-data-table)
@@ -55,7 +55,7 @@
 
 /* Temsilci: baş harf rozeti + ad (her genişlikte) */
 .panel-root .crm-rep{display:inline-flex;align-items:center;gap:9px;min-width:0;max-width:100%;color:var(--ink);font-size:13px}
-.panel-root .crm-rep>i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 30%,transparent);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
+.panel-root .crm-rep>i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 30%,transparent);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
 .panel-root .crm-rep>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .panel-root .crm-rep.is-empty{color:var(--muted)}
 .panel-root .crm-rep.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
@@ -74,7 +74,7 @@
 .panel-root .crm-alert-chip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:5px;padding:2px 9px 2px 7px;border-radius:999px;background:var(--danger-soft);color:var(--danger);font-size:11.5px;font-weight:700;white-space:nowrap}
 .panel-root .crm-alert-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;animation:crm-alert-pulse 1.8s ease-in-out infinite}
 @keyframes crm-alert-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
-.panel-root .crm-inline-action{display:inline-flex;align-self:flex-start;padding:3px 10px;border:1px dashed color-mix(in srgb,var(--accent-500) 55%,var(--line));border-radius:999px;color:var(--accent-strong);font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap;transition:background-color .2s ease}
+.panel-root .crm-inline-action{display:inline-flex;align-self:flex-start;padding:3px 10px;border:1px dashed color-mix(in srgb,var(--primary) 55%,var(--line));border-radius:999px;color:var(--accent-strong);font-size:12.5px;font-weight:600;text-decoration:none;white-space:nowrap;transition:background-color .2s ease}
 .panel-root .crm-inline-action:hover{border-style:solid;background:var(--accent-soft)}
 /* Kayıt numaraları da tek yazı tipinde (eskiden kod yazı tipi); rakamlar eşit genişlikte */
 .panel-root .crm-data-table .crm-table-mono{font-family:var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:.01em}
@@ -89,7 +89,7 @@
   .panel-root .crm-page-stack .crm-data-table tbody{display:block}
   .panel-root .crm-page-stack .crm-data-table tbody tr{min-height:66px;margin:0;padding-block:11px;border:0;border-top:1px solid var(--tbl-line);border-radius:0;background:transparent;box-shadow:none;transform:none;contain-intrinsic-size:auto 66px}
   .panel-root .crm-page-stack .crm-data-table tbody tr:first-child{border-top:0}
-  .panel-root .crm-page-stack .crm-data-table tbody tr:hover{transform:none;border-color:var(--tbl-line);background:var(--tbl-row-hover);box-shadow:inset 3px 0 0 var(--accent-500)}
+  .panel-root .crm-page-stack .crm-data-table tbody tr:hover{transform:none;border-color:var(--tbl-line);background:var(--tbl-row-hover);box-shadow:inset 3px 0 0 var(--primary)}
   .panel-root .crm-page-stack .crm-data-table tbody tr:focus-within{outline:2px solid var(--accent);outline-offset:-2px}
   .panel-root .crm-page-stack .crm-data-table tbody td{display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:3px;min-width:0;min-height:0;padding:0;border:0;background:transparent;color:var(--ink);font-size:13px;line-height:1.35}
   .panel-root .crm-page-stack .crm-data-table tbody td::before{display:none}
@@ -207,7 +207,7 @@
 .panel-root :is(.crm-empty,.crm-empty-state,.activity-empty,.hr-empty),
 .panel-root :is(div,p,section).panel-empty{
   display:grid;place-items:center;gap:6px;min-height:150px;padding:32px 20px;
-  border:1px dashed color-mix(in srgb,var(--accent-500) 32%,var(--line));border-radius:16px;
+  border:1px dashed color-mix(in srgb,var(--primary) 32%,var(--line));border-radius:16px;
   background:color-mix(in srgb,var(--surface-2) 72%,transparent);box-shadow:none;
   color:var(--muted);font-size:14px;line-height:1.55;text-align:center
 }
@@ -237,12 +237,12 @@
 .panel-root .crm-page-stack .crm-data-table td.ops-status-cell{gap:6px}
 .panel-root .ops-archive-form{margin:0}
 .panel-root .ops-archive-btn{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:3px 11px 3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-soft);font:inherit;font-size:12px;font-weight:650;white-space:nowrap;cursor:pointer;transition:background-color .18s ease,border-color .18s ease,color .18s ease}
-.panel-root .ops-archive-btn:hover{border-color:color-mix(in srgb,var(--accent-500) 45%,var(--line));background:var(--accent-soft);color:var(--accent-strong)}
+.panel-root .ops-archive-btn:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));background:var(--accent-soft);color:var(--accent-strong)}
 .panel-root .ops-ready-hint{color:var(--success);font-size:11.5px;font-weight:650}
 /* Arşiv satırı: "Arşivden çıkar" */
 .panel-root .crm-page-stack .crm-data-table td.ops-row-actions form{margin:0}
 .panel-root .ops-unarchive-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:7px 12px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(180deg,var(--surface-raised),var(--surface-2));color:var(--ink);font:inherit;font-size:12.5px;font-weight:650;white-space:nowrap;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .18s ease,color .18s ease}
-.panel-root .ops-unarchive-btn:hover{border-color:color-mix(in srgb,var(--accent-500) 45%,var(--line));color:var(--accent-strong)}
+.panel-root .ops-unarchive-btn:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));color:var(--accent-strong)}
 @media(max-width:760px){
   .panel-root .crm-page-stack .crm-data-table td.ops-row-actions form,
   .panel-root .crm-page-stack .crm-data-table td.ops-row-actions .ops-unarchive-btn{width:100%}

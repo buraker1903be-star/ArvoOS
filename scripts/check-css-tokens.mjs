@@ -12,6 +12,10 @@
  *   2. döngüsel referanslar (a -> b -> a)
  *   3. hiç tanımlanmamış değişkenler
  *   4. panel-tokens.css dışında palet tanımlayan dosyalar
+ *   5. panel-tokens.css dışında semantik token (yüzey, mürekkep, çizgi,
+ *      gölge, köşe, boşluk, yazı ölçeği, birincil renk) yeniden tanımlayan
+ *      katmanlar. 2026-10'a kadar panel-premium.css --surface, --ink ve
+ *      --r-sm'i sessizce eziyordu; token dosyası tek kaynak değildi.
  *
  * Kullanım:  node scripts/check-css-tokens.mjs
  */
@@ -23,6 +27,7 @@ const PANEL_DIR = "app/panel";
 const LAYOUT = path.join(PANEL_DIR, "layout.tsx");
 const TOKEN_FILE = "panel-tokens.css";
 const PALETTE_PREFIXES = ["--brand-", "--accent-", "--n-"];
+const SEMANTIC_RE = /^--(bg|surface(-2|-raised)?|ink(-soft)?|muted|dim|line(-soft)?|focus|shadow-[a-z]+|r-[a-z]+|sp-\d+|fs-[a-z0-9]+|lh-[a-z]+|fw-[a-z]+|primary(-[a-z]+)?|accent(-strong|-soft|-on|-bright)?)$/;
 
 // layout.tsx'teki import sırası = gerçek cascade sırası
 const importOrder = [...fs.readFileSync(LAYOUT, "utf8").matchAll(/import\s+"\.\/([\w.-]+\.css)"/g)].map(
@@ -32,6 +37,7 @@ const importOrder = [...fs.readFileSync(LAYOUT, "utf8").matchAll(/import\s+"\.\/
 const problems = [];
 const vars = new Map(); // ad -> { value, file }
 const paletteOffenders = new Map();
+const semanticOffenders = new Map();
 
 for (const file of importOrder) {
   if (!fs.existsSync(file)) {
@@ -57,6 +63,11 @@ for (const file of importOrder) {
         if (!paletteOffenders.has(file)) paletteOffenders.set(file, []);
         paletteOffenders.get(file).push(decl.prop);
       }
+      // 5) tokens dosyası dışında semantik token
+      if (path.basename(file) !== TOKEN_FILE && SEMANTIC_RE.test(decl.prop)) {
+        if (!semanticOffenders.has(file)) semanticOffenders.set(file, []);
+        semanticOffenders.get(file).push(`${decl.prop}:${decl.source?.start?.line}`);
+      }
       vars.set(decl.prop, { value: decl.value, file }); // sonraki kazanır
     });
   });
@@ -64,7 +75,7 @@ for (const file of importOrder) {
 
 // 2 + 3) her değişkeni çöz
 const refsOf = (v) => [...v.matchAll(/var\(\s*(--[\w-]+)/g)].map((m) => m[1]);
-const KNOWN_EXTERNAL = new Set(["--font-manrope", "--tenant-accent", "--tenant-accent-strong", "--tenant-accent-soft"]);
+const KNOWN_EXTERNAL = new Set(["--font-manrope", "--tenant-accent", "--tenant-accent-strong", "--tenant-accent-soft", "--tenant-accent-on"]);
 
 function resolve(name, seen = []) {
   if (seen.includes(name)) {
@@ -130,6 +141,13 @@ for (const [file, props] of paletteOffenders) {
   problems.push(
     `${file}: palet değişkeni tanımlıyor (${[...new Set(props)].join(", ")}). ` +
       `Palet yalnızca ${TOKEN_FILE} içinde olmalı.`,
+  );
+}
+
+for (const [file, props] of semanticOffenders) {
+  problems.push(
+    `${file}: tasarım token'ı yeniden tanımlıyor (${props.join(", ")}). ` +
+      `Değerler yalnızca ${TOKEN_FILE} içinde; burada sessizce onları ezer.`,
   );
 }
 

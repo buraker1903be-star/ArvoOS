@@ -48,7 +48,7 @@
 .hr-act-suzgec label{display:flex;flex-direction:column;gap:5px;min-width:0}
 .hr-act-suzgec label>span{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.05em}
 .hr-act-suzgec select{width:100%;min-height:36px;padding:7px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:12px var(--font-body)}
-.hr-act-suzgec select:focus-visible{outline:2px solid var(--accent-500);outline-offset:1px}
+.hr-act-suzgec select:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
 .hr-act-suzgec>div{display:flex;gap:8px;align-items:center}
 @media(max-width:700px){.hr-act-suzgec{grid-template-columns:minmax(0,1fr)}}
 
@@ -63,8 +63,8 @@
 
 /* Sayfalama: tablonun altında, üç parça ortada. */
 .hr-act-sayfalar{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;font-size:12px;font-weight:700}
-.hr-act-sayfalar a{padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--accent-600);text-decoration:none}
-.hr-act-sayfalar a:hover{border-color:var(--accent-500);background:var(--surface-2)}
+.hr-act-sayfalar a{padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--primary);text-decoration:none}
+.hr-act-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
 /* Ucundaki devre dışı yön: yerini koruyor ki sayfa numarası zıplamasın. */
 .hr-act-sayfalar span{padding:5px 12px;color:var(--dim);opacity:.55}
 .hr-act-sayfalar b{color:var(--muted)}

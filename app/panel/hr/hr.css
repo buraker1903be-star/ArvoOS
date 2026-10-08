@@ -36,7 +36,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .hr-widget.is-money strong{font-size:clamp(20px,1.7vw,24px)}
 .hr-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:12.5px}
 @media(hover:hover) and (pointer:fine){
-  .hr-widget:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent-500) 32%,var(--line));box-shadow:var(--shadow-md)}
+  .hr-widget:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--primary) 32%,var(--line));box-shadow:var(--shadow-md)}
 }
 
 /* ---------- Kartlar ---------- */
@@ -94,7 +94,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .panel-root .hr-table :is(th,td):first-child{padding-left:20px}
 .panel-root .hr-table :is(th,td):last-child{padding-right:20px}
 @media(min-width:701px){.panel-root .hr-table tbody tr:last-child td{border-bottom:0}}
-.panel-root .hr-table tbody tr:not(.hr-group-row):hover td{background:color-mix(in srgb,var(--accent-100) 42%,var(--surface))}
+.panel-root .hr-table tbody tr:not(.hr-group-row):hover td{background:color-mix(in srgb,var(--primary-soft) 42%,var(--surface))}
 .panel-root .hr-table .is-num{text-align:right;white-space:nowrap}
 .panel-root .hr-table .is-nowrap{white-space:nowrap}
 .panel-root .hr-table td b{display:block;color:var(--ink);font-size:13.5px;font-weight:650}
@@ -162,7 +162,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .hr-person .hr-chips{margin-top:6px}
 .hr-person-actions{display:flex;align-items:center;gap:8px}
 .panel-root .hr-person :is(.panel-primary,.panel-secondary,.panel-danger){width:auto;min-height:34px;padding:0 12px;border-radius:10px;font-size:12.5px}
-.panel-root .hr-person .hr-invite-btn{border-color:color-mix(in srgb,var(--accent-500) 45%,var(--line));color:var(--accent-strong)}
+.panel-root .hr-person .hr-invite-btn{border-color:color-mix(in srgb,var(--primary) 45%,var(--line));color:var(--accent-strong)}
 
 /* Panel erişimi şeridi */
 .hr-access{grid-column:2/-1;display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:8px 8px 8px 12px;border-radius:12px;background:var(--surface-2)}
@@ -188,7 +188,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
 /* Özlük dosyaları çekmecesi */
 .hr-docs{display:flex;flex-direction:column;gap:16px}
-.hr-upload{display:flex;flex-direction:column;gap:14px;margin:0;padding:16px;border:1.5px dashed color-mix(in srgb,var(--accent-500) 40%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--accent-soft) 40%,var(--surface))}
+.hr-upload{display:flex;flex-direction:column;gap:14px;margin:0;padding:16px;border:1.5px dashed color-mix(in srgb,var(--primary) 40%,var(--line));border-radius:16px;background:color-mix(in srgb,var(--accent-soft) 40%,var(--surface))}
 .hr-upload-head{display:flex;align-items:center;gap:12px}
 .hr-upload-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent-strong)}
 .hr-upload-head>span:last-child{display:flex;flex-direction:column;gap:2px}

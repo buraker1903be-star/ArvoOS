@@ -14,7 +14,7 @@
 
 /* Okunmamış konuşma: ağırlık ve sol şerit. Yalnızca renkle ayırmak
    renk körlüğünde kayboluyordu. */
-.posta-liste>li[data-okunmamis="evet"] a{box-shadow:inset 3px 0 0 var(--accent-500)}
+.posta-liste>li[data-okunmamis="evet"] a{box-shadow:inset 3px 0 0 var(--primary)}
 .posta-liste>li[data-okunmamis="evet"] b{font-weight:700}
 
 .posta-kisi,.posta-icerik{min-width:0}
@@ -29,7 +29,7 @@
 .posta-mesajlar>li{border:1px solid var(--line-soft);border-radius:16px;background:var(--surface-2);padding:14px 16px}
 /* Giden mesaj görsel olarak ayrışıyor: ortak kutuda "biz mi yazdık,
    müşteri mi" sorusu listede sürekli soruluyor. */
-.posta-mesajlar>li[data-yon="giden"]{background:color-mix(in srgb,var(--accent-soft) 30%,var(--surface-2));border-color:color-mix(in srgb,var(--accent-500) 22%,var(--line-soft))}
+.posta-mesajlar>li[data-yon="giden"]{background:color-mix(in srgb,var(--accent-soft) 30%,var(--surface-2));border-color:color-mix(in srgb,var(--primary) 22%,var(--line-soft))}
 .posta-mesajlar header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:10px}
 .posta-mesajlar header b{display:block;font-size:14px;font-weight:600}
 .posta-mesajlar header small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
@@ -52,7 +52,7 @@
 .posta-yanit label b{display:block;font-size:14px;font-weight:600;color:var(--ink)}
 .posta-yanit label small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
 .posta-yanit textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;line-height:1.6;resize:vertical}
-.posta-yanit textarea:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+.posta-yanit textarea:focus{outline:none;border-color:var(--primary);box-shadow:var(--shadow-glow)}
 .posta-yanit-alt{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .posta-yanit-alt small{color:var(--muted);font-size:12.5px}
 
@@ -62,14 +62,14 @@
 .posta-bag label small{display:block;margin-top:2px;color:var(--muted);font-size:12.5px}
 .posta-bag-alt{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .posta-bag select{flex:1 1 280px;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
-.posta-bag select:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+.posta-bag select:focus{outline:none;border-color:var(--primary);box-shadow:var(--shadow-glow)}
 /* Listede bağlı müşteri adı: yazışmanın hangi kayda ait olduğu. */
 .posta-musteri{color:var(--accent-strong)!important;font-weight:600}
 
 /* Arama çubuğu: liste süzgeçlerinin üstünde, tam genişlik. */
 .posta-arama{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .posta-arama input[type="search"]{flex:1 1 280px;min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px}
-.posta-arama input[type="search"]:focus{outline:none;border-color:var(--accent-500);box-shadow:var(--shadow-glow)}
+.posta-arama input[type="search"]:focus{outline:none;border-color:var(--primary);box-shadow:var(--shadow-glow)}
 
 /* Ek listesi: gövdenin altında, indirilebilir bağlantılar. */
 .posta-ekler{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;padding:0;list-style:none}

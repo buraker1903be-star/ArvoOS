@@ -19,7 +19,7 @@
 .panel-nav-group summary::-webkit-details-marker{display:none}
 .panel-nav-home i,.panel-nav-group-link i,.panel-nav-group summary i,.crm-nav-heading i{
   width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.05);
-  color:var(--accent-400);font-size:12px;font-style:normal;font-weight:800;
+  color:var(--accent-bright);font-size:12px;font-style:normal;font-weight:800;
 }
 .panel-nav-home:hover,.panel-nav-group-link:hover,.panel-nav-group summary:hover{background:rgba(255,255,255,.07);color:#fff}
 .panel-nav-home.active,.panel-nav-group-link.active,.panel-nav-group.active>summary,.panel-nav-group.active>.crm-nav-heading{
@@ -27,7 +27,7 @@
 }
 .panel-nav-home:hover i,.panel-nav-group-link:hover i,.panel-nav-group summary:hover i,
 .panel-nav-home.active i,.panel-nav-group-link.active i,.panel-nav-group.active>summary i,.panel-nav-group.active>.crm-nav-heading i{
-  background:var(--accent-100);color:var(--accent-600);
+  background:var(--primary-soft);color:var(--primary);
 }
 .panel-nav-groups{display:flex;flex-direction:column;gap:3px}
 .panel-nav-group em{margin-left:auto;color:var(--brand-300);font-size:11px;font-style:normal}
@@ -38,7 +38,7 @@
 .crm-nav-heading{cursor:default}
 .crm-nav-children{display:block}
 .panel-nav-group-link.owner-link{margin-top:8px;border:1px solid rgba(143,179,106,.2)}
-.panel-nav-group-link.owner-link b{margin-left:auto;padding:3px 5px;border-radius:4px;background:var(--accent-500);color:#fff;font-size:11px;letter-spacing:.08em}
+.panel-nav-group-link.owner-link b{margin-left:auto;padding:3px 5px;border-radius:4px;background:var(--primary);color:var(--primary-on);font-size:11px;letter-spacing:.08em}
 
 .panel-sidebar-footer{padding-top:12px}
 .panel-security{padding:9px 10px}
@@ -109,9 +109,9 @@
 .settings-actions small{color:var(--muted)}
 .settings-module-list{display:flex;flex-direction:column;margin-top:18px}
 .settings-module-list>a{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);color:var(--ink);font-size:12px;font-weight:750;text-decoration:none}
-.settings-module-list>a b{color:var(--accent-600)}
+.settings-module-list>a b{color:var(--primary)}
 .settings-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:20px}
-.settings-tags span{padding:7px 9px;border-radius:7px;background:var(--accent-100);color:var(--accent-600);font-size:11px;font-weight:750}
+.settings-tags span{padding:7px 9px;border-radius:7px;background:var(--primary-soft);color:var(--primary);font-size:11px;font-weight:750}
 
 @media(max-width:900px){
   .panel-frame{grid-template-columns:72px 1fr}
@@ -147,7 +147,7 @@
 .permissions-table thead th:first-child{text-align:left}
 .permissions-module-name{text-align:left!important;font-weight:700;color:var(--ink)}
 .permissions-checkbox{display:inline-flex;cursor:pointer}
-.permissions-checkbox input{width:20px;height:20px;accent-color:var(--accent-600);cursor:pointer}
+.permissions-checkbox input{width:20px;height:20px;accent-color:var(--primary);cursor:pointer}
 .permissions-form .panel-form-actions{margin-top:18px;padding-top:0}
 @media(max-width:760px){
   .permissions-table{min-width:420px}

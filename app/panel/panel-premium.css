@@ -1,48 +1,16 @@
 /* ArvoOS premium product layer — shared across every panel module. */
 /* Palet artık YALNIZCA panel-tokens.css'te. Buraya renk tanımı eklemeyin:
    son yüklenen dosya olduğu için sessizce token'ları ezer. */
+/* 2026-10: burada ikinci bir yüzey/mürekkep/gölge/köşe paleti vardı
+   (--surface, --ink, --r-sm:10px…). Son yüklenen dosya olduğu için
+   panel-tokens.css'i sessizce eziyordu; tasarım değerleri artık yalnızca
+   orada. check-css-tokens.mjs geri dönüşü yakalar. */
 .panel-root{
-  --bg:var(--n-100);
-  --surface:rgba(255,255,255,.97);
-  --surface-2:var(--n-50);
-  --surface-raised:#fff;
-  --ink:var(--n-900);
-  --muted:var(--n-500);
-  --dim:var(--n-400);
-  --line:var(--n-200);
-  --line-soft:var(--n-50);
-  --shadow-sm:0 1px 2px rgba(11,27,46,.04),0 4px 14px rgba(11,27,46,.035);
-  --shadow-md:0 2px 6px rgba(11,27,46,.04),0 16px 38px rgba(11,27,46,.08);
-  --shadow-lg:0 28px 70px rgba(5,12,26,.18);
-  --r-sm:10px;
-  --r-md:14px;
-  --r-lg:18px;
-  --r-xl:24px;
   min-height:100dvh;
-  background:
-    radial-gradient(circle at 70% -15%,rgba(255,255,255,.75),transparent 30rem),
-    var(--bg);
+  background:var(--bg);
   font-synthesis:none;
   text-rendering:optimizeLegibility;
   -webkit-font-smoothing:antialiased;
-}
-
-html[data-theme="dark"] .panel-root{
-  --bg:var(--brand-950);
-  --surface:rgba(14,24,41,.96);
-  --surface-2:var(--brand-950);
-  --surface-raised:var(--n-900);
-  --ink:var(--n-100);
-  --muted:var(--n-400);
-  --dim:var(--n-500);
-  --line:var(--n-800);
-  --line-soft:var(--n-800);
-  --shadow-sm:0 1px 2px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.14);
-  --shadow-md:0 16px 40px rgba(0,0,0,.3);
-  /* Açık temadaki beyaz ışık koyu temada sayfanın üstünü griye çeviriyordu */
-  background:
-    radial-gradient(circle at 70% -15%,color-mix(in srgb,var(--accent-bright) 7%,transparent),transparent 30rem),
-    var(--bg);
 }
 
 /* Shell */
@@ -114,7 +82,7 @@ html[data-theme="dark"] .panel-root{
 .module-tab-panel{gap:16px;padding-top:16px;border-color:var(--line);border-radius:0 16px 16px 16px;background:color-mix(in srgb,var(--surface-2) 80%,transparent);box-shadow:var(--shadow-sm)}
 .module-tabs{border-radius:12px 12px 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.8)}
 .module-tabs a{min-height:42px;padding:10px 16px;font-size:13px}
-.module-tabs a.active{background:linear-gradient(135deg,var(--brand-700),var(--brand-800))}
+.module-tabs a.active{background:var(--primary);color:var(--primary-on)}
 
 /* KPIs */
 .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{gap:12px}
@@ -122,7 +90,7 @@ html[data-theme="dark"] .panel-root{
   min-height:106px;padding:16px;border-radius:15px;
   transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
 }
-.metric-strip article:hover,.metric-strip-five article:hover,.crm-metrics article:hover,.finance-metrics article:hover,.ops-metrics article:hover,.report-kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--accent-500) 28%,var(--line));box-shadow:var(--shadow-md)}
+.metric-strip article:hover,.metric-strip-five article:hover,.crm-metrics article:hover,.finance-metrics article:hover,.ops-metrics article:hover,.report-kpi:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 28%,var(--line));box-shadow:var(--shadow-md)}
 .metric-strip small,.metric-strip-five small,.crm-metrics small,.finance-metrics small,.ops-metrics small,.report-kpi small,.finance-cost-kpis small,.finance-cost-detail-kpis small,.finance-payment-kpis small{font-size:13px;letter-spacing:.075em}
 .metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong{font-size:23px;letter-spacing:-.025em}
 .metric-strip p,.metric-strip span,.crm-metrics span,.finance-metrics span,.ops-metrics span,.report-kpi p,.finance-cost-kpis span,.finance-cost-detail-kpis span,.finance-payment-kpis span{font-size:12px}
@@ -132,7 +100,7 @@ html[data-theme="dark"] .panel-root{
   min-height:40px;padding:9px 14px;border-radius:11px;font-size:13px;font-weight:750;
   transition:transform .15s ease,box-shadow .15s ease,background-color .15s ease,border-color .15s ease;
 }
-.panel-primary{background:linear-gradient(180deg,var(--brand-600),var(--brand-700));box-shadow:0 1px 2px rgba(4,22,42,.2),inset 0 1px 0 rgba(255,255,255,.16)}
+.panel-primary{background:var(--primary);box-shadow:0 1px 2px rgba(4,22,42,.2),inset 0 1px 0 rgba(255,255,255,.16)}
 .panel-primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(8,42,74,.2)}
 .panel-secondary{background:linear-gradient(180deg,#fff,var(--n-0));box-shadow:0 1px 2px rgba(15,35,60,.045)}
 html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(--n-800),var(--n-900))}
@@ -143,14 +111,14 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-form input,.panel-form select,.panel-form textarea,.finance-filter-panel input,.finance-payment-toolbar input,.report-custom-range input{
   min-height:42px;padding:9px 12px;border-radius:11px;border-color:var(--line);background:var(--surface-raised);font-size:14px;box-shadow:inset 0 1px 1px rgba(15,35,60,.025);
 }
-.panel-form :is(input,select,textarea):focus,.finance-filter-panel input:focus,.finance-payment-toolbar input:focus,.report-custom-range input:focus{outline:none;border-color:var(--accent-500);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-500) 15%,transparent)}
+.panel-form :is(input,select,textarea):focus,.finance-filter-panel input:focus,.finance-payment-toolbar input:focus,.report-custom-range input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 15%,transparent)}
 
 /* Tables and long feeds */
 .panel-table,.crm-data-table,.ops-table,.finance-cost-table,.finance-cost-movement-table{font-variant-numeric:tabular-nums}
 .panel-table th,.crm-data-table thead th,.finance-cost-table-head,.finance-cost-movement-table .head,.ops-table th{padding:11px 13px;font-size:13px;color:var(--muted);background:var(--surface-2)}
 .panel-table td,.crm-data-table tbody td,.ops-table td{padding:12px 13px;font-size:13px;line-height:1.45}
 .panel-table tbody tr,.crm-data-table tbody tr,.ops-table tbody tr{transition:background-color .14s ease}
-.panel-table tbody tr:hover,.crm-data-table tbody tr:hover,.ops-table tbody tr:hover{background:color-mix(in srgb,var(--accent-100) 38%,var(--surface))}
+.panel-table tbody tr:hover,.crm-data-table tbody tr:hover,.ops-table tbody tr:hover{background:color-mix(in srgb,var(--primary-soft) 38%,var(--surface))}
 .crm-data-table .crm-table-title,.finance-cost-table h3{font-size:14px}
 .crm-data-table .crm-table-mono,.crm-data-table .crm-table-sub,.finance-cost-table p,.finance-cost-table a span{font-size:12px}
 .finance-cost-table>article,.finance-cost-movement-table>article,.finance-payment-list>article,.notification-card{content-visibility:auto;contain-intrinsic-size:auto 76px}
@@ -211,7 +179,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 
 /* Phase 2 — navigation, messaging and interaction refinement */
 .panel-root :is(a,button,input,select,textarea,summary):focus-visible{
-  outline:3px solid color-mix(in srgb,var(--accent-500) 32%,transparent);
+  outline:3px solid color-mix(in srgb,var(--primary) 32%,transparent);
   outline-offset:2px;
 }
 .panel-nav-v2 .panel-nav-group-link,.panel-nav-v2 .panel-nav-home,.panel-nav-v2 summary{position:relative}
@@ -222,7 +190,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-nav-v2 .panel-nav-children a{min-height:36px;padding:7px 10px;font-size:12px}
 .panel-nav-v2 .panel-nav-children a.active{color:#fff;background:rgba(255,255,255,.075)}
 
-.nav-progress{position:fixed!important;top:0!important;left:0!important;z-index:3000!important;height:3px!important;background:linear-gradient(90deg,var(--accent-400),var(--accent-300))!important;box-shadow:0 0 12px rgba(201,166,106,.65)!important}
+.nav-progress{position:fixed!important;top:0!important;left:0!important;z-index:3000!important;height:3px!important;background:linear-gradient(90deg,var(--accent-bright),var(--accent-bright))!important;box-shadow:0 0 12px rgba(201,166,106,.65)!important}
 .panel-empty{min-height:180px;display:grid;place-items:center;padding:36px 20px;border:1px dashed var(--line);border-radius:16px;background:color-mix(in srgb,var(--surface-2) 72%,transparent);font-size:14px;line-height:1.55}
 
 .messages-drawer{border-radius:22px 0 0 22px;box-shadow:-36px 0 90px rgba(4,20,38,.28)}
@@ -236,17 +204,17 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .messages-thread>header{min-height:66px;background:color-mix(in srgb,var(--surface) 94%,transparent)}
 .messages-thread-scroll{gap:10px;padding:18px;background:radial-gradient(circle at 100% 0,rgba(178,138,73,.07),transparent 20rem),var(--surface-2)}
 .messages-thread-scroll article{padding:10px 12px;border-radius:7px 16px 16px;box-shadow:var(--shadow-sm)}
-.messages-thread-scroll article.mine{border-radius:16px 7px 16px 16px;background:var(--accent-100)}
+.messages-thread-scroll article.mine{border-radius:16px 7px 16px 16px;background:var(--primary-soft)}
 .messages-thread-scroll article p{font-size:14px;line-height:1.5}.messages-thread-scroll article small{font-size:13px}
 .messages-composer{padding:12px 14px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 -8px 28px rgba(8,35,62,.045)}
 .messages-composer textarea{min-height:44px;border-radius:14px;font-size:14px;background:var(--surface-2)}
-.messages-attach-button,.messages-send-button{height:44px;border-radius:12px}.messages-send-button{background:linear-gradient(180deg,var(--brand-600),var(--brand-700));box-shadow:0 4px 12px rgba(9,47,85,.18)}
+.messages-attach-button,.messages-send-button{height:44px;border-radius:12px}.messages-send-button{background:var(--primary);box-shadow:0 4px 12px rgba(9,47,85,.18)}
 
 .notification-filter-tabs{padding:4px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-sm)}
 .notification-filter-tabs a{border:0!important;border-radius:10px;transition:background-color .15s ease,color .15s ease,transform .15s ease}
 .notification-filter-tabs a:active{transform:scale(.985)}
 .notification-card{position:relative;overflow:hidden}
-.notification-card:before{content:"";position:absolute;inset:14px auto 14px 0;width:3px;border-radius:0 99px 99px 0;background:var(--accent-500);opacity:.75}
+.notification-card:before{content:"";position:absolute;inset:14px auto 14px 0;width:3px;border-radius:0 99px 99px 0;background:var(--primary);opacity:.75}
 
 @media(max-width:900px){
   .mobile-drawer-trigger{border-radius:13px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 24px rgba(6,25,48,.13);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
@@ -258,7 +226,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .mobile-bottom-nav>a,.mobile-bottom-nav>button{min-height:54px;border-radius:15px;transition:transform .13s ease,background-color .13s ease,color .13s ease}
   .mobile-bottom-nav>a:active,.mobile-bottom-nav>button:active{transform:scale(.94)}
   .mobile-bottom-nav i{font-size:20px}.mobile-bottom-nav span{font-size:13px}
-  .mobile-bottom-nav .active{background:linear-gradient(180deg,var(--accent-100),color-mix(in srgb,var(--accent-100) 72%,var(--surface)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 13%,transparent)}
+  .mobile-bottom-nav .active{background:linear-gradient(180deg,var(--primary-soft),color-mix(in srgb,var(--primary-soft) 72%,var(--surface)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 13%,transparent)}
 }
 
 @media(max-width:680px){
@@ -295,12 +263,12 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-error{border-radius:14px;font-size:14px;line-height:1.5;box-shadow:var(--shadow-sm)}
 
 @media(hover:hover) and (pointer:fine){
-  .panel-card:has(>a:hover),.notification-card:hover{border-color:color-mix(in srgb,var(--accent-500) 24%,var(--line));box-shadow:var(--shadow-md)}
+  .panel-card:has(>a:hover),.notification-card:hover{border-color:color-mix(in srgb,var(--primary) 24%,var(--line));box-shadow:var(--shadow-md)}
 }
 
 @media(max-width:900px){
   .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap){margin-inline:0;border-radius:14px;overscroll-behavior-x:contain;scroll-snap-type:x proximity}
-  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap):before{content:"";position:sticky;left:0;z-index:3;display:block;width:100%;height:3px;background:linear-gradient(90deg,var(--accent-500),color-mix(in srgb,var(--accent-500) 10%,transparent));pointer-events:none}
+  .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap):before{content:"";position:sticky;left:0;z-index:3;display:block;width:100%;height:3px;background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--primary) 10%,transparent));pointer-events:none}
   .panel-content :is(.table-wrap,.panel-table-wrap,.data-table-wrap,.list-table-wrap)::after{content:"← Yatay kaydır →";position:sticky;left:0;display:block;width:max-content;margin-left:auto;padding:7px 10px;color:var(--muted);font-size:13px;font-weight:650}
   .panel-content table th:first-child,.panel-content table td:first-child{scroll-snap-align:start}
   .finance-filter-panel,.finance-payment-toolbar,.report-range-bar{padding:10px;border-radius:14px}
@@ -336,13 +304,13 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 }
 .crm-page-stack .crm-data-table tbody td{height:68px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;line-height:1.4}
 .crm-page-stack .crm-data-table tbody tr{content-visibility:auto;contain-intrinsic-size:auto 68px;transition:background-color .14s ease,box-shadow .14s ease}
-.crm-page-stack .crm-data-table tbody tr:hover{background:color-mix(in srgb,var(--accent-100) 34%,var(--surface))}
+.crm-page-stack .crm-data-table tbody tr:hover{background:color-mix(in srgb,var(--primary-soft) 34%,var(--surface))}
 .crm-page-stack .crm-data-table .crm-table-mono{font-size:12px;font-weight:720;letter-spacing:-.01em;color:var(--muted)}
 .crm-page-stack .crm-data-table .crm-table-title{max-width:260px;font-size:14px;font-weight:780;letter-spacing:-.012em}
 .crm-page-stack .crm-data-table .crm-table-sub{margin-top:4px;font-size:12px;line-height:1.35}
 .crm-page-stack .crm-row-link{color:var(--ink);text-decoration:none}
 .crm-page-stack .crm-row-subject{display:block;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:680}
-.crm-page-stack .crm-comment-count-badge{min-height:28px;padding:6px 10px;border-color:color-mix(in srgb,var(--accent-500) 24%,var(--line));background:var(--accent-100);color:var(--accent-600);font-size:12px}
+.crm-page-stack .crm-comment-count-badge{min-height:28px;padding:6px 10px;border-color:color-mix(in srgb,var(--primary) 24%,var(--line));background:var(--primary-soft);color:var(--primary);font-size:12px}
 .crm-page-stack .crm-table-actions{justify-content:flex-end}
 .crm-page-stack .crm-table-actions>.panel-secondary{min-width:76px;min-height:36px;padding:8px 12px;border-radius:10px;font-size:12px;background:linear-gradient(180deg,var(--surface-raised),var(--surface-2));box-shadow:0 1px 2px rgba(15,35,60,.04)}
 .crm-page-stack .crm-table-actions>.panel-secondary:after{content:"•••";margin-left:7px;color:var(--muted);font-size:13px;letter-spacing:1px}
@@ -374,7 +342,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .crm-page-stack .crm-data-table .crm-table-title{font-size:15px}.crm-page-stack .crm-data-table .crm-table-sub{font-size:12px}
   .crm-page-stack .crm-row-subject{max-width:62vw;white-space:normal;text-align:right;font-size:14px}
   .crm-page-stack .crm-table-actions{padding:12px 0!important}
-  .crm-page-stack .crm-table-actions>.panel-secondary{width:100%;min-height:44px;font-size:14px;background:linear-gradient(180deg,var(--brand-600),var(--brand-700));color:#fff;border:0;box-shadow:0 5px 14px rgba(9,47,85,.16)}
+  .crm-page-stack .crm-table-actions>.panel-secondary{width:100%;min-height:44px;font-size:14px;background:var(--primary);color:var(--primary-on);border:0;box-shadow:0 5px 14px rgba(9,47,85,.16)}
   .crm-page-stack .crm-table-actions>.panel-secondary:after{color:rgba(255,255,255,.7)}
   .panel-sheet-actions{display:grid;grid-template-columns:1fr 1fr}.panel-sheet-actions>*{width:100%}
 }
@@ -394,7 +362,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   grid-template-columns:110px minmax(220px,1.55fr) minmax(150px,1fr) minmax(120px,.8fr) minmax(100px,.65fr) minmax(100px,.65fr) minmax(95px,.58fr) minmax(90px,.55fr) 92px;
   align-items:center;gap:12px;min-height:92px;padding:14px 16px;border:1px solid var(--line);border-radius:17px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:visible;contain-intrinsic-size:auto 92px
 }
-.crm-page-stack .crm-data-table tbody tr:hover{background:var(--surface);border-color:color-mix(in srgb,var(--accent-500) 24%,var(--line));box-shadow:var(--shadow-md)}
+.crm-page-stack .crm-data-table tbody tr:hover{background:var(--surface);border-color:color-mix(in srgb,var(--primary) 24%,var(--line));box-shadow:var(--shadow-md)}
 .crm-page-stack .crm-data-table tbody td{
   display:flex;min-width:0;height:auto;min-height:48px;padding:0;border:0;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;font-size:13px;text-align:left
 }
@@ -613,10 +581,10 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
    seçtiyse --accent / --accent-bright altının yerini alır.
    Düzen, yoğunluk ve mobil kurallarına dokunmaz; yalnızca görünüm.
    ============================================================ */
-.panel-root ::selection{background:color-mix(in srgb,var(--accent-500) 26%,transparent)}
+.panel-root ::selection{background:color-mix(in srgb,var(--primary) 26%,transparent)}
 
 /* --- Menü --- */
-.panel-brand>i{background:linear-gradient(150deg,var(--accent-300),var(--accent-500));color:var(--brand-900);font-family:var(--font-display);font-size:22px;font-weight:700}
+.panel-brand>i{background:linear-gradient(150deg,var(--accent-bright),var(--primary));color:var(--brand-900);font-family:var(--font-display);font-size:22px;font-weight:700}
 .panel-brand b{font-family:var(--font-display);font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--n-0)}
 .panel-brand small{letter-spacing:.2em;color:color-mix(in srgb,var(--accent-bright) 72%,var(--n-400))}
 .panel-org{background:rgba(255,255,255,.04);border-color:color-mix(in srgb,var(--accent-bright) 16%,transparent)}
@@ -638,9 +606,9 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-nav-v2 .panel-nav-children a.active{color:var(--n-0);background:color-mix(in srgb,var(--accent-bright) 12%,transparent)}
 
 /* --- Üst çubuk --- */
-.panel-topbar{border-bottom:1px solid color-mix(in srgb,var(--accent-500) 18%,var(--line))}
+.panel-topbar{border-bottom:1px solid color-mix(in srgb,var(--primary) 18%,var(--line))}
 .panel-breadcrumb b{font-family:var(--font-display);font-size:17px;font-weight:650;letter-spacing:-.01em}
-.panel-user>span{background:linear-gradient(150deg,var(--accent-100),var(--accent-200));color:var(--accent-800)}
+.panel-user>span{background:linear-gradient(150deg,var(--primary-soft),color-mix(in srgb,var(--primary) 35%,transparent));color:var(--primary-strong)}
 
 /* --- Başlıklar: tek yazı tipi (SF Pro / Inter), iOS büyük başlık ölçüsü --- */
 .panel-kicker,.panel-breadcrumb small{color:var(--accent);font-weight:700;letter-spacing:.2em}
@@ -663,18 +631,21 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 /* --- Kartlar --- */
 .panel-card,.panel-module,.report-card,.notification-card{border-color:var(--line)}
 @media(hover:hover) and (pointer:fine){
-  .panel-card:hover,.panel-module:hover,.metric-strip article:hover,.metric-strip-five article:hover{border-color:color-mix(in srgb,var(--accent-500) 34%,var(--line))}
+  .panel-card:hover,.panel-module:hover,.metric-strip article:hover,.metric-strip-five article:hover{border-color:color-mix(in srgb,var(--primary) 34%,var(--line))}
 }
 
 /* --- Düğmeler --- */
+/* Birincil düğme KURUMUN rengini taşır. Eskiden sabit lacivert gradyandı;
+   kurum marka rengini seçse de düğmeler Arvo lacivertinde kalıyordu. */
 .panel-primary{
-  color:var(--n-0);
-  background:linear-gradient(180deg,var(--brand-600),var(--brand-800));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 0 1px color-mix(in srgb,var(--accent-bright) 30%,transparent),0 6px 16px rgba(11,27,46,.16)
+  color:var(--primary-on);
+  background:var(--primary);
+  box-shadow:var(--shadow-xs)
 }
-.panel-primary:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px color-mix(in srgb,var(--accent-bright) 55%,transparent),0 12px 26px rgba(11,27,46,.22)}
+.panel-primary:hover{background:var(--primary-strong);box-shadow:var(--shadow-sm)}
+.panel-primary:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .panel-secondary{border-color:var(--line);color:var(--ink)}
-.panel-secondary:hover{border-color:color-mix(in srgb,var(--accent-500) 45%,var(--line))}
+.panel-secondary:hover{border-color:color-mix(in srgb,var(--primary) 45%,var(--line))}
 .module-tabs a.active{box-shadow:inset 0 -2px 0 var(--accent-bright)}
 
 /* --- Tablo başlıkları --- */

@@ -168,7 +168,7 @@
 .panel-root .crm-lookup-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .panel-root .crm-lookup-tabs button{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .16s ease,color .16s ease,background-color .16s ease}
 .panel-root .crm-lookup-tabs button:hover{border-color:var(--accent);color:var(--ink)}
-.panel-root .crm-lookup-tabs button[data-active]{border-color:var(--accent);background:var(--accent-50);color:var(--ink)}
+.panel-root .crm-lookup-tabs button[data-active]{border-color:var(--accent);background:var(--primary-soft);color:var(--ink)}
 .panel-root .crm-lookup-tabs button>span{min-width:18px;padding:1px 6px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
 .panel-root .crm-lookup-tabs button[data-active]>span{background:var(--accent);color:var(--tenant-accent-on,#fff)}
 .panel-root .crm-lookup-tab-bos{margin:16px 0;color:var(--muted);font-size:13.5px;text-align:center}

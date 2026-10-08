@@ -91,7 +91,7 @@ html[data-theme="dark"] .fin [data-tone="brand"]{--tone-fg:var(--brand-200)}
   transition:background-color .25s var(--fin-ease),color .2s ease,box-shadow .25s var(--fin-ease)
 }
 .panel-root .fin .fin-chips button:hover{color:var(--ink);background:color-mix(in srgb,var(--surface) 60%,transparent)}
-.panel-root .fin .fin-chips button.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(11,27,46,.08),0 4px 12px rgba(11,27,46,.07),0 0 0 1px color-mix(in srgb,var(--accent-500) 24%,var(--line))}
+.panel-root .fin .fin-chips button.is-active{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(11,27,46,.08),0 4px 12px rgba(11,27,46,.07),0 0 0 1px color-mix(in srgb,var(--primary) 24%,var(--line))}
 .fin-chips b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
 .fin-chips button.is-active b{background:var(--tone-bg);color:var(--tone-fg)}
 
@@ -130,7 +130,7 @@ html[data-theme="dark"] .fin [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
 /* Hücre içerikleri */
 .fin-entity{display:flex;align-items:center;gap:12px;min-width:0;color:var(--ink);text-decoration:none}
-.fin-avatar{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 26%,transparent);font-size:12.5px;font-weight:700;letter-spacing:.03em}
+.fin-avatar{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 26%,transparent);font-size:12.5px;font-weight:700;letter-spacing:.03em}
 .fin-entity-text{display:flex;flex-direction:column;gap:2px;min-width:0}
 .fin-entity-text :is(b,small){display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fin-entity-text b{color:var(--ink);font-size:14px;font-weight:650;letter-spacing:-.005em}
@@ -147,7 +147,7 @@ a.fin-entity:hover b{color:var(--accent)}
 
 /* Temsilci rozeti */
 .fin-person{display:inline-flex;align-items:center;gap:9px;min-width:0;max-width:100%;color:var(--ink);font-size:13px}
-.fin-person>i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent-500) 30%,transparent);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
+.fin-person>i{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 30%,transparent);font-size:11px;font-style:normal;font-weight:800;letter-spacing:.03em}
 .fin-person>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fin-person.is-empty{color:var(--muted)}
 .fin-person.is-empty>i{background:var(--surface-2);color:var(--dim);box-shadow:inset 0 0 0 1px var(--line)}
@@ -179,7 +179,7 @@ a.fin-entity:hover b{color:var(--accent)}
 .fin-pager>div{display:flex;align-items:center;gap:6px}
 .fin-pager b{min-width:56px;color:var(--ink);font-size:13px;font-weight:650;text-align:center;font-variant-numeric:tabular-nums}
 .panel-root .fin .fin-pager button{min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .18s ease,background-color .18s ease}
-.panel-root .fin .fin-pager button:hover:not(:disabled){border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line));background:var(--surface-2)}
+.panel-root .fin .fin-pager button:hover:not(:disabled){border-color:color-mix(in srgb,var(--primary) 40%,var(--line));background:var(--surface-2)}
 .panel-root .fin .fin-pager button:disabled{opacity:.4;cursor:not-allowed}
 
 /* Boş durum */

@@ -15,7 +15,7 @@
 .party-entry-actions form{margin:0}
 .party-entry-actions .panel-danger{min-height:32px;padding:0 12px;font-size:12px}
 .entry-edit-trigger .panel-primary{min-height:32px;padding:0 12px;font-size:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:none}
-.entry-edit-trigger .panel-primary:hover{border-color:var(--accent-500);color:var(--accent-600);filter:none;transform:none}
+.entry-edit-trigger .panel-primary:hover{border-color:var(--primary);color:var(--primary);filter:none;transform:none}
 
 @media(max-width:900px){
   .party-entry-row{grid-template-columns:1fr;gap:10px}

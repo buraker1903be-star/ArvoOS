@@ -49,7 +49,7 @@ html[data-theme="dark"] .ntd [data-tone="brand"]{--tone-fg:var(--brand-200)}
 }
 .ntd-icon-btn:hover{background:color-mix(in srgb,var(--ink) 9%,var(--surface-2));color:var(--ink)}
 .ntd-icon-btn:active{transform:scale(.92)}
-.ntd :focus-visible{outline:2px solid var(--accent-500);outline-offset:2px}
+.ntd :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 /* ---------- Filtre çipleri ----------
    Eskiden tek satırda gizli kaydırma çubuğuyla kayıyor ve sağ kenar hep
@@ -68,9 +68,9 @@ html[data-theme="dark"] .ntd [data-tone="brand"]{--tone-fg:var(--brand-200)}
   font:inherit;font-size:13px;font-weight:600;cursor:pointer;touch-action:manipulation;
   transition:background-color .25s var(--ntd-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntd-ease)
 }
-.ntd-chip:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntd-chip:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
 .ntd-chip:active{transform:scale(.95)}
-.ntd-chip.is-active{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
+.ntd-chip.is-active{border-color:transparent;background:var(--primary);color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
 .ntd-chip b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
 /* Okunmamış varsa sayısı mavi (listedeki okunmamış noktasıyla aynı renk) */
 .ntd-chip[data-unread] b{background:var(--info-soft);color:var(--info)}
@@ -147,7 +147,7 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
 .ntd-empty h3{margin:6px 0 0;color:var(--ink);font-size:17px;font-weight:700}
 .ntd-empty p{max-width:320px;margin:0;color:var(--muted);font-size:14px;line-height:1.55}
 .ntd-retry{margin-top:8px;min-height:40px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
-.ntd-retry:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntd-retry:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
 
 /* ---------- Alt bilgi ---------- */
 .ntd-foot{flex:none;padding:10px 14px 12px;border-top:1px solid var(--line-soft);background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
@@ -156,7 +156,7 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
   color:var(--accent);font-size:14.5px;font-weight:650;text-decoration:none;touch-action:manipulation;
   transition:background-color .2s ease,transform .3s var(--ntd-ease)
 }
-.ntd-all:hover{background:color-mix(in srgb,var(--accent-500) 9%,transparent)}
+.ntd-all:hover{background:color-mix(in srgb,var(--primary) 9%,transparent)}
 .ntd-all:active{transform:scale(.97)}
 
 /* ---------- Mobil: tam ekran sayfa ---------- */

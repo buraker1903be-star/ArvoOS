@@ -12,7 +12,7 @@
 .slg-form label{display:block}
 .slg-group{display:flex;align-items:flex-start;gap:12px;margin-top:6px;padding-top:14px;border-top:1px solid var(--line)}
 .slg-group:first-of-type{margin-top:0;padding-top:0;border-top:0}
-.slg-group>span{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:var(--accent-soft);color:var(--accent-700);font-size:11px;font-weight:800;letter-spacing:.04em}
+.slg-group>span{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:var(--accent-soft);color:var(--primary);font-size:11px;font-weight:800;letter-spacing:.04em}
 .slg-group strong{display:block;color:var(--ink);font-size:14px;font-weight:800}
 .slg-group small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:500}
 .slg-optional{margin-left:6px;color:var(--dim);font-size:11px;font-style:normal;font-weight:600}

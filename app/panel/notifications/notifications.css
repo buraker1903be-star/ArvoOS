@@ -28,9 +28,9 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
   font-size:13.5px;font-weight:600;text-decoration:none;
   transition:background-color .25s var(--ntf-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntf-ease)
 }
-.ntf-filters a:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntf-filters a:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
 .ntf-filters a:active{transform:scale(.96)}
-.ntf-filters a.is-active{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
+.ntf-filters a.is-active{border-color:transparent;background:var(--primary);color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
 .ntf-filters b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
 .ntf-filters a.is-active b{background:color-mix(in srgb,var(--n-0) 18%,transparent);color:var(--n-0)}
 
@@ -83,9 +83,9 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
   font:inherit;font-size:13px;font-weight:600;text-decoration:none;cursor:pointer;
   transition:background-color .2s ease,border-color .2s ease,transform .3s var(--ntf-ease)
 }
-.ntf-btn:hover{border-color:color-mix(in srgb,var(--accent-500) 40%,var(--line))}
+.ntf-btn:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
 .ntf-btn:active{transform:scale(.95)}
-.ntf-btn.is-primary{border-color:transparent;background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:var(--n-0);box-shadow:0 4px 12px rgba(11,27,46,.14)}
+.ntf-btn.is-primary{border-color:transparent;background:var(--primary);color:var(--n-0);box-shadow:0 4px 12px rgba(11,27,46,.14)}
 .ntf-btn.is-primary:hover{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-bright) 55%,transparent),0 6px 16px rgba(11,27,46,.2)}
 .ntf-btn.is-danger{color:var(--danger)}
 .ntf-btn.is-danger:hover{border-color:color-mix(in srgb,var(--danger) 35%,var(--line));background:var(--danger-soft)}

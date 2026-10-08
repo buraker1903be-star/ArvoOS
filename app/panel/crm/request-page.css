@@ -8,7 +8,7 @@
 }
 
 /* Contract collection and cost center */
-.contract-payment-center{margin-top:18px}.contract-payment-center>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}.contract-payment-center h2{margin:6px 0 4px;color:var(--ink);font-size:20px}.contract-payment-center header p{margin:0;color:var(--muted);font-size:13px}.contract-installment-list{display:grid;gap:10px}.contract-installment-list>article{display:grid;grid-template-columns:150px 160px minmax(260px,1fr) auto;align-items:center;gap:14px;padding:14px;border:1px solid var(--ux-line);border-radius:13px;background:var(--surface-2)}.contract-installment-list>article.is-overdue{border-color:var(--danger-soft);background:var(--danger-soft)}.contract-installment-main,.contract-installment-status{display:flex;flex-direction:column;gap:4px}.contract-installment-main span,.contract-installment-status small{color:var(--muted);font-size:11px}.contract-installment-main strong{color:var(--ink);font-size:14px}.contract-installment-main small{font-size:12px;color:var(--muted)}.contract-installment-status .is-late{background:var(--danger-soft);color:var(--danger)}.contract-installment-status .is-soon{background:var(--warning-soft);color:var(--warning)}.contract-installment-status .is-paid{background:var(--success-soft);color:var(--accent-700)}.contract-payment-link-form{display:flex;gap:7px}.contract-payment-link-form input{min-width:0;flex:1;height:34px;border:1px solid var(--ux-line);border-radius:8px;padding:0 10px;background:var(--surface);font-size:13px}.contract-payment-link-form button,.contract-payment-share button{min-height:34px;font-size:11px}.contract-payment-share{display:flex;gap:6px}.contract-payment-empty{margin:0;padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.contract-payment-center{margin-top:18px}.contract-payment-center>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}.contract-payment-center h2{margin:6px 0 4px;color:var(--ink);font-size:20px}.contract-payment-center header p{margin:0;color:var(--muted);font-size:13px}.contract-installment-list{display:grid;gap:10px}.contract-installment-list>article{display:grid;grid-template-columns:150px 160px minmax(260px,1fr) auto;align-items:center;gap:14px;padding:14px;border:1px solid var(--ux-line);border-radius:13px;background:var(--surface-2)}.contract-installment-list>article.is-overdue{border-color:var(--danger-soft);background:var(--danger-soft)}.contract-installment-main,.contract-installment-status{display:flex;flex-direction:column;gap:4px}.contract-installment-main span,.contract-installment-status small{color:var(--muted);font-size:11px}.contract-installment-main strong{color:var(--ink);font-size:14px}.contract-installment-main small{font-size:12px;color:var(--muted)}.contract-installment-status .is-late{background:var(--danger-soft);color:var(--danger)}.contract-installment-status .is-soon{background:var(--warning-soft);color:var(--warning)}.contract-installment-status .is-paid{background:var(--success-soft);color:var(--primary)}.contract-payment-link-form{display:flex;gap:7px}.contract-payment-link-form input{min-width:0;flex:1;height:34px;border:1px solid var(--ux-line);border-radius:8px;padding:0 10px;background:var(--surface);font-size:13px}.contract-payment-link-form button,.contract-payment-share button{min-height:34px;font-size:11px}.contract-payment-share{display:flex;gap:6px}.contract-payment-empty{margin:0;padding:20px;text-align:center;color:var(--muted);font-size:13px}
 @media(max-width:1100px){.contract-installment-list>article{grid-template-columns:1fr 1fr}.contract-payment-link-form,.contract-payment-share{grid-column:1/-1}}
 @media(max-width:720px){.contract-payment-center>header{flex-direction:column}.contract-installment-list>article{grid-template-columns:1fr}.contract-payment-link-form,.contract-payment-share{grid-column:auto}.contract-payment-link-form{flex-direction:column}.contract-payment-share button{flex:1}}
 .crm-request-actions {
@@ -77,7 +77,7 @@
   padding: 7px 10px;
   border-radius: 8px;
   background: var(--ux-soft);
-  color: var(--accent-600);
+  color: var(--primary);
   font-size: 12px;
   font-weight: 800;
 }
@@ -161,7 +161,7 @@
 }
 .proposal-drawer-intro small {
   display: block;
-  color: var(--accent-600);
+  color: var(--primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.15em;
@@ -212,7 +212,7 @@
 }
 .proposal-live-summary > header span,
 .proposal-payment-breakdown > small {
-  color: var(--accent-600);
+  color: var(--primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -326,7 +326,7 @@
   margin-bottom: 12px;
 }
 .custom-plan-head small {
-  color: var(--accent-600);
+  color: var(--primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -790,7 +790,7 @@ html[data-theme="dark"] .crm-internal-comments {
   gap: 20px;
   padding: 20px 22px 18px;
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-500) 6%, transparent), color-mix(in srgb, var(--accent-500) 8%, transparent));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-500) 6%, transparent), color-mix(in srgb, var(--primary) 8%, transparent));
 }
 .crm-internal-comments-head h2 {
   margin: 6px 0 4px;
@@ -827,7 +827,7 @@ html[data-theme="dark"] .crm-internal-comments {
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
-  border: 1px solid color-mix(in srgb, var(--accent-500) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent);
   border-radius: 12px;
   background: var(--ic-rozet-zemin);
   color: var(--ic-rozet-yazi);
@@ -844,8 +844,8 @@ html[data-theme="dark"] .crm-internal-comments {
 }
 .crm-internal-comment-composer:focus-within {
   /* Panelin form odağıyla aynı dil (panel-premium.css): altın kenar + halka. */
-  border-color: var(--accent-500);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-500) 15%, transparent);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 .crm-internal-comment-composer label {
   display: flex;
