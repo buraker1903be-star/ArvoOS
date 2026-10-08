@@ -438,11 +438,13 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
    Gerçek <a> olduğu için klavye, orta tık ve "yeni sekmede aç"
    çalışmaya devam eder — onClick ile router.push olsaydı olmazdı.
    ============================================================ */
-.crm-page-stack .crm-data-table tbody tr{position:relative;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.crm-page-stack .crm-data-table tbody tr{position:static;cursor:default;transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease}
 /* kaplama yalnızca ilk hücredeki bağlantıya: satırda birden fazla
    crm-row-link var ve hepsi aynı yere gidiyor, üst üste bindirmeye gerek yok */
 .crm-page-stack .crm-data-table tbody td:first-child .crm-row-link{position:static}
-.crm-page-stack .crm-data-table tbody td:first-child .crm-row-link::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:0}
+/* Kaplama kaldırıldı; gerekçe kayit-detay.css'teki nottadır (Safari <tr>'yi
+   kapsayıcı blok yapmıyor, kaplama kartın tamamına yayılıyordu). */
+.crm-page-stack .crm-data-table tbody td:first-child .crm-row-link{display:flex;flex-direction:column;justify-content:center;gap:2px;border-radius:var(--r-sm)}
 
 /* Satır içindeki gerçek etkileşimli öğeler kaplamanın üstünde kalmalı,
    yoksa yorum rozeti veya işlem butonları tıklanamaz hale gelir. */

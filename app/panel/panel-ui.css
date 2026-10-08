@@ -185,38 +185,3 @@ html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"])
 .os-root .os-menu-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .os-root .os-menu-item.is-danger{color:var(--danger)}
 .os-root .os-menu-item.is-danger:hover{background:var(--danger-soft)}
-
-/* ---------- Satır tıklama katmanı: konumlanmış <tr>'ye güvenilmiyor ----------
-
-   Tablolarda tüm satırı tıklanabilir yapmak için ilk hücredeki bağlantıya bir
-   ::after kaplaması konuyordu: `tr{position:relative}` + `::after{inset:0}`.
-   Bu, <tr>'nin mutlak konumlu alt öğeler için kapsayıcı blok oluşturmasına
-   dayanıyor ve Safari bunu yapmıyor. Orada kaplama satır boyunda kalmak
-   yerine YUKARIDAKİ ilk konumlanmış ataya göre — yani pratikte kartın
-   tamamına — yayılıyordu. Sonuçlar (08.10.2026, kullanıcı bildirimi):
-
-     - kartın neresine basılsa bir kayıt açılıyordu (en alttaki satırın
-       kaplaması hepsinin üstünde kalıyor),
-     - tekerlek ve klavye liste kabına ulaşamıyordu, çünkü imleç her yerde
-       kabın dışına konumlanmış bir katmanın üstündeydi,
-     - yalnızca yapışkan tablo başlığı (z-index:1 ile kaplamanın üstünde)
-       tıklanınca kap seçiliyor ve kaydırma çalışıyordu.
-
-   Kaplama kaldırıldı. Tıklama hedefi ilk hücredeki bağlantı ve o bağlantı
-   artık hücresinin tamamını dolduruyor; satırın geri kalanına tıklamak kayıt
-   açmıyor. Satır genişliğinde tıklama bir kolaylıktı; kartın her yerinin
-   yanlışlıkla kayıt açması ve listenin hiç kaymaması ise kullanılamazlıktı.
-
-   Bu dosya en sonda yüklendiği için (panel/layout.tsx) kural diğerlerini ezer;
-   iki tablo düzeni de aynı kalıbı kullanıyordu. */
-.os-root :is(.talep-tablo,.crm-page-stack) .crm-data-table tbody tr{position:static;cursor:default}
-.os-root :is(.talep-tablo,.crm-page-stack) .crm-data-table tbody td:first-child .crm-row-link::after{content:none}
-/* Bağlantı hücresini doldursun: tıklama alanı daralmasın. Negatif kenar
-   boşlukları hücrenin kendi dolgusunu geri alıyor. */
-.os-root :is(.talep-tablo,.crm-page-stack) .crm-data-table tbody td:first-child .crm-row-link{
-  display:flex;flex-direction:column;justify-content:center;gap:2px;
-  margin:calc(var(--sp-2) * -1) calc(var(--sp-3) * -1);
-  padding:var(--sp-2) var(--sp-3);
-  min-height:var(--sp-8);
-}
-.os-root :is(.talep-tablo,.crm-page-stack) .crm-data-table tbody td:first-child .crm-row-link:hover{background:var(--surface-2);border-radius:var(--r-sm)}

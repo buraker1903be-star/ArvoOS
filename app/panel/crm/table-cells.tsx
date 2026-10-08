@@ -7,9 +7,11 @@ import { relativeTime, type LastContact } from "./last-contact";
 // Talepler, Teklifler ve Sözleşmeler tabloları aynı hücreleri kullanır;
 // böylece üç tabloda sütunlar aynı sırada ve aynı biçimde görünür:
 // No · Müşteri · Hizmet türü · Temsilci · [Tutar] · Durum · Tarih · Son temas.
-// Satırın tamamı ilk hücredeki bağlantıyla tıklanır (kayit-detay.css). Hücre
-// içindeki başka bir bağlantı (müşteri adı) kaplamanın üstünde kalır ve
-// kendi sayfasına gider.
+// Kayıt, ilk hücredeki bağlantıyla açılır; o bağlantı hücresini doldurur.
+// Eskiden satırın tamamını kaplayan görünmez bir ::after vardı ama Safari
+// <tr>'yi kapsayıcı blok yapmadığı için kaplama kartın tamamına yayılıyor,
+// boş bir yere tıklamak alakasız bir kayıt açıyor ve liste hiç kaymıyordu
+// (08.10.2026). Gerekçe kayit-detay.css'teki notta.
 
 export function CustomerCell({
   name,

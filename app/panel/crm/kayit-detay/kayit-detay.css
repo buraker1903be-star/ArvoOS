@@ -363,9 +363,32 @@
   yalnızca numara hücresi tıklanıyordu. Aynı yöntem: ilk hücredeki gerçek
   <a> bir ::after ile satırı kaplar (klavye, orta tık, yeni sekme çalışır).
 */
-.os-root .talep-tablo .crm-data-table tbody tr{position:relative;cursor:pointer}
-.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link{position:static;color:inherit;text-decoration:none}
-.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link::after{content:"";position:absolute;inset:0;z-index:0}
+/*
+  SATIR TIKLAMA KATMANI KALDIRILDI.
+
+  Tüm satırı tıklanabilir yapmak için ilk hücredeki bağlantıya bir ::after
+  kaplaması konuyordu: tr{position:relative} + ::after{inset:0}. Bu, <tr>'nin
+  mutlak konumlu alt öğeler için kapsayıcı blok oluşturmasına dayanıyor ve
+  Safari bunu yapmıyor: kaplama satır boyunda kalmıyor, yukarıdaki ilk
+  konumlanmış ataya — pratikte kartın tamamına — yayılıyor.
+
+  Sonuç (08.10.2026, kullanıcı bildirimi): kartın neresine basılsa alakasız
+  bir kayıt açılıyor, tekerlek ve klavye liste kabına hiç ulaşamıyordu
+  (imleç her yerde kabın dışına konumlanmış bir katmanın üstünde), yalnızca
+  yapışkan tablo başlığına tıklandıktan sonra kaydırma çalışıyordu.
+
+  Tıklama hedefi artık ilk hücredeki bağlantı ve o bağlantı hücresini
+  dolduruyor. Satır genişliğinde tıklama bir kolaylıktı; kartın her yerinin
+  yanlışlıkla kayıt açması ve listenin kaymaması kullanılamazlıktı.
+*/
+.os-root .talep-tablo .crm-data-table tbody tr{position:static;cursor:default}
+.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link{
+  display:flex;flex-direction:column;justify-content:center;gap:2px;
+  margin:calc(var(--sp-2) * -1) calc(var(--sp-3) * -1);
+  padding:var(--sp-2) var(--sp-3);
+  color:inherit;text-decoration:none;border-radius:var(--r-sm);
+}
+.os-root .talep-tablo .crm-data-table tbody td:first-child .crm-row-link:hover{background:var(--surface-2)}
 .os-root .talep-tablo .crm-data-table tbody td :is(a:not(.crm-row-link),button,select,input,summary,details,form){position:relative;z-index:1}
 .os-root .talep-tablo .crm-data-table tbody tr:focus-within td{background:var(--surface-2)}
 /* Eski tablo kuralı 920px en az genişlik veriyordu; kartın içinde tablo
