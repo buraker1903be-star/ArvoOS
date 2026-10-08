@@ -76,6 +76,12 @@ export type CustomerHistoryResult = {
    * düzeliyor; en yenisi doğru kabul ediliyor.
    */
   kunye: CustomerKunye | null;
+  /**
+   * Müşteri sayfası (/panel/crm/musteri/[id]) için müşterinin bir talebi:
+   * açabildiği kayıtlardan en yenisinin talebi, telefonla eşleşen öncelikli.
+   * Adreste telefon ya da ad yazmasın diye talep kimliği kullanılıyor.
+   */
+  musteriSayfasiTalepId: string | null;
 };
 
 export type CustomerKunye = {
@@ -169,7 +175,7 @@ export function isMissingRpc(error: { code?: string; message?: string } | null |
 /* Ortak özetleme                                                            */
 /* ------------------------------------------------------------------------ */
 
-type Dated = CustomerHistoryItem & { at: string; cents: number; currency: string; rawStatus: string };
+type Dated = CustomerHistoryItem & { at: string; cents: number; currency: string; rawStatus: string; opportunityId?: string | null };
 
 const timeOf = (iso: string) => {
   const time = Date.parse(iso);
@@ -183,6 +189,7 @@ function publicItem(dated: Dated): CustomerHistoryItem {
   delete item.cents;
   delete item.currency;
   delete item.rawStatus;
+  delete item.opportunityId;
   return item as CustomerHistoryItem;
 }
 
@@ -220,6 +227,7 @@ function summarize(
     limited: items.length > options.maxItems,
     scopedToAssigned: options.scopedToAssigned,
     kunye: options.kunye ?? null,
+    musteriSayfasiTalepId: (items.find((item) => item.canOpen && item.opportunityId && item.match !== "name") ?? items.find((item) => item.canOpen && item.opportunityId))?.opportunityId ?? null,
   };
 }
 
@@ -326,6 +334,7 @@ function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean): Dated {
     cents,
     currency,
     rawStatus: status,
+    opportunityId: row.opportunity_id,
   };
   switch (row.kind) {
     case "proposal": {
@@ -633,6 +642,7 @@ async function findCustomerHistoryViaRls(
       cents,
       currency,
       rawStatus: proposal.status,
+      opportunityId: proposal.opportunity_id,
     });
   }
 
@@ -663,6 +673,7 @@ async function findCustomerHistoryViaRls(
       cents,
       currency,
       rawStatus: contract.status,
+      opportunityId: contract.opportunity_id,
     });
   }
 
@@ -693,6 +704,7 @@ async function findCustomerHistoryViaRls(
       cents: 0,
       currency: "TRY",
       rawStatus: row.status,
+      opportunityId,
     });
   }
 
@@ -721,6 +733,7 @@ async function findCustomerHistoryViaRls(
       cents: 0,
       currency: "TRY",
       rawStatus: row.stage,
+      opportunityId: row.id,
     });
   }
 

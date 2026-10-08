@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -400,6 +401,7 @@ function CustomerLookupDialog({ canCreate, onClose, initialQuery = "" }: { canCr
         canCreate={canCreate}
         onRetry={() => loadDetail(selected)}
         onNewRequest={() => startNewRequest(selected)}
+        onOpenPage={() => onClose()}
       />
     );
   } else if (!parsed) {
@@ -592,12 +594,15 @@ function CustomerDetail({
   canCreate,
   onRetry,
   onNewRequest,
+  onOpenPage,
 }: {
   customer: CustomerLookupSummary;
   detail: CustomerLookupHistoryResponse | null;
   canCreate: boolean;
   onRetry: () => void;
   onNewRequest: () => void;
+  /** Müşteri sayfasına geçerken pencere kapanır (pencere yerleşimde kalıcı). */
+  onOpenPage: () => void;
 }) {
   const result = detail?.ok ? detail.result : null;
   const countLine = result ? historyCountLine(result) : "";
@@ -627,11 +632,19 @@ function CustomerDetail({
           </p>
           {customer.reps.length ? <p className="crm-lookup-reps">Temsilci: {customer.reps.join(", ")}</p> : null}
         </div>
-        {canCreate ? (
-          <button className="panel-primary crm-lookup-new" type="button" onClick={onNewRequest}>
-            + Bu müşteri için yeni talep
-          </button>
-        ) : null}
+        <div className="crm-lookup-eylem">
+          {/* Müşterinin bütün kayıtları tek sayfada; pencere bir özet. */}
+          {result?.musteriSayfasiTalepId ? (
+            <Link className="panel-secondary" href={`/panel/crm/musteri/${result.musteriSayfasiTalepId}`} onClick={onOpenPage}>
+              Müşteri sayfasını aç
+            </Link>
+          ) : null}
+          {canCreate ? (
+            <button className="panel-primary crm-lookup-new" type="button" onClick={onNewRequest}>
+              + Bu müşteri için yeni talep
+            </button>
+          ) : null}
+        </div>
       </section>
 
       {/*
