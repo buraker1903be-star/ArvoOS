@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   aliciListesi,
   base64UrlKodla,
+  baslikDegeri,
   baslikKodla,
   yanitAlicisi,
   yanitKonusu,
@@ -149,7 +150,6 @@ test("yeni postada Re: ve zincir başlığı yok", () => {
   için zararsızdı — açık yalnızca ASCII konularda vardı. Testler de bu
   yüzden iki dili ayrı ayrı deniyor.
 */
-import { baslikDegeri, yeniMesajiKur } from "@/lib/posta-gonderim";
 
 /*
   SATIR AYIRACI YALNIZCA "\r\n" DEĞİL. İlk sürümde bu yardımcı yalnızca

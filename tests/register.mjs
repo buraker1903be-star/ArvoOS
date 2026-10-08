@@ -14,7 +14,10 @@ import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve as resolvePath } from "node:path";
 
-const projectRoot = dirname(fileURLToPath(import.meta.url)).replace(/\/tests$/, "");
+// Eskiden kök `/tests` soneki silinerek bulunuyordu; Windows'ta yol `\tests`
+// ile bittiği için silinmiyor, "@/lib/…" tests\lib altında aranıyor ve
+// takma ad kullanan her test "Cannot find package '@/lib'" ile düşüyordu.
+const projectRoot = resolvePath(dirname(fileURLToPath(import.meta.url)), "..");
 const EXTENSIONS = [".ts", ".tsx", ".mjs", ".js", "/index.ts", "/index.tsx"];
 
 function firstExisting(basePath) {
