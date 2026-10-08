@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { istanbulMidnight, istanbulMonthStart, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulMidnight, istanbulMonthStart, istanbulTime, istanbulTimestamp, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 
 test("gece 00:00–03:00 arası tarih bir gün geri kaymaz", () => {
   // Gerileme: sunucu UTC'de çalıştığı için ayın 1'inde gece girilen tahsilat
@@ -48,4 +48,19 @@ test("ay başı Türkiye gece yarısıdır, UTC gece yarısı değil", () => {
 test("ay başı yıl sınırını doğru geçer", () => {
   const ocakGecesi = new Date("2026-12-31T21:30:00Z"); // = 2027-01-01 00:30 +03
   assert.equal(istanbulMonthStart(ocakGecesi).toISOString(), "2026-12-31T21:00:00.000Z");
+});
+
+test("randevu saati Türkiye saatiyle kaydedilir ve gösterilir", () => {
+  /*
+    Gerileme: randevu kaydı saati sunucunun yerel saatiyle çeviriyordu; UTC'de
+    çalışan sunucuda 14:00 randevusu 3 saat kaymış kaydediliyordu.
+  */
+  assert.equal(istanbulTimestamp("2026-10-08", "14:00")?.toISOString(), "2026-10-08T11:00:00.000Z");
+  assert.equal(istanbulTimestamp("2026-10-08", "01:30")?.toISOString(), "2026-10-07T22:30:00.000Z", "gece randevusu önceki UTC gününe düşer");
+  assert.equal(istanbulTime(new Date("2026-10-08T11:00:00Z")), "14:00");
+  assert.equal(istanbulTime(new Date("2026-10-07T22:30:00Z")), "01:30");
+  assert.equal(todayInIstanbul(new Date("2026-10-07T22:30:00Z")), "2026-10-08", "gece randevusu Türkiye gününe yazılır");
+  assert.equal(istanbulTimestamp("2026-10-08", ""), null);
+  assert.equal(istanbulTimestamp("08.10.2026", "14:00"), null);
+  assert.equal(istanbulTimestamp("2026-13-40", "14:00"), null);
 });

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { istanbulTimestamp } from "@/lib/istanbul-date";
 
 
 async function resolveContext() {
@@ -17,12 +18,13 @@ async function resolveContext() {
   return { supabase, organizationId: membership.organization_id, isManager, ownEmployeeId: ownEmployee?.id ?? null, userId };
 }
 
+// Girilen saat Türkiye saatidir. Eskiden new Date("…T14:00:00") sunucunun
+// yerel saatini sayıyordu; UTC'deki sunucuda randevu 3 saat kaymış kaydoluyordu.
 function toTimestamp(dateValue: string, timeValue: string) {
   if (!dateValue) throw new Error("Randevu tarihi zorunludur.");
-  const time = timeValue || "09:00";
-  const iso = new Date(`${dateValue}T${time}:00`);
-  if (Number.isNaN(iso.getTime())) throw new Error("Geçerli bir tarih/saat girin.");
-  return iso.toISOString();
+  const an = istanbulTimestamp(dateValue, timeValue || "09:00");
+  if (!an) throw new Error("Geçerli bir tarih/saat girin.");
+  return an.toISOString();
 }
 
 async function createAppointment__impl(formData: FormData) {

@@ -1,6 +1,6 @@
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulTime, todayInIstanbul } from "@/lib/istanbul-date";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { AppointmentForm } from "./appointment-form";
@@ -35,7 +35,10 @@ type Appointment = {
   status: string;
 };
 
-const saat = (iso: string) => new Date(iso).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+// Saat ve gün Türkiye saatiyle: sunucu UTC'de; eskiden 14:00 randevusu 11:00
+// görünüyor, gece 00–03 arası randevular bir önceki günün hücresine düşüyordu.
+const saat = (iso: string) => istanbulTime(new Date(iso));
+const randevuGunu = (iso: string) => todayInIstanbul(new Date(iso));
 
 function RandevuSatiri({ randevu, temsilci }: { randevu: Appointment; temsilci?: string }) {
   return (
@@ -101,14 +104,14 @@ export default async function CrmCalendarPage({ searchParams }: { searchParams: 
 
   const gunune = new Map<string, Appointment[]>();
   for (const r of randevular) {
-    const anahtar = gunAnahtari(new Date(r.starts_at));
+    const anahtar = randevuGunu(r.starts_at);
     gunune.set(anahtar, [...(gunune.get(anahtar) ?? []), r]);
   }
   const izgaraMaddeleri = new Map<string, TakvimMaddesi[]>(
     [...gunune.entries()].map(([gun, liste]) => [gun, liste.map((r) => ({ anahtar: r.id, etiket: `${saat(r.starts_at)} ${r.title}`, ton: r.status === "cancelled" || r.status === "done" ? "done" : undefined }))]),
   );
   const buAy = ayAnahtari(ay);
-  const buAyRandevu = randevular.filter((r) => gunAnahtari(new Date(r.starts_at)).startsWith(buAy)).length;
+  const buAyRandevu = randevular.filter((r) => randevuGunu(r.starts_at).startsWith(buAy)).length;
   const bugunRandevu = (gunune.get(bugun) ?? []).filter((r) => r.status === "planned").length;
 
   const adres = (ek: Record<string, string>) => {

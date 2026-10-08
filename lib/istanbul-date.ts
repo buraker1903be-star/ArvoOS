@@ -35,3 +35,20 @@ export function istanbulMonthStart(date: Date = new Date()) {
   const [year, month] = todayInIstanbul(date).split("-");
   return istanbulMidnight(`${year}-${month}-01`);
 }
+
+/*
+  Formdan gelen Türkiye tarih ve saatini ("2026-10-08", "14:00") UTC anına
+  çevirir; geçersizse null. Eskiden randevu kaydı new Date("…T14:00:00")
+  yazıyordu: dilim belirtilmeyince sunucunun yerel saati sayılıyor ve UTC'de
+  çalışan sunucuda 14:00 randevusu 17:00 (Türkiye) olarak kaydediliyordu.
+*/
+export function istanbulTimestamp(dateKey: string, time: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const an = new Date(`${dateKey}T${time}:00+03:00`);
+  return Number.isNaN(an.getTime()) ? null : an;
+}
+
+// Bir anın Türkiye saatiyle "14:00" gösterimi (sunucu UTC'de olsa da).
+export function istanbulTime(date: Date) {
+  return new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
+}
