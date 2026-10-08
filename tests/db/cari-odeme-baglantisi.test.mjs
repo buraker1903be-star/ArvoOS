@@ -1,16 +1,10 @@
 // Cari ödeme bağlantısı (20261008141602): müşterinin söylediği tutarla açılan
 // PayTR bağlantısı ödendiğinde tutar o cariye tahsilat olarak işlenir.
 //
-// Migration anlık görüntüden yeni olduğu için burada AYRICA uygulanıyor.
-// Görüntü yenilendiğinde bu satırı kaldırın (lisans-tahsilat.test.mjs'teki
-// uyarı: eski bir kısıt migration'ını yeniden uygulamak güncel kısıtı ezer).
-import fs from "node:fs";
-import path from "node:path";
+// Migration anlık görüntüde (08.10.2026); testler onu canlı şemayla sınıyor.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
-
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261008141602_cari_odeme_baglantisi.sql");
 
 const SAHIP = "00000000-0000-4000-8000-000000000002";
 const KURUM = "00000000-0000-4000-8000-0000000000b1";
@@ -21,7 +15,6 @@ const BAGLANTI = "00000000-0000-4000-8000-0000000000d1";
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 
 const tek = async (sql, p = []) => (await db.query(sql, p)).rows[0];
