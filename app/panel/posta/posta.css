@@ -71,8 +71,11 @@
 .os-root .posta-sil:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
 
 /* ---------- Konuşma ekranı: solda yazışma, sağda durum ---------- */
-.posta-izgara{grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)}
-@media (max-width:1100px){.posta-izgara{grid-template-columns:minmax(0,1fr)}}
+/* .os-root ile: .talep-izgara'nın varsayılanı üç sütun (kayit-detay.css)
+   ve aynı özgüllükteki kural dosya sırasına yenik düşüyor — konuşma
+   ekranı sessizce üç sütuna düşerdi. */
+.os-root .talep-izgara.posta-izgara{grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)}
+@media (max-width:1100px){.os-root .talep-izgara.posta-izgara{grid-template-columns:minmax(0,1fr)}}
 .os-root .posta-akis{display:flex;flex-direction:column;gap:var(--sp-3)}
 .os-root .posta-yan{display:flex;flex-direction:column;gap:var(--sp-4)}
 .os-root .posta-yan h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}

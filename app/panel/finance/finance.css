@@ -288,8 +288,8 @@ a.fin-entity:hover b{color:var(--accent)}
 /* ---------- İş maliyeti detayı: panel kalıbı ----------
    Form ve hareketler yan yana; eskiden alt alta iki tam genişlik kartıydı
    ve ekran gereksiz uzuyordu. Dar ekranda tek sütuna düşer. */
-.maliyet-izgara{grid-template-columns:minmax(320px,.8fr) minmax(0,1.6fr)}
-@media (max-width:1100px){.maliyet-izgara{grid-template-columns:minmax(0,1fr)}}
+.os-root .talep-izgara.maliyet-izgara{grid-template-columns:minmax(320px,.8fr) minmax(0,1.6fr)}
+@media (max-width:1100px){.os-root .talep-izgara.maliyet-izgara{grid-template-columns:minmax(0,1fr)}}
 .os-root .maliyet-izgara>.talep-bilgi h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold)}
 .os-root .talep-not{margin:2px 0 var(--sp-3);color:var(--muted);font-size:var(--fs-sm)}
 
@@ -303,6 +303,13 @@ a.fin-entity:hover b{color:var(--accent)}
 /* Sorumlular: iki satırlık bilgi için tam bölüm ayırmak ekranı uzatıyordu. */
 .os-root .maliyet-sorumlular{display:flex;flex-wrap:wrap;gap:var(--sp-5)}
 
-/* Maliyet listesinin yan paneli yok: özet zaten üstteki şeritte. Tek
-   sütun — iki sütunlu ızgara ekranın sağ yarısını boş bırakıyordu. */
-.maliyet-liste-izgara{grid-template-columns:minmax(0,1fr)}
+/*
+  Maliyet listesinin yan paneli yok: özet zaten üstteki şeritte. Tek sütun
+  — iki sütunlu ızgara ekranın sağ yarısını boş bırakıyordu.
+
+  Seçici .os-root ile başlıyor çünkü .talep-izgara'nın varsayılanı ÜÇ
+  sütun (kayit-detay.css) ve aynı özgüllükte yazılan kural dosya sırasına
+  yenik düşüyordu: kart üç sütunun ilkine oturup ekranın dörtte birine
+  sıkışıyordu.
+*/
+.os-root .talep-izgara.maliyet-liste-izgara{grid-template-columns:minmax(0,1fr)}
