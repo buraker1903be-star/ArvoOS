@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
-import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
-import { formatSubject, initials } from "@/lib/table-format";
-import { daysSince, fetchLastContacts, relativeTime } from "./last-contact";
+import { phoneSearchTerms } from "@/lib/format-phone";
+import { fetchLastContacts } from "./last-contact";
+import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "./table-cells";
 import { OtomatikSecim } from "./otomatik-secim";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
@@ -18,8 +18,8 @@ import "./kayit-detay/kayit-detay.css";
 /*
   TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
   "Müşteri sorgula" ve "Yeni talep"; altında aşama şeridi (her sayı o
-  aşamaya süzer); iki eşit kart: solda talepler, sağda takip bekleyenler
-  (birkaç gündür not girilmemiş aktif talepler).
+  aşamaya süzer); solda talep tablosu, sağda istatistikler (son 30 gün,
+  dönüşüm, hizmet türü ve kaynak dağılımı).
 
   Eskiden dört sayaç kutusu, ayrı bir süzgeç kartı ("Filtrele" /
   "Temizle") ve sekiz sütunlu tablo alt alta duruyordu. Süzgeç artık
@@ -67,23 +67,34 @@ const ASAMALAR = [
   { kod: "proposal", ad: "Teklife devredildi" },
   { kod: "lost", ad: "Arşivlendi" },
 ] as const;
-/** Satırın alt yazısı; boşlar atlanır, aynı metin (büyük/küçük harf farkıyla) bir kez yazılır. */
-function altSatir(...parcalar: (string | null | undefined)[]) {
-  const goruldu = new Set<string>();
-  const sonuc: string[] = [];
-  for (const parca of parcalar) {
-    const metin = parca?.trim();
-    const anahtar = metin?.toLocaleLowerCase("tr");
-    if (!metin || !anahtar || goruldu.has(anahtar)) continue;
-    goruldu.add(anahtar);
-    sonuc.push(metin);
-  }
-  return sonuc.join(" · ");
+/** Teklife ya da ötesine geçmiş talepler: dönüşüm oranının payı. */
+const ILERLEYEN = new Set(["proposal", "contract", "won"]);
+/*
+  Kaynak adları: veritabanında serbest yazılmış ("INSTAGRAM", "WEB SİTESİ",
+  aktarımdan gelen "arvocore_migration"). Küçük harfe indirip bilinenleri
+  adlandırıyoruz; bilinmeyen değerin yalnızca ilk harfi büyük.
+*/
+const KAYNAK_ADLARI: Record<string, string> = { website: "Web sitesi", site: "Web sitesi", "web sitesi": "Web sitesi", manual: "Elle giriş", panel: "Elle giriş", whatsapp: "WhatsApp", instagram: "Instagram", phone: "Telefon", telefon: "Telefon", email: "E-posta", "e-posta": "E-posta", referral: "Tavsiye", tavsiye: "Tavsiye", arvocore_migration: "Eski sistemden aktarım" };
+function kaynakAdi(kaynak: string | null) {
+  const anahtar = (kaynak ?? "").trim().toLocaleLowerCase("tr");
+  if (!anahtar) return "Belirtilmedi";
+  return KAYNAK_ADLARI[anahtar] ?? anahtar.charAt(0).toLocaleUpperCase("tr") + anahtar.slice(1);
 }
-/** Son nottan bu yana bu kadar gün geçen aktif talep "takip bekleyen" sayılır. */
-const TAKIP_GUN = 3;
-const teslim = (value: string | null) =>
-  value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : null;
+/** Kayıt bugünden kaç gün önce açıldı (saat bileşen gövdesinde okunmaz). */
+function gunOnce(deger: string) {
+  return Math.max(0, Math.floor((Date.now() - Date.parse(deger)) / 86_400_000));
+}
+/** Kayıt [enAz, enCok) gün önce mi açıldı. */
+function gunAraliginda(deger: string, enAz: number, enCok: number) {
+  const gun = gunOnce(deger);
+  return gun >= enAz && gun < enCok;
+}
+/** En sık geçen değerler ve sayıları, çoktan aza. */
+function enCok(degerler: string[], adet: number): [string, number][] {
+  const sayac = new Map<string, number>();
+  for (const deger of degerler) sayac.set(deger, (sayac.get(deger) ?? 0) + 1);
+  return [...sayac.entries()].sort((x, y) => y[1] - x[1]).slice(0, adet);
+}
 const clean = (v?: string) => (v ?? "").trim().slice(0, 100);
 const active = new Set(["lead", "qualified"]);
 export default async function RequestsPage({
@@ -197,23 +208,23 @@ export default async function RequestsPage({
     const s = q.toString();
     return s ? `/panel/crm?${s}` : "/panel/crm";
   };
-  // Temsilci dağılımı aktif talepler (yeni + inceleniyor) üzerinden.
   const aktifler = all.filter((item) => active.has(item.stage));
   const atanmamis = aktifler.filter((item) => !item.assigned_employee_id).length;
   /*
-    Takip bekleyen: aktif talepte son not TAKIP_GUN günden eski ya da hiç
-    not yoksa talep TAKIP_GUN günden uzun süredir açık. En uzun bekleyen üstte.
-    Temsilci süzgecine uyar (seçili temsilcinin unuttukları), arama ve
-    durum süzgecine uymaz: kart her zaman aktif talepleri kapsar.
+    İSTATİSTİKLER (sağ kart). Eskiden burada temsilcilere göre dağılım
+    vardı; temsilci süzgeci listenin üstünde. Sayılar tüm kayıtlardan
+    (sınırsız sorgu), süzgeçten bağımsız: kart kurumun genel tablosu.
   */
-  const takipBekleyen = aktifler
-    .filter((item) => !selectedRepresentative || (selectedRepresentative === "atanmamis" ? !item.assigned_employee_id : item.assigned_employee_id === selectedRepresentative))
-    .map((item) => {
-      const temas = lastContacts.get(item.id);
-      return { item, notVar: Boolean(temas), gun: daysSince(temas?.at ?? item.created_at) ?? 0 };
-    })
-    .filter((satir) => satir.gun >= TAKIP_GUN)
-    .sort((a, b) => b.gun - a.gun);
+  const son30 = all.filter((item) => gunAraliginda(item.created_at, 0, 30)).length;
+  const onceki30 = all.filter((item) => gunAraliginda(item.created_at, 30, 60)).length;
+  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const ilerleyen = all.filter((item) => ILERLEYEN.has(item.stage)).length;
+  const kaybedilen = counts("lost");
+  const donusum = ilerleyen + kaybedilen ? Math.round((ilerleyen / (ilerleyen + kaybedilen)) * 100) : null;
+  const notsuz = aktifler.filter((item) => !lastContacts.get(item.id)).length;
+  const ortalamaYas = aktifler.length ? Math.round(aktifler.reduce((s, item) => s + gunOnce(item.created_at), 0) / aktifler.length) : 0;
+  const hizmetler = enCok(all.map((item) => item.request_details?.service_type?.trim() || "Belirtilmedi"), 5);
+  const kaynaklar = enCok(all.map((item) => kaynakAdi(item.source)), 4);
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
@@ -260,7 +271,7 @@ export default async function RequestsPage({
         </dl>
       </nav>
 
-      <div className="talep-izgara personel-iki ekip-izgara esit">
+      <div className="talep-izgara personel-iki ekip-izgara">
         <section className="panel-card talep-bilgi" aria-label="Talep listesi">
           {/* Süzgeç tek satır: arama kutusu Enter ile gönderilir, durum
               ve temsilci seçimi gizli alanlarla korunur. */}
@@ -284,41 +295,57 @@ export default async function RequestsPage({
           </div>
 
           {rows.length ? (
-            <ul className="ekip-liste">
-              {rows.map((item) => {
-                const d = item.request_details ?? {};
-                const ownerName = item.assigned_employee_id
-                  ? formatPersonName(representativeMap.get(item.assigned_employee_id) ?? "Pasif personel")
-                  : null;
-                const musteri = formatPersonName(item.customer_name) || "—";
-                const temas = lastContacts.get(item.id);
-                const tarih = teslim(item.expected_close_date);
-                return (
-                  <li key={item.id}>
-                    <Link href={`/panel/crm/requests/${item.id}`}>
-                      <span className="talep-avatar" aria-hidden="true">{initials(musteri)}</span>
-                      <span className="cari-hareket-metin">
-                        <b>{musteri}</b>
-                        {/* Konu çoğu kayıtta hizmet türüyle aynı ("ANSYS Analiz · ANSYS Analiz"); aynıysa bir kez. */}
-                        <small>{altSatir(formatSubject(item.title), d.service_type, formatPhone(item.contact_phone))}</small>
-                      </span>
-                      <span className="talep-satir-yan">
-                        <span className={ownerName ? undefined : "is-bos"}>{ownerName ?? "Atanmamış"}</span>
-                        <small title={temas?.preview}>{temas ? `Not ${relativeTime(temas.at)}` : "Not yok"}{tarih ? ` · teslim ${tarih}` : ""}</small>
-                      </span>
-                      <span className="talep-satir-durum">
-                        <span className="status-pill" data-tone={statusTone(item.stage)}>{requestStageNames[item.stage] ?? item.stage}</span>
-                        {/* Arşiv sebebi listede de görünüyor: hepsi aynı
-                            rozeti taşıyor, neden kapandığını görmek için tek
-                            tek kayıt açmak gerekiyordu. */}
-                        {item.stage === "lost" && item.lost_reason ? <small title={item.lost_reason}>{item.lost_reason}</small> : null}
-                      </span>
-                      <span className="ekip-ok" aria-hidden="true">›</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            /* Tablo, önceki sürümdeki gibi başlıklı sütunlar: satırlar
+               sütun sütun taranabiliyor. Satırın tamamı ilk hücredeki
+               bağlantıyla tıklanır (panel-premium.css). */
+            <div className="talep-tablo">
+              <table className="crm-data-table" data-cols="requests">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Müşteri</th>
+                    <th>Konu</th>
+                    <th className="crm-col-rep">Temsilci</th>
+                    <th>Durum</th>
+                    <th className="crm-col-date">Teslim</th>
+                    <th className="crm-col-contact">Son temas</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((item) => {
+                    const d = item.request_details ?? {};
+                    const ownerName = item.assigned_employee_id
+                      ? (representativeMap.get(item.assigned_employee_id) ?? "Pasif personel")
+                      : null;
+                    return (
+                      <tr key={item.id}>
+                        <td className="crm-table-mono" data-label="No">
+                          <Link className="crm-row-link" href={`/panel/crm/requests/${item.id}`} aria-label={`${formatPersonName(item.customer_name)} talebini aç`}>
+                            TLP-{item.id.slice(0, 8).toUpperCase()}
+                          </Link>
+                        </td>
+                        <CustomerCell name={item.customer_name} phone={item.contact_phone} email={item.contact_email} />
+                        <SubjectCell title={item.title} service={d.service_type} />
+                        <RepresentativeCell name={ownerName} />
+                        <td data-label="Durum">
+                          <span className="status-pill" data-tone={statusTone(item.stage)}>{requestStageNames[item.stage] ?? item.stage}</span>
+                          {/* Arşiv sebebi listede de görünüyor: hepsi aynı
+                              rozeti taşıyor, neden kapandığını görmek için tek
+                              tek kayıt açmak gerekiyordu. */}
+                          {item.stage === "lost" && item.lost_reason ? (
+                            <small className="crm-liste-sebep" title={item.lost_reason}>{item.lost_reason}</small>
+                          ) : null}
+                        </td>
+                        <DateCell label="Teslim" value={item.expected_close_date} />
+                        <LastContactCell contact={lastContacts.get(item.id)} />
+                        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : all.length === 0 ? (
             // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine
             // sürecin nereden başladığı anlatılır.
@@ -349,43 +376,59 @@ export default async function RequestsPage({
           )}
         </section>
 
-        {/*
-          TAKİP BEKLEYENLER. Eskiden burada temsilcilere göre dağılım vardı;
-          temsilci süzgeci listenin üstüne taşındı. Bu ekranın asıl sorusu
-          "hangi talep unutuluyor": 3 günden uzun süredir not girilmemiş
-          (ya da hiç not girilmemiş) aktif talepler, en eskisi üstte.
-        */}
-        <section className="panel-card talep-musteri" aria-label="Takip bekleyen talepler">
+        <section className="panel-card talep-musteri talep-istatistik" aria-label="İstatistikler">
           <div className="cari-baslik">
-            <h2>Takip bekleyenler</h2>
-            <small>{takipBekleyen.length ? `${takipBekleyen.length} talep · ${TAKIP_GUN}+ gündür not yok` : `${TAKIP_GUN} gün kuralı`}</small>
+            <h2>İstatistikler</h2>
+            <small>tüm kayıtlar</small>
           </div>
-          {takipBekleyen.length ? (
-            <ul className="ekip-liste">
-              {takipBekleyen.map(({ item, gun, notVar }) => {
-                const musteri = formatPersonName(item.customer_name) || "—";
-                const sahibi = item.assigned_employee_id ? formatPersonName(representativeMap.get(item.assigned_employee_id) ?? "Pasif personel") : "Atanmamış";
-                return (
-                  <li key={item.id}>
-                    <Link href={`/panel/crm/requests/${item.id}`}>
-                      <span className="talep-avatar" aria-hidden="true">{initials(musteri)}</span>
-                      <span className="cari-hareket-metin">
-                        <b>{musteri}</b>
-                        <small>{altSatir(sahibi, requestStageNames[item.stage] ?? item.stage, formatPhone(item.contact_phone))}</small>
-                      </span>
-                      <span className="takip-satir-yas">
-                        <b>{gun} gün</b>
-                        {notVar ? "son nottan beri" : "açık, hiç not yok"}
-                      </span>
-                      <span className="ekip-ok" aria-hidden="true">›</span>
-                    </Link>
-                  </li>
-                );
-              })}
+          <dl className="istat-kutular">
+            <div>
+              <dt>Son 30 gün</dt>
+              <dd>{son30}</dd>
+              <small className={degisim === null ? undefined : degisim >= 0 ? "cari-arti" : "talep-uyari"}>
+                {degisim === null ? "yeni talep" : `önceki 30 güne göre ${degisim >= 0 ? "+" : ""}%${degisim}`}
+              </small>
+            </div>
+            <div>
+              <dt>Teklife dönüşüm</dt>
+              <dd>{donusum === null ? "—" : `%${donusum}`}</dd>
+              <small>{ilerleyen} ilerledi · {kaybedilen} arşiv</small>
+            </div>
+            <div>
+              <dt>Aktif taleplerin yaşı</dt>
+              <dd>{ortalamaYas} gün</dd>
+              <small>ortalama · {aktifler.length} aktif</small>
+            </div>
+            <div>
+              <dt>Notsuz aktif talep</dt>
+              <dd className={notsuz ? "talep-uyari" : undefined}>{notsuz}</dd>
+              <small>hiç not girilmemiş</small>
+            </div>
+          </dl>
+          <div className="talep-not">
+            <h3>Hizmet türüne göre</h3>
+            <ul className="istat-cubuklar">
+              {hizmetler.map(([ad, adet]) => (
+                <li key={ad}>
+                  <span>{ad}</span>
+                  <i aria-hidden="true"><b style={{ width: `${Math.max(4, Math.round((adet / (hizmetler[0]?.[1] || 1)) * 100))}%` }} /></i>
+                  <strong>{adet}</strong>
+                </li>
+              ))}
             </ul>
-          ) : (
-            <p className="ic-akis-bos">Bütün aktif taleplere son {TAKIP_GUN} gün içinde not girilmiş.</p>
-          )}
+          </div>
+          <div className="talep-not">
+            <h3>Kaynağa göre</h3>
+            <ul className="istat-cubuklar">
+              {kaynaklar.map(([ad, adet]) => (
+                <li key={ad}>
+                  <span>{ad}</span>
+                  <i aria-hidden="true"><b style={{ width: `${Math.max(4, Math.round((adet / (kaynaklar[0]?.[1] || 1)) * 100))}%` }} /></i>
+                  <strong>{adet}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       </div>
     </main>

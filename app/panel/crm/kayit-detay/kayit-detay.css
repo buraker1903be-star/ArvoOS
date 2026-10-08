@@ -293,12 +293,27 @@
 .os-root :is(.ekip-liste a,.cari-hareketler li>a){font-weight:400}
 .os-root .talep-satir-yan>span{font-weight:var(--fw-medium)}
 
-/* Talepler: iki eşit kart (liste ve takip bekleyenler). */
-.talep-izgara.ekip-izgara.esit{grid-template-columns:repeat(2,minmax(0,1fr))}
 .talep-temsilci-sec{flex:none;height:34px;max-width:180px;padding:0 var(--sp-3);border:1px solid var(--n-300);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
-.takip-satir-yas{flex:none;text-align:right;font-size:var(--fs-micro);color:var(--muted)}
-.takip-satir-yas b{display:block;font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--warning)}
-@media (max-width:1200px){.talep-izgara.ekip-izgara.esit{grid-template-columns:minmax(0,1fr)}}
 .talep-ara--secimli{display:flex;gap:var(--sp-2);flex:0 1 460px}
 .talep-ara--secimli input{flex:1;min-width:0}
 @media (max-width:760px){.talep-ara--secimli{flex-wrap:wrap}.talep-temsilci-sec{max-width:none;flex:1 1 100%}}
+
+/* Talepler: kartın içindeki tablo (önceki sürümün sütunları) ve istatistik kartı. */
+.talep-tablo{margin:0 calc(var(--sp-5) * -1) calc(var(--sp-5) * -1)}
+.os-root .talep-tablo .crm-data-table{width:100%;border:0;border-radius:0;box-shadow:none}
+.os-root .talep-tablo .crm-data-table thead th{position:sticky;top:0;z-index:1}
+.istat-kutular{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin:0}
+.istat-kutular>div{display:flex;flex-direction:column;gap:2px;padding:var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+.istat-kutular dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.istat-kutular dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.istat-kutular small{color:var(--muted);font-size:var(--fs-micro)}
+.istat-cubuklar{list-style:none;margin:var(--sp-2) 0 0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
+.istat-cubuklar li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 32px;align-items:center;gap:var(--sp-2);font-size:var(--fs-sm)}
+.istat-cubuklar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.istat-cubuklar i{display:block;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.istat-cubuklar b{display:block;height:100%;border-radius:inherit;background:var(--primary)}
+.istat-cubuklar strong{text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--fw-semibold)}
+@media (max-width:760px){
+  .talep-tablo{margin:0}
+  .os-root .talep-tablo .crm-data-table,.os-root .talep-tablo .crm-data-table tbody{display:block;min-width:0;width:100%}
+}
