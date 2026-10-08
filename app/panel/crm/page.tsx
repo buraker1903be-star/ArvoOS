@@ -2,7 +2,7 @@ import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
 import { phoneSearchTerms } from "@/lib/format-phone";
 import { fetchLastContacts } from "./last-contact";
-import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "./table-cells";
+import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "./table-cells";
 import { OtomatikSecim } from "./otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "./istatistik-karti";
 import { enCok, gunOnce, oran, son30Degisim } from "@/lib/liste-istatistik";
@@ -289,7 +289,7 @@ export default async function RequestsPage({
                   <tr>
                     <th>No</th>
                     <th>Müşteri</th>
-                    <th>Konu</th>
+                    <th>Hizmet türü</th>
                     <th className="crm-col-rep">Temsilci</th>
                     <th>Durum</th>
                     <th className="crm-col-date">Teslim</th>
@@ -311,7 +311,7 @@ export default async function RequestsPage({
                           </Link>
                         </td>
                         <CustomerCell name={item.customer_name} phone={item.contact_phone} email={item.contact_email} />
-                        <SubjectCell title={item.title} service={d.service_type} />
+                        <ServiceCell service={d.service_type} />
                         <RepresentativeCell name={ownerName} />
                         <td data-label="Durum">
                           <span className="status-pill" data-tone={statusTone(item.stage)}>{requestStageNames[item.stage] ?? item.stage}</span>

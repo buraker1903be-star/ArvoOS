@@ -404,3 +404,21 @@
 .talep-istatistik .istat-cubuklar strong{grid-area:deger}
 .talep-istatistik .istat-cubuklar i{grid-area:cubuk;height:4px}
 @media (max-width:420px){.istat-gruplar{grid-template-columns:minmax(0,1fr)}}
+/* Sütun genişlikleri: "her yerden kır" kuralı tabloya müşteri sütununu
+   63px'e kadar daraltma izni veriyordu (ad üç satıra, satır 82px'e
+   çıkıyordu) ve numara sütunu boşlukla genişliyordu. Numara içeriği kadar,
+   metin sütunlarının en az genişliği var; kelime ortasından kırılmaz. */
+.os-root .talep-tablo .crm-data-table :is(.crm-table-title,.crm-table-sub,.crm-waiting,.crm-liste-sebep){overflow-wrap:break-word}
+.os-root .talep-tablo .crm-data-table td.crm-table-mono,.os-root .talep-tablo .crm-data-table thead th:first-child{width:1%;white-space:nowrap}
+.os-root .talep-tablo .crm-data-table td[data-label="Müşteri"]{min-width:160px}
+.os-root .talep-tablo .crm-data-table td[data-label="Hizmet türü"]{min-width:140px}
+.os-root .talep-tablo .crm-data-table td.crm-col-rep{min-width:130px}
+@media (max-width:760px){.os-root .talep-tablo .crm-data-table tbody td:is(.crm-table-mono,[data-label="Müşteri"],[data-label="Hizmet türü"],.crm-col-rep){width:auto;min-width:0}}
+/* 1600px altında sekiz-dokuz sütun %64'e sığmıyor: istatistik kartı
+   sabit 340px, metin sütunlarının en az genişliği biraz daha dar. */
+.os-root .talep-tablo .crm-data-table td[data-label="Müşteri"]{min-width:150px}
+.os-root .talep-tablo .crm-data-table td[data-label="Hizmet türü"]{min-width:120px}
+.os-root .talep-tablo .crm-data-table td.crm-col-rep{min-width:120px}
+@media (max-width:1600px) and (min-width:1201px){.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr) 340px}}
+/* 1360px altında dokuz sütun sığmıyor: "Son temas" gizlenir (kayıt detayında var). */
+@media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table .crm-col-contact{display:none}.os-root .talep-tablo .crm-data-table td[data-label="Müşteri"]{min-width:130px}}

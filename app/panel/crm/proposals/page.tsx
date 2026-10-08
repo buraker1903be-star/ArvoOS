@@ -17,7 +17,7 @@ import {
   proposalMessages,
 } from "@/lib/customer-message-templates";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
-import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "../table-cells";
+import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
 import { aylik, enCok, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
@@ -286,7 +286,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                   <tr>
                     <th>No</th>
                     <th>Müşteri</th>
-                    <th>Konu</th>
+                    <th>Hizmet türü</th>
                     <th className="crm-col-rep">Temsilci</th>
                     <th className="crm-col-amount">Tutar</th>
                     <th>Durum</th>
@@ -307,7 +307,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                           {row.revision_no > 0 ? <span className="status-pill talep-revizyon" data-tone="gold">R{row.revision_no}</span> : null}
                         </td>
                         <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} />
-                        <SubjectCell title={row.title} service={String(customer?.request_details?.service_type ?? "")} />
+                        <ServiceCell service={String(customer?.request_details?.service_type ?? "")} />
                         <RepresentativeCell name={representativeName} />
                         <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>
                         <td data-label="Durum">

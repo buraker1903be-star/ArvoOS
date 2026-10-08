@@ -1,11 +1,11 @@
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
-import { formatSubject, initials } from "@/lib/table-format";
+import { initials } from "@/lib/table-format";
 import { relativeTime, type LastContact } from "./last-contact";
 
 // Talepler, Teklifler ve Sözleşmeler tabloları aynı hücreleri kullanır;
 // böylece üç tabloda sütunlar aynı sırada ve aynı biçimde görünür:
-// No · Müşteri · Konu · Temsilci · [Tutar] · Durum · Tarih · Son temas.
+// No · Müşteri · Hizmet türü · Temsilci · [Tutar] · Durum · Tarih · Son temas.
 // Satırın tamamı ilk hücredeki bağlantıyla tıklanır (panel-premium.css),
 // bu yüzden hücrelerde ayrıca bağlantı yok.
 
@@ -27,12 +27,16 @@ export function CustomerCell({
   );
 }
 
-export function SubjectCell({ title, service }: { title?: string | null; service?: string | null }) {
-  const subject = formatSubject(title) || "—";
+/**
+ * Yalnızca hizmet türü. Eskiden "Konu" sütunu başlığı ve altında hizmet
+ * türünü yazıyordu; başlık çoğu kayıtta hizmet türünün tekrarıydı ve
+ * satırı iki katına çıkarıyordu. Başlık kayıt detayında duruyor.
+ */
+export function ServiceCell({ service }: { service?: string | null }) {
+  const ad = service?.trim();
   return (
-    <td data-label="Konu">
-      <span className="crm-table-title" title={subject}>{subject}</span>
-      <span className="crm-table-sub">{service?.trim() || "Hizmet belirtilmedi"}</span>
+    <td data-label="Hizmet türü">
+      <span className={ad ? "crm-table-title" : "crm-table-sub"} title={ad || undefined}>{ad || "Belirtilmedi"}</span>
     </td>
   );
 }
