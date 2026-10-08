@@ -58,18 +58,13 @@
 .talep-akis-sekmeler button.is-active{color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
 .talep-akis-sekmeler button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
 .talep-akis-panel{max-height:calc(100dvh - 370px);min-height:240px;overflow:auto}
-/* Uzun kapsam ve notlar sayfayı uzatmasın: KAYIT DETAYINDA orta sütun kendi
-   içinde kayar. Sınırlar dock'un üstünde bitecek şekilde: başlık + aşama
-   çizgisi ~216px, dock ~100px.
-
-   LİSTE SAYFALARI DIŞARIDA (.ekip-izgara). Talepler, teklifler, sözleşmeler,
-   işler, ekip ve finans listeleri aynı .talep-izgara/.talep-bilgi sınıflarını
-   yeniden kullanıyor ve bu kural onlara da uyguluyordu: liste sabit
-   yükseklikli bir kutu oluyor, kendi içinde kayıyor ve kaydırma çubuğu fare
-   değene kadar saydam olduğu için (aşağıda) "liste aşağıya kaymıyor" diye
-   görünüyordu. Listede doğru davranış sayfanın kayması: kaç satır olduğunu
-   sayfanın uzunluğu söyler ve alttaki satırlara ulaşmak için kutunun içini
-   keşfetmek gerekmez. */
+/* Uzun kapsam ve notlar sayfayı uzatmasın: orta sütun kendi içinde kayar. Sınırlar
+   dock'un üstünde bitecek şekilde: başlık + aşama çizgisi ~216px, dock ~100px. */
+/* LİSTE IZGARASI (.ekip-izgara) DIŞARIDA. Orada da kart kendi içinde kayıyor
+   ama yüksekliği sabit bir sayıyla değil, kalan alanı doldurarak belirleniyor
+   (os-shell.css · "Liste sayfaları"). Buradaki 320px kayıt detayının başlık +
+   aşama çizgisine göre ölçülmüş; liste sayfalarının üst bölümü daha uzun ve
+   kart ekranın altından taşıyor, taşan satırlara ulaşılamıyordu. */
 .os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 320px);overflow:auto}
 .os-root .talep-akis-panel>.panel-card,.os-root .talep-akis-panel>section{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent}
 .talep-akis-panel:empty::after{content:"Bu talebe bağlı yazışma yok.";display:block;padding:var(--sp-8) var(--sp-5);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
@@ -134,11 +129,11 @@
 /* ---------- İnce kaydırma çubuğu ----------
    Uzun metinde gri ve kalın çubuk her zaman görünüyordu; artık ince ve
    yalnızca sütunun üzerine gelince belirgin. */
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri),.talep-akis-panel{scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable}
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri):hover,.talep-akis-panel:hover{scrollbar-color:var(--n-300) transparent}
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar,.talep-akis-panel::-webkit-scrollbar{width:6px}
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar-thumb,.talep-akis-panel::-webkit-scrollbar-thumb{border-radius:6px;background:transparent}
-.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri):hover::-webkit-scrollbar-thumb,.talep-akis-panel:hover::-webkit-scrollbar-thumb{background:var(--n-300)}
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri),.talep-akis-panel{scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable}
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri):hover,.talep-akis-panel:hover{scrollbar-color:var(--n-300) transparent}
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar,.talep-akis-panel::-webkit-scrollbar{width:6px}
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar-thumb,.talep-akis-panel::-webkit-scrollbar-thumb{border-radius:6px;background:transparent}
+.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri):hover::-webkit-scrollbar-thumb,.talep-akis-panel:hover::-webkit-scrollbar-thumb{background:var(--n-300)}
 
 /* ---------- Teklif detayı ---------- */
 .teklif-tutar{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap;padding-bottom:var(--sp-4);border-bottom:1px solid var(--line-soft)}
@@ -276,8 +271,7 @@
   .talep-satir-durum small{display:none}
   .talep-ara{flex-basis:100%;margin-left:0}
 }
-/* Liste kartlarının yüksekliği sınırlanmıyor; sayfa kayar (yukarıdaki nota
-   bakın). Eskiden burada listeye özel bir sınır vardı ve sorun oradaydı. */
+/* Liste kartının yüksekliği artık os-shell.css'te, kalan alanı doldurarak. */
 
 /* Teklifler listesi: tutar sütunu ve bağlantı hazır şeridi. */
 .teklif-tutar-satir{flex:none;width:120px;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
@@ -468,7 +462,7 @@
    istatistik + bekleyen davetler); sütun kendi içinde kayar. */
 .liste-sag{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
 .os-root .liste-sag>.panel-card{padding:var(--sp-5);margin:0}
-.os-root .talep-izgara>.liste-sag{max-height:calc(100dvh - 350px);overflow:auto;scrollbar-width:thin}
+.os-root .talep-izgara:not(.ekip-izgara)>.liste-sag{max-height:calc(100dvh - 350px);overflow:auto;scrollbar-width:thin}
 .os-root .liste-sag>.talep-istatistik{max-height:none;overflow:visible;flex:none}
 .os-root .talep-tablo .crm-data-table tbody tr.is-pasif td{color:var(--muted)}
 .os-root .talep-tablo .crm-data-table tbody tr.is-pasif .crm-table-title{color:var(--muted)}
