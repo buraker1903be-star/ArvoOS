@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aramaAnahtari, basHarfler, etkinUygulama, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
+import { aramaAnahtari, basHarfler, canliTablolar, etkinUygulama, osSayfalari, osUygulamalari } from "@/app/panel/os/os-apps";
 
 /*
   Şirket işletim sistemi kabuğu: dock ve Ctrl+K aynı uygulama listesini
@@ -67,4 +67,14 @@ test("arama Türkçe harf ve aksan duyarsız", () => {
   assert.equal(aramaAnahtari("İnsan Kaynakları"), "insan kaynaklari");
   assert.ok(aramaAnahtari("Sözleşmeler").includes(aramaAnahtari("sozles")));
   assert.ok(aramaAnahtari("Işler").includes("isler"));
+});
+
+test("anlık tazeleme yalnızca liste ve özet ekranlarında", () => {
+  assert.ok(canliTablolar("/panel").includes("crm_opportunities"));
+  assert.ok(canliTablolar("/panel/crm/").includes("crm_opportunities"));
+  assert.deepEqual(canliTablolar("/panel/operations/isler"), ["operation_workflows"]);
+  // Detay/form ve sürükle-bırak ekranları kıpırdamaz
+  assert.deepEqual(canliTablolar("/panel/crm/requests/abc"), []);
+  assert.deepEqual(canliTablolar("/panel/operations/pano"), []);
+  assert.deepEqual(canliTablolar("/panel/settings"), []);
 });

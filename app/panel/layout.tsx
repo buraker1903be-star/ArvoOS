@@ -22,6 +22,8 @@ import { OsDock } from "./os/os-dock";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
+import { OsCanliSayfa } from "./os/os-canli-yenile";
+import { CustomerLookupHost } from "./crm/customer-lookup";
 import "./panel-tokens.css";
 import "./panel.css";
 import "./panel-ux.css";
@@ -29,7 +31,6 @@ import "./panel-page-system.css";
 import "./panel-top-actions.css";
 import "./sidebar-workspace-switcher.css";
 import "./panel-mobile.css";
-import "./mobile-drawer.css";
 import "./panel-compact.css";
 import "./panel-premium.css";
 import "./panel-tables.css";
@@ -259,6 +260,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       </section>
       <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />
       <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />
+      <OsCanliSayfa organizationId={membership.organization_id} />
+      {/* Ctrl+K'daki müşteri araması bu pencereyi açar; yalnızca CRM'i görene. */}
+      {uygulamalar.some((u) => u.key === "crm") ? <CustomerLookupHost /> : null}
     </main></div>;
   }
 

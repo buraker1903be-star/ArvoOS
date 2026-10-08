@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { aramaAnahtari, osSayfalari, type OsUygulama } from "./os-apps";
+import { aramaAnahtari, MUSTERI_SORGU_OLAYI, osSayfalari, type OsUygulama } from "./os-apps";
 import { OsSimge, type OsIkonAdi } from "./os-icons";
 
 /* Öğeler düz veri; ne yapacakları calistir() içinde. Kapanış fonksiyonu
@@ -11,6 +11,7 @@ type Oge = { id: string; grup: string; label: string; ipucu?: string; ikon: OsIk
   | { tur: "git"; href: string }
   | { tur: "tema" }
   | { tur: "cikis" }
+  | { tur: "musteri"; sorgu: string }
 );
 
 /*
@@ -77,15 +78,22 @@ export function OsKomutPaleti({ uygulamalar, cikis }: { uygulamalar: OsUygulama[
     if (oge.tur === "cikis") { cikisFormu.current?.requestSubmit(); return; }
     kapat();
     if (oge.tur === "git") { router.push(oge.href); return; }
+    if (oge.tur === "musteri") { window.dispatchEvent(new CustomEvent(MUSTERI_SORGU_OLAYI, { detail: { sorgu: oge.sorgu } })); return; }
     const sonraki = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", sonraki);
     try { window.localStorage.setItem("arvoos.theme", sonraki); } catch { /* gizli sekme */ }
   };
 
   const anahtar = aramaAnahtari(sorgu.trim());
-  const sonuc = anahtar
+  const eslesen = anahtar
     ? ogeler.filter((oge) => aramaAnahtari(`${oge.label} ${oge.ipucu ?? ""}`).includes(anahtar))
     : ogeler;
+  /* Müşteri araması CRM'i görene, en az 2 harf yazılınca. Sonuçlar
+     "Müşteri sorgula" penceresinde: yetki ve geçmiş orada. */
+  const crmVar = uygulamalar.some((u) => u.key === "crm");
+  const sonuc: Oge[] = crmVar && sorgu.trim().length >= 2
+    ? [...eslesen, { id: "musteri", grup: "Kayıtlar", label: `“${sorgu.trim()}” için müşteri ve talep geçmişini ara`, ipucu: "CRM", ikon: "crm", tur: "musteri", sorgu: sorgu.trim() }]
+    : eslesen;
   const etkin = Math.min(secili, Math.max(sonuc.length - 1, 0));
 
   const klavye = (olay: React.KeyboardEvent) => {
@@ -109,7 +117,7 @@ export function OsKomutPaleti({ uygulamalar, cikis }: { uygulamalar: OsUygulama[
           value={sorgu}
           onChange={(olay) => { setSorgu(olay.target.value); setSecili(0); }}
           onKeyDown={klavye}
-          placeholder="Uygulama, sayfa ya da komut ara"
+          placeholder="Uygulama, sayfa, komut ya da müşteri ara"
           aria-label="Ara"
           aria-controls="os-palette-list"
           aria-activedescendant={sonuc[etkin] ? `os-oge-${etkin}` : undefined}

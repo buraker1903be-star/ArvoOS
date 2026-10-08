@@ -213,3 +213,4 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 .os-bar .panel-quick-action>b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .os-bar .panel-quick-icon{width:auto;height:auto;background:transparent;color:inherit;border-radius:0}
 .os-bar .panel-unread-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}
+.os-live-pill.is-taze{background:var(--primary-soft);color:var(--primary)}

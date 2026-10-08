@@ -13,7 +13,6 @@ import { NotificationIcon } from "./notifications/notification-icon";
 import {
   OPEN_NOTIFICATIONS_EVENT,
   getNotificationUnread,
-  openNotificationsDrawer,
   setNotificationUnread,
   useNotificationArrivals,
   useNotificationUnread,
@@ -428,32 +427,5 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
           )
         : null}
     </>
-  );
-}
-
-// Mobil alt menü ve menü çekmecesindeki "Bildirimler" girişi (mobile-drawer.tsx).
-// Rozet, üst çubuktaki düğmeyle aynı sayıyı gösterir ve yeni bildirimde
-// onunla birlikte zıplar (unread-store.ts).
-export function NotificationsNavButton({ variant, initialCount = 0, onOpen }: { variant: "bottom" | "menu"; initialCount?: number; onOpen?: () => void }) {
-  const pathname = usePathname();
-  const onPage = isOnPage(pathname);
-  const count = useNotificationUnread(initialCount);
-  const arrivals = useNotificationArrivals();
-  const label = `Bildirimler${count ? `, ${count} okunmamış` : ""}`;
-
-  if (variant === "bottom") {
-    const badge = count ? <em key={arrivals} className={`mobile-bottom-badge${popClass(arrivals)}`}>{badgeText(count)}</em> : null;
-    return onPage ? (
-      <Link href={PAGE} className="active" aria-current="page" aria-label={label}><i>♢</i><span>Bildirimler</span>{badge}</Link>
-    ) : (
-      <button type="button" onClick={openNotificationsDrawer} aria-label={label} aria-controls="notifications-drawer"><i>♢</i><span>Bildirimler</span>{badge}</button>
-    );
-  }
-
-  const badge = count ? <em key={arrivals} className={`mobile-unread-badge${popClass(arrivals)}`}>{badgeText(count)}</em> : null;
-  return onPage ? (
-    <Link href={PAGE} className="active" aria-current="page" onClick={onOpen} aria-label={label}><i>B</i><span>Bildirimler</span>{badge}<b>›</b></Link>
-  ) : (
-    <button type="button" onClick={() => { onOpen?.(); openNotificationsDrawer(); }} aria-label={label}><i>B</i><span>Bildirimler</span>{badge}<b>›</b></button>
   );
 }

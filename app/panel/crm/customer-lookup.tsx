@@ -13,6 +13,7 @@ import type { CustomerLookupSummary, LookupMatch } from "./customer-lookup-query
 import type { HistoryKind } from "./customer-history-query";
 import { CustomerHistoryList, historyCountLine, historyNotes } from "./customer-history";
 import { formatPhone } from "@/lib/format-phone";
+import { MUSTERI_SORGU_OLAYI } from "../os/os-apps";
 import "./customer-lookup.css";
 
 /* Künye etiketleri: sorgulama penceresi operasyonun künye kartıyla aynı
@@ -195,17 +196,47 @@ export function CustomerLookupButton() {
   );
 }
 
-function CustomerLookupDialog({ canCreate, onClose }: { canCreate: boolean; onClose: (handoff?: boolean) => void }) {
+/*
+  Ctrl+K'dan açılış: işletim sistemi kabuğu, CRM'i gören herkes için
+  bunu çizer; paletteki "müşteri sorgula" satırı "os:musteri-sorgula"
+  olayını yazılan metinle gönderir, pencere o metinle aranmış açılır.
+  Ayrı bir arama yazılmadı: yetki kontrolü, benzer ad eşleşmesi ve geçmiş
+  görünümü bu pencerede zaten var. Arama metni olayla taşınır, URL'ye
+  yazılmaz (kişisel veri).
+*/
+
+export function CustomerLookupHost() {
+  const [acilis, setAcilis] = useState<{ sorgu: string; sira: number } | null>(null);
+  const [canCreate, setCanCreate] = useState(false);
+  const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
+  const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
+
+  useEffect(() => {
+    const ac = (olay: Event) => {
+      const sorgu = String((olay as CustomEvent<{ sorgu?: string }>).detail?.sorgu ?? "").slice(0, 120);
+      setCanCreate(Boolean(document.querySelector(NEW_REQUEST_TRIGGER)));
+      setAcilis((onceki) => ({ sorgu, sira: (onceki?.sira ?? 0) + 1 }));
+    };
+    window.addEventListener(MUSTERI_SORGU_OLAYI, ac);
+    return () => window.removeEventListener(MUSTERI_SORGU_OLAYI, ac);
+  }, []);
+
+  return acilis && portalTarget
+    ? createPortal(<CustomerLookupDialog key={acilis.sira} canCreate={canCreate} initialQuery={acilis.sorgu} onClose={() => setAcilis(null)} />, portalTarget)
+    : null;
+}
+
+function CustomerLookupDialog({ canCreate, onClose, initialQuery = "" }: { canCreate: boolean; onClose: (handoff?: boolean) => void; initialQuery?: string }) {
   const titleId = useId();
   const listId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
-  const rawRef = useRef("");
+  const rawRef = useRef(initialQuery);
   const searchSequence = useRef(0);
   const detailSequence = useRef(0);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [search, setSearch] = useState<SearchState | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);

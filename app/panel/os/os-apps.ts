@@ -137,3 +137,34 @@ export function aramaAnahtari(metin: string): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 }
+
+/* Ctrl+K → "Müşteri sorgula" penceresi (crm/customer-lookup.tsx). Ad burada:
+   palet, pencerenin bütün kodunu kabuğa çekmeden olayı gönderebilsin. */
+export const MUSTERI_SORGU_OLAYI = "os:musteri-sorgula";
+
+/* Anlık bir değişiklik sayfayı tazelediğinde durum çubuğu kısa süre
+   "Güncellendi" der (os-canli-yenile.tsx yazar, os-status.tsx dinler). */
+export const CANLI_GUNCELLEME_OLAYI = "os:guncellendi";
+
+/*
+  Hangi sayfa hangi tabloların değişikliğiyle kendiliğinden tazelenir
+  (os-canli-yenile.tsx). Yalnızca LİSTE ve ÖZET ekranları: detay ve form
+  sayfalarında başkasının değişikliğiyle ekranın kıpırdaması, yazılan
+  formun altından verinin kaymasına yol açar. İş panosu da dışarıda:
+  sürükle-bırak sırasında tazeleme kartı elden kaçırır.
+*/
+const CRM_TABLOLARI = ["crm_opportunities", "crm_proposals", "crm_contracts", "activity_logs"];
+const CANLI_SAYFALAR: Record<string, string[]> = {
+  "/panel": ["activity_logs", "crm_opportunities", "crm_proposals", "crm_contracts", "operation_workflows"],
+  "/panel/crm": CRM_TABLOLARI,
+  "/panel/crm/genel-bakis": CRM_TABLOLARI,
+  "/panel/crm/proposals": CRM_TABLOLARI,
+  "/panel/crm/contracts": CRM_TABLOLARI,
+  "/panel/operations": ["operation_workflows"],
+  "/panel/operations/isler": ["operation_workflows"],
+};
+
+export function canliTablolar(yol: string): string[] {
+  const temiz = yol.length > 1 ? yol.replace(/\/+$/, "") : yol;
+  return CANLI_SAYFALAR[temiz] ?? [];
+}

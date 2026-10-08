@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { basHarfler, etkinUygulama, type OsUygulama } from "./os-apps";
+import { basHarfler, CANLI_GUNCELLEME_OLAYI, etkinUygulama, type OsUygulama } from "./os-apps";
 
 /* Durum çubuğunda kurum adının altında açık uygulamanın adı. */
 export function OsUygulamaAdi({ uygulamalar }: { uygulamalar: OsUygulama[] }) {
@@ -60,6 +60,19 @@ export function OsCanli({
   const [durum, setDurum] = useState<"baglaniyor" | "canli" | "kopuk">("baglaniyor");
   const [gorulme, setGorulme] = useState<Record<string, string>>(baslangic);
   const [simdi, setSimdi] = useState(() => Date.now());
+  /* Anlık bir değişiklik ekranı tazeleyince kısa süre "Güncellendi":
+     kullanıcı sayıların neden değiştiğini görür. */
+  const [taze, setTaze] = useState(false);
+  useEffect(() => {
+    let zamanlayici = 0;
+    const isaretle = () => {
+      setTaze(true);
+      window.clearTimeout(zamanlayici);
+      zamanlayici = window.setTimeout(() => setTaze(false), 2500);
+    };
+    window.addEventListener(CANLI_GUNCELLEME_OLAYI, isaretle);
+    return () => { window.removeEventListener(CANLI_GUNCELLEME_OLAYI, isaretle); window.clearTimeout(zamanlayici); };
+  }, []);
 
   useEffect(() => {
     const istemci = createClient();
@@ -86,9 +99,9 @@ export function OsCanli({
 
   return (
     <div className="os-live">
-      <span className={`os-live-pill is-${durum}`} role="status" title={durum === "canli" ? "Değişiklikler anında geliyor" : durum === "kopuk" ? "Anlık bağlantı koptu; sayfayı yenileyin" : "Bağlanıyor"}>
+      <span className={`os-live-pill is-${durum}${taze ? " is-taze" : ""}`} role="status" title={durum === "canli" ? "Değişiklikler anında geliyor" : durum === "kopuk" ? "Anlık bağlantı koptu; sayfayı yenileyin" : "Bağlanıyor"}>
         <i aria-hidden="true" />
-        {durum === "canli" ? "Canlı" : durum === "kopuk" ? "Bağlantı yok" : "Bağlanıyor"}
+        {durum === "canli" ? (taze ? "Güncellendi" : "Canlı") : durum === "kopuk" ? "Bağlantı yok" : "Bağlanıyor"}
       </span>
       {cevrimici.length ? (
         <span className="os-online" title={`Şu an çevrimiçi: ${cevrimici.map((k) => k.ad).join(", ")}`} aria-label={`${cevrimici.length} ekip üyesi çevrimiçi`}>

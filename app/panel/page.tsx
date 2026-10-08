@@ -66,6 +66,11 @@ function activityVerb(action: string, entity: string) {
   };
   return phrases[action] ?? `${acc} güncelledi`;
 }
+/* Son 3 dakikadaki hareket "yeni" sayılır: anlık tazelemeyle gelen satır
+   vurgulu belirir (os-canli-yenile.tsx). Saat bileşen gövdesinde okunmaz. */
+function yeniHareket(createdAt: string) {
+  return Date.now() - Date.parse(createdAt) < 3 * 60_000;
+}
 function activityHref(entity: string, id: string | null, action: string) {
   if (!id || action === "delete") return null;
   if (entity === "crm_proposal") return `/panel/crm/proposals/${id}`;
@@ -498,7 +503,7 @@ export default async function PanelPage() {
 
         {canSeeCrm ? (
           <article className="dash-card dash-activity">
-            <header className="dash-card-head"><div><h2>Son hareketler</h2><p>Talep, teklif ve sözleşmelerde</p></div></header>
+            <header className="dash-card-head"><div><h2>Canlı akış</h2><p>Talep, teklif ve sözleşmelerde ekibin hareketleri</p></div><span className="dash-live" aria-hidden="true"><i />anlık</span></header>
             {logs.length ? (
               <ul className="dash-activity-list">
                 {logs.map((log) => {
@@ -515,7 +520,7 @@ export default async function PanelPage() {
                       {href ? <Chevron /> : null}
                     </>
                   );
-                  return <li key={log.id}>{href ? <Link className="dash-activity-row" href={href}>{content}</Link> : <div className="dash-activity-row">{content}</div>}</li>;
+                  return <li key={log.id} className={yeniHareket(log.created_at) ? "is-new" : undefined}>{href ? <Link className="dash-activity-row" href={href}>{content}</Link> : <div className="dash-activity-row">{content}</div>}</li>;
                 })}
               </ul>
             ) : <p className="dash-empty">Henüz hareket yok. Talep, teklif ya da sözleşmelerde yapılan işlemler burada görünecek.</p>}
