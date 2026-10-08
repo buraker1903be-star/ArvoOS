@@ -586,3 +586,46 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
    özgüllükte yeniliyordu ve uyarı kutusu kehribar değil GRİ çıkıyordu —
    yani uyarı, uyarıya benzemiyordu (02.10.2026'da ölçüldü). */
 .panel-root .opd-kunye-uyari{margin:0;padding:9px 11px;border-radius:10px;background:var(--warning-soft);color:var(--warning);font-size:12.5px;line-height:1.5}
+
+/*
+  İŞ DETAYI ÜÇ SÜTUN (2026-10): talep/teklif/sözleşme detayının iskeleti
+  (kayit-detay.css) üstüne yalnızca işe özgü ayarlar. Görevler sütunu
+  satır içi denetimler (durum, tarih, sorumlu) taşıdığı için diğer
+  detaylardan geniş.
+*/
+.opd-v3{gap:var(--sp-4)}
+.opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(260px,1fr) minmax(0,2fr) minmax(320px,1.25fr)}
+.opd-v3 .opd-serit{position:static;margin:0}
+.opd-v3 .talep-musteri .opd-kunye{gap:var(--sp-2);margin-top:var(--sp-4);padding:var(--sp-4) 0 0;border:0;border-top:1px solid var(--line-soft);border-radius:0;background:none;box-shadow:none}
+.opd-v3 .talep-musteri .opd-kunye .opd-card-head h2{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--muted)}
+.opd-v3 .talep-musteri .opd-kunye .opd-card-head p{font-size:var(--fs-micro)}
+.opd-v3 .talep-musteri .opd-kunye .opd-list{grid-template-columns:minmax(0,1fr)}
+.opd-v3 .talep-musteri .opd-ray-btn{min-height:48px;font-size:var(--fs-sm)}
+.opd-v3 .talep-liste code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em}
+.opd-termin{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap;margin:0;font-size:var(--fs-sm);color:var(--ink)}
+.opd-v3 .opd-due-form{margin-top:var(--sp-2)}
+.opd-v3 .opd-due-form input,.opd-v3 .opd-due-form button{height:34px;min-height:34px;font-size:var(--fs-sm)}
+
+/* Eski düzenin grid-area adı (gorevler) burada tanımsız; sütunu bozuyordu. */
+.opd-v3 .opd-gorevler{grid-area:auto;display:flex;flex-direction:column;gap:var(--sp-3)}
+/* Durum şeridi aşama çizgisinden ~70px uzun: sütun boyları ona göre. */
+.os-root .opd-v3 .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 392px)}
+.opd-v3 .talep-akis-panel{max-height:calc(100dvh - 442px)}
+.opd-gorev-bas{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-3)}
+.opd-gorev-bas small{color:var(--muted);font-size:var(--fs-sm)}
+.opd-gorev-bas strong{font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.opd-v3 .opd-gorevler .opd-bar{margin:0}
+
+/* Akış: sohbet panelin boyunu doldurur, yazma alanı altta kalır. */
+.opd-v3 .talep-akis-panel .opd-sohbet{height:calc(100dvh - 442px);min-height:320px;gap:0}
+.opd-v3 .talep-akis-panel .opd-sohbet-liste{border-radius:0;background:var(--surface-2)}
+.opd-v3 .talep-akis-panel .opd-sohbet-yaz,.opd-v3 .talep-akis-panel .opd-sohbet-kapali{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line-soft)}
+.opd-v3 .talep-akis-panel .opd-kayit{overflow:visible;padding:var(--sp-4)}
+@media (max-width:1200px){
+  .opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)}
+  .opd-v3 .talep-akis-panel .opd-sohbet{height:480px}
+  .opd-v3 .talep-akis-panel,.os-root .opd-v3 .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:none}
+}
+@media (max-width:760px){
+  .opd-v3 .talep-izgara.opd-izgara{grid-template-columns:minmax(0,1fr)}
+}
