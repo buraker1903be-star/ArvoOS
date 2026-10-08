@@ -155,7 +155,8 @@ export const CANLI_GUNCELLEME_OLAYI = "os:guncellendi";
 */
 const CRM_TABLOLARI = ["crm_opportunities", "crm_proposals", "crm_contracts", "activity_logs"];
 const CANLI_SAYFALAR: Record<string, string[]> = {
-  "/panel": ["activity_logs", "crm_opportunities", "crm_proposals", "crm_contracts", "operation_workflows"],
+  // Ana ekran: talep trendi + dört liste (operasyon, aşama, müşteri mesajı, posta).
+  "/panel": ["crm_opportunities", "operation_workflows", "operation_steps", "customer_file_messages", "mail_threads"],
   "/panel/crm": CRM_TABLOLARI,
   "/panel/crm/genel-bakis": CRM_TABLOLARI,
   "/panel/crm/proposals": CRM_TABLOLARI,

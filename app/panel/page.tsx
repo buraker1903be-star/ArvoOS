@@ -5,93 +5,41 @@ import { getPanelContext } from "@/lib/panel-context";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { KonsolAnaSayfa } from "./konsol-ana-sayfa";
 import { formatPersonName } from "@/lib/format-name";
-import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
-import { requestStageNames } from "./crm/request-status";
-import { agirlikliTahmin, aktifTalepler, teklifBekleyen } from "@/lib/talep-rakamlari";
+import { todayInIstanbul } from "@/lib/istanbul-date";
+import { formatSubject } from "@/lib/table-format";
+import { dueBadge } from "@/lib/operasyon-termin";
+import { postaDurumu } from "@/lib/posta-hesabi";
+import { activeStatuses, workflowStatusNames } from "./operations/ops-shared";
 import { relativeTime } from "./crm/last-contact";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import "./dashboard.css";
 
-// Ana sayfa: günün özeti. iOS widget'ları gibi dokunulabilir kartlar, son
-// 14 günün talep grafiği, aşama dağılımı, odak listesi ve son hareketler.
-// Her bölüm yalnızca ilgili modül açıksa sorgulanır ve gösterilir; tahsilat
-// rakamları finans sayfasıyla aynı kurala (Kurum Sahibi / Yönetici) bağlı.
+/*
+  ANA EKRAN (2026-10, şirket işletim sistemi).
+
+  Kurum sahibinin çizdiği düzen: selamlama; tam genişlikte "Yeni talepler
+  — son 14 gün"; altında dört sütun: son operasyonlar, yaklaşan aşama
+  tarihleri, müşteri mesajları, gelen postalar. Her kart en fazla 10 satır
+  ve kendi uygulamasına bağlantı verir.
+
+  Eskiden burada sayı kartları (yeni talep, teklif bekleyen, tahsilat…),
+  odak listesi, aşama dağılımı ve hareket akışı vardı; sayıların her biri
+  zaten kendi uygulamasının genel bakışında duruyor. Ana ekran artık
+  "şu an ne oluyor" listesi.
+
+  Her kart yalnızca ilgili modül açıksa sorgulanır ve gösterilir. Ekran
+  canlıdır: değişiklikte kendiliğinden tazelenir (os/os-canli-yenile).
+*/
 
 const TZ = "Europe/Istanbul";
 const DAY = 24 * 60 * 60 * 1000;
+const LISTE = 10;
 
-const money = (amount: number) =>
-  new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
 const dayKey = (value: string | number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 
-const academicActiveStages = [
-  "lead", "pre_review", "academic_review", "proposal_ready", "proposal_approved",
-  "contract_ready", "payment_pending", "payment_approved", "work_opened",
-  "expert_assigned", "delivery",
-];
-const academicStageNames: Record<string, string> = {
-  lead: "Yeni talep",
-  pre_review: "Ön inceleme",
-  academic_review: "Akademik değerlendirme",
-  proposal_ready: "Teklif hazır",
-  proposal_approved: "Teklif onaylandı",
-  contract_ready: "Sözleşme hazır",
-  payment_pending: "Ödeme bekleniyor",
-  payment_approved: "Ödeme onaylandı",
-  work_opened: "İş açıldı",
-  expert_assigned: "Uzman atandı",
-  delivery: "Teslim aşamasında",
-};
-const generalActiveStages = ["lead", "qualified", "proposal", "contract"];
-
-// Son hareketler: "Meral teklifi müşteriye gönderdi"
-const NOUN: Record<string, string> = { crm_opportunity: "talep", crm_proposal: "teklif", crm_contract: "sözleşme", operation_workflow: "iş akışı" };
-const ACC: Record<string, string> = { crm_opportunity: "talebi", crm_proposal: "teklifi", crm_contract: "sözleşmeyi", operation_workflow: "iş akışını" };
-const GEN: Record<string, string> = { crm_opportunity: "talebin", crm_proposal: "teklifin", crm_contract: "sözleşmenin", operation_workflow: "iş akışının" };
-const DAT: Record<string, string> = { crm_opportunity: "talebe", crm_proposal: "teklife", crm_contract: "sözleşmeye", operation_workflow: "iş akışına" };
-function activityVerb(action: string, entity: string) {
-  const acc = ACC[entity] ?? "kaydı";
-  const phrases: Record<string, string> = {
-    create: `yeni bir ${NOUN[entity] ?? "kayıt"} oluşturdu`,
-    update: `${acc} güncelledi`,
-    assign: `${DAT[entity] ?? "kayda"} temsilci atadı`,
-    status: `${GEN[entity] ?? "kaydın"} durumunu değiştirdi`,
-    stage: `${GEN[entity] ?? "kaydın"} aşamasını değiştirdi`,
-    send: `${acc} müşteriye gönderdi`,
-    convert: `${acc} sözleşmeye dönüştürdü`,
-    archive: `${acc} arşivledi`,
-    delete: `${acc} sildi`,
-  };
-  return phrases[action] ?? `${acc} güncelledi`;
-}
-/* Son 3 dakikadaki hareket "yeni" sayılır: anlık tazelemeyle gelen satır
-   vurgulu belirir (os-canli-yenile.tsx). Saat bileşen gövdesinde okunmaz. */
-function yeniHareket(createdAt: string) {
-  return Date.now() - Date.parse(createdAt) < 3 * 60_000;
-}
-function activityHref(entity: string, id: string | null, action: string) {
-  if (!id || action === "delete") return null;
-  if (entity === "crm_proposal") return `/panel/crm/proposals/${id}`;
-  if (entity === "crm_contract") return `/panel/crm/contracts/${id}`;
-  if (entity === "crm_opportunity") return `/panel/crm/requests/${id}`;
-  return null;
-}
-
-// Zamana bağlı yardımcılar (bileşen gövdesinde saat okunmaz).
-// Sunucu UTC'de çalışıyor: eskiden gün ve ay sınırı sunucu saatinden
-// alınıyordu. Gece 00:00–03:00 arasında "bugün" bir önceki günü gösteriyor,
-// ayın 1'inde o saatlerde ödenen fatura "bu ay"a girmiyordu.
-function dateWindow() {
-  const now = Date.now();
-  const today = todayInIstanbul(new Date(now));
-  return {
-    monthStartIso: istanbulMidnight(`${today.slice(0, 7)}-01`).toISOString(),
-    today,
-    weekEnd: todayInIstanbul(new Date(now + 7 * DAY)),
-  };
-}
+// Zamana bağlı yardımcılar bileşen gövdesinin dışında (saat gövdede okunmaz).
 function greetingLine() {
   const now = new Date();
   const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" }).format(now));
@@ -99,6 +47,11 @@ function greetingLine() {
   const date = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" }).format(now);
   return { greeting, date };
 }
+/** Trend için son 28 günün başlangıcı (önceki 14 günle kıyas). */
+const yirmiSekizGunOnce = () => new Date(Date.now() - 28 * DAY).toISOString();
+/** Son 3 dakikadaki kayıt "yeni" sayılır: anlık tazelemeyle gelen satır vurgulu belirir. */
+const yeniMi = (zaman: string | null | undefined) => Boolean(zaman) && Date.now() - Date.parse(zaman!) < 3 * 60_000;
+
 function requestTrend(createdAt: string[]) {
   const now = Date.now();
   const keys = new Map<string, number>();
@@ -127,24 +80,20 @@ function requestTrend(createdAt: string[]) {
   return { days, total, previous, today: days[13].count, max: Math.max(1, ...days.map((day) => day.count)) };
 }
 
+/** "8 Eki" — kısa tarih, Türkiye saatiyle. */
+const kisaTarih = (deger: string | null | undefined) =>
+  deger ? new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "short" }).format(new Date(`${deger.slice(0, 10)}T12:00:00Z`)) : "";
+
 // ---------------------------------------------------------------
 // Simgeler
 // ---------------------------------------------------------------
 const iconPaths: Record<string, ReactNode> = {
-  inbox: <><path d="M3 13h5l1.5 3h5L16 13h5" /><path d="M5.5 5h13L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" /></>,
-  review: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,
-  spark: <><path d="M4 16.5 9 11l3.5 3.5L20 7" /><path d="M15 7h5v5" /></>,
-  briefcase: <><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7" /><path d="M3 12.5h18" /></>,
-  wallet: <><rect x="2.5" y="5.5" width="19" height="14" rx="2.5" /><path d="M16 12.5h2.5" /><path d="M2.5 9.5h19" /></>,
-  bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></>,
-  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   alert: <><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" /><path d="M12 9.5v4" /><path d="M12 17h.01" /></>,
-  doc: <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h4" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 function Icon({ name, size = 18 }: { name: string; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {iconPaths[name]}
     </svg>
   );
@@ -153,105 +102,112 @@ const Chevron = () => (
   <svg className="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
 );
 
-type Tone = "info" | "gold" | "success" | "danger" | "brand" | "neutral";
-type Widget = { label: string; value: string | number; note: string; href: string; icon: string; tone: Tone };
-type FocusItem = { label: string; count: number; href: string; icon: string; tone: Tone; urgent?: boolean };
-type LogRow = { id: number; actor_user_id: string | null; action: string; entity_type: string; entity_id: string | null; created_at: string; metadata: { opportunity_id?: string } | null };
+/* Dört sütunun ortak kartı: başlık, alt başlık, liste ya da boş durum, alt bağlantı. */
+function ListeKarti({ baslik, alt, bos, href, hrefEtiket, sayi, children }: {
+  baslik: string;
+  alt: string;
+  bos: string;
+  href?: string;
+  hrefEtiket?: string;
+  sayi: number;
+  children: ReactNode;
+}) {
+  return (
+    <article className="dash-card dash-col">
+      <header className="dash-card-head"><div><h2>{baslik}</h2><p>{alt}</p></div></header>
+      {sayi ? <ul className="dash-col-list">{children}</ul> : <p className="dash-empty">{bos}</p>}
+      {href ? <Link className="dash-card-link" href={href}>{hrefEtiket} <Chevron /></Link> : null}
+    </article>
+  );
+}
+
+type IsSatiri = { id: string; title: string; customer_name: string | null; status: string; due_date: string | null; updated_at: string };
+type AsamaSatiri = { id: string; title: string; due_date: string; workflow_id: string; operation_workflows: { title: string; customer_name: string | null } | null };
+type MesajSatiri = { id: string; workflow_id: string; sender_name: string | null; body: string; created_at: string; read_at: string | null; operation_workflows: { title: string; customer_name: string | null } | null };
+type PostaSatiri = { thread_id: string; konu: string | null; son_gonderen_ad: string | null; son_gonderen_adres: string | null; son_mesaj_at: string | null; okunmamis: boolean };
 
 export default async function PanelPage() {
   /*
     Kurucu konsolunun (yonetim.arvo-os.com) ana sayfası ayrı: buradaki
-    özet TEK BİR KURUMUN günü (talepler, teklifler, teslimler) ve konsolda
-    o kurum Arvo'nun kendisi olurdu — kurucu platformun durumunu değil
-    kendi CRM'ini görürdü. Kabuk zaten alan adına göre ayrışıyor
-    (layout.tsx); ana sayfa da ayrışmalı.
+    özet TEK BİR KURUMUN günü ve konsolda o kurum Arvo'nun kendisi olurdu.
   */
   if (isManagementHost(hostFromHeaders(await headers()))) return <KonsolAnaSayfa />;
 
-  const { supabase, organization, isPlatformOwner, membership, hiddenModuleKeys, userId, izin } = await getPanelContext();
+  const { supabase, organization, isPlatformOwner, membership, modules, hiddenModuleKeys, userId, izin } = await getPanelContext();
   const organizationId = organization.id;
-  const window = dateWindow();
+  const today = todayInIstanbul();
 
   const isOwner = isPlatformOwner || membership.role === "owner";
+  const modulAcik = (kod: string) => modules.some((m) => m.code.replaceAll("-", "_").toLowerCase() === kod);
   const canSee = (moduleKey: string) => isOwner || !hiddenModuleKeys.has(moduleKey);
   const canSeeCrm = canSee("crm");
-  const canSeeOperations = canSee("operations");
-  const canSeeReports = canSee("reports");
-  const canSeeFinance = isPlatformOwner || (izin("finance.gor") && canSee("finance"));
+  const canSeeOperations = canSee("operations") && modulAcik("operations");
+  /* Posta: menüdeki kuralla aynı — yetki ve kutu bağlı (layout.tsx). */
+  const postaYetkisi = izin("posta.gor");
+  const canSeePosta = postaYetkisi && (await postaDurumu(organizationId)).durum === "bagli";
+  /* Kutu bağlı değilse kart yine durur ve bunu söyler: dördüncü sütun boş
+     kalmasın, bağlayabilen kişi nereden bağlanacağını görsün. */
+  const postaBaglayabilir = izin("settings.kurum.yonet");
   // Kurulum kartı yalnızca kurum sahibi/yöneticisine; platform kurucusu görmez.
   const canSetup = !isPlatformOwner && izin("settings.kurulum.yonet");
   const none = Promise.resolve({ data: null, count: 0, error: null });
 
-  const { data: verticalProfile } = await supabase
-    .from("organization_vertical_profiles")
-    .select("vertical_code")
-    .eq("organization_id", organizationId)
-    .maybeSingle();
-  const isAcademic = verticalProfile?.vertical_code === "academic_services";
-
   const [
-    { data: opportunities, error: opportunitiesError },
-    { count: openWorkflowCount, error: openWorkflowError },
-    { count: dueThisWeekCount, error: dueThisWeekError },
-    { count: overdueWorkflowCount, error: overdueWorkflowError },
-    { count: pendingPaymentCount, error: pendingPaymentError },
-    { count: unreadNotificationCount, error: unreadNotificationError },
-    { data: paidInvoices, error: paidInvoicesError },
-    { data: logRows, error: logRowsError },
-    { data: me, error: meError },
+    { data: talepTarihleri, error: talepError },
+    { data: isRows, error: isError },
+    { data: asamaRows, error: asamaError },
+    { data: mesajRows, error: mesajError },
+    { data: postaRows, error: postaError },
+    { data: me },
     { data: onboardingRow, error: onboardingError },
     { data: setupOrganization, error: setupOrganizationError },
     { count: memberCount, error: memberCountError },
+    { count: talepToplami },
   ] = await Promise.all([
-    canSeeCrm ? supabase.from("crm_opportunities").select("stage,estimated_value,probability,created_at").eq("organization_id", organizationId) : none,
-    canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", ["planned", "in_progress", "blocked"]) : none,
-    canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", ["planned", "in_progress"]).gte("due_date", window.today).lte("due_date", window.weekEnd) : none,
-    canSeeOperations ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).in("status", ["planned", "in_progress", "blocked"]).lt("due_date", window.today) : none,
-    !canSeeFinance
-      ? none
-      : isPlatformOwner
-        ? supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
-        : supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "pending"),
-    isPlatformOwner
-      ? supabase.from("notifications").select("id", { count: "exact", head: true }).eq("audience", "founder").is("read_at", null)
-      : supabase.rpc("arvo_unread_notification_count", { p_organization_id: organizationId }).then(({ data, error }) => ({ count: Number(data ?? 0), error })),
-    !canSeeFinance
-      ? none
-      : isPlatformOwner
-        /*
-          Kurucunun ayı: platformun TAHSİL ETTİĞİ para. Eskiden burada tüm
-          kurumların billing_invoices toplamı okunuyordu — o tablo kiracının
-          KENDİ MÜŞTERİLERİNE kestiği faturalar (Finans modülü oraya yazıyor).
-          Kurucu ekranı, müşterilerinin cirosunu kendi geliri gibi
-          gösteriyordu.
-        */
-        ? supabase.from("organization_payment_requests").select("amount").eq("status", "approved").gte("reviewed_at", window.monthStartIso)
-        : supabase.from("billing_invoices").select("total").eq("organization_id", organizationId).eq("status", "paid").gte("paid_at", window.monthStartIso),
-    canSeeCrm
-      ? supabase.from("activity_logs").select("id,actor_user_id,action,entity_type,entity_id,created_at,metadata").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(7)
+    // Trend: yalnızca son 28 günün oluşturulma tarihleri (sınırsız, sayım doğru).
+    canSeeCrm ? supabase.from("crm_opportunities").select("created_at").eq("organization_id", organizationId).gte("created_at", yirmiSekizGunOnce()) : none,
+    canSeeOperations
+      ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date,updated_at")
+          .eq("organization_id", organizationId).in("status", [...activeStatuses])
+          .order("updated_at", { ascending: false }).limit(LISTE)
+      : none,
+    /* Yaklaşan aşamalar: tamamlanmamış, tarihi olan; gecikmişler en üstte
+       (tarih sırası). İşi iptal/arşiv olanlar dışarıda (operasyon genel
+       bakışıyla aynı kural). */
+    canSeeOperations
+      ? supabase.from("operation_steps").select("id,title,due_date,workflow_id,operation_workflows!inner(title,customer_name,status)")
+          .eq("organization_id", organizationId).eq("is_completed", false).not("due_date", "is", null)
+          .in("operation_workflows.status", [...activeStatuses])
+          .order("due_date", { ascending: true }).limit(LISTE)
+      : none,
+    // !inner: mesajın işi RLS'te görünmüyorsa mesaj da gelmez (operasyon sayfasıyla aynı).
+    canSeeOperations
+      ? supabase.from("customer_file_messages").select("id,workflow_id,sender_name,body,created_at,read_at,operation_workflows!inner(title,customer_name,status)")
+          .eq("organization_id", organizationId).eq("sender_type", "customer").neq("operation_workflows.status", "cancelled")
+          .order("created_at", { ascending: false }).limit(LISTE)
+      : none,
+    canSeePosta
+      ? supabase.from("mail_threads").select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,okunmamis")
+          .eq("organization_id", organizationId).order("son_mesaj_at", { ascending: false, nullsFirst: false }).limit(LISTE)
       : none,
     supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
     canSetup ? supabase.from("organization_onboarding").select("completed_at").eq("organization_id", organizationId).maybeSingle() : none,
     canSetup ? supabase.from("organizations").select(`${ORGANIZATION_LEGAL_COLUMNS},logo_url,signature_stamp_url`).eq("id", organizationId).maybeSingle() : none,
     canSetup ? supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("is_active", true) : none,
+    // Kurulum adımı "ilk talebinizi girin" için: kurumda hiç talep var mı.
+    canSetup && canSeeCrm ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", organizationId) : none,
   ]);
 
   /*
-    Supabase istemcisi hata fırlatmaz, yalnızca error alanına yazar. Eskiden
-    burada sadece data/count okunuyordu: RLS engeli ya da yanlış sütun adı
-    "hiç kayıt yok" gibi görünüyor, ana sayfa sıfır gösterip susuyordu
-    (Platform → Ödemeler bu yüzden iki gün "sorun yok" gösterdi).
+    Supabase istemcisi hata fırlatmaz, yalnızca error alanına yazar; okuma
+    hatası "hiç kayıt yok" gibi görünmesin diye kullanıcıya söylenir.
   */
   const failedQueries = ([
-    ["Talepler", opportunitiesError],
-    ["Açık işler", openWorkflowError],
-    ["Bu hafta teslim", dueThisWeekError],
-    ["Geciken işler", overdueWorkflowError],
-    ["Bekleyen ödemeler", pendingPaymentError],
-    ["Bildirimler", unreadNotificationError],
-    ["Tahsilatlar", paidInvoicesError],
-    ["Son hareketler", logRowsError],
-    ["Çalışan kaydı", meError],
+    ["Talepler", talepError],
+    ["Operasyonlar", isError],
+    ["Aşamalar", asamaError],
+    ["Müşteri mesajları", mesajError],
+    ["Postalar", postaError],
     ["Kurulum durumu", onboardingError],
     ["Kurum bilgileri", setupOrganizationError],
     ["Ekip sayısı", memberCountError],
@@ -264,33 +220,16 @@ export default async function PanelPage() {
       failures: failedQueries.map(([label, error]) => `${label}: ${error.message}`),
     });
 
-  // Son hareketler için kişi ve müşteri adları
-  const logs = (logRows ?? []) as LogRow[];
-  const actorIds = [...new Set(logs.map((log) => log.actor_user_id).filter((id): id is string => Boolean(id)))];
-  const opportunityIds = [...new Set(logs.map((log) => log.metadata?.opportunity_id).filter((id): id is string => Boolean(id)))];
-  const [{ data: actorRows }, { data: customerRows }] = await Promise.all([
-    actorIds.length ? supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", actorIds) : Promise.resolve({ data: [] }),
-    opportunityIds.length ? supabase.from("crm_opportunities").select("id,customer_name").in("id", opportunityIds) : Promise.resolve({ data: [] }),
-  ]);
-  const actorName = new Map(((actorRows ?? []) as { user_id: string; full_name: string }[]).map((row) => [row.user_id, formatPersonName(row.full_name)]));
-  const customerName = new Map(((customerRows ?? []) as { id: string; customer_name: string | null }[]).map((row) => [row.id, formatPersonName(row.customer_name)]));
-
-  const items = (opportunities ?? []) as { stage: string; estimated_value: number | null; probability: number | null; created_at: string }[];
-  /* Kurucuda alan adı "amount" (tahsilat), kurumda "total" (fatura). */
-  const monthlyRevenue = ((paidInvoices ?? []) as { total?: number | null; amount?: number | null }[])
-    .reduce((sum, satir) => sum + Number(satir.total ?? satir.amount ?? 0), 0);
-  const stageCount = (stage: string) => items.filter((item) => item.stage === stage).length;
-  const activeOpportunities = aktifTalepler(items);
-  const pipelineValue = activeOpportunities.reduce((sum, item) => sum + Number(item.estimated_value ?? 0), 0);
-  const weightedForecast = agirlikliTahmin(activeOpportunities);
-  const trend = requestTrend(items.map((item) => item.created_at).filter(Boolean));
-  const overdue = overdueWorkflowCount ?? 0;
-  const unread = unreadNotificationCount ?? 0;
+  const trend = requestTrend(((talepTarihleri ?? []) as { created_at: string }[]).map((row) => row.created_at).filter(Boolean));
+  const delta = trend.previous ? Math.round(((trend.total - trend.previous) / trend.previous) * 100) : null;
+  const isler = (isRows ?? []) as IsSatiri[];
+  const asamalar = (asamaRows ?? []) as unknown as AsamaSatiri[];
+  const mesajlar = (mesajRows ?? []) as unknown as MesajSatiri[];
+  const postalar = (postaRows ?? []) as PostaSatiri[];
 
   // Kurulum adımları: belgeler ve müşteri ekranı eksiksiz görünene kadar
   // gösterilir; hepsi tamamlanınca kart kendiliğinden kaybolur. Ölçütler
-  // Ayarlar'daki "Belge kimliği" ile aynıdır.
-  // Ekip adımı isteğe bağlı: tek kişilik işletmelerde kart hiç kaybolmazdı.
+  // Ayarlar'daki "Belge kimliği" ile aynıdır. Ekip adımı isteğe bağlı.
   type SetupStep = { key: string; title: string; note: string; href: string; done: boolean; optional?: boolean };
   const setupSteps: SetupStep[] = [];
   if (canSetup && setupOrganization) {
@@ -301,88 +240,28 @@ export default async function PanelPage() {
     const hasLogo = Boolean(row.logo_url);
     const hasSignature = Boolean(row.signature_stamp_url);
     const members = memberCount ?? 0;
+    const talepVar = (talepToplami ?? 0) > 0;
     setupSteps.push(
       { key: "kurum", title: "Kurum ve marka", note: "Resmi ad, iletişim, logo ve marka rengi", href: "/panel/onboarding", done: Boolean((onboardingRow as { completed_at?: string | null } | null)?.completed_at) },
       { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings#resmi-bilgiler", done: legalComplete },
       { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings#kurumsal-kimlik", done: hasLogo && hasSignature },
       { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1, optional: true },
     );
-    if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: items.length ? `${items.length} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: items.length > 0 });
+    if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: talepVar ? `${talepToplami} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: talepVar });
   }
   const requiredSteps = setupSteps.filter((step) => !step.optional);
   const setupDone = requiredSteps.filter((step) => step.done).length;
   const showSetup = requiredSteps.length > 0 && setupDone < requiredSteps.length;
 
-  // Widget'lar ve odak listesi (kurum türüne göre)
-  const { adet: proposalWaiting, tahmin: proposalForecast } = teklifBekleyen(items);
-  const widgets: Widget[] = [];
-  const focus: FocusItem[] = [];
-  if (isAcademic) {
-    if (canSeeCrm) {
-      widgets.push(
-        { label: "Yeni talep", value: stageCount("lead"), note: "İlk incelemeyi bekliyor", href: "/panel/crm", icon: "inbox", tone: "info" },
-        { label: "Değerlendirme", value: stageCount("pre_review") + stageCount("academic_review"), note: "Ön ve akademik inceleme", href: "/panel/crm", icon: "review", tone: "brand" },
-        { label: "Teklif bekleyen", value: proposalWaiting, note: `${money(proposalForecast)} tahmini değer`, href: "/panel/crm/proposals", icon: "doc", tone: "gold" },
-        { label: "Tahsilat bekleyen", value: stageCount("payment_pending"), note: canSeeFinance ? `${money(monthlyRevenue)} bu ay tahsilat` : "Ödeme bekleyen dosya", href: canSeeFinance ? "/panel/finance" : "/panel/crm", icon: "wallet", tone: "success" },
-      );
-      focus.push(
-        { label: "Yeni talepleri ön incelemeye al", count: stageCount("lead"), href: "/panel/crm", icon: "inbox", tone: "info" },
-        { label: "Akademik değerlendirmeleri sonuçlandır", count: stageCount("academic_review"), href: "/panel/crm", icon: "review", tone: "brand" },
-        { label: "Teklif ve sözleşmeleri tamamla", count: proposalWaiting + stageCount("contract_ready"), href: "/panel/crm/proposals", icon: "doc", tone: "gold" },
-      );
-    }
-    if (canSeeOperations) widgets.push({ label: "Aktif iş", value: openWorkflowCount ?? 0, note: `${dueThisWeekCount ?? 0} bu hafta teslim`, href: "/panel/operations", icon: "briefcase", tone: "success" });
-  } else {
-    if (canSeeCrm) {
-      widgets.push(
-        { label: "Aktif talep", value: activeOpportunities.length, note: `${money(pipelineValue)} toplam değer`, href: "/panel/crm", icon: "inbox", tone: "info" },
-        { label: "Tahmini gelir", value: money(weightedForecast), note: "Olasılığa göre", href: "/panel/crm/proposals", icon: "spark", tone: "gold" },
-      );
-      focus.push({ label: "Talepleri incele", count: activeOpportunities.length, href: "/panel/crm", icon: "inbox", tone: "info" });
-    }
-    if (canSeeOperations) widgets.push({ label: "Aktif iş", value: openWorkflowCount ?? 0, note: `${dueThisWeekCount ?? 0} bu hafta teslim`, href: "/panel/operations", icon: "briefcase", tone: "success" });
-    if (canSeeFinance) widgets.push({ label: "Bu ay tahsilat", value: money(monthlyRevenue), note: `${pendingPaymentCount ?? 0} ödeme bekliyor`, href: "/panel/finance", icon: "wallet", tone: "gold" });
-  }
-  widgets.push({ label: "Bildirim", value: unread, note: unread ? "Okunmamış kayıt" : "Hepsi okundu", href: "/panel/notifications", icon: "bell", tone: "brand" });
-  if (canSeeOperations) {
-    focus.push(
-      { label: "Geciken teslimleri incele", count: overdue, href: "/panel/operations", icon: "alert", tone: "danger", urgent: true },
-      { label: "Bu hafta teslim edilecekler", count: dueThisWeekCount ?? 0, href: "/panel/operations", icon: "clock", tone: "success" },
-    );
-  }
-  if (canSeeFinance) focus.push({ label: "Bekleyen tahsilatları kontrol et", count: isAcademic ? stageCount("payment_pending") : pendingPaymentCount ?? 0, href: "/panel/finance", icon: "wallet", tone: "gold" });
-  focus.push({ label: "Bildirimleri gözden geçir", count: unread, href: "/panel/notifications", icon: "bell", tone: "brand" });
-
-  const stageCodes = isAcademic ? academicActiveStages : generalActiveStages;
-  const stageRows = stageCodes
-    .map((code) => ({ code, name: (isAcademic ? academicStageNames[code] : requestStageNames[code]) ?? code, count: stageCount(code) }))
-    .filter((row) => row.count > 0 || !isAcademic);
-  const stageMax = Math.max(1, ...stageRows.map((row) => row.count));
-
-  // Özet cümle
   const { greeting, date } = greetingLine();
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
-  const parts = [
-    canSeeCrm && trend.today ? `${trend.today} yeni talep` : null,
-    canSeeOperations && overdue ? `${overdue} geciken iş` : null,
-    canSeeOperations && dueThisWeekCount ? `bu hafta ${dueThisWeekCount} teslim` : null,
-    unread ? `${unread} okunmamış bildirim` : null,
-  ].filter(Boolean);
-  const summary = parts.length ? `Bugün ${parts.join(", ")} var.` : "Bekleyen acil bir iş yok, her şey yolunda.";
-  const delta = trend.previous ? Math.round(((trend.total - trend.previous) / trend.previous) * 100) : null;
 
   return (
-    <div className="dash">
+    <div className="dash dash-v2">
       <header className="dash-hero">
         <div>
-          <small className="panel-kicker">{date.toLocaleUpperCase("tr-TR")}</small>
+          <small className="panel-kicker">{date}</small>
           <h1>{greeting}{firstName ? `, ${firstName}` : ""}</h1>
-          <p>{summary}</p>
-        </div>
-        <div className="panel-page-actions">
-          {/* Raporlar artık Finans sekmesi: Finans'ı göremeyen role düğme gösterilmez */}
-          {canSeeReports && canSeeFinance ? <Link className="panel-secondary" href="/panel/finance/raporlar">Raporlar</Link> : null}
-          {canSeeCrm ? <Link className="panel-primary" href="/panel/crm">+ Yeni talep</Link> : null}
         </div>
       </header>
 
@@ -391,21 +270,10 @@ export default async function PanelPage() {
           <span aria-hidden="true"><Icon name="alert" size={16} /></span>
           <span>
             <b>Bazı veriler okunamadı</b>
-            <small>{failedQueries.map(([label]) => label).join(", ")} yüklenemedi; aşağıdaki rakamlar eksik olabilir. Sorun sürerse destek kaydı açın.</small>
+            <small>{failedQueries.map(([label]) => label).join(", ")} yüklenemedi; aşağıdaki listeler eksik olabilir. Sorun sürerse destek kaydı açın.</small>
           </span>
         </p>
       ) : null}
-
-      <section className="dash-widgets" aria-label="Özet">
-        {widgets.map((widget) => (
-          <Link className="dash-widget" data-tone={widget.tone} href={widget.href} key={widget.label}>
-            <span className="dash-widget-icon"><Icon name={widget.icon} /></span>
-            <small>{widget.label}</small>
-            <strong>{widget.value}</strong>
-            <span className="dash-widget-note">{widget.note}</span>
-          </Link>
-        ))}
-      </section>
 
       {showSetup ? (
         <section className="dash-card dash-setup" aria-label="Kurulum">
@@ -443,88 +311,111 @@ export default async function PanelPage() {
         </section>
       ) : null}
 
-      <section className="dash-grid">
-        {canSeeCrm ? (
-          <article className="dash-card dash-chart">
-            <header className="dash-card-head">
-              <div>
-                <h2>Yeni talepler</h2>
-                <p>Son 14 gün</p>
-              </div>
-              <div className="dash-stat">
-                <strong>{trend.total}</strong>
-                {delta !== null ? (
-                  <span data-tone={delta >= 0 ? "success" : "danger"}>{delta >= 0 ? "+" : ""}{delta}% önceki 14 güne göre</span>
-                ) : trend.total ? <span data-tone="neutral">önceki dönemde talep yok</span> : null}
-              </div>
-            </header>
-            <div className="dash-bars" role="img" aria-label={`Son 14 günde ${trend.total} yeni talep`}>
-              {trend.days.map((day) => (
-                <div className={`dash-bar${day.isToday ? " is-today" : ""}${day.count ? "" : " is-empty"}`} key={day.key} title={`${day.title}: ${day.count} talep`}>
-                  <span className="dash-bar-value">{day.count || ""}</span>
-                  <span className="dash-bar-fill" style={{ "--h": `${day.count ? Math.max(10, (day.count / trend.max) * 100) : 4}%` } as CSSProperties} />
-                  <small>{day.day}</small>
-                </div>
-              ))}
+      {canSeeCrm ? (
+        <article className="dash-card dash-chart">
+          <header className="dash-card-head">
+            <div>
+              <h2>Yeni talepler</h2>
+              <p>Son 14 gün</p>
             </div>
-          </article>
-        ) : null}
-
-        <article className="dash-card dash-focus">
-          <header className="dash-card-head"><div><h2>Bugün neye odaklanmalı?</h2><p>Bekleyen işler</p></div></header>
-          <nav className="dash-list">
-            {focus.map((item) => (
-              <Link className="dash-row" data-tone={item.urgent && item.count ? "danger" : item.tone} href={item.href} key={item.label}>
-                <span className="dash-row-icon"><Icon name={item.icon} size={17} /></span>
-                <span className="dash-row-label">{item.label}</span>
-                <b className={`dash-row-count${item.count ? "" : " is-zero"}`}>{item.count}</b>
-                <Chevron />
-              </Link>
+            <div className="dash-stat">
+              <strong>{trend.total}</strong>
+              {delta !== null ? (
+                <span data-tone={delta >= 0 ? "success" : "danger"}>{delta >= 0 ? "+" : ""}{delta}% önceki 14 güne göre</span>
+              ) : trend.total ? <span data-tone="neutral">önceki dönemde talep yok</span> : null}
+            </div>
+          </header>
+          <div className="dash-bars" role="img" aria-label={`Son 14 günde ${trend.total} yeni talep`}>
+            {trend.days.map((day) => (
+              <div className={`dash-bar${day.isToday ? " is-today" : ""}${day.count ? "" : " is-empty"}`} key={day.key} title={`${day.title}: ${day.count} talep`}>
+                <span className="dash-bar-value">{day.count || ""}</span>
+                <span className="dash-bar-fill" style={{ "--h": `${day.count ? Math.max(10, (day.count / trend.max) * 100) : 4}%` } as CSSProperties} />
+                <small>{day.day}</small>
+              </div>
             ))}
-          </nav>
+          </div>
         </article>
+      ) : null}
 
-        {canSeeCrm ? (
-          <article className="dash-card dash-stages">
-            <header className="dash-card-head"><div><h2>Talep aşamaları</h2><p>{activeOpportunities.length} aktif kayıt</p></div></header>
-            {stageRows.length ? (
-              <ul className="dash-stage-list">
-                {stageRows.map((row) => (
-                  <li key={row.code}>
-                    <div className="dash-stage-top"><span>{row.name}</span><b>{row.count}</b></div>
-                    <div className="dash-stage-track"><span style={{ "--w": `${row.count ? Math.max(4, (row.count / stageMax) * 100) : 0}%` } as CSSProperties} /></div>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="dash-empty">Aktif talep yok.</p>}
-            <Link className="dash-card-link" href="/panel/crm">Taleplere git <Chevron /></Link>
-          </article>
+      <section className="dash-cols" aria-label="Güncel işler">
+        {canSeeOperations ? (
+          <ListeKarti baslik="Operasyon" alt={`Son ${LISTE} operasyon`} bos="Açık operasyon yok." href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
+            {isler.map((is) => {
+              const rozet = dueBadge(is.due_date, today, is.status);
+              return (
+                <li key={is.id} className={yeniMi(is.updated_at) ? "is-new" : undefined}>
+                  <Link className="dash-col-row" href={`/panel/operations/${is.id}`}>
+                    <span className="dash-col-main">
+                      <b title={is.title}>{formatSubject(is.title)}</b>
+                      <small>{is.customer_name || "Kurum içi iş"} · {workflowStatusNames[is.status] ?? is.status}</small>
+                    </span>
+                    {is.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ListeKarti>
         ) : null}
 
-        {canSeeCrm ? (
-          <article className="dash-card dash-activity">
-            <header className="dash-card-head"><div><h2>Canlı akış</h2><p>Talep, teklif ve sözleşmelerde ekibin hareketleri</p></div><span className="dash-live" aria-hidden="true"><i />anlık</span></header>
-            {logs.length ? (
-              <ul className="dash-activity-list">
-                {logs.map((log) => {
-                  const actor = (log.actor_user_id && actorName.get(log.actor_user_id)) || "Bir ekip üyesi";
-                  const customer = log.metadata?.opportunity_id ? customerName.get(log.metadata.opportunity_id) : null;
-                  const href = activityHref(log.entity_type, log.entity_id, log.action);
-                  const content = (
-                    <>
-                      <span className="dash-avatar" aria-hidden="true">{actor.split(" ").slice(0, 2).map((part) => part[0]).join("")}</span>
-                      <span className="dash-activity-body">
-                        <span><b>{actor.split(" ")[0]}</b> {activityVerb(log.action, log.entity_type)}</span>
-                        <small>{customer ? `${customer} · ` : ""}{relativeTime(log.created_at)}</small>
-                      </span>
-                      {href ? <Chevron /> : null}
-                    </>
-                  );
-                  return <li key={log.id} className={yeniHareket(log.created_at) ? "is-new" : undefined}>{href ? <Link className="dash-activity-row" href={href}>{content}</Link> : <div className="dash-activity-row">{content}</div>}</li>;
-                })}
-              </ul>
-            ) : <p className="dash-empty">Henüz hareket yok. Talep, teklif ya da sözleşmelerde yapılan işlemler burada görünecek.</p>}
-          </article>
+        {canSeeOperations ? (
+          <ListeKarti baslik="Yaklaşan aşama tarihleri" alt={`Yaklaşan ${LISTE} aşama`} bos="Tarihi girilmiş açık aşama yok." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}>
+            {asamalar.map((asama) => {
+              const rozet = dueBadge(asama.due_date, today);
+              return (
+                <li key={asama.id} className={rozet.late ? "is-late" : undefined}>
+                  <Link className="dash-col-row" href={`/panel/operations/${asama.workflow_id}`}>
+                    <span className="dash-col-main">
+                      <b title={asama.title}>{formatSubject(asama.title)}</b>
+                      {/* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */}
+                      <small>{asama.operation_workflows?.customer_name || "Kurum içi iş"} · {formatSubject(asama.operation_workflows?.title)}</small>
+                    </span>
+                    <span className="status-pill" data-tone={rozet.tone} title={kisaTarih(asama.due_date)}>{rozet.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ListeKarti>
+        ) : null}
+
+        {canSeeOperations ? (
+          <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos="Müşterilerden mesaj yok." href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
+            {mesajlar.map((mesaj) => (
+              <li key={mesaj.id} className={[mesaj.read_at ? "" : "is-unread", yeniMi(mesaj.created_at) ? "is-new" : ""].filter(Boolean).join(" ") || undefined}>
+                <Link className="dash-col-row" href={`/panel/operations/${mesaj.workflow_id}`}>
+                  <span className="dash-col-main">
+                    <b>{formatPersonName(mesaj.sender_name) || mesaj.operation_workflows?.customer_name || "Müşteri"}</b>
+                    <small className="dash-col-preview">{mesaj.body}</small>
+                  </span>
+                  <small className="dash-col-time">{relativeTime(mesaj.created_at)}</small>
+                </Link>
+              </li>
+            ))}
+          </ListeKarti>
+        ) : null}
+
+        {canSeePosta ? (
+          <ListeKarti baslik="Gelen postalar" alt={`Gelen müşteri e-postaları, son ${LISTE}`} bos="Kutuda konuşma yok." href="/panel/posta" hrefEtiket="Postaya git" sayi={postalar.length}>
+            {postalar.map((posta) => (
+              <li key={posta.thread_id} className={[posta.okunmamis ? "is-unread" : "", yeniMi(posta.son_mesaj_at) ? "is-new" : ""].filter(Boolean).join(" ") || undefined}>
+                <Link className="dash-col-row" href={`/panel/posta/${posta.thread_id}`}>
+                  <span className="dash-col-main">
+                    <b>{posta.son_gonderen_ad || posta.son_gonderen_adres || "Bilinmeyen gönderen"}</b>
+                    <small className="dash-col-preview">{posta.konu || "(konu yok)"}</small>
+                  </span>
+                  {posta.son_mesaj_at ? <small className="dash-col-time">{relativeTime(posta.son_mesaj_at)}</small> : null}
+                </Link>
+              </li>
+            ))}
+          </ListeKarti>
+        ) : postaYetkisi ? (
+          <ListeKarti
+            baslik="Gelen postalar"
+            alt="Gelen müşteri e-postaları"
+            bos={postaBaglayabilir ? "Ortak posta kutusu henüz bağlı değil." : "Kurum yöneticiniz ortak posta kutusunu bağladığında gelen postalar burada görünür."}
+            href={postaBaglayabilir ? "/panel/settings#posta" : undefined}
+            hrefEtiket="Posta kutusunu bağla"
+            sayi={0}
+          >{null}</ListeKarti>
         ) : null}
       </section>
     </div>

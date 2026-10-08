@@ -161,3 +161,45 @@ a.dash-setup-step:active{transform:scale(.985)}
 @media(prefers-reduced-motion:reduce){
   .dash-live>i,.dash-activity-list li.is-new>.dash-activity-row{animation:none}
 }
+
+/* ============================================================
+   ANA EKRAN v2 (2026-10) — kurum sahibinin çizdiği düzen:
+   selamlama · tam genişlikte "Yeni talepler" · dört sütun liste.
+   ============================================================ */
+.dash-v2{gap:var(--sp-4)}
+.dash-v2 .dash-card{border-radius:var(--r-xl);box-shadow:var(--shadow-xs)}
+.dash-v2 .dash-card-head h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
+.dash-v2 .dash-card-head p{margin:2px 0 0;font-size:var(--fs-sm);color:var(--muted)}
+.dash-v2 .dash-chart{grid-column:auto}
+.dash-v2 .dash-bars{height:150px}
+
+.dash-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--sp-4);align-items:stretch}
+.dash-col{gap:var(--sp-3);min-height:420px}
+.dash-col .dash-card-link{margin-top:auto}
+.dash-col .dash-empty{flex:1;display:grid;place-items:center;padding:var(--sp-6) var(--sp-2);text-align:center;font-size:var(--fs-sm)}
+.dash-col-list{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
+.dash-col-list li+li{border-top:1px solid var(--line-soft)}
+.dash-col-row{display:flex;align-items:center;gap:var(--sp-2);min-height:48px;padding:var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none;transition:background-color var(--dur) var(--ease)}
+.dash-col-row:hover{background:var(--surface-2)}
+.dash-col-row:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.dash-col-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.dash-col-main b{font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-col-main small{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-col-row .status-pill{flex:none}
+.dash-col-time{flex:none;align-self:flex-start;margin-top:2px;font-size:var(--fs-micro);color:var(--dim);white-space:nowrap}
+/* Okunmamış mesaj ve posta: kalın ad + kurum renginde nokta */
+.dash-col-list li.is-unread .dash-col-main b{font-weight:var(--fw-bold)}
+.dash-col-list li.is-unread .dash-col-main b::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--primary);vertical-align:1px}
+/* Gecikmiş aşama: soluk kırmızı zemin */
+.dash-col-list li.is-late .dash-col-row{background:color-mix(in srgb,var(--danger-soft) 55%,transparent)}
+/* Anlık gelen satır kurum renginde belirir (canlı akıştaki gibi) */
+.dash-col-list li.is-new>.dash-col-row{animation:dash-yeni 4s var(--dash-ease) both}
+
+@media (max-width:1200px){
+  .dash-cols{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:700px){
+  .dash-cols{grid-template-columns:minmax(0,1fr)}
+  .dash-col{min-height:0}
+}
+@media(prefers-reduced-motion:reduce){.dash-col-list li.is-new>.dash-col-row{animation:none}}
