@@ -364,7 +364,8 @@ export default async function PanelPage() {
             {asamalar.map((asama) => {
               const rozet = dueBadge(asama.due_date, today);
               return (
-                <li key={asama.id} className={rozet.late ? "is-late" : undefined}>
+                // Gecikme yalnızca rozetle (kırmızı) gösterilir; satır zemini diğer kartlarla aynı.
+                <li key={asama.id}>
                   <Link className="dash-col-row" href={`/panel/operations/${asama.workflow_id}`}>
                     <span className="dash-col-main">
                       <b title={asama.title}>{formatSubject(asama.title)}</b>

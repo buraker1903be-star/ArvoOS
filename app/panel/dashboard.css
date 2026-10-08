@@ -190,8 +190,6 @@ a.dash-setup-step:active{transform:scale(.985)}
 /* Okunmamış mesaj ve posta: kalın ad + kurum renginde nokta */
 .dash-col-list li.is-unread .dash-col-main b{font-weight:var(--fw-bold)}
 .dash-col-list li.is-unread .dash-col-main b::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--primary);vertical-align:1px}
-/* Gecikmiş aşama: soluk kırmızı zemin */
-.dash-col-list li.is-late .dash-col-row{background:color-mix(in srgb,var(--danger-soft) 55%,transparent)}
 /* Anlık gelen satır kurum renginde belirir (canlı akıştaki gibi) */
 .dash-col-list li.is-new>.dash-col-row{animation:dash-yeni 4s var(--dash-ease) both}
 
