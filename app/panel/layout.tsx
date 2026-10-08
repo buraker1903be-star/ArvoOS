@@ -22,6 +22,7 @@ import { OsDock } from "./os/os-dock";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
+import { OsMenuKapat } from "./os/os-menu-kapat";
 import { OsCanliSayfa } from "./os/os-canli-yenile";
 import { CustomerLookupHost } from "./crm/customer-lookup";
 import "./panel-tokens.css";
@@ -253,6 +254,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
             <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
             <ThemeToggle />
           </div>
+          <OsMenuKapat />
           <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} />
         </div>
       </header>
