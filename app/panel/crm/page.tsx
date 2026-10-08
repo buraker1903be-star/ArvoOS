@@ -2,7 +2,8 @@ import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
 import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
 import { formatSubject, initials } from "@/lib/table-format";
-import { fetchLastContacts, relativeTime } from "./last-contact";
+import { daysSince, fetchLastContacts, relativeTime } from "./last-contact";
+import { OtomatikSecim } from "./otomatik-secim";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -17,12 +18,12 @@ import "./kayit-detay/kayit-detay.css";
 /*
   TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
   "Müşteri sorgula" ve "Yeni talep"; altında aşama şeridi (her sayı o
-  aşamaya süzer); solda talepler, sağda temsilcilere göre dağılım.
+  aşamaya süzer); iki eşit kart: solda talepler, sağda takip bekleyenler
+  (birkaç gündür not girilmemiş aktif talepler).
 
   Eskiden dört sayaç kutusu, ayrı bir süzgeç kartı ("Filtrele" /
   "Temizle") ve sekiz sütunlu tablo alt alta duruyordu. Süzgeç artık
-  listenin üstünde tek satır; temsilci süzgeci sağ sütundaki adlara
-  tıklayarak da seçiliyor.
+  listenin üstünde tek satır (durum, temsilci, arama).
 */
 
 type SearchParams = Promise<{
@@ -53,6 +54,7 @@ type Opportunity = {
   assigned_employee_id: string | null;
   /** Arşiv sebebi; listede durum rozetinin altında görünür. */
   lost_reason: string | null;
+  created_at: string;
 };
 type SalesRepresentative = {
   id: string;
@@ -78,6 +80,8 @@ function altSatir(...parcalar: (string | null | undefined)[]) {
   }
   return sonuc.join(" · ");
 }
+/** Son nottan bu yana bu kadar gün geçen aktif talep "takip bekleyen" sayılır. */
+const TAKIP_GUN = 3;
 const teslim = (value: string | null) =>
   value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : null;
 const clean = (v?: string) => (v ?? "").trim().slice(0, 100);
@@ -103,7 +107,7 @@ export default async function RequestsPage({
     supabase
       .from("crm_opportunities")
       .select(
-        "id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,notes,request_details,assigned_employee_id,lost_reason",
+        "id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,notes,request_details,assigned_employee_id,lost_reason,created_at",
       )
       .eq("organization_id", membership.organization_id)
       .order("updated_at", { ascending: false }),
@@ -168,7 +172,8 @@ export default async function RequestsPage({
       representativeMatches
     );
   });
-  const visibleOpportunityIds = rows.map((item) => item.id);
+  // Son not hem görünen satırlar hem "Takip bekleyenler" kartı (tüm aktif talepler) için.
+  const visibleOpportunityIds = [...new Set([...rows, ...all.filter((item) => active.has(item.stage))].map((item) => item.id))];
   const lastContacts = await fetchLastContacts(
     supabase,
     membership.organization_id,
@@ -194,8 +199,21 @@ export default async function RequestsPage({
   };
   // Temsilci dağılımı aktif talepler (yeni + inceleniyor) üzerinden.
   const aktifler = all.filter((item) => active.has(item.stage));
-  const temsilciSayisi = (id: string | null) => aktifler.filter((item) => item.assigned_employee_id === id).length;
-  const atanmamis = temsilciSayisi(null);
+  const atanmamis = aktifler.filter((item) => !item.assigned_employee_id).length;
+  /*
+    Takip bekleyen: aktif talepte son not TAKIP_GUN günden eski ya da hiç
+    not yoksa talep TAKIP_GUN günden uzun süredir açık. En uzun bekleyen üstte.
+    Temsilci süzgecine uyar (seçili temsilcinin unuttukları), arama ve
+    durum süzgecine uymaz: kart her zaman aktif talepleri kapsar.
+  */
+  const takipBekleyen = aktifler
+    .filter((item) => !selectedRepresentative || (selectedRepresentative === "atanmamis" ? !item.assigned_employee_id : item.assigned_employee_id === selectedRepresentative))
+    .map((item) => {
+      const temas = lastContacts.get(item.id);
+      return { item, notVar: Boolean(temas), gun: daysSince(temas?.at ?? item.created_at) ?? 0 };
+    })
+    .filter((satir) => satir.gun >= TAKIP_GUN)
+    .sort((a, b) => b.gun - a.gun);
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
@@ -242,7 +260,7 @@ export default async function RequestsPage({
         </dl>
       </nav>
 
-      <div className="talep-izgara personel-iki ekip-izgara">
+      <div className="talep-izgara personel-iki ekip-izgara esit">
         <section className="panel-card talep-bilgi" aria-label="Talep listesi">
           {/* Süzgeç tek satır: arama kutusu Enter ile gönderilir, durum
               ve temsilci seçimi gizli alanlarla korunur. */}
@@ -250,14 +268,17 @@ export default async function RequestsPage({
             <Link href={adres({ durum: "" })} className={!selected ? "is-active" : undefined}>Aktif <small>{aktifler.length}</small></Link>
             <Link href={adres({ durum: "tumu" })} className={selected === "tumu" ? "is-active" : undefined}>Tümü <small>{all.length}</small></Link>
             {selected && selected !== "tumu" ? <span className="talep-suzgec-etiket">{gorunumAdi}</span> : null}
-            {selectedRepresentative ? (
-              <Link className="ekip-suzgec-dep" href={adres({ temsilci: "" })}>
-                {selectedRepresentative === "atanmamis" ? "Atanmamış" : formatPersonName(representativeMap.get(selectedRepresentative) ?? "Temsilci")} ✕
-              </Link>
-            ) : null}
-            <form action="/panel/crm" className="talep-ara" role="search">
+            {/* Temsilci süzgeci eskiden sağ sütundaki temsilci kartındaydı;
+                o kartın yerini "Takip bekleyenler" aldı, süzgeç buraya geldi. */}
+            <form action="/panel/crm" className="talep-ara talep-ara--secimli" role="search">
               {selected ? <input type="hidden" name="durum" value={selected} /> : null}
-              {selectedRepresentative ? <input type="hidden" name="temsilci" value={selectedRepresentative} /> : null}
+              <OtomatikSecim name="temsilci" defaultValue={selectedRepresentative} className="talep-temsilci-sec" label="Satış temsilcisi">
+                <option value="">Tüm temsilciler</option>
+                <option value="atanmamis">Atanmamış</option>
+                {representatives.map((rep) => (
+                  <option key={rep.id} value={rep.id}>{formatPersonName(rep.full_name)}</option>
+                ))}
+              </OtomatikSecim>
               <input name="arama" defaultValue={arama ?? ""} placeholder="Müşteri, telefon, konu ara" aria-label="Müşteri / talep ara" />
             </form>
           </div>
@@ -328,30 +349,43 @@ export default async function RequestsPage({
           )}
         </section>
 
-        <section className="panel-card talep-musteri" aria-label="Temsilciler">
+        {/*
+          TAKİP BEKLEYENLER. Eskiden burada temsilcilere göre dağılım vardı;
+          temsilci süzgeci listenin üstüne taşındı. Bu ekranın asıl sorusu
+          "hangi talep unutuluyor": 3 günden uzun süredir not girilmemiş
+          (ya da hiç not girilmemiş) aktif talepler, en eskisi üstte.
+        */}
+        <section className="panel-card talep-musteri" aria-label="Takip bekleyen talepler">
           <div className="cari-baslik">
-            <h2>Temsilciler</h2>
-            <small>aktif talep</small>
+            <h2>Takip bekleyenler</h2>
+            <small>{takipBekleyen.length ? `${takipBekleyen.length} talep · ${TAKIP_GUN}+ gündür not yok` : `${TAKIP_GUN} gün kuralı`}</small>
           </div>
-          <ul className="cari-hareketler">
-            {representatives.map((rep) => (
-              <li key={rep.id}>
-                {/* Ada tıklamak listeyi o temsilciye süzer. */}
-                <Link href={adres({ temsilci: selectedRepresentative === rep.id ? "" : rep.id })} className={selectedRepresentative === rep.id ? "is-active" : undefined}>
-                  <span className="ekip-dep-kod">{initials(formatPersonName(rep.full_name))}</span>
-                  <span className="cari-hareket-metin"><b>{formatPersonName(rep.full_name)}</b><small>{rep.job_title || "Satış temsilcisi"}</small></span>
-                  <strong>{temsilciSayisi(rep.id)}</strong>
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href={adres({ temsilci: selectedRepresentative === "atanmamis" ? "" : "atanmamis" })} className={selectedRepresentative === "atanmamis" ? "is-active" : undefined}>
-                <span className="ekip-dep-kod" data-pasif="">—</span>
-                <span className="cari-hareket-metin"><b>Atanmamış</b><small>Temsilci bekleyen talepler</small></span>
-                <strong className={atanmamis ? "talep-uyari" : undefined}>{atanmamis}</strong>
-              </Link>
-            </li>
-          </ul>
+          {takipBekleyen.length ? (
+            <ul className="ekip-liste">
+              {takipBekleyen.map(({ item, gun, notVar }) => {
+                const musteri = formatPersonName(item.customer_name) || "—";
+                const sahibi = item.assigned_employee_id ? formatPersonName(representativeMap.get(item.assigned_employee_id) ?? "Pasif personel") : "Atanmamış";
+                return (
+                  <li key={item.id}>
+                    <Link href={`/panel/crm/requests/${item.id}`}>
+                      <span className="talep-avatar" aria-hidden="true">{initials(musteri)}</span>
+                      <span className="cari-hareket-metin">
+                        <b>{musteri}</b>
+                        <small>{altSatir(sahibi, requestStageNames[item.stage] ?? item.stage, formatPhone(item.contact_phone))}</small>
+                      </span>
+                      <span className="takip-satir-yas">
+                        <b>{gun} gün</b>
+                        {notVar ? "son nottan beri" : "açık, hiç not yok"}
+                      </span>
+                      <span className="ekip-ok" aria-hidden="true">›</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="ic-akis-bos">Bütün aktif taleplere son {TAKIP_GUN} gün içinde not girilmiş.</p>
+          )}
         </section>
       </div>
     </main>
