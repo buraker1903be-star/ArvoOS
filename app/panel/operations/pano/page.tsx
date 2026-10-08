@@ -11,6 +11,8 @@ import { todayIstanbul, priorityNames } from "../ops-shared";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { WorkflowCreateForm } from "../workflow-create-form";
 import { PanoTahtasi } from "./pano-tahtasi";
+import { OtomatikSecim } from "../../crm/otomatik-secim";
+import "../../crm/kayit-detay/kayit-detay.css";
 import "./pano.css";
 
 /*
@@ -145,7 +147,6 @@ export default async function OperationsPanoPage({
   const tumSablon = (sablonSatirlari ?? []) as (SablonAsamasi & { set_code?: string | null })[];
   const kurumSablonu = seciliTur ? tumSablon.filter((satir) => (satir.set_code ?? "varsayilan") === seciliTur) : tumSablon;
   const sablon = kurumSablonu.length ? kurumSablonu : VARSAYILAN_PANO_SABLONU;
-  const kendiSablonu = kurumSablonu.length > 0;
 
   const sorumlular = new Map(
     ((employees ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]),
@@ -209,135 +210,102 @@ export default async function OperationsPanoPage({
   const sorumluSecenekleri = [...sorumlular.entries()].sort((a, b) => a[1].localeCompare(b[1], "tr"));
   const turSorgusu = seciliTur ? `tur=${encodeURIComponent(seciliTur)}` : "";
 
+  /*
+    PANEL KALİTESİ (2026-10): başlık, özet şeridi ve süzgeç diğer liste
+    sayfalarıyla aynı kalıpta. Eskiden açıklama paragrafı, dört sayı ve
+    "Filtrele/Temizle" düğmeli form panoyu 334px aşağı itiyordu; sayfa
+    1318px'e uzuyor, pano dock'un altına taşıyordu. Süzgeçler artık
+    seçince uygulanıyor; pano ekranın kalanını dolduruyor, kolonlar kendi
+    içinde kayıyor.
+  */
+  const adres = (ek: Record<string, string>) => {
+    const q = new URLSearchParams();
+    const deger = { tur: seciliTur ?? "", arama: arama ?? "", sorumlu: seciliSorumlu ?? "", oncelik: seciliOncelik ?? "", mesaj: yalnizOkunmamis ? "yeni" : "", ...ek };
+    for (const [ad, v] of Object.entries(deger)) if (v) q.set(ad, v);
+    const s = q.toString();
+    return s ? `/panel/operations/pano?${s}` : "/panel/operations/pano";
+  };
+  const turAdi = turler.find((tur) => tur.code === seciliTur)?.name ?? null;
+
   return (
-    <div className="crm-page-stack">
-      <div className="panel-pagehead">
-        <div>
-          <small className="panel-kicker">OPERASYON / PANO</small>
+    <main className="talep pano-sayfa">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">OPERASYON{turler.length > 1 && turAdi ? ` · ${turAdi}` : ""}</small>
           <h1>Pano</h1>
-          <p>
-            İşler bulundukları aşamanın kolonunda. Kolonlar{" "}
-            {kendiSablonu
-              ? `kurumunuzun ${turler.length > 1 ? `“${turler.find((tur) => tur.code === seciliTur)?.name ?? ""}” ` : ""}görev listesinden`
-              : "varsayılan sekiz aşamadan"} geliyor; kartı sürükleyerek
-            ya da düğmeyle başka aşamaya taşıyabilir, “Aşamalar” ile işin tamamını panodan çıkmadan görebilirsiniz.
-          </p>
         </div>
-        {/* Başlık eylemleri İşler sayfasıyla aynı: sayı · yeni mesaj · arşiv · yeni iş. */}
-        <div className="panel-page-actions">
-          <span className="status-pill">{toplamKart} iş</span>
-          {toplamOkunmamis ? (
-            <Link className="status-pill" data-tone="danger" href={`/panel/operations/pano?${[turSorgusu, "mesaj=yeni"].filter(Boolean).join("&")}`}>
-              {toplamOkunmamis} yeni müşteri mesajı
-            </Link>
-          ) : null}
-          <Link className="panel-secondary" href="/panel/operations/sablon">Adım şablonu</Link>
-          <Link className="panel-secondary" href="/panel/operations/arsiv">Arşiv ({arsivSayisi ?? 0})</Link>
+        <div className="talep-bas-eylem">
           {yonetici ? (
-            <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">
+            <PanelDrawer triggerLabel="Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin.">
               <WorkflowCreateForm />
             </PanelDrawer>
           ) : null}
+          <details className="os-menu talep-menu">
+            <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
+            <div className="os-menu-list" role="menu">
+              <Link className="os-menu-item" href="/panel/operations/sablon">Adım şablonu</Link>
+              <Link className="os-menu-item" href="/panel/operations/arsiv">Arşiv ({arsivSayisi ?? 0})</Link>
+              <Link className="os-menu-item" href="/panel/operations/isler">İşler (tablo)</Link>
+            </div>
+          </details>
         </div>
-      </div>
-      <div className="module-tab-panel">
-                {/*
-          ÖLÇÜLER VE SÜZGEÇ TEK ŞERİTTE.
+      </header>
 
-          İlk denemede İşler sayfasının birebir kopyasıydı: dört ölçü
-          KARTI (214px) + süzgeç kartı (108px). Ölçtüm, panoyu 764px
-          aşağı itiyordu — 950px'lik ekranda panodan 186px görünüyor.
-          Panonun bütün değeri bir bakışta görünmesi; kartları olduğu
-          gibi taşımak İşler'in kalitesini değil, İşler'in BİÇİMİNİ
-          kopyalamak olurdu.
-
-          Aynı bilgi, tek satırlık şeritte: solda sayılar, sağda
-          süzgeç. Tablo sayfasında kart doğru, kanban'da şerit.
-        */}
-        <section className="panel-card ops-pano-serit">
-          <div className="ops-pano-olculer">
-            <span><b>{surmekte}</b> süren</span>
-            <span data-tone={geciken ? "danger" : undefined}><b>{geciken}</b> geciken aşama</span>
-            <span data-tone={tarihsiz ? "warning" : undefined}><b>{tarihsiz}</b> tarihsiz aşama</span>
-            <span><b>%{ilerleme}</b> ilerleme</span>
-            {tamamlanan ? <span><b>{tamamlanan}</b> tamamlandı</span> : null}
+      {/* Özet ve süzgeç tek satırda: solda sayılar, sağda süzgeçler. */}
+      <section className="kayit-serit talep-serit pano-serit" aria-label="Pano özeti ve süzgeç">
+        <dl>
+          <div><dt>Süren iş</dt><dd>{surmekte}</dd></div>
+          <div><dt>Geciken aşama</dt><dd className={geciken ? "talep-uyari" : undefined}>{geciken}</dd></div>
+          <div><dt>Tarihsiz aşama</dt><dd className={tarihsiz ? "talep-uyari" : undefined}>{tarihsiz}</dd></div>
+          <div><dt>İlerleme</dt><dd>%{ilerleme}</dd></div>
+          {tamamlanan ? <div><dt>Tamamlandı</dt><dd className="cari-arti">{tamamlanan}</dd></div> : null}
+          <div className={yalnizOkunmamis ? "is-active" : undefined}>
+            <dt>Yeni mesaj</dt>
+            <dd className={toplamOkunmamis ? "talep-uyari" : undefined}>
+              <Link href={adres({ mesaj: yalnizOkunmamis ? "" : "yeni" })} aria-pressed={yalnizOkunmamis}>{toplamOkunmamis}</Link>
+            </dd>
           </div>
-          <form method="get" className="ops-pano-suzgec">
-            {/*
-              ÇALIŞMA TÜRÜ SÜZGECİN İÇİNDE. Üstte ayrı bir düğme şeridiydi
-              ("Varsayılan · Tez · Standart") ve iki sorunu vardı: panelin
-              kenarlığına yapışıyordu (sistem kuralı yalnızca section ve
-              .panel-card'ı içeri alıyor, nav listede yok) ve aynı işi
-              yapan dört denetimden biri tek başına başka bir biçimdeydi.
-              Tür de bir süzgeç: hangi işleri ve hangi kolonları
-              göreceğini seçiyor.
-            */}
-            {turler.length > 1 ? (
-              <select name="tur" defaultValue={seciliTur ?? ""} aria-label="Çalışma türü">
-                {turler.map((tur) => <option key={tur.code} value={tur.code}>{tur.name}</option>)}
-              </select>
-            ) : seciliTur ? (
-              <input type="hidden" name="tur" value={seciliTur} />
-            ) : null}
-            <input name="arama" defaultValue={arama ?? ""} placeholder="İş / müşteri ara" aria-label="İş ya da müşteri ara" />
-            <select name="sorumlu" defaultValue={seciliSorumlu ?? ""} aria-label="Sorumlu">
-              <option value="">Sorumlu: tümü</option>
-              <option value="yok">Atanmamış</option>
-              {sorumluSecenekleri.map(([id, ad]) => <option key={id} value={id}>{ad}</option>)}
-            </select>
-            <select name="oncelik" defaultValue={seciliOncelik ?? ""} aria-label="Öncelik">
-              <option value="">Öncelik: tümü</option>
-              {["urgent", "high", "normal", "low"].map((deger) => (
-                <option key={deger} value={deger}>{priorityNames[deger] ?? deger}</option>
-              ))}
-            </select>
-            <select name="mesaj" defaultValue={yalnizOkunmamis ? "yeni" : ""} aria-label="Müşteri mesajı">
-              <option value="">Mesaj: tümü</option>
-              <option value="yeni">Okunmamış mesajı olan</option>
-            </select>
-            <button className="panel-primary">Filtrele</button>
-            {suzuluyor ? (
-              <Link className="panel-secondary" href={`/panel/operations/pano${turSorgusu ? `?${turSorgusu}` : ""}`}>Temizle</Link>
-            ) : null}
-          </form>
-        </section>
+        </dl>
+        <form method="get" action="/panel/operations/pano" className="pano-suzgec" role="search">
+          {turler.length > 1 ? (
+            <OtomatikSecim name="tur" defaultValue={seciliTur ?? ""} className="talep-temsilci-sec" label="Çalışma türü">
+              {turler.map((tur) => <option key={tur.code} value={tur.code}>{tur.name}</option>)}
+            </OtomatikSecim>
+          ) : seciliTur ? <input type="hidden" name="tur" value={seciliTur} /> : null}
+          <OtomatikSecim name="sorumlu" defaultValue={seciliSorumlu ?? ""} className="talep-temsilci-sec" label="Sorumlu">
+            <option value="">Tüm sorumlular</option>
+            <option value="yok">Atanmamış</option>
+            {sorumluSecenekleri.map(([id, ad]) => <option key={id} value={id}>{ad}</option>)}
+          </OtomatikSecim>
+          <OtomatikSecim name="oncelik" defaultValue={seciliOncelik ?? ""} className="talep-temsilci-sec" label="Öncelik">
+            <option value="">Tüm öncelikler</option>
+            {["urgent", "high", "normal", "low"].map((deger) => <option key={deger} value={deger}>{priorityNames[deger] ?? deger}</option>)}
+          </OtomatikSecim>
+          {yalnizOkunmamis ? <input type="hidden" name="mesaj" value="yeni" /> : null}
+          <input className="pano-ara" name="arama" defaultValue={arama ?? ""} placeholder="İş, müşteri ara" aria-label="İş ya da müşteri ara" />
+          {suzuluyor ? <Link className="pano-temizle" href={`/panel/operations/pano${turSorgusu ? `?${turSorgusu}` : ""}`}>Temizle</Link> : null}
+        </form>
+      </section>
 
-        {tarihsiz ? (
-          /*
-            Panonun en önemli uyarısı bu: tarih yoksa gecikme uyarısı,
-            takvim ve hatırlatma zinciri sessizce çalışmıyor. Sayı yerine
-            "tarih girin" demek eksiğin büyüklüğünü göstermezdi.
-          */
-          <p className="ops-pano-uyari">
-            Tarihi girilmemiş aşamalar “gecikti / yaklaştı” uyarısı üretmiyor ve Takvim’de görünmüyor. Kartlardaki
-            tarih alanına tek tek yazabilir, ya da işin detayındaki “Tarihleri dağıt” ile bütün aşamaları işin
-            takvimine bir kerede yayabilirsiniz.
-          </p>
-        ) : null}
-        {sablonDisi ? (
-          /*
-            Şablonla eşleşmeyen aşamalar sessizce ilk kolona atılmıyor; sebebi
-            de yazılıyor. Adımlar üç kaynaktan üretiliyor ve önceliği
-            sözleşmenin ara teslim takviminde: sözleşmeden açılan işin aşama
-            adları müşteriye satılan plandan gelir.
-          */
-          <p className="ops-pano-not">
-            {sablonDisi} işin şu anki aşaması şablonda yok — bunlar sondaki “Şablon dışı” kolonunda. Sözleşmeden açılan
-            işler aşamalarını müşteriye satılan ara teslim takviminden alıyor; şablona eklemek isterseniz{" "}
-            <Link href="/panel/operations/sablon">adım şablonunu</Link> düzenleyin.
-          </p>
-        ) : null}
+      {/*
+        Uyarılar tek satır: tarih yoksa gecikme uyarısı ve takvim sessizce
+        çalışmıyor; şablon dışı aşamaların sebebi de bağlantısıyla.
+      */}
+      {tarihsiz || sablonDisi ? (
+        <p className="pano-uyari">
+          {tarihsiz ? <span>{tarihsiz} aşamanın tarihi yok: gecikme uyarısı üretmiyor ve Takvim’de görünmüyor. Kartta “Tarih gir” ya da iş detayında “Tarihleri dağıt”.</span> : null}
+          {sablonDisi ? <span>{sablonDisi} iş şablonda olmayan bir aşamada (sözleşmenin ara teslim takviminden); “Şablon dışı” kolonunda. <Link href="/panel/operations/sablon">Adım şablonu</Link></span> : null}
+        </p>
+      ) : null}
 
-        {toplamKart ? (
-          <>
-            <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} okunmamis={Object.fromEntries(okunmamis)} />
-          </>
-        ) : (
-          <p className="panel-empty">
-            {suzuluyor ? "Eşleşen iş bulunamadı. Süzgeci temizleyip tekrar deneyin." : "Panoda gösterilecek iş bulunmuyor."}
-          </p>
-        )}
-      </div>
-    </div>
+      {toplamKart ? (
+        <PanoTahtasi kolonlar={kolonlar} bugun={bugun} yetkiliIsler={yetkiliIsler} okunmamis={Object.fromEntries(okunmamis)} />
+      ) : (
+        <div className="crm-empty-state talep-bos-kutu">
+          <h2>{suzuluyor ? "Eşleşen iş yok" : "Panoda iş yok"}</h2>
+          <p>{suzuluyor ? "Süzgeci değiştirip yeniden deneyin." : "Sözleşmesi imzalanan ya da elle açılan işler burada aşamalarına göre görünür."}</p>
+        </div>
+      )}
+    </main>
   );
 }

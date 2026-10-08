@@ -11,7 +11,7 @@ import {
   type PanoIsKarti,
   type PanoKolonu,
 } from "@/lib/operasyon-panosu";
-import { hatirlatmaDurumu, isDurumAdi } from "@/lib/is-adimlari";
+import { hatirlatmaDurumu } from "@/lib/is-adimlari";
 import { initials } from "@/lib/table-format";
 import { dueBadge, priorityNames } from "../ops-shared";
 
@@ -123,7 +123,7 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
 
   return (
     <>
-      <div className="ops-pano" data-bekliyor={bekliyor ? "1" : undefined}>
+      <div className="ops-pano" data-bekliyor={bekliyor ? "1" : undefined} data-surukleniyor={suruklenen ? "1" : undefined}>
         {kolonlar.map((kolon) => {
           const ozet = birakmaOzeti(suruklenen, kolon);
           return (
@@ -131,6 +131,9 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
               className="ops-pano-kolon"
               key={kolon.anahtar}
               data-tur={kolon.tur}
+              /* Boş kolon dar bir şerit; sürükleme sırasında açılır ki bırakılabilsin. */
+              data-bos={kolon.kartlar.length ? undefined : "1"}
+              title={kolon.kartlar.length ? undefined : `${kolon.baslik}: bu aşamada iş yok`}
               data-hedef={hedef === kolon.anahtar && ozet ? "1" : undefined}
               onDragOver={(olay) => {
                 if (!ozet) return;
@@ -154,7 +157,6 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
               </header>
               {ozet ? <p className="ops-pano-birak">Buraya bırak · {ozet}</p> : null}
               <div className="ops-pano-kartlar">
-                {/* Boş kolon da gösteriliyor; neden boş olduğu değil, boş olduğu yazılı. */}
                 {kolon.kartlar.length ? null : <p className="ops-pano-bos-not">Bu aşamada iş yok</p>}
                 {kolon.kartlar.map((kart) => (
                   <Kart
@@ -191,6 +193,22 @@ export function PanoTahtasi({ kolonlar, bugun, yetkiliIsler, okunmamis }: TahtaP
   );
 }
 
+/*
+  KART (2026-10, panel kalitesi). Eskiden kart ~255px'ti: üst şerit,
+  başlık, sorumlu satırı, satır içi tarih formu, aşama, sayaç ve iki
+  tam genişlik düğme alt alta. Bir kolonda üç kart ekranı dolduruyordu.
+
+  Şimdi ~130px: başlık ve müşteri; şu anki görev; öncelik ve aşama
+  tarihi rozetleri; altta sorumlu, aşama sayısı ve küçük düğmeler.
+  TARİH FORMU KARTTAN ÇIKTI: tarihsiz aşamada "Tarih gir" rozeti hızlı
+  bakışı açıyor ve orada her aşamanın tarihi girilebiliyor (kart
+  üstündeki tek aşama yerine bütün plan). Yetkisi olmayana rozet
+  yalnızca "Tarih yok" diyor.
+
+  draggable={false} bağlantılarda: tarayıcı bağlantıyı kendiliğinden
+  sürükleniyor ve kartın başlığından tutan kullanıcı kartı değil
+  bağlantıyı sürüklüyordu.
+*/
 function Kart({
   kart,
   bugun,
@@ -213,10 +231,7 @@ function Kart({
   onDurum: (adimId: string, status: "done" | "in_progress") => void;
 }) {
   const uyari = hatirlatmaDurumu({ due_date: kart.tarih, is_completed: kart.tamamlandi }, bugun);
-  /*
-    Rozet AŞAMANIN tarihinden. Tarih yoksa dueBadge "Tarih yok" diyor
-    ve asıl sinyali aşağıdaki "kaç gündür bu aşamada" satırı taşıyor.
-  */
+  // AŞAMANIN tarihi (işin termini değil): panoda karar verdiren tarih bu.
   const termin = dueBadge(kart.tarih, bugun, kart.tamamlandi ? "completed" : undefined);
   const yuzde = kart.toplamAsama ? Math.round((kart.tamamlananAsama / kart.toplamAsama) * 100) : 0;
   const uzunBekleme = kart.bekleyenGun !== null && kart.bekleyenGun >= BEKLEME_ESIGI_GUN;
@@ -229,142 +244,58 @@ function Kart({
       onDragStart={onSurukle}
       onDragEnd={onBitti}
     >
-      <div className="ops-pano-ust">
-        {/* Öncelik yalnızca normalin dışındaysa yer kaplıyor. */}
-        {kart.oncelik && kart.oncelik !== "normal" ? (
-          <span className="ops-pano-oncelik" data-oncelik={kart.oncelik}>
-            {priorityNames[kart.oncelik] ?? kart.oncelik}
-          </span>
-        ) : null}
-        {/* İŞİN termini, aşamanınki değil: ikisi ayrı ve operasyoncu ikisini de soruyor. */}
-        {/*
-          AŞAMANIN TERMİNİ, işin değil. Panoda karar verdiren tarih bu:
-          "iş 27 Kasım'da teslim" kolonlar arasında gezinirken bir şey
-          söylemiyor, "bu aşama 2 gün gecikti" söylüyor. İşin termini
-          İşler tablosunda ve iş detayında duruyor.
-
-          Hesap ops-shared/dueBadge ile — işler, genel bakış ve iş
-          detayıyla AYNI fonksiyon, aynı sözler.
-        */}
-        <span className="ops-pano-termin" data-tone={termin.tone} title={kart.tarih ? `“${kart.guncelAsama}” aşamasının teslim tarihi` : undefined}>
-          {termin.label}
-        </span>
-        <button type="button" className="ops-pano-bak" onClick={onAc} title="Bütün aşamaları göster">
-          Aşamalar
-        </button>
-      </div>
-      {/*
-        draggable={false}: bağlantılar tarayıcıda kendiliğinden
-        sürüklenebilir ve kartın başlığından tutan kullanıcı kartı değil
-        BAĞLANTIYI sürüklüyordu — kart hiç kıpırdamıyordu.
-      */}
-      {/*
-        Okunmamış müşteri mesajı kartta. İşler sayfasında en görünür
-        sinyaldi ama panoda hiç yoktu; oysa operasyoncu gün içinde bu
-        ekrana bakıyor ve müşteri yazdığında haberi olması gerekiyor.
-      */}
+      {/* Okunmamış müşteri mesajı başlıktan önce: başlığı okumadan görünmeli. */}
       {okunmamis ? (
         <Link className="ops-pano-mesaj" href={`/panel/operations/${kart.isId}?pencere=mesajlar`} draggable={false}>
           {okunmamis} yeni müşteri mesajı
         </Link>
       ) : null}
-      <Link href={`/panel/operations/${kart.isId}`} draggable={false}>
+      <Link className="ops-pano-baslik" href={`/panel/operations/${kart.isId}`} draggable={false}>
         {/* Uzun başlık iki satıra kırpılıyor; tamamı title'da. */}
         <b title={kart.baslik}>{kart.baslik}</b>
         <small title={kart.musteri}>{kart.musteri}</small>
       </Link>
-      <div className="ops-pano-kart-alt">
-        <span className="ops-pano-kisi" title={kart.sorumluAdi ?? "Sorumlu atanmadı"}>
-          <i aria-hidden="true" data-bos={kart.sorumluAdi ? undefined : "1"}>
-            {kart.sorumluAdi ? initials(kart.sorumluAdi) : "?"}
-          </i>
-          {kart.sorumluAdi ?? "sorumlu yok"}
-        </span>
-        {/*
-          Bekleme süresi tarihten BAĞIMSIZ ölçülüyor ve tarih girilmemiş
-          işlerde panonun tek sinyali o. Bitmiş işte gösterilmiyor.
-        */}
-      </div>
-      {/*
-        "0 gün" yazıyordu ve geri sayım sanılıyordu; oysa AŞAMADA GEÇEN
-        günü sayıyor. Ne olduğu artık yazılı — ve bu yüzden uzun:
-        sorumluyla aynı satırda 232px'lik kartı dışarı itiyordu
-        (ölçüldü). Kendi satırında. Tarih varsa üstteki rozet zaten
-        kalanı söylüyor, bu satır tekrar olurdu: yalnızca tarihsiz
-        aşamada çıkıyor — orada panonun tek sinyali o.
-      */}
-      {kart.guncelAsamaId && !kart.tarih && kart.bekleyenGun !== null ? (
-        <p className="ops-pano-bekleme" data-uzun={uzunBekleme ? "1" : undefined}>
-          {kart.bekleyenGun} gündür bu aşamada
-        </p>
-      ) : null}
-      <div className="ops-pano-tarih">
-        {yetkili && kart.guncelAsamaId ? (
-          <form action={setStepDueDate} className="ops-tarih-form">
-            <input type="hidden" name="step_id" value={kart.guncelAsamaId} />
-            {/* key: React 19 eylemden sonra formu MOUNT değerine sıfırlıyor (bkz. iş detayı). */}
-            <input key={kart.tarih ?? "yok"} type="date" name="due_date" defaultValue={kart.tarih ?? ""} aria-label={`${kart.guncelAsama} teslim tarihi`} />
-            <button type="submit" title="Tarihi kaydet" aria-label="Tarihi kaydet">✓</button>
-          </form>
-        ) : (
-          /* Rozet kalan günü söylüyor; burada TARİHİN KENDİSİ yazıyor. */
-          <span className="ops-pano-tarih-metin">
-            {kart.tarih ? kisaTarih(kart.tarih) : kart.guncelAsama ? "tarih girilmedi" : isDurumAdi(kart.durum)}
-          </span>
-        )}
-        {uyari ? (
-          <em data-tone={uyari === "overdue" ? "danger" : "warning"}>
-            {uyari === "overdue" ? "gecikti" : "yaklaştı"}
-          </em>
-        ) : null}
-      </div>
-      {/*
-        ŞU ANKİ GÖREV HER KARTTA. Önce yalnızca "Şablon dışı" kolonunda
-        yazıyordu; oysa kolon AŞAMAYI söylüyor, aşamanın altında yirmi
-        görev olabiliyor ve "hangisindeyiz" kartta hiç görünmüyordu
-        (AkademikMerkez'in listesinde sekiz aşama, yirmi görev).
-      */}
+      {/* Şu anki görev: kolon aşamayı söylüyor, bu satır görevi. */}
       <p className="ops-pano-asama" title={kart.guncelAsama ?? undefined}>
         {kart.tamamlandi ? "Bütün görevler bitti" : kart.guncelAsama ?? "Görev üretilmemiş"}
       </p>
-      {/*
-        TAŞIMA DÜĞMELERİ KENDİ SATIRINDA ve ikisi bir çift.
-
-        Önce sayaçla aynı sırada, flex-wrap ile duruyorlardı: 232px'lik
-        kartta "Tamamla →" sığıp "← Geri al" alt satıra tek başına
-        düşüyordu — öksüz, hizasız ve 22px'lik dokunma hedefiyle
-        (ölçüldü). Artık sayaç üstte, düğmeler altta tam genişlikte bir
-        ızgarada. Sıra oklara uyuyor: geri solda, ileri sağda.
-      */}
-      <div className="ops-pano-tasi">
-        <span className="ops-pano-sayac">
-          {kart.tamamlananAsama}/{kart.toplamAsama} aşama
-        </span>
-        {/* Dokunmatik ve klavye için: sürükleme oralarda çalışmıyor. */}
-        {yetkili && (kart.oncekiAsamaId || kart.guncelAsamaId) ? (
-          <div className="ops-pano-eylem" data-tek={kart.oncekiAsamaId && kart.guncelAsamaId ? undefined : "1"}>
-            {yetkili && kart.oncekiAsamaId ? (
-              <button type="button" onClick={() => onDurum(kart.oncekiAsamaId!, "in_progress")} title="Bir önceki aşamayı yeniden aç">
-                ← Geri al
-              </button>
-            ) : null}
-            {yetkili && kart.guncelAsamaId ? (
-              <button
-                type="button"
-                data-tone="success"
-                onClick={() => onDurum(kart.guncelAsamaId!, "done")}
-                title={`“${kart.guncelAsama}” aşamasını tamamla`}
-              >
-                Tamamla →
-              </button>
-            ) : null}
-          </div>
+      <div className="ops-pano-rozetler">
+        {kart.oncelik && kart.oncelik !== "normal" ? (
+          <span className="ops-pano-oncelik" data-oncelik={kart.oncelik}>{priorityNames[kart.oncelik] ?? kart.oncelik}</span>
+        ) : null}
+        {kart.tarih || kart.tamamlandi ? (
+          <span className="ops-pano-termin" data-tone={termin.tone} title={kart.tarih ? `“${kart.guncelAsama}” aşamasının tarihi: ${kisaTarih(kart.tarih)}` : undefined}>
+            {termin.label}
+          </span>
+        ) : kart.guncelAsamaId ? (
+          yetkili ? (
+            <button type="button" className="ops-pano-tarih-gir" onClick={onAc} title="Aşamaların tarihini gir">Tarih gir</button>
+          ) : (
+            <span className="ops-pano-termin" data-tone="neutral">Tarih yok</span>
+          )
+        ) : null}
+        {/* Tarihsiz aşamada tek sinyal: kaç gündür bu aşamada (geri sayım değil). */}
+        {kart.guncelAsamaId && !kart.tarih && kart.bekleyenGun !== null ? (
+          <span className="ops-pano-bekleme" data-uzun={uzunBekleme ? "1" : undefined}>{kart.bekleyenGun} gündür</span>
         ) : null}
       </div>
-      {/*
-        İlerleme çubuğu kartın alt kenarında, tam genişlikte: kolonu tarayan
-        göz yüzdeleri aynı hizada karşılaştırıyor.
-      */}
+      <footer className="ops-pano-alt">
+        <span className="ops-pano-kisi" title={kart.sorumluAdi ?? "Sorumlu atanmadı"}>
+          <i aria-hidden="true" data-bos={kart.sorumluAdi ? undefined : "1"}>{kart.sorumluAdi ? initials(kart.sorumluAdi) : "?"}</i>
+          <span>{kart.tamamlananAsama}/{kart.toplamAsama}</span>
+        </span>
+        {/* Düğmeler: dokunmatik ve klavye için (sürükleme orada çalışmıyor). */}
+        <span className="ops-pano-dugmeler">
+          {yetkili && kart.oncekiAsamaId ? (
+            <button type="button" onClick={() => onDurum(kart.oncekiAsamaId!, "in_progress")} title="Bir önceki aşamayı yeniden aç" aria-label="Geri al">←</button>
+          ) : null}
+          {yetkili && kart.guncelAsamaId ? (
+            <button type="button" data-tone="success" onClick={() => onDurum(kart.guncelAsamaId!, "done")} title={`“${kart.guncelAsama}” görevini tamamla`}>Tamamla</button>
+          ) : null}
+          <button type="button" onClick={onAc} title="Bütün aşamalar ve tarihleri" aria-label="Bütün aşamalar">⋯</button>
+        </span>
+      </footer>
+      {/* İlerleme kartın alt kenarında: kolonu tarayan göz yüzdeleri aynı hizada karşılaştırıyor. */}
       <div className="ops-pano-ilerleme" title={`${kart.tamamlananAsama}/${kart.toplamAsama} aşama tamam`}>
         <i style={{ width: `${yuzde}%` }} />
       </div>
