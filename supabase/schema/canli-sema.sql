@@ -928,7 +928,10 @@ create table if not exists public.mail_accounts (
   updated_at timestamp with time zone not null,
   gecmis_belirteci text,
   gecmis_bitti boolean not null,
-  gecmis_mesaj_sayisi integer not null
+  gecmis_mesaj_sayisi integer not null,
+  erisim_belirteci_enc text,
+  erisim_belirteci_biter timestamp with time zone,
+  esitleniyor_at timestamp with time zone
 );
 
 create table if not exists public.mail_messages (
