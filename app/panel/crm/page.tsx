@@ -1,25 +1,29 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
-import { phoneSearchTerms } from "@/lib/format-phone";
-import { fetchLastContacts } from "./last-contact";
-import {
-  CustomerCell,
-  DateCell,
-  LastContactCell,
-  RepresentativeCell,
-  SubjectCell,
-} from "./table-cells";
+import { formatPhone, phoneSearchTerms } from "@/lib/format-phone";
+import { formatSubject, initials } from "@/lib/table-format";
+import { fetchLastContacts, relativeTime } from "./last-contact";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import {
-} from "./actions";
 import { RequestEntryForm } from "./request-entry-form";
 import { CustomerLookupButton } from "./customer-lookup";
-import { requestStageNames, requestStages } from "./request-status";
+import { requestStageNames } from "./request-status";
 import { EmptyNewRequestButton } from "./empty-new-request";
 import "./crm.css";
 import "./request-page.css";
+import "./kayit-detay/kayit-detay.css";
+
+/*
+  TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
+  "Müşteri sorgula" ve "Yeni talep"; altında aşama şeridi (her sayı o
+  aşamaya süzer); solda talepler, sağda temsilcilere göre dağılım.
+
+  Eskiden dört sayaç kutusu, ayrı bir süzgeç kartı ("Filtrele" /
+  "Temizle") ve sekiz sütunlu tablo alt alta duruyordu. Süzgeç artık
+  listenin üstünde tek satır; temsilci süzgeci sağ sütundaki adlara
+  tıklayarak da seçiliyor.
+*/
 
 type SearchParams = Promise<{
   arama?: string;
@@ -55,6 +59,27 @@ type SalesRepresentative = {
   full_name: string;
   job_title: string | null;
 };
+const ASAMALAR = [
+  { kod: "lead", ad: "Yeni talep" },
+  { kod: "qualified", ad: "İnceleniyor" },
+  { kod: "proposal", ad: "Teklife devredildi" },
+  { kod: "lost", ad: "Arşivlendi" },
+] as const;
+/** Satırın alt yazısı; boşlar atlanır, aynı metin (büyük/küçük harf farkıyla) bir kez yazılır. */
+function altSatir(...parcalar: (string | null | undefined)[]) {
+  const goruldu = new Set<string>();
+  const sonuc: string[] = [];
+  for (const parca of parcalar) {
+    const metin = parca?.trim();
+    const anahtar = metin?.toLocaleLowerCase("tr");
+    if (!metin || !anahtar || goruldu.has(anahtar)) continue;
+    goruldu.add(anahtar);
+    sonuc.push(metin);
+  }
+  return sonuc.join(" · ");
+}
+const teslim = (value: string | null) =>
+  value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : null;
 const clean = (v?: string) => (v ?? "").trim().slice(0, 100);
 const active = new Set(["lead", "qualified"]);
 export default async function RequestsPage({
@@ -152,22 +177,38 @@ export default async function RequestsPage({
   const counts = (code: string) => all.filter((i) => i.stage === code).length;
   // Boş liste: hiç kayıt yok mu, yoksa arama/filtre mi eşleşmedi?
   const filtered = Boolean(search || selectedRepresentative || (selected && selected !== "tumu"));
+  /*
+    Adres yardımcısı: bir süzgeci değiştirirken diğerleri korunur.
+    Kullanıcı daraltılmış bir listeden aşama sayısına tıklayınca aramasını
+    kaybetmesin (eski sayaç bağlantılarının kuralı).
+  */
+  const adres = (ek: { durum?: string; temsilci?: string }) => {
+    const q = new URLSearchParams();
+    const d = ek.durum ?? selected;
+    const t = ek.temsilci ?? selectedRepresentative;
+    if (arama) q.set("arama", arama);
+    if (d) q.set("durum", d);
+    if (t) q.set("temsilci", t);
+    const s = q.toString();
+    return s ? `/panel/crm?${s}` : "/panel/crm";
+  };
+  // Temsilci dağılımı aktif talepler (yeni + inceleniyor) üzerinden.
+  const aktifler = all.filter((item) => active.has(item.stage));
+  const temsilciSayisi = (id: string | null) => aktifler.filter((item) => item.assigned_employee_id === id).length;
+  const atanmamis = temsilciSayisi(null);
+  const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
+
   return (
-    <div className="crm-page-stack">
-      <div className="panel-pagehead">
-        <div>
-          <small className="panel-kicker">TALEP YÖNETİMİ</small>
+    <main className="talep cari ekip talepler">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">CRM</small>
           <h1>Talepler</h1>
-          <p>
-            Yeni talepleri inceleyin, satış temsilcisine atayın ve teklif
-            aşamasına devredin.
-          </p>
         </div>
-        <div className="panel-page-actions">
-          <span className="status-pill">{rows.length} kayıt</span>
+        <div className="talep-bas-eylem">
           <CustomerLookupButton />
           <PanelDrawer
-            triggerLabel="+ Yeni talep" kicker="YENİ KAYIT"
+            triggerLabel="Yeni talep" kicker="YENİ KAYIT"
             // Müşteri sorgulamadaki "+ Bu müşteri için yeni talep" bu düğmeyi bulur
             triggerClassName="panel-primary crm-new-request-trigger"
             title={academicMode ? "Talep Girişi" : "Yeni talep"}
@@ -181,184 +222,138 @@ export default async function RequestsPage({
             />
           </PanelDrawer>
         </div>
-      </div>
-      <div className="module-tab-panel">
-        {/*
-          Sayaçlar artık LİSTEYE GÖTÜRÜYOR. Arşivlenen talepler listede
-          vardı ama varsayılan görünüm yalnızca aktif aşamaları (lead,
-          qualified) gösteriyor; arşive ulaşmanın tek yolu "Durum" açılır
-          menüsünü bilmekti. Sayıyı görüp tıklayamamak, kayıtların yok
-          sanılmasına yol açtı.
+      </header>
 
-          Bağlantılar arama ve temsilci süzgecini koruyor: kullanıcı
-          daraltılmış bir listeden sayaca tıklayınca daralması kaybolmasın.
-        */}
-        <section className="crm-metrics">
-          {[
-            { kod: "lead", baslik: "YENİ TALEP", alt: "İlk değerlendirme" },
-            { kod: "qualified", baslik: "TALEP İNCELENİYOR", alt: "İnceleme sürecinde" },
-            { kod: "proposal", baslik: "TEKLİFLERE DEVREDİLDİ", alt: "Teklifler bölümünde" },
-            { kod: "lost", baslik: "ARŞİVLENDİ", alt: "İptal edilen kayıtlar" },
-          ].map((kart) => {
-            const sorgu = new URLSearchParams();
-            sorgu.set("durum", kart.kod);
-            if (arama) sorgu.set("arama", arama);
-            if (selectedRepresentative) sorgu.set("temsilci", selectedRepresentative);
-            return (
-              <Link
-                key={kart.kod}
-                href={`/panel/crm?${sorgu.toString()}`}
-                className="crm-metric-link"
-                aria-current={selected === kart.kod ? "true" : undefined}
-              >
-                <small>{kart.baslik}</small>
-                <strong>{counts(kart.kod)}</strong>
-                <span>{kart.alt}</span>
+      {/*
+        AŞAMA ŞERİDİ. Sayılar listeye götürüyor: varsayılan görünüm
+        yalnızca aktif aşamaları gösteriyor ve arşive ulaşmanın tek yolu
+        bir açılır menüyü bilmekti; sayıyı görüp tıklayamamak kayıtların
+        yok sanılmasına yol açmıştı.
+      */}
+      <nav className="kayit-serit talep-serit" aria-label="Aşamaya göre süz">
+        <dl>
+          {ASAMALAR.map((asama) => (
+            <div key={asama.kod} className={selected === asama.kod ? "is-active" : undefined}>
+              <dt>{asama.ad}</dt>
+              <dd><Link href={adres({ durum: asama.kod })} aria-current={selected === asama.kod ? "page" : undefined}>{counts(asama.kod)}</Link></dd>
+            </div>
+          ))}
+          <div><dt>Atanmamış (aktif)</dt><dd><Link href={adres({ durum: "", temsilci: "atanmamis" })}>{atanmamis}</Link></dd></div>
+        </dl>
+      </nav>
+
+      <div className="talep-izgara personel-iki ekip-izgara">
+        <section className="panel-card talep-bilgi" aria-label="Talep listesi">
+          {/* Süzgeç tek satır: arama kutusu Enter ile gönderilir, durum
+              ve temsilci seçimi gizli alanlarla korunur. */}
+          <div className="ekip-suzgec talep-suzgec">
+            <Link href={adres({ durum: "" })} className={!selected ? "is-active" : undefined}>Aktif <small>{aktifler.length}</small></Link>
+            <Link href={adres({ durum: "tumu" })} className={selected === "tumu" ? "is-active" : undefined}>Tümü <small>{all.length}</small></Link>
+            {selected && selected !== "tumu" ? <span className="talep-suzgec-etiket">{gorunumAdi}</span> : null}
+            {selectedRepresentative ? (
+              <Link className="ekip-suzgec-dep" href={adres({ temsilci: "" })}>
+                {selectedRepresentative === "atanmamis" ? "Atanmamış" : formatPersonName(representativeMap.get(selectedRepresentative) ?? "Temsilci")} ✕
               </Link>
-            );
-          })}
+            ) : null}
+            <form action="/panel/crm" className="talep-ara" role="search">
+              {selected ? <input type="hidden" name="durum" value={selected} /> : null}
+              {selectedRepresentative ? <input type="hidden" name="temsilci" value={selectedRepresentative} /> : null}
+              <input name="arama" defaultValue={arama ?? ""} placeholder="Müşteri, telefon, konu ara" aria-label="Müşteri / talep ara" />
+            </form>
+          </div>
+
+          {rows.length ? (
+            <ul className="ekip-liste">
+              {rows.map((item) => {
+                const d = item.request_details ?? {};
+                const ownerName = item.assigned_employee_id
+                  ? formatPersonName(representativeMap.get(item.assigned_employee_id) ?? "Pasif personel")
+                  : null;
+                const musteri = formatPersonName(item.customer_name) || "—";
+                const temas = lastContacts.get(item.id);
+                const tarih = teslim(item.expected_close_date);
+                return (
+                  <li key={item.id}>
+                    <Link href={`/panel/crm/requests/${item.id}`}>
+                      <span className="talep-avatar" aria-hidden="true">{initials(musteri)}</span>
+                      <span className="cari-hareket-metin">
+                        <b>{musteri}</b>
+                        {/* Konu çoğu kayıtta hizmet türüyle aynı ("ANSYS Analiz · ANSYS Analiz"); aynıysa bir kez. */}
+                        <small>{altSatir(formatSubject(item.title), d.service_type, formatPhone(item.contact_phone))}</small>
+                      </span>
+                      <span className="talep-satir-yan">
+                        <span className={ownerName ? undefined : "is-bos"}>{ownerName ?? "Atanmamış"}</span>
+                        <small title={temas?.preview}>{temas ? `Not ${relativeTime(temas.at)}` : "Not yok"}{tarih ? ` · teslim ${tarih}` : ""}</small>
+                      </span>
+                      <span className="talep-satir-durum">
+                        <span className="status-pill" data-tone={statusTone(item.stage)}>{requestStageNames[item.stage] ?? item.stage}</span>
+                        {/* Arşiv sebebi listede de görünüyor: hepsi aynı
+                            rozeti taşıyor, neden kapandığını görmek için tek
+                            tek kayıt açmak gerekiyordu. */}
+                        {item.stage === "lost" && item.lost_reason ? <small title={item.lost_reason}>{item.lost_reason}</small> : null}
+                      </span>
+                      <span className="ekip-ok" aria-hidden="true">›</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : all.length === 0 ? (
+            // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine
+            // sürecin nereden başladığı anlatılır.
+            <div className="crm-empty-state talep-bos-kutu">
+              <h2>İlk talebinizi girin</h2>
+              <p>Müşteriden gelen her iş buradan başlar. Talebi kaydedin, teklif hazırlayın, sözleşmeyi gönderin; müşteriniz süreci takip ekranından izlesin.</p>
+              <ol className="crm-empty-steps" aria-label="Süreç">
+                <li><b>1</b>Talep</li>
+                <li><b>2</b>Teklif</li>
+                <li><b>3</b>Sözleşme</li>
+                <li><b>4</b>Müşteri takibi</li>
+              </ol>
+              <div className="crm-empty-actions"><EmptyNewRequestButton /></div>
+            </div>
+          ) : (
+            <div className="crm-empty-state talep-bos-kutu">
+              <h2>{filtered ? "Eşleşen talep bulunamadı" : "Aktif talep yok"}</h2>
+              <p>
+                {filtered
+                  ? "Aramayı veya süzgeci değiştirip yeniden deneyin."
+                  : "Yeni ve incelenen talepler burada görünür. Teklif ve sonraki aşamalardaki kayıtlar için tüm kayıtları açın."}
+              </p>
+              <div className="crm-empty-actions">
+                {filtered ? <Link className="panel-secondary" href="/panel/crm">Süzgeci temizle</Link> : null}
+                {selected !== "tumu" ? <Link className="panel-secondary" href="/panel/crm?durum=tumu">Tüm kayıtları göster</Link> : null}
+              </div>
+            </div>
+          )}
         </section>
-        <section className="panel-card crm-filter-card">
-          <form action="/panel/crm" className="crm-filter-form">
-            <label>
-              <span>Müşteri / talep ara</span>
-              <input name="arama" defaultValue={arama ?? ""} />
-            </label>
-            <label>
-              <span>Durum</span>
-              <select name="durum" defaultValue={selected}>
-                <option value="">Aktif Talepler</option>
-                <option value="tumu">Tüm Kayıtlar</option>
-                {requestStages.map((s) => (
-                  <option value={s.code} key={s.code}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Satış temsilcisi</span>
-              <select name="temsilci" defaultValue={selectedRepresentative}>
-                <option value="">Tüm temsilciler</option>
-                <option value="atanmamis">Atanmamış</option>
-                {representatives.map((employee) => (
-                  <option value={employee.id} key={employee.id}>
-                    {employee.full_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div>
-              <button className="panel-primary">Filtrele</button>
-              <Link className="panel-secondary" href="/panel/crm">
-                Temizle
+
+        <section className="panel-card talep-musteri" aria-label="Temsilciler">
+          <div className="cari-baslik">
+            <h2>Temsilciler</h2>
+            <small>aktif talep</small>
+          </div>
+          <ul className="cari-hareketler">
+            {representatives.map((rep) => (
+              <li key={rep.id}>
+                {/* Ada tıklamak listeyi o temsilciye süzer. */}
+                <Link href={adres({ temsilci: selectedRepresentative === rep.id ? "" : rep.id })} className={selectedRepresentative === rep.id ? "is-active" : undefined}>
+                  <span className="ekip-dep-kod">{initials(formatPersonName(rep.full_name))}</span>
+                  <span className="cari-hareket-metin"><b>{formatPersonName(rep.full_name)}</b><small>{rep.job_title || "Satış temsilcisi"}</small></span>
+                  <strong>{temsilciSayisi(rep.id)}</strong>
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link href={adres({ temsilci: selectedRepresentative === "atanmamis" ? "" : "atanmamis" })} className={selectedRepresentative === "atanmamis" ? "is-active" : undefined}>
+                <span className="ekip-dep-kod" data-pasif="">—</span>
+                <span className="cari-hareket-metin"><b>Atanmamış</b><small>Temsilci bekleyen talepler</small></span>
+                <strong className={atanmamis ? "talep-uyari" : undefined}>{atanmamis}</strong>
               </Link>
-            </div>
-          </form>
+            </li>
+          </ul>
         </section>
-        {rows.length ? (
-          <section className="panel-card crm-table-wrap">
-            <table className="crm-data-table" data-cols="requests">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Müşteri</th>
-                  <th>Konu</th>
-                  <th className="crm-col-rep">Temsilci</th>
-                  <th>Durum</th>
-                  <th className="crm-col-date">Teslim</th>
-                  <th className="crm-col-contact">Son temas</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((item) => {
-                  const d = item.request_details ?? {};
-                  const ownerName = item.assigned_employee_id
-                    ? (representativeMap.get(item.assigned_employee_id) ??
-                      "Pasif personel")
-                    : null;
-                  return (
-                    <tr key={item.id}>
-                      <td className="crm-table-mono" data-label="No">
-                        <Link
-                          className="crm-row-link"
-                          href={`/panel/crm/requests/${item.id}`}
-                          aria-label={`${formatPersonName(item.customer_name)} talebini aç`}
-                        >
-                          TLP-{item.id.slice(0, 8).toUpperCase()}
-                        </Link>
-                      </td>
-                      <CustomerCell
-                        name={item.customer_name}
-                        phone={item.contact_phone}
-                        email={item.contact_email}
-                      />
-                      <SubjectCell title={item.title} service={d.service_type} />
-                      <RepresentativeCell name={ownerName} />
-                      <td data-label="Durum">
-                        <span className="status-pill" data-tone={statusTone(item.stage)}>
-                          {requestStageNames[item.stage] ?? item.stage}
-                        </span>
-                        {/*
-                          Arşiv sebebi listede de görünüyor: arşiv listesinde
-                          hepsi aynı "Arşivlendi" rozetini taşıyor, hangisinin
-                          neden kapandığını görmek için tek tek kayıt açmak
-                          gerekiyordu. Uzun sebep iki satıra kırpılıyor, tamamı
-                          title ile okunuyor.
-                        */}
-                        {item.stage === "lost" && item.lost_reason ? (
-                          <small className="crm-liste-sebep" title={item.lost_reason}>
-                            {item.lost_reason}
-                          </small>
-                        ) : null}
-                      </td>
-                      <DateCell label="Teslim" value={item.expected_close_date} />
-                      <LastContactCell contact={lastContacts.get(item.id)} />
-                      <td className="crm-table-actions">
-                        <span className="crm-row-chevron" aria-hidden="true">›</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </section>
-        ) : all.length === 0 ? (
-          // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine
-          // sürecin nereden başladığı anlatılır.
-          <section className="panel-card crm-empty-state">
-            <h2>İlk talebinizi girin</h2>
-            <p>
-              Müşteriden gelen her iş buradan başlar. Talebi kaydedin, teklif
-              hazırlayın, sözleşmeyi gönderin; müşteriniz süreci takip
-              ekranından izlesin.
-            </p>
-            <ol className="crm-empty-steps" aria-label="Süreç">
-              <li><b>1</b>Talep</li>
-              <li><b>2</b>Teklif</li>
-              <li><b>3</b>Sözleşme</li>
-              <li><b>4</b>Müşteri takibi</li>
-            </ol>
-            <div className="crm-empty-actions">
-              <EmptyNewRequestButton />
-            </div>
-          </section>
-        ) : (
-          <section className="panel-card crm-empty-state">
-            <h2>{filtered ? "Eşleşen talep bulunamadı" : "Aktif talep yok"}</h2>
-            <p>
-              {filtered
-                ? "Aramayı veya filtreleri değiştirip yeniden deneyin."
-                : "Yeni ve incelenen talepler burada görünür. Teklif ve sonraki aşamalardaki kayıtlar için tüm kayıtları açın."}
-            </p>
-            <div className="crm-empty-actions">
-              {filtered ? <Link className="panel-secondary" href="/panel/crm">Filtreleri temizle</Link> : null}
-              {selected !== "tumu" ? <Link className="panel-secondary" href="/panel/crm?durum=tumu">Tüm kayıtları göster</Link> : null}
-            </div>
-          </section>
-        )}
       </div>
-    </div>
+    </main>
   );
 }
