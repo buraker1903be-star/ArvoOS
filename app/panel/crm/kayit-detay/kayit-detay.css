@@ -209,3 +209,34 @@
 .os-root .personel-yukle .panel-primary{min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
 .personel .kayit-serit dd .status-pill{font-size:var(--fs-sm)}
 @media (max-width:760px){.talep-izgara.personel-iki{grid-template-columns:minmax(0,1fr)}}
+
+/* Ekip listesi: liste solda geniş, departman/davet sağda. Liste
+   sayfalarının ilk örneği; diğer listeler bu kalıba geçecek. */
+.talep-izgara.ekip-izgara{grid-template-columns:minmax(0,2.4fr) minmax(280px,1fr)}
+.ekip-suzgec{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-bottom:var(--sp-3);padding-bottom:var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.ekip-suzgec a{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:32px;padding:0 var(--sp-3);border-radius:999px;color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);text-decoration:none}
+.ekip-suzgec a:hover{background:var(--surface-2);color:var(--ink)}
+.ekip-suzgec a.is-active{background:var(--primary-soft);color:var(--primary-strong)}
+.ekip-suzgec small{font-size:var(--fs-micro);opacity:.75}
+.ekip-suzgec .ekip-suzgec-dep{margin-left:auto;background:var(--surface-2);color:var(--ink)}
+.ekip-liste{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
+.ekip-liste li+li{border-top:1px solid var(--line-soft)}
+.ekip-liste a{display:flex;align-items:center;gap:var(--sp-3);min-height:60px;padding:var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none}
+.ekip-liste a:hover{background:var(--surface-2)}
+.ekip-liste a.is-pasif{opacity:.6}
+.ekip-liste .talep-avatar{width:36px;height:36px;font-size:var(--fs-sm)}
+.ekip-iletisim{flex:none;width:150px;color:var(--muted);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ekip-liste .status-pill{flex:none}
+.ekip-erisim{min-width:120px;justify-content:center}
+.ekip-ok{flex:none;color:var(--dim);font-size:var(--fs-lg)}
+.ekip .cari-hareketler li>a.is-active{background:var(--primary-soft)}
+.ekip-dep-kod{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:var(--r-sm);background:var(--primary-soft);color:var(--primary-strong);font-size:var(--fs-micro);font-weight:var(--fw-semibold)}
+.ekip-dep-kod[data-pasif]{background:var(--surface-2);color:var(--muted)}
+.os-root .ekip .ekip-baglanti{flex:none;min-height:30px;padding:0 var(--sp-3);font-size:var(--fs-micro)}
+@media (max-width:1200px){.ekip-iletisim{display:none}}
+@media (max-width:760px){
+  .talep-izgara.ekip-izgara{grid-template-columns:minmax(0,1fr)}
+  .os-root .ekip-liste :is(.ekip-erisim,.ekip-ok){display:none}
+  .ekip-suzgec .ekip-suzgec-dep{margin-left:0}
+}
+.ekip-liste .cari-hareket-metin small{font-weight:var(--fw-regular,400);color:var(--muted)}
