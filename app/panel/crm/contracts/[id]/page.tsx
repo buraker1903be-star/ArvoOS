@@ -10,6 +10,11 @@ import { AbonelikAlanlari } from "./abonelik-alanlari";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
+import { workflowStatusNames } from "../../../operations/ops-shared";
+import { todayInIstanbul } from "@/lib/istanbul-date";
+import { formatSubject } from "@/lib/table-format";
+import { proposalStatusLabel } from "../../status-labels";
+import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
 import { CONTRACT_STATUS_LABELS as labels } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -62,7 +67,7 @@ export default async function ContractDetailPage({ params }: Props) {
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const { data, error } = await supabase
     .from("crm_contracts")
-    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
+    .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")
     .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
   if (error) throw new Error("Sözleşme bilgileri okunamadı: " + error.message);
   if (!data) notFound();
@@ -105,6 +110,27 @@ export default async function ContractDetailPage({ params }: Props) {
     const item = storedSchedule.find((scheduleItem) => scheduleItem.sequence === row.installment_no);
     return { sequence: row.installment_no, label: installmentLabel(item?.label, row.installment_no), amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
   });
+  /*
+    ÖDEME ÖZETİ: taksitler ödeme planına bağlandıysa kaç tanesinin ve ne
+    kadarının ödendiği; vadesi geçen ödenmemiş taksit uyarı tonunda.
+  */
+  const odenen = installments.filter((row) => row.status === "paid");
+  const odenenTutar = odenen.reduce((sum, row) => sum + row.amount, 0);
+  const taksitToplami = installments.reduce((sum, row) => sum + row.amount, 0);
+  const bugunAnahtari = todayInIstanbul();
+  /*
+    BAĞLANTILAR (teklif detayıyla eşitleme): talep, kaynak teklif ve iş.
+    İşin durumu ve ilerlemesi ayrı okunur; okunamazsa (yetki, RLS) yalnızca
+    bağlantı gösterilir.
+  */
+  const { data: isData } = data.workflow_id
+    ? await supabase.from("operation_workflows").select("id,status,operation_steps(is_completed)").eq("id", data.workflow_id).eq("organization_id", membership.organization_id).maybeSingle()
+    : { data: null };
+  const is = isData as { id: string; status: string; operation_steps: { is_completed: boolean }[] | null } | null;
+  const isAdimlari = is?.operation_steps ?? [];
+  const isIlerleme = isAdimlari.length ? Math.round((isAdimlari.filter((a) => a.is_completed).length / isAdimlari.length) * 100) : null;
+  const kaynakTeklif = proposalJoin as { id?: string; proposal_no?: string; status?: string; archive_reason?: string | null } | null;
+  const gecikenTaksit = installments.filter((row) => row.status !== "paid" && row.status !== "cancelled" && row.due_date && row.due_date < bugunAnahtari).length;
   const paymentRows = installments.length
     ? installments.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: date(row.due_date), status: INSTALLMENT_LABELS[row.status ?? ""] ?? null, missing: false }))
     : storedSchedule.map((row) => ({ sequence: row.sequence, label: row.label, amount: row.amount, when: row.due_date ? date(row.due_date) : row.trigger || "Tarih ve koşul yok", status: null, missing: !row.due_date && !row.trigger }));
@@ -395,6 +421,38 @@ export default async function ContractDetailPage({ params }: Props) {
             )}
           </div>
 
+          {/* BAĞLANTILAR: talep, kaynak teklif ve iş; teklif detayındakiyle aynı blok. */}
+          <div className="talep-gecmis">
+            <h3>Bağlantılar</h3>
+            <ul>
+              <li>
+                <Link href={`/panel/crm/requests/${data.opportunity_id}`}>
+                  <span className="talep-gecmis-metin"><b>Talep</b><small>{formatSubject(customer?.title) || "Talebe git"}</small></span>
+                </Link>
+              </li>
+              {kaynakTeklif?.id ? (
+                <li>
+                  <Link href={`/panel/crm/proposals/${kaynakTeklif.id}`}>
+                    <span className="talep-gecmis-metin">
+                      <b>Teklif {kaynakTeklif.proposal_no}</b>
+                      <small>{kaynakTeklif.status ? TEKLIF_GRUP_ADLARI[teklifGrubu({ status: kaynakTeklif.status, archive_reason: kaynakTeklif.archive_reason ?? null, superseded_by: null })] ?? proposalStatusLabel(kaynakTeklif.status) : "Teklif"}</small>
+                    </span>
+                  </Link>
+                </li>
+              ) : null}
+              {data.workflow_id ? (
+                <li>
+                  <Link href={`/panel/operations/${data.workflow_id}`}>
+                    <span className="talep-gecmis-metin">
+                      <b>İş</b>
+                      <small>{is ? `${workflowStatusNames[is.status] ?? is.status}${isIlerleme !== null ? ` · %${isIlerleme}` : ""}` : "İşe git"}</small>
+                    </span>
+                  </Link>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
           {/* TAKİP KODU. Müşteri bu kodla takip ekranında iş durumunu görür
               ve mesaj yazar. Eskiden işlem düğmelerinin arasında duruyordu. */}
           {data.tracking_code ? (
@@ -492,6 +550,13 @@ export default async function ContractDetailPage({ params }: Props) {
           {paymentRows.length ? (
             <div className="talep-not">
               <h3>Ödeme takvimi</h3>
+              {installments.length ? (
+                <div className="sozlesme-odeme-ozet">
+                  <span><b>{money(odenenTutar, data.currency)}</b> ödendi · {odenen.length}/{installments.length} taksit</span>
+                  {gecikenTaksit ? <span className="status-pill" data-tone="warning">{gecikenTaksit} taksidin vadesi geçti</span> : null}
+                  <i aria-hidden="true"><b style={{ width: `${taksitToplami ? Math.round((odenenTutar / taksitToplami) * 100) : 0}%` }} /></i>
+                </div>
+              ) : null}
               <ol className="plan-timeline">
                 {paymentRows.map((row) => (
                   <li key={row.sequence}>
