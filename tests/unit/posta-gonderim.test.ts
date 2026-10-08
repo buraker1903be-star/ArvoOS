@@ -134,3 +134,91 @@ test("yeni postada Re: ve zincir başlığı yok", () => {
   // Türkçe harf başlıkta kodlanıyor.
   assert.match(ham, /Subject: =\?UTF-8\?B\?/);
 });
+
+/*
+  BAŞLIK ENJEKSİYONU.
+
+  Başlıklar "\r\n" ile birleşiyor; bir değerin içinde satır sonu kalırsa
+  o noktada YENİ BİR BAŞLIK başlıyor. 08.10.2026'da ölçüldü: konusu
+  "Teklif\r\nBcc: …" olan bir posta gerçek bir Bcc başlığıyla gidiyordu,
+  yani ortak kutudan yazabilen biri gönderdiği her postanın gizli bir
+  kopyasını dışarı çıkarabiliyordu.
+
+  Kaçma sebebi ince: baslikKodla salt ASCII girdiyi olduğu gibi
+  döndürüyordu ve CR/LF de ASCII. TÜRKÇE bir konu base64'e çevrildiği
+  için zararsızdı — açık yalnızca ASCII konularda vardı. Testler de bu
+  yüzden iki dili ayrı ayrı deniyor.
+*/
+import { baslikDegeri, yeniMesajiKur } from "@/lib/posta-gonderim";
+
+/*
+  SATIR AYIRACI YALNIZCA "\r\n" DEĞİL. İlk sürümde bu yardımcı yalnızca
+  "\r\n" ile bölüyordu ve mutasyon testinde yakalandı: tek "\n" ile
+  enjekte edilen bir başlık, bölünmediği için önceki satırın içinde
+  kalıyor ve test "Bcc yok" diyordu. Posta sunucularının çoğu tek LF'i
+  de satır sonu sayıyor, yani açık gerçekti ve ölçüm aracı görmüyordu.
+*/
+const basliklariAl = (ham: string) =>
+  ham.split(/\r\n\r\n|\n\n/)[0].split(/\r\n|\r|\n/);
+
+const yeni = (parcalar: Partial<Parameters<typeof yeniMesajiKur>[0]>) =>
+  yeniMesajiKur({
+    gonderenAd: "ArvoCulture",
+    gonderenAdres: "info@arvoculture.com",
+    alicilar: ["musteri@ornek.com"],
+    konu: "Teklif",
+    govde: "merhaba",
+    ...parcalar,
+  });
+
+test("ASCII konuya gömülü satır sonu başlık açmıyor", () => {
+  const basliklar = basliklariAl(yeni({ konu: "Teklif\r\nBcc: saldirgan@kotu.com" }));
+  assert.ok(!basliklar.some((b) => /^Bcc:/i.test(b)), "Bcc başlığı enjekte oldu");
+  assert.equal(basliklar.filter((b) => /^Subject:/i.test(b)).length, 1);
+});
+
+test("tek LF ve tek CR de yetmiyor", () => {
+  // Yalnızca "\r\n" aranan bir düzeltme bu ikisini kaçırırdı.
+  for (const ayirac of ["\n", "\r", "\r\n", "\u0000"]) {
+    const basliklar = basliklariAl(yeni({ konu: `Teklif${ayirac}Bcc: x@y.com` }));
+    assert.ok(!basliklar.some((b) => /^Bcc:/i.test(b)), `${JSON.stringify(ayirac)} ile enjekte oldu`);
+  }
+});
+
+test("gönderen adı, gönderen adresi ve alıcı da arındırılıyor", () => {
+  /*
+    Bu alanlar Gmail'den okunan veriden türüyor; oradan gelen bir satır
+    sonu da başlık açardı.
+
+    HER AYIRAÇ AYRI DENENİYOR. İlk sürüm yalnızca "\r\n" deniyordu ve
+    mutasyon testinde yakalandı: KONU alanının ikinci bir savunması var
+    (yazdırılamayan karakter görünce base64'e çeviriyor), ama ADRES
+    alanlarında o yok. Yani arındırmayı "\r\n ara, boşlukla değiştir"e
+    daraltan bir değişiklik, tek "\n" ile adres üzerinden hâlâ başlık
+    açtırırdı ve test bunu görmezdi.
+  */
+  for (const ayirac of ["\n", "\r", "\r\n"]) {
+    const basliklar = basliklariAl(
+      yeni({
+        gonderenAd: `Arvo${ayirac}Bcc: a@b.com`,
+        gonderenAdres: `info@arvoculture.com${ayirac}Bcc: c@d.com`,
+        alicilar: ["musteri@ornek.com"],
+      }),
+    );
+    assert.ok(!basliklar.some((b) => /^Bcc:/i.test(b)), `${JSON.stringify(ayirac)} ile enjekte oldu`);
+    assert.equal(basliklar.filter((b) => /^From:/i.test(b)).length, 1, JSON.stringify(ayirac));
+  }
+});
+
+test("meşru konular bozulmuyor", () => {
+  assert.equal(baslikDegeri("Teklif Güncellemesi"), "Teklif Güncellemesi");
+  // Türkçe konu yine base64'e gidiyor (önceki davranış korunuyor).
+  const basliklar = basliklariAl(yeni({ konu: "Teklif Güncellemesi" }));
+  assert.ok(basliklar.some((b) => b === "Subject: =?UTF-8?B?VGVrbGlmIEfDvG5jZWxsZW1lc2k=?="));
+});
+
+test("arındırma yalnızca denetim karakterlerini alıyor", () => {
+  // Noktalama ve çoklu boşluk meşru; konuyu tanınmaz hâle getirmemeli.
+  assert.equal(baslikDegeri("Fatura #123 — 50% indirim"), "Fatura #123 — 50% indirim");
+  assert.equal(baslikDegeri("  boşluklu  konu  "), "boşluklu konu");
+});

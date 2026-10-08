@@ -21,9 +21,36 @@ export function base64UrlKodla(metin: string): string {
  * (=?UTF-8?B?…?=) bunu çözüyor; ASCII dışı karakter yoksa gereksiz
  * kodlama yapılmıyor, okunabilir kalsın.
  */
+/*
+  BAŞLIK SATIRINA GİREN HER DEĞER ÖNCE DENETİM KARAKTERLERİNDEN ARINIR.
+
+  Başlıklar "\r\n" ile birleşiyor; değerin içinde bir "\r\n" kalırsa o
+  noktada YENİ BİR BAŞLIK başlar. 08.10.2026'da ölçüldü: konusu
+  "Teklif\r\nBcc: saldirgan@kotu.com" olan bir posta, gerçek bir Bcc
+  başlığıyla gidiyordu — yani ortak kutudan yazabilen biri, gönderdiği
+  her postanın gizli bir kopyasını dışarı çıkarabiliyordu.
+
+  Kaçan şey şuydu: baslikKodla girdiyi SALT ASCII ise olduğu gibi
+  döndürüyordu ve CR ile LF de ASCII. Türkçe bir konu base64'e
+  çevrildiği için zararsızdı; İNGİLİZCE bir konu doğrudan geçiyordu.
+  Yani açık, yalnızca ASCII konularda vardı ve gözden kaçması kolaydı.
+
+  Üst katmandaki trim() yetmiyor: o yalnızca baştaki ve sondaki boşluğu
+  alıyor, ortadaki satır sonunu değil. Temizlik burada, başlığın
+  KURULDUĞU yerde: alanın kaynağı (form, Gmail'den okunan gönderen adı,
+  ileride başka bir yer) ne olursa olsun aynı kapıdan geçsin.
+*/
+export function baslikDegeri(deger: string): string {
+  return (deger ?? "")
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
 export function baslikKodla(deger: string): string {
-  if (/^[\x00-\x7F]*$/.test(deger)) return deger;
-  return `=?UTF-8?B?${Buffer.from(deger, "utf8").toString("base64")}?=`;
+  const sade = baslikDegeri(deger);
+  if (/^[\x20-\x7E]*$/.test(sade)) return sade;
+  return `=?UTF-8?B?${Buffer.from(sade, "utf8").toString("base64")}?=`;
 }
 
 /**
@@ -106,9 +133,12 @@ function mesajiKur(girdi: {
   govde: string;
   zincir?: string[];
 }): string {
+  /* Adres alanları da aynı kapıdan: alıcı listesi doğrulanmış geliyor
+     ama gönderen adresi ve yanıt alıcısı Gmail'den okunan veriden
+     türüyor — oradan gelen bir satır sonu da başlık açardı. */
   const basliklar = [
-    `From: ${baslikKodla(girdi.gonderenAd)} <${girdi.gonderenAdres}>`,
-    `To: ${girdi.alici}`,
+    `From: ${baslikKodla(girdi.gonderenAd)} <${baslikDegeri(girdi.gonderenAdres)}>`,
+    `To: ${baslikDegeri(girdi.alici)}`,
     `Subject: ${baslikKodla(girdi.konu)}`,
     ...(girdi.zincir ?? []),
     "MIME-Version: 1.0",
