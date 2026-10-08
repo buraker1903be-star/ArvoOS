@@ -25,6 +25,7 @@ export function IstatistikKarti({ kapsam, kutular, gruplar }: { kapsam: string; 
           </div>
         ))}
       </dl>
+      <div className="istat-gruplar">
       {gruplar.map((grup) => {
         const enBuyuk = Math.max(1, ...grup.satirlar.map((s) => s.adet));
         return (
@@ -44,6 +45,7 @@ export function IstatistikKarti({ kapsam, kutular, gruplar }: { kapsam: string; 
           </div>
         );
       })}
+      </div>
     </section>
   );
 }
@@ -56,4 +58,9 @@ export function degisimYazisi(degisim: number | null, donem = "önceki 30 güne 
 /** Kuruştan kısa TL: "₺1,2 Mn", "₺480 B". Çubuk etiketleri dar. */
 export function kisaPara(kurus: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", notation: "compact", maximumFractionDigits: 1 }).format(kurus / 100);
+}
+
+/** Kuruştan kuruşsuz TL: "₺38.000". Sayı kutuları dar; kuruş bilgi taşımıyor. */
+export function tamPara(kurus: number) {
+  return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(kurus / 100);
 }

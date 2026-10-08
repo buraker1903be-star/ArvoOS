@@ -19,7 +19,7 @@ import {
 import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, SubjectCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
-import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
+import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
 import { aylik, enCok, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
@@ -348,7 +348,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
           kutular={[
             { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni teklif", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
             { ad: "Kabul oranı", deger: kabulOrani === null ? "—" : `%${kabulOrani}`, alt: `${kabul} kabul · ${karara - kabul} red/süre` },
-            { ad: "Tipik teklif", deger: money(tipikTutar, "TRY"), alt: `ortanca · ${gecerli.length} teklif` },
+            { ad: "Tipik teklif", deger: tamPara(tipikTutar), alt: `ortanca · ${gecerli.length} teklif` },
             { ad: "Yanıt bekleyen", deger: String(bekleyen.length), alt: bekleyenGec ? `${bekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: bekleyenGec ? "uyari" : undefined },
           ]}
           gruplar={[

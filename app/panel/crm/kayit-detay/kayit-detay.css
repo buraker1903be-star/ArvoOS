@@ -381,3 +381,26 @@
 .os-root .talep-tablo .crm-rep>span{max-width:none;white-space:normal;line-height:var(--lh-tight)}
 @media (max-width:1200px){.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr)}}
 @media (max-width:760px){.os-root .talep-tablo .crm-data-table :is(.crm-table-title,.crm-table-sub,.crm-waiting,.crm-liste-sebep){display:block;-webkit-line-clamp:unset}}
+/* Liste fazla genişti (geniş ekranda sütunlar arası boşluk), istatistik
+   kartı sıkışıktı (tutar kutudan taşıyor, kart kayıyordu). Oran ~64/36. */
+.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1.8fr) minmax(360px,1fr)}
+@media (max-width:1200px){.talep-izgara.ekip-izgara:has(.talep-istatistik){grid-template-columns:minmax(0,1fr)}}
+.istat-kutular dd{font-size:var(--fs-lg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* İstatistik kartı tek ekrana sığsın: dört sayı kutusu tek sırada,
+   çubuk listeleri sıkı (kart ~240px uzundu ve kayıyordu). */
+.talep-istatistik .istat-kutular{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
+.talep-istatistik .istat-kutular>div{padding:var(--sp-2) var(--sp-3)}
+.talep-istatistik .istat-kutular dt{line-height:var(--lh-tight)}
+.talep-istatistik .istat-kutular small{line-height:var(--lh-tight)}
+.talep-istatistik .talep-not{margin-top:var(--sp-3);padding-top:var(--sp-3)}
+.talep-istatistik .istat-cubuklar{gap:var(--sp-1);margin-top:var(--sp-1)}
+.talep-istatistik .istat-cubuklar li{min-height:24px;font-size:var(--fs-micro)}
+.talep-istatistik .istat-cubuklar span{color:var(--ink-soft)}
+/* Çubuklu dağılımlar yan yana iki sütun; her satırda ad ve değer üstte,
+   çubuk altta (dar sütunda ad, çubuk ve değer aynı satıra sığmıyordu). */
+.istat-gruplar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-4)}
+.talep-istatistik .istat-cubuklar li{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"ad deger" "cubuk cubuk";row-gap:3px;min-height:0}
+.talep-istatistik .istat-cubuklar span{grid-area:ad}
+.talep-istatistik .istat-cubuklar strong{grid-area:deger}
+.talep-istatistik .istat-cubuklar i{grid-area:cubuk;height:4px}
+@media (max-width:420px){.istat-gruplar{grid-template-columns:minmax(0,1fr)}}
