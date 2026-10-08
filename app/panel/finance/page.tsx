@@ -67,9 +67,12 @@ type Contract = {
 type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;payment_link_source:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
 type CostItem={contract_id:string;amount:number;status:string};
 
+/* Yalnızca başlık: açıklama satırı kaldırıldı (kurum sahibinin isteği,
+   2026-10). Rakamlar hemen altındaki şeritte zaten duruyor; bir cümlelik
+   tanım ekranın üstünde yer kaplıyordu. */
 const pageCopy = {
-  cari: { title: "Cari Hesaplar", text: "Sözleşme borçları, tahsilatlar ve iadeler tek ekranda." },
-  maliyet: { title: "İş Maliyetleri", text: "Sözleşme bazında maliyet, kâr ve kâr oranı." },
+  cari: { title: "Cari Hesaplar" },
+  maliyet: { title: "İş Maliyetleri" },
 } as const;
 
 /*
@@ -302,11 +305,12 @@ export default async function FinancePage({
 
   return (
     <main className={mode === "cari" || mode === "maliyet" ? "fin talep cari ekip talepler teklifler liste-sayfa" : "fin"}>
-      <header className={mode === "cari" ? "talep-bas" : "panel-pagehead"}>
-        <div className={mode === "cari" ? "talep-bas-metin" : undefined}>
+      {/* İki görünüm de panel liste kalıbında: başlık sınıfı da ortak.
+          Maliyet görünümü eskiden panel-pagehead kullanıyordu. */}
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
           <small className="panel-kicker">FİNANS</small>
           <h1>{copy.title}</h1>
-          {mode === "cari" ? null : <p>{copy.text}</p>}
         </div>
       </header>
 
