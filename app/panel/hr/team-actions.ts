@@ -123,7 +123,7 @@ export async function inviteTeamMember(
     return { error: message, success: false };
   }
   await flashSuccess("Davet gönderildi");
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
   return { error: null, success: true };
 }
 
@@ -241,7 +241,7 @@ async function updateTeamMemberAccess__impl(formData: FormData) {
     if (nameError) throw new Error("İsim güncellenemedi: " + nameError.message);
   }
 
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
 }
 
 async function cancelInvitation__impl(formData: FormData) {
@@ -258,7 +258,7 @@ async function cancelInvitation__impl(formData: FormData) {
     .select("id");
   if (error) throw new Error("Davet iptal edilemedi: " + error.message);
   if (!cancelled?.length) throw new Error("Davet iptal edilemedi: kayıt bulunamadı veya yetkiniz yok.");
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

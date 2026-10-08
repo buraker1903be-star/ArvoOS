@@ -295,7 +295,7 @@ export default async function AccountDetailPage({
       </header>
 
       {/* BAKİYE ŞERİDİ: diğer detaylardaki aşama çizgisinin yerinde. */}
-      <section className="cari-serit" aria-label="Cari özeti">
+      <section className="kayit-serit" aria-label="Cari özeti">
         <dl>
           <div><dt>Borç</dt><dd>{money(debt)}</dd></div>
           <div><dt>Tahsilat</dt><dd className="cari-arti">{money(collections)}</dd></div>

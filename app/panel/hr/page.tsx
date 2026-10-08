@@ -174,7 +174,8 @@ export default async function HrPage() {
               <span className={`hr-avatar is-lg${isDormant ? " is-muted" : ""}`} aria-hidden="true">{initials(employee.full_name)}</span>
               <div className="hr-person-main">
                 <div className="hr-person-title">
-                  <h3>{employee.full_name}</h3>
+                  {/* Ad, personelin detay sayfasına gider (2026-10); eskiden ayrı sayfası yoktu. */}
+                  <h3><Link href={`/panel/hr/${employee.id}`}>{employee.full_name}</Link></h3>
                   <span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span>
                 </div>
                 <p className="hr-person-role">{employee.job_title || "Pozisyon belirtilmedi"}{departmentName ? ` · ${departmentName}` : ""}</p>

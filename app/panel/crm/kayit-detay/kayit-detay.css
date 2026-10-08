@@ -159,15 +159,15 @@
 .os-root .talep-bilgi .plan-addenda li{border-color:var(--line);border-radius:var(--r-md)}
 .os-root .talep-bilgi .plan-timeline li{font-size:var(--fs-sm)}
 
-/* Cari hesap (müşteri) detayı: bakiye şeridi, hareket satırları. */
-.cari-serit{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;padding:var(--sp-3) var(--sp-5);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
-.cari-serit dl{display:flex;gap:var(--sp-6);flex-wrap:wrap;margin:0}
-.cari-serit dl>div{display:flex;flex-direction:column;gap:2px}
-.cari-serit dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
-.cari-serit dd{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
-.cari-serit .cari-bakiye dd{font-size:var(--fs-lg)}
-.cari-serit .cari-bakiye[data-tone="warning"] dd{color:var(--warning)}
-.cari-serit .cari-bakiye[data-tone="success"] dd{color:var(--success)}
+/* Cari ve personel detayı: özet şeridi (aşama çizgisinin yerinde), satır listeleri. */
+.kayit-serit{display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap;padding:var(--sp-3) var(--sp-5);border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+.kayit-serit dl{display:flex;gap:var(--sp-6);flex-wrap:wrap;margin:0}
+.kayit-serit dl>div{display:flex;flex-direction:column;gap:2px}
+.kayit-serit dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
+.kayit-serit dd{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+.kayit-serit .cari-bakiye dd{font-size:var(--fs-lg)}
+.kayit-serit .cari-bakiye[data-tone="warning"] dd{color:var(--warning)}
+.kayit-serit .cari-bakiye[data-tone="success"] dd{color:var(--success)}
 .cari-oran{flex:1;min-width:200px;display:flex;flex-direction:column;gap:var(--sp-1);color:var(--muted);font-size:var(--fs-sm)}
 .cari-oran-cubuk{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .cari-oran-cubuk i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:var(--success)}
@@ -194,5 +194,18 @@
 @media (max-width:760px){
   .cari-hareket-metin b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .cari-hareketler .status-pill{min-width:0}
-  .cari-serit{gap:var(--sp-3)}
+  .kayit-serit{gap:var(--sp-3)}
 }
+
+/* Personel detayı */
+.talep-izgara.personel-iki{grid-template-columns:minmax(260px,1fr) minmax(0,2fr)}
+.personel-erisim{display:flex;flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
+.personel-erisim .talep-iletisim{margin:0}
+.personel-erisim .hr-access-form{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
+.personel .cari-hareketler li>form{flex:none;margin:0}
+.os-root .personel .personel-sil{min-height:30px;padding:0 var(--sp-3);font-size:var(--fs-micro)}
+.personel-yukle{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3);padding:var(--sp-3);border:1px dashed var(--n-300);border-radius:var(--r-md)}
+.personel-yukle input[type="file"]{flex:1;min-width:0;font-size:var(--fs-sm)}
+.os-root .personel-yukle .panel-primary{min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
+.personel .kayit-serit dd .status-pill{font-size:var(--fs-sm)}
+@media (max-width:760px){.talep-izgara.personel-iki{grid-template-columns:minmax(0,1fr)}}

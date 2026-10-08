@@ -28,7 +28,7 @@ async function createDepartment__impl(formData:FormData){
   if(name.length<2) throw new Error("Departman adı en az 2 karakter olmalıdır.");
   const {error}=await supabase.from("hr_departments").insert({organization_id:membership.organization_id,name,code:text(formData,"code",30)||null});
   if(error) throw new Error("Departman oluşturulamadı: "+error.message);
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
 }
 
 async function createEmployee__impl(formData:FormData){
@@ -64,7 +64,7 @@ async function createEmployee__impl(formData:FormData){
     created_by:userId,
   });
   if(agreementError) throw new Error("Personel oluşturuldu ancak gizlilik sözleşmesi hazırlanamadı: "+agreementError.message);
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
   revalidatePath("/panel/hr/confidentiality");
   revalidatePath("/panel/crm");
 }
@@ -89,7 +89,7 @@ async function updateEmployee__impl(formData:FormData){
   }).eq("id",employeeId).eq("organization_id",membership.organization_id).select("id").maybeSingle();
   if(error) throw new Error("Personel güncellenemedi: "+error.message);
   if(!data) throw new Error("Personel bulunamadı.");
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
   revalidatePath("/panel/crm");
 }
 

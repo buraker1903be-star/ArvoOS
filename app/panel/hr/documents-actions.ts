@@ -57,7 +57,7 @@ async function uploadEmployeeDocument__impl(formData: FormData) {
     throw new Error("Dosya kaydı oluşturulamadı: " + error.message);
   }
 
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
 }
 
 async function deleteEmployeeDocument__impl(formData: FormData) {
@@ -79,7 +79,7 @@ async function deleteEmployeeDocument__impl(formData: FormData) {
 
   const { error: storageError } = await supabase.storage.from("hr-documents").remove([doc.storage_path]);
   if (storageError) console.error("[hr] belge kaydı silindi ama depodaki dosya kaldırılamadı", { path: doc.storage_path, message: storageError.message });
-  revalidatePath("/panel/hr");
+  revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

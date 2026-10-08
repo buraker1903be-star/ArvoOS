@@ -269,3 +269,5 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
   .hr-widget,.hr-person{transition:none}
   .hr-presence.is-online{animation:none}
 }
+.hr-person-title h3 a{color:inherit;text-decoration:none}
+.hr-person-title h3 a:hover{color:var(--primary);text-decoration:underline}
