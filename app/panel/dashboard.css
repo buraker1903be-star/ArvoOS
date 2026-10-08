@@ -171,15 +171,15 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-v2 .dash-card-head h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
 .dash-v2 .dash-card-head p{margin:2px 0 0;font-size:var(--fs-sm);color:var(--muted)}
 .dash-v2 .dash-chart{grid-column:auto}
-.dash-v2 .dash-bars{height:150px}
+.dash-v2 .dash-bars{height:80px}
 
 .dash-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--sp-4);align-items:stretch}
-.dash-col{gap:var(--sp-3);min-height:420px}
+.dash-col{gap:var(--sp-3)}
 .dash-col .dash-card-link{margin-top:auto}
 .dash-col .dash-empty{flex:1;display:grid;place-items:center;padding:var(--sp-6) var(--sp-2);text-align:center;font-size:var(--fs-sm)}
 .dash-col-list{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
 .dash-col-list li+li{border-top:1px solid var(--line-soft)}
-.dash-col-row{display:flex;align-items:center;gap:var(--sp-2);min-height:48px;padding:var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none;transition:background-color var(--dur) var(--ease)}
+.dash-col-row{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none;transition:background-color var(--dur) var(--ease)}
 .dash-col-row:hover{background:var(--surface-2)}
 .dash-col-row:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 .dash-col-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
@@ -203,3 +203,20 @@ a.dash-setup-step:active{transform:scale(.985)}
   .dash-col{min-height:0}
 }
 @media(prefers-reduced-motion:reduce){.dash-col-list li.is-new>.dash-col-row{animation:none}}
+/* Tek ekran (1440×900 ve 1280×800 dizüstü): kart iç boşluğu ve başlık
+   aralıkları biraz daha sıkı; satırlar 44px dokunma hedefinde kalır. */
+.dash-v2 .dash-card{padding:var(--sp-4) var(--sp-5);gap:var(--sp-2)}
+.dash-v2 .dash-hero h1{margin-top:2px}
+.dash-v2 .dash-col-row{padding:6px var(--sp-2)}
+@media (min-width:901px){.dash-v2 .dash-tarih{display:none}}
+/* Kısa dizüstü ekranları (1366×768 gibi): 6 satır ve dört sütun aynı
+   kalır, grafik alçalır ve aralıklar daralır ki sayfa kaymasın. */
+@media (min-width:901px) and (max-height:820px){
+  .dash-v2{gap:var(--sp-3)}
+  .dash-v2 .dash-hero h1{font-size:var(--fs-xl)}
+  .dash-v2 .dash-bars{height:44px}
+  .dash-v2 .dash-bar small{display:none}
+  .dash-v2 .dash-card{padding:var(--sp-3) var(--sp-4)}
+  .dash-v2 .dash-col-row{padding:4px var(--sp-2)}
+  .dash-cols{gap:var(--sp-3)}
+}

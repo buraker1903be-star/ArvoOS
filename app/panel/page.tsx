@@ -21,8 +21,8 @@ import "./dashboard.css";
 
   Kurum sahibinin çizdiği düzen: selamlama; tam genişlikte "Yeni talepler
   — son 14 gün"; altında dört sütun: son operasyonlar, yaklaşan aşama
-  tarihleri, müşteri mesajları, gelen postalar. Her kart en fazla 10 satır
-  ve kendi uygulamasına bağlantı verir.
+  tarihleri, müşteri mesajları, gelen postalar. Her kart en fazla 6 satır
+  (tek ekrana sığsın diye; ilk sürüm 10'du) ve kendi uygulamasına bağlantı verir.
 
   Eskiden burada sayı kartları (yeni talep, teklif bekleyen, tahsilat…),
   odak listesi, aşama dağılımı ve hareket akışı vardı; sayıların her biri
@@ -35,7 +35,7 @@ import "./dashboard.css";
 
 const TZ = "Europe/Istanbul";
 const DAY = 24 * 60 * 60 * 1000;
-const LISTE = 10;
+const LISTE = 6;
 
 const dayKey = (value: string | number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
@@ -261,7 +261,8 @@ export default async function PanelPage() {
     <div className="dash dash-v2">
       <header className="dash-hero">
         <div>
-          <small className="panel-kicker">{date}</small>
+          {/* Tarih durum çubuğunda saatin üstünde; telefonda saat gizli olduğu için burada. */}
+          <small className="panel-kicker dash-tarih">{date}</small>
           <h1>{greeting}{firstName ? `, ${firstName}` : ""}</h1>
         </div>
       </header>

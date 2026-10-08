@@ -219,3 +219,7 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
    temada okunmuyordu. Logo açık bir rozetin üstüne alınır. */
 html[data-theme="dark"] .os-brand>img{padding:3px 8px;border-radius:var(--r-sm);background:var(--n-0);box-sizing:content-box;height:24px}
 @media (max-width:520px){.os-brand>img{max-width:120px}}
+/* Saat ve üstünde tarih ("8 Ekim Perşembe"), sağa hizalı iki satır. */
+.os-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:44px;line-height:1.2;font-family:inherit}
+.os-clock-date{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap}
+.os-clock time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);color:var(--ink);font-weight:var(--fw-medium)}
