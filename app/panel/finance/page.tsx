@@ -6,7 +6,6 @@ import { createCollection } from "../accounts/actions";
 import { ProfitabilityWorkspace, type ProfitRow } from "./finance-workspaces";
 import { OdemeBaglantisiFormu } from "../accounts/odeme-baglantisi";
 import { normalizePhone } from "@/lib/whatsapp-send";
-import { FinWidget } from "./finance-ui";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
@@ -302,7 +301,7 @@ export default async function FinancePage({
   const paytrHazir = Boolean(paytr?.available && paytr.connected && paytr.enabled);
 
   return (
-    <main className={mode === "cari" ? "fin talep cari ekip talepler teklifler liste-sayfa" : "fin"}>
+    <main className={mode === "cari" || mode === "maliyet" ? "fin talep cari ekip talepler teklifler liste-sayfa" : "fin"}>
       <header className={mode === "cari" ? "talep-bas" : "panel-pagehead"}>
         <div className={mode === "cari" ? "talep-bas-metin" : undefined}>
           <small className="panel-kicker">FİNANS</small>
@@ -376,13 +375,22 @@ export default async function FinancePage({
 
       {mode === "maliyet" && canManageCosts ? (
         <>
-          <section className="fin-widgets" aria-label="İş maliyetleri özeti">
-            <FinWidget tone="brand" icon="briefcase" label="Toplam sözleşme" value={money(contractSum)} note={`${contracts.length} iş`} />
-            <FinWidget tone="warning" icon="receipt" label="Maliyet toplamı" value={money(totalServiceCost)} note="İşlere bağlı giderler" />
-            <FinWidget tone={profitSum >= 0 ? "success" : "danger"} icon="trend" label="Toplam kâr" value={money(profitSum)} note="Brüt iş kârlılığı" emphasis />
-            <FinWidget tone="gold" icon="percent" label="Ortalama kâr oranı" value={`%${averageMargin}`} note="Sözleşme bazında" />
-          </section>
-          <ProfitabilityWorkspace rows={profitRows} />
+          {/* Özet şeridi panelin diğer listeleriyle aynı: rakamlar üstte
+              tek satırda, altında liste kartı. Eskiden dört büyük kutu
+              (fin-widgets) ekranın yarısını kaplıyordu. */}
+          <nav className="kayit-serit talep-serit" aria-label="İş maliyetleri özeti">
+            <dl>
+              <div><dt>Toplam sözleşme</dt><dd>{money(contractSum)}</dd></div>
+              <div><dt>Maliyet toplamı</dt><dd>{money(totalServiceCost)}</dd></div>
+              <div className="cari-bakiye" data-tone={profitSum >= 0 ? "success" : "warning"}><dt>Toplam kâr</dt><dd>{money(profitSum)}</dd></div>
+              <div><dt>Ortalama kâr oranı</dt><dd>%{averageMargin}</dd></div>
+              <div><dt>İş</dt><dd>{contracts.length}</dd></div>
+            </dl>
+          </nav>
+
+          <div className="talep-izgara personel-iki ekip-izgara">
+            <ProfitabilityWorkspace rows={profitRows} />
+          </div>
         </>
       ) : null}
     </main>

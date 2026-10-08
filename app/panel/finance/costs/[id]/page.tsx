@@ -4,7 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { addContractCostItem, deleteContractCostItem, updateContractCostItem } from "../../actions";
-import { FinEmpty, FinIcon, FinWidget, initials } from "../../finance-ui";
+import { FinIcon, initials } from "../../finance-ui";
 import "../../finance.css";
 
 const money=(amount:number,currency="TRY")=>new Intl.NumberFormat("tr-TR",{style:"currency",currency}).format(amount/100);
@@ -24,38 +24,34 @@ export default async function ContractCostDetail({params}:{params:Promise<{id:st
   if(error)throw new Error("Sözleşme okunamadı: "+error.message);if(itemError)throw new Error("Maliyet hareketleri okunamadı: "+itemError.message);if(!contract)notFound();
   const customer=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const employeeMap=new Map((employees??[]).map(employee=>[employee.id,employee.full_name]));const salesRepresentative=customer?.assigned_employee_id?employeeMap.get(customer.assigned_employee_id)||"Pasif personel":"Atanmamış";const operationRepresentative=workflow?.assigned_employee_id?employeeMap.get(workflow.assigned_employee_id)||"Pasif personel":"Atanmamış";const total=(items??[]).reduce((sum,item)=>sum+Number(item.amount),0);const paid=(items??[]).filter(item=>item.status==="paid").reduce((sum,item)=>sum+Number(item.amount),0);const profit=Number(contract.amount)-total;const margin=Number(contract.amount)?profit/Number(contract.amount)*100:0;
   return (
-    <main className="fin">
-      <header className="panel-pagehead">
-        <div>
+    <main className="fin talep cari">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
           <small className="panel-kicker">FİNANS · İŞ MALİYETİ</small>
           <h1>{contract.contract_no}</h1>
           <p>{customer?.customer_name||contract.title} · {contract.title}</p>
         </div>
-        <div className="panel-page-actions">
+        <div className="talep-bas-eylem">
           <Link className="panel-secondary" href="/panel/finance?gorunum=maliyet"><FinIcon name="back" size={16}/>İş maliyetleri</Link>
         </div>
       </header>
 
-      <section className="fin-widgets" aria-label="İş maliyeti özeti">
-        <FinWidget tone="brand" icon="briefcase" label="Sözleşme tutarı" value={money(Number(contract.amount),contract.currency)} note="Toplam iş bedeli"/>
-        <FinWidget tone="warning" icon="receipt" label="Maliyet toplamı" value={money(total,contract.currency)} note={`${money(paid,contract.currency)} ödendi`}/>
-        <FinWidget tone={profit>=0?"success":"danger"} icon="trend" label="Toplam kâr" value={money(profit,contract.currency)} note="Brüt iş kârı" emphasis/>
-        <FinWidget tone={margin>=30?"success":margin>=0?"gold":"danger"} icon="percent" label="Kâr oranı" value={`%${margin.toFixed(1)}`} note="Sözleşme bedeline göre"/>
-      </section>
+      {/* Özet şeridi panelin diğer detay ekranlarıyla aynı: rakamlar tek
+          satırda. Eskiden dört büyük kutu ekranın yarısını kaplıyordu. */}
+      <nav className="kayit-serit talep-serit" aria-label="İş maliyeti özeti">
+        <dl>
+          <div><dt>Sözleşme tutarı</dt><dd>{money(Number(contract.amount),contract.currency)}</dd></div>
+          <div><dt>Maliyet toplamı</dt><dd>{money(total,contract.currency)}</dd></div>
+          <div className="cari-bakiye" data-tone={profit>=0?"success":"warning"}><dt>Toplam kâr</dt><dd>{money(profit,contract.currency)}</dd></div>
+          <div><dt>Kâr oranı</dt><dd>%{margin.toFixed(1)}</dd></div>
+          <div><dt>Ödenen</dt><dd>{money(paid,contract.currency)}</dd></div>
+        </dl>
+      </nav>
 
-      <section className="fin-people" aria-label="Sorumlular">
-        <PersonCard label="Satış temsilcisi" name={salesRepresentative}/>
-        <PersonCard label="Operasyon sorumlusu" name={operationRepresentative}/>
-      </section>
-
-      <section className="fin-card" aria-label="Maliyet kalemi ekle">
-        <header className="fin-card-head">
-          <div>
-            <h2>Maliyet kalemi ekle</h2>
-            <p>Bu işe bağlı planlanan ya da ödenen bir gideri kaydedin.</p>
-          </div>
-        </header>
-        <div className="fin-card-body">
+      <div className="talep-izgara maliyet-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Maliyet kalemi ekle">
+        <h2>Maliyet kalemi ekle</h2>
+        <p className="talep-not">Bu işe bağlı planlanan ya da ödenen bir gideri kaydedin.</p>
           <form className="panel-form fin-form fin-form-grid" action={addContractCostItem}>
             <input type="hidden" name="contract_id" value={contract.id}/>
             <label>Kategori<select name="category"><option>Dış hizmet</option><option>Personel</option><option>Yazılım / Lisans</option><option>Belge / Resmî gider</option><option>Diğer</option></select></label>
@@ -67,20 +63,16 @@ export default async function ContractCostDetail({params}:{params:Promise<{id:st
             <label>Belge / Referans<input name="reference_no" maxLength={120}/></label>
             <div className="fin-form-actions"><button className="panel-primary">Maliyet kalemi ekle</button></div>
           </form>
-        </div>
       </section>
 
-      <section className="fin-card" aria-label="Maliyet hareketleri">
-        <header className="fin-card-head">
-          <div>
-            <h2>Maliyet hareketleri</h2>
-            <p>Bu işe kaydedilen tüm giderler, en yenisi üstte.</p>
-          </div>
+      <section className="panel-card talep-bilgi" aria-label="Maliyet hareketleri">
+        <div className="ekip-suzgec talep-suzgec">
+          <span className="talep-suzgec-etiket">Maliyet hareketleri</span>
           <span className="status-pill">{items?.length||0} hareket</span>
-        </header>
+        </div>
         {items?.length ? (
-          <div className="fin-table-wrap">
-            <table className="fin-table" data-cols="movements">
+          <div className="talep-tablo">
+            <table className="crm-data-table">
               <thead>
                 <tr>
                   <th scope="col">Tarih</th>
@@ -88,20 +80,20 @@ export default async function ContractCostDetail({params}:{params:Promise<{id:st
                   <th scope="col">Sağlayıcı</th>
                   <th scope="col">Referans</th>
                   <th scope="col">Durum</th>
-                  <th scope="col" className="fin-num">Tutar</th>
-                  <th scope="col"><span className="fin-sr">İşlemler</span></th>
+                  <th scope="col" className="crm-col-amount">Tutar</th>
+                  <th scope="col"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map(item=>(
                   <tr key={item.id}>
                     <td data-label="Tarih">{date(item.cost_date)}</td>
-                    <td className="fin-col-main"><span className="fin-entity-text"><b>{item.category}</b><small>{item.description}</small></span></td>
-                    <td className={item.supplier?undefined:"fin-muted"} data-label="Sağlayıcı">{item.supplier||"—"}</td>
-                    <td className={item.reference_no?undefined:"fin-muted"} data-label="Referans">{item.reference_no||"—"}</td>
+                    <td data-label="Kategori"><span className="crm-table-title">{item.category}</span><span className="crm-table-sub">{item.description}</span></td>
+                    <td data-label="Sağlayıcı">{item.supplier||<span className="talep-bos">—</span>}</td>
+                    <td data-label="Referans">{item.reference_no||<span className="talep-bos">—</span>}</td>
                     <td data-label="Durum"><span className="status-pill" data-tone={statusTone(item.status)}>{item.status==="paid"?"Ödendi":"Planlandı"}</span></td>
-                    <td className="fin-num" data-label="Tutar">{money(Number(item.amount),contract.currency)}</td>
-                    <td className="fin-col-actions">
+                    <td className="crm-table-mono" data-label="Tutar">{money(Number(item.amount),contract.currency)}</td>
+                    <td className="crm-table-actions maliyet-eylem">
                       <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker="MALİYET KALEMİ" title="Maliyet kalemini düzenle" description={`${item.category} · ${money(Number(item.amount),contract.currency)}`}>
                         <form className="panel-form fin-form" action={updateContractCostItem}>
                           <input type="hidden" name="item_id" value={item.id}/>
@@ -126,15 +118,29 @@ export default async function ContractCostDetail({params}:{params:Promise<{id:st
                 ))}
               </tbody>
               <tfoot>
-                <tr>
-                  <td className="fin-foot"><span>Toplam maliyet · {money(paid,contract.currency)} ödendi</span><strong>{money(total,contract.currency)}</strong></td>
+                <tr className="maliyet-toplam">
+                  <td colSpan={5}>Toplam maliyet · {money(paid,contract.currency)} ödendi</td>
+                  <td className="crm-table-mono"><b>{money(total,contract.currency)}</b></td>
+                  <td></td>
                 </tr>
               </tfoot>
             </table>
           </div>
         ) : (
-          <FinEmpty icon="receipt" title="Henüz maliyet hareketi yok">Yukarıdaki formla bu işe ilk maliyet kalemini ekleyin.</FinEmpty>
+          <div className="crm-empty-state talep-bos-kutu">
+            <p>Henüz maliyet hareketi yok</p>
+            <small>Soldaki formla bu işe ilk maliyet kalemini ekleyin.</small>
+          </div>
         )}
+      </section>
+      </div>
+
+      {/* Sorumlular artık özet şeridinin altında değil, kendi küçük
+          kartında: iki satırlık bilgi için tam genişlikte bir bölüm
+          ayırmak ekranı uzatıyordu. */}
+      <section className="panel-card maliyet-sorumlular" aria-label="Sorumlular">
+        <PersonCard label="Satış temsilcisi" name={salesRepresentative}/>
+        <PersonCard label="Operasyon sorumlusu" name={operationRepresentative}/>
       </section>
     </main>
   );
