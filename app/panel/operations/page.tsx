@@ -1,23 +1,24 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
-import { formatSubject, initials } from "@/lib/table-format";
-import { statusTone } from "@/lib/status-tone";
+import { formatSubject } from "@/lib/table-format";
+import { gunlukSeri } from "@/lib/gunluk-seri";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "../os/genel-bakis";
 import { relativeTime } from "../crm/last-contact";
 import { PanelDrawer } from "../components/panel-drawer";
 import { OperationsTabs } from "./operations-tabs";
 import { WorkflowCreateForm } from "./workflow-create-form";
-import { OpsIcon, activeStatuses, addDaysKey, dueBadge, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "./ops-shared";
+import { activeStatuses, addDaysKey, dueBadge, stepProgress, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
 import "./operations.css";
-import "./overview.css";
 
-// Operasyon genel bakış: operasyoncunun günlük ekranı. Yeni gelen işler,
-// devam eden işler, termini yaklaşan işler ve müşteriden gelen okunmamış
-// mesajlar kartlar halinde; her kartta ilk 5 kayıt ve "Tümünü gör".
+// Operasyon genel bakış: operasyoncunun günlük ekranı. Ana ekranla aynı
+// şablon (os/genel-bakis.tsx, 2026-10): son 14 günde tamamlanan aşamalar
+// grafiği ve dört liste: yaklaşan aşamalar, yeni gelen işler, devam eden
+// işler (termin rozetiyle), müşteri mesajları. Eskiden beş sayı kartı ve
+// ayrı bir "teslim tarihi yaklaşan" kartı vardı.
 // Veri, işler tablosuyla aynı kapsamda: kurum filtresi + RLS (yönetici
 // değilse yalnızca sorumlusu olduğu işler).
 
@@ -49,11 +50,6 @@ type MessageRow = {
   created_at: string;
   operation_workflows: { id: string; title: string; customer_name: string | null; status: string } | { id: string; title: string; customer_name: string | null; status: string }[] | null;
 };
-type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
-
-const LIST_LIMIT = 5;
-/* Yaklaşan aşamalar kartı tam genişlikte: daha uzun bir liste sığıyor. */
-const ASAMA_LIMIT = 8;
 /* Mesaj ÖNİZLEME penceresi. Kutucuktaki toplam buradan gelmiyor; ayrı ve
    sınırsız bir sayım sorgusundan geliyor. */
 const MESAJ_ONIZLEME = 500;
@@ -73,7 +69,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);
 
-  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }, { count: okunmamisSayisi }] = await Promise.all([
+  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: archivedCount }, { count: okunmamisSayisi }, { data: tamamlananData, error: tamamlananError }] = await Promise.all([
     supabase.from("operation_workflows")
       // Adımın kendi alanları da geliyor: "yaklaşan aşamalar" kartı AŞAMA
       // düzeyinde, işin termini düzeyinde değil.
@@ -104,10 +100,18 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
       .eq("sender_type", "customer")
       .is("read_at", null)
       .neq("operation_workflows.status", "cancelled"),
+    /* Grafik: son 28 günde tamamlanan aşamalar (14 gün + önceki 14 günle
+       kıyas). Sınırsız: sayı bu satırlardan çıkıyor. RLS, yönetici
+       olmayana yalnızca kendi işlerinin aşamalarını verir. */
+    supabase.from("operation_steps").select("completed_at")
+      .eq("organization_id", organizationId).eq("is_completed", true).gte("completed_at", seriBaslangici()),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (messageError) throw new Error("Müşteri mesajları okunamadı: " + messageError.message);
+  /* Grafik okunamazsa sayfa düşmez; uyarı satırı söyler. */
+  const uyarilar = tamamlananError ? ["Tamamlanan aşamalar"] : [];
+  const seri = gunlukSeri(((tamamlananData ?? []) as { completed_at: string | null }[]).map((row) => row.completed_at ?? ""), simdi());
 
   const workflows = (data ?? []) as Workflow[];
   const employeeName = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((row) => [row.id, formatPersonName(row.full_name)]));
@@ -185,229 +189,93 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const onizlemeKesildi = messages.length >= MESAJ_ONIZLEME;
   const isSayisiMetni = `${onizlemeKesildi ? "en az " : ""}${threads.size} işte okunmamış`;
 
-  const withSteps = workflows.filter((workflow) => (workflow.operation_steps ?? []).length);
-  const averageProgress = withSteps.length ? Math.round(withSteps.reduce((sum, workflow) => sum + stepProgress(workflow.operation_steps).percentage, 0) / withSteps.length) : 0;
-  const unassignedTotal = workflows.filter((workflow) => !workflow.assigned_employee_id).length;
-
-  const widgets: { label: string; value: string | number; note: string; href: string; icon: string; tone: Tone }[] = [
-    { label: "Aktif iş", value: workflows.length, note: unassignedTotal ? `${unassignedTotal} iş atanmamış` : "Hepsinin sorumlusu var", href: ISLER, icon: "briefcase", tone: "brand" },
-    { label: "Bu hafta teslim", value: dueSoonCount, note: "Önümüzdeki 7 gün", href: `${ISLER}?termin=yaklasan`, icon: "clock", tone: "gold" },
-    { label: "Geciken teslim", value: overdueCount, note: overdueCount ? "Termini geçti" : "Geciken iş yok", href: `${ISLER}?termin=geciken`, icon: "alert", tone: overdueCount ? "danger" : "success" },
-    { label: "Müşteri mesajı", value: unreadTotal, note: unreadTotal ? isSayisiMetni : "Hepsi okundu", href: `${ISLER}?mesaj=yeni`, icon: "message", tone: unreadTotal ? "danger" : "info" },
-    { label: "Ortalama ilerleme", value: `%${averageProgress}`, note: "Aktif işlerin görevleri", href: `${ISLER}?durum=devam`, icon: "progress", tone: "success" },
-  ];
-
-  const parts = [
-    planned.length ? `${planned.length} yeni iş` : null,
-    // Geciken AŞAMA önce: iş termini daha uzakken kaçırılan ara teslim bu.
-    gecikenAsama ? `${gecikenAsama} geciken aşama` : null,
-    overdueCount ? `${overdueCount} geciken teslim` : null,
-    dueSoonCount ? `bu hafta ${dueSoonCount} teslim` : null,
-    unreadTotal ? `${unreadTotal} okunmamış müşteri mesajı` : null,
-  ].filter(Boolean);
-  const summary = parts.length ? `Şu an ${parts.join(", ")} var.` : "Bekleyen acil bir iş yok, her şey yolunda.";
-
   return (
-    <div className="crm-page-stack">
-      <div className="panel-pagehead">
-        <div><small className="panel-kicker">OPERASYON / GENEL BAKIŞ</small><h1>Genel bakış</h1><p>{summary}</p></div>
-        <div className="panel-page-actions">
-          <Link className="panel-secondary" href={ISLER}>Tüm işler</Link>
-          {canManage ? <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin."><WorkflowCreateForm /></PanelDrawer> : null}
-        </div>
-      </div>
-      <OperationsTabs active="genel-bakis" />
-      <div className="module-tab-panel opsov">
-        <section className="opsov-widgets" aria-label="Özet">
-          {widgets.map((widget) => (
-            <Link className="opsov-widget" data-tone={widget.tone} href={widget.href} key={widget.label}>
-              <span className="opsov-widget-icon"><OpsIcon name={widget.icon} /></span>
-              <small>{widget.label}</small>
-              <strong>{widget.value}</strong>
-              <span className="opsov-widget-note">{widget.note}</span>
-            </Link>
+    <GenelBakis
+      baslik="Genel bakış"
+      eylemler={<>
+        <Link className="panel-secondary" href="/panel/operations/arsiv">Arşiv ({archivedCount ?? 0})</Link>
+        <Link className="panel-secondary" href={ISLER}>Tüm işler</Link>
+        {canManage ? <PanelDrawer triggerLabel="+ Yeni iş" kicker="YENİ KAYIT" title="Yeni iş" description="İş başlığını, önceliğini ve terminini belirleyin."><WorkflowCreateForm /></PanelDrawer> : null}
+      </>}
+      sekmeler={<OperationsTabs active="genel-bakis" />}
+      uyari={uyarilar}
+    >
+      <SeriKarti baslik="Tamamlanan aşamalar" alt="Son 14 gün" seri={seri} adet="aşama" />
+
+      <ListeIzgarasi etiket="Operasyon işleri">
+        {/*
+          YAKLAŞAN AŞAMALAR: "hangi maddenin tarihi yaklaşıyor". İşin termini
+          daha uzakken gecikmiş ara teslim asıl kaçırılan şey; gecikmeler en
+          üstte (tarih sırası).
+        */}
+        <ListeKarti baslik="Yaklaşan aşamalar" alt={gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek"} bos="Yaklaşan aşama yok. Aşama tarihleri iş detayında “Tarihleri dağıt” ile doldurulabilir." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={yaklasanAsamalar.length}>
+          {yaklasanAsamalar.slice(0, GENEL_BAKIS_SATIR).map((asama) => {
+            const rozet = dueBadge(asama.tarih, today);
+            return (
+              <ListeSatiri
+                key={asama.id}
+                href={`/panel/operations/${asama.isId}`}
+                baslik={formatSubject(asama.baslik)}
+                baslikIpucu={asama.baslik}
+                alt={`${asama.musteri} · ${asama.sorumlu ?? "Atanmamış"}`}
+                sag={<span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span>}
+              />
+            );
+          })}
+        </ListeKarti>
+
+        <ListeKarti baslik="Yeni gelen işler" alt={unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"} bos="Yeni iş yok. Sözleşmesi onaylanan işler burada belirir." href={`${ISLER}?durum=planned`} hrefEtiket="Tümünü gör" sayi={plannedList.length}>
+          {plannedList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
+            const sorumlu = assigneeOf(workflow);
+            return (
+              <ListeSatiri
+                key={workflow.id}
+                href={`/panel/operations/${workflow.id}`}
+                baslik={formatSubject(workflow.title)}
+                baslikIpucu={workflow.title}
+                alt={`${workflow.customer_name || "Kurum içi iş"} · ${relativeTime(workflow.created_at)}`}
+                sag={sorumlu ? <span className="status-pill" data-tone="neutral" title={sorumlu}>{sorumlu.split(" ")[0]}</span> : <span className="status-pill" data-tone="gold">Atanmamış</span>}
+                yeni={yeniMi(workflow.created_at)}
+              />
+            );
+          })}
+        </ListeKarti>
+
+        {/* Termin bilgisi (eski "Teslim tarihi yaklaşan" kartı) burada rozet olarak. */}
+        <ListeKarti baslik="Devam eden işler" alt={blockedCount ? `${blockedCount} iş beklemede` : overdueCount || dueSoonCount ? `${overdueCount ? `${overdueCount} geciken, ` : ""}bu hafta ${dueSoonCount} teslim` : "Üzerinde çalışılan işler"} bos="Şu an devam eden iş yok." href={`${ISLER}?durum=devam`} hrefEtiket="Tümünü gör" sayi={ongoingList.length}>
+          {ongoingList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
+            const ilerleme = stepProgress(workflow.operation_steps);
+            const rozet = dueBadge(workflow.due_date, today, workflow.status);
+            return (
+              <ListeSatiri
+                key={workflow.id}
+                href={`/panel/operations/${workflow.id}`}
+                baslik={formatSubject(workflow.title)}
+                baslikIpucu={workflow.title}
+                alt={`${workflow.customer_name || "Kurum içi iş"} · %${ilerleme.percentage} · ${workflowStatusNames[workflow.status] ?? workflow.status}`}
+                sag={workflow.due_date ? <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span> : null}
+                yeni={yeniMi(workflow.updated_at)}
+              />
+            );
+          })}
+        </ListeKarti>
+
+        <ListeKarti baslik="Müşteri mesajları" alt={unreadTotal ? isSayisiMetni : "Takip ekranından yazılanlar"} bos="Okunmamış müşteri mesajı yok." href={`${ISLER}?mesaj=yeni`} hrefEtiket="Tümünü gör" sayi={threadList.length}>
+          {threadList.slice(0, GENEL_BAKIS_SATIR).map(({ latest, count }) => (
+            <ListeSatiri
+              key={latest.workflow_id}
+              href={`/panel/operations/${latest.workflow_id}?pencere=mesajlar`}
+              baslik={formatPersonName(musteriMesajGondereni(latest.workflow?.customer_name, latest.sender_name))}
+              alt={latest.body}
+              onizleme
+              sag={count > 1 ? <span className="status-pill" data-tone="danger">{count}</span> : null}
+              zaman={relativeTime(latest.created_at)}
+              okunmamis
+              yeni={yeniMi(latest.created_at)}
+            />
           ))}
-        </section>
-
-        <section className="opsov-grid">
-          {/*
-            YAKLAŞAN AŞAMALAR — en üstte ve tam genişlikte, çünkü
-            operasyoncunun sorduğu soru bu: "hangi maddenin tarihi
-            yaklaşıyor, kimin işi". Alttaki kartlar iş düzeyinde kalıyor.
-          */}
-          <article className="opsov-card opsov-card-genis" data-tone={gecikenAsama ? "danger" : "gold"}>
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><OpsIcon name="clock" /></span>
-              <div>
-                <h2>Yaklaşan aşamalar</h2>
-                <p>{gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek aşamalar"}</p>
-              </div>
-              <b className="opsov-count">{yaklasanAsamalar.length}</b>
-            </header>
-            {yaklasanAsamalar.length ? (
-              <ul className="opsov-list opsov-asamalar">
-                {yaklasanAsamalar.slice(0, ASAMA_LIMIT).map((asama) => {
-                  const rozet = dueBadge(asama.tarih, today);
-                  return (
-                    <li key={asama.id} className={rozet.late ? "is-flagged" : undefined} data-flag="danger">
-                      <Link className="opsov-row" href={`/panel/operations/${asama.isId}`}>
-                        <span className="opsov-row-main">
-                          <b title={asama.baslik}>{formatSubject(asama.baslik)}</b>
-                          {/* Aşama adı tek başına hangi işin maddesi olduğunu söylemiyor. */}
-                          <small>{asama.musteri} · {formatSubject(asama.isBasligi)}</small>
-                        </span>
-                        <span className="opsov-row-side">
-                          {asama.sorumlu ? (
-                            <span className="opsov-person" title={asama.sorumlu}>
-                              <i aria-hidden="true">{initials(asama.sorumlu)}</i><span>{asama.sorumlu}</span>
-                            </span>
-                          ) : <span className="status-pill" data-tone="gold">Atanmamış</span>}
-                          <span className="status-pill" data-tone={rozet.tone}>{rozet.label}</span>
-                        </span>
-                        <OpsIcon name="chevron" size={14} />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="opsov-empty">
-                <OpsIcon name="check" size={20} />
-                Yaklaşan aşama yok. Aşamaların tarihi girilmemişse burası boş kalır — iş detayındaki
-                “Tarihleri dağıt” ile bir kerede doldurabilirsiniz.
-              </p>
-            )}
-            <Link className="opsov-more" href="/panel/operations/takvim">Takvimde gör<OpsIcon name="chevron" size={14} /></Link>
-          </article>
-
-          {/* Yeni gelen işler */}
-          <article className="opsov-card" data-tone="info">
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><OpsIcon name="inbox" /></span>
-              <div><h2>Yeni gelen işler</h2><p>{unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"}</p></div>
-              <b className="opsov-count">{planned.length}</b>
-            </header>
-            {plannedList.length ? (
-              <ul className="opsov-list">
-                {plannedList.slice(0, LIST_LIMIT).map((workflow) => {
-                  const assignee = assigneeOf(workflow);
-                  return (
-                    <li key={workflow.id} className={assignee ? undefined : "is-flagged"} data-flag="gold">
-                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
-                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {relativeTime(workflow.created_at)}</small></span>
-                        <span className="opsov-row-side">
-                          {assignee ? <span className="opsov-person" title={assignee}><i aria-hidden="true">{initials(assignee)}</i><span>{assignee}</span></span> : <span className="status-pill" data-tone="gold">Atanmamış</span>}
-                        </span>
-                        <OpsIcon name="chevron" size={14} />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Yeni iş yok. Sözleşmesi onaylanan işler burada belirir.</p>}
-            <Link className="opsov-more" href={`${ISLER}?durum=planned`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
-          </article>
-
-          {/* Devam eden işler */}
-          <article className="opsov-card" data-tone="success">
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><OpsIcon name="progress" /></span>
-              <div><h2>Devam eden işler</h2><p>{blockedCount ? `${blockedCount} iş beklemede` : "Üzerinde çalışılan işler"}</p></div>
-              <b className="opsov-count">{ongoing.length}</b>
-            </header>
-            {ongoingList.length ? (
-              <ul className="opsov-list">
-                {ongoingList.slice(0, LIST_LIMIT).map((workflow) => {
-                  const progress = stepProgress(workflow.operation_steps);
-                  const assignee = assigneeOf(workflow);
-                  return (
-                    <li key={workflow.id} className={workflow.status === "blocked" ? "is-flagged" : undefined} data-flag="warning">
-                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
-                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {assignee ?? "Atanmamış"}</small></span>
-                        <span className="opsov-row-side opsov-progress">
-                          {workflow.status === "blocked" ? <span className="status-pill" data-tone={statusTone(workflow.status)}>{workflowStatusNames[workflow.status]}</span> : null}
-                          <span className="opsov-bar" aria-hidden="true"><i style={{ "--p": `${progress.percentage}%` } as CSSProperties} /></span>
-                          <em>%{progress.percentage}</em>
-                        </span>
-                        <OpsIcon name="chevron" size={14} />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Şu an devam eden iş yok.</p>}
-            <Link className="opsov-more" href={`${ISLER}?durum=devam`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
-          </article>
-
-          {/* Teslim tarihi yaklaşan */}
-          <article className="opsov-card" data-tone={overdueCount ? "danger" : "gold"}>
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><OpsIcon name="clock" /></span>
-              <div><h2>Teslim tarihi yaklaşan</h2><p>{overdueCount ? `${overdueCount} gecikmiş · ${dueSoonCount} bu hafta` : "Önümüzdeki 7 gün içinde teslim"}</p></div>
-              <b className="opsov-count">{dueList.length}</b>
-            </header>
-            {dueList.length ? (
-              <ul className="opsov-list">
-                {dueList.slice(0, LIST_LIMIT).map((workflow) => {
-                  const badge = dueBadge(workflow.due_date!, today);
-                  return (
-                    <li key={workflow.id} className={badge.late ? "is-flagged" : undefined} data-flag="danger">
-                      <Link className="opsov-row" href={`/panel/operations/${workflow.id}`}>
-                        <span className="opsov-row-main"><b title={workflow.title}>{formatSubject(workflow.title)}</b><small>{workflow.customer_name || "Kurum içi iş"} · {assigneeOf(workflow) ?? "Atanmamış"}</small></span>
-                        <span className="opsov-row-side opsov-due">
-                          <time dateTime={workflow.due_date!}>{shortDate(workflow.due_date)}</time>
-                          <span className="status-pill" data-tone={badge.tone}>{badge.label}</span>
-                        </span>
-                        <OpsIcon name="chevron" size={14} />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Bu hafta teslimi olan ya da geciken iş yok.</p>}
-            <Link className="opsov-more" href={`${ISLER}?termin=yaklasan`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
-          </article>
-
-          {/* Müşteriden gelen mesajlar */}
-          <article className="opsov-card" data-tone={unreadTotal ? "danger" : "brand"}>
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><OpsIcon name="message" /></span>
-              <div><h2>Müşteriden gelen mesajlar</h2><p>{unreadTotal ? `${isSayisiMetni} mesaj` : "Takip ekranından yazılanlar"}</p></div>
-              <b className="opsov-count">{unreadTotal}</b>
-            </header>
-            {threadList.length ? (
-              <ul className="opsov-list">
-                {threadList.slice(0, LIST_LIMIT).map(({ latest, count }) => {
-                  const sender = formatPersonName(musteriMesajGondereni(latest.workflow?.customer_name, latest.sender_name));
-                  return (
-                    <li key={latest.workflow_id} className="is-flagged" data-flag="danger">
-                      <Link className="opsov-row opsov-message" href={`/panel/operations/${latest.workflow_id}?pencere=mesajlar`}>
-                        <span className="opsov-avatar" aria-hidden="true">{initials(sender)}</span>
-                        <span className="opsov-row-main">
-                          <b>{sender}<small> · {formatSubject(latest.workflow?.title ?? "İş")}</small></b>
-                          <span className="opsov-excerpt">{latest.body}</span>
-                        </span>
-                        <span className="opsov-row-side opsov-message-side">
-                          <time dateTime={latest.created_at}>{relativeTime(latest.created_at)}</time>
-                          {count > 1 ? <em className="opsov-badge">{count}</em> : <em className="opsov-badge">Yeni</em>}
-                        </span>
-                        <OpsIcon name="chevron" size={14} />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : <p className="opsov-empty"><OpsIcon name="check" size={20} />Okunmamış müşteri mesajı yok.</p>}
-            <Link className="opsov-more" href={`${ISLER}?mesaj=yeni`}>Tümünü gör<OpsIcon name="chevron" size={14} /></Link>
-          </article>
-        </section>
-
-        <p className="opsov-foot">
-          <OpsIcon name="archive" size={16} />
-          <span>Tamamlanan işleri “Arşivle” ile aktif listeden kaldırabilirsiniz.</span>
-          <Link href="/panel/operations/arsiv">Arşiv ({archivedCount ?? 0})</Link>
-        </p>
-      </div>
-    </div>
+        </ListeKarti>
+      </ListeIzgarasi>
+    </GenelBakis>
   );
 }
