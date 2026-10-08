@@ -58,14 +58,14 @@
 .talep-akis-panel{max-height:calc(100dvh - 370px);min-height:240px;overflow:auto}
 /* Uzun kapsam ve notlar sayfayı uzatmasın: orta sütun kendi içinde kayar. Sınırlar
    dock'un üstünde bitecek şekilde: başlık + aşama çizgisi ~216px, dock ~100px. */
-.os-root .talep-izgara>.talep-bilgi{max-height:calc(100dvh - 320px);overflow:auto}
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 320px);overflow:auto}
 .os-root .talep-akis-panel>.panel-card,.os-root .talep-akis-panel>section{margin:0;border:0;border-radius:0;box-shadow:none;background:transparent}
 .talep-akis-panel:empty::after{content:"Bu talebe bağlı yazışma yok.";display:block;padding:var(--sp-8) var(--sp-5);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
 
 @media (max-width:1200px){
   .talep-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
   .talep-izgara>.talep-akis{grid-column:1/-1}
-  .talep-akis-panel,.os-root .talep-izgara>.talep-bilgi{max-height:none}
+  .talep-akis-panel,.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:none}
 }
 @media (max-width:760px){
   .talep-izgara{grid-template-columns:minmax(0,1fr)}
@@ -73,3 +73,31 @@
   .talep-asama li span{white-space:nowrap}
   .talep-liste--iki{grid-template-columns:minmax(0,1fr)}
 }
+
+/* ---------- Müşterinin diğer kayıtları (sol sütun) ---------- */
+.talep-gecmis{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
+.talep-gecmis-ozet{margin:0 0 var(--sp-2);color:var(--ink-soft);font-size:var(--fs-sm)}
+.talep-gecmis ul{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
+.talep-gecmis li>a,.talep-gecmis li>div{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none}
+.talep-gecmis li>a:hover{background:var(--surface-2)}
+.talep-gecmis-metin{flex:1;min-width:0;display:flex;flex-direction:column}
+.talep-gecmis-metin b{font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.talep-gecmis-metin small{font-size:var(--fs-micro);color:var(--muted)}
+.talep-gecmis .status-pill{flex:none}
+
+/* ---------- Yorumlar sekmesi: sade akış ---------- */
+.os-root .ic-akis{padding:0}
+.os-root .ic-akis .crm-internal-comment-form{margin:0;padding:var(--sp-4);border-bottom:1px solid var(--line-soft);background:transparent}
+.os-root .ic-akis .crm-internal-comment-composer{border-radius:var(--r-md)}
+.os-root .ic-akis .crm-internal-comment-composer textarea{min-height:72px}
+.os-root .ic-akis .crm-internal-comment-list{padding:var(--sp-2) var(--sp-4) var(--sp-4)}
+.ic-akis-bos{margin:0;padding:var(--sp-6) var(--sp-2);text-align:center;color:var(--muted);font-size:var(--fs-sm)}
+
+/* ---------- İnce kaydırma çubuğu ----------
+   Uzun metinde gri ve kalın çubuk her zaman görünüyordu; artık ince ve
+   yalnızca sütunun üzerine gelince belirgin. */
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri),.talep-akis-panel{scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable}
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri):hover,.talep-akis-panel:hover{scrollbar-color:var(--n-300) transparent}
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar,.talep-akis-panel::-webkit-scrollbar{width:6px}
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri)::-webkit-scrollbar-thumb,.talep-akis-panel::-webkit-scrollbar-thumb{border-radius:6px;background:transparent}
+.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri):hover::-webkit-scrollbar-thumb,.talep-akis-panel:hover::-webkit-scrollbar-thumb{background:var(--n-300)}

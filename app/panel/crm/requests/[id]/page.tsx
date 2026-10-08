@@ -3,6 +3,8 @@ import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { waMeAdresi } from "@/lib/wa-me";
 import { TALEP_ADIMLARI, talepAdimi } from "@/lib/talep-asamalari";
+import { tekrarsizNot } from "@/lib/talep-notu";
+import { findCustomerHistory, type CustomerHistoryResult } from "../../customer-history-query";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
@@ -72,7 +74,8 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, membership, modules, izin } = await getPanelContext();
+  const context = await getPanelContext();
+  const { supabase, membership, modules, izin } = context;
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
   const [{ data, error }, { data: employees, error: employeeError }, { data: turData }] =
@@ -132,6 +135,41 @@ export default async function RequestDetailPage({
   const arsivde = item.stage === "lost";
   const musteri = formatPersonName(item.customer_name) || item.customer_name;
   const temsilciler = (employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }));
+  /* Teklif aşamasından sonra asıl işlem talebin bulunduğu yere gitmek. */
+  const ileri = adim === 2 ? { href: "/panel/crm/proposals", label: "Tekliflere git" }
+    : adim === 3 ? { href: "/panel/crm/contracts", label: "Sözleşmelere git" }
+    : adim === 4 ? { href: "/panel/operations/isler", label: "İşlere git" }
+    : null;
+  const teklifCekmecesi = (etiket: string, sinif: string) => (
+    <PanelDrawer triggerLabel={etiket} title="Teklif Oluştur" triggerClassName={sinif}>
+      <ProposalBuilderForm
+        opportunityId={item.id}
+        customerName={item.customer_name}
+        title={item.title}
+        scope={d.scope || item.notes || item.title}
+        representatives={temsilciler}
+        needsRepresentative={!item.assigned_employee_id}
+      />
+    </PanelDrawer>
+  );
+  /* Notta kapsamın tekrarı varsa çıkar (web sitesi formu ikisini de yazıyor). */
+  const not = tekrarsizNot(item.notes, d.scope);
+
+  /*
+    Müşterinin bu talep dışındaki kayıtları: aynı telefon (son 10 hane) ya
+    da ad soyad. "Müşteri sorgula" penceresiyle aynı sorgu ve yetki
+    kuralı (RLS; satış personeli yalnızca görebildiğini görür). Okunamazsa
+    sayfa düşmez, bölüm görünmez.
+  */
+  let gecmis: CustomerHistoryResult | null = null;
+  try {
+    gecmis = await findCustomerHistory(context, { phone: item.contact_phone, name: item.customer_name, excludeOpportunityId: item.id }, { maxItems: 4 });
+  } catch (hata) {
+    console.error("[talep] müşteri geçmişi okunamadı", hata);
+  }
+  const gecmisSayilari = gecmis
+    ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
+    : [];
 
   const edit = (
     <form className="panel-form" action={updateOpportunity}>
@@ -224,20 +262,14 @@ export default async function RequestDetailPage({
           <h1>{item.title}</h1>
         </div>
         <div className="talep-bas-eylem">
-          {item.stage === "proposal" ? (
-            <Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link>
-          ) : !arsivde ? (
-            <PanelDrawer triggerLabel="Teklif oluştur" title="Teklif Oluştur" triggerClassName="panel-primary">
-              <ProposalBuilderForm
-                opportunityId={item.id}
-                customerName={item.customer_name}
-                title={item.title}
-                scope={d.scope || item.notes || item.title}
-                representatives={temsilciler}
-                needsRepresentative={!item.assigned_employee_id}
-              />
-            </PanelDrawer>
-          ) : null}
+          {/*
+            Asıl işlem aşamaya göre: teklif öncesinde "Teklif oluştur",
+            sonra talebin bulunduğu yere git. Eskiden sözleşme ya da iş
+            aşamasındaki talepte de "Teklif oluştur" yazıyordu.
+          */}
+          {arsivde ? null : ileri ? (
+            <Link className="panel-primary" href={ileri.href}>{ileri.label}</Link>
+          ) : teklifCekmecesi("Teklif oluştur", "panel-primary")}
           {/*
             Diğer işlemler menüde. Çekmeceler sayfanın köküne çiziliyor
             (panel-drawer.tsx): menü kapansa da açık kalıyorlar.
@@ -278,6 +310,9 @@ export default async function RequestDetailPage({
                   </form>
                 </PanelDrawer>
               ) : null}
+              {/* Sözleşme ve iş aşamasında yeni teklif yine verilebilir (eski
+                  sayfadaki kural: teklif aşaması dışında her zaman). */}
+              {ileri && item.stage !== "proposal" ? teklifCekmecesi("Yeni teklif oluştur", "os-menu-item") : null}
               {item.stage !== "proposal" && !arsivde ? (
                 <PanelDrawer
                   triggerLabel="Direkt sözleşme oluştur"
@@ -377,6 +412,39 @@ export default async function RequestDetailPage({
             <div><dt>Satış temsilcisi</dt><dd>{representative ? formatPersonName(representative) : <em>Atanmamış</em>}</dd></div>
             <div><dt>Kaynak</dt><dd>{item.source || <em>Belirtilmedi</em>}</dd></div>
           </dl>
+          {/* Müşterinin diğer kayıtları: sol sütun kısa kalıyordu, bu bilgi
+              yalnızca "Müşteri sorgula" penceresindeydi. */}
+          <div className="talep-gecmis">
+            <h3>Müşterinin diğer kayıtları</h3>
+            {gecmis && gecmis.total ? (
+              <>
+                <p className="talep-gecmis-ozet">
+                  {gecmisSayilari.map(([ad, n]) => `${n} ${ad}`).join(" · ")}
+                  {gecmis.contractedLabel ? <span> · sözleşme {gecmis.contractedLabel}</span> : null}
+                </p>
+                <ul>
+                  {gecmis.items.map((kayit) => {
+                    const icerik = (
+                      <>
+                        <span className="talep-gecmis-metin">
+                          <b>{kayit.title}</b>
+                          <small>{kayit.kindLabel}{kayit.amountLabel ? ` · ${kayit.amountLabel}` : ""} · {kayit.dateLabel}</small>
+                        </span>
+                        <span className="status-pill" data-tone={kayit.tone}>{kayit.statusLabel}</span>
+                      </>
+                    );
+                    return (
+                      <li key={kayit.key}>
+                        {kayit.canOpen ? <Link href={kayit.href}>{icerik}</Link> : <div>{icerik}</div>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : (
+              <p className="talep-bos">Bu müşterinin başka kaydı yok; ilk talebi.</p>
+            )}
+          </div>
         </section>
 
         {/* Talep */}
@@ -391,17 +459,17 @@ export default async function RequestDetailPage({
             <h3>Kapsam</h3>
             {d.scope ? <p>{d.scope}</p> : <p className="talep-bos">Kapsam yazılmamış. “⋯ → Düzenle” ile eklenir.</p>}
           </div>
-          {item.notes ? (
+          {not ? (
             <div className="talep-not">
               <h3>Notlar</h3>
-              <p>{item.notes}</p>
+              <p>{not}</p>
             </div>
           ) : null}
         </section>
 
         {/* Akış */}
         <TalepAkis sekmeler={postaGorur ? ["Yorumlar", "Postalar", "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
-          <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} />
+          <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
           {postaGorur ? <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} /> : null}
           <RecordHistory opportunityId={item.id} />
         </TalepAkis>

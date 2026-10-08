@@ -35,8 +35,13 @@ export async function InternalComments({
     sıra eskiden yeniye ve yazma alanı altta — mesajlaşma uygulaması
     nerede durduğunu öğrenmek gerekmeyen tek kalıp. CRM sayfaları
     "kart" ile olduğu gibi kalıyor.
+
+    AKIŞ GÖRÜNÜMÜ (talep detayı, 2026-10): yorumlar bir sekmenin içinde;
+    sekme zaten "Yorumlar" diyor. Kendi başlığı ("Kurum içi · gizli /
+    Görüşme ve yorum geçmişi" + açıklama) ve kesik çizgili büyük boş
+    kutusu tekrar ediyordu; burada yok, yazma alanı üstte.
   */
-  gorunum?: "kart" | "sohbet";
+  gorunum?: "kart" | "sohbet" | "akis";
 }) {
   const { supabase, membership, userId, izin } = await getPanelContext();
   const { data, error } = await supabase
@@ -67,15 +72,15 @@ export async function InternalComments({
   const isManager = izin("crm.yorum.yonet");
 
   return (
-    <section className={`panel-card crm-internal-comments${gorunum === "sohbet" ? " ic-sohbet" : ""}`}>
-      <div className="crm-internal-comments-head">
+    <section className={`panel-card crm-internal-comments${gorunum === "sohbet" ? " ic-sohbet" : gorunum === "akis" ? " ic-akis" : ""}`}>
+      {gorunum === "akis" ? null : <div className="crm-internal-comments-head">
         <div>
           <small className="panel-kicker">KURUM İÇİ · GİZLİ</small>
           <h2>Görüşme ve Yorum Geçmişi</h2>
           <p>Talep, teklif ve sözleşme boyunca aynı kayıt zincirinde devam eder. Müşteri ekranında gösterilmez.</p>
         </div>
         <span className="crm-internal-comment-count">{comments.length} yorum</span>
-      </div>
+      </div>}
 
       <form action={addInternalComment} className="crm-internal-comment-form">
         <input type="hidden" name="opportunity_id" value={opportunityId} />
@@ -124,7 +129,11 @@ export async function InternalComments({
             </div>
           </article>;
         })}
-        {!comments.length ? <p className="panel-empty">Henüz kurum içi yorum bulunmuyor. İlk görüşme notunu ekleyin.</p> : null}
+        {!comments.length
+          ? gorunum === "akis"
+            ? <p className="ic-akis-bos">Henüz yorum yok. Müşteriyle konuşulanları buraya yazın; yalnızca kurum içinde görünür.</p>
+            : <p className="panel-empty">Henüz kurum içi yorum bulunmuyor. İlk görüşme notunu ekleyin.</p>
+          : null}
       </div>
     </section>
   );
