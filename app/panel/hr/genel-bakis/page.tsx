@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
-import { HrIcon, initials } from "../hr-icons";
 import { HrTabs, canSeeHrRecords } from "../hr-tabs";
 import { relativeTime } from "../../crm/last-contact";
-import "../../crm/crm.css";
-import "../../operations/overview.css";
+import { gunlukSeri } from "@/lib/gunluk-seri";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "../../os/genel-bakis";
 
-// İK genel bakış: ekip durumunun özeti. Her kart, ayrıntısını gösteren
+// İK genel bakış: ekip durumunun özeti. Ana ekranla aynı şablon
+// (os/genel-bakis.tsx, 2026-10): son 14 günde panele giren kişi grafiği ve
+// dört liste. Eskiden üstte beş sayı kartı vardı. Her kart, ayrıntısını gösteren
 // sayfanın yetki kuralıyla görünür: panel erişimi ve davetler Kurum Sahibi
 // ve Yönetici'ye (Personel sayfasıyla aynı), çevrimiçi durum ve gizlilik
 // sözleşmeleri sahip/yönetici/sınırlı yöneticiye (Hareketler ve Gizlilik
@@ -21,13 +22,7 @@ type Presence = { user_id: string; last_seen_at: string };
 type Agreement = { employee_id: string; status: string };
 type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
 
-const LIST_LIMIT = 5;
 const ONLINE_MS = 2 * 60 * 1000; // Personel Hareketleri ile aynı: son 2 dakikada aktif
-
-// HrIcon'da ok simgesi yok; satır ve "Tümünü gör" okları (diğer genel bakışlarla aynı)
-const Chevron = () => (
-  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-);
 
 // Zamana bağlı değerler (saat bileşen gövdesinde okunmaz)
 function clock() {
@@ -42,6 +37,8 @@ export default async function HrOverviewPage() {
   const access = { yetkiler, isPlatformOwner };
   const canManageTeam = izin("hr.ekip.yonet");
   const canSeeRecords = canSeeHrRecords(access);
+  /* Grafik oturum kayıtlarından: Personel Hareketleri sayfasıyla aynı yetki. */
+  const canSeeActivity = izin("hr.hareket.gor");
   const time = clock();
   const none = Promise.resolve({ data: [] as never[], error: null });
 
@@ -52,6 +49,7 @@ export default async function HrOverviewPage() {
     { data: invitationData },
     { data: presenceData },
     { data: agreementData },
+    { data: girisData, error: girisError },
   ] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,full_name,job_title,email,employment_status,can_receive_sales_requests").eq("organization_id", organizationId).order("full_name"),
     supabase.from("hr_departments").select("id,name,is_active").eq("organization_id", organizationId).order("name"),
@@ -59,6 +57,9 @@ export default async function HrOverviewPage() {
     canManageTeam ? supabase.from("organization_invitations").select("id,email,status,expires_at").eq("organization_id", organizationId).in("status", ["pending", "sent"]) : none,
     canSeeRecords ? supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId) : none,
     canSeeRecords ? supabase.from("hr_confidentiality_agreements").select("employee_id,status").eq("organization_id", organizationId) : none,
+    /* Son 28 günün girişleri (14 gün + önceki 14 günle kıyas). Sınırsız:
+       sayı bu satırlardan çıkıyor. */
+    canSeeActivity ? supabase.from("user_session_logs").select("user_id,login_at").eq("organization_id", organizationId).gte("login_at", seriBaslangici()) : none,
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (departmentError) throw new Error("Departmanlar okunamadı: " + departmentError.message);
@@ -103,32 +104,16 @@ export default async function HrOverviewPage() {
     .filter((row) => row.count > 0)
     .sort((a, b) => b.count - a.count);
 
-  const widgets: { label: string; value: string | number; note: string; href: string; icon: string; tone: Tone }[] = [
-    { label: "Aktif personel", value: active.length, note: onLeave.length ? `${onLeave.length} kişi izinli` : "İzinli personel yok", href: "/panel/hr", icon: "users", tone: "brand" },
-    { label: "Satış temsilcisi", value: active.filter((row) => row.can_receive_sales_requests).length, note: "Talep atanabilen personel", href: "/panel/hr", icon: "spark", tone: "gold" },
-  ];
-  if (canManageTeam) {
-    widgets.push(
-      { label: "Panel erişimi", value: withAccess.length, note: withoutAccess.length ? `${withoutAccess.length} personelin erişimi yok` : "Herkes giriş yapabiliyor", href: "/panel/hr", icon: "key", tone: withoutAccess.length ? "warning" : "success" },
-      { label: "Bekleyen davet", value: invitations.length, note: invitations.length ? "Henüz kabul edilmedi" : "Bekleyen davet yok", href: "/panel/hr", icon: "send", tone: "info" },
-    );
+  /* Grafik: her gün panele giren FARKLI kişi sayısı. Aynı kişinin gün
+     içindeki birden çok girişi (sekme, cihaz) tek sayılır; aksi halde
+     grafik ekip büyüklüğünü değil oturum sayısını gösterirdi. */
+  const gunKisi = new Map<string, string>();
+  for (const satir of (girisData ?? []) as { user_id: string; login_at: string }[]) {
+    if (!satir.login_at) continue;
+    const anahtar = `${new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date(satir.login_at))}|${satir.user_id}`;
+    if (!gunKisi.has(anahtar)) gunKisi.set(anahtar, satir.login_at);
   }
-  if (canSeeRecords) {
-    widgets.push(
-      { label: "Şu an çevrimiçi", value: online.length, note: connected.length ? `${connected.length} bağlı personelden` : "Henüz giriş kaydı yok", href: "/panel/hr/activity", icon: "signal", tone: "success" },
-      { label: "Gizlilik sözleşmesi", value: `${working.length - unsigned.length}/${working.length}`, note: unsigned.length ? `${unsigned.length} personelin imzalı sözleşmesi yok` : "Tüm personel imzaladı", href: "/panel/hr/confidentiality", icon: "shield", tone: unsigned.length ? "warning" : "success" },
-    );
-  }
-  // 5'ten fazlaysa en az bilgi vereni çıkar (yönetici görünümü 6 widget olurdu)
-  if (widgets.length > 5) widgets.splice(1, 1);
-
-  const parts = [
-    canManageTeam && withoutAccess.filter((row) => row.state === "not-invited").length ? `${withoutAccess.filter((row) => row.state === "not-invited").length} personel panele davet edilmedi` : null,
-    canManageTeam && invitations.length ? `${invitations.length} davet bekliyor` : null,
-    canSeeRecords && unsigned.length ? `${unsigned.length} gizlilik sözleşmesi eksik` : null,
-    canSeeRecords && online.length ? `${online.length} kişi çevrimiçi` : null,
-  ].filter(Boolean);
-  const summary = parts.length ? `Şu an ${parts.join(", ")}.` : `${working.length} kişilik ekip; bekleyen bir İK işi yok.`;
+  const seri = gunlukSeri([...gunKisi.values()], simdi());
 
   const stateLabel: Record<string, { tone: Tone; label: string }> = {
     "not-invited": { tone: "warning", label: "Davet edilmedi" },
@@ -137,125 +122,73 @@ export default async function HrOverviewPage() {
   };
 
   return (
-    <div className="crm-page-stack">
-      <div className="panel-pagehead">
-        <div><small className="panel-kicker">İNSAN KAYNAKLARI / GENEL BAKIŞ</small><h1>Genel bakış</h1><p>{summary}</p></div>
-        <div className="panel-page-actions"><Link className="panel-primary" href="/panel/hr">Personel listesi</Link></div>
-      </div>
-      <HrTabs active="genel-bakis" access={access} />
-      <div className="module-tab-panel opsov crmov">
-        <section className="opsov-widgets" aria-label="Özet">
-          {widgets.map((widget) => (
-            <Link className="opsov-widget" data-tone={widget.tone} href={widget.href} key={widget.label}>
-              <span className="opsov-widget-icon"><HrIcon name={widget.icon} /></span>
-              <small>{widget.label}</small>
-              <strong>{widget.value}</strong>
-              <span className="opsov-widget-note">{widget.note}</span>
-            </Link>
+    <GenelBakis
+      baslik="Genel bakış"
+      eylemler={<Link className="panel-primary" href="/panel/hr">Personel listesi</Link>}
+      sekmeler={<HrTabs active="genel-bakis" access={access} />}
+      uyari={girisError ? ["Panel girişleri"] : []}
+    >
+      {canSeeActivity ? <SeriKarti baslik="Panele giren kişi" alt="Son 14 gün · günde farklı kişi" seri={seri} adet="kişi" /> : null}
+
+      <ListeIzgarasi etiket="Ekip durumu">
+        {canSeeRecords ? (
+          <ListeKarti baslik="Son görülenler" alt={online.length ? `${online.length} kişi şu an çevrimiçi` : "Şu an çevrimiçi kimse yok"} bos="Henüz panele giriş yapan personel yok." href="/panel/hr/activity" hrefEtiket="Personel hareketleri" sayi={recent.length}>
+            {recent.slice(0, GENEL_BAKIS_SATIR).map((row) => {
+              const seen = lastSeen.get(row.user_id!)!;
+              const isOnline = Date.parse(seen) >= time.onlineCutoff;
+              return (
+                <ListeSatiri
+                  key={row.id}
+                  href="/panel/hr/activity"
+                  baslik={formatPersonName(row.full_name)}
+                  alt={roleOf(row)}
+                  sag={<span className="status-pill" data-tone={isOnline ? "success" : "neutral"}>{isOnline ? "Çevrimiçi" : relativeTime(seen)}</span>}
+                />
+              );
+            })}
+          </ListeKarti>
+        ) : null}
+
+        {canManageTeam ? (
+          <ListeKarti baslik="Panel erişimi olmayanlar" alt={withoutAccess.length ? `${withAccess.length} kişi giriş yapabiliyor · ${withoutAccess.length} erişimsiz` : "Tüm personel panele giriş yapabiliyor"} bos="Tüm personel panele giriş yapabiliyor." href="/panel/hr" hrefEtiket="Personele git" sayi={withoutAccess.length}>
+            {withoutAccess.slice(0, GENEL_BAKIS_SATIR).map((row) => (
+              <ListeSatiri
+                key={row.id}
+                href="/panel/hr"
+                baslik={formatPersonName(row.full_name)}
+                alt={`${roleOf(row)}${row.email ? ` · ${row.email}` : ""}`}
+                sag={<span className="status-pill" data-tone={stateLabel[row.state].tone}>{stateLabel[row.state].label}</span>}
+              />
+            ))}
+          </ListeKarti>
+        ) : null}
+
+        {canSeeRecords ? (
+          <ListeKarti baslik="Gizlilik sözleşmesi eksik" alt={unsigned.length ? `${working.length - unsigned.length}/${working.length} personel imzaladı` : "Tüm personel imzaladı"} bos="Tüm personelin gizlilik sözleşmesi imzalı." href="/panel/hr/confidentiality" hrefEtiket="Gizlilik sözleşmeleri" sayi={unsigned.length}>
+            {unsigned.slice(0, GENEL_BAKIS_SATIR).map((row) => (
+              <ListeSatiri
+                key={row.id}
+                href="/panel/hr/confidentiality"
+                baslik={formatPersonName(row.full_name)}
+                alt={roleOf(row)}
+                sag={<span className="status-pill" data-tone={pendingIds.has(row.id) ? "info" : "warning"}>{pendingIds.has(row.id) ? "İmza bekliyor" : "Sözleşme yok"}</span>}
+              />
+            ))}
+          </ListeKarti>
+        ) : null}
+
+        <ListeKarti baslik="Departmanlar" alt={`${active.length} aktif${onLeave.length ? ` · ${onLeave.length} izinli` : ""} personel`} bos="Henüz personel kaydı yok. Personel sekmesinden “+ Yeni Personel” ile ekleyin." href="/panel/hr" hrefEtiket="Personele git" sayi={departmentCounts.length}>
+          {departmentCounts.slice(0, GENEL_BAKIS_SATIR).map((row) => (
+            <ListeSatiri
+              key={row.id}
+              href="/panel/hr"
+              baslik={row.name}
+              alt={`%${Math.round((row.count / Math.max(1, working.length)) * 100)} · ekibin payı`}
+              sag={<span className="status-pill" data-tone="neutral">{row.count} kişi</span>}
+            />
           ))}
-        </section>
-
-        <section className="opsov-grid">
-          {canManageTeam ? (
-            <article className="opsov-card" data-tone={withoutAccess.length ? "warning" : "success"}>
-              <header className="opsov-card-head">
-                <span className="opsov-card-icon"><HrIcon name="key" /></span>
-                <div><h2>Panel erişimi olmayanlar</h2><p>{withoutAccess.length ? "Davet edilmemiş personel üstte" : "Tüm personel panele giriş yapabiliyor"}</p></div>
-                <b className="opsov-count">{withoutAccess.length}</b>
-              </header>
-              {withoutAccess.length ? (
-                <ul className="opsov-list">
-                  {withoutAccess.slice(0, LIST_LIMIT).map((row) => (
-                    <li key={row.id} className={row.state === "not-invited" ? "is-flagged" : undefined} data-flag="gold">
-                      <Link className="opsov-row" href="/panel/hr">
-                        <span className="opsov-row-main"><b>{formatPersonName(row.full_name)}</b><small>{roleOf(row)}{row.email ? ` · ${row.email}` : ""}</small></span>
-                        <span className="opsov-row-side"><span className="status-pill" data-tone={stateLabel[row.state].tone}>{stateLabel[row.state].label}</span></span>
-                        <Chevron />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="opsov-empty"><HrIcon name="check" size={20} />Tüm personel panele giriş yapabiliyor.</p>}
-              <Link className="opsov-more" href="/panel/hr">Personele git<Chevron /></Link>
-            </article>
-          ) : null}
-
-          {canSeeRecords ? (
-            <article className="opsov-card" data-tone="success">
-              <header className="opsov-card-head">
-                <span className="opsov-card-icon"><HrIcon name="signal" /></span>
-                <div><h2>Son görülenler</h2><p>{online.length ? `${online.length} kişi şu an çevrimiçi` : "Şu an çevrimiçi kimse yok"}</p></div>
-                <b className="opsov-count">{online.length}</b>
-              </header>
-              {recent.length ? (
-                <ul className="opsov-list">
-                  {recent.slice(0, LIST_LIMIT).map((row) => {
-                    const seen = lastSeen.get(row.user_id!)!;
-                    const isOnline = Date.parse(seen) >= time.onlineCutoff;
-                    return (
-                      <li key={row.id}>
-                        <Link className="opsov-row" href="/panel/hr/activity">
-                          <span className="opsov-person" aria-hidden="true"><i>{initials(formatPersonName(row.full_name))}</i></span>
-                          <span className="opsov-row-main"><b>{formatPersonName(row.full_name)}</b><small>{roleOf(row)}</small></span>
-                          <span className="opsov-row-side"><span className="status-pill" data-tone={isOnline ? "success" : "neutral"}>{isOnline ? "Çevrimiçi" : relativeTime(seen)}</span></span>
-                          <Chevron />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : <p className="opsov-empty"><HrIcon name="clock" size={20} />Henüz panele giriş yapan personel yok.</p>}
-              <Link className="opsov-more" href="/panel/hr/activity">Personel hareketleri<Chevron /></Link>
-            </article>
-          ) : null}
-
-          {canSeeRecords ? (
-            <article className="opsov-card" data-tone={unsigned.length ? "warning" : "success"}>
-              <header className="opsov-card-head">
-                <span className="opsov-card-icon"><HrIcon name="shield" /></span>
-                <div><h2>Gizlilik sözleşmesi eksik</h2><p>{unsigned.length ? "İmza bekleyenler üstte" : "Tüm personel imzaladı"}</p></div>
-                <b className="opsov-count">{unsigned.length}</b>
-              </header>
-              {unsigned.length ? (
-                <ul className="opsov-list">
-                  {unsigned.slice(0, LIST_LIMIT).map((row) => (
-                    <li key={row.id} className={pendingIds.has(row.id) ? undefined : "is-flagged"} data-flag="warning">
-                      <Link className="opsov-row" href="/panel/hr/confidentiality">
-                        <span className="opsov-row-main"><b>{formatPersonName(row.full_name)}</b><small>{roleOf(row)}</small></span>
-                        <span className="opsov-row-side"><span className="status-pill" data-tone={pendingIds.has(row.id) ? "info" : "warning"}>{pendingIds.has(row.id) ? "İmza bekliyor" : "Sözleşme yok"}</span></span>
-                        <Chevron />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="opsov-empty"><HrIcon name="check" size={20} />Tüm personelin gizlilik sözleşmesi imzalı.</p>}
-              <Link className="opsov-more" href="/panel/hr/confidentiality">Gizlilik sözleşmeleri<Chevron /></Link>
-            </article>
-          ) : null}
-
-          <article className="opsov-card" data-tone="brand">
-            <header className="opsov-card-head">
-              <span className="opsov-card-icon"><HrIcon name="building" /></span>
-              <div><h2>Departmanlar</h2><p>Çalışan ve izinli personel dağılımı</p></div>
-              <b className="opsov-count">{departmentCounts.filter((row) => row.id !== "none").length}</b>
-            </header>
-            {departmentCounts.length ? (
-              <ul className="opsov-list">
-                {departmentCounts.map((row) => (
-                  <li key={row.id}>
-                    <Link className="opsov-row" href="/panel/hr">
-                      <span className="opsov-row-main"><b>{row.name}</b><small>{row.count} personel</small></span>
-                      <span className="opsov-row-side"><span className="opsov-bar" aria-hidden="true"><i style={{ "--p": `${Math.round((row.count / Math.max(1, working.length)) * 100)}%` } as React.CSSProperties} /></span></span>
-                      <Chevron />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="opsov-empty"><HrIcon name="building" size={20} />Henüz personel kaydı yok. Personel sekmesinden “+ Yeni Personel” ile ekleyin.</p>}
-            <Link className="opsov-more" href="/panel/hr">Personele git<Chevron /></Link>
-          </article>
-        </section>
-      </div>
-    </div>
+        </ListeKarti>
+      </ListeIzgarasi>
+    </GenelBakis>
   );
 }

@@ -224,3 +224,18 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-v2 > .module-tabs{margin:0}
 .dash-v2:has(> .module-tabs) .dash-hero h1{font-size:var(--fs-xl)}
 .dash-v2:has(> .module-tabs) .dash-bars{height:52px}
+/* Kısa ekran + sekmeli genel bakış (1366×768'de 73px taşıyordu): grafik
+   ince bir şerit, sekme ve satırlar biraz daha alçak. 6 satır ve dört
+   sütun aynı kalır. Bu kural yukarıdaki sekmeli kuraldan sonra gelmeli. */
+@media (min-width:901px) and (max-height:820px){
+  .dash-v2:has(> .module-tabs){gap:var(--sp-2)}
+  .dash-v2:has(> .module-tabs) .dash-bars{height:28px}
+  .dash-v2:has(> .module-tabs) .dash-bar-value{display:none}
+  .dash-v2:has(> .module-tabs) > .module-tabs a{min-height:36px}
+  .dash-v2:has(> .module-tabs) .dash-hero :is(.panel-primary,.panel-secondary){min-height:34px}
+  .dash-v2:has(> .module-tabs) .dash-col-row{min-height:40px;padding-block:2px}
+  .dash-v2:has(> .module-tabs) .dash-cols{gap:var(--sp-2)}
+}
+/* Telefonda 14 çubuk dar: tutar etiketleri ("₺16.000") birbirine giriyordu.
+   Toplam kart başlığında, gün değeri çubuğun ipucunda. */
+@media (max-width:700px){.dash-v2 .dash-bar-value{display:none}}
