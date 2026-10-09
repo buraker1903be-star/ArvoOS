@@ -3,7 +3,6 @@ import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCollection } from "../accounts/actions";
-import { ProfitabilityWorkspace, type ProfitRow } from "./finance-workspaces";
 import { PanelModal } from "../components/panel-modal";
 import { MaliyetDetayi } from "./costs/maliyet-detayi";
 import { OdemeBaglantisiFormu } from "../accounts/odeme-baglantisi";
@@ -79,7 +78,9 @@ type Contract = {
   crm_opportunities: { customer_name: string; contact_phone:string|null;contact_email:string|null;assigned_employee_id:string|null } | { customer_name: string;contact_phone:string|null;contact_email:string|null;assigned_employee_id:string|null }[] | null;
 };
 type Installment={id:string;payment_plan_id:string;installment_no:number;due_date:string|null;amount:number;status:string;payment_url:string|null;payment_link_source:string|null;notice_sent_at:string|null;reminder_sent_at:string|null};
-type CostItem={contract_id:string;amount:number;status:string};
+type CostItem={contract_id:string;amount:number;status:string;cost_date:string;category:string};
+/* İş maliyetleri listesinin satırı. */
+type ProfitRow={id:string;contractNo:string;customer:string;title:string;sales:string;operation:string;amount:number;cost:number;paid:number;costEntered:boolean;profit:number;margin:number;date:string};
 
 /* Yalnızca başlık: açıklama satırı kaldırıldı (kurum sahibinin isteği,
    2026-10). Rakamlar hemen altındaki şeritte zaten duruyor; bir cümlelik
@@ -101,6 +102,69 @@ const pageCopy = {
   Satırın tamamı müşteri detayını açar; açık bakiyeli müşteride sık
   kullanılan "Tahsilat" ve "Ödeme linki" satırda.
 */
+/*
+  İŞ MALİYETLERİ TABLOSU (2026-10): Müşteriler listesiyle aynı düzen
+  (solda tablo, sağda istatistik). Eskiden istemcide süzülen, 10'arlı
+  sayfalanan ayrı bir bileşendi (finance-workspaces.tsx) ve sütunları
+  büyük harfli adlar, ayrı Satış/Operasyon sütunları ve çıplak bir oran
+  rozetiydi. Satır maliyet detayını ortada açılan pencerede açar.
+*/
+function MaliyetTablosu({ rows, arama }: { rows: ProfitRow[]; arama: string }) {
+  const ek = arama ? `&arama=${encodeURIComponent(arama)}` : "";
+  return (
+    <div className="talep-tablo">
+      <table className="crm-data-table" data-cols="maliyetler">
+        <thead>
+          <tr>
+            <th>İş / Müşteri</th>
+            <th className="crm-col-rep">Sorumlular</th>
+            <th className="crm-col-amount">Sözleşme</th>
+            <th className="crm-col-amount">Maliyet</th>
+            <th className="crm-col-amount">Kâr</th>
+            <th>Kâr oranı</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const oranYuzde = Math.round(row.margin);
+            return (
+              <tr key={row.id}>
+                <td data-label="İş / Müşteri">
+                  <Link className="crm-row-link" href={`/panel/finance?gorunum=maliyet&maliyet=${row.id}${ek}`} scroll={false} aria-label={`${row.contractNo} maliyet detayı`}>
+                    <span className="crm-table-title" title={row.customer}>{row.customer}</span>
+                    <span className="crm-table-sub">{row.contractNo} · {row.title}</span>
+                  </Link>
+                </td>
+                <td className="crm-col-rep" data-label="Sorumlular">
+                  <span className="crm-table-sub maliyet-sorumlu"><b>Satış</b> {row.sales}</span>
+                  <span className="crm-table-sub maliyet-sorumlu"><b>Operasyon</b> {row.operation}</span>
+                </td>
+                <td className="crm-col-amount" data-label="Sözleşme">{money(row.amount)}</td>
+                <td className="crm-col-amount" data-label="Maliyet">
+                  {row.costEntered ? money(row.cost) : <span className="cari-sifir">—</span>}
+                  <small className={row.costEntered ? "crm-waiting" : "crm-waiting is-late"}>
+                    {!row.costEntered ? "maliyet girilmedi" : row.paid >= row.cost ? "tamamı ödendi" : `${money(row.paid)} ödendi`}
+                  </small>
+                </td>
+                <td className={row.profit < 0 ? "crm-col-amount talep-uyari" : "crm-col-amount cari-arti"} data-label="Kâr">{money(row.profit)}</td>
+                <td data-label="Kâr oranı">
+                  <span className="musteri-tahsil maliyet-oran" data-ton={row.margin < 0 ? "danger" : row.margin < 30 ? "warning" : "success"} title={`%${row.margin.toFixed(1)}`}>
+                    <span className="cari-oran-cubuk" aria-hidden="true"><i style={{ "--p": `${Math.max(0, Math.min(100, oranYuzde))}%` } as React.CSSProperties} /></span>
+                    <small>%{oranYuzde}</small>
+                  </span>
+                </td>
+                <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <SatirTiklama />
+    </div>
+  );
+}
+
 const kisaTarih = (gun: string) => new Date(`${gun}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
 
 function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazir: boolean }) {
@@ -232,7 +296,7 @@ export default async function FinancePage({
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"]),
       supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,payment_link_source,notice_sent_at,reminder_sent_at").eq("organization_id",membership.organization_id).order("due_date"),
-      supabase.from("contract_cost_items").select("contract_id,amount,status").eq("organization_id",membership.organization_id),
+      supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date,category").eq("organization_id",membership.organization_id),
       supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id),
       supabase.from("operation_workflows").select("id,assigned_employee_id").eq("organization_id",membership.organization_id),
     ]);
@@ -274,9 +338,40 @@ export default async function FinancePage({
      Eski bağlantılar cari listesine düşer. */
   const mode=params.gorunum==="maliyet"&&canManageCosts?"maliyet":"cari";
   const today=todayInIstanbul();
-  const profitRows:ProfitRow[]=contracts.map(contract=>{const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;const cost=costTotals.get(contract.id)??Number(contract.service_cost);const profit=Number(contract.amount)-cost;const operationEmployeeId=contract.workflow_id?workflowMap.get(contract.workflow_id):null;return{id:contract.id,contractNo:contract.contract_no,customer:relation?.customer_name||contract.title,title:contract.title,sales:relation?.assigned_employee_id?employeeMap.get(relation.assigned_employee_id)||"Pasif personel":"Atanmamış",operation:operationEmployeeId?employeeMap.get(operationEmployeeId)||"Pasif personel":"Atanmamış",amount:Number(contract.amount),cost,profit,margin:Number(contract.amount)?profit/Number(contract.amount)*100:0,date:(contract.signed_at||contract.created_at).slice(0,10)}});
+  /*
+    Maliyet: kalemler varsa onların toplamı, yoksa sözleşmedeki eski tek
+    satırlık maliyet (service_cost). Ödenen kalemlerin durumundan; kalem
+    yoksa eski alanın durumundan.
+  */
+  const paidTotals=new Map<string,number>();for(const item of costItems)if(item.status==="paid")paidTotals.set(item.contract_id,(paidTotals.get(item.contract_id)??0)+Number(item.amount));
+  const kisiAdi=(id:string|null|undefined)=>{if(!id)return"Atanmamış";const ad=employeeMap.get(id);return ad?formatPersonName(ad)||ad:"Pasif personel"};
+  const profitRows:ProfitRow[]=contracts.map(contract=>{
+    const relation=Array.isArray(contract.crm_opportunities)?contract.crm_opportunities[0]:contract.crm_opportunities;
+    const kalemVar=costTotals.has(contract.id);
+    const cost=kalemVar?costTotals.get(contract.id)??0:Number(contract.service_cost||0);
+    const paid=kalemVar?paidTotals.get(contract.id)??0:contract.service_cost_status==="paid"?Number(contract.service_cost||0):0;
+    const profit=Number(contract.amount)-cost;
+    const operationEmployeeId=contract.workflow_id?workflowMap.get(contract.workflow_id):null;
+    const musteriAdi=relation?.customer_name||contract.title;
+    return{id:contract.id,contractNo:contract.contract_no,customer:formatPersonName(musteriAdi)||musteriAdi,title:contract.title,sales:kisiAdi(relation?.assigned_employee_id),operation:kisiAdi(operationEmployeeId),amount:Number(contract.amount),cost,paid,costEntered:cost>0,profit,margin:Number(contract.amount)?profit/Number(contract.amount)*100:0,date:(contract.signed_at||contract.created_at).slice(0,10)};
+  }).sort((x,y)=>y.date.localeCompare(x.date));
 
   // İş maliyetleri özeti (yalnızca gösterim; değerler tablodakiyle aynı kuralla)
+  /* Maliyet listesinde arama: müşteri, iş konusu ya da sözleşme no. */
+  const maliyetSatirlari = mode === "maliyet" && query
+    ? profitRows.filter((row) => [row.customer, row.title, row.contractNo].join(" ").toLocaleLowerCase("tr-TR").includes(query))
+    : profitRows;
+  /* Maliyet istatistikleri (sağ kart): bütün işlerden, aramadan bağımsız. */
+  const maliyetAn = simdi();
+  const maliyet30 = costItems.filter((item) => gunAraliginda(item.cost_date, 0, 30, maliyetAn)).reduce((t, item) => t + Number(item.amount), 0);
+  const maliyetOnceki = costItems.filter((item) => gunAraliginda(item.cost_date, 30, 60, maliyetAn)).reduce((t, item) => t + Number(item.amount), 0);
+  const maliyetDegisim = maliyetOnceki ? Math.round(((maliyet30 - maliyetOnceki) / maliyetOnceki) * 100) : null;
+  const zarardaki = profitRows.filter((row) => row.profit < 0);
+  const maliyetsiz = profitRows.filter((row) => !row.costEntered);
+  const aylikMaliyet = aylik(costItems.map((item) => ({ tarih: item.cost_date, tutar: Number(item.amount) })), 6, maliyetAn);
+  const kategoriToplam = new Map<string, number>();
+  for (const item of costItems) kategoriToplam.set(item.category || "Diğer", (kategoriToplam.get(item.category || "Diğer") ?? 0) + Number(item.amount));
+  const kategoriler = [...kategoriToplam.entries()].sort((x, y) => y[1] - x[1]).slice(0, 5);
   const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
   const profitSum = contracts.reduce((s, c) => s + Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost)), 0);
   const averageMargin = Math.round(contracts.reduce((s, c) => s + (Number(c.amount) ? ((Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost))) / Number(c.amount)) * 100 : 0), 0) / (contracts.length || 1));
@@ -484,8 +579,38 @@ export default async function FinancePage({
             </dl>
           </nav>
 
-          <div className="talep-izgara maliyet-liste-izgara">
-            <ProfitabilityWorkspace rows={profitRows} />
+          <div className="talep-izgara personel-iki ekip-izgara">
+            <section className="panel-card talep-bilgi" aria-label="İş maliyetleri">
+              <div className="ekip-suzgec talep-suzgec">
+                <span className="talep-suzgec-etiket">{maliyetSatirlari.length} iş</span>
+                <form action="/panel/finance" className="talep-ara" role="search">
+                  <input type="hidden" name="gorunum" value="maliyet" />
+                  <input name="arama" defaultValue={params.arama ?? ""} placeholder="Müşteri, iş konusu veya sözleşme no" aria-label="İş ara" />
+                </form>
+              </div>
+              {maliyetSatirlari.length ? (
+                <MaliyetTablosu rows={maliyetSatirlari} arama={params.arama ?? ""} />
+              ) : (
+                <div className="crm-empty-state talep-bos-kutu">
+                  <h2>{query ? "Aramaya uygun iş yok" : "Henüz imzalı iş yok"}</h2>
+                  <p>{query ? "Aramayı değiştirip yeniden deneyin." : "İmzalanan sözleşmeler maliyet ve kârlarıyla burada listelenir."}</p>
+                </div>
+              )}
+            </section>
+
+            <IstatistikKarti
+              kapsam="tüm işler"
+              kutular={[
+                { ad: "Son 30 gün maliyet", deger: kisaPara(maliyet30), alt: degisimYazisi(maliyetDegisim) ?? "önceki dönem yok", ton: maliyetDegisim !== null && maliyetDegisim > 0 ? "uyari" : undefined },
+                { ad: "Ortalama kâr oranı", deger: contracts.length ? `%${averageMargin}` : "—", alt: `${contracts.length} iş` },
+                { ad: "Zarar eden iş", deger: String(zarardaki.length), alt: zarardaki.length ? kisaPara(zarardaki.reduce((t, row) => t + row.profit, 0)) : "yok", ton: zarardaki.length ? "uyari" : undefined },
+                { ad: "Maliyeti girilmemiş", deger: String(maliyetsiz.length), alt: maliyetsiz.length ? "kâr eksik hesaplanıyor" : "hepsi girilmiş", ton: maliyetsiz.length ? "uyari" : undefined },
+              ]}
+              gruplar={[
+                { baslik: "Son 6 ay · maliyet", satirlar: aylikMaliyet.map((ay) => ({ ad: ay.ad, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
+                { baslik: "Kategoriye göre maliyet", satirlar: kategoriler.map(([ad, toplam]) => ({ ad, adet: toplam, etiket: kisaPara(toplam) })) },
+              ]}
+            />
           </div>
 
           {/* Maliyet detayı ortada açılan pencere (?maliyet=<sözleşme>);
@@ -502,7 +627,7 @@ export default async function FinancePage({
               kicker="İŞ MALİYETİ"
               title={`${seciliMaliyet.contractNo} · ${seciliMaliyet.customer}`}
               description={seciliMaliyet.title}
-              kapaninca="/panel/finance?gorunum=maliyet"
+              kapaninca={`/panel/finance?gorunum=maliyet${params.arama ? `&arama=${encodeURIComponent(params.arama)}` : ""}`}
             >
               <MaliyetDetayi contractId={seciliMaliyet.id} />
             </PanelModal>

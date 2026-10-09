@@ -575,3 +575,12 @@
 /* Dar masaüstünde temsilci sütunu düşer: bilgi müşteri detayında var. */
 @media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="musteriler"] .crm-col-rep{display:none}}
 @media (max-width:760px){.musteri-tahsil{justify-content:flex-end;min-width:0}.musteri-tahsil .cari-oran-cubuk{max-width:120px}}
+
+/* İŞ MALİYETLERİ LİSTESİ (finance/page.tsx): sorumlular iki satır, kâr oranı çubuğu renkli. */
+.os-root .talep-tablo .crm-data-table .maliyet-sorumlu{display:block;white-space:nowrap}
+.maliyet-sorumlu b{margin-right:var(--sp-1);color:var(--dim);font-weight:var(--fw-medium)}
+.maliyet-oran[data-ton="warning"] .cari-oran-cubuk i{background:var(--warning)}
+.maliyet-oran[data-ton="danger"] .cari-oran-cubuk i{background:var(--danger)}
+.maliyet-oran[data-ton="danger"] small{color:var(--danger)}
+.os-root .talep-tablo .crm-data-table[data-cols="maliyetler"] td[data-label="İş / Müşteri"]{min-width:190px}
+@media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="maliyetler"] .crm-col-rep{display:none}}

@@ -1,7 +1,7 @@
 /* ============================================================
    FİNANS — iOS widget ve tek yüzeyli tablo dili (2026-09)
-   Kullanan sayfalar: finance/page.tsx (cari, PAYTR, iş maliyetleri),
-   finance-workspaces.tsx, finance/costs/[id], accounts/[id].
+   Kullanan sayfalar: finance/page.tsx (müşteriler, iş maliyetleri),
+   finance/costs/maliyet-detayi.tsx, accounts/cari-hesap.tsx, müşteri detayı.
    Ana sayfa (dashboard.css) ve operasyon detayıyla aynı kalıplar:
    tonlu widget'lar, 22px kartlar, ince çizgili satırlar, sağa hizalı
    tablo rakamları, data-tone ile renklenen rozetler.
