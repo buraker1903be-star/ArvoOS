@@ -312,7 +312,7 @@
 .istat-kutular>div{display:flex;flex-direction:column;gap:2px;padding:var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
 .istat-kutular dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
 .istat-kutular dd{margin:0;font-size:var(--fs-xl);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
-.istat-kutular small{color:var(--muted);font-size:var(--fs-micro)}
+.istat-kutular small{color:var(--muted);font-size:var(--fs-sm)}
 .istat-cubuklar{list-style:none;margin:var(--sp-2) 0 0;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)}
 .istat-cubuklar li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(32px,auto);align-items:center;gap:var(--sp-2);font-size:var(--fs-sm)}
 .istat-cubuklar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
@@ -592,5 +592,11 @@
 /* Ödeme takvimi: düzenlenebilir taksitin satırı tıklanabilir (SatirTiklama). */
 .os-root .satir-tiklanir > li:has(.satir-ac){cursor:pointer}
 .os-root .satir-tiklanir > li:has(.satir-ac):hover{background:var(--surface-2)}
+/* Hareket ayrıntısı: etiket solda, değer sağda. */
+.os-root .cari-hareket-ayrinti{display:grid;gap:0;margin:0}
+.os-root .cari-hareket-ayrinti>div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
+.os-root .cari-hareket-ayrinti>div:first-child{border-top:0}
+.os-root .cari-hareket-ayrinti dt{color:var(--muted);font-size:var(--fs-sm)}
+.os-root .cari-hareket-ayrinti dd{margin:0;overflow-wrap:anywhere}
 .os-root .cari-plan-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:0 0 var(--sp-2)}
 .os-root .cari-plan-eylem .cari-taksit-btn{flex:none;width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}

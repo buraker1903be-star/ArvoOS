@@ -55,6 +55,18 @@ function entryKind(e: Entry): { label: string; tone: FinTone } {
   return { label: "Sözleşme", tone: "info" };
 }
 
+// Hareketin nereden geldiği (account_entries.source_type), ayrıntı penceresi için.
+const KAYNAK: Record<string, string> = {
+  manual: "Elle girildi",
+  invoice: "Fatura",
+  payment: "Ödeme",
+  expense: "Gider",
+  adjustment: "İade / düzeltme",
+  crm_contract: "Sözleşme",
+};
+
+const IC_ANAHTAR = /^[A-Z]{2,8}:[0-9a-f-]{36}$/i;
+
 const TAKSIT_DURUMU: Record<string, { ad: string; ton: string }> = {
   odendi: { ad: "Ödendi", ton: "success" },
   kismi: { ad: "Kısmen ödendi", ton: "info" },
@@ -298,9 +310,16 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
             <small>{entries.length} hareket</small>
           </div>
           {entries.length ? (
-            <ul className="cari-hareketler">
+            <>
+            {/* Satıra tıklamak hareketin ayrıntı penceresini açar. Salt okunur:
+                hareketler sözleşme borcuna, PayTR tahsilatına ve banka
+                eşleşmesine bağlı; düzenleme o bağları bozabilir. */}
+            <SatirTiklama />
+            <ul className="cari-hareketler satir-tiklanir">
               {entries.map((e) => {
                 const kind = entryKind(e);
+                // "TAH:<uuid>", "EKH:<uuid>" gibi referanslar iç anahtardır (kaydın tekilliği), kişiye gösterilmez.
+                const referans = e.reference_no && !IC_ANAHTAR.test(e.reference_no) ? e.reference_no : null;
                 return (
                   <li key={e.id}>
                     <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
@@ -312,10 +331,28 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       {e.entry_type === "credit" ? "−" : "+"}
                       {money(Number(e.amount))}
                     </strong>
+                    <PanelDrawer
+                      triggerLabel="Ayrıntı"
+                      triggerClassName="panel-secondary cari-taksit-btn satir-ac"
+                      kicker={kind.label.toLocaleUpperCase("tr-TR")}
+                      title={e.description}
+                      description={`${date(e.transaction_date)} · ${e.entry_type === "credit" ? "−" : "+"}${money(Number(e.amount))}`}
+                    >
+                      <dl className="cari-hareket-ayrinti">
+                        <div><dt>Tür</dt><dd><span className="status-pill" data-tone={kind.tone}>{kind.label}</span></dd></div>
+                        <div><dt>Tutar</dt><dd>{e.entry_type === "credit" ? "Bakiyeden düşer" : "Bakiyeye eklenir"} · <b>{money(Number(e.amount))}</b></dd></div>
+                        <div><dt>İşlem tarihi</dt><dd>{date(e.transaction_date)}</dd></div>
+                        <div><dt>Açıklama</dt><dd>{e.description}</dd></div>
+                        <div><dt>Referans</dt><dd>{referans ?? "—"}</dd></div>
+                        <div><dt>Kaynak</dt><dd>{KAYNAK[e.source_type ?? "manual"] ?? e.source_type}</dd></div>
+                        <div><dt>Kayıt zamanı</dt><dd>{date(e.created_at)}</dd></div>
+                      </dl>
+                    </PanelDrawer>
                   </li>
                 );
               })}
             </ul>
+            </>
           ) : (
             <p className="ic-akis-bos">Henüz cari hareket yok. Tahsilat, ek hizmet ve iade kayıtları burada tarih sırasıyla görünür.</p>
           )}
