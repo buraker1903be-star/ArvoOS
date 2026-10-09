@@ -134,6 +134,17 @@ kurup iki kez okuyan bir test ikinci okumada yanlış şeyi ölçüyor ve yeşil
 kalıyor (06.10.2026'da üç dosyada vardı). `islem` içinde rol değiştirmek
 için `rol(db, "authenticated", kullanici)` kullanın.
 
+**Eski bir migration'ı yeniden uygulamak yeni korumayı düşürebilir.**
+`tests/db/` dosyalarındaki `MIGRATIONLAR` listesi anlık görüntünün
+ÜSTÜNE uygulanıyor: listede `create or replace function` içeren eski bir
+migration varsa, aynı işlevin anlık görüntüdeki yeni gövdesini eski
+hâline döndürür. Test o korumayı hiç sınamamış olur ama yeşil kalır —
+09.10.2026'da `20261006190207` konuşma koruma işlevini eski sütun
+listesiyle yeniden yaratıp çöp kutusu sütunlarının korumasını
+düşürüyordu. Bir işlevi değiştiren migration'ı listeye SONDAN ekleyin ya
+da eski olanı listeden çıkarın; kuralın gerçekten yürürlükte olduğunu
+reddedilme bekleyen bir senaryoyla kanıtlayın.
+
 `tests/db/` (`npm run test:db`) canlı şemayı PGlite'a kurar ve akışları gerçek
 fonksiyon/tetikleyicilerle, Supabase rolleriyle (anon, authenticated) koşar.
 Bir tabloya koruma (tetikleyici, RLS) eklerken o tabloya yazan **meşru** yolların
