@@ -231,8 +231,6 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const qualifiedStages = new Set(["qualified", "proposal", "contract", "payment", "won"]);
   const reached = incoming.filter((row) => reachedStages.has(row.stage));
   const qualified = incoming.filter((row) => qualifiedStages.has(row.stage));
-  const proposalOpportunityIds = new Set(proposals.filter((row) => inRange(row.created_at) && !row.superseded_by).map((row) => row.opportunity_id));
-  const proposalCount = proposalOpportunityIds.size;
   const signedContracts = contracts.filter((row) => ["signed","completed"].includes(row.status) && inRange(row.signed_at ?? row.created_at));
   const signedOpportunityIds = new Set(signedContracts.map((row) => row.opportunity_id).filter((value): value is string => Boolean(value)));
   const wonOpportunities = opportunities.filter((row) => row.stage === "won" && inRange(row.updated_at));
@@ -245,7 +243,29 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
     dahil) bu dönemde görüşülenlere bölünüyordu ve oran %275 gibi
     %100'ü aşan değerler çıkıyordu.
   */
-  const conversion = reached.length ? (reached.filter((row) => saleOpportunityIds.has(row.id)).length / reached.length) * 100 : 0;
+  /*
+    HUNİ TEK BİR GRUBUN YOLCULUĞU: bu dönemde GELEN adaylar. Her aşama bir
+    öncekinin alt kümesi (nitelikli ⊂ ulaşılan ⊂ gelen; teklif ve satış
+    niteliklilerden), huni hiçbir zaman genişlemez.
+
+    Eskiden "Teklif" dönemde teklif verilen bütün müşterileri, "Satış"
+    dönemin bütün satışlarını sayıyordu (önceki aylarda gelmiş müşteriler
+    dahil); huni teklif aşamasında 4'ken satışta 11'e çıkıyor, dönüşüm
+    %275 gibi %100'ü aşan değerler veriyordu.
+
+    Satışa dönmüş sayılmak: imzalı sözleşmesi olmak (ne zaman imzalanmış
+    olursa) ya da aşamasının "kazanıldı" olması. Teklif verilmiş sayılmak:
+    geçerli (yerine yenisi gelmemiş) bir teklifi olmak ya da satışa dönmüş
+    olmak — sözleşmesi olan müşteriye teklif de verilmiştir.
+  */
+  const satisaDonenIds = new Set([
+    ...contracts.filter((row) => ["signed", "completed"].includes(row.status)).map((row) => row.opportunity_id).filter((v): v is string => Boolean(v)),
+    ...opportunities.filter((row) => row.stage === "won").map((row) => row.id),
+  ]);
+  const teklifliIds = new Set(proposals.filter((row) => !row.superseded_by).map((row) => row.opportunity_id));
+  const huniTeklif = qualified.filter((row) => teklifliIds.has(row.id) || satisaDonenIds.has(row.id));
+  const huniSatis = qualified.filter((row) => satisaDonenIds.has(row.id));
+  const conversion = reached.length ? (huniSatis.length / reached.length) * 100 : 0;
   const averageSale = sales ? salesValue / sales : 0;
   const signedContractIds=new Set(signedContracts.map(row=>row.id));
   const contractedCost=costItems.filter(row=>signedContractIds.has(row.contract_id)).reduce((sum,row)=>sum+Number(row.amount),0);
@@ -269,8 +289,8 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
     { label: "Gelen lead", value: incoming.length, detail: "Yeni müşteri adayı" },
     { label: "Ulaşılan", value: reached.length, detail: incoming.length ? `${percent((reached.length / incoming.length) * 100)} erişim` : "—" },
     { label: "Nitelikli lead", value: qualified.length, detail: reached.length ? `${percent((qualified.length / reached.length) * 100)} nitelikli` : "—" },
-    { label: "Teklif", value: proposalCount, detail: qualified.length ? `${percent((proposalCount / qualified.length) * 100)} teklif` : "—" },
-    { label: "Satış", value: sales, detail: reached.length ? `${percent(conversion)} dönüşüm` : "—" },
+    { label: "Teklif", value: huniTeklif.length, detail: qualified.length ? `${percent((huniTeklif.length / qualified.length) * 100)} teklif` : "—" },
+    { label: "Satışa dönen", value: huniSatis.length, detail: reached.length ? `${percent(conversion)} dönüşüm` : "—" },
   ];
   const maxFunnel = Math.max(1, ...funnel.map((row) => row.value));
   const transitionRates = funnel.slice(0, -1).map((row, index) => ({ from: row.label, to: funnel[index + 1].label, rate: row.value ? (funnel[index + 1].value / row.value) * 100 : 0 }));
@@ -301,11 +321,11 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
     { label: "Gelen lead", value: String(incoming.length), note: "Son 6 ay, aylık gelen aday", icon: "inbox", tone: "brand", grafik: { tur: "cubuk", seri: leadSerisi } },
     { label: "Ulaşılan", value: String(reached.length), note: "Gelen adayların görüşülen kısmı", icon: "chat", tone: "info", grafik: { tur: "halka", oran: oranOf(reached.length, incoming.length), altyazi: "erişim oranı" } },
     { label: "Nitelikli lead", value: String(qualified.length), note: "Görüşülenlerin gerçek aday kısmı", icon: "badge", tone: "info", grafik: { tur: "halka", oran: oranOf(qualified.length, reached.length), altyazi: "nitelikli oranı" } },
-    { label: "Teklif", value: String(proposalCount), note: "Teklif verilen tekil müşteri", icon: "doc", tone: "gold", grafik: { tur: "halka", oran: oranOf(proposalCount, qualified.length), altyazi: "nitelikliye teklif" } },
+    { label: "Teklif", value: String(huniTeklif.length), note: "Bu dönemin adaylarından teklif verilen", icon: "doc", tone: "gold", grafik: { tur: "halka", oran: oranOf(huniTeklif.length, qualified.length), altyazi: "nitelikliye teklif" } },
     { label: "Satış", value: String(sales), note: `${money(salesValue)} · son 6 ay imzalanan`, icon: "seal", tone: "success", grafik: { tur: "cubuk", seri: satisSerisi } },
   ];
   const financeWidgets: Widget[] = [
-    { label: "Dönüşüm", value: percent(conversion), note: "Görüşmeden satışa", icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
+    { label: "Dönüşüm", value: percent(conversion), note: `Görüşülen ${reached.length} adaydan ${huniSatis.length} satış`, icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
     { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti · son 6 ay", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", seri: maliyetSerisi } },
     { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
     { label: "Tahsilat", value: money(collections), note: "Kasaya giren müşteri ödemesi · son 6 ay", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", seri: tahsilatSerisi } },
