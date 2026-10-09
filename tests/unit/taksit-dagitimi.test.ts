@@ -41,3 +41,27 @@ test("net tahsilat: tahsilat eksi iade; sözleşme borcu ve ek hizmet sayılmaz"
   ]), 1300);
   assert.equal(netTahsilat([{ entry_type: "debit", source_type: "adjustment", amount: 50 }]), 0);
 });
+
+test("kalan taksitler açık bakiyeyi aşmaz: fazla en geç vadeden düşer", async () => {
+  /* 09.10.2026: 45.000 TL sözleşmenin planı 2 × 27.500 TL'ydi; 15.000 TL
+     tahsilattan sonra 30.000 TL açık bakiyeye karşı 40.000 TL "vadesi
+     geçti" görünüyordu. */
+  const { bakiyeyeSigdir, taksitleriDagit } = await import("@/lib/taksit-dagitimi");
+  const dagitilmis = taksitleriDagit([
+    { id: "1", due_date: "2026-10-05", amount: 2750000, status: "pending" },
+    { id: "2", due_date: "2026-10-05", amount: 2750000, status: "pending" },
+  ], 1500000, "2026-10-09");
+  const sigdirilmis = bakiyeyeSigdir(dagitilmis, 3000000);
+  assert.equal(sigdirilmis.reduce((t, x) => t + x.kalan, 0), 3000000);
+  assert.deepEqual(sigdirilmis.map((x) => x.kalan), [1250000, 1750000]);
+  // Plan bakiyeyle uyumluysa dokunulmaz.
+  assert.equal(bakiyeyeSigdir(dagitilmis, 4000000), dagitilmis);
+  // Bakiye sıfırsa hepsi kapanır.
+  assert.ok(bakiyeyeSigdir(dagitilmis, 0).every((x) => x.kalan === 0 && x.durum === "odendi"));
+  // En geç vadeli önce düşer.
+  const farkli = bakiyeyeSigdir(taksitleriDagit([
+    { id: "a", due_date: "2026-09-01", amount: 1000, status: "pending" },
+    { id: "b", due_date: "2026-12-01", amount: 1000, status: "pending" },
+  ], 0, "2026-10-09"), 1200);
+  assert.deepEqual(farkli.map((x) => [x.id, x.kalan]), [["a", 1000], ["b", 200]]);
+});

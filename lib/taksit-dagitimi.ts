@@ -41,3 +41,29 @@ export function netTahsilat(hareketler: { entry_type: string; source_type: strin
   }
   return Math.max(0, Math.round(net));
 }
+
+/**
+ * Kalan taksit toplamını açık bakiyeye sığdırır: fazla, EN GEÇ vadeli
+ * taksitlerden düşülür (vadesiz olanlar en geç sayılır).
+ *
+ * Ödeme planı sözleşmeden büyük olabiliyor (09.10.2026: 45.000 TL'lik
+ * sözleşmenin planı 2 × 27.500 = 55.000 TL'ydi). Kalanlar o zaman açık
+ * bakiyeyi aşıyor ve "30.000 TL açık, 40.000 TL vadesi geçti" gibi
+ * imkânsız bir tablo çıkıyordu. Borç bakiyede yazılı olandan fazla
+ * olamaz; tamamen düşen taksit "ödendi" sayılır.
+ */
+export function bakiyeyeSigdir<T extends { due_date: string | null; kalan: number; durum: TaksitDurumu }>(taksitler: T[], acikBakiye: number): T[] {
+  let fazla = taksitler.reduce((toplam, t) => toplam + t.kalan, 0) - Math.max(0, Math.round(acikBakiye));
+  if (fazla <= 0) return taksitler;
+  const sonuc = [...taksitler];
+  const enGecten = sonuc.map((t, sira) => ({ t, sira })).sort((a, b) => (b.t.due_date ?? "9999-12-31").localeCompare(a.t.due_date ?? "9999-12-31") || b.sira - a.sira);
+  for (const { t, sira } of enGecten) {
+    if (fazla <= 0) break;
+    if (t.kalan <= 0) continue;
+    const dus = Math.min(t.kalan, fazla);
+    fazla -= dus;
+    const kalan = t.kalan - dus;
+    sonuc[sira] = { ...t, kalan, durum: kalan === 0 ? "odendi" : t.durum };
+  }
+  return sonuc;
+}

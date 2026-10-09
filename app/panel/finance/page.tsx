@@ -10,7 +10,7 @@ import { normalizePhone } from "@/lib/whatsapp-send";
 import { buildAccountBalances } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
-import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { bakiyeyeSigdir, netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
 import { aylik, gunAraliginda, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../os/genel-bakis";
@@ -94,10 +94,10 @@ const pageCopy = {
   MÜŞTERİLER TABLOSU (2026-10). Eskiden "Cari Hesaplar"dı ve sütunları
   cari dökümünün sütunlarıydı (sözleşme, tahsilat, iade, kalan bakiye);
   müşteriyi tanımaya yarayan hiçbir şey yoktu. Artık: kim (ad ve
-  iletişim), kimin müşterisi (temsilci), ne kadar iş (sözleşme adedi ve
-  tutarı), ne kadarı tahsil edildi (oran çubuğu), ne kadar açık ve ne
-  kadarı gecikmiş, en son ne zaman hareket oldu. Tahsilat ve iade
-  tutarları müşteri detayının cari penceresinde.
+  iletişim), ne kadarı tahsil edildi (oran çubuğu), ne kadar açık ve ne
+  kadarı gecikmiş, en son ne zaman hareket oldu. Temsilci ve sözleşme
+  sütunları da vardı; kurum sahibinin isteğiyle kaldırıldı (09.10.2026),
+  ikisi de müşteri detayında. Temsilci süzgeci duruyor.
 
   Satırın tamamı müşteri detayını açar; açık bakiyeli müşteride sık
   kullanılan "Tahsilat" ve "Ödeme linki" satırda.
@@ -174,8 +174,6 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
         <thead>
           <tr>
             <th>Müşteri</th>
-            <th className="crm-col-rep">Temsilci</th>
-            <th className="crm-col-amount">Sözleşme</th>
             <th>Tahsil</th>
             <th className="crm-col-amount">Açık bakiye</th>
             <th className="crm-col-date">Son hareket</th>
@@ -190,11 +188,6 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                   <span className="crm-table-title" title={a.name}>{a.name}</span>
                   <span className="crm-table-sub">{formatPhone(a.phone) || a.email || a.tax_number || "İletişim bilgisi yok"}</span>
                 </Link>
-              </td>
-              <td className="crm-col-rep" data-label="Temsilci"><span className="crm-table-sub">{a.temsilci ?? "—"}</span></td>
-              <td className="crm-col-amount" data-label="Sözleşme">
-                {money(a.debt)}
-                <small className="crm-waiting">{a.sozlesmeAdedi ? `${a.sozlesmeAdedi} sözleşme` : "sözleşmesiz"}</small>
               </td>
               <td data-label="Tahsil">
                 {a.tahsilOrani === null ? <span className="cari-sifir">—</span> : (
@@ -414,7 +407,8 @@ export default async function FinancePage({
   for (const a of accounts) {
     const liste = cariTaksitleri.get(a.id);
     if (!liste) continue;
-    for (const t of taksitleriDagit(liste, netTahsilat(a.entries), today)) {
+    // Plan sözleşmeden büyük olabiliyor: vadesi geçen açık bakiyeyi aşmasın.
+    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilat(a.entries), today), a.balance)) {
       if (t.durum !== "gecikti") continue;
       gecenTaksit.push({ kalan: t.kalan });
       gecikmeler.set(a.id, (gecikmeler.get(a.id) ?? 0) + t.kalan);

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
-import { taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { bakiyeyeSigdir, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaytrStatus } from "@/lib/paytr-status";
 import { normalizePhone } from "@/lib/whatsapp-send";
@@ -129,7 +129,8 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const balance = Math.max(0, debt + refunds - collections);
   const refundable = Math.max(0, collections - refunds);
   // Taksit durumları cari dökümünden türetilir (lib/taksit-dagitimi.ts): net tahsilat en eski vadeden dağıtılır.
-  const dagitilmis = taksitleriDagit(taksitler, collections - refunds, todayInIstanbul());
+  // Plan sözleşmeden büyük olabiliyor: kalanlar açık bakiyeyi aşmasın (bakiyeyeSigdir).
+  const dagitilmis = bakiyeyeSigdir(taksitleriDagit(taksitler, collections - refunds, todayInIstanbul()), balance);
   const gecikenTaksitler = dagitilmis.filter((t) => t.durum === "gecikti");
   const gecikenTutar = gecikenTaksitler.reduce((sum, t) => sum + t.kalan, 0);
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi ayrıca denetliyor.

@@ -2,7 +2,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatPersonName } from "@/lib/format-name";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { bakiyeyeSigdir, netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { oran } from "@/lib/liste-istatistik";
 import { buildAccountBalances } from "../account-balances";
 import { gunlukSeri } from "@/lib/gunluk-seri";
@@ -118,7 +118,8 @@ export default async function FinanceOverviewPage() {
   for (const a of accounts) {
     const liste = cariTaksitleri.get(a.id);
     if (!liste) continue;
-    for (const t of taksitleriDagit(liste, netTahsilat(a.entries), today)) {
+    // Plan sözleşmeden büyük olabiliyor: kalanlar açık bakiyeyi aşmasın.
+    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilat(a.entries), today), a.balance)) {
       if (t.durum === "odendi" || t.durum === "iptal") continue;
       vadeEkle(t, t.kalan, hesapAdi.get(a.id) ?? "Müşteri", `/panel/finance/musteri/${a.id}`, t.durum === "gecikti");
     }
