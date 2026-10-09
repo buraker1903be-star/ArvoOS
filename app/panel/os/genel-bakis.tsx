@@ -58,7 +58,10 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
 }
 
 /** Tam genişlikte grafik: son 14 gün çubukları, toplam ve önceki döneme göre değişim. */
-export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href }: {
+/** Grafik başlığındaki küçük özet (Finans genel bakış: bu ay tahsilat, tahsil oranı…). */
+export type SeriOzeti = { ad: string; deger: string; ton?: string; href?: string };
+
+export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet }: {
   baslik: string;
   alt: string;
   seri: GunlukSeri;
@@ -67,6 +70,9 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
   /** Çubuk ipucundaki ad: "talep", "tahsilat"… */
   adet: string;
   href?: string;
+  /* Başlığın ortasında birkaç rakam: ayrı bir satır yerine buraya, ki
+     genel bakış ekrana sığmaya devam etsin. */
+  ozet?: SeriOzeti[];
 }) {
   const icerik = (
     <>
@@ -75,6 +81,16 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
           <h2>{baslik}</h2>
           <p>{alt}</p>
         </div>
+        {ozet?.length ? (
+          <dl className="dash-ozet">
+            {ozet.map((o) => (
+              <div key={o.ad} data-tone={o.ton}>
+                <dt>{o.ad}</dt>
+                <dd>{o.href ? <Link href={o.href}>{o.deger}</Link> : o.deger}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
         <div className="dash-stat">
           <strong>{birim(seri.total)}</strong>
           {seri.delta !== null ? (

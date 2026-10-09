@@ -399,7 +399,12 @@ export default async function FinancePage({
   const planSahibi = new Map(contracts.filter((c) => c.payment_plan_id && c.party_id).map((c) => [c.payment_plan_id as string, c.party_id as string]));
   const cariTaksitleri = new Map<string, Installment[]>();
   const carisizTaksitler: Installment[] = [];
+  /* Yalnızca imzalı sözleşmelerin planları: eskiden imzalanmamış ya da
+     iptal edilmiş sözleşmenin taksitleri de "carisiz" diye gecikmiş
+     sayılıyordu ve bu kart Finans genel bakıştan ₺5 bin fazla gösteriyordu. */
+  const imzaliPlanlar = new Set(contracts.map((c) => c.payment_plan_id).filter(Boolean));
   for (const item of installments) {
+    if (!imzaliPlanlar.has(item.payment_plan_id)) continue;
     const sahip = planSahibi.get(item.payment_plan_id);
     if (sahip && accounts.some((a) => a.id === sahip)) cariTaksitleri.set(sahip, [...(cariTaksitleri.get(sahip) ?? []), item]);
     else carisizTaksitler.push(item);
