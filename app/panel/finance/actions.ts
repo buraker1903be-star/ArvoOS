@@ -7,7 +7,10 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { assertYetki } from "@/lib/yetkiler";
-import { gecerliGun, yeniVadeler } from "@/lib/taksit-vadesi";
+import { gecerliGun, gunFarki, gunKaydir } from "@/lib/taksit-vadesi";
+import { tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
+import { netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
 
 const types = new Set(["income", "expense"]);
 const statuses = new Set(["planned", "paid", "canceled"]);
@@ -324,53 +327,134 @@ export async function updateContractCostItem(...args: Parameters<typeof updateCo
 }
 
 /*
-  TAKSİT VADESİ (2026-10): cari penceresinin ödeme takviminden tek bir
-  taksitin vadesi değiştirilir; istenirse sonraki taksitler de aynı gün
-  kadar kayar (lib/taksit-vadesi.ts). Eskiden yalnızca plan baştan
-  kurulabiliyordu ve tahsilatı olan planda o da kapalıydı.
+  TAKSİT PLANI (2026-10): cari penceresinin ödeme takviminden
+    - bir taksitin VADESİ ve TUTARI (fark sonraki taksitlere gider),
+    - planın TAKSİT SEÇENEĞİ (adet, ilk vade, aralık; ödenmiş kısım korunur)
+  değiştirilir. Yeni planı lib/taksit-plani.ts hesaplıyor; yazma
+  arvo_taksitleri_kaydet ile (toplam sözleşme tutarına eşit mi, yetki,
+  ödenmiş/bağlantılı taksit silinmesin — veritabanında denetleniyor).
+  Eskiden yalnızca plan baştan kurulabiliyordu ve tahsilatı olan planda
+  o da kapalıydı.
 
-  Yetki tahsilat girişiyle aynı (finance.kayit.yonet); RLS de taksit
-  güncellemeyi kurum yöneticisine açıyor. Yazma kullanıcının kendi
-  oturumuyla: güncellenen satır sayısı sıfırsa yetki yoktur.
+  Yetki: tahsilat girişiyle aynı (finance.kayit.yonet); veritabanı ayrıca
+  kurum sahibi/yöneticisi istiyor.
 */
-async function taksitVadesiniDegistir__impl(formData: FormData) {
-  const { supabase, membership } = await financeContext();
-  const taksitId = String(formData.get("installment_id") ?? "").trim();
-  const yeniTarih = String(formData.get("due_date") ?? "").trim();
-  const kaydir = formData.get("sonrakiler") === "on";
-  if (!taksitId) throw new Error("Taksit seçilemedi.");
-  if (!gecerliGun(yeniTarih)) throw new Error("Geçerli bir vade tarihi seçin.");
+type PlanSatiri = { id: string; installment_no: number; due_date: string | null; amount: number; status: string };
 
-  const { data: hedef, error: hedefHatasi } = await supabase.from("payment_installments")
-    .select("id,payment_plan_id")
-    .eq("id", taksitId).eq("organization_id", membership.organization_id).maybeSingle();
-  if (hedefHatasi) throw new Error("Taksit okunamadı: " + hedefHatasi.message);
-  if (!hedef) throw new Error("Taksit bulunamadı veya erişiminiz yok.");
+const PLAN_HATALARI: Record<string, string> = {
+  plan_toplami_tutmuyor: "Taksitlerin toplamı sözleşme tutarını tutmuyor.",
+  forbidden: "Ödeme planını yalnızca kurum sahibi ve yöneticisi değiştirebilir.",
+  silinemeyen_taksit: "Ödenmiş ya da etkin ödeme bağlantısı olan bir taksit plandan çıkarılamaz; önce bağlantıyı iptal edin.",
+  payment_plan_not_found: "Ödeme planı bulunamadı.",
+};
 
-  const { data: plan, error: planHatasi } = await supabase.from("payment_installments")
-    .select("id,installment_no,due_date,status")
-    .eq("organization_id", membership.organization_id).eq("payment_plan_id", hedef.payment_plan_id);
-  if (planHatasi) throw new Error("Ödeme planı okunamadı: " + planHatasi.message);
+async function planiOku(supabase: Awaited<ReturnType<typeof financeContext>>["supabase"], organizationId: string, planId: string) {
+  const [{ data: plan }, { data: satirlar, error }] = await Promise.all([
+    supabase.from("payment_plans").select("id,party_id,total_amount").eq("id", planId).eq("organization_id", organizationId).maybeSingle(),
+    supabase.from("payment_installments").select("id,installment_no,due_date,amount,status").eq("organization_id", organizationId).eq("payment_plan_id", planId).order("installment_no"),
+  ]);
+  if (error) throw new Error("Ödeme planı okunamadı: " + error.message);
+  if (!plan) throw new Error("Ödeme planı bulunamadı veya erişiminiz yok.");
+  // İptal edilen taksit plandan sayılmaz; yeni plan 1..n diye yeniden numaralanır.
+  const etkin = ((satirlar ?? []) as PlanSatiri[]).filter((t) => t.status !== "cancelled");
+  return { plan: plan as { id: string; party_id: string; total_amount: number }, satirlar: etkin };
+}
 
-  const degisenler = yeniVadeler((plan ?? []) as { id: string; installment_no: number; due_date: string | null; status: string }[], taksitId, yeniTarih, kaydir);
-  for (const d of degisenler) {
-    const { data, error } = await supabase.from("payment_installments")
-      .update({ due_date: d.due_date })
-      .eq("id", d.id).eq("organization_id", membership.organization_id)
-      .select("id");
-    if (error) throw new Error("Vade güncellenemedi: " + error.message);
-    if (!data?.length) throw new Error("Vade güncellenemedi: taksit tarihini değiştirme yetkiniz yok.");
+async function planiKaydet(supabase: Awaited<ReturnType<typeof financeContext>>["supabase"], planId: string, taksitler: PlanTaksidi[]) {
+  const { error } = await supabase.rpc("arvo_taksitleri_kaydet", { p_plan_id: planId, p_taksitler: taksitler });
+  if (error) {
+    const bilinen = Object.entries(PLAN_HATALARI).find(([kod]) => error.message.includes(kod));
+    throw new Error(bilinen ? bilinen[1] : "Ödeme planı kaydedilemedi: " + error.message);
   }
-
   revalidatePath("/panel/finance/musteri/[id]", "page");
   revalidatePath("/panel/crm/musteri/[id]", "page");
   revalidatePath("/panel/crm/contracts/[id]", "page");
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/genel-bakis");
-  return degisenler.length;
 }
 
-export async function taksitVadesiniDegistir(formData: FormData) {
-  const adet = await runPanelAction(() => taksitVadesiniDegistir__impl(formData));
-  if (typeof adet === "number") await flashSuccess(adet > 1 ? `Vade güncellendi; ${adet - 1} sonraki taksit de kaydırıldı` : "Vade güncellendi");
+const bugunVeyaSonra = (gun: string | null) => gun ?? todayInIstanbul();
+
+async function taksitiDuzenle__impl(formData: FormData): Promise<string> {
+  const { supabase, membership } = await financeContext();
+  const taksitId = String(formData.get("installment_id") ?? "").trim();
+  const yeniTarih = String(formData.get("due_date") ?? "").trim();
+  const tutarMetni = String(formData.get("amount") ?? "").trim();
+  const kaydir = formData.get("sonrakiler") === "on";
+  if (!taksitId) throw new Error("Taksit seçilemedi.");
+  if (!gecerliGun(yeniTarih)) throw new Error("Geçerli bir vade tarihi seçin.");
+
+  const { data: hedefSatir } = await supabase.from("payment_installments").select("payment_plan_id")
+    .eq("id", taksitId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (!hedefSatir) throw new Error("Taksit bulunamadı veya erişiminiz yok.");
+  const { plan, satirlar } = await planiOku(supabase, membership.organization_id, hedefSatir.payment_plan_id);
+
+  // Eski numaralarla plan; hedefin yeni numarası sıralamadaki yeri.
+  let liste: PlanTaksidi[] = satirlar.map((t, i) => ({ no: i + 1, vade: bugunVeyaSonra(t.due_date), tutar: Number(t.amount) }));
+  const hedefNo = satirlar.findIndex((t) => t.id === taksitId) + 1;
+  if (!hedefNo) throw new Error("Taksit iptal edilmiş; düzenlenemez.");
+  const eskiVade = liste[hedefNo - 1].vade;
+  const eskiTutar = liste[hedefNo - 1].tutar;
+
+  // 1) Vade: hedef yeni tarihe; istenirse sonrakiler aynı gün kadar.
+  const fark = gunFarki(eskiVade, yeniTarih);
+  liste = liste.map((t) => (t.no === hedefNo ? { ...t, vade: yeniTarih } : kaydir && fark && t.no > hedefNo ? { ...t, vade: gunKaydir(t.vade, fark) } : t));
+
+  // 2) Tutar: fark sonraki taksitlere (lib/taksit-plani.ts).
+  let tutarDegisti = false;
+  if (tutarMetni) {
+    const yeniTutar = Math.round(parseTurkishAmount(tutarMetni) * 100);
+    if (!Number.isFinite(yeniTutar) || yeniTutar < 0) throw new Error("Geçerli bir tutar girin.");
+    if (yeniTutar !== eskiTutar) {
+      const sonuc = tutarDegistir(liste, hedefNo, yeniTutar);
+      if ("hata" in sonuc) throw new Error(sonuc.hata);
+      liste = sonuc;
+      tutarDegisti = true;
+    }
+  }
+
+  await planiKaydet(supabase, plan.id, liste);
+  if (tutarDegisti) return "Taksit güncellendi; fark sonraki taksitlere aktarıldı";
+  return kaydir && fark ? "Vade güncellendi; sonraki taksitler de kaydırıldı" : "Vade güncellendi";
+}
+
+export async function taksitiDuzenle(formData: FormData) {
+  const mesaj = await runPanelAction(() => taksitiDuzenle__impl(formData));
+  if (mesaj) await flashSuccess(mesaj);
+}
+
+/*
+  Taksit seçeneği: ödenmiş kısmı bulmak için carinin net tahsilatı, bütün
+  planlarının taksitlerine en eski vadeden dağıtılıyor (cari penceresi ve
+  Müşteriler listesiyle aynı kural, lib/taksit-dagitimi.ts).
+*/
+async function taksitSecenegiDegistir__impl(formData: FormData) {
+  const { supabase, membership } = await financeContext();
+  const org = membership.organization_id;
+  const planId = String(formData.get("plan_id") ?? "").trim();
+  if (!planId) throw new Error("Ödeme planı seçilemedi.");
+  const { plan, satirlar } = await planiOku(supabase, org, planId);
+
+  const [{ data: hareketler }, { data: cariPlanlari }] = await Promise.all([
+    supabase.from("account_entries").select("entry_type,source_type,amount").eq("organization_id", org).eq("party_id", plan.party_id),
+    supabase.from("payment_plans").select("id").eq("organization_id", org).eq("party_id", plan.party_id),
+  ]);
+  const planIdleri = ((cariPlanlari ?? []) as { id: string }[]).map((p) => p.id);
+  const { data: tumTaksitler } = planIdleri.length
+    ? await supabase.from("payment_installments").select("id,due_date,amount,status").eq("organization_id", org).in("payment_plan_id", planIdleri)
+    : { data: [] };
+  const dagilim = taksitleriDagit((tumTaksitler ?? []) as { id: string; due_date: string | null; amount: number; status: string }[], netTahsilat((hareketler ?? []) as { entry_type: string; source_type: string | null; amount: number }[]), todayInIstanbul());
+  const odenen = new Map(dagilim.map((t) => [t.id, t.odenen]));
+
+  const sonuc = yenidenBol(
+    satirlar.map((t, i) => ({ no: i + 1, vade: bugunVeyaSonra(t.due_date), tutar: Number(t.amount), odenen: odenen.get(t.id) ?? 0 })),
+    Number(plan.total_amount),
+    { adet: Number(formData.get("adet") ?? 0), ilkVade: String(formData.get("ilk_vade") ?? "").trim(), aralikAy: Number(formData.get("aralik") ?? 1) },
+  );
+  if ("hata" in sonuc) throw new Error(sonuc.hata);
+  await planiKaydet(supabase, plan.id, sonuc);
+}
+
+export async function taksitSecenegiDegistir(formData: FormData) {
+  return runPanelAction(() => taksitSecenegiDegistir__impl(formData), "Taksit planı güncellendi");
 }

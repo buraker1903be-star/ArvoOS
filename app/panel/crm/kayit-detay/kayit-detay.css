@@ -589,3 +589,5 @@
 .os-root .cari-hareketler .cari-taksit-btn{flex:none;width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}
 .os-root .panel-form label.cari-kaydir{flex-direction:row;align-items:center;gap:var(--sp-2);font-weight:var(--fw-medium)}
 .os-root .panel-form label.cari-kaydir input{width:auto;min-height:0;margin:0}
+.os-root .cari-plan-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:0 0 var(--sp-2)}
+.os-root .cari-plan-eylem .cari-taksit-btn{flex:none;width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}

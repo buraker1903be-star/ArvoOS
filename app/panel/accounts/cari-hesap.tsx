@@ -10,7 +10,7 @@ import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } f
 import { PanelDrawer } from "../components/panel-drawer";
 import { createAdditionalService, createCollection, createRefund, deleteParty } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
-import { taksitVadesiniDegistir } from "../finance/actions";
+import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
 
 /*
@@ -138,6 +138,21 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
   // Taksit vadesi tahsilat girişiyle aynı yetki (finans kaydı yönetimi).
   const vadeDegistirir = modules.some((m) => m.code === "finance") && (isPlatformOwner || izin("finance.kayit.yonet"));
+  // Form alanı için Türkçe tutar ("22.500,00"); sunucu parseTurkishAmount ile okur.
+  const tutarYazisi = (kurus: number) => (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  /* Taksit seçeneği formu için plan başına özet: ödenen, kalan, açık taksit sayısı, ilk açık vade. */
+  const planOzetleri = [...planlar.entries()].map(([planId, sozlesme]) => {
+    const liste = dagitilmis.filter((t) => t.payment_plan_id === planId && t.durum !== "iptal");
+    const acik = liste.filter((t) => t.kalan > 0);
+    return {
+      planId,
+      sozlesme,
+      odenen: liste.reduce((t, x) => t + x.odenen, 0),
+      kalan: Number(sozlesme.amount) - liste.reduce((t, x) => t + x.odenen, 0),
+      acikAdet: acik.length,
+      ilkVade: acik[0]?.due_date ?? todayInIstanbul(),
+    };
+  }).filter((p) => p.kalan > 0);
   // Sözleşmeye bağlantı yalnızca CRM'i olana: yoksa sayfa hata verirdi.
   const crmVar = modules.some((m) => m.code === "crm");
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
@@ -339,6 +354,46 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
           {taksitler.length ? (
             <div className="talep-not">
               <div className="cari-baslik"><h3>Ödeme takvimi</h3><small>{dagitilmis.filter((t) => t.durum === "odendi").length}/{dagitilmis.filter((t) => t.durum !== "iptal").length} ödendi</small></div>
+              {/* Taksit seçeneği (adet, ilk vade, aralık): sözleşme başına; ödenmiş kısım korunur. */}
+              {vadeDegistirir && planOzetleri.length ? (
+                <div className="cari-plan-eylem">
+                  {planOzetleri.map((p) => (
+                    <PanelDrawer
+                      key={p.planId}
+                      triggerLabel={planOzetleri.length > 1 ? `${p.sozlesme.contract_no} · taksit seçeneği` : "Taksit seçeneğini değiştir"}
+                      triggerClassName="panel-secondary cari-taksit-btn"
+                      kicker="TAKSİT SEÇENEĞİ"
+                      title={`${p.sozlesme.contract_no} · taksit planı`}
+                      description={`Sözleşme ${money(Number(p.sozlesme.amount))} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
+                    >
+                      <form className="panel-form fin-form" action={taksitSecenegiDegistir}>
+                        <input type="hidden" name="plan_id" value={p.planId} />
+                        <label>
+                          Taksit sayısı
+                          <input name="adet" type="number" min={1} max={36} step={1} required defaultValue={Math.max(1, p.acikAdet)} />
+                        </label>
+                        <label>
+                          Aralık
+                          <select name="aralik" defaultValue="1">
+                            <option value="1">Her ay</option>
+                            <option value="2">İki ayda bir</option>
+                            <option value="3">Üç ayda bir</option>
+                            <option value="6">Altı ayda bir</option>
+                          </select>
+                        </label>
+                        <label className="wide">
+                          İlk taksitin vadesi
+                          <input name="ilk_vade" type="date" required defaultValue={p.ilkVade} />
+                        </label>
+                        <p className="fin-form-note">Ödenen {money(p.odenen)} olduğu gibi kalır; kalan {money(p.kalan)} seçilen sayıda taksite eşit bölünür (artan kuruş baştaki taksitlere). Toplam sözleşme tutarında kalır.</p>
+                        <div className="panel-form-actions wide">
+                          <button className="panel-primary">Taksit planını kaydet</button>
+                        </div>
+                      </form>
+                    </PanelDrawer>
+                  ))}
+                </div>
+              ) : null}
               <ul className="cari-hareketler">
                 {dagitilmis.map((t) => {
                   const sozlesme = planlar.get(t.payment_plan_id);
@@ -353,25 +408,29 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
                       {vadeDegistirir && t.durum !== "odendi" && t.durum !== "iptal" ? (
                         <PanelDrawer
-                          triggerLabel="Vade"
+                          triggerLabel="Düzenle"
                           triggerClassName="panel-secondary cari-taksit-btn"
-                          kicker="TAKSİT VADESİ"
+                          kicker="TAKSİT"
                           title={`${sozlesme?.contract_no ?? "Sözleşme"} · ${t.installment_no}. taksit`}
-                          description={`${money(Number(t.amount))} · şu anki vade ${t.due_date ? date(t.due_date) : "yok"}`}
+                          description={`${money(Number(t.amount))} · vade ${t.due_date ? date(t.due_date) : "yok"}${t.odenen > 0 ? ` · ${money(t.odenen)} ödendi` : ""}`}
                         >
-                          <form className="panel-form fin-form" action={taksitVadesiniDegistir}>
+                          <form className="panel-form fin-form" action={taksitiDuzenle}>
                             <input type="hidden" name="installment_id" value={t.id} />
-                            <label className="wide">
-                              Yeni vade tarihi
-                              <input name="due_date" type="date" required defaultValue={t.due_date ?? ""} />
+                            <label>
+                              Vade tarihi
+                              <input name="due_date" type="date" required defaultValue={t.due_date ?? todayInIstanbul()} />
+                            </label>
+                            <label>
+                              Tutar (₺)
+                              <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(t.amount))} />
                             </label>
                             <label className="wide cari-kaydir">
                               <input name="sonrakiler" type="checkbox" />
-                              <span>Sonraki taksitleri de aynı gün kadar kaydır</span>
+                              <span>Sonraki taksitlerin vadesini de aynı gün kadar kaydır</span>
                             </label>
-                            <p className="fin-form-note">Ödenmiş tutar değişmez; yalnızca vade tarihi değişir. Gecikme ve yaklaşan vadeler yeni tarihe göre hesaplanır.</p>
+                            <p className="fin-form-note">Tutar değişirse fark sonraki taksitlere aktarılır (son taksit azalırsa fark bir ay sonra yeni taksit olur); toplam sözleşme tutarında kalır.</p>
                             <div className="panel-form-actions wide">
-                              <button className="panel-primary">Vadeyi kaydet</button>
+                              <button className="panel-primary">Kaydet</button>
                             </div>
                           </form>
                         </PanelDrawer>
