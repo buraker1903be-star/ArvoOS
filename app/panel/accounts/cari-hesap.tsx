@@ -9,7 +9,8 @@ import { normalizePhone } from "@/lib/whatsapp-send";
 import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } from "./odeme-baglantisi";
 import { PanelDrawer } from "../components/panel-drawer";
 import { SatirTiklama } from "../crm/satir-tiklama";
-import { createAdditionalService, createCollection, createRefund, deleteParty } from "./actions";
+import { elleGirilenTur } from "@/lib/cari-hareket";
+import { createAdditionalService, createCollection, createRefund, deleteParty, hareketiDuzelt, hareketiSil } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
@@ -149,6 +150,8 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const gecikenTutar = gecikenTaksitler.reduce((sum, t) => sum + t.kalan, 0);
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi ayrıca denetliyor.
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
+  // Elle girilen hareketi düzeltme/silme: hareket girişiyle aynı yetki.
+  const hareketDuzeltir = isPlatformOwner || izin("finance.cari.yonet");
   // Taksit vadesi tahsilat girişiyle aynı yetki (finans kaydı yönetimi).
   const vadeDegistirir = modules.some((m) => m.code === "finance") && (isPlatformOwner || izin("finance.kayit.yonet"));
   // Form alanı için Türkçe tutar ("22.500,00"); sunucu parseTurkishAmount ile okur.
@@ -320,6 +323,9 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 const kind = entryKind(e);
                 // "TAH:<uuid>", "EKH:<uuid>" gibi referanslar iç anahtardır (kaydın tekilliği), kişiye gösterilmez.
                 const referans = e.reference_no && !IC_ANAHTAR.test(e.reference_no) ? e.reference_no : null;
+                // Elle girilen (tahsilat, iade, ek hizmet) düzeltilebilir; ötekiler bir kayda bağlı.
+                const elleTur = hareketDuzeltir ? elleGirilenTur(e) : null;
+                const aciklamaMetni = e.description.replace(/^(Müşteri iadesi|Ek hizmet) · /, "");
                 return (
                   <li key={e.id}>
                     <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
@@ -347,6 +353,43 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                         <div><dt>Kaynak</dt><dd>{KAYNAK[e.source_type ?? "manual"] ?? e.source_type}</dd></div>
                         <div><dt>Kayıt zamanı</dt><dd>{date(e.created_at)}</dd></div>
                       </dl>
+                      {elleTur ? (
+                        <>
+                          <form className="panel-form fin-form cari-hareket-duzelt" action={hareketiDuzelt}>
+                            <input type="hidden" name="entry_id" value={e.id} />
+                            <label>
+                              Tutar (₺)
+                              <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(e.amount))} />
+                            </label>
+                            <label>
+                              İşlem tarihi
+                              <input name="transaction_date" type="date" required defaultValue={e.transaction_date} />
+                            </label>
+                            <label className="wide">
+                              {elleTur === "iade" ? "İade nedeni" : elleTur === "ek-hizmet" ? "Hizmet açıklaması" : "Açıklama"}
+                              <input name="description" required minLength={2} maxLength={480} defaultValue={aciklamaMetni} />
+                            </label>
+                            <label className="wide">
+                              Referans / dekont no
+                              <input name="reference_no" defaultValue={referans ?? ""} placeholder="Boş bırakılırsa değişmez" />
+                            </label>
+                            <p className="fin-form-note">Taksitlerin ödeme durumu düzeltilen tutara göre yeniden hesaplanır.</p>
+                            <div className="panel-form-actions wide">
+                              <button className="panel-primary">Düzeltmeyi kaydet</button>
+                            </div>
+                          </form>
+                          <details className="cari-hareket-sil">
+                            <summary className="panel-danger">Hareketi sil</summary>
+                            <form action={hareketiSil}>
+                              <input type="hidden" name="entry_id" value={e.id} />
+                              <p className="fin-form-note">{kind.label} kaydı ({money(Number(e.amount))}) dökümden kalıcı olarak silinir; bakiye ve taksitler yeniden hesaplanır.</p>
+                              <button className="panel-danger">Evet, sil</button>
+                            </form>
+                          </details>
+                        </>
+                      ) : (
+                        hareketDuzeltir ? <p className="fin-form-note">Bu hareket bir sözleşmeye, PayTR ödemesine ya da finans kaydına bağlı; buradan değiştirilemez.</p> : null
+                      )}
                     </PanelDrawer>
                   </li>
                 );

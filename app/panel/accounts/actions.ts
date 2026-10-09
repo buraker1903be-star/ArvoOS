@@ -23,6 +23,8 @@ import { normalizePhone } from "@/lib/whatsapp-send";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
+import { degisiklikDenetle, elleGirilenTur, type ElleHareketTuru } from "@/lib/cari-hareket";
+import { gecerliGun } from "@/lib/taksit-vadesi";
 
 async function accountsContext() {
   const context = await getPanelContext();
@@ -87,7 +89,7 @@ async function getPartyLedger(partyId: string) {
     )
     .reduce((sum, entry) => sum + Number(entry.amount), 0);
   const credit = Math.min(recordedCredit, debit + refunds);
-  return { ...context, debit, credit, refunds };
+  return { ...context, debit, credit, refunds, recordedCredit };
 }
 
 /*
@@ -275,53 +277,99 @@ export async function createEntry(formData: FormData) {
   revalidatePath("/panel/hr/commissions");
 }
 
-export async function updateEntry(formData: FormData) {
-  const { supabase, membership } = await accountsContext();
-  const entryId = String(formData.get("entry_id") ?? "").trim();
-  const entryType = String(formData.get("entry_type") ?? "debit");
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
-  const description = String(formData.get("description") ?? "").trim();
+/*
+  ELLE GİRİLEN HAREKETİ DÜZELTME / SİLME (2026-10): cari penceresinin
+  hareket ayrıntısından. Yalnızca tahsilat, iade ve ek hizmet; hangisinin
+  elle girildiği ve değişikliğin cariyi tutarsız bırakıp bırakmadığı
+  lib/cari-hareket.ts'te. Sözleşme borcu ve PayTR tahsilatı veritabanında
+  da kilitli (arvo_guard_account_entry); taksit durumları güncellemede
+  tetikleyiciyle yeniden hesaplanıyor.
+
+  Eskiden burada updateEntry/deleteEntry vardı: hiçbir ekrandan
+  çağrılmıyordu, her hareketi (sözleşme borcu dahil) değiştirebiliyor,
+  türünü de çevirebiliyor ve "1.500"ü 1,5 TL okuyordu.
+*/
+const HAREKET_HATALARI: Record<string, string> = {
+  kilitli_cari_hareket: "Bu hareket bir sözleşmeye ya da PayTR ödemesine bağlı; değiştirilemez.",
+  cari_hareket_turu_degismez: "Hareketin türü değiştirilemez.",
+};
+// Açıklamanın önüne işlemin kendisinin koyduğu ek; formda gösterilmez, geri eklenir.
+const ACIKLAMA_EKI: Record<ElleHareketTuru, string> = { tahsilat: "", iade: "Müşteri iadesi · ", "ek-hizmet": "Ek hizmet · " };
+
+async function elleHareketiOku(formData: FormData) {
+  const entryId = String(formData.get("entry_id") ?? "").trim();
   if (!entryId) throw new Error("Hareket seçilmedi.");
-  if (!["debit", "credit"].includes(entryType))
-    throw new Error("Geçersiz hareket türü.");
-  if (!Number.isFinite(amount) || amount <= 0)
-    throw new Error("Tutar sıfırdan büyük olmalı.");
-  if (description.length < 2 || description.length > 500)
-    throw new Error("Açıklama 2–500 karakter olmalı.");
+  const { supabase, membership } = await accountsContext();
+  const { data: hareket } = await supabase
+    .from("account_entries")
+    .select("id,party_id,entry_type,source_type,reference_no,description,amount")
+    .eq("id", entryId)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (!hareket?.party_id) throw new Error("Hareket bulunamadı veya erişiminiz yok.");
+  const { count: olay } = await supabase
+    .from("payment_provider_events")
+    .select("id", { count: "exact", head: true })
+    .eq("account_entry_id", entryId);
+  const tur = elleGirilenTur(hareket as Parameters<typeof elleGirilenTur>[0], Boolean(olay));
+  if (!tur) throw new Error("Yalnızca elle girilen tahsilat, iade ve ek hizmet değiştirilebilir.");
+  const defter = await getPartyLedger(hareket.party_id);
+  const ozet = { borc: defter.debit, tahsilat: defter.recordedCredit, iade: defter.refunds };
+  return { supabase, membership, hareket, tur, ozet };
+}
+
+function hareketHatasi(mesaj: string, onEk: string) {
+  const bilinen = Object.entries(HAREKET_HATALARI).find(([kod]) => mesaj.includes(kod));
+  return new Error(bilinen ? bilinen[1] : onEk + mesaj);
+}
+
+async function hareketiDuzelt__impl(formData: FormData) {
+  const { supabase, membership, hareket, tur, ozet } = await elleHareketiOku(formData);
+  const tutar = Math.round(parseTurkishAmount(String(formData.get("amount") ?? "")) * 100);
+  const tarih = String(formData.get("transaction_date") ?? "").trim();
+  const metin = String(formData.get("description") ?? "").trim();
+  const referans = String(formData.get("reference_no") ?? "").trim();
+  if (!gecerliGun(tarih)) throw new Error("Geçerli bir işlem tarihi seçin.");
+  if (metin.length < 2 || metin.length > 480) throw new Error("Açıklama 2–480 karakter olmalı.");
+  const hata = degisiklikDenetle(tur, Number(hareket.amount), tutar, ozet);
+  if (hata) throw new Error(hata);
+
   const { error } = await supabase
     .from("account_entries")
     .update({
-      entry_type: entryType,
-      amount,
-      description,
-      reference_no: String(formData.get("reference_no") ?? "").trim() || null,
-      transaction_date:
-        String(formData.get("transaction_date") ?? "") || undefined,
-      due_date: String(formData.get("due_date") ?? "") || null,
+      amount: tutar,
+      transaction_date: tarih,
+      description: ACIKLAMA_EKI[tur] + metin,
+      // Boş bırakılırsa eski referans (iç anahtar dahil) korunur.
+      reference_no: referans || hareket.reference_no,
     })
-    .eq("id", entryId)
+    .eq("id", hareket.id)
     .eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Cari hareket güncellenemedi: " + error.message);
-  revalidatePath("/panel/finance");
-  revalidatePath("/panel/accounts");
-  musteriSayfalariniYenile();
-  revalidatePath("/panel/hr/commissions");
+  if (error) throw hareketHatasi(error.message, "Hareket düzeltilemedi: ");
+  revalidateLedger();
 }
 
-export async function deleteEntry(formData: FormData) {
-  const { supabase, membership } = await accountsContext();
-  const entryId = String(formData.get("entry_id") ?? "").trim();
-  if (!entryId) throw new Error("Hareket seçilmedi.");
-  const { error } = await supabase
+export async function hareketiDuzelt(formData: FormData) {
+  return runPanelAction(() => hareketiDuzelt__impl(formData), "Hareket düzeltildi");
+}
+
+async function hareketiSil__impl(formData: FormData) {
+  const { supabase, membership, hareket, tur, ozet } = await elleHareketiOku(formData);
+  const hata = degisiklikDenetle(tur, Number(hareket.amount), null, ozet);
+  if (hata) throw new Error(hata);
+  const { error, count } = await supabase
     .from("account_entries")
-    .delete()
-    .eq("id", entryId)
+    .delete({ count: "exact" })
+    .eq("id", hareket.id)
     .eq("organization_id", membership.organization_id);
-  if (error) throw new Error("Cari hareket silinemedi: " + error.message);
-  revalidatePath("/panel/finance");
-  revalidatePath("/panel/accounts");
-  musteriSayfalariniYenile();
-  revalidatePath("/panel/hr/commissions");
+  if (error) throw hareketHatasi(error.message, "Hareket silinemedi: ");
+  // RLS satırı sessizce elerse "sildim ama silinmedi" kalmasın.
+  if (!count) throw new Error("Hareket silinemedi; bu işlem için yetkiniz olmayabilir.");
+  revalidateLedger();
+}
+
+export async function hareketiSil(formData: FormData) {
+  return runPanelAction(() => hareketiSil__impl(formData), "Hareket silindi");
 }
 
 /*

@@ -598,5 +598,10 @@
 .os-root .cari-hareket-ayrinti>div:first-child{border-top:0}
 .os-root .cari-hareket-ayrinti dt{color:var(--muted);font-size:var(--fs-sm)}
 .os-root .cari-hareket-ayrinti dd{margin:0;overflow-wrap:anywhere}
+.os-root .cari-hareket-duzelt{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
+.os-root .cari-hareket-sil{margin-top:var(--sp-3)}
+.os-root .cari-hareket-sil>summary{display:inline-flex;align-items:center;list-style:none;cursor:pointer}
+.os-root .cari-hareket-sil>summary::-webkit-details-marker{display:none}
+.os-root .cari-hareket-sil form{display:grid;gap:var(--sp-2);justify-items:start;margin-top:var(--sp-2)}
 .os-root .cari-plan-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:0 0 var(--sp-2)}
 .os-root .cari-plan-eylem .cari-taksit-btn{flex:none;width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}
