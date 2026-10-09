@@ -69,28 +69,35 @@ export async function fetchLastContacts(
   const result = new Map<string, LastContact>();
   if (!opportunityIds.length) return result;
 
-  const { data, error } = await supabase
-    .from("crm_internal_comments")
-    .select("opportunity_id,body,created_at,created_by")
-    .eq("organization_id", organizationId)
-    .in("opportunity_id", opportunityIds)
-    .order("created_at", { ascending: false });
+  /*
+    Yorumlar ve kurumun panel hesabı olan personeli AYNI ANDA okunur; yazar
+    adlarının neredeyse hepsi oradan çıkıyor. Eskiden yorumlar okunup
+    bittikten sonra yazarlar için ikinci bir tur atılıyordu (talepler
+    listesinin kritik yolunda). Profil tablosuna yalnızca personel kaydı
+    olmayan bir yazar kalırsa gidilir.
+  */
+  const [{ data, error }, { data: employees }] = await Promise.all([
+    supabase
+      .from("crm_internal_comments")
+      .select("opportunity_id,body,created_at,created_by")
+      .eq("organization_id", organizationId)
+      .in("opportunity_id", opportunityIds)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("hr_employees")
+      .select("user_id,full_name")
+      .eq("organization_id", organizationId)
+      .not("user_id", "is", null),
+  ]);
   if (error) throw new Error("Yorum bilgisi okunamadı: " + error.message);
 
   const rows = data ?? [];
-  const authorIds = [...new Set(rows.map((r) => r.created_by).filter(Boolean))];
   const names = new Map<string, string>();
-  if (authorIds.length) {
-    const [{ data: employees }, { data: profiles }] = await Promise.all([
-      supabase
-        .from("hr_employees")
-        .select("user_id,full_name")
-        .eq("organization_id", organizationId)
-        .in("user_id", authorIds),
-      supabase.from("profiles").select("id,full_name").in("id", authorIds),
-    ]);
+  for (const e of employees ?? []) if (e.user_id) names.set(e.user_id, e.full_name);
+  const eksikYazarlar = [...new Set(rows.map((r) => r.created_by).filter((id) => id && !names.has(id)))];
+  if (eksikYazarlar.length) {
+    const { data: profiles } = await supabase.from("profiles").select("id,full_name").in("id", eksikYazarlar);
     for (const p of profiles ?? []) names.set(p.id, p.full_name);
-    for (const e of employees ?? []) if (e.user_id) names.set(e.user_id, e.full_name);
   }
 
   // Sorgu tarihe göre azalan sıralı; her talebin ilk gördüğümüz satırı en yenisi.

@@ -96,10 +96,32 @@ export const getPanelContext = cache(async () => {
   };
   const organization = selectedWorkspace.organization;
 
-  const { data: moduleRows, error: moduleError } = await supabase.from("organization_modules")
-    .select("module_code,arvo_modules(name,description,sort_order)")
-    .eq("organization_id", membership.organization_id)
-    .eq("is_enabled", true);
+  /*
+    Modüller ve yetki kuralları AYNI ANDA okunur: ikisi de yalnızca kurum ve
+    role bağlı. Eskiden modüller okunup bitince yetkilere geçiliyordu; bu
+    bağlam her panel isteğinin (sayfa, yerleşim, sunucu işlemi) kritik
+    yolunda olduğu için fazladan bir veritabanı turu her tıklamaya ekleniyordu.
+    Kurum Sahibi için yetki sorgusu yok (kısıtlanamaz).
+  */
+  const yetkiSorgulari = membership.role === "owner"
+    ? null
+    : Promise.all([
+        supabase.from("role_module_permissions").select("module_key,can_access")
+          .eq("organization_id", membership.organization_id).eq("role", membership.role),
+        supabase.from("member_module_permissions").select("module_key,can_access")
+          .eq("organization_id", membership.organization_id).eq("user_id", userId),
+        supabase.from("role_capability_permissions").select("capability_key,allowed")
+          .eq("organization_id", membership.organization_id).eq("role", membership.role),
+        supabase.from("member_capability_permissions").select("capability_key,allowed")
+          .eq("organization_id", membership.organization_id).eq("user_id", userId),
+      ]);
+  const [{ data: moduleRows, error: moduleError }, yetkiSonuclari] = await Promise.all([
+    supabase.from("organization_modules")
+      .select("module_code,arvo_modules(name,description,sort_order)")
+      .eq("organization_id", membership.organization_id)
+      .eq("is_enabled", true),
+    yetkiSorgulari,
+  ]);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");
 
   const modules = (moduleRows ?? []).map((row) => {
@@ -123,17 +145,8 @@ export const getPanelContext = cache(async () => {
   */
   let hiddenModuleKeys = new Set<string>();
   let yetkiler = etkinYetkiler({ rol: "owner" });
-  if (membership.role !== "owner") {
-    const [rolModulleri, kisiModulleri, rolYetkileri, kisiYetkileri] = await Promise.all([
-      supabase.from("role_module_permissions").select("module_key,can_access")
-        .eq("organization_id", membership.organization_id).eq("role", membership.role),
-      supabase.from("member_module_permissions").select("module_key,can_access")
-        .eq("organization_id", membership.organization_id).eq("user_id", userId),
-      supabase.from("role_capability_permissions").select("capability_key,allowed")
-        .eq("organization_id", membership.organization_id).eq("role", membership.role),
-      supabase.from("member_capability_permissions").select("capability_key,allowed")
-        .eq("organization_id", membership.organization_id).eq("user_id", userId),
-    ]);
+  if (yetkiSonuclari) {
+    const [rolModulleri, kisiModulleri, rolYetkileri, kisiYetkileri] = yetkiSonuclari;
     /*
       Okunamazsa kısıt YOK sayılamaz: boş küme kapatılmış her şeyi açar.
       Yukarıdaki organization_modules okuması da aynı şekilde fırlatıyor.

@@ -107,9 +107,50 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const opsVar = modules.some((module) => module.code === "operations");
   const org = membership.organization_id;
 
-  const [{ data: employeeData, error: employeeError }, { data: departmentData }] = await Promise.all([
+  const primGorebilir = isPlatformOwner || izin("hr.prim.gor");
+  const gizlilikGorur = izin("hr.gizlilik.gor");
+  const hareketGorur = izin("hr.hareket.gor");
+
+  /*
+    SORGULAR İKİ ADIMDA (2026-10). Personel kaydına bağlı olmayan her şey —
+    belgeler, açık talepler ve işler, performans, prim, gizlilik — adresteki
+    kimlikle (id) personel kaydıyla AYNI ANDA okunuyor. Eskiden beş ayrı
+    aşamaydı (personel → listeler → performans → prim/gizlilik → yazışmalar),
+    her biri öncekini bekliyordu. İkinci adımda yalnızca personel kaydındaki
+    alanlara (hesap, e-posta, telefon) bağlı olanlar kaldı.
+
+    Sayılar ayrı "count" sorgularından: listeler LISTE kadar satır okuyor
+    ve sınırlı listeden sayım almak, sınıra ulaşınca yanlış rakam gösterir
+    (check:rakamlar).
+  */
+  const bos = Promise.resolve({ data: [], count: 0 });
+  const [
+    { data: employeeData, error: employeeError },
+    { data: departmentData },
+    docResult, talepResult, talepSayisi, isResult, isSayisi,
+    sozlesmeSonuc, teklifSonuc, isSonuc,
+    prim, gizlilikSonuc,
+  ] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests,commission_rate,operation_commission_rate").eq("id", id).eq("organization_id", org).maybeSingle(),
     supabase.from("hr_departments").select("id,name,is_active").eq("organization_id", org).order("name"),
+    canManageTeam ? supabase.from("hr_employee_documents").select("id,file_name,file_size,created_at").eq("organization_id", org).eq("employee_id", id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as Doc[] }),
+    crmVar ? supabase.from("crm_opportunities").select("id,title,customer_name,stage,created_at").eq("organization_id", org).eq("assigned_employee_id", id).in("stage", AKTIF_ASAMALAR).order("created_at", { ascending: false }).limit(LISTE) : bos,
+    crmVar ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", id).in("stage", AKTIF_ASAMALAR) : bos,
+    opsVar ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date").eq("organization_id", org).eq("assigned_employee_id", id).in("status", LISTEDEKI_IS_DURUMLARI).order("due_date", { ascending: true, nullsFirst: false }).limit(LISTE) : bos,
+    opsVar ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", id).in("status", LISTEDEKI_IS_DURUMLARI) : bos,
+    /*
+      PERFORMANS (2026-10, liste sayfalarındaki istatistik kartıyla aynı
+      hesaplar): satışta imzalanan sözleşmeler ve teklif kabul oranı (bu
+      personele atanmış taleplerden), operasyonda teslim edilen işler ve
+      zamanında teslim oranı. Okunamayan modül (RLS) boş kalır.
+    */
+    crmVar ? supabase.from("crm_contracts").select("amount,signed_at,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", id).in("status", ["signed", "completed"]) : bos,
+    crmVar ? supabase.from("crm_proposals").select("status,archive_reason,superseded_by,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", id) : bos,
+    opsVar ? supabase.from("operation_workflows").select("due_date,delivered_at").eq("organization_id", org).eq("assigned_employee_id", id).not("delivered_at", "is", null) : bos,
+    /* Prim (tahakkuk kurum genelinden hesaplanıyor) ve gizlilik sözleşmeleri
+       yalnızca yetkisi olana okunur. */
+    primGorebilir ? primVerisi(supabase, org) : Promise.resolve(null),
+    gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("id,agreement_no,status,created_at,signed_at,signer_name").eq("organization_id", org).eq("employee_id", id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
   ]);
   if (employeeError) throw new Error("Personel okunamadı: " + employeeError.message);
   if (!employeeData) notFound();
@@ -118,19 +159,20 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const departmentName = employee.department_id ? departments.find((item) => item.id === employee.department_id)?.name ?? "Departman" : null;
 
   /*
-    Sayılar ayrı "count" sorgularından: listeler LISTE kadar satır
-    okuyor ve sınırlı listeden sayım almak, sınıra ulaşınca yanlış
-    rakam gösterir (check:rakamlar).
+    İkinci adım: personel kaydındaki alanlara bağlı olanlar. Kişiyle
+    yazışmalar (WhatsApp ve Postalar sekmeleri) müşteri ve kayıt
+    sayfalarıyla aynı kural (crm/musteri-yazismalari.tsx); numara ve adres
+    personel kaydından. Postada kişinin ÜSTLENDİĞİ yazışmalar da geliyor:
+    personel sayfasında asıl soru "kimlerle yazışıyor, neyi üstlendi".
+    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), postayı
+    ortak kutuyu görebilen (posta.gor).
   */
-  const bos = Promise.resolve({ data: [], count: 0 });
-  const [memberResult, invitationResult, docResult, talepResult, talepSayisi, isResult, isSayisi] = await Promise.all([
+  const postaGorur = izin("posta.gor");
+  const [memberResult, invitationResult, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
     canManageTeam && employee.user_id ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", org).eq("user_id", employee.user_id).maybeSingle() : Promise.resolve({ data: null }),
     canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at").eq("organization_id", org).in("status", ["pending", "sent"]) : Promise.resolve({ data: [] as Invitation[] }),
-    canManageTeam ? supabase.from("hr_employee_documents").select("id,file_name,file_size,created_at").eq("organization_id", org).eq("employee_id", employee.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] as Doc[] }),
-    crmVar ? supabase.from("crm_opportunities").select("id,title,customer_name,stage,created_at").eq("organization_id", org).eq("assigned_employee_id", employee.id).in("stage", AKTIF_ASAMALAR).order("created_at", { ascending: false }).limit(LISTE) : bos,
-    crmVar ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).in("stage", AKTIF_ASAMALAR) : bos,
-    opsVar ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date").eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", LISTEDEKI_IS_DURUMLARI).order("due_date", { ascending: true, nullsFirst: false }).limit(LISTE) : bos,
-    opsVar ? supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", org).eq("assigned_employee_id", employee.id).in("status", LISTEDEKI_IS_DURUMLARI) : bos,
+    crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
   ]);
   const member = memberResult.data as Member | null;
   const pendingInvite = canliDavet((invitationResult.data ?? []) as Invitation[], employee.email);
@@ -140,17 +182,6 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const acikTalep = talepSayisi.count ?? 0;
   const acikIs = isSayisi.count ?? 0;
 
-  /*
-    PERFORMANS (2026-10, liste sayfalarındaki istatistik kartıyla aynı
-    hesaplar): satışta imzalanan sözleşmeler ve teklif kabul oranı (bu
-    personele atanmış taleplerden), operasyonda teslim edilen işler ve
-    zamanında teslim oranı. Okunamayan modül (RLS) boş kalır.
-  */
-  const [sozlesmeSonuc, teklifSonuc, isSonuc] = await Promise.all([
-    crmVar ? supabase.from("crm_contracts").select("amount,signed_at,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", employee.id).in("status", ["signed", "completed"]) : bos,
-    crmVar ? supabase.from("crm_proposals").select("status,archive_reason,superseded_by,crm_opportunities!inner(assigned_employee_id)").eq("organization_id", org).eq("crm_opportunities.assigned_employee_id", employee.id) : bos,
-    opsVar ? supabase.from("operation_workflows").select("due_date,delivered_at").eq("organization_id", org).eq("assigned_employee_id", employee.id).not("delivered_at", "is", null) : bos,
-  ]);
   const an = simdi();
   const imzalananlar = (sozlesmeSonuc.data ?? []) as { amount: number; signed_at: string | null }[];
   const son90Imza = imzalananlar.filter((s) => s.signed_at && gunOnce(s.signed_at, an) < 90);
@@ -163,33 +194,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const teslimGunu = (deger: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(Date.parse(deger));
   const terminli = teslimler.filter((t) => t.due_date);
   const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
-  const primGorebilir = isPlatformOwner || izin("hr.prim.gor");
-  const gizlilikGorur = izin("hr.gizlilik.gor");
-  const hareketGorur = izin("hr.hareket.gor");
-  /* Prim (tahakkuk kurum genelinden hesaplanıyor) ve gizlilik sözleşmeleri
-     yalnızca yetkisi olana okunur. */
-  const [prim, gizlilikSonuc] = await Promise.all([
-    primGorebilir ? primVerisi(supabase, org) : Promise.resolve(null),
-    gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("id,agreement_no,status,created_at,signed_at,signer_name").eq("organization_id", org).eq("employee_id", employee.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
-  ]);
   const primToplami = prim ? ledgerTotals(employee.id, prim.accruals, prim.payments) : null;
   const gizlilikler = (gizlilikSonuc.data ?? []) as Gizlilik[];
   const temelAdres = `/panel/hr/${employee.id}`;
   const pencere = arama.pencere === "prim" ? "prim" : null;
-
-  /*
-    Kişiyle yazışmalar (WhatsApp ve Postalar sekmeleri): müşteri ve kayıt
-    sayfalarıyla aynı kural (crm/musteri-yazismalari.tsx); numara ve adres
-    personel kaydından. Postada kişinin ÜSTLENDİĞİ yazışmalar da geliyor:
-    personel sayfasında asıl soru "kimlerle yazışıyor, neyi üstlendi".
-    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), postayı
-    ortak kutuyu görebilen (posta.gor).
-  */
-  const postaGorur = izin("posta.gor");
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
-    crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
-    postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
-  ]);
 
   const isOwner = membership.role === "owner";
   // Yönetici departmanındaki aktif/izinli çalışanın rolü departmandan gelir

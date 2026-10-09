@@ -110,13 +110,60 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // Mesaj çekmecesi ve /panel/messages aynı yükleyiciyi kullanır; okunmamış
   // sayısı sunucuda hesaplanır (eskiden son 1000 mesaj tarayıcıya çekiliyordu).
   const messagesQuery = hasMessages ? loadMessagesInit(supabase, membership.organization_id, userId) : Promise.resolve(null);
-  const [{ count: notificationUnreadCount }, { data: ownEmployee }, messagesInit] = await Promise.all([
+  /*
+    Bekleyen gizlilik sözleşmesi personel kaydı üzerinden TEK sorguda
+    (hr_employees!inner): eskiden önce personel kaydı okunuyor, sonra onun
+    kimliğiyle sözleşme aranıyordu — her sayfada fazladan bir tur.
+  */
+  const pendingAgreementQuery = supabase.from("hr_confidentiality_agreements").select("id,hr_employees!inner(user_id)")
+    .eq("organization_id", membership.organization_id).eq("hr_employees.user_id", userId).eq("status", "pending")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  /*
+    YERLEŞİMİN SORGULARI TEK ADIMDA (2026-10). Eskiden altı ayrı aşamada,
+    her biri bir öncekini bekleyerek çalışıyordu (bildirim+personel+mesaj →
+    gizlilik → ürün lisansları → posta durumu → okunmamış posta → çevrimiçi
+    ekip). Yerleşim her sayfanın kritik yolunda; birbirine bağlı olmayan
+    sorguların sırayla beklenmesi her tıklamaya birkaç veritabanı turu
+    ekliyordu. Okunmamış posta sayısı kutu bağlı olmasa da (yetkisi olana)
+    okunuyor: sayım ucuz, beklemekten hızlı; bağlı değilse kullanılmıyor.
+  */
+  const postaYetkisi = !konsolHostu && izin("posta.gor");
+  const ucDakikaOnce = cevrimiciEsigi();
+  const [
+    { count: notificationUnreadCount },
+    { data: ownEmployee },
+    messagesInit,
+    { data: pendingAgreement },
+    { data: urunLisanslari },
+    postaBilgisi,
+    postaSayimi,
+    { data: varlikSatirlari },
+    { data: ekipSatirlari },
+  ] = await Promise.all([
     notificationQuery,
     ownEmployeeQuery,
     messagesQuery,
+    pendingAgreementQuery,
+    konsolHostu
+      ? Promise.resolve({ data: null })
+      : supabase.from("organization_product_licenses")
+          .select("product,status").eq("organization_id", membership.organization_id)
+          .in("status", ["active", "trialing", "past_due"]),
+    postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
+    postaYetkisi
+      ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
+          .eq("organization_id", membership.organization_id).eq("okunmamis", true)
+      : Promise.resolve({ count: 0 }),
+    /* Çevrimiçi ekip (yalnızca uygulama kabuğunda): son 3 dakikada görülenler
+       ve adları. Çalışan listesini görme yetkisi olmayan rolde RLS boş döner;
+       avatarlar "Ekip üyesi" olur, kabuk bozulmaz. */
+    konsolHostu
+      ? Promise.resolve({ data: null })
+      : supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce),
+    konsolHostu
+      ? Promise.resolve({ data: null })
+      : supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
   ]);
-  const pendingAgreementQuery = ownEmployee ? supabase.from("hr_confidentiality_agreements").select("id").eq("employee_id", ownEmployee.id).eq("status", "pending").order("created_at", { ascending: false }).limit(1).maybeSingle() : Promise.resolve({ data: null });
-  const { data: pendingAgreement } = await pendingAgreementQuery;
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
   /*
@@ -127,11 +174,6 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
 
     Konsolda çizilmiyor: orada tek bir kurumun paneli açık değil.
   */
-  const { data: urunLisanslari } = konsolHostu
-    ? { data: null }
-    : await supabase.from("organization_product_licenses")
-        .select("product,status").eq("organization_id", membership.organization_id)
-        .in("status", ["active", "trialing", "past_due"]);
   const acikUrunler = new Set(((urunLisanslari ?? []) as { product: string }[]).map((satir) => satir.product));
   const lisansliUrunler = [
     /* ArvoLab kendi yolundan: tek kullanımlık oturum bağlantısıyla, ikinci
@@ -170,8 +212,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     yokken menüye boş bir girdi koymak, tıklayana "burada ne var" diye
     sordurup geri döndürürdü.
   */
-  const postaGorunur = !konsolHostu && izin("posta.gor")
-    && (await postaDurumu(membership.organization_id)).durum === "bagli";
+  const postaGorunur = postaYetkisi && postaBilgisi?.durum === "bagli";
 
   /*
     Okunmamış konuşma sayısı menüdeki rozette. Sayı KUTUNUN tamamı için,
@@ -182,10 +223,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     Süzgeç yok — /panel/posta'nın varsayılan görünümü de süzgeçsiz; rozete
     basan kişi tam o sayıyı görsün.
   */
-  const postaOkunmamis = postaGorunur
-    ? (await supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
-        .eq("organization_id", membership.organization_id).eq("okunmamis", true)).count ?? 0
-    : 0;
+  const postaOkunmamis = postaGorunur ? postaSayimi.count ?? 0 : 0;
 
   const digerUygulamalar = [
     ...lisansliUrunler,
@@ -224,14 +262,6 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       mesajlar: messagesInit ? { okunmamis: messageUnreadCount } : null,
       erisim: { yetkiler, isPlatformOwner },
     });
-    /* Çevrimiçi ekip: son 3 dakikada görülenler ve adları. Çalışan
-       listesini görme yetkisi olmayan rolde RLS boş döner; avatarlar
-       "Ekip üyesi" olur, kabuk bozulmaz. */
-    const ucDakikaOnce = cevrimiciEsigi();
-    const [{ data: varlikSatirlari }, { data: ekipSatirlari }] = await Promise.all([
-      supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce),
-      supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
-    ]);
     const varlik = Object.fromEntries(((varlikSatirlari ?? []) as { user_id: string; last_seen_at: string }[]).map((s) => [s.user_id, s.last_seen_at]));
     const ekip = ((ekipSatirlari ?? []) as { user_id: string; full_name: string | null }[])
       .map((s) => ({ userId: s.user_id, ad: formatPersonName(s.full_name) || "Ekip üyesi" }));
