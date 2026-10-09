@@ -30,6 +30,7 @@ import { PanelDrawer } from "../../../components/panel-drawer";
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { TalepAkis } from "../../kayit-detay/kayit-akis";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
@@ -166,6 +167,14 @@ export default async function ProposalDetailPage({ params }: Props) {
     sozlesmeVar: Boolean(sozlesme),
   });
   const musteri: string = formatPersonName(customer?.customer_name) || customer?.customer_name || "Müşteri";
+
+  /* Müşteriyle yazışmalar (WhatsApp ve Postalar sekmeleri): talep,
+     sözleşme ve iş detayıyla aynı kural (../../musteri-yazismalari.tsx). */
+  const postaGorur = izin("posta.gor");
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    musteriWhatsapp(membership.organization_id, customer?.contact_phone),
+    postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
+  ]);
   const bugun = todayInIstanbul();
   const kalan = data.valid_until && !locked ? kalanGun(data.valid_until, bugun) : null;
   const gecerlilikRozeti = kalan === null ? null
@@ -498,8 +507,18 @@ export default async function ProposalDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Akış: revizyon zinciri birden çok sürümse "Revizyonlar" sekmesi. */}
-        <TalepAkis sekmeler={revizyonlar.length > 1 ? ["Yorumlar", `Revizyonlar · ${revizyonlar.length}`, "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
+        {/* Akış: revizyon zinciri birden çok sürümse "Revizyonlar" sekmesi;
+            WhatsApp ve Postalar müşteriyle yazışma (eskiden yoktu). */}
+        <TalepAkis
+          sekmeler={[
+            "Yorumlar",
+            ...(revizyonlar.length > 1 ? [`Revizyonlar · ${revizyonlar.length}`] : []),
+            whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp",
+            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+            "Geçmiş",
+          ]}
+          tembel={revizyonlar.length > 1 ? (postaGorur ? [2, 3] : [2]) : (postaGorur ? [1, 2] : [1])}
+        >
           <InternalComments opportunityId={data.opportunity_id} contextType="proposal" contextId={data.id} gorunum="akis" />
           {revizyonlar.length > 1 ? (
             <ul className="ekip-liste teklif-revizyonlar">
@@ -521,6 +540,18 @@ export default async function ProposalDetailPage({ params }: Props) {
                 );
               })}
             </ul>
+          ) : null}
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(customer?.contact_email)}
+                eylem={izin("posta.yanitla") && customer?.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.proposal_no} · ${data.title}`)}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </div>
           ) : null}
           <RecordHistory opportunityId={data.opportunity_id} />
         </TalepAkis>
