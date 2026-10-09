@@ -26,9 +26,13 @@ const MIGRATIONLAR = [
   "20261006171515_ortak_posta_kutusu.sql",
   "20261006190207_posta_gelen_kutusu.sql",
   "20261006193918_posta_gecmis_ve_crm_bagi.sql",
-  // 20261008180253, 20261008185029, 20261008201548 (çöp kutusu) ve
-  // 20261009061218 anlık görüntüde (09.10.2026); yeniden uygulamak silme
-  // iznini geri açardı.
+  // 20261008180253, 20261008185029 ve 20261009061218 anlık görüntüde
+  // (09.10.2026); yeniden uygulamak silme iznini geri açardı.
+  /* Çöp kutusu migration'ı anlık görüntüde olmasına rağmen YENİDEN
+     uygulanıyor: yukarıdaki 20261006190207 konuşma koruma işlevini
+     eski gövdesiyle yeniden yaratıyor ve çöp sütunlarının korumasını
+     düşürüyordu. Kendisi idempotent (sütunlar "if not exists"). */
+  "20261008201548_posta_cop_kutusu.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
@@ -192,15 +196,17 @@ describe("ortak posta kutusu erişimi", () => {
        silme hakkı yok. */
     await rol(db, "postgres");
     await islem(db, async () => {
-      /* Canlıda DELETE yetkisi de geri alındı; test ortamı tablo
-         yetkilerini Supabase varsayılanıyla kurduğu için burada asıl kapı
-         RLS: silme politikası olmadığından hiçbir satır silinmiyor. */
+      /* İki kapı birden: silme politikası yok VE tablo yetkisi geri
+         alındı. Yetki önce denetlendiği için hata "permission denied";
+         RLS'e sıra bile gelmiyor. */
       await rol(db, "authenticated", PERSONEL);
-      const { rows } = await db.query(
-        `delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`,
-        [KURUM, KONUSMA]);
+      await reddedilir(
+        db,
+        `delete from public.mail_threads where organization_id = $1 and thread_id = $2`,
+        [KURUM, KONUSMA],
+        /permission denied|izin/i,
+      );
       await rol(db, "postgres");
-      assert.equal(rows.length, 0, "personel yazışmayı doğrudan silebiliyor");
       assert.equal((await db.query(`select count(*)::int as n from public.mail_threads where thread_id = $1`, [KONUSMA])).rows[0].n, 1);
     });
   });

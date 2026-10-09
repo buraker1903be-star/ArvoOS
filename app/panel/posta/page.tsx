@@ -180,7 +180,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         rakama tıklanıyor, posta ayrı davranmasın. */}
     <nav className="kayit-serit talep-serit" aria-label="Posta kutusu ve durum">
       <dl>
-        <div className={!secilenKutu && kutu !== "taslak" ? "is-active" : undefined}>
+        <div className={!secilenKutu && kutu !== "taslak" && !copGorunumu ? "is-active" : undefined}>
           <dt>Tümü</dt>
           <dd><Link href={`/panel/posta${adresEki({ kutu: "" })}`}>{sayi.tumu}</Link></dd>
         </div>
