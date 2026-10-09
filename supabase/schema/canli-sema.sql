@@ -1,4 +1,4 @@
--- Canlı şema dışa aktarımı: 2026-10-08
+-- Canlı şema dışa aktarımı: 2026-10-09
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
 -- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
@@ -931,7 +931,22 @@ create table if not exists public.mail_accounts (
   gecmis_mesaj_sayisi integer not null,
   erisim_belirteci_enc text,
   erisim_belirteci_biter timestamp with time zone,
-  esitleniyor_at timestamp with time zone
+  esitleniyor_at timestamp with time zone,
+  imza text
+);
+
+create table if not exists public.mail_drafts (
+  id uuid not null,
+  organization_id uuid not null,
+  thread_id text,
+  alici text,
+  konu text,
+  govde text not null,
+  opportunity_id uuid,
+  olusturan uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null,
+  cc text
 );
 
 create table if not exists public.mail_messages (
@@ -963,7 +978,11 @@ create table if not exists public.mail_threads (
   durum text not null,
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null,
-  opportunity_id uuid
+  opportunity_id uuid,
+  gelen_var boolean not null,
+  giden_var boolean not null,
+  silindi_at timestamp with time zone,
+  silen_user_id uuid
 );
 
 create table if not exists public.member_capability_permissions (
@@ -3550,21 +3569,16 @@ begin
   if private.arvo_request_role() is distinct from 'authenticated' then
     return new;
   end if;
-  /*
-    Panelden değiştirilebilen ÜÇ alan var: durum, ilgilenen kişi ve CRM
-    bağı. Geri kalan her sütun Gmail'den geliyor; listeyi kaynağından
-    ayırmak, ekranda duran bilgiyi sessizce yanlış yapardı.
-  */
   if new.thread_id is distinct from old.thread_id
      or new.organization_id is distinct from old.organization_id
      or new.konu is distinct from old.konu
-     or new.son_gonderen_ad is distinct from old.son_gonderen_ad
      or new.son_gonderen_adres is distinct from old.son_gonderen_adres
      or new.son_mesaj_at is distinct from old.son_mesaj_at
      or new.ozet is distinct from old.ozet
      or new.mesaj_sayisi is distinct from old.mesaj_sayisi
-     or new.okunmamis is distinct from old.okunmamis then
-    raise exception 'Konuşmanın posta bilgileri panelden değiştirilemez; yalnızca durum, ilgilenen kişi ve müşteri bağı güncellenebilir.';
+     or new.silindi_at is distinct from old.silindi_at
+     or new.silen_user_id is distinct from old.silen_user_id then
+    raise exception 'Konuşmanın posta bilgileri panelden değiştirilemez; yalnızca durum ve ilgilenen kişi güncellenebilir.';
   end if;
   new.updated_at := now();
   return new;
@@ -12078,6 +12092,14 @@ alter table public.mail_accounts alter column status set default 'beklemede'::te
 
 alter table public.mail_accounts alter column updated_at set default now();
 
+alter table public.mail_drafts alter column created_at set default now();
+
+alter table public.mail_drafts alter column govde set default ''::text;
+
+alter table public.mail_drafts alter column id set default gen_random_uuid();
+
+alter table public.mail_drafts alter column updated_at set default now();
+
 alter table public.mail_messages alter column created_at set default now();
 
 alter table public.mail_messages alter column ekli_dosya set default false;
@@ -12087,6 +12109,10 @@ alter table public.mail_messages alter column yon set default 'gelen'::text;
 alter table public.mail_threads alter column created_at set default now();
 
 alter table public.mail_threads alter column durum set default 'acik'::text;
+
+alter table public.mail_threads alter column gelen_var set default true;
+
+alter table public.mail_threads alter column giden_var set default false;
 
 alter table public.mail_threads alter column mesaj_sayisi set default 0;
 
@@ -12982,6 +13008,10 @@ alter table public.mail_accounts add constraint mail_accounts_pkey PRIMARY KEY (
 
 alter table public.mail_accounts add constraint mail_accounts_status_check CHECK ((status = ANY (ARRAY['beklemede'::text, 'bagli'::text, 'hata'::text, 'kapali'::text])));
 
+alter table public.mail_drafts add constraint mail_drafts_cc_uzunluk CHECK (((cc IS NULL) OR (char_length(cc) <= 2000)));
+
+alter table public.mail_drafts add constraint mail_drafts_pkey PRIMARY KEY (id);
+
 alter table public.mail_messages add constraint mail_messages_pkey PRIMARY KEY (organization_id, message_id);
 
 alter table public.mail_messages add constraint mail_messages_yon_check CHECK ((yon = ANY (ARRAY['gelen'::text, 'giden'::text])));
@@ -13560,11 +13590,21 @@ CREATE INDEX internal_messages_channel_created_idx ON public.internal_messages U
 
 CREATE INDEX internal_messages_org_channel_created_idx ON public.internal_messages USING btree (organization_id, channel_id, created_at DESC);
 
+CREATE INDEX mail_drafts_kurum_idx ON public.mail_drafts USING btree (organization_id, updated_at DESC);
+
+CREATE UNIQUE INDEX mail_drafts_konusma_uidx ON public.mail_drafts USING btree (organization_id, thread_id) WHERE (thread_id IS NOT NULL);
+
 CREATE INDEX mail_messages_konusma_idx ON public.mail_messages USING btree (organization_id, thread_id, tarih);
 
 CREATE INDEX mail_threads_firsat_idx ON public.mail_threads USING btree (organization_id, opportunity_id) WHERE (opportunity_id IS NOT NULL);
 
+CREATE INDEX mail_threads_gelen_idx ON public.mail_threads USING btree (organization_id, son_mesaj_at DESC) WHERE gelen_var;
+
+CREATE INDEX mail_threads_giden_idx ON public.mail_threads USING btree (organization_id, son_mesaj_at DESC) WHERE giden_var;
+
 CREATE INDEX mail_threads_kurum_tarih_idx ON public.mail_threads USING btree (organization_id, son_mesaj_at DESC);
+
+CREATE INDEX mail_threads_kutuda_idx ON public.mail_threads USING btree (organization_id, son_mesaj_at DESC) WHERE (silindi_at IS NULL);
 
 CREATE INDEX message_channel_members_org_user_idx ON public.message_channel_members USING btree (organization_id, user_id);
 
@@ -14002,6 +14042,12 @@ alter table public.mail_accounts add constraint mail_accounts_connected_by_fkey 
 
 alter table public.mail_accounts add constraint mail_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+alter table public.mail_drafts add constraint mail_drafts_olusturan_fkey FOREIGN KEY (olusturan) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.mail_drafts add constraint mail_drafts_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES crm_opportunities(id) ON DELETE SET NULL;
+
+alter table public.mail_drafts add constraint mail_drafts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
 alter table public.mail_messages add constraint mail_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.mail_threads add constraint mail_threads_ilgilenen_user_id_fkey FOREIGN KEY (ilgilenen_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -14009,6 +14055,8 @@ alter table public.mail_threads add constraint mail_threads_ilgilenen_user_id_fk
 alter table public.mail_threads add constraint mail_threads_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES crm_opportunities(id) ON DELETE SET NULL;
 
 alter table public.mail_threads add constraint mail_threads_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.mail_threads add constraint mail_threads_silen_user_id_fkey FOREIGN KEY (silen_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.member_capability_permissions add constraint member_capability_permissions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
@@ -14393,6 +14441,8 @@ alter table public.hr_sales_commissions enable row level security;
 alter table public.internal_messages enable row level security;
 
 alter table public.mail_accounts enable row level security;
+
+alter table public.mail_drafts enable row level security;
 
 alter table public.mail_messages enable row level security;
 
@@ -15194,6 +15244,19 @@ create policy messages_select on public.internal_messages as PERMISSIVE for SELE
 create policy messages_update_own on public.internal_messages as PERMISSIVE for UPDATE to authenticated
   using (((sender_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL)))
   with check (((sender_id = ( SELECT auth.uid() AS uid)) AND arvo_can_access_message_channel(channel_id)));
+
+create policy "posta modulu acik olanlar taslak gunceller" on public.mail_drafts as PERMISSIVE for UPDATE to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text))
+  with check (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar taslak siler" on public.mail_drafts as PERMISSIVE for DELETE to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar taslak yazar" on public.mail_drafts as PERMISSIVE for INSERT to authenticated
+  with check (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar taslaklari okur" on public.mail_drafts as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
 
 create policy "posta modulu acik olanlar mesajlari okur" on public.mail_messages as PERMISSIVE for SELECT to authenticated
   using (private.arvo_modul_acik(organization_id, 'posta'::text));
@@ -16590,6 +16653,8 @@ CREATE TRIGGER arvo_record_commission_rate AFTER INSERT OR UPDATE OF commission_
 CREATE TRIGGER arvo_bump_message_channel AFTER INSERT OR UPDATE ON public.internal_messages FOR EACH ROW EXECUTE FUNCTION private.arvo_bump_message_channel();
 
 CREATE TRIGGER arvo_guard_message_update BEFORE UPDATE ON public.internal_messages FOR EACH ROW EXECUTE FUNCTION private.arvo_guard_message_update();
+
+CREATE TRIGGER mail_drafts_firsat_kurumu BEFORE INSERT OR UPDATE ON public.mail_drafts FOR EACH ROW EXECUTE FUNCTION private.arvo_posta_firsat_kurumu();
 
 CREATE TRIGGER mail_threads_firsat_kurumu BEFORE INSERT OR UPDATE ON public.mail_threads FOR EACH ROW EXECUTE FUNCTION private.arvo_posta_firsat_kurumu();
 

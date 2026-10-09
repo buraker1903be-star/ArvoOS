@@ -870,6 +870,7 @@
     ],
     "mail_drafts": [
       "alici",
+      "cc",
       "created_at",
       "govde",
       "id",
@@ -906,6 +907,8 @@
       "opportunity_id",
       "organization_id",
       "ozet",
+      "silen_user_id",
+      "silindi_at",
       "son_gonderen_ad",
       "son_gonderen_adres",
       "son_mesaj_at",
