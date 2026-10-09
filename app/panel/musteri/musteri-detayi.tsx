@@ -14,6 +14,7 @@ import { PanelModal } from "../components/panel-modal";
 import { PanelDrawer } from "../components/panel-drawer";
 import { CariHesapIcerigi } from "../accounts/cari-hesap";
 import { musteriBilgileriniKaydet } from "./actions";
+import { SatirTiklama } from "../crm/satir-tiklama";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
 import "../finance/finance.css";
@@ -357,6 +358,8 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
           </div>
           {kayitlar.length ? (
             <div className="talep-tablo">
+              {/* Satırın boş alanına tıklama da kaydı açar (crm/satir-tiklama.tsx). */}
+              <SatirTiklama />
               <table className="crm-data-table" data-cols="musteri">
                 <thead>
                   <tr>
