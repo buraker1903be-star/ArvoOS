@@ -2,16 +2,10 @@
 // cari ve iş kaydı aynı ad/telefon/e-postayı taşır; imzada cari önce
 // telefona, sonra Türkçe harf duyarsız ada göre bulunur.
 //
-// Migration anlık görüntüden yeni olduğu için burada AYRICA uygulanıyor.
-// Görüntü yenilendiğinde bu satırı kaldırın (yeniden uygulamak, sonradan
-// değişmiş bir fonksiyonu eskisine döndürebilir).
-import fs from "node:fs";
-import path from "node:path";
+// Migration anlık görüntüde (09.10.2026); testler canlı şemayla koşuyor.
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, rol, veritabani } from "./ortam.mjs";
-
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261009082529_musteri_iki_yonlu_senkron.sql");
 
 const SAHIP = "00000000-0000-4000-8000-000000000001";
 const KURUM = "00000000-0000-4000-8000-0000000000a1";
@@ -22,7 +16,6 @@ const IMZA = "data:image/png;base64," + "A".repeat(300);
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 
 const tek = async (sql, params = []) => (await db.query(sql, params)).rows[0];
