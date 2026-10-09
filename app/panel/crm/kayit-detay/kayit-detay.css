@@ -566,3 +566,12 @@
 .cari-coklu-not{margin:0 0 var(--sp-4);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);background:var(--warning-soft);color:var(--warning);font-size:var(--fs-sm)}
 .cari-pencere-bolum+.cari-pencere-bolum{margin-top:var(--sp-6);padding-top:var(--sp-5);border-top:1px solid var(--line)}
 .cari-pencere-ad{margin:0 0 var(--sp-3);font-size:var(--fs-lg);font-weight:var(--fw-semibold);color:var(--ink)}
+
+/* MÜŞTERİLER LİSTESİ (finance/page.tsx): tahsil oranı çubuğu ve sütun genişlikleri. */
+.musteri-tahsil{display:flex;align-items:center;gap:var(--sp-2);min-width:96px}
+.musteri-tahsil .cari-oran-cubuk{flex:1;min-width:56px}
+.musteri-tahsil small{flex:none;min-width:34px;color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;text-align:right}
+.os-root .talep-tablo .crm-data-table[data-cols="musteriler"] td[data-label="Müşteri"]{min-width:170px}
+/* Dar masaüstünde temsilci sütunu düşer: bilgi müşteri detayında var. */
+@media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="musteriler"] .crm-col-rep{display:none}}
+@media (max-width:760px){.musteri-tahsil{justify-content:flex-end;min-width:0}.musteri-tahsil .cari-oran-cubuk{max-width:120px}}
