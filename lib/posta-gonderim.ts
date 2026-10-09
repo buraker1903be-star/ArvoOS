@@ -357,6 +357,58 @@ export function alintiliGovde(govde: string, alinti: {
   return `${govde.replace(/\s+$/, "")}\n\n${baslik}\n${alintiliMetin}`;
 }
 
+/**
+ * Yönlendirmenin konusu. "Re:" gibi "Fwd:" de zincirde tek sefer
+ * taşınıyor; her yönlendirmede yeniden eklemek "Fwd: Fwd: Teklif"
+ * üretirdi. Türkçe istemcilerin kullandığı "İlt:" de tanınıyor.
+ *
+ * Yanıt ön eki KORUNUYOR: "Re: Teklif" yönlendirilince "Fwd: Re: Teklif"
+ * olur — alıcı neyin yönlendirildiğini konudan görmeli.
+ */
+export function yonlendirmeKonusu(konu: string): string {
+  const sade = (konu ?? "").trim();
+  if (!sade) return "Fwd:";
+  /* "İ" ayrı yazılıyor: regex'in i bayrağı büyük harfe çevirerek
+     eşliyor ve "i" → "I", Türkçedeki "İ" ile eşleşmiyor. */
+  return /^(fwd|fw|[iİ]lt)\s*:/i.test(sade) ? sade : `Fwd: ${sade}`;
+}
+
+/*
+  YÖNLENDİRİLEN MESAJIN GÖVDESİ.
+
+  Alıntı biçimi (">" ile) değil, istemcilerin ortak "iletilen mesaj"
+  başlığı kullanılıyor: yönlendirmede önemli olan özgün mesajın KİMDEN
+  KİME gittiği ve ne zaman: ">" ile alıntılamak bu üst veriyi atıyordu
+  ve alıcı "bunu bana kim yazmış" sorusunu soruyordu.
+
+  Metin kısaltılmıyor (yanıt alıntısının aksine): yönlendirmenin amacı
+  mesajın kendisini aktarmak.
+*/
+export function yonlendirmeGovdesi(not: string, ozgun: {
+  gonderenAd: string | null;
+  gonderenAdres: string;
+  alici: string | null;
+  konu: string | null;
+  tarih: Date | null;
+  metin: string;
+}): string {
+  const kim = ozgun.gonderenAd ? `${ozgun.gonderenAd} <${ozgun.gonderenAdres}>` : ozgun.gonderenAdres;
+  const neZaman = ozgun.tarih
+    ? ozgun.tarih.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+  const satirlar = [
+    "---------- İletilen mesaj ----------",
+    `Kimden: ${kim}`,
+    ...(neZaman ? [`Tarih: ${neZaman}`] : []),
+    ...(ozgun.konu ? [`Konu: ${ozgun.konu}`] : []),
+    ...(ozgun.alici ? [`Kime: ${ozgun.alici}`] : []),
+    "",
+    ozgun.metin.trim(),
+  ];
+  const basi = not.trim();
+  return basi ? `${basi}\n\n${satirlar.join("\n")}` : satirlar.join("\n");
+}
+
 /*
   TÜMÜNÜ YANITLA adayları.
 

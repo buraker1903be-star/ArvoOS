@@ -107,3 +107,9 @@
 /* Çöpteki yazışmanın uyarısı akışın üstünde: sayfanın geri kalanı
    okunur görünüyor, "neden yanıtlayamıyorum" sorusunun cevabı burada. */
 .os-root .posta-cop-uyari{margin:0 0 var(--sp-3)}
+
+/* Mesaj başlığındaki "Yönlendir": tarihin yanında, okumayı bölmeyecek
+   kadar sönük; satırın üzerine gelince belirginleşiyor. */
+.os-root .posta-ilet{color:var(--muted);font-size:12px;text-decoration:none}
+.os-root .posta-ilet:hover{color:var(--primary);text-decoration:underline}
+.os-root .posta-mesaj-yan{display:flex;align-items:center;gap:var(--sp-2)}

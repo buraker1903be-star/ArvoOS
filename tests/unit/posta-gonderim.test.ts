@@ -12,6 +12,8 @@ import {
   ccAdaylari,
   basliktakiAdresler,
   ekAdiParametresi,
+  yonlendirmeGovdesi,
+  yonlendirmeKonusu,
   guvenliEkAdi,
   imzaliGovde,
   yanitMesajiKur,
@@ -381,4 +383,37 @@ test("ek dosya adı RFC 5987 ile kodlanıyor ve satır sınırını aşmıyor", 
     ekler: [{ ad: "ğ".repeat(300) + ".pdf", tur: "application/pdf", veri: Buffer.from("x") }], sinir: "S1",
   });
   for (const satir of ham.split("\r\n")) assert.ok(satir.length <= 998, "998 karakteri aşan satır: " + satir.length);
+});
+
+test("yönlendirme konusu tek sefer Fwd taşıyor, Re'yi koruyor", () => {
+  assert.equal(yonlendirmeKonusu("Teklif"), "Fwd: Teklif");
+  // Zincirde biriken ön ek: "Fwd: Fwd: Teklif" üretilmemeli.
+  assert.equal(yonlendirmeKonusu("Fwd: Teklif"), "Fwd: Teklif");
+  assert.equal(yonlendirmeKonusu("FW: Teklif"), "FW: Teklif");
+  assert.equal(yonlendirmeKonusu("İlt: Teklif"), "İlt: Teklif");
+  // Yanıt ön eki korunuyor: alıcı neyin yönlendirildiğini konudan görmeli.
+  assert.equal(yonlendirmeKonusu("Re: Teklif"), "Fwd: Re: Teklif");
+  assert.equal(yonlendirmeKonusu("   "), "Fwd:");
+});
+
+test("yönlendirme gövdesi özgün mesajın üst verisini taşıyor", () => {
+  const govde = yonlendirmeGovdesi("Muhasebeye iletiyorum.", {
+    gonderenAd: "Ayşe Yılmaz",
+    gonderenAdres: "ayse@musteri.com",
+    alici: "info@biz.com",
+    konu: "Teklif",
+    tarih: new Date("2026-10-08T07:30:00Z"),
+    metin: "Teklifi aldık, teşekkürler.",
+  });
+  assert.match(govde, /^Muhasebeye iletiyorum\.\n\n---------- İletilen mesaj ----------\n/);
+  assert.match(govde, /Kimden: Ayşe Yılmaz <ayse@musteri\.com>/);
+  assert.match(govde, /Kime: info@biz\.com/);
+  assert.match(govde, /Konu: Teklif/);
+  assert.match(govde, /Tarih: 8 Ekim 2026 10:30/);
+  assert.match(govde, /Teklifi aldık, teşekkürler\.$/);
+  // Not yazılmamışsa gövde doğrudan başlıkla başlıyor.
+  const notsuz = yonlendirmeGovdesi("  ", {
+    gonderenAd: null, gonderenAdres: "a@b.com", alici: null, konu: null, tarih: null, metin: "metin",
+  });
+  assert.match(notsuz, /^---------- İletilen mesaj ----------\nKimden: a@b\.com\n\nmetin$/);
 });

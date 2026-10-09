@@ -180,6 +180,14 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
                 </span>
                 <span className="posta-mesaj-yan">
                   <small>{istanbulTarihSaat(mesaj.tarih)}</small>
+                  {/* Yönlendirme mesaj başına: ortak kutuda iletilen şey
+                      yazışmanın tamamı değil, çoğu zaman tek bir mesaj
+                      (ve ekleri). */}
+                  {!copte && izin("posta.yanitla") ? (
+                    <Link className="posta-ilet" href={`/panel/posta/yeni?yonlendir=${encodeURIComponent(mesaj.message_id)}`}>
+                      Yönlendir
+                    </Link>
+                  ) : null}
                 </span>
               </header>
               {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor. */}

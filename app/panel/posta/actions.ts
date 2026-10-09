@@ -6,7 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
+import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaEkiniGetir, postaGovdesiniGetir, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 
 /*
@@ -57,6 +57,41 @@ async function formdanEkler(formData: FormData): Promise<EkDosya[]> {
     tur: dosya.type || "application/octet-stream",
     veri: Buffer.from(await dosya.arrayBuffer()),
   })));
+}
+
+/*
+  YÖNLENDİRİLEN MESAJIN EKLERİ.
+
+  Ekler forma konmuyor, gönderimde Gmail'den yeniden çekiliyor: özgün
+  dosyayı tarayıcıya indirip geri yüklemek birkaç megabaytı iki kez
+  taşımak ve dosyanın içeriği için istemciye güvenmek olurdu.
+
+  Mesajın bu kuruma ait olduğu önce KENDİ oturumuyla doğrulanıyor;
+  ekleri çeken yol service_role ile çalışıyor ve RLS'i atlıyor.
+*/
+async function yonlendirilenEkler(
+  supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
+  organizationId: string,
+  messageId: string,
+): Promise<EkDosya[]> {
+  const { data: mesaj, error } = await supabase
+    .from("mail_messages").select("message_id")
+    .eq("organization_id", organizationId).eq("message_id", messageId).maybeSingle();
+  if (error) throw new Error("Yönlendirilen mesaj okunamadı: " + error.message);
+  if (!mesaj) throw new Error("Yönlendirilen mesaj bulunamadı veya bu kayda erişiminiz yok.");
+
+  const ozgun = await postaGovdesiniGetir(organizationId, messageId);
+  if ("hata" in ozgun) throw new Error("Yönlendirilen mesaj Gmail'den okunamadı: " + ozgun.hata);
+  if (!ozgun.ekler.length) return [];
+
+  const engel = ekBoyutuEngeli(ozgun.ekler.map((ek) => ({ ad: ek.dosyaAdi, boyut: ek.boyut })));
+  if (engel) throw new Error(`Özgün mesajın ekleri yönlendirilemiyor. ${engel}`);
+
+  return Promise.all(ozgun.ekler.map(async (ek) => {
+    const icerik = await postaEkiniGetir(organizationId, messageId, ek.ekId);
+    if ("hata" in icerik) throw new Error(`"${ek.dosyaAdi}" eki alınamadı: ${icerik.hata}`);
+    return { ad: icerik.dosyaAdi, tur: icerik.tur, veri: icerik.veri };
+  }));
 }
 
 async function postaContext() {
@@ -368,6 +403,18 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
 
   const firsat = String(formData.get("opportunity_id") ?? "").trim() || null;
 
+  /* Yönlendirmede özgün ekler de gidiyor; sınır ikisinin TOPLAMINA
+     bakıyor, yoksa 3 MB'lık bir eki 3 MB'lık bir yönlendirmeye
+     ekleyince Gmail isteği reddederdi. */
+  const yonlendirilenId = String(formData.get("yonlendir") ?? "").trim();
+  const kullaniciEkleri = await formdanEkler(formData);
+  const ozgunEkler = yonlendirilenId
+    ? await yonlendirilenEkler(context.supabase, membership.organization_id, yonlendirilenId)
+    : [];
+  const ekler = [...ozgunEkler, ...kullaniciEkleri];
+  const toplamEngel = ekBoyutuEngeli(ekler.map((ek) => ({ ad: ek.ad, boyut: ek.veri.length })));
+  if (toplamEngel) throw new Error(toplamEngel);
+
   const sonuc = await postaYeniGonder({
     organizationId: membership.organization_id,
     kutuAdresi: hesap.adres,
@@ -377,7 +424,7 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     konu,
     govde,
     opportunityId: firsat,
-    ekler: await formdanEkler(formData),
+    ekler,
     imza: hesap.imza,
     cc: ccListesi(formData),
   });
