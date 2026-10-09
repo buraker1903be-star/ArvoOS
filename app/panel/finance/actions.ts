@@ -7,6 +7,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { assertYetki } from "@/lib/yetkiler";
+import { gecerliGun, yeniVadeler } from "@/lib/taksit-vadesi";
 
 const types = new Set(["income", "expense"]);
 const statuses = new Set(["planned", "paid", "canceled"]);
@@ -320,4 +321,56 @@ export async function deleteContractCostItem(...args: Parameters<typeof deleteCo
 }
 export async function updateContractCostItem(...args: Parameters<typeof updateContractCostItem__impl>) {
   return runPanelAction(() => updateContractCostItem__impl(...args), "Maliyet kalemi güncellendi");
+}
+
+/*
+  TAKSİT VADESİ (2026-10): cari penceresinin ödeme takviminden tek bir
+  taksitin vadesi değiştirilir; istenirse sonraki taksitler de aynı gün
+  kadar kayar (lib/taksit-vadesi.ts). Eskiden yalnızca plan baştan
+  kurulabiliyordu ve tahsilatı olan planda o da kapalıydı.
+
+  Yetki tahsilat girişiyle aynı (finance.kayit.yonet); RLS de taksit
+  güncellemeyi kurum yöneticisine açıyor. Yazma kullanıcının kendi
+  oturumuyla: güncellenen satır sayısı sıfırsa yetki yoktur.
+*/
+async function taksitVadesiniDegistir__impl(formData: FormData) {
+  const { supabase, membership } = await financeContext();
+  const taksitId = String(formData.get("installment_id") ?? "").trim();
+  const yeniTarih = String(formData.get("due_date") ?? "").trim();
+  const kaydir = formData.get("sonrakiler") === "on";
+  if (!taksitId) throw new Error("Taksit seçilemedi.");
+  if (!gecerliGun(yeniTarih)) throw new Error("Geçerli bir vade tarihi seçin.");
+
+  const { data: hedef, error: hedefHatasi } = await supabase.from("payment_installments")
+    .select("id,payment_plan_id")
+    .eq("id", taksitId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (hedefHatasi) throw new Error("Taksit okunamadı: " + hedefHatasi.message);
+  if (!hedef) throw new Error("Taksit bulunamadı veya erişiminiz yok.");
+
+  const { data: plan, error: planHatasi } = await supabase.from("payment_installments")
+    .select("id,installment_no,due_date,status")
+    .eq("organization_id", membership.organization_id).eq("payment_plan_id", hedef.payment_plan_id);
+  if (planHatasi) throw new Error("Ödeme planı okunamadı: " + planHatasi.message);
+
+  const degisenler = yeniVadeler((plan ?? []) as { id: string; installment_no: number; due_date: string | null; status: string }[], taksitId, yeniTarih, kaydir);
+  for (const d of degisenler) {
+    const { data, error } = await supabase.from("payment_installments")
+      .update({ due_date: d.due_date })
+      .eq("id", d.id).eq("organization_id", membership.organization_id)
+      .select("id");
+    if (error) throw new Error("Vade güncellenemedi: " + error.message);
+    if (!data?.length) throw new Error("Vade güncellenemedi: taksit tarihini değiştirme yetkiniz yok.");
+  }
+
+  revalidatePath("/panel/finance/musteri/[id]", "page");
+  revalidatePath("/panel/crm/musteri/[id]", "page");
+  revalidatePath("/panel/crm/contracts/[id]", "page");
+  revalidatePath("/panel/finance");
+  revalidatePath("/panel/finance/genel-bakis");
+  return degisenler.length;
+}
+
+export async function taksitVadesiniDegistir(formData: FormData) {
+  const adet = await runPanelAction(() => taksitVadesiniDegistir__impl(formData));
+  if (typeof adet === "number") await flashSuccess(adet > 1 ? `Vade güncellendi; ${adet - 1} sonraki taksit de kaydırıldı` : "Vade güncellendi");
 }

@@ -10,6 +10,7 @@ import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } f
 import { PanelDrawer } from "../components/panel-drawer";
 import { createAdditionalService, createCollection, createRefund, deleteParty } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
+import { taksitVadesiniDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
 
 /*
@@ -135,6 +136,8 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const gecikenTutar = gecikenTaksitler.reduce((sum, t) => sum + t.kalan, 0);
   // Silme yıkıcı: hareket dökümünü de götürür (CASCADE). Sunucu eylemi ayrıca denetliyor.
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
+  // Taksit vadesi tahsilat girişiyle aynı yetki (finans kaydı yönetimi).
+  const vadeDegistirir = modules.some((m) => m.code === "finance") && (isPlatformOwner || izin("finance.kayit.yonet"));
   // Sözleşmeye bağlantı yalnızca CRM'i olana: yoksa sayfa hata verirdi.
   const crmVar = modules.some((m) => m.code === "crm");
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
@@ -348,6 +351,31 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       </span>
                       <strong>{money(Number(t.amount))}</strong>
                       <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
+                      {vadeDegistirir && t.durum !== "odendi" && t.durum !== "iptal" ? (
+                        <PanelDrawer
+                          triggerLabel="Vade"
+                          triggerClassName="panel-secondary cari-taksit-btn"
+                          kicker="TAKSİT VADESİ"
+                          title={`${sozlesme?.contract_no ?? "Sözleşme"} · ${t.installment_no}. taksit`}
+                          description={`${money(Number(t.amount))} · şu anki vade ${t.due_date ? date(t.due_date) : "yok"}`}
+                        >
+                          <form className="panel-form fin-form" action={taksitVadesiniDegistir}>
+                            <input type="hidden" name="installment_id" value={t.id} />
+                            <label className="wide">
+                              Yeni vade tarihi
+                              <input name="due_date" type="date" required defaultValue={t.due_date ?? ""} />
+                            </label>
+                            <label className="wide cari-kaydir">
+                              <input name="sonrakiler" type="checkbox" />
+                              <span>Sonraki taksitleri de aynı gün kadar kaydır</span>
+                            </label>
+                            <p className="fin-form-note">Ödenmiş tutar değişmez; yalnızca vade tarihi değişir. Gecikme ve yaklaşan vadeler yeni tarihe göre hesaplanır.</p>
+                            <div className="panel-form-actions wide">
+                              <button className="panel-primary">Vadeyi kaydet</button>
+                            </div>
+                          </form>
+                        </PanelDrawer>
+                      ) : null}
                     </li>
                   );
                 })}

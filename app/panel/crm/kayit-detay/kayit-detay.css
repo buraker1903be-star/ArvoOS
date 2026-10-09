@@ -584,3 +584,8 @@
 .maliyet-oran[data-ton="danger"] small{color:var(--danger)}
 .os-root .talep-tablo .crm-data-table[data-cols="maliyetler"] td[data-label="İş / Müşteri"]{min-width:190px}
 @media (max-width:1360px) and (min-width:761px){.os-root .talep-tablo .crm-data-table[data-cols="maliyetler"] .crm-col-rep{display:none}}
+
+/* Cari penceresi · ödeme takvimi: taksit başına "Vade" düğmesi ve kaydırma seçeneği. */
+.os-root .cari-hareketler .cari-taksit-btn{flex:none;width:auto;min-height:28px;padding:0 var(--sp-2);font-size:var(--fs-micro)}
+.os-root .panel-form label.cari-kaydir{flex-direction:row;align-items:center;gap:var(--sp-2);font-weight:var(--fw-medium)}
+.os-root .panel-form label.cari-kaydir input{width:auto;min-height:0;margin:0}

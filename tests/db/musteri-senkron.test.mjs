@@ -117,3 +117,33 @@ describe("müşteri bilgisi CRM ⇄ Finans", () => {
       assert.equal(s2.party_id ?? s2.plan_cari, s1.party_id ?? s1.plan_cari);
     }));
 });
+
+describe("taksit vadesi (Finans → cari penceresi)", () => {
+  /* Panelin sunucu işlemi (taksitVadesiniDegistir) vadeyi kullanıcının
+     KENDİ oturumuyla yazıyor; RLS kurum yöneticisine açık. Meşru yol yeşil
+     kalmalı, sıradan üye yazamamalı. */
+  const UYE = "00000000-0000-4000-8000-000000000003";
+
+  test("kurum sahibi taksit vadesini değiştirebiliyor; üye değiştiremiyor", () =>
+    islem(db, async () => {
+      await tohum();
+      await db.exec(`
+        insert into auth.users (id, email) values ('${UYE}', 'uye@example.com');
+        insert into public.organization_memberships (organization_id, user_id, role) values ('${KURUM}', '${UYE}', 'member');
+      `);
+      const s = await imzalat(FIRSAT);
+      const taksit = await tek(`select i.id from public.payment_installments i join public.crm_contracts c on c.payment_plan_id = i.payment_plan_id where c.id = $1 order by i.installment_no limit 1`, [s.id]);
+      assert.ok(taksit, "imzada taksit oluşmadı");
+
+      await rol(db, "authenticated", SAHIP);
+      const sahip = await db.query(`update public.payment_installments set due_date = '2026-12-31' where id = $1 and organization_id = $2 returning id`, [taksit.id, KURUM]);
+      await rol(db, "authenticated", UYE);
+      const uye = await db.query(`update public.payment_installments set due_date = '2027-01-15' where id = $1 and organization_id = $2 returning id`, [taksit.id, KURUM]);
+      await rol(db, "postgres");
+
+      assert.equal(sahip.rows.length, 1, "kurum sahibi vadeyi değiştiremedi");
+      assert.equal(uye.rows.length, 0, "üye vadeyi değiştirebildi");
+      const { due_date } = await tek(`select due_date::text from public.payment_installments where id = $1`, [taksit.id]);
+      assert.equal(due_date, "2026-12-31");
+    }));
+});
