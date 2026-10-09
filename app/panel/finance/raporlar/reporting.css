@@ -221,3 +221,44 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
   .panel-root .rpt-trend{height:150px}
   .panel-root .rpt-meter i,.panel-root .rpt-funnel-track i,.panel-root .rpt-share-bar i,.panel-root .rpt-trend-bars i,.panel-root .rpt-lost-track i{animation:none}
 }
+
+/* ---------- Grafikli kartlar (2026-10) ----------
+   Her kartın altında kendi verisine uygun küçük grafik (page.tsx MiniGrafik).
+   Renk kartın tonundan (--tone-fg); yalnızca token. */
+.rpt-widget{gap:4px;min-height:0;padding:14px 16px;container-type:inline-size}
+/* Dar kartta (telefonda iki sütun) altı ay adı birbirine giriyordu: yalnızca içinde bulunulan ay yazılır. */
+@container (max-width:220px){.rpt-mini-cubuk>span:not(.is-current) small{visibility:hidden}}
+.rpt-widget-bas{position:relative;z-index:1;display:flex;align-items:center;gap:8px;min-width:0}
+.rpt-widget-bas .rpt-widget-icon{width:28px;height:28px;margin:0;border-radius:9px}
+.rpt-widget-bas small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpt-mini{position:relative;z-index:1;height:64px;margin:6px 0 2px}
+/* Çubuk: son 6 ay */
+.rpt-mini-cubuk{display:flex;align-items:stretch;gap:5px}
+.rpt-mini-cubuk>span{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+.rpt-mini-cubuk i{display:block;width:100%;height:var(--h,3%);max-height:calc(100% - 16px);border-radius:5px 5px 2px 2px;background:var(--tone-fg);opacity:.32;transform-origin:bottom;animation:rpt-cubuk .8s var(--rpt-ease) both}
+.rpt-mini-cubuk .is-current i{opacity:1}
+.rpt-mini-cubuk small{color:var(--dim);font-size:11px;line-height:1}
+.rpt-mini-cubuk .is-current small{color:var(--ink);font-weight:600}
+@keyframes rpt-cubuk{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+/* Halka ve gösterge */
+.rpt-mini-halka{display:flex;align-items:center;gap:10px}
+.rpt-mini-halka span{color:var(--muted);font-size:12px;line-height:1.3}
+.rpt-halka-iz{fill:none;stroke:var(--surface-2);stroke-width:6}
+.rpt-halka-dolu{fill:none;stroke:var(--tone-fg);stroke-width:6;stroke-linecap:round}
+.rpt-mini-halka text{fill:var(--ink);font-size:12px;font-weight:700;font-family:var(--font-body)}
+.rpt-mini-gosterge{display:flex;align-items:flex-end;justify-content:center}
+.rpt-mini-gosterge .rpt-halka-iz,.rpt-mini-gosterge .rpt-halka-dolu{stroke-width:10}
+/* Yığın: maliyet / kâr */
+.rpt-mini-yigin{display:flex;flex-direction:column;justify-content:center;gap:8px}
+.rpt-yigin-cubuk{display:flex;height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.rpt-yigin-cubuk i{display:block;width:var(--w,0%);height:100%;background:var(--tone-fg)}
+.rpt-mini-lejant{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0;padding:0;list-style:none}
+.rpt-mini-lejant li{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}
+.rpt-mini-lejant li i{width:8px;height:8px;border-radius:50%;background:var(--tone-fg)}
+.rpt-mini-lejant b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+/* Şelale: tahsilattan düşülenler */
+.rpt-mini-selale{display:flex;flex-direction:column;justify-content:center;gap:4px;margin:6px 0 2px;padding:0;list-style:none}
+.rpt-mini-selale li{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:8px}
+.rpt-mini-selale li>span:first-child{color:var(--muted);font-size:11px;white-space:nowrap}
+.rpt-selale-iz{display:block;height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.rpt-selale-iz i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:var(--tone-fg);transform-origin:left;animation:rpt-fill .9s var(--rpt-ease) both}

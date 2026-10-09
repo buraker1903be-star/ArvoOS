@@ -6,7 +6,8 @@ import { PrintReportButton } from "./print-report-button";
 import "./reporting.css";
 
 const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
-const percent = (value: number) => `%${Math.round(value)}`;
+// Negatif oran "−%184" (eskiden "%-184" yazılıyordu).
+const percent = (value: number) => (Math.round(value) < 0 ? `−%${Math.abs(Math.round(value))}` : `%${Math.round(value)}`);
 const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 function pad(value: number) { return String(value).padStart(2, "0"); }
 function dateKey(date: Date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
@@ -29,7 +30,25 @@ const deduction = (amount: number) => (amount ? `−${money(amount)}` : money(0)
 const shareOf = (value: number, base: number) => (base ? (value / base) * 100 : null);
 
 type Tone = "brand" | "info" | "gold" | "success" | "warning" | "danger";
-type Widget = { label: string; value: string; note: string; icon: string; tone: Tone; meter?: number; toned?: boolean };
+/*
+  GRAFİKLİ KARTLAR (2026-10). Üstteki on kart eskiden yalnızca bir sayı ve
+  bir cümleydi; dönemin gidişatı (artıyor mu, oranı ne, nereye gitti)
+  görünmüyordu. Her kart kendi verisine uygun küçük bir grafik taşıyor:
+    cubuk    son 6 ayın değeri (gelen lead, satış, iş maliyeti, tahsilat)
+    halka    bir önceki aşamaya oran (ulaşılan, nitelikli, teklif)
+    gosterge yarım daire oran (dönüşüm)
+    yigin    satış değerinin maliyet / kâr bölünmesi (brüt kâr)
+    selale   tahsilattan düşülenler ve kalan (net nakit)
+  Grafikler sunucuda çizilen SVG ve CSS: istemci kodu, kütüphane yok.
+*/
+type SeriNoktasi = { ad: string; deger: number; etiket: string; simdiki?: boolean };
+type Grafik =
+  | { tur: "cubuk"; seri: SeriNoktasi[] }
+  | { tur: "halka"; oran: number | null; altyazi: string }
+  | { tur: "gosterge"; oran: number }
+  | { tur: "yigin"; parcalar: { ad: string; deger: number; ton: Tone }[] }
+  | { tur: "selale"; adimlar: { ad: string; deger: number; ton: Tone }[] };
+type Widget = { label: string; value: string; note: string; icon: string; tone: Tone; toned?: boolean; grafik: Grafik };
 type LedgerRow = { label: string; hint: string; amount: string; share: number | null; tone: Tone };
 
 const iconPaths: Record<string, ReactNode> = {
@@ -55,13 +74,81 @@ function Icon({ name, size = 18 }: { name: string; size?: number }) {
   );
 }
 
+function MiniGrafik({ grafik }: { grafik: Grafik }) {
+  if (grafik.tur === "cubuk") {
+    const enBuyuk = Math.max(1, ...grafik.seri.map((n) => n.deger));
+    return (
+      <div className="rpt-mini rpt-mini-cubuk" role="img" aria-label={grafik.seri.map((n) => `${n.ad} ${n.etiket}`).join(", ")}>
+        {grafik.seri.map((n) => (
+          <span key={n.ad} className={n.simdiki ? "is-current" : undefined} title={`${n.ad}: ${n.etiket}`}>
+            <i style={cssVar("--h", `${n.deger ? Math.max(8, (n.deger / enBuyuk) * 100) : 3}%`)} />
+            <small>{n.ad}</small>
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (grafik.tur === "halka") {
+    const cevre = 2 * Math.PI * 22;
+    const oran = grafik.oran === null ? 0 : clampPercent(grafik.oran);
+    return (
+      <div className="rpt-mini rpt-mini-halka">
+        <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+          <circle className="rpt-halka-iz" cx="28" cy="28" r="22" />
+          <circle className="rpt-halka-dolu" cx="28" cy="28" r="22" strokeDasharray={`${(oran / 100) * cevre} ${cevre}`} transform="rotate(-90 28 28)" />
+          <text x="28" y="32" textAnchor="middle">{grafik.oran === null ? "—" : percent(grafik.oran)}</text>
+        </svg>
+        <span>{grafik.altyazi}</span>
+      </div>
+    );
+  }
+  if (grafik.tur === "gosterge") {
+    const oran = clampPercent(grafik.oran);
+    const uzunluk = Math.PI * 40;
+    return (
+      <div className="rpt-mini rpt-mini-gosterge" role="img" aria-label={`Dönüşüm ${percent(grafik.oran)}`}>
+        <svg viewBox="0 0 100 56" width="100" height="56" aria-hidden="true">
+          <path className="rpt-halka-iz" d="M10 50 A40 40 0 0 1 90 50" />
+          <path className="rpt-halka-dolu" d="M10 50 A40 40 0 0 1 90 50" strokeDasharray={`${(oran / 100) * uzunluk} ${uzunluk}`} />
+        </svg>
+      </div>
+    );
+  }
+  if (grafik.tur === "yigin") {
+    const toplam = grafik.parcalar.reduce((t, p) => t + Math.max(0, p.deger), 0);
+    return (
+      <div className="rpt-mini rpt-mini-yigin">
+        <div className="rpt-yigin-cubuk" aria-hidden="true">
+          {toplam ? grafik.parcalar.map((p) => <i key={p.ad} data-tone={p.ton} style={cssVar("--w", `${(Math.max(0, p.deger) / toplam) * 100}%`)} />) : null}
+        </div>
+        <ul className="rpt-mini-lejant">
+          {grafik.parcalar.map((p) => <li key={p.ad} data-tone={p.ton}><i />{p.ad} <b>{money(p.deger)}</b></li>)}
+        </ul>
+      </div>
+    );
+  }
+  const taban = Math.max(1, ...grafik.adimlar.map((a) => Math.abs(a.deger)));
+  return (
+    <ul className="rpt-mini rpt-mini-selale">
+      {grafik.adimlar.map((a) => (
+        <li key={a.ad} data-tone={a.ton}>
+          <span>{a.ad}</span>
+          <span className="rpt-selale-iz"><i style={cssVar("--w", `${Math.max(a.deger ? 3 : 0, (Math.abs(a.deger) / taban) * 100)}%`)} /></span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function WidgetCard({ widget }: { widget: Widget }) {
   return (
     <article className="rpt-widget" data-tone={widget.tone}>
-      <span className="rpt-widget-icon"><Icon name={widget.icon} /></span>
-      <small>{widget.label}</small>
+      <header className="rpt-widget-bas">
+        <span className="rpt-widget-icon"><Icon name={widget.icon} /></span>
+        <small>{widget.label}</small>
+      </header>
       <strong className={widget.toned ? "is-toned" : undefined}>{widget.value}</strong>
-      {widget.meter !== undefined ? <span className="rpt-meter" aria-hidden="true"><i style={cssVar("--w", `${clampPercent(widget.meter)}%`)} /></span> : null}
+      <MiniGrafik grafik={widget.grafik} />
       <span className="rpt-widget-note">{widget.note}</span>
     </article>
   );
@@ -152,7 +239,13 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const saleOpportunityIds = new Set([...wonOpportunities.map((row) => row.id), ...signedOpportunityIds]);
   const sales = saleOpportunityIds.size;
   const salesValue = signedContracts.length ? signedContracts.reduce((sum, row) => sum + Number(row.amount), 0) : wonOpportunities.reduce((sum, row) => sum + Number(row.estimated_value), 0);
-  const conversion = reached.length ? (sales / reached.length) * 100 : 0;
+  /*
+    Dönüşüm: bu dönemde GÖRÜŞÜLEN adaylardan satışa dönenlerin oranı.
+    Eskiden dönemin bütün satışları (önceki aylarda gelmiş müşteriler
+    dahil) bu dönemde görüşülenlere bölünüyordu ve oran %275 gibi
+    %100'ü aşan değerler çıkıyordu.
+  */
+  const conversion = reached.length ? (reached.filter((row) => saleOpportunityIds.has(row.id)).length / reached.length) * 100 : 0;
   const averageSale = sales ? salesValue / sales : 0;
   const signedContractIds=new Set(signedContracts.map(row=>row.id));
   const contractedCost=costItems.filter(row=>signedContractIds.has(row.contract_id)).reduce((sum,row)=>sum+Number(row.amount),0);
@@ -186,22 +279,37 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   for (const row of opportunities) { const bucket = months.find((month) => month.key === row.created_at.slice(0, 7)); if (bucket) bucket.leads += 1; }
   for (const row of opportunities.filter((item) => item.stage === "won")) { const bucket = months.find((month) => month.key === row.updated_at.slice(0, 7)); if (bucket) bucket.sales += 1; }
   const maxTrend = Math.max(1, ...months.map((row) => row.leads));
+  /* Kart grafikleri için aylık seriler (yukarıdaki months dilimleriyle).
+     Satış imzalı sözleşmeden (imza tarihi), maliyet kalem tarihinden,
+     tahsilat cari dökümündeki ödemelerden. */
+  const aylikSeri = (kayitlar: { tarih: string | null; tutar: number }[], bicim: (n: number) => string): SeriNoktasi[] =>
+    months.map((ay, sira) => {
+      const deger = kayitlar.filter((k) => k.tarih?.slice(0, 7) === ay.key).reduce((t, k) => t + k.tutar, 0);
+      return { ad: ay.label, deger, etiket: bicim(deger), simdiki: sira === months.length - 1 };
+    });
+  const adet = (n: number) => String(n);
+  const leadSerisi = aylikSeri(opportunities.map((o) => ({ tarih: o.created_at, tutar: 1 })), adet);
+  const imzaliTumu = contracts.filter((c) => ["signed", "completed"].includes(c.status));
+  const satisSerisi = aylikSeri(imzaliTumu.map((c) => ({ tarih: c.signed_at ?? c.created_at, tutar: 1 })), adet);
+  const maliyetSerisi = aylikSeri(costItems.map((c) => ({ tarih: c.cost_date, tutar: Number(c.amount) })), money);
+  const tahsilatSerisi = aylikSeri(accountEntries.filter((e) => e.entry_type === "credit").map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), money);
   const rangeLabel = key === "bu_ay" ? "Bu ay" : key === "gecen_ay" ? "Geçen ay" : key === "bu_yil" ? "Bu yıl" : `${start.toLocaleDateString("tr-TR")} – ${end.toLocaleDateString("tr-TR")}`;
 
   // --- Sunum: yukarıda hesaplanan değerlerden türetilir, yeni sorgu yok ---
+  const oranOf = (pay: number, payda: number) => (payda ? (pay / payda) * 100 : null);
   const salesWidgets: Widget[] = [
-    { label: "Gelen lead", value: String(incoming.length), note: "Bu dönemde gelen aday", icon: "inbox", tone: "brand" },
-    { label: "Ulaşılan", value: String(reached.length), note: incoming.length ? `${percent((reached.length / incoming.length) * 100)} erişim oranı` : "Görüşme yok", icon: "chat", tone: "info" },
-    { label: "Nitelikli lead", value: String(qualified.length), note: "Gerçek müşteri adayı", icon: "badge", tone: "info" },
-    { label: "Teklif", value: String(proposalCount), note: "Teklif verilen tekil müşteri", icon: "doc", tone: "gold" },
-    { label: "Satış", value: String(sales), note: `${money(salesValue)} satış değeri`, icon: "seal", tone: "success" },
+    { label: "Gelen lead", value: String(incoming.length), note: "Son 6 ay, aylık gelen aday", icon: "inbox", tone: "brand", grafik: { tur: "cubuk", seri: leadSerisi } },
+    { label: "Ulaşılan", value: String(reached.length), note: "Gelen adayların görüşülen kısmı", icon: "chat", tone: "info", grafik: { tur: "halka", oran: oranOf(reached.length, incoming.length), altyazi: "erişim oranı" } },
+    { label: "Nitelikli lead", value: String(qualified.length), note: "Görüşülenlerin gerçek aday kısmı", icon: "badge", tone: "info", grafik: { tur: "halka", oran: oranOf(qualified.length, reached.length), altyazi: "nitelikli oranı" } },
+    { label: "Teklif", value: String(proposalCount), note: "Teklif verilen tekil müşteri", icon: "doc", tone: "gold", grafik: { tur: "halka", oran: oranOf(proposalCount, qualified.length), altyazi: "nitelikliye teklif" } },
+    { label: "Satış", value: String(sales), note: `${money(salesValue)} · son 6 ay imzalanan`, icon: "seal", tone: "success", grafik: { tur: "cubuk", seri: satisSerisi } },
   ];
   const financeWidgets: Widget[] = [
-    { label: "Dönüşüm", value: percent(conversion), note: "Görüşmeden satışa", icon: "spark", tone: "gold", meter: conversion },
-    { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti", icon: "briefcase", tone: "warning" },
-    { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, meter: grossMargin },
-    { label: "Tahsilat", value: money(collections), note: "Kasaya giren müşteri ödemesi", icon: "wallet", tone: "brand" },
-    { label: "Net nakit hareketi", value: money(realizedProfit), note: `${percent(realizedMargin)} tahsilat sonrası fark`, icon: "flow", tone: realizedProfit >= 0 ? "success" : "danger", toned: true },
+    { label: "Dönüşüm", value: percent(conversion), note: "Görüşmeden satışa", icon: "spark", tone: "gold", grafik: { tur: "gosterge", oran: conversion } },
+    { label: "İş maliyeti", value: money(contractedCost), note: "Bu dönem imzalanan işlerin maliyeti · son 6 ay", icon: "briefcase", tone: "warning", grafik: { tur: "cubuk", seri: maliyetSerisi } },
+    { label: "Brüt iş kârı", value: money(grossProfit), note: `${percent(grossMargin)} sözleşme marjı`, icon: "chart", tone: grossProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "yigin", parcalar: [{ ad: "Maliyet", deger: contractedCost, ton: "warning" }, { ad: "Kâr", deger: grossProfit, ton: grossProfit >= 0 ? "success" : "danger" }] } },
+    { label: "Tahsilat", value: money(collections), note: "Kasaya giren müşteri ödemesi · son 6 ay", icon: "wallet", tone: "brand", grafik: { tur: "cubuk", seri: tahsilatSerisi } },
+    { label: "Net nakit hareketi", value: money(realizedProfit), note: `${percent(realizedMargin)} tahsilat sonrası fark`, icon: "flow", tone: realizedProfit >= 0 ? "success" : "danger", toned: true, grafik: { tur: "selale", adimlar: [{ ad: "Tahsilat", deger: collections, ton: "brand" }, { ad: "İş maliyeti", deger: -paidJobCost, ton: "warning" }, { ad: "Genel gider", deger: -operatingExpense, ton: "warning" }, { ad: "Kalan", deger: realizedProfit, ton: realizedProfit >= 0 ? "success" : "danger" }] } },
   ];
   const hasLeads = incoming.length > 0;
   const contractRows: LedgerRow[] = [
@@ -221,7 +329,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
 
   return <div className="rpt">
     <div className="panel-pagehead rpt-pagehead">
-      <div><small className="panel-kicker">FİNANS / RAPORLAR</small><h1>Satış ve Gerçek Kârlılık</h1><p>İmzalı sözleşme, tahsilat ve iş maliyeti kayıtlarından hazırlanan finansal yönetim özeti.</p></div>
+      <div><small className="panel-kicker">FİNANS</small><h1>Raporlar</h1></div>
       <div className="panel-page-actions"><span className="status-pill rpt-range-pill" data-tone="gold">{rangeLabel}</span><PrintReportButton /></div>
     </div>
 
