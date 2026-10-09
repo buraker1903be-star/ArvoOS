@@ -8,6 +8,8 @@ import { taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaytrStatus } from "@/lib/paytr-status";
 import { normalizePhone } from "@/lib/whatsapp-send";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } from "../odeme-baglantisi";
 import { PanelDrawer } from "../../components/panel-drawer";
 import {
@@ -73,6 +75,7 @@ type Contract = {
   status: string;
   signed_at: string | null;
   payment_plan_id: string | null;
+  opportunity_id: string | null;
 };
 type Taksit = { id: string; payment_plan_id: string; installment_no: number; due_date: string | null; amount: number; status: string };
 
@@ -119,7 +122,7 @@ export default async function AccountDetailPage({
         .maybeSingle(),
       supabase
         .from("crm_contracts")
-        .select("id,contract_no,title,amount,status,signed_at,payment_plan_id")
+        .select("id,contract_no,title,amount,status,signed_at,payment_plan_id,opportunity_id")
         .eq("party_id", id)
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"])
@@ -198,6 +201,25 @@ export default async function AccountDetailPage({
   const canDelete = isPlatformOwner || izin("finance.cari.sil");
   // Sözleşmeye bağlantı yalnızca CRM'i olana: yoksa sayfa hata verirdi.
   const crmVar = modules.some((m) => m.code === "crm");
+
+  /*
+    Müşteriyle yazışmalar (WhatsApp ve Postalar sekmeleri): müşteri
+    sayfası ve kayıt detaylarıyla aynı kural (crm/musteri-yazismalari.tsx).
+    Numara ve adres carinin kendisinden; posta ayrıca carinin
+    sözleşmelerinin taleplerine bağlı yazışmaları da getiriyor. WhatsApp'ı
+    CRM modülü olan görür (WhatsApp ekranının kuralı), postayı ortak kutuyu
+    görebilen (posta.gor).
+  */
+  const postaGorur = izin("posta.gor");
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    crmVar ? musteriWhatsapp(membership.organization_id, current.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    postaGorur
+      ? musteriPostalari(supabase, membership.organization_id, {
+          talepIdleri: [...new Set(((contracts ?? []) as Contract[]).map((c) => c.opportunity_id).filter((v): v is string => Boolean(v)))],
+          eposta: current.email,
+        })
+      : Promise.resolve([]),
+  ]);
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
   const durumBilgisi = DURUM[durum] ?? DURUM.hareketsiz;
   const telefonVar = Boolean(normalizePhone(String(current.phone ?? "")));
@@ -397,34 +419,48 @@ export default async function AccountDetailPage({
           </dl>
         </section>
 
-        <section className="panel-card talep-bilgi" aria-label="Hareket dökümü">
-          <div className="cari-baslik">
-            <h2>Hareket dökümü</h2>
-            <small>{entries.length} hareket</small>
+        {/* Orta sütun sekmeli (2026-10): hareket dökümü, WhatsApp ve
+            posta. Eskiden yalnızca hareket dökümüydü; müşteriyle yazışma
+            için ayrı ekranlarda telefon/adres aranıyordu. */}
+        <TalepAkis
+          sekmeler={[
+            "Hareketler",
+            ...(crmVar ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
+            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+          ]}
+          tembel={crmVar && postaGorur ? [1, 2] : crmVar || postaGorur ? [1] : []}
+        >
+          <div className="musteri-mesajlar">
+              <div className="cari-baslik">
+                <h2>Hareket dökümü</h2>
+                <small>{entries.length} hareket</small>
+              </div>
+              {entries.length ? (
+                <ul className="cari-hareketler">
+                  {entries.map((e) => {
+                    const kind = entryKind(e);
+                    return (
+                      <li key={e.id}>
+                        <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
+                        <span className="cari-hareket-metin">
+                          <b>{e.description}</b>
+                          <small>{date(e.transaction_date)}{e.reference_no ? ` · ${e.reference_no}` : ""}</small>
+                        </span>
+                        <strong className={e.entry_type === "credit" ? "cari-arti" : undefined}>
+                          {e.entry_type === "credit" ? "−" : "+"}
+                          {money(Number(e.amount))}
+                        </strong>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="ic-akis-bos">Henüz cari hareket yok. Tahsilat, ek hizmet ve iade kayıtları burada tarih sırasıyla görünür.</p>
+              )}
           </div>
-          {entries.length ? (
-            <ul className="cari-hareketler">
-              {entries.map((e) => {
-                const kind = entryKind(e);
-                return (
-                  <li key={e.id}>
-                    <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
-                    <span className="cari-hareket-metin">
-                      <b>{e.description}</b>
-                      <small>{date(e.transaction_date)}{e.reference_no ? ` · ${e.reference_no}` : ""}</small>
-                    </span>
-                    <strong className={e.entry_type === "credit" ? "cari-arti" : undefined}>
-                      {e.entry_type === "credit" ? "−" : "+"}
-                      {money(Number(e.amount))}
-                    </strong>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="ic-akis-bos">Henüz cari hareket yok. Tahsilat, ek hizmet ve iade kayıtları burada tarih sırasıyla görünür.</p>
-          )}
-        </section>
+          {crmVar ? <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={current.name} /></div> : null}
+          {postaGorur ? <div><PostaAkisi postalar={postalar} epostaVar={epostaVar} /></div> : null}
+        </TalepAkis>
 
         <section className="panel-card talep-bilgi cari-sag" aria-label="Sözleşmeler ve bakiye">
           <div className="cari-baslik">
