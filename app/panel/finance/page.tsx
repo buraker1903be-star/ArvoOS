@@ -4,6 +4,8 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCollection } from "../accounts/actions";
 import { ProfitabilityWorkspace, type ProfitRow } from "./finance-workspaces";
+import { PanelModal } from "../components/panel-modal";
+import { MaliyetDetayi } from "./costs/maliyet-detayi";
 import { OdemeBaglantisiFormu } from "../accounts/odeme-baglantisi";
 import { normalizePhone } from "@/lib/whatsapp-send";
 import { buildAccountBalances } from "./account-balances";
@@ -176,7 +178,7 @@ function CariTablosu({ rows, paytrHazir }: { rows: Hesap[]; paytrHazir: boolean 
 export default async function FinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string }>;
+  searchParams: Promise<{ arama?: string; durum?: string; gorunum?: string; maliyet?: string }>;
 }) {
   const params = await searchParams;
   const { supabase, membership, modules, izin } = await getPanelContext();
@@ -299,6 +301,8 @@ export default async function FinancePage({
   const openCount = accounts.filter((a) => a.balance > 0).length;
   const isFiltered = Boolean(query);
   const copy = pageCopy[mode];
+  // Pencerede açılacak iş: yalnızca listede olan (kurumun imzalı) bir sözleşme.
+  const seciliMaliyet = mode === "maliyet" && params.maliyet ? profitRows.find((row) => row.id === params.maliyet) ?? null : null;
   // PayTR bağlı ve açıksa satırda "Ödeme linki" çıkar.
   const paytr = mode === "cari" ? await getPaytrStatus(membership.organization_id) : null;
   const paytrHazir = Boolean(paytr?.available && paytr.connected && paytr.enabled);
@@ -395,6 +399,26 @@ export default async function FinancePage({
           <div className="talep-izgara maliyet-liste-izgara">
             <ProfitabilityWorkspace rows={profitRows} />
           </div>
+
+          {/* Maliyet detayı ortada açılan pencere (?maliyet=<sözleşme>);
+              eskiden ayrı sayfaydı ve listeye dönünce süzgeçler kayboluyordu.
+              Kapanınca adres listeye döner. key: başka satıra geçince
+              pencere yeniden kurulsun. */}
+          {seciliMaliyet ? (
+            <PanelModal
+              key={seciliMaliyet.id}
+              dugmesiz
+              baslangicAcik
+              triggerLabel=""
+              boy="tam"
+              kicker="İŞ MALİYETİ"
+              title={`${seciliMaliyet.contractNo} · ${seciliMaliyet.customer}`}
+              description={seciliMaliyet.title}
+              kapaninca="/panel/finance?gorunum=maliyet"
+            >
+              <MaliyetDetayi contractId={seciliMaliyet.id} />
+            </PanelModal>
+          ) : null}
         </>
       ) : null}
     </main>

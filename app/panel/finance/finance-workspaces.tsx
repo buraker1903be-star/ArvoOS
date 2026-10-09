@@ -72,7 +72,7 @@ export function ProfitabilityWorkspace({rows}:{rows:ProfitRow[]}){
               {visible.map(row=>(
                 <tr key={row.id}>
                   <td data-label="İş / Müşteri">
-                    <Link className="crm-row-link" href={`/panel/finance/costs/${row.id}`} aria-label={`${row.contractNo} maliyet detayı`}>
+                    <Link className="crm-row-link" href={`/panel/finance?gorunum=maliyet&maliyet=${row.id}`} scroll={false} aria-label={`${row.contractNo} maliyet detayı`}>
                       <span className="crm-table-title" title={row.customer}>{row.customer}</span>
                       <span className="crm-table-sub">{row.contractNo} · {row.title}</span>
                     </Link>

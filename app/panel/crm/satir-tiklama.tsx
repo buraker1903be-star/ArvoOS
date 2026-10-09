@@ -51,7 +51,10 @@ export function SatirTiklama() {
       const satir = hedef.closest("tbody tr");
       const adres = satir?.querySelector<HTMLAnchorElement>("a.crm-row-link")?.getAttribute("href");
       if (!adres) return;
-      if (kip === "ayni-sekme") router.push(adres);
+      /* Aynı sayfada kalan adres (ör. ?maliyet=… penceresi) listeyi en
+         üste kaydırmasın: pencere kapanınca kişi kaldığı satırı arıyordu. */
+      const ayniSayfa = new URL(adres, window.location.href).pathname === window.location.pathname;
+      if (kip === "ayni-sekme") router.push(adres, ayniSayfa ? { scroll: false } : undefined);
       else window.open(adres, "_blank", kip === "yeni-pencere" ? "noopener,popup" : "noopener");
     };
 
