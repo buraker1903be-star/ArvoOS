@@ -44,6 +44,12 @@ jobs:
       # burada yakalanır.
       - name: Migration denetimi
         run: npm run check:migrations
+      # tests/db düzeneği migration dosyalarını dökümün üstüne yeniden
+      # uyguluyor; listede eski bir dosya kalırsa bir işlevin gövdesi
+      # eskiye döner ve test üretimde olmayan davranışı yeşil sınar.
+      # 09.10.2026'da bir üretim hatasını iki gün gizledi.
+      - name: Düzenek denetimi
+        run: npm run check:db-testleri
       # Koddaki tablo/sütun/fonksiyon adları canlı şemada var mı
       # (supabase/schema/katalog.json). Supabase istemcisi tipsiz; yanlış
       # sütun adı derlemede görünmez, üretimde sessizce boş veri döndürür.

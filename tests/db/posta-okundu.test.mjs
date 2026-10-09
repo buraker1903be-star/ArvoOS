@@ -34,6 +34,12 @@ before(async () => {
     "20261006190207_posta_gelen_kutusu.sql",
     "20261006193918_posta_gecmis_ve_crm_bagi.sql",
     "20261007123751_sik_esitleme.sql",
+    /* SON SIRADA: yukarıdaki gelen kutusu dosyası konuşma korumasını eski
+       gövdesine döndürüyor; çöp ve etiket sütunlarının koruması bu ikisinden
+       geliyor (AGENTS.md · "Eski bir migration'ı yeniden uygulamak"). */
+    "20261008201548_posta_cop_kutusu.sql",
+    "20261009203815_posta_etiketleri.sql",
+    "20261009205806_posta_okunmamis_korumasi_geri.sql",
   ]) {
     await db.exec(fs.readFileSync(migration(ad), "utf8"));
   }

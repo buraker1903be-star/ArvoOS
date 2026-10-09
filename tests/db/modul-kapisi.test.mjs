@@ -23,6 +23,11 @@ import { islem, rol, veritabani } from "./ortam.mjs";
 const MIGRATIONLAR = [
   "20261006190207_posta_gelen_kutusu.sql",   // private.arvo_modul_acik buradan
   "20261006195339_modul_kapisi_veritabaninda.sql",
+  /* SON SIRADA: gelen kutusu dosyası konuşma korumasını eski gövdesine
+     döndürüyor. Bu dosya onu sınamıyor ama bırakılmış bir mayın. */
+  "20261008201548_posta_cop_kutusu.sql",
+  "20261009203815_posta_etiketleri.sql",
+  "20261009205806_posta_okunmamis_korumasi_geri.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000007a1";

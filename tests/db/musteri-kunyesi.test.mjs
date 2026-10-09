@@ -28,6 +28,11 @@ const MIGRATIONLAR = [
   "20261001214623_musteri_iletisimi_operasyonda.sql",
   "20261001221605_musteri_adi_ise_de_yansisin.sql",
   "20261001222733_musteri_bilgisi_her_yerde.sql",
+  /* SON SIRADA: yukarıdaki dosya arvo_musteri_bilgisi_yansit'ı tek yönlü
+     eski gövdesine döndürüyor. İki yönlü senkron (kurum sahibinin kararı,
+     09.10.2026) bu dosyadan geliyor; eklenmezse test üretimde olmayan bir
+     davranışı sınar ve yeşil kalır. */
+  "20261009082529_musteri_iki_yonlu_senkron.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000002a1";
@@ -345,22 +350,20 @@ describe("müşteri künyesi operasyonda", () => {
       assert.equal(cari.phone, "05551112233");
     }));
 
-  test("elle düzeltilmiş cari bilgisi ezilmiyor", () =>
-    islem(db, async () => {
-      /* Muhasebe cariyi kendi ekranından değiştirebiliyor (ticari unvan,
-         fatura e-postası). CRM'den gelen düzeltme onu ezmemeli. */
-      await tohum();
-      const cariId = await cariKur("Yılmaz Danışmanlık Ltd.", "fatura@yilmaz.com");
-      await kunyeYaz(UZMAN, {}, {
-        customer_name: "Ayşe Yılmaz Demir",
-        contact_email: "ayse.demir@example.com",
-        contact_phone: "05551112233",
-      });
-      const cari = await tek(`select name,email,phone from public.account_parties where id=$1`, [cariId]);
-      assert.equal(cari.name, "Yılmaz Danışmanlık Ltd.", "Elle verilen unvan korunmalı");
-      assert.equal(cari.email, "fatura@yilmaz.com", "Elle verilen e-posta korunmalı");
-      assert.equal(cari.phone, "05551112233", "Dokunulmamış alan güncellenmeli");
-    }));
+  /*
+    "Elle düzeltilmiş cari bilgisi ezilmiyor" testi KALDIRILDI (09.10.2026).
+
+    Kural 20261009082529 ile değişti (kurum sahibinin kararı): talepte ad,
+    telefon ya da e-posta değişince bağlı cariler HER ZAMAN güncelleniyor.
+    Eski tek yönlü kural yalnızca cari hâlâ eski değeri taşıyorsa yazıyordu
+    ve bir kez ayrışan alan ("EMİNE ÇETİN" / "Emine Çetin") bir daha hiç
+    eşleşmiyordu.
+
+    Test bunu fark etmedi: düzenek eski migration dosyasını yeniden
+    uygulayıp fonksiyonu eski gövdesine döndürüyordu, yani üretimde
+    olmayan bir davranışı sınıyor ve yeşil kalıyordu. Yeni kuralın
+    testleri tests/db/musteri-senkron.test.mjs içinde, iki yön de dahil.
+  */
 
   test("başka müşterinin carisine dokunulmuyor", () =>
     islem(db, async () => {

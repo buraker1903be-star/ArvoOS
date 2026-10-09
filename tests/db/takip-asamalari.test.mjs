@@ -33,17 +33,14 @@ const KOD = "ABC123";
 let db;
 before(async () => {
   db = await veritabani();
-  const sutun = async (tablo, ad) =>
-    (await db.query(
-      `select 1 from information_schema.columns where table_schema='public' and table_name=$1 and column_name=$2`,
-      [tablo, ad],
-    )).rows.length > 0;
-  if (!(await sutun("operation_steps", "phase_title"))) {
-    await db.exec(fs.readFileSync(migration("20261001060820_asama_gruplari_ve_firsat_adimlari.sql"), "utf8"));
-  }
-  if (!(await sutun("organizations", "tracking_show_phases"))) {
-    await db.exec(fs.readFileSync(migration("20261001100249_musteri_takip_asamalari.sql"), "utf8"));
-  }
+  /*
+    İki koşullu uygulama KALDIRILDI (09.10.2026): her iki sütun da artık
+    anlık görüntüde, yani koşul hiç tutmuyordu. Dosyalar yine de
+    listedeyken, denetim onları "eski gövdeye döndürüyor" sayıyordu —
+    20261001060820 process_won_crm_opportunity ve
+    add_standard_operation_steps işlevlerini sonraki iki migration'dan
+    önceki hâliyle taşıyor.
+  */
   // Görev tanımlarını ekleyen sürüm (create or replace; yeniden koşması zararsız).
   await db.exec(fs.readFileSync(migration("20261001173620_gorev_tanimlari_takipte.sql"), "utf8"));
 });

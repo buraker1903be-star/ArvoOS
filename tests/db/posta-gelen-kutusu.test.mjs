@@ -35,6 +35,7 @@ const MIGRATIONLAR = [
   "20261008201548_posta_cop_kutusu.sql",
   // Etiketler: tablo ve koruma anlık görüntüye girene kadar buradan kuruluyor.
   "20261009203815_posta_etiketleri.sql",
+  "20261009205806_posta_okunmamis_korumasi_geri.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";

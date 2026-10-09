@@ -143,7 +143,16 @@ hâline döndürür. Test o korumayı hiç sınamamış olur ama yeşil kalır �
 listesiyle yeniden yaratıp çöp kutusu sütunlarının korumasını
 düşürüyordu. Bir işlevi değiştiren migration'ı listeye SONDAN ekleyin ya
 da eski olanı listeden çıkarın; kuralın gerçekten yürürlükte olduğunu
-reddedilme bekleyen bir senaryoyla kanıtlayın.
+reddedilme bekleyen bir senaryoyla kanıtlayın. **`npm run
+check:db-testleri` bunu CI'da denetliyor** (09.10.2026'da eklendi);
+bilerek eski gövdeyle koşan bir satırın sonuna `govde-tamam: <sebep>`
+yazılır.
+
+**Bir işlevi yeniden yazarken gövdeyi anlık görüntüden alın**, eski bir
+migration dosyasından değil. Çöp kutusu migration'ı konuşma korumasını
+20261006190207'deki gövdeden türetti ve arada eklenmiş `okunmamis`
+satırını düşürdü: koruma canlıda iki gün yoktu ve düzenek eski dosyayı
+yeniden uyguladığı için test bunu söylemedi.
 
 `tests/db/` (`npm run test:db`) canlı şemayı PGlite'a kurar ve akışları gerçek
 fonksiyon/tetikleyicilerle, Supabase rolleriyle (anon, authenticated) koşar.
