@@ -558,9 +558,10 @@ export async function postaYanitiGonder(girdi: {
   ekler?: readonly EkDosya[];
   imza?: string | null;
   cc?: readonly string[];
-  /* Yanıtlanan mesajın gövdesi: alıntı için. Gönderim anında Gmail'den
-     okunuyor; saklamıyoruz (bkz. migration başlığı). */
-  alinti?: { gonderenAd: string | null; gonderenAdres: string; tarih: Date | null } | null;
+  /* Yanıtlanan mesaj: alıntı için. Gövdesi gönderim anında Gmail'den
+     okunuyor; saklamıyoruz (bkz. migration başlığı). mesajId alıntılanan
+     GELEN mesajın kimliği — zincirin son mesajı değil (bkz. aşağısı). */
+  alinti?: { mesajId: string; gonderenAd: string | null; gonderenAdres: string; tarih: Date | null } | null;
 }): Promise<{ messageId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
@@ -580,7 +581,11 @@ export async function postaYanitiGonder(girdi: {
   */
   let gonderilecek = imzaliGovde(girdi.govde, girdi.imza);
   if (girdi.alinti) {
-    const alintiGovdesi = await postaGovdesiniGetir(girdi.organizationId, girdi.sonMesajId);
+    /* Gövde, başlığı yazılan mesajdan okunuyor. Eskiden zincirin son
+       mesajından (sonMesajId) okunuyordu; o bizim önceki cevabımızsa
+       müşteri "<müşteri> şöyle yazdı:" altında kendi mesajı yerine bizim
+       cevabımızı, imzası ve eski alıntılarıyla görüyordu. */
+    const alintiGovdesi = await postaGovdesiniGetir(girdi.organizationId, girdi.alinti.mesajId);
     if (!("hata" in alintiGovdesi)) {
       gonderilecek = alintiliGovde(gonderilecek, { ...girdi.alinti, metin: alintiGovdesi.govde });
     }
@@ -634,6 +639,10 @@ export async function postaYanitiGonder(girdi: {
       yon: "giden",
       ekli_dosya: Boolean(girdi.ekler?.length),
     }, { onConflict: "organization_id,message_id" });
+    /* Yanıtlanan yazışma artık Gönderilenler'de de. Eskiden bayrak bir
+       sonraki eşitlemeye kadar yanlış kalıyordu. */
+    await admin.from("mail_threads").update({ giden_var: true })
+      .eq("organization_id", girdi.organizationId).eq("thread_id", girdi.threadId);
   }
 
   return { messageId };
@@ -773,6 +782,11 @@ export async function postaYeniGonder(girdi: {
     mesaj_sayisi: 1,
     okunmamis: false,
     durum: "yanitlandi",
+    /* Bizim başlattığımız yazışma: yalnızca Gönderilenler'de. Sütunun
+       varsayılanı gelen_var=true olduğu için eskiden yeni posta "Gelen
+       kutusu"nda görünüyor, Gönderilenler'de görünmüyordu. */
+    gelen_var: false,
+    giden_var: true,
     opportunity_id: girdi.opportunityId ?? null,
     updated_at: simdi,
   }, { onConflict: "organization_id,thread_id" });
@@ -800,7 +814,7 @@ export async function postaKonusmasiniCopeAt(
   const belirtec = await postaErisimBelirteci(organizationId);
   if (typeof belirtec !== "string") return belirtec;
 
-  const yanit = await fetch(`${GMAIL}/threads/${threadId}/trash`, {
+  const yanit = await fetch(`${GMAIL}/threads/${encodeURIComponent(threadId)}/trash`, {
     method: "POST",
     headers: { authorization: `Bearer ${belirtec}`, "content-length": "0" },
   }).catch(() => null);
@@ -814,11 +828,22 @@ export async function postaKonusmasiniCopeAt(
   const admin = createAdminClient();
   if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
   /* Mesaj satırları konuşmayla birlikte gidiyor; aralarında yabancı
-     anahtar yok (thread_id Gmail'in kimliği), o yüzden ikisi ayrı ayrı. */
-  await admin.from("mail_messages").delete()
-    .eq("organization_id", organizationId).eq("thread_id", threadId);
-  await admin.from("mail_threads").delete()
-    .eq("organization_id", organizationId).eq("thread_id", threadId);
+     anahtar yok (thread_id Gmail'in kimliği), o yüzden ayrı ayrı. Taslak
+     da: silinen yazışmanın yarım cevabı Taslaklar'da var olmayan bir
+     konuşmaya bağlantı olarak kalıyordu.
+
+     Hatalar okunuyor. Eskiden sonuç bakılmadan "çöp kutusuna taşındı"
+     deniyordu; bizim silme düşerse satır kalıyor ve eşitleme çöpü
+     listelemediği için onu bir daha hiç temizlemiyordu. */
+  const silinecekler = [
+    admin.from("mail_messages").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
+    admin.from("mail_drafts").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
+    admin.from("mail_threads").delete().eq("organization_id", organizationId).eq("thread_id", threadId),
+  ];
+  for (const silme of silinecekler) {
+    const { error } = await silme;
+    if (error) return { hata: "Yazışma Gmail'de çöp kutusuna taşındı ama panelden kaldırılamadı: " + error.message };
+  }
   return null;
 }
 

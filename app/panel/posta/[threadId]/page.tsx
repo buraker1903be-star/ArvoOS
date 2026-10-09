@@ -55,7 +55,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
      indeks) — iki kişinin iki ayrı yarım cevabı en sık çakışma biçimi. */
   const { data: taslak } = await supabase
     .from("mail_drafts")
-    .select("id,govde,olusturan,updated_at")
+    .select("id,govde,cc,olusturan,updated_at")
     .eq("organization_id", membership.organization_id)
     .eq("thread_id", threadId)
     .maybeSingle();
@@ -188,7 +188,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
             </label>
             <label className="posta-cc">
               <span>Bilgi (Cc)<small> — isteğe bağlı, virgülle ayırın</small></span>
-              <input name="cc" type="text" autoComplete="off" defaultValue={ccHazir.join(", ")} placeholder="bilgi@ornek.com" />
+              <input name="cc" type="text" autoComplete="off" defaultValue={taslak?.cc ?? ccHazir.join(", ")} placeholder="bilgi@ornek.com" />
             </label>
             <textarea id="posta-yanit-metni" name="govde" rows={6} required maxLength={20000} defaultValue={taslak?.govde ?? ""} placeholder="Yanıtınızı yazın…" />
             {/* Alıntı varsayılan açık: yanıt tek başına gidince müşteri neye

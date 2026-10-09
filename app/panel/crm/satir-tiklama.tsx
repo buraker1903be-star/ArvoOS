@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { satirTiklamaKipi } from "@/lib/satir-tiklama";
 
 /*
   SATIRIN TAMAMI TIKLANABİLİR.
@@ -39,6 +40,9 @@ export function SatirTiklama() {
     const tiklandi = (olay: MouseEvent) => {
       const hedef = olay.target as HTMLElement | null;
       if (!hedef) return;
+      // Ctrl/Cmd yeni sekme, Shift yeni pencere: bağlantının kendisi gibi.
+      const kip = satirTiklamaKipi(olay);
+      if (kip === "yoksay") return;
       // Hücredeki kendi bağlantısı/düğmesi varsa o çalışsın.
       if (hedef.closest(KENDI_ISI)) return;
       // Metin seçiyorsa gitmeyelim: seçim bitince tıklama da düşüyor.
@@ -46,7 +50,9 @@ export function SatirTiklama() {
 
       const satir = hedef.closest("tbody tr");
       const adres = satir?.querySelector<HTMLAnchorElement>("a.crm-row-link")?.getAttribute("href");
-      if (adres) router.push(adres);
+      if (!adres) return;
+      if (kip === "ayni-sekme") router.push(adres);
+      else window.open(adres, "_blank", kip === "yeni-pencere" ? "noopener,popup" : "noopener");
     };
 
     kap.addEventListener("click", tiklandi);

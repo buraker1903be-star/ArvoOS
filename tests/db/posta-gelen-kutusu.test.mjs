@@ -27,6 +27,8 @@ const MIGRATIONLAR = [
   "20261006190207_posta_gelen_kutusu.sql",
   "20261006193918_posta_gecmis_ve_crm_bagi.sql",
   "20261008180253_posta_kutulari_ve_silme.sql",
+  "20261008185029_posta_taslak_ve_imza.sql",
+  "20261009061218_posta_silme_izni_ve_taslak_cc.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
@@ -182,34 +184,45 @@ describe("ortak posta kutusu erişimi", () => {
     });
   });
 
-  test("MEŞRU AKIŞ: personel yazışmayı silebiliyor", async () => {
-    /* Silme sunucu işleminde ayrı bir yetki istiyor (posta.sil) ama RLS
-       katmanında kural modül kapısı: modülü açık olan kendi kurumunun
-       yazışmasını silebilmeli, yoksa işlem RLS'te takılırdı. */
+  test("personel yazışmayı REST ucundan doğrudan silemiyor", async () => {
+    /* 09.10.2026: 20261008180253 authenticated'a DELETE verip yalnızca
+       modül kapısına bakıyordu; posta.sil yetkisi olmayan personel
+       oturum jetonuyla yazışmayı silebiliyordu. Silme sunucu işleminde
+       service_role ile yapılıyor (yetki orada: posta.sil), oturumun
+       silme hakkı yok. */
     await rol(db, "postgres");
     await islem(db, async () => {
       await rol(db, "authenticated", PERSONEL);
-      const { rows } = await db.query(
-        `delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`,
-        [KURUM, KONUSMA]);
+      await reddedilir(db,
+        `delete from public.mail_threads where organization_id = $1 and thread_id = $2`,
+        [KURUM, KONUSMA], /permission denied/);
       await rol(db, "postgres");
-      assert.equal(rows.length, 1);
     });
   });
 
-  test("posta modülü kapalıyken silinemiyor", async () => {
+  test("MEŞRU AKIŞ: sunucu (service_role) yazışmayı ve taslağını siliyor", async () => {
     await rol(db, "postgres");
     await islem(db, async () => {
-      await db.query(
-        `insert into public.role_module_permissions (organization_id,role,module_key,can_access)
-         values ($1,'member','posta',false)
-         on conflict (organization_id,role,module_key) do update set can_access = false`, [KURUM]);
-      await rol(db, "authenticated", PERSONEL);
-      const { rows } = await db.query(
-        `delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`,
-        [KURUM, KONUSMA]);
+      await db.query(`insert into public.mail_drafts (organization_id,thread_id,govde,cc) values ($1,$2,'yarım cevap','bilgi@x.com')`, [KURUM, KONUSMA]);
+      await rol(db, "service_role");
+      const silinen = await db.query(`delete from public.mail_threads where organization_id = $1 and thread_id = $2 returning thread_id`, [KURUM, KONUSMA]);
+      const taslak = await db.query(`delete from public.mail_drafts where organization_id = $1 and thread_id = $2 returning id`, [KURUM, KONUSMA]);
       await rol(db, "postgres");
-      assert.equal(rows.length, 0, "modülü kapalı personel silebiliyor");
+      assert.equal(silinen.rows.length, 1);
+      assert.equal(taslak.rows.length, 1);
+    });
+  });
+
+  test("MEŞRU AKIŞ: personel Cc'li yanıt taslağı kaydedip güncelleyebiliyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await rol(db, "authenticated", PERSONEL);
+      await db.query(`insert into public.mail_drafts (organization_id,thread_id,govde,cc,olusturan) values ($1,$2,'ilk','a@x.com',$3)`, [KURUM, KONUSMA, PERSONEL]);
+      // Aynı konuşmaya ikinci taslak eklenemez; sunucu işlemi bu durumda güncellemeye döner.
+      await reddedilir(db, `insert into public.mail_drafts (organization_id,thread_id,govde) values ($1,$2,'ikinci')`, [KURUM, KONUSMA], /mail_drafts_konusma_uidx|duplicate/);
+      const { rows } = await db.query(`update public.mail_drafts set govde = 'son', cc = 'b@x.com' where organization_id = $1 and thread_id = $2 returning govde, cc`, [KURUM, KONUSMA]);
+      await rol(db, "postgres");
+      assert.deepEqual([rows[0].govde, rows[0].cc], ["son", "b@x.com"]);
     });
   });
 

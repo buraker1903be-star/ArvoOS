@@ -177,3 +177,18 @@ test("arama terimi süzgeç dilbilgisini bozmuyor", () => {
   assert.equal(postaAramaDeseni("   "), null);
   assert.equal(postaAramaDeseni("tez danışmanlığı"), "tez danışmanlığı");
 });
+
+test("alıcıya Cc de yazılıyor (tümünü yanıtla için)", () => {
+  // 09.10.2026: yalnızca To saklanıyordu; özgün mesajın Cc alıcıları önerilemiyordu.
+  const cozulen = mesajiCoz({
+    id: "m2", threadId: "t2",
+    payload: { headers: [
+      { name: "From", value: "ayse@firma.com" },
+      { name: "To", value: "info@biz.com" },
+      { name: "Cc", value: "mudur@firma.com" },
+    ] },
+  }, "info@biz.com");
+  assert.equal(cozulen!.alici, "info@biz.com, mudur@firma.com");
+  const ccsiz = mesajiCoz({ id: "m3", threadId: "t3", payload: { headers: [{ name: "To", value: "info@biz.com" }] } }, "info@biz.com");
+  assert.equal(ccsiz!.alici, "info@biz.com");
+});

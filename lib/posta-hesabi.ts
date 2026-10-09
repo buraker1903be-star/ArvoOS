@@ -335,8 +335,12 @@ export async function postaErisimBelirteci(organizationId: string): Promise<stri
 export async function postaImzasiniKaydet(organizationId: string, imza: string) {
   const admin = sunucuHazirMi();
   const sade = imza.trim().slice(0, 2000);
-  const { error } = await admin.from("mail_accounts")
+  const { data, error } = await admin.from("mail_accounts")
     .update({ imza: sade || null, updated_at: new Date().toISOString() })
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .select("organization_id");
   if (error) throw new Error("İmza kaydedilemedi: " + error.message);
+  /* Posta kutusu kaydı yoksa güncelleme sıfır satıra dokunuyor. Eskiden
+     bu sessiz geçiyor ve ekranda "İmza kaydedildi" yazıyordu. */
+  if (!data?.length) throw new Error("İmza kaydedilemedi: önce ortak posta kutusunu bağlayın (Ayarlar → Bağlantılar).");
 }

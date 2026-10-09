@@ -30,7 +30,7 @@ export default async function YeniPostaPage({ searchParams }: {
   /* Kayıtlı taslaktan devam. Adresten gelen ön doldurma yalnızca yeni
      posta için; taslak varsa onun metni kazanır. */
   const { data: taslak } = taslakId
-    ? await supabase.from("mail_drafts").select("id,alici,konu,govde,opportunity_id")
+    ? await supabase.from("mail_drafts").select("id,alici,cc,konu,govde,opportunity_id")
         .eq("organization_id", membership.organization_id).eq("id", taslakId).maybeSingle()
     : { data: null };
 
@@ -73,7 +73,7 @@ export default async function YeniPostaPage({ searchParams }: {
       <input id="posta-alici" name="alici" type="text" required defaultValue={taslak?.alici ?? alici ?? ""} autoComplete="off" placeholder="musteri@ornek.com" />
 
       <label htmlFor="posta-cc"><b>Bilgi (Cc)</b><small> — isteğe bağlı</small></label>
-      <input id="posta-cc" name="cc" type="text" autoComplete="off" placeholder="bilgi@ornek.com" />
+      <input id="posta-cc" name="cc" type="text" autoComplete="off" defaultValue={taslak?.cc ?? ""} placeholder="bilgi@ornek.com" />
 
       <label htmlFor="posta-konu"><b>Konu</b></label>
       <input id="posta-konu" name="konu" type="text" required maxLength={300} defaultValue={taslak?.konu ?? konu ?? ""} autoComplete="off" />

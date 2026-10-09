@@ -102,7 +102,10 @@ export function mesajiCoz(ham: GmailMesaji, kutuAdresi: string): CozulmusMesaj |
     threadId: ham.threadId,
     gonderenAd: gonderen.ad,
     gonderenAdres: gonderen.adres,
-    alici: baslik(basliklar, "To"),
+    /* Alıcı To + Cc. Eskiden yalnızca To saklanıyordu ve "tümünü yanıtla"
+       özgün mesajın Cc alıcılarını hiç öneremiyordu. Panelden giden yeni
+       posta (postaYeniGonder) da alıcıyı zaten bu biçimde yazıyor. */
+    alici: [baslik(basliklar, "To"), baslik(basliklar, "Cc")].filter(Boolean).join(", "),
     konu: baslik(basliklar, "Subject"),
     /* Gmail özeti HTML varlıklarıyla geliyor (&#39;, &amp;); ekranda ham
        görünüyordu. Listede okunan tek metin bu, çözmek gerekiyor. */

@@ -10,6 +10,8 @@ import {
   ekBoyutuEngeli,
   alintiliGovde,
   ccAdaylari,
+  basliktakiAdresler,
+  ekAdiParametresi,
   guvenliEkAdi,
   imzaliGovde,
   yanitMesajiKur,
@@ -356,4 +358,27 @@ test("Cc başlığı yalnızca adres varsa yazılıyor", () => {
   assert.match(ccli, /\r\nCc: e@f\.com\r\n/);
   const ccsiz = yeniMesajiKur({ gonderenAd: "A", gonderenAdres: "a@b.com", alicilar: ["c@d.com"], konu: "K", govde: "G" });
   assert.ok(!ccsiz.includes("Cc:"));
+});
+
+test("tümünü yanıtla: virgüllü tırnaklı ad aday listesini düşürmüyor", () => {
+  /* 09.10.2026: başlık aliciListesi ile virgülden bölünüyordu;
+     "Doe, John" <j@x.com> parçalanıp geçersiz sayılıyor ve bütün
+     adaylar kayboluyordu. */
+  assert.deepEqual(basliktakiAdresler('"Doe, John" <J@X.com>, info@biz.com, ayse@firma.com'), ["j@x.com", "info@biz.com", "ayse@firma.com"]);
+  assert.deepEqual(ccAdaylari('"Doe, John" <j@x.com>, info@biz.com, Ayşe <ayse@firma.com>', "INFO@biz.com", "ayse@firma.com"), ["j@x.com"]);
+  assert.deepEqual(basliktakiAdresler(""), []);
+  assert.deepEqual(basliktakiAdresler("bozuk-adres, a@b.co"), ["a@b.co"]);
+});
+
+test("ek dosya adı RFC 5987 ile kodlanıyor ve satır sınırını aşmıyor", () => {
+  // Kesme işareti ve parantezler de kodlanmalı; encodeURIComponent onları bırakıyor.
+  assert.equal(ekAdiParametresi("Ali'nin (son) sözleşmesi*.pdf"), "Ali%27nin%20%28son%29%20s%C3%B6zle%C5%9Fmesi%2A.pdf");
+  /* Eskiden kırpılmamış ad kodlanıyordu: 200 Türkçe harfli bir ad tek
+     başlık satırını 998 karakterin üstüne taşıyordu. */
+  assert.ok(ekAdiParametresi("ş".repeat(400) + ".pdf").length <= 900);
+  const ham = yeniMesajiKur({
+    gonderenAd: "K", gonderenAdres: "info@biz.com", alicilar: ["m@x.com"], konu: "Ek", govde: "Ektedir.",
+    ekler: [{ ad: "ğ".repeat(300) + ".pdf", tur: "application/pdf", veri: Buffer.from("x") }], sinir: "S1",
+  });
+  for (const satir of ham.split("\r\n")) assert.ok(satir.length <= 998, "998 karakteri aşan satır: " + satir.length);
 });

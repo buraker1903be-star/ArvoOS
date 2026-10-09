@@ -117,7 +117,6 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     : { data: [] };
   const adlar = new Map(((personeller ?? []) as { user_id: string; full_name: string }[]).map((satir) => [satir.user_id, satir.full_name]));
 
-  const okunmamisSayisi = konusmalar.filter((satir) => satir.okunmamis).length;
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
@@ -132,13 +131,25 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     return p.size ? `?${p}` : "";
   };
 
-  const sayi = {
-    tumu: konusmalar.length,
-    okunmamis: okunmamisSayisi,
-    acik: konusmalar.filter((satir) => satir.durum === "acik").length,
-    yanitlandi: konusmalar.filter((satir) => satir.durum === "yanitlandi").length,
-    taslak: taslaklar.length,
+  /*
+    SAYILAR veritabanında sayılıyor, listeden değil. Eskiden hepsi
+    süzülmüş ve 100 kayıtla sınırlı listeden çıkıyordu: "Gönderilenler"
+    Tümü'nün sayısını, "Gelen kutusu" açık + yanıtlanmışı gösteriyordu;
+    bir kutu seçilince "Tümü" o kutunun sayısına iniyor, hiçbiri 100'ü
+    geçemiyordu. Sayılar kurumun bütün kutusu içindir; süzgeçten bağımsız.
+  */
+  const say = async (sutun?: "gelen_var" | "giden_var" | "okunmamis", durum?: string) => {
+    let q = supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id);
+    if (sutun) q = q.eq(sutun, true);
+    if (durum) q = q.eq("durum", durum);
+    return (await q).count ?? 0;
   };
+  const [tumu, gelen, giden, okunmamis, acik, yanitlandi, { count: taslakSayisi }] = await Promise.all([
+    say(), say("gelen_var"), say("giden_var"), say("okunmamis"), say(undefined, "acik"), say(undefined, "yanitlandi"),
+    supabase.from("mail_drafts").select("id", { count: "exact", head: true }).eq("organization_id", membership.organization_id),
+  ]);
+  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, listelenen: konusmalar.length };
 
   return <main className="talep cari ekip talepler liste-sayfa">
     <header className="talep-bas">
@@ -155,14 +166,14 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         rakama tıklanıyor, posta ayrı davranmasın. */}
     <nav className="kayit-serit talep-serit" aria-label="Posta kutusu ve durum">
       <dl>
-        <div className={!secilenKutu ? "is-active" : undefined}>
+        <div className={!secilenKutu && kutu !== "taslak" ? "is-active" : undefined}>
           <dt>Tümü</dt>
           <dd><Link href={`/panel/posta${adresEki({ kutu: "" })}`}>{sayi.tumu}</Link></dd>
         </div>
         {KUTULAR.map((kutuSecenegi) => (
           <div key={kutuSecenegi.anahtar} className={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "is-active" : undefined}>
             <dt>{kutuSecenegi.ad}</dt>
-            <dd><Link href={`/panel/posta${adresEki({ kutu: kutuSecenegi.anahtar })}`} aria-current={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "page" : undefined}>{kutuSecenegi.anahtar === "gelen" ? sayi.acik + sayi.yanitlandi : sayi.tumu}</Link></dd>
+            <dd><Link href={`/panel/posta${adresEki({ kutu: kutuSecenegi.anahtar })}`} aria-current={secilenKutu?.anahtar === kutuSecenegi.anahtar ? "page" : undefined}>{kutuSecenegi.anahtar === "gelen" ? sayi.gelen : sayi.giden}</Link></dd>
           </div>
         ))}
         <div className={kutu === "taslak" ? "is-active" : undefined}>
@@ -276,7 +287,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
-      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet")} />
+      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet") && hesap.kayitliMi} />
     </div>
   </main>;
 }
@@ -285,7 +296,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
    bunu ancak Ayarlar'a giden fark ediyordu. */
 function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir }: {
   hesap: Awaited<ReturnType<typeof postaDurumu>>;
-  sayi: { tumu: number; okunmamis: number; acik: number; yanitlandi: number; taslak: number };
+  sayi: { okunmamis: number; acik: number; yanitlandi: number; listelenen: number };
   imzaDuzenlenebilir: boolean;
 }) {
   return (
@@ -295,7 +306,7 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir }: {
         <div><dt>Açık</dt><dd>{sayi.acik}</dd></div>
         <div><dt>Yanıtlandı</dt><dd>{sayi.yanitlandi}</dd></div>
         <div><dt>Okunmamış</dt><dd>{sayi.okunmamis}</dd></div>
-        <div><dt>Listelenen</dt><dd>{sayi.tumu}</dd></div>
+        <div><dt>Listelenen</dt><dd>{sayi.listelenen}</dd></div>
       </dl>
       <dl className="stg-list posta-durum-listesi">
         <div><dt>Adres</dt><dd>{hesap.adres ?? "—"}</dd></div>

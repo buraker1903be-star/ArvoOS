@@ -189,7 +189,10 @@ function mesajiKur(girdi: {
     parcalar.push(
       `--${sinir}`,
       `Content-Type: ${ek.tur}; name="${ad}"`,
-      `Content-Disposition: attachment; filename="${ad}"; filename*=UTF-8''${encodeURIComponent(ek.ad)}`,
+      /* filename* ayrı satırda (başlık katlaması): uzun Türkçe bir ad
+         kodlanınca tek satırı 998 karakter sınırının üstüne taşıyordu. */
+      `Content-Disposition: attachment; filename="${ad}";`,
+      ` filename*=UTF-8''${ekAdiParametresi(ek.ad)}`,
       "Content-Transfer-Encoding: base64",
       "",
       b64satirli(ek.veri),
@@ -213,6 +216,21 @@ function mesajiKur(girdi: {
 export function guvenliEkAdi(ham: string): string {
   const sade = (ham ?? "").replace(/[\r\n"\\]/g, " ").replace(/\s+/g, " ").trim();
   return sade.slice(0, 180) || "ek";
+}
+
+/*
+  RFC 5987 kodlu dosya adı (filename*). encodeURIComponent tek başına
+  yetmiyor: ' ( ) * harflerini kodlamadan bırakıyor ve kesme işareti
+  içeren bir ad ("Ali'nin sözleşmesi.pdf") bazı istemcilerde adı bozuyordu.
+  Eskiden ayrıca kırpılmamış ad kullanılıyordu; kodlanmış hâli 900
+  karakteri geçmeyecek kadar kısaltılıyor.
+*/
+export function ekAdiParametresi(ham: string): string {
+  const kodla = (metin: string) =>
+    encodeURIComponent(metin).replace(/['()*]/g, (harf) => "%" + harf.charCodeAt(0).toString(16).toUpperCase());
+  let ad = guvenliEkAdi(ham);
+  while (kodla(ad).length > 900) ad = Array.from(ad).slice(0, -1).join("");
+  return kodla(ad);
 }
 
 export function yanitMesajiKur(girdi: YanitGirdisi & { ekler?: readonly EkDosya[]; sinir?: string; cc?: readonly string[] }): string {
@@ -348,8 +366,24 @@ export function alintiliGovde(govde: string, alinti: {
   koymak ise ona iki kopya gönderir.
 */
 export function ccAdaylari(aliciBasligi: string | null, kutuAdresi: string, asilAlici: string): string[] {
-  const sonuc = aliciListesi(aliciBasligi ?? "");
-  if ("hata" in sonuc) return [];
   const disarida = new Set([kutuAdresi.toLowerCase(), asilAlici.toLowerCase()]);
-  return sonuc.adresler.filter((adres) => !disarida.has(adres));
+  return basliktakiAdresler(aliciBasligi ?? "").filter((adres) => !disarida.has(adres)).slice(0, 20);
+}
+
+/*
+  Gelen bir başlıktaki adresler (To/Cc). aliciListesi'nden farkı: o
+  KULLANICININ yazdığını denetliyor ve tek bir bozuk parçada hata veriyor;
+  bu, karşı tarafın gönderdiği başlığı okuyor ve hata vermeden ayıklıyor.
+
+  Virgüle bölmüyor: "Doe, John" <j@x.com> gibi tırnaklı adlar virgül
+  içeriyor. Eskiden aliciListesi'yle okunuyordu; böyle bir ad bütün aday
+  listesini düşürüyordu.
+*/
+export function basliktakiAdresler(baslik: string): string[] {
+  const adresler: string[] = [];
+  for (const eslesme of baslik.replace(/"[^"]*"/g, " ").matchAll(/[^\s<>,;:()"]+@[^\s<>,;:()"]+/g)) {
+    const adres = eslesme[0].toLowerCase();
+    if (ADRES_DESENI.test(adres) && !adresler.includes(adres)) adresler.push(adres);
+  }
+  return adresler;
 }

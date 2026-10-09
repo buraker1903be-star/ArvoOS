@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { runPanelAction } from "@/lib/panel-action";
+import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
 import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt } from "@/lib/posta-esitleme";
@@ -163,11 +163,17 @@ async function konusmayaYanitla__impl(formData: FormData) {
     cc = ccSonucu.adresler;
   }
 
-  /* Alıntı varsayılan AÇIK: yanıt tek başına gidince müşteri neye cevap
-     verildiğini çoğu zaman anlamıyor. Kutucuk kaldırılabiliyor. */
+  /* Alıntı varsayılan AÇIK (kutucuk işaretli gelir): yanıt tek başına
+     gidince müşteri neye cevap verildiğini çoğu zaman anlamıyor.
+
+     İşaretsiz kutucuk formda HİÇ gönderilmiyor. Eskiden yokluk "on"
+     sayılıyordu (?? "on") ve kutucuğu kaldırmak alıntıyı kapatmıyordu.
+
+     Alıntılanan, müşterinin son mesajı; gövdesi de ONDAN okunuyor
+     (mesajId), zincirin son mesajından değil. */
   const sonGelen = [...mesajlar].reverse().find((mesaj) => mesaj.yon === "gelen");
-  const alinti = String(formData.get("alinti") ?? "on") === "on" && sonGelen
-    ? { gonderenAd: sonGelen.gonderen_ad ?? null, gonderenAdres: sonGelen.gonderen_adres ?? "", tarih: sonGelen.tarih ? new Date(sonGelen.tarih) : null }
+  const alinti = formData.get("alinti") === "on" && sonGelen
+    ? { mesajId: sonGelen.message_id, gonderenAd: sonGelen.gonderen_ad ?? null, gonderenAdres: sonGelen.gonderen_adres ?? "", tarih: sonGelen.tarih ? new Date(sonGelen.tarih) : null }
     : null;
 
   const sonuc = await postaYanitiGonder({
@@ -462,6 +468,9 @@ async function taslakKaydet__impl(formData: FormData): Promise<string> {
     organization_id: membership.organization_id,
     thread_id: threadId,
     alici: String(formData.get("alici") ?? "").trim() || null,
+    /* Cc de saklanıyor; eskiden taslakta yalnızca alıcı/konu/metin vardı
+       ve yazılan Cc taslak kaydedilince sessizce kayboluyordu. */
+    cc: String(formData.get("cc") ?? "").trim().slice(0, 2000) || null,
     konu: String(formData.get("konu") ?? "").trim() || null,
     govde: govde.slice(0, 20000),
     opportunity_id: String(formData.get("opportunity_id") ?? "").trim() || null,
@@ -471,16 +480,24 @@ async function taslakKaydet__impl(formData: FormData): Promise<string> {
 
   if (threadId) {
     /* Konuşma taslağı: aynı konuşmanın taslağı varsa üzerine yazılıyor.
-       onConflict yerine açık kontrol, çünkü benzersiz indeks kısmi
-       (thread_id dolu olanlar) ve upsert kısmi indeksi kullanamıyor. */
-    const { data: mevcut } = await supabase.from("mail_drafts").select("id")
-      .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle();
-    if (mevcut) {
-      const { error } = await supabase.from("mail_drafts").update(satir).eq("id", mevcut.id);
-      if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
-      revalidatePath(`/panel/posta/${threadId}`);
-      return `/panel/posta/${threadId}`;
+       onConflict yerine güncelle-yoksa-ekle, çünkü benzersiz indeks kısmi
+       (thread_id dolu olanlar) ve upsert kısmi indeksi kullanamıyor.
+
+       İki kişi aynı konuşmanın İLK taslağını aynı anda kaydederse ikisi
+       de "yok" görüp ekliyor; ikincinin eklemesi benzersiz indekse
+       çarpıyor (23505). Eskiden bu hata olarak dönüyor ve yazılan metin
+       kayboluyordu; artık o durumda güncellemeye dönülüyor. */
+    const guncelle = () => supabase.from("mail_drafts").update(satir)
+      .eq("organization_id", membership.organization_id).eq("thread_id", threadId).select("id");
+    let { data: guncellenen, error } = await guncelle();
+    if (!error && !guncellenen?.length) {
+      ({ error } = await supabase.from("mail_drafts").insert(satir));
+      if (error?.code === "23505") ({ data: guncellenen, error } = await guncelle());
     }
+    if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
+    revalidatePath(`/panel/posta/${threadId}`);
+    revalidatePath("/panel/posta");
+    return `/panel/posta/${threadId}`;
   }
 
   const kimlik = String(formData.get("taslak_id") ?? "").trim();
@@ -498,7 +515,11 @@ async function taslakKaydet__impl(formData: FormData): Promise<string> {
 }
 
 export async function taslakKaydet(formData: FormData) {
-  const hedef = await runPanelAction(() => taslakKaydet__impl(formData), "Taslak kaydedildi");
+  /* Ekler taslakta saklanmıyor (dosya deposu yok). Eskiden seçilen
+     dosyalar sessizce düşüyordu; artık bildirimde yazıyor. */
+  const ekVar = formData.getAll("ekler").some((aday) => aday instanceof File && aday.size > 0);
+  const hedef = await runPanelAction(() => taslakKaydet__impl(formData));
+  if (typeof hedef === "string") await flashSuccess(ekVar ? "Taslak kaydedildi. Ekler taslakta saklanmaz; gönderirken yeniden ekleyin." : "Taslak kaydedildi");
   if (typeof hedef === "string") redirect(hedef);
 }
 

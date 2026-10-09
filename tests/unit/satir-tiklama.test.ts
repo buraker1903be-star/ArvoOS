@@ -71,3 +71,22 @@ test("bileşen satırdaki gerçek bağlantıya gidiyor", () => {
   // Metin seçerken yanlışlıkla kayıt açılmamalı.
   assert.match(metin, /getSelection/);
 });
+
+test("satırda Ctrl/Cmd yeni sekmede, Shift yeni pencerede açar", async () => {
+  /*
+    09.10.2026: değiştirici tuşlara bakılmıyordu; satırın boş yerine
+    Ctrl/Cmd ile tıklamak kaydı aynı sekmede açıyor ve listeyi
+    kaybettiriyordu.
+  */
+  const { satirTiklamaKipi } = await import("@/lib/satir-tiklama");
+  const tik = (ek: Partial<Parameters<typeof satirTiklamaKipi>[0]> = {}) =>
+    satirTiklamaKipi({ button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false, defaultPrevented: false, ...ek });
+  assert.equal(tik(), "ayni-sekme");
+  assert.equal(tik({ ctrlKey: true }), "yeni-sekme");
+  assert.equal(tik({ metaKey: true }), "yeni-sekme");
+  assert.equal(tik({ shiftKey: true }), "yeni-pencere");
+  assert.equal(tik({ altKey: true }), "yoksay");
+  assert.equal(tik({ button: 1 }), "yoksay");
+  assert.equal(tik({ defaultPrevented: true }), "yoksay");
+  assert.match(oku("app/panel/crm/satir-tiklama.tsx"), /satirTiklamaKipi\(olay\)/, "bileşen kararı bu fonksiyondan almıyor");
+});
