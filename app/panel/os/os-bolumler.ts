@@ -70,22 +70,13 @@ export function finansBolumleri(e: BolumErisimi): Bolum[] {
   ];
 }
 
-export function ikBolumleri(e: Pick<BolumErisimi, "yetkiler" | "isPlatformOwner">): Bolum[] {
+export function ikBolumleri(): Bolum[] {
   return [
     { key: "genel-bakis", href: "/panel/hr/genel-bakis", label: "Genel Bakış" },
+    /* Prim, gizlilik sözleşmesi ve personel hareketleri 2026-10'dan beri
+       personel detayında (finanstaki Müşteriler düzeni); ayrı bölüm değiller.
+       Görünürlükleri yine primGorur / ikKayitGorur ile, detay sayfasında. */
     { key: "personel", href: "/panel/hr", label: "Personel" },
-    ...(primGorur(e)
-      ? [
-          { key: "prim", href: "/panel/hr/commissions", label: "Prim Hesaplama" },
-          { key: "prim-hesabi", href: "/panel/hr/prim-hesabi", label: "Prim Hesabı" },
-        ]
-      : []),
-    ...(ikKayitGorur(e)
-      ? [
-          { key: "gizlilik", href: "/panel/hr/confidentiality", label: "Gizlilik Sözleşmeleri" },
-          { key: "hareketler", href: "/panel/hr/activity", label: "Personel Hareketleri" },
-        ]
-      : []),
   ];
 }
 
@@ -102,7 +93,7 @@ export function uygulamaBolumleri(uygulama: string, e: BolumErisimi): Bolum[] {
     case "crm": return crmBolumleri();
     case "operations": return operasyonBolumleri();
     case "finance": return finansBolumleri(e);
-    case "hr": return ikBolumleri(e);
+    case "hr": return ikBolumleri();
     case "documents": return dokumanBolumleri();
     default: return [];
   }

@@ -14,6 +14,8 @@ import "./hr.css";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
+import { ledgerTotals } from "@/lib/commission-ledger";
+import { primVerisi } from "./prim-verisi";
 
 /*
   EKİP LİSTESİ (2026-10): talepler, teklifler, sözleşmeler, işler ve
@@ -30,12 +32,20 @@ import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 
   Süzme adresle (?durum=, ?departman=, ?arama=): sunucuda yapılıyor, bağlantı
   paylaşılabiliyor ve sayfa yenilenince kaybolmuyor.
+
+  2026-10: Prim Hesaplama/Prim Hesabı, Gizlilik Sözleşmeleri ve Personel
+  Hareketleri ayrı sayfa olmaktan çıkıp personel detayına taşındı
+  (finanstaki Müşteriler düzeni). Kurum geneli soruların cevabı listede
+  kaldı: "Prim bakiyesi" ve "Gizlilik" sütunları, adın yanında çevrimiçi
+  noktası — her biri eski sayfasının yetkisiyle.
 */
 
 type Department = { id: string; name: string; code: string | null; is_active: boolean };
 type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean };
 type Member = { user_id: string; role: string; is_active: boolean };
 type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string };
+const money = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(kurus / 100);
+const GIZLILIK: Record<string, [string, string]> = { signed: ["İmzalı", "success"], pending: ["İmza bekliyor", "info"] };
 
 const TZ = "Europe/Istanbul";
 const statusNames: Record<string, string> = { active: "Aktif", on_leave: "İzinli", inactive: "Pasif", terminated: "İşten ayrıldı" };
@@ -55,14 +65,32 @@ function liveInvitations(rows: Invitation[]) {
   const now = Date.now();
   return rows.filter((invite) => Date.parse(invite.expires_at) > now);
 }
+// Çevrimiçi sınırı: son 2 dakikada görülen (personel hareketleriyle aynı).
+const cevrimiciSiniri = () => Date.now() - 2 * 60 * 1000;
 
 export default async function HrPage({ searchParams }: { searchParams: Promise<{ durum?: string; departman?: string; arama?: string }> }) {
   const { durum = "", departman = "", arama = "" } = await searchParams;
   const aranan = arama.trim().toLocaleLowerCase("tr-TR");
-  const { supabase, membership, modules, organization, izin } = await getPanelContext();
+  const { supabase, membership, modules, organization, izin, isPlatformOwner } = await getPanelContext();
   const organizationName = organization.display_name || organization.name;
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = izin("hr.ekip.yonet");
+  const primGorur = isPlatformOwner || izin("hr.prim.gor");
+  const gizlilikGorur = izin("hr.gizlilik.gor");
+  const hareketGorur = izin("hr.hareket.gor");
+  const bosVeri = Promise.resolve({ data: [] as never[] });
+  const [prim, { data: gizlilikVerisi }, { data: varlikVerisi }] = await Promise.all([
+    primGorur ? primVerisi(supabase, membership.organization_id) : Promise.resolve(null),
+    gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("employee_id,status").eq("organization_id", membership.organization_id) : bosVeri,
+    hareketGorur ? supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id) : bosVeri,
+  ]);
+  // Personel başına en iyi gizlilik durumu: imzalı > bekliyor (iptal sayılmaz).
+  const gizlilikDurumu = new Map<string, string>();
+  for (const g of (gizlilikVerisi ?? []) as { employee_id: string; status: string }[]) {
+    if (g.status === "signed" || (g.status === "pending" && gizlilikDurumu.get(g.employee_id) !== "signed")) gizlilikDurumu.set(g.employee_id, g.status);
+  }
+  const sinir = cevrimiciSiniri();
+  const cevrimici = new Set(((varlikVerisi ?? []) as { user_id: string; last_seen_at: string }[]).filter((v) => Date.parse(v.last_seen_at) >= sinir).map((v) => v.user_id));
 
   const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData }, { data: invitationData }] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests").eq("organization_id", membership.organization_id).order("full_name"),
@@ -146,7 +174,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
       </div>
       <div className="talep-bas-eylem">
         {canManageTeam ? <PanelDrawer triggerLabel="Yeni personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}
-        <details className="os-menu talep-menu">
+        {canManageTeam ? <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
             {canManageTeam ? (
@@ -154,9 +182,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                 <form className="panel-form hr-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required placeholder="Örn. Satış" /></label><label className="wide">Kısa kod<input name="code" maxLength={30} placeholder="Örn. SAT" /></label><div className="wide panel-form-actions"><button className="panel-primary" type="submit">Departmanı Kaydet</button></div></form>
               </PanelDrawer>
             ) : null}
-            <Link className="os-menu-item" href="/panel/hr/activity">Personel hareketleri</Link>
           </div>
-        </details>
+        </details> : null}
       </div>
     </header>
 
@@ -170,6 +197,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         <div><dt>Satış temsilcisi</dt><dd>{salesCount}</dd></div>
         {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{accessCount}</dd></div> : null}
         {canManageTeam ? <div><dt>Bekleyen davet</dt><dd className={invitations.length ? "talep-uyari" : undefined}>{invitations.length}</dd></div> : null}
+        {hareketGorur ? <div><dt>Şu an çevrimiçi</dt><dd className={cevrimici.size ? "cari-arti" : undefined}>{cevrimici.size}</dd></div> : null}
+        {prim ? <div><dt>Ödenecek prim</dt><dd>{money(employees.reduce((t, e) => t + Math.max(0, ledgerTotals(e.id, prim.accruals, prim.payments).balance), 0))}</dd></div> : null}
       </dl>
     </nav>
 
@@ -203,6 +232,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                   <th>İletişim</th>
                   <th className="crm-col-date">İşe giriş</th>
                   {canManageTeam ? <th>Panel erişimi</th> : null}
+                  {gizlilikGorur ? <th>Gizlilik</th> : null}
+                  {prim ? <th className="crm-col-amount">Prim bakiyesi</th> : null}
                   <th>Durum</th>
                   <th></th>
                 </tr>
@@ -219,7 +250,10 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                     <tr key={employee.id} className={pasifMi(employee) ? "is-pasif" : undefined}>
                       <td data-label="Personel">
                         <Link className="crm-row-link" href={`/panel/hr/${employee.id}`} aria-label={`${employee.full_name} detayını aç`}>
-                          <span className="crm-table-title" title={employee.full_name}>{employee.full_name}</span>
+                          <span className="crm-table-title" title={employee.full_name}>
+                            {employee.user_id && cevrimici.has(employee.user_id) ? <i className="personel-cevrimici" title="Çevrimiçi" aria-label="Çevrimiçi" /> : null}
+                            {employee.full_name}
+                          </span>
                           <span className="crm-table-sub">{employee.job_title || "Pozisyon belirtilmedi"}{employee.employee_no ? ` · ${employee.employee_no}` : ""}</span>
                         </Link>
                       </td>
@@ -233,6 +267,14 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                         {employee.start_date ? <small>{typeNames[employee.employment_type] ?? ""}</small> : null}
                       </td>
                       {canManageTeam ? <td data-label="Panel erişimi"><span className="status-pill" data-tone={erisim.ton}>{erisim.ad}</span></td> : null}
+                      {gizlilikGorur ? (() => {
+                        const [ad, ton] = GIZLILIK[gizlilikDurumu.get(employee.id) ?? ""] ?? ["Yok", "warning"];
+                        return <td data-label="Gizlilik"><span className="status-pill" data-tone={ton}>{ad}</span></td>;
+                      })() : null}
+                      {prim ? (() => {
+                        const bakiye = ledgerTotals(employee.id, prim.accruals, prim.payments).balance;
+                        return <td className="crm-col-amount" data-label="Prim bakiyesi">{bakiye ? money(bakiye) : "—"}</td>;
+                      })() : null}
                       <td data-label="Durum"><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></td>
                       <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
                     </tr>

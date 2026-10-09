@@ -172,7 +172,7 @@ export async function updateFinanceTransactionStatus(formData: FormData) {
 
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/raporlar");
-  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/hr/[id]", "page"); // prim penceresi
   revalidatePath("/panel");
 }
 
@@ -188,7 +188,7 @@ export async function collectPaymentInstallment(formData: FormData) {
   revalidatePath("/panel/finance/accounts");
   revalidatePath("/panel/finance/invoices");
   revalidatePath("/panel/finance/raporlar");
-  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/hr/[id]", "page"); // prim penceresi
   revalidatePath("/panel");
 }
 
@@ -310,7 +310,7 @@ export async function updateInvoiceStatus(formData: FormData) {
   if (status !== "paid" && invoice.status === "paid") await supabase.from("account_entries").delete().eq("organization_id", membership.organization_id).eq("reference_no", referenceNo);
   revalidatePath("/panel/finance");
   revalidatePath("/panel/finance/invoices");
-  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/hr/[id]", "page"); // prim penceresi
   revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel");
 }

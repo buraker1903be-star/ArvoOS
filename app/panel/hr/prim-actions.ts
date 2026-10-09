@@ -30,7 +30,11 @@ async function primContext() {
   return context;
 }
 
-const refresh = () => revalidatePath("/panel/hr/prim-hesabi");
+// Prim artık personel detayındaki pencerede (2026-10); listenin "Prim bakiyesi" sütunu da.
+const refresh = () => {
+  revalidatePath("/panel/hr/[id]", "page");
+  revalidatePath("/panel/hr");
+};
 
 async function primOdemesiKaydet__impl(formData: FormData) {
   const { supabase, membership, userId } = await primContext();

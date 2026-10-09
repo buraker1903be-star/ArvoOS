@@ -12,6 +12,10 @@ import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, 
 // ve Yönetici'ye (Personel sayfasıyla aynı), çevrimiçi durum ve gizlilik
 // sözleşmeleri sahip/yönetici/sınırlı yöneticiye (Hareketler ve Gizlilik
 // sayfalarıyla aynı). Departman dağılımı herkese açık.
+//
+// 2026-10: Hareketler ve Gizlilik ayrı sayfa olmaktan çıktı, personel
+// detayına taşındı; satırlar artık o kişinin detayını açıyor (hareket
+// satırı "Hareketler" sekmesini). Eskiden hepsi kurum geneli listeye gidiyordu.
 
 type Employee = { id: string; user_id: string | null; department_id: string | null; full_name: string; job_title: string | null; email: string | null; employment_status: string; can_receive_sales_requests: boolean };
 type Department = { id: string; name: string; is_active: boolean };
@@ -129,14 +133,14 @@ export default async function HrOverviewPage() {
 
       <ListeIzgarasi etiket="Ekip durumu">
         {canSeeRecords ? (
-          <ListeKarti baslik="Son görülenler" alt={online.length ? `${online.length} kişi şu an çevrimiçi` : "Şu an çevrimiçi kimse yok"} bos="Henüz panele giriş yapan personel yok." href="/panel/hr/activity" hrefEtiket="Personel hareketleri" sayi={recent.length}>
+          <ListeKarti baslik="Son görülenler" alt={online.length ? `${online.length} kişi şu an çevrimiçi` : "Şu an çevrimiçi kimse yok"} bos="Henüz panele giriş yapan personel yok." href="/panel/hr" hrefEtiket="Personele git" sayi={recent.length}>
             {recent.slice(0, GENEL_BAKIS_SATIR).map((row) => {
               const seen = lastSeen.get(row.user_id!)!;
               const isOnline = Date.parse(seen) >= time.onlineCutoff;
               return (
                 <ListeSatiri
                   key={row.id}
-                  href="/panel/hr/activity"
+                  href={`/panel/hr/${row.id}?hareket=7`}
                   baslik={formatPersonName(row.full_name)}
                   alt={roleOf(row)}
                   sag={<span className="status-pill" data-tone={isOnline ? "success" : "neutral"}>{isOnline ? "Çevrimiçi" : relativeTime(seen)}</span>}
@@ -151,7 +155,7 @@ export default async function HrOverviewPage() {
             {withoutAccess.slice(0, GENEL_BAKIS_SATIR).map((row) => (
               <ListeSatiri
                 key={row.id}
-                href="/panel/hr"
+                href={`/panel/hr/${row.id}`}
                 baslik={formatPersonName(row.full_name)}
                 alt={`${roleOf(row)}${row.email ? ` · ${row.email}` : ""}`}
                 sag={<span className="status-pill" data-tone={stateLabel[row.state].tone}>{stateLabel[row.state].label}</span>}
@@ -161,11 +165,11 @@ export default async function HrOverviewPage() {
         ) : null}
 
         {canSeeRecords ? (
-          <ListeKarti baslik="Gizlilik sözleşmesi eksik" alt={unsigned.length ? `${working.length - unsigned.length}/${working.length} personel imzaladı` : "Tüm personel imzaladı"} bos="Tüm personelin gizlilik sözleşmesi imzalı." href="/panel/hr/confidentiality" hrefEtiket="Gizlilik sözleşmeleri" sayi={unsigned.length}>
+          <ListeKarti baslik="Gizlilik sözleşmesi eksik" alt={unsigned.length ? `${working.length - unsigned.length}/${working.length} personel imzaladı` : "Tüm personel imzaladı"} bos="Tüm personelin gizlilik sözleşmesi imzalı." href="/panel/hr" hrefEtiket="Personele git" sayi={unsigned.length}>
             {unsigned.slice(0, GENEL_BAKIS_SATIR).map((row) => (
               <ListeSatiri
                 key={row.id}
-                href="/panel/hr/confidentiality"
+                href={`/panel/hr/${row.id}`}
                 baslik={formatPersonName(row.full_name)}
                 alt={roleOf(row)}
                 sag={<span className="status-pill" data-tone={pendingIds.has(row.id) ? "info" : "warning"}>{pendingIds.has(row.id) ? "İmza bekliyor" : "Sözleşme yok"}</span>}

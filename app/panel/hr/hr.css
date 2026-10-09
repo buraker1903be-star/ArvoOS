@@ -271,3 +271,18 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 }
 .hr-person-title h3 a{color:inherit;text-decoration:none}
 .hr-person-title h3 a:hover{color:var(--primary);text-decoration:underline}
+
+/* Personel detayı → Hareketler sekmesi: sayfalar (eski hareketler sayfasından). */
+.hr-act-sayfalar{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;font-size:12px;font-weight:700}
+.hr-act-sayfalar a{padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--primary);text-decoration:none}
+.hr-act-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
+.hr-act-sayfalar span{padding:5px 12px;color:var(--dim);opacity:.55}
+.hr-act-sayfalar b{color:var(--muted)}
+.personel-hareket-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.personel-hareket-gun h3 small{color:var(--muted);font-weight:var(--fw-medium)}
+.personel-ozluk{margin-top:var(--sp-3)}
+.prim-donem{margin:var(--sp-2) 0}
+.prim-ozel{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;margin:0 0 var(--sp-3)}
+.prim-ozel input{min-height:34px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
+/* Ekip listesi: adın yanında çevrimiçi noktası (son 2 dakikada görülen). */
+.personel-cevrimici{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 2px var(--success-soft);vertical-align:middle}

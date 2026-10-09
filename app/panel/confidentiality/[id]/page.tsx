@@ -26,7 +26,7 @@ export default async function ConfidentialityAgreementPage({ params, searchParam
   const date = (value:string|null) => value ? new Date(value).toLocaleString("tr-TR") : "—";
 
   return <div className="nda-page">
-    <div className="panel-pagehead"><div><small className="panel-kicker">GİZLİ PERSONEL BELGESİ</small><h1>Gizlilik ve Sır Saklama Sözleşmesi</h1><p>{agreement.agreement_no} · {employee.full_name}</p></div>{isManager?<Link className="panel-secondary" href="/panel/hr/confidentiality">← Arşive Dön</Link>:null}</div>
+    <div className="panel-pagehead"><div><small className="panel-kicker">GİZLİ PERSONEL BELGESİ</small><h1>Gizlilik ve Sır Saklama Sözleşmesi</h1><p>{agreement.agreement_no} · {employee.full_name}</p></div>{isManager?<Link className="panel-secondary" href={`/panel/hr/${agreement.employee_id}`}>← Personele dön</Link>:null}</div>
     {query.signed ? <div className="nda-success">✓ Sözleşmeniz güvenli biçimde imzalandı ve yönetici arşivine kaydedildi.</div> : null}
     <article className="panel-card nda-document">
       <header><div><small>KURUM</small><strong>{organization.name}</strong></div><div><small>PERSONEL</small><strong>{employee.full_name}</strong><span>{employee.job_title || "Personel"}</span></div><div><small>DURUM</small><strong>{agreement.status === "signed" ? "İmzalandı" : "İmza Bekliyor"}</strong></div></header>

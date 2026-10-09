@@ -6,6 +6,11 @@ import { formatPhone } from "@/lib/format-phone";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { PanelModal } from "../../components/panel-modal";
+import { ledgerTotals } from "@/lib/commission-ledger";
+import { primVerisi } from "../prim-verisi";
+import { PrimPenceresi } from "../prim-penceresi";
+import { PersonelHareketleri } from "../personel-hareketleri";
 import { updateEmployee } from "../actions";
 import { updateTeamMemberAccess, cancelInvitation } from "../team-actions";
 import { InviteTeamForm } from "../invite-team-form";
@@ -26,7 +31,12 @@ import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   PERSONEL DETAYI (2026-10): talep, teklif, sözleşme, iş ve cari
-  detayıyla aynı iskelet. Eskiden personelin ayrı bir sayfası yoktu;
+  detayıyla aynı iskelet.
+
+  2026-10 (finanstaki Müşteriler düzeni gibi): İK'nın dört ayrı sayfası
+  personelin içine taşındı — Prim Hesaplama ile Prim Hesabı tek "Prim"
+  penceresinde, Personel Hareketleri orta sütunda sekme, Gizlilik
+  Sözleşmesi özlük dosyasında. Eski adresler buraya yönleniyor. Eskiden personelin ayrı bir sayfası yoktu;
   her şey ekip listesindeki kartın içinde ve iki çekmecedeydi (Düzenle,
   Özlük Dosyaları), personelin üstündeki talepler ve işler hiçbir yerde
   bir arada görünmüyordu.
@@ -43,6 +53,9 @@ type Invitation = { id: string; email: string; role: string; status: string; exp
 type Doc = { id: string; file_name: string; file_size: number | null; created_at: string };
 type Talep = { id: string; title: string | null; customer_name: string | null; stage: string | null; created_at: string };
 type Is = { id: string; title: string; customer_name: string | null; status: string; due_date: string | null };
+type Gizlilik = { id: string; agreement_no: string; status: string; created_at: string; signed_at: string | null; signer_name: string | null };
+const GIZLILIK_DURUMU: Record<string, [string, string]> = { signed: ["İmzalandı", "success"], revoked: ["İptal", "danger"] };
+const money = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(kurus / 100);
 
 const TZ = "Europe/Istanbul";
 const statusNames: Record<string, string> = { active: "Aktif", on_leave: "İzinli", inactive: "Pasif", terminated: "İşten ayrıldı" };
@@ -82,8 +95,11 @@ const AKTIF_ASAMALAR = ["lead", "qualified"];
 const LISTEDEKI_IS_DURUMLARI = ["planned", "in_progress", "blocked", "completed"];
 const LISTE = 6;
 
-export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type Arama = { pencere?: string; prim?: string; prim_bas?: string; prim_bit?: string; hareket?: string; hsayfa?: string };
+
+export default async function EmployeeDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Arama> }) {
   const { id } = await params;
+  const arama = await searchParams;
   const { supabase, membership, userId, modules, organization, izin, isPlatformOwner } = await getPanelContext();
   if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
   const canManageTeam = izin("hr.ekip.yonet");
@@ -148,6 +164,18 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const terminli = teslimler.filter((t) => t.due_date);
   const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
   const primGorebilir = isPlatformOwner || izin("hr.prim.gor");
+  const gizlilikGorur = izin("hr.gizlilik.gor");
+  const hareketGorur = izin("hr.hareket.gor");
+  /* Prim (tahakkuk kurum genelinden hesaplanıyor) ve gizlilik sözleşmeleri
+     yalnızca yetkisi olana okunur. */
+  const [prim, gizlilikSonuc] = await Promise.all([
+    primGorebilir ? primVerisi(supabase, org) : Promise.resolve(null),
+    gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("id,agreement_no,status,created_at,signed_at,signer_name").eq("organization_id", org).eq("employee_id", employee.id).order("created_at", { ascending: false }) : Promise.resolve({ data: [] }),
+  ]);
+  const primToplami = prim ? ledgerTotals(employee.id, prim.accruals, prim.payments) : null;
+  const gizlilikler = (gizlilikSonuc.data ?? []) as Gizlilik[];
+  const temelAdres = `/panel/hr/${employee.id}`;
+  const pencere = arama.pencere === "prim" ? "prim" : null;
 
   /*
     Kişiyle yazışmalar (WhatsApp ve Postalar sekmeleri): müşteri ve kayıt
@@ -170,6 +198,16 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const organizationName = organization.display_name || organization.name;
   const erisim = member ? (member.is_active ? roleNames[member.role] ?? member.role : "Erişim kapalı") : pendingInvite ? "Davet bekliyor" : "Erişim yok";
   const bugun = todayInIstanbul();
+
+  /* Orta sütun sekmeleri; "Hareketler" adreste ?hareket= varsa açık başlar
+     (aralık ve sayfa bağlantıları sayfayı yeniden yüklüyor). */
+  const sekmeler = [
+    "Üstündekiler",
+    ...(crmVar ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
+    ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+    ...(hareketGorur ? ["Hareketler"] : []),
+  ];
+  const hareketSekmesi = sekmeler.indexOf("Hareketler");
 
   const editForm = (
     <form className="panel-form hr-form" action={updateEmployee}>
@@ -198,15 +236,27 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           <h1>{employee.full_name}</h1>
         </div>
         <div className="talep-bas-eylem">
+          {prim && primToplami ? (
+            <PanelModal
+              triggerLabel="Prim"
+              triggerClassName="panel-primary"
+              kicker="PRİM HESABI"
+              title={employee.full_name}
+              description={`Ödenecek bakiye ${money(primToplami.balance)}`}
+              boy="tam"
+              baslangicAcik={pencere === "prim"}
+              kapaninca={pencere === "prim" ? temelAdres : undefined}
+            >
+              <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} />
+            </PanelModal>
+          ) : null}
           {canManageTeam ? (
-            <PanelDrawer triggerLabel="Düzenle" kicker="PERSONEL" title="Personeli Düzenle" description={employee.full_name}>{editForm}</PanelDrawer>
+            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker="PERSONEL" title="Personeli Düzenle" description={employee.full_name}>{editForm}</PanelDrawer>
           ) : null}
           <details className="os-menu talep-menu">
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               <Link className="os-menu-item" href="/panel/hr">Ekip listesi</Link>
-              {primGorebilir ? <Link className="os-menu-item" href={`/panel/hr/prim-hesabi?personel=${employee.id}`}>Prim hesabı</Link> : null}
-              <Link className="os-menu-item" href="/panel/hr/activity">Personel hareketleri</Link>
             </div>
           </details>
         </div>
@@ -224,7 +274,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         </dl>
       </section>
 
-      <div className={canManageTeam ? "talep-izgara" : "talep-izgara personel-iki"}>
+      <div className={canManageTeam || gizlilikGorur ? "talep-izgara" : "talep-izgara personel-iki"}>
         <section className="panel-card talep-musteri" aria-label="Personel">
           <div className="talep-musteri-kimlik">
             <span className="talep-avatar" aria-hidden="true">{initials(employee.full_name)}</span>
@@ -252,6 +302,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               <div><dt>Satış talepleri</dt><dd>{employee.can_receive_sales_requests ? "Atanabilir" : <em>Atanmaz</em>}</dd></div>
               <div><dt>Satış primi</dt><dd>%{percent(employee.commission_rate)}</dd></div>
               <div><dt>Operasyon primi</dt><dd>%{percent(employee.operation_commission_rate)}</dd></div>
+              {primToplami ? <div><dt>Prim bakiyesi</dt><dd><Link href={`${temelAdres}?pencere=prim`} scroll={false}>{money(primToplami.balance)}</Link></dd></div> : null}
             </dl>
           </div>
         </section>
@@ -259,12 +310,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         {/* Orta sütun sekmeli (2026-10): üstündekiler (performans, talepler,
             işler), WhatsApp ve posta. Eskiden yalnızca üstündekiler vardı. */}
         <TalepAkis
-          sekmeler={[
-            "Üstündekiler",
-            ...(crmVar ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
-            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
-          ]}
-          tembel={crmVar && postaGorur ? [1, 2] : crmVar || postaGorur ? [1] : []}
+          sekmeler={sekmeler}
+          tembel={sekmeler.map((_, sira) => sira).filter((sira) => sira > 0)}
+          baslangic={hareketSekmesi >= 0 && arama.hareket ? hareketSekmesi : 0}
         >
           <div className="musteri-mesajlar">
               {crmVar || opsVar ? (
@@ -338,10 +386,12 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           </div>
           {crmVar ? <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={employee.full_name} kisi="personel" /></div> : null}
           {postaGorur ? <div><PostaAkisi postalar={postalar} epostaVar={Boolean(employee.email)} kisi="personel" /></div> : null}
+          {hareketGorur ? <div><PersonelHareketleri supabase={supabase} orgId={org} userId={employee.user_id} temelAdres={temelAdres} aralik={arama.hareket} sayfa={arama.hsayfa} /></div> : null}
         </TalepAkis>
 
-        {canManageTeam ? (
-          <section className="panel-card talep-bilgi cari-sag" aria-label="Erişim ve özlük dosyaları">
+        {canManageTeam || gizlilikGorur ? (
+          <section className="panel-card talep-bilgi cari-sag" aria-label="Erişim ve özlük dosyası">
+            {canManageTeam ? <>
             <div className="cari-baslik"><h2>Panel erişimi</h2></div>
             <div className="personel-erisim">
               {member ? (
@@ -388,9 +438,38 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               )}
             </div>
 
-            {/* Özlük dosyaları gizli: yalnızca ekip yönetme yetkisi olana. */}
-            <div className="talep-not">
-              <div className="cari-baslik"><h3>Özlük dosyaları</h3><small>{docs.length}</small></div>
+            </> : null}
+
+            {/* ÖZLÜK DOSYASI: gizlilik sözleşmesi (eskiden ayrı arşiv sayfasıydı,
+                /panel/hr/confidentiality) ve yüklenen belgeler. İkisi de gizli:
+                sözleşmeyi hr.gizlilik.gor, belgeleri ekip yönetme yetkisi görür. */}
+            <div className={canManageTeam ? "talep-not" : undefined}>
+              <div className="cari-baslik"><h2>Özlük dosyası</h2></div>
+            </div>
+            {gizlilikGorur ? (
+              <div className="personel-ozluk">
+                <div className="cari-baslik"><h3>Gizlilik sözleşmesi</h3><small>{gizlilikler.length}</small></div>
+                {gizlilikler.length ? (
+                  <ul className="cari-hareketler">
+                    {gizlilikler.map((g) => {
+                      const [ad, ton] = GIZLILIK_DURUMU[g.status] ?? ["İmza bekliyor", "warning"];
+                      return (
+                        <li key={g.id}>
+                          <Link href={`/panel/confidentiality/${g.id}`}>
+                            <span className="hr-doc-icon"><HrIcon name="shield" size={17} /></span>
+                            <span className="cari-hareket-metin"><b>{g.agreement_no}</b><small>{g.signed_at ? `İmza ${shortDate(g.signed_at)}${g.signer_name ? ` · ${g.signer_name}` : ""}` : `Hazırlandı ${shortDate(g.created_at)}`}</small></span>
+                            <span className="status-pill" data-tone={ton}>{ad}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p className="talep-bos cari-not">Gizlilik sözleşmesi yok; yeni personel kaydında otomatik hazırlanır.</p>}
+              </div>
+            ) : null}
+            {canManageTeam ? (
+            <div className="personel-ozluk">
+              <div className="cari-baslik"><h3>Belgeler</h3><small>{docs.length}</small></div>
               {docs.length ? (
                 <ul className="cari-hareketler">
                   {docs.map((doc) => (
@@ -410,6 +489,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                 <button className="panel-primary" type="submit">Yükle</button>
               </form>
             </div>
+            ) : null}
           </section>
         ) : null}
       </div>

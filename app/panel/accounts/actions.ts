@@ -105,7 +105,7 @@ function musteriSayfalariniYenile() {
 function revalidateLedger() {
   musteriSayfalariniYenile();
   revalidatePath("/panel/finance");
-  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/hr/[id]", "page"); // prim penceresi
   revalidatePath("/panel/finance/raporlar");
   revalidatePath("/panel");
 }
@@ -274,7 +274,7 @@ export async function createEntry(formData: FormData) {
   await flashSuccess("Cari hareket kaydedildi");
   revalidatePath("/panel/finance");
   revalidatePath("/panel/accounts");
-  revalidatePath("/panel/hr/commissions");
+  revalidatePath("/panel/hr/[id]", "page"); // prim penceresi
 }
 
 /*

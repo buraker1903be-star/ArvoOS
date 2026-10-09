@@ -18,10 +18,10 @@ test("Finans: maliyet ve raporlar yalnızca yetkiyle (raporlar modülle birlikte
   assert.ok(!finansBolumleri({ modules: [], yetkiler: new Set(["finance.rapor.gor"]) }).some((b) => b.key === "raporlar"));
 });
 
-test("İK: prim ve kayıt sekmeleri yetkiyle; kurucu prim görür", () => {
-  assert.deepEqual(ikBolumleri(bos).map((b) => b.key), ["genel-bakis", "personel"]);
-  assert.ok(ikBolumleri({ yetkiler: new Set(), isPlatformOwner: true }).some((b) => b.key === "prim"));
-  assert.ok(ikBolumleri({ yetkiler: new Set(["hr.hareket.gor"]) }).some((b) => b.key === "hareketler"));
+test("İK: prim, gizlilik ve hareketler personel detayında; bölüm değil", () => {
+  // 2026-10: dört ayrı sayfa personelin içine taşındı (finanstaki Müşteriler gibi).
+  assert.deepEqual(ikBolumleri().map((b) => b.key), ["genel-bakis", "personel"]);
+  assert.deepEqual(uygulamaBolumleri("hr", { modules: [], yetkiler: new Set(["hr.prim.gor", "hr.gizlilik.gor", "hr.hareket.gor"]), isPlatformOwner: true }).map((b) => b.key), ["genel-bakis", "personel"]);
 });
 
 test("bölümü olmayan uygulama boş", () => {

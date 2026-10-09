@@ -65,7 +65,7 @@ async function createEmployee__impl(formData:FormData){
   });
   if(agreementError) throw new Error("Personel oluşturuldu ancak gizlilik sözleşmesi hazırlanamadı: "+agreementError.message);
   revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
-  revalidatePath("/panel/hr/confidentiality");
+  revalidatePath("/panel/hr/[id]", "page");
   revalidatePath("/panel/crm");
 }
 
