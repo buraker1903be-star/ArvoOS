@@ -45,17 +45,25 @@ export async function musteriWhatsapp(organizationId: string, telefon: string | 
   adresine giden yazışmalar. Çağıran posta.gor yetkisini denetler;
   tablolar RLS'le de posta modülüne kapalı.
 */
-export async function musteriPostalari(supabase: Supabase, organizationId: string, girdi: { talepIdleri: string[]; eposta?: string | null }) {
+export async function musteriPostalari(supabase: Supabase, organizationId: string, girdi: {
+  talepIdleri: string[];
+  eposta?: string | null;
+  /* Personel sayfası: kişinin ÜSTLENDİĞİ yazışmalar da (ilgilenen). */
+  ilgilenenKullanici?: string | null;
+}) {
   const adres = String(girdi.eposta ?? "").trim().toLowerCase().replace(/[*,()]/g, "");
-  const [{ data: bagli }, { data: adresten }] = await Promise.all([
+  const [{ data: bagli }, { data: adresten }, { data: ustlenilen }] = await Promise.all([
     girdi.talepIdleri.length
       ? supabase.from("mail_threads").select("thread_id").eq("organization_id", organizationId).in("opportunity_id", girdi.talepIdleri).limit(50)
       : Promise.resolve({ data: [] }),
     adres
       ? supabase.from("mail_messages").select("thread_id").eq("organization_id", organizationId).or(`gonderen_adres.eq.${adres},alici.ilike.*${adres}*`).limit(200)
       : Promise.resolve({ data: [] }),
+    girdi.ilgilenenKullanici
+      ? supabase.from("mail_threads").select("thread_id").eq("organization_id", organizationId).eq("ilgilenen_user_id", girdi.ilgilenenKullanici).limit(50)
+      : Promise.resolve({ data: [] }),
   ]);
-  const idler = [...new Set([...(bagli ?? []), ...(adresten ?? [])].map((r) => (r as { thread_id: string }).thread_id))];
+  const idler = [...new Set([...(bagli ?? []), ...(adresten ?? []), ...(ustlenilen ?? [])].map((r) => (r as { thread_id: string }).thread_id))];
   if (!idler.length) return [];
   const { data } = await supabase.from("mail_threads")
     .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum")
@@ -77,7 +85,13 @@ function zaman(iso: string) {
   return `${tarih.toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short" })} ${istanbulTime(tarih)}`;
 }
 
-export function WhatsappAkisi({ mesajlar, numara, musteri }: { mesajlar: InboxMessage[]; numara: string | null; musteri: string }) {
+/* Boş durum metinlerindeki kişi: kayıt sayfalarında müşteri, personel sayfasında personel. */
+const KISI = {
+  musteri: { iyelik: "Müşterinin", ile: "Bu müşteriyle", baglanti: "yalnızca talebe bağlanan yazışmalar görünür" },
+  personel: { iyelik: "Personelin", ile: "Bu kişiyle", baglanti: "yalnızca üstlendiği yazışmalar görünür" },
+} as const;
+
+export function WhatsappAkisi({ mesajlar, numara, musteri, kisi = "musteri" }: { mesajlar: InboxMessage[]; numara: string | null; musteri: string; kisi?: keyof typeof KISI }) {
   return (
     <div className="musteri-mesajlar">
       {mesajlar.length ? (
@@ -96,13 +110,13 @@ export function WhatsappAkisi({ mesajlar, numara, musteri }: { mesajlar: InboxMe
           <Link className="panel-secondary musteri-sekme-bag" href="/panel/crm/whatsapp">WhatsApp ekranını aç</Link>
         </>
       ) : (
-        <p className="ic-akis-bos">{numara ? "Bu numarayla WhatsApp yazışması yok." : "Müşterinin cep telefonu kayıtlı değil ya da biçimi tanınmıyor."}</p>
+        <p className="ic-akis-bos">{numara ? "Bu numarayla WhatsApp yazışması yok." : `${KISI[kisi].iyelik} cep telefonu kayıtlı değil ya da biçimi tanınmıyor.`}</p>
       )}
     </div>
   );
 }
 
-export function PostaAkisi({ postalar, epostaVar, eylem }: { postalar: PostaKonusmasi[]; epostaVar: boolean; eylem?: React.ReactNode }) {
+export function PostaAkisi({ postalar, epostaVar, eylem, kisi = "musteri" }: { postalar: PostaKonusmasi[]; epostaVar: boolean; eylem?: React.ReactNode; kisi?: keyof typeof KISI }) {
   return (
     <div className="musteri-mesajlar">
       {eylem ? <div className="musteri-sekme-arac">{eylem}</div> : null}
@@ -125,7 +139,7 @@ export function PostaAkisi({ postalar, epostaVar, eylem }: { postalar: PostaKonu
           })}
         </ul>
       ) : (
-        <p className="ic-akis-bos">{epostaVar ? "Bu müşteriyle posta yazışması yok." : "Müşterinin e-posta adresi kayıtlı değil; yalnızca talebe bağlanan yazışmalar görünür."}</p>
+        <p className="ic-akis-bos">{epostaVar ? `${KISI[kisi].ile} posta yazışması yok.` : `${KISI[kisi].iyelik} e-posta adresi kayıtlı değil; ${KISI[kisi].baglanti}.`}</p>
       )}
     </div>
   );

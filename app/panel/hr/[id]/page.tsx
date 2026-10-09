@@ -19,6 +19,8 @@ import { teklifGrubu } from "@/lib/teklif-grubu";
 import { gunOnce, oran } from "@/lib/liste-istatistik";
 import { tamPara } from "../../crm/istatistik-karti";
 import { simdi } from "../../os/genel-bakis";
+import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 
@@ -147,6 +149,20 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const zamaninda = oran(terminli.filter((t) => teslimGunu(t.delivered_at) <= t.due_date!).length, terminli.length);
   const primGorebilir = isPlatformOwner || izin("hr.prim.gor");
 
+  /*
+    Kişiyle yazışmalar (WhatsApp ve Postalar sekmeleri): müşteri ve kayıt
+    sayfalarıyla aynı kural (crm/musteri-yazismalari.tsx); numara ve adres
+    personel kaydından. Postada kişinin ÜSTLENDİĞİ yazışmalar da geliyor:
+    personel sayfasında asıl soru "kimlerle yazışıyor, neyi üstlendi".
+    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), postayı
+    ortak kutuyu görebilen (posta.gor).
+  */
+  const postaGorur = izin("posta.gor");
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
+  ]);
+
   const isOwner = membership.role === "owner";
   // Yönetici departmanındaki aktif/izinli çalışanın rolü departmandan gelir
   // (Kurum Sahibi); elle değiştirilemez (ekip listesindeki kuralla aynı).
@@ -240,76 +256,89 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           </div>
         </section>
 
-        <section className="panel-card talep-bilgi" aria-label="Üstündeki işler">
-          {crmVar || opsVar ? (
-            <>
-              <div className="cari-baslik"><h2>Performans</h2><small>son 90 gün</small></div>
-              <dl className="istat-kutular personel-performans">
-                {crmVar ? (
-                  <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
-                ) : null}
-                {crmVar ? (
-                  <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
-                ) : null}
-                {opsVar ? (
-                  <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
-                ) : null}
-                {opsVar ? (
-                  <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
-                ) : null}
-              </dl>
-            </>
-          ) : null}
-          {crmVar ? (
-            <div className="talep-not">
-              <div className="cari-baslik">
-                <h2>Açık talepler</h2>
-                {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
-                <Link className="personel-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `${talepler.length} / ${acikTalep} · tümünü gör` : `${acikTalep} · listede aç`}</Link>
-              </div>
-              {talepler.length ? (
-                <ul className="cari-hareketler">
-                  {talepler.map((talep) => (
-                    <li key={talep.id}>
-                      <Link href={`/panel/crm/requests/${talep.id}`}>
-                        <span className="cari-hareket-metin">
-                          <b>{talep.customer_name || talep.title || "Talep"}</b>
-                          <small>{[talep.title, shortDate(talep.created_at)].filter(Boolean).join(" · ")}</small>
-                        </span>
-                        <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="talep-bos cari-not">Üstünde açık talep yok.</p>}
-            </div>
-          ) : null}
-          {opsVar ? (
-            <div className="talep-not">
-              <div className="cari-baslik">
-                <h2>Yürüttüğü işler</h2>
-                {/* İşler listesinin sorumlu süzgeci. */}
-                <Link className="personel-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `${isler.length} / ${acikIs} · tümünü gör` : `${acikIs} · listede aç`}</Link>
-              </div>
-              {isler.length ? (
-                <ul className="cari-hareketler">
-                  {isler.map((is) => (
-                    <li key={is.id}>
-                      <Link href={`/panel/operations/${is.id}`}>
-                        <span className="cari-hareket-metin">
-                          <b>{is.title}</b>
-                          <small>{[is.customer_name, is.due_date ? `Termin ${shortDate(is.due_date)}` : "Termin yok"].filter(Boolean).join(" · ")}</small>
-                        </span>
-                        <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="talep-bos cari-not">Üstünde iş yok.</p>}
-            </div>
-          ) : null}
-          {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
-        </section>
+        {/* Orta sütun sekmeli (2026-10): üstündekiler (performans, talepler,
+            işler), WhatsApp ve posta. Eskiden yalnızca üstündekiler vardı. */}
+        <TalepAkis
+          sekmeler={[
+            "Üstündekiler",
+            ...(crmVar ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
+            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+          ]}
+          tembel={crmVar && postaGorur ? [1, 2] : crmVar || postaGorur ? [1] : []}
+        >
+          <div className="musteri-mesajlar">
+              {crmVar || opsVar ? (
+                <>
+                  <div className="cari-baslik"><h2>Performans</h2><small>son 90 gün</small></div>
+                  <dl className="istat-kutular personel-performans">
+                    {crmVar ? (
+                      <div><dt>İmzalanan sözleşme</dt><dd>{son90Imza.length}</dd><small>{son90Deger ? tamPara(son90Deger) : "—"} · toplam {imzalananlar.length}</small></div>
+                    ) : null}
+                    {crmVar ? (
+                      <div><dt>Teklif kabul oranı</dt><dd>{kabulOrani === null ? "—" : `%${kabulOrani}`}</dd><small>{kabul} kabul · tüm zamanlar</small></div>
+                    ) : null}
+                    {opsVar ? (
+                      <div><dt>Teslim edilen iş</dt><dd>{son90Teslim}</dd><small>toplam {teslimler.length}</small></div>
+                    ) : null}
+                    {opsVar ? (
+                      <div><dt>Zamanında teslim</dt><dd>{zamaninda === null ? "—" : `%${zamaninda}`}</dd><small>{terminli.length} terminli iş</small></div>
+                    ) : null}
+                  </dl>
+                </>
+              ) : null}
+              {crmVar ? (
+                <div className="talep-not">
+                  <div className="cari-baslik">
+                    <h2>Açık talepler</h2>
+                    {/* Talepler listesinin temsilci süzgeci: hepsini aynı süzgeçle açar. */}
+                    <Link className="personel-tumu" href={`/panel/crm?temsilci=${employee.id}`}>{acikTalep > talepler.length ? `${talepler.length} / ${acikTalep} · tümünü gör` : `${acikTalep} · listede aç`}</Link>
+                  </div>
+                  {talepler.length ? (
+                    <ul className="cari-hareketler">
+                      {talepler.map((talep) => (
+                        <li key={talep.id}>
+                          <Link href={`/panel/crm/requests/${talep.id}`}>
+                            <span className="cari-hareket-metin">
+                              <b>{talep.customer_name || talep.title || "Talep"}</b>
+                              <small>{[talep.title, shortDate(talep.created_at)].filter(Boolean).join(" · ")}</small>
+                            </span>
+                            <span className="status-pill" data-tone={statusTone(talep.stage ?? "")}>{requestStageNames[talep.stage ?? ""] ?? talep.stage}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="talep-bos cari-not">Üstünde açık talep yok.</p>}
+                </div>
+              ) : null}
+              {opsVar ? (
+                <div className="talep-not">
+                  <div className="cari-baslik">
+                    <h2>Yürüttüğü işler</h2>
+                    {/* İşler listesinin sorumlu süzgeci. */}
+                    <Link className="personel-tumu" href={`/panel/operations/isler?sorumlu=${employee.id}`}>{acikIs > isler.length ? `${isler.length} / ${acikIs} · tümünü gör` : `${acikIs} · listede aç`}</Link>
+                  </div>
+                  {isler.length ? (
+                    <ul className="cari-hareketler">
+                      {isler.map((is) => (
+                        <li key={is.id}>
+                          <Link href={`/panel/operations/${is.id}`}>
+                            <span className="cari-hareket-metin">
+                              <b>{is.title}</b>
+                              <small>{[is.customer_name, is.due_date ? `Termin ${shortDate(is.due_date)}` : "Termin yok"].filter(Boolean).join(" · ")}</small>
+                            </span>
+                            <span className="status-pill" data-tone={statusTone(is.status)}>{workflowStatusNames[is.status] ?? is.status}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="talep-bos cari-not">Üstünde iş yok.</p>}
+                </div>
+              ) : null}
+              {!crmVar && !opsVar ? <p className="ic-akis-bos">Talep ve iş modülleri açık değil.</p> : null}
+          </div>
+          {crmVar ? <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={employee.full_name} kisi="personel" /></div> : null}
+          {postaGorur ? <div><PostaAkisi postalar={postalar} epostaVar={Boolean(employee.email)} kisi="personel" /></div> : null}
+        </TalepAkis>
 
         {canManageTeam ? (
           <section className="panel-card talep-bilgi cari-sag" aria-label="Erişim ve özlük dosyaları">

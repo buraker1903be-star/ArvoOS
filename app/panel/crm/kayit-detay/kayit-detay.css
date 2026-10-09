@@ -527,8 +527,8 @@
 .os-root .talep-tablo .crm-data-table[data-cols="musteri"] td[data-label="Kayıt"]{min-width:200px}
 /* Müşteri sayfası: başlık + sayı şeridi, sütunlar dock'un üstünde bitsin. */
 .os-root .musteri-sayfa .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:calc(100dvh - 350px)}
-.os-root .musteri-sayfa .talep-akis-panel{max-height:calc(100dvh - 400px)}
-@media (max-width:1200px){.os-root .musteri-sayfa .talep-izgara>:is(.talep-bilgi,.talep-musteri),.os-root .musteri-sayfa .talep-akis-panel{max-height:none}}
+.os-root :is(.musteri-sayfa,.personel) .talep-akis-panel{max-height:calc(100dvh - 400px)}
+@media (max-width:1200px){.os-root .musteri-sayfa .talep-izgara>:is(.talep-bilgi,.talep-musteri),.os-root :is(.musteri-sayfa,.personel) .talep-akis-panel{max-height:none}}
 .musteri-sayfa .talep-izgara{grid-template-columns:minmax(260px,1fr) minmax(0,2fr) minmax(300px,1.1fr)}
 @media (max-width:1200px){.musteri-sayfa .talep-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}}
 @media (max-width:760px){.musteri-sayfa .talep-izgara{grid-template-columns:minmax(0,1fr)}}
