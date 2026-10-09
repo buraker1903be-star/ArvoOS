@@ -20,9 +20,9 @@ import { iletisimiDerle, kunyeyiDerle } from "@/lib/musteri-kunyesi";
     erişimi kendisi denetliyor, künye ve iletişim tek çağrıda yazılıyor.
     Yetki talep düzenlemeyle aynı (crm.talep.yonet).
 
-  - CARİSİ (account_parties): kendi adı/unvanı, telefonu, e-postası,
-    vergi no, vergi dairesi, adres. Ayrı alanlar: carisi şirket olan bir
-    müşteride kişinin adını cariye yazmak unvanın üstüne yazmak olurdu.
+  - CARİSİ (account_parties): vergi no, vergi dairesi, adres. Ad,
+    telefon ve e-posta talep ile cari arasında senkron (20261009082529);
+    talep yetkisi olmayan biri bu üçünü cariden düzenler, taleplere yansır.
     Yetki cari yönetimiyle aynı (finance.cari.yonet), RLS de uyguluyor.
 
   Formda yalnızca yetkisi olunan kayda ait alanlar çiziliyor; burada da
@@ -58,16 +58,23 @@ async function musteriBilgileriniKaydet__impl(formData: FormData) {
     if (!modules.some((m) => m.code === "accounts")) throw new Error("Cari hesap modülüne erişiminiz yok.");
     assertModuleKeyAccess(membership.role, "finance", hiddenModuleKeys);
     assertYetki(yetkiler, "finance.cari.yonet");
-    const cariAd = metin(formData, "cari_ad", 180);
-    if (cariAd.length < 2) throw new Error("Cari adı en az 2 karakter olmalı.");
-    const cariEposta = metin(formData, "cari_eposta", 240);
-    if (cariEposta && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cariEposta)) throw new Error("Cari e-posta adresi geçersiz görünüyor.");
+    /* Ad, telefon ve e-posta talep ile cari arasında senkron
+       (20261009082529). Talep de yazıldıysa onlar tetikleyiciyle zaten
+       cariye geçti; burada ikinci kez yazmak (form farklı değer taşırsa)
+       son yazanın kazandığı bir yarış olurdu. Yalnızca formda cari
+       alanları varsa (talep yetkisi yok) buradan yazılıyor. */
+    const iletisim: Record<string, string | null> = {};
+    if (formData.has("cari_ad")) {
+      const cariAd = metin(formData, "cari_ad", 180);
+      if (cariAd.length < 2) throw new Error("Ad soyad en az 2 karakter olmalı.");
+      const cariEposta = metin(formData, "cari_eposta", 240);
+      if (cariEposta && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cariEposta)) throw new Error("E-posta adresi geçersiz görünüyor.");
+      Object.assign(iletisim, { name: cariAd, phone: metin(formData, "cari_telefon", 80) || null, email: cariEposta || null });
+    }
     const { data, error } = await supabase
       .from("account_parties")
       .update({
-        name: cariAd,
-        phone: metin(formData, "cari_telefon", 80) || null,
-        email: cariEposta || null,
+        ...iletisim,
         tax_number: metin(formData, "tax_number", 40) || null,
         tax_office: metin(formData, "tax_office", 120) || null,
         address: metin(formData, "address", 500) || null,
