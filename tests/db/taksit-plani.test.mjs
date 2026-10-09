@@ -2,16 +2,9 @@
 // değişikliği arvo_taksitleri_kaydet ile; toplam sözleşme tutarına eşit
 // olmalı, yalnızca kurum yöneticisi, ödenmiş/bağlantılı taksit silinmez.
 // Ayrıca rebuild_payment_plan_installments oturumsuz çağrıya kapatıldı.
-//
-// Migration anlık görüntüden yeni olduğu için burada AYRICA uygulanıyor.
-// Görüntü yenilendiğinde bu satırı kaldırın.
-import fs from "node:fs";
-import path from "node:path";
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
-
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261009100718_taksit_plani_kaydet.sql");
 
 const SAHIP = "00000000-0000-4000-8000-000000000001";
 const UYE = "00000000-0000-4000-8000-000000000003";
@@ -22,7 +15,6 @@ const IMZA = "data:image/png;base64," + "A".repeat(300);
 let db;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
 });
 
 const tek = async (sql, params = []) => (await db.query(sql, params)).rows[0];

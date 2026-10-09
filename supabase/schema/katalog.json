@@ -1675,6 +1675,7 @@
     "arvo_record_proposal_response_agent",
     "arvo_respond_contract_addendum",
     "arvo_storage_usage",
+    "arvo_taksitleri_kaydet",
     "arvo_tracking_asamalar",
     "arvo_tracking_attempts_prune",
     "arvo_tracking_confirm_proposal",
