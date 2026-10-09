@@ -130,7 +130,10 @@
 
 /* ---------- Başlatıcı ve Ctrl+K: ortak pencere ---------- */
 .os-launcher,.os-palette{
-  border:1px solid var(--line);border-radius:var(--r-xl);padding:0;
+  /* margin:auto açıkça: genel bir sıfırlama tarayıcının modal pencereyi
+     ortalayan margin:auto değerini 0 yapıyordu; Uygulamalar ve Ctrl+K sol
+     üst köşede açılıyordu. */
+  margin:auto;border:1px solid var(--line);border-radius:var(--r-xl);padding:0;
   background:var(--surface-raised);color:var(--ink);box-shadow:var(--shadow-lg);
 }
 .os-launcher::backdrop,.os-palette::backdrop{background:color-mix(in srgb,var(--n-900) 35%,transparent);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
