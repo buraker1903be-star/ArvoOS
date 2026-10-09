@@ -8,6 +8,7 @@ export const notificationFilters = [
   { key: "operations", label: "Operasyon", categories: ["operation_assignment", "operation_step_due", "crm_won_automation"] },
   { key: "musteri", label: "Müşteri", categories: ["customer_message", "contract_addendum_accepted", "contract_addendum_rejected", "proposal_customer_decision"] },
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },
+  { key: "posta", label: "Posta", categories: ["posta_gelen"] },
   { key: "duyurular", label: "Duyurular", categories: ["management_announcement"] },
   { key: "odemeler", label: "Ödemeler", categories: ["payment_submitted", "payment_approved", "payment_rejected"] },
   { key: "destek", label: "Destek", categories: ["support_message"] },

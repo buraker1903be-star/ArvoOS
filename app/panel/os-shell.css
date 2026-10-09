@@ -367,3 +367,25 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
   font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center;
   font-variant-numeric:tabular-nums;
 }
+
+/*
+  YENİ POSTA UYARISI (os-posta-uyarisi.tsx): üst çubuktaki rozetin
+  altında, sağ üstte. Sabit konumlu çünkü üst çubuk sayfa kaydıkça
+  yerinde duruyor ve uyarı da onunla kalmalı; çubuğun içinde akan bir
+  kutu, dar ekranda saat ve kullanıcı menüsünü dışarı itiyordu.
+*/
+.os-root .os-posta-uyari{
+  position:fixed;top:calc(var(--os-bar-h) + var(--sp-2));right:var(--sp-4);z-index:70;
+  display:flex;align-items:flex-start;gap:var(--sp-2);max-width:340px;
+  padding:var(--sp-3);border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface);box-shadow:var(--shadow-lg,0 12px 32px rgba(16,24,40,.16));
+  animation:os-posta-uyari-gir .18s ease}
+.os-root .os-posta-uyari a{display:flex;flex-direction:column;gap:2px;min-width:0;color:inherit;text-decoration:none}
+.os-root .os-posta-uyari b{font-size:var(--fs-sm);color:var(--ink)}
+.os-root .os-posta-uyari span{color:var(--muted);font-size:var(--fs-sm);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.os-root .os-posta-uyari a:hover b{color:var(--primary)}
+.os-root .os-posta-uyari button{flex:none;border:0;background:transparent;color:var(--dim);font-size:16px;line-height:1;cursor:pointer}
+.os-root .os-posta-uyari button:hover{color:var(--ink)}
+@keyframes os-posta-uyari-gir{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.os-root .os-posta-uyari{animation:none}}
+@media (max-width:760px){.os-root .os-posta-uyari{left:var(--sp-3);right:var(--sp-3);max-width:none}}

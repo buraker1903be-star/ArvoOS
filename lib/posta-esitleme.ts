@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
+import { yeniPostaBildirimleri } from "./posta-bildirim";
 import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
 import { randomBytes } from "node:crypto";
 
@@ -73,7 +74,7 @@ async function mesajlariIsle(
   kutuAdresi: string,
   kimlikler: readonly string[],
   belirtec: string,
-): Promise<{ cozulenler: CozulmusMesaj[] } | { hata: string }> {
+): Promise<{ cozulenler: CozulmusMesaj[]; yeniler: CozulmusMesaj[] } | { hata: string }> {
   const cozulenler: CozulmusMesaj[] = [];
   for (let i = 0; i < kimlikler.length; i += KUME) {
     const kume = kimlikler.slice(i, i + KUME);
@@ -90,10 +91,24 @@ async function mesajlariIsle(
       if (cozulen) cozulenler.push(cozulen);
     }
   }
-  if (!cozulenler.length) return { cozulenler };
+  if (!cozulenler.length) return { cozulenler, yeniler: [] };
 
   const admin = createAdminClient();
   if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+
+  /*
+    Hangi mesajın BİZDE YENİ olduğu upsert'ten önce öğreniliyor: upsert
+    "eklendi mi güncellendi mi" demiyor, bildirim de ancak gerçekten yeni
+    gelen posta için atılabilir. Eskiden her tur aynı mesajı yeniden
+    yazıyordu; bildirim buna bakılsaydı kutu her on dakikada bir aynı
+    postayı yeniden duyururdu.
+  */
+  const { data: bilinenler } = await admin.from("mail_messages")
+    .select("message_id")
+    .eq("organization_id", organizationId)
+    .in("message_id", cozulenler.map((mesaj) => mesaj.messageId));
+  const bilinen = new Set(((bilinenler ?? []) as { message_id: string }[]).map((satir) => satir.message_id));
+  const yeniler = cozulenler.filter((mesaj) => !bilinen.has(mesaj.messageId));
 
   const { error } = await admin.from("mail_messages").upsert(
     cozulenler.map((mesaj) => ({
@@ -112,7 +127,7 @@ async function mesajlariIsle(
     { onConflict: "organization_id,message_id" },
   );
   if (error) return { hata: "Mesajlar yazılamadı: " + error.message };
-  return { cozulenler };
+  return { cozulenler, yeniler };
 }
 
 /*
@@ -354,6 +369,44 @@ export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: s
   }
 }
 
+/*
+  Yeni gelen posta için panelin bildirim çekmecesine satır bırakır.
+
+  Yalnızca CANLI pencereden çağrılıyor, geçmiş taramasından değil: ilk
+  eşitlemede yıllık kutunun tamamı "yeni" sayılır ve kurum binlerce
+  bildirimle karşılaşırdı.
+
+  Bildirim kuruma (audience: organization) bırakılıyor, kişiye değil:
+  kutu ortak, hangi personelin ilgileneceği baştan belli değil.
+
+  Hata yutuluyor: bildirim yazılamadı diye eşitlemeyi düşürmek, asıl işi
+  (postanın kutuya inmesi) ikincil bir yüzünden feda etmek olurdu.
+*/
+async function yeniPostayiDuyur(organizationId: string, yeniler: readonly CozulmusMesaj[]) {
+  const bildirimler = yeniPostaBildirimleri(yeniler.map((mesaj) => ({
+    threadId: mesaj.threadId,
+    gonderenAd: mesaj.gonderenAd,
+    gonderenAdres: mesaj.gonderenAdres,
+    konu: mesaj.konu,
+    tarih: mesaj.tarih,
+    yon: mesaj.yon,
+  })));
+  if (!bildirimler.length) return;
+
+  const admin = createAdminClient();
+  if (!admin) return;
+  const { error } = await admin.from("notifications").insert(bildirimler.map((bildirim) => ({
+    organization_id: organizationId,
+    audience: "organization",
+    category: "posta_gelen",
+    title: bildirim.baslik,
+    message: bildirim.mesaj,
+    action_url: bildirim.threadId ? `/panel/posta/${bildirim.threadId}` : "/panel/posta",
+    metadata: bildirim.threadId ? { thread_id: bildirim.threadId } : {},
+  })));
+  if (error) console.error("[posta] bildirim yazılamadı:", error.message);
+}
+
 async function turuKos(organizationId: string, kutuAdresi: string): Promise<string | null> {
   const admin = createAdminClient();
   if (!admin) return "Sunucu anahtarı tanımlı değil.";
@@ -404,6 +457,7 @@ async function turuKos(organizationId: string, kutuAdresi: string): Promise<stri
   if ("hata" in yeniSonuc) return yeniSonuc.hata;
   const konusmaHatasi = await konusmalariGuncelle(organizationId, yeniSonuc.cozulenler);
   if (konusmaHatasi) return konusmaHatasi;
+  await yeniPostayiDuyur(organizationId, yeniSonuc.yeniler);
 
   // ---------- 2) Geçmişten bir sayfa ----------
   const { data: hesap } = await admin

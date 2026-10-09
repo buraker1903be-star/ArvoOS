@@ -40,6 +40,7 @@ import "./os-shell.css";
 import "./panel-ui.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
+import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
 
 export const metadata: Metadata = {
   title: "ArvoOS | Yönetim Merkezi",
@@ -283,6 +284,9 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <OsSaat />
           <div className="os-bar-actions">
             {postaGorunur ? <OsPostaDugmesi okunmamis={postaOkunmamis} /> : null}
+            {/* Yeni posta anlık uyarısı rozetin yanında doğuyor; kutusu
+                üst çubuğun altına, sağa çıkıyor (os-shell.css). */}
+            {postaGorunur ? <OsPostaUyarisi organizationId={membership.organization_id} /> : null}
             {messagesInit ? <MessagesDrawer init={messagesInit} /> : null}
             <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
             <ThemeToggle />
