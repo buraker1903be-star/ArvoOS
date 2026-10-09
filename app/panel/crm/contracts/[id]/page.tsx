@@ -34,6 +34,7 @@ import { contractMessages, organizationBrandName } from "@/lib/customer-message-
 import { InternalComments } from "../../internal-comments";
 import { RecordHistory } from "../../record-history";
 import { TalepAkis } from "../../kayit-detay/kayit-akis";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../request-page.css";
 import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
@@ -185,6 +186,15 @@ export default async function ContractDetailPage({ params }: Props) {
     legalName: organization.name,
   });
   const musteri: string = formatPersonName(customer?.customer_name) || customer?.customer_name || "Müşteri";
+
+  /* Müşteriyle yazışmalar (WhatsApp ve Postalar sekmeleri): talep detayı ve
+     müşteri sayfasıyla aynı kural (../../musteri-yazismalari.tsx). Posta
+     sözleşmenin talebine bağlı ya da müşterinin adresiyle eşleşenler. */
+  const postaGorur = izin("posta.gor");
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    musteriWhatsapp(membership.organization_id, customer?.contact_phone),
+    postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
+  ]);
   const messages = shareUrl
     ? contractMessages({
         organizationName: brandName,
@@ -641,8 +651,19 @@ export default async function ContractDetailPage({ params }: Props) {
           ) : null}
         </section>
 
-        {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, kayıt geçmişi */}
-        <TalepAkis sekmeler={[unreadMessages ? `Mesajlar · ${unreadMessages}` : "Mesajlar", "Yorumlar", "Geçmiş"]}>
+        {/* Akış: müşteri mesajları (takip ekranı), iç yorumlar, WhatsApp,
+            posta, kayıt geçmişi. WhatsApp ve Postalar eskiden yoktu;
+            yazışmayı görmek için ayrı ekranlarda müşteri aranıyordu. */}
+        <TalepAkis
+          sekmeler={[
+            unreadMessages ? `Mesajlar · ${unreadMessages}` : "Mesajlar",
+            "Yorumlar",
+            whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp",
+            ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+            "Geçmiş",
+          ]}
+          tembel={postaGorur ? [2, 3, 4] : [2, 3]}
+        >
           <div className="sozlesme-mesaj" id="musteri-mesajlari">
             {customerMessages.length ? (
               <div className="contract-chat">
@@ -672,6 +693,18 @@ export default async function ContractDetailPage({ params }: Props) {
             ) : null}
           </div>
           <InternalComments opportunityId={data.opportunity_id} contextType="contract" contextId={data.id} gorunum="akis" />
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(customer?.contact_email)}
+                eylem={izin("posta.yanitla") && customer?.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(customer.contact_email)}&firsat=${encodeURIComponent(data.opportunity_id)}&konu=${encodeURIComponent(`${data.contract_no} · ${data.title}`)}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </div>
+          ) : null}
           <RecordHistory opportunityId={data.opportunity_id} />
         </TalepAkis>
       </div>
