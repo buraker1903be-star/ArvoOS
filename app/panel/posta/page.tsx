@@ -465,7 +465,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
             <SatirTiklama />
             </div>
             {sonSayfa > 1 ? (
-              <nav className="posta-sayfalar" aria-label="Sayfalar">
+              <nav className="liste-sayfalar" aria-label="Sayfalar">
                 {sayfaNo > 1
                   ? <Link href={`/panel/posta${adresEki({ sayfa: sayfaNo === 2 ? "" : String(sayfaNo - 1) })}`}>← Önceki</Link>
                   : <span aria-hidden="true">← Önceki</span>}
