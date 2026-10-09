@@ -45,3 +45,11 @@ test("açık bölüm: tam yol, alt sayfa ve sorgu dizesi", () => {
   assert.equal(etkinBolum(fin, "/panel/finance", "gorunum=maliyet&durum=acik")?.key, "maliyet");
   assert.equal(etkinBolum(fin, "/panel/finance/genel-bakis")?.key, "genel-bakis");
 });
+
+test("müşteri detayı Finans menüsünde Müşteriler'i etkin gösterir", () => {
+  // 2026-10: Cari Hesaplar → Müşteriler; detay /panel/finance/musteri/[cari] altında.
+  const fin = finansBolumleri({ modules: [], yetkiler: new Set() });
+  assert.equal(fin.find((b) => b.key === "cari")?.label, "Müşteriler");
+  assert.equal(etkinBolum(fin, "/panel/finance/musteri/abc")?.key, "cari");
+  assert.equal(etkinBolum(fin, "/panel/finance/genel-bakis")?.key, "genel-bakis");
+});

@@ -86,7 +86,9 @@
 
 /* ---------- Slide-over drawer ---------- */
 .panel-drawer-root{position:fixed;inset:0;z-index:1000;pointer-events:none;visibility:hidden}
-.panel-drawer-root.open{pointer-events:auto;visibility:visible}
+.panel-drawer-root.open{pointer-events:auto;visibility:visible;z-index:1010}
+/* Açık çekmece ortadaki pencerenin (panel-modal, 1000) ÜSTÜNDE: cari penceresinin içinden
+   açılan Tahsilat/İade çekmecesi aynı katmanda pencerenin arkasında kalıyordu (2026-10). */
 .panel-drawer-backdrop{position:absolute;inset:0;border:0;background:rgba(6,13,25,.55);opacity:0;transition:opacity .24s ease}
 .panel-drawer-root.open .panel-drawer-backdrop{opacity:1}
 /* Sağdan kayan çekmece yerine ortada açılan pencere.

@@ -71,7 +71,7 @@ type CostItem={contract_id:string;amount:number;status:string};
    2026-10). Rakamlar hemen altındaki şeritte zaten duruyor; bir cümlelik
    tanım ekranın üstünde yer kaplıyordu. */
 const pageCopy = {
-  cari: { title: "Cari Hesaplar" },
+  cari: { title: "Müşteriler" },
   maliyet: { title: "İş Maliyetleri" },
 } as const;
 
@@ -103,7 +103,7 @@ function CariTablosu({ rows, paytrHazir }: { rows: Hesap[]; paytrHazir: boolean 
             return (
               <tr key={a.id}>
                 <td data-label="Müşteri">
-                  <Link className="crm-row-link" href={`/panel/accounts/${a.id}`} aria-label={`${a.name} carisini aç`}>
+                  <Link className="crm-row-link" href={`/panel/finance/musteri/${a.id}`} aria-label={`${a.name} müşterisini aç`}>
                     <span className="crm-table-title" title={a.name}>{a.name}</span>
                     <span className="crm-table-sub">{a.phone || a.email || a.tax_number || "Müşteri cari hesabı"}</span>
                   </Link>

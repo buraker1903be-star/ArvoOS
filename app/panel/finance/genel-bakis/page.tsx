@@ -131,7 +131,7 @@ export default async function FinanceOverviewPage() {
           {openAccounts.slice(0, GENEL_BAKIS_SATIR).map((account) => (
             <ListeSatiri
               key={account.id}
-              href={`/panel/accounts/${account.id}`}
+              href={`/panel/finance/musteri/${account.id}`}
               baslik={account.name}
               alt={`Sözleşme ${money(account.debt)} · tahsil edilen ${money(account.collections)}`}
               sag={<span className="status-pill" data-tone="warning">{money(account.balance)}</span>}
@@ -139,11 +139,11 @@ export default async function FinanceOverviewPage() {
           ))}
         </ListeKarti>
 
-        <ListeKarti baslik="Son tahsilatlar" alt={monthCollections ? `Bu ay ${monthCredits.length} ödeme · ${money(monthCollections)}` : "Carilere işlenen son ödemeler"} bos="Henüz tahsilat kaydı yok. Cari hesaplardan “+ Tahsilat” ile eklenir." href="/panel/finance" hrefEtiket="Cari hesaplara git" sayi={credits.length}>
+        <ListeKarti baslik="Son tahsilatlar" alt={monthCollections ? `Bu ay ${monthCredits.length} ödeme · ${money(monthCollections)}` : "Carilere işlenen son ödemeler"} bos="Henüz tahsilat kaydı yok. Müşteriler listesinden “Tahsilat” ile eklenir." href="/panel/finance" hrefEtiket="Müşterilere git" sayi={credits.length}>
           {credits.map((row) => (
             <ListeSatiri
               key={row.id}
-              href={`/panel/accounts/${row.party_id}`}
+              href={`/panel/finance/musteri/${row.party_id}`}
               baslik={partyNameOf(row.account_parties)}
               alt={row.description}
               sag={<span className="status-pill" data-tone="success">+{money(row.amount)}</span>}

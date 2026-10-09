@@ -23,6 +23,7 @@ const extraSections: Record<string, string> = {
   billing: "Abonelik",
   platform: "Platform",
   accounts: "Cari Hesaplar",
+  musteri: "Müşteriler",
   banking: "Banka",
   roller: "Roller",
   ekip: "Ekip",

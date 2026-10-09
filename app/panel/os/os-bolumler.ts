@@ -15,7 +15,8 @@
   Saf modül: birim testi os-bolumler.test.ts.
 */
 
-export type Bolum = { key: string; href: string; label: string };
+/** altYollar: bölümün kendi yolu dışında onu etkin sayan yollar (ör. Müşteriler → /panel/finance/musteri/…). */
+export type Bolum = { key: string; href: string; label: string; altYollar?: string[] };
 
 export type BolumErisimi = {
   modules: { code: string }[];
@@ -61,7 +62,9 @@ export function operasyonBolumleri(): Bolum[] {
 export function finansBolumleri(e: BolumErisimi): Bolum[] {
   return [
     { key: "genel-bakis", href: "/panel/finance/genel-bakis", label: "Genel Bakış" },
-    { key: "cari", href: "/panel/finance", label: "Cari Hesaplar" },
+    /* "Cari Hesaplar" 2026-10'da "Müşteriler" oldu: cari artık müşteri
+       detayında ortada açılan bir pencere. Anahtar aynı kaldı. */
+    { key: "cari", href: "/panel/finance", label: "Müşteriler", altYollar: ["/panel/finance/musteri"] },
     ...(maliyetGorur(e) ? [{ key: "maliyet", href: "/panel/finance?gorunum=maliyet", label: "İş Maliyetleri" }] : []),
     ...(finansRaporGorur(e) ? [{ key: "raporlar", href: "/panel/finance/raporlar", label: "Raporlar" }] : []),
   ];
@@ -120,7 +123,7 @@ export function etkinBolum(bolumler: Bolum[], yol: string, sorgu = ""): Bolum | 
     const sorguTutar = [...bParam.entries()].every(([k, v]) => parametreler.get(k) === v);
     if (!sorguTutar) continue;
     const kokYol = bolumler.some((d) => d !== bolum && d.href.split("?")[0].startsWith(`${bYol}/`));
-    const yolTutar = yol === bYol || (!kokYol && yol.startsWith(`${bYol}/`));
+    const yolTutar = yol === bYol || (!kokYol && yol.startsWith(`${bYol}/`)) || Boolean(bolum.altYollar?.some((alt) => yol === alt || yol.startsWith(`${alt}/`)));
     if (!yolTutar) continue;
     // Sorgu koşulu olan bölüm, aynı yoldaki koşulsuz bölümden önce gelir.
     const p = bYol.length * 10 + [...bParam.keys()].length;

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import "./panel-modal.css";
 
 type PanelModalProps = {
@@ -18,7 +19,7 @@ type PanelModalProps = {
   description?: string;
   kicker?: string;
   /** Pencerenin genişliği: dar (sohbet) ya da genis (dosya yükleme). */
-  boy?: "dar" | "orta" | "sohbet" | "genis";
+  boy?: "dar" | "orta" | "sohbet" | "genis" | "tam";
   /** Adresten gelen derin bağlantı pencereyi açık başlatır. */
   baslangicAcik?: boolean;
   /**
@@ -30,6 +31,14 @@ type PanelModalProps = {
    * doğru — kaydedip kapanmak bekleniyor.
    */
   basaridaKapan?: boolean;
+  /*
+    Pencere adresten açıldıysa (?pencere=cari, ?maliyet=…) kapanınca bu
+    adrese dönülür. Yoksa parametre adreste kalıyor ve sayfa yenilenince
+    ya da bir işlemden sonra pencere kendiliğinden yeniden açılıyordu.
+  */
+  kapaninca?: string;
+  /** Düğme çizilmesin: pencere yalnızca adresten açılıyor (liste satırı gibi). */
+  dugmesiz?: boolean;
   children: ReactNode;
 };
 
@@ -57,9 +66,14 @@ const subscribeNothing = () => () => undefined;
 */
 export function PanelModal({
   triggerLabel, triggerNote, triggerBadge, triggerTone = "neutral", triggerClassName = "panel-secondary",
-  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, children,
+  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, children,
 }: PanelModalProps) {
-  const [open, setOpen] = useState(baslangicAcik);
+  const [open, setAcik] = useState(baslangicAcik);
+  const router = useRouter();
+  const setOpen = useCallback((deger: boolean) => {
+    setAcik(deger);
+    if (!deger && kapaninca) router.replace(kapaninca, { scroll: false });
+  }, [router, kapaninca]);
   const titleId = useId();
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
@@ -71,7 +85,7 @@ export function PanelModal({
     const onSuccess = () => setOpen(false);
     window.addEventListener("arvo:action-success", onSuccess);
     return () => window.removeEventListener("arvo:action-success", onSuccess);
-  }, [open, basaridaKapan]);
+  }, [open, basaridaKapan, setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -99,7 +113,7 @@ export function PanelModal({
       kok.style.overflow = oncekiKok;
       document.body.style.overflow = oncekiGovde;
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   const pencere = (
     <div className="panel-modal-root" data-boy={boy}>
@@ -119,13 +133,13 @@ export function PanelModal({
   );
 
   return <>
-    <button className={triggerClassName} data-tone={triggerTone} type="button" onClick={() => setOpen(true)}>
+    {dugmesiz ? null : <button className={triggerClassName} data-tone={triggerTone} type="button" onClick={() => setOpen(true)}>
       <span className="panel-modal-trigger-text">
         {triggerLabel}
         {triggerNote ? <small>{triggerNote}</small> : null}
       </span>
       {triggerBadge ? <em className="panel-modal-trigger-rozet">{triggerBadge}</em> : null}
-    </button>
+    </button>}
     {open && portalTarget ? createPortal(pencere, portalTarget) : null}
   </>;
 }

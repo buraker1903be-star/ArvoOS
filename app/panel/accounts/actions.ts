@@ -90,7 +90,18 @@ async function getPartyLedger(partyId: string) {
   return { ...context, debit, credit, refunds };
 }
 
+/*
+  Cari artık müşteri sayfasında bir pencere (cari-hesap.tsx); işlemden
+  sonra o sayfa da yenilenmeli, yoksa pencere eski bakiyeyi gösterir.
+  Müşteri sayfasının iki adresi var (finans ve CRM), ikisi de.
+*/
+function musteriSayfalariniYenile() {
+  revalidatePath("/panel/finance/musteri/[id]", "page");
+  revalidatePath("/panel/crm/musteri/[id]", "page");
+}
+
 function revalidateLedger() {
+  musteriSayfalariniYenile();
   revalidatePath("/panel/finance");
   revalidatePath("/panel/hr/commissions");
   revalidatePath("/panel/finance/raporlar");
@@ -266,8 +277,7 @@ export async function createEntry(formData: FormData) {
 
 export async function updateEntry(formData: FormData) {
   const { supabase, membership } = await accountsContext();
-  const entryId = String(formData.get("entry_id") ?? "").trim();
-  const partyId = String(formData.get("party_id") ?? "").trim();
+  const entryId = String(formData.get("entry_id") ?? "").trim();
   const entryType = String(formData.get("entry_type") ?? "debit");
   const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
   const description = String(formData.get("description") ?? "").trim();
@@ -294,14 +304,13 @@ export async function updateEntry(formData: FormData) {
   if (error) throw new Error("Cari hareket güncellenemedi: " + error.message);
   revalidatePath("/panel/finance");
   revalidatePath("/panel/accounts");
-  revalidatePath(`/panel/accounts/${partyId}`);
+  musteriSayfalariniYenile();
   revalidatePath("/panel/hr/commissions");
 }
 
 export async function deleteEntry(formData: FormData) {
   const { supabase, membership } = await accountsContext();
-  const entryId = String(formData.get("entry_id") ?? "").trim();
-  const partyId = String(formData.get("party_id") ?? "").trim();
+  const entryId = String(formData.get("entry_id") ?? "").trim();
   if (!entryId) throw new Error("Hareket seçilmedi.");
   const { error } = await supabase
     .from("account_entries")
@@ -311,7 +320,7 @@ export async function deleteEntry(formData: FormData) {
   if (error) throw new Error("Cari hareket silinemedi: " + error.message);
   revalidatePath("/panel/finance");
   revalidatePath("/panel/accounts");
-  revalidatePath(`/panel/accounts/${partyId}`);
+  musteriSayfalariniYenile();
   revalidatePath("/panel/hr/commissions");
 }
 
@@ -454,7 +463,7 @@ async function createPaymentLink__impl(formData: FormData) {
     try { await deletePaytrLink(credentials, link.id); } catch { /* en iyi çaba */ }
     throw new Error("Ödeme bağlantısı kaydedilemedi: " + error.message);
   }
-  revalidatePath(`/panel/accounts/${partyId}`);
+  musteriSayfalariniYenile();
   revalidatePath("/panel/finance");
 
   const kanal = String(formData.get("gonder") ?? "");
@@ -563,7 +572,7 @@ async function cancelPaymentLink__impl(formData: FormData) {
   const { error } = await admin.from("payment_links").update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("id", link.id).eq("status", "active");
   if (error) throw new Error("Bağlantı iptal edilemedi: " + error.message);
-  revalidatePath(`/panel/accounts/${link.party_id}`);
+  musteriSayfalariniYenile();
 }
 
 export async function createPaymentLink(formData: FormData) {
