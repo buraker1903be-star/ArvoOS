@@ -13,7 +13,10 @@
 .os-bar{
   position:sticky;top:0;z-index:60;
   display:flex;align-items:center;gap:var(--sp-3);
-  min-height:var(--os-bar-h);padding:var(--sp-2) var(--sp-5);box-sizing:border-box;
+  /* Yükseklik SABİT ve dikey boşluk yok: eskiden min-height + 8px boşluk + 44px içerik +
+     1px çizgi 61px ediyordu; sayfalar çubuğu 60px (--os-bar-h) sayıp ekranı doldurduğu için
+     bütün liste sayfaları 1px taşıyordu (2026-10). İçerik align-items ile ortalanıyor. */
+  height:var(--os-bar-h);padding:0 var(--sp-5);box-sizing:border-box;
   background:color-mix(in srgb,var(--surface) 86%,transparent);
   border-bottom:1px solid var(--line);
   -webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);
@@ -179,7 +182,7 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 /* ---------- Dar ekran ---------- */
 @media (max-width:900px){
   .os-root{--os-bar-h:56px;--os-dock-space:96px}
-  .os-bar{padding:var(--sp-2) var(--sp-3);gap:var(--sp-2)}
+  .os-bar{padding:0 var(--sp-3);gap:var(--sp-2)}
   .os-brand-app,.os-clock,.os-online,.os-search-text,.os-search kbd{display:none}
   .os-search{flex:0 0 40px;width:40px;margin:0 0 0 auto;padding:0;justify-content:center;border-color:transparent;background:transparent}
   .os-bar-right{margin-left:0}
