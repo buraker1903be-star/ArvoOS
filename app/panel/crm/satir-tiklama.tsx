@@ -50,7 +50,12 @@ export function SatirTiklama() {
 
       const satir = hedef.closest("tbody tr");
       const adres = satir?.querySelector<HTMLAnchorElement>("a.crm-row-link")?.getAttribute("href");
-      if (!adres) return;
+      /* Gidilecek sayfası olmayan satır (ör. maliyet kalemi): satırın
+         penceresini açan düğme .satir-ac ile işaretlenir, ona basılır. */
+      if (!adres) {
+        if (kip === "ayni-sekme") satir?.querySelector<HTMLButtonElement>("button.satir-ac")?.click();
+        return;
+      }
       /* Aynı sayfada kalan adres (ör. ?maliyet=… penceresi) listeyi en
          üste kaydırmasın: pencere kapanınca kişi kaldığı satırı arıyordu. */
       const ayniSayfa = new URL(adres, window.location.href).pathname === window.location.pathname;

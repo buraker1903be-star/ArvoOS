@@ -1,6 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { SatirTiklama } from "../../crm/satir-tiklama";
 import { addContractCostItem, deleteContractCostItem, updateContractCostItem } from "../actions";
 import { initials } from "../finance-ui";
 
@@ -69,6 +70,8 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
       </div>
       {items?.length ? (
         <div className="talep-tablo">
+          {/* Satırın boş alanına tıklama kalemin düzenleme penceresini açar. */}
+          <SatirTiklama />
           <table className="crm-data-table">
             <thead>
               <tr>
@@ -91,7 +94,7 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                   <td data-label="Durum"><span className="status-pill" data-tone={statusTone(item.status)}>{item.status==="paid"?"Ödendi":"Planlandı"}</span></td>
                   <td className="crm-table-mono" data-label="Tutar">{money(Number(item.amount),contract.currency)}</td>
                   <td className="crm-table-actions maliyet-eylem">
-                    <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker="MALİYET KALEMİ" title="Maliyet kalemini düzenle" description={`${item.category} · ${money(Number(item.amount),contract.currency)}`}>
+                    <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary satir-ac" kicker="MALİYET KALEMİ" title="Maliyet kalemini düzenle" description={`${item.category} · ${money(Number(item.amount),contract.currency)}`}>
                       <form className="panel-form fin-form" action={updateContractCostItem}>
                         <input type="hidden" name="item_id" value={item.id}/>
                         <input type="hidden" name="contract_id" value={contract.id}/>
