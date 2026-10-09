@@ -157,3 +157,28 @@
 .os-root .posta-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
 .os-root .posta-sayfalar span{padding:5px 12px;color:var(--dim)}
 .os-root .posta-sayfalar b{color:var(--muted);font-weight:var(--fw-medium);font-variant-numeric:tabular-nums}
+
+/* Etiket süzgeci süzgeç satırında, aramanın solunda. */
+.os-root .posta-etiket-suzgec{display:flex;align-items:center}
+
+/* Satırdaki etiket rozetleri: konunun altında, küçük ve sönük. */
+.os-root .posta-etiketler{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.os-root .posta-etiketler i{
+  padding:1px 7px;border-radius:999px;background:var(--surface-2);
+  color:var(--muted);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-medium);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+
+/* Yazışmanın etiketleri yan sütunda: rozetler kaldırma düğmesi, altında
+   ekleme seçimi. Etiket Gmail'de açılıyor, burada yalnızca uygulanıyor. */
+.os-root .posta-etiket-kutusu{display:flex;flex-direction:column;gap:var(--sp-2);padding-bottom:var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.os-root .posta-etiket-kutusu>b{font-size:var(--fs-sm);color:var(--ink)}
+.os-root .posta-etiket-liste{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.os-root .posta-etiket-liste button{
+  display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 var(--sp-2);
+  border:1px solid var(--line);border-radius:999px;background:var(--surface-2);
+  color:var(--ink-soft);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer}
+.os-root .posta-etiket-liste button:hover{border-color:var(--danger);color:var(--danger)}
+.os-root .posta-etiket-liste button i{font-style:normal;font-size:13px;line-height:1;color:var(--dim)}
+.os-root .posta-etiket-liste button:hover i{color:var(--danger)}
+.os-root .posta-etiket-ekle{display:flex;gap:var(--sp-2)}
+.os-root .posta-etiket-ekle select{flex:1;min-width:0;height:32px;padding:0 var(--sp-2);border:1px solid var(--n-300);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}

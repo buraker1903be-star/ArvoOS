@@ -33,6 +33,8 @@ const MIGRATIONLAR = [
      eski gövdesiyle yeniden yaratıyor ve çöp sütunlarının korumasını
      düşürüyordu. Kendisi idempotent (sütunlar "if not exists"). */
   "20261008201548_posta_cop_kutusu.sql",
+  // Etiketler: tablo ve koruma anlık görüntüye girene kadar buradan kuruluyor.
+  "20261009203815_posta_etiketleri.sql",
 ].map((ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad));
 
 const KURUM = "00000000-0000-4000-8000-0000000006a1";
@@ -250,6 +252,60 @@ describe("ortak posta kutusu erişimi", () => {
       assert.equal(isaret.rows.length, 1, "sunucu yazışmayı çöpe atamıyor");
       assert.equal(taslak.rows.length, 1, "çöpe atılan yazışmanın taslağı kalıyor");
       assert.equal(durumSatiri.rows.length, 1, "çöpteki yazışmanın ortak durumu yazılamıyor");
+    });
+  });
+
+  /*
+    ETİKETLER. Katalog Gmail'in kopyası: personel okuyabiliyor ama
+    yazamıyor, konuşmanın etiketi de panelden değiştirilemiyor —
+    uygulama önce Gmail'e gidiyor, sonra sunucu yazıyor.
+  */
+  test("etiket kataloğu okunuyor, panelden yazılamıyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await db.query(`insert into public.mail_labels (organization_id,label_id,ad) values ($1,'Label_1','Faturalar')`, [KURUM]);
+      await rol(db, "authenticated", PERSONEL);
+      const { rows } = await db.query(`select ad from public.mail_labels where organization_id = $1`, [KURUM]);
+      await reddedilir(
+        db,
+        `insert into public.mail_labels (organization_id,label_id,ad) values ($1,'Label_2','Elle')`,
+        [KURUM],
+        /permission denied|izin|row-level security/i,
+      );
+      await rol(db, "postgres");
+      assert.equal(rows.length, 1, "modülü açık personel etiket kataloğunu okuyamıyor");
+      assert.equal(rows[0].ad, "Faturalar");
+    });
+  });
+
+  test("başka kurumun etiketi görünmüyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await db.query(`insert into public.mail_labels (organization_id,label_id,ad) values ($1,'Label_9','Gizli')`, [BASKA_KURUM]);
+      await rol(db, "authenticated", PERSONEL);
+      const { rows } = await db.query(`select ad from public.mail_labels`);
+      await rol(db, "postgres");
+      assert.equal(rows.length, 0, "başka kurumun etiketi okunuyor");
+    });
+  });
+
+  test("konuşmanın etiketi panelden yazılamıyor, sunucudan yazılıyor", async () => {
+    await rol(db, "postgres");
+    await islem(db, async () => {
+      await rol(db, "authenticated", PERSONEL);
+      await reddedilir(
+        db,
+        `update public.mail_threads set etiketler = array['Label_1'] where organization_id = $1 and thread_id = $2`,
+        [KURUM, KONUSMA],
+        /panelden değiştirilemez/i,
+      );
+      await rol(db, "service_role");
+      const { rows } = await db.query(
+        `update public.mail_threads set etiketler = array['Label_1']
+         where organization_id = $1 and thread_id = $2 returning etiketler`,
+        [KURUM, KONUSMA]);
+      await rol(db, "postgres");
+      assert.deepEqual(rows[0].etiketler, ["Label_1"], "sunucu etiketi yazamıyor");
     });
   });
 

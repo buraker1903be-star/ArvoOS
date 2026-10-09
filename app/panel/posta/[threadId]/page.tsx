@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
-import { konusmaDurumu, konusmayaYanitla, konusmayiGeriAl, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
+import { konusmaDurumu, konusmaEtiketi, konusmayaYanitla, konusmayiGeriAl, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
@@ -37,7 +37,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
-      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis,silindi_at,silen_user_id")
+      .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis,silindi_at,silen_user_id,etiketler")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
     supabase.from("mail_messages")
       .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon,ekli_dosya")
@@ -89,6 +89,16 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   })));
 
   const yonetebilir = izin("posta.yonet");
+  /* Etiket kataloğu Gmail'den eşitleniyor; panelde yalnızca uygulanıyor.
+     Yetki yanıtlamayla aynı: yazışmayı düzenleyebilen sınıflandırabilsin. */
+  const { data: etiketVerisi } = izin("posta.yanitla")
+    ? await supabase.from("mail_labels").select("label_id,ad")
+        .eq("organization_id", membership.organization_id).order("ad")
+    : { data: [] };
+  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
+  const konusmaEtiketleri = ((konusma.etiketler as string[] | null) ?? []);
+  const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
+  const eklenebilir = etiketler.filter((etiket) => !konusmaEtiketleri.includes(etiket.label_id));
   /* Çöpteki yazışma okunur ama üzerinde iş yapılmaz: yanıt, durum ve
      müşteri bağı kapalı. Önce geri alınır. */
   const copte = Boolean(konusma.silindi_at);
@@ -277,6 +287,43 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
                 </button>
               </form>
             ))}
+          </div>
+        ) : null}
+
+        {/*
+          ETİKETLER. Gmail'de açılıyor, panelde uygulanıyor: panelden
+          etiket açmak iki tarafı hemen ayrıştırırdı (bizde olan, kutuda
+          olmayan bir klasör). Katalog boşsa kutu hiç çıkmıyor —
+          kullanılamayacak bir seçim göstermek soru doğuruyordu.
+        */}
+        {izin("posta.yanitla") && !copte && etiketler.length ? (
+          <div className="posta-etiket-kutusu">
+            <b>Etiketler</b>
+            {konusmaEtiketleri.length ? (
+              <div className="posta-etiket-liste">
+                {konusmaEtiketleri.map((kimlik) => (
+                  <form key={kimlik} action={konusmaEtiketi}>
+                    <input type="hidden" name="thread_id" value={threadId} />
+                    <input type="hidden" name="etiket" value={kimlik} />
+                    <input type="hidden" name="uygula" value="0" />
+                    <button type="submit" title="Etiketi kaldır">
+                      {etiketAdi.get(kimlik) ?? kimlik}<i aria-hidden="true">×</i>
+                    </button>
+                  </form>
+                ))}
+              </div>
+            ) : <p className="posta-not">Bu yazışmada etiket yok.</p>}
+            {eklenebilir.length ? (
+              <form className="posta-etiket-ekle" action={konusmaEtiketi}>
+                <input type="hidden" name="thread_id" value={threadId} />
+                <input type="hidden" name="uygula" value="1" />
+                <select name="etiket" aria-label="Eklenecek etiket" defaultValue="">
+                  <option value="" disabled>Etiket ekle…</option>
+                  {eklenebilir.map((etiket) => <option key={etiket.label_id} value={etiket.label_id}>{etiket.ad}</option>)}
+                </select>
+                <button className="panel-secondary" type="submit">Ekle</button>
+              </form>
+            ) : null}
           </div>
         ) : null}
 

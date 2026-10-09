@@ -6,6 +6,7 @@ import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
 import { TopluIslem } from "./toplu-islem";
+import { OtomatikSecim } from "../crm/otomatik-secim";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 
@@ -34,6 +35,7 @@ type Konusma = {
   opportunity_id: string | null;
   silindi_at: string | null;
   silen_user_id: string | null;
+  etiketler: string[] | null;
   /* Gömülü ilişki: PostgREST tek kayıtta nesne, bazı sürümlerde dizi
      döndürüyor — ikisini de karşılayan tip. */
   crm_opportunities: { customer_name: string | null } | { customer_name: string | null }[] | null;
@@ -68,8 +70,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -90,7 +92,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   let sorgu = supabase
     .from("mail_threads")
-    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,crm_opportunities(customer_name)", { count: "exact" })
+    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,etiketler,crm_opportunities(customer_name)", { count: "exact" })
     .eq("organization_id", membership.organization_id)
     .order(copGorunumu ? "silindi_at" : "son_mesaj_at", { ascending: false })
     .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1);
@@ -100,6 +102,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
      görüp "hangileri" diye sorana cevap yoktu; 100 satırlık listede
      okunmamışı gözle aramak gerekiyordu. */
   if (yalnizOkunmamis === "1") sorgu = sorgu.eq("okunmamis", true);
+  /* Etiket süzgeci dizi üyeliğiyle (GIN indeksi migration'da). Gmail'in
+     etiket KİMLİĞİ sorgulanıyor, adı değil: kurum etiketi yeniden
+     adlandırınca kayıtlı bağlantı bozulmasın. */
+  if (secilenEtiket) sorgu = sorgu.contains("etiketler", [secilenEtiket]);
 
   const secilenKutu = KUTULAR.find((aday) => aday.anahtar === kutu);
   if (secilenKutu) sorgu = sorgu.eq(secilenKutu.sutun, true);
@@ -127,6 +133,16 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
     : konusmalar.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
 
+  /* Etiket kataloğu: Gmail'den eşitlenen kurum etiketleri. Süzgeç
+     satırında ad gösteriliyor, adreste kimlik taşınıyor. */
+  const { data: etiketVerisi } = await supabase
+    .from("mail_labels")
+    .select("label_id,ad")
+    .eq("organization_id", membership.organization_id)
+    .order("ad");
+  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
+  const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
+
   /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
      karışmamalı ama kaybolmamalı da. */
   const { data: taslakVerisi } = await supabase
@@ -152,16 +168,17 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string }) => {
     const p = new URLSearchParams();
-    const al = (ad: "durum" | "q" | "kutu" | "okunmamis", simdiki: string | undefined) =>
+    const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
     const d = al("durum", suzgec), a = al("q", desen ?? undefined), k = al("kutu", kutu);
-    const o = al("okunmamis", yalnizOkunmamis);
+    const o = al("okunmamis", yalnizOkunmamis), e = al("etiket", secilenEtiket);
     if (d) p.set("durum", d);
     if (a) p.set("q", a);
     if (k) p.set("kutu", k);
     if (o) p.set("okunmamis", o);
+    if (e) p.set("etiket", e);
     /* Sayfa yalnızca açıkça isteniyorsa korunuyor: süzgeç değişince
        üçüncü sayfada kalmak, çoğu zaman boş bir liste gösterirdi. */
     if (degisen.sayfa) p.set("sayfa", degisen.sayfa);
@@ -247,12 +264,28 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
             <Link key={anahtar} href={`/panel/posta${adresEki({ durum: anahtar })}`} className={suzgec === anahtar ? "is-active" : undefined}>{etiket.ad}</Link>
           ))}
+          {/* Etiketler Gmail'den geliyor; kurum klasörünü panelde de
+              süzebilsin. Hiç etiketi olmayan kurumda kutu çıkmıyor. */}
+          {etiketler.length ? (
+            <form className="posta-etiket-suzgec" method="get" action="/panel/posta">
+              {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
+              {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
+              {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
+              {desen ? <input type="hidden" name="q" value={desen} /> : null}
+              <OtomatikSecim name="etiket" defaultValue={secilenEtiket ?? ""} className="talep-temsilci-sec" label="Etiket">
+                <option value="">Tüm etiketler</option>
+                {etiketler.map((etiket) => <option key={etiket.label_id} value={etiket.label_id}>{etiket.ad}</option>)}
+              </OtomatikSecim>
+            </form>
+          ) : null}
+
           {/* Arama sunucuda: GET formu kendi sayfasına gönderiyor, sonuç
               paylaşılabilir bir adres oluyor ve geri tuşu çalışıyor. */}
           <form className="talep-ara" method="get" action="/panel/posta" role="search">
             {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
             {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
             {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
+            {secilenEtiket ? <input type="hidden" name="etiket" value={secilenEtiket} /> : null}
             <input name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen ara" aria-label="Postalarda ara" />
           </form>
         </div>
@@ -343,6 +376,14 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                           {konusma.konu || "(konu yok)"}{konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}
                         </span>
                         <span className="crm-table-sub">{konusma.ozet}</span>
+                        {/* Etiket rozetleri konunun altında: satırın kendi
+                            sütununu açmak dar ekranda tabloyu taşırıyordu. */}
+                        {konusma.etiketler?.length ? (
+                          <span className="posta-etiketler">
+                            {konusma.etiketler.map((kimlik) => etiketAdi.get(kimlik)).filter(Boolean)
+                              .map((ad) => <i key={ad as string}>{ad}</i>)}
+                          </span>
+                        ) : null}
                       </td>
                       <td data-label="Müşteri">{musteriAdi(konusma) ?? <span className="talep-bos">—</span>}</td>
                       {copGorunumu ? (

@@ -6,7 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { flashError, flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
-import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaEkiniGetir, postaGovdesiniGetir, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
+import { konusmaEtiketiniDegistir, konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaEkiniGetir, postaGovdesiniGetir, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
 import { topluSecim, topluSonucMetni } from "@/lib/posta-toplu";
 
@@ -597,6 +597,53 @@ async function topluGeriAl__impl(formData: FormData) {
 
 export async function topluGeriAl(formData: FormData) {
   await runPanelAction(() => topluGeriAl__impl(formData));
+}
+
+/*
+  ETİKETLEME.
+
+  Etiketler Gmail'de açılıyor, panelde yalnızca uygulanıyor: panelden
+  etiket açmak iki tarafı hemen ayrıştırırdı (bizde olan, kutuda olmayan
+  bir klasör). Yetki yanıtlamayla aynı (posta.yanitla): yazışmayı
+  düzenleyebilen onu sınıflandırabilmeli de; ayrı bir yetenek anahtarı,
+  kutuyu düzenleyen kişiye yarım bir yetki bırakırdı.
+*/
+async function konusmaEtiketi__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.yanitla");
+  const { supabase, membership } = context;
+
+  const threadId = String(formData.get("thread_id") ?? "").trim();
+  const labelId = String(formData.get("etiket") ?? "").trim();
+  const uygula = String(formData.get("uygula") ?? "") === "1";
+  if (!threadId) throw new Error("Konuşma seçilmedi.");
+  if (!labelId) throw new Error("Etiket seçilmedi.");
+
+  /* Hem konuşmanın hem etiketin bu kuruma ait olduğu KENDİ oturumuyla
+     doğrulanıyor; değiştirme service_role ile yapılıyor ve o RLS'i
+     atlıyor. */
+  const [{ data: konusma, error: konusmaHatasi }, { data: etiket, error: etiketHatasi }] = await Promise.all([
+    supabase.from("mail_threads").select("thread_id,silindi_at")
+      .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
+    supabase.from("mail_labels").select("label_id,ad")
+      .eq("organization_id", membership.organization_id).eq("label_id", labelId).maybeSingle(),
+  ]);
+  if (konusmaHatasi) throw new Error("Konuşma okunamadı: " + konusmaHatasi.message);
+  if (etiketHatasi) throw new Error("Etiket okunamadı: " + etiketHatasi.message);
+  if (!konusma) throw new Error("Konuşma bulunamadı veya bu kayda erişiminiz yok.");
+  if (!etiket) throw new Error("Etiket bulunamadı. Gmail'de silinmiş olabilir; kutu eşitlenince listeden düşer.");
+  if (konusma.silindi_at) throw new Error("Çöpteki yazışma etiketlenemiyor; önce geri alın.");
+
+  const sonuc = await konusmaEtiketiniDegistir(membership.organization_id, threadId, labelId, uygula);
+  if (sonuc) throw new Error(sonuc.hata);
+
+  await flashSuccess(uygula ? `"${etiket.ad}" etiketi eklendi` : `"${etiket.ad}" etiketi kaldırıldı`);
+  revalidatePath("/panel/posta");
+  revalidatePath(`/panel/posta/${threadId}`);
+}
+
+export async function konusmaEtiketi(formData: FormData) {
+  await runPanelAction(() => konusmaEtiketi__impl(formData));
 }
 
 /*

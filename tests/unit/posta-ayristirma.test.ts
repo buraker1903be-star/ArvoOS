@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   baslik,
   gondereniAyristir,
+  kullaniciEtiketleri,
   htmlDenMetin,
   konusmayiOzetle,
   mesajGovdesi,
@@ -191,4 +192,20 @@ test("alıcıya Cc de yazılıyor (tümünü yanıtla için)", () => {
   assert.equal(cozulen!.alici, "info@biz.com, mudur@firma.com");
   const ccsiz = mesajiCoz({ id: "m3", threadId: "t3", payload: { headers: [{ name: "To", value: "info@biz.com" }] } }, "info@biz.com");
   assert.equal(ccsiz!.alici, "info@biz.com");
+});
+
+test("kullanıcı etiketleri sistem etiketlerinden ayrılıyor", () => {
+  /*
+    Gmail hepsini aynı listede veriyor. Sistem etiketleri BİÇİMLERİYLE
+    tanınıyor (tamamı büyük harf ve alt çizgi): sabit liste tutsaydık
+    Gmail yeni bir sistem etiketi eklediğinde o, kurumun etiketi gibi
+    görünürdü.
+  */
+  assert.deepEqual(
+    kullaniciEtiketleri(["INBOX", "UNREAD", "CATEGORY_PROMOTIONS", "Label_12", "Label_3"]),
+    ["Label_12", "Label_3"],
+  );
+  assert.deepEqual(kullaniciEtiketleri(undefined), []);
+  // Yinelenen etiket tek sefer; sıralı dönüyor ki konuşma satırı her turda aynı olsun.
+  assert.deepEqual(kullaniciEtiketleri(["Label_9", "Label_1", "Label_9"]), ["Label_1", "Label_9"]);
 });

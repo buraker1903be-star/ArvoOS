@@ -89,6 +89,7 @@ export type CozulmusMesaj = {
   tarih: Date | null;
   yon: "gelen" | "giden";
   okunmamis: boolean;
+  etiketler: string[];
   ekliDosya: boolean;
 };
 
@@ -113,6 +114,7 @@ export function mesajiCoz(ham: GmailMesaji, kutuAdresi: string): CozulmusMesaj |
     tarih: mesajTarihi(ham.internalDate),
     yon: mesajYonu({ etiketler: ham.labelIds, gonderenAdres: gonderen.adres, kutuAdresi }),
     okunmamis: Boolean(ham.labelIds?.includes("UNREAD")),
+    etiketler: kullaniciEtiketleri(ham.labelIds),
     ekliDosya: ekliDosyaVarMi(ham.payload),
   };
 }
@@ -254,6 +256,26 @@ export function degisimleriTopla(
   Karar mesajın kendi etiketlerinden veriliyor, listeyi kimin ürettiğinden
   bağımsız: aynı kural hem artımlı tura hem geçmiş taramasına uyuyor.
 */
+/*
+  KULLANICI ETİKETLERİ.
+
+  Gmail etiketlerin hepsini aynı listede veriyor: kutu durumunu anlatan
+  sistem etiketleri (INBOX, SENT, UNREAD, TRASH…) ile kurumun kendi
+  açtığı etiketler (Faturalar, Bayiler…) yan yana. Panelde yalnızca
+  kurumun kendi etiketleri anlamlı: gelen/giden, okunmamış ve çöp zaten
+  kendi sütunlarında modellenmiş durumda, onları etiket olarak bir daha
+  göstermek aynı bilgiyi iki kez söylemek olurdu.
+
+  Sistem etiketleri sabit bir listeyle değil, BİÇİMLERİYLE tanınıyor:
+  Gmail'in kendi etiketleri tamamı büyük harf ve alt çizgi (INBOX,
+  CATEGORY_PROMOTIONS), kullanıcınınkiler "Label_12" kimliğiyle geliyor.
+  Sabit liste tutsaydık Gmail yeni bir sistem etiketi eklediğinde o,
+  kurumun etiketi gibi görünürdü.
+*/
+export function kullaniciEtiketleri(etiketler: readonly string[] | undefined): string[] {
+  return [...new Set(etiketler ?? [])].filter((etiket) => !/^[A-Z][A-Z0-9_]*$/.test(etiket)).sort();
+}
+
 export function kutudaGorunurMu(etiketler: readonly string[] | undefined): boolean {
   const kume = new Set(etiketler ?? []);
   if (kume.has("DRAFT") || kume.has("SPAM") || kume.has("TRASH")) return false;

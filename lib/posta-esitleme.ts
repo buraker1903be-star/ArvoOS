@@ -122,6 +122,7 @@ async function mesajlariIsle(
       ozet: mesaj.ozet,
       tarih: mesaj.tarih?.toISOString() ?? null,
       yon: mesaj.yon,
+      etiketler: mesaj.etiketler,
       ekli_dosya: mesaj.ekliDosya,
     })),
     { onConflict: "organization_id,message_id" },
@@ -147,7 +148,7 @@ async function konusmalariGuncelle(
 
   const { data: tumMesajlar, error } = await admin
     .from("mail_messages")
-    .select("message_id,thread_id,gonderen_ad,gonderen_adres,alici,konu,ozet,tarih,yon,ekli_dosya")
+    .select("message_id,thread_id,gonderen_ad,gonderen_adres,alici,konu,ozet,tarih,yon,etiketler,ekli_dosya")
     .eq("organization_id", organizationId)
     .in("thread_id", threadIds);
   if (error) return "Konuşmalar okunamadı: " + error.message;
@@ -167,6 +168,7 @@ async function konusmalariGuncelle(
         tarih: satir.tarih ? new Date(satir.tarih as string) : null,
         yon: satir.yon as "gelen" | "giden",
         okunmamis: false,
+        etiketler: (satir.etiketler as string[] | null) ?? [],
         ekliDosya: Boolean(satir.ekli_dosya),
       }));
     const ozet = konusmayiOzetle(konusmaninMesajlari);
@@ -187,6 +189,11 @@ async function konusmalariGuncelle(
          o yazışma iki kutuya da aittir. */
       gelen_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "gelen"),
       giden_var: konusmaninMesajlari.some((mesaj) => mesaj.yon === "giden"),
+      /* Konuşmanın etiketleri mesajlarının BİRLEŞİMİ: Gmail etiketi
+         mesaja uyguluyor, kullanıcı ise yazışmayı etiketlediğini
+         düşünüyor. Tek mesaja bakmak, zincirin ortasına uygulanmış bir
+         etiketi listede kaybederdi. */
+      etiketler: [...new Set(konusmaninMesajlari.flatMap((mesaj) => mesaj.etiketler))].sort(),
       /* Buraya gelen konuşmanın çöpte OLMAYAN en az bir mesajı var
          (çöp/spam mesajlar mesajlariIsle'de eleniyor). Yazışma Gmail'de
          çöpten çıkarıldıysa ya da çöpe atılmış bir yazışmaya müşteri
@@ -382,6 +389,54 @@ export async function kurumPostasiniEsitle(organizationId: string, kutuAdresi: s
   Hata yutuluyor: bildirim yazılamadı diye eşitlemeyi düşürmek, asıl işi
   (postanın kutuya inmesi) ikincil bir yüzünden feda etmek olurdu.
 */
+/*
+  ETİKET KATALOĞU.
+
+  Konuşmada Gmail'in etiket KİMLİĞİ duruyor ("Label_12"); ekranda ad
+  gerekiyor. Katalog her turda tazeleniyor: tek bir istek, ve kurum
+  Gmail'de etiketi yeniden adlandırdığında panel bir sonraki turda
+  doğruyu gösteriyor. Adı saklamak yerine her listede Gmail'e sormak,
+  her sayfa açılışında bir ağ turu demekti.
+
+  Sistem etiketleri (INBOX, SENT, UNREAD…) katalogda yok: panelde
+  gösterilen tek şey kurumun kendi etiketleri, ötekiler kendi
+  sütunlarında modellenmiş durumda.
+
+  Silinen etiket katalogdan da düşüyor: Gmail'de kaldırılmış bir
+  etiketin süzgeçte durması, tıklayana boş liste gösterirdi.
+*/
+async function etiketKatalogunuTazele(organizationId: string, belirtec: string): Promise<void> {
+  const sonuc = await gmailGetir("/labels", belirtec);
+  if ("hata" in sonuc) return;
+  const etiketler = ((sonuc.govde as { labels?: { id?: string; name?: string; type?: string }[] }).labels ?? [])
+    .filter((etiket) => etiket.id && etiket.name && etiket.type === "user")
+    .map((etiket) => ({ label_id: etiket.id as string, ad: etiket.name as string }));
+
+  const admin = createAdminClient();
+  if (!admin) return;
+  if (etiketler.length) {
+    const { error } = await admin.from("mail_labels").upsert(
+      etiketler.map((etiket) => ({
+        organization_id: organizationId,
+        label_id: etiket.label_id,
+        ad: etiket.ad,
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: "organization_id,label_id" },
+    );
+    if (error) {
+      console.error("[posta] etiket kataloğu yazılamadı:", error.message);
+      return;
+    }
+  }
+  /* Gmail'de kalmayanları sil. Liste boşsa da çalışıyor: kurum bütün
+     etiketlerini silmiş olabilir. */
+  const kalanlar = etiketler.map((etiket) => etiket.label_id);
+  let silme = admin.from("mail_labels").delete().eq("organization_id", organizationId);
+  if (kalanlar.length) silme = silme.not("label_id", "in", `(${kalanlar.map((id) => `"${id}"`).join(",")})`);
+  await silme;
+}
+
 async function yeniPostayiDuyur(organizationId: string, yeniler: readonly CozulmusMesaj[]) {
   const bildirimler = yeniPostaBildirimleri(yeniler.map((mesaj) => ({
     threadId: mesaj.threadId,
@@ -452,6 +507,11 @@ async function turuKos(organizationId: string, kutuAdresi: string): Promise<stri
     }
     yeniKimlikler = [...kimlikKumesi];
   }
+
+  /* Katalog mesajlardan ÖNCE: etiket kimliği konuşmaya yazıldığında
+     adının da elimizde olması gerekiyor, yoksa yeni bir etiket ilk
+     turda süzgeçte adsız görünürdü. */
+  await etiketKatalogunuTazele(organizationId, belirtec);
 
   const yeniSonuc = await mesajlariIsle(organizationId, kutuAdresi, yeniKimlikler, belirtec);
   if ("hata" in yeniSonuc) return yeniSonuc.hata;
@@ -942,6 +1002,69 @@ export async function postaKonusmasiniGeriAl(
     .update({ silindi_at: null, silen_user_id: null, updated_at: new Date().toISOString() })
     .eq("organization_id", organizationId).eq("thread_id", threadId);
   if (error) return { hata: "Yazışma Gmail'de geri alındı ama panelde işaret kalktı sayılmadı: " + error.message };
+  return null;
+}
+
+/**
+ * Konuşmaya etiket uygular ya da kaldırır: önce Gmail, sonra bizdeki
+ * kopya.
+ *
+ * Sıra önemli: bizden başlasaydık Gmail çağrısı düştüğünde panelde olan
+ * ama kutuda olmayan bir etiket kalır ve bir sonraki eşitleme onu
+ * sessizce silerdi — kullanıcı "etiketledim, kayboldu" ile kalırdı.
+ *
+ * Etiket mesaj değil KONUŞMA düzeyinde uygulanıyor (threads/modify):
+ * kullanıcı yazışmayı etiketlediğini düşünüyor, zincirin tek mesajını
+ * değil.
+ */
+export async function konusmaEtiketiniDegistir(
+  organizationId: string,
+  threadId: string,
+  labelId: string,
+  uygula: boolean,
+): Promise<{ hata: string } | null> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const yanit = await fetch(`${GMAIL}/threads/${threadId}/modify`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${belirtec}`, "content-type": "application/json" },
+    body: JSON.stringify(uygula ? { addLabelIds: [labelId] } : { removeLabelIds: [labelId] }),
+  }).catch(() => null);
+  if (!yanit) return { hata: "Gmail'e ulaşılamadı; etiket değişmedi." };
+  if (!yanit.ok) {
+    const govde = await yanit.json().catch(() => ({}));
+    const sebep = (govde as { error?: { message?: string } })?.error?.message ?? `HTTP ${yanit.status}`;
+    return { hata: `Etiket Gmail'de değiştirilemedi: ${sebep}` };
+  }
+
+  const admin = createAdminClient();
+  if (!admin) return { hata: "Sunucu anahtarı tanımlı değil." };
+
+  /* Mesaj satırları da güncelleniyor: konuşmanın etiketleri bir sonraki
+     eşitlemede onların BİRLEŞİMİNDEN yeniden türetiliyor, yalnızca
+     konuşmayı yazmak değişikliği ilk turda geri alırdı. */
+  const { data: mesajlar } = await admin.from("mail_messages")
+    .select("message_id,etiketler")
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  for (const mesaj of (mesajlar ?? []) as { message_id: string; etiketler: string[] | null }[]) {
+    const mevcut = new Set(mesaj.etiketler ?? []);
+    if (uygula) mevcut.add(labelId);
+    else mevcut.delete(labelId);
+    await admin.from("mail_messages")
+      .update({ etiketler: [...mevcut].sort() })
+      .eq("organization_id", organizationId).eq("message_id", mesaj.message_id);
+  }
+
+  const { data: konusma } = await admin.from("mail_threads")
+    .select("etiketler").eq("organization_id", organizationId).eq("thread_id", threadId).maybeSingle();
+  const konusmaEtiketleri = new Set(((konusma?.etiketler as string[] | null) ?? []));
+  if (uygula) konusmaEtiketleri.add(labelId);
+  else konusmaEtiketleri.delete(labelId);
+  const { error } = await admin.from("mail_threads")
+    .update({ etiketler: [...konusmaEtiketleri].sort(), updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId).eq("thread_id", threadId);
+  if (error) return { hata: "Etiket Gmail'de değişti ama panele yazılamadı: " + error.message };
   return null;
 }
 
