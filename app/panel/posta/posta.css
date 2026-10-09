@@ -113,3 +113,37 @@
 .os-root .posta-ilet{color:var(--muted);font-size:12px;text-decoration:none}
 .os-root .posta-ilet:hover{color:var(--primary);text-decoration:underline}
 .os-root .posta-mesaj-yan{display:flex;align-items:center;gap:var(--sp-2)}
+
+/*
+  TOPLU İŞLEM.
+
+  Liste kartının içindeki tablo artık bir formun içinde; kartın kendi
+  kaydırması "doğrudan çocuk" seçicisiyle kurulduğu için (os-shell.css)
+  araya giren form zinciri kırıyordu. Form de aynı dikey akışı sürdürüyor.
+*/
+.os-root main.liste-sayfa .talep-bilgi>.posta-liste-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.os-root main.liste-sayfa .posta-liste-form>.talep-tablo{
+  flex:1 1 auto;min-height:0;margin-bottom:0;overflow:auto;
+  scrollbar-width:thin;scrollbar-color:var(--n-300) transparent}
+.os-root main.liste-sayfa .posta-liste-form>.talep-tablo::-webkit-scrollbar{width:9px}
+.os-root main.liste-sayfa .posta-liste-form>.talep-tablo::-webkit-scrollbar-thumb{border-radius:9px;background:var(--n-300)}
+@media (max-width:1200px){
+  .os-root main.liste-sayfa .talep-bilgi>.posta-liste-form{display:block}
+  .os-root main.liste-sayfa .posta-liste-form>.talep-tablo{overflow:visible}
+}
+
+/* Seçim sütunu dar ve satırın geri kalanını itmiyor. */
+.os-root .posta-sec-sutun{width:34px;padding-right:0}
+.os-root .posta-sec-sutun input{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+
+/* Çubuk yalnızca seçim varken çiziliyor; listenin üstünde, süzgeçlerin altında. */
+.os-root .posta-toplu{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);
+  margin-bottom:var(--sp-3);padding:var(--sp-2) var(--sp-3);
+  border-radius:var(--r-md);background:var(--primary-soft);color:var(--primary-strong)}
+/* display:flex, tarayıcının [hidden] kuralını eziyor: çubuk bileşende
+   koşullu çiziliyor ama hidden ile gizlenmeye kalkılırsa görünür kalırdı. */
+.os-root .posta-toplu[hidden]{display:none}
+.os-root .posta-toplu b{margin-right:auto;font-size:var(--fs-sm)}
+.os-root .posta-toplu button{min-height:30px}
+.os-root .posta-toplu-birak{border:0;background:transparent;color:inherit;font:inherit;font-size:var(--fs-sm);text-decoration:underline;cursor:pointer}

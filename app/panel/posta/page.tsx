@@ -4,7 +4,8 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
-import { konusmayiGeriAl, postaImzasi, taslakSil } from "./actions";
+import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
+import { TopluIslem } from "./toplu-islem";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
 
@@ -62,8 +63,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -79,6 +80,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     .limit(100);
   sorgu = copGorunumu ? sorgu.not("silindi_at", "is", null) : sorgu.is("silindi_at", null);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
+  /* Okunmamışlar süzgeci: şeritteki sayı artık tıklanıyor. Rakamı
+     görüp "hangileri" diye sorana cevap yoktu; 100 satırlık listede
+     okunmamışı gözle aramak gerekiyordu. */
+  if (yalnizOkunmamis === "1") sorgu = sorgu.eq("okunmamis", true);
 
   const secilenKutu = KUTULAR.find((aday) => aday.anahtar === kutu);
   if (secilenKutu) sorgu = sorgu.eq(secilenKutu.sutun, true);
@@ -128,14 +133,16 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string }) => {
     const p = new URLSearchParams();
-    const al = (ad: "durum" | "q" | "kutu", simdiki: string | undefined) =>
+    const al = (ad: "durum" | "q" | "kutu" | "okunmamis", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
     const d = al("durum", suzgec), a = al("q", desen ?? undefined), k = al("kutu", kutu);
+    const o = al("okunmamis", yalnizOkunmamis);
     if (d) p.set("durum", d);
     if (a) p.set("q", a);
     if (k) p.set("kutu", k);
+    if (o) p.set("okunmamis", o);
     return p.size ? `?${p}` : "";
   };
 
@@ -202,9 +209,11 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           <dt>Açık</dt>
           <dd><Link href={`/panel/posta${adresEki({ durum: suzgec === "acik" ? "" : "acik" })}`}>{sayi.acik}</Link></dd>
         </div>
-        <div>
+        <div className={yalnizOkunmamis === "1" ? "is-active" : undefined}>
           <dt>Okunmamış</dt>
-          <dd className={sayi.okunmamis ? "talep-uyari" : undefined}>{sayi.okunmamis}</dd>
+          <dd className={sayi.okunmamis ? "talep-uyari" : undefined}>
+            <Link href={`/panel/posta${adresEki({ okunmamis: yalnizOkunmamis === "1" ? "" : "1" })}`}>{sayi.okunmamis}</Link>
+          </dd>
         </div>
       </dl>
     </nav>
@@ -221,6 +230,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           <form className="talep-ara" method="get" action="/panel/posta" role="search">
             {suzgec ? <input type="hidden" name="durum" value={suzgec} /> : null}
             {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
+            {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
             <input name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen ara" aria-label="Postalarda ara" />
           </form>
         </div>
@@ -260,15 +270,27 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           )
         ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
-            <p>{desen ? `"${desen}" için sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : "Bu süzgeçte yazışma yok."}</p>
+            <p>{desen ? `"${desen}" için sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : yalnizOkunmamis === "1" ? "Okunmamış yazışma yok." : "Bu süzgeçte yazışma yok."}</p>
             <small>{copGorunumu
               ? "Çöpe atılan yazışma burada durur; geri alınabilir. Gmail çöpü otuz günde kendisi boşaltır."
               : "Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin."}</small>
           </div>
         ) : (
-          <div className="talep-tablo">
+          /*
+            Tablo bir formun içinde: seçim kutucukları (name="secili") ve
+            toplu işlem düğmeleri aynı gönderime giriyor. Satırdaki tekil
+            "Geri al" de bu formun düğmesi — iç içe form HTML'de geçersiz
+            ve tarayıcı onu sessizce atıyordu.
+          */
+          <form className="posta-liste-form" action={copGorunumu ? topluGeriAl : topluOkundu}>
+            <input type="hidden" name="donus" value="liste" />
+            <TopluIslem copte={copGorunumu} silebilir={izin("posta.sil")} />
+            <div className="talep-tablo">
             <table className="crm-data-table">
               <thead><tr>
+                <th className="posta-sec-sutun">
+                  <input type="checkbox" id="posta-tumunu-sec" aria-label="Listedeki yazışmaların tümünü seç" />
+                </th>
                 <th>Gönderen</th><th>Konu</th><th>Müşteri</th>
                 {copGorunumu ? <th>Silen</th> : <><th>Durum</th><th>İlgilenen</th></>}
                 <th className="crm-col-date">{copGorunumu ? "Çöpe atıldı" : "Son mesaj"}</th>
@@ -284,6 +306,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                     : null;
                   return (
                     <tr key={konusma.thread_id} data-okunmamis={konusma.okunmamis ? "evet" : undefined}>
+                      <td className="posta-sec-sutun">
+                        <input type="checkbox" name="secili" value={konusma.thread_id}
+                          aria-label={`${konusma.konu || "konusuz"} yazışmasını seç`} />
+                      </td>
                       <td data-label="Gönderen">
                         <Link className="crm-row-link" href={`/panel/posta/${konusma.thread_id}`} aria-label={`${konusma.konu || "konusuz"} yazışmasını aç`}>
                           <span className="crm-table-title" title={gonderen}>{gonderen}</span>
@@ -318,11 +344,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                         {/* Geri alma satırda: çöp kutusunda yapılacak tek iş bu,
                             yazışmayı açmayı şart koşmak gereksiz bir adım olurdu. */}
                         {copGorunumu && izin("posta.sil") ? (
-                          <form action={konusmayiGeriAl}>
-                            <input type="hidden" name="thread_id" value={konusma.thread_id} />
-                            <input type="hidden" name="donus" value="liste" />
-                            <button className="panel-secondary" type="submit">Geri al</button>
-                          </form>
+                          /* Düğmenin kendi name/value'su gönderime giriyor;
+                             konusmayiGeriAl seçimi değil bu tek yazışmayı okuyor. */
+                          <button className="panel-secondary" type="submit" formAction={konusmayiGeriAl}
+                            name="thread_id" value={konusma.thread_id}>Geri al</button>
                         ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
                       </td>
                     </tr>
@@ -331,7 +356,8 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
               </tbody>
             </table>
             <SatirTiklama />
-          </div>
+            </div>
+          </form>
         )}
       </section>
 

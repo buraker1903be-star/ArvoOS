@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { flashSuccess, runPanelAction } from "@/lib/panel-action";
+import { flashError, flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
 import { konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaEkiniGetir, postaGovdesiniGetir, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
+import { topluSecim, topluSonucMetni } from "@/lib/posta-toplu";
 
 /*
   ORTAK KUTUNUN ORTAK DURUMU.
@@ -447,6 +448,155 @@ export async function yeniPostaGonder(formData: FormData) {
      fırlatarak çalışıyor ve sarmalayıcının içinde atılırsa hata gibi
      yakalanıp kullanıcıya "gönderilemedi" diye gösterilirdi. */
   if (typeof hedef === "string") redirect(hedef);
+}
+
+/*
+  TOPLU İŞLEM.
+
+  Ortak kutuda yığılan onlarca yazışmayı tek tek açıp işaretlemek
+  kutunun kullanılmaz hâle geldiği noktaydı: "bunların hepsi reklam"
+  demek için otuz kez tıklamak gerekiyordu.
+
+  Her yazışma için AYRI bir Gmail çağrısı var (toplu uç yok), o yüzden
+  sınır var ve kümeler hâlinde gidiliyor. Sınır söylenerek kesiliyor —
+  sessizce ilk ellisini işlemek, kullanıcının işlendiğini sandığı
+  yazışmaları geride bırakırdı.
+*/
+const TOPLU_KUME = 5;
+
+/** Formdaki seçili yazışmalar; sınır ve tekilleştirme lib/posta-toplu.ts'te. */
+function topluKimlikler(formData: FormData): string[] {
+  return topluSecim(formData.getAll("secili").map((deger) => String(deger)));
+}
+
+/**
+ * Seçilenlerin bu kuruma ait olduğunu KENDİ oturumuyla doğrular ve çöp
+ * durumlarını döndürür. İşlemlerin kendisi service_role ile yapılıyor ve
+ * o RLS'i atlıyor; sahiplik burada denetlenmezse adresten gelen kimlikle
+ * başka kurumun yazışmasına dokunulabilirdi.
+ */
+async function topluKonusmalar(
+  supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
+  organizationId: string,
+  kimlikler: readonly string[],
+): Promise<{ thread_id: string; silindi_at: string | null; okunmamis: boolean }[]> {
+  const { data, error } = await supabase.from("mail_threads")
+    .select("thread_id,silindi_at,okunmamis")
+    .eq("organization_id", organizationId)
+    .in("thread_id", kimlikler);
+  if (error) throw new Error("Yazışmalar okunamadı: " + error.message);
+  const satirlar = (data ?? []) as { thread_id: string; silindi_at: string | null; okunmamis: boolean }[];
+  if (satirlar.length !== kimlikler.length) {
+    throw new Error("Seçilen yazışmalardan bazıları bulunamadı veya bu kayda erişiminiz yok.");
+  }
+  return satirlar;
+}
+
+/*
+  Kümeler hâlinde yürütür ve SONUCU SÖYLER: bir yazışmada Gmail hata
+  verince ötekiler yarıda kalmıyor, sonunda kaçının olduğu ve kaçının
+  olmadığı yazılıyor. Eskiden tek tek işlemlerde ilk hata her şeyi
+  durduruyordu; toplu işlemde bu, yarısı işlenmiş bir seçimi "başarısız"
+  diye göstermek olurdu.
+*/
+async function topluYurut(
+  kimlikler: readonly string[],
+  isle: (threadId: string) => Promise<string | null>,
+  basarili: (adet: number) => string,
+): Promise<void> {
+  const hatalar: string[] = [];
+  let olan = 0;
+  for (let i = 0; i < kimlikler.length; i += TOPLU_KUME) {
+    const kume = kimlikler.slice(i, i + TOPLU_KUME);
+    const sonuclar = await Promise.all(kume.map(async (threadId) => isle(threadId)));
+    for (const sonuc of sonuclar) {
+      if (sonuc) hatalar.push(sonuc);
+      else olan += 1;
+    }
+  }
+
+  revalidatePath("/panel/posta");
+  revalidatePath("/panel", "layout");
+
+  if (!olan) throw new Error(hatalar[0] ?? "Hiçbir yazışma işlenemedi.");
+  const sonuc = topluSonucMetni({ toplam: kimlikler.length, olan, hatalar, basarili });
+  if (sonuc.tur === "uyari") await flashError(sonuc.metin);
+  else await flashSuccess(sonuc.metin);
+}
+
+async function topluOkundu__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.gor");
+  const kimlikler = topluKimlikler(formData);
+  const satirlar = await topluKonusmalar(context.supabase, context.membership.organization_id, kimlikler);
+  /* Zaten okunmuş olana Gmail'e gitmiyoruz: elli yazışmalık bir seçimde
+     hiçbir şeyi değiştirmeyen elli çağrı demekti. */
+  const isaretlenecek = satirlar.filter((satir) => satir.okunmamis).map((satir) => satir.thread_id);
+  if (!isaretlenecek.length) throw new Error("Seçilen yazışmaların hepsi zaten okundu.");
+  await topluYurut(
+    isaretlenecek,
+    (threadId) => konusmayiOkunduYap(context.membership.organization_id, threadId),
+    (adet) => `${adet} yazışma okundu olarak işaretlendi`,
+  );
+}
+
+export async function topluOkundu(formData: FormData) {
+  await runPanelAction(() => topluOkundu__impl(formData));
+}
+
+async function topluOkunmadi__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.gor");
+  const kimlikler = topluKimlikler(formData);
+  const satirlar = await topluKonusmalar(context.supabase, context.membership.organization_id, kimlikler);
+  const isaretlenecek = satirlar.filter((satir) => !satir.okunmamis).map((satir) => satir.thread_id);
+  if (!isaretlenecek.length) throw new Error("Seçilen yazışmaların hepsi zaten okunmamış.");
+  await topluYurut(
+    isaretlenecek,
+    async (threadId) => (await konusmayiOkunmadiIsaretle(context.membership.organization_id, threadId))?.hata ?? null,
+    (adet) => `${adet} yazışma okunmadı olarak işaretlendi`,
+  );
+}
+
+export async function topluOkunmadi(formData: FormData) {
+  await runPanelAction(() => topluOkunmadi__impl(formData));
+}
+
+async function topluCopeAt__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.sil");
+  const kimlikler = topluKimlikler(formData);
+  const satirlar = await topluKonusmalar(context.supabase, context.membership.organization_id, kimlikler);
+  // Zaten çöpte olanı yeniden çöpe atmak Gmail'e boşuna gitmek olurdu.
+  const atilacak = satirlar.filter((satir) => !satir.silindi_at).map((satir) => satir.thread_id);
+  if (!atilacak.length) throw new Error("Seçilen yazışmalar zaten çöp kutusunda.");
+  await topluYurut(
+    atilacak,
+    async (threadId) => (await postaKonusmasiniCopeAt(context.membership.organization_id, threadId, context.userId))?.hata ?? null,
+    (adet) => `${adet} yazışma çöp kutusuna taşındı`,
+  );
+}
+
+export async function topluCopeAt(formData: FormData) {
+  await runPanelAction(() => topluCopeAt__impl(formData));
+}
+
+async function topluGeriAl__impl(formData: FormData) {
+  const context = await getPanelContext();
+  assertYetki(context.yetkiler, "posta.sil");
+  const kimlikler = topluKimlikler(formData);
+  const satirlar = await topluKonusmalar(context.supabase, context.membership.organization_id, kimlikler);
+  const alinacak = satirlar.filter((satir) => satir.silindi_at).map((satir) => satir.thread_id);
+  if (!alinacak.length) throw new Error("Seçilen yazışmalar zaten kutuda.");
+  await topluYurut(
+    alinacak,
+    async (threadId) => (await postaKonusmasiniGeriAl(context.membership.organization_id, threadId))?.hata ?? null,
+    (adet) => `${adet} yazışma gelen kutusuna geri alındı`,
+  );
+}
+
+export async function topluGeriAl(formData: FormData) {
+  await runPanelAction(() => topluGeriAl__impl(formData));
 }
 
 /*
