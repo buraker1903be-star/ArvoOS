@@ -10,7 +10,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../../components/panel-drawer";
 import { ProposalBuilderForm } from "../../proposal-builder-form";
 import { InternalComments } from "../../internal-comments";
-import { TalepPostalari } from "../../talep-postalari";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../musteri-yazismalari";
 import "../../../posta/posta.css";
 import { RecordHistory } from "../../record-history";
 import {
@@ -195,6 +195,12 @@ export default async function RequestDetailPage({
   } catch (hata) {
     console.error("[talep] müşteri geçmişi okunamadı", hata);
   }
+
+  // Müşteriyle yazışmalar (WhatsApp ve posta sekmeleri); müşteri sayfasıyla aynı kural.
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    musteriWhatsapp(membership.organization_id, item.contact_phone),
+    postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [item.id], eposta: item.contact_email }) : Promise.resolve([]),
+  ]);
   const gecmisSayilari = gecmis
     ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
     : [];
@@ -539,9 +545,23 @@ export default async function RequestDetailPage({
         </section>
 
         {/* Akış */}
-        <TalepAkis sekmeler={postaGorur ? ["Yorumlar", "Postalar", "Geçmiş"] : ["Yorumlar", "Geçmiş"]}>
+        {/* WhatsApp ve Postalar müşteri sayfasıyla aynı kuralla
+            (../../musteri-yazismalari.tsx). Eskiden Postalar yalnızca bu
+            talebe elle bağlanmış yazışmaları gösteriyordu; WhatsApp yoktu. */}
+        <TalepAkis sekmeler={["Yorumlar", whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp", ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []), "Geçmiş"]} tembel={postaGorur ? [1, 2, 3] : [1, 2]}>
           <InternalComments opportunityId={item.id} contextType="request" contextId={item.id} gorunum="akis" />
-          {postaGorur ? <TalepPostalari opportunityId={item.id} musteriAdresi={item.contact_email} konu={item.title} gorunum="akis" /> : null}
+          <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteri} /></div>
+          {postaGorur ? (
+            <div>
+              <PostaAkisi
+                postalar={postalar}
+                epostaVar={Boolean(item.contact_email)}
+                eylem={izin("posta.yanitla") && item.contact_email ? (
+                  <Link className="panel-primary" href={`/panel/posta/yeni?alici=${encodeURIComponent(item.contact_email)}&firsat=${encodeURIComponent(item.id)}${item.title ? `&konu=${encodeURIComponent(item.title)}` : ""}`}>Posta gönder</Link>
+                ) : null}
+              />
+            </div>
+          ) : null}
           <RecordHistory opportunityId={item.id} />
         </TalepAkis>
       </div>

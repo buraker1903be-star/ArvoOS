@@ -4,10 +4,8 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { waMeAdresi } from "@/lib/wa-me";
-import { normalizePhone } from "@/lib/whatsapp-send";
-import { loadConversation } from "@/lib/whatsapp-inbox";
-import { istanbulTime } from "@/lib/istanbul-date";
 import { postaDurumu } from "@/lib/posta-hesabi";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp, type PostaKonusmasi } from "../../musteri-yazismalari";
 import { doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { findCustomerHistory, LOOKUP_MAX_ITEMS, formatHistoryDate, type HistoryKind } from "../../customer-history-query";
 import { buildAccountBalances } from "../../../finance/account-balances";
@@ -39,9 +37,6 @@ import "../../kayit-detay/kayit-detay.css";
 
 type Props = { params: Promise<{ id: string }> };
 type CariHareketi = { id: string; entry_type: string; amount: number; source_type: string | null; transaction_date: string; description: string };
-type PostaKonusmasi = { thread_id: string; konu: string | null; son_gonderen_ad: string | null; son_mesaj_at: string | null; ozet: string | null; mesaj_sayisi: number; okunmamis: boolean; durum: string };
-const POSTA_DURUMU: Record<string, { ad: string; ton: string }> = { acik: { ad: "Açık", ton: "warning" }, yanitlandi: { ad: "Yanıtlandı", ton: "success" }, kapali: { ad: "Kapalı", ton: "neutral" } };
-const tarihSaat = (iso: string) => `${formatHistoryDate(iso)} ${istanbulTime(new Date(iso))}`;
 type Mesaj = { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null; contract_id: string | null; workflow_id: string | null };
 
 const TUR_SIRASI: HistoryKind[] = ["request", "proposal", "contract", "job"];
@@ -113,40 +108,15 @@ export default async function MusteriPage({ params }: Props) {
   const telefon = gecmis?.kunye?.phone ?? anchor.contact_phone;
   const eposta = gecmis?.kunye?.email ?? anchor.contact_email;
 
-  /*
-    WhatsApp: müşterinin numarasıyla eşleşen yazışma. Erişim CRM modülüyle
-    aynı (WhatsApp ekranı da öyle); okuma kapıdan (service_role), kurum ve
-    numarayla sınırlı. Numara tanınmazsa sekme boş kalır.
-  */
-  const waNumara = normalizePhone(String(telefon ?? ""));
-  const whatsapp = waNumara ? (await loadConversation(org, waNumara)).messages.slice(-50).reverse() : [];
-
-  /*
-    Posta: müşterinin taleplerine bağlanmış ya da müşterinin adresiyle
-    yazılmış yazışmalar. Koşul menüdekiyle aynı (app/panel/layout.tsx):
-    ortak kutuyu görebilen (posta.gor) ve kutu bağlı. Posta bir lisans
-    modülü değil, modules listesinde yok. Tablolar RLS'le de kapalı.
-  */
+  // WhatsApp ve posta: talep detayıyla aynı kural (../../musteri-yazismalari.tsx).
+  const { numara: waNumara, mesajlar: whatsapp } = await musteriWhatsapp(org, telefon);
+  /* Posta sekmesinin koşulu menüdekiyle aynı (app/panel/layout.tsx):
+     ortak kutuyu görebilen (posta.gor) ve kutu bağlı. Posta bir lisans
+     modülü değil, modules listesinde yok. */
   const postaGorur = izin("posta.gor") && (await postaDurumu(org)).durum === "bagli";
-  let postalar: PostaKonusmasi[] = [];
-  if (postaGorur) {
-    const talepIdleri = [...new Set([anchor.id, ...kimlikIleri("request")])];
-    const adres = String(eposta ?? "").trim().toLowerCase();
-    const [{ data: bagli }, { data: adresten }] = await Promise.all([
-      supabase.from("mail_threads").select("thread_id").eq("organization_id", org).in("opportunity_id", talepIdleri).limit(50),
-      adres
-        ? supabase.from("mail_messages").select("thread_id").eq("organization_id", org).or(`gonderen_adres.eq.${adres},alici.ilike.*${adres.replace(/[*,()]/g, "")}*`).limit(200)
-        : Promise.resolve({ data: [] }),
-    ]);
-    const konusmaIdleri = [...new Set([...(bagli ?? []), ...(adresten ?? [])].map((r) => (r as { thread_id: string }).thread_id))];
-    if (konusmaIdleri.length) {
-      const { data } = await supabase.from("mail_threads")
-        .select("thread_id,konu,son_gonderen_ad,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum")
-        .eq("organization_id", org).in("thread_id", konusmaIdleri.slice(0, 200))
-        .order("son_mesaj_at", { ascending: false }).limit(30);
-      postalar = (data ?? []) as PostaKonusmasi[];
-    }
-  }
+  const postalar: PostaKonusmasi[] = postaGorur
+    ? await musteriPostalari(supabase, org, { talepIdleri: [...new Set([anchor.id, ...kimlikIleri("request")])], eposta })
+    : [];
   const kunyeSatirlari = doluAlanlar((anchor.request_details ?? {}) as Kunye);
   const ilkKayit = kayitlar.length ? kayitlar[kayitlar.length - 1]?.dateLabel : formatHistoryDate(anchor.created_at);
   const sonSatis = kayitlar.find((k) => k.personRole === "Satış")?.person ?? null;
@@ -183,57 +153,12 @@ export default async function MusteriPage({ params }: Props) {
     {
       anahtar: "whatsapp",
       ad: whatsappYeni ? "WhatsApp · yeni" : "WhatsApp",
-      icerik: (
-        <div className="musteri-mesajlar">
-          {whatsapp.length ? (
-            <>
-              <ul className="cari-hareketler">
-                {whatsapp.map((w) => (
-                  <li key={w.id}>
-                    <span className="cari-hareket-metin">
-                      <b>{w.direction === "inbound" ? musteri : "Biz"}{w.status === "failed" ? " · gitmedi" : ""}</b>
-                      <small className="musteri-mesaj-govde">{w.body || (w.template ? `Şablon: ${w.template}` : w.media ? `Dosya${w.media.filename ? `: ${w.media.filename}` : ""}` : "—")}</small>
-                      <small>{tarihSaat(w.createdAt)}</small>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Link className="panel-secondary musteri-sekme-bag" href="/panel/crm/whatsapp">WhatsApp ekranını aç</Link>
-            </>
-          ) : (
-            <p className="ic-akis-bos">{waNumara ? "Bu numarayla WhatsApp yazışması yok." : "Müşterinin cep telefonu kayıtlı değil ya da biçimi tanınmıyor."}</p>
-          )}
-        </div>
-      ),
+      icerik: <WhatsappAkisi mesajlar={whatsapp} numara={waNumara} musteri={musteri} />,
     },
     ...(postaGorur ? [{
       anahtar: "posta",
       ad: postaOkunmamis ? `Posta · ${postaOkunmamis}` : "Posta",
-      icerik: (
-        <div className="musteri-mesajlar">
-          {postalar.length ? (
-            <ul className="cari-hareketler">
-              {postalar.map((p) => {
-                const durum = POSTA_DURUMU[p.durum] ?? POSTA_DURUMU.acik;
-                return (
-                  <li key={p.thread_id}>
-                    <Link href={`/panel/posta/${p.thread_id}`}>
-                      <span className="cari-hareket-metin">
-                        <b>{p.konu || "(konusuz)"}{p.okunmamis ? " · yeni" : ""}</b>
-                        <small className="musteri-mesaj-govde">{p.ozet}</small>
-                        <small>{[p.son_gonderen_ad, p.son_mesaj_at ? tarihSaat(p.son_mesaj_at) : null, `${p.mesaj_sayisi} ileti`].filter(Boolean).join(" · ")}</small>
-                      </span>
-                      <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="ic-akis-bos">{eposta ? "Bu müşteriyle posta yazışması yok." : "Müşterinin e-posta adresi kayıtlı değil; yalnızca taleplerine bağlanan yazışmalar görünür."}</p>
-          )}
-        </div>
-      ),
+      icerik: <PostaAkisi postalar={postalar} epostaVar={Boolean(eposta)} />,
     }] : []),
     ...(cari ? [{
       anahtar: "cari",
