@@ -3678,6 +3678,7 @@ begin
      or new.son_mesaj_at is distinct from old.son_mesaj_at
      or new.ozet is distinct from old.ozet
      or new.mesaj_sayisi is distinct from old.mesaj_sayisi
+     or new.okunmamis is distinct from old.okunmamis
      or new.silindi_at is distinct from old.silindi_at
      or new.silen_user_id is distinct from old.silen_user_id
      or new.etiketler is distinct from old.etiketler then
@@ -15985,8 +15986,8 @@ grant execute on function private.arvo_firsat_kurumu(p_firsat uuid) to service_r
 grant execute on function private.arvo_firsat_kurumu(p_firsat uuid) to authenticated;
 
 revoke all on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) from public;
-grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to service_role;
 grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to authenticated;
+grant execute on function private.arvo_firsat_tutar_gorebilir(target_opportunity uuid) to service_role;
 
 revoke all on function private.arvo_freeze_accepted_proposal() from public;
 
@@ -16053,12 +16054,12 @@ revoke all on function private.arvo_message_preview(p_body text, p_attachment_na
 grant execute on function private.arvo_message_preview(p_body text, p_attachment_name text) to public;
 
 revoke all on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) from public;
-grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to service_role;
 grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to authenticated;
+grant execute on function private.arvo_modul_acik(p_organization_id uuid, p_module_key text) to service_role;
 
 revoke all on function private.arvo_musteri_adi_ise_yansit() from public;
-grant execute on function private.arvo_musteri_adi_ise_yansit() to service_role;
 grant execute on function private.arvo_musteri_adi_ise_yansit() to authenticated;
+grant execute on function private.arvo_musteri_adi_ise_yansit() to service_role;
 
 revoke all on function private.arvo_musteri_bilgisi_yansit() from public;
 grant execute on function private.arvo_musteri_bilgisi_yansit() to service_role;
@@ -16123,8 +16124,8 @@ revoke all on function private.arvo_teklif_tutari_korunsun() from public;
 revoke all on function private.arvo_try_date(p_value text) from public;
 
 revoke all on function private.arvo_tutar_yazabilir(p_firsat uuid) from public;
-grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to service_role;
 grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to authenticated;
+grant execute on function private.arvo_tutar_yazabilir(p_firsat uuid) to service_role;
 
 revoke all on function private.arvo_unreconcile_party_installments(p_organization_id uuid, p_party_id uuid) from public;
 
@@ -16137,8 +16138,8 @@ grant execute on function private.arvo_yetki_istisnasi_uyesi() to authenticated;
 grant execute on function private.arvo_yetki_istisnasi_uyesi() to service_role;
 
 revoke all on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) from public;
-grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to service_role;
 grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to authenticated;
+grant execute on function private.arvo_yorum_erisimi(p_opportunity uuid, p_context_type text, p_context_id uuid) to service_role;
 
 revoke all on function private.can_manage_organization_assets(organization_id_text text) from public;
 grant execute on function private.can_manage_organization_assets(organization_id_text text) to authenticated;
@@ -16339,8 +16340,8 @@ grant execute on function public.arvo_message_unread_counts(p_organization_id uu
 grant execute on function public.arvo_message_unread_counts(p_organization_id uuid) to service_role;
 
 revoke all on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) from public;
-grant execute on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) to service_role;
 grant execute on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) to authenticated;
+grant execute on function public.arvo_ops_musteri_kunyesi_yaz(p_opportunity uuid, p_kunye jsonb, p_iletisim jsonb) to service_role;
 
 revoke all on function public.arvo_public_contract_audit(public_token text) from public;
 grant execute on function public.arvo_public_contract_audit(public_token text) to service_role;
