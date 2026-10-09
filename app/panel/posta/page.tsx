@@ -57,14 +57,19 @@ const KUTULAR = [
   { anahtar: "giden", ad: "Gönderilenler", sutun: "giden_var" as const },
 ];
 
+/* Sayfa başına kayıt. Elli satır bir ekranı kaydırmadan taramaya yakın
+   ve toplu işlem sınırıyla (50) aynı: bir sayfanın tamamı tek seferde
+   işlenebiliyor. */
+const SAYFA_BOYU = 50;
+
 const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   acik: { ad: "Açık", ton: "warning" },
   yanitlandi: { ad: "Yanıtlandı", ton: "success" },
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -72,12 +77,23 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
      hiçbirinde çıkmamalı, yalnızca burada. */
   const copGorunumu = kutu === "cop";
 
+  /*
+    SAYFALAMA. Liste 100 kayıtla kesiliyordu ve sonrasını görmenin yolu
+    yoktu: altı ay önceki bir yazışmaya ancak arama ile ulaşılıyordu,
+    aranacak kelimeyi hatırlamak gerekiyordu. Sayfa adreste (?sayfa=2),
+    böylece geri tuşu ve paylaşılabilir adres çalışıyor.
+
+    Toplam AYRI sayılıyor (count: "exact"): sayfadaki satırları saymak
+    sayfa boyunu toplam sanmak olurdu.
+  */
+  const sayfaNo = Math.max(1, Number.parseInt(sayfa ?? "1", 10) || 1);
+
   let sorgu = supabase
     .from("mail_threads")
-    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,crm_opportunities(customer_name)")
+    .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,crm_opportunities(customer_name)", { count: "exact" })
     .eq("organization_id", membership.organization_id)
     .order(copGorunumu ? "silindi_at" : "son_mesaj_at", { ascending: false })
-    .limit(100);
+    .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1);
   sorgu = copGorunumu ? sorgu.not("silindi_at", "is", null) : sorgu.is("silindi_at", null);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
   /* Okunmamışlar süzgeci: şeritteki sayı artık tıklanıyor. Rakamı
@@ -104,9 +120,12 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const { data, error } = await sorgu;
+  const { data, error, count: suzgecSayisi } = await sorgu;
   if (error) throw new Error("Konuşmalar okunamadı: " + error.message);
   const konusmalar = (data ?? []) as Konusma[];
+  const sonSayfa = typeof suzgecSayisi === "number"
+    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
+    : konusmalar.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
 
   /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
      karışmamalı ama kaybolmamalı da. */
@@ -133,7 +152,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string }) => {
     const p = new URLSearchParams();
     const al = (ad: "durum" | "q" | "kutu" | "okunmamis", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
@@ -143,6 +162,9 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     if (a) p.set("q", a);
     if (k) p.set("kutu", k);
     if (o) p.set("okunmamis", o);
+    /* Sayfa yalnızca açıkça isteniyorsa korunuyor: süzgeç değişince
+       üçüncü sayfada kalmak, çoğu zaman boş bir liste gösterirdi. */
+    if (degisen.sayfa) p.set("sayfa", degisen.sayfa);
     return p.size ? `?${p}` : "";
   };
 
@@ -170,7 +192,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
       .eq("organization_id", membership.organization_id).not("silindi_at", "is", null),
   ]);
-  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, cop: copSayisi ?? 0, listelenen: konusmalar.length };
+  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, cop: copSayisi ?? 0, listelenen: suzgecSayisi ?? konusmalar.length };
 
   return <main className="talep cari ekip talepler liste-sayfa">
     <header className="talep-bas">
@@ -357,6 +379,17 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
             </table>
             <SatirTiklama />
             </div>
+            {sonSayfa > 1 ? (
+              <nav className="posta-sayfalar" aria-label="Sayfalar">
+                {sayfaNo > 1
+                  ? <Link href={`/panel/posta${adresEki({ sayfa: sayfaNo === 2 ? "" : String(sayfaNo - 1) })}`}>← Önceki</Link>
+                  : <span aria-hidden="true">← Önceki</span>}
+                <b>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} yazışma` : ""}</b>
+                {sayfaNo < sonSayfa
+                  ? <Link href={`/panel/posta${adresEki({ sayfa: String(sayfaNo + 1) })}`}>Sonraki →</Link>
+                  : <span aria-hidden="true">Sonraki →</span>}
+              </nav>
+            ) : null}
           </form>
         )}
       </section>

@@ -336,6 +336,14 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
   flex:1 1 auto;min-height:0;margin-bottom:0;overflow:auto;
   scrollbar-width:thin;scrollbar-color:var(--n-300) transparent;
 }
+/*
+  Yapışkan başlık liste sayfasında sıfırdan yapışıyor. kayit-detay.css
+  onu kartın iç boşluğu kadar yukarı çekiyor (top:-20px); orada kayan
+  şey KARTIN kendisi. Liste sayfasında kayan şey tablonun kendi kutusu,
+  negatif değer başlığı 20px dışarı taşıyor ve kaydırırken satırlar
+  başlığın üstünden geçiyordu.
+*/
+.os-root main.liste-sayfa .talep-tablo .crm-data-table thead th{top:0}
 .os-root main.liste-sayfa .talep-bilgi>.talep-tablo::-webkit-scrollbar{width:9px}
 .os-root main.liste-sayfa .talep-bilgi>.talep-tablo::-webkit-scrollbar-thumb{border-radius:9px;background:var(--n-300)}
 /* Yan sütun kendi boyunda kalır, taşarsa kendi içinde kayar. */
