@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
-import { degisimleriTopla, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
+import { degisimleriTopla, gmailAramaSorgusu, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
 import { yeniPostaBildirimleri } from "./posta-bildirim";
 import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
 import { randomBytes } from "node:crypto";
@@ -1003,6 +1003,41 @@ export async function postaKonusmasiniGeriAl(
     .eq("organization_id", organizationId).eq("thread_id", threadId);
   if (error) return { hata: "Yazışma Gmail'de geri alındı ama panelde işaret kalktı sayılmadı: " + error.message };
   return null;
+}
+
+/*
+  GÖVDEDE ARAMA — Gmail'in kendi arama ucu.
+
+  Panelin araması kendi üst verimize bakıyor (konu, gönderen, özet):
+  liste zaten oradan çiziliyor ve her tuşta Gmail'e gitmek bir ağ turu
+  ve kota demekti. Ama "geçen ay şu müşteri şunu yazmıştı" sorusunun
+  cevabı çoğu zaman GÖVDEDE ve özet ilk 100 karakteri geçmiyor.
+
+  Çözüm, aramayı taşımak değil: kullanıcı sonuçları görüp bulamadığında
+  AÇIKÇA "gövdede de ara" diyor ve yalnızca o zaman tek bir Gmail
+  çağrısı yapılıyor. Dönen şey mesaj kimlikleri; listeyi yine kendi
+  tablomuzdan çiziyoruz, çünkü ekibin ortak durumu (ilgilenen, durum,
+  etiket, müşteri bağı) yalnızca bizde.
+
+  Çöp ve spam dışarıda: panelin çöp kutusu kendi görünümü, arama
+  sonucuna karışması silinmiş yazışmayı geri gelmiş gibi gösterirdi.
+*/
+export async function postaGovdesindeAra(
+  organizationId: string,
+  sorgu: string,
+  sinir = 50,
+): Promise<{ threadIdleri: string[] } | { hata: string }> {
+  const belirtec = await postaErisimBelirteci(organizationId);
+  if (typeof belirtec !== "string") return belirtec;
+
+  const q = encodeURIComponent(gmailAramaSorgusu(sorgu));
+  const sonuc = await gmailGetir(`/messages?q=${q}&maxResults=${sinir}`, belirtec);
+  if ("hata" in sonuc) return sonuc;
+
+  const mesajlar = (sonuc.govde as { messages?: { threadId?: string }[] }).messages ?? [];
+  /* Sıra Gmail'in verdiği sıra (yeniden eskiye): aynı konuşmanın birden
+     çok mesajı dönebiliyor, ilk görülen tutuluyor. */
+  return { threadIdleri: [...new Set(mesajlar.map((mesaj) => mesaj.threadId).filter((id): id is string => Boolean(id)))] };
 }
 
 /**

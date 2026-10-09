@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   baslik,
   gondereniAyristir,
+  gmailAramaSorgusu,
   kullaniciEtiketleri,
   htmlDenMetin,
   konusmayiOzetle,
@@ -208,4 +209,13 @@ test("kullanıcı etiketleri sistem etiketlerinden ayrılıyor", () => {
   assert.deepEqual(kullaniciEtiketleri(undefined), []);
   // Yinelenen etiket tek sefer; sıralı dönüyor ki konuşma satırı her turda aynı olsun.
   assert.deepEqual(kullaniciEtiketleri(["Label_9", "Label_1", "Label_9"]), ["Label_1", "Label_9"]);
+});
+
+test("gövdede arama çöp ve spam'i dışarıda bırakıyor", () => {
+  // Panelin çöp kutusu kendi görünümü; arama sonucuna karışması silinmiş
+  // yazışmayı geri gelmiş gibi gösterirdi.
+  assert.equal(gmailAramaSorgusu("teklif"), "teklif -in:trash -in:spam");
+  assert.equal(gmailAramaSorgusu("  fatura  "), "fatura -in:trash -in:spam");
+  // Gmail söz dizimi bilen için olduğu gibi geçiyor.
+  assert.equal(gmailAramaSorgusu("from:ayse@x.com has:attachment"), "from:ayse@x.com has:attachment -in:trash -in:spam");
 });

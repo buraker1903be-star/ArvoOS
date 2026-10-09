@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
+import { postaGovdesindeAra } from "@/lib/posta-esitleme";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
@@ -70,8 +71,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -120,7 +121,26 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     demekti. Karşılığında arama gövdede değil konu, gönderen ve özette.
   */
   const desen = postaAramaDeseni(aranan ?? "");
-  if (desen) {
+
+  /*
+    GÖVDEDE ARAMA. Kullanıcı üst verideki aramada bulamayınca açıkça
+    istiyor; yalnızca o zaman tek bir Gmail çağrısı yapılıyor. Sonuç
+    yine KENDİ tablomuzdan çiziliyor: ekibin ortak durumu (ilgilenen,
+    etiket, müşteri bağı) orada.
+  */
+  const govdedeAra = kapsam === "govde" && Boolean(desen) && !copGorunumu;
+  const gmailSonucu = govdedeAra ? await postaGovdesindeAra(membership.organization_id, desen as string) : null;
+  const gmailHatasi = gmailSonucu && "hata" in gmailSonucu ? gmailSonucu.hata : null;
+  if (gmailSonucu && "threadIdleri" in gmailSonucu) {
+    /* Boş sonucu da uygulamak gerekiyor: eşleşme yoksa liste boş
+       kalmalı, süzgeçsiz kutuya düşmemeli. */
+    sorgu = sorgu.in("thread_id", gmailSonucu.threadIdleri.length ? gmailSonucu.threadIdleri : ["-"]);
+  }
+
+  /* Gmail çağrısı düşerse üst veri aramasına DÖNÜLÜYOR: süzgeçsiz bir
+     liste göstermek, hata satırını okumayan kullanıcıya aramanın
+     "her şeyi bulduğu" izlenimini verirdi. */
+  if (desen && (!govdedeAra || gmailHatasi)) {
     sorgu = sorgu.or(
       `konu.ilike.*${desen}*,son_gonderen_ad.ilike.*${desen}*,son_gonderen_adres.ilike.*${desen}*,ozet.ilike.*${desen}*`,
     );
@@ -168,17 +188,19 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string }) => {
     const p = new URLSearchParams();
-    const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket", simdiki: string | undefined) =>
+    const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket" | "kapsam", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
     const d = al("durum", suzgec), a = al("q", desen ?? undefined), k = al("kutu", kutu);
     const o = al("okunmamis", yalnizOkunmamis), e = al("etiket", secilenEtiket);
+    const kap = al("kapsam", kapsam);
     if (d) p.set("durum", d);
     if (a) p.set("q", a);
     if (k) p.set("kutu", k);
     if (o) p.set("okunmamis", o);
     if (e) p.set("etiket", e);
+    if (kap) p.set("kapsam", kap);
     /* Sayfa yalnızca açıkça isteniyorsa korunuyor: süzgeç değişince
        üçüncü sayfada kalmak, çoğu zaman boş bir liste gösterirdi. */
     if (degisen.sayfa) p.set("sayfa", degisen.sayfa);
@@ -290,6 +312,28 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           </form>
         </div>
 
+        {/*
+          Gövdede arama bağlantısı sonucun ÜSTÜNDE: kullanıcı önce üst
+          veri sonucunu görüyor, bulamazsa buradan genişletiyor. Tek
+          Gmail çağrısı ve yalnızca istenince.
+        */}
+        {desen ? (
+          <p className="posta-arama-kapsam">
+            {govdedeAra ? (
+              <>
+                <b>Gövdede arandı</b> — Gmail&apos;de &quot;{desen}&quot; geçen yazışmalar.{" "}
+                <Link href={`/panel/posta${adresEki({ kapsam: "", sayfa: "" })}`}>Yalnızca konu ve gönderende ara</Link>
+              </>
+            ) : (
+              <>
+                Konu, gönderen ve özette arandı.{" "}
+                <Link href={`/panel/posta${adresEki({ kapsam: "govde", sayfa: "" })}`}>Gövdede de ara</Link>
+              </>
+            )}
+          </p>
+        ) : null}
+        {gmailHatasi ? <p className="posta-uyari">Gövdede arama yapılamadı: {gmailHatasi}</p> : null}
+
         {kutu === "taslak" ? (
           taslaklar.length === 0 ? (
             <div className="crm-empty-state talep-bos-kutu"><p>Kayıtlı taslak yok.</p></div>
@@ -325,7 +369,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           )
         ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
-            <p>{desen ? `"${desen}" için sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : yalnizOkunmamis === "1" ? "Okunmamış yazışma yok." : "Bu süzgeçte yazışma yok."}</p>
+            <p>{desen ? `"${desen}" için ${govdedeAra ? "gövdede de " : ""}sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : yalnizOkunmamis === "1" ? "Okunmamış yazışma yok." : "Bu süzgeçte yazışma yok."}</p>
             <small>{copGorunumu
               ? "Çöpe atılan yazışma burada durur; geri alınabilir. Gmail çöpü otuz günde kendisi boşaltır."
               : "Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin."}</small>

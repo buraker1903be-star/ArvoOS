@@ -272,6 +272,17 @@ export function degisimleriTopla(
   Sabit liste tutsaydık Gmail yeni bir sistem etiketi eklediğinde o,
   kurumun etiketi gibi görünürdü.
 */
+/*
+  Gmail arama sorgusu. Çöp ve spam DIŞARIDA: panelin çöp kutusu kendi
+  görünümü, arama sonucuna karışması silinmiş bir yazışmayı geri gelmiş
+  gibi gösterirdi. Kullanıcının yazdığı metin olduğu gibi gidiyor —
+  Gmail'in kendi söz dizimi (from:, has:attachment) bilen için
+  çalışmaya devam etsin.
+*/
+export function gmailAramaSorgusu(ham: string): string {
+  return `${(ham ?? "").trim()} -in:trash -in:spam`.trim();
+}
+
 export function kullaniciEtiketleri(etiketler: readonly string[] | undefined): string[] {
   return [...new Set(etiketler ?? [])].filter((etiket) => !/^[A-Z][A-Z0-9_]*$/.test(etiket)).sort();
 }

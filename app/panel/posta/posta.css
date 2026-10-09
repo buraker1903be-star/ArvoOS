@@ -182,3 +182,8 @@
 .os-root .posta-etiket-liste button:hover i{color:var(--danger)}
 .os-root .posta-etiket-ekle{display:flex;gap:var(--sp-2)}
 .os-root .posta-etiket-ekle select{flex:1;min-width:0;height:32px;padding:0 var(--sp-2);border:1px solid var(--n-300);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
+
+/* Arama kapsamı satırı: sonucun neyi kapsadığını söyler ve genişletir. */
+.os-root .posta-arama-kapsam{margin:0 0 var(--sp-3);color:var(--muted);font-size:var(--fs-sm)}
+.os-root .posta-arama-kapsam b{color:var(--ink)}
+.os-root .posta-arama-kapsam a{color:var(--primary)}
