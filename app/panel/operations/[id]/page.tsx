@@ -26,6 +26,7 @@ import { requestStageNames } from "../../crm/request-status";
 import { MarkCustomerMessagesRead } from "./mark-messages-read";
 import { MusteriSohbeti } from "./musteri-sohbet";
 import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
+import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
 import type { PortalAccessRule } from "../portal-files-shared";
@@ -265,9 +266,30 @@ export default async function OperationDetailPage({
     AKIŞ SEKMELERİ. Açılışta hangisinin seçili olacağını adres ya da
     okunmamış mesaj söylüyor; yoksa ekibin kendi yorumları.
   */
-  const sekmeler = contract?.opportunity_id
-    ? [unreadCustomerMessages ? `Mesajlar · ${unreadCustomerMessages}` : "Mesajlar", "Yorumlar", "Geçmiş"]
-    : [unreadCustomerMessages ? `Mesajlar · ${unreadCustomerMessages}` : "Mesajlar", "Geçmiş"];
+  /*
+    WhatsApp ve Postalar (2026-10): müşteri sayfası, talep ve sözleşme
+    detayıyla aynı kural (crm/musteri-yazismalari.tsx). Yalnızca işin bir
+    sözleşmesi varsa: müşterinin numarası ve adresi oradan geliyor.
+    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), posta
+    yazışmalarını ortak kutuyu görebilen (posta.gor).
+  */
+  const whatsappGorur = Boolean(contract?.opportunity_id) && crmVar;
+  const postaGorur = Boolean(contract?.opportunity_id) && izin("posta.gor");
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+    whatsappGorur ? musteriWhatsapp(organizationId, opportunity?.contact_phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    postaGorur && contract?.opportunity_id
+      ? musteriPostalari(supabase, organizationId, { talepIdleri: [contract.opportunity_id], eposta: opportunity?.contact_email })
+      : Promise.resolve([]),
+  ]);
+  const sekmeler = [
+    unreadCustomerMessages ? `Mesajlar · ${unreadCustomerMessages}` : "Mesajlar",
+    ...(contract?.opportunity_id ? ["Yorumlar"] : []),
+    ...(whatsappGorur ? [whatsappMesajlari.length && whatsappMesajlari[0].direction === "inbound" ? "WhatsApp · yeni" : "WhatsApp"] : []),
+    ...(postaGorur ? [postalar.some((p) => p.okunmamis) ? "Postalar · yeni" : "Postalar"] : []),
+    "Geçmiş",
+  ];
+  // Mesajlar (0) ve yazışma sekmeleri ilk seçilene kadar kurulmuyor.
+  const yazismaSiralari = sekmeler.map((ad, sira) => (/^(WhatsApp|Postalar)/.test(ad) ? sira : -1)).filter((sira) => sira >= 0);
   const gecmisSirasi = sekmeler.length - 1;
   const ilkSekme =
     acilacakPencere === "mesajlar" || unreadCustomerMessages ? 0
@@ -672,7 +694,7 @@ export default async function OperationDetailPage({
           Gizli panel de kurulsaydı sayfayı açmak okumak sayılır, okunmamış
           rozeti kimse görmeden sönerdi.
         */}
-        <TalepAkis sekmeler={sekmeler} baslangic={ilkSekme} tembel={[0]}>
+        <TalepAkis sekmeler={sekmeler} baslangic={ilkSekme} tembel={[0, ...yazismaSiralari]}>
           {/* div, Fragment değil: sunucudan gelen Fragment düzleşiyor ve iki ayrı sekme paneli oluyordu. */}
           <div className="opd-mesaj">
             <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
@@ -686,6 +708,12 @@ export default async function OperationDetailPage({
           </div>
           {contract?.opportunity_id ? (
             <InternalComments opportunityId={contract.opportunity_id} contextType="operation" contextId={workflow.id} gorunum="akis" />
+          ) : null}
+          {whatsappGorur ? (
+            <div><WhatsappAkisi mesajlar={whatsappMesajlari} numara={whatsappNumarasi} musteri={musteriAdi ?? customerName} /></div>
+          ) : null}
+          {postaGorur ? (
+            <div><PostaAkisi postalar={postalar} epostaVar={Boolean(opportunity?.contact_email)} /></div>
           ) : null}
           <div className="opd-kayit">
             <h3 className="opd-kayit-baslik">Son hareketler <small>{activities.length}</small></h3>
