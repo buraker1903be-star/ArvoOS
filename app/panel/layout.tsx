@@ -128,6 +128,15 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     okunuyor: sayım ucuz, beklemekten hızlı; bağlı değilse kullanılmıyor.
   */
   const postaYetkisi = !konsolHostu && izin("posta.gor");
+  /*
+    Okunmamış konuşma sayısı menüdeki rozette. Sayı KUTUNUN tamamı için,
+    kişinin kendisine göre değil: kutu ortak, bir konuşmayı kim açarsa
+    ekibin tamamı için okundu oluyor. Süzgeç yok — /panel/posta'nın
+    varsayılan görünümü de süzgeçsiz; rozete basan kişi tam o sayıyı görsün.
+  */
+  const postaSayimSorgusu = postaYetkisi
+    ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("okunmamis", true)
+    : Promise.resolve({ count: 0 });
   const ucDakikaOnce = cevrimiciEsigi();
   const [
     { count: notificationUnreadCount },
@@ -150,10 +159,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           .select("product,status").eq("organization_id", membership.organization_id)
           .in("status", ["active", "trialing", "past_due"]),
     postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
-    postaYetkisi
-      ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
-          .eq("organization_id", membership.organization_id).eq("okunmamis", true)
-      : Promise.resolve({ count: 0 }),
+    postaSayimSorgusu,
     /* Çevrimiçi ekip (yalnızca uygulama kabuğunda): son 3 dakikada görülenler
        ve adları. Çalışan listesini görme yetkisi olmayan rolde RLS boş döner;
        avatarlar "Ekip üyesi" olur, kabuk bozulmaz. */
@@ -214,15 +220,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   */
   const postaGorunur = postaYetkisi && postaBilgisi?.durum === "bagli";
 
-  /*
-    Okunmamış konuşma sayısı menüdeki rozette. Sayı KUTUNUN tamamı için,
-    kişinin kendisine göre değil: kutu ortak, bir konuşmayı kim açarsa
-    ekibin tamamı için okundu oluyor (okunmamis sütunu Gmail'in UNREAD
-    etiketinin kopyası, kişi başına bilgi yok).
-
-    Süzgeç yok — /panel/posta'nın varsayılan görünümü de süzgeçsiz; rozete
-    basan kişi tam o sayıyı görsün.
-  */
+  // Okunmamış posta sayısı: sorgu ve gerekçesi yukarıda (postaSayimSorgusu).
   const postaOkunmamis = postaGorunur ? postaSayimi.count ?? 0 : 0;
 
   const digerUygulamalar = [

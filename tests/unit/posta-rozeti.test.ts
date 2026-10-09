@@ -53,7 +53,8 @@ describe("posta okunmamış rozeti", () => {
   test("sayım, rozete basınca açılan listeyle aynı kümeyi sayıyor", () => {
     // İfadenin TAMAMI alınıyor (atamadan noktalı virgüle): sonuna eklenen
     // bir süzgeç, tembel eşleşmede metnin dışında kalıyordu.
-    const bas = LAYOUT.indexOf("const postaOkunmamis");
+    // Sorgu yerleşimin paralel adımından önce kendi adıyla kuruluyor (2026-10).
+    const bas = LAYOUT.indexOf("const postaSayimSorgusu");
     assert.notEqual(bas, -1, "layout okunmamış konuşmaları saymıyor");
     const sayim = LAYOUT.slice(bas, LAYOUT.indexOf(";", bas) + 1);
     assert.match(sayim, /from\("mail_threads"\)/);
