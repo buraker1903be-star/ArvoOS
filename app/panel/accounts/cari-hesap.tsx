@@ -8,6 +8,7 @@ import { getPaytrStatus } from "@/lib/paytr-status";
 import { normalizePhone } from "@/lib/whatsapp-send";
 import { OdemeBaglantilari, OdemeBaglantisiFormu, type OdemeBaglantisiSatiri } from "./odeme-baglantisi";
 import { PanelDrawer } from "../components/panel-drawer";
+import { SatirTiklama } from "../crm/satir-tiklama";
 import { createAdditionalService, createCollection, createRefund, deleteParty } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
@@ -394,7 +395,9 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                   ))}
                 </div>
               ) : null}
-              <ul className="cari-hareketler">
+              {/* Taksit satırına tıklamak "Düzenle" penceresini açar. */}
+              {vadeDegistirir ? <SatirTiklama /> : null}
+              <ul className="cari-hareketler satir-tiklanir">
                 {dagitilmis.map((t) => {
                   const sozlesme = planlar.get(t.payment_plan_id);
                   const durum = TAKSIT_DURUMU[t.durum];
@@ -409,7 +412,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       {vadeDegistirir && t.durum !== "odendi" && t.durum !== "iptal" ? (
                         <PanelDrawer
                           triggerLabel="Düzenle"
-                          triggerClassName="panel-secondary cari-taksit-btn"
+                          triggerClassName="panel-secondary cari-taksit-btn satir-ac"
                           kicker="TAKSİT"
                           title={`${sozlesme?.contract_no ?? "Sözleşme"} · ${t.installment_no}. taksit`}
                           description={`${money(Number(t.amount))} · vade ${t.due_date ? date(t.due_date) : "yok"}${t.odenen > 0 ? ` · ${money(t.odenen)} ödendi` : ""}`}

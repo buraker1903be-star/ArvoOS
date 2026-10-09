@@ -48,7 +48,9 @@ export function SatirTiklama() {
       // Metin seçiyorsa gitmeyelim: seçim bitince tıklama da düşüyor.
       if (window.getSelection()?.toString()) return;
 
-      const satir = hedef.closest("tbody tr");
+      /* Tablo satırı ya da .satir-tiklanir listesinin öğesi (cari
+         penceresindeki ödeme takvimi tablo değil liste). */
+      const satir = hedef.closest("tbody tr, .satir-tiklanir > li");
       const adres = satir?.querySelector<HTMLAnchorElement>("a.crm-row-link")?.getAttribute("href");
       /* Gidilecek sayfası olmayan satır (ör. maliyet kalemi): satırın
          penceresini açan düğme .satir-ac ile işaretlenir, ona basılır. */
