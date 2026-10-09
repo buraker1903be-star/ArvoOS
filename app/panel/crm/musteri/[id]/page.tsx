@@ -4,6 +4,10 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { waMeAdresi } from "@/lib/wa-me";
+import { normalizePhone } from "@/lib/whatsapp-send";
+import { loadConversation } from "@/lib/whatsapp-inbox";
+import { istanbulTime } from "@/lib/istanbul-date";
+import { postaDurumu } from "@/lib/posta-hesabi";
 import { doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { findCustomerHistory, LOOKUP_MAX_ITEMS, formatHistoryDate, type HistoryKind } from "../../customer-history-query";
 import { buildAccountBalances } from "../../../finance/account-balances";
@@ -25,10 +29,19 @@ import "../../kayit-detay/kayit-detay.css";
   Üstte ad ve iletişim düğmeleri; altında sayılar (talep, teklif,
   sözleşme, iş, sözleşme değeri, açık bakiye). Solda kimlik, iletişim ve
   künye (en son talepten); ortada bütün kayıtlar tek tabloda, yeniden
-  eskiye; sağda müşteri mesajları ve cari özeti.
+  eskiye; sağda müşteriyle bütün yazışma ve cari.
+
+  Sağ sekmeler (2026-10): Mesajlar (takip ekranı), WhatsApp, Posta ve
+  Cari. Eskiden yalnızca takip ekranı mesajları ve cari özeti vardı;
+  müşterinin WhatsApp'tan ve e-postayla yazdıklarını görmek için ayrı
+  ekranlarda telefonu/adresi aramak gerekiyordu.
 */
 
 type Props = { params: Promise<{ id: string }> };
+type CariHareketi = { id: string; entry_type: string; amount: number; source_type: string | null; transaction_date: string; description: string };
+type PostaKonusmasi = { thread_id: string; konu: string | null; son_gonderen_ad: string | null; son_mesaj_at: string | null; ozet: string | null; mesaj_sayisi: number; okunmamis: boolean; durum: string };
+const POSTA_DURUMU: Record<string, { ad: string; ton: string }> = { acik: { ad: "Açık", ton: "warning" }, yanitlandi: { ad: "Yanıtlandı", ton: "success" }, kapali: { ad: "Kapalı", ton: "neutral" } };
+const tarihSaat = (iso: string) => `${formatHistoryDate(iso)} ${istanbulTime(new Date(iso))}`;
 type Mesaj = { id: string; sender_type: "customer" | "staff"; sender_name: string; body: string; created_at: string; read_at: string | null; contract_id: string | null; workflow_id: string | null };
 
 const TUR_SIRASI: HistoryKind[] = ["request", "proposal", "contract", "job"];
@@ -38,7 +51,7 @@ const money = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "curren
 export default async function MusteriPage({ params }: Props) {
   const { id } = await params;
   const context = await getPanelContext();
-  const { supabase, membership, modules } = context;
+  const { supabase, membership, modules, izin } = context;
   if (!modules.some((m) => m.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const org = membership.organization_id;
 
@@ -77,6 +90,7 @@ export default async function MusteriPage({ params }: Props) {
   */
   const cariVar = modules.some((m) => m.code === "accounts");
   let cari: { id: string; name: string; debt: number; collections: number; refunds: number; balance: number } | null = null;
+  let cariHareketleri: CariHareketi[] = [];
   if (cariVar && sozlesmeIdleri.length) {
     const { data: partyRows } = await supabase.from("crm_contracts").select("party_id").eq("organization_id", org).in("id", sozlesmeIdleri).not("party_id", "is", null);
     const partyId = ((partyRows ?? []) as { party_id: string }[])[0]?.party_id;
@@ -89,6 +103,8 @@ export default async function MusteriPage({ params }: Props) {
         const { accounts } = buildAccountBalances([party as never], (partyContracts ?? []) as { party_id: string | null; amount: number }[]);
         const a = accounts[0] as unknown as { id: string; name: string; debt: number; collections: number; refunds: number; balance: number } | undefined;
         if (a) cari = a;
+        cariHareketleri = [...((party as { account_entries?: CariHareketi[] }).account_entries ?? [])]
+          .sort((x, y) => y.transaction_date.localeCompare(x.transaction_date));
       }
     }
   }
@@ -96,10 +112,166 @@ export default async function MusteriPage({ params }: Props) {
   const musteri = formatPersonName(gecmis?.kunye?.name ?? anchor.customer_name) || anchor.customer_name;
   const telefon = gecmis?.kunye?.phone ?? anchor.contact_phone;
   const eposta = gecmis?.kunye?.email ?? anchor.contact_email;
+
+  /*
+    WhatsApp: müşterinin numarasıyla eşleşen yazışma. Erişim CRM modülüyle
+    aynı (WhatsApp ekranı da öyle); okuma kapıdan (service_role), kurum ve
+    numarayla sınırlı. Numara tanınmazsa sekme boş kalır.
+  */
+  const waNumara = normalizePhone(String(telefon ?? ""));
+  const whatsapp = waNumara ? (await loadConversation(org, waNumara)).messages.slice(-50).reverse() : [];
+
+  /*
+    Posta: müşterinin taleplerine bağlanmış ya da müşterinin adresiyle
+    yazılmış yazışmalar. Koşul menüdekiyle aynı (app/panel/layout.tsx):
+    ortak kutuyu görebilen (posta.gor) ve kutu bağlı. Posta bir lisans
+    modülü değil, modules listesinde yok. Tablolar RLS'le de kapalı.
+  */
+  const postaGorur = izin("posta.gor") && (await postaDurumu(org)).durum === "bagli";
+  let postalar: PostaKonusmasi[] = [];
+  if (postaGorur) {
+    const talepIdleri = [...new Set([anchor.id, ...kimlikIleri("request")])];
+    const adres = String(eposta ?? "").trim().toLowerCase();
+    const [{ data: bagli }, { data: adresten }] = await Promise.all([
+      supabase.from("mail_threads").select("thread_id").eq("organization_id", org).in("opportunity_id", talepIdleri).limit(50),
+      adres
+        ? supabase.from("mail_messages").select("thread_id").eq("organization_id", org).or(`gonderen_adres.eq.${adres},alici.ilike.*${adres.replace(/[*,()]/g, "")}*`).limit(200)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const konusmaIdleri = [...new Set([...(bagli ?? []), ...(adresten ?? [])].map((r) => (r as { thread_id: string }).thread_id))];
+    if (konusmaIdleri.length) {
+      const { data } = await supabase.from("mail_threads")
+        .select("thread_id,konu,son_gonderen_ad,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum")
+        .eq("organization_id", org).in("thread_id", konusmaIdleri.slice(0, 200))
+        .order("son_mesaj_at", { ascending: false }).limit(30);
+      postalar = (data ?? []) as PostaKonusmasi[];
+    }
+  }
   const kunyeSatirlari = doluAlanlar((anchor.request_details ?? {}) as Kunye);
   const ilkKayit = kayitlar.length ? kayitlar[kayitlar.length - 1]?.dateLabel : formatHistoryDate(anchor.created_at);
   const sonSatis = kayitlar.find((k) => k.personRole === "Satış")?.person ?? null;
   const sonOperasyon = kayitlar.find((k) => k.personRole === "Operasyon")?.person ?? null;
+
+  const whatsappYeni = whatsapp.length && whatsapp[0].direction === "inbound" ? 1 : 0;
+  const postaOkunmamis = postalar.filter((p) => p.okunmamis).length;
+  const sekmeler: { anahtar: string; ad: string; icerik: React.ReactNode }[] = [
+    {
+      anahtar: "mesajlar",
+      ad: okunmamis ? `Mesajlar · ${okunmamis}` : "Mesajlar",
+      icerik: (
+              <div className="musteri-mesajlar">
+                {mesajlar.length ? (
+                  <ul className="cari-hareketler">
+                    {mesajlar.map((m) => {
+                      const href = m.workflow_id ? `/panel/operations/${m.workflow_id}?pencere=mesajlar` : m.contract_id ? `/panel/crm/contracts/${m.contract_id}` : null;
+                      const icerik = (
+                        <span className="cari-hareket-metin">
+                          <b>{m.sender_type === "customer" ? musteri : formatPersonName(m.sender_name)}{m.sender_type === "customer" && !m.read_at ? " · yeni" : ""}</b>
+                          <small className="musteri-mesaj-govde">{m.body}</small>
+                          <small>{formatHistoryDate(m.created_at)}</small>
+                        </span>
+                      );
+                      return <li key={m.id}>{href ? <Link href={href}>{icerik}</Link> : icerik}</li>;
+                    })}
+                  </ul>
+                ) : (
+                  <p className="ic-akis-bos">Müşteri takip ekranından mesaj yazmamış.</p>
+                )}
+              </div>
+      ),
+    },
+    {
+      anahtar: "whatsapp",
+      ad: whatsappYeni ? "WhatsApp · yeni" : "WhatsApp",
+      icerik: (
+        <div className="musteri-mesajlar">
+          {whatsapp.length ? (
+            <>
+              <ul className="cari-hareketler">
+                {whatsapp.map((w) => (
+                  <li key={w.id}>
+                    <span className="cari-hareket-metin">
+                      <b>{w.direction === "inbound" ? musteri : "Biz"}{w.status === "failed" ? " · gitmedi" : ""}</b>
+                      <small className="musteri-mesaj-govde">{w.body || (w.template ? `Şablon: ${w.template}` : w.media ? `Dosya${w.media.filename ? `: ${w.media.filename}` : ""}` : "—")}</small>
+                      <small>{tarihSaat(w.createdAt)}</small>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Link className="panel-secondary musteri-sekme-bag" href="/panel/crm/whatsapp">WhatsApp ekranını aç</Link>
+            </>
+          ) : (
+            <p className="ic-akis-bos">{waNumara ? "Bu numarayla WhatsApp yazışması yok." : "Müşterinin cep telefonu kayıtlı değil ya da biçimi tanınmıyor."}</p>
+          )}
+        </div>
+      ),
+    },
+    ...(postaGorur ? [{
+      anahtar: "posta",
+      ad: postaOkunmamis ? `Posta · ${postaOkunmamis}` : "Posta",
+      icerik: (
+        <div className="musteri-mesajlar">
+          {postalar.length ? (
+            <ul className="cari-hareketler">
+              {postalar.map((p) => {
+                const durum = POSTA_DURUMU[p.durum] ?? POSTA_DURUMU.acik;
+                return (
+                  <li key={p.thread_id}>
+                    <Link href={`/panel/posta/${p.thread_id}`}>
+                      <span className="cari-hareket-metin">
+                        <b>{p.konu || "(konusuz)"}{p.okunmamis ? " · yeni" : ""}</b>
+                        <small className="musteri-mesaj-govde">{p.ozet}</small>
+                        <small>{[p.son_gonderen_ad, p.son_mesaj_at ? tarihSaat(p.son_mesaj_at) : null, `${p.mesaj_sayisi} ileti`].filter(Boolean).join(" · ")}</small>
+                      </span>
+                      <span className="status-pill" data-tone={durum.ton}>{durum.ad}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="ic-akis-bos">{eposta ? "Bu müşteriyle posta yazışması yok." : "Müşterinin e-posta adresi kayıtlı değil; yalnızca taleplerine bağlanan yazışmalar görünür."}</p>
+          )}
+        </div>
+      ),
+    }] : []),
+    ...(cari ? [{
+      anahtar: "cari",
+      ad: "Cari",
+      icerik: (
+        <div className="musteri-cari">
+          <dl className="talep-liste">
+            <div><dt>Borç</dt><dd>{money(cari.debt)}</dd></div>
+            <div><dt>Tahsilat</dt><dd className="cari-arti">{money(cari.collections)}</dd></div>
+            {cari.refunds ? <div><dt>İade</dt><dd>{money(cari.refunds)}</dd></div> : null}
+            <div className="cari-toplam"><dt>Açık bakiye</dt><dd>{money(cari.balance)}</dd></div>
+          </dl>
+          {cariHareketleri.length ? (
+            <>
+              <h3 className="musteri-alt-baslik">Hareketler</h3>
+              <ul className="cari-hareketler">
+                {cariHareketleri.map((e) => {
+                  const tahsilat = e.entry_type === "credit";
+                  const iade = e.entry_type === "debit" && e.source_type === "adjustment";
+                  return (
+                    <li key={e.id}>
+                      <span className="status-pill" data-tone={tahsilat ? "success" : iade ? "warning" : "neutral"}>{tahsilat ? "Tahsilat" : iade ? "İade" : "Borç"}</span>
+                      <span className="cari-hareket-metin">
+                        <b>{e.description}</b>
+                        <small>{formatHistoryDate(e.transaction_date)}</small>
+                      </span>
+                      <strong className={tahsilat ? "cari-arti" : undefined}>{tahsilat ? "−" : "+"}{money(Number(e.amount))}</strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : null}
+          <Link className="panel-secondary" href={`/panel/accounts/${cari.id}`}>Cari hesabı aç</Link>
+        </div>
+      ),
+    }] : []),
+  ];
 
   return (
     <main className="talep musteri-sayfa">
@@ -203,37 +375,8 @@ export default async function MusteriPage({ params }: Props) {
           {gecmis?.scopedToAssigned ? <p className="talep-bos cari-not">Yalnızca size atanmış kayıtlar listeleniyor.</p> : null}
         </section>
 
-        <TalepAkis sekmeler={cari ? [okunmamis ? `Mesajlar · ${okunmamis}` : "Mesajlar", "Cari"] : [okunmamis ? `Mesajlar · ${okunmamis}` : "Mesajlar"]}>
-          <div className="musteri-mesajlar">
-            {mesajlar.length ? (
-              <ul className="cari-hareketler">
-                {mesajlar.map((m) => {
-                  const href = m.workflow_id ? `/panel/operations/${m.workflow_id}?pencere=mesajlar` : m.contract_id ? `/panel/crm/contracts/${m.contract_id}` : null;
-                  const icerik = (
-                    <span className="cari-hareket-metin">
-                      <b>{m.sender_type === "customer" ? musteri : formatPersonName(m.sender_name)}{m.sender_type === "customer" && !m.read_at ? " · yeni" : ""}</b>
-                      <small className="musteri-mesaj-govde">{m.body}</small>
-                      <small>{formatHistoryDate(m.created_at)}</small>
-                    </span>
-                  );
-                  return <li key={m.id}>{href ? <Link href={href}>{icerik}</Link> : icerik}</li>;
-                })}
-              </ul>
-            ) : (
-              <p className="ic-akis-bos">Müşteri takip ekranından mesaj yazmamış.</p>
-            )}
-          </div>
-          {cari ? (
-            <div className="musteri-cari">
-              <dl className="talep-liste">
-                <div><dt>Borç</dt><dd>{money(cari.debt)}</dd></div>
-                <div><dt>Tahsilat</dt><dd className="cari-arti">{money(cari.collections)}</dd></div>
-                {cari.refunds ? <div><dt>İade</dt><dd>{money(cari.refunds)}</dd></div> : null}
-                <div className="cari-toplam"><dt>Açık bakiye</dt><dd>{money(cari.balance)}</dd></div>
-              </dl>
-              <Link className="panel-secondary" href={`/panel/accounts/${cari.id}`}>Cari hesabı aç</Link>
-            </div>
-          ) : null}
+        <TalepAkis sekmeler={sekmeler.map((sekme) => sekme.ad)} tembel={sekmeler.map((_, sira) => sira).filter((sira) => sira > 0)}>
+          {sekmeler.map((sekme) => <div key={sekme.anahtar}>{sekme.icerik}</div>)}
         </TalepAkis>
       </div>
     </main>
