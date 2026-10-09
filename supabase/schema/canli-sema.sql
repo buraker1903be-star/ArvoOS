@@ -949,6 +949,15 @@ create table if not exists public.mail_drafts (
   cc text
 );
 
+create table if not exists public.mail_labels (
+  id uuid not null,
+  organization_id uuid not null,
+  label_id text not null,
+  ad text not null,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
 create table if not exists public.mail_messages (
   organization_id uuid not null,
   message_id text not null,
@@ -961,7 +970,8 @@ create table if not exists public.mail_messages (
   tarih timestamp with time zone,
   yon text not null,
   ekli_dosya boolean not null,
-  created_at timestamp with time zone not null
+  created_at timestamp with time zone not null,
+  etiketler text[] not null
 );
 
 create table if not exists public.mail_threads (
@@ -982,7 +992,8 @@ create table if not exists public.mail_threads (
   gelen_var boolean not null,
   giden_var boolean not null,
   silindi_at timestamp with time zone,
-  silen_user_id uuid
+  silen_user_id uuid,
+  etiketler text[] not null
 );
 
 create table if not exists public.member_capability_permissions (
@@ -3668,7 +3679,8 @@ begin
      or new.ozet is distinct from old.ozet
      or new.mesaj_sayisi is distinct from old.mesaj_sayisi
      or new.silindi_at is distinct from old.silindi_at
-     or new.silen_user_id is distinct from old.silen_user_id then
+     or new.silen_user_id is distinct from old.silen_user_id
+     or new.etiketler is distinct from old.etiketler then
     raise exception 'Konuşmanın posta bilgileri panelden değiştirilemez; yalnızca durum ve ilgilenen kişi güncellenebilir.';
   end if;
   new.updated_at := now();
@@ -12289,15 +12301,25 @@ alter table public.mail_drafts alter column id set default gen_random_uuid();
 
 alter table public.mail_drafts alter column updated_at set default now();
 
+alter table public.mail_labels alter column created_at set default now();
+
+alter table public.mail_labels alter column id set default gen_random_uuid();
+
+alter table public.mail_labels alter column updated_at set default now();
+
 alter table public.mail_messages alter column created_at set default now();
 
 alter table public.mail_messages alter column ekli_dosya set default false;
+
+alter table public.mail_messages alter column etiketler set default '{}'::text[];
 
 alter table public.mail_messages alter column yon set default 'gelen'::text;
 
 alter table public.mail_threads alter column created_at set default now();
 
 alter table public.mail_threads alter column durum set default 'acik'::text;
+
+alter table public.mail_threads alter column etiketler set default '{}'::text[];
 
 alter table public.mail_threads alter column gelen_var set default true;
 
@@ -13201,6 +13223,10 @@ alter table public.mail_drafts add constraint mail_drafts_cc_uzunluk CHECK (((cc
 
 alter table public.mail_drafts add constraint mail_drafts_pkey PRIMARY KEY (id);
 
+alter table public.mail_labels add constraint mail_labels_kurum_etiket_uidx UNIQUE (organization_id, label_id);
+
+alter table public.mail_labels add constraint mail_labels_pkey PRIMARY KEY (id);
+
 alter table public.mail_messages add constraint mail_messages_pkey PRIMARY KEY (organization_id, message_id);
 
 alter table public.mail_messages add constraint mail_messages_yon_check CHECK ((yon = ANY (ARRAY['gelen'::text, 'giden'::text])));
@@ -13785,6 +13811,8 @@ CREATE UNIQUE INDEX mail_drafts_konusma_uidx ON public.mail_drafts USING btree (
 
 CREATE INDEX mail_messages_konusma_idx ON public.mail_messages USING btree (organization_id, thread_id, tarih);
 
+CREATE INDEX mail_threads_etiket_idx ON public.mail_threads USING gin (etiketler);
+
 CREATE INDEX mail_threads_firsat_idx ON public.mail_threads USING btree (organization_id, opportunity_id) WHERE (opportunity_id IS NOT NULL);
 
 CREATE INDEX mail_threads_gelen_idx ON public.mail_threads USING btree (organization_id, son_mesaj_at DESC) WHERE gelen_var;
@@ -14237,6 +14265,8 @@ alter table public.mail_drafts add constraint mail_drafts_opportunity_id_fkey FO
 
 alter table public.mail_drafts add constraint mail_drafts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+alter table public.mail_labels add constraint mail_labels_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
 alter table public.mail_messages add constraint mail_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 alter table public.mail_threads add constraint mail_threads_ilgilenen_user_id_fkey FOREIGN KEY (ilgilenen_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -14632,6 +14662,8 @@ alter table public.internal_messages enable row level security;
 alter table public.mail_accounts enable row level security;
 
 alter table public.mail_drafts enable row level security;
+
+alter table public.mail_labels enable row level security;
 
 alter table public.mail_messages enable row level security;
 
@@ -15445,6 +15477,9 @@ create policy "posta modulu acik olanlar taslak yazar" on public.mail_drafts as 
   with check (private.arvo_modul_acik(organization_id, 'posta'::text));
 
 create policy "posta modulu acik olanlar taslaklari okur" on public.mail_drafts as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar etiketleri okur" on public.mail_labels as PERMISSIVE for SELECT to authenticated
   using (private.arvo_modul_acik(organization_id, 'posta'::text));
 
 create policy "posta modulu acik olanlar mesajlari okur" on public.mail_messages as PERMISSIVE for SELECT to authenticated

@@ -881,10 +881,19 @@
       "thread_id",
       "updated_at"
     ],
+    "mail_labels": [
+      "ad",
+      "created_at",
+      "id",
+      "label_id",
+      "organization_id",
+      "updated_at"
+    ],
     "mail_messages": [
       "alici",
       "created_at",
       "ekli_dosya",
+      "etiketler",
       "gonderen_ad",
       "gonderen_adres",
       "konu",
@@ -898,6 +907,7 @@
     "mail_threads": [
       "created_at",
       "durum",
+      "etiketler",
       "gelen_var",
       "giden_var",
       "ilgilenen_user_id",
