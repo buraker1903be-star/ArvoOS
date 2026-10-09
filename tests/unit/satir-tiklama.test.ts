@@ -28,6 +28,10 @@ const LISTE_SAYFALARI = [
   "app/panel/operations/isler/page.tsx",
   "app/panel/hr/page.tsx",
   "app/panel/finance/page.tsx",
+  // Detay tabloları (09.10.2026): müşteri kayıtları, maliyet kalemleri, cari ödeme takvimi.
+  "app/panel/musteri/musteri-detayi.tsx",
+  "app/panel/finance/costs/maliyet-detayi.tsx",
+  "app/panel/accounts/cari-hesap.tsx",
 ];
 
 test("satır kaplaması hiçbir biçeme geri gelmedi", () => {
@@ -49,7 +53,7 @@ test("satır <tr>'si konumlandırılmıyor", () => {
   }
 });
 
-test("altı liste sayfası da satır tıklamasını kuruyor", () => {
+test("liste ve detay tablolarının hepsi satır tıklamasını kuruyor", () => {
   /* Bileşen tabloya TEK dinleyici bağlıyor; sayfalardan birinde unutulursa
      o listede satır tıklaması sessizce kaybolur — görünür bir hata vermez. */
   for (const sayfa of LISTE_SAYFALARI) {
@@ -65,7 +69,11 @@ test("bileşen satırdaki gerçek bağlantıya gidiyor", () => {
      çalışmaya devam ediyor. */
   const metin = oku("app/panel/crm/satir-tiklama.tsx");
   assert.match(metin, /a\.crm-row-link/);
-  assert.match(metin, /closest\("tbody tr"\)/);
+  assert.match(metin, /closest\("tbody tr[",]/);
+  /* Gidecek sayfası olmayan satır (maliyet kalemi, taksit) penceresini
+     açan .satir-ac düğmesine basar; liste öğesi .satir-tiklanir ile. */
+  assert.match(metin, /button\.satir-ac/);
+  assert.match(metin, /\.satir-tiklanir > li/);
   // Hücredeki kendi bağlantısı/düğmesi satır tıklamasını yutmamalı.
   assert.match(metin, /KENDI_ISI/);
   // Metin seçerken yanlışlıkla kayıt açılmamalı.
