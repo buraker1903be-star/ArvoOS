@@ -172,6 +172,15 @@ kurup iki kez okuyan bir test ikinci okumada yanlış şeyi ölçüyor ve yeşil
 kalıyor (06.10.2026'da üç dosyada vardı). `islem` içinde rol değiştirmek
 için `rol(db, "authenticated", kullanici)` kullanın.
 
+**`rol()` işlem dışında çağrılırsa test sessizce sahip olarak koşar.**
+`set local role` yalnızca bir işlemin içinde geçerli; `islem()` olmadan
+çağrılan `rol(db, "authenticated", kullanici)` hiçbir şey yapmıyor ve
+sorgu veritabanı sahibiyle (RLS atlanarak) çalışıyor. Test yeşil
+kalıyor ama ölçtüğü şey yok: 10.10.2026'da teklif liste görünümünün
+"başka kurum göremez" senaryosu böyle yazıldı ve yabancı kullanıcı iki
+satırı da gördü. `reddedilir()` de aynı sebeple işlem ister
+(savepoint). Erişim sınayan her senaryo `islem()` içinde yazılır.
+
 **Eski bir migration'ı yeniden uygulamak yeni korumayı düşürebilir.**
 `tests/db/` dosyalarındaki `MIGRATIONLAR` listesi anlık görüntünün
 ÜSTÜNE uygulanıyor: listede `create or replace function` içeren eski bir
