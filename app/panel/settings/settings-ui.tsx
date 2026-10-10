@@ -55,7 +55,10 @@ export function StgSection({ id, icon, tone = "neutral", kicker, title, descript
   id: string; icon: string; tone?: StgTone; kicker: string; title: string; description?: ReactNode; aside?: ReactNode; wide?: boolean; children: ReactNode;
 }) {
   return (
-    <section id={id} className={wide ? "stg-card is-wide" : "stg-card"} aria-labelledby={`${id}-title`}>
+    /* panel-card: kenarlık, köşe ve gölge panelin kendi kartıyla aynı
+       olsun. Eskiden stg-card bunları kendi yazıyordu ve ayarlar
+       sayfası panelin içinde ikinci bir görsel dil gibi duruyordu. */
+    <section id={id} className={wide ? "panel-card stg-card is-wide" : "panel-card stg-card"} aria-labelledby={`${id}-title`}>
       <header className="stg-card-head">
         <span className="stg-card-icon" data-tone={tone}><StgIcon name={icon} size={20} /></span>
         <div className="stg-card-title">

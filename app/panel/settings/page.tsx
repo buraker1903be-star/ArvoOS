@@ -4,7 +4,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
 import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
-import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, StgWidget, type StgTone } from "./settings-ui";
+import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
@@ -13,6 +13,7 @@ import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaGeriDonusAdresi } from "./mail/ortak";
 import { arvoWhatsappKontrol } from "./whatsapp/actions";
+import "../crm/kayit-detay/kayit-detay.css";
 import "./settings-legal.css";
 import "./settings.css";
 
@@ -70,18 +71,43 @@ export default async function SettingsPage() {
     enabledCodes.has("support") ? { href: "/panel/support", icon: "support", tone: "gold" as const, title: "Destek Merkezi", note: "Destek talepleri ve yanıtlar" } : null,
   ].filter((link): link is NonNullable<typeof link> => link !== null);
 
-  return <div className="stg">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">YÖNETİM</small><h1>Ayarlar</h1><p>Kurum kimliği, belge görünümü, erişim ve bağlantılar tek yerde.</p></div>
-      <div className="panel-page-actions"><span className="status-pill" data-tone="gold">{roleNames[membership.role] ?? membership.role}</span>{canManage ? null : <StgReadOnly />}</div>
-    </div>
+  /*
+    Sayfa panelin kendi düzenini kullanıyor: üst başlık talep-bas,
+    özet şeridi kayit-serit. Eskiden ayarlar kendi başlığını ve kendi
+    "widget" şeridini çiziyordu; aynı panelin içinde ikinci bir görsel
+    dil gibi duruyor, bir sayfadan ötekine geçince ölçüler ve köşeler
+    değişiyordu (10.10.2026). Bölüm kartları da artık panel-card.
+  */
+  return <main className="talep cari liste-sayfa stg">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">YÖNETİM</small>
+        <h1>Ayarlar</h1>
+        <p>Kurum kimliği, belge görünümü, erişim ve bağlantılar tek yerde.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <span className="status-pill" data-tone="gold">{roleNames[membership.role] ?? membership.role}</span>
+        {canManage ? null : <StgReadOnly />}
+      </div>
+    </header>
 
-    <section className="stg-widgets" aria-label="Kurum özeti">
-      <StgWidget tone="gold" icon="box" label="Paket" value={organization.plan_code.toUpperCase()} note="Aktif kurum paketi" />
-      <StgWidget tone="info" icon="grid" label="Modüller" value={modules.length} note={integrations.length ? `${integrations.length} entegrasyon alanı` : "Etkin çalışma alanı"} />
-      <StgWidget tone={legalComplete ? "success" : "warning"} icon="doc" label="Belge kimliği" value={legalComplete ? "Hazır" : `${legalFilled}/5`} note={legalComplete ? "Teklif ve sözleşmeler için tamam" : "Resmi bilgiler eksik"} />
-      <StgWidget tone={isActive ? "success" : "danger"} icon="shield" label="Kurum durumu" value={isActive ? "Aktif" : organization.status} note="Kurum erişimi" />
-    </section>
+    {/* Özet şeridi: sayı değil DURUM taşıyor — eksik resmi bilgi
+        teklifin kurum kimliğini boş bırakıyor, kapalı kurum paneli
+        kilitliyor. Ton rengi o yüzden burada bilgi. */}
+    <nav className="kayit-serit talep-serit stg-serit" aria-label="Kurum özeti">
+      <dl>
+        <div><dt>Paket</dt><dd>{organization.plan_code.toUpperCase()}<small>Aktif kurum paketi</small></dd></div>
+        <div><dt>Modüller</dt><dd>{modules.length}<small>{integrations.length ? `${integrations.length} entegrasyon alanı` : "Etkin çalışma alanı"}</small></dd></div>
+        <div data-tone={legalComplete ? "success" : "warning"}>
+          <dt>Belge kimliği</dt>
+          <dd>{legalComplete ? "Hazır" : `${legalFilled}/5`}<small>{legalComplete ? "Teklif ve sözleşmeler için tamam" : "Resmi bilgiler eksik"}</small></dd>
+        </div>
+        <div data-tone={isActive ? "success" : "danger"}>
+          <dt>Kurum durumu</dt>
+          <dd>{isActive ? "Aktif" : organization.status}<small>Kurum erişimi</small></dd>
+        </div>
+      </dl>
+    </nav>
 
     <nav className="stg-nav" aria-label="Ayar bölümleri">
       {sections.map((section) => <a key={section.id} href={`#${section.id}`}><StgIcon name={section.icon} size={16} />{section.label}</a>)}
@@ -330,5 +356,5 @@ export default async function SettingsPage() {
         <div className="stg-tags">{modules.map((module) => <span key={module.code}><StgIcon name="check" size={14} />{module.name}</span>)}</div>
       </StgSection>
     </div>
-  </div>;
+  </main>;
 }

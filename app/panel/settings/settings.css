@@ -23,6 +23,17 @@
 .stg-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:12.5px}
 @media (hover:hover) and (pointer:fine){.stg-widget:hover{border-color:color-mix(in srgb,var(--tone-fg,var(--muted)) 26%,var(--line));box-shadow:var(--shadow-md)}}
 
+/* ---------- Özet şeridi ----------
+   Panelin kendi şeridi (kayit-serit) kullanılıyor; buradaki tek fark
+   değerin altındaki açıklama satırı ve durum rengi: eksik resmi bilgi
+   ile tamam olanı aynı tonda göstermek, uyarıyı görünmez yapıyordu. */
+.stg-serit dd{display:flex;flex-direction:column;gap:1px}
+.stg-serit dd small{color:var(--muted);font-size:var(--fs-micro);font-weight:400}
+.stg-serit [data-tone="success"] dd{color:var(--success)}
+.stg-serit [data-tone="warning"] dd{color:var(--warning)}
+.stg-serit [data-tone="danger"] dd{color:var(--danger)}
+.stg-serit [data-tone] dd small{color:var(--muted)}
+
 /* ---------- Bölüm kısayolları ---------- */
 .stg-nav{display:flex;gap:8px;margin:0 -2px;padding:2px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scrollbar-width:none}
 .stg-nav::-webkit-scrollbar{display:none}
@@ -33,7 +44,10 @@
 
 /* ---------- Bölüm kartları ---------- */
 .stg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-.stg-card{scroll-margin-top:96px;min-width:0;display:flex;flex-direction:column;gap:18px;padding:22px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm)}
+/* Kenarlık, köşe, gölge ve iç boşluk panel-card'dan geliyor: ayarlar
+   panelin içinde ikinci bir görsel dil olmasın. Burada yalnızca
+   bölümün kendi düzeni var. */
+.stg-card{scroll-margin-top:96px;min-width:0;display:flex;flex-direction:column;gap:18px}
 .stg-card.is-wide{grid-column:1/-1}
 .stg-card-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .stg-card-icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted))}
