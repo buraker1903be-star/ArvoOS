@@ -251,7 +251,6 @@ export default async function SettingsPage() {
                       RSC yanıtı bulamaz ve izin ekranı hiç açılmaz. Yönlendirme
                       tarayıcının adres çubuğunda olmak zorunda.
                     */}
-                    {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                     <a className="panel-primary" href="/panel/settings/mail/baglan">{posta.durum === "bagli" ? "Google iznini yenile" : "Google ile bağlan"}</a>
                     <span>Son eşitleme: <b>{paytrDate(posta.sonEsitleme)}</b></span>
                     {/* Geçmiş tarama turlara yayılıyor; "hâlâ iniyor" demek
