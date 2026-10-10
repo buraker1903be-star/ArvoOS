@@ -724,6 +724,8 @@ export async function postaYanitiGonder(girdi: {
   govde: string;
   ekler?: readonly EkDosya[];
   imza?: string | null;
+  /* İmzanın ilk satırı: yanıtı yazan personelin adı. */
+  gonderenPersonel?: string | null;
   cc?: readonly string[];
   /* Yanıtlanan mesaj: alıntı için. Gövdesi gönderim anında Gmail'den
      okunuyor; saklamıyoruz (bkz. migration başlığı). mesajId alıntılanan
@@ -746,7 +748,7 @@ export async function postaYanitiGonder(girdi: {
     Sıra: yanıt → imza → alıntı. İmza alıntının İÇİNDE kalırsa her turda
     bir kopya daha birikiyor ve yazışmanın yarısı imza oluyor.
   */
-  let gonderilecek = imzaliGovde(girdi.govde, girdi.imza);
+  let gonderilecek = imzaliGovde(girdi.govde, girdi.imza, girdi.gonderenPersonel);
   if (girdi.alinti) {
     /* Gövde, başlığı yazılan mesajdan okunuyor. Eskiden zincirin son
        mesajından (sonMesajId) okunuyordu; o bizim önceki cevabımızsa
@@ -882,6 +884,8 @@ export async function postaYeniGonder(girdi: {
   opportunityId?: string | null;
   ekler?: readonly EkDosya[];
   imza?: string | null;
+  /* İmzanın ilk satırı: yanıtı yazan personelin adı. */
+  gonderenPersonel?: string | null;
   cc?: readonly string[];
 }): Promise<{ threadId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
@@ -893,7 +897,7 @@ export async function postaYeniGonder(girdi: {
     alicilar: girdi.alicilar,
     cc: girdi.cc,
     konu: girdi.konu,
-    govde: imzaliGovde(girdi.govde, girdi.imza),
+    govde: imzaliGovde(girdi.govde, girdi.imza, girdi.gonderenPersonel),
     ekler: girdi.ekler,
     sinir: mesajSiniri(),
   });

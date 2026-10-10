@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { flashError, flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { assertYetki } from "@/lib/yetkiler";
+import { formatPersonName } from "@/lib/format-name";
 import { postaDurumu, postaImzasiniKaydet } from "@/lib/posta-hesabi";
 import { konusmaEtiketiniDegistir, konusmayiOkunduYap, konusmayiOkunmadiIsaretle, kurumPostasiniEsitle, postaEkiniGetir, postaGovdesiniGetir, postaYanitiGonder, postaYeniGonder, postaKonusmasiniCopeAt, postaKonusmasiniGeriAl } from "@/lib/posta-esitleme";
 import { aliciListesi, ekBoyutuEngeli, yanitAlicisi, type EkDosya } from "@/lib/posta-gonderim";
@@ -93,6 +94,23 @@ async function yonlendirilenEkler(
     if ("hata" in icerik) throw new Error(`"${ek.dosyaAdi}" eki alınamadı: ${icerik.hata}`);
     return { ad: icerik.dosyaAdi, tur: icerik.tur, veri: icerik.veri };
   }));
+}
+
+/*
+  İmzanın ilk satırı: yanıtı yazan personelin adı (kurum sahibinin
+  kararı, 10.10.2026). Ortak kutudan çıkan yanıtta kimin yazdığı
+  görünmüyordu. Personel kaydı yoksa ad düşer, imza eskisi gibi
+  yalnızca kurumun olur.
+*/
+async function gonderenPersonelAdi(
+  supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
+  organizationId: string,
+  userId: string,
+): Promise<string | null> {
+  const { data } = await supabase.from("hr_employees").select("full_name")
+    .eq("organization_id", organizationId).eq("user_id", userId).maybeSingle();
+  const ad = (data?.full_name as string | undefined) ?? "";
+  return ad.trim() ? formatPersonName(ad) : null;
 }
 
 async function postaContext() {
@@ -224,6 +242,7 @@ async function konusmayaYanitla__impl(formData: FormData) {
     govde,
     ekler,
     imza: hesap.imza,
+    gonderenPersonel: await gonderenPersonelAdi(context.supabase, membership.organization_id, context.userId),
     cc,
     alinti,
   });
@@ -427,6 +446,7 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     opportunityId: firsat,
     ekler,
     imza: hesap.imza,
+    gonderenPersonel: await gonderenPersonelAdi(context.supabase, membership.organization_id, context.userId),
     cc: ccListesi(formData),
   });
   if ("hata" in sonuc) throw new Error(sonuc.hata);

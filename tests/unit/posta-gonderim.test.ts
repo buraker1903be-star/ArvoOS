@@ -417,3 +417,20 @@ test("yönlendirme gövdesi özgün mesajın üst verisini taşıyor", () => {
   });
   assert.match(notsuz, /^---------- İletilen mesaj ----------\nKimden: a@b\.com\n\nmetin$/);
 });
+
+test("imzanın ilk satırı yanıtı yazanın adı", () => {
+  /* Ortak kutudan çıkan yanıtta kimin yazdığı görünmüyordu
+     (kurum sahibinin kararı, 10.10.2026). Kurum imzası altında kalıyor. */
+  assert.equal(
+    imzaliGovde("Merhaba.", "Akademik Merkez\ninfo@am.com", "Burak Erdoğan"),
+    "Merhaba.\n\n-- \nBurak Erdoğan\nAkademik Merkez\ninfo@am.com",
+  );
+  // Ad yoksa eski davranış: yalnızca kurum imzası.
+  assert.equal(imzaliGovde("Merhaba.", "Akademik Merkez", null), "Merhaba.\n\n-- \nAkademik Merkez");
+  // Kurum imzası yoksa yalnızca ad; ikisi de yoksa gövdeye dokunulmuyor.
+  assert.equal(imzaliGovde("Merhaba.", "", "Burak Erdoğan"), "Merhaba.\n\n-- \nBurak Erdoğan");
+  assert.equal(imzaliGovde("Merhaba.", "", ""), "Merhaba.");
+  // Taslaktan gelen metinde blok zaten varsa ikinci kez eklenmiyor.
+  const birKez = imzaliGovde("Merhaba.", "Akademik Merkez", "Burak Erdoğan");
+  assert.equal(imzaliGovde(birKez, "Akademik Merkez", "Burak Erdoğan"), birKez);
+});

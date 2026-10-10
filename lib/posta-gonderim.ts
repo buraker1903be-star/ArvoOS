@@ -310,13 +310,24 @@ export function yanitAlicisi(
   İmza METNE DEĞİL GÖNDERİME ekleniyor: personelin yazdığı kutuda
   görünmemesi bilinçli — iki kez eklenmesinin (bir kez elle, bir kez
   sunucuda) en kolay yolu onu kutuya önceden yazmaktı.
+
+  YANITI YAZANIN ADI imzanın ilk satırı (kurum sahibinin kararı,
+  10.10.2026). Ortak kutudan çıkan yanıtta kimin yazdığı görünmüyordu;
+  müşteri kiminle konuştuğunu bilmiyor, "Gizem'e iletir misiniz"
+  dediğinde de kimin ilgilendiği belli olmuyordu. Kurum imzası altında
+  duruyor: kutu yine kurum adına konuşuyor, yalnızca yazan belli.
 */
-export function imzaliGovde(govde: string, imza: string | null | undefined): string {
-  const sadeImza = (imza ?? "").trim();
-  if (!sadeImza) return govde;
+export function imzaliGovde(
+  govde: string,
+  imza: string | null | undefined,
+  gonderenAdi?: string | null,
+): string {
+  const satirlar = [(gonderenAdi ?? "").trim(), (imza ?? "").trim()].filter(Boolean);
+  if (!satirlar.length) return govde;
+  const blok = satirlar.join("\n");
   // Zaten eklenmişse (taslaktan gelen metin olabilir) ikinci kez eklenmiyor.
-  if (govde.includes(`\n-- \n${sadeImza}`)) return govde;
-  return `${govde.replace(/\s+$/, "")}\n\n-- \n${sadeImza}`;
+  if (govde.includes(`\n-- \n${blok}`)) return govde;
+  return `${govde.replace(/\s+$/, "")}\n\n-- \n${blok}`;
 }
 
 /*
