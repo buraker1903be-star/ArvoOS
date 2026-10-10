@@ -81,23 +81,34 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
   const kullanilanAsamalar = [...new Set(satirlar.map((satir) => satir.phase_title?.trim()).filter(Boolean))] as string[];
   const bosSayisi = canManage ? Math.max(0, Math.min(BOS_SATIR, SABLON_EN_COK - satirlar.length)) : 0;
 
-  // Kabuk kardeş operasyon sayfalarıyla birebir aynı (takvim, pano, arşiv).
+  /* Kabuk kardeş operasyon sayfalarıyla aynı (pano, takvim, arşiv):
+     main.talep + talep-bas + şerit. Burası eskiden tek başına
+     crm-page-stack/panel-pagehead kullanıyordu. */
   return (
-    <div className="crm-page-stack">
-      <div className="panel-pagehead">
-        <div>
-          <small className="panel-kicker">OPERASYON / ADIM ŞABLONU</small>
-          <h1>Adım Şablonu</h1>
+    <main className="talep cari">
+      <header className="talep-bas">
+        <div className="talep-bas-metin">
+          <small className="panel-kicker">OPERASYON · ADIM ŞABLONU</small>
+          <h1>Adım şablonu</h1>
           <p>Yeni açılan işlerin görev listesi. Sözleşmesinde ara teslim takvimi olan iş, adımlarını o takvimden alır.</p>
         </div>
-        <div className="panel-page-actions">
-          <span className="status-pill">{turler.length} çalışma türü</span>
-          {seciliTur ? <span className="status-pill">{satirlar.length} görev</span> : null}
+        <div className="talep-bas-eylem">
+          <Link className="panel-secondary" href="/panel/operations/isler">← İşler</Link>
         </div>
-      </div>
-      <div className="module-tab-panel">
+      </header>
 
-      <section className="panel-card sablon-turler">
+      <nav className="kayit-serit talep-serit" aria-label="Şablon özeti">
+        <dl>
+          <div><dt>Çalışma türü</dt><dd>{turler.length} / {SET_EN_COK}</dd></div>
+          <div><dt>Seçili tür</dt><dd>{seciliTur ? seciliTur.name : "—"}</dd></div>
+          <div><dt>Görev</dt><dd>{seciliTur ? `${satirlar.length} / ${SABLON_EN_COK}` : "—"}</dd></div>
+          <div><dt>Öntanımlı tür</dt><dd>{turler.find((t) => t.is_default)?.name ?? "yok"}</dd></div>
+        </dl>
+      </nav>
+
+      <div className="talep-izgara sablon-izgara">
+
+      <section className="panel-card talep-musteri sablon-turler">
         <header className="sablon-card-head">
           <div>
             <h2>Çalışma türleri</h2>
@@ -164,7 +175,7 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
       </section>
 
       {seciliTur && satirlar.length === 0 ? (
-        <section className="panel-card sablon-bos">
+        <section className="panel-card talep-bilgi sablon-bos">
           <div>
             <h2><OpsIcon name="progress" /> “{seciliTur.name}” listesi boş</h2>
             <p>
@@ -182,7 +193,7 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
       ) : null}
 
       {seciliTur ? (
-      <section className="panel-card">
+      <section className="panel-card talep-bilgi">
         <header className="sablon-card-head">
           <div>
             <h2>{seciliTur.name} · görevler</h2>
@@ -236,6 +247,6 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
       </section>
       ) : null}
       </div>
-    </div>
+    </main>
   );
 }

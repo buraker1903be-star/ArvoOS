@@ -38,3 +38,25 @@
   .sablon-tur-ekle{width:100%}
   .sablon-tur-ekle input{flex:1}
 }
+
+/*
+  Sayfa düzeni (10.10.2026): solda seçili türün görev listesi, sağda
+  çalışma türleri. Tür seçici bir bağlam, asıl iş listenin kendisi;
+  .talep-izgara varsayılanı üç sütun olduğu için açıkça yazılıyor.
+*/
+.os-root .talep-izgara.sablon-izgara{grid-template-columns:minmax(0,1fr) 340px;align-items:start}
+/* Tür kartı 340px: içindeki form satırı 220px'lik sabit genişlikteki
+   girdiyle taşıyor ve düğme iki satıra kırılıyordu. Kart içinde girdi
+   esnek, satır tam genişlik. */
+.os-root .sablon-izgara .sablon-tur-ekle{width:100%}
+.os-root .sablon-izgara .sablon-tur-ekle input{width:auto;flex:1 1 auto}
+.os-root .sablon-izgara .sablon-tur-ekle button{flex:none;white-space:nowrap}
+/* Tür kartı sağda ama kaynak sırada önce: ızgarada ikinci sütuna alınıyor
+   ki klavye ve ekran okuyucu "önce türü seç" sırasını korusun. */
+.os-root .sablon-izgara>.sablon-turler{grid-column:2;grid-row:1}
+.os-root .sablon-izgara>.panel-card:not(.sablon-turler){grid-column:1}
+@media (max-width:1100px){
+  .os-root .talep-izgara.sablon-izgara{grid-template-columns:minmax(0,1fr)}
+  .os-root .sablon-izgara>.sablon-turler,
+  .os-root .sablon-izgara>.panel-card:not(.sablon-turler){grid-column:1;grid-row:auto}
+}
