@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
-import { postaAramaDeseni } from "@/lib/posta-ayristirma";
+import { htmlVarliklariniCoz, postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { postaGovdesindeAra } from "@/lib/posta-esitleme";
 import { imzaHtml } from "@/lib/posta-imza";
 import { istanbulTarihSaat } from "./bicim";
@@ -477,7 +477,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                         <span className="crm-table-title" title={konusma.konu ?? ""}>
                           {konusma.konu || "(konu yok)"}{konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}
                         </span>
-                        <span className="crm-table-sub">{konusma.ozet}</span>
+                        {/* Özet eşitleme anında yazılıyor; bugünden eski satırlarda ham
+                            varlık ("&ccedil;") kalmış olabilir. Okurken çözülüyor:
+                            düzelmesi için yeniden eşitlenmeyi beklemesin. */}
+                        <span className="crm-table-sub">{htmlVarliklariniCoz(konusma.ozet ?? "")}</span>
                         {/* Etiket rozetleri konunun altında: satırın kendi
                             sütununu açmak dar ekranda tabloyu taşırıyordu. */}
                         {konusma.etiketler?.length ? (

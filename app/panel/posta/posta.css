@@ -253,3 +253,12 @@
 .os-root .posta-imza-onizleme>div{
   padding:var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-sm);
   background:#fff;overflow-x:auto}
+
+/* Gövdeye yapıştırılmış görseller: gerçek eklerden ayrı ve daha sessiz.
+   Aynı listeye konduklarında belge, imza logolarının arasında
+   kayboluyordu. */
+.os-root .posta-gomulu-gorseller{margin-top:10px}
+.os-root .posta-gomulu-gorseller>small{display:block;margin-bottom:6px;color:var(--muted);font-size:var(--fs-micro)}
+.os-root .posta-gomulu-gorseller .posta-ekler{margin:0}
+.os-root .posta-gomulu-gorseller .posta-ekler li{padding:4px 10px;background:transparent}
+.os-root .posta-gomulu-gorseller .posta-ekler a{color:var(--muted);font-weight:500;font-size:var(--fs-micro)}

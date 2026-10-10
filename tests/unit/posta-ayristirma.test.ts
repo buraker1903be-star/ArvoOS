@@ -229,10 +229,12 @@ test("gövdede arama çöp ve spam'i dışarıda bırakıyor", () => {
   assert.equal(gmailAramaSorgusu("from:ayse@x.com has:attachment"), "from:ayse@x.com has:attachment -in:trash -in:spam");
 });
 
-test("gövdeye gömülü imza logosu ek sayılmıyor", () => {
+test("kendi imza logomuz hiç listelenmiyor, müşterinin görseli listeleniyor", () => {
   /* HTML imza canlıya çıkar çıkmaz her yazışmanın altında "logo.png"
-     diye bir ek göründü, "ekli dosya" rozeti yandı ve yönlendirmede
-     logo gerçek bir ek olarak yeniden gidiyordu (10.10.2026). */
+     diye bir ek göründü ve "ekli dosya" rozeti yandı (10.10.2026).
+     Ama müşteri ekran görüntüsünü çoğu zaman gövdeye YAPIŞTIRARAK
+     gönderiyor; panelde HTML çizilmediği için onu görmenin tek yolu
+     ek listesi — hepsini gizlemek içeriği yok etmek olurdu. */
   const ekler = mesajEkleri({
     mimeType: "multipart/related",
     parts: [
@@ -246,18 +248,46 @@ test("gövdeye gömülü imza logosu ek sayılmıyor", () => {
         body: { attachmentId: "ek-logo", size: 23000 },
       },
       {
+        filename: "ekran.png", mimeType: "image/png",
+        headers: [
+          { name: "Content-ID", value: "<image001.png@01DA.0001>" },
+          { name: "Content-Disposition", value: 'inline; filename="ekran.png"' },
+        ],
+        body: { attachmentId: "ek-ekran", size: 4000 },
+      },
+      {
         filename: "teklif.pdf", mimeType: "application/pdf",
         headers: [{ name: "Content-Disposition", value: 'attachment; filename="teklif.pdf"' }],
         body: { attachmentId: "ek-pdf", size: 1000 },
       },
     ],
   });
-  assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["teklif.pdf"]);
+  assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["ekran.png", "teklif.pdf"]);
+  // Gövde görseli ayrı işaretli: ekranda gerçek eklerden ayrı duruyor.
+  assert.deepEqual(ekler.map((ek) => ek.gomulu), [true, false]);
 });
 
-test("Content-ID taşımayan inline dosya ek sayılmaya devam ediyor", () => {
+test("gövde görseli 'ekli dosya' rozetini yakmıyor", () => {
+  /* Rozet "indirilecek bir belge var" demek; her kurumsal postanın
+     imzasındaki logo yüzünden listedeki her satırda yanıyordu. */
+  const yalnizGorsel = mesajiCoz({
+    id: "m", threadId: "t",
+    payload: { parts: [{
+      filename: "image001.png", mimeType: "image/png",
+      headers: [
+        { name: "Content-ID", value: "<image001@x>" },
+        { name: "Content-Disposition", value: "inline" },
+      ],
+      body: { attachmentId: "ek1", size: 900 },
+    } as never] },
+  }, "info@biz.com");
+  assert.equal(yalnizGorsel?.ekliDosya, false);
+});
+
+test("Content-ID taşımayan inline dosya gerçek ek sayılıyor", () => {
   /* Bazı istemciler PDF'i "inline" gönderiyor; gövdede çizilmediği için
-     onu gizlemek müşterinin gönderdiği belgeyi yok etmek olurdu. */
+     onu görsel saymak, müşterinin gönderdiği belgeyi sessiz bir satıra
+     düşürmek olurdu. */
   const ekler = mesajEkleri({
     parts: [{
       filename: "sozlesme.pdf", mimeType: "application/pdf",
@@ -265,7 +295,7 @@ test("Content-ID taşımayan inline dosya ek sayılmaya devam ediyor", () => {
       body: { attachmentId: "ek-1", size: 500 },
     }],
   });
-  assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["sozlesme.pdf"]);
+  assert.deepEqual(ekler.map((ek) => [ek.dosyaAdi, ek.gomulu]), [["sozlesme.pdf", false]]);
 });
 
 test("HTML postada bağlantının adresi kaybolmuyor", () => {

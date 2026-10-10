@@ -6,6 +6,8 @@
   (tests/unit/posta-ayristirma.test.ts).
 */
 
+import { LOGO_CID } from "@/lib/posta-imza";
+
 export type GmailBaslik = { name?: string; value?: string };
 
 /**
@@ -141,7 +143,7 @@ const VARLIKLAR: Record<string, string> = {
   shy: "", zwnj: "", zwj: "", ensp: " ", emsp: " ", thinsp: " ",
 };
 
-function htmlVarliklariniCoz(metin: string): string {
+export function htmlVarliklariniCoz(metin: string): string {
   return metin.replace(/&(#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,8});/g, (tam, ad: string) => {
     if (ad.startsWith("#")) {
       const onaltilik = ad[1] === "x" || ad[1] === "X";
@@ -154,9 +156,11 @@ function htmlVarliklariniCoz(metin: string): string {
 }
 
 /* Rozet, ek LİSTESİYLE aynı kaynaktan: iki ayrı tanım, imza logosunu
-   listeden çıkarıp rozeti yanık bırakmanın yoluydu (10.10.2026). */
+   listeden çıkarıp rozeti yanık bırakmanın yoluydu (10.10.2026).
+   Gövde görselleri rozeti yakmıyor: "ekli dosya" diye listede
+   işaretlenen her yazışmanın altından bir imza logosu çıkıyordu. */
 function ekliDosyaVarMi(payload: GmailMesaji["payload"]): boolean {
-  return mesajEkleri(payload).length > 0;
+  return mesajEkleri(payload).some((ek) => !ek.gomulu);
 }
 
 /**
@@ -366,7 +370,12 @@ export function kutudaGorunurMu(etiketler: readonly string[] | undefined): boole
   Gmail ekleri gövdeyle aynı ağaçta taşıyor: filename'i olan her parça
   bir ek, verisi ayrı bir attachmentId'nin arkasında.
 */
-export type MesajEki = { ekId: string; dosyaAdi: string; tur: string; boyut: number };
+export type MesajEki = {
+  ekId: string; dosyaAdi: string; tur: string; boyut: number;
+  /* Gövdenin içinde çizilen görsel mi (Content-ID + inline). Ekranda
+     gerçek eklerden ayrı, daha sessiz bir satırda duruyor. */
+  gomulu: boolean;
+};
 
 type EkliParca = {
   filename?: string;
@@ -377,35 +386,45 @@ type EkliParca = {
 };
 
 /*
-  GÖVDENİN İÇİNDE ÇİZİLEN GÖRSEL EK DEĞİL.
+  GÖVDENİN İÇİNDE ÇİZİLEN GÖRSEL.
 
-  İmza logosu mesajın içinde gidiyor (multipart/related + Content-ID) ve
-  HTML ondan "cid:" ile çağırıyor. Gmail onu da dosya adı olan bir parça
-  olarak döndürüyor; ayırmazsak panelde her yazışmanın altında
-  "logo.png 23 KB" diye bir ek görünüyor, "ekli dosya" rozeti yanıyor ve
-  yönlendirmede logo gerçek bir ek olarak yeniden gönderiliyordu
-  (10.10.2026, HTML imza canlıya çıkar çıkmaz).
+  Mesajın içinde giden, HTML'in "cid:" ile çağırdığı parça (multipart/
+  related + Content-ID). Gmail bunu da dosya adı olan bir parça olarak
+  döndürüyor. Ek listesine olduğu gibi koymak yanlış: her kurumsal
+  postanın imzasında bir logo var ve liste onlarla doluyor. Tamamen
+  gizlemek de yanlış: müşteri ekran görüntüsünü çoğu zaman gövdeye
+  YAPIŞTIRARAK gönderiyor (Outlook bunu kendiliğinden yapıyor) ve
+  panelde HTML çizilmediği için o görseli görmenin tek yolu ek
+  listesi. İkisi ayrı tutuluyor: gerçek ekler üstte, gövde görselleri
+  altta ve daha sessiz.
 
-  Ölçüt ikisi birden: Content-ID VE inline. Karşı tarafın "inline"
-  olarak gönderdiği ama gövdede çizilmeyen bir dosya (bazı istemciler
-  PDF'i böyle yolluyor) Content-ID taşımadığı için ek sayılmaya devam
-  ediyor — onu gizlemek, müşterinin gönderdiği belgeyi yok etmek olurdu.
+  KENDİ İMZA LOGOMUZ hiç listelenmiyor: kimliği bize ait (LOGO_CID) ve
+  her giden mesajda var. HTML imza canlıya çıkar çıkmaz panelde her
+  yazışmanın altında "logo.png 23 KB" belirmişti (10.10.2026).
 */
+function basliktanOku(parca: EkliParca, ad: string): string {
+  return parca.headers?.find((baslik) => (baslik.name ?? "").toLowerCase() === ad)?.value ?? "";
+}
+
 function govdeyeGomulu(parca: EkliParca): boolean {
-  const basliktan = (ad: string) =>
-    parca.headers?.find((baslik) => (baslik.name ?? "").toLowerCase() === ad)?.value ?? "";
-  return Boolean(basliktan("content-id")) && basliktan("content-disposition").trim().toLowerCase().startsWith("inline");
+  return Boolean(basliktanOku(parca, "content-id"))
+    && basliktanOku(parca, "content-disposition").trim().toLowerCase().startsWith("inline");
+}
+
+function kendiLogomuz(parca: EkliParca): boolean {
+  return basliktanOku(parca, "content-id").includes(LOGO_CID);
 }
 
 export function mesajEkleri(payload: unknown): MesajEki[] {
   const topla = (parca: EkliParca | undefined, biriken: MesajEki[]) => {
     if (!parca) return biriken;
-    if (parca.filename && parca.body?.attachmentId && !govdeyeGomulu(parca)) {
+    if (parca.filename && parca.body?.attachmentId && !kendiLogomuz(parca)) {
       biriken.push({
         ekId: parca.body.attachmentId,
         dosyaAdi: parca.filename,
         tur: parca.mimeType || "application/octet-stream",
         boyut: parca.body.size ?? 0,
+        gomulu: govdeyeGomulu(parca),
       });
     }
     for (const alt of parca.parts ?? []) topla(alt, biriken);

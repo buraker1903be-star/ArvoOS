@@ -8,6 +8,7 @@ import { HazirCevapSec } from "../hazir-cevap-sec";
 import { PostaGovde } from "../posta-govde";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
+import type { MesajEki } from "@/lib/posta-ayristirma";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../posta.css";
@@ -250,18 +251,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
                 yazıyordu ve dosyayı almak için Gmail'e geçmek gerekiyordu —
                 ortak kutunun amacı tam da bunu gerektirmemekti.
               */}
-              {icerikler.get(mesaj.message_id)?.ekler.length ? (
-                <ul className="posta-ekler">
-                  {icerikler.get(mesaj.message_id)!.ekler.map((ek) => (
-                    <li key={ek.ekId}>
-                      <a href={`/panel/posta/ek/${encodeURIComponent(mesaj.message_id)}/${encodeURIComponent(ek.ekId)}`}>
-                        {ek.dosyaAdi}
-                      </a>
-                      <small>{dosyaBoyutu(ek.boyut)}</small>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <MesajEkleri mesajId={mesaj.message_id} ekler={icerikler.get(mesaj.message_id)?.ekler ?? []} />
             </li>
           ))}
         </ol>
@@ -426,4 +416,38 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       </aside>
     </div>
   </main>;
+}
+
+/*
+  EKLER İKİ GRUP.
+
+  Gerçek ekler (belge, fatura, sözleşme) üstte. Gövdeye yapıştırılmış
+  görseller altta ve daha sessiz: panelde HTML çizilmediği için onları
+  görmenin tek yolu bu liste, ama her kurumsal postanın imzasında bir
+  logo var — ikisini aynı listeye koymak belgeyi logoların arasında
+  kaybediyordu. Kendi imza logomuz hiç gelmiyor (lib/posta-ayristirma.ts).
+*/
+function MesajEkleri({ mesajId, ekler }: { mesajId: string; ekler: readonly MesajEki[] }) {
+  const belgeler = ekler.filter((ek) => !ek.gomulu);
+  const gorseller = ekler.filter((ek) => ek.gomulu);
+  if (!belgeler.length && !gorseller.length) return null;
+
+  const satir = (ek: MesajEki) => (
+    <li key={ek.ekId}>
+      <a href={`/panel/posta/ek/${encodeURIComponent(mesajId)}/${encodeURIComponent(ek.ekId)}`}>
+        {ek.dosyaAdi}
+      </a>
+      <small>{dosyaBoyutu(ek.boyut)}</small>
+    </li>
+  );
+
+  return <>
+    {belgeler.length ? <ul className="posta-ekler">{belgeler.map(satir)}</ul> : null}
+    {gorseller.length ? (
+      <div className="posta-gomulu-gorseller">
+        <small>Gövdedeki görseller</small>
+        <ul className="posta-ekler">{gorseller.map(satir)}</ul>
+      </div>
+    ) : null}
+  </>;
 }
