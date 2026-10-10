@@ -14193,7 +14193,7 @@ alter table public.crm_requests add constraint crm_requests_created_by_fkey FORE
 
 alter table public.crm_requests add constraint crm_requests_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
-alter table public.customer_file_messages add constraint customer_file_messages_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE CASCADE;
+alter table public.customer_file_messages add constraint customer_file_messages_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE RESTRICT;
 
 alter table public.customer_file_messages add constraint customer_file_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
@@ -14465,7 +14465,7 @@ alter table public.payment_links add constraint payment_links_payer_organization
 
 alter table public.payment_links add constraint payment_links_subscriber_id_fkey FOREIGN KEY (subscriber_id) REFERENCES product_subscribers(id) ON DELETE CASCADE;
 
-alter table public.payment_plans add constraint payment_plans_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE CASCADE;
+alter table public.payment_plans add constraint payment_plans_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES crm_contracts(id) ON DELETE RESTRICT;
 
 alter table public.payment_plans add constraint payment_plans_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
 

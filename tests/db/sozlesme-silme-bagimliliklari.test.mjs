@@ -21,8 +21,6 @@
 */
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const KURUM = "00000000-0000-4000-8000-00000000d1a1";
@@ -34,9 +32,7 @@ const TEKLIF = "00000000-0000-4000-8000-00000000d1c3";
 let db;
 before(async () => {
   db = await veritabani();
-  // Yeni kaskat kuralları anlık görüntüye girene kadar buradan kuruluyor.
-  await db.exec(fs.readFileSync(
-    path.resolve(import.meta.dirname, "../../supabase/migrations/20261010165903_sozlesme_silme_kaskatlari.sql"), "utf8"));
+  // Kaskat kuralları artık anlık görüntüde (20261010165903 uygulandı).
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','sahip@x.com');
