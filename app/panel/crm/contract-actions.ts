@@ -524,24 +524,39 @@ async function deleteContract__impl(formData: FormData) {
     sözleşmeye dayandığı için öksüz kalırdı. Bir engelin okunamaması
     "engel yok" demek değil.
   */
-  const [{ data: linkedWorkflow, error: workflowError }, { data: linkedPlan, error: planError }] = await Promise.all([
-    supabase
-      .from("operation_workflows")
-      .select("id")
-      .eq("contract_id", contractId)
-      .eq("organization_id", membership.organization_id)
-      .limit(1),
-    supabase
-      .from("payment_plans")
-      .select("id")
-      .eq("contract_id", contractId)
-      .eq("organization_id", membership.organization_id)
-      .limit(1),
+  const bagli = (tablo: string) => supabase
+    .from(tablo)
+    .select("id")
+    .eq("contract_id", contractId)
+    .eq("organization_id", membership.organization_id)
+    .limit(1);
+
+  /*
+    Engel, kaskat YÜZEYİ kadar geniş olmalı. Sözleşme silinince
+    veritabanı maliyet kalemlerini ve ek sözleşmeleri de siliyor
+    (ON DELETE CASCADE); engel yalnızca işe ve ödeme planına baktığı
+    için bunlar sessizce gidiyordu. İkisi de panelden tek tek
+    silinebiliyor, yani kullanıcıya yapılacak bir iş söylenebiliyor.
+  */
+  const [
+    { data: linkedWorkflow, error: workflowError },
+    { data: linkedPlan, error: planError },
+    { data: linkedCost, error: costError },
+    { data: linkedAddendum, error: addendumError },
+  ] = await Promise.all([
+    bagli("operation_workflows"),
+    bagli("payment_plans"),
+    bagli("contract_cost_items"),
+    bagli("crm_contract_addenda"),
   ]);
   if (workflowError)
     throw new Error("Sözleşmeye bağlı iş olup olmadığı okunamadı: " + workflowError.message);
   if (planError)
     throw new Error("Sözleşmeye bağlı ödeme planı olup olmadığı okunamadı: " + planError.message);
+  if (costError)
+    throw new Error("Sözleşmeye bağlı maliyet kalemi olup olmadığı okunamadı: " + costError.message);
+  if (addendumError)
+    throw new Error("Sözleşmeye bağlı ek sözleşme olup olmadığı okunamadı: " + addendumError.message);
   if (linkedWorkflow?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir operasyon işi var; iş, prim ve tahsilat kayıtları sözleşmeye dayandığı için sözleşme silinemez.",
@@ -549,6 +564,14 @@ async function deleteContract__impl(formData: FormData) {
   if (linkedPlan?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir ödeme planı var, önce onu silin veya bu sözleşmeyi silmeyin.",
+    );
+  if (linkedCost?.length)
+    throw new Error(
+      "Bu sözleşmeye girilmiş maliyet kalemleri var; sözleşme silinirse onlar da silinir. Önce Finans → İş maliyetleri'nden kalemleri kaldırın.",
+    );
+  if (linkedAddendum?.length)
+    throw new Error(
+      "Bu sözleşmenin ek sözleşmesi var; sözleşme silinirse ek de silinir. Önce eki kaldırın.",
     );
 
   const { data: doomedContract } = await supabase

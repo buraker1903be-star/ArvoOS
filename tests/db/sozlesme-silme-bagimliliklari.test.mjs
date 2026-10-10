@@ -59,6 +59,20 @@ describe("sözleşme silinince bağlı kayıtlar", () => {
       assert.equal(rows[0].contract_id, null, "iş sözleşmeye bağlı kalmış");
     }));
 
+  test("maliyet kalemleri ve ek sözleşme de siliniyor (CASCADE)", async () =>
+    islem(db, async () => {
+      /* Paneldeki engel bu ikisine de bakıyor (contract-actions.ts).
+         Bakmasaydı kurumun girdiği maliyet verisi ve hukuki ek, sözleşme
+         silinirken sessizce giderdi. */
+      await rol(db, "postgres");
+      const { rows: kalem } = await db.query(
+        `insert into public.contract_cost_items (organization_id,contract_id,category,description,amount,cost_date,status,created_by)
+         values ($1,$2,'Dış hizmet','Çeviri',5000,current_date,'planned',$3) returning id`, [KURUM, SOZLESME, SAHIP]);
+      await db.query(`delete from public.crm_contracts where id = $1`, [SOZLESME]);
+      const { rows } = await db.query(`select id from public.contract_cost_items where id = $1`, [kalem[0].id]);
+      assert.equal(rows.length, 0, "maliyet kalemi silinmedi (kural değişmişse panel engeli gözden geçirilmeli)");
+    }));
+
   test("ödeme planı tamamen siliniyor (CASCADE)", async () =>
     islem(db, async () => {
       await rol(db, "postgres");
