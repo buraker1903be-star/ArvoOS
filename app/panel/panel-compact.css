@@ -15,8 +15,7 @@
 .panel-card p,.panel-module p{font-size:12px;line-height:1.5}
 .panel-grid,.panel-modules,.platform-grid,.crm-page-stack,.finance-page-stack,.operations-page,.finance-cost-workspace,.finance-cost-detail-page{gap:14px}
 .section-heading{margin:0 0 10px}.section-heading h2{font-size:20px}
-.module-tab-panel{gap:14px;padding-top:14px;margin-bottom:14px}.module-tab-panel>*:last-child{margin-bottom:14px}
-.module-tabs a{min-height:38px;display:grid;place-items:center;padding:8px 14px;font-size:12px}
+
 
 .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{gap:10px}
 .metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{min-height:94px;padding:14px}
@@ -64,7 +63,6 @@
   .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .metric-strip article,.metric-strip-five article,.crm-metrics article,.finance-metrics article,.ops-metrics article,.report-kpi,.finance-cost-kpis article,.finance-cost-detail-kpis article,.finance-payment-kpis article{min-height:88px;padding:12px}
   .metric-strip strong,.metric-strip-five strong,.crm-metrics strong,.finance-metrics strong,.ops-metrics strong,.report-kpi strong,.finance-cost-kpis strong,.finance-cost-detail-kpis strong,.finance-payment-kpis strong{font-size:19px}
-  .module-tab-panel{margin-top:8px;padding-top:12px;border-radius:12px}.module-tab-panel>section,.module-tab-panel>.section-heading,.module-tab-panel>.panel-pagehead,.module-tab-panel>.panel-card{margin-left:10px;margin-right:10px}.module-tab-panel>*:last-child{margin-bottom:10px}
   .finance-filter-panel{grid-template-columns:1fr 1fr}.finance-payment-toolbar nav{width:100%;display:grid;grid-template-columns:repeat(4,minmax(max-content,1fr))}
   .report-main-grid,.report-bottom-grid{grid-template-columns:1fr}.report-card{padding:14px}.report-funnel article{grid-template-columns:100px minmax(0,1fr) 34px}
   .panel-form input,.panel-form select,.panel-form textarea,.finance-filter-panel input,.finance-payment-toolbar input,.report-custom-range input{font-size:16px}

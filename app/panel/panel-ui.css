@@ -5,7 +5,7 @@
    kartları, tablolar, rozetler, formlar, boş durumlar.
 
    NEDEN AYRI KATMAN: bu sınıflar 12 eski dosyada 5–8 kez yeniden
-   tanımlanıyordu (.panel-primary 5, .panel-pagehead 6, .module-tabs 4…);
+   tanımlanıyordu (.panel-primary 5, .panel-pagehead 6…);
    hangisinin kazandığı import sırasına kalmıştı. Burası en son yüklenir
    ve .os-root önekiyle özgüldür; kurucu konsolu (eski kabuk) etkilenmez.
    Yalnızca panel-tokens.css değerleri kullanılır.
@@ -17,26 +17,6 @@
 .os-root .panel-pagehead p{max-width:720px;margin:var(--sp-1) 0 0;color:var(--muted);font-size:var(--fs-base);line-height:var(--lh-base)}
 .os-root .panel-kicker{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-semibold);letter-spacing:.06em}
 .os-root .panel-page-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2)}
-
-/* ---------- Uygulama içi sekmeler ----------
-   Eskiden kutulu, seçili sekme lacivert dolu bir şeritti; şimdi alt
-   çizgili sekme çubuğu, seçili olan kurum renginde. */
-.os-root .module-tabs{
-  display:flex;width:100%;max-width:100%;gap:var(--sp-1);margin:0 0 var(--sp-5);padding:0;
-  border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none;
-  overflow-x:auto;scrollbar-width:none;
-}
-.os-root .module-tabs::-webkit-scrollbar{display:none}
-.os-root .module-tabs a{
-  flex:0 0 auto;display:flex;align-items:center;min-height:44px;padding:0 var(--sp-3);
-  border:0;border-radius:0;background:transparent;box-shadow:none;
-  color:var(--muted);font-size:var(--fs-base);font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
-  transition:color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
-}
-.os-root .module-tabs a+a{border-left:0}
-.os-root .module-tabs a:hover{background:transparent;color:var(--ink);box-shadow:inset 0 -2px 0 var(--line)}
-.os-root .module-tabs a.active{background:transparent;color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
-.os-root .module-tabs a:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
 
 /* ---------- Düğmeler ---------- */
 .os-root :is(.panel-primary,.panel-secondary,.panel-danger){
@@ -122,7 +102,6 @@ html[data-theme="dark"] .os-root .panel-content :is(input:not([type="checkbox"])
 @media(max-width:900px){
   .os-root .panel-pagehead{align-items:stretch}
   .os-root .panel-page-actions>*{flex:1 1 auto}
-  .os-root .module-tabs{margin-inline:calc(var(--sp-3) * -1);padding-inline:var(--sp-3);width:auto}
   .os-root :is(.panel-primary,.panel-secondary,.panel-danger){min-height:44px}
 }
 

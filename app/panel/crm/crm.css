@@ -5,21 +5,6 @@
 .crm-page-stack{display:flex;flex-direction:column;gap:24px}
 .crm-page-stack>.panel-pagehead,.crm-page-stack>.crm-metrics,.crm-page-stack>.crm-create,.crm-page-stack>.section-heading,.crm-page-stack>.crm-board,.crm-page-stack>.crm-lost{margin:0}
 
-.crm-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-/* Kartlar artık bağlantı: <article> yerine <a>. Seçici ikisini de
-   kapsıyor, çünkü başka ekranlar hâlâ article basıyor. */
-.crm-metrics :is(article,.crm-metric-link){display:block;padding:20px;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow-sm)}
-.crm-metrics .crm-metric-link{text-decoration:none;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
-@media(hover:hover) and (pointer:fine){
-  .crm-metrics .crm-metric-link:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow-md);transform:translateY(-1px)}
-}
-.crm-metrics .crm-metric-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* Açık olan süzgeç kendini belli etsin. */
-.crm-metrics .crm-metric-link[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
-@media(prefers-reduced-motion:reduce){.crm-metrics .crm-metric-link{transition:none}.crm-metrics .crm-metric-link:hover{transform:none}}
-.crm-metrics small{display:block;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.12em}
-.crm-metrics strong{display:block;margin:8px 0 4px;font:750 24px var(--font-heading);color:var(--ink)}
-.crm-metrics span{display:block;color:var(--dim);font-size:11px}
 
 .crm-create{padding:0;overflow:hidden}
 .crm-create summary{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px;padding:16px 20px;cursor:pointer;list-style:none}
@@ -59,34 +44,6 @@
 .crm-lost>small{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--danger)}
 .crm-lost p{margin:10px 0 0;font-size:12px;color:var(--muted)}
 
-/* ---------- Filters / record list ---------- */
-.crm-filter-card{padding:16px}
-.crm-filter-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.35fr) auto;gap:12px;align-items:end}
-.crm-filter-form label{display:flex;flex-direction:column;gap:6px}
-.crm-filter-form label>span{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.05em}
-.crm-filter-form input,.crm-filter-form select,.crm-record-side input,.crm-record-side select{width:100%;min-height:40px;border:1px solid var(--ux-line);border-radius:9px;background:var(--surface);padding:9px 11px;font:12px var(--font-body);color:var(--ink)}
-.crm-filter-form>div{display:flex;gap:8px}
-.crm-filter-form a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
-.crm-record-list{display:flex;flex-direction:column;gap:12px}
-.crm-record{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:22px;padding:20px}
-.crm-record-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.crm-record-number{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
-.crm-record h2{margin:12px 0 3px;font-size:17px;color:var(--ink)}
-.crm-record h3{margin:0 0 12px;font-size:13px;font-weight:650;color:var(--muted)}
-.crm-record-meta{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
-.crm-record-meta span{padding:5px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:11px}
-.crm-record-main p{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.55}
-.crm-record-side{display:flex;flex-direction:column;gap:6px;padding-left:18px;border-left:1px solid var(--ux-line)}
-.crm-record-side>small{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted)}
-.crm-record-side>strong{font-size:20px;color:var(--ink)}
-.crm-record-side>span{font-size:11px;color:var(--dim)}
-.crm-record-side form{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.crm-record-side label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:800;color:var(--muted)}
-.crm-record-side button{width:100%}
-
-.crm-document-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0;padding:12px;border:1px solid var(--ux-line);border-radius:10px;background:var(--surface-2)}
-.crm-document-timeline span{display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:11px}
-.crm-document-timeline b{color:var(--ink);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
 .crm-empty-state{text-align:center;padding:48px 20px}
 .crm-empty-state h2{margin:0 0 6px;font-size:16px;color:var(--ink)}
 .crm-empty-state p{margin:0;color:var(--muted);font-size:12px}
@@ -111,25 +68,12 @@
 .request-other-service{animation:requestFieldIn .18s ease-out}
 @keyframes requestFieldIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
 
-@media(max-width:1100px){
-  .crm-metrics{grid-template-columns:1fr 1fr}
-  .crm-filter-form{grid-template-columns:1fr 1fr}
-  .crm-filter-form>div{grid-column:1/-1}
-  .crm-record{grid-template-columns:1fr}
-  .crm-record-side{padding:14px 0 0;border-left:0;border-top:1px solid var(--ux-line)}
-}
 @media(max-width:620px){
   .crm-page-stack{gap:18px}
   .crm-create .panel-form{grid-template-columns:1fr}
   .crm-create .wide{grid-column:auto}
   .crm-create summary{align-items:flex-start}
   .crm-board{gap:10px}
-  .crm-filter-form{grid-template-columns:1fr}
-  .crm-filter-form>div{grid-column:auto}
-  .crm-filter-form button,.crm-filter-form a{flex:1}
-  .crm-record{padding:16px}
-  .crm-record-meta{flex-direction:column;align-items:flex-start}
-  .crm-document-timeline{grid-template-columns:1fr 1fr}
   .crm-page-stack .panel-drawer-header h2{font-size:26px}
   .crm-page-stack .panel-drawer-header p{font-size:12px}
   .crm-page-stack .panel-drawer-body .request-entry-form label{font-size:13px}
@@ -254,17 +198,6 @@
 .crm-waiting.is-late {
   color: var(--danger);
   font-weight: 750;
-}
-
-/* Uyarı durumundaki metrik kartı — sıfırdan büyükse dikkat çeksin.
-   "3 sözleşme 7 günden uzun süredir imza bekliyor" bilgisi, bir sayı
-   olarak gösterilse bile eylem gerektiriyor. */
-.crm-metrics article.is-alert {
-  border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
-  background: var(--danger-soft);
-}
-.crm-metrics article.is-alert strong {
-  color: var(--danger);
 }
 
 /* Zorunlu alan işareti — hangi alanların şart olduğu belli değildi.

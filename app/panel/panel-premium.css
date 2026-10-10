@@ -79,10 +79,6 @@
 .panel-card h2,.panel-module h2{font-size:19px;letter-spacing:-.025em}
 .panel-card h3,.panel-module h3{font-size:16px}
 .panel-card p,.panel-module p{font-size:14px;line-height:1.55}
-.module-tab-panel{gap:16px;padding-top:16px;border-color:var(--line);border-radius:0 16px 16px 16px;background:color-mix(in srgb,var(--surface-2) 80%,transparent);box-shadow:var(--shadow-sm)}
-.module-tabs{border-radius:12px 12px 0 0;box-shadow:0 -1px 0 rgba(255,255,255,.8)}
-.module-tabs a{min-height:42px;padding:10px 16px;font-size:13px}
-.module-tabs a.active{background:var(--primary);color:var(--primary-on)}
 
 /* KPIs */
 .metric-strip,.metric-strip-five,.crm-metrics,.finance-metrics,.ops-metrics,.report-kpi-grid,.finance-cost-kpis,.finance-cost-detail-kpis,.finance-payment-kpis{gap:12px}
@@ -145,7 +141,6 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .panel-pagehead h1{font-size:28px}.panel-pagehead p{font-size:14px}
   .panel-card,.panel-module,.report-card,.notification-card{border-radius:16px}
   .panel-grid,.panel-modules,.platform-grid,.crm-page-stack,.finance-page-stack,.operations-page,.finance-cost-workspace,.finance-cost-detail-page,.notifications-page,.ops-page-stack{gap:12px}
-  .module-tab-panel{gap:12px}
   .panel-content table{min-width:680px}
 }
 
