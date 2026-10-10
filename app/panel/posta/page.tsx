@@ -71,8 +71,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   kapali: { ad: "Kapalı", ton: "neutral" },
 };
 
-export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam } = await searchParams;
+export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }> }) {
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
@@ -107,6 +107,14 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
      etiket KİMLİĞİ sorgulanıyor, adı değil: kurum etiketi yeniden
      adlandırınca kayıtlı bağlantı bozulmasın. */
   if (secilenEtiket) sorgu = sorgu.contains("etiketler", [secilenEtiket]);
+  /*
+    İLGİLENEN SÜZGECİ. Ortak kutuda günde en çok sorulan iki soru:
+    "benim üstlendiklerim hangileri" ve "kimsenin almadığı var mı".
+    Sütun zaten vardı ama yalnızca satırda gösteriliyordu; süzgeç yoktu
+    ve yüz satırlık listede gözle aranıyordu.
+  */
+  if (ilgilenenSuzgeci === "ben") sorgu = sorgu.eq("ilgilenen_user_id", userId);
+  else if (ilgilenenSuzgeci === "yok") sorgu = sorgu.is("ilgilenen_user_id", null);
 
   const secilenKutu = KUTULAR.find((aday) => aday.anahtar === kutu);
   if (secilenKutu) sorgu = sorgu.eq(secilenKutu.sutun, true);
@@ -188,19 +196,20 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
 
   /* Süzgeçler birbirini silmesin: biri değişirken diğer ikisi korunuyor.
      Elle dizilen adreslerde bu üç kez unutulmuştu. */
-  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string }) => {
+  const adresEki = (degisen: { durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }) => {
     const p = new URLSearchParams();
-    const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket" | "kapsam", simdiki: string | undefined) =>
+    const al = (ad: "durum" | "q" | "kutu" | "okunmamis" | "etiket" | "kapsam" | "ilgilenen", simdiki: string | undefined) =>
       (ad in degisen ? degisen[ad] : simdiki) || "";
     const d = al("durum", suzgec), a = al("q", desen ?? undefined), k = al("kutu", kutu);
     const o = al("okunmamis", yalnizOkunmamis), e = al("etiket", secilenEtiket);
-    const kap = al("kapsam", kapsam);
+    const kap = al("kapsam", kapsam), ilg = al("ilgilenen", ilgilenenSuzgeci);
     if (d) p.set("durum", d);
     if (a) p.set("q", a);
     if (k) p.set("kutu", k);
     if (o) p.set("okunmamis", o);
     if (e) p.set("etiket", e);
     if (kap) p.set("kapsam", kap);
+    if (ilg) p.set("ilgilenen", ilg);
     /* Sayfa yalnızca açıkça isteniyorsa korunuyor: süzgeç değişince
        üçüncü sayfada kalmak, çoğu zaman boş bir liste gösterirdi. */
     if (degisen.sayfa) p.set("sayfa", degisen.sayfa);
@@ -214,6 +223,14 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     bir kutu seçilince "Tümü" o kutunun sayısına iniyor, hiçbiri 100'ü
     geçemiyordu. Sayılar kurumun bütün kutusu içindir; süzgeçten bağımsız.
   */
+  /* İlgilenen sayaçları ayrı: ana sayım yardımcısı sütun/durum alıyor,
+     bu ikisi kişiye ve "boş" durumuna bakıyor. */
+  const ilgilenenSay = (kim: "ben" | "yok") => {
+    const q = supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id).is("silindi_at", null);
+    return kim === "ben" ? q.eq("ilgilenen_user_id", userId) : q.is("ilgilenen_user_id", null);
+  };
+
   const say = async (sutun?: "gelen_var" | "giden_var" | "okunmamis", durum?: string) => {
     let q = supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
       .eq("organization_id", membership.organization_id)
@@ -225,13 +242,20 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     if (durum) q = q.eq("durum", durum);
     return (await q).count ?? 0;
   };
-  const [tumu, gelen, giden, okunmamis, acik, yanitlandi, { count: taslakSayisi }, { count: copSayisi }] = await Promise.all([
+  const [tumu, gelen, giden, okunmamis, acik, yanitlandi, { count: taslakSayisi }, { count: copSayisi }, { count: bendeSayisi }, { count: sahipsizSayisi }] = await Promise.all([
     say(), say("gelen_var"), say("giden_var"), say("okunmamis"), say(undefined, "acik"), say(undefined, "yanitlandi"),
     supabase.from("mail_drafts").select("id", { count: "exact", head: true }).eq("organization_id", membership.organization_id),
     supabase.from("mail_threads").select("thread_id", { count: "exact", head: true })
       .eq("organization_id", membership.organization_id).not("silindi_at", "is", null),
+    ilgilenenSay("ben"),
+    ilgilenenSay("yok"),
   ]);
-  const sayi = { tumu, gelen, giden, okunmamis, acik, yanitlandi, taslak: taslakSayisi ?? 0, cop: copSayisi ?? 0, listelenen: suzgecSayisi ?? konusmalar.length };
+  const sayi = {
+    tumu, gelen, giden, okunmamis, acik, yanitlandi,
+    taslak: taslakSayisi ?? 0, cop: copSayisi ?? 0,
+    bende: bendeSayisi ?? 0, sahipsiz: sahipsizSayisi ?? 0,
+    listelenen: suzgecSayisi ?? konusmalar.length,
+  };
 
   return <main className="talep cari ekip talepler liste-sayfa">
     <header className="talep-bas">
@@ -289,6 +313,17 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           {Object.entries(DURUM_ETIKETI).map(([anahtar, etiket]) => (
             <Link key={anahtar} href={`/panel/posta${adresEki({ durum: anahtar })}`} className={suzgec === anahtar ? "is-active" : undefined}>{etiket.ad}</Link>
           ))}
+          {/* Ortak kutuda günlük iki soru: "bende olanlar" ve "kimsenin
+              almadıkları". Sütun vardı, süzgeci yoktu. */}
+          <Link href={`/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "ben" ? "" : "ben", sayfa: "" })}`}
+            className={ilgilenenSuzgeci === "ben" ? "is-active" : undefined}>
+            Bende <small>{sayi.bende}</small>
+          </Link>
+          <Link href={`/panel/posta${adresEki({ ilgilenen: ilgilenenSuzgeci === "yok" ? "" : "yok", sayfa: "" })}`}
+            className={ilgilenenSuzgeci === "yok" ? "is-active" : undefined}>
+            Sahipsiz <small>{sayi.sahipsiz}</small>
+          </Link>
+
           {/* Etiketler Gmail'den geliyor; kurum klasörünü panelde de
               süzebilsin. Hiç etiketi olmayan kurumda kutu çıkmıyor. */}
           {etiketler.length ? (
@@ -311,6 +346,7 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
             {kutu ? <input type="hidden" name="kutu" value={kutu} /> : null}
             {yalnizOkunmamis === "1" ? <input type="hidden" name="okunmamis" value="1" /> : null}
             {secilenEtiket ? <input type="hidden" name="etiket" value={secilenEtiket} /> : null}
+            {ilgilenenSuzgeci ? <input type="hidden" name="ilgilenen" value={ilgilenenSuzgeci} /> : null}
             <input name="q" defaultValue={aranan ?? ""} placeholder="Konu, gönderen ara" aria-label="Postalarda ara" />
           </form>
         </div>
@@ -372,7 +408,13 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
           )
         ) : konusmalar.length === 0 ? (
           <div className="crm-empty-state talep-bos-kutu">
-            <p>{desen ? `"${desen}" için ${govdedeAra ? "gövdede de " : ""}sonuç yok.` : copGorunumu ? "Çöp kutusu boş." : yalnizOkunmamis === "1" ? "Okunmamış yazışma yok." : "Bu süzgeçte yazışma yok."}</p>
+            <p>{desen
+              ? `"${desen}" için ${govdedeAra ? "gövdede de " : ""}sonuç yok.`
+              : copGorunumu ? "Çöp kutusu boş."
+              : yalnizOkunmamis === "1" ? "Okunmamış yazışma yok."
+              : ilgilenenSuzgeci === "ben" ? "Üstlendiğiniz yazışma yok."
+              : ilgilenenSuzgeci === "yok" ? "Sahipsiz yazışma yok; hepsini biri üstlenmiş."
+              : "Bu süzgeçte yazışma yok."}</p>
             <small>{copGorunumu
               ? "Çöpe atılan yazışma burada durur; geri alınabilir. Gmail çöpü otuz günde kendisi boşaltır."
               : "Kutu birkaç dakikada bir eşitleniyor; yeni bağladıysanız ilk eşitlemeyi bekleyin."}</small>
