@@ -130,9 +130,18 @@ test("etiket temizliği betiği ve stili tamamen atıyor", () => {
 test("ekli dosya iç içe parçalarda da bulunuyor", () => {
   const cozulen = mesajiCoz({
     id: "m", threadId: "t",
-    payload: { parts: [{ parts: [{ filename: "teklif.pdf" }] } as never] },
+    payload: { parts: [{ parts: [{ filename: "teklif.pdf", body: { attachmentId: "ek1" } }] } as never] },
   }, "info@biz.com");
   assert.equal(cozulen?.ekliDosya, true);
+
+  /* Rozet ek listesiyle aynı kaynaktan okunuyor: "ek var" diyip
+     listede hiçbir şey göstermemek, kullanıcıyı eki arar hâlde
+     bırakıyordu. İndirilemeyen parça (attachmentId yok) ek sayılmıyor. */
+  const kimliksiz = mesajiCoz({
+    id: "m2", threadId: "t",
+    payload: { parts: [{ filename: "teklif.pdf" } as never] },
+  }, "info@biz.com");
+  assert.equal(kimliksiz?.ekliDosya, false);
 });
 
 test("ekler iç içe parçalardan toplanıyor", () => {
@@ -218,4 +227,43 @@ test("gövdede arama çöp ve spam'i dışarıda bırakıyor", () => {
   assert.equal(gmailAramaSorgusu("  fatura  "), "fatura -in:trash -in:spam");
   // Gmail söz dizimi bilen için olduğu gibi geçiyor.
   assert.equal(gmailAramaSorgusu("from:ayse@x.com has:attachment"), "from:ayse@x.com has:attachment -in:trash -in:spam");
+});
+
+test("gövdeye gömülü imza logosu ek sayılmıyor", () => {
+  /* HTML imza canlıya çıkar çıkmaz her yazışmanın altında "logo.png"
+     diye bir ek göründü, "ekli dosya" rozeti yandı ve yönlendirmede
+     logo gerçek bir ek olarak yeniden gidiyordu (10.10.2026). */
+  const ekler = mesajEkleri({
+    mimeType: "multipart/related",
+    parts: [
+      { mimeType: "text/html", body: { size: 10 } },
+      {
+        filename: "logo.png", mimeType: "image/png",
+        headers: [
+          { name: "Content-ID", value: "<arvo-kurum-logosu>" },
+          { name: "Content-Disposition", value: 'inline; filename="logo.png"' },
+        ],
+        body: { attachmentId: "ek-logo", size: 23000 },
+      },
+      {
+        filename: "teklif.pdf", mimeType: "application/pdf",
+        headers: [{ name: "Content-Disposition", value: 'attachment; filename="teklif.pdf"' }],
+        body: { attachmentId: "ek-pdf", size: 1000 },
+      },
+    ],
+  });
+  assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["teklif.pdf"]);
+});
+
+test("Content-ID taşımayan inline dosya ek sayılmaya devam ediyor", () => {
+  /* Bazı istemciler PDF'i "inline" gönderiyor; gövdede çizilmediği için
+     onu gizlemek müşterinin gönderdiği belgeyi yok etmek olurdu. */
+  const ekler = mesajEkleri({
+    parts: [{
+      filename: "sozlesme.pdf", mimeType: "application/pdf",
+      headers: [{ name: "Content-Disposition", value: "inline" }],
+      body: { attachmentId: "ek-1", size: 500 },
+    }],
+  });
+  assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["sozlesme.pdf"]);
 });

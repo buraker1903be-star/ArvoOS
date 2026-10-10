@@ -126,9 +126,10 @@ function htmlVarliklariniCoz(metin: string): string {
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
 }
 
+/* Rozet, ek LİSTESİYLE aynı kaynaktan: iki ayrı tanım, imza logosunu
+   listeden çıkarıp rozeti yanık bırakmanın yoluydu (10.10.2026). */
 function ekliDosyaVarMi(payload: GmailMesaji["payload"]): boolean {
-  const parcalar = (payload?.parts ?? []) as { filename?: string; parts?: unknown[] }[];
-  return parcalar.some((parca) => Boolean(parca.filename) || ekliDosyaVarMi(parca as GmailMesaji["payload"]));
+  return mesajEkleri(payload).length > 0;
 }
 
 /**
@@ -307,13 +308,35 @@ type EkliParca = {
   filename?: string;
   mimeType?: string;
   body?: { attachmentId?: string; size?: number };
+  headers?: { name?: string; value?: string }[];
   parts?: EkliParca[];
 };
+
+/*
+  GÖVDENİN İÇİNDE ÇİZİLEN GÖRSEL EK DEĞİL.
+
+  İmza logosu mesajın içinde gidiyor (multipart/related + Content-ID) ve
+  HTML ondan "cid:" ile çağırıyor. Gmail onu da dosya adı olan bir parça
+  olarak döndürüyor; ayırmazsak panelde her yazışmanın altında
+  "logo.png 23 KB" diye bir ek görünüyor, "ekli dosya" rozeti yanıyor ve
+  yönlendirmede logo gerçek bir ek olarak yeniden gönderiliyordu
+  (10.10.2026, HTML imza canlıya çıkar çıkmaz).
+
+  Ölçüt ikisi birden: Content-ID VE inline. Karşı tarafın "inline"
+  olarak gönderdiği ama gövdede çizilmeyen bir dosya (bazı istemciler
+  PDF'i böyle yolluyor) Content-ID taşımadığı için ek sayılmaya devam
+  ediyor — onu gizlemek, müşterinin gönderdiği belgeyi yok etmek olurdu.
+*/
+function govdeyeGomulu(parca: EkliParca): boolean {
+  const basliktan = (ad: string) =>
+    parca.headers?.find((baslik) => (baslik.name ?? "").toLowerCase() === ad)?.value ?? "";
+  return Boolean(basliktan("content-id")) && basliktan("content-disposition").trim().toLowerCase().startsWith("inline");
+}
 
 export function mesajEkleri(payload: unknown): MesajEki[] {
   const topla = (parca: EkliParca | undefined, biriken: MesajEki[]) => {
     if (!parca) return biriken;
-    if (parca.filename && parca.body?.attachmentId) {
+    if (parca.filename && parca.body?.attachmentId && !govdeyeGomulu(parca)) {
       biriken.push({
         ekId: parca.body.attachmentId,
         dosyaAdi: parca.filename,
