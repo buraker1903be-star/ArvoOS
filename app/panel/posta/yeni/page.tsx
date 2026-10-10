@@ -5,6 +5,7 @@ import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
 import { yonlendirmeGovdesi, yonlendirmeKonusu } from "@/lib/posta-gonderim";
 import { dosyaBoyutu } from "../bicim";
 import { taslakKaydet, yeniPostaGonder } from "../actions";
+import { HazirCevapSec } from "../hazir-cevap-sec";
 import "../posta.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 
@@ -27,7 +28,7 @@ export default async function YeniPostaPage({ searchParams }: {
   searchParams: Promise<{ alici?: string; konu?: string; firsat?: string; taslak?: string; yonlendir?: string }>;
 }) {
   const { alici, konu, firsat, taslak: taslakId, yonlendir: yonlendirilenId } = await searchParams;
-  const { supabase, membership, izin } = await getPanelContext();
+  const { supabase, membership, organization, userId, izin } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
   /* Kayıtlı taslaktan devam. Adresten gelen ön doldurma yalnızca yeni
@@ -54,6 +55,29 @@ export default async function YeniPostaPage({ searchParams }: {
     ? await postaGovdesiniGetir(membership.organization_id, yonlendirilen.message_id as string)
     : null;
   const ozgunEkler = ozgun && !("hata" in ozgun) ? ozgun.ekler : [];
+
+  /*
+    Hazır cevaplar burada da: yeni posta, müşteriye ilk kez yazılan
+    yerdir ve "fiyat bilgisi" gibi metinler en çok orada gerekiyor.
+    İlk sürümde yalnızca yanıt formuna bağlanmıştı.
+  */
+  const bagliFirsatId = (taslak?.opportunity_id ?? firsat) as string | undefined;
+  const [{ data: sablonVerisi }, { data: benimKayit }, { data: firsatKaydi }] = await Promise.all([
+    izin("posta.yanitla")
+      ? supabase.from("mail_templates").select("id,ad,govde")
+          .eq("organization_id", membership.organization_id).order("ad")
+      : Promise.resolve({ data: [] }),
+    supabase.from("hr_employees").select("full_name")
+      .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
+    /* {{musteri}} için ad: yeni postada alıcı yalnızca adres, kişinin
+       adı bilinmiyor. CRM kaydından gelindiyse (Posta gönder bağlantısı)
+       ad oradan okunuyor; yoksa yer tutucu metinden düşüyor. */
+    bagliFirsatId
+      ? supabase.from("crm_opportunities").select("customer_name")
+          .eq("organization_id", membership.organization_id).eq("id", bagliFirsatId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const sablonlar = (sablonVerisi ?? []) as { id: string; ad: string; govde: string }[];
   const yonlendirmeKonu = yonlendirilen ? yonlendirmeKonusu((yonlendirilen.konu as string) ?? "") : null;
   const yonlendirmeMetni = yonlendirilen && ozgun && !("hata" in ozgun)
     ? yonlendirmeGovdesi("", {
@@ -134,10 +158,21 @@ export default async function YeniPostaPage({ searchParams }: {
         </p>
       ) : null}
 
-      <label className="posta-ek-sec">
-        <span>Ek dosya</span>
-        <input type="file" name="ekler" multiple />
-      </label>
+      <div className="posta-yanit-araclar">
+        <label className="posta-ek-sec">
+          <span>Ek dosya</span>
+          <input type="file" name="ekler" multiple />
+        </label>
+        <HazirCevapSec
+          hedefId="posta-metin"
+          sablonlar={sablonlar}
+          degerler={{
+            musteri: (firsatKaydi?.customer_name as string | undefined) ?? "",
+            ben: (benimKayit?.full_name as string | undefined) ?? "",
+            kurum: organization.display_name || organization.name,
+          }}
+        />
+      </div>
 
       <div className="posta-yanit-alt">
         <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB (özgün ekler dahil).{hesap.imza ? " Kurum imzası sonuna eklenir." : ""}{(taslak?.opportunity_id ?? firsat) ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}{yonlendirilen ? " Yönlendirme yeni bir yazışma olarak açılır." : ""}</small>
