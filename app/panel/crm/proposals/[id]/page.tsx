@@ -93,12 +93,16 @@ export default async function ProposalDetailPage({ params }: Props) {
     detayda görünmüyordu.
   */
   const kok = data.root_proposal_id ?? data.id;
-  const { data: revizyonData } = await supabase
+  /* Hata OKUNUYOR: liste yutulduğunda sayfa "tek sürüm var" gibi
+     görünüyordu. Müşteriye gitmiş bir belgede hangi sürümde olunduğunu
+     yanlış göstermek, eksik göstermekten kötü. */
+  const { data: revizyonData, error: revizyonHatasi } = await supabase
     .from("crm_proposals")
     .select("id,proposal_no,revision_no,status,archive_reason,superseded_by,amount,currency,created_at")
     .eq("organization_id", membership.organization_id)
     .or(`id.eq.${kok},root_proposal_id.eq.${kok}`)
     .order("revision_no", { ascending: true });
+  if (revizyonHatasi) throw new Error("Teklif sürümleri okunamadı: " + revizyonHatasi.message);
   const revizyonlar = (revizyonData ?? []) as { id: string; proposal_no: string; revision_no: number; status: string; archive_reason: string | null; superseded_by: string | null; amount: number; currency: string; created_at: string }[];
   const oncekiRevizyon = data.previous_revision_id ? revizyonlar.find((r) => r.id === data.previous_revision_id) ?? null : null;
   const sonrakiRevizyon = data.superseded_by ? revizyonlar.find((r) => r.id === data.superseded_by) ?? null : null;

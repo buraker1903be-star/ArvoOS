@@ -117,11 +117,16 @@ export default async function ContractsPage({ searchParams }: Props) {
   const workflowIds = [...new Set(fetched.map((r) => r.workflow_id).filter((v): v is string => Boolean(v)))];
   const completedWorkflowIds = new Set<string>();
   if (workflowIds.length) {
-    const { data: workflows } = await supabase
+    /* Hata OKUNUYOR: bu sorgu hangi sözleşmenin kapandığını söylüyor.
+       Yutulduğunda küme boş kalıyor, kapanan sözleşmeler AKTİF sayılıyor
+       ve şeritteki "aktif sözleşme değeri" olduğundan yüksek çıkıyordu —
+       yanlış sayı, eksik sayıdan kötüdür. */
+    const { data: workflows, error: workflowError } = await supabase
       .from("operation_workflows")
       .select("id,status")
       .eq("organization_id", membership.organization_id)
       .in("id", workflowIds);
+    if (workflowError) throw new Error("Sözleşmelerin iş durumu okunamadı: " + workflowError.message);
     for (const wf of workflows ?? [])
       if (wf.status === "completed" || wf.status === "archived") completedWorkflowIds.add(wf.id);
   }
