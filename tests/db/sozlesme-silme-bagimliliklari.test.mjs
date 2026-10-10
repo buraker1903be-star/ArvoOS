@@ -73,6 +73,21 @@ describe("sözleşme silinince bağlı kayıtlar", () => {
       assert.equal(rows.length, 0, "maliyet kalemi silinmedi (kural değişmişse panel engeli gözden geçirilmeli)");
     }));
 
+  test("müşteri yazışması da siliniyor (CASCADE) — panel bu yüzden engelliyor", async () =>
+    islem(db, async () => {
+      /* Kurum sahibinin kararı (10.10.2026): yazışma silinmemeli, o
+         yüzden yazışması olan sözleşme panelden SİLİNEMİYOR
+         (contract-actions.ts). Bu test kaskatın hâlâ var olduğunu, yani
+         engelin hâlâ gerekli olduğunu sabitliyor. */
+      await rol(db, "postgres");
+      const { rows: mesaj } = await db.query(
+        `insert into public.customer_file_messages (organization_id,contract_id,sender_type,sender_name,body)
+         values ($1,$2,'customer','Ayşe','Merhaba') returning id`, [KURUM, SOZLESME]);
+      await db.query(`delete from public.crm_contracts where id = $1`, [SOZLESME]);
+      const { rows } = await db.query(`select id from public.customer_file_messages where id = $1`, [mesaj[0].id]);
+      assert.equal(rows.length, 0, "yazışma silinmedi (kaskat kalktıysa panel engeli gevşetilebilir)");
+    }));
+
   test("ödeme planı tamamen siliniyor (CASCADE)", async () =>
     islem(db, async () => {
       await rol(db, "postgres");

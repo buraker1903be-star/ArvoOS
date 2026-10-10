@@ -543,11 +543,13 @@ async function deleteContract__impl(formData: FormData) {
     { data: linkedPlan, error: planError },
     { data: linkedCost, error: costError },
     { data: linkedAddendum, error: addendumError },
+    { data: linkedMessage, error: messageError },
   ] = await Promise.all([
     bagli("operation_workflows"),
     bagli("payment_plans"),
     bagli("contract_cost_items"),
     bagli("crm_contract_addenda"),
+    bagli("customer_file_messages"),
   ]);
   if (workflowError)
     throw new Error("Sözleşmeye bağlı iş olup olmadığı okunamadı: " + workflowError.message);
@@ -557,6 +559,8 @@ async function deleteContract__impl(formData: FormData) {
     throw new Error("Sözleşmeye bağlı maliyet kalemi olup olmadığı okunamadı: " + costError.message);
   if (addendumError)
     throw new Error("Sözleşmeye bağlı ek sözleşme olup olmadığı okunamadı: " + addendumError.message);
+  if (messageError)
+    throw new Error("Sözleşmeye bağlı müşteri yazışması olup olmadığı okunamadı: " + messageError.message);
   if (linkedWorkflow?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir operasyon işi var; iş, prim ve tahsilat kayıtları sözleşmeye dayandığı için sözleşme silinemez.",
@@ -572,6 +576,18 @@ async function deleteContract__impl(formData: FormData) {
   if (linkedAddendum?.length)
     throw new Error(
       "Bu sözleşmenin ek sözleşmesi var; sözleşme silinirse ek de silinir. Önce eki kaldırın.",
+    );
+  /*
+    Müşteri yazışması olan sözleşme SİLİNEMEZ (kurum sahibinin kararı,
+    10.10.2026). Veritabanı mesajları sözleşmeyle birlikte siliyor
+    (ON DELETE CASCADE) ve panelde mesaj silme yok — yani burada
+    "önce şunu kaldırın" denebilecek bir iş de yok. Yazışma kurumun
+    müşteriyle arasındaki kayıt; bir sözleşme kaydından daha kalıcı.
+    Yanlış açılmış sözleşme silinmek yerine İPTAL ediliyor.
+  */
+  if (linkedMessage?.length)
+    throw new Error(
+      "Bu sözleşmede müşteri yazışması var ve yazışma silinmemeli. Sözleşmeyi silmek yerine \"İptal\" durumuna alın.",
     );
 
   const { data: doomedContract } = await supabase
