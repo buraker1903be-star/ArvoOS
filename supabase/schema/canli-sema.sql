@@ -1,9 +1,9 @@
 -- Canlı şema dışa aktarımı: 2026-10-10
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
--- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
--- yetkiler, tetikleyiciler. Fonksiyon gövdeleri tablolar tamamlanmadan
--- denetlenmesin diye:
+-- üretilmiş sütunlar, kısıtlar, yabancı anahtarlar, indeksler, görünümler,
+-- RLS, politikalar, yetkiler, tetikleyiciler. Fonksiyon gövdeleri tablolar
+-- tamamlanmadan denetlenmesin diye:
 set check_function_bodies = false;
 -- Politikalar ve tetikleyiciler private şemasındaki fonksiyonlara dayanıyor.
 create schema if not exists private;
@@ -12747,6 +12747,20 @@ alter table public.whatsapp_quick_replies alter column sort_index set default 0;
 
 alter table public.whatsapp_quick_replies alter column updated_at set default now();
 
+alter table public.crm_proposals add column if not exists teklif_grubu text generated always as (
+CASE
+    WHEN (superseded_by IS NOT NULL) THEN 'eski'::text
+    ELSE
+    CASE private.arvo_proposal_effective_status(status, archive_reason)
+        WHEN 'accepted'::text THEN 'accepted'::text
+        WHEN 'rejected'::text THEN 'rejected'::text
+        WHEN 'expired'::text THEN 'expired'::text
+        WHEN 'draft'::text THEN 'draft'::text
+        WHEN 'sent'::text THEN 'sent'::text
+        ELSE 'arsiv'::text
+    END
+END) stored;
+
 alter table public.account_entries add constraint account_entries_amount_check CHECK ((amount > 0));
 
 alter table public.account_entries add constraint account_entries_description_check CHECK (((char_length(description) >= 2) AND (char_length(description) <= 500)));
@@ -13768,6 +13782,8 @@ CREATE INDEX crm_opportunities_close_date_idx ON public.crm_opportunities USING 
 CREATE INDEX crm_opportunities_org_stage_idx ON public.crm_opportunities USING btree (organization_id, stage, updated_at DESC);
 
 CREATE INDEX crm_opportunities_owner_idx ON public.crm_opportunities USING btree (organization_id, owner_user_id);
+
+CREATE INDEX crm_proposals_kurum_grup_idx ON public.crm_proposals USING btree (organization_id, teklif_grubu, created_at DESC);
 
 CREATE INDEX crm_proposals_opportunity_idx ON public.crm_proposals USING btree (opportunity_id);
 

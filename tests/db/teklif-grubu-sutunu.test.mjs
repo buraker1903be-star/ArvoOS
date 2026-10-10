@@ -17,7 +17,9 @@ import path from "node:path";
 import { rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261010191327_teklif_grubu_sutunu.sql"];
+/* Sütun artık anlık görüntüde, yetki migration'ı da ortam.mjs'teki
+   bekleyenler listesinde: burada uygulanacak bir şey kalmadı. */
+const MIGRATIONLAR = [];
 
 const ORNEKLER = JSON.parse(
   fs.readFileSync(path.resolve(import.meta.dirname, "../fixtures/teklif-gruplari.json"), "utf8"),

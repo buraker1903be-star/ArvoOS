@@ -47,12 +47,33 @@ grant all on all sequences in schema public to anon, authenticated, service_role
 
 export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/canli-sema.sql");
 
+/*
+  ANLIK GÖRÜNTÜDEN SONRA GELEN MIGRATION'LAR.
+
+  Döküm canlıdan alınıyor; canlıya uygulanmış ama dökümü henüz
+  alınmamış bir migration varsa her test onsuz koşar. Buradakiler
+  BÜTÜN akış testlerine uygulanıyor — tek bir dosyanın listesine
+  koymak, aynı kuralı sınamayan yirmi testi kuralsız bırakırdı.
+
+  Döküm yenilenince bu liste BOŞALTILIR: dolu kalırsa migration iki kez
+  uygulanır ve (bir işlevi yeniden yaratan migration'da) anlık
+  görüntüdeki yeni gövdeyi eskisine döndürebilir — npm run
+  check:db-testleri tam bunu arıyor.
+*/
+export const BEKLEYEN_MIGRATIONLAR = [
+  // 10.10.2026: teklif_grubu üretilmiş sütununun çağırdığı fonksiyonun yetkisi.
+  "20261010200419_teklif_grubu_yetkisi.sql",
+];
+
 /** Canlı şemayla kurulmuş, boş bir veritabanı. */
 export async function veritabani(semaDosyasi = SEMA) {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_KABUGU);
   const sema = fs.readFileSync(semaDosyasi, "utf8");
   await db.exec(sema);
+  for (const ad of BEKLEYEN_MIGRATIONLAR) {
+    await db.exec(fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8"));
+  }
   await db.exec(SUPABASE_VARSAYILAN_YETKI);
   /*
     DÖKÜMÜN YETKİ SATIRLARI SON SÖZÜ SÖYLER.
