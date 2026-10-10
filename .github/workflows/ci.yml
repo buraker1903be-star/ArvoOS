@@ -53,6 +53,12 @@ jobs:
       # Koddaki tablo/sütun/fonksiyon adları canlı şemada var mı
       # (supabase/schema/katalog.json). Supabase istemcisi tipsiz; yanlış
       # sütun adı derlemede görünmez, üretimde sessizce boş veri döndürür.
+      # Biçem denetimi: palet tek kaynakta mı, ve bir sayfanın kullandığı
+      # sınıfın stili o rotaya yükleniyor mu. İkincisi 10.10.2026'da iki
+      # sayfada yoktu; liste üzerinden girince doğru görünüyor, sayfa
+      # yenilenince düzen dağılıyordu.
+      - name: Biçem denetimi
+        run: npm run check:css
       - name: Şema sözleşmesi
         run: npm run check:schema
       # Ekrandaki sayıların iki bilinen yanlış kaynağı (scripts/check-rakamlar.mjs):

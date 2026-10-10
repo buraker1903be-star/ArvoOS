@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import "./settings.css";
 
 // Ayarlar ekranlarının ortak görsel parçaları: simgeler, özet widget'ı,
 // bölüm kartı ve iOS "gruplanmış liste" satırları. Yönergesiz modül:

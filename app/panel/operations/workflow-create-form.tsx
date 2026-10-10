@@ -1,5 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { createWorkflow } from "./actions";
+import "./operations.css";
 
 // "Yeni iş" formu (genel bakış ve işler sayfası ortak). Sunucu bileşeni:
 // sorumlu listesi burada okunur.

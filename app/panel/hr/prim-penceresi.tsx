@@ -7,6 +7,7 @@ import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/
 import { PanelDrawer } from "../components/panel-drawer";
 import { primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
 import type { primVerisi } from "./prim-verisi";
+import "../finance/finance.css";
 
 /*
   PRİM PENCERESİ (2026-10): personel detayında "Prim" düğmesiyle ortada

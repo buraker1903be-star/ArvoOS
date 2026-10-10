@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import "../../../crm/crm.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
+import "../../../settings/settings.css";
 
 /*
   BELGE YAŞAM DÖNGÜSÜ (10.10.2026): panelin kayıt detayı kalıbında.

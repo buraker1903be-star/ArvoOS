@@ -8,6 +8,7 @@ import { HazirCevapSec } from "../hazir-cevap-sec";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
+import "../../crm/kayit-detay/kayit-detay.css";
 import "../posta.css";
 
 /*

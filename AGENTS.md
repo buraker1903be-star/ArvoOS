@@ -94,6 +94,14 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   izin veriyor (IP, localhost, iç alan adları ve yönlendirmeler kapalı).
   Yoksa kurumu yöneten biri sunucunun ağındaki bir şeyi kendi postasına
   çektirebilir.
+- **Sayfa, kullandığı sınıfın CSS'ini kendi import etmeli.** Next rotanın
+  CSS'ini o rotanın modül ağacından topluyor: sayfa (ya da içindeki bir
+  bileşen/layout) dosyayı import etmiyorsa o rotada stil YOK — hata da
+  yok. Posta konuşma ekranı `talep-*` düzen sınıflarını kullanıp
+  `kayit-detay.css`'i import etmiyordu: listeden tıklayınca doğru
+  görünüyor (önceki sayfanın CSS'i yüklü), sayfa YENİLENİNCE düzen
+  dağılıyordu (10.10.2026). Bir bileşen her yerde kullanılıyorsa CSS'ini
+  kendisi import etsin. `npm run check:css` bunu CI'da denetliyor.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata

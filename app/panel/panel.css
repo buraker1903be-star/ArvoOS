@@ -244,6 +244,16 @@ html,body{overflow-x:hidden;overflow-x:clip;max-width:100vw}
   .panel-root{min-height:0!important}
 }
 
+/*
+  Kurucu konsolunun kenar menüsündeki gruplar. Burada, platform.css'te
+  değil: menüyü panel LAYOUT'u çiziyor (her sayfada var), platform.css
+  ise yalnızca /panel/platform rotasına yükleniyordu — gruplar diğer
+  bütün sayfalarda ayraçsız, bitişik görünüyordu (10.10.2026).
+*/
+.konsol-grup { display: grid; gap: 2px; padding-top: 12px; margin-top: 12px }
+.konsol-grup + .konsol-grup { border-top: 1px solid rgba(255, 255, 255, .08) }
+.konsol-grup:first-child { padding-top: 0; margin-top: 0 }
+
 /* Kurucu konsoluna yetkisiz giriş: normal panel kabuğu çizilmiyor, çünkü
    bu alan adının tamamı platform yönetimi. Kullanıcıya kendi panelinin
    adresi veriliyor; kapalı bir kapı önünde bırakmıyoruz. */

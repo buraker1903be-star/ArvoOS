@@ -12,6 +12,7 @@ import {
 } from "../sablon-actions";
 import { ASAMA_EN_UZUN, OFSET_EN_COK, SABLON_EN_COK, SET_EN_COK, VARSAYILAN_ADIMLAR } from "@/lib/is-adimlari";
 import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
 import "./sablon.css";
 

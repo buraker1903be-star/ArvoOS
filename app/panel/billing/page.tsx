@@ -5,6 +5,7 @@ import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
 import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { submitBankTransferPayment } from "./actions";
 import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
+import "../team.css";
 
 function formatTry(value: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
