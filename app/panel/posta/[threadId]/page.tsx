@@ -39,7 +39,31 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   const { threadId } = await params;
   const { supabase, membership, organization, userId, izin, modules, hiddenModuleKeys } = await getPanelContext();
 
-  const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
+  /*
+    OKUMA SORGULARI TEK TURDA.
+
+    Bu sayfa panelde en çok açılan ekran ve sorguları sırayla
+    bekliyordu: konuşma, kutu durumu, taslak, fırsatlar, etiketler,
+    hazır cevaplar, personel adı — yedi ayrı gidiş dönüş, her biri
+    ötekini bekliyordu. Hiçbiri ötekinin sonucuna bağlı değil; aynı
+    anda başlatılınca ekran bir turda açılıyor.
+
+    Konuşma bulunamazsa diğerlerinin sonucu atılıyor: yan etkisi olmayan
+    okumalar, boşa giden birkaç sorgudan daha ucuz değil ama bu durum
+    (silinmiş yazışmanın adresi) nadir.
+  */
+  const yonetebilir = izin("posta.yonet");
+  const yanitlayabilir = izin("posta.yanitla");
+  const [
+    { data: konusma, error: konusmaHatasi },
+    { data: mesajVerisi, error: mesajHatasi },
+    hesap,
+    { data: taslak },
+    { data: firsatVerisi },
+    { data: etiketVerisi },
+    { data: sablonVerisi },
+    { data: benimKayit },
+  ] = await Promise.all([
     supabase.from("mail_threads")
       .select("thread_id,konu,durum,ilgilenen_user_id,mesaj_sayisi,opportunity_id,okunmamis,silindi_at,silen_user_id,etiketler")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId).maybeSingle(),
@@ -47,87 +71,84 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
       .select("message_id,gonderen_ad,gonderen_adres,alici,konu,tarih,yon,ekli_dosya")
       .eq("organization_id", membership.organization_id).eq("thread_id", threadId)
       .order("tarih", { ascending: true }),
+    postaDurumu(membership.organization_id),
+    /* Yarım kalmış cevap: ekipten biri başlatmış olabilir, metin kutuda
+       hazır gelsin. Konuşma başına tek taslak (veritabanında benzersiz
+       indeks) — iki kişinin iki ayrı yarım cevabı en sık çakışma biçimi. */
+    supabase.from("mail_drafts")
+      .select("id,govde,cc,olusturan,updated_at")
+      .eq("organization_id", membership.organization_id)
+      .eq("thread_id", threadId)
+      .maybeSingle(),
+    /* Bağlanabilecek kayıtlar: en son dokunulan 100 fırsat. Kurumun
+       bütün geçmişini açılır listeye koymak, listeyi kullanılamaz
+       yapardı; elle bağlama zaten istisna, asıl bağ eşleşmeyle kuruluyor. */
+    yonetebilir
+      ? supabase.from("crm_opportunities")
+          .select("id,customer_name,title,contact_email")
+          .eq("organization_id", membership.organization_id)
+          .order("updated_at", { ascending: false }).limit(100)
+      : Promise.resolve({ data: [] }),
+    /* Etiket kataloğu Gmail'den eşitleniyor; panelde yalnızca
+       uygulanıyor. Yetki yanıtlamayla aynı: yazışmayı düzenleyebilen
+       sınıflandırabilsin. */
+    yanitlayabilir
+      ? supabase.from("mail_labels").select("label_id,ad")
+          .eq("organization_id", membership.organization_id).order("ad")
+      : Promise.resolve({ data: [] }),
+    /* Hazır cevaplar: kullanmak için posta.yanitla yetiyor, düzenlemek
+       posta.yonet istiyor (hazir-cevaplar sayfası). */
+    yanitlayabilir
+      ? supabase.from("mail_templates").select("id,ad,govde")
+          .eq("organization_id", membership.organization_id).order("ad")
+      : Promise.resolve({ data: [] }),
+    /* Yer tutucu değeri: cevabı yazan personelin adı. Kaydı yoksa yer
+       tutucu düşer. */
+    supabase.from("hr_employees").select("full_name")
+      .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
   ]);
   if (konusmaHatasi) throw new Error("Konuşma okunamadı: " + konusmaHatasi.message);
   if (mesajHatasi) throw new Error("Mesajlar okunamadı: " + mesajHatasi.message);
   if (!konusma) notFound();
-  const hesap = await postaDurumu(membership.organization_id);
+
   const kutuAdi = hesap.adres ?? "ortak kutu";
-
-  /* Yarım kalmış cevap: ekipten biri başlatmış olabilir, metin kutuda
-     hazır gelsin. Konuşma başına tek taslak (veritabanında benzersiz
-     indeks) — iki kişinin iki ayrı yarım cevabı en sık çakışma biçimi. */
-  const { data: taslak } = await supabase
-    .from("mail_drafts")
-    .select("id,govde,cc,olusturan,updated_at")
-    .eq("organization_id", membership.organization_id)
-    .eq("thread_id", threadId)
-    .maybeSingle();
-
-  /*
-    Bağlanabilecek kayıtlar: en son dokunulan 100 fırsat. Kurumun bütün
-    geçmişini açılır listeye koymak, listeyi kullanılamaz yapardı; elle
-    bağlama zaten istisna, asıl bağ eşleşmeyle kuruluyor.
-  */
-  const { data: firsatVerisi } = izin("posta.yonet")
-    ? await supabase.from("crm_opportunities")
-        .select("id,customer_name,title,contact_email")
-        .eq("organization_id", membership.organization_id)
-        .order("updated_at", { ascending: false }).limit(100)
-    : { data: [] };
+  const mesajlar = (mesajVerisi ?? []) as Mesaj[];
   const firsatlar = (firsatVerisi ?? []) as { id: string; customer_name: string | null; title: string | null; contact_email: string | null }[];
   const bagliFirsat = firsatlar.find((firsat) => firsat.id === konusma.opportunity_id) ?? null;
+  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
+  const sablonlar = (sablonVerisi ?? []) as { id: string; ad: string; govde: string }[];
 
-  const mesajlar = (mesajVerisi ?? []) as Mesaj[];
+  /* Çöpteki yazışma okunur ama üzerinde iş yapılmaz: yanıt, durum ve
+     müşteri bağı kapalı. Önce geri alınır. */
+  const copte = Boolean(konusma.silindi_at);
 
   /*
     Gövdeler paralel çekiliyor. Tek tek beklemek, on mesajlık bir
     konuşmada ekranı on ağ turu kadar geciktiriyordu. Biri düşerse
     yalnızca o mesaj sebebini yazar; konuşmanın tamamı kaybolmaz.
+
+    "Bunu kim sildi" ortak kutuda sorulan ilk soru; o okuma da aynı
+    turda (yalnızca çöpteki yazışmada).
   */
-  const icerikler = new Map(await Promise.all(mesajlar.map(async (mesaj) => {
-    const sonuc = await postaGovdesiniGetir(membership.organization_id, mesaj.message_id);
-    return [mesaj.message_id, "hata" in sonuc
-      ? { govde: `(Mesaj gövdesi okunamadı: ${sonuc.hata})`, ekler: [] }
-      : sonuc] as const;
-  })));
+  const [icerikListesi, { data: silenKayit }] = await Promise.all([
+    Promise.all(mesajlar.map(async (mesaj) => {
+      const sonuc = await postaGovdesiniGetir(membership.organization_id, mesaj.message_id);
+      return [mesaj.message_id, "hata" in sonuc
+        ? { govde: `(Mesaj gövdesi okunamadı: ${sonuc.hata})`, ekler: [] as MesajEki[] }
+        : sonuc] as const;
+    })),
+    copte && konusma.silen_user_id
+      ? supabase.from("hr_employees").select("full_name")
+          .eq("organization_id", membership.organization_id).eq("user_id", konusma.silen_user_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const icerikler = new Map(icerikListesi);
+  const silenAd = konusma.silen_user_id === userId ? "Siz" : (silenKayit?.full_name as string | undefined) ?? "ekipten biri";
 
-  const yonetebilir = izin("posta.yonet");
-  /* Etiket kataloğu Gmail'den eşitleniyor; panelde yalnızca uygulanıyor.
-     Yetki yanıtlamayla aynı: yazışmayı düzenleyebilen sınıflandırabilsin. */
-  const { data: etiketVerisi } = izin("posta.yanitla")
-    ? await supabase.from("mail_labels").select("label_id,ad")
-        .eq("organization_id", membership.organization_id).order("ad")
-    : { data: [] };
-  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
-
-  /* Hazır cevaplar: kullanmak için posta.yanitla yetiyor, düzenlemek
-     posta.yonet istiyor (hazir-cevaplar sayfası). */
-  const { data: sablonVerisi } = izin("posta.yanitla")
-    ? await supabase.from("mail_templates").select("id,ad,govde")
-        .eq("organization_id", membership.organization_id).order("ad")
-    : { data: [] };
-  const sablonlar = (sablonVerisi ?? []) as { id: string; ad: string; govde: string }[];
-
-  /* Yer tutucu değerleri: yazışmadaki kişi, cevabı yazan personel ve
-     kurum. Personel adı hr_employees'ten; yoksa yer tutucu düşer. */
-  const { data: benimKayit } = sablonlar.length
-    ? await supabase.from("hr_employees").select("full_name")
-        .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle()
-    : { data: null };
   const konusmaEtiketleri = ((konusma.etiketler as string[] | null) ?? []);
   const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
   const eklenebilir = etiketler.filter((etiket) => !konusmaEtiketleri.includes(etiket.label_id));
 
-  /* Çöpteki yazışma okunur ama üzerinde iş yapılmaz: yanıt, durum ve
-     müşteri bağı kapalı. Önce geri alınır. */
-  const copte = Boolean(konusma.silindi_at);
-  /* "Bunu kim sildi" ortak kutuda sorulan ilk soru; kimlik yerine ad. */
-  const { data: silenKayit } = copte && konusma.silen_user_id
-    ? await supabase.from("hr_employees").select("full_name")
-        .eq("organization_id", membership.organization_id).eq("user_id", konusma.silen_user_id).maybeSingle()
-    : { data: null };
-  const silenAd = konusma.silen_user_id === userId ? "Siz" : (silenKayit?.full_name as string | undefined) ?? "ekipten biri";
   /* Yanıt son GELEN mesajın göndereneine gider; son giden mesaja bakmak
      kendi adresimize cevap yazdırırdı. */
   const sonGelen = [...mesajlar].reverse().find((mesaj) => mesaj.yon === "gelen");

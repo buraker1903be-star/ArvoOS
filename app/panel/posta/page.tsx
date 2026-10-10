@@ -75,8 +75,6 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
 export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }> }) {
   const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = await searchParams;
   const { supabase, membership, userId, izin, organization } = await getPanelContext();
-  const hesap = await postaDurumu(membership.organization_id);
-
   /* Çöp kutusu kendi görünümü: silinen yazışma öteki kutuların
      hiçbirinde çıkmamalı, yalnızca burada. */
   const copGorunumu = kutu === "cop";
@@ -138,7 +136,39 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     etiket, müşteri bağı) orada.
   */
   const govdedeAra = kapsam === "govde" && Boolean(desen) && !copGorunumu;
-  const gmailSonucu = govdedeAra ? await postaGovdesindeAra(membership.organization_id, desen as string) : null;
+
+  /*
+    LİSTEYİ BESLEYEN OKUMALAR TEK TURDA.
+
+    Kutu durumu, etiket kataloğu, taslaklar ve (istendiyse) Gmail'deki
+    gövde araması birbirine bağlı değil; sırayla beklendiğinde listenin
+    açılması dört ayrı gidiş dönüş sürüyordu. Konuşma sorgusu bunlardan
+    SONRA kalıyor: gövde aramasının sonucu süzgecine giriyor.
+  */
+  const [hesap, gmailSonucu, { data: etiketVerisi }, { data: taslakVerisi, error: taslakHatasi }] = await Promise.all([
+    postaDurumu(membership.organization_id),
+    govdedeAra ? postaGovdesindeAra(membership.organization_id, desen as string) : Promise.resolve(null),
+    /* Etiket kataloğu: Gmail'den eşitlenen kurum etiketleri. Süzgeç
+       satırında ad gösteriliyor, adreste kimlik taşınıyor. */
+    supabase.from("mail_labels").select("label_id,ad")
+      .eq("organization_id", membership.organization_id).order("ad"),
+    /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
+       karışmamalı ama kaybolmamalı da.
+
+       Hata OKUNUYOR: şeritteki sayaç ayrı bir sorgudan geliyor, liste
+       sessizce boş dönünce "Taslaklar 3" yazarken kutu "kayıtlı taslak
+       yok" diyordu — kendi kendiyle çelişen bir ekran. */
+    supabase.from("mail_drafts")
+      .select("id,thread_id,alici,konu,govde,updated_at,olusturan")
+      .eq("organization_id", membership.organization_id)
+      .order("updated_at", { ascending: false })
+      .limit(50),
+  ]);
+  if (taslakHatasi) throw new Error("Taslaklar okunamadı: " + taslakHatasi.message);
+  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
+  const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
+  const taslaklar = (taslakVerisi ?? []) as { id: string; thread_id: string | null; alici: string | null; konu: string | null; govde: string; updated_at: string; olusturan: string | null }[];
+
   const gmailHatasi = gmailSonucu && "hata" in gmailSonucu ? gmailSonucu.hata : null;
   if (gmailSonucu && "threadIdleri" in gmailSonucu) {
     /* Boş sonucu da uygulamak gerekiyor: eşleşme yoksa liste boş
@@ -161,31 +191,6 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   const sonSayfa = typeof suzgecSayisi === "number"
     ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
     : konusmalar.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
-
-  /* Etiket kataloğu: Gmail'den eşitlenen kurum etiketleri. Süzgeç
-     satırında ad gösteriliyor, adreste kimlik taşınıyor. */
-  const { data: etiketVerisi } = await supabase
-    .from("mail_labels")
-    .select("label_id,ad")
-    .eq("organization_id", membership.organization_id)
-    .order("ad");
-  const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
-  const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
-
-  /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
-     karışmamalı ama kaybolmamalı da.
-
-     Hata OKUNUYOR: şeritteki sayaç ayrı bir sorgudan geliyor, liste
-     sessizce boş dönünce "Taslaklar 3" yazarken kutu "kayıtlı taslak
-     yok" diyordu — kendi kendiyle çelişen bir ekran. */
-  const { data: taslakVerisi, error: taslakHatasi } = await supabase
-    .from("mail_drafts")
-    .select("id,thread_id,alici,konu,govde,updated_at,olusturan")
-    .eq("organization_id", membership.organization_id)
-    .order("updated_at", { ascending: false })
-    .limit(50);
-  if (taslakHatasi) throw new Error("Taslaklar okunamadı: " + taslakHatasi.message);
-  const taslaklar = (taslakVerisi ?? []) as { id: string; thread_id: string | null; alici: string | null; konu: string | null; govde: string; updated_at: string; olusturan: string | null }[];
 
   // Ekip adları: "ilgilenen" ve "silen" sütunları kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
   const ilgilenenler = [...new Set([
