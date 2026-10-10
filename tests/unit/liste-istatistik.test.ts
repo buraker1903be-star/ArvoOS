@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { aylik, enCok, gunOnce, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
+import { aylik, aylikDilimler, enCok, gunOnce, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
 
 /* Liste sayfalarındaki istatistik kartının hesapları. */
 
@@ -51,4 +51,17 @@ test("ortanca: aykırı tek değer sonucu çekmez", () => {
   assert.equal(ortanca([30, 36, 40, 5_466_666]), 38);
   assert.equal(ortanca([36, 10, 40]), 36);
   assert.equal(ortanca([]), 0);
+});
+
+test("veritabanından gelen ay dilimleri boş ayları da çiziyor", () => {
+  /* Sayım veritabanına taşınınca yalnızca kayıt OLAN aylar dönüyor;
+     boş ay düşerse "Eylül'de hiç teklif yok" bilgisi kayboluyor ve
+     sütunlar yanıltıcı biçimde bitişik duruyor. */
+  const an = Date.parse("2026-10-11T09:00:00+03:00");
+  const dilimler = aylikDilimler([{ ay: "2026-10", adet: 2, toplam: 500 }, { ay: "2026-08", adet: 1, toplam: 100 }], 6, an);
+  assert.deepEqual(dilimler.map((d) => d.ad), ["May", "Haz", "Tem", "Ağu", "Eyl", "Eki"]);
+  assert.deepEqual(dilimler.map((d) => d.adet), [0, 0, 0, 1, 0, 2]);
+  assert.deepEqual(dilimler.map((d) => d.toplam), [0, 0, 0, 100, 0, 500]);
+  // Pencerenin dışındaki ay sessizce atılıyor, toplamı şişirmiyor.
+  assert.equal(aylikDilimler([{ ay: "2025-01", adet: 9, toplam: 900 }], 6, an).reduce((t, d) => t + d.adet, 0), 0);
 });

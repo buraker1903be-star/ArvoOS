@@ -41,17 +41,22 @@ const AY_ADLARI = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Ey
 const ayAnahtari = (an: number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric", month: "2-digit" }).format(an).slice(0, 7);
 
+/** Son `ay` ayın boş dilimleri, eskiden yeniye; ay sınırı Türkiye saatiyle. */
+function dilimleriKur(ay: number, simdi: number) {
+  const [yil, aySira] = ayAnahtari(simdi).split("-").map(Number);
+  return Array.from({ length: ay }, (_, i) => {
+    const d = new Date(Date.UTC(yil, aySira - 1 - (ay - 1 - i), 1));
+    return { anahtar: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`, ad: AY_ADLARI[d.getUTCMonth()], adet: 0, toplam: 0 };
+  });
+}
+
 /**
  * Son `ay` ayın (bu ay dahil, Türkiye saatiyle) her biri için kayıt
  * sayısı ve toplam; eskiden yeniye. Ay sınırı Türkiye saatiyle: UTC'de
  * ayın son gecesi 21:00 sonrası açılan kayıt bir sonraki aya düşer.
  */
 export function aylik(kayitlar: { tarih: string | null; tutar?: number }[], ay: number, simdi: number): { ad: string; adet: number; toplam: number }[] {
-  const [yil, aySira] = ayAnahtari(simdi).split("-").map(Number);
-  const dilimler = Array.from({ length: ay }, (_, i) => {
-    const d = new Date(Date.UTC(yil, aySira - 1 - (ay - 1 - i), 1));
-    return { anahtar: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`, ad: AY_ADLARI[d.getUTCMonth()], adet: 0, toplam: 0 };
-  });
+  const dilimler = dilimleriKur(ay, simdi);
   const bul = new Map(dilimler.map((d) => [d.anahtar, d]));
   for (const kayit of kayitlar) {
     if (!kayit.tarih) continue;
@@ -73,4 +78,29 @@ export function ortanca(degerler: number[]): number {
   const sirali = [...degerler].sort((a, b) => a - b);
   const orta = Math.floor(sirali.length / 2);
   return sirali.length % 2 ? sirali[orta] : Math.round((sirali[orta - 1] + sirali[orta]) / 2);
+}
+
+/*
+  Veritabanından gelen AY DİLİMLERİ ekrana. Sayım artık orada yapılıyor
+  (crm_teklif_istatistikleri) ve yalnızca kayıt OLAN aylar dönüyor;
+  grafikte boş ay da görünmeli, yoksa "Eylül'de hiç teklif yok" bilgisi
+  kayboluyor ve sütunlar yanıltıcı biçimde bitişik duruyor.
+
+  Ay anahtarı veritabanında da Türkiye saatiyle üretiliyor; iki taraf
+  aynı sınırı kullanmazsa ayın ilk ve son günü yanlış dilime düşer.
+*/
+export function aylikDilimler(
+  ozet: readonly { ay: string; adet: number; toplam: number }[],
+  ay: number,
+  simdi: number,
+): { ad: string; adet: number; toplam: number }[] {
+  const dilimler = dilimleriKur(ay, simdi);
+  const bul = new Map(dilimler.map((d) => [d.anahtar, d]));
+  for (const satir of ozet) {
+    const dilim = bul.get(satir.ay);
+    if (!dilim) continue;
+    dilim.adet += Number(satir.adet) || 0;
+    dilim.toplam += Number(satir.toplam) || 0;
+  }
+  return dilimler.map(({ ad, adet, toplam }) => ({ ad, adet, toplam }));
 }
