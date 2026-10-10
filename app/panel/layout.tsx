@@ -22,6 +22,7 @@ import { OsDock } from "./os/os-dock";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
+import { cevrimiciGorunurlugu } from "./presence-actions";
 import { OsMenuKapat } from "./os/os-menu-kapat";
 import { OsCanliSayfa } from "./os/os-canli-yenile";
 import { CustomerLookupHost } from "./crm/customer-lookup";
@@ -151,6 +152,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     postaSayimi,
     { data: varlikSatirlari },
     { data: ekipSatirlari },
+    { data: kendiVarlikSatiri },
   ] = await Promise.all([
     notificationQuery,
     ownEmployeeQuery,
@@ -168,10 +170,19 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
        avatarlar "Ekip üyesi" olur, kabuk bozulmaz. */
     konsolHostu
       ? Promise.resolve({ data: null })
-      : supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce),
+      /* Kendini ekibe çevrimdışı gösterenler bu listede yok (gizli).
+         Son görülme yine yazılıyor; personel ekranı gerçek durumu
+         göstermeye devam ediyor. */
+      : supabase.from("user_presence").select("user_id,last_seen_at,gizli").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce).eq("gizli", false),
     konsolHostu
       ? Promise.resolve({ data: null })
       : supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
+    /* Kendi görünürlük tercihimiz: yukarıdaki liste gizlileri elediği
+       için oradan okunamıyor. Menüdeki anahtarın başlangıç hâli. */
+    konsolHostu
+      ? Promise.resolve({ data: null })
+      : supabase.from("user_presence").select("gizli")
+          .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
   ]);
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
@@ -264,6 +275,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       erisim: { yetkiler, isPlatformOwner },
     });
     const varlik = Object.fromEntries(((varlikSatirlari ?? []) as { user_id: string; last_seen_at: string }[]).map((s) => [s.user_id, s.last_seen_at]));
+    const ekibeGizli = Boolean((kendiVarlikSatiri as { gizli?: boolean } | null)?.gizli);
     const ekip = ((ekipSatirlari ?? []) as { user_id: string; full_name: string | null }[])
       .map((s) => ({ userId: s.user_id, ad: formatPersonName(s.full_name) || "Ekip üyesi" }));
     const benimAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
@@ -292,7 +304,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
             <ThemeToggle />
           </div>
           <OsMenuKapat />
-          <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} />
+          <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} ekibeGizli={ekibeGizli} gorunurluk={cevrimiciGorunurlugu} />
         </div>
       </header>
       <section className="os-workspace">

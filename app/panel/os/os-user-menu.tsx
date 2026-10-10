@@ -17,6 +17,8 @@ export function OsKullaniciMenusu({
   workspaces,
   aktifKurumId,
   cikis,
+  ekibeGizli,
+  gorunurluk,
 }: {
   ad: string;
   rol: string;
@@ -25,6 +27,9 @@ export function OsKullaniciMenusu({
   workspaces: PanelWorkspace[];
   aktifKurumId: string;
   cikis: () => Promise<void>;
+  /** Kişi kendini ekibe çevrimdışı gösteriyor mu? */
+  ekibeGizli: boolean;
+  gorunurluk: (formData: FormData) => Promise<void>;
 }) {
   return (
     <details className="os-user">
@@ -78,6 +83,24 @@ export function OsKullaniciMenusu({
           <Link href="/panel/settings"><OsSimge ad="settings" boyut={16} />Ayarlar</Link>
           <Link href="/panel/notifications"><OsSimge ad="bell" boyut={16} />Bildirimler</Link>
         </nav>
+        {/*
+          EKİBE GÖRÜNÜRLÜK. Üst çubuktaki çevrimiçi ekip göstergesini
+          kapatmanın yolu yoktu; görünmeden çalışmak için oturumu
+          kapatmak gerekiyordu. Son görülme yine yazılıyor ve yöneticinin
+          personel ekranı gerçek durumu göstermeye devam ediyor —
+          kullanıcı ne olduğunu bilsin diye burada yazıyor.
+        */}
+        <form action={gorunurluk} className="os-user-gorunurluk">
+          <input type="hidden" name="gizli" value={ekibeGizli ? "0" : "1"} />
+          <button type="submit">
+            <span className={ekibeGizli ? "os-gorunurluk-nokta is-gizli" : "os-gorunurluk-nokta"} aria-hidden="true" />
+            {ekibeGizli ? "Ekibe çevrimiçi görün" : "Ekibe çevrimdışı görün"}
+          </button>
+          <small>{ekibeGizli
+            ? "Şu an ekip sizi çevrimdışı görüyor. Yöneticinin personel ekranında gerçek durum görünür."
+            : "Üst çubuktaki çevrimiçi listesinden gizlenirsiniz; personel ekranındaki kayıt değişmez."}</small>
+        </form>
+
         <form action={cikis} className="os-user-logout">
           <button type="submit"><OsSimge ad="logout" boyut={16} />Çıkış yap</button>
         </form>

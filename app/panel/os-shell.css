@@ -389,3 +389,13 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 @keyframes os-posta-uyari-gir{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.os-root .os-posta-uyari{animation:none}}
 @media (max-width:760px){.os-root .os-posta-uyari{left:var(--sp-3);right:var(--sp-3);max-width:none}}
+
+/* Kullanıcı menüsünde ekibe görünürlük anahtarı: çıkış düğmesinin
+   üstünde, aynı satır düzeninde. Altındaki küçük yazı ne olduğunu
+   söylüyor — "çevrimdışı görün" kaydın silindiği anlamına gelmiyor. */
+.os-root .os-user-gorunurluk{display:flex;flex-direction:column;gap:2px;padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.os-root .os-user-gorunurluk button{display:flex;align-items:center;gap:var(--sp-2);width:100%;padding:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);text-align:left;cursor:pointer}
+.os-root .os-user-gorunurluk button:hover{color:var(--primary)}
+.os-root .os-user-gorunurluk small{color:var(--muted);font-size:var(--fs-micro);line-height:1.4}
+.os-root .os-gorunurluk-nokta{flex:none;width:8px;height:8px;border-radius:50%;background:var(--success)}
+.os-root .os-gorunurluk-nokta.is-gizli{background:var(--n-400)}

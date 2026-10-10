@@ -23,7 +23,10 @@ export async function loadMessagesInit(
       .select(CHANNEL_COLUMNS)
       .eq("organization_id", organizationId)
       .order("last_message_at", { ascending: false, nullsFirst: false }),
-    supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId),
+    /* Kendini ekibe çevrimdışı gösteren kişi sohbette de çevrimdışı
+       görünüyor: iki yerde iki farklı durum göstermek, tercihi
+       anlamsız kılardı. */
+    supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId).eq("gizli", false),
     supabase.rpc("arvo_message_unread_counts", { p_organization_id: organizationId }),
   ]);
   const lastSeen = new Map(((presenceRows ?? []) as { user_id: string; last_seen_at: string }[]).map((row) => [row.user_id, row.last_seen_at]));

@@ -87,8 +87,21 @@ export function OsCanli({
     const kanal = istemci
       .channel(`os-durum:${organizationId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "user_presence", filter: `organization_id=eq.${organizationId}` }, (olay) => {
-        const satir = (olay.new ?? olay.old) as { user_id?: string; last_seen_at?: string };
-        if (satir?.user_id && satir.last_seen_at) setGorulme((onceki) => ({ ...onceki, [satir.user_id!]: satir.last_seen_at! }));
+        const satir = (olay.new ?? olay.old) as { user_id?: string; last_seen_at?: string; gizli?: boolean };
+        if (!satir?.user_id) return;
+        /* Kendini ekibe çevrimdışı gösteren kişi listeden düşüyor:
+           sunucudaki ilk liste onu zaten elemiş, anlık güncelleme
+           elemeseydi tercih bir sonraki satır yazımında bozulurdu. */
+        if (satir.gizli) {
+          setGorulme((onceki) => {
+            if (!(satir.user_id! in onceki)) return onceki;
+            const kalan = { ...onceki };
+            delete kalan[satir.user_id!];
+            return kalan;
+          });
+          return;
+        }
+        if (satir.last_seen_at) setGorulme((onceki) => ({ ...onceki, [satir.user_id!]: satir.last_seen_at! }));
       })
       .subscribe((s) => setDurum(s === "SUBSCRIBED" ? "canli" : s === "CHANNEL_ERROR" || s === "TIMED_OUT" || s === "CLOSED" ? "kopuk" : "baglaniyor"));
     const saat = window.setInterval(() => setSimdi(Date.now()), 30_000);

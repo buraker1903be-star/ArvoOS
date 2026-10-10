@@ -227,8 +227,10 @@ function subscribeRealtime() {
       }));
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "user_presence", filter: `organization_id=eq.${organizationId}` }, (payload) => {
-      const row = (payload.new ?? payload.old) as { user_id?: string; last_seen_at?: string };
-      if (row?.user_id) setState((current) => ({ presence: { ...current.presence, [row.user_id!]: row.last_seen_at ?? null } }));
+      const row = (payload.new ?? payload.old) as { user_id?: string; last_seen_at?: string; gizli?: boolean };
+      /* Ekibe çevrimdışı görünmeyi seçen kişi burada da çevrimdışı:
+         son görülmeyi null yapmak onu "hiç görülmedi" saydırıyor. */
+      if (row?.user_id) setState((current) => ({ presence: { ...current.presence, [row.user_id!]: row.gizli ? null : row.last_seen_at ?? null } }));
     })
     .subscribe((status) => {
       // İlk bağlantıda ve bağlantı koptuktan sonra aradaki değişiklikleri al
