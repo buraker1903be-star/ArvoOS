@@ -179,6 +179,17 @@ kullanıyorsanız satırın üstündeki yorum bloğuna `tuzak-tamam: <sebep>`
 yazın — sebebi yazmak, denetimi susturmanın bedeli. Yeni bir tuzak
 öğrenildiğinde betikteki listeye eklenir.
 
+**Döküm tablo ve SÜTUN yetkilerini taşımıyor.** `user_presence`'ta
+SELECT sütun düzeyinde kısıtlı (sayfa ve cihaz bilgisi herkese kapalı):
+sonradan eklenen her sütun varsayılan olarak okunamaz geliyor ve hata
+"permission denied for table …" diye çıkıyor — upsert'in ON CONFLICT
+dalı excluded değerini okuduğu için UPDATE yetkisi olsa bile. Böyle bir
+tabloya sütun eklerken `grant select (<sütun>) on … to authenticated`
+yazın. Akış testleri bunu YAKALAMAZ: düzenek Supabase varsayılanını
+taklit edip her tabloya tam yetki veriyor, sütun düzeyinde yetki
+yalnızca canlıda var (10.10.2026'da görünürlük anahtarı bu yüzden
+canlıda düştü).
+
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
 karşılaştırılır. Supabase istemcisi tipsiz olduğu için yanlış sütun adı

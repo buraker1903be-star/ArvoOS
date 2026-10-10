@@ -68,16 +68,39 @@ export async function cevrimiciGorunurlugu(formData: FormData) {
   await runPanelAction(async () => {
     const { supabase, membership, userId } = await getPanelContext();
     const simdi = new Date().toISOString();
-    /* Upsert: panelin ilk saniyelerinde henüz satır yazılmamış
-       olabiliyor ve update sessizce hiçbir şeyi değiştirmezdi. */
-    const { error } = await supabase.from("user_presence").upsert({
-      organization_id: membership.organization_id,
-      user_id: userId,
-      gizli,
-      last_seen_at: simdi,
-      updated_at: simdi,
-    }, { onConflict: "organization_id,user_id" });
-    if (error) throw new Error("Görünürlük kaydedilemedi: " + error.message);
+
+    /*
+      ÖNCE GÜNCELLE, GEREKİRSE EKLE — upsert DEĞİL.
+
+      user_presence.session_id NOT NULL ve upsert'in ON CONFLICT dalına
+      hiç sıra gelmiyor: PostgreSQL eklenecek satırı önce kuruyor, oturum
+      kimliği verilmediği için satır VARKEN bile "null value in column
+      session_id" ile düşüyordu (10.10.2026'da canlıda). Kalp atışı
+      (recordPresence) zaten her sayfa açılışında satırı yazıyor, yani
+      güncelleme neredeyse her zaman yetiyor; ekleme yalnızca panelin ilk
+      saniyeleri için.
+    */
+    const { data: guncellenen, error: guncellemeHatasi } = await supabase
+      .from("user_presence")
+      .update({ gizli, updated_at: simdi })
+      .eq("organization_id", membership.organization_id)
+      .eq("user_id", userId)
+      .select("user_id");
+    if (guncellemeHatasi) throw new Error("Görünürlük kaydedilemedi: " + guncellemeHatasi.message);
+
+    if (!guncellenen?.length) {
+      /* Oturum kimliği burada üretiliyor; bir sonraki kalp atışı gerçek
+         oturumunkiyle değiştiriyor. */
+      const { error: eklemeHatasi } = await supabase.from("user_presence").insert({
+        organization_id: membership.organization_id,
+        user_id: userId,
+        session_id: crypto.randomUUID(),
+        gizli,
+        last_seen_at: simdi,
+        updated_at: simdi,
+      });
+      if (eklemeHatasi) throw new Error("Görünürlük kaydedilemedi: " + eklemeHatasi.message);
+    }
     revalidatePath("/panel", "layout");
   }, gizli ? "Ekibe çevrimdışı görünüyorsunuz" : "Ekibe çevrimiçi görünüyorsunuz");
 }

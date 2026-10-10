@@ -13,7 +13,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, rol, veritabani } from "./ortam.mjs";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 
@@ -66,6 +66,25 @@ describe("çevrimiçi görünürlüğü", () => {
       assert.equal(rows.length, 0, "personel kurum sahibini gizleyebiliyor");
       const { rows: sonra } = await db.query(`select gizli from public.user_presence where user_id = $1`, [SAHIP]);
       assert.equal(sonra[0].gizli, false);
+    }));
+
+  test("oturum kimliği olmadan satır eklenemiyor", async () =>
+    islem(db, async () => {
+      /*
+        Sunucu işlemi neden upsert kullanmıyor: session_id NOT NULL ve
+        eklenecek satır ON CONFLICT dalına sıra gelmeden kuruluyor —
+        satır VARKEN bile düşüyordu (10.10.2026'da canlıda). İşlem önce
+        güncelliyor, satır yoksa oturum kimliğini kendisi üretiyor.
+      */
+      await rol(db, "postgres");
+      await reddedilir(
+        db,
+        `insert into public.user_presence (organization_id,user_id,gizli,last_seen_at,updated_at)
+         values ($1,$2,true,now(),now())
+         on conflict (organization_id,user_id) do update set gizli = excluded.gizli`,
+        [KURUM, PERSONEL],
+        /session_id|not-null/i,
+      );
     }));
 
   test("gizlenen kişinin son görülmesi silinmiyor", async () =>
