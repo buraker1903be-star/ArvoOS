@@ -14,6 +14,7 @@ import { RequestEntryForm } from "./request-entry-form";
 import { CustomerLookupButton } from "./customer-lookup";
 import { requestStageNames } from "./request-status";
 import { EmptyNewRequestButton } from "./empty-new-request";
+import { PostadanTalep } from "./postadan-talep";
 import "./crm.css";
 import "./request-page.css";
 import "./kayit-detay/kayit-detay.css";
@@ -224,6 +225,9 @@ export default async function RequestsPage({
         </div>
         <div className="talep-bas-eylem">
           <CustomerLookupButton />
+          {/* Postadaki "Talep aç" buraya adresle geliyor; aşağıdaki
+              pencereyi ön doldurup açıyor. */}
+          <PostadanTalep />
           <PanelDrawer
             triggerLabel="Yeni talep" kicker="YENİ KAYIT"
             // Müşteri sorgulamadaki "+ Bu müşteri için yeni talep" bu düğmeyi bulur

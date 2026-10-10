@@ -227,10 +227,38 @@ async function createOpportunity__impl(formData: FormData) {
       opportunityId: created.id,
       phone: text(formData, "contact_phone", 80) || null,
     });
+    await postaYazismasiniBagla(context, created.id, text(formData, "posta_thread_id", 200));
   }
 
   revalidatePath("/panel/crm");
   revalidatePath("/panel");
+}
+
+/*
+  Postadan açılan talep: yazışmayı yeni talebe bağlar.
+
+  Bağ KURULMAZSA talep yine açılmış olur — postadan gelen bilgiyle
+  oluşan kayıt, bağdan daha önemli. O yüzden hata fırlatılmıyor, yalnızca
+  günlüğe yazılıyor; kullanıcı bağı yazışma ekranından elle de kurabilir.
+
+  Yetki posta tarafından: yazışmanın müşteri bağını değiştirmek
+  posta.yonet istiyor (konusmayiKayitBagla ile aynı kural). Yetkisi
+  olmayan kişi talebi açabilir ama bağı kuramaz; düğme de ona
+  gösterilmiyor.
+*/
+async function postaYazismasiniBagla(
+  context: Awaited<ReturnType<typeof crmContext>>,
+  opportunityId: string,
+  threadId: string,
+) {
+  if (!threadId || !context.yetkiler.has("posta.yonet")) return;
+  const { error } = await context.supabase
+    .from("mail_threads")
+    .update({ opportunity_id: opportunityId })
+    .eq("organization_id", context.membership.organization_id)
+    .eq("thread_id", threadId);
+  if (error) console.error("[crm] postadan açılan talep yazışmaya bağlanamadı:", error.message);
+  else revalidatePath(`/panel/posta/${threadId}`);
 }
 
 async function updateOpportunity__impl(formData: FormData) {

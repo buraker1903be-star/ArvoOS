@@ -33,7 +33,7 @@ type Mesaj = {
 
 export default async function KonusmaPage({ params }: { params: Promise<{ threadId: string }> }) {
   const { threadId } = await params;
-  const { supabase, membership, userId, izin } = await getPanelContext();
+  const { supabase, membership, userId, izin, modules, hiddenModuleKeys } = await getPanelContext();
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
@@ -99,6 +99,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
   const konusmaEtiketleri = ((konusma.etiketler as string[] | null) ?? []);
   const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
   const eklenebilir = etiketler.filter((etiket) => !konusmaEtiketleri.includes(etiket.label_id));
+
   /* Çöpteki yazışma okunur ama üzerinde iş yapılmaz: yanıt, durum ve
      müşteri bağı kapalı. Önce geri alınır. */
   const copte = Boolean(konusma.silindi_at);
@@ -122,6 +123,29 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
      kopya gönderir. */
   const ccHazir = ccAdaylari(sonGelen?.alici ?? null, kutuAdi, yanitlanacakAdres ?? "");
   const bendeMi = konusma.ilgilenen_user_id === userId;
+  /*
+    POSTADAN TALEP. Ortak kutuya düşen müşteri postası çoğu zaman bir
+    talep; personel bilgileri postadan okuyup forma elle yazıyordu.
+    Bağlantı CRM sayfasına adresle gidiyor, oradaki talep penceresi
+    doldurulup açılıyor (crm/postadan-talep.tsx) — talep formunun
+    kuralları tek yerde kalsın diye ikinci bir form yazılmadı.
+
+    Yalnızca BAĞLI KAYIT YOKKEN ve yönetebilen kişiye görünüyor: bağlı
+    yazışmaya ikinci bir talep açmak, aynı müşteriyi iki kayda bölerdi.
+  */
+  /* CRM görünmüyorsa düğme de yok: açılmayan bir sayfaya göndermek,
+     kullanıcıyı yetki hatasıyla karşılaştırırdı. */
+  const crmGorunur = modules.some((modul) => modul.code === "crm")
+    && (membership.role === "owner" || !hiddenModuleKeys.has("crm"));
+  const talepAcilabilir = yonetebilir && crmGorunur && !copte && !konusma.opportunity_id && Boolean(sonGelen);
+  const talepAdresi = (() => {
+    if (!talepAcilabilir) return null;
+    const p = new URLSearchParams({ postadan: "1", yazisma: threadId });
+    p.set("musteri", (sonGelen?.gonderen_ad || sonGelen?.gonderen_adres || "").slice(0, 180));
+    if (sonGelen?.gonderen_adres) p.set("eposta", sonGelen.gonderen_adres.slice(0, 240));
+    if (konusma.konu) p.set("konu", String(konusma.konu).slice(0, 180));
+    return `/panel/crm?${p}`;
+  })();
 
   return <main className="talep cari posta-konusma">
     {/*
@@ -296,6 +320,16 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
           olmayan bir klasör). Katalog boşsa kutu hiç çıkmıyor —
           kullanılamayacak bir seçim göstermek soru doğuruyordu.
         */}
+        {talepAdresi ? (
+          <div className="posta-talep-kutusu">
+            <b>Bu yazışma bir talep mi?</b>
+            <p className="posta-not">
+              Gönderenin adı, e-postası ve konu talep formuna taşınır; kaydedilince yazışma talebe bağlanır.
+            </p>
+            <Link className="panel-secondary" href={talepAdresi}>Talep aç</Link>
+          </div>
+        ) : null}
+
         {izin("posta.yanitla") && !copte && etiketler.length ? (
           <div className="posta-etiket-kutusu">
             <b>Etiketler</b>

@@ -83,7 +83,16 @@ export function parseLookupQuery(raw: string): LookupQuery {
 
 /** Müşteri sorgulamadan "Bu müşteri için yeni talep": talep formunu doldurur. */
 export const NEW_REQUEST_PREFILL_EVENT = "arvo:new-request-prefill";
-export type NewRequestPrefill = { name: string; phone: string | null; email: string | null };
+export type NewRequestPrefill = {
+  name: string;
+  phone: string | null;
+  email: string | null;
+  /* Postadan açılan talep: konu yazışmanın konusundan geliyor ve
+     kaydedilince yazışma talebe bağlanıyor (posta_thread_id). Müşteri
+     sorgulamadan gelen ön doldurmada ikisi de boş. */
+  title?: string | null;
+  postaThreadId?: string | null;
+};
 
 /** Sonuç listesinden seçilen müşterinin anahtarı ("p:5324628098" / "n:isik caglar"). */
 export function isCustomerKey(value: unknown): value is string {

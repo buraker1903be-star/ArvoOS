@@ -178,3 +178,11 @@
 .os-root .posta-arama-kapsam{margin:0 0 var(--sp-3);color:var(--muted);font-size:var(--fs-sm)}
 .os-root .posta-arama-kapsam b{color:var(--ink)}
 .os-root .posta-arama-kapsam a{color:var(--primary)}
+
+/* "Talep aç" kutusu yan sütunda, müşteri bağının üstünde: bağ yoksa
+   sorulacak ilk soru bu. Bağ kurulunca kutu kayboluyor. */
+.os-root .posta-talep-kutusu{display:flex;flex-direction:column;gap:var(--sp-1);align-items:flex-start;
+  padding-bottom:var(--sp-3);border-bottom:1px solid var(--line-soft)}
+.os-root .posta-talep-kutusu>b{font-size:var(--fs-sm);color:var(--ink)}
+.os-root .posta-talep-kutusu .posta-not{margin:0}
+.os-root .posta-talep-kutusu a{margin-top:var(--sp-1)}

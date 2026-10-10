@@ -24,9 +24,13 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
   const [formVersion, setFormVersion] = useState(0);
   // "Müşteri sorgula"dan doldurulduysa geçmiş penceresi kendiliğinden açılmaz
   const [prefilled, setPrefilled] = useState(false);
+  /* Postadan açılan talep: kaydedilince yazışma bu talebe bağlanacak
+     (createOpportunity). Gizli alan olarak gidiyor; kullanıcıya da
+     söyleniyor, yoksa "neden burada bir yazışma yazıyor" sorusu doğar. */
+  const [postaThreadId, setPostaThreadId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // Kayıttan sonra React formu sıfırlıyor; geçmiş uyarısı da sıfırlansın
-  const resetLookup = () => { setCustomerName(""); setPhone(""); setLookupField(null); setPrefilled(false); setFormVersion((version) => version + 1); };
+  const resetLookup = () => { setCustomerName(""); setPhone(""); setLookupField(null); setPrefilled(false); setPostaThreadId(null); setFormVersion((version) => version + 1); };
 
   // Müşteri sorgulama penceresindeki "+ Bu müşteri için yeni talep"
   useEffect(() => {
@@ -41,13 +45,26 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
       fill("customer_name", detail.name);
       fill("contact_phone", detail.phone);
       fill("contact_email", detail.email);
+      if (detail.title) fill("title", detail.title);
+      setPostaThreadId(detail.postaThreadId ?? null);
       setCustomerName(detail.name);
       setPhone(detail.phone ?? "");
       setPrefilled(true);
-      // Pencere açılış animasyonundan sonra ilk boş zorunlu alana geç
+      /* Pencere açılış animasyonundan sonra ilk BOŞ zorunlu alana geç.
+         Postadan gelen talepte konu zaten dolu; oraya odaklanmak
+         kullanıcıyı doldurulmuş bir alana bakar hâlde bırakıyordu. */
       window.setTimeout(() => {
         const title = form.elements.namedItem("title");
-        if (title instanceof HTMLInputElement) title.focus({ preventScroll: true });
+        if (title instanceof HTMLInputElement && !title.value) {
+          title.focus({ preventScroll: true });
+          return;
+        }
+        const ilkBos = [...form.elements].find(
+          (alan): alan is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
+            (alan instanceof HTMLInputElement || alan instanceof HTMLSelectElement || alan instanceof HTMLTextAreaElement)
+            && alan.required && !alan.value,
+        );
+        ilkBos?.focus({ preventScroll: true });
       }, 80);
     };
     window.addEventListener(NEW_REQUEST_PREFILL_EVENT, onPrefill);
@@ -55,6 +72,10 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
   }, []);
 
   return <form ref={formRef} className="panel-form request-entry-form" action={createOpportunity} onReset={resetLookup}>
+    {postaThreadId ? <>
+      <input type="hidden" name="posta_thread_id" value={postaThreadId} />
+      <p className="wide panel-form-note">Bu talep bir posta yazışmasından açılıyor; kaydedilince yazışma talebe bağlanacak.</p>
+    </> : null}
     {calismaTurleri.length ? (
       <label>Çalışma türü
         <select name="step_template_set" defaultValue="">
