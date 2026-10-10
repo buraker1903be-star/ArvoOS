@@ -175,7 +175,7 @@ export default async function YeniPostaPage({ searchParams }: {
       </div>
 
       <div className="posta-yanit-alt">
-        <small>Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB (özgün ekler dahil).{" Sonuna adınız"}{hesap.imza ? " ve kurum imzası" : ""}{" eklenir."}{(taslak?.opportunity_id ?? firsat) ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}{yonlendirilen ? " Yönlendirme yeni bir yazışma olarak açılır." : ""}</small>
+        <small>Ekler toplam en fazla 3 MB (özgün ekler dahil). Sonuna adınız{hesap.imza ? ", kurum imzası" : ""}{organization.logo_url ? " ve kurum logonuz" : ""} eklenir.{(taslak?.opportunity_id ?? firsat) ? " Gönderilen posta bu müşteri kaydına bağlanacak." : ""}{yonlendirilen ? " Yönlendirme yeni bir yazışma olarak açılır." : ""}</small>
         <span className="posta-yanit-dugmeler">
           {/* Yönlendirmede taslak yok: taslak satırı hangi mesajın
               yönlendirildiğini tutmuyor, kaydedip sonra göndermek özgün

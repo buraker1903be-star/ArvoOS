@@ -434,3 +434,59 @@ test("imzanın ilk satırı yanıtı yazanın adı", () => {
   const birKez = imzaliGovde("Merhaba.", "Akademik Merkez", "Burak Erdoğan");
   assert.equal(imzaliGovde(birKez, "Akademik Merkez", "Burak Erdoğan"), birKez);
 });
+
+test("HTML gövde multipart/alternative olarak gidiyor", () => {
+  /* Düz metin KALDIRILMIYOR: HTML'i göstermeyen kutuda (kurumsal
+     Outlook kuralları, otomatik işleyen sistemler) yazışma okunur
+     kalmalı. Yalnızca HTML göndermek o kutularda boş mesaj demekti. */
+  const ham = yeniMesajiKur({
+    gonderenAd: "Akademik Merkez", gonderenAdres: "info@am.com", alicilar: ["m@x.com"],
+    konu: "Teklif", govde: "Düz metin.", html: "<p>HTML</p>", sinir: "S",
+  });
+  assert.match(ham, /Content-Type: multipart\/alternative; boundary="S-metin"/);
+  // Sıra RFC 2046: en sade biçim önce, istemci sonuncuyu seçer.
+  const duzYeri = ham.indexOf('Content-Type: text/plain');
+  const htmlYeri = ham.indexOf('Content-Type: text/html');
+  assert.ok(duzYeri > 0 && duzYeri < htmlYeri, "düz metin HTML'den önce");
+  assert.ok(ham.includes(Buffer.from("Düz metin.", "utf8").toString("base64")));
+  assert.ok(ham.includes(Buffer.from("<p>HTML</p>", "utf8").toString("base64")));
+  assert.ok(!ham.includes("multipart/mixed"), "ek yok: mixed katmanı kurulmuyor");
+  assert.ok(!ham.includes("multipart/related"), "logo yok: related katmanı kurulmuyor");
+});
+
+test("imza logosu mesajın içine gömülüyor", () => {
+  const ham = yeniMesajiKur({
+    gonderenAd: "Akademik Merkez", gonderenAdres: "info@am.com", alicilar: ["m@x.com"],
+    konu: "Teklif", govde: "Metin.", html: '<img src="cid:logo-kimligi">',
+    gomulu: [{ kimlik: "logo-kimligi", ad: "logo.png", tur: "image/png", veri: Buffer.from("PNGVERI") }],
+    sinir: "S",
+  });
+  /* related katmanı alternative'i ve logoyu sarıyor; type parametresi
+     olmadan bazı eski istemciler logoyu gövde sanıyor. */
+  assert.match(ham, /Content-Type: multipart\/related; type="multipart\/alternative"; boundary="S-ilgili"/);
+  assert.match(ham, /Content-Type: image\/png; name="logo\.png"/);
+  // inline + Content-ID: logo alıcının ek listesinde ataç olarak görünmesin.
+  assert.match(ham, /Content-Disposition: inline; filename="logo\.png"/);
+  assert.match(ham, /Content-ID: <logo-kimligi>/);
+  assert.ok(ham.includes(Buffer.from("PNGVERI").toString("base64")));
+});
+
+test("ek, logo ve HTML bir aradayken katmanlar iç içe", () => {
+  const ham = yeniMesajiKur({
+    gonderenAd: "A", gonderenAdres: "a@b.com", alicilar: ["c@d.com"],
+    konu: "K", govde: "G", html: "<p>G</p>",
+    ekler: [{ ad: "teklif.pdf", tur: "application/pdf", veri: Buffer.from("PDF") }],
+    gomulu: [{ kimlik: "logo", ad: "logo.png", tur: "image/png", veri: Buffer.from("IMG") }],
+    sinir: "S",
+  });
+  /* Sıra: mixed → related → alternative. İÇ İÇE katmanların sınırı
+     farklı olmalı; aynı sınır, dış katmanın iç parçanın ortasında
+     bitmesi (alıcıda yarım mesaj) demekti. */
+  const mixed = ham.indexOf('multipart/mixed; boundary="S"');
+  const related = ham.indexOf('multipart/related');
+  const alternative = ham.indexOf('multipart/alternative; boundary="S-metin"');
+  assert.ok(mixed >= 0 && mixed < related && related < alternative, "mixed → related → alternative");
+  // Her katman kendi kapanış sınırıyla bitiyor.
+  for (const sinir of ["S", "S-ilgili", "S-metin"]) assert.ok(ham.includes(`--${sinir}--`), sinir);
+  assert.match(ham, /Content-Disposition: attachment; filename="teklif\.pdf"/);
+});

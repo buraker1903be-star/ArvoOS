@@ -128,19 +128,102 @@ export type YanitGirdisi = {
 /** Gönderilecek ek: adı, türü ve içeriği. */
 export type EkDosya = { ad: string; tur: string; veri: Buffer };
 
+/**
+ * Mesajın İÇİNE gömülen görsel (imza logosu). Ek değil: alıcının ek
+ * listesinde görünmesin diye Content-Disposition inline, ve HTML'den
+ * "cid:<kimlik>" ile çağrılıyor.
+ */
+export type GomuluGorsel = { kimlik: string; ad: string; tur: string; veri: Buffer };
+
 const b64satirli = (veri: Buffer) => veri.toString("base64").replace(/(.{76})/g, "$1\r\n");
 
 /*
-  Ekli mesaj çok parçalı (multipart/mixed): metin bir parça, her dosya
-  ayrı bir parça. Parçaları ayıran SINIR dışarıdan veriliyor — rastgele
-  üretmek bu dosyayı saf olmaktan çıkarır ve testten import edilemez
-  hâle getirirdi. Çağıran her mesaj için yeni bir sınır üretiyor: sınır
-  içerikte geçerse mesaj alıcıda parçalanmış görünür.
+  MESAJIN PARÇALARI.
 
-  Dosya adı iki kez yazılıyor: sade `filename` eski istemciler için,
-  `filename*` (RFC 5987) Türkçe harfleri taşımak için. Yalnızca sadeyi
-  yazmak "Sözleşme.pdf" dosyasını "Sözlesme.pdf" ya da bozuk bir adla
-  indirtiyordu.
+  Her parçanın kendi başlıkları ve base64 gövdesi var; sarmalayıcı
+  (cokluParca) onları sınır satırlarıyla diziyor. Sınır dışarıdan
+  veriliyor — rastgele üretmek bu dosyayı saf olmaktan çıkarır ve
+  testten import edilemez hâle getirirdi. Çağıran her mesaj için yeni
+  bir sınır üretiyor: sınır içerikte geçerse mesaj alıcıda parçalanmış
+  görünür.
+
+  Ek dosyasının adı iki kez yazılıyor: sade `filename` eski istemciler
+  için, `filename*` (RFC 5987) Türkçe harfleri taşımak için. Yalnızca
+  sadeyi yazmak "Sözleşme.pdf" dosyasını "Sözlesme.pdf" ya da bozuk bir
+  adla indirtiyordu.
+*/
+type Parca = { basliklar: string[]; satirlar: string[] };
+
+const duzParca = (govde: string): Parca => ({
+  basliklar: ['Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64"],
+  satirlar: [b64satirli(Buffer.from(govde, "utf8"))],
+});
+
+const htmlParca = (html: string): Parca => ({
+  basliklar: ['Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64"],
+  satirlar: [b64satirli(Buffer.from(html, "utf8"))],
+});
+
+const ekParca = (ek: EkDosya): Parca => {
+  const ad = guvenliEkAdi(ek.ad);
+  return {
+    basliklar: [
+      `Content-Type: ${ek.tur}; name="${ad}"`,
+      /* filename* ayrı satırda (başlık katlaması): uzun Türkçe bir ad
+         kodlanınca tek satırı 998 karakter sınırının üstüne taşıyordu. */
+      `Content-Disposition: attachment; filename="${ad}";`,
+      ` filename*=UTF-8''${ekAdiParametresi(ek.ad)}`,
+      "Content-Transfer-Encoding: base64",
+    ],
+    satirlar: [b64satirli(ek.veri)],
+  };
+};
+
+const gomuluParca = (gorsel: GomuluGorsel): Parca => {
+  const ad = guvenliEkAdi(gorsel.ad);
+  return {
+    basliklar: [
+      `Content-Type: ${gorsel.tur}; name="${ad}"`,
+      `Content-Disposition: inline; filename="${ad}"`,
+      /* Content-ID köşeli parantez içinde; HTML tarafı "cid:" ile aynı
+         kimliği çağırıyor. Parantezsiz yazılan kimliği bazı istemciler
+         bulamıyor ve logo kırık kare oluyor. */
+      `Content-ID: <${baslikDegeri(gorsel.kimlik)}>`,
+      "Content-Transfer-Encoding: base64",
+    ],
+    satirlar: [b64satirli(gorsel.veri)],
+  };
+};
+
+/*
+  Çok parçalı sarmalayıcı. Sınır dışarıdan veriliyor — rastgele üretmek
+  bu dosyayı saf olmaktan çıkarır ve testten import edilemez hâle
+  getirirdi. İÇ İÇE parçaların sınırı farklı olmalı: aynı sınırı iki
+  katmanda kullanmak, dış katmanın iç parçanın ortasında bitmesi demek
+  (alıcıda yarım mesaj).
+*/
+function cokluParca(tur: string, sinir: string, parcalar: readonly Parca[]): Parca {
+  const satirlar: string[] = [];
+  for (const parca of parcalar) satirlar.push(`--${sinir}`, ...parca.basliklar, "", ...parca.satirlar);
+  satirlar.push(`--${sinir}--`, "");
+  return { basliklar: [`Content-Type: ${tur}; boundary="${sinir}"`], satirlar };
+}
+
+/*
+  Mesajın gövdesi üç katmanda kuruluyor ve sıra RFC 2387/2046'nın
+  beklediği sıra:
+
+    multipart/mixed          ← ekler varsa
+      multipart/related      ← gömülü görsel (imza logosu) varsa
+        multipart/alternative ← HTML varsa
+          text/plain
+          text/html
+        logo
+      ekler
+
+  Katmanlar gerektiği kadar: ek yoksa mixed, logo yoksa related, HTML
+  yoksa alternative hiç kurulmuyor. Fazladan sarmalamak, bazı
+  istemcilerde mesajı "ekli" gösterip ataç simgesi çıkarıyor.
 */
 function mesajiKur(girdi: {
   gonderenAd: string;
@@ -148,12 +231,16 @@ function mesajiKur(girdi: {
   alici: string;
   konu: string;
   govde: string;
+  html?: string | null;
   zincir?: string[];
   ekler?: readonly EkDosya[];
+  gomulu?: readonly GomuluGorsel[];
   sinir?: string;
   cc?: readonly string[];
 }): string {
   const ekler = girdi.ekler ?? [];
+  const gomulu = girdi.gomulu ?? [];
+  const html = (girdi.html ?? "").trim();
   /* Adres alanları da aynı kapıdan: alıcı listesi doğrulanmış geliyor
      ama gönderen adresi ve yanıt alıcısı Gmail'den okunan veriden
      türüyor — oradan gelen bir satır sonu da başlık açardı. */
@@ -166,46 +253,21 @@ function mesajiKur(girdi: {
     "MIME-Version: 1.0",
   ];
 
-  if (!ekler.length) {
-    return [
-      ...ustBasliklar,
-      'Content-Type: text/plain; charset="UTF-8"',
-      "Content-Transfer-Encoding: base64",
-      "",
-      b64satirli(Buffer.from(girdi.govde, "utf8")),
-    ].join("\r\n");
-  }
-
   const sinir = girdi.sinir || "arvo-sinir";
-  const parcalar = [
-    `--${sinir}`,
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: base64",
-    "",
-    b64satirli(Buffer.from(girdi.govde, "utf8")),
-  ];
-  for (const ek of ekler) {
-    const ad = guvenliEkAdi(ek.ad);
-    parcalar.push(
-      `--${sinir}`,
-      `Content-Type: ${ek.tur}; name="${ad}"`,
-      /* filename* ayrı satırda (başlık katlaması): uzun Türkçe bir ad
-         kodlanınca tek satırı 998 karakter sınırının üstüne taşıyordu. */
-      `Content-Disposition: attachment; filename="${ad}";`,
-      ` filename*=UTF-8''${ekAdiParametresi(ek.ad)}`,
-      "Content-Transfer-Encoding: base64",
-      "",
-      b64satirli(ek.veri),
-    );
+  let govde: Parca = html
+    ? cokluParca("multipart/alternative", `${sinir}-metin`, [duzParca(girdi.govde), htmlParca(html)])
+    : duzParca(girdi.govde);
+  if (gomulu.length) {
+    /* type parametresi: istemci hangi parçayı göstereceğini bilsin.
+       Yazılmadığında bazı eski istemciler logoyu gövde sanıyor. */
+    const icTur = html ? "multipart/alternative" : "text/plain";
+    govde = cokluParca(`multipart/related; type="${icTur}"`, `${sinir}-ilgili`, [govde, ...gomulu.map(gomuluParca)]);
   }
-  parcalar.push(`--${sinir}--`, "");
+  if (ekler.length) {
+    govde = cokluParca("multipart/mixed", sinir, [govde, ...ekler.map(ekParca)]);
+  }
 
-  return [
-    ...ustBasliklar,
-    `Content-Type: multipart/mixed; boundary="${sinir}"`,
-    "",
-    ...parcalar,
-  ].join("\r\n");
+  return [...ustBasliklar, ...govde.basliklar, "", ...govde.satirlar].join("\r\n");
 }
 
 /*
@@ -233,7 +295,13 @@ export function ekAdiParametresi(ham: string): string {
   return kodla(ad);
 }
 
-export function yanitMesajiKur(girdi: YanitGirdisi & { ekler?: readonly EkDosya[]; sinir?: string; cc?: readonly string[] }): string {
+export function yanitMesajiKur(girdi: YanitGirdisi & {
+  html?: string | null;
+  ekler?: readonly EkDosya[];
+  gomulu?: readonly GomuluGorsel[];
+  sinir?: string;
+  cc?: readonly string[];
+}): string {
   return mesajiKur({
     ...girdi,
     konu: yanitKonusu(girdi.konu),
@@ -252,7 +320,9 @@ export function yeniMesajiKur(girdi: {
   alicilar: readonly string[];
   konu: string;
   govde: string;
+  html?: string | null;
   ekler?: readonly EkDosya[];
+  gomulu?: readonly GomuluGorsel[];
   sinir?: string;
   cc?: readonly string[];
 }): string {
@@ -262,7 +332,9 @@ export function yeniMesajiKur(girdi: {
     alici: girdi.alicilar.join(", "),
     konu: girdi.konu,
     govde: girdi.govde,
+    html: girdi.html,
     ekler: girdi.ekler,
+    gomulu: girdi.gomulu,
     sinir: girdi.sinir,
     cc: girdi.cc,
   });
@@ -348,6 +420,26 @@ export function imzaliGovde(
 */
 const ALINTI_SINIRI = 4000;
 
+/* Başlık ve kısaltma ayrı: HTML gövde de aynı metni ve aynı sınırı
+   kullanıyor (lib/posta-imza.ts). İki biçimde iki ayrı tarih biçimi ya
+   da iki ayrı sınır, aynı mesajın iki parçasını ayrı düşürürdü. */
+export function alintiBasligi(alinti: {
+  gonderenAd: string | null;
+  gonderenAdres: string;
+  tarih: Date | null;
+}): string {
+  const kim = alinti.gonderenAd ? `${alinti.gonderenAd} <${alinti.gonderenAdres}>` : alinti.gonderenAdres;
+  const neZaman = alinti.tarih
+    ? alinti.tarih.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+  return neZaman ? `${neZaman} tarihinde ${kim} şöyle yazdı:` : `${kim} şöyle yazdı:`;
+}
+
+export function kisaltilmisAlinti(metin: string): string {
+  const sade = (metin ?? "").trim();
+  return sade.length > ALINTI_SINIRI ? `${sade.slice(0, ALINTI_SINIRI)}\n…` : sade;
+}
+
 export function alintiliGovde(govde: string, alinti: {
   gonderenAd: string | null;
   gonderenAdres: string;
@@ -357,14 +449,8 @@ export function alintiliGovde(govde: string, alinti: {
   const metin = (alinti?.metin ?? "").trim();
   if (!alinti || !metin) return govde;
 
-  const kim = alinti.gonderenAd ? `${alinti.gonderenAd} <${alinti.gonderenAdres}>` : alinti.gonderenAdres;
-  const ne_zaman = alinti.tarih
-    ? alinti.tarih.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
-    : null;
-  const baslik = ne_zaman ? `${ne_zaman} tarihinde ${kim} şöyle yazdı:` : `${kim} şöyle yazdı:`;
-
-  const kisaltilmis = metin.length > ALINTI_SINIRI ? `${metin.slice(0, ALINTI_SINIRI)}\n…` : metin;
-  const alintiliMetin = kisaltilmis.split("\n").map((satir) => `> ${satir}`.trimEnd()).join("\n");
+  const baslik = alintiBasligi(alinti);
+  const alintiliMetin = kisaltilmisAlinti(metin).split("\n").map((satir) => `> ${satir}`.trimEnd()).join("\n");
   return `${govde.replace(/\s+$/, "")}\n\n${baslik}\n${alintiliMetin}`;
 }
 

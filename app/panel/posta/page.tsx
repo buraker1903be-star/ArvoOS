@@ -3,6 +3,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { postaGovdesindeAra } from "@/lib/posta-esitleme";
+import { imzaHtml } from "@/lib/posta-imza";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
@@ -73,7 +74,7 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
 
 export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }> }) {
   const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = await searchParams;
-  const { supabase, membership, userId, izin } = await getPanelContext();
+  const { supabase, membership, userId, izin, organization } = await getPanelContext();
   const hesap = await postaDurumu(membership.organization_id);
 
   /* Çöp kutusu kendi görünümü: silinen yazışma öteki kutuların
@@ -536,18 +537,36 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         )}
       </section>
 
-      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet") && hesap.kayitliMi} />
+      <IstatistikKarti hesap={hesap} sayi={sayi} imzaDuzenlenebilir={izin("posta.yonet") && hesap.kayitliMi}
+        kurum={{ ad: organization.display_name || organization.name, logo: organization.logo_url, renk: organization.brand_color }} />
     </div>
   </main>;
 }
 
 /* Kutunun durumu listenin yanında: eşitleme durduğunda liste eskiyor ve
    bunu ancak Ayarlar'a giden fark ediyordu. */
-function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir }: {
+function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir, kurum }: {
   hesap: Awaited<ReturnType<typeof postaDurumu>>;
   sayi: { okunmamis: number; acik: number; yanitlandi: number; listelenen: number };
   imzaDuzenlenebilir: boolean;
+  kurum: { ad: string; logo: string | null; renk: string | null };
 }) {
+  /*
+    Önizleme GÖNDERİMİN KENDİ işleviyle çiziliyor (imzaHtml), elle
+    yazılmış bir taklitle değil: iki yerde ayrı biçim, imzayı ekranda
+    düzgün gösterip müşteriye bozuk göndermenin en kolay yoluydu.
+    Gönderimde logo mesajın içinden (cid:) gelir, burada genel adresten.
+
+    HTML doğrudan basılıyor: içindeki kurum metni ve ad imzaHtml'de
+    kaçırılıyor (tests/unit/posta-imza.test.ts).
+  */
+  const onizleme = imzaHtml({
+    gonderenAdi: "Yanıtı yazan personelin adı",
+    imza: hesap.imza,
+    logoSrc: kurum.logo,
+    logoAlt: kurum.ad,
+    renk: kurum.renk,
+  });
   return (
     <section className="panel-card talep-musteri talep-istatistik" aria-label="Kutu durumu">
       <h2>Kutu durumu</h2>
@@ -577,12 +596,22 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir }: {
           </label>
           <p className="wide posta-not">
             Giden her mesajın sonuna eklenir; personelin ayrıca yazmasına gerek kalmaz. Yazdığınız kutuda görünmez.
-            Boş bırakıp kaydetmek imzayı kaldırır.
+            İlk satır yanıtı yazan personelin adı olur, üstünde kurum logonuz gider. Boş bırakıp kaydetmek
+            imzayı kaldırır; logo kalır.
           </p>
+          {onizleme ? (
+            <div className="wide posta-imza-onizleme">
+              <small>Müşteriye böyle görünür</small>
+              <div dangerouslySetInnerHTML={{ __html: onizleme }} />
+            </div>
+          ) : null}
           <div className="wide panel-form-actions"><button className="panel-secondary" type="submit">İmzayı kaydet</button></div>
         </form>
-      ) : hesap.imza ? (
-        <p className="posta-not">Giden mesajlara kurum imzası ekleniyor.</p>
+      ) : onizleme ? (
+        <div className="posta-imza-onizleme">
+          <small>Giden mesajlara eklenen imza</small>
+          <div dangerouslySetInnerHTML={{ __html: onizleme }} />
+        </div>
       ) : null}
     </section>
   );

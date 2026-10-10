@@ -2,7 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { postaErisimBelirteci } from "@/lib/posta-hesabi";
 import { degisimleriTopla, gmailAramaSorgusu, konusmayiOzetle, kutudaGorunurMu, mesajEkleri, mesajGovdesi, mesajiCoz, type CozulmusMesaj, type DegisimSayfasi, type GmailMesaji, type MesajEki } from "@/lib/posta-ayristirma";
 import { yeniPostaBildirimleri } from "./posta-bildirim";
-import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya } from "@/lib/posta-gonderim";
+import { alintiliGovde, base64UrlKodla, imzaliGovde, yanitKonusu, yanitMesajiKur, yeniMesajiKur, type EkDosya, type GomuluGorsel } from "@/lib/posta-gonderim";
+import { LOGO_CID, gorselOlculeri, htmlGovdesi, logoAdresiUygunMu } from "@/lib/posta-imza";
 import { randomBytes } from "node:crypto";
 
 /*
@@ -705,6 +706,75 @@ export async function postaEkiniGetir(
   };
 }
 
+/*
+  İMZA LOGOSU.
+
+  Kurumun logosu genel bir adreste duruyor (organizations.logo_url —
+  kendi storage'ımız ya da kurumun sitesi). Gönderim anında indirilip
+  mesajın İÇİNE gömülüyor: HTML'de uzak adresi göstermek, Gmail ve
+  Outlook uzak görselleri engellediği için imzayı kırık bir kare
+  yapıyordu.
+
+  Hiçbir hata gönderimi durdurmuyor: logo inmezse imza logosuz gidiyor.
+  Postanın gitmemesi, logosuz gitmesinden çok daha pahalı.
+
+  SINIRLAR: yalnızca https ve genel adlar (logoAdresiUygunMu — sunucuyu
+  iç ağa sürmenin yolu kapanıyor), yalnızca bilinen görsel türleri, en
+  çok 300 KB (her postaya ekleniyor; büyük logo her yazışmayı şişirir)
+  ve 5 saniye. Yönlendirme ELLE izleniyor, tek adım: "follow" deseydik
+  iç ağa yönlendiren bir adres kuralı delerdi.
+*/
+const LOGO_EN_COK_BAYT = 300 * 1024;
+const LOGO_TURLERI: Record<string, string> = {
+  "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp",
+};
+
+type ImzaLogosu = { gomulu: GomuluGorsel; olculeri: { en: number; boy: number } | null };
+
+/* Aynı adres aynı sunucu örneğinde yeniden inmiyor: adres logo
+   değiştiğinde "?v=<damga>" ile değişiyor, yani önbellek eskimiyor.
+   Birkaç kurumla sınırlı — sınırsız bir harita sızıntı olurdu. */
+const logoOnbellegi = new Map<string, ImzaLogosu | null>();
+const LOGO_ONBELLEK_SINIRI = 8;
+
+async function imzaLogosu(adres: string | null | undefined): Promise<ImzaLogosu | null> {
+  if (!logoAdresiUygunMu(adres)) return null;
+  const anahtar = String(adres);
+  if (logoOnbellegi.has(anahtar)) return logoOnbellegi.get(anahtar) ?? null;
+
+  const sonuc = await logoyuIndir(anahtar);
+  if (logoOnbellegi.size >= LOGO_ONBELLEK_SINIRI) logoOnbellegi.clear();
+  logoOnbellegi.set(anahtar, sonuc);
+  return sonuc;
+}
+
+async function logoyuIndir(adres: string): Promise<ImzaLogosu | null> {
+  let yanit = await logoIstegi(adres);
+  if (yanit && yanit.status >= 300 && yanit.status < 400) {
+    const hedef = yanit.headers.get("location");
+    const mutlak = hedef ? new URL(hedef, adres).toString() : null;
+    yanit = logoAdresiUygunMu(mutlak) ? await logoIstegi(String(mutlak)) : null;
+  }
+  if (!yanit || !yanit.ok) return null;
+
+  const tur = (yanit.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  const uzanti = LOGO_TURLERI[tur];
+  if (!uzanti) return null;
+  if (Number(yanit.headers.get("content-length") ?? 0) > LOGO_EN_COK_BAYT) return null;
+
+  const veri = Buffer.from(await yanit.arrayBuffer().catch(() => new ArrayBuffer(0)));
+  if (!veri.length || veri.length > LOGO_EN_COK_BAYT) return null;
+
+  return {
+    gomulu: { kimlik: LOGO_CID, ad: `logo.${uzanti}`, tur, veri },
+    olculeri: gorselOlculeri(veri),
+  };
+}
+
+function logoIstegi(adres: string) {
+  return fetch(adres, { redirect: "manual", signal: AbortSignal.timeout(5000) }).catch(() => null);
+}
+
 /**
  * Konuşmaya yanıt gönderir ve giden mesajı tabloya yazar.
  *
@@ -726,6 +796,9 @@ export async function postaYanitiGonder(girdi: {
   imza?: string | null;
   /* İmzanın ilk satırı: yanıtı yazan personelin adı. */
   gonderenPersonel?: string | null;
+  /* HTML imza için kurumun logosu ve marka rengi (panel bağlamından). */
+  logoAdresi?: string | null;
+  markaRengi?: string | null;
   cc?: readonly string[];
   /* Yanıtlanan mesaj: alıntı için. Gövdesi gönderim anında Gmail'den
      okunuyor; saklamıyoruz (bkz. migration başlığı). mesajId alıntılanan
@@ -744,21 +817,42 @@ export async function postaYanitiGonder(girdi: {
   const basliktanAl = (ad: string) =>
     satirlar?.find((satir) => (satir.name ?? "").toLowerCase() === ad)?.value ?? null;
 
+  /* Alıntılanan mesajın gövdesi, başlığı yazılan mesajdan okunuyor.
+     Eskiden zincirin son mesajından (sonMesajId) okunuyordu; o bizim
+     önceki cevabımızsa müşteri "<müşteri> şöyle yazdı:" altında kendi
+     mesajı yerine bizim cevabımızı, imzası ve eski alıntılarıyla
+     görüyordu.
+
+     Bir kez okunuyor, iki biçimde kullanılıyor: düz metin alıntısı ve
+     HTML blockquote aynı metni göstermeli. */
+  let alinti: { gonderenAd: string | null; gonderenAdres: string; tarih: Date | null; metin: string } | null = null;
+  if (girdi.alinti) {
+    const alintiGovdesi = await postaGovdesiniGetir(girdi.organizationId, girdi.alinti.mesajId);
+    if (!("hata" in alintiGovdesi)) alinti = { ...girdi.alinti, metin: alintiGovdesi.govde };
+  }
+
   /*
     Sıra: yanıt → imza → alıntı. İmza alıntının İÇİNDE kalırsa her turda
-    bir kopya daha birikiyor ve yazışmanın yarısı imza oluyor.
+    bir kopya daha birikiyor ve yazışmanın yarısı imza oluyor. Aynı sıra
+    HTML tarafında da (htmlGovdesi).
   */
-  let gonderilecek = imzaliGovde(girdi.govde, girdi.imza, girdi.gonderenPersonel);
-  if (girdi.alinti) {
-    /* Gövde, başlığı yazılan mesajdan okunuyor. Eskiden zincirin son
-       mesajından (sonMesajId) okunuyordu; o bizim önceki cevabımızsa
-       müşteri "<müşteri> şöyle yazdı:" altında kendi mesajı yerine bizim
-       cevabımızı, imzası ve eski alıntılarıyla görüyordu. */
-    const alintiGovdesi = await postaGovdesiniGetir(girdi.organizationId, girdi.alinti.mesajId);
-    if (!("hata" in alintiGovdesi)) {
-      gonderilecek = alintiliGovde(gonderilecek, { ...girdi.alinti, metin: alintiGovdesi.govde });
-    }
-  }
+  const gonderilecek = alintiliGovde(
+    imzaliGovde(girdi.govde, girdi.imza, girdi.gonderenPersonel),
+    alinti,
+  );
+
+  /* Logo gönderim anında iniyor; inmezse imza logosuz gidiyor. */
+  const logo = await imzaLogosu(girdi.logoAdresi);
+  const html = htmlGovdesi({
+    govde: girdi.govde,
+    gonderenAdi: girdi.gonderenPersonel,
+    imza: girdi.imza,
+    logoSrc: logo ? `cid:${logo.gomulu.kimlik}` : null,
+    logoAlt: girdi.gonderenAd,
+    logoOlculeri: logo?.olculeri ?? null,
+    renk: girdi.markaRengi,
+    alinti,
+  });
 
   const ham = yanitMesajiKur({
     gonderenAd: girdi.gonderenAd,
@@ -767,9 +861,11 @@ export async function postaYanitiGonder(girdi: {
     cc: girdi.cc,
     konu: girdi.konu,
     govde: gonderilecek,
+    html,
     sonMesajId: basliktanAl("message-id"),
     referanslar: basliktanAl("references"),
     ekler: girdi.ekler,
+    gomulu: logo ? [logo.gomulu] : undefined,
     sinir: mesajSiniri(),
   });
 
@@ -886,11 +982,15 @@ export async function postaYeniGonder(girdi: {
   imza?: string | null;
   /* İmzanın ilk satırı: yanıtı yazan personelin adı. */
   gonderenPersonel?: string | null;
+  /* HTML imza için kurumun logosu ve marka rengi (panel bağlamından). */
+  logoAdresi?: string | null;
+  markaRengi?: string | null;
   cc?: readonly string[];
 }): Promise<{ threadId: string } | { hata: string }> {
   const belirtec = await postaErisimBelirteci(girdi.organizationId);
   if (typeof belirtec !== "string") return belirtec;
 
+  const logo = await imzaLogosu(girdi.logoAdresi);
   const ham = yeniMesajiKur({
     gonderenAd: girdi.gonderenAd,
     gonderenAdres: girdi.kutuAdresi,
@@ -898,7 +998,17 @@ export async function postaYeniGonder(girdi: {
     cc: girdi.cc,
     konu: girdi.konu,
     govde: imzaliGovde(girdi.govde, girdi.imza, girdi.gonderenPersonel),
+    html: htmlGovdesi({
+      govde: girdi.govde,
+      gonderenAdi: girdi.gonderenPersonel,
+      imza: girdi.imza,
+      logoSrc: logo ? `cid:${logo.gomulu.kimlik}` : null,
+      logoAlt: girdi.gonderenAd,
+      logoOlculeri: logo?.olculeri ?? null,
+      renk: girdi.markaRengi,
+    }),
     ekler: girdi.ekler,
+    gomulu: logo ? [logo.gomulu] : undefined,
     sinir: mesajSiniri(),
   });
 

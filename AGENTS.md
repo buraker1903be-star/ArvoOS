@@ -81,6 +81,19 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   kaydından daha kalıcı. Panelde mesaj silme olmadığı için engel bir
   çıkmaz değil, yönlendirme: yanlış açılan sözleşme silinmek yerine
   "İptal" durumuna alınıyor.
+- **Giden postanın HTML'i varsa düz metni de olmalı.** Mesaj
+  `multipart/alternative` ile iki biçimde birden gidiyor
+  (`lib/posta-gonderim.ts`): HTML'i göstermeyen kutuda (kurumsal Outlook
+  kuralları, otomatik işleyen sistemler) yalnızca HTML göndermek boş
+  mesaj demek. HTML'e giren her metin `htmlKacis`'tan geçer — gövdeyi
+  personel yazıyor ve kaçırılmayan bir "<" cümlenin kalanını yutuyor.
+  İki biçimin sırası da aynı olmalı: yanıt → imza → alıntı.
+- **Sunucunun indireceği adres kullanıcıdan geliyorsa genel olmalı.**
+  İmza logosu kurum ayarlarından gelen bir adresten iniyor ve postaya
+  gömülüyor; `logoAdresiUygunMu` yalnızca https ve genel alan adlarına
+  izin veriyor (IP, localhost, iç alan adları ve yönlendirmeler kapalı).
+  Yoksa kurumu yöneten biri sunucunun ağındaki bir şeyi kendi postasına
+  çektirebilir.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata

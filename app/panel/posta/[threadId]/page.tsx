@@ -302,8 +302,8 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
             </div>
             <div className="posta-yanit-alt">
               <small>
-                Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.
-                {" Sonuna adınız"}{hesap.imza ? " ve kurum imzası" : ""}{" eklenir."}
+                Ekler toplam en fazla 3 MB. Sonuna adınız{hesap.imza ? ", kurum imzası" : ""}
+                {organization.logo_url ? " ve kurum logonuz" : ""} eklenir.
                 {taslak ? ` Kayıtlı taslaktan devam ediyorsunuz (${istanbulTarihSaat(taslak.updated_at)}).` : ""}
               </small>
               {/* Taslak aynı formdan, formAction ile: metni ikinci bir kutuya

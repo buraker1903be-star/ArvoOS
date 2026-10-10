@@ -213,3 +213,18 @@
 .os-root .posta-hazir-sec select{
   height:32px;max-width:220px;padding:0 var(--sp-2);border:1px solid var(--n-300);border-radius:var(--r-sm);
   background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
+
+/*
+  İMZA ÖNİZLEMESİ.
+
+  İçindeki HTML gönderime giden imzanın kendisi (lib/posta-imza.ts) ve
+  kendi satır içi biçimini taşıyor: panel değişkenleriyle boyamak,
+  ekranda doğru görünen imzayı müşteriye başka türlü göndermek olurdu.
+  Burada yalnızca çerçeve var — imzanın kendisi, zemini beyaz bir
+  posta istemcisinde görüneceği gibi duruyor.
+*/
+.os-root .posta-imza-onizleme{margin-top:var(--sp-3)}
+.os-root .posta-imza-onizleme>small{display:block;margin-bottom:6px;color:var(--muted);font-size:var(--fs-micro)}
+.os-root .posta-imza-onizleme>div{
+  padding:var(--sp-3);border:1px solid var(--line-soft);border-radius:var(--r-sm);
+  background:#fff;overflow-x:auto}

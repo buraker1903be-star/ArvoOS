@@ -17,6 +17,7 @@ import { ODEME_SABLONU, odemeBaglantisiMesaji, odemeTutari, paytrBaglantiParcasi
 import { organizationBrandName } from "@/lib/customer-message-templates";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { postaYeniGonder } from "@/lib/posta-esitleme";
+import { gonderenPersonelAdi } from "@/lib/posta-gonderen";
 import { sendThroughGateway } from "@/lib/whatsapp-gateway";
 import { loadConversation } from "@/lib/whatsapp-inbox";
 import { normalizePhone } from "@/lib/whatsapp-send";
@@ -560,6 +561,15 @@ async function odemeBaglantisiniGonder(linkId: string, kanal: "whatsapp" | "epos
       alicilar: [adres],
       konu,
       govde: metin,
+      /* Ödeme bağlantısı da ortak kutudan çıkıyor: imzası, gönderenin
+         adı ve kurum logosu posta sayfasından çıkanla aynı olmalı.
+         Eskiden bu posta imzasız gidiyordu ve müşteriye kurumun hiçbir
+         işareti olmayan, yalnız bir ödeme bağlantısı taşıyan bir mesaj
+         olarak düşüyordu. */
+      imza: hesap.imza,
+      gonderenPersonel: await gonderenPersonelAdi(supabase, membership.organization_id, context.userId),
+      logoAdresi: organization.logo_url,
+      markaRengi: organization.brand_color,
     });
     if ("hata" in sonuc) throw new Error(sonuc.hata);
     return;
