@@ -111,12 +111,27 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     dil gibi duruyor, bir sayfadan ötekine geçince ölçüler ve köşeler
     değişiyordu (10.10.2026). Bölüm kartları da artık panel-card.
   */
-  return <main className="talep cari liste-sayfa stg">
-    <header className="talep-bas">
+  /*
+    AYARLAR TEK EKRAN.
+
+    Eski düzende bölümler alt alta akıyordu ve sayfa birkaç ekran
+    boyundaydı. Sekmeye geçmek yetmedi: uzun bir bölüm (resmi bilgiler,
+    kurumsal kimlik) yine sayfayı uzatıyor ve kaydırırken içerik ALT
+    ÇUBUĞUN (dock) altında kalıyordu — dock yüzen ve sabit, sayfanın
+    altına ayrılan boşluk yalnızca EN ALTTA işe yarıyor.
+
+    Düzen artık iki parça: solda sekme rayı, sağda KENDİ İÇİNDE kayan
+    panel. Panelin yüksekliği ekrandan hesaplanıyor ve dock'un üstünde
+    bitiyor; hangi bölümde olursanız olun sayfa büyümüyor ve hiçbir şey
+    çubuğun altına girmiyor. Dar ekranda (ya da alçak pencerede) ray
+    üste geçiyor ve panel kendi boyunda akıyor — küçük ekranda iç
+    kaydırma iki kaydırma demek olurdu.
+  */
+  return <main className="talep cari stg ayar-duzen">
+    <header className="talep-bas ayar-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">YÖNETİM</small>
         <h1>Ayarlar</h1>
-        <p>Kurum kimliği, belge görünümü, erişim ve bağlantılar tek yerde.</p>
       </div>
       <div className="talep-bas-eylem">
         <span className="status-pill" data-tone="gold">{roleNames[membership.role] ?? membership.role}</span>
@@ -124,38 +139,43 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </div>
     </header>
 
-    {/* Özet şeridi: sayı değil DURUM taşıyor — eksik resmi bilgi
-        teklifin kurum kimliğini boş bırakıyor, kapalı kurum paneli
-        kilitliyor. Ton rengi o yüzden burada bilgi. */}
-    <nav className="kayit-serit talep-serit stg-serit" aria-label="Kurum özeti">
-      <dl>
-        <div><dt>Paket</dt><dd>{organization.plan_code.toUpperCase()}<small>Aktif kurum paketi</small></dd></div>
-        <div><dt>Modüller</dt><dd>{modules.length}<small>{integrations.length ? `${integrations.length} entegrasyon alanı` : "Etkin çalışma alanı"}</small></dd></div>
-        <div data-tone={legalComplete ? "success" : "warning"}>
-          <dt>Belge kimliği</dt>
-          <dd>{legalComplete ? "Hazır" : `${legalFilled}/5`}<small>{legalComplete ? "Teklif ve sözleşmeler için tamam" : "Resmi bilgiler eksik"}</small></dd>
-        </div>
-        <div data-tone={isActive ? "success" : "danger"}>
-          <dt>Kurum durumu</dt>
-          <dd>{isActive ? "Aktif" : organization.status}<small>Kurum erişimi</small></dd>
-        </div>
-      </dl>
-    </nav>
+    <div className="ayar-govde">
+      {/* Sekmeler bağlantı: sunucu hangi bölümü çizeceğini adresten
+          okuyor, geri tuşu ve paylaşılan adres çalışıyor. */}
+      <nav className="stg-nav ayar-ray" aria-label="Ayar bölümleri">
+        {BOLUMLER.map((aday) => (
+          <Link
+            key={aday.id}
+            href={aday.id === "genel" ? "/panel/settings" : `/panel/settings?bolum=${aday.id}`}
+            className={aday.id === bolum ? "is-active" : undefined}
+            aria-current={aday.id === bolum ? "page" : undefined}
+          >
+            <StgIcon name={aday.icon} size={16} />{aday.label}
+          </Link>
+        ))}
+      </nav>
 
-    {/* Sekmeler bağlantı: sunucu hangi bölümü çizeceğini adresten
-        okuyor, geri tuşu ve paylaşılan adres çalışıyor. */}
-    <nav className="stg-nav" aria-label="Ayar bölümleri">
-      {BOLUMLER.map((aday) => (
-        <Link
-          key={aday.id}
-          href={aday.id === "genel" ? "/panel/settings" : `/panel/settings?bolum=${aday.id}`}
-          className={aday.id === bolum ? "is-active" : undefined}
-          aria-current={aday.id === bolum ? "page" : undefined}
-        >
-          <StgIcon name={aday.icon} size={16} />{aday.label}
-        </Link>
-      ))}
-    </nav>
+      <div className="ayar-panel">
+      {/* Özet şeridi yalnızca Genel'de: her sekmede tekrar etmesi,
+          asıl işin (form) yerini alıyordu. Ton rengi bilgi taşıyor —
+          eksik resmi bilgi ile tamam olanı aynı renkte göstermek
+          uyarıyı görünmez yapar. */}
+      {bolum === "genel" ? (
+        <nav className="kayit-serit talep-serit stg-serit" aria-label="Kurum özeti">
+          <dl>
+            <div><dt>Paket</dt><dd>{organization.plan_code.toUpperCase()}<small>Aktif kurum paketi</small></dd></div>
+            <div><dt>Modüller</dt><dd>{modules.length}<small>{integrations.length ? `${integrations.length} entegrasyon alanı` : "Etkin çalışma alanı"}</small></dd></div>
+            <div data-tone={legalComplete ? "success" : "warning"}>
+              <dt>Belge kimliği</dt>
+              <dd>{legalComplete ? "Hazır" : `${legalFilled}/5`}<small>{legalComplete ? "Teklif ve sözleşmeler için tamam" : "Resmi bilgiler eksik"}</small></dd>
+            </div>
+            <div data-tone={isActive ? "success" : "danger"}>
+              <dt>Kurum durumu</dt>
+              <dd>{isActive ? "Aktif" : organization.status}<small>Kurum erişimi</small></dd>
+            </div>
+          </dl>
+        </nav>
+      ) : null}
 
     <div className="stg-grid">
       {bolum === "genel" ? <>
@@ -409,6 +429,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           : <div className="stg-empty"><StgIcon name="plug" size={22} /><p>Etkin entegrasyon bulunmuyor.</p></div>}
       </StgSection>
       </> : null}
+    </div>
+      </div>
     </div>
   </main>;
 }

@@ -227,3 +227,66 @@
 .stg-kilit{display:inline-grid;place-items:center;width:30px;height:28px;border:1px dashed var(--line);border-radius:9px;color:var(--dim)}
 /* Google'a kaydedilecek adres: birebir kopyalanacağı için tek aralıklı. */
 .stg-paytr-note b.is-mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+
+/* ============================================================
+   TEK EKRAN DÜZENİ (10.10.2026)
+
+   Sorun: bölümler sekmeye ayrıldıktan sonra bile uzun bir bölüm
+   (resmi bilgiler, kurumsal kimlik) sayfayı uzatıyor ve kaydırırken
+   içerik yüzen alt çubuğun (dock) altında kalıyordu. Sayfanın altına
+   ayrılan boşluk yalnızca EN ALTTA işe yarıyor; ortada kaydırırken
+   çubuk içeriğin üstünde duruyor.
+
+   Çözüm: solda sekme rayı, sağda kendi içinde kayan panel. Panelin
+   yüksekliği ekrandan hesaplanıyor ve çubuğun üstünde bitiyor.
+   ============================================================ */
+.ayar-duzen{display:flex;flex-direction:column;gap:var(--sp-4);min-height:0}
+.ayar-bas{flex:none}
+.ayar-govde{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--sp-4);align-items:start;min-height:0}
+
+/* Sekme rayı: dikey, panelle birlikte kaymıyor. */
+.os-root .ayar-ray{flex-direction:column;align-items:stretch;gap:4px;overflow:visible;position:sticky;top:0}
+.os-root .ayar-ray a{width:100%;justify-content:flex-start}
+
+/*
+  İçerik paneli kendi içinde kayıyor. Çıkarılan yükseklik: üst durum
+  çubuğu + sayfa iç boşluğu + sayfa başlığı; artı dock için ayrılan
+  alan. Böylece panelin son satırı çubuğun üstünde bitiyor.
+*/
+.ayar-panel{
+  display:flex;flex-direction:column;gap:var(--sp-4);min-width:0;
+  /*
+    Yükseklik hesabı: ekrandan üst çubuk, sayfanın üst iç boşluğu,
+    sayfa başlığı ve aradaki boşluk (toplamı 96px) ile dock için
+    ayrılan alan çıkıyor. Toplam tam ekranı dolduruyor: SAYFANIN KENDİSİ
+    kaymıyor (iki ayrı kaydırma kullanıcının hangisini çevirdiğini
+    bilememesi demek) ve panelin son satırı dock'un üstünde bitiyor.
+  */
+  max-height:calc(100dvh - var(--os-bar-h) - var(--os-dock-space) - 96px);
+  /* Alçak pencerede panel yok olmasın; biraz taşsa da okunur kalsın. */
+  min-height:180px;
+  overflow:auto;overscroll-behavior:contain;
+  /* Odaklanan alan çubuğun altında kalmasın (Tab ile gezinme). */
+  scroll-padding-bottom:var(--sp-4);
+  /* Kaydırma çubuğu için yer: içerik kayarken sağa sıçramasın. */
+  scrollbar-gutter:stable;padding-right:2px;
+}
+.ayar-panel>.stg-grid{align-content:start}
+
+/*
+  ALÇAK PENCERE iç kaydırmayı KAPATMIYOR — asıl ihtiyaç orada. İlk
+  denemede "max-height:620px" ile kapatılmıştı ve kurum sahibinin
+  penceresi (≈520 piksel) tam o dalın içine düşüyordu: sayfa yine
+  akıyor, içerik yine dock'un altına giriyordu. Alçak pencerede panel
+  kısalıyor, alt sınırı var.
+
+  Yalnızca DAR ekranda normal akışa dönülüyor: telefonda panel ve
+  sayfa iki ayrı kaydırma demek, kullanıcı hangisini kaydırdığını
+  bilemez.
+*/
+@media (max-width:900px){
+  .ayar-govde{grid-template-columns:minmax(0,1fr)}
+  .os-root .ayar-ray{flex-direction:row;align-items:center;overflow-x:auto;position:static}
+  .os-root .ayar-ray a{width:auto}
+  .ayar-panel{max-height:none;overflow:visible;padding-right:0}
+}

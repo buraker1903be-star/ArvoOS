@@ -46,7 +46,12 @@ for (const file of importOrder) {
   }
   const root = postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
   root.walkRules((rule) => {
-    if (!/\.panel-root\b/.test(rule.selector)) return;
+    /* Panel değişkenleri iki kökte tanımlanıyor: .panel-root (tema ve
+       palet) ve .os-root (kabuk ölçüleri — üst çubuk yüksekliği, dock
+       alanı). İkincisi denetimin dışındaydı: os-shell.css'teki bir
+       değişkeni kullanan dosya "tanımsız değişken" uyarısı alıyordu
+       (10.10.2026, ayarlar düzeni). */
+    if (!/\.(panel-root|os-root)\b/.test(rule.selector)) return;
     rule.walkDecls(/^--/, (decl) => {
       // 1) kendine referans
       if (new RegExp(`var\\(\\s*${decl.prop}(?![\\w-])`).test(decl.value)) {
