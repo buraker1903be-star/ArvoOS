@@ -7,7 +7,6 @@ import { waMeAdresi } from "@/lib/wa-me";
 import { belgeAliciTelefonu } from "../alici-telefonu";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
-import { phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -16,7 +15,8 @@ import {
   organizationBrandName,
   proposalMessages,
 } from "@/lib/customer-message-templates";
-import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
+import { TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
+import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
@@ -48,6 +48,7 @@ type Props = {
     search?: string;
     status?: string;
     temsilci?: string;
+    sayfa?: string;
     share?: string;
     doc_no?: string;
     customer_name?: string;
@@ -57,8 +58,17 @@ type Props = {
     currency?: string;
   }>;
 };
-type Proposal = {
+/* Görünümün satırı: teklif + fırsat alanları düz. Eski Proposal tipi
+   gömülü crm_opportunities nesnesini taşıyordu; görünümde o alanlar
+   satırın kendisinde. */
+type TeklifSatiri = {
   id: string;
+  teklif_grubu: TeklifGrubu;
+  customer_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  assigned_employee_id: string | null;
+  request_details: Record<string, unknown> | null;
   proposal_no: string;
   title: string;
   amount: number;
@@ -73,18 +83,14 @@ type Proposal = {
   archived_at: string | null;
   archive_reason: string | null;
   opportunity_id: string;
-  crm_opportunities: {
-    id: string;
-    customer_name: string;
-    contact_email: string | null;
-    contact_phone: string | null;
-    assigned_employee_id: string | null;
-    request_details: Record<string, unknown> | null;
-  } | null;
 };
+/* Sağdaki istatistik kartının okuduğu dar satır. */
+type IstatistikSatiri = Pick<TeklifSatiri, "created_at" | "amount" | "teklif_grubu" | "sent_at" | "request_details" | "assigned_employee_id">;
 /** Adresteki durum değeri; eski bağlantılar (?status=sent) çalışmaya devam ediyor. */
 const DURUMLAR = ["", "draft", "sent", "accepted", "rejected", "expired", "arsiv", "tumu"] as const;
 const SERIT: TeklifGrubu[] = ["draft", "sent", "accepted", "rejected", "expired"];
+/* Sayfa boyu posta listesiyle aynı. */
+const SAYFA_BOYU = 50;
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(v / 100);
 const GRUP_TONU: Record<TeklifGrubu, string> = { draft: "neutral", sent: "info", accepted: "success", rejected: "danger", expired: "warning", eski: "neutral", arsiv: "neutral" };
@@ -102,46 +108,106 @@ export default async function ProposalsPage({ searchParams }: Props) {
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
 
-  const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
-    supabase
-      .from("crm_proposals")
-      .select("id,proposal_no,title,amount,currency,valid_until,status,sent_at,view_count,created_at,revision_no,superseded_by,archived_at,archive_reason,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,assigned_employee_id,request_details)")
-      .eq("organization_id", membership.organization_id)
-      .order("created_at", { ascending: false }),
+  /*
+    LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026).
+
+    Eskiden kurumun BÜTÜN teklifleri fırsat kaydıyla birlikte çekilip
+    bellekte süzülüyordu: durum grubu, arama, temsilci ve şerit
+    sayıları hep o diziden. Kayıt sayısı büyüdükçe yavaşlıyor ve
+    PostgREST'in satır sınırına çarptığında sessizce YANLIŞ sayı
+    gösteriyordu.
+
+    İki yeni dayanak: grup kuralı artık sütunda (teklif_grubu) ve
+    crm_teklif_liste görünümü teklifi fırsatla tek düz yüzeyde
+    birleştiriyor — arama tek bir `or` ile müşteri adına, e-postasına
+    ve telefonuna da bakabiliyor (PostgREST gömülü tabloyla ana
+    tabloyu aynı `or` içinde birleştiremiyor).
+  */
+  const sayfaNo = Math.max(1, Number.parseInt(p.sayfa ?? "1", 10) || 1);
+  const desen = aramaDeseni(search);
+  const telefon = telefonAnahtari(search);
+  const AKTIF: TeklifGrubu[] = ["draft", "sent"];
+
+  /* Süzgeçler tek yerden: liste, sayım ve toplam aynı kümeyi görmeli.
+     Üç ayrı yerde kurulan süzgeç, listede bir şey gösterip rozette
+     başka sayı yazmanın en kolay yolu. */
+  const suzulmus = (sayarak = false) => {
+    /* Sayım sorgusu satır GETİRMİYOR (head): yedi grup için yedi kez
+       elli satır taşımak, yalnızca rozetteki sayı için boşuna trafik. */
+    let q = sayarak
+      ? supabase.from("crm_teklif_liste").select("id", { count: "exact", head: true })
+          .eq("organization_id", membership.organization_id)
+      : supabase.from("crm_teklif_liste").select("*", { count: "exact" })
+          .eq("organization_id", membership.organization_id);
+    if (desen) {
+      const parcalar = [
+        `proposal_no.ilike.*${desen}*`,
+        `title.ilike.*${desen}*`,
+        `customer_name.ilike.*${desen}*`,
+        `contact_email.ilike.*${desen}*`,
+        ...(telefon ? [`telefon_rakamlari.ilike.*${telefon}*`] : []),
+      ];
+      q = q.or(parcalar.join(","));
+    }
+    if (temsilci === "atanmamis") q = q.is("assigned_employee_id", null);
+    else if (temsilci) q = q.eq("assigned_employee_id", temsilci);
+    return q;
+  };
+
+  /* Durum süzgeci: "tumu" hepsi, "arsiv" aktif OLMAYANLAR, boş ise
+     aktifler (taslak + gönderildi) — eski davranışın aynısı. */
+  const grupSuzgeci = (q: ReturnType<typeof suzulmus>) =>
+    status === "tumu" ? q
+    : status === "arsiv" ? q.not("teklif_grubu", "in", `(${AKTIF.join(",")})`)
+    : status ? q.eq("teklif_grubu", status)
+    : q.in("teklif_grubu", AKTIF);
+
+  const sayim = async (grup: TeklifGrubu) =>
+    (await suzulmus(true).eq("teklif_grubu", grup)).count ?? 0;
+
+  const [
+    { data, error, count: suzgecSayisi },
+    { data: employeeData, error: employeeError },
+    { data: istatistikVerisi, error: istatistikHatasi, count: istatistikSayisi },
+    ...seritSayilari
+  ] = await Promise.all([
+    grupSuzgeci(suzulmus())
+      .order("created_at", { ascending: false })
+      .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1),
     supabase
       .from("hr_employees")
       .select("id,full_name,can_receive_sales_requests,employment_status")
       .eq("organization_id", membership.organization_id),
+    /*
+      İSTATİSTİK OKUMASI AYRI VE DAR. Sağdaki kart (son 30 gün, kabul
+      oranı, ortanca, aylık değer, hizmet dağılımı) tüm teklifleri
+      ister; sayfalanmış listeden hesaplamak altı sayıyı sessizce "bu
+      sayfanın" sayısına çevirirdi. Bu yüzden ayrı bir okuma — ama
+      yirmi sütun ve fırsat birleşimi yerine yalnızca altı küçük sütun.
+
+      SINIR KONMUYOR: sınırlı bir okumadan sayım almak tam da
+      check:rakamlar'ın aradığı hata. Yine de toplam okunuyor (count):
+      PostgREST'in kendi satır tavanına takılırsa kart bunu SÖYLÜYOR,
+      sessizce eksik sayı göstermiyor. Sıradaki adım bu kartı bir özet
+      fonksiyonuna taşımak; o zaman bu okuma da kalkacak.
+    */
+    supabase.from("crm_teklif_liste")
+      .select("created_at,amount,teklif_grubu,sent_at,request_details,assigned_employee_id", { count: "exact" })
+      .eq("organization_id", membership.organization_id)
+      .neq("teklif_grubu", "eski")
+      .order("created_at", { ascending: false }),
+    ...SERIT.map((grup) => sayim(grup)),
   ]);
   if (error) throw new Error("Teklifler okunamadı: " + error.message);
   if (employeeError) throw new Error("Satış temsilcileri okunamadı: " + employeeError.message);
+  if (istatistikHatasi) throw new Error("Teklif istatistikleri okunamadı: " + istatistikHatasi.message);
+
   const employees = (employeeData ?? []) as { id: string; full_name: string; can_receive_sales_requests: boolean; employment_status: string }[];
   const representativeMap = new Map(employees.map((e) => [e.id, e.full_name]));
-
-  const all = ((data ?? []) as unknown as Proposal[]).map((row) => ({ row, grup: teklifGrubu(row) }));
-  const searchKey = search.toLocaleLowerCase("tr-TR");
-  const aramaUyar = (row: Proposal) => {
-    if (!searchKey) return true;
-    const customer = row.crm_opportunities;
-    return [row.proposal_no, row.title, customer?.customer_name, customer?.contact_email, phoneSearchTerms(customer?.contact_phone)]
-      .filter(Boolean).join(" ").toLocaleLowerCase("tr-TR").includes(searchKey);
-  };
-  const temsilciUyar = (row: Proposal) => {
-    const id = row.crm_opportunities?.assigned_employee_id ?? null;
-    return !temsilci || (temsilci === "atanmamis" ? !id : id === temsilci);
-  };
-  const aktifMi = (grup: TeklifGrubu) => grup === "draft" || grup === "sent";
-  const durumUyar = (grup: TeklifGrubu) =>
-    status === "tumu" ? true
-    : status === "arsiv" ? !aktifMi(grup)
-    : status ? grup === status
-    : aktifMi(grup);
-  const rows = all.filter(({ row, grup }) => durumUyar(grup) && aramaUyar(row) && temsilciUyar(row));
-  // Şerit sayıları arama ve temsilci süzgecine göre, durum süzgecinden bağımsız.
-  const kapsam = all.filter(({ row }) => aramaUyar(row) && temsilciUyar(row));
-  const sayi = (grup: TeklifGrubu) => kapsam.filter((item) => item.grup === grup).length;
-  const aktifler = kapsam.filter((item) => aktifMi(item.grup));
-  const aktifDeger = aktifler.reduce((s, { row }) => s + Number(row.amount), 0);
+  const rows = ((data ?? []) as unknown as TeklifSatiri[]).map((row) => ({ row, grup: row.teklif_grubu }));
+  const sonSayfa = typeof suzgecSayisi === "number"
+    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
+    : rows.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
 
   const lastContacts = await fetchLastContacts(
     supabase,
@@ -196,37 +262,58 @@ export default async function ProposalsPage({ searchParams }: Props) {
     );
   }
 
-  const adres = (ek: { status?: string; temsilci?: string }) => {
+  /* Süzgeç değişince SAYFA BAŞA dönüyor: üçüncü sayfadayken "Kabul
+     edildi"ye basan kullanıcı, iki kabul teklifi olan bir kurumda boş
+     bir sayfaya düşüyordu. Sayfa numarası yalnızca sayfalayıcıdan
+     taşınıyor. */
+  const adres = (ek: { status?: string; temsilci?: string; sayfa?: number }) => {
     const q = new URLSearchParams();
     const d = ek.status ?? status;
     const t = ek.temsilci ?? temsilci;
     if (search) q.set("search", search);
     if (d) q.set("status", d);
     if (t) q.set("temsilci", t);
+    if (ek.sayfa && ek.sayfa > 1) q.set("sayfa", String(ek.sayfa));
     const s = q.toString();
     return s ? `/panel/crm/proposals?${s}` : "/panel/crm/proposals";
   };
   /*
-    İSTATİSTİKLER (sağ kart). Eskiden burada temsilcilere göre dağılım
-    vardı; temsilci süzgeci listenin üstüne geldi. Sayılar tüm tekliflerden
-    (eski revizyonlar hariç), süzgeçten bağımsız.
+    İSTATİSTİKLER (sağ kart). Sayılar tüm tekliflerden (eski
+    revizyonlar hariç), süzgeçten bağımsız — kendi dar okumasından
+    geliyor, sayfalanmış listeden değil.
   */
   const an = simdi();
-  const gecerli = all.filter(({ grup }) => grup !== "eski");
-  const { son30, degisim } = son30Degisim(gecerli.map(({ row }) => row.created_at), an);
-  const kabul = gecerli.filter(({ grup }) => grup === "accepted").length;
-  const karara = gecerli.filter(({ grup }) => grup === "accepted" || grup === "rejected" || grup === "expired").length;
+  const gecerli = (istatistikVerisi ?? []) as unknown as IstatistikSatiri[];
+  /* Okuma sınıra dayandıysa kart bunu SÖYLÜYOR: sessizce "ilk 2000
+     teklifin" sayısını tüm kurumun sayısı gibi göstermek, bu depoda
+     daha önce üç ekranda yaşandı (bkz. npm run check:rakamlar). */
+  const istatistikKapsami = (istatistikSayisi ?? 0) > gecerli.length
+    ? `son ${gecerli.length} teklif · toplam ${istatistikSayisi}`
+    : `${gecerli.length} teklif`;
+  const { son30, degisim } = son30Degisim(gecerli.map((row) => row.created_at), an);
+  const kabul = gecerli.filter((row) => row.teklif_grubu === "accepted").length;
+  const karara = gecerli.filter((row) => ["accepted", "rejected", "expired"].includes(row.teklif_grubu)).length;
   const kabulOrani = oran(kabul, karara);
-  const tipikTutar = ortanca(gecerli.map(({ row }) => Number(row.amount)));
-  const bekleyen = gecerli.filter(({ grup }) => grup === "sent");
-  const bekleyenGec = bekleyen.filter(({ row }) => (daysSince(row.sent_at) ?? 0) >= 7).length;
-  const aylikDeger = aylik(gecerli.map(({ row }) => ({ tarih: row.created_at, tutar: Number(row.amount) })), 6, an);
-  const hizmetler = enCok(gecerli.map(({ row }) => String(row.crm_opportunities?.request_details?.service_type ?? "").trim() || "Belirtilmedi"), 5);
+  const tipikTutar = ortanca(gecerli.map((row) => Number(row.amount)));
+  const bekleyen = gecerli.filter((row) => row.teklif_grubu === "sent");
+  const bekleyenGec = bekleyen.filter((row) => (daysSince(row.sent_at) ?? 0) >= 7).length;
+  const aylikDeger = aylik(gecerli.map((row) => ({ tarih: row.created_at, tutar: Number(row.amount) })), 6, an);
+  const hizmetler = enCok(gecerli.map((row) => String(row.request_details?.service_type ?? "").trim() || "Belirtilmedi"), 5);
+  /* Aktif tekliflerin toplam değeri de bu okumadan: şeritteki sayılar
+     süzgece göre, bu tutar kurumun tamamına göre. İkisini aynı yerde
+     göstermek yanıltırdı, o yüzden kartta duruyor. */
+  const aktifDeger = gecerli.filter((row) => AKTIF.includes(row.teklif_grubu)).reduce((toplam, row) => toplam + Number(row.amount), 0);
   // Temsilci seçimi: satış talebi alabilen aktif personel ve listede adı geçen herkes.
-  const atananlar = new Set(all.map(({ row }) => row.crm_opportunities?.assigned_employee_id).filter(Boolean));
+  const atananlar = new Set(gecerli.map((row) => row.assigned_employee_id).filter(Boolean));
   const temsilciSecenekleri = employees
     .filter((e) => (e.employment_status === "active" && e.can_receive_sales_requests) || atananlar.has(e.id))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "tr"));
+  /* Üstteki üç süzgeç (Aktif / Kapanan / Tümü) şerit sayımlarından
+     türüyor: aynı kümeyi iki kez saymak, iki farklı sayı göstermenin
+     yoluydu. Şerit yalnızca beş grubu sayıyor; "eski" (yeni revizyonla
+     değişen teklifler) hiçbirine girmiyor, eskiden de girmiyordu. */
+  const aktifSayisi = AKTIF.reduce((toplam, grup) => toplam + (seritSayilari[SERIT.indexOf(grup)] ?? 0), 0);
+  const tumSayi = seritSayilari.reduce((toplam, adet) => toplam + adet, 0);
   const filtered = Boolean(search || temsilci || status);
 
   return (
@@ -249,7 +336,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
           {SERIT.map((grup) => (
             <div key={grup} className={status === grup ? "is-active" : undefined}>
               <dt>{TEKLIF_GRUP_ADLARI[grup]}</dt>
-              <dd><Link href={adres({ status: grup })} aria-current={status === grup ? "page" : undefined}>{sayi(grup)}</Link></dd>
+              <dd><Link href={adres({ status: grup })} aria-current={status === grup ? "page" : undefined}>{seritSayilari[SERIT.indexOf(grup)]}</Link></dd>
             </div>
           ))}
           <div className="cari-bakiye"><dt>Aktif teklif değeri</dt><dd>{money(aktifDeger, "TRY")}</dd></div>
@@ -259,9 +346,9 @@ export default async function ProposalsPage({ searchParams }: Props) {
       <div className="talep-izgara personel-iki ekip-izgara">
         <section className="panel-card talep-bilgi" aria-label="Teklif listesi">
           <div className="ekip-suzgec talep-suzgec">
-            <Link href={adres({ status: "" })} className={!status ? "is-active" : undefined}>Aktif <small>{aktifler.length}</small></Link>
-            <Link href={adres({ status: "arsiv" })} className={status === "arsiv" ? "is-active" : undefined}>Kapanan <small>{kapsam.length - aktifler.length}</small></Link>
-            <Link href={adres({ status: "tumu" })} className={status === "tumu" ? "is-active" : undefined}>Tümü <small>{kapsam.length}</small></Link>
+            <Link href={adres({ status: "" })} className={!status ? "is-active" : undefined}>Aktif <small>{aktifSayisi}</small></Link>
+            <Link href={adres({ status: "arsiv" })} className={status === "arsiv" ? "is-active" : undefined}>Kapanan <small>{tumSayi - aktifSayisi}</small></Link>
+            <Link href={adres({ status: "tumu" })} className={status === "tumu" ? "is-active" : undefined}>Tümü <small>{tumSayi}</small></Link>
             {SERIT.includes(status as TeklifGrubu) ? <span className="talep-suzgec-etiket">{TEKLIF_GRUP_ADLARI[status as TeklifGrubu]}</span> : null}
             {/* Temsilci süzgeci eskiden sağdaki temsilci kartındaydı; o kartın
                 yerini istatistikler aldı, süzgeç buraya geldi. */}
@@ -298,8 +385,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
                 </thead>
                 <tbody>
                   {rows.map(({ row, grup }) => {
-                    const customer = row.crm_opportunities;
-                    const repId = customer?.assigned_employee_id;
+                    const repId = row.assigned_employee_id;
                     const representativeName = repId ? (representativeMap.get(repId) ?? "Pasif personel") : null;
                     return (
                       <tr key={row.id}>
@@ -307,8 +393,8 @@ export default async function ProposalsPage({ searchParams }: Props) {
                           <Link className="crm-row-link" href={`/panel/crm/proposals/${row.id}`}>{row.proposal_no}</Link>
                           {row.revision_no > 0 ? <span className="status-pill talep-revizyon" data-tone="gold">R{row.revision_no}</span> : null}
                         </td>
-                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
-                        <ServiceCell service={String(customer?.request_details?.service_type ?? "")} />
+                        <CustomerCell name={row.customer_name ?? undefined} phone={row.contact_phone} email={row.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
+                        <ServiceCell service={String(row.request_details?.service_type ?? "")} />
                         <RepresentativeCell name={representativeName} />
                         <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>
                         <td data-label="Durum">
@@ -326,12 +412,25 @@ export default async function ProposalsPage({ searchParams }: Props) {
                 </tbody>
               </table>
               <SatirTiklama />
+              {/* Sayfalayıcı posta listesiyle aynı kalıp: adres taşınıyor,
+                  geri tuşu çalışıyor. Tek sayfalık listede hiç çizilmiyor. */}
+              {sonSayfa > 1 ? (
+                <nav className="liste-sayfalar" aria-label="Sayfalar">
+                  {sayfaNo > 1
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo - 1 })}>← Önceki</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">← Önceki</span>}
+                  <small>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} teklif` : ""}</small>
+                  {sayfaNo < sonSayfa
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo + 1 })}>Sonraki →</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">Sonraki →</span>}
+                </nav>
+              ) : null}
             </div>
           ) : (
             <div className="crm-empty-state talep-bos-kutu">
-              <h2>{all.length === 0 ? "Henüz teklif yok" : filtered ? "Eşleşen teklif yok" : "Aktif teklif yok"}</h2>
+              <h2>{tumSayi === 0 ? "Henüz teklif yok" : filtered ? "Eşleşen teklif yok" : "Aktif teklif yok"}</h2>
               <p>
-                {all.length === 0
+                {tumSayi === 0
                   ? "Teklifler bir talepten hazırlanır: talebi açın ve “Teklif oluştur”u kullanın. Hazırladığınız teklifler burada listelenir."
                   : filtered
                     ? "Aramayı veya süzgeci değiştirip yeniden deneyin."
@@ -339,7 +438,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
               </p>
               <div className="crm-empty-actions">
                 {filtered ? <Link className="panel-secondary" href="/panel/crm/proposals">Süzgeci temizle</Link> : null}
-                {all.length === 0 ? <Link className="panel-primary" href="/panel/crm">Taleplere git</Link> : null}
+                {tumSayi === 0 ? <Link className="panel-primary" href="/panel/crm">Taleplere git</Link> : null}
               </div>
             </div>
           )}
@@ -350,7 +449,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
           kutular={[
             { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni teklif", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
             { ad: "Kabul oranı", deger: kabulOrani === null ? "—" : `%${kabulOrani}`, alt: `${kabul} kabul · ${karara - kabul} red/süre` },
-            { ad: "Tipik teklif", deger: tamPara(tipikTutar), alt: `ortanca · ${gecerli.length} teklif` },
+            { ad: "Tipik teklif", deger: tamPara(tipikTutar), alt: `ortanca · ${istatistikKapsami}` },
             { ad: "Yanıt bekleyen", deger: String(bekleyen.length), alt: bekleyenGec ? `${bekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: bekleyenGec ? "uyari" : undefined },
           ]}
           gruplar={[
