@@ -1549,6 +1549,7 @@
     ],
     "user_presence": [
       "current_path",
+      "gizli",
       "last_seen_at",
       "organization_id",
       "session_id",

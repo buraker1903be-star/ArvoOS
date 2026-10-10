@@ -1,4 +1,4 @@
--- Canlı şema dışa aktarımı: 2026-10-09
+-- Canlı şema dışa aktarımı: 2026-10-10
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
 -- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
@@ -1631,7 +1631,8 @@ create table if not exists public.user_presence (
   last_seen_at timestamp with time zone not null,
   current_path text,
   user_agent text,
-  updated_at timestamp with time zone not null
+  updated_at timestamp with time zone not null,
+  gizli boolean not null
 );
 
 create table if not exists public.user_session_logs (
@@ -12685,6 +12686,8 @@ alter table public.support_tickets alter column status set default 'open'::text;
 alter table public.support_tickets alter column updated_at set default now();
 
 alter table public.tracking_lookup_attempts alter column created_at set default now();
+
+alter table public.user_presence alter column gizli set default false;
 
 alter table public.user_presence alter column last_seen_at set default now();
 
