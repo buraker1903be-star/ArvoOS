@@ -308,122 +308,132 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {bolum === "entegrasyonlar" ? <>
       <StgSection id="entegrasyonlar" icon="plug" tone="neutral" kicker="ENTEGRASYONLAR" title="Bağlantılar" description="Ödeme, banka, e-fatura ve alan adı bileşenleri.">
-        {/* PayTR ve Garanti aynı kalıptan; alanlar lib/payments/saglayicilar.ts'te. */}
-        {odemeSaglayicilari.map((status) => (
-          <OdemeSaglayiciKarti key={status.spec.code} status={status} />
-        ))}
-        {posta ? (
-          <div className="stg-paytr" id="posta">
-            <div className="stg-paytr-head">
-              <div>
-                <b>Ortak posta kutusu (Gmail)</b>
-                <small>Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar. Gelen kutusu ve yanıtlama sonraki aşamada açılır.</small>
+        {/*
+          Sağlayıcı kartları yan yana: tek sütunda alt alta dizilince
+          WhatsApp ve posta kutusunu görmek için uzun uzun kaydırmak
+          gerekiyordu ve ekranın sağ yarısı boş duruyordu. auto-fit:
+          yer varsa iki sütun, yoksa tek — sekme rayı yüzünden panelin
+          genişliği sayfanınkinden dar, sabit bir kırılma noktası
+          burada yanlış yerde kırardı.
+        */}
+        <div className="stg-baglanti-izgara">
+          {/* PayTR ve Garanti aynı kalıptan; alanlar lib/payments/saglayicilar.ts'te. */}
+          {odemeSaglayicilari.map((status) => (
+            <OdemeSaglayiciKarti key={status.spec.code} status={status} />
+          ))}
+          {posta ? (
+            <div className="stg-paytr" id="posta">
+              <div className="stg-paytr-head">
+                <div>
+                  <b>Ortak posta kutusu (Gmail)</b>
+                  <small>Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar. Gelen kutusu ve yanıtlama sonraki aşamada açılır.</small>
+                </div>
+                <span className="status-pill" data-tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}>
+                  {posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
+                    : posta.durum === "hata" ? "Yetkilendirme düştü"
+                    : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
+                </span>
               </div>
-              <span className="status-pill" data-tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}>
-                {posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
-                  : posta.durum === "hata" ? "Yetkilendirme düştü"
-                  : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
-              </span>
+              {posta.kullanilabilir ? (
+                <>
+                  <form className="panel-form" action={savePostaHesabi}>
+                    <label className="wide">Ortak posta adresi<input name="adres" type="email" required defaultValue={posta.adres ?? ""} autoComplete="off" placeholder="info@firmaniz.com" /></label>
+                    <label className="wide">Google istemci kimliği (client ID)<input name="client_id" required autoComplete="off" /></label>
+                    <label className="wide">Google gizli anahtarı (client secret)<input name="client_secret" type="password" required autoComplete="new-password" placeholder={posta.kayitliMi ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+                    <p className="wide stg-paytr-note">
+                      Bu değerler sizin Google Cloud projenizden gelir, Arvo&apos;dan değil. Kendi Workspace&apos;inizde bir proje açıp Gmail API&apos;sini etkinleştirin,
+                      OAuth onay ekranını <b>Internal</b> seçin ve bir Web istemcisi oluşturun. Onay ekranı Internal olduğu sürece Google doğrulaması ve güvenlik
+                      denetimi gerekmez.
+                    </p>
+                    <p className="wide stg-paytr-note">
+                      İstemcideki <b>Authorized redirect URIs</b> alanına tam olarak şunu ekleyin:
+                      <br /><b className="is-mono">{postaGeriDonus}</b>
+                      <br />Bu adres şu an kullandığınız alan adına göre yazıldı. Ekibiniz panele birden fazla adresten giriyorsa
+                      (örneğin hem kendi alan adınız hem app.arvo-os.com), <b>her biri için ayrı satır ekleyin</b> — Google yalnızca
+                      isteğin geldiği adresle birebir eşleşen kaydı kabul ediyor.
+                    </p>
+                    <p className="wide stg-paytr-note">Kurum imzası posta ekranında düzenlenir (Posta → Kutu durumu). Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
+                    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
+                  </form>
+                  {posta.kayitliMi ? (
+                    <div className="stg-paytr-foot">
+                      {/*
+                        Bilerek <a>, <Link> değil. Hedef bir sayfa değil, Google'a
+                        302 dönen bir yol; Link istemci tarafı gezinmeyi dener,
+                        RSC yanıtı bulamaz ve izin ekranı hiç açılmaz. Yönlendirme
+                        tarayıcının adres çubuğunda olmak zorunda.
+                      */}
+                      <a className="panel-primary" href="/panel/settings/mail/baglan">{posta.durum === "bagli" ? "Google iznini yenile" : "Google ile bağlan"}</a>
+                      <span>Son eşitleme: <b>{paytrDate(posta.sonEsitleme)}</b></span>
+                      {/* Geçmiş tarama turlara yayılıyor; "hâlâ iniyor" demek
+                          eksik görünen kutuyu hata sanmayı engelliyor. */}
+                      <span>Geçmiş: <b>{posta.gecmisBitti ? "tamamlandı" : `iniyor (${posta.gecmisMesajSayisi} mesaj)`}</b></span>
+                      <form action={removePostaHesabi}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="stg-muted"><StgIcon name="lock" size={16} />Posta için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
+              )}
+              {posta.sonHata ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {posta.sonHata}</p> : null}
             </div>
-            {posta.kullanilabilir ? (
-              <>
-                <form className="panel-form" action={savePostaHesabi}>
-                  <label className="wide">Ortak posta adresi<input name="adres" type="email" required defaultValue={posta.adres ?? ""} autoComplete="off" placeholder="info@firmaniz.com" /></label>
-                  <label className="wide">Google istemci kimliği (client ID)<input name="client_id" required autoComplete="off" /></label>
-                  <label className="wide">Google gizli anahtarı (client secret)<input name="client_secret" type="password" required autoComplete="new-password" placeholder={posta.kayitliMi ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+          ) : null}
+          {whatsapp ? (
+            <div className="stg-paytr">
+              <div className="stg-paytr-head">
+                <div>
+                  <b>WhatsApp ile mesaj</b>
+                  <small>Kendi WhatsApp Business numaranızı bağlayın; teklif, sözleşme, sipariş ve randevu mesajları müşterinize sizin numaranızdan gitsin.</small>
+                </div>
+                <span className="status-pill" data-tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}>
+                  {whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
+                </span>
+              </div>
+              {whatsapp.available ? (
+                <form className="panel-form" action={saveWhatsappAccount}>
+                  <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
+                  <label>Numara kimliği (phone number ID)<input name="phone_number_id" inputMode="numeric" required defaultValue={whatsapp.phoneNumberId ?? ""} autoComplete="off" /></label>
+                  <label className="wide">Kalıcı erişim anahtarı<input name="access_token" type="password" autoComplete="new-password" required placeholder={whatsapp.connected ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
                   <p className="wide stg-paytr-note">
-                    Bu değerler sizin Google Cloud projenizden gelir, Arvo&apos;dan değil. Kendi Workspace&apos;inizde bir proje açıp Gmail API&apos;sini etkinleştirin,
-                    OAuth onay ekranını <b>Internal</b> seçin ve bir Web istemcisi oluşturun. Onay ekranı Internal olduğu sürece Google doğrulaması ve güvenlik
-                    denetimi gerekmez.
+                    Bu değerler Meta Business → WhatsApp Manager → API Kurulumu ekranında yer alır. Anahtar şifreli saklanır, ekranda bir daha gösterilmez.
+                    Bağlarken numara Meta&apos;ya sorulur; anahtar yanlışsa kayıt hiç yazılmaz. Numara bağlamayan kurumların mesajları Arvo&apos;nun ortak numarasından gider.
                   </p>
-                  <p className="wide stg-paytr-note">
-                    İstemcideki <b>Authorized redirect URIs</b> alanına tam olarak şunu ekleyin:
-                    <br /><b className="is-mono">{postaGeriDonus}</b>
-                    <br />Bu adres şu an kullandığınız alan adına göre yazıldı. Ekibiniz panele birden fazla adresten giriyorsa
-                    (örneğin hem kendi alan adınız hem app.arvo-os.com), <b>her biri için ayrı satır ekleyin</b> — Google yalnızca
-                    isteğin geldiği adresle birebir eşleşen kaydı kabul ediyor.
-                  </p>
-                  <p className="wide stg-paytr-note">Kurum imzası posta ekranında düzenlenir (Posta → Kutu durumu). Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
-                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
+                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{whatsapp.connected ? "Güncelle" : "Numarayı bağla"}</button></div>
                 </form>
-                {posta.kayitliMi ? (
-                  <div className="stg-paytr-foot">
-                    {/*
-                      Bilerek <a>, <Link> değil. Hedef bir sayfa değil, Google'a
-                      302 dönen bir yol; Link istemci tarafı gezinmeyi dener,
-                      RSC yanıtı bulamaz ve izin ekranı hiç açılmaz. Yönlendirme
-                      tarayıcının adres çubuğunda olmak zorunda.
-                    */}
-                    <a className="panel-primary" href="/panel/settings/mail/baglan">{posta.durum === "bagli" ? "Google iznini yenile" : "Google ile bağlan"}</a>
-                    <span>Son eşitleme: <b>{paytrDate(posta.sonEsitleme)}</b></span>
-                    {/* Geçmiş tarama turlara yayılıyor; "hâlâ iniyor" demek
-                        eksik görünen kutuyu hata sanmayı engelliyor. */}
-                    <span>Geçmiş: <b>{posta.gecmisBitti ? "tamamlandı" : `iniyor (${posta.gecmisMesajSayisi} mesaj)`}</b></span>
-                    <form action={removePostaHesabi}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <p className="stg-muted"><StgIcon name="lock" size={16} />Posta için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
-            )}
-            {posta.sonHata ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {posta.sonHata}</p> : null}
-          </div>
-        ) : null}
-        {whatsapp ? (
-          <div className="stg-paytr">
-            <div className="stg-paytr-head">
-              <div>
-                <b>WhatsApp ile mesaj</b>
-                <small>Kendi WhatsApp Business numaranızı bağlayın; teklif, sözleşme, sipariş ve randevu mesajları müşterinize sizin numaranızdan gitsin.</small>
+              ) : (
+                <p className="stg-muted"><StgIcon name="lock" size={16} />WhatsApp için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
+              )}
+              {whatsapp.connected ? (
+                <div className="stg-paytr-foot">
+                  <span>İşletme adı: <b>{whatsapp.verifiedName ?? "—"}</b></span>
+                  <span>Son doğrulama: <b>{paytrDate(whatsapp.lastVerifiedAt)}</b></span>
+                  <form action={verifyWhatsappAccount}><button className="panel-secondary" type="submit">Yeniden doğrula</button></form>
+                  <form action={removeWhatsappAccount}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
+                </div>
+              ) : null}
+              {whatsapp.lastError ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {whatsapp.lastError}</p> : null}
+              {/*
+                Bağlantı kontrolü: Meta'ya "bu numarayı tanıyor musun" diye
+                sorar ve ham cevabı gösterir. Gelen kutusu CRM'e taşınırken bu
+                düğme eski sayfada kalıp hiçbir yere bağlanmamıştı — işlem
+                kodda duruyordu ama çağıran yoktu, yani anahtar sorunlarını
+                panelden görmenin yolu yine kapalıydı.
+  
+                Kurumun kendi numarası bağlı olmasa da anlamlı: o durumda
+                mesajlar Arvo'nun ortak numarasından gidiyor ve asıl
+                sorgulanması gereken anahtar o.
+              */}
+              <div className="wide panel-form-actions">
+                <form action={arvoWhatsappKontrol}>
+                  <button className="panel-secondary" type="submit">Bağlantı kontrolü</button>
+                </form>
               </div>
-              <span className="status-pill" data-tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}>
-                {whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
-              </span>
-            </div>
-            {whatsapp.available ? (
-              <form className="panel-form" action={saveWhatsappAccount}>
-                <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
-                <label>Numara kimliği (phone number ID)<input name="phone_number_id" inputMode="numeric" required defaultValue={whatsapp.phoneNumberId ?? ""} autoComplete="off" /></label>
-                <label className="wide">Kalıcı erişim anahtarı<input name="access_token" type="password" autoComplete="new-password" required placeholder={whatsapp.connected ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
-                <p className="wide stg-paytr-note">
-                  Bu değerler Meta Business → WhatsApp Manager → API Kurulumu ekranında yer alır. Anahtar şifreli saklanır, ekranda bir daha gösterilmez.
-                  Bağlarken numara Meta&apos;ya sorulur; anahtar yanlışsa kayıt hiç yazılmaz. Numara bağlamayan kurumların mesajları Arvo&apos;nun ortak numarasından gider.
-                </p>
-                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{whatsapp.connected ? "Güncelle" : "Numarayı bağla"}</button></div>
-              </form>
-            ) : (
-              <p className="stg-muted"><StgIcon name="lock" size={16} />WhatsApp için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
-            )}
-            {whatsapp.connected ? (
-              <div className="stg-paytr-foot">
-                <span>İşletme adı: <b>{whatsapp.verifiedName ?? "—"}</b></span>
-                <span>Son doğrulama: <b>{paytrDate(whatsapp.lastVerifiedAt)}</b></span>
-                <form action={verifyWhatsappAccount}><button className="panel-secondary" type="submit">Yeniden doğrula</button></form>
-                <form action={removeWhatsappAccount}><button className="panel-secondary" type="submit">Bağlantıyı kaldır</button></form>
+              <div className="stg-list">
+                <StgLinkRow href="/panel/crm/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Sohbetler CRM altına taşındı; müşterinin talebi ve teklifinin yanında" />
               </div>
-            ) : null}
-            {whatsapp.lastError ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {whatsapp.lastError}</p> : null}
-            {/*
-              Bağlantı kontrolü: Meta'ya "bu numarayı tanıyor musun" diye
-              sorar ve ham cevabı gösterir. Gelen kutusu CRM'e taşınırken bu
-              düğme eski sayfada kalıp hiçbir yere bağlanmamıştı — işlem
-              kodda duruyordu ama çağıran yoktu, yani anahtar sorunlarını
-              panelden görmenin yolu yine kapalıydı.
-
-              Kurumun kendi numarası bağlı olmasa da anlamlı: o durumda
-              mesajlar Arvo'nun ortak numarasından gidiyor ve asıl
-              sorgulanması gereken anahtar o.
-            */}
-            <div className="wide panel-form-actions">
-              <form action={arvoWhatsappKontrol}>
-                <button className="panel-secondary" type="submit">Bağlantı kontrolü</button>
-              </form>
             </div>
-            <div className="stg-list">
-              <StgLinkRow href="/panel/crm/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Sohbetler CRM altına taşındı; müşterinin talebi ve teklifinin yanında" />
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
         {integrations.length
           ? <div className="stg-list">{integrations.map((module) => <StgLinkRow key={module.code} href={`/panel/${module.code}`} icon="plug" tone="info" title={module.name} note="Etkin" />)}</div>
           : <div className="stg-empty"><StgIcon name="plug" size={22} /><p>Etkin entegrasyon bulunmuyor.</p></div>}

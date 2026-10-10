@@ -290,3 +290,24 @@
   .os-root .ayar-ray a{width:auto}
   .ayar-panel{max-height:none;overflow:visible;padding-right:0}
 }
+
+/*
+  ENTEGRASYON KARTLARI YAN YANA.
+
+  Ölçüt PENCERE değil PANELİN KENDİ GENİŞLİĞİ (container query): sekme
+  rayı ve kart iç boşlukları yüzünden panel, pencereden ~300 piksel
+  dar. Pencereye bakan bir kırılma noktası 1000 piksellik ekranda "iki
+  sütun" diyor, panel 690 piksel olduğu için kartlar eziliyordu.
+
+  İki sütuna geçince sağlayıcı formu tek sütuna iniyor: 340 piksellik
+  kartta yan yana iki alan, her birine 160 piksel demek.
+
+  align-items:start — kartların boyu farklı, kısa olan uzayıp boş yer
+  kaplamasın.
+*/
+.ayar-panel{container-type:inline-size}
+.stg-baglanti-izgara{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4);align-items:start}
+@container (min-width:620px){
+  .stg-baglanti-izgara{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stg-baglanti-izgara .panel-form{grid-template-columns:minmax(0,1fr)}
+}
