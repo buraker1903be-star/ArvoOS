@@ -64,6 +64,23 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   (kurumun kendi numarası mı Arvo'nunki mi) kapıdadır; ürün seçmez. Meta'nın
   kuralı gereği iş tarafının başlattığı mesaj onaylı şablonla gider, serbest
   metin yalnızca müşterinin son mesajından sonraki 24 saat içinde.
+- **Silme engeli, kaskat yüzeyi kadar geniş olmalı.** Bir kaydı silmeden
+  önce "bağlı kayıt var mı" diye bakan kontrol, veritabanının o silmeyle
+  BİRLİKTE götürdüğü her şeyi kapsamalı. Sözleşmede engel yalnızca işe ve
+  ödeme planına bakıyordu; oysa kaskat maliyet kalemlerini, ek sözleşmeyi
+  ve müşteri yazışmasını da siliyordu (10.10.2026). Yeni bir yabancı
+  anahtar eklerken silme engelini de gözden geçirin;
+  `tests/db/sozlesme-silme-bagimliliklari.test.mjs` kaskatın hâlâ var
+  olduğunu sabitliyor.
+- **Engelin sorgusu hata yutmaz.** `if (bagli?.length)` kalıbında sorgu
+  düştüğünde `data` undefined kalıyor ve koşul yanlış çıkıyor: engel AÇIK
+  GEÇİYOR. Bir engelin okunamaması "engel yok" demek değil; hatayı okuyup
+  fırlatın. Teklif ve sözleşme silmede iki kez böyleydi.
+- **Müşteri yazışması olan sözleşme silinmez.** Kurum sahibinin kararı
+  (10.10.2026): yazışma kurumun müşteriyle arasındaki kayıt, bir sözleşme
+  kaydından daha kalıcı. Panelde mesaj silme olmadığı için engel bir
+  çıkmaz değil, yönlendirme: yanlış açılan sözleşme silinmek yerine
+  "İptal" durumuna alınıyor.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata
