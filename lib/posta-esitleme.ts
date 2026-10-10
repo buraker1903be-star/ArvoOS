@@ -571,6 +571,40 @@ async function turuKos(organizationId: string, kutuAdresi: string): Promise<stri
   return null;
 }
 
+/*
+  EŞİTLEME DURUMU BİLDİRİMİ.
+
+  Hata şimdiye kadar yalnızca hesabın üstüne yazılıyordu: posta
+  sayfasının yan kartında ve Ayarlar'da görünüyor ama oraya her gün
+  kimse bakmıyor. Kutu sessizce bayatlıyor ve bunu çoğu zaman müşteri
+  "cevap vermediniz" dediğinde öğreniliyor.
+
+  Bildirim kuruma bırakılıyor (kişiye değil): kutu ortak ve kimin
+  ilgileneceği baştan belli değil. Yazma hatası yutuluyor — bildirim
+  yüzünden eşitleme turunu düşürmek, asıl işi ikincil bir yüzünden
+  feda etmek olurdu.
+*/
+async function esitlemeDurumunuDuyur(
+  organizationId: string,
+  durum: "durdu" | "duzeldi",
+  sebep: string | null,
+) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const { error } = await admin.from("notifications").insert({
+    organization_id: organizationId,
+    audience: "organization",
+    category: "posta_esitleme",
+    title: durum === "durdu" ? "Posta eşitlemesi durdu" : "Posta eşitlemesi düzeldi",
+    message: durum === "durdu"
+      ? `Ortak kutu güncellenemiyor: ${(sebep ?? "").slice(0, 160)}`
+      : "Ortak kutu yeniden güncelleniyor.",
+    action_url: "/panel/posta",
+    metadata: { durum },
+  });
+  if (error) console.error("[posta] eşitleme bildirimi yazılamadı:", error.message);
+}
+
 /** Bağlı bütün kurumların kutusunu eşitler (zamanlayıcı). */
 export async function postalariEsitle(): Promise<EsitlemeSonucu> {
   const admin = createAdminClient();
@@ -578,13 +612,15 @@ export async function postalariEsitle(): Promise<EsitlemeSonucu> {
 
   const { data: hesaplar, error } = await admin
     .from("mail_accounts")
-    .select("organization_id,email")
+    .select("organization_id,email,last_error")
     .eq("status", "bagli");
   if (error) return { durum: "basarisiz", kurum: 0, mesaj: 0, hatalar: ["Posta hesapları okunamadı: " + error.message] };
 
   const hatalar: string[] = [];
   for (const hesap of hesaplar ?? []) {
-    const hata = await kurumPostasiniEsitle(hesap.organization_id as string, hesap.email as string);
+    const organizationId = hesap.organization_id as string;
+    const oncedenHataliydi = Boolean(hesap.last_error);
+    const hata = await kurumPostasiniEsitle(organizationId, hesap.email as string);
     if (hata) {
       hatalar.push(`${hesap.email}: ${hata}`);
       /* Hata hesabın üstüne yazılıyor: ayarlar ekranı sebebini gösteriyor.
@@ -592,7 +628,18 @@ export async function postalariEsitle(): Promise<EsitlemeSonucu> {
          uyarı olmadan bırakırdı. */
       await admin.from("mail_accounts")
         .update({ last_error: hata, updated_at: new Date().toISOString() })
-        .eq("organization_id", hesap.organization_id as string);
+        .eq("organization_id", organizationId);
+      /* Yalnızca DURUM DEĞİŞİNCE haber veriliyor: zamanlayıcı on dakikada
+         bir koşuyor, her turda bildirim bırakmak çekmeceyi aynı satırla
+         doldururdu. */
+      if (!oncedenHataliydi) {
+        await esitlemeDurumunuDuyur(organizationId, "durdu", hata);
+      }
+    } else if (oncedenHataliydi) {
+      /* Düzeldiğini de söylemek gerekiyor: "durdu" bildirimi çekmecede
+         dururken kutu yeniden akmaya başlarsa, kullanıcı hâlâ bozuk
+         sanır. Başarılı tur last_error'ı zaten temizliyor. */
+      await esitlemeDurumunuDuyur(organizationId, "duzeldi", null);
     }
   }
 
