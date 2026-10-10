@@ -514,9 +514,17 @@ async function deleteContract__impl(formData: FormData) {
   const contractId = text(formData, "contract_id", 80);
   if (!contractId) throw new Error("Sözleşme seçilmedi.");
 
-  // maybeSingle() birden fazla satırda hata döner ve data null olur;
-  // bu da kontrolü atlatırdı. limit(1) ile yalnızca varlığa bakıyoruz.
-  const [{ data: linkedWorkflow }, { data: linkedPlan }] = await Promise.all([
+  /*
+    maybeSingle() birden fazla satırda hata döner ve data null olur; bu
+    da kontrolü atlatırdı. limit(1) ile yalnızca varlığa bakıyoruz.
+
+    HATALAR DA OKUNUYOR: sorgu düştüğünde data undefined kalıyor ve
+    koşul yanlış çıkıyordu, yani kontrol AÇIK GEÇİYOR ve bağlı işi
+    olan sözleşme siliniyordu — iş, prim ve tahsilat kayıtları
+    sözleşmeye dayandığı için öksüz kalırdı. Bir engelin okunamaması
+    "engel yok" demek değil.
+  */
+  const [{ data: linkedWorkflow, error: workflowError }, { data: linkedPlan, error: planError }] = await Promise.all([
     supabase
       .from("operation_workflows")
       .select("id")
@@ -530,6 +538,10 @@ async function deleteContract__impl(formData: FormData) {
       .eq("organization_id", membership.organization_id)
       .limit(1),
   ]);
+  if (workflowError)
+    throw new Error("Sözleşmeye bağlı iş olup olmadığı okunamadı: " + workflowError.message);
+  if (planError)
+    throw new Error("Sözleşmeye bağlı ödeme planı olup olmadığı okunamadı: " + planError.message);
   if (linkedWorkflow?.length)
     throw new Error(
       "Bu sözleşmeye bağlı bir operasyon işi var; iş, prim ve tahsilat kayıtları sözleşmeye dayandığı için sözleşme silinemez.",

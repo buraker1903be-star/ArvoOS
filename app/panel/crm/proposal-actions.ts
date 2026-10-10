@@ -461,12 +461,20 @@ async function deleteProposal__impl(formData: FormData) {
   const proposalId = text(formData, "proposal_id", 80);
   if (!proposalId) throw new Error("Teklif seçilmedi.");
 
-  const { data: linkedContract } = await supabase
+  /*
+    Hata OKUNUYOR: bu bir güvenlik kontrolü ve sorgu düştüğünde
+    linkedContract undefined kalıyor, koşul da yanlış çıkıyordu — yani
+    kontrol AÇIK GEÇİYOR ve sözleşmesi olan teklif siliniyordu. Bir
+    engelin okunamaması "engel yok" demek değil.
+  */
+  const { data: linkedContract, error: linkedError } = await supabase
     .from("crm_contracts")
     .select("id")
     .eq("proposal_id", proposalId)
     .eq("organization_id", membership.organization_id)
     .limit(1);
+  if (linkedError)
+    throw new Error("Teklife bağlı sözleşme olup olmadığı okunamadı: " + linkedError.message);
   if (linkedContract?.length)
     throw new Error(
       "Bu teklife bağlı bir sözleşme var, önce sözleşmeyi silin veya bu teklifi silmeyin.",
