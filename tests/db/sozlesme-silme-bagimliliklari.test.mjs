@@ -8,8 +8,12 @@
    - operation_workflows.contract_id → ON DELETE SET NULL: iş kaydı
      kalıyor ama sözleşmesini kaybediyor. Tutar, prim ve tahsilat
      sözleşmeye dayandığı için iş öksüz kalır.
-   - payment_plans.contract_id → ON DELETE CASCADE: ödeme planı
-     tamamen gidiyor, yani tahsilat takvimi siliniyor.
+   - contract_cost_items, crm_contract_addenda → CASCADE: kurumun
+     girdiği maliyet verisi ve hukuki ek siliniyor.
+
+  10.10.2026'da iki kaskat veritabanında da sıkılaştırıldı
+  (20261010165903): ödeme planı ve müşteri yazışması varken silme artık
+  veritabanı tarafından REDDEDİLİYOR.
 
   10.10.2026'da paneldeki engel AÇIK GEÇİYORDU: bağlı kaydı arayan
   sorgunun hatası okunmuyordu ve sorgu düştüğünde "bağlı kayıt yok"
@@ -17,7 +21,9 @@
 */
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { islem, rol, veritabani } from "./ortam.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const KURUM = "00000000-0000-4000-8000-00000000d1a1";
 const SAHIP = "00000000-0000-4000-8000-00000000d1b1";
@@ -28,6 +34,9 @@ const TEKLIF = "00000000-0000-4000-8000-00000000d1c3";
 let db;
 before(async () => {
   db = await veritabani();
+  // Yeni kaskat kuralları anlık görüntüye girene kadar buradan kuruluyor.
+  await db.exec(fs.readFileSync(
+    path.resolve(import.meta.dirname, "../../supabase/migrations/20261010165903_sozlesme_silme_kaskatlari.sql"), "utf8"));
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','sahip@x.com');
@@ -73,22 +82,27 @@ describe("sözleşme silinince bağlı kayıtlar", () => {
       assert.equal(rows.length, 0, "maliyet kalemi silinmedi (kural değişmişse panel engeli gözden geçirilmeli)");
     }));
 
-  test("müşteri yazışması da siliniyor (CASCADE) — panel bu yüzden engelliyor", async () =>
+  test("yazışma varken sözleşme silinemiyor (RESTRICT)", async () =>
     islem(db, async () => {
-      /* Kurum sahibinin kararı (10.10.2026): yazışma silinmemeli, o
-         yüzden yazışması olan sözleşme panelden SİLİNEMİYOR
-         (contract-actions.ts). Bu test kaskatın hâlâ var olduğunu, yani
-         engelin hâlâ gerekli olduğunu sabitliyor. */
+      /* Kurum sahibinin kararı (10.10.2026): yazışma silinmemeli.
+         contract_id NOT NULL olduğu için SET NULL kullanılamıyor;
+         koruma ancak silmeyi reddederek sağlanıyor. Panel aynı engeli
+         daha anlaşılır bir mesajla veriyor. */
       await rol(db, "postgres");
       const { rows: mesaj } = await db.query(
         `insert into public.customer_file_messages (organization_id,contract_id,sender_type,sender_name,body)
          values ($1,$2,'customer','Ayşe','Merhaba') returning id`, [KURUM, SOZLESME]);
-      await db.query(`delete from public.crm_contracts where id = $1`, [SOZLESME]);
+      await reddedilir(
+        db,
+        `delete from public.crm_contracts where id = $1`,
+        [SOZLESME],
+        /violates foreign key constraint|customer_file_messages_contract_id_fkey/i,
+      );
       const { rows } = await db.query(`select id from public.customer_file_messages where id = $1`, [mesaj[0].id]);
-      assert.equal(rows.length, 0, "yazışma silinmedi (kaskat kalktıysa panel engeli gevşetilebilir)");
+      assert.equal(rows.length, 1, "müşteri yazışması silindi");
     }));
 
-  test("ödeme planı tamamen siliniyor (CASCADE)", async () =>
+  test("ödeme planı varken sözleşme silinemiyor (RESTRICT)", async () =>
     islem(db, async () => {
       await rol(db, "postgres");
       const { rows: cari } = await db.query(
@@ -97,8 +111,13 @@ describe("sözleşme silinince bağlı kayıtlar", () => {
       const { rows: plan } = await db.query(
         `insert into public.payment_plans (organization_id,contract_id,party_id,total_amount,currency,status,created_by)
          values ($1,$2,$3,100000,'TRY','active',$4) returning id`, [KURUM, SOZLESME, cari[0].id, SAHIP]);
-      await db.query(`delete from public.crm_contracts where id = $1`, [SOZLESME]);
+      await reddedilir(
+        db,
+        `delete from public.crm_contracts where id = $1`,
+        [SOZLESME],
+        /violates foreign key constraint|payment_plans_contract_id_fkey/i,
+      );
       const { rows } = await db.query(`select id from public.payment_plans where id = $1`, [plan[0].id]);
-      assert.equal(rows.length, 0, "ödeme planı silinmedi (kural değişmişse panel engeli gözden geçirilmeli)");
+      assert.equal(rows.length, 1, "ödeme planı silindi; tahsilat takvimi kayboluyor");
     }));
 });
