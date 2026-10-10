@@ -1,4 +1,4 @@
-import { StgIcon } from "./settings-ui";
+import { StgBaglanti, StgIcon } from "./settings-ui";
 import { removeProviderSettings, saveProviderSettings } from "../finance/odeme-saglayici-actions";
 import type { ProviderStatus } from "@/lib/payments/durum";
 
@@ -29,11 +29,7 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
   const durum = rozet(status);
 
   return (
-    <div className="stg-paytr">
-      <div className="stg-paytr-head">
-        <div><b>{spec.name}</b><small>{spec.description}</small></div>
-        <span className="status-pill" data-tone={durum.tone}>{durum.text}</span>
-      </div>
+    <StgBaglanti ad={spec.name} not={spec.description} durum={durum.text} tone={durum.tone}>
 
       {status.readFailed ? (
         <p className="stg-muted">
@@ -126,6 +122,6 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
           </form>
         </div>
       ) : null}
-    </div>
+    </StgBaglanti>
   );
 }

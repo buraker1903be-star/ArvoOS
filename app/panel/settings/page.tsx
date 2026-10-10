@@ -5,7 +5,7 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
 import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
-import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
+import { StgBaglanti, StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
@@ -322,18 +322,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <OdemeSaglayiciKarti key={status.spec.code} status={status} />
           ))}
           {posta ? (
-            <div className="stg-paytr" id="posta">
-              <div className="stg-paytr-head">
-                <div>
-                  <b>Ortak posta kutusu (Gmail)</b>
-                  <small>Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar. Gelen kutusu ve yanıtlama sonraki aşamada açılır.</small>
-                </div>
-                <span className="status-pill" data-tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}>
-                  {posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
-                    : posta.durum === "hata" ? "Yetkilendirme düştü"
-                    : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
-                </span>
-              </div>
+            <StgBaglanti
+              id="posta"
+              ad="Ortak posta kutusu (Gmail)"
+              not="Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar."
+              tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}
+              durum={posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
+                : posta.durum === "hata" ? "Yetkilendirme düştü"
+                : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
+            >
               {posta.kullanilabilir ? (
                 <>
                   <form className="panel-form" action={savePostaHesabi}>
@@ -376,19 +373,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <p className="stg-muted"><StgIcon name="lock" size={16} />Posta için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
               )}
               {posta.sonHata ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {posta.sonHata}</p> : null}
-            </div>
+            </StgBaglanti>
           ) : null}
           {whatsapp ? (
-            <div className="stg-paytr">
-              <div className="stg-paytr-head">
-                <div>
-                  <b>WhatsApp ile mesaj</b>
-                  <small>Kendi WhatsApp Business numaranızı bağlayın; teklif, sözleşme, sipariş ve randevu mesajları müşterinize sizin numaranızdan gitsin.</small>
-                </div>
-                <span className="status-pill" data-tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}>
-                  {whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
-                </span>
-              </div>
+            <StgBaglanti
+              ad="WhatsApp ile mesaj"
+              not="Kendi WhatsApp Business numaranızı bağlayın; mesajlar sizin numaranızdan gitsin."
+              tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}
+              durum={whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
+            >
               {whatsapp.available ? (
                 <form className="panel-form" action={saveWhatsappAccount}>
                   <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
@@ -431,7 +424,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <div className="stg-list">
                 <StgLinkRow href="/panel/crm/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Sohbetler CRM altına taşındı; müşterinin talebi ve teklifinin yanında" />
               </div>
-            </div>
+            </StgBaglanti>
           ) : null}
         </div>
         {integrations.length

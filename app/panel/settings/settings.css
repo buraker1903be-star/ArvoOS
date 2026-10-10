@@ -306,8 +306,39 @@
   kaplamasın.
 */
 .ayar-panel{container-type:inline-size}
-.stg-baglanti-izgara{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4);align-items:start}
+/* Kapalı kutular aynı satırda eşit boyda (stretch): biri iki
+   satırlık açıklama taşıyınca öteki kısa kalıp satırı tırtıklı
+   gösteriyordu. */
+.stg-baglanti-izgara{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
 @container (min-width:620px){
   .stg-baglanti-izgara{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .stg-baglanti-izgara .panel-form{grid-template-columns:minmax(0,1fr)}
 }
+
+/*
+  Kapalıyken ad, durum ve bir cümle; açıkken tüm genişlik. Açılan
+  kutunun sütunu aşması bilinçli: içinde altı alanlık bir form var ve
+  yarım sütunda okunmuyor (ilk deneme tam bu yüzden "olmamış"tı).
+*/
+.stg-baglanti{
+  min-width:0;border:1px solid var(--line-soft);border-radius:var(--r-md);
+  background:var(--surface-2);overflow:hidden}
+.stg-baglanti[open]{grid-column:1/-1;background:var(--surface);border-color:var(--line)}
+.stg-baglanti>summary{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);cursor:pointer;list-style:none}
+.stg-baglanti>summary::-webkit-details-marker{display:none}
+.stg-baglanti>summary:hover{background:color-mix(in srgb,var(--accent-soft) 35%,transparent)}
+.stg-baglanti>summary:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
+.stg-baglanti-ad{min-width:0;display:flex;flex-direction:column;gap:2px}
+.stg-baglanti-ad b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+/* Açıklama iki satırda kesiliyor: kapalı kutular aynı boyda kalsın. */
+.stg-baglanti-ad small{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  color:var(--muted);font-size:var(--fs-micro);line-height:1.45}
+/* Durum rozeti adın üstüne binmesin: bağlı posta kutusunun rozeti
+   adresi taşıyor ve uzun; yarıdan fazlasını alınca "Ortak posta
+   kutusu" başlığı kelime kelime alt alta düşüyordu. */
+.stg-baglanti>summary .status-pill{flex:none;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stg-baglanti-ad b{overflow-wrap:anywhere}
+.stg-baglanti-govde{display:flex;flex-direction:column;gap:var(--sp-4);padding:0 var(--sp-4) var(--sp-4)}
+.stg-baglanti-govde>.stg-paytr-foot{margin-top:0}

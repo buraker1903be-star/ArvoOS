@@ -101,3 +101,32 @@ export function StgLinkRow({ href, icon, tone = "neutral", title, note }: { href
 export function StgReadOnly() {
   return <span className="stg-readonly"><StgIcon name="lock" size={14} />Salt okunur</span>;
 }
+
+/*
+  BAĞLANTI KUTUSU (ödeme sağlayıcısı, posta kutusu, WhatsApp).
+
+  Üçü de birer FORM ve altı yedi alanla uzun. Hepsi birden açık
+  dizildiğinde sekme birkaç ekran boyuna çıkıyordu; iki sütuna almak
+  ise formları 336 piksele sıkıştırdı — başlıklar dört satıra bölündü,
+  yer tutucular kesildi ve kartlar daha da uzadı (10.10.2026, kurum
+  sahibi "olmamış" dedi, haklıydı).
+
+  Kapalıyken yalnızca ad, durum ve bir cümle: bağlantılar tek ekranda
+  yan yana görünüyor. Açılan kutu TÜM GENİŞLİĞİ kaplıyor, form da
+  eski rahatlığına dönüyor.
+
+  <details>: JavaScript yok, klavyeyle açılıyor, sunucuda çiziliyor.
+*/
+export function StgBaglanti({ id, ad, not, durum, tone, acik = false, children }: {
+  id?: string; ad: string; not: ReactNode; durum: ReactNode; tone: StgTone; acik?: boolean; children: ReactNode;
+}) {
+  return (
+    <details className="stg-baglanti" id={id} open={acik}>
+      <summary>
+        <span className="stg-baglanti-ad"><b>{ad}</b><small>{not}</small></span>
+        <span className="status-pill" data-tone={tone}>{durum}</span>
+      </summary>
+      <div className="stg-baglanti-govde">{children}</div>
+    </details>
+  );
+}
