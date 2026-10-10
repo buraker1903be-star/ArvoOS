@@ -5,6 +5,7 @@ import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
 import { konusmaDurumu, konusmaEtiketi, konusmayaYanitla, konusmayiGeriAl, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
 import { HazirCevapSec } from "../hazir-cevap-sec";
+import { PostaGovde } from "../posta-govde";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -241,8 +242,9 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
                   ) : null}
                 </span>
               </header>
-              {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor. */}
-              <p className="posta-govde">{icerikler.get(mesaj.message_id)?.govde || "(boş mesaj)"}</p>
+              {/* Düz metin: gönderenin HTML'i panelde çalıştırılmıyor.
+                  Alıntılanan geçmiş katlı, imza soluk (posta-govde.tsx). */}
+              <PostaGovde metin={icerikler.get(mesaj.message_id)?.govde ?? ""} />
               {/*
                 Ekler panelden iniyor. Eskiden yalnızca "ekli dosya var"
                 yazıyordu ve dosyayı almak için Gmail'e geçmek gerekiyordu —

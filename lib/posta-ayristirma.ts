@@ -119,11 +119,38 @@ export function mesajiCoz(ham: GmailMesaji, kutuAdresi: string): CozulmusMesaj |
   };
 }
 
+/*
+  HTML VARLIKLARI.
+
+  Eskiden altı varlık elle çözülüyordu ve gerisi ekranda ham kalıyordu:
+  Türkçe postalarda "&uuml;", "&ccedil;" ve özellikle sayısal biçim
+  ("&#8217;", "&#x27;") sık geçiyor — gelen kutusunda cümlenin ortasında
+  "mü&scedil;teri" yazıyordu. Sayısal biçim genel olarak çözülüyor, adlı
+  olanların yaygınları tabloda; tanınmayan varlık olduğu gibi bırakılıyor
+  (yanlış tahmin, metni bozmaktan beter).
+*/
+const VARLIKLAR: Record<string, string> = {
+  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+  hellip: "…", mdash: "—", ndash: "–", minus: "−", bull: "•", middot: "·",
+  rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", laquo: "«", raquo: "»",
+  euro: "€", pound: "£", cent: "¢", copy: "©", reg: "®", trade: "™", deg: "°",
+  uuml: "ü", Uuml: "Ü", ouml: "ö", Ouml: "Ö", ccedil: "ç", Ccedil: "Ç",
+  auml: "ä", Auml: "Ä", szlig: "ß", eacute: "é", egrave: "è", agrave: "à",
+  /* Görünmez karakterler: pazarlama postaları önizleme metnini bunlarla
+     dolduruyor, çözülmezse gövdede boşluk yığını oluyor. */
+  shy: "", zwnj: "", zwj: "", ensp: " ", emsp: " ", thinsp: " ",
+};
+
 function htmlVarliklariniCoz(metin: string): string {
-  return metin
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+  return metin.replace(/&(#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,8});/g, (tam, ad: string) => {
+    if (ad.startsWith("#")) {
+      const onaltilik = ad[1] === "x" || ad[1] === "X";
+      const kod = onaltilik ? Number.parseInt(ad.slice(2), 16) : Number.parseInt(ad.slice(1), 10);
+      if (!Number.isFinite(kod) || kod <= 0 || kod > 0x10ffff) return tam;
+      try { return String.fromCodePoint(kod); } catch { return tam; }
+    }
+    return VARLIKLAR[ad] ?? VARLIKLAR[ad.toLowerCase()] ?? tam;
+  });
 }
 
 /* Rozet, ek LİSTESİYLE aynı kaynaktan: iki ayrı tanım, imza logosunu
@@ -188,15 +215,52 @@ function parcaBul(parca: GmailParca | undefined, mime: string): string {
   return "";
 }
 
-/** Etiketleri atar, satır yapısını korur. Gösterim düz metin olacak. */
+/*
+  HTML → OKUNABİLİR METİN.
+
+  Gösterim düz metin (yukarıdaki gerekçe), ama "etiketleri sil"
+  yetmiyordu; gelen kutusunda okunan şey çoğu zaman bu metin:
+
+  - BAĞLANTININ ADRESİ KAYBOLUYORDU. "Siparişinizi görüntüleyin" yazan
+    bir düğmeden geriye yalnızca o cümle kalıyordu; müşterinin yolladığı
+    ödeme ya da belge bağlantısına ulaşmanın tek yolu Gmail'e geçmekti.
+    Artık adres metnin yanında duruyor.
+  - KOŞULLU YORUMLAR sızıyordu: Outlook için yazılan <!--[if mso]> blokları
+    ">" içerdiği için etiket süzgecinden geçiyor ve gövdenin başına
+    anlamsız biçim kodu düşüyordu.
+  - <head> ve <title> içeriği gövdeye karışıyordu.
+  - TABLO HÜCRELERİ birbirine yapışıyordu ("Ürün Adet Tutar" yerine
+    "ÜrünAdetTutar"); pazarlama ve fatura postalarının tamamı tablo.
+  - Liste maddeleri ayrışmıyordu.
+
+  Sıra önemli: varlıklar EN SONDA çözülüyor. Önce çözülseydi "&lt;b&gt;"
+  yazan bir metin etikete dönüşüp süzgece yem olurdu.
+*/
+const GORUNMEZ = /[\u200b-\u200d\u2060\ufeff]/g;
+
 export function htmlDenMetin(html: string): string {
   return html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(script|style|head|title)\b[\s\S]*?<\/\1>/gi, " ")
+    /* Bağlantı: görünen metin + adres. Adres metnin içinde zaten
+       geçiyorsa iki kez yazılmıyor. */
+    .replace(/<a\b[^>]*\bhref=["']?(https?:\/\/[^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a>/gi, (_tam, adres: string, ic: string) => {
+      const metin = ic.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (!metin) return ` ${adres} `;
+      return metin.includes(adres) || adres.includes(metin) ? ` ${metin} ` : `${metin} (${adres})`;
+    })
+    .replace(/<li\b[^>]*>/gi, "\n• ")
+    .replace(/<(br|hr)\b[^>]*\/?>/gi, "\n")
+    /* li kapanışı listede YOK: açılışı zaten satır başı açıyor, ikisi
+       birden her madde arasına boş satır koyuyordu. */
+    .replace(/<\/(p|div|tr|h[1-6]|blockquote|table|ul|ol|section|article)>/gi, "\n")
+    .replace(/<\/t[dh]>/gi, "  ")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(GORUNMEZ, "")
+    /* Varlıklar etiketler SİLİNDİKTEN sonra, boşluk sadeleştirmesinden
+       ÖNCE: "&nbsp;" ile doldurulmuş bir satır çözülmeden sadeleşirse
+       geriye boşluk yığını kalıyordu. */
+    .split("\n").map((satir) => htmlVarliklariniCoz(satir).replace(/[ \t\u00a0]+/g, " ").trim()).join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

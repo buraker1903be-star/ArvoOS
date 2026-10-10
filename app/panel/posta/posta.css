@@ -22,6 +22,31 @@
 
 /* Gövde düz metin: satır sonları korunuyor, uzun bağlantılar taşmıyor. */
 .posta-govde{margin:0;color:var(--ink);font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.posta-govde p{margin:0}
+.posta-govde a{color:var(--accent-strong);text-decoration:underline;text-underline-offset:2px}
+.posta-govde-bos{color:var(--muted)}
+/* İmza soluk: okunan şey mesaj, imza değil. Silinmiyor — kimin yazdığı
+   ve hangi unvanla yazdığı ortak kutuda bilgi. */
+/* Seçici gövde paragrafından daha belirgin: ".posta-govde p{margin:0}"
+   aynı belirginlikte ve sonra geldiği için boşluğu siliyordu. */
+.posta-govde>.posta-govde-imza{margin-top:14px;color:var(--muted);font-size:13px}
+/*
+  Alıntılanan geçmiş katlı. <details> JavaScript istemiyor ve klavyeyle
+  açılıyor; açıldığında metin sola çekilmiş bir şeritle duruyor ki
+  mesajın kendisiyle karışmasın.
+*/
+.posta-govde-alinti{margin-top:12px}
+.posta-govde-alinti>summary{
+  display:inline-flex;align-items:center;gap:6px;width:fit-content;padding:3px 10px;
+  border:1px solid var(--line-soft);border-radius:var(--r-pill);background:var(--surface);
+  color:var(--muted);font-size:12.5px;cursor:pointer;list-style:none}
+.posta-govde-alinti>summary::-webkit-details-marker{display:none}
+.posta-govde-alinti>summary::before{content:"▾";font-size:11px;line-height:1}
+.posta-govde-alinti[open]>summary::before{content:"▴"}
+.posta-govde-alinti>summary:hover{color:var(--ink);border-color:var(--line)}
+.posta-govde-alinti>p{
+  margin-top:10px;padding-left:12px;border-left:2px solid var(--line);
+  color:var(--muted);font-size:13px}
 
 .posta-not{margin:16px 0 0;color:var(--muted);font-size:13px}
 

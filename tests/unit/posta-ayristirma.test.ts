@@ -267,3 +267,42 @@ test("Content-ID taşımayan inline dosya ek sayılmaya devam ediyor", () => {
   });
   assert.deepEqual(ekler.map((ek) => ek.dosyaAdi), ["sozlesme.pdf"]);
 });
+
+test("HTML postada bağlantının adresi kaybolmuyor", () => {
+  /* "Siparişinizi görüntüleyin" yazan bir düğmeden geriye yalnızca o
+     cümle kalıyordu; müşterinin yolladığı ödeme bağlantısına ulaşmanın
+     tek yolu Gmail'e geçmekti. */
+  assert.equal(
+    htmlDenMetin('<p>Teklif hazır: <a href="https://arvo-os.com/teklif/ab12" style="color:red">Görüntüle</a></p>'),
+    "Teklif hazır: Görüntüle (https://arvo-os.com/teklif/ab12)",
+  );
+  // Adres zaten metin olarak yazıyorsa iki kez yazılmıyor.
+  assert.equal(
+    htmlDenMetin('<a href="https://x.com/a">https://x.com/a</a>'),
+    "https://x.com/a",
+  );
+});
+
+test("HTML postadan biçim kodu ve gizli metin sızmıyor", () => {
+  // Outlook için yazılan koşullu yorum ">" içerdiği için etiket
+  // süzgecinden geçiyor ve gövdenin başına anlamsız kod düşüyordu.
+  const html = `<!--[if mso]><style>.x{color:red}</style><![endif]-->
+    <head><title>Gizli başlık</title></head>
+    <body><span>&#8203;&zwnj;&nbsp;&shy;</span><p>Merhaba &ccedil;ok te&scedil;ekk&uuml;rler &#8217;</p></body>`;
+  const metin = htmlDenMetin(html);
+  assert.ok(!metin.includes("mso"), metin);
+  assert.ok(!metin.includes("Gizli başlık"), metin);
+  // Tanınan varlıklar çözülüyor, tanınmayan (&scedil;) olduğu gibi kalıyor:
+  // yanlış tahmin metni bozmaktan beter.
+  assert.match(metin, /Merhaba çok te&scedil;ekkürler ’/);
+});
+
+test("tablo hücreleri ve liste maddeleri birbirine yapışmıyor", () => {
+  /* Fatura ve pazarlama postalarının tamamı tablo; hücreler
+     ayrılmadığında "ÜrünAdetTutar" diye tek kelime oluyordu. */
+  assert.equal(
+    htmlDenMetin("<table><tr><td>Ürün</td><td>Adet</td><td>Tutar</td></tr></table>"),
+    "Ürün Adet Tutar",
+  );
+  assert.equal(htmlDenMetin("<ul><li>Bir</li><li>İki</li></ul>"), "• Bir\n• İki");
+});
