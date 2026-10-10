@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { TOKEN_UCU, adresUyusuyorMu, kapsamEksigi, tokenCevabiniOku } from "@/lib/posta-oauth";
+import { varsayilanImza } from "@/lib/posta-imza";
 
 /*
   ORTAK POSTA KUTUSU — bağlantının sunucu tarafı.
@@ -30,12 +31,17 @@ export type PostaDurumu = {
   /* Giden mesajların sonuna eklenen kurum imzası. Ekranda düzenlenebilir;
      gönderime sunucu ekliyor. */
   imza: string | null;
+  /* Gönderime GİDEN imza: kutu boşsa kurumun Ayarlar'daki bilgileri
+     (ad, e-posta, telefon, site). Kutu doluyken ikisi aynı. Eskiden
+     imza kutusu boş olan kurumun postasında kurumdan hiçbir iz
+     kalmıyordu — yalnızca logo ve yazanın adı. */
+  etkinImza: string;
 };
 
 const bos = (kullanilabilir: boolean): PostaDurumu => ({
   kullanilabilir, kayitliMi: false, durum: null, adres: null,
   sonEsitleme: null, sonHata: null, guncellendi: null,
-  gecmisBitti: false, gecmisMesajSayisi: 0, imza: null,
+  gecmisBitti: false, gecmisMesajSayisi: 0, imza: null, etkinImza: "",
 });
 
 export async function postaDurumu(organizationId: string): Promise<PostaDurumu> {
@@ -50,6 +56,24 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
     .maybeSingle();
   if (!data) return bos(kullanilabilir);
 
+  const imza = (data.imza as string | null) ?? null;
+  /* Kurum satırı yalnızca imza kutusu boşken okunuyor: dolu olduğunda
+     ona dokunulmuyor, sorgu da gereksiz. */
+  let etkinImza = (imza ?? "").trim();
+  if (!etkinImza) {
+    const { data: kurum } = await admin
+      .from("organizations")
+      .select("name,display_name,contact_email,contact_phone,website_url")
+      .eq("id", organizationId)
+      .maybeSingle();
+    etkinImza = varsayilanImza({
+      ad: kurum?.display_name || kurum?.name,
+      eposta: kurum?.contact_email,
+      telefon: kurum?.contact_phone,
+      web: kurum?.website_url,
+    });
+  }
+
   return {
     kullanilabilir,
     kayitliMi: true,
@@ -60,7 +84,8 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
     guncellendi: data.updated_at ?? null,
     gecmisBitti: Boolean(data.gecmis_bitti),
     gecmisMesajSayisi: (data.gecmis_mesaj_sayisi as number | null) ?? 0,
-    imza: (data.imza as string | null) ?? null,
+    imza,
+    etkinImza,
   };
 }
 

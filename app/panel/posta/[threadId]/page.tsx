@@ -302,7 +302,7 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
             </div>
             <div className="posta-yanit-alt">
               <small>
-                Ekler toplam en fazla 3 MB. Sonuna adınız{hesap.imza ? ", kurum imzası" : ""}
+                Ekler toplam en fazla 3 MB. Sonuna adınız{hesap.etkinImza ? ", kurum imzası" : ""}
                 {organization.logo_url ? " ve kurum logonuz" : ""} eklenir.
                 {taslak ? ` Kayıtlı taslaktan devam ediyorsunuz (${istanbulTarihSaat(taslak.updated_at)}).` : ""}
               </small>

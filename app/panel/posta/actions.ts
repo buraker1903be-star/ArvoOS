@@ -224,7 +224,7 @@ async function konusmayaYanitla__impl(formData: FormData) {
     konu: mesajlar.find((mesaj) => mesaj.konu)?.konu ?? "",
     govde,
     ekler,
-    imza: hesap.imza,
+    imza: hesap.etkinImza,
     gonderenPersonel: await gonderenPersonelAdi(context.supabase, membership.organization_id, context.userId),
     /* HTML imza: kurumun logosu ve marka rengi. Logoyu gönderim anında
        sunucu indirip mesajın içine gömüyor. */
@@ -432,7 +432,7 @@ async function yeniPostaGonder__impl(formData: FormData): Promise<string> {
     govde,
     opportunityId: firsat,
     ekler,
-    imza: hesap.imza,
+    imza: hesap.etkinImza,
     gonderenPersonel: await gonderenPersonelAdi(context.supabase, membership.organization_id, context.userId),
     /* HTML imza: kurumun logosu ve marka rengi. Logoyu gönderim anında
        sunucu indirip mesajın içine gömüyor. */

@@ -566,7 +566,7 @@ async function odemeBaglantisiniGonder(linkId: string, kanal: "whatsapp" | "epos
          Eskiden bu posta imzasız gidiyordu ve müşteriye kurumun hiçbir
          işareti olmayan, yalnız bir ödeme bağlantısı taşıyan bir mesaj
          olarak düşüyordu. */
-      imza: hesap.imza,
+      imza: hesap.etkinImza,
       gonderenPersonel: await gonderenPersonelAdi(supabase, membership.organization_id, context.userId),
       logoAdresi: organization.logo_url,
       markaRengi: organization.brand_color,

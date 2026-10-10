@@ -562,7 +562,7 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir, kurum }: {
   */
   const onizleme = imzaHtml({
     gonderenAdi: "Yanıtı yazan personelin adı",
-    imza: hesap.imza,
+    imza: hesap.etkinImza,
     logoSrc: kurum.logo,
     logoAlt: kurum.ad,
     renk: kurum.renk,
@@ -596,8 +596,9 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir, kurum }: {
           </label>
           <p className="wide posta-not">
             Giden her mesajın sonuna eklenir; personelin ayrıca yazmasına gerek kalmaz. Yazdığınız kutuda görünmez.
-            İlk satır yanıtı yazan personelin adı olur, üstünde kurum logonuz gider. Boş bırakıp kaydetmek
-            imzayı kaldırır; logo kalır.
+            İlk satır yanıtı yazan personelin adı olur, yanında kurum logonuz gider. Boş bırakırsanız
+            kurumun Ayarlar&apos;daki bilgileri (ad, e-posta, telefon, site) yazılır — aşağıdaki önizleme
+            giden imzanın kendisidir.
           </p>
           {onizleme ? (
             <div className="wide posta-imza-onizleme">

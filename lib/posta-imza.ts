@@ -264,3 +264,31 @@ export function gorselOlculeri(veri: Buffer): { en: number; boy: number } | null
   }
   return null;
 }
+
+/*
+  İMZA BOŞKEN KURUMUN KENDİ BİLGİLERİ.
+
+  İmza serbest metin bir kutuydu ve doldurulmadığında giden postada
+  kurumdan hiçbir iz kalmıyordu: yalnızca logo ve yazanın adı. Oysa
+  kurumun adı, telefonu, e-postası ve sitesi Ayarlar'da zaten kayıtlı —
+  aynı bilgiyi ikinci kez yazdırmak, yazılmayınca da imzasız posta
+  göndermek demekti (10.10.2026).
+
+  Kutuya bir şey yazılmışsa ona DOKUNULMUYOR: kurum imzasını kendi
+  istediği gibi kuruyorsa (unvan, ek satır, yasal uyarı) altına bizim
+  satırlarımızı eklemek onu bozardı.
+
+  Adres "https://" olmadan yazılıyor: imzada şema gürültü, istemciler
+  zaten bağlantıya çeviriyor.
+*/
+export function varsayilanImza(kurum: {
+  ad?: string | null;
+  eposta?: string | null;
+  telefon?: string | null;
+  web?: string | null;
+}): string {
+  const sade = (deger: string | null | undefined) => (deger ?? "").trim();
+  const iletisim = [sade(kurum.eposta), sade(kurum.telefon)].filter(Boolean).join(" · ");
+  const web = sade(kurum.web).replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return [sade(kurum.ad), iletisim, web].filter(Boolean).join("\n");
+}

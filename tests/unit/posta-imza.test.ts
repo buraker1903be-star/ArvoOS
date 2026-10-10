@@ -12,6 +12,7 @@ import {
   logoOlcusu,
   markaRengi,
   metinHtml,
+  varsayilanImza,
 } from "@/lib/posta-imza";
 
 test("gövde HTML'e kaçırılarak giriyor", () => {
@@ -169,4 +170,20 @@ test("HTML gövdede alıntı yoksa blockquote hiç yazılmıyor", () => {
   const sade = htmlGovdesi({ govde: "Tek satır." });
   assert.ok(!sade.includes("<table"));
   assert.match(sade, /Tek satır\./);
+});
+
+test("imza kutusu boşken kurumun kendi bilgileri yazılıyor", () => {
+  /* İmza doldurulmadığında giden postada kurumdan hiçbir iz
+     kalmıyordu: yalnızca logo ve yazanın adı. Bilgi Ayarlar'da zaten
+     kayıtlı. */
+  assert.equal(
+    varsayilanImza({ ad: "Akademik Merkez", eposta: "info@am.com", telefon: "0312 000 00 00", web: "https://akademikmerkez.com/" }),
+    "Akademik Merkez\ninfo@am.com · 0312 000 00 00\nakademikmerkez.com",
+  );
+  // Eksik alanlar satır ya da ayraç bırakmıyor.
+  assert.equal(varsayilanImza({ ad: "Kurum", telefon: "0312" }), "Kurum\n0312");
+  assert.equal(varsayilanImza({ ad: "Kurum" }), "Kurum");
+  assert.equal(varsayilanImza({}), "");
+  // Hiçbir bilgi yoksa imza bloğu da kurulmuyor.
+  assert.equal(imzaHtml({ imza: varsayilanImza({}) }), "");
 });
