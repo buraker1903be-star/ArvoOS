@@ -172,13 +172,18 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
 
   /* Taslaklar ayrı bir kutu: yarım kalmış cevaplar yazışma listesine
-     karışmamalı ama kaybolmamalı da. */
-  const { data: taslakVerisi } = await supabase
+     karışmamalı ama kaybolmamalı da.
+
+     Hata OKUNUYOR: şeritteki sayaç ayrı bir sorgudan geliyor, liste
+     sessizce boş dönünce "Taslaklar 3" yazarken kutu "kayıtlı taslak
+     yok" diyordu — kendi kendiyle çelişen bir ekran. */
+  const { data: taslakVerisi, error: taslakHatasi } = await supabase
     .from("mail_drafts")
     .select("id,thread_id,alici,konu,govde,updated_at,olusturan")
     .eq("organization_id", membership.organization_id)
     .order("updated_at", { ascending: false })
     .limit(50);
+  if (taslakHatasi) throw new Error("Taslaklar okunamadı: " + taslakHatasi.message);
   const taslaklar = (taslakVerisi ?? []) as { id: string; thread_id: string | null; alici: string | null; konu: string | null; govde: string; updated_at: string; olusturan: string | null }[];
 
   // Ekip adları: "ilgilenen" ve "silen" sütunları kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
@@ -404,6 +409,13 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                   ))}
                 </tbody>
               </table>
+              {/* Liste 50 ile sınırlı; şeritteki sayaç daha büyükse
+                  kullanıcı eksiğin farkında olsun. */}
+              {sayi.taslak > taslaklar.length ? (
+                <p className="posta-not">
+                  En son güncellenen {taslaklar.length} taslak gösteriliyor ({sayi.taslak} taslak var).
+                </p>
+              ) : null}
             </div>
           )
         ) : konusmalar.length === 0 ? (
