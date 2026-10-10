@@ -4,6 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { postaGovdesiniGetir } from "@/lib/posta-esitleme";
 import { konusmaDurumu, konusmaEtiketi, konusmayaYanitla, konusmayiGeriAl, konusmayiKayitBagla, konusmayiOkundu, konusmayiOkunmadiYap, konusmayiSil, konusmayiUstlen, taslakKaydet } from "../actions";
 import { OkunduIsaretle } from "../okundu-isaretle";
+import { HazirCevapSec } from "../hazir-cevap-sec";
 import { dosyaBoyutu, istanbulTarihSaat } from "../bicim";
 import { ccAdaylari, yanitAlicisi } from "@/lib/posta-gonderim";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -33,7 +34,7 @@ type Mesaj = {
 
 export default async function KonusmaPage({ params }: { params: Promise<{ threadId: string }> }) {
   const { threadId } = await params;
-  const { supabase, membership, userId, izin, modules, hiddenModuleKeys } = await getPanelContext();
+  const { supabase, membership, organization, userId, izin, modules, hiddenModuleKeys } = await getPanelContext();
 
   const [{ data: konusma, error: konusmaHatasi }, { data: mesajVerisi, error: mesajHatasi }] = await Promise.all([
     supabase.from("mail_threads")
@@ -96,6 +97,21 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
         .eq("organization_id", membership.organization_id).order("ad")
     : { data: [] };
   const etiketler = (etiketVerisi ?? []) as { label_id: string; ad: string }[];
+
+  /* Hazır cevaplar: kullanmak için posta.yanitla yetiyor, düzenlemek
+     posta.yonet istiyor (hazir-cevaplar sayfası). */
+  const { data: sablonVerisi } = izin("posta.yanitla")
+    ? await supabase.from("mail_templates").select("id,ad,govde")
+        .eq("organization_id", membership.organization_id).order("ad")
+    : { data: [] };
+  const sablonlar = (sablonVerisi ?? []) as { id: string; ad: string; govde: string }[];
+
+  /* Yer tutucu değerleri: yazışmadaki kişi, cevabı yazan personel ve
+     kurum. Personel adı hr_employees'ten; yoksa yer tutucu düşer. */
+  const { data: benimKayit } = sablonlar.length
+    ? await supabase.from("hr_employees").select("full_name")
+        .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle()
+    : { data: null };
   const konusmaEtiketleri = ((konusma.etiketler as string[] | null) ?? []);
   const etiketAdi = new Map(etiketler.map((etiket) => [etiket.label_id, etiket.ad]));
   const eklenebilir = etiketler.filter((etiket) => !konusmaEtiketleri.includes(etiket.label_id));
@@ -267,10 +283,23 @@ export default async function KonusmaPage({ params }: { params: Promise<{ thread
                 <span>Özgün mesajı yanıtın altına alıntıla</span>
               </label>
             ) : null}
-            <label className="posta-ek-sec">
-              <span>Ek dosya</span>
-              <input type="file" name="ekler" multiple />
-            </label>
+            <div className="posta-yanit-araclar">
+              <label className="posta-ek-sec">
+                <span>Ek dosya</span>
+                <input type="file" name="ekler" multiple />
+              </label>
+              {/* Hazır cevap metni imlecin olduğu yere düşer; kutudaki
+                  yazı silinmez (hazir-cevap-sec.tsx). */}
+              <HazirCevapSec
+                hedefId="posta-yanit-metni"
+                sablonlar={sablonlar}
+                degerler={{
+                  musteri: sonGelen?.gonderen_ad || sonGelen?.gonderen_adres || "",
+                  ben: (benimKayit?.full_name as string | undefined) ?? "",
+                  kurum: organization.display_name || organization.name,
+                }}
+              />
+            </div>
             <div className="posta-yanit-alt">
               <small>
                 Düz metin olarak gönderilir. Ekler toplam en fazla 3 MB.

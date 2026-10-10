@@ -240,6 +240,9 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
         <h1>{hesap.adres ?? "Posta"}</h1>
       </div>
       <div className="talep-bas-eylem">
+        {/* Hazır cevaplar ayrı sayfada: yan karttaki imza formunun
+            altına bir liste daha koymak kartı okunmaz yapardı. */}
+        {izin("posta.gor") ? <Link className="panel-secondary" href="/panel/posta/hazir-cevaplar">Hazır cevaplar</Link> : null}
         {izin("posta.yanitla") ? <Link className="panel-primary" href="/panel/posta/yeni">Yeni posta</Link> : null}
       </div>
     </header>
