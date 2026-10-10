@@ -1,4 +1,4 @@
-import { StgBaglanti, StgIcon } from "./settings-ui";
+import { StgIcon } from "./settings-ui";
 import { removeProviderSettings, saveProviderSettings } from "../finance/odeme-saglayici-actions";
 import type { ProviderStatus } from "@/lib/payments/durum";
 
@@ -12,7 +12,10 @@ import type { ProviderStatus } from "@/lib/payments/durum";
 const tarih = (value: string | null) =>
   value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok";
 
-function rozet(status: ProviderStatus) {
+/* Rozet hem sağdaki formun başlığında hem SOLDAKİ listede görünüyor;
+   iki ayrı hesap, listede "Bağlı" derken formda "Bilgiler eksik"
+   yazmanın yoluydu. */
+export function saglayiciRozeti(status: ProviderStatus) {
   if (status.readFailed) return { tone: "danger" as const, text: "Durum okunamadı" };
   if (!status.connected) return { tone: "neutral" as const, text: "Bağlı değil" };
   if (!status.complete) return { tone: "danger" as const, text: "Bilgiler eksik" };
@@ -26,10 +29,14 @@ function rozet(status: ProviderStatus) {
 
 export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
   const { spec } = status;
-  const durum = rozet(status);
+  const durum = saglayiciRozeti(status);
 
   return (
-    <StgBaglanti ad={spec.name} not={spec.description} durum={durum.text} tone={durum.tone}>
+    <div className="stg-paytr">
+      <div className="stg-paytr-head">
+        <div><b>{spec.name}</b><small>{spec.description}</small></div>
+        <span className="status-pill" data-tone={durum.tone}>{durum.text}</span>
+      </div>
 
       {status.readFailed ? (
         <p className="stg-muted">
@@ -122,6 +129,6 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
           </form>
         </div>
       ) : null}
-    </StgBaglanti>
+    </div>
   );
 }

@@ -5,10 +5,10 @@ import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
 import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
-import { StgBaglanti, StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
+import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
-import { OdemeSaglayiciKarti } from "./odeme-saglayici-karti";
+import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
 import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -57,8 +57,8 @@ const BOLUMLER = [
 ] as const;
 type BolumKodu = (typeof BOLUMLER)[number]["id"];
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
-  const { bolum: istenenBolum } = await searchParams;
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ bolum?: string; baglanti?: string }> }) {
+  const { bolum: istenenBolum, baglanti: istenenBaglanti } = await searchParams;
   const { organization, membership, modules, supabase, izin } = await getPanelContext();
   const bolum: BolumKodu = BOLUMLER.find((aday) => aday.id === istenenBolum)?.id ?? "genel";
   const enabledCodes = new Set(modules.map((module) => module.code));
@@ -97,6 +97,39 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const domainStatus=domainInfo?.custom_domain_status ?? "pending";
   const dnsRecords = (domainInfo?.custom_domain_verification ?? []) as { type: string; name: string; value: string }[];
   const isActive = organization.status === "active";
+
+  /*
+    ENTEGRASYONLAR: SOLDA LİSTE, SAĞDA FORM (kurum sahibinin kararı,
+    10.10.2026).
+
+    Dört bağlantının dördü de altı yedi alanlık bir form. Hepsini
+    birden açmak sekmeyi birkaç ekran boyuna çıkarıyor, yan yana iki
+    sütuna sıkıştırmak formu okunmaz yapıyordu (iki deneme de böyle
+    düştü). Liste solda hep duruyor, seçilen bağlantı sağda panelin
+    tamamını kullanıyor.
+
+    Seçim adreste (?baglanti=): geri tuşu çalışıyor, bağlantı
+    paylaşılabiliyor ve sunucu yalnızca seçileni çiziyor.
+  */
+  const baglantiListesi = [
+    ...odemeSaglayicilari.map((status) => {
+      const rozet = saglayiciRozeti(status);
+      return { kod: status.spec.code, ad: status.spec.name, tone: rozet.tone as StgTone, durum: rozet.text };
+    }),
+    ...(posta ? [{
+      kod: "posta", ad: "Ortak posta kutusu",
+      tone: (posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral") as StgTone,
+      durum: posta.durum === "bagli" ? "Bağlı" : posta.durum === "hata" ? "Yetkilendirme düştü" : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil",
+    }] : []),
+    ...(whatsapp ? [{
+      kod: "whatsapp", ad: "WhatsApp ile mesaj",
+      tone: (whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral") as StgTone,
+      durum: whatsapp.connected ? (whatsapp.status === "connected" ? "Bağlı" : "Doğrulanamadı") : "Bağlı değil",
+    }] : []),
+  ];
+  /* Adresten gelen kod tanınmıyorsa ilk bağlantı: boş bir sağ sütun,
+     kullanıcıya "burada bir şey yok" dedirtiyordu. */
+  const seciliBaglanti = baglantiListesi.find((aday) => aday.kod === istenenBaglanti)?.kod ?? baglantiListesi[0]?.kod ?? null;
 
   const teamLinks = [
     enabledCodes.has("hr") ? { href: "/panel/hr", icon: "users", tone: "info" as const, title: "İnsan Kaynakları", note: "Personel, davetler ve roller" } : null,
@@ -308,29 +341,41 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       {bolum === "entegrasyonlar" ? <>
       <StgSection id="entegrasyonlar" icon="plug" tone="neutral" kicker="ENTEGRASYONLAR" title="Bağlantılar" description="Ödeme, banka, e-fatura ve alan adı bileşenleri.">
-        {/*
-          Sağlayıcı kartları yan yana: tek sütunda alt alta dizilince
-          WhatsApp ve posta kutusunu görmek için uzun uzun kaydırmak
-          gerekiyordu ve ekranın sağ yarısı boş duruyordu. auto-fit:
-          yer varsa iki sütun, yoksa tek — sekme rayı yüzünden panelin
-          genişliği sayfanınkinden dar, sabit bir kırılma noktası
-          burada yanlış yerde kırardı.
-        */}
-        <div className="stg-baglanti-izgara">
+        <div className="stg-baglanti-duzen">
+          {/* Solda liste: hangi bağlantıların olduğu ve durumları tek
+              bakışta. Seçili olan adreste taşınıyor. */}
+          <nav className="stg-baglanti-liste" aria-label="Bağlantılar">
+            {baglantiListesi.map((aday) => (
+              <Link
+                key={aday.kod}
+                href={`/panel/settings?bolum=entegrasyonlar&baglanti=${aday.kod}`}
+                className={aday.kod === seciliBaglanti ? "is-active" : undefined}
+                aria-current={aday.kod === seciliBaglanti ? "page" : undefined}
+              >
+                <b>{aday.ad}</b>
+                <span className="status-pill" data-tone={aday.tone}>{aday.durum}</span>
+              </Link>
+            ))}
+          </nav>
+
+          <div className="stg-baglanti-icerik">
           {/* PayTR ve Garanti aynı kalıptan; alanlar lib/payments/saglayicilar.ts'te. */}
-          {odemeSaglayicilari.map((status) => (
+          {odemeSaglayicilari.filter((status) => status.spec.code === seciliBaglanti).map((status) => (
             <OdemeSaglayiciKarti key={status.spec.code} status={status} />
           ))}
-          {posta ? (
-            <StgBaglanti
-              id="posta"
-              ad="Ortak posta kutusu (Gmail)"
-              not="Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar."
-              tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}
-              durum={posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
-                : posta.durum === "hata" ? "Yetkilendirme düştü"
-                : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
-            >
+          {posta && seciliBaglanti === "posta" ? (
+            <div className="stg-paytr" id="posta">
+              <div className="stg-paytr-head">
+                <div>
+                  <b>Ortak posta kutusu (Gmail)</b>
+                  <small>Kurumun ortak adresini bağlayın; ekip aynı kutudan okur ve yanıtlar. Gelen kutusu ve yanıtlama sonraki aşamada açılır.</small>
+                </div>
+                <span className="status-pill" data-tone={posta.durum === "bagli" ? "success" : posta.durum === "hata" ? "danger" : posta.kayitliMi ? "warning" : "neutral"}>
+                  {posta.durum === "bagli" ? `Bağlı · ${posta.adres}`
+                    : posta.durum === "hata" ? "Yetkilendirme düştü"
+                    : posta.kayitliMi ? "Google izni bekliyor" : "Bağlı değil"}
+                </span>
+              </div>
               {posta.kullanilabilir ? (
                 <>
                   <form className="panel-form" action={savePostaHesabi}>
@@ -373,15 +418,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <p className="stg-muted"><StgIcon name="lock" size={16} />Posta için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>
               )}
               {posta.sonHata ? <p className="stg-muted"><StgIcon name="lock" size={16} />Son hata: {posta.sonHata}</p> : null}
-            </StgBaglanti>
+            </div>
           ) : null}
-          {whatsapp ? (
-            <StgBaglanti
-              ad="WhatsApp ile mesaj"
-              not="Kendi WhatsApp Business numaranızı bağlayın; mesajlar sizin numaranızdan gitsin."
-              tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}
-              durum={whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
-            >
+          {whatsapp && seciliBaglanti === "whatsapp" ? (
+            <div className="stg-paytr">
+              <div className="stg-paytr-head">
+                <div>
+                  <b>WhatsApp ile mesaj</b>
+                  <small>Kendi WhatsApp Business numaranızı bağlayın; teklif, sözleşme, sipariş ve randevu mesajları müşterinize sizin numaranızdan gitsin.</small>
+                </div>
+                <span className="status-pill" data-tone={whatsapp.connected ? (whatsapp.status === "connected" ? "success" : "warning") : "neutral"}>
+                  {whatsapp.connected ? (whatsapp.status === "connected" ? `Bağlı · ${whatsapp.displayPhone ?? whatsapp.phoneNumberId}` : "Doğrulanamadı") : "Bağlı değil"}
+                </span>
+              </div>
               {whatsapp.available ? (
                 <form className="panel-form" action={saveWhatsappAccount}>
                   <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
@@ -424,8 +473,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <div className="stg-list">
                 <StgLinkRow href="/panel/crm/whatsapp" icon="chat" tone="info" title="WhatsApp gelen kutusu" note="Sohbetler CRM altına taşındı; müşterinin talebi ve teklifinin yanında" />
               </div>
-            </StgBaglanti>
+            </div>
           ) : null}
+          </div>
         </div>
         {integrations.length
           ? <div className="stg-list">{integrations.map((module) => <StgLinkRow key={module.code} href={`/panel/${module.code}`} icon="plug" tone="info" title={module.name} note="Etkin" />)}</div>

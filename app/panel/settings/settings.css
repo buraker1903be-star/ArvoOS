@@ -292,53 +292,37 @@
 }
 
 /*
-  ENTEGRASYON KARTLARI YAN YANA.
+  ENTEGRASYONLAR: SOLDA LİSTE, SAĞDA FORM.
 
-  Ölçüt PENCERE değil PANELİN KENDİ GENİŞLİĞİ (container query): sekme
-  rayı ve kart iç boşlukları yüzünden panel, pencereden ~300 piksel
-  dar. Pencereye bakan bir kırılma noktası 1000 piksellik ekranda "iki
-  sütun" diyor, panel 690 piksel olduğu için kartlar eziliyordu.
+  Dört bağlantının dördü de altı yedi alanlık bir form. Hepsini açık
+  dizmek sekmeyi birkaç ekran boyuna çıkarıyor, yan yana iki sütuna
+  sıkıştırmak formu okunmaz yapıyordu (10.10.2026'da iki deneme de
+  böyle düştü: başlıklar dört satıra bölündü, yer tutucular kesildi).
+  Liste solda duruyor, seçilen bağlantı sağda panelin tamamını
+  kullanıyor.
 
-  İki sütuna geçince sağlayıcı formu tek sütuna iniyor: 340 piksellik
-  kartta yan yana iki alan, her birine 160 piksel demek.
-
-  align-items:start — kartların boyu farklı, kısa olan uzayıp boş yer
-  kaplamasın.
+  Ölçüt pencere değil PANELİN GENİŞLİĞİ (container query): sekme rayı
+  yüzünden panel, pencereden ~300 piksel dar; pencereye bakan bir
+  kırılma noktası burada yanlış yerde kırıyor.
 */
 .ayar-panel{container-type:inline-size}
-/* Kapalı kutular aynı satırda eşit boyda (stretch): biri iki
-   satırlık açıklama taşıyınca öteki kısa kalıp satırı tırtıklı
-   gösteriyordu. */
-.stg-baglanti-izgara{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4)}
-@container (min-width:620px){
-  .stg-baglanti-izgara{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
+.stg-baglanti-duzen{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-4);align-items:start}
+.stg-baglanti-liste{display:flex;flex-direction:column;gap:4px;min-width:0}
+.stg-baglanti-liste a{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;
+  padding:10px 12px;border:1px solid var(--line-soft);border-radius:var(--r-md);
+  background:var(--surface-2);color:var(--ink);text-decoration:none;
+  transition:border-color .15s ease,background-color .15s ease}
+.stg-baglanti-liste a>b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);overflow-wrap:anywhere}
+.stg-baglanti-liste a:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.stg-baglanti-liste a.is-active{border-color:var(--primary);background:var(--accent-soft)}
+.stg-baglanti-liste a:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
+.stg-baglanti-icerik{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+/* Sağdaki tek karta ikinci kenarlık gerekmiyor: liste zaten ayırıyor,
+   çift çerçeve kutu içinde kutu gibi duruyordu. */
+.stg-baglanti-icerik>.stg-paytr{margin-bottom:0;border:0;padding:0;background:transparent}
 
-/*
-  Kapalıyken ad, durum ve bir cümle; açıkken tüm genişlik. Açılan
-  kutunun sütunu aşması bilinçli: içinde altı alanlık bir form var ve
-  yarım sütunda okunmuyor (ilk deneme tam bu yüzden "olmamış"tı).
-*/
-.stg-baglanti{
-  min-width:0;border:1px solid var(--line-soft);border-radius:var(--r-md);
-  background:var(--surface-2);overflow:hidden}
-.stg-baglanti[open]{grid-column:1/-1;background:var(--surface);border-color:var(--line)}
-.stg-baglanti>summary{
-  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
-  padding:var(--sp-3) var(--sp-4);cursor:pointer;list-style:none}
-.stg-baglanti>summary::-webkit-details-marker{display:none}
-.stg-baglanti>summary:hover{background:color-mix(in srgb,var(--accent-soft) 35%,transparent)}
-.stg-baglanti>summary:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--focus)}
-.stg-baglanti-ad{min-width:0;display:flex;flex-direction:column;gap:2px}
-.stg-baglanti-ad b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
-/* Açıklama iki satırda kesiliyor: kapalı kutular aynı boyda kalsın. */
-.stg-baglanti-ad small{
-  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
-  color:var(--muted);font-size:var(--fs-micro);line-height:1.45}
-/* Durum rozeti adın üstüne binmesin: bağlı posta kutusunun rozeti
-   adresi taşıyor ve uzun; yarıdan fazlasını alınca "Ortak posta
-   kutusu" başlığı kelime kelime alt alta düşüyordu. */
-.stg-baglanti>summary .status-pill{flex:none;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.stg-baglanti-ad b{overflow-wrap:anywhere}
-.stg-baglanti-govde{display:flex;flex-direction:column;gap:var(--sp-4);padding:0 var(--sp-4) var(--sp-4)}
-.stg-baglanti-govde>.stg-paytr-foot{margin-top:0}
+@container (min-width:620px){
+  .stg-baglanti-duzen{grid-template-columns:200px minmax(0,1fr)}
+  .stg-baglanti-liste{position:sticky;top:0}
+}
