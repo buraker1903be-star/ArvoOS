@@ -904,6 +904,15 @@
       "thread_id",
       "yon"
     ],
+    "mail_templates": [
+      "ad",
+      "created_at",
+      "govde",
+      "id",
+      "olusturan",
+      "organization_id",
+      "updated_at"
+    ],
     "mail_threads": [
       "created_at",
       "durum",

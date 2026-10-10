@@ -974,6 +974,16 @@ create table if not exists public.mail_messages (
   etiketler text[] not null
 );
 
+create table if not exists public.mail_templates (
+  id uuid not null,
+  organization_id uuid not null,
+  ad text not null,
+  govde text not null,
+  olusturan uuid,
+  created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
 create table if not exists public.mail_threads (
   organization_id uuid not null,
   thread_id text not null,
@@ -12317,6 +12327,12 @@ alter table public.mail_messages alter column etiketler set default '{}'::text[]
 
 alter table public.mail_messages alter column yon set default 'gelen'::text;
 
+alter table public.mail_templates alter column created_at set default now();
+
+alter table public.mail_templates alter column id set default gen_random_uuid();
+
+alter table public.mail_templates alter column updated_at set default now();
+
 alter table public.mail_threads alter column created_at set default now();
 
 alter table public.mail_threads alter column durum set default 'acik'::text;
@@ -13235,6 +13251,12 @@ alter table public.mail_messages add constraint mail_messages_pkey PRIMARY KEY (
 
 alter table public.mail_messages add constraint mail_messages_yon_check CHECK ((yon = ANY (ARRAY['gelen'::text, 'giden'::text])));
 
+alter table public.mail_templates add constraint mail_templates_ad_bos_degil CHECK (((length(btrim(ad)) >= 2) AND (length(btrim(ad)) <= 80)));
+
+alter table public.mail_templates add constraint mail_templates_govde_bos_degil CHECK (((length(btrim(govde)) >= 2) AND (length(btrim(govde)) <= 5000)));
+
+alter table public.mail_templates add constraint mail_templates_pkey PRIMARY KEY (id);
+
 alter table public.mail_threads add constraint mail_threads_durum_check CHECK ((durum = ANY (ARRAY['acik'::text, 'yanitlandi'::text, 'kapali'::text])));
 
 alter table public.mail_threads add constraint mail_threads_pkey PRIMARY KEY (organization_id, thread_id);
@@ -13815,6 +13837,8 @@ CREATE UNIQUE INDEX mail_drafts_konusma_uidx ON public.mail_drafts USING btree (
 
 CREATE INDEX mail_messages_konusma_idx ON public.mail_messages USING btree (organization_id, thread_id, tarih);
 
+CREATE UNIQUE INDEX mail_templates_ad_uidx ON public.mail_templates USING btree (organization_id, lower(btrim(ad)));
+
 CREATE INDEX mail_threads_etiket_idx ON public.mail_threads USING gin (etiketler);
 
 CREATE INDEX mail_threads_firsat_idx ON public.mail_threads USING btree (organization_id, opportunity_id) WHERE (opportunity_id IS NOT NULL);
@@ -14273,6 +14297,10 @@ alter table public.mail_labels add constraint mail_labels_organization_id_fkey F
 
 alter table public.mail_messages add constraint mail_messages_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+alter table public.mail_templates add constraint mail_templates_olusturan_fkey FOREIGN KEY (olusturan) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+alter table public.mail_templates add constraint mail_templates_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
 alter table public.mail_threads add constraint mail_threads_ilgilenen_user_id_fkey FOREIGN KEY (ilgilenen_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.mail_threads add constraint mail_threads_opportunity_id_fkey FOREIGN KEY (opportunity_id) REFERENCES crm_opportunities(id) ON DELETE SET NULL;
@@ -14670,6 +14698,8 @@ alter table public.mail_drafts enable row level security;
 alter table public.mail_labels enable row level security;
 
 alter table public.mail_messages enable row level security;
+
+alter table public.mail_templates enable row level security;
 
 alter table public.mail_threads enable row level security;
 
@@ -15487,6 +15517,18 @@ create policy "posta modulu acik olanlar etiketleri okur" on public.mail_labels 
   using (private.arvo_modul_acik(organization_id, 'posta'::text));
 
 create policy "posta modulu acik olanlar mesajlari okur" on public.mail_messages as PERMISSIVE for SELECT to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar hazir cevap gunceller" on public.mail_templates as PERMISSIVE for UPDATE to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar hazir cevap siler" on public.mail_templates as PERMISSIVE for DELETE to authenticated
+  using (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar hazir cevap yazar" on public.mail_templates as PERMISSIVE for INSERT to authenticated
+  with check (private.arvo_modul_acik(organization_id, 'posta'::text));
+
+create policy "posta modulu acik olanlar hazir cevaplari okur" on public.mail_templates as PERMISSIVE for SELECT to authenticated
   using (private.arvo_modul_acik(organization_id, 'posta'::text));
 
 create policy "posta modulu acik olanlar konusmalari okur" on public.mail_threads as PERMISSIVE for SELECT to authenticated
