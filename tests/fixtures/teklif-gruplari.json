@@ -1,0 +1,103 @@
+{
+  "aciklama": "Teklifin listedeki grubu. Aynı tablo iki yerde sınanıyor: lib/teklif-grubu.ts (tests/unit/teklif-grubu.test.ts) ve crm_proposals.teklif_grubu sütunu (tests/db/teklif-grubu-sutunu.test.mjs). Biri değişip öteki kalırsa test kırılır. Her satır veritabanının CHECK kısıtlarına uyan GERÇEK bir durum: status ve archive_reason yalnızca kısıtın izin verdiği değerleri alır.",
+  "ornekler": [
+    {
+      "ad": "taslak",
+      "status": "draft",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "draft"
+    },
+    {
+      "ad": "gönderildi",
+      "status": "sent",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "sent"
+    },
+    {
+      "ad": "kabul (durumdan)",
+      "status": "accepted",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "accepted"
+    },
+    {
+      "ad": "kabul (arşiv sebebinden)",
+      "status": "archived",
+      "archive_reason": "accepted",
+      "eskiyen": false,
+      "grup": "accepted"
+    },
+    {
+      "ad": "ret (arşiv sebebinden)",
+      "status": "archived",
+      "archive_reason": "rejected",
+      "eskiyen": false,
+      "grup": "rejected"
+    },
+    {
+      "ad": "ret (durumdan)",
+      "status": "rejected",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "rejected"
+    },
+    {
+      "ad": "süre doldu (arşiv sebebinden)",
+      "status": "archived",
+      "archive_reason": "expired",
+      "eskiyen": false,
+      "grup": "expired"
+    },
+    {
+      "ad": "süre doldu (eski kayıt, durumdan)",
+      "status": "expired",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "expired"
+    },
+    {
+      "ad": "sebepsiz arşiv",
+      "status": "archived",
+      "archive_reason": null,
+      "eskiyen": false,
+      "grup": "arsiv"
+    },
+    {
+      "ad": "yeni revizyon geldi: gönderilmiş teklif eskidi",
+      "status": "sent",
+      "archive_reason": null,
+      "eskiyen": true,
+      "grup": "eski"
+    },
+    {
+      "ad": "yeni revizyon geldi: kabul bile olsa eski",
+      "status": "archived",
+      "archive_reason": "accepted",
+      "eskiyen": true,
+      "grup": "eski"
+    },
+    {
+      "ad": "arşivde olmayan satırın sebebi yok sayılıyor",
+      "status": "sent",
+      "archive_reason": "accepted",
+      "eskiyen": false,
+      "grup": "sent"
+    },
+    {
+      "ad": "revizyon yüzünden arşivlenmiş ama yerine geçen kayıt yok",
+      "status": "archived",
+      "archive_reason": "superseded",
+      "eskiyen": false,
+      "grup": "arsiv"
+    },
+    {
+      "ad": "elle arşivlenmiş",
+      "status": "archived",
+      "archive_reason": "manual",
+      "eskiyen": false,
+      "grup": "arsiv"
+    }
+  ]
+}
