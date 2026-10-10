@@ -623,3 +623,54 @@
    aynısı olmuştu). */
 .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] :is(th,td):first-child{min-width:240px}
 .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] .crm-table-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+
+/*
+  DİKEY ZAMAN ÇİZELGESİ (belge yaşam döngüsü, teklif revizyonları).
+
+  Eskiden belge sayfasında satır içi stillerle çiziliyordu: renkler,
+  daireler ve ızgara doğrudan JSX'teydi, tema değişkenleri elle
+  yazıldığı için koyu temada iki renk sabit kalıyordu ve aynı görünüm
+  başka bir sayfada kullanılamıyordu.
+
+  Durum data-durum ile: complete (olmuş), current (sırada), pending
+  (henüz gelmedi).
+*/
+.os-root .kayit-zaman{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.os-root .kayit-zaman li{
+  display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:start;gap:var(--sp-3);
+  padding:var(--sp-4) 0;border-bottom:1px solid var(--line-soft)}
+.os-root .kayit-zaman li:last-child{border-bottom:0;padding-bottom:0}
+/* Bekleyen adım soluk: hangi adımların henüz gelmediği bir bakışta görünsün. */
+.os-root .kayit-zaman li[data-durum="pending"]{opacity:.55}
+.os-root .kayit-zaman i{
+  display:grid;place-items:center;width:32px;height:32px;border-radius:50%;
+  background:var(--surface-2);color:var(--muted);font-style:normal;font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
+.os-root .kayit-zaman li[data-durum="complete"] i{background:var(--success-soft);color:var(--success)}
+.os-root .kayit-zaman li[data-durum="current"] i{background:var(--warning-soft);color:var(--warning)}
+.os-root .kayit-zaman h3{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
+.os-root .kayit-zaman p{margin:4px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.os-root .kayit-zaman small{display:block;margin-top:4px;color:var(--dim);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+
+
+/*
+  ZAMAN ÇİZELGELİ DETAY SAYFALARININ IZGARALARI (belge yaşam döngüsü,
+  belge erişim geçmişi, teklif revizyonları).
+*/
+/* Sağdaki künye sabit genişlikte: ad/değer listesi 500px'e yayılınca
+   iki sütun arası boşluk okuma akışını kesiyordu. İstatistik kartıyla
+   aynı ölçü. */
+.os-root .talep-izgara.kayit-iki-izgara{grid-template-columns:minmax(0,1fr) 360px}
+@media (max-width:1100px){.os-root .talep-izgara.kayit-iki-izgara{grid-template-columns:minmax(0,1fr)}}
+
+/* Künye kartının altındaki bağlantılar alt alta değil yan yana sarmalı. */
+.os-root .kayit-kunye-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-3)}
+
+/* Erişim geçmişi tek sütun: kütüğün yanına koyulacak bir özet yok,
+   sayılar zaten şeritte. (.talep-izgara varsayılanı üç sütun.) */
+.os-root .talep-izgara.kayit-tek-izgara{grid-template-columns:minmax(0,1fr)}
+/* Erişim türü hücresinde rozetin altındaki kaynak satırı. */
+.os-root .crm-data-table[data-cols="erisim"] .status-pill + .crm-table-sub{display:block;margin-top:3px}
+
+/* Revizyon kapsamı uzun olabiliyor: çizelgede paragraf gibi aksın. */
+.os-root .kayit-zaman-kapsam{white-space:pre-wrap}

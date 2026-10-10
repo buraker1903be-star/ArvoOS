@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import "../../../crm/crm.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
-import "../../belge.css";
 
 /*
   BELGE YAŞAM DÖNGÜSÜ (10.10.2026): panelin kayıt detayı kalıbında.
@@ -161,12 +160,12 @@ export default async function BelgeYasamDongusu({ params }: { params: Promise<{ 
       </dl>
     </nav>
 
-    <div className="talep-izgara belge-izgara">
+    <div className="talep-izgara kayit-iki-izgara">
       <section className="panel-card talep-bilgi" aria-label="Belge zaman çizelgesi">
         <div className="cari-baslik"><h2>Uçtan uca süreç</h2><small>talepten tahsilata</small></div>
         {/* Renkler ve daireler artık sınıflarda: satır içi stil koyu
             temada iki rengi sabit bırakıyordu. */}
-        <ol className="belge-zaman">
+        <ol className="kayit-zaman">
           {olaylar.map((olay) => (
             <li key={olay.key} data-durum={olay.status}>
               <i aria-hidden="true">{olay.status === "complete" ? "✓" : olay.status === "current" ? "•" : "○"}</i>
@@ -193,7 +192,7 @@ export default async function BelgeYasamDongusu({ params }: { params: Promise<{ 
             ? <div><dt>İmza</dt><dd>{sozlesme?.signed_at ? tarihSaat(sozlesme.signed_at) : "Bekliyor"}</dd></div>
             : <div><dt>Revizyon</dt><dd>{buBelge && "revision_no" in buBelge && buBelge.revision_no ? `R${buBelge.revision_no}` : "İlk sürüm"}</dd></div>}
         </dl>
-        <div className="belge-kunye-eylem">
+        <div className="kayit-kunye-eylem">
           <Link className="panel-secondary" href={`/panel/crm/musteri/${firsat.id}`}>Müşteri kaydını aç</Link>
           {!sozlesmeMi && buBelge ? <Link className="panel-secondary" href={`/panel/crm/proposals/${buBelge.id}/revisions`}>Revizyon geçmişi</Link> : null}
           {is ? <Link className="panel-secondary" href={`/panel/operations/${is.id}`}>İşi aç</Link> : null}
