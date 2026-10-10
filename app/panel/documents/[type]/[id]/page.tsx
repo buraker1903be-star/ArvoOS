@@ -2,51 +2,203 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import "../../../crm/crm.css";
+import "../../../crm/kayit-detay/kayit-detay.css";
+import "../../belge.css";
 
-type TimelineEvent={key:string;title:string;detail:string;at:string|null;status:"complete"|"current"|"pending";href?:string};
-const money=(value:number,currency:string)=>new Intl.NumberFormat("tr-TR",{style:"currency",currency}).format(Number(value||0)/100);
-const dateTime=(value:string|null)=>value?new Date(value).toLocaleString("tr-TR"):"—";
-const WORKFLOW_STATUS_LABEL:Record<string,string>={planned:"Planlandı",in_progress:"Devam ediyor",blocked:"Beklemede",completed:"Tamamlandı",archived:"Arşivlendi",cancelled:"İptal edildi"};
+/*
+  BELGE YAŞAM DÖNGÜSÜ (10.10.2026): panelin kayıt detayı kalıbında.
+  Üstte başlık, altında sayı şeridi, solda zaman çizelgesi, sağda
+  belgenin kendi künyesi.
 
-export default async function DocumentLifecyclePage({params}:{params:Promise<{type:string;id:string}>}){
- const {type,id}=await params;if(!["proposal","contract"].includes(type))notFound();
- const {supabase,membership,modules}=await getPanelContext();if(!modules.some(module=>["documents","crm"].includes(module.code)))throw new Error("Belge yaşam döngüsüne erişiminiz yok.");
- let opportunityId:string|null=null;
- if(type==="proposal"){
-  const {data,error}=await supabase.from("crm_proposals").select("id,opportunity_id").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle();
-  if(error)throw new Error(`Teklif okunamadı: ${error.message}`);if(!data)notFound();opportunityId=data.opportunity_id;
- }else{
-  const {data,error}=await supabase.from("crm_contracts").select("id,proposal_id,opportunity_id").eq("id",id).eq("organization_id",membership.organization_id).maybeSingle();
-  if(error)throw new Error(`Sözleşme okunamadı: ${error.message}`);if(!data)notFound();opportunityId=data.opportunity_id;
- }
- const [opportunityResult,proposalsResult,contractResult]=await Promise.all([
-  supabase.from("crm_opportunities").select("id,title,customer_name,stage,estimated_value,created_at,updated_at").eq("id",opportunityId).eq("organization_id",membership.organization_id).maybeSingle(),
-  supabase.from("crm_proposals").select("id,proposal_no,title,amount,currency,status,revision_no,revision_note,created_at,sent_at,first_viewed_at,responded_at,superseded_at,superseded_by").eq("opportunity_id",opportunityId).eq("organization_id",membership.organization_id).order("revision_no",{ascending:true}),
-  supabase.from("crm_contracts").select("id,contract_no,title,amount,currency,status,created_at,sent_at,first_viewed_at,signed_at,signed_name,workflow_id,payment_plan_id,invoice_id").eq("opportunity_id",opportunityId).eq("organization_id",membership.organization_id).maybeSingle(),
- ]);
- if(opportunityResult.error)throw new Error(`Talep kaydı okunamadı: ${opportunityResult.error.message}`);if(proposalsResult.error)throw new Error(`Teklif geçmişi okunamadı: ${proposalsResult.error.message}`);if(contractResult.error)throw new Error(`Sözleşme kaydı okunamadı: ${contractResult.error.message}`);
- const opportunity=opportunityResult.data;if(!opportunity)notFound();const proposals=proposalsResult.data??[];const contract=contractResult.data;
- const [workflowResult,paymentPlanResult,invoiceResult]=await Promise.all([
-  contract?.workflow_id?supabase.from("operation_workflows").select("id,status,created_at,updated_at,start_date,due_date").eq("id",contract.workflow_id).eq("organization_id",membership.organization_id).maybeSingle():Promise.resolve({data:null,error:null}),
-  contract?.payment_plan_id?supabase.from("payment_plans").select("id,status,total_amount,currency,created_at,updated_at").eq("id",contract.payment_plan_id).eq("organization_id",membership.organization_id).maybeSingle():Promise.resolve({data:null,error:null}),
-  contract?.invoice_id?supabase.from("billing_invoices").select("id,status,total,currency,created_at,paid_at,due_at").eq("id",contract.invoice_id).eq("organization_id",membership.organization_id).maybeSingle():Promise.resolve({data:null,error:null}),
- ]);
- if(workflowResult.error)throw new Error(`İş akışı okunamadı: ${workflowResult.error.message}`);if(paymentPlanResult.error)throw new Error(`Ödeme planı okunamadı: ${paymentPlanResult.error.message}`);if(invoiceResult.error)throw new Error(`Fatura kaydı okunamadı: ${invoiceResult.error.message}`);
- const workflow=workflowResult.data;const paymentPlan=paymentPlanResult.data;const invoice=invoiceResult.data;const latestProposal=proposals.find(proposal=>!proposal.superseded_by)??proposals.at(-1);const currentAmount=contract?.amount??latestProposal?.amount??opportunity.estimated_value??0;const currentCurrency=contract?.currency??latestProposal?.currency??"TRY";
- const events:TimelineEvent[]=[
-  {key:"request",title:"Talep oluşturuldu",detail:`${opportunity.customer_name} · ${opportunity.title}`,at:opportunity.created_at,status:"complete"},
-  ...proposals.flatMap(proposal=>{const rows:TimelineEvent[]=[{key:`proposal-${proposal.id}`,title:proposal.revision_no>0?`Teklif revizyonu R${proposal.revision_no}`:"İlk teklif oluşturuldu",detail:`${proposal.proposal_no} · ${money(proposal.amount,proposal.currency)}${proposal.revision_note?` · ${proposal.revision_note}`:""}`,at:proposal.created_at,status:proposal.superseded_by?"complete":proposal.status==="accepted"?"complete":"current",href:`/panel/crm/proposals/${proposal.id}/revisions`}];if(proposal.sent_at)rows.push({key:`proposal-sent-${proposal.id}`,title:"Teklif müşteriye gönderildi",detail:proposal.proposal_no,at:proposal.sent_at,status:"complete"});if(proposal.first_viewed_at)rows.push({key:`proposal-view-${proposal.id}`,title:"Teklif görüntülendi",detail:proposal.proposal_no,at:proposal.first_viewed_at,status:"complete"});if(proposal.responded_at)rows.push({key:`proposal-response-${proposal.id}`,title:proposal.status==="accepted"?"Teklif kabul edildi":"Teklif yanıtlandı",detail:proposal.proposal_no,at:proposal.responded_at,status:"complete"});return rows;}),
-  {key:"contract",title:contract?"Sözleşme oluşturuldu":"Sözleşme bekleniyor",detail:contract?`${contract.contract_no} · ${money(contract.amount,contract.currency)}`:"Teklif kabul edildiğinde otomatik oluşturulur.",at:contract?.created_at??null,status:contract?"complete":"pending",href:contract?"/panel/crm/contracts":undefined},
-  {key:"contract-sent",title:contract?.sent_at?"Sözleşme imzaya gönderildi":"İmzaya gönderim bekleniyor",detail:contract?.contract_no??"Henüz sözleşme yok",at:contract?.sent_at??null,status:contract?.sent_at?"complete":"pending"},
-  {key:"contract-signed",title:contract?.signed_at?"Sözleşme elektronik olarak onaylandı":"Müşteri onayı bekleniyor",detail:contract?.signed_at?`${contract.signed_name??"Müşteri"} tarafından onaylandı`:"Onay tamamlandığında iş akışı ve finans kayıtları açılır.",at:contract?.signed_at??null,status:contract?.signed_at?"complete":contract?"current":"pending"},
-  {key:"workflow",title:workflow?"İş akışı oluşturuldu":"İş akışı bekleniyor",detail:workflow?`Durum: ${WORKFLOW_STATUS_LABEL[workflow.status]??workflow.status}`:"Sözleşme onayından sonra otomatik oluşur.",at:workflow?.created_at??null,status:workflow?(workflow.status==="completed"||workflow.status==="archived"?"complete":"current"):"pending",href:workflow?`/panel/operations/${workflow.id}`:undefined},
-  {key:"payment",title:paymentPlan?"Ödeme planı finans modülüne aktarıldı":"Ödeme planı bekleniyor",detail:paymentPlan?`${money(paymentPlan.total_amount,paymentPlan.currency)} · ${paymentPlan.status}`:"Sözleşme onayından sonra taksitler oluşturulur.",at:paymentPlan?.created_at??null,status:paymentPlan?(paymentPlan.status==="completed"?"complete":"current"):"pending",href:paymentPlan?"/panel/finance":undefined},
-  {key:"invoice",title:invoice?"Taslak fatura oluşturuldu":"Fatura bekleniyor",detail:invoice?`${money(invoice.total,invoice.currency)} · ${invoice.status}`:"Finans akışında oluşturulacaktır.",at:invoice?.created_at??null,status:invoice?(invoice.status==="paid"?"complete":"current"):"pending",href:invoice?"/panel/billing":undefined},
-  {key:"collection",title:invoice?.paid_at?"Tahsilat tamamlandı":"Tahsilat bekleniyor",detail:invoice?.paid_at?`${money(invoice.total,invoice.currency)} tahsil edildi.`:"Ödeme planındaki taksitler tamamlandığında kapanır.",at:invoice?.paid_at??null,status:invoice?.paid_at?"complete":"pending",href:"/panel/finance"},
- ];
- return <div className="crm-page-stack">
-  <div className="panel-pagehead"><div><small className="panel-kicker">DOKÜMANLAR / YAŞAM DÖNGÜSÜ</small><h1>{opportunity.customer_name}</h1><p>{opportunity.title} için talep, teklif, sözleşme, operasyon ve finans akışını izleyin.</p></div><div className="panel-page-actions"><span className="status-pill">{opportunity.stage}</span><Link className="panel-primary" href={`/panel/documents/${type}/${id}/preview`}>Önizle / PDF</Link><Link className="panel-secondary" href={`/panel/documents/${type}/${id}/access-logs`}>Erişim geçmişi</Link><Link className="panel-secondary" href="/panel/documents">Belge Merkezi’ne dön</Link></div></div>
-  <section className="crm-metrics"><article><small>GÜNCEL BEDEL</small><strong>{money(currentAmount,currentCurrency)}</strong><span>Son teklif veya sözleşme</span></article><article><small>TEKLİF SÜRÜMÜ</small><strong>{proposals.length}</strong><span>Toplam teklif ve revizyon</span></article><article><small>SÖZLEŞME</small><strong>{contract?contract.contract_no:"—"}</strong><span>{contract?.status??"Henüz oluşmadı"}</span></article><article><small>TAHSİLAT</small><strong>{invoice?.paid_at?"Tamamlandı":"Bekleniyor"}</strong><span>{invoice?money(invoice.total,invoice.currency):"Finans kaydı yok"}</span></article></section>
-  <section className="panel-card"><small className="panel-kicker">BELGE ZAMAN ÇİZELGESİ</small><h2>Uçtan uca süreç</h2><div style={{display:"grid",gap:12,marginTop:20}}>{events.map((event,index)=><article key={event.key} style={{display:"grid",gridTemplateColumns:"42px 1fr auto",gap:14,alignItems:"start",padding:"16px 0",borderBottom:index===events.length-1?0:"1px solid var(--line)",opacity:event.status==="pending"?.55:1}}><div style={{width:32,height:32,borderRadius:999,display:"grid",placeItems:"center",fontWeight:800,background:event.status==="complete"?"var(--success-soft)":event.status==="current"?"var(--warning-soft)":"var(--surface-2)",color:event.status==="complete"?"var(--success)":event.status==="current"?"var(--warning)":"var(--muted)"}}>{event.status==="complete"?"✓":event.status==="current"?"•":"○"}</div><div><h3 style={{margin:0,fontSize:16}}>{event.title}</h3><p style={{margin:"6px 0 0",color:"var(--muted)"}}>{event.detail}</p>{event.at?<small style={{display:"block",marginTop:6,color:"var(--dim)"}}>{dateTime(event.at)}</small>:null}</div>{event.href?<Link className="panel-secondary" href={event.href}>Aç</Link>:null}</article>)}</div></section>
- </div>;
+  Eskiden sayfa panel-pagehead + crm-metrics kutuları kullanıyordu ve
+  zaman çizelgesi SATIR İÇİ stillerle çiziliyordu (renkler, daireler ve
+  ızgara doğrudan JSX'te). Tema değişkenleri orada elle yazıldığı için
+  koyu temada iki renk sabit kalıyordu; bu sayfa aynı zamanda belge
+  listesinin satır tıklamasının gittiği yerdi, yani yeni listeden eski
+  tasarıma düşülüyordu.
+
+  Hesaplar değişmedi: olaylar aynı sırayla, aynı kaynaklardan.
+*/
+
+type ZamanOlayi = {
+  key: string;
+  title: string;
+  detail: string;
+  at: string | null;
+  status: "complete" | "current" | "pending";
+  href?: string;
+};
+
+const para = (deger: number, birim: string) =>
+  new Intl.NumberFormat("tr-TR", { style: "currency", currency: birim || "TRY" }).format(Number(deger || 0) / 100);
+const tarihSaat = (deger: string | null) => (deger ? new Date(deger).toLocaleString("tr-TR") : "—");
+
+const IS_DURUMU: Record<string, string> = {
+  planned: "Planlandı", in_progress: "Devam ediyor", blocked: "Beklemede",
+  completed: "Tamamlandı", archived: "Arşivlendi", cancelled: "İptal edildi",
+};
+
+export default async function BelgeYasamDongusu({ params }: { params: Promise<{ type: string; id: string }> }) {
+  const { type, id } = await params;
+  if (!["proposal", "contract"].includes(type)) notFound();
+  const sozlesmeMi = type === "contract";
+
+  const { supabase, membership, modules } = await getPanelContext();
+  if (!modules.some((modul) => ["documents", "crm"].includes(modul.code))) {
+    throw new Error("Belge yaşam döngüsüne erişiminiz yok.");
+  }
+
+  let opportunityId: string | null = null;
+  if (!sozlesmeMi) {
+    const { data, error } = await supabase.from("crm_proposals")
+      .select("id,opportunity_id").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
+    if (error) throw new Error(`Teklif okunamadı: ${error.message}`);
+    if (!data) notFound();
+    opportunityId = data.opportunity_id;
+  } else {
+    const { data, error } = await supabase.from("crm_contracts")
+      .select("id,proposal_id,opportunity_id").eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
+    if (error) throw new Error(`Sözleşme okunamadı: ${error.message}`);
+    if (!data) notFound();
+    opportunityId = data.opportunity_id;
+  }
+
+  const [firsatSonucu, teklifSonucu, sozlesmeSonucu] = await Promise.all([
+    supabase.from("crm_opportunities")
+      .select("id,title,customer_name,stage,estimated_value,created_at,updated_at")
+      .eq("id", opportunityId).eq("organization_id", membership.organization_id).maybeSingle(),
+    supabase.from("crm_proposals")
+      .select("id,proposal_no,title,amount,currency,status,revision_no,revision_note,created_at,sent_at,first_viewed_at,responded_at,superseded_at,superseded_by")
+      .eq("opportunity_id", opportunityId).eq("organization_id", membership.organization_id).order("revision_no", { ascending: true }),
+    supabase.from("crm_contracts")
+      .select("id,contract_no,title,amount,currency,status,created_at,sent_at,first_viewed_at,signed_at,signed_name,workflow_id,payment_plan_id,invoice_id")
+      .eq("opportunity_id", opportunityId).eq("organization_id", membership.organization_id).maybeSingle(),
+  ]);
+  if (firsatSonucu.error) throw new Error(`Talep kaydı okunamadı: ${firsatSonucu.error.message}`);
+  if (teklifSonucu.error) throw new Error(`Teklif geçmişi okunamadı: ${teklifSonucu.error.message}`);
+  if (sozlesmeSonucu.error) throw new Error(`Sözleşme kaydı okunamadı: ${sozlesmeSonucu.error.message}`);
+
+  const firsat = firsatSonucu.data;
+  if (!firsat) notFound();
+  const teklifler = teklifSonucu.data ?? [];
+  const sozlesme = sozlesmeSonucu.data;
+
+  const [isSonucu, planSonucu, faturaSonucu] = await Promise.all([
+    sozlesme?.workflow_id
+      ? supabase.from("operation_workflows").select("id,status,created_at,updated_at,start_date,due_date")
+          .eq("id", sozlesme.workflow_id).eq("organization_id", membership.organization_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    sozlesme?.payment_plan_id
+      ? supabase.from("payment_plans").select("id,status,total_amount,currency,created_at,updated_at")
+          .eq("id", sozlesme.payment_plan_id).eq("organization_id", membership.organization_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    sozlesme?.invoice_id
+      ? supabase.from("billing_invoices").select("id,status,total,currency,created_at,paid_at,due_at")
+          .eq("id", sozlesme.invoice_id).eq("organization_id", membership.organization_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (isSonucu.error) throw new Error(`İş akışı okunamadı: ${isSonucu.error.message}`);
+  if (planSonucu.error) throw new Error(`Ödeme planı okunamadı: ${planSonucu.error.message}`);
+  if (faturaSonucu.error) throw new Error(`Fatura kaydı okunamadı: ${faturaSonucu.error.message}`);
+
+  const is = isSonucu.data;
+  const plan = planSonucu.data;
+  const fatura = faturaSonucu.data;
+  const sonTeklif = teklifler.find((teklif) => !teklif.superseded_by) ?? teklifler.at(-1);
+  const guncelTutar = sozlesme?.amount ?? sonTeklif?.amount ?? firsat.estimated_value ?? 0;
+  const guncelBirim = sozlesme?.currency ?? sonTeklif?.currency ?? "TRY";
+  /* Açık olan belge bu sayfanın konusu; sağdaki künye onun. */
+  const buBelge = sozlesmeMi ? sozlesme : teklifler.find((teklif) => teklif.id === id) ?? sonTeklif;
+
+  const olaylar: ZamanOlayi[] = [
+    { key: "request", title: "Talep oluşturuldu", detail: `${firsat.customer_name} · ${firsat.title}`, at: firsat.created_at, status: "complete" },
+    ...teklifler.flatMap((teklif) => {
+      const satirlar: ZamanOlayi[] = [{
+        key: `proposal-${teklif.id}`,
+        title: teklif.revision_no > 0 ? `Teklif revizyonu R${teklif.revision_no}` : "İlk teklif oluşturuldu",
+        detail: `${teklif.proposal_no} · ${para(teklif.amount, teklif.currency)}${teklif.revision_note ? ` · ${teklif.revision_note}` : ""}`,
+        at: teklif.created_at,
+        status: teklif.superseded_by ? "complete" : teklif.status === "accepted" ? "complete" : "current",
+        href: `/panel/crm/proposals/${teklif.id}/revisions`,
+      }];
+      if (teklif.sent_at) satirlar.push({ key: `proposal-sent-${teklif.id}`, title: "Teklif müşteriye gönderildi", detail: teklif.proposal_no, at: teklif.sent_at, status: "complete" });
+      if (teklif.first_viewed_at) satirlar.push({ key: `proposal-view-${teklif.id}`, title: "Teklif görüntülendi", detail: teklif.proposal_no, at: teklif.first_viewed_at, status: "complete" });
+      if (teklif.responded_at) satirlar.push({ key: `proposal-response-${teklif.id}`, title: teklif.status === "accepted" ? "Teklif kabul edildi" : "Teklif yanıtlandı", detail: teklif.proposal_no, at: teklif.responded_at, status: "complete" });
+      return satirlar;
+    }),
+    { key: "contract", title: sozlesme ? "Sözleşme oluşturuldu" : "Sözleşme bekleniyor", detail: sozlesme ? `${sozlesme.contract_no} · ${para(sozlesme.amount, sozlesme.currency)}` : "Teklif kabul edildiğinde otomatik oluşturulur.", at: sozlesme?.created_at ?? null, status: sozlesme ? "complete" : "pending", href: sozlesme ? "/panel/crm/contracts" : undefined },
+    { key: "contract-sent", title: sozlesme?.sent_at ? "Sözleşme imzaya gönderildi" : "İmzaya gönderim bekleniyor", detail: sozlesme?.contract_no ?? "Henüz sözleşme yok", at: sozlesme?.sent_at ?? null, status: sozlesme?.sent_at ? "complete" : "pending" },
+    { key: "contract-signed", title: sozlesme?.signed_at ? "Sözleşme elektronik olarak onaylandı" : "Müşteri onayı bekleniyor", detail: sozlesme?.signed_at ? `${sozlesme.signed_name ?? "Müşteri"} tarafından onaylandı` : "Onay tamamlandığında iş akışı ve finans kayıtları açılır.", at: sozlesme?.signed_at ?? null, status: sozlesme?.signed_at ? "complete" : sozlesme ? "current" : "pending" },
+    { key: "workflow", title: is ? "İş akışı oluşturuldu" : "İş akışı bekleniyor", detail: is ? `Durum: ${IS_DURUMU[is.status] ?? is.status}` : "Sözleşme onayından sonra otomatik oluşur.", at: is?.created_at ?? null, status: is ? (is.status === "completed" || is.status === "archived" ? "complete" : "current") : "pending", href: is ? `/panel/operations/${is.id}` : undefined },
+    { key: "payment", title: plan ? "Ödeme planı finans modülüne aktarıldı" : "Ödeme planı bekleniyor", detail: plan ? `${para(plan.total_amount, plan.currency)} · ${plan.status}` : "Sözleşme onayından sonra taksitler oluşturulur.", at: plan?.created_at ?? null, status: plan ? (plan.status === "completed" ? "complete" : "current") : "pending", href: plan ? "/panel/finance" : undefined },
+    { key: "invoice", title: fatura ? "Taslak fatura oluşturuldu" : "Fatura bekleniyor", detail: fatura ? `${para(fatura.total, fatura.currency)} · ${fatura.status}` : "Finans akışında oluşturulacaktır.", at: fatura?.created_at ?? null, status: fatura ? (fatura.status === "paid" ? "complete" : "current") : "pending", href: fatura ? "/panel/billing" : undefined },
+    { key: "collection", title: fatura?.paid_at ? "Tahsilat tamamlandı" : "Tahsilat bekleniyor", detail: fatura?.paid_at ? `${para(fatura.total, fatura.currency)} tahsil edildi.` : "Ödeme planındaki taksitler tamamlandığında kapanır.", at: fatura?.paid_at ?? null, status: fatura?.paid_at ? "complete" : "pending", href: "/panel/finance" },
+  ];
+
+  const tamamlanan = olaylar.filter((olay) => olay.status === "complete").length;
+
+  return <main className="talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">DOKÜMANLAR · YAŞAM DÖNGÜSÜ</small>
+        <h1>{firsat.customer_name}</h1>
+        <p>{firsat.title}</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/documents">← Belge Merkezi</Link>
+        <Link className="panel-secondary" href={`/panel/documents/${type}/${id}/access-logs`}>Erişim geçmişi</Link>
+        <Link className="panel-primary" href={`/panel/documents/${type}/${id}/preview`}>Önizle / PDF</Link>
+      </div>
+    </header>
+
+    <nav className="kayit-serit talep-serit" aria-label="Belge özeti">
+      <dl>
+        <div className="cari-bakiye"><dt>Güncel bedel</dt><dd>{para(guncelTutar, guncelBirim)}</dd></div>
+        <div><dt>Teklif sürümü</dt><dd>{teklifler.length}</dd></div>
+        <div><dt>Sözleşme</dt><dd>{sozlesme ? sozlesme.contract_no : "—"}</dd></div>
+        <div><dt>Tahsilat</dt><dd className={fatura?.paid_at ? undefined : "talep-uyari"}>{fatura?.paid_at ? "Tamamlandı" : "Bekleniyor"}</dd></div>
+        <div><dt>Tamamlanan adım</dt><dd>{tamamlanan} / {olaylar.length}</dd></div>
+      </dl>
+    </nav>
+
+    <div className="talep-izgara belge-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Belge zaman çizelgesi">
+        <div className="cari-baslik"><h2>Uçtan uca süreç</h2><small>talepten tahsilata</small></div>
+        {/* Renkler ve daireler artık sınıflarda: satır içi stil koyu
+            temada iki rengi sabit bırakıyordu. */}
+        <ol className="belge-zaman">
+          {olaylar.map((olay) => (
+            <li key={olay.key} data-durum={olay.status}>
+              <i aria-hidden="true">{olay.status === "complete" ? "✓" : olay.status === "current" ? "•" : "○"}</i>
+              <div>
+                <h3>{olay.title}</h3>
+                <p>{olay.detail}</p>
+                {olay.at ? <small>{tarihSaat(olay.at)}</small> : null}
+              </div>
+              {olay.href ? <Link className="panel-secondary" href={olay.href}>Aç</Link> : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <aside className="panel-card talep-musteri" aria-label="Belge künyesi">
+        <div className="cari-baslik"><h2>{sozlesmeMi ? "Sözleşme" : "Teklif"}</h2><small>açık olan belge</small></div>
+        <dl className="stg-list">
+          <div><dt>Belge no</dt><dd>{(sozlesmeMi ? sozlesme?.contract_no : buBelge && "proposal_no" in buBelge ? buBelge.proposal_no : null) ?? "—"}</dd></div>
+          <div><dt>Konu</dt><dd>{buBelge?.title ?? firsat.title}</dd></div>
+          <div><dt>Tutar</dt><dd>{buBelge ? para(buBelge.amount, buBelge.currency) : "—"}</dd></div>
+          <div><dt>Durum</dt><dd>{buBelge?.status ?? "—"}</dd></div>
+          <div><dt>Oluşturuldu</dt><dd>{tarihSaat(buBelge?.created_at ?? null)}</dd></div>
+          {sozlesmeMi
+            ? <div><dt>İmza</dt><dd>{sozlesme?.signed_at ? tarihSaat(sozlesme.signed_at) : "Bekliyor"}</dd></div>
+            : <div><dt>Revizyon</dt><dd>{buBelge && "revision_no" in buBelge && buBelge.revision_no ? `R${buBelge.revision_no}` : "İlk sürüm"}</dd></div>}
+        </dl>
+        <div className="belge-kunye-eylem">
+          <Link className="panel-secondary" href={`/panel/crm/musteri/${firsat.id}`}>Müşteri kaydını aç</Link>
+          {!sozlesmeMi && buBelge ? <Link className="panel-secondary" href={`/panel/crm/proposals/${buBelge.id}/revisions`}>Revizyon geçmişi</Link> : null}
+          {is ? <Link className="panel-secondary" href={`/panel/operations/${is.id}`}>İşi aç</Link> : null}
+        </div>
+      </aside>
+    </div>
+  </main>;
 }
