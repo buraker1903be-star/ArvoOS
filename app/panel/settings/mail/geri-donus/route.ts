@@ -16,7 +16,7 @@ import { postaDurumCerezi, postaGeriDonusAdresi } from "../ortak";
 
 export const dynamic = "force-dynamic";
 
-const AYARLAR = "/panel/settings#posta";
+const AYARLAR = "/panel/settings?bolum=entegrasyonlar#posta";
 
 export async function GET(request: Request) {
   const { membership, userId, izin } = await getPanelContext();

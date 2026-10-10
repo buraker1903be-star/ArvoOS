@@ -46,7 +46,7 @@ export default async function WhatsappInboxPage({
       <div><small className="panel-kicker">CRM</small><h1>WhatsApp</h1></div>
       <div className="panel-page-actions">
         {/* Numara bağlama ve bağlantı kontrolü yapılandırmadır, ayarlarda kalır. */}
-        <Link className="panel-secondary" href="/panel/settings#entegrasyonlar">Numara ayarları</Link>
+        <Link className="panel-secondary" href="/panel/settings?bolum=entegrasyonlar">Numara ayarları</Link>
       </div>
     </div>
   );
@@ -92,7 +92,7 @@ export default async function WhatsappInboxPage({
     {!durum.connected ? (
       <p className="wa-note"><StgIcon name="plug" size={16} />
         Kendi numaranız bağlı değil. Mesajlar Arvo&apos;nun ortak numarasından gidiyor; müşterinin size yazdıkları da burada görünür.
-        Kendi numaranızı <Link href="/panel/settings#entegrasyonlar">Ayarlar → Entegrasyonlar</Link> bölümünden bağlayabilirsiniz.
+        Kendi numaranızı <Link href="/panel/settings?bolum=entegrasyonlar">Ayarlar → Entegrasyonlar</Link> bölümünden bağlayabilirsiniz.
       </p>
     ) : null}
 

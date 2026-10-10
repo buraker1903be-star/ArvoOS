@@ -189,8 +189,8 @@ export default async function PanelPage() {
     const talepVar = (talepToplami ?? 0) > 0;
     setupSteps.push(
       { key: "kurum", title: "Kurum ve marka", note: "Resmi ad, iletişim, logo ve marka rengi", href: "/panel/onboarding", done: Boolean((onboardingRow as { completed_at?: string | null } | null)?.completed_at) },
-      { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings#resmi-bilgiler", done: legalComplete },
-      { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings#kurumsal-kimlik", done: hasLogo && hasSignature },
+      { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings?bolum=resmi-bilgiler", done: legalComplete },
+      { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings?bolum=kurumsal-kimlik", done: hasLogo && hasSignature },
       { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1, optional: true },
     );
     if (canSeeCrm) setupSteps.push({ key: "talep", title: "İlk talebinizi girin", note: talepVar ? `${talepToplami} talep kayıtlı` : "Teklif, sözleşme ve takip buradan başlar", href: "/panel/crm", done: talepVar });
@@ -324,7 +324,7 @@ export default async function PanelPage() {
             baslik="Gelen postalar"
             alt="Gelen müşteri e-postaları"
             bos={postaBaglayabilir ? "Ortak posta kutusu henüz bağlı değil." : "Kurum yöneticiniz ortak posta kutusunu bağladığında gelen postalar burada görünür."}
-            href={postaBaglayabilir ? "/panel/settings#posta" : undefined}
+            href={postaBaglayabilir ? "/panel/settings?bolum=entegrasyonlar#posta" : undefined}
             hrefEtiket="Posta kutusunu bağla"
             sayi={0}
           />

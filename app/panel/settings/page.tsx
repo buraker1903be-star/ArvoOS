@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { getPanelContext } from "@/lib/panel-context";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
@@ -26,35 +27,67 @@ const domainStatusTones: Record<string, StgTone> = { pending: "warning", verifie
 // kaydedince kuruma o yeşil yazılıyordu.
 const DEFAULT_BRAND_COLOR = "#8e6d33";
 
-const sections = [
-  { id: "kurum", icon: "building", label: "Kurum" },
-  { id: "ekip", icon: "users", label: "Ekip ve erişim" },
+/*
+  AYARLAR TEK EKRANDA.
+
+  Yedi bölüm alt alta diziliydi; sayfa birkaç ekran boyundaydı ve
+  "alan adı" ya da "entegrasyonlar" için her seferinde kaydırmak
+  gerekiyordu. Üstteki kısayollar da bağlantı olduğu için sayfayı
+  kısaltmıyor, yalnızca içinde zıplatıyordu.
+
+  Bölümler artık sekme: aynı adres, ?bolum= ile. Sunucuda seçiliyor,
+  yani JavaScript gerekmiyor, geri tuşu ve paylaşılabilir adres
+  çalışıyor — panelin başka yerlerinde süzgeçler de böyle (?kutu=,
+  ?durum=).
+
+  Yan fayda: her sekme YALNIZCA kendi verisini okuyor. Entegrasyonlar
+  ödeme sağlayıcılarını, WhatsApp'ı ve posta kutusunu ağ üstünden
+  soruyordu ve bu üç çağrı, kurum bilgilerine bakmak isteyen herkesi
+  de bekletiyordu.
+
+  "Kurum", "Ekip" ve "Paket" tek sekmede (Genel): üçü de kısa, ayrı
+  sekmede neredeyse boş duruyorlardı.
+*/
+const BOLUMLER = [
+  { id: "genel", icon: "building", label: "Genel" },
   { id: "resmi-bilgiler", icon: "doc", label: "Resmi bilgiler" },
   { id: "kurumsal-kimlik", icon: "palette", label: "Kurumsal kimlik" },
   { id: "alan-adi", icon: "globe", label: "Alan adı" },
   { id: "entegrasyonlar", icon: "plug", label: "Entegrasyonlar" },
-  { id: "paket", icon: "box", label: "Paket" },
-];
+] as const;
+type BolumKodu = (typeof BOLUMLER)[number]["id"];
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
+  const { bolum: istenenBolum } = await searchParams;
   const { organization, membership, modules, supabase, izin } = await getPanelContext();
+  const bolum: BolumKodu = BOLUMLER.find((aday) => aday.id === istenenBolum)?.id ?? "genel";
   const enabledCodes = new Set(modules.map((module) => module.code));
   const integrations = modules.filter((module) => integrationCodes.has(module.code));
   const canManage = izin("settings.kurum.yonet");
-  // Ödeme sağlayıcıları yalnızca sahip/yöneticiye (anahtarlar hiç okunmaz)
-  const odemeSaglayicilari = canManage ? await saglayiciDurumlari(membership.organization_id) : [];
-  // WhatsApp da mağaza anahtarları gibi: yalnızca sahip/yönetici, anahtar hiç okunmaz.
-  const whatsapp = canManage ? await getWhatsappStatus(membership.organization_id) : null;
-  // Ortak posta kutusu: WhatsApp ile aynı kural — yalnızca yönetici, anahtar hiç okunmaz.
-  const posta = canManage ? await postaDurumu(membership.organization_id) : null;
+  /* Üç bağlantı durumu da ağ üstünden soruluyor (ödeme sağlayıcıları,
+     Meta, Google). Yalnızca o sekme açıkken: kurum bilgisine bakan
+     birini üç ağ turu kadar bekletmenin anlamı yok. Yetki kuralı aynı
+     kaldı — anahtarlar hiçbir durumda okunmuyor. */
+  const entegrasyonSekmesi = bolum === "entegrasyonlar" && canManage;
+  const [odemeSaglayicilari, whatsapp, posta] = entegrasyonSekmesi
+    ? await Promise.all([
+        saglayiciDurumlari(membership.organization_id),
+        getWhatsappStatus(membership.organization_id),
+        postaDurumu(membership.organization_id),
+      ])
+    : [[], null, null];
   /* Cloud'a kaydedilecek adres, kurumun O AN bulunduğu alan adına göre.
      Sabit yazıldığında kendi alan adından giren kurum yanlış adresi
      kaydediyor ve bağlantı redirect_uri_mismatch ile düşüyordu. */
   const postaGeriDonus = posta ? postaGeriDonusAdresi(await headers()) : null;
   const paytrDate = (value: string | null) => (value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Henüz yok");
-  const {data:orgRow}=await supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id",membership.organization_id).single();
-  // Resmi/banka alanları ayrı okunur: migration uygulanmadıysa sayfanın geri kalanı çalışmaya devam eder.
-  const {data:legalRow,error:legalError}=await supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id",membership.organization_id).maybeSingle();
+  /* İki kurum okuması birlikte: ayrı ayrı beklendiğinde sayfa iki tur
+     sürüyordu. Resmi/banka alanları ayrı sorguda kalıyor — migration
+     uygulanmadıysa sayfanın geri kalanı çalışmaya devam etsin. */
+  const [{ data: orgRow }, { data: legalRow, error: legalError }] = await Promise.all([
+    supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id", membership.organization_id).single(),
+    supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", membership.organization_id).maybeSingle(),
+  ]);
   const legalAvailable=!legalError;
   const legal=legalDetailsFrom(legalAvailable?(legalRow as Record<string,unknown>|null):null);
   const legalFilled=[legal.legal_address,legal.legal_city,legal.tax_office,legal.tax_number,legal.iban].filter(Boolean).length;
@@ -109,11 +142,23 @@ export default async function SettingsPage() {
       </dl>
     </nav>
 
+    {/* Sekmeler bağlantı: sunucu hangi bölümü çizeceğini adresten
+        okuyor, geri tuşu ve paylaşılan adres çalışıyor. */}
     <nav className="stg-nav" aria-label="Ayar bölümleri">
-      {sections.map((section) => <a key={section.id} href={`#${section.id}`}><StgIcon name={section.icon} size={16} />{section.label}</a>)}
+      {BOLUMLER.map((aday) => (
+        <Link
+          key={aday.id}
+          href={aday.id === "genel" ? "/panel/settings" : `/panel/settings?bolum=${aday.id}`}
+          className={aday.id === bolum ? "is-active" : undefined}
+          aria-current={aday.id === bolum ? "page" : undefined}
+        >
+          <StgIcon name={aday.icon} size={16} />{aday.label}
+        </Link>
+      ))}
     </nav>
 
     <div className="stg-grid">
+      {bolum === "genel" ? <>
       <StgSection id="kurum" icon="building" tone="info" kicker="KURUM" title="Kurum bilgileri" description="Çalışma alanınızın temel kimliği.">
         <dl className="stg-list">
           <StgValueRow label="Kurum" value={organization.name} />
@@ -130,6 +175,12 @@ export default async function SettingsPage() {
           : <p className="stg-muted"><StgIcon name="lock" size={16} />Bu alanlara erişiminiz yok.</p>}
       </StgSection>
 
+      <StgSection id="paket" wide icon="box" tone="gold" kicker="PAKET VE KAPSAM" title="Aktif modüller" description={`${organization.plan_code.toUpperCase()} paketinde erişime açık ${modules.length} modül.`}>
+        <div className="stg-tags">{modules.map((module) => <span key={module.code}><StgIcon name="check" size={14} />{module.name}</span>)}</div>
+      </StgSection>
+      </> : null}
+
+      {bolum === "resmi-bilgiler" ? <>
       <StgSection
         id="resmi-bilgiler" wide icon="doc" tone={legalComplete ? "success" : "warning"}
         kicker="RESMİ BİLGİLER VE BANKA" title="Teklif ve sözleşmedeki kurum kimliği"
@@ -138,7 +189,9 @@ export default async function SettingsPage() {
       >
         <LegalDetailsForm initial={legal} canManage={canManage} available={legalAvailable} organizationName={organization.name} contactEmail={branding?.contact_email ?? null} contactPhone={branding?.contact_phone ?? null} />
       </StgSection>
+      </> : null}
 
+      {bolum === "kurumsal-kimlik" ? <>
       <StgSection
         id="kurumsal-kimlik" wide icon="palette" tone="gold"
         kicker="KURUMSAL KİMLİK" title="Belge ve teklif görünümü"
@@ -205,7 +258,9 @@ export default async function SettingsPage() {
           {canManage ? <div className="wide panel-form-actions"><button className="panel-primary">Kurumsal Kimliği Kaydet</button></div> : null}
         </form>
       </StgSection>
+      </> : null}
 
+      {bolum === "alan-adi" ? <>
       <StgSection
         id="alan-adi" icon="globe" tone="info"
         kicker="ÖZEL ALAN ADI" title="Kendi alan adınızla çalışın"
@@ -229,7 +284,9 @@ export default async function SettingsPage() {
           </div>
         ) : null}
       </StgSection>
+      </> : null}
 
+      {bolum === "entegrasyonlar" ? <>
       <StgSection id="entegrasyonlar" icon="plug" tone="neutral" kicker="ENTEGRASYONLAR" title="Bağlantılar" description="Ödeme, banka, e-fatura ve alan adı bileşenleri.">
         {/* PayTR ve Garanti aynı kalıptan; alanlar lib/payments/saglayicilar.ts'te. */}
         {odemeSaglayicilari.map((status) => (
@@ -351,10 +408,7 @@ export default async function SettingsPage() {
           ? <div className="stg-list">{integrations.map((module) => <StgLinkRow key={module.code} href={`/panel/${module.code}`} icon="plug" tone="info" title={module.name} note="Etkin" />)}</div>
           : <div className="stg-empty"><StgIcon name="plug" size={22} /><p>Etkin entegrasyon bulunmuyor.</p></div>}
       </StgSection>
-
-      <StgSection id="paket" wide icon="box" tone="gold" kicker="PAKET VE KAPSAM" title="Aktif modüller" description={`${organization.plan_code.toUpperCase()} paketinde erişime açık ${modules.length} modül.`}>
-        <div className="stg-tags">{modules.map((module) => <span key={module.code}><StgIcon name="check" size={14} />{module.name}</span>)}</div>
-      </StgSection>
+      </> : null}
     </div>
   </main>;
 }

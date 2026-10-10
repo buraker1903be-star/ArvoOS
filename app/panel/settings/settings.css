@@ -40,6 +40,11 @@
 .stg-nav a{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;text-decoration:none;scroll-snap-align:start;transition:border-color .18s ease,background-color .18s ease}
 .stg-nav a svg{color:var(--muted)}
 .stg-nav a:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--surface-2)}
+/* Seçili sekme: bölümler artık yan yana değil, biri açık. Hangisinin
+   açık olduğu şeritten okunmazsa kullanıcı aynı sekmeye ikinci kez
+   basıyor. */
+.stg-nav a.is-active{border-color:var(--primary);background:var(--accent-soft);color:var(--accent-strong)}
+.stg-nav a.is-active svg{color:var(--accent-strong)}
 .stg-nav a:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 
 /* ---------- Bölüm kartları ---------- */
