@@ -326,3 +326,26 @@
   .stg-baglanti-duzen{grid-template-columns:200px minmax(0,1fr)}
   .stg-baglanti-liste{position:sticky;top:0}
 }
+
+/* ---------- Özel alan adı: üç adım ----------
+   Eskiden tek kutu, tek düğme ve bir DNS tablosuydu; kullanıcı kaydı
+   nereye gireceğini ve doğrulanmazsa ne yapacağını bilmiyordu. */
+.domain-adimlar{display:flex;flex-direction:column;gap:var(--sp-4);margin:0;padding:0;list-style:none;counter-reset:adim}
+.domain-adimlar>li{
+  display:flex;flex-direction:column;gap:var(--sp-2);min-width:0;
+  padding:var(--sp-4);border:1px solid var(--line-soft);border-radius:var(--r-md);background:var(--surface-2)}
+/* Adres girilmeden ikinci ve üçüncü adım yapılamaz; silikleşiyor ama
+   GİZLENMİYOR: yolun kaç adım olduğu baştan görünmeli. */
+.domain-adimlar>li[data-pasif]{opacity:.62}
+.domain-adimlar>li>b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.domain-adimlar>li>span{color:var(--muted);font-size:var(--fs-sm);line-height:1.5}
+.domain-adimlar .panel-form{margin-top:var(--sp-1)}
+.alan-adi-uyari{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin:0;
+  padding:var(--sp-2) var(--sp-3);border:1px solid var(--warning);border-radius:var(--r-sm);
+  background:var(--warning-soft);color:var(--ink);font-size:var(--fs-sm);line-height:1.5}
+.domain-tamam{display:flex;align-items:center;gap:var(--sp-2);margin:0;color:var(--success);font-size:var(--fs-sm)}
+.domain-yardim>summary{cursor:pointer;color:var(--muted);font-size:var(--fs-sm)}
+.domain-yardim ul{margin:var(--sp-2) 0 0;padding-left:1.1rem;color:var(--muted);font-size:var(--fs-sm);line-height:1.6}
+.domain-yardim li+li{margin-top:4px}
+.domain-son-kontrol{color:var(--dim);font-size:var(--fs-micro)}

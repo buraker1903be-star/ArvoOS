@@ -9,6 +9,9 @@ import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
+import { AlanAdiFormu } from "./alan-adi-formu";
+import { KopyalaDugmesi } from "../accounts/kopyala-dugmesi";
+import { istanbulTarihSaat } from "../posta/bicim";
 import { removeWhatsappAccount, saveWhatsappAccount, verifyWhatsappAccount } from "./whatsapp-actions";
 import { removePostaHesabi, savePostaHesabi } from "./posta-actions";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -85,7 +88,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
      sürüyordu. Resmi/banka alanları ayrı sorguda kalıyor — migration
      uygulanmadıysa sayfanın geri kalanı çalışmaya devam etsin. */
   const [{ data: orgRow }, { data: legalRow, error: legalError }] = await Promise.all([
-    supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,revision_days,tracking_show_phases").eq("id", membership.organization_id).single(),
+    supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,custom_domain_updated_at,revision_days,tracking_show_phases").eq("id", membership.organization_id).single(),
     supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", membership.organization_id).maybeSingle(),
   ]);
   const legalAvailable=!legalError;
@@ -320,22 +323,83 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         description="Panelinize kendi alan adınızdan (örn. panel.firmaniz.com) erişin."
         aside={domainInfo?.custom_domain ? <span className="status-pill" data-tone={domainStatusTones[domainStatus] ?? "neutral"}>{domainStatusLabels[domainStatus] ?? "Bilinmiyor"}</span> : null}
       >
-        {canManage ? (
-          <form className="panel-form" action={updateCustomDomain}>
-            <label className="wide">Alan adı<input name="custom_domain" defaultValue={domainInfo?.custom_domain ?? ""} placeholder="panel.firmaniz.com" /></label>
-            <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet ve Bağla</button></div>
-          </form>
-        ) : <p className="stg-muted"><StgIcon name="lock" size={16} />Bu ayarı yalnızca kurum sahibi veya yönetici değiştirebilir.</p>}
-        {domainInfo?.custom_domain && domainStatus !== "verified" && dnsRecords.length ? (
-          <div className="domain-dns-block">
-            <small>DNS SAĞLAYICINIZA EKLEYİN · {domainInfo.custom_domain}</small>
-            <table className="domain-dns-table"><thead><tr><th>Tür</th><th>Ad</th><th>Değer</th></tr></thead><tbody>
-              {dnsRecords.map((record, index) => <tr key={index}><td>{record.type}</td><td>{record.name}</td><td>{record.value}</td></tr>)}
-            </tbody></table>
-            <p>DNS değişikliklerinin yayılması birkaç dakika ile birkaç saat sürebilir.</p>
-            {canManage ? <form action={checkCustomDomainStatus}><button className="panel-secondary" type="submit">Doğrulamayı Kontrol Et</button></form> : null}
-          </div>
-        ) : null}
+        {/*
+          ÜÇ ADIM. Eskiden burada bir kutu, bir düğme ve bir DNS tablosu
+          vardı; kullanıcı kaydı nereye gireceğini, ne kadar
+          bekleyeceğini ve doğrulanmazsa ne yapacağını bilmiyordu.
+          Beyaz etiketin tamamı bu adrese bağlı olduğu için (sekme,
+          logo, PWA kısayolu) yolun sonuna varmak önemli.
+        */}
+        <ol className="domain-adimlar">
+          <li>
+            <b>1. Adresi yazın</b>
+            <span>Panel için ayrı bir alt alan adı seçin — web sitenizin adresi değil.</span>
+            {canManage ? (
+              <form className="panel-form" action={updateCustomDomain}>
+                <AlanAdiFormu baslangic={domainInfo?.custom_domain ?? ""} canManage={canManage} />
+                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet ve bağla</button></div>
+              </form>
+            ) : <p className="stg-muted"><StgIcon name="lock" size={16} />Bu ayarı yalnızca kurum sahibi veya yönetici değiştirebilir.</p>}
+          </li>
+          <li data-pasif={domainInfo?.custom_domain ? undefined : ""}>
+            <b>2. DNS kaydını ekleyin</b>
+            <span>Alan adınızı aldığınız yerin (GoDaddy, Natro, Cloudflare…) DNS ekranına girin ve şu kaydı ekleyin.</span>
+            {domainInfo?.custom_domain && dnsRecords.length ? (
+              <div className="domain-dns-block">
+                <table className="domain-dns-table">
+                  <thead><tr><th>Tür</th><th>Ad</th><th>Değer</th><th /></tr></thead>
+                  <tbody>
+                    {dnsRecords.map((record, index) => (
+                      <tr key={index}>
+                        <td data-label="Tür">{record.type}</td>
+                        <td data-label="Ad">{record.name}</td>
+                        <td data-label="Değer" className="is-mono">{record.value}</td>
+                        {/* Değerler uzun ve tek harf hatası sessizce
+                            "doğrulanamadı" demek; elle yazdırmıyoruz. */}
+                        <td><KopyalaDugmesi metin={record.value} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="stg-muted">Adresi kaydettiğinizde eklenecek kayıt burada görünür.</p>
+            )}
+          </li>
+          <li data-pasif={domainInfo?.custom_domain ? undefined : ""}>
+            <b>3. Doğrulayın</b>
+            <span>
+              DNS değişikliğinin yayılması birkaç dakika ile birkaç saat sürer; bu sırada paneli
+              eski adresinizden kullanmaya devam edebilirsiniz.
+            </span>
+            {domainStatus === "verified" ? (
+              <p className="domain-tamam">
+                <StgIcon name="check" size={16} />
+                Hazır: panel <b>{domainInfo?.custom_domain}</b> adresinden açılıyor ve sekmede kurumunuzun adı ve logosu görünüyor.
+              </p>
+            ) : (
+              <>
+                {canManage && domainInfo?.custom_domain ? (
+                  <form action={checkCustomDomainStatus}><button className="panel-secondary" type="submit">Doğrulamayı kontrol et</button></form>
+                ) : null}
+                {domainInfo?.custom_domain ? (
+                  <details className="domain-yardim">
+                    <summary>Doğrulanmadıysa</summary>
+                    <ul>
+                      <li>Kaydı <b>eklediğiniz ad</b> doğru mu: çoğu sağlayıcı alan adını kendisi ekler, yani yalnızca <b>{(dnsRecords[0]?.name ?? "panel").split(".")[0]}</b> yazmanız gerekir.</li>
+                      <li>Aynı ad için <b>eski bir kayıt</b> duruyor olabilir; aynı adda iki kayıt varsa doğrulama tutmaz.</li>
+                      <li>Cloudflare kullanıyorsanız kaydın <b>proxy (turuncu bulut) kapalı</b> olması gerekir.</li>
+                      <li>Değişiklik yeniyse biraz daha bekleyin; sağlayıcıların yayılma süresi 24 saate kadar çıkabiliyor.</li>
+                    </ul>
+                  </details>
+                ) : null}
+              </>
+            )}
+            {domainInfo?.custom_domain ? (
+              <small className="domain-son-kontrol">Son kontrol: {istanbulTarihSaat(orgRow?.custom_domain_updated_at as string | null)}</small>
+            ) : null}
+          </li>
+        </ol>
       </StgSection>
       </> : null}
 
