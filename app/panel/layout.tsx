@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { tenantTheme } from "@/lib/tenant-theme";
+import { getLoginBrand } from "@/lib/login-branding";
 import { logout } from "./actions";
 import { PanelBreadcrumb } from "./panel-breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
@@ -43,10 +44,33 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
 
-export const metadata: Metadata = {
-  title: "ArvoOS | Yönetim Merkezi",
-  description: "ArvoOS güvenli kurum ve platform çalışma alanı",
-};
+/*
+  SEKME BAŞLIĞI VE SİMGESİ KURUMUN (11.10.2026).
+
+  Kendi alan adında (panel.kurum.com) çalışan bir kiracı tarayıcı
+  sekmesinde, yer iminde ve geçmişinde "ArvoOS" görüyordu; ürün
+  beyaz etiketli satılırken kurumun kendi ekibine bile başka bir
+  markayı gösteriyordu.
+
+  Ölçüt ADRES: kurum kendi alan adındaysa onun adı ve logosu. Paylaşılan
+  adreste (app.arvo-os.com) ArvoOS kalıyor — orada kullanıcının birden
+  çok çalışma alanı olabiliyor ve sekmeye birini yazmak yanıltırdı.
+
+  Oturum okunmuyor: generateMetadata içinde kimlik doğrulaması
+  yönlendirme demek ve sayfa daha çizilmeden yönlendirme yapmak,
+  "giriş yapılmadı" ekranını metadata'dan tetiklemek olurdu.
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) {
+    return { title: "ArvoOS | Yönetim Merkezi", description: "ArvoOS güvenli kurum ve platform çalışma alanı" };
+  }
+  return {
+    title: `${marka.name} | Panel`,
+    description: `${marka.name} çalışma alanı`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 const roleNames: Record<string, string> = {
   owner: "Kurum Sahibi",

@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
+import { getLoginBrand } from "@/lib/login-branding";
 import { TakipForm } from "./takip-form";
 import { IconLock, IconSearch, IconShield } from "../durum/[slug]/status-view";
 import "../durum/[slug]/status-lookup.css";
 
-export const metadata: Metadata = {
-  title: "Müşteri İş Takibi",
-  description: "Takip kodunuzla işinizin güncel durumunu güvenli biçimde görüntüleyin.",
-};
+/*
+  Takip sayfası kurumun MÜŞTERİSİNE gidiyor: sekmede kurumun adı ve
+  logosu olmalı. Kurum kendi alan adındaysa adresten tanınıyor;
+  paylaşılan adreste genel başlık kalıyor (hangi kurum olduğu daha
+  kod girilmeden bilinmiyor).
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) {
+    return {
+      title: "Müşteri İş Takibi",
+      description: "Takip kodunuzla işinizin güncel durumunu güvenli biçimde görüntüleyin.",
+    };
+  }
+  return {
+    title: `${marka.name} | İş Takibi`,
+    description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 export default async function TakipPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const { code } = await searchParams;

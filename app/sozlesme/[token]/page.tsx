@@ -23,6 +23,10 @@ export async function generateMetadata({params}:{params:Promise<{token:string}>}
   alternates:{canonical:url},
   openGraph:{title,description,type:"website",url,siteName:organizationName,images:[{url:logo,alt:`${organizationName} logosu`}]},
   twitter:{card:"summary_large_image",title,description,images:[logo]},
+  /* Sekme simgesi de kurumun: müşteri teklifi açtığında tarayıcı
+     sekmesinde Arvo'nun değil, teklifi gönderen kurumun logosu
+     görünsün. Kurumun logosu yoksa köke düşüyor (ArvoOS). */
+  ...(row.organization_logo_url ? {icons:{icon:logo}} : {}),
   robots:{index:false,follow:false},
  };
 }
