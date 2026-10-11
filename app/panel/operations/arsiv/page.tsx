@@ -6,6 +6,8 @@ import { RepresentativeCell } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { unarchiveWorkflow } from "../actions";
 import { OpsIcon, shortDate } from "../ops-shared";
+import { aramaDeseni } from "@/lib/liste-arama";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
@@ -25,8 +27,6 @@ import "../operations.css";
   eskisini hiç bulamıyordu. Artık süzgeç sorguda ve liste sayfalanıyor.
 */
 
-const SAYFA_BOYU = 50;
-
 type ArsivIsi = {
   id: string;
   title: string;
@@ -41,8 +41,13 @@ export default async function OperasyonArsivi({ searchParams }: {
   searchParams: Promise<{ arama?: string; sayfa?: string }>;
 }) {
   const { arama, sayfa } = await searchParams;
+  /* Arama deseni SÜZGECE GİRMEDEN temizleniyor: PostgREST'in `or`
+     süzgeci virgülle ayrılmış bir metin, yani "Yılmaz, Ayşe" diye
+     arayan kullanıcı sorguyu bozuyor ve sayfa hata veriyordu
+     (lib/liste-arama.ts). */
+  const desen = aramaDeseni(arama ?? "");
   const aranan = (arama ?? "").trim().slice(0, 80);
-  const sayfaNo = Math.max(1, Number.parseInt(sayfa ?? "1", 10) || 1);
+  const sayfaNo = sayfaNumarasi(sayfa);
 
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((modul) => modul.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
@@ -53,8 +58,8 @@ export default async function OperasyonArsivi({ searchParams }: {
     .eq("organization_id", organizationId)
     .eq("status", "archived")
     .order("archived_at", { ascending: false })
-    .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1);
-  if (aranan) liste = liste.or(`title.ilike.*${aranan}*,customer_name.ilike.*${aranan}*`);
+    .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]);
+  if (desen) liste = liste.or(`title.ilike.*${desen}*,customer_name.ilike.*${desen}*`);
 
   const [
     { data, error, count: suzgecSayisi },
@@ -88,9 +93,7 @@ export default async function OperasyonArsivi({ searchParams }: {
     if (satir.workflow_id) okunmamis.set(satir.workflow_id, (okunmamis.get(satir.workflow_id) ?? 0) + 1);
   }
 
-  const sonSayfa = typeof suzgecSayisi === "number"
-    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
-    : isler.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
+  const sonSayfa = sonSayfaNo(suzgecSayisi, isler.length, sayfaNo);
 
   const adres = (degisen: { arama?: string; sayfa?: string }) => {
     const p = new URLSearchParams();

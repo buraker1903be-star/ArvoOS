@@ -23,3 +23,12 @@ test("telefon araması veritabanındaki anahtara indirgeniyor", () => {
   assert.equal(telefonAnahtari("12"), null);
   assert.equal(telefonAnahtari("Ayşe"), null);
 });
+
+test("arşivde aranan müşteri adı süzgeci bozmuyor", () => {
+  /* Arşiv sayfası aranan metni ham geçiriyordu: "Yılmaz, Ayşe" diye
+     arayan kullanıcı PostgREST'in `or` süzgecini bölüyor ve sayfa hata
+     veriyordu (11.10.2026). Desen virgülü boşluğa çeviriyor. */
+  const desen = aramaDeseni("Yılmaz, Ayşe (A.Ş.)");
+  assert.ok(desen && !desen.includes(","), "virgül kalmadı");
+  assert.ok(!desen.includes("(") && !desen.includes(")"), "parantez kalmadı");
+});
