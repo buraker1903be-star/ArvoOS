@@ -1,6 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { canSeeHrRecords } from "../hr-tabs";
+import { davetleriAyir, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
 import { relativeTime } from "../../crm/last-contact";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "../../os/genel-bakis";
@@ -20,7 +21,13 @@ import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, 
 type Employee = { id: string; user_id: string | null; department_id: string | null; full_name: string; job_title: string | null; email: string | null; employment_status: string; can_receive_sales_requests: boolean };
 type Department = { id: string; name: string; is_active: boolean };
 type Member = { user_id: string; is_active: boolean };
-type Invitation = { id: string; email: string; status: string; expires_at: string };
+type Invitation = { id: string; email: string; status: string; expires_at: string; error_message: string | null };
+/* Erişim listesinin sırası: yapılacak iş olanlar üstte. */
+const DURUM_SIRASI = ["invite-failed", "not-invited", "no-email", "invited"];
+const sira = (durum: string) => {
+  const yer = DURUM_SIRASI.indexOf(durum);
+  return yer === -1 ? DURUM_SIRASI.length : yer;
+};
 type Presence = { user_id: string; last_seen_at: string };
 type Agreement = { employee_id: string; status: string };
 type Tone = "info" | "gold" | "success" | "danger" | "warning" | "brand" | "neutral";
@@ -57,7 +64,7 @@ export default async function HrOverviewPage() {
     supabase.from("hr_employees").select("id,user_id,department_id,full_name,job_title,email,employment_status,can_receive_sales_requests").eq("organization_id", organizationId).order("full_name"),
     supabase.from("hr_departments").select("id,name,is_active").eq("organization_id", organizationId).order("name"),
     canManageTeam ? supabase.from("organization_memberships").select("user_id,is_active").eq("organization_id", organizationId) : none,
-    canManageTeam ? supabase.from("organization_invitations").select("id,email,status,expires_at").eq("organization_id", organizationId).in("status", ["pending", "sent"]) : none,
+    canManageTeam ? supabase.from("organization_invitations").select("id,email,status,expires_at,error_message").eq("organization_id", organizationId).in("status", [...OKUNAN_DAVET_DURUMLARI]) : none,
     canSeeRecords ? supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId) : none,
     canSeeRecords ? supabase.from("hr_confidentiality_agreements").select("employee_id,status").eq("organization_id", organizationId) : none,
     /* Son 28 günün girişleri (14 gün + önceki 14 günle kıyas). Sınırsız:
@@ -78,14 +85,30 @@ export default async function HrOverviewPage() {
 
   // ---- Panel erişimi (sahip/yönetici)
   const memberActive = new Map(((memberData ?? []) as Member[]).map((row) => [row.user_id, row.is_active]));
-  const invitations = ((invitationData ?? []) as Invitation[]).filter((row) => Date.parse(row.expires_at) > time.now);
+  /*
+    "Davet edildi" yalnızca GERÇEKTEN yolda olan davet için. Daveti
+    gönderilemeyen ya da süresi dolan kişi "davet edildi" görünürse
+    yönetici onu yapılacaklardan çıkarır ve kişi hiç gelmez; artık
+    ayrı bir durumla (ve kırmızı rozetle) en üstte duruyor
+    (hr/davet-durumu.ts).
+  */
+  const { bekleyen: invitations, sorunlu: sorunluDavetler } =
+    davetleriAyir((invitationData ?? []) as Invitation[], time.now);
   const invitedEmails = new Set(invitations.map((row) => row.email.toLowerCase()));
+  const sorunluEmails = new Map(sorunluDavetler.map((row) => [row.email.toLowerCase(), row.sebep]));
   const withAccess = working.filter((row) => row.user_id && memberActive.get(row.user_id));
   const withoutAccess = working
     .filter((row) => !row.user_id)
-    .map((row) => ({ ...row, state: !row.email ? "no-email" : invitedEmails.has(row.email.toLowerCase()) ? "invited" : "not-invited" }))
-    // Davet edilmemişler üstte: yapılacak iş onlarda
-    .sort((a, b) => (a.state === "not-invited" ? 0 : a.state === "no-email" ? 1 : 2) - (b.state === "not-invited" ? 0 : b.state === "no-email" ? 1 : 2) || a.full_name.localeCompare(b.full_name, "tr"));
+    .map((row) => {
+      const eposta = row.email?.toLowerCase();
+      const state = !row.email ? "no-email"
+        : eposta && sorunluEmails.has(eposta) ? "invite-failed"
+        : eposta && invitedEmails.has(eposta) ? "invited"
+        : "not-invited";
+      return { ...row, state, sebep: eposta ? sorunluEmails.get(eposta) ?? null : null };
+    })
+    // Yapılacak iş olanlar üstte: ulaşmayan davet, sonra davet edilmemiş.
+    .sort((a, b) => sira(a.state) - sira(b.state) || a.full_name.localeCompare(b.full_name, "tr"));
 
   // ---- Çevrimiçi (sahip/yönetici/sınırlı yönetici)
   const lastSeen = new Map(((presenceData ?? []) as Presence[]).map((row) => [row.user_id, row.last_seen_at]));
@@ -119,6 +142,7 @@ export default async function HrOverviewPage() {
   const seri = gunlukSeri([...gunKisi.values()], simdi());
 
   const stateLabel: Record<string, { tone: Tone; label: string }> = {
+    "invite-failed": { tone: "danger", label: "Davet ulaşmadı" },
     "not-invited": { tone: "warning", label: "Davet edilmedi" },
     "no-email": { tone: "neutral", label: "E-posta yok" },
     invited: { tone: "info", label: "Davet gönderildi" },
@@ -157,7 +181,10 @@ export default async function HrOverviewPage() {
                 key={row.id}
                 href={`/panel/hr/${row.id}`}
                 baslik={formatPersonName(row.full_name)}
-                alt={`${roleOf(row)}${row.email ? ` · ${row.email}` : ""}`}
+                /* Davet ulaşmadıysa SEBEP satırda: "davet ulaşmadı"
+                   rozetini görüp ne yapacağını bilmek için yöneticinin
+                   başka bir ekrana gitmesi gerekmesin. */
+                alt={row.sebep ?? `${roleOf(row)}${row.email ? ` · ${row.email}` : ""}`}
                 sag={<span className="status-pill" data-tone={stateLabel[row.state].tone}>{stateLabel[row.state].label}</span>}
               />
             ))}

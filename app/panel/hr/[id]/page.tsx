@@ -9,6 +9,7 @@ import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
 import { ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "../prim-verisi";
+import { DAVET_DURUM_ADLARI, kisininDaveti, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
 import { PrimPenceresi } from "../prim-penceresi";
 import { PersonelHareketleri } from "../personel-hareketleri";
 import { updateEmployee } from "../actions";
@@ -73,13 +74,12 @@ function kidem(baslangic: string, bugun: string) {
   const yil = Math.floor(ay / 12);
   return [yil ? `${yil} yıl` : "", ay % 12 ? `${ay % 12} ay` : ""].filter(Boolean).join(" ");
 }
-// Süresi dolmamış davet (saat bileşen gövdesinde okunmaz).
-// E-posta JS tarafında eşleşir: ilike, adreslerdeki "_" karakterini joker sayardı.
-function canliDavet(rows: Invitation[], email: string | null) {
-  const now = Date.now();
-  const aranan = email?.toLowerCase();
-  return aranan ? rows.find((invite) => invite.email.toLowerCase() === aranan && Date.parse(invite.expires_at) > now) : undefined;
-}
+/* Davetin durumu tek yerde (davet-durumu.ts): bekleyen varsa o, yoksa
+   SORUNLU olan sebebiyle gelir. Gönderilemeyen davet eskiden hiç
+   okunmuyordu; kart "bu personel panele giriş yapamıyor" deyip
+   geçiyor, yöneticinin bir önceki denemesinin niye tutmadığı hiçbir
+   yerde yazmıyordu. E-posta eşleşmesi JS tarafında: ilike, adresteki
+   "_" karakterini joker sayardı. */
 /*
   Açık talep: talepler listesinin "Aktif" kümesi (yeni + inceleniyor).
   Eskiden kazanılan ve kaybedilen dışındaki her aşama sayılıyordu
@@ -170,12 +170,14 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const postaGorur = izin("posta.gor");
   const [memberResult, invitationResult, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
     canManageTeam && employee.user_id ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", org).eq("user_id", employee.user_id).maybeSingle() : Promise.resolve({ data: null }),
-    canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at").eq("organization_id", org).in("status", ["pending", "sent"]) : Promise.resolve({ data: [] as Invitation[] }),
+    canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at,error_message").eq("organization_id", org).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
     crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
     postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
   ]);
   const member = memberResult.data as Member | null;
-  const pendingInvite = canliDavet((invitationResult.data ?? []) as Invitation[], employee.email);
+  const { davet: pendingInvite, sebep: davetSebebi } = kisininDaveti(
+    (invitationResult.data ?? []) as Invitation[], employee.email, simdi(),
+  );
   const docs = (docResult.data ?? []) as Doc[];
   const talepler = (talepResult.data ?? []) as Talep[];
   const isler = (isResult.data ?? []) as Is[];
@@ -426,11 +428,22 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 )
               ) : pendingInvite ? (
                 <>
-                  <span className="status-pill" data-tone={statusTone(pendingInvite.status)}>{pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}</span>
+                  <span className="status-pill" data-tone={davetSebebi ? "danger" : statusTone(pendingInvite.status)}>
+                    {davetSebebi ? (DAVET_DURUM_ADLARI[pendingInvite.status] ?? "Davet sorunlu") : pendingInvite.status === "sent" ? "Davet gönderildi" : "Davet gönderiliyor"}
+                  </span>
+                  {/* Sorunun sebebi kartın üstünde: yönetici "neden gitmedi"yi
+                      başka hiçbir yerde göremiyordu. */}
+                  {davetSebebi ? <p className="talep-uyari cari-not">{davetSebebi}</p> : null}
                   <div className="talep-iletisim">
-                    <PanelDrawer triggerLabel="Giriş bağlantısı" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
-                      <TeamInviteLink invitationId={pendingInvite.id} organizationName={organizationName} personName={employee.full_name} email={pendingInvite.email} />
-                    </PanelDrawer>
+                    {davetSebebi ? (
+                      <PanelDrawer triggerLabel="Yeniden davet et" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için panel erişimi`} description="Adresi düzeltip yeniden davet edebilirsiniz; önceki davet geçersiz olur.">
+                        <InviteTeamForm employeeId={employee.id} fullName={employee.full_name} defaultEmail={employee.email ?? ""} />
+                      </PanelDrawer>
+                    ) : (
+                      <PanelDrawer triggerLabel="Giriş bağlantısı" triggerClassName="panel-secondary" kicker="PANEL ERİŞİMİ" title={`${employee.full_name} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
+                        <TeamInviteLink invitationId={pendingInvite.id} organizationName={organizationName} personName={employee.full_name} email={pendingInvite.email} />
+                      </PanelDrawer>
+                    )}
                     <form action={cancelInvitation}><input type="hidden" name="invitation_id" value={pendingInvite.id} /><button className="panel-secondary" type="submit">Daveti iptal et</button></form>
                   </div>
                 </>

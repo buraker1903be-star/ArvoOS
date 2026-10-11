@@ -3,6 +3,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createDepartment, createEmployee } from "./actions";
+import { cancelInvitation } from "./team-actions";
 import { TeamInviteLink } from "./invite-link";
 import { roleNames } from "./role-names";
 import { formatPhone } from "@/lib/format-phone";
@@ -16,6 +17,7 @@ import "../crm/kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 import { ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "./prim-verisi";
+import { DAVET_DURUM_ADLARI, davetleriAyir, OKUNAN_DAVET_DURUMLARI } from "./davet-durumu";
 
 /*
   EKİP LİSTESİ (2026-10): talepler, teklifler, sözleşmeler, işler ve
@@ -43,7 +45,7 @@ import { primVerisi } from "./prim-verisi";
 type Department = { id: string; name: string; code: string | null; is_active: boolean };
 type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean };
 type Member = { user_id: string; role: string; is_active: boolean };
-type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string };
+type Invitation = { id: string; email: string; role: string; status: string; created_at: string; expires_at: string; error_message: string | null };
 const money = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(kurus / 100);
 const GIZLILIK: Record<string, [string, string]> = { signed: ["İmzalı", "success"], pending: ["İmza bekliyor", "info"] };
 
@@ -51,7 +53,7 @@ const TZ = "Europe/Istanbul";
 const statusNames: Record<string, string> = { active: "Aktif", on_leave: "İzinli", inactive: "Pasif", terminated: "İşten ayrıldı" };
 const statusTones: Record<string, string> = { active: "success", on_leave: "warning", inactive: "neutral", terminated: "danger" };
 const typeNames: Record<string, string> = { full_time: "Tam zamanlı", part_time: "Yarı zamanlı", contractor: "Sözleşmeli", intern: "Stajyer" };
-const inviteStatusNames: Record<string, string> = { sent: "Gönderildi", pending: "Gönderiliyor" };
+
 const shortDate = (value: string) => new Date(value).toLocaleDateString("tr-TR", { timeZone: TZ, day: "numeric", month: "short", year: "numeric" });
 const DURUM_SUZGECLERI = [
   ["", "Tümü"],
@@ -60,11 +62,7 @@ const DURUM_SUZGECLERI = [
   ["pasif", "Ayrılan / pasif"],
 ] as const;
 
-// Süresi dolmamış davetler (saat bileşen gövdesinde okunmaz).
-function liveInvitations(rows: Invitation[]) {
-  const now = Date.now();
-  return rows.filter((invite) => Date.parse(invite.expires_at) > now);
-}
+const inviteStatusTone: Record<string, string> = { failed: "danger" };
 // Çevrimiçi sınırı: son 2 dakikada görülen (personel hareketleriyle aynı).
 const cevrimiciSiniri = () => Date.now() - 2 * 60 * 1000;
 
@@ -96,7 +94,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests").eq("organization_id", membership.organization_id).order("full_name"),
     supabase.from("hr_departments").select("id,name,code,is_active").eq("organization_id", membership.organization_id).order("name"),
     canManageTeam ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", membership.organization_id) : Promise.resolve({ data: [] as Member[] }),
-    canManageTeam ? supabase.from("organization_invitations").select("id,email,role,status,created_at,expires_at").eq("organization_id", membership.organization_id).in("status", ["pending", "sent"]) : Promise.resolve({ data: [] as Invitation[] }),
+    canManageTeam ? supabase.from("organization_invitations").select("id,email,role,status,created_at,expires_at,error_message").eq("organization_id", membership.organization_id).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (departmentError) throw new Error("Departmanlar okunamadı: " + departmentError.message);
@@ -105,7 +103,10 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const departments = (departmentData ?? []) as Department[];
   const departmentMap = new Map(departments.map((item) => [item.id, item.name]));
   const memberMap = new Map(((memberData ?? []) as Member[]).map((member) => [member.user_id, member]));
-  const invitations = liveInvitations((invitationData ?? []) as Invitation[]);
+  /* Gönderilemeyen ve süresi dolan davetler de görünüyor: ikisi de
+     listeden sessizce düşüyordu ve yönetici "davet gitti" sanıp
+     bekliyordu (davet-durumu.ts). */
+  const { bekleyen: invitations, sorunlu: sorunluDavetler } = davetleriAyir((invitationData ?? []) as Invitation[], simdi());
   const invitationByEmail = new Map(invitations.map((invite) => [invite.email.toLowerCase(), invite]));
 
   const activeCount = employees.filter((item) => item.employment_status === "active").length;
@@ -197,6 +198,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         <div><dt>Satış temsilcisi</dt><dd>{salesCount}</dd></div>
         {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{accessCount}</dd></div> : null}
         {canManageTeam ? <div><dt>Bekleyen davet</dt><dd className={invitations.length ? "talep-uyari" : undefined}>{invitations.length}</dd></div> : null}
+        {canManageTeam && sorunluDavetler.length ? <div><dt>Sorunlu davet</dt><dd className="cari-eksi">{sorunluDavetler.length}</dd></div> : null}
         {hareketGorur ? <div><dt>Şu an çevrimiçi</dt><dd className={cevrimici.size ? "cari-arti" : undefined}>{cevrimici.size}</dd></div> : null}
         {prim ? <div><dt>Ödenecek prim</dt><dd>{money(employees.reduce((t, e) => t + Math.max(0, ledgerTotals(e.id, prim.accruals, prim.payments).balance), 0))}</dd></div> : null}
       </dl>
@@ -316,10 +318,31 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
               {invitations.map((invite) => (
                 <li key={invite.id}>
                   <span className="cari-hareket-metin"><b title={invite.email}>{invite.email}</b><small>{roleNames[invite.role] ?? invite.role} · son gün {shortDate(invite.expires_at)}</small></span>
-                  <span className="status-pill" data-tone={statusTone(invite.status)}>{inviteStatusNames[invite.status] ?? invite.status}</span>
+                  <span className="status-pill" data-tone={statusTone(invite.status)}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
                   <PanelDrawer triggerLabel="Bağlantı" triggerClassName="panel-secondary ekip-baglanti" kicker="PANEL ERİŞİMİ" title={`${invite.email} için giriş bağlantısı`} description="Davet e-postası ulaşmadıysa bağlantıyı WhatsApp veya e-postayla kendiniz gönderin.">
                     <TeamInviteLink invitationId={invite.id} organizationName={organizationName} personName={null} email={invite.email} />
                   </PanelDrawer>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {canManageTeam && sorunluDavetler.length ? (
+          <section className="panel-card talep-musteri" aria-label="Sorunlu davetler">
+            <div className="cari-baslik"><h2>Sorunlu davetler</h2><small>{sorunluDavetler.length}</small></div>
+            <p className="hr-invite-link-hint">Bu davetler kişiye ULAŞMADI. Adresi personel kartından düzeltip yeniden davet edin; gerekmiyorsa daveti iptal edin.</p>
+            <ul className="cari-hareketler">
+              {sorunluDavetler.map((invite) => (
+                <li key={invite.id}>
+                  <span className="cari-hareket-metin">
+                    <b title={invite.email}>{invite.email}</b>
+                    <small title={invite.sebep}>{roleNames[invite.role] ?? invite.role} · {invite.sebep}</small>
+                  </span>
+                  <span className="status-pill" data-tone={inviteStatusTone[invite.status] ?? "warning"}>{DAVET_DURUM_ADLARI[invite.status] ?? invite.status}</span>
+                  <form action={cancelInvitation}>
+                    <input type="hidden" name="invitation_id" value={invite.id} />
+                    <button className="panel-secondary ekip-baglanti" type="submit">İptal et</button>
+                  </form>
                 </li>
               ))}
             </ul>
