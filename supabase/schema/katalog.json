@@ -1745,6 +1745,7 @@
     "create_group_message_channel",
     "crm_customer_history",
     "crm_customer_search",
+    "crm_teklif_istatistikleri",
     "delete_group_message_channel",
     "expire_due_crm_proposals",
     "generate_contract_tracking_code",

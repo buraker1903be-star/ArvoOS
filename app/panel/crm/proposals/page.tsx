@@ -20,7 +20,7 @@ import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
-import { aylik, enCok, oran, ortanca, son30Degisim } from "@/lib/liste-istatistik";
+import { aylikDilimler, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
@@ -84,8 +84,6 @@ type TeklifSatiri = {
   archive_reason: string | null;
   opportunity_id: string;
 };
-/* Sağdaki istatistik kartının okuduğu dar satır. */
-type IstatistikSatiri = Pick<TeklifSatiri, "created_at" | "amount" | "teklif_grubu" | "sent_at" | "request_details" | "assigned_employee_id">;
 /** Adresteki durum değeri; eski bağlantılar (?status=sent) çalışmaya devam ediyor. */
 const DURUMLAR = ["", "draft", "sent", "accepted", "rejected", "expired", "arsiv", "tumu"] as const;
 const SERIT: TeklifGrubu[] = ["draft", "sent", "accepted", "rejected", "expired"];
@@ -168,7 +166,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const [
     { data, error, count: suzgecSayisi },
     { data: employeeData, error: employeeError },
-    { data: istatistikVerisi, error: istatistikHatasi, count: istatistikSayisi },
+    { data: ozetVerisi, error: ozetHatasi },
     ...seritSayilari
   ] = await Promise.all([
     grupSuzgeci(suzulmus())
@@ -179,28 +177,18 @@ export default async function ProposalsPage({ searchParams }: Props) {
       .select("id,full_name,can_receive_sales_requests,employment_status")
       .eq("organization_id", membership.organization_id),
     /*
-      İSTATİSTİK OKUMASI AYRI VE DAR. Sağdaki kart (son 30 gün, kabul
-      oranı, ortanca, aylık değer, hizmet dağılımı) tüm teklifleri
-      ister; sayfalanmış listeden hesaplamak altı sayıyı sessizce "bu
-      sayfanın" sayısına çevirirdi. Bu yüzden ayrı bir okuma — ama
-      yirmi sütun ve fırsat birleşimi yerine yalnızca altı küçük sütun.
-
-      SINIR KONMUYOR: sınırlı bir okumadan sayım almak tam da
-      check:rakamlar'ın aradığı hata. Yine de toplam okunuyor (count):
-      PostgREST'in kendi satır tavanına takılırsa kart bunu SÖYLÜYOR,
-      sessizce eksik sayı göstermiyor. Sıradaki adım bu kartı bir özet
-      fonksiyonuna taşımak; o zaman bu okuma da kalkacak.
+      Sağdaki kartın SAYILARI VERİTABANINDAN. Eskiden tüm teklifler
+      okunup bellekte sayılıyordu; liste sayfalandıktan sonra geriye
+      kalan tek sınırsız okuma buydu ve PostgREST'in satır tavanına
+      takıldığı gün sayılar sessizce eksilecekti. Kart süzgeçten
+      bağımsız (kurumun tamamı), o yüzden işleve süzgeç geçmiyor.
     */
-    supabase.from("crm_teklif_liste")
-      .select("created_at,amount,teklif_grubu,sent_at,request_details,assigned_employee_id", { count: "exact" })
-      .eq("organization_id", membership.organization_id)
-      .neq("teklif_grubu", "eski")
-      .order("created_at", { ascending: false }),
+    supabase.rpc("crm_teklif_istatistikleri", { p_organization_id: membership.organization_id }),
     ...SERIT.map((grup) => sayim(grup)),
   ]);
   if (error) throw new Error("Teklifler okunamadı: " + error.message);
   if (employeeError) throw new Error("Satış temsilcileri okunamadı: " + employeeError.message);
-  if (istatistikHatasi) throw new Error("Teklif istatistikleri okunamadı: " + istatistikHatasi.message);
+  if (ozetHatasi) throw new Error("Teklif istatistikleri okunamadı: " + ozetHatasi.message);
 
   const employees = (employeeData ?? []) as { id: string; full_name: string; can_receive_sales_requests: boolean; employment_status: string }[];
   const representativeMap = new Map(employees.map((e) => [e.id, e.full_name]));
@@ -283,28 +271,36 @@ export default async function ProposalsPage({ searchParams }: Props) {
     geliyor, sayfalanmış listeden değil.
   */
   const an = simdi();
-  const gecerli = (istatistikVerisi ?? []) as unknown as IstatistikSatiri[];
-  /* Okuma sınıra dayandıysa kart bunu SÖYLÜYOR: sessizce "ilk 2000
-     teklifin" sayısını tüm kurumun sayısı gibi göstermek, bu depoda
-     daha önce üç ekranda yaşandı (bkz. npm run check:rakamlar). */
-  const istatistikKapsami = (istatistikSayisi ?? 0) > gecerli.length
-    ? `son ${gecerli.length} teklif · toplam ${istatistikSayisi}`
-    : `${gecerli.length} teklif`;
-  const { son30, degisim } = son30Degisim(gecerli.map((row) => row.created_at), an);
-  const kabul = gecerli.filter((row) => row.teklif_grubu === "accepted").length;
-  const karara = gecerli.filter((row) => ["accepted", "rejected", "expired"].includes(row.teklif_grubu)).length;
+  /* Özet jsonb: ham sayılar veritabanından, etiketleme burada. Sayı
+     gelmezse (yeni kurum, hiç teklif yok) sıfırlarla çiziliyor —
+     kartın kendisi kaybolunca "istatistik yok mu" sorusu geliyor. */
+  const ozet = (ozetVerisi ?? {}) as {
+    toplam?: number; son30?: number; onceki30?: number; kabul?: number; karara?: number;
+    ortanca?: number; bekleyen?: number; bekleyen_gec?: number; aktif_deger?: number;
+    aylik?: { ay: string; adet: number; toplam: number }[];
+    hizmetler?: { ad: string; adet: number }[];
+    temsilciler?: string[];
+  };
+  const sayiAl = (deger: number | undefined) => Number(deger ?? 0);
+  const son30 = sayiAl(ozet.son30);
+  const onceki30 = sayiAl(ozet.onceki30);
+  /* Değişim yüzdesi: önceki dönem boşsa null (yüzde hesaplanamaz),
+     son30Degisim'in kuralıyla aynı. */
+  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const kabul = sayiAl(ozet.kabul);
+  const karara = sayiAl(ozet.karara);
   const kabulOrani = oran(kabul, karara);
-  const tipikTutar = ortanca(gecerli.map((row) => Number(row.amount)));
-  const bekleyen = gecerli.filter((row) => row.teklif_grubu === "sent");
-  const bekleyenGec = bekleyen.filter((row) => (daysSince(row.sent_at) ?? 0) >= 7).length;
-  const aylikDeger = aylik(gecerli.map((row) => ({ tarih: row.created_at, tutar: Number(row.amount) })), 6, an);
-  const hizmetler = enCok(gecerli.map((row) => String(row.request_details?.service_type ?? "").trim() || "Belirtilmedi"), 5);
-  /* Aktif tekliflerin toplam değeri de bu okumadan: şeritteki sayılar
-     süzgece göre, bu tutar kurumun tamamına göre. İkisini aynı yerde
-     göstermek yanıltırdı, o yüzden kartta duruyor. */
-  const aktifDeger = gecerli.filter((row) => AKTIF.includes(row.teklif_grubu)).reduce((toplam, row) => toplam + Number(row.amount), 0);
-  // Temsilci seçimi: satış talebi alabilen aktif personel ve listede adı geçen herkes.
-  const atananlar = new Set(gecerli.map((row) => row.assigned_employee_id).filter(Boolean));
+  const tipikTutar = sayiAl(ozet.ortanca);
+  const bekleyenSayisi = sayiAl(ozet.bekleyen);
+  const bekleyenGec = sayiAl(ozet.bekleyen_gec);
+  const aktifDeger = sayiAl(ozet.aktif_deger);
+  const istatistikKapsami = `${sayiAl(ozet.toplam)} teklif`;
+  const aylikDeger = aylikDilimler(ozet.aylik ?? [], 6, an);
+  const hizmetler = (ozet.hizmetler ?? []).map((satir) => [satir.ad, Number(satir.adet)] as [string, number]);
+  /* Temsilci seçimi: satış talebi alabilen aktif personel ve tekliflerde
+     adı geçen herkes. "Adı geçenler" de özetten geliyor; eskiden
+     listenin tamamını okumak gerekiyordu. */
+  const atananlar = new Set(ozet.temsilciler ?? []);
   const temsilciSecenekleri = employees
     .filter((e) => (e.employment_status === "active" && e.can_receive_sales_requests) || atananlar.has(e.id))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "tr"));
@@ -450,7 +446,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
             { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni teklif", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
             { ad: "Kabul oranı", deger: kabulOrani === null ? "—" : `%${kabulOrani}`, alt: `${kabul} kabul · ${karara - kabul} red/süre` },
             { ad: "Tipik teklif", deger: tamPara(tipikTutar), alt: `ortanca · ${istatistikKapsami}` },
-            { ad: "Yanıt bekleyen", deger: String(bekleyen.length), alt: bekleyenGec ? `${bekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: bekleyenGec ? "uyari" : undefined },
+            { ad: "Yanıt bekleyen", deger: String(bekleyenSayisi), alt: bekleyenGec ? `${bekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: bekleyenGec ? "uyari" : undefined },
           ]}
           gruplar={[
             { baslik: "Son 6 ay · teklif değeri", satirlar: aylikDeger.map((ay) => ({ ad: `${ay.ad} · ${ay.adet} teklif`, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
