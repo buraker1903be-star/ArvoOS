@@ -114,6 +114,14 @@ async function okur(kisi) {
     opsSozlesme: (await say(`select contract_no, tracking_code from public.ops_contracts`)),
     opsFirsat: (await say(`select customer_name, contact_email from public.ops_opportunities`)),
     opsTeklif: (await say(`select proposal_no from public.ops_proposals`)),
+    /* LİSTE GÖRÜNÜMLERİ (11.10.2026'da eklendi) aynı korumanın altında
+       mı: hepsi security_invoker, yani çağıranın RLS'iyle okunuyor.
+       Biri invoker olmadan kurulsaydı tutarları olduğu gibi açardı —
+       bu koruma 2026-10-01'de tam da bunun için konmuştu. */
+    listeTeklifTutari: (await say(`select amount from public.crm_teklif_liste`)).map((r) => Number(r.amount)),
+    listeSozlesmeTutari: (await say(`select amount from public.crm_sozlesme_liste`)).map((r) => Number(r.amount)),
+    listeTalepDegeri: (await say(`select estimated_value from public.crm_talep_liste`)).map((r) => Number(r.estimated_value)),
+    listeCariBorc: (await say(`select defter_borc from public.cari_liste`)).map((r) => Number(r.defter_borc)),
     yorum: (await say(`select body from public.crm_internal_comments`)).map((r) => r.body),
     kayit: (await say(`select action from public.activity_logs`)).map((r) => r.action),
   };
@@ -129,6 +137,12 @@ describe("operasyon personeli tutar görmesin", () => {
       assert.deepEqual(r.sozlesmeTutari, [], "Sözleşme tutarı okunmamalı");
       assert.deepEqual(r.teklifTutari, [], "Teklif tutarı okunmamalı");
       assert.deepEqual(r.firsatDegeri, [], "Fırsat değeri okunmamalı");
+      /* Yeni liste görünümleri de aynı kapıdan geçiyor: biri
+         security_invoker olmadan kurulsaydı tutarı buradan sızdırırdı. */
+      assert.deepEqual(r.listeTeklifTutari, [], "Teklif listesi görünümü tutar sızdırmamalı");
+      assert.deepEqual(r.listeSozlesmeTutari, [], "Sözleşme listesi görünümü tutar sızdırmamalı");
+      assert.deepEqual(r.listeTalepDegeri, [], "Talep listesi görünümü değer sızdırmamalı");
+      assert.deepEqual(r.listeCariBorc, [], "Cari görünümü borç sızdırmamalı");
     }));
 
   test("uzman kendi işinin künyesini, yorumlarını ve kayıt geçmişini GÖRÜYOR", () =>
@@ -197,6 +211,13 @@ describe("operasyon personeli tutar görmesin", () => {
         assert.deepEqual(r.firsatDegeri, [3500000]);
         // Görünümler onlara da açık: tek okuma yolu yeter.
         assert.equal(r.opsSozlesme.length, 1);
+        /* Liste görünümleri de ÇALIŞMALI. Fazla daraltılmış bir
+           görünüm tutarı sızdırmaz ama listeyi boşaltır: yetkili
+           kullanıcı ekranı boş görür ve sebebini hiçbir yerde
+           okuyamaz. */
+        assert.deepEqual(r.listeTeklifTutari, [3500000], `${kisi} teklif listesini görmeli`);
+        assert.deepEqual(r.listeSozlesmeTutari, [3500000], `${kisi} sözleşme listesini görmeli`);
+        assert.deepEqual(r.listeTalepDegeri, [3500000], `${kisi} talep listesini görmeli`);
       }
     }));
 
