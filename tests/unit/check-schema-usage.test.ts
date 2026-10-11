@@ -79,7 +79,30 @@ test("denetimin en başından beri yakaladıkları hâlâ yakalanıyor", () => {
   assert.match(sonuc.cikti, /klasik\.ts:6\s+fonksiyon yok: olmayan_fonksiyon\(\)/);
 });
 
-test("örnek ağaçta yalnızca beklenen altı sorun var", () => {
-  // Sayı sabit: yeni bir yanlış alarm sınıfı eklenirse burada görünür.
-  assert.match(sonuc.cikti, /✗ Şema sözleşmesi: 6 sorun/);
+test("örnek ağaçta yalnızca beklenen sekiz sorun var", () => {
+  /* Sayı sabit: yeni bir yanlış alarm sınıfı eklenirse burada görünür.
+     Altıydı; sabit sütun listesi örneği (sabit-liste.ts) iki gerçek
+     sorun daha ekliyor. */
+  assert.match(sonuc.cikti, /✗ Şema sözleşmesi: 8 sorun/);
+});
+
+test("SABİT sütun listesi denetleniyor (eskiden kör noktaydı)", () => {
+  /*
+    `.select(SUTUNLAR)` biçimi iki depoda birden vardı: ArvoARC'ın
+    Garanti sanal pos ayarları (on sütun, ÖDEME kodu) ve ArvoOS'ta yan
+    sorgudan kaçmak için sütunları sayan liste sayfaları. Liste düz
+    metinken denetlenen sütunlar, sabite taşınınca görünmez oluyordu.
+  */
+  assert.match(sonuc.cikti, /sabit-liste\.ts:\d+\s+personel\.yanlis_sutun yok \(select\)/);
+  assert.match(sonuc.cikti, /sabit-liste\.ts:\d+\s+oturum_kayitlari\.olmayan_alan yok \(select\)/);
+});
+
+test("çözülemeyen sabit biçimi YANLIŞ ALARM üretmiyor", () => {
+  /*
+    Koşullu ifade (`a > b ? "x" : "y"`) bilerek çözülmüyor: yanlış
+    çözmek, var olmayan bir sütunu "var" sanmaktan daha kötü — ve
+    yanlış alarm denetime olan güveni bitirir.
+  */
+  assert.doesNotMatch(sonuc.cikti, /KOSULLU/);
+  assert.doesNotMatch(sonuc.cikti, /personel\.id yok/);
 });
