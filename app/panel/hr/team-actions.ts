@@ -6,10 +6,13 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
 import { syncArvolabMembers } from "@/lib/arvolab";
+/* Yönetim departmanı sorgusu ortak modülde: yetki profilleri de aynı
+   korumayı uyguluyor ve güvenlik kuralının iki kopyası, birinin
+   eskimesi demek. */
+import { yonetimDepartmanindaMi as isManagementEmployee } from "@/lib/yonetim-departmani";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { assertYetki } from "@/lib/yetkiler";
 import { davetEngeli } from "@/lib/kota-durumu";
@@ -23,27 +26,6 @@ async function teamContext() {
 
 // Çalışan Yönetici departmanında ve aktif/izinliyse rolü departmandan gelir
 // (veritabanında arvo_sync_management_owner otomatik Kurum Sahibi yapar).
-async function isManagementEmployee(
-  supabase: Awaited<ReturnType<typeof getPanelContext>>["supabase"],
-  organizationId: string,
-  column: "id" | "user_id",
-  value: string,
-) {
-  const { data: employees } = await supabase.from("hr_employees")
-    .select("department_id,employment_status")
-    .eq("organization_id", organizationId)
-    .eq(column, value);
-  const departmentIds = (employees ?? [])
-    .filter((employee) => employee.department_id && MANAGEMENT_EMPLOYMENT_STATUSES.includes(employee.employment_status))
-    .map((employee) => employee.department_id as string);
-  if (!departmentIds.length) return false;
-  const { data: departments } = await supabase.from("hr_departments")
-    .select("name")
-    .eq("organization_id", organizationId)
-    .in("id", departmentIds);
-  return (departments ?? []).some((department) => isManagementDepartmentName(department.name));
-}
-
 export type InviteTeamMemberState = { error: string | null; success: boolean };
 
 // Supabase JS SDK'sı, Edge Function 2xx dışında bir kod döndürdüğünde

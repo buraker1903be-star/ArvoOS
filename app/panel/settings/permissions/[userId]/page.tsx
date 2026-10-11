@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
 import { YETKI_GRUPLARI, acilabilirMi, varsayilanAcikMi } from "@/lib/yetkiler";
-import { updateMemberPermissions } from "../actions";
+import { YETKI_PROFILLERI, profilUygulandiMi } from "@/lib/yetki-profilleri";
+import { applyPermissionProfile, updateMemberPermissions } from "../actions";
 import { StgIcon, StgSection } from "../../settings-ui";
 import "../../settings.css";
 
@@ -88,7 +89,50 @@ export default async function MemberPermissionsPage({ params }: { params: Promis
 
     {sahipMi
       ? <div className="stg-empty"><StgIcon name="shield" size={22} /><p>Kurum Sahibi kısıtlanamaz: kurumun tek kalan yetkilisi kendini dışarıda bırakabilirse kurum yönetilemez hâle gelir.</p></div>
-      : <form action={updateMemberPermissions}>
+      : <>
+        {/*
+          HAZIR PROFİL. Aşağıdaki kutucukları tek tek işaretlemek
+          esnek ama tekrar eden bir iş: "bu kişi operasyon müdürü
+          olacak" dendiğinde aynı on beş karar elle veriliyor ve ikinci
+          müdürde biri atlanıyor. Profil rolü, bütün modülleri ve
+          tanım yeteneklerini bir adımda yazıyor; sonrasında her şey
+          yine elle değiştirilebilir.
+        */}
+        <StgSection
+          id="kisi-profil" wide icon="shield" tone="success"
+          kicker="HAZIR KÜME" title="Yetki profili"
+          description="Sık kullanılan yetki kümelerini tek adımda uygular: rol, modül erişimleri ve profilin tanım yetenekleri. Profil dışındaki kişisel yetenek istisnaları silinir, geri kalan her şey rolden gelir."
+        >
+          <div className="stg-list">
+            {YETKI_PROFILLERI.map((profil) => {
+              const uygulandi = profilUygulandiMi(profil, {
+                rol: uyelik.role,
+                modulIstisnalari: kisiModul,
+                yetkiIstisnalari: kisiYetki,
+              }, PERMISSION_MODULES);
+              return (
+                <div key={profil.key}>
+                  <dt>{profil.label}</dt>
+                  <dd>
+                    <p className="stg-muted">{profil.aciklama}</p>
+                    <form action={applyPermissionProfile}>
+                      <input type="hidden" name="user_id" value={hedef} />
+                      <input type="hidden" name="profil" value={profil.key} />
+                      {uygulandi
+                        ? <span className="stg-readonly"><StgIcon name="shield" size={14} />Bu profil uygulanmış</span>
+                        : null}
+                      <button className={uygulandi ? "panel-secondary" : "panel-primary"} type="submit">
+                        {uygulandi ? "Yeniden uygula" : `${profil.label} yap`}
+                      </button>
+                    </form>
+                  </dd>
+                </div>
+              );
+            })}
+          </div>
+        </StgSection>
+
+        <form action={updateMemberPermissions}>
           <input type="hidden" name="user_id" value={hedef} />
 
           <StgSection
@@ -146,6 +190,7 @@ export default async function MemberPermissionsPage({ params }: { params: Promis
             <p><StgIcon name="lock" size={16} />İstisna rol kuralını ezer. &quot;Rolden gelen&quot; seçilen satırın istisnası silinir.</p>
             <button className="panel-primary" type="submit">Kişi Yetkilerini Kaydet</button>
           </div>
-        </form>}
+        </form>
+      </>}
   </div>;
 }
