@@ -4,10 +4,20 @@ import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { requestPasswordReset } from "./actions";
 import "../../login/login.css";
 
-export const metadata: Metadata = {
-  title: "Şifremi Unuttum",
-  description: "ArvoOS hesabınız için güvenli şifre yenileme bağlantısı alın.",
-};
+/*
+  Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
+  kurumun logosunu ve rengini zaten gösteriyordu ama sekmede hâlâ genel
+  bir başlık vardı. Paylaşılan adreste genel başlık kalıyor.
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) return { title: "Şifremi Unuttum", description: "Şifrenizi sıfırlamak için e-posta adresinizi girin." };
+  return {
+    title: `${marka.name} | Şifremi Unuttum`,
+    description: `${marka.name} hesabınızın şifresini sıfırlayın.`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 const errorMessages: Record<string, string> = {
   invalid: "Geçerli bir e-posta adresi girin.",

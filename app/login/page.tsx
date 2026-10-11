@@ -4,10 +4,20 @@ import { login } from "./actions";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import "./login.css";
 
-export const metadata: Metadata = {
-  title: "Giriş",
-  description: "ArvoOS güvenli kurum paneli girişi.",
-};
+/*
+  Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
+  kurumun logosunu ve rengini zaten gösteriyordu ama sekmede hâlâ genel
+  bir başlık vardı. Paylaşılan adreste genel başlık kalıyor.
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) return { title: "Giriş", description: "ArvoOS güvenli kurum paneli girişi." };
+  return {
+    title: `${marka.name} | Giriş`,
+    description: `${marka.name} çalışma alanına giriş.`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 export default async function LoginPage({
   searchParams,

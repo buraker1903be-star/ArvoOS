@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { getLoginBrand } from "@/lib/login-branding";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
@@ -6,7 +7,20 @@ import { StatusLookupForm } from "../durum/[slug]/lookup-form";
 import { OrgLookupShell } from "../durum/[slug]/lookup-shell";
 import "../durum/[slug]/status-lookup.css";
 
-export const metadata: Metadata = { title: "İş Durumu Sorgula" };
+/*
+  Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
+  kurumun logosunu ve rengini zaten gösteriyordu ama sekmede hâlâ genel
+  bir başlık vardı. Paylaşılan adreste genel başlık kalıyor.
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) return { title: "İş Durumu Sorgula", description: "Takip kodunuzla işinizin güncel durumunu görüntüleyin." };
+  return {
+    title: `${marka.name} | İş Durumu Sorgula`,
+    description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 export default async function CustomDomainStatusLookupPage({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const { code } = await searchParams;

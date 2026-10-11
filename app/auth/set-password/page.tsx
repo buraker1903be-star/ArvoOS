@@ -5,10 +5,20 @@ import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { setInitialPassword } from "./actions";
 import "../../login/login.css";
 
-export const metadata: Metadata = {
-  title: "Şifre Oluştur",
-  description: "ArvoOS hesabınız için bir şifre belirleyin.",
-};
+/*
+  Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
+  kurumun logosunu ve rengini zaten gösteriyordu ama sekmede hâlâ genel
+  bir başlık vardı. Paylaşılan adreste genel başlık kalıyor.
+*/
+export async function generateMetadata(): Promise<Metadata> {
+  const marka = await getLoginBrand();
+  if (!marka) return { title: "Şifre Oluştur", description: "Hesabınız için yeni bir şifre belirleyin." };
+  return {
+    title: `${marka.name} | Şifre Oluştur`,
+    description: `${marka.name} hesabınız için şifre belirleyin.`,
+    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+  };
+}
 
 const errorMessages: Record<string, string> = {
   short: "Şifre en az 8 karakter olmalı.",
