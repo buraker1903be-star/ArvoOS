@@ -23,6 +23,10 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
+/* Politikalar canlıda ama dökümde değil (döküm bir sonraki
+   migration'la yenilenecek): o zamana kadar buradan uygulanıyor.
+   Döküm yenilendiğinde liste boşaltılabilir — ama politikalar
+   dökümde taşınıyor, görünüm YETKİLERİ gibi kaybolmuyor. */
 const MIGRATIONLAR = ["20261011224845_uyelik_guncelleme_politikasi.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000f2a1";
