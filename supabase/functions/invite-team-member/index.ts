@@ -161,16 +161,18 @@ Deno.serve(async (request) => {
       const alreadyExists = /already.*registered|already exists|email_exists/i.test(inviteError.message || "");
       if (!alreadyExists) return await fail(`Davet e-postası gönderilemedi: ${inviteError.message}`);
 
-      let existingUserId: string | null = null;
-      let page = 1;
-      while (!existingUserId && page <= 20) {
-        const { data: userPage, error: listError } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
-        if (listError || !userPage?.users?.length) break;
-        const match = userPage.users.find((candidate) => (candidate.email || "").toLowerCase() === email);
-        if (match) existingUserId = match.id;
-        if (userPage.users.length < 200) break;
-        page += 1;
-      }
+      /*
+        Kimlik TEK SORGUYLA. Eskiden listUsers ile 200'lük sayfalar
+        hâlinde bütün proje taranıyor ve 20 sayfada kesiliyordu:
+        4.000 kullanıcıdan sonrasında hesap bulunamıyor, davet "zaten
+        kayıtlı görünüyor ama kullanıcı bulunamadı" diye düşüyordu.
+        Çok kiracılı projede o tablo bütün kurumların personelini
+        taşıyor (migration 20261011171804).
+      */
+      const { data: bulunan, error: aramaHatasi } = await adminClient
+        .rpc("arvo_auth_kullanici_id", { p_email: email });
+      const existingUserId = typeof bulunan === "string" ? bulunan : null;
+      if (aramaHatasi) return await fail(`Mevcut hesap aranamadı: ${aramaHatasi.message}`);
       if (!existingUserId) return await fail("Bu e-posta zaten kayıtlı görünüyor ama kullanıcı bulunamadı. Lütfen Supabase Authentication panelinden kontrol edin.");
 
       // Mevcut üyeliğin rolü ve aktifliği ASLA ezilmez. Eskiden upsert
