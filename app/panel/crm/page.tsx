@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
-import { phoneSearchTerms } from "@/lib/format-phone";
 import { fetchLastContacts } from "./last-contact";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "./table-cells";
 import { OtomatikSecim } from "./otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "./istatistik-karti";
-import { enCok, gunOnce, oran, son30Degisim } from "@/lib/liste-istatistik";
-import { simdi } from "../os/genel-bakis";
+import { oran } from "@/lib/liste-istatistik";
+import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -35,6 +35,7 @@ type SearchParams = Promise<{
   arama?: string;
   durum?: string;
   temsilci?: string;
+  sayfa?: string;
 }>;
 type Details = {
   service_type?: string;
@@ -44,8 +45,14 @@ type Details = {
   language?: string;
   scope?: string;
 };
-type Opportunity = {
+/* Görünümün satırı: fırsat + arama alanları (telefon anahtarı, hizmet
+   türü, temsilci adı) + son yorum zamanı, hepsi düz. */
+type TalepSatiri = {
   id: string;
+  telefon_rakamlari: string | null;
+  hizmet_turu: string | null;
+  temsilci_adi: string | null;
+  son_yorum_at: string | null;
   title: string;
   customer_name: string;
   contact_email: string | null;
@@ -92,7 +99,7 @@ export default async function RequestsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { arama, durum, temsilci } = await searchParams;
+  const { arama, durum, temsilci, sayfa } = await searchParams;
   const search = clean(arama).toLocaleLowerCase("tr-TR");
   const selected = clean(durum);
   const selectedRepresentative = clean(temsilci);
@@ -100,19 +107,62 @@ export default async function RequestsPage({
   const canAssign = izin("crm.kayit.ata");
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
+  /*
+    LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026). Dört büyük listenin
+    sonuncusu; talep tablosu en çok büyüyeni, her gelen istek bir
+    satır. Eskiden kurumun bütün kayıtları çekilip bellekte
+    süzülüyordu: arama, aşama, temsilci, şerit sayıları ve kartın altı
+    sayısı hep o diziden.
+
+    crm_talep_liste arama için gerekenleri düz veriyor (telefon
+    anahtarı, hizmet türü, temsilci adı); kart da
+    crm_talep_istatistikleri'nden. Aşama kümeleri işleve PARAMETRE
+    olarak gidiyor — kural burada yaşıyor, SQL'e kopyalanmadı.
+  */
+  const sayfaNo = sayfaNumarasi(sayfa);
+  const desen = aramaDeseni(arama ?? "");
+  const telefon = telefonAnahtari(arama ?? "");
+
+  const suzulmus = (sayarak = false) => {
+    let q = sayarak
+      ? supabase.from("crm_talep_liste").select("id", { count: "exact", head: true })
+      : supabase.from("crm_talep_liste").select("*", { count: "exact" });
+    q = q.eq("organization_id", membership.organization_id);
+    if (desen) {
+      q = q.or([
+        `customer_name.ilike.*${desen}*`,
+        `title.ilike.*${desen}*`,
+        `contact_email.ilike.*${desen}*`,
+        `hizmet_turu.ilike.*${desen}*`,
+        `temsilci_adi.ilike.*${desen}*`,
+        ...(telefon ? [`telefon_rakamlari.ilike.*${telefon}*`] : []),
+      ].join(","));
+    }
+    if (selectedRepresentative === "atanmamis") q = q.is("assigned_employee_id", null);
+    else if (selectedRepresentative) q = q.eq("assigned_employee_id", selectedRepresentative);
+    return q;
+  };
+
+  /* Aşama süzgeci: "tumu" hepsi, seçili aşama tek, boşsa aktifler. */
+  const asamaSuzgeci = (q: ReturnType<typeof suzulmus>) =>
+    selected === "tumu" ? q
+    : selected ? q.eq("stage", selected)
+    : q.in("stage", [...active]);
+
+  const sayim = async (asama: string) => (await suzulmus(true).eq("stage", asama)).count ?? 0;
+  const SERIT_ASAMALARI = [...active, ...ILERLEYEN, "lost"];
+
   const [
-    { data, error },
+    { data, error, count: suzgecSayisi },
     { data: stages, error: stageError },
     { data: employeeData, error: employeeError },
     { data: turData },
+    { data: ozetVerisi, error: ozetHatasi },
+    ...seritSayilari
   ] = await Promise.all([
-    supabase
-      .from("crm_opportunities")
-      .select(
-        "id,title,customer_name,contact_email,contact_phone,stage,estimated_value,expected_close_date,source,notes,request_details,assigned_employee_id,lost_reason,created_at",
-      )
-      .eq("organization_id", membership.organization_id)
-      .order("updated_at", { ascending: false }),
+    asamaSuzgeci(suzulmus())
+      .order("updated_at", { ascending: false })
+      .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]),
     supabase
       .from("organization_crm_stages")
       .select("code")
@@ -125,8 +175,7 @@ export default async function RequestsPage({
       .eq("employment_status", "active")
       .eq("can_receive_sales_requests", true)
       .order("full_name"),
-    // Çalışma türleri ("Yeni talep" formundaki seçim) aynı adımda: eskiden
-    // talepler okunduktan sonra ayrı bir turda okunuyordu.
+    // Çalışma türleri ("Yeni talep" formundaki seçim) aynı adımda.
     supabase
       .from("organization_step_template_sets")
       .select("code,name,is_default")
@@ -134,12 +183,21 @@ export default async function RequestsPage({
       .eq("is_active", true)
       .order("sort_order")
       .order("code"),
+    /* Kart süzgeçten bağımsız (kurumun tamamı); aşama kümeleri
+       buradan gidiyor. */
+    supabase.rpc("crm_talep_istatistikleri", {
+      p_organization_id: membership.organization_id,
+      p_aktif: [...active],
+      p_ilerleyen: [...ILERLEYEN],
+    }),
+    ...SERIT_ASAMALARI.map((asama) => sayim(asama)),
   ]);
   if (error) throw new Error("Talepler okunamadı: " + error.message);
   if (stageError)
     throw new Error("Talep ayarları okunamadı: " + stageError.message);
   if (employeeError)
     throw new Error("Satış temsilcileri okunamadı: " + employeeError.message);
+  if (ozetHatasi) throw new Error("Talep istatistikleri okunamadı: " + ozetHatasi.message);
   const representatives = (employeeData ?? []) as SalesRepresentative[];
   const representativeMap = new Map(
     representatives.map((item) => [item.id, item.full_name]),
@@ -147,73 +205,66 @@ export default async function RequestsPage({
   const academicMode = (stages ?? []).some((s) => s.code === "academic_review");
   const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
 
-  const all = (data ?? []) as Opportunity[];
-  const rows = all.filter((i) => {
-    const hay = [
-      i.customer_name,
-      i.title,
-      i.contact_email,
-      phoneSearchTerms(i.contact_phone),
-      i.request_details?.service_type,
-      representativeMap.get(i.assigned_employee_id ?? ""),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLocaleLowerCase("tr-TR");
-    const representativeMatches =
-      !selectedRepresentative ||
-      (selectedRepresentative === "atanmamis"
-        ? !i.assigned_employee_id
-        : i.assigned_employee_id === selectedRepresentative);
-    return (
-      (!search || hay.includes(search)) &&
-      (selected === "tumu"
-        ? true
-        : selected
-          ? i.stage === selected
-          : active.has(i.stage)) &&
-      representativeMatches
-    );
-  });
-  // Son not hem görünen satırlar hem "Takip bekleyenler" kartı (tüm aktif talepler) için.
-  const visibleOpportunityIds = [...new Set([...rows, ...all.filter((item) => active.has(item.stage))].map((item) => item.id))];
+  const rows = (data ?? []) as unknown as TalepSatiri[];
+  const sonSayfa = sonSayfaNo(suzgecSayisi, rows.length, sayfaNo);
+  /* Şerit sayıları: arama ve temsilci süzgeciyle aynı kümeden, aşama
+     süzgecinden bağımsız. */
+  const counts = (code: string) => seritSayilari[SERIT_ASAMALARI.indexOf(code)] ?? 0;
+
+  /* Son temas yalnızca BU SAYFADAKİ kayıtlar için: eskiden aktif
+     taleplerin tamamı için okunuyordu ("notsuz" sayacı onu istiyordu),
+     o sayı artık veritabanından geliyor. */
   const lastContacts = await fetchLastContacts(
     supabase,
     membership.organization_id,
-    visibleOpportunityIds,
+    rows.map((item) => item.id),
   );
-  const counts = (code: string) => all.filter((i) => i.stage === code).length;
   // Boş liste: hiç kayıt yok mu, yoksa arama/filtre mi eşleşmedi?
   const filtered = Boolean(search || selectedRepresentative || (selected && selected !== "tumu"));
   /*
     Adres yardımcısı: bir süzgeci değiştirirken diğerleri korunur.
     Kullanıcı daraltılmış bir listeden aşama sayısına tıklayınca aramasını
-    kaybetmesin (eski sayaç bağlantılarının kuralı).
+    kaybetmesin (eski sayaç bağlantılarının kuralı). Süzgeç değişince
+    sayfa başa dönüyor.
   */
-  const adres = (ek: { durum?: string; temsilci?: string }) => {
+  const adres = (ek: { durum?: string; temsilci?: string; sayfa?: number }) => {
     const q = new URLSearchParams();
     const d = ek.durum ?? selected;
     const t = ek.temsilci ?? selectedRepresentative;
     if (arama) q.set("arama", arama);
     if (d) q.set("durum", d);
     if (t) q.set("temsilci", t);
+    if (ek.sayfa && ek.sayfa > 1) q.set("sayfa", String(ek.sayfa));
     const s = q.toString();
     return s ? `/panel/crm?${s}` : "/panel/crm";
   };
-  const aktifler = all.filter((item) => active.has(item.stage));
-  const atanmamis = aktifler.filter((item) => !item.assigned_employee_id).length;
+
   /*
-    İSTATİSTİKLER (sağ kart). Eskiden burada temsilcilere göre dağılım
-    vardı; temsilci süzgeci listenin üstünde. Sayılar tüm kayıtlardan
-    (sınırsız sorgu), süzgeçten bağımsız: kart kurumun genel tablosu.
+    İSTATİSTİKLER (sağ kart): kurumun tamamından, süzgeçten bağımsız —
+    artık veritabanında sayılıyor (crm_talep_istatistikleri).
   */
-  const an = simdi();
-  const { son30, degisim } = son30Degisim(all.map((item) => item.created_at), an);
-  const ilerleyen = all.filter((item) => ILERLEYEN.has(item.stage)).length;
-  const kaybedilen = counts("lost");
+  const ozet = (ozetVerisi ?? {}) as {
+    toplam?: number; son30?: number; onceki30?: number; ilerleyen?: number; kaybedilen?: number;
+    aktif?: number; atanmamis?: number; notsuz?: number; ortalama_yas?: number;
+    hizmetler?: { ad: string; adet: number }[];
+    kaynaklar?: { ad: string; adet: number }[];
+    temsilciler?: string[];
+  };
+  const sayiAl = (deger: number | null | undefined) => Number(deger ?? 0);
+  const son30 = sayiAl(ozet.son30);
+  const onceki30 = sayiAl(ozet.onceki30);
+  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const ilerleyen = sayiAl(ozet.ilerleyen);
+  const kaybedilen = sayiAl(ozet.kaybedilen);
   const donusum = oran(ilerleyen, ilerleyen + kaybedilen);
-  const notsuz = aktifler.filter((item) => !lastContacts.get(item.id)).length;
-  const ortalamaYas = aktifler.length ? Math.round(aktifler.reduce((s, item) => s + gunOnce(item.created_at, an), 0) / aktifler.length) : 0;
+  const aktifSayisi = sayiAl(ozet.aktif);
+  const atanmamis = sayiAl(ozet.atanmamis);
+  const notsuz = sayiAl(ozet.notsuz);
+  const ortalamaYas = sayiAl(ozet.ortalama_yas);
+  const hizmetDagilimi = (ozet.hizmetler ?? []).map((satir) => ({ ad: satir.ad, adet: Number(satir.adet) }));
+  /* Kaynak adları serbest yazılmış ("INSTAGRAM", "WEB SİTESİ"); ham
+     değer veritabanından geliyor, okunur ada burada çevriliyor. */
+  const kaynakDagilimi = (ozet.kaynaklar ?? []).map((satir) => ({ ad: kaynakAdi(satir.ad), adet: Number(satir.adet) }));
   const gorunumAdi = selected === "tumu" ? "Tüm kayıtlar" : selected ? requestStageNames[selected] ?? selected : "Aktif talepler";
 
   return (
@@ -268,8 +319,8 @@ export default async function RequestsPage({
           {/* Süzgeç tek satır: arama kutusu Enter ile gönderilir, durum
               ve temsilci seçimi gizli alanlarla korunur. */}
           <div className="ekip-suzgec talep-suzgec">
-            <Link href={adres({ durum: "" })} className={!selected ? "is-active" : undefined}>Aktif <small>{aktifler.length}</small></Link>
-            <Link href={adres({ durum: "tumu" })} className={selected === "tumu" ? "is-active" : undefined}>Tümü <small>{all.length}</small></Link>
+            <Link href={adres({ durum: "" })} className={!selected ? "is-active" : undefined}>Aktif <small>{aktifSayisi}</small></Link>
+            <Link href={adres({ durum: "tumu" })} className={selected === "tumu" ? "is-active" : undefined}>Tümü <small>{sayiAl(ozet.toplam)}</small></Link>
             {selected && selected !== "tumu" ? <span className="talep-suzgec-etiket">{gorunumAdi}</span> : null}
             {/* Temsilci süzgeci eskiden sağ sütundaki temsilci kartındaydı;
                 o kartın yerini "Takip bekleyenler" aldı, süzgeç buraya geldi. */}
@@ -338,8 +389,20 @@ export default async function RequestsPage({
                 </tbody>
               </table>
               <SatirTiklama />
+              {/* Sayfalayıcı: diğer üç listeyle aynı kalıp. */}
+              {sonSayfa > 1 ? (
+                <nav className="liste-sayfalar" aria-label="Sayfalar">
+                  {sayfaNo > 1
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo - 1 })}>← Önceki</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">← Önceki</span>}
+                  <small>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} talep` : ""}</small>
+                  {sayfaNo < sonSayfa
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo + 1 })}>Sonraki →</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">Sonraki →</span>}
+                </nav>
+              ) : null}
             </div>
-          ) : all.length === 0 ? (
+          ) : sayiAl(ozet.toplam) === 0 ? (
             // Yeni kurum: filtre hatası gibi görünen "eşleşen yok" yerine
             // sürecin nereden başladığı anlatılır.
             <div className="crm-empty-state talep-bos-kutu">
@@ -374,12 +437,12 @@ export default async function RequestsPage({
           kutular={[
             { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni talep", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
             { ad: "Teklife dönüşüm", deger: donusum === null ? "—" : `%${donusum}`, alt: `${ilerleyen} ilerledi · ${kaybedilen} arşiv` },
-            { ad: "Aktif taleplerin yaşı", deger: `${ortalamaYas} gün`, alt: `ortalama · ${aktifler.length} aktif` },
+            { ad: "Aktif taleplerin yaşı", deger: `${ortalamaYas} gün`, alt: `ortalama · ${aktifSayisi} aktif` },
             { ad: "Notsuz aktif talep", deger: String(notsuz), alt: "hiç not girilmemiş", ton: notsuz ? "uyari" : undefined },
           ]}
           gruplar={[
-            { baslik: "Hizmet türüne göre", satirlar: enCok(all.map((item) => item.request_details?.service_type?.trim() || "Belirtilmedi"), 5).map(([ad, adet]) => ({ ad, adet })) },
-            { baslik: "Kaynağa göre", satirlar: enCok(all.map((item) => kaynakAdi(item.source)), 4).map(([ad, adet]) => ({ ad, adet })) },
+            { baslik: "Hizmet türüne göre", satirlar: hizmetDagilimi },
+            { baslik: "Kaynağa göre", satirlar: kaynakDagilimi },
           ]}
         />
       </div>
