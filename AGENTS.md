@@ -135,6 +135,16 @@ aynı yapıya geçti. Yeni bir liste yazarken ya da bunlara dokunurken:
   olur. Şerit sayıları ise `head` sorgularından ve listeyle AYNI
   süzgeç kümesinden gelir — iki ayrı yerde kurulan süzgeç, listede bir
   şey gösterip rozette başka sayı yazmanın en kolay yolu.
+- **Yan sorgu, kullanacağı dizinin BAŞ sütununu da bağlamalı.** Liste
+  görünümlerindeki `lateral` sayaçları (adımlar, okunmamış mesaj, son
+  yorum, cari hareketleri) sayfalamadan ÖNCE, süzgece uyan her satır
+  için bir kez işliyor; dizine oturmayan biri listeyi tek başına
+  yavaşlatıyor. Talep görünümünün yorum yan sorgusu yalnızca
+  `opportunity_id` ile süzüyordu, dizin ise
+  `(organization_id, opportunity_id, created_at DESC)`: baş sütun
+  bağlanmadığı için `max()` her talebin bütün yorumlarını okuyordu
+  (20 000 satırda 188 ms → 4 ms, `20261011141558`). Yeni bir yan sorgu
+  yazarken `canli-sema.sql`'deki dizine bakıp sütun sırasını eşleyin.
 - **Türetilmiş kural NEREDE yaşayacak, üç seçenek var ve üçü de
   kullanıldı.** Yalnızca kendi satırına bakıyorsa üretilmiş sütun
   (`crm_proposals.teklif_grubu` — indekslenebilir). Başka tabloya

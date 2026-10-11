@@ -15,7 +15,7 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011122651_talep_liste_gorunumu.sql"];
+const MIGRATIONLAR = ["20261011122651_talep_liste_gorunumu.sql", "20261011141558_yorum_yan_sorgu_dizini.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000b3a1";
 const BASKA = "00000000-0000-4000-8000-00000000b3a2";
@@ -51,11 +51,15 @@ before(async () => {
       (gen_random_uuid(),'${KURUM}','Sunum','Can Öz',null,null,'proposal',3000,60,'whatsapp','${SAHIP}',now() - interval '5 days',now(),'{}'::jsonb,'${PERSONEL}'),
       (gen_random_uuid(),'${KURUM}','Kaybedilen','Deniz',null,null,'lost',4000,0,'site','${SAHIP}',now() - interval '3 days',now(),'{}'::jsonb,null);
   `);
-  /* Bir aktif talebe yorum: "notsuz" sayacı yorumun YOKLUĞUNU sayıyor. */
+  /* Bir aktif talebe İKİ yorum: "notsuz" sayacı yorumun YOKLUĞUNU
+     sayıyor; iki yorum ayrıca son_yorum_at'ın gerçekten en YENİSİNİ
+     verdiğini sınamak için (tek yorumda max() yanlış da olsa geçer). */
   await db.query(
     `insert into public.crm_internal_comments (id,organization_id,opportunity_id,context_type,context_id,body,created_by,created_at)
-     select gen_random_uuid(), $1, id, 'request', id, 'Müşteri arandı', $2, now()
-     from public.crm_opportunities where organization_id = $1 and stage = 'lead'`,
+     select gen_random_uuid(), $1, id, 'request', id, b.govde, $2, now() - b.yas
+     from public.crm_opportunities o,
+          (values ('Müşteri arandı', interval '2 days'), ('Tekrar arandı', interval '1 hour')) as b(govde, yas)
+     where o.organization_id = $1 and o.stage = 'lead'`,
     [KURUM, SAHIP],
   );
 });
@@ -73,7 +77,10 @@ test("görünüm aramanın alanlarını veriyor", async () => {
     /* Temsilci adı fırsat kaydında değil personel tablosunda; arama tek
        bir `or` ile ikisine birden baksın diye görünümde. */
     assert.equal(satir.temsilci_adi, "Gizem Kaya");
-    assert.ok(satir.son_yorum_at, "yorum zamanı geldi");
+    /* İki yorumun EN YENİSİ: bir saat önce. Yan sorgu yanlış ucu
+       alsaydı iki gün önceyi verirdi. */
+    const yas = Date.now() - Date.parse(satir.son_yorum_at);
+    assert.ok(yas > 0 && yas < 6 * 3600_000, `son yorum taze değil: ${satir.son_yorum_at}`);
   });
 });
 
@@ -122,4 +129,20 @@ test("anon ne görünüme ne işleve erişebiliyor", async () => {
     await reddedilir(db, `select * from public.crm_talep_liste`, [], /permission denied/i);
     await reddedilir(db, `select public.crm_talep_istatistikleri($1,$2,$3)`, [KURUM, AKTIF, ILERLEYEN], /permission denied/i);
   });
+});
+
+test("yorum yan sorgusu kurum sütununu da bağlıyor", async () => {
+  /*
+    DİZİN UYUMU. Yorum tablosunun tek dizini
+    `(organization_id, opportunity_id, created_at DESC)`: yan sorgu
+    yalnızca `opportunity_id` ile süzerse BAŞ sütun bağlanmadığı için
+    `max()` o talebin bütün yorumlarını okuyor (20 000 satırlık ölçümde
+    188 ms → 4 ms, bkz. 20261011141558). Kural görünümün tanımında
+    yaşıyor; burada sabitlenen o. Plan yerine TANIMI sınıyoruz: küçük
+    tohumda planlayıcı zaten sıralı tarama seçer, plan sınaması o
+    yüzden hiçbir şey söylemezdi.
+  */
+  const { tanim } = await tek(`select pg_get_viewdef('public.crm_talep_liste'::regclass) as tanim`);
+  const yanSorgu = tanim.slice(tanim.indexOf("crm_internal_comments"));
+  assert.match(yanSorgu, /organization_id = o\.organization_id/, "kurum süzgeci yan sorguda yok");
 });
