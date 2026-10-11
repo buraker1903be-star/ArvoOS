@@ -19,7 +19,12 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011144414_crm_genel_bakis_ozeti.sql"];
+/*
+  Liste: BOŞ. İşlev artık anlık görüntüde (döküm 11.10.2026'da
+  yenilendi); migration dosyasını üstüne yeniden uygulamak, ileride
+  gövdesi değişirse eski hâline döndürme riski demek.
+*/
+const MIGRATIONLAR = [];
 
 const KURUM = "00000000-0000-4000-8000-00000000c1a1";
 const BASKA = "00000000-0000-4000-8000-00000000c1a2";

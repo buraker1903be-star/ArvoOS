@@ -1831,6 +1831,7 @@
     "create_group_message_channel",
     "crm_customer_history",
     "crm_customer_search",
+    "crm_genel_bakis_ozeti",
     "crm_sozlesme_istatistikleri",
     "crm_talep_istatistikleri",
     "crm_teklif_istatistikleri",

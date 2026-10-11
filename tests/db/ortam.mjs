@@ -61,10 +61,8 @@ export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/can
   check:db-testleri tam bunu arıyor.
 */
 export const BEKLEYEN_MIGRATIONLAR = [
-  // Döküm 11.10.2026'da yenilendi; bu migration ondan SONRA canlıya
-  // uygulandı. Dökümdeki crm_talep_liste hâlâ yan sorguyu yalnızca
-  // opportunity_id ile süzen eski gövdeyi taşıyor.
-  "20261011141558_yorum_yan_sorgu_dizini.sql",
+  // Şu an boş: döküm 11.10.2026'da yenilendi, canlıdaki her şey anlık
+  // görüntüde. Dolu bırakmak migration'ı iki kez uygulamak demek.
 ];
 
 /** Yetki satırları (grant/revoke), dosyadaki özgün sırasıyla. */

@@ -16,12 +16,20 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 /*
-  Liste: BOŞ. Görünümün ve özet işlevinin ilk hâli (20261011122651)
-  artık anlık görüntüde, düzeltmesi (20261011141558) ise ortam.mjs'in
-  BEKLEYEN_MIGRATIONLAR listesinde — ikisini burada yeniden uygulamak,
-  dökümdeki güncel gövdeyi eski dosyadan geri yazma riski demekti.
+  LİSTE BOŞALTILMIYOR, ÇÜNKÜ DÖKÜM GÖRÜNÜM YETKİLERİNİ TAŞIMIYOR.
+
+  Dışa aktarma betiği tablo ve görünüm yetkilerini üretmiyor (yalnızca
+  fonksiyon yetkilerini; AGENTS.md "Veritabanı"). Düzenek de Supabase
+  varsayılanını taklit edip her şeyi anon'a açıyor. Yani görünümü
+  anon'a kapatan tek şey migration'ın kendi `revoke` satırı: liste
+  boşaltılınca "anon görünüme erişemiyor" senaryosu hiçbir şeyi
+  ölçmüyor ve kapalı sandığımız görünüm testte açık oluyordu
+  (11.10.2026'da döküm yenilenince çıktı).
+
+  Burada görünümün SON hâlini kuran migration duruyor; işlevin gövdesi
+  (crm_talep_istatistikleri) zaten dökümde ve bu dosya ona dokunmuyor.
 */
-const MIGRATIONLAR = [];
+const MIGRATIONLAR = ["20261011141558_yorum_yan_sorgu_dizini.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000b3a1";
 const BASKA = "00000000-0000-4000-8000-00000000b3a2";

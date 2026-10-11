@@ -225,6 +225,15 @@ kalıyor ama ölçtüğü şey yok: 10.10.2026'da teklif liste görünümünün
 satırı da gördü. `reddedilir()` de aynı sebeple işlem ister
 (savepoint). Erişim sınayan her senaryo `islem()` içinde yazılır.
 
+**Döküm GÖRÜNÜM yetkilerini taşımıyor.** Dışa aktarma betiği yalnızca
+fonksiyon yetkilerini üretiyor; düzenek de Supabase varsayılanını taklit
+edip her tabloyu/görünümü anon'a açıyor. Bir görünümü anon'a kapatan tek
+şey migration'ın kendi `revoke` satırıdır: döküm yenilendi diye o
+migration'ı test dosyasının `MIGRATIONLAR` listesinden çıkarmak,
+"anon görünüme erişemiyor" senaryosunu hiçbir şey ölçmeyen bir teste
+çevirir (11.10.2026, `crm_talep_liste`). Fonksiyonlar için bu geçerli
+değil — onların `revoke`/`grant` satırları dökümde var.
+
 **Eski bir migration'ı yeniden uygulamak yeni korumayı düşürebilir.**
 `tests/db/` dosyalarındaki `MIGRATIONLAR` listesi anlık görüntünün
 ÜSTÜNE uygulanıyor: listede `create or replace function` içeren eski bir
