@@ -1,0 +1,19 @@
+{
+  "aciklama": "Cari hareketlerinden çıkan DÖRT TOPLAM. Aynı tablo iki yerde sınanıyor: hareketToplamlari (tests/unit/cari-bakiye.test.ts) ve cari_liste görünümü (tests/db/cari-liste-gorunumu.test.mjs). Para hesabı; biri değişip öteki kalırsa müşteriden fazla ya da eksik tahsilat demek. source_type yalnızca kısıtın izin verdiği değerleri alır: manual, invoice, payment, expense, adjustment, crm_contract.",
+  "hareketler": [
+    { "ad": "sözleşmeden düşen borç", "entry_type": "debit", "source_type": "crm_contract", "amount": 100000, "description": "Sözleşme SOZ-1" },
+    { "ad": "ek hizmet (sayılır)", "entry_type": "debit", "source_type": "manual", "amount": 25000, "description": "Ek hizmet · İntihal raporu" },
+    { "ad": "elle borç, ek hizmet değil", "entry_type": "debit", "source_type": "manual", "amount": 9000, "description": "Başka kalem" },
+    { "ad": "küçük harfle yazılmış: ek hizmet SAYILMAZ", "entry_type": "debit", "source_type": "manual", "amount": 1000, "description": "ek hizmet · küçük harf" },
+    { "ad": "ortada geçiyor: ek hizmet SAYILMAZ", "entry_type": "debit", "source_type": "manual", "amount": 2000, "description": "Fatura: Ek hizmet · ortada" },
+    { "ad": "iade (düzeltme)", "entry_type": "debit", "source_type": "adjustment", "amount": 5000, "description": "İade" },
+    { "ad": "tahsilat", "entry_type": "credit", "source_type": "payment", "amount": 40000, "description": "Havale" },
+    { "ad": "ikinci tahsilat", "entry_type": "credit", "source_type": "manual", "amount": 10000, "description": "Nakit" }
+  ],
+  "toplamlar": {
+    "defter_borc": 137000,
+    "ek_hizmet": 25000,
+    "tahsilat": 50000,
+    "iade": 5000
+  }
+}

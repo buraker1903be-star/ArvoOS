@@ -18,6 +18,11 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = ["20261011134559_cari_liste_gorunumu.sql"];
+/* Ortak örnek tablosu: aynı hareketler TypeScript tarafında da
+   sınanıyor (tests/unit/cari-bakiye.test.ts). */
+const ORNEK = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, "../fixtures/cari-hareketleri.json"), "utf8"),
+);
 
 const KURUM = "00000000-0000-4000-8000-00000000c4a1";
 const BASKA = "00000000-0000-4000-8000-00000000c4a2";
@@ -42,49 +47,35 @@ before(async () => {
     insert into public.account_parties (id,organization_id,party_type,name,is_active,created_by,created_at,updated_at)
       values ('${CARI}','${KURUM}','customer','Ayşe Yılmaz',true,'${SAHIP}',now(),now());
   `);
-  const hareket = (tur, kaynak, tutar, aciklama, gunOnce) => `
-    insert into public.account_entries (id,organization_id,party_id,entry_type,source_type,amount,currency,description,transaction_date,created_by,created_at)
-    values (gen_random_uuid(),'${KURUM}','${CARI}','${tur}','${kaynak}',${tutar},'TRY','${aciklama}',
-            (now() - interval '${gunOnce} days')::date,'${SAHIP}',now());`;
-  await db.exec([
-    hareket("debit", "crm_contract", 100000, "Sözleşme", 50),
-    hareket("debit", "manual", 25000, "Ek hizmet · İntihal raporu", 20),
-    hareket("debit", "manual", 9000, "Başka kalem", 20),
-    hareket("debit", "adjustment", 5000, "İade", 10),
-    hareket("credit", "manual", 40000, "Tahsilat", 5),
-    hareket("credit", "manual", 10000, "Tahsilat", 45),
-  ].join("\n"));
+  /* Örnek tablosundaki hareketler; tarihler tahsilat pencerelerini
+     sınamak için ayrıca veriliyor. */
+  const gunler = { "tahsilat": 5, "ikinci tahsilat": 45 };
+  for (const h of ORNEK.hareketler) {
+    await db.query(
+      `insert into public.account_entries (id,organization_id,party_id,entry_type,source_type,amount,currency,description,transaction_date,created_by,created_at)
+       values (gen_random_uuid(),$1,$2,$3,$4,$5,'TRY',$6,(now() - ($7 || ' days')::interval)::date,$8,now())`,
+      [KURUM, CARI, h.entry_type, h.source_type, h.amount, h.description, String(gunler[h.ad] ?? 20), SAHIP],
+    );
+  }
 });
 
-test("dört toplam ve son hareket doğru", async () => {
+test("ortak örnek tablosu: görünümün toplamları", async () => {
   await islem(db, async () => {
     await rol(db, "authenticated", SAHIP);
     const satir = await tek(
       `select defter_borc, ek_hizmet, tahsilat, iade, son_hareket_at from public.cari_liste where id = $1`,
       [CARI],
     );
-    // Defter borcu: düzeltme HARİÇ bütün borçlar (100.000 + 25.000 + 9.000).
-    assert.equal(Number(satir.defter_borc), 134000);
-    // Ek hizmet: yalnızca "Ek hizmet ·" ile başlayan elle girilmiş borç.
-    assert.equal(Number(satir.ek_hizmet), 25000);
-    assert.equal(Number(satir.tahsilat), 50000);
-    assert.equal(Number(satir.iade), 5000);
-    assert.ok(satir.son_hareket_at, "son hareket tarihi geldi");
-  });
-});
-
-test("ek hizmet eşleşmesi önek ve harfe duyarlı", async () => {
-  await islem(db, async () => {
-    await rol(db, "postgres");
-    await db.query(
-      `insert into public.account_entries (id,organization_id,party_id,entry_type,source_type,amount,currency,description,transaction_date,created_by,created_at)
-       values (gen_random_uuid(),$1,$2,'debit','manual',1000,'TRY','ek hizmet · küçük harf',current_date,$3,now()),
-              (gen_random_uuid(),$1,$2,'debit','manual',2000,'TRY','Fatura: Ek hizmet · ortada',current_date,$3,now())`,
-      [KURUM, CARI, SAHIP],
+    assert.deepEqual(
+      {
+        defter_borc: Number(satir.defter_borc),
+        ek_hizmet: Number(satir.ek_hizmet),
+        tahsilat: Number(satir.tahsilat),
+        iade: Number(satir.iade),
+      },
+      ORNEK.toplamlar,
     );
-    await rol(db, "authenticated", SAHIP);
-    const satir = await tek(`select ek_hizmet from public.cari_liste where id = $1`, [CARI]);
-    assert.equal(Number(satir.ek_hizmet), 25000, "ikisi de sayılmadı");
+    assert.ok(satir.son_hareket_at, "son hareket tarihi geldi");
   });
 });
 

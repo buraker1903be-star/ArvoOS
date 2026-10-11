@@ -8,7 +8,7 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { ILETISIM_ALANLARI, KUNYE_ALANLARI, KUNYE_EN_UZUN, doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp, type PostaKonusmasi } from "../crm/musteri-yazismalari";
 import { findCustomerHistory, LOOKUP_MAX_ITEMS, formatHistoryDate, type CustomerHistoryResult, type HistoryKind } from "../crm/customer-history-query";
-import { buildAccountBalances } from "../finance/account-balances";
+import { buildAccountBalances, hareketToplamlari } from "../finance/account-balances";
 import { TalepAkis } from "../crm/kayit-detay/kayit-akis";
 import { PanelModal } from "../components/panel-modal";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -128,7 +128,13 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
     if (partiler.length) {
       cariKaydi ??= partiler[0];
       cariler = partiler.map((p) => ({ id: p.id, name: p.name }));
-      const { accounts } = buildAccountBalances(partiler as never[], (partyContracts ?? []) as { party_id: string | null; amount: number }[]);
+      /* Bakiye işlevi artık toplam alıyor; bu ekran hareketleri zaten
+         okuyor (ayrıntı penceresinde gösteriliyor), toplamı aynı
+         kuraldan çıkarıyor. */
+      const { accounts } = buildAccountBalances(
+        partiler.map((p) => ({ id: p.id, ...hareketToplamlari((p as { account_entries?: never[] }).account_entries) })),
+        (partyContracts ?? []) as { party_id: string | null; amount: number }[],
+      );
       bakiye = (accounts as unknown as { balance: number }[]).reduce((toplam, a) => toplam + a.balance, 0);
     }
   }

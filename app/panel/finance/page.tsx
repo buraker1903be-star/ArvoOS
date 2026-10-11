@@ -7,12 +7,12 @@ import { PanelModal } from "../components/panel-modal";
 import { MaliyetDetayi } from "./costs/maliyet-detayi";
 import { OdemeBaglantisiFormu } from "../accounts/odeme-baglantisi";
 import { normalizePhone } from "@/lib/whatsapp-send";
-import { buildAccountBalances } from "./account-balances";
+import { buildAccountBalances, netTahsilatToplamdan, type CariToplam } from "./account-balances";
 import { cariBolumle } from "@/lib/cari-arsiv";
 import { getPaytrStatus } from "@/lib/paytr-status";
-import { bakiyeyeSigdir, netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { bakiyeyeSigdir, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
-import { aylik, gunAraliginda, oran } from "@/lib/liste-istatistik";
+import { aylik, aylikDilimler, gunAraliginda, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../os/genel-bakis";
 import "./finance.css";
 import "../crm/crm.css";
@@ -26,25 +26,17 @@ const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
     n / 100,
   );
-type Entry = {
-  id: string;
-  entry_type: "debit" | "credit";
-  amount: number;
-  description: string;
-  reference_no: string | null;
-  source_type: string | null;
-  transaction_date: string;
-};
+/* Cari satırı görünümden: hareketler değil TOPLAMLAR (cari_liste).
+   Bakiye kuralı değişmedi, yalnızca beslendiği yer değişti. */
 type Party = {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
   tax_number: string | null;
-  account_entries: Entry[];
-};
+  son_hareket_at: string | null;
+} & CariToplam;
 type Hesap = Party & {
-  entries: Entry[];
   debt: number;
   collections: number;
   refunds: number;
@@ -272,13 +264,11 @@ export default async function FinancePage({
     !modules.some((m) => m.code === "accounts")
   )
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
-  const [{ data, error }, { data: contractData, error: contractError }, { data: installmentData, error: installmentError }, {data:costItemData,error:costItemError},{data:employeeData},{data:workflowData}] =
+  const [{ data, error }, { data: contractData, error: contractError }, { data: installmentData, error: installmentError }, {data:costItemData,error:costItemError},{data:employeeData},{data:workflowData},{data:tahsilatOzetiVerisi,error:tahsilatOzetiHatasi}] =
     await Promise.all([
       supabase
-        .from("account_parties")
-        .select(
-          "id,name,email,phone,tax_number,account_entries(id,entry_type,amount,description,reference_no,source_type,transaction_date)",
-        )
+        .from("cari_liste")
+        .select("id,name,email,phone,tax_number,defter_borc,ek_hizmet,tahsilat,iade,son_hareket_at")
         .eq("organization_id", membership.organization_id)
         .eq("is_active", true)
         .in("party_type", ["customer", "both"])
@@ -292,8 +282,10 @@ export default async function FinancePage({
       supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date,category").eq("organization_id",membership.organization_id),
       supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id),
       supabase.from("operation_workflows").select("id,assigned_employee_id").eq("organization_id",membership.organization_id),
+      supabase.rpc("cari_tahsilat_ozeti", { p_organization_id: membership.organization_id }),
     ]);
   if (error) throw new Error("Cari hesaplar okunamadı: " + error.message);
+  if (tahsilatOzetiHatasi) throw new Error("Tahsilat özeti okunamadı: " + tahsilatOzetiHatasi.message);
   if (contractError)
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if(installmentError) throw new Error("Ödeme taksitleri okunamadı: "+installmentError.message);
@@ -374,12 +366,17 @@ export default async function FinancePage({
     ödenmemiş ve vadesi bugünden önce olan taksitler.
   */
   const an = simdi();
-  const tahsilatlar = accounts.flatMap((a) => a.entries.filter((e) => e.entry_type === "credit"));
-  const tahsilat30 = tahsilatlar.filter((e) => gunAraliginda(e.transaction_date, 0, 30, an)).reduce((s, e) => s + Number(e.amount), 0);
-  const tahsilatOnceki = tahsilatlar.filter((e) => gunAraliginda(e.transaction_date, 30, 60, an)).reduce((s, e) => s + Number(e.amount), 0);
+  /* Tahsilat pencereleri ve aylık toplam veritabanından
+     (cari_tahsilat_ozeti): eskiden bütün carilerin bütün hareketleri
+     belleğe alınıp burada süzülüyordu. */
+  const tahsilatOzeti = (tahsilatOzetiVerisi ?? {}) as {
+    son30?: number; onceki30?: number; aylik?: { ay: string; adet: number; toplam: number }[];
+  };
+  const tahsilat30 = Number(tahsilatOzeti.son30 ?? 0);
+  const tahsilatOnceki = Number(tahsilatOzeti.onceki30 ?? 0);
   const tahsilatDegisim = tahsilatOnceki ? Math.round(((tahsilat30 - tahsilatOnceki) / tahsilatOnceki) * 100) : null;
   const tahsilOrani = oran(totals.collections, totals.debt + totals.refunds);
-  const aylikTahsilat = aylik(tahsilatlar.map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), 6, an);
+  const aylikTahsilat = aylikDilimler(tahsilatOzeti.aylik ?? [], 6, an);
   const enYuksek = [...accounts].filter((a) => a.balance > 0).sort((x, y) => y.balance - x.balance).slice(0, 5);
   /*
     Vadesi geçen taksit: taksitin kendi status sütunu cari tahsilatıyla
@@ -408,7 +405,7 @@ export default async function FinancePage({
     const liste = cariTaksitleri.get(a.id);
     if (!liste) continue;
     // Plan sözleşmeden büyük olabiliyor: vadesi geçen açık bakiyeyi aşmasın.
-    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilat(a.entries), today), a.balance)) {
+    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilatToplamdan(a), today), a.balance)) {
       if (t.durum !== "gecikti") continue;
       gecenTaksit.push({ kalan: t.kalan });
       gecikmeler.set(a.id, (gecikmeler.get(a.id) ?? 0) + t.kalan);
@@ -434,7 +431,7 @@ export default async function FinancePage({
       temsilci: temsilciAdi ? formatPersonName(temsilciAdi) || temsilciAdi : null,
       tahsilOrani: oran(a.collections, a.debt + a.refunds),
       gecikmis: gecikmeler.get(a.id) ?? 0,
-      sonHareket: a.entries.reduce<string | null>((son, e) => (!son || e.transaction_date > son ? e.transaction_date : son), null),
+      sonHareket: a.son_hareket_at,
     };
   };
   const temsilciSecimi = params.temsilci ?? "";

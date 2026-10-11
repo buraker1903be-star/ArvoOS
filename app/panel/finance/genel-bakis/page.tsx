@@ -2,9 +2,9 @@ import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatPersonName } from "@/lib/format-name";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { bakiyeyeSigdir, netTahsilat, taksitleriDagit } from "@/lib/taksit-dagitimi";
+import { bakiyeyeSigdir, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { oran } from "@/lib/liste-istatistik";
-import { buildAccountBalances } from "../account-balances";
+import { buildAccountBalances, netTahsilatToplamdan, type CariToplam } from "../account-balances";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi } from "../../os/genel-bakis";
 
@@ -27,8 +27,8 @@ import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, 
     satırdı ve aynı müşteri listede üç kez çıkıyordu.
 */
 
-type Entry = { id: string; entry_type: "debit" | "credit"; amount: number; description: string; source_type: string | null; transaction_date: string };
-type Party = { id: string; name: string; phone: string | null; email: string | null; account_entries: Entry[] };
+/* Cari satırı artık görünümden: hareketler değil TOPLAMLAR. */
+type Party = { id: string; name: string; phone: string | null; email: string | null } & CariToplam;
 type Customer = { customer_name: string } | { customer_name: string }[] | null;
 type Contract = { id: string; party_id: string | null; amount: number; contract_no: string; title: string; payment_plan_id: string | null; service_cost: number | null; crm_opportunities: Customer };
 type Installment = { id: string; payment_plan_id: string; installment_no: number; due_date: string | null; amount: number; status: string };
@@ -60,6 +60,10 @@ export default async function FinanceOverviewPage() {
   const organizationId = membership.organization_id;
   const today = todayInIstanbul();
   const monthKey = today.slice(0, 7);
+  /* Grafik penceresi: bugün dahil 14 gün. Tarih dizgesinden
+     hesaplanıyor; sunucu UTC'de ama "today" zaten Türkiye günü. */
+  const onDortGunOnce = new Date(Date.parse(`${today}T00:00:00+03:00`) - 13 * 86_400_000)
+    .toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
   const maliyetGorur = izin("finance.maliyet.yonet");
 
   const [
@@ -68,9 +72,14 @@ export default async function FinanceOverviewPage() {
     { data: installmentData, error: installmentError },
     { data: creditData, error: creditError },
     { data: costData },
+    { data: ozetVerisi, error: ozetHatasi },
+    { data: seriVerisi, error: seriHatasi },
   ] = await Promise.all([
-    supabase.from("account_parties")
-      .select("id,name,phone,email,account_entries(id,entry_type,amount,description,source_type,transaction_date)")
+    /* Cariler TOPLAMLARIYLA (cari_liste): her carinin bütün
+       hareketlerini yalnızca dört toplam için taşımak, defter
+       büyüdükçe en pahalı okumaydı. Bakiye kuralı değişmedi. */
+    supabase.from("cari_liste")
+      .select("id,name,phone,email,defter_borc,ek_hizmet,tahsilat,iade,son_hareket_at")
       .eq("organization_id", organizationId).eq("is_active", true).in("party_type", ["customer", "both"]),
     supabase.from("crm_contracts")
       .select("id,party_id,amount,contract_no,title,payment_plan_id,service_cost,crm_opportunities(customer_name)")
@@ -82,20 +91,32 @@ export default async function FinanceOverviewPage() {
       .order("transaction_date", { ascending: false }).order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
     // Kâr oranı yalnızca maliyeti görebilene (İş Maliyetleri sekmesiyle aynı yetki).
     maliyetGorur ? supabase.from("contract_cost_items").select("contract_id,amount").eq("organization_id", organizationId) : Promise.resolve({ data: [] }),
+    // Aylık tahsilat toplamları (bu ayın tahsilatı buradan).
+    supabase.rpc("cari_tahsilat_ozeti", { p_organization_id: organizationId }),
+    /* Son 14 günün tahsilatı: grafik GÜN GÜN çizdiği için tek tek
+       kayıt gerekiyor, ama yalnızca iki haftalık pencere. */
+    supabase.from("account_entries")
+      .select("amount,transaction_date")
+      .eq("organization_id", organizationId).eq("entry_type", "credit")
+      .gte("transaction_date", onDortGunOnce),
   ]);
   if (partyError) throw new Error("Müşteriler okunamadı: " + partyError.message);
   if (contractError) throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if (installmentError) throw new Error("Ödeme taksitleri okunamadı: " + installmentError.message);
   if (creditError) throw new Error("Tahsilatlar okunamadı: " + creditError.message);
+  if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
+  if (seriHatasi) throw new Error("Tahsilat grafiği okunamadı: " + seriHatasi.message);
 
   const contracts = (contractData ?? []) as unknown as Contract[];
-  const { accounts, totals } = buildAccountBalances((partyData ?? []) as Party[], contracts);
+  const { accounts, totals } = buildAccountBalances((partyData ?? []) as unknown as Party[], contracts);
   const openAccounts = accounts.filter((account) => account.balance > 0).sort((a, b) => b.balance - a.balance);
   const hesapAdi = new Map(accounts.map((a) => [a.id, adBicimi(a.name, "Müşteri")]));
 
-  // Bu ay tahsilat: müşteri carilerine giren ödemeler
-  const monthCredits = accounts.flatMap((account) => account.entries).filter((entry) => entry.entry_type === "credit" && entry.transaction_date.startsWith(monthKey));
-  const monthCollections = monthCredits.reduce((sum, entry) => sum + Number(entry.amount), 0);
+  // Bu ay tahsilat: aylık toplamlar veritabanından (cari_tahsilat_ozeti).
+  const ozet = (ozetVerisi ?? {}) as { aylik?: { ay: string; adet: number; toplam: number }[] };
+  const buAy = (ozet.aylik ?? []).find((ay) => ay.ay === monthKey);
+  const monthCollections = Number(buAy?.toplam ?? 0);
+  const monthCreditCount = Number(buAy?.adet ?? 0);
 
   /* ---- Taksitler: cari dökümünden dağıtılmış ---- */
   const contractByPlan = new Map(contracts.filter((row) => row.payment_plan_id).map((row) => [row.payment_plan_id as string, row]));
@@ -119,7 +140,7 @@ export default async function FinanceOverviewPage() {
     const liste = cariTaksitleri.get(a.id);
     if (!liste) continue;
     // Plan sözleşmeden büyük olabiliyor: kalanlar açık bakiyeyi aşmasın.
-    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilat(a.entries), today), a.balance)) {
+    for (const t of bakiyeyeSigdir(taksitleriDagit(liste, netTahsilatToplamdan(a), today), a.balance)) {
       if (t.durum === "odendi" || t.durum === "iptal") continue;
       vadeEkle(t, t.kalan, hesapAdi.get(a.id) ?? "Müşteri", `/panel/finance/musteri/${a.id}`, t.durum === "gecikti");
     }
@@ -181,8 +202,12 @@ export default async function FinanceOverviewPage() {
 
   /* Grafik: son 14 günün tahsilatı, tutar (kuruş) olarak. Kayıtta saat
      yok; gün Türkiye takvimiyle. */
-  const tumTahsilatlar = accounts.flatMap((account) => account.entries).filter((entry) => entry.entry_type === "credit");
-  const seri = gunlukSeri(tumTahsilatlar.map((entry) => `${entry.transaction_date}T12:00:00+03:00`), simdi(), 14, tumTahsilatlar.map((entry) => Number(entry.amount)));
+  const sonIkiHafta = (seriVerisi ?? []) as { amount: number; transaction_date: string }[];
+  const seri = gunlukSeri(
+    sonIkiHafta.map((kayit) => `${kayit.transaction_date}T12:00:00+03:00`),
+    simdi(), 14,
+    sonIkiHafta.map((kayit) => Number(kayit.amount)),
+  );
 
   return (
     <GenelBakis gizliBaslik="Finans genel bakış">
@@ -285,7 +310,7 @@ export default async function FinanceOverviewPage() {
 
         <ListeKarti
           baslik="Son tahsilatlar"
-          alt={monthCollections ? `Bu ay ${monthCredits.length} ödeme · ${money(monthCollections)}` : "Müşterilere işlenen son ödemeler"}
+          alt={monthCollections ? `Bu ay ${monthCreditCount} ödeme · ${money(monthCollections)}` : "Müşterilere işlenen son ödemeler"}
           bos="Henüz tahsilat kaydı yok. Müşteriler listesinden “Tahsilat” ile eklenir."
           href="/panel/finance"
           hrefEtiket="Müşterilere git"

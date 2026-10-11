@@ -439,6 +439,21 @@
       "unit_amount",
       "updated_at"
     ],
+    "cari_liste": [
+      "defter_borc",
+      "ek_hizmet",
+      "email",
+      "iade",
+      "id",
+      "is_active",
+      "name",
+      "organization_id",
+      "party_type",
+      "phone",
+      "son_hareket_at",
+      "tahsilat",
+      "tax_number"
+    ],
     "contract_cost_items": [
       "amount",
       "category",
@@ -1801,6 +1816,7 @@
     "arvo_unread_notification_count",
     "attach_arvoculture_order_owner",
     "authorize_customer_portal_file_download",
+    "cari_tahsilat_ozeti",
     "check_arvoculture_coupon",
     "claim_arvoculture_orders",
     "collect_payment_installment",

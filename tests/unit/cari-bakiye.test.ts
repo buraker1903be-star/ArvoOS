@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAccountBalances } from "@/app/panel/finance/account-balances";
+import { readFile } from "node:fs/promises";
+import { buildAccountBalances, hareketToplamlari, netTahsilatToplamdan } from "@/app/panel/finance/account-balances";
 
 /*
   CARİ BAKİYE KURALI.
@@ -18,10 +19,13 @@ import { buildAccountBalances } from "@/app/panel/finance/account-balances";
 const hareket = (
   entry_type: string,
   amount: number,
-  { source_type = "manual", description = "", transaction_date = "2026-10-01" } = {},
-) => ({ entry_type, amount, source_type, description, transaction_date });
+  { source_type = "manual", description = "" } = {},
+) => ({ entry_type, amount, source_type, description });
 
-const cari = (id: string, hareketler: ReturnType<typeof hareket>[]) => ({ id, account_entries: hareketler });
+/* İşlev artık TOPLAM alıyor, hareket değil (listeler toplamları
+   veritabanından okuyor). Testler senaryoyu yine hareketle yazıyor ve
+   aynı dönüştürücüden geçiriyor: kuralın girdisi değişmedi. */
+const cari = (id: string, hareketler: ReturnType<typeof hareket>[]) => ({ id, ...hareketToplamlari(hareketler) });
 
 test("sözleşmesi olan caride borç sözleşmeden gelir, defterden değil", () => {
   /* Sözleşme imzalanınca deftere de borç kaydı düşüyor; ikisini
@@ -99,22 +103,29 @@ test("toplamlar bütün carilerden", () => {
   assert.deepEqual(totals, { debt: 50_000, collections: 10_000, refunds: 0, balance: 40_000 });
 });
 
-test("hareketler yeniden eskiye sıralanıyor", () => {
-  /* Ekranda "son hareket" en üstte görünüyor; sıralama kuralın
-     parçası, çağıranın yeniden sıralamasına bırakılmıyor. */
-  const { accounts } = buildAccountBalances(
-    [cari("c1", [
-      hareket("debit", 1_000, { transaction_date: "2026-01-05" }),
-      hareket("credit", 500, { transaction_date: "2026-03-10" }),
-    ])],
-    [],
-  );
-  assert.deepEqual(accounts[0].entries.map((e) => e.transaction_date), ["2026-03-10", "2026-01-05"]);
-});
-
 test("hareketi olmayan cari sıfır bakiyeyle geliyor", () => {
   // Yeni açılan cari listede görünmeli; hesaplama onu düşürmemeli.
-  const { accounts } = buildAccountBalances([{ id: "c1", account_entries: null }], []);
+  const { accounts } = buildAccountBalances([{ id: "c1", ...hareketToplamlari(null) }], []);
   assert.equal(accounts.length, 1);
   assert.equal(accounts[0].balance, 0);
+});
+
+test("net tahsilat iadeyi düşüyor, eksiye inmiyor", () => {
+  /* Taksit dağıtımı bu sayıyı kullanıyor: iade edilen tutar tahsil
+     edilmiş sayılırsa taksitler olduğundan fazla kapanır. */
+  assert.equal(netTahsilatToplamdan({ defter_borc: 0, ek_hizmet: 0, tahsilat: 50_000, iade: 10_000 }), 40_000);
+  assert.equal(netTahsilatToplamdan({ defter_borc: 0, ek_hizmet: 0, tahsilat: 5_000, iade: 9_000 }), 0);
+});
+
+/*
+  ORTAK TABLO. Aynı hareketler veritabanındaki cari_liste görünümüne de
+  uygulanıyor (tests/db/cari-liste-gorunumu.test.mjs): toplamlar iki
+  tarafta da aynı çıkmalı. Para hesabı; biri değişip öteki kalırsa
+  müşteriden fazla ya da eksik tahsilat demek.
+*/
+test("ortak örnek tablosu: TypeScript tarafı", async () => {
+  const { hareketler, toplamlar } = JSON.parse(
+    await readFile(new URL("../fixtures/cari-hareketleri.json", import.meta.url), "utf8"),
+  ) as { hareketler: { entry_type: string; source_type: string; amount: number; description: string }[]; toplamlar: Record<string, number> };
+  assert.deepEqual(hareketToplamlari(hareketler), toplamlar);
 });
