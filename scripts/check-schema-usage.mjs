@@ -233,9 +233,19 @@ const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 const tables = new Map(Object.entries(catalog.tables).map(([t, cols]) => [t, new Set(cols)]));
 const functions = new Set(catalog.functions);
 
+/*
+  SUPABASE FONKSİYONLARI DA TARANIYOR (11.10.2026).
+
+  Kenar fonksiyonları (supabase/functions) aynı veritabanını okuyor ve
+  RPC çağırıyor; yanlış bir ad burada derlemede de görünmüyor, CI'da da
+  görünmüyordu. Kimlik e-postası kancası yanlış bir ada baksa posta
+  HİÇ gitmezdi ve belirti "davet e-postası gelmedi"den öteye geçmezdi.
+  Deno'nun kendi tipleri Next derlemesine girmediği için tek denetim
+  burası.
+*/
 const SOURCE_DIRS = kaynakArg
   ? [kaynakArg]
-  : ["app", "lib", "src"].filter((d) => fs.existsSync(path.join(root, d)));
+  : ["app", "lib", "src", "supabase/functions"].filter((d) => fs.existsSync(path.join(root, d)));
 
 const problems = [];
 for (const dir of SOURCE_DIRS) {

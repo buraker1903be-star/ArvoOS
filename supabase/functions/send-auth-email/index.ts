@@ -145,6 +145,21 @@ function renderEmail(payload: HookPayload, brand: Brand) {
   return { subject: copy.subject, html, text };
 }
 
+/*
+  MARKA KARARI VERİTABANINDA, ÇÜNKÜ İDDİA DOĞRULANMALI.
+
+  Kurum kimliği kullanıcının metadata'sından geliyor: davet sırasında
+  oraya yazılıyor (arvoos_organization_id). Ama `user_metadata`
+  KULLANICININ KENDİ YAZABİLDİĞİ bir alan — panele girmiş biri oraya
+  başka bir kurumun kimliğini yazıp "şifremi unuttum" diyebilir ve
+  gelen posta o kurumun adı, logosu ve İLETİŞİM BİLGİSİYLE hazırlanır.
+
+  Bu yüzden kimlik yalnızca bir İDDİA olarak gönderiliyor;
+  arvo_kimlik_postasi_markasi iddiayı üyeliğe ya da bekleyen davete
+  bakarak doğruluyor, doğrulanmazsa kullanıcının kendi kurumuna
+  düşüyor. Kural ve sınırları: migration 20261011170211 ve
+  tests/db/kimlik-postasi-markasi.test.mjs.
+*/
 async function resolveBrand(payload: HookPayload): Promise<Brand> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -152,30 +167,27 @@ async function resolveBrand(payload: HookPayload): Promise<Brand> {
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
   const metadata = { ...(payload.user.user_metadata ?? {}), ...(payload.user.app_metadata ?? {}) };
-  let organizationId = String(metadata.arvoos_organization_id ?? metadata.organization_id ?? "").trim();
+  const ham = String(metadata.arvoos_organization_id ?? metadata.organization_id ?? "").trim();
+  /* Alan kullanıcının yazabildiği için biçimi de burada süzülüyor:
+     uuid olmayan bir değer veritabanına gidince sorgu hataya düşer ve
+     marka boşuna Arvo'ya geriler. */
+  const claimed = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ham) ? ham : "";
 
-  if (!organizationId) {
-    const { data: membership } = await admin
-      .from("organization_memberships")
-      .select("organization_id")
-      .eq("user_id", payload.user.id)
-      .eq("is_active", true)
-      .order("joined_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    organizationId = membership?.organization_id ?? "";
-  }
+  const { data, error } = await admin.rpc("arvo_kimlik_postasi_markasi", {
+    p_user_id: payload.user.id,
+    p_email: payload.user.email,
+    p_claimed_org: claimed || null,
+  });
+  if (error || !data) return fallbackBrand;
 
-  if (!organizationId) return fallbackBrand;
-
-  const { data: organization } = await admin
-    .from("organizations")
-    .select("name,logo_url,primary_color,contact_email,contact_phone,website_url")
-    .eq("id", organizationId)
-    .maybeSingle();
-
-  if (!organization) return fallbackBrand;
-
+  const organization = data as {
+    name: string | null;
+    logo_url: string | null;
+    primary_color: string | null;
+    contact_email: string | null;
+    contact_phone: string | null;
+    website_url: string | null;
+  };
   return {
     name: organization.name || fallbackBrand.name,
     logoUrl: organization.logo_url || null,
