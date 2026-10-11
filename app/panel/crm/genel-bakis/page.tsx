@@ -1,7 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { formatSubject } from "@/lib/table-format";
-import { gunlukSeri } from "@/lib/gunluk-seri";
+import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../../os/genel-bakis";
 import { daysSince, relativeTime, waitingLabel } from "../last-contact";
 import "../crm.css";
@@ -15,34 +15,42 @@ import "../crm.css";
   Veri, CRM listeleriyle aynı kapsamda: kurum filtresi + RLS.
 */
 
-type Opportunity = { id: string; title: string; customer_name: string; stage: string; assigned_employee_id: string | null; created_at: string };
+type Opportunity = { id: string; title: string; customer_name: string; assigned_employee_id: string | null; created_at: string };
 type Customer = { customer_name: string } | { customer_name: string }[] | null;
 type Proposal = {
-  id: string; proposal_no: string; amount: number; currency: string; status: string; archive_reason: string | null;
-  valid_until: string | null; sent_at: string | null; view_count: number; responded_at: string | null; created_at: string;
-  superseded_by: string | null; opportunity_id: string; crm_opportunities: Customer;
+  id: string; amount: number; currency: string; valid_until: string | null; sent_at: string | null;
+  view_count: number; crm_opportunities: Customer;
 };
 type Contract = {
-  id: string; contract_no: string; amount: number; currency: string; status: string; proposal_id: string | null;
-  sent_at: string | null; view_count: number; signed_at: string | null; created_at: string; crm_opportunities: Customer;
+  id: string; contract_no: string; amount: number; currency: string;
+  sent_at: string | null; view_count: number; signed_at: string | null; crm_opportunities: Customer;
 };
-type Representative = { id: string; full_name: string; job_title: string | null; can_receive_sales_requests: boolean };
+type Representative = { id: string; full_name: string };
+/* Özet işlevinin döndürdüğü sayılar (crm_genel_bakis_ozeti). */
+type Ozet = {
+  yeni_talep: number; atanmamis: number;
+  bekleyen_teklif: number; bekleyen_teklif_degeri: number; suresi_dolan: number;
+  bekleyen_sozlesme: number; geciken_sozlesme: number;
+  imzali_toplam: number; bu_ay_imza: number; bu_ay_imza_degeri: number;
+  seri: { gun: string; adet: number }[];
+};
 
 const TZ = "Europe/Istanbul";
-// Teklif öncesi aşamalar (genel ve akademik kurumlar)
-const NEW_STAGES = new Set(["lead", "qualified", "pre_review", "academic_review"]);
+/* Teklif öncesi aşamalar (genel ve akademik kurumlar) ve imzalı sayılan
+   sözleşme durumları. İkisi de özet işlevine PARAMETRE olarak gidiyor:
+   kural burada yaşıyor, SQL'e kopyalanmadı (AGENTS.md "Liste sayfaları"). */
+const NEW_STAGES = ["lead", "qualified", "pre_review", "academic_review"] as const;
+const IMZALI = ["signed", "completed"] as const;
 
 const money = (amount: number, currency = "TRY") =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(amount || 0) / 100);
 const dayKey = (value: string | number) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(value));
 const customerOf = (value: Customer) => formatPersonName(Array.isArray(value) ? value[0]?.customer_name : value?.customer_name) || "Müşteri";
 
-// Zamana bağlı değerler (saat bileşen gövdesinde okunmaz)
-function timeWindow() {
-  const now = Date.now();
-  const today = dayKey(now);
-  return { today, monthKey: today.slice(0, 7), since30: now - 30 * 86400000, since90: now - 90 * 86400000 };
-}
+/* Saat bileşen gövdesinde okunmaz (react-hooks/purity): gün anahtarı
+   burada, Türkiye saatiyle üretiliyor. */
+const bugununAnahtari = () => dayKey(Date.now());
+
 /** Geçerlilik tarihine kalan gün (bugün = 0, geçmişse negatif). */
 const daysUntil = (dateKey: string, today: string) => Math.round((Date.parse(dateKey) - Date.parse(today)) / 86400000);
 
@@ -50,60 +58,85 @@ export default async function CrmOverviewPage() {
   const { supabase, membership, modules } = await getPanelContext();
   if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
-  const time = timeWindow();
+  const bugun = bugununAnahtari();
 
+  /*
+    SAYILAR VERİTABANINDAN, LİSTELER ALTI SATIRLIK (11.10.2026).
+
+    Eskiden kurumun BÜTÜN talepleri, teklifleri ve sözleşmeleri zaman
+    sınırı olmadan çekilip her sayı bellekte hesaplanıyordu. Kayıt
+    sayısı büyüdükçe yavaşlamakla kalmıyor; PostgREST'in satır tavanına
+    çarpıldığı gün kartlardaki sayılar ve grafik sessizce eksiliyor
+    (AGENTS.md "Rakam denetimi"). Dört kartın her biri artık yalnızca
+    gösterdiği altı satırı okuyor, sayılar crm_genel_bakis_ozeti'nden.
+
+    Yeni talepler İKİ sorgu: atanmamışlar üstte, sonra en yeniler.
+    PostgREST ifadeye göre sıralayamıyor ("atanmış mı" bir sütun
+    değil); tek sorguda assigned_employee_id'ye göre sıralamak
+    atanmışları kimlik sırasına dizerdi.
+  */
   const [
-    { data: opportunityData, error: opportunityError },
-    { data: proposalData, error: proposalError },
-    { data: contractData, error: contractError },
+    { data: atanmamisData, error: atanmamisError },
+    { data: atanmisData, error: atanmisError },
+    { data: teklifData, error: teklifError },
+    { data: sozlesmeData, error: sozlesmeError },
+    { data: imzaData, error: imzaError },
     { data: employeeData, error: employeeError },
+    { data: ozetVerisi, error: ozetError },
   ] = await Promise.all([
-    supabase.from("crm_opportunities").select("id,title,customer_name,stage,assigned_employee_id,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }),
-    supabase.from("crm_proposals").select("id,proposal_no,amount,currency,status,archive_reason,valid_until,sent_at,view_count,responded_at,created_at,superseded_by,opportunity_id,crm_opportunities(customer_name)").eq("organization_id", organizationId),
-    supabase.from("crm_contracts").select("id,contract_no,amount,currency,status,proposal_id,sent_at,view_count,signed_at,created_at,crm_opportunities(customer_name)").eq("organization_id", organizationId),
-    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
+    supabase.from("crm_opportunities").select("id,title,customer_name,assigned_employee_id,created_at")
+      .eq("organization_id", organizationId).in("stage", [...NEW_STAGES]).is("assigned_employee_id", null)
+      .order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    supabase.from("crm_opportunities").select("id,title,customer_name,assigned_employee_id,created_at")
+      .eq("organization_id", organizationId).in("stage", [...NEW_STAGES]).not("assigned_employee_id", "is", null)
+      .order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    // Süresi en yakın olan üstte; tarihi olmayanlar en sonda.
+    supabase.from("crm_proposals").select("id,amount,currency,valid_until,sent_at,view_count,crm_opportunities(customer_name)")
+      .eq("organization_id", organizationId).eq("status", "sent").is("superseded_by", null)
+      .order("valid_until", { ascending: true, nullsFirst: false })
+      .order("sent_at", { ascending: true, nullsFirst: true }).limit(GENEL_BAKIS_SATIR),
+    // En uzun bekleyen üstte.
+    supabase.from("crm_contracts").select("id,contract_no,amount,currency,sent_at,view_count,signed_at,crm_opportunities(customer_name)")
+      .eq("organization_id", organizationId).eq("status", "sent")
+      .order("sent_at", { ascending: true, nullsFirst: true }).limit(GENEL_BAKIS_SATIR),
+    supabase.from("crm_contracts").select("id,contract_no,amount,currency,sent_at,view_count,signed_at,crm_opportunities(customer_name)")
+      .eq("organization_id", organizationId).in("status", [...IMZALI]).not("signed_at", "is", null)
+      .order("signed_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    supabase.from("hr_employees").select("id,full_name")
+      .eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
+    supabase.rpc("crm_genel_bakis_ozeti", {
+      p_organization_id: organizationId,
+      p_yeni_asamalar: [...NEW_STAGES],
+      p_imzali: [...IMZALI],
+    }),
   ]);
-  if (opportunityError) throw new Error("Talepler okunamadı: " + opportunityError.message);
-  if (proposalError) throw new Error("Teklifler okunamadı: " + proposalError.message);
-  if (contractError) throw new Error("Sözleşmeler okunamadı: " + contractError.message);
+  if (atanmamisError || atanmisError) throw new Error("Talepler okunamadı: " + (atanmamisError ?? atanmisError)!.message);
+  if (teklifError) throw new Error("Teklifler okunamadı: " + teklifError.message);
+  if (sozlesmeError || imzaError) throw new Error("Sözleşmeler okunamadı: " + (sozlesmeError ?? imzaError)!.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
+  if (ozetError) throw new Error("CRM özeti okunamadı: " + ozetError.message);
 
-  const opportunities = (opportunityData ?? []) as Opportunity[];
-  const proposals = (proposalData ?? []) as unknown as Proposal[];
-  const contracts = (contractData ?? []) as unknown as Contract[];
+  const ozet = (ozetVerisi ?? {}) as Partial<Ozet>;
+  const sayi = (deger: number | undefined) => Number(deger ?? 0);
   const employees = (employeeData ?? []) as Representative[];
   const employeeName = new Map(employees.map((row) => [row.id, formatPersonName(row.full_name)]));
 
+  /* Atanmamışlar üstte: iki sorgunun birleşimi, kartın altı satırı. */
+  const newRequests = [...((atanmamisData ?? []) as Opportunity[]), ...((atanmisData ?? []) as Opportunity[])];
+  const pendingProposals = (teklifData ?? []) as unknown as Proposal[];
+  const pendingContracts = (sozlesmeData ?? []) as unknown as Contract[];
+  const recentSigned = (imzaData ?? []) as unknown as Contract[];
 
-  // ---- Yeni talepler: atanmamışlar üstte, sonra en yeni
-  const newRequests = opportunities
-    .filter((row) => NEW_STAGES.has(row.stage))
-    .sort((a, b) => Number(Boolean(a.assigned_employee_id)) - Number(Boolean(b.assigned_employee_id)) || b.created_at.localeCompare(a.created_at));
-  const unassignedCount = newRequests.filter((row) => !row.assigned_employee_id).length;
+  const unassignedCount = sayi(ozet.atanmamis);
+  const pendingProposalValue = sayi(ozet.bekleyen_teklif_degeri);
+  const expiringCount = sayi(ozet.suresi_dolan);
+  const lateContracts = sayi(ozet.geciken_sozlesme);
+  const signedThisMonth = sayi(ozet.bu_ay_imza);
+  const signedThisMonthValue = sayi(ozet.bu_ay_imza_degeri);
 
-  // ---- Müşteri yanıtı bekleyen teklifler: süresi en yakın olan üstte
-  const pendingProposals = proposals
-    .filter((row) => row.status === "sent" && !row.superseded_by)
-    .sort((a, b) => (a.valid_until ?? "9999").localeCompare(b.valid_until ?? "9999") || (a.sent_at ?? "").localeCompare(b.sent_at ?? ""));
-  const pendingProposalValue = pendingProposals.filter((row) => row.currency === "TRY").reduce((sum, row) => sum + Number(row.amount), 0);
-  const expiringCount = pendingProposals.filter((row) => row.valid_until && daysUntil(row.valid_until, time.today) <= 3).length;
-
-  // ---- İmza bekleyen sözleşmeler: en uzun bekleyen üstte
-  const pendingContracts = contracts
-    .filter((row) => row.status === "sent")
-    .sort((a, b) => (a.sent_at ?? "").localeCompare(b.sent_at ?? ""));
-  const lateContracts = pendingContracts.filter((row) => (daysSince(row.sent_at) ?? 0) >= 7).length;
-
-  // ---- Bu ay imzalanan
-  const signed = contracts.filter((row) => ["signed", "completed"].includes(row.status) && row.signed_at);
-  const signedThisMonth = signed.filter((row) => dayKey(row.signed_at!).startsWith(time.monthKey));
-  const signedThisMonthValue = signedThisMonth.filter((row) => row.currency === "TRY").reduce((sum, row) => sum + Number(row.amount), 0);
-
-  // ---- Son imzalanan sözleşmeler: en yeni üstte
-  const recentSigned = [...signed].sort((a, b) => (b.signed_at ?? "").localeCompare(a.signed_at ?? ""));
-
-  // ---- Grafik: son 14 günde girilen talepler (önceki 14 günle kıyas)
-  const seri = gunlukSeri(opportunities.map((row) => row.created_at), simdi());
+  // ---- Grafik: son 14 günde girilen talepler (önceki 14 günle kıyas);
+  // günlük sayım veritabanında, Türkiye gününe göre.
+  const seri = gunlukSeriDilimler(ozet.seri ?? [], simdi());
 
   return (
     <GenelBakis
@@ -112,7 +145,7 @@ export default async function CrmOverviewPage() {
       <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" />
 
       <ListeIzgarasi etiket="Satış işleri">
-        <ListeKarti baslik="Yeni talepler" alt={unassignedCount ? `${unassignedCount} talep temsilci bekliyor` : "Teklif öncesi aşamadaki talepler"} bos="Yeni talep yok. Girilen talepler burada belirir." href="/panel/crm" hrefEtiket="Tüm talepler" sayi={newRequests.length}>
+        <ListeKarti baslik="Yeni talepler" alt={unassignedCount ? `${unassignedCount} talep temsilci bekliyor` : "Teklif öncesi aşamadaki talepler"} bos="Yeni talep yok. Girilen talepler burada belirir." href="/panel/crm" hrefEtiket="Tüm talepler" sayi={sayi(ozet.yeni_talep)}>
           {newRequests.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const assignee = row.assigned_employee_id ? employeeName.get(row.assigned_employee_id) ?? "Pasif personel" : null;
             return (
@@ -128,9 +161,9 @@ export default async function CrmOverviewPage() {
           })}
         </ListeKarti>
 
-        <ListeKarti baslik="Yanıt bekleyen teklifler" alt={expiringCount ? `${expiringCount} teklifin süresi 3 gün içinde doluyor` : pendingProposals.length ? `${money(pendingProposalValue)} teklif değeri` : "Müşteriye gönderilmiş, karar bekleyen"} bos="Yanıt bekleyen teklif yok." href="/panel/crm/proposals?status=sent" hrefEtiket="Tüm teklifler" sayi={pendingProposals.length}>
+        <ListeKarti baslik="Yanıt bekleyen teklifler" alt={expiringCount ? `${expiringCount} teklifin süresi 3 gün içinde doluyor` : sayi(ozet.bekleyen_teklif) ? `${money(pendingProposalValue)} teklif değeri` : "Müşteriye gönderilmiş, karar bekleyen"} bos="Yanıt bekleyen teklif yok." href="/panel/crm/proposals?status=sent" hrefEtiket="Tüm teklifler" sayi={sayi(ozet.bekleyen_teklif)}>
           {pendingProposals.slice(0, GENEL_BAKIS_SATIR).map((row) => {
-            const left = row.valid_until ? daysUntil(row.valid_until, time.today) : null;
+            const left = row.valid_until ? daysUntil(row.valid_until, bugun) : null;
             const badge = left !== null && left < 0 ? { tone: "danger", label: "Süresi doldu" }
               : left !== null && left <= 3 ? { tone: "warning", label: left === 0 ? "Son gün" : `Son ${left} gün` }
               : !row.view_count ? { tone: "info", label: "Açılmadı" }
@@ -147,7 +180,7 @@ export default async function CrmOverviewPage() {
           })}
         </ListeKarti>
 
-        <ListeKarti baslik="İmza bekleyen sözleşmeler" alt={lateContracts ? `${lateContracts} sözleşme 7 günden uzun süredir bekliyor` : "Müşteriye gönderilmiş, imzalanmamış"} bos="İmza bekleyen sözleşme yok." href="/panel/crm/contracts?status=sent" hrefEtiket="Tüm sözleşmeler" sayi={pendingContracts.length}>
+        <ListeKarti baslik="İmza bekleyen sözleşmeler" alt={lateContracts ? `${lateContracts} sözleşme 7 günden uzun süredir bekliyor` : "Müşteriye gönderilmiş, imzalanmamış"} bos="İmza bekleyen sözleşme yok." href="/panel/crm/contracts?status=sent" hrefEtiket="Tüm sözleşmeler" sayi={sayi(ozet.bekleyen_sozlesme)}>
           {pendingContracts.slice(0, GENEL_BAKIS_SATIR).map((row) => {
             const late = (daysSince(row.sent_at) ?? 0) >= 7;
             const badge = late ? { tone: "danger", label: "Gecikti" } : !row.view_count ? { tone: "info", label: "Açılmadı" } : { tone: "success", label: "Görüldü" };
@@ -163,7 +196,7 @@ export default async function CrmOverviewPage() {
           })}
         </ListeKarti>
 
-        <ListeKarti baslik="Son imzalanan sözleşmeler" alt={signedThisMonth.length ? `Bu ay ${signedThisMonth.length} imza · ${money(signedThisMonthValue)}` : "Bu ay henüz imza yok"} bos="İmzalanmış sözleşme yok." href="/panel/crm/contracts" hrefEtiket="Sözleşmelere git" sayi={recentSigned.length}>
+        <ListeKarti baslik="Son imzalanan sözleşmeler" alt={signedThisMonth ? `Bu ay ${signedThisMonth} imza · ${money(signedThisMonthValue)}` : "Bu ay henüz imza yok"} bos="İmzalanmış sözleşme yok." href="/panel/crm/contracts" hrefEtiket="Sözleşmelere git" sayi={sayi(ozet.imzali_toplam)}>
           {recentSigned.slice(0, GENEL_BAKIS_SATIR).map((row) => (
             <ListeSatiri
               key={row.id}

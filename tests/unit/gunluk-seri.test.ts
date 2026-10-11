@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gunlukSeri } from "@/lib/gunluk-seri";
+import { gunlukSeri, gunlukSeriDilimler } from "@/lib/gunluk-seri";
 
 /*
   Genel bakış grafiği (ana ekran ve modül genel bakışları). Gün sınırı
@@ -41,4 +41,39 @@ test("önceki dönem boşsa yüzde yok; ağırlık (tutar) verilebilir", () => {
   assert.equal(seri.days.length, 7);
   assert.equal(seri.today, 4000);
   assert.equal(seri.max, 4000);
+});
+
+/*
+  VERİTABANINDAN GELEN DİLİMLER (gunlukSeriDilimler). Sayım artık
+  SQL'de; burada sınanan, özetin ekrana doğru oturması: boş günler
+  görünüyor mu, pencere dışı günler önceki döneme mi yazılıyor, çok
+  eskisi dışarıda mı kalıyor.
+*/
+test("özet dilimlere oturuyor; kayıt olmayan gün boş çubuk", () => {
+  const seri = gunlukSeriDilimler([{ gun: "2026-10-08", adet: 3 }, { gun: "2026-10-06", adet: 1 }], SIMDI);
+  assert.equal(seri.days.length, 14);
+  assert.equal(seri.today, 3);
+  assert.equal(seri.days[11].count, 1, "6 Ekim dilimi");
+  assert.equal(seri.days[12].count, 0, "7 Ekim'de kayıt yok, dilim duruyor");
+  assert.equal(seri.total, 4);
+});
+
+test("pencere dışı günler önceki döneme, çok eskisi hiçbir yere", () => {
+  const seri = gunlukSeriDilimler([
+    { gun: "2026-10-08", adet: 2 },
+    { gun: "2026-09-24", adet: 5 }, // pencerenin bir gün öncesi → önceki dönem
+    { gun: "2026-09-25", adet: 1 }, // pencerenin ilk günü → bu dönem
+    { gun: "2026-09-10", adet: 9 }, // 28 günden eski → dışarıda
+  ], SIMDI);
+  assert.equal(seri.total, 3);
+  assert.equal(seri.previous, 5);
+  assert.equal(seri.delta, -40);
+});
+
+test("boş özet: on dört boş gün, yüzde yok", () => {
+  const seri = gunlukSeriDilimler([], SIMDI);
+  assert.equal(seri.total, 0);
+  assert.equal(seri.previous, 0);
+  assert.equal(seri.delta, null);
+  assert.equal(seri.max, 1, "sıfır bölme olmasın diye taban 1");
 });
