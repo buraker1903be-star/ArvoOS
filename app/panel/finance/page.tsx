@@ -264,8 +264,16 @@ export default async function FinancePage({
     !modules.some((m) => m.code === "accounts")
   )
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
-  const [{ data, error }, { data: contractData, error: contractError }, { data: installmentData, error: installmentError }, {data:costItemData,error:costItemError},{data:employeeData},{data:workflowData},{data:tahsilatOzetiVerisi,error:tahsilatOzetiHatasi}] =
+  const [{ data, error }, { data: contractData, error: contractError }, {data:employeeData},{data:workflowData},{data:tahsilatOzetiVerisi,error:tahsilatOzetiHatasi}] =
     await Promise.all([
+      /*
+        CARİ LİSTESİ SAYFALANMIYOR, bilerek: liste bakiyeye göre
+        sıralanıyor ve bakiye bir KURAL çıktısı (sözleşme borcu mu
+        defter borcu mu, tahsilatın sınırı…), veritabanındaki bir sütun
+        değil. Sunucuda sıralamak kuralı SQL'e kopyalamak olurdu.
+        Taşınan veri bir cari = bir satır; ağır kısım olan hareketler
+        artık okunmuyor (cari_liste toplamları veriyor).
+      */
       supabase
         .from("cari_liste")
         .select("id,name,email,phone,tax_number,defter_borc,ek_hizmet,tahsilat,iade,son_hareket_at")
@@ -278,8 +286,6 @@ export default async function FinancePage({
         .select("id,party_id,amount,status,contract_no,title,currency,payment_plan_id,workflow_id,signed_at,created_at,service_cost,service_cost_supplier,service_cost_reference,service_cost_status,crm_opportunities(customer_name,contact_phone,contact_email,assigned_employee_id)")
         .eq("organization_id", membership.organization_id)
         .in("status", ["signed", "completed"]),
-      supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,payment_link_source,notice_sent_at,reminder_sent_at").eq("organization_id",membership.organization_id).order("due_date"),
-      supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date,category").eq("organization_id",membership.organization_id),
       supabase.from("hr_employees").select("id,full_name").eq("organization_id",membership.organization_id),
       supabase.from("operation_workflows").select("id,assigned_employee_id").eq("organization_id",membership.organization_id),
       supabase.rpc("cari_tahsilat_ozeti", { p_organization_id: membership.organization_id }),
@@ -288,9 +294,31 @@ export default async function FinancePage({
   if (tahsilatOzetiHatasi) throw new Error("Tahsilat özeti okunamadı: " + tahsilatOzetiHatasi.message);
   if (contractError)
     throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
-  if(installmentError) throw new Error("Ödeme taksitleri okunamadı: "+installmentError.message);
-  if(costItemError&&izin("finance.maliyet.yonet"))throw new Error("İş maliyetleri okunamadı: "+costItemError.message);
   const contracts = (contractData ?? []) as unknown as Contract[];
+
+  /*
+    TAKSİTLER VE MALİYET KALEMLERİ SÖZLEŞMELERE BAĞLI OLANLARLA SINIRLI.
+    İkisi de kurumun tamamı için okunuyordu; oysa sayfa yalnızca
+    imzalı/tamamlanmış sözleşmelerin taksitlerini dağıtıyor ve kârını
+    hesaplıyor. İptal edilmiş ya da taslak bir sözleşmenin taksidi
+    hiçbir yerde görünmüyordu, yalnızca taşınıyordu.
+  */
+  const planIdleri = [...new Set(contracts.map((c) => c.payment_plan_id).filter((v): v is string => Boolean(v)))];
+  const sozlesmeIdleri = contracts.map((c) => c.id);
+  const [{ data: installmentData, error: installmentError }, { data: costItemData, error: costItemError }] = await Promise.all([
+    planIdleri.length
+      ? supabase.from("payment_installments")
+          .select("id,payment_plan_id,installment_no,due_date,amount,status,payment_url,payment_link_source,notice_sent_at,reminder_sent_at")
+          .eq("organization_id", membership.organization_id).in("payment_plan_id", planIdleri).order("due_date")
+      : Promise.resolve({ data: [], error: null }),
+    izin("finance.maliyet.yonet") && sozlesmeIdleri.length
+      ? supabase.from("contract_cost_items")
+          .select("contract_id,amount,status,cost_date,category")
+          .eq("organization_id", membership.organization_id).in("contract_id", sozlesmeIdleri)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (installmentError) throw new Error("Ödeme taksitleri okunamadı: " + installmentError.message);
+  if (costItemError) throw new Error("İş maliyetleri okunamadı: " + costItemError.message);
   // Cari bakiyeleri: Finans genel bakışla aynı kural (account-balances.ts)
   const { accounts, totals } = buildAccountBalances((data ?? []) as Party[], contracts);
   /*
