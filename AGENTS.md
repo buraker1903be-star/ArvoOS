@@ -154,6 +154,32 @@ aynı yapıya geçti. Yeni bir liste yazarken ya da bunlara dokunurken:
   birden aynı tabloyu sınar. Kural bir listeyse (aşama kümeleri) işleve
   PARAMETRE olarak geçilir; SQL'e kopyalanmaz.
 
+## Genel bakış sayfaları
+
+Dört genel bakış (CRM, operasyon, finans, ana ekran) 11–12.10.2026'da
+listelerle aynı yapıya geçti:
+
+- **Kartın sayıları ÖZET İŞLEVİNDEN, listesi altı satırdan.**
+  `crm_genel_bakis_ozeti`, `operasyon_genel_bakis_ozeti`,
+  `cari_tahsilat_ozeti`. Eskiden kurumun bütün kayıtları çekilip her
+  sayı bellekte hesaplanıyordu; satır tavanına çarpıldığı gün kartlar
+  ve grafikler sessizce eksiliyordu.
+- **Grafik dilimleri veritabanında, Türkiye gününe göre.** Ekran
+  yalnızca boş günleri dolduruyor (`gunlukSeriDilimler`). İki taraf
+  aynı gün sınırını kullanmazsa günün ilk ve son kaydı yanlış dilime
+  düşer. Beklenen günü testte ELLE hesaplamayın, tohumun yazdığı
+  satıra sorun: UTC'de 21:00'den sonra iki takvim ayrışıyor.
+- **Görünümden okurken sütunları sayın.** Liste görünümlerinin yan
+  sorguları (adım, mesaj, son yorum, cari hareketi) `select("*")` ile
+  boşuna işliyor; sütun istenmeyince Postgres yan sorguyu tamamen
+  atıyor. Kart adım yüzdesi gösteriyorsa görünümü, göstermiyorsa
+  tabloyu okuyun.
+- **Her sınırsız okuma hata değil.** Prim (ömür boyu biriken bakiye),
+  cari bakiyesi ve taksit merdiveni bilerek tüm zamanları okuyor;
+  pencereyle daraltmak para hesabını bozar. Böyle bir okumanın
+  gerekçesi dosyada yazılı olmalı, yoksa bir sonraki "iyileştirme"
+  onu sessizce kırar.
+
 ## Sunucu işlemleri
 
 Panel işlemleri `runPanelAction` ile sarılır (`lib/panel-action.ts`): üretimde
