@@ -1880,6 +1880,7 @@
     "mark_crm_proposal_viewed",
     "mark_message_channel_read",
     "next_document_number",
+    "operasyon_ekip_yuku",
     "operasyon_genel_bakis_ozeti",
     "operasyon_is_istatistikleri",
     "portal_payment_settled",
