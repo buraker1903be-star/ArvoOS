@@ -61,9 +61,25 @@ export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/can
   check:db-testleri tam bunu arıyor.
 */
 export const BEKLEYEN_MIGRATIONLAR = [
-  // Şu an boş: döküm 11.10.2026'da yenilendi, canlıdaki her şey anlık
-  // görüntüde. Dolu bırakmak migration'ı iki kez uygulamak demek.
+  // Döküm 11.10.2026'da yenilendi; bu migration ondan SONRA canlıya
+  // uygulandı. Dökümdeki crm_talep_liste hâlâ yan sorguyu yalnızca
+  // opportunity_id ile süzen eski gövdeyi taşıyor.
+  "20261011141558_yorum_yan_sorgu_dizini.sql",
 ];
+
+/** Yetki satırları (grant/revoke), dosyadaki özgün sırasıyla. */
+const yetkiSatirlari = (sql) => sql.match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
+
+/**
+ * Supabase varsayılanını kurar, sonra verilen dosyaların yetki
+ * satırlarını özgün sırasıyla tekrarlar — canlıdaki son durum bu.
+ */
+async function yetkileriKur(db, dosyalar) {
+  await db.exec(SUPABASE_VARSAYILAN_YETKI);
+  for (const sql of dosyalar) {
+    for (const satir of yetkiSatirlari(sql)) await db.exec(satir);
+  }
+}
 
 /** Canlı şemayla kurulmuş, boş bir veritabanı. */
 export async function veritabani(semaDosyasi = SEMA) {
@@ -71,27 +87,36 @@ export async function veritabani(semaDosyasi = SEMA) {
   await db.exec(SUPABASE_KABUGU);
   const sema = fs.readFileSync(semaDosyasi, "utf8");
   await db.exec(sema);
-  for (const ad of BEKLEYEN_MIGRATIONLAR) {
-    await db.exec(fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8"));
-  }
-  await db.exec(SUPABASE_VARSAYILAN_YETKI);
   /*
-    DÖKÜMÜN YETKİ SATIRLARI SON SÖZÜ SÖYLER.
+    YETKİLER EN SONDA, CANLIDAKİ SIRAYLA KURULUR.
 
-    Yukarıdaki toplu grant Supabase'in varsayılanını taklit ediyor ama
-    dökümde bilerek yazılmış "revoke … from anon" satırlarını da
-    eziyordu: anlık görüntüde kapalı olan bir tablo/görünüm testte
-    anon'a açık görünüyordu ve "bu anon'a kapalı mı" diye soran test
-    yanlış yere geçiyordu.
+    `yetkileriKur` önce Supabase'in varsayılanını (her tabloya her hak)
+    kurar, sonra dökümün ve bekleyen migration'ların grant/revoke
+    satırlarını özgün sırasıyla tekrarlar. Üç şey bunu gerektirdi:
 
-    Yalnızca revoke'ları tekrarlamak YETMEZ: bir revoke kendisinden
-    önce gelen grant'i de siler (ops_* görünümlerinde yaşandı). O
-    yüzden dökümdeki grant ve revoke satırlarının TAMAMI, özgün
-    sırasıyla tekrarlanıyor — canlıdaki son durum bu.
+    1. Toplu grant tek başına, dökümde bilerek yazılmış "revoke … from
+       anon" satırlarını eziyordu: anlık görüntüde kapalı olan bir
+       görünüm testte anon'a açık görünüyor, "bu anon'a kapalı mı" diye
+       soran test yanlış yere geçiyordu.
+    2. Yalnızca revoke'ları tekrarlamak yetmez: bir revoke kendisinden
+       önce gelen grant'i de siler (ops_* görünümlerinde yaşandı). O
+       yüzden grant ve revoke satırlarının TAMAMI, sırasıyla.
+    3. Bekleyen migration'lar eskiden dökümün hemen ardından, toplu
+       grant'ten ÖNCE uygulanıyordu: migration kendi görünümünü
+       kapatsa bile arkadan gelen toplu grant onu geri açıyordu.
+       Canlıda sıra tersi. 11.10.2026'da yorum yan sorgusu
+       migration'ında yakalandı: "anon görünüme erişemiyor" testi,
+       canlıda var olmayan bir açıklık yüzünden düştü — yanlış yöne de
+       düşebilirdi, kapalı olanı açık sanan bir test sessizce geçerdi.
+
+    Toplu grant bekleyen migration'lardan sonra çalışıyor, çünkü
+    Supabase yeni yaratılan tabloya varsayılanı kendisi veriyor.
   */
-  for (const satir of sema.match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? []) {
-    await db.exec(satir);
-  }
+  const bekleyen = BEKLEYEN_MIGRATIONLAR.map((ad) =>
+    fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8"),
+  );
+  for (const dosya of bekleyen) await db.exec(dosya);
+  await yetkileriKur(db, [sema, ...bekleyen]);
   return db;
 }
 

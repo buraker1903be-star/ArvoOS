@@ -15,7 +15,13 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011122651_talep_liste_gorunumu.sql", "20261011141558_yorum_yan_sorgu_dizini.sql"];
+/*
+  Liste: BOŞ. Görünümün ve özet işlevinin ilk hâli (20261011122651)
+  artık anlık görüntüde, düzeltmesi (20261011141558) ise ortam.mjs'in
+  BEKLEYEN_MIGRATIONLAR listesinde — ikisini burada yeniden uygulamak,
+  dökümdeki güncel gövdeyi eski dosyadan geri yazma riski demekti.
+*/
+const MIGRATIONLAR = [];
 
 const KURUM = "00000000-0000-4000-8000-00000000b3a1";
 const BASKA = "00000000-0000-4000-8000-00000000b3a2";
