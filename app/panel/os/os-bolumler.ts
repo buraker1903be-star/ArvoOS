@@ -29,6 +29,8 @@ export const maliyetGorur = (e: BolumErisimi) => e.yetkiler.has("finance.maliyet
 /** Raporlar: kurumda Raporlama modülü açık + rolde rapor yetkisi. */
 export const finansRaporGorur = (e: BolumErisimi) =>
   e.modules.some((m) => m.code === "reporting") && e.yetkiler.has("finance.rapor.gor");
+/** Ekip yükü sekmesi: operasyon müdürünün "kimde ne var" ekranı. */
+export const ekipYukuGorur = (e: Pick<BolumErisimi, "yetkiler">) => e.yetkiler.has("operations.ekip.gor");
 /** Prim hesaplama: commissions/page.tsx ile aynı kural. */
 export const primGorur = (e: Pick<BolumErisimi, "yetkiler" | "isPlatformOwner">) =>
   Boolean(e.isPlatformOwner) || e.yetkiler.has("hr.prim.gor");
@@ -48,11 +50,14 @@ export function crmBolumleri(): Bolum[] {
   ];
 }
 
-export function operasyonBolumleri(): Bolum[] {
+export function operasyonBolumleri(e: BolumErisimi): Bolum[] {
   return [
     { key: "genel-bakis", href: "/panel/operations", label: "Genel Bakış" },
     { key: "is-akisi", href: "/panel/operations/isler", label: "İşler" },
     { key: "pano", href: "/panel/operations/pano", label: "Pano" },
+    /* Ekip yükü yalnızca yetkisi olana: operasyon personelinin
+       göreceği şey kendi işi, kurumun kişi kişi dökümü değil. */
+    ...(ekipYukuGorur(e) ? [{ key: "ekip", href: "/panel/operations/ekip", label: "Ekip Yükü" }] : []),
     { key: "takvim", href: "/panel/operations/takvim", label: "Takvim" },
     { key: "arsiv", href: "/panel/operations/arsiv", label: "Arşiv" },
     { key: "sablon", href: "/panel/operations/sablon", label: "Adım Şablonu" },
@@ -91,7 +96,7 @@ export function dokumanBolumleri(): Bolum[] {
 export function uygulamaBolumleri(uygulama: string, e: BolumErisimi): Bolum[] {
   switch (uygulama) {
     case "crm": return crmBolumleri();
-    case "operations": return operasyonBolumleri();
+    case "operations": return operasyonBolumleri(e);
     case "finance": return finansBolumleri(e);
     case "hr": return ikBolumleri();
     case "documents": return dokumanBolumleri();

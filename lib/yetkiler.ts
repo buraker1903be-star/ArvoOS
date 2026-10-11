@@ -88,6 +88,12 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
       { key: "operations.gorev.ata", modul: "operations", label: "Görev atama", aciklama: "İşi ve adımlarını personele atar", varsayilan: YONETIM_VE_SEF, rlsBagli: true },
       { key: "operations.sablon.yonet", modul: "operations", label: "Şablon yönetimi", aciklama: "İş adımı şablonlarını düzenler", varsayilan: YONETIM },
       { key: "operations.arsiv.yonet", modul: "operations", label: "Arşiv yönetimi", aciklama: "İşi arşivler, arşivden geri alır", varsayilan: YONETIM_VE_SEF },
+      /* Operasyon müdürünün ekranı: kişi kişi yük, geciken termin ve
+         açık adım. İşlerin tamamını görmek RLS'te zaten müdürde
+         (owner/admin/manager); bu yetki o görünümü AÇIYOR, yenisini
+         vermiyor — kurum isterse bir operasyon personeline de açabilir
+         (vardiya planlayan kişi gibi). */
+      { key: "operations.ekip.gor", modul: "operations", label: "Ekip yükü", aciklama: "Kimde kaç iş var, kimin termini geçti, kim müsait — kişi kişi görür", varsayilan: YONETIM_VE_SEF },
     ],
   },
   {
