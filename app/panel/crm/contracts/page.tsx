@@ -6,7 +6,6 @@ import { waMeAdresi } from "@/lib/wa-me";
 import { belgeAliciTelefonu } from "../alici-telefonu";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
-import { phoneSearchTerms } from "@/lib/format-phone";
 import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
 import { resolvePublicHost } from "@/lib/public-host";
 import { formatPersonName } from "@/lib/format-name";
@@ -15,11 +14,12 @@ import {
   contractMessages,
   organizationBrandName,
 } from "@/lib/customer-message-templates";
-import { AKTIF_SOZLESME_GRUPLARI, SOZLESME_GRUP_ADLARI, sozlesmeGrubu, type SozlesmeGrubu } from "@/lib/sozlesme-grubu";
+import { AKTIF_SOZLESME_GRUPLARI, SOZLESME_GRUP_ADLARI, type SozlesmeGrubu } from "@/lib/sozlesme-grubu";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
-import { aylik, enCok, oran, son30Degisim } from "@/lib/liste-istatistik";
+import { aylikDilimler, oran } from "@/lib/liste-istatistik";
+import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
@@ -45,6 +45,7 @@ type Props = {
     search?: string;
     status?: string;
     temsilci?: string;
+    sayfa?: string;
     share?: string;
     doc_no?: string;
     customer_name?: string;
@@ -54,7 +55,8 @@ type Props = {
     currency?: string;
   }>;
 };
-type Contract = {
+/* Görünümün satırı: sözleşme + fırsat + iş akışı alanları düz. */
+type SozlesmeSatiri = {
   id: string;
   contract_no: string;
   title: string;
@@ -62,23 +64,23 @@ type Contract = {
   currency: string;
   due_date: string | null;
   status: string;
+  sozlesme_grubu: SozlesmeGrubu;
   sent_at: string | null;
-  view_count: number;
   signed_at: string | null;
+  view_count: number;
   workflow_id: string | null;
   created_at: string;
   opportunity_id: string;
-  crm_opportunities: {
-    id: string;
-    customer_name: string;
-    contact_email: string | null;
-    contact_phone: string | null;
-    assigned_employee_id: string | null;
-    request_details: Record<string, unknown> | null;
-  } | null;
+  customer_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  assigned_employee_id: string | null;
+  request_details: Record<string, unknown> | null;
 };
 const GRUPLAR = Object.keys(SOZLESME_GRUP_ADLARI) as SozlesmeGrubu[];
 const SERIT: SozlesmeGrubu[] = ["draft", "sent", "imzali", "operasyonda", "tamam"];
+/* Sayfa boyu teklif ve posta listeleriyle aynı. */
+const SAYFA_BOYU = 50;
 const GRUP_TONU: Record<SozlesmeGrubu, string> = { draft: "neutral", sent: "info", imzali: "warning", operasyonda: "success", tamam: "neutral", rejected: "danger", cancelled: "danger" };
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(v / 100);
@@ -97,66 +99,88 @@ export default async function ContractsPage({ searchParams }: Props) {
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
 
-  const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
-    supabase
-      .from("crm_contracts")
-      .select("id,contract_no,title,amount,currency,due_date,status,sent_at,view_count,signed_at,workflow_id,created_at,opportunity_id,crm_opportunities!inner(id,customer_name,contact_email,contact_phone,assigned_employee_id,request_details)")
-      .eq("organization_id", membership.organization_id)
-      .order("created_at", { ascending: false }),
+  /*
+    LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026) — teklif listesiyle aynı
+    kalıp. Eskiden kurumun BÜTÜN sözleşmeleri fırsat kaydıyla çekilip
+    bellekte süzülüyordu; üstüne bağlı iş akışlarının durumu ikinci bir
+    sorguyla okunup grup hesaplanıyordu. Kayıt sayısı büyüdükçe
+    yavaşlıyor, PostgREST'in satır tavanına çarptığında sessizce yanlış
+    sayı gösteriyordu.
+
+    crm_sozlesme_liste üçünü birleştiriyor ve grubu kendisi veriyor;
+    istatistikler de veritabanında sayılıyor.
+  */
+  const sayfaNo = Math.max(1, Number.parseInt(p.sayfa ?? "1", 10) || 1);
+  const desen = aramaDeseni(search);
+  const telefon = telefonAnahtari(search);
+
+  /* Süzgeçler tek yerden: liste ve sayımlar aynı kümeyi görmeli. */
+  const suzulmus = (sayarak = false) => {
+    let q = sayarak
+      ? supabase.from("crm_sozlesme_liste").select("id", { count: "exact", head: true })
+          .eq("organization_id", membership.organization_id)
+      : supabase.from("crm_sozlesme_liste").select("*", { count: "exact" })
+          .eq("organization_id", membership.organization_id);
+    if (desen) {
+      q = q.or([
+        `contract_no.ilike.*${desen}*`,
+        `title.ilike.*${desen}*`,
+        `customer_name.ilike.*${desen}*`,
+        `contact_email.ilike.*${desen}*`,
+        ...(telefon ? [`telefon_rakamlari.ilike.*${telefon}*`] : []),
+      ].join(","));
+    }
+    if (temsilci === "atanmamis") q = q.is("assigned_employee_id", null);
+    else if (temsilci) q = q.eq("assigned_employee_id", temsilci);
+    return q;
+  };
+
+  /* Durum süzgeci: "tumu" hepsi, "arsiv" aktif OLMAYANLAR, "signed"
+     eski bağlantılar için (imzalı + operasyonda), boş ise aktifler. */
+  const grupSuzgeci = (q: ReturnType<typeof suzulmus>) =>
+    status === "tumu" ? q
+    : status === "arsiv" ? q.not("sozlesme_grubu", "in", `(${AKTIF_SOZLESME_GRUPLARI.join(",")})`)
+    : status === "signed" ? q.in("sozlesme_grubu", ["imzali", "operasyonda"])
+    : status ? q.eq("sozlesme_grubu", status)
+    : q.in("sozlesme_grubu", AKTIF_SOZLESME_GRUPLARI);
+
+  const sayim = async (grup: SozlesmeGrubu) =>
+    (await suzulmus(true).eq("sozlesme_grubu", grup)).count ?? 0;
+
+  const [
+    { data, error, count: suzgecSayisi },
+    { data: employeeData, error: employeeError },
+    { data: ozetVerisi, error: ozetHatasi },
+    ...seritSayilari
+  ] = await Promise.all([
+    grupSuzgeci(suzulmus())
+      .order("created_at", { ascending: false })
+      .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1),
     supabase
       .from("hr_employees")
       .select("id,full_name,can_receive_sales_requests,employment_status")
       .eq("organization_id", membership.organization_id),
+    /* Sağdaki kartın sayıları veritabanından; süzgeçten bağımsız
+       (kurumun tamamı), o yüzden işleve süzgeç geçmiyor. */
+    supabase.rpc("crm_sozlesme_istatistikleri", { p_organization_id: membership.organization_id }),
+    ...SERIT.map((grup) => sayim(grup)),
   ]);
   if (error) throw new Error("Sözleşmeler okunamadı: " + error.message);
   if (employeeError) throw new Error("Temsilciler okunamadı: " + employeeError.message);
+  if (ozetHatasi) throw new Error("Sözleşme istatistikleri okunamadı: " + ozetHatasi.message);
+
   const representativeMap = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]));
-  const fetched = (data ?? []) as unknown as Contract[];
+  const rows = ((data ?? []) as unknown as SozlesmeSatiri[]).map((row) => ({ row, grup: row.sozlesme_grubu }));
+  const sonSayfa = typeof suzgecSayisi === "number"
+    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
+    : rows.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
 
-  // İşi tamamlanan (ya da tamamlanıp arşivlenen) sözleşme operasyondan çıkmış sayılır.
-  const workflowIds = [...new Set(fetched.map((r) => r.workflow_id).filter((v): v is string => Boolean(v)))];
-  const completedWorkflowIds = new Set<string>();
-  if (workflowIds.length) {
-    /* Hata OKUNUYOR: bu sorgu hangi sözleşmenin kapandığını söylüyor.
-       Yutulduğunda küme boş kalıyor, kapanan sözleşmeler AKTİF sayılıyor
-       ve şeritteki "aktif sözleşme değeri" olduğundan yüksek çıkıyordu —
-       yanlış sayı, eksik sayıdan kötüdür. */
-    const { data: workflows, error: workflowError } = await supabase
-      .from("operation_workflows")
-      .select("id,status")
-      .eq("organization_id", membership.organization_id)
-      .in("id", workflowIds);
-    if (workflowError) throw new Error("Sözleşmelerin iş durumu okunamadı: " + workflowError.message);
-    for (const wf of workflows ?? [])
-      if (wf.status === "completed" || wf.status === "archived") completedWorkflowIds.add(wf.id);
-  }
-  const all = fetched.map((row) => ({ row, grup: sozlesmeGrubu(row, Boolean(row.workflow_id && completedWorkflowIds.has(row.workflow_id))) }));
-
-  const searchKey = search.toLocaleLowerCase("tr-TR");
-  const aramaUyar = (row: Contract) => {
-    if (!searchKey) return true;
-    const customer = row.crm_opportunities;
-    return [row.contract_no, row.title, customer?.customer_name, customer?.contact_email, phoneSearchTerms(customer?.contact_phone)]
-      .filter(Boolean).join(" ").toLocaleLowerCase("tr-TR").includes(searchKey);
-  };
-  const temsilciUyar = (row: Contract) => {
-    const id = row.crm_opportunities?.assigned_employee_id ?? null;
-    return !temsilci || (temsilci === "atanmamis" ? !id : id === temsilci);
-  };
-  const aktifMi = (grup: SozlesmeGrubu) => AKTIF_SOZLESME_GRUPLARI.includes(grup);
-  const durumUyar = (grup: SozlesmeGrubu) =>
-    status === "tumu" ? true
-    : status === "arsiv" ? !aktifMi(grup)
-    : status === "signed" ? grup === "imzali" || grup === "operasyonda"
-    : status ? grup === status
-    : aktifMi(grup);
-  const rows = all.filter(({ row, grup }) => durumUyar(grup) && aramaUyar(row) && temsilciUyar(row));
-  // Şerit sayıları arama ve temsilci süzgecine göre, durum süzgecinden bağımsız.
-  const kapsam = all.filter(({ row }) => aramaUyar(row) && temsilciUyar(row));
-  const sayi = (grup: SozlesmeGrubu) => kapsam.filter((item) => item.grup === grup).length;
-  const aktifler = kapsam.filter((item) => aktifMi(item.grup));
-  const aktifDeger = aktifler.reduce((s, { row }) => s + Number(row.amount), 0);
-  const geciken = aktifler.filter(({ row, grup }) => grup === "sent" && (daysSince(row.sent_at) ?? 0) >= 7).length;
+  /* Şerit sayıları: süzgeçlerle aynı kümeden, durum süzgecinden
+     bağımsız. Üstteki Aktif/Kapanan/Tümü da bunlardan türüyor —
+     aynı kümeyi iki kez saymak iki farklı sayı göstermenin yoluydu. */
+  const seritSayi = (grup: SozlesmeGrubu) => seritSayilari[SERIT.indexOf(grup)] ?? 0;
+  const aktifSayisi = AKTIF_SOZLESME_GRUPLARI.reduce((toplam, grup) => toplam + seritSayi(grup), 0);
+  const tumSayi = seritSayilari.reduce((toplam, adet) => toplam + adet, 0);
 
   const lastContacts = await fetchLastContacts(
     supabase,
@@ -211,13 +235,16 @@ export default async function ContractsPage({ searchParams }: Props) {
     );
   }
 
-  const adres = (ek: { status?: string; temsilci?: string }) => {
+  /* Süzgeç değişince sayfa başa dönüyor: üçüncü sayfadayken "İmzalı"ya
+     basan kullanıcı boş sayfaya düşüyordu. */
+  const adres = (ek: { status?: string; temsilci?: string; sayfa?: number }) => {
     const q = new URLSearchParams();
     const d = ek.status ?? status;
     const t = ek.temsilci ?? temsilci;
     if (search) q.set("search", search);
     if (d) q.set("status", d);
     if (t) q.set("temsilci", t);
+    if (ek.sayfa && ek.sayfa > 1) q.set("sayfa", String(ek.sayfa));
     const s = q.toString();
     return s ? `/panel/crm/contracts?${s}` : "/panel/crm/contracts";
   };
@@ -227,22 +254,35 @@ export default async function ContractsPage({ searchParams }: Props) {
     sözleşmelerden, süzgeçten bağımsız.
   */
   const an = simdi();
-  const { son30, degisim } = son30Degisim(all.map(({ row }) => row.created_at), an);
-  const imzalananlar = all.filter(({ grup }) => grup === "imzali" || grup === "operasyonda" || grup === "tamam");
-  const kapananSayi = all.filter(({ grup }) => grup === "rejected" || grup === "cancelled").length;
-  const imzaOrani = oran(imzalananlar.length, imzalananlar.length + kapananSayi);
-  // İmza süresi: gönderimden imzaya; ikisi de yazılı olan sözleşmelerden.
-  const imzaSureleri = imzalananlar
-    .filter(({ row }) => row.sent_at && row.signed_at)
-    .map(({ row }) => Math.max(0, (Date.parse(row.signed_at!) - Date.parse(row.sent_at!)) / 86_400_000));
-  // Gün kesirli tutulur: çoğu sözleşme gönderildiği gün imzalanıyor, yuvarlanınca "0 gün" yazıyordu.
-  const ortalamaImza = imzaSureleri.length ? imzaSureleri.reduce((a, b) => a + b, 0) / imzaSureleri.length : null;
-  const imzaBekleyen = all.filter(({ grup }) => grup === "sent");
-  const imzaBekleyenGec = imzaBekleyen.filter(({ row }) => (daysSince(row.sent_at) ?? 0) >= 7).length;
-  const aylikImza = aylik(imzalananlar.map(({ row }) => ({ tarih: row.signed_at, tutar: Number(row.amount) })), 6, an);
-  const hizmetler = enCok(all.map(({ row }) => String(row.crm_opportunities?.request_details?.service_type ?? "").trim() || "Belirtilmedi"), 5);
-  // Temsilci seçimi: satış talebi alabilen aktif personel ve listede adı geçen herkes.
-  const atananlar = new Set(all.map(({ row }) => row.crm_opportunities?.assigned_employee_id).filter(Boolean));
+  /* Özet jsonb: ham sayılar veritabanından, etiketleme burada. */
+  const ozet = (ozetVerisi ?? {}) as {
+    toplam?: number; son30?: number; onceki30?: number; imzalanan?: number; kapanan?: number;
+    imza_suresi_gun?: number | null; imza_suresi_adet?: number;
+    imza_bekleyen?: number; imza_bekleyen_gec?: number; aktif_deger?: number;
+    aylik?: { ay: string; adet: number; toplam: number }[];
+    hizmetler?: { ad: string; adet: number }[];
+    temsilciler?: string[];
+  };
+  const sayiAl = (deger: number | null | undefined) => Number(deger ?? 0);
+  const son30 = sayiAl(ozet.son30);
+  const onceki30 = sayiAl(ozet.onceki30);
+  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const imzalananSayisi = sayiAl(ozet.imzalanan);
+  const kapananSayi = sayiAl(ozet.kapanan);
+  const imzaOrani = oran(imzalananSayisi, imzalananSayisi + kapananSayi);
+  /* Gün kesirli: çoğu sözleşme gönderildiği gün imzalanıyor, tam güne
+     yuvarlanınca kart "0 gün" yazıyordu. Hiç ölçüm yoksa null. */
+  const imzaSuresiAdet = sayiAl(ozet.imza_suresi_adet);
+  const ortalamaImza = ozet.imza_suresi_gun === null || ozet.imza_suresi_gun === undefined
+    ? null
+    : Number(ozet.imza_suresi_gun);
+  const imzaBekleyenSayisi = sayiAl(ozet.imza_bekleyen);
+  const imzaBekleyenGec = sayiAl(ozet.imza_bekleyen_gec);
+  const aylikImza = aylikDilimler(ozet.aylik ?? [], 6, an);
+  const hizmetler = (ozet.hizmetler ?? []).map((satir) => [satir.ad, Number(satir.adet)] as [string, number]);
+  /* Temsilci seçimi: satış talebi alabilen aktif personel ve
+     sözleşmelerde adı geçen herkes — ikincisi de özetten. */
+  const atananlar = new Set(ozet.temsilciler ?? []);
   const temsilciSecenekleri = ((employeeData ?? []) as { id: string; full_name: string; can_receive_sales_requests: boolean; employment_status: string }[])
     .filter((e) => (e.employment_status === "active" && e.can_receive_sales_requests) || atananlar.has(e.id))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "tr"));
@@ -269,21 +309,24 @@ export default async function ContractsPage({ searchParams }: Props) {
           {SERIT.map((grup) => (
             <div key={grup} className={status === grup ? "is-active" : undefined}>
               <dt>{SOZLESME_GRUP_ADLARI[grup]}</dt>
-              <dd><Link href={adres({ status: grup })} aria-current={status === grup ? "page" : undefined}>{sayi(grup)}</Link></dd>
+              <dd><Link href={adres({ status: grup })} aria-current={status === grup ? "page" : undefined}>{seritSayi(grup)}</Link></dd>
             </div>
           ))}
-          {/* Geciken: 7 günden uzun süredir imza bekleyen (eski "GECİKEN" kutusu). */}
-          <div><dt>7+ gündür imza bekleyen</dt><dd className={geciken ? "talep-uyari" : undefined}>{geciken}</dd></div>
-          <div className="cari-bakiye"><dt>Aktif sözleşme değeri</dt><dd>{money(aktifDeger, "TRY")}</dd></div>
+          {/* Geciken ve aktif değer artık özetten: ikisi de kurumun
+              tamamına göre, şeritteki sayımlar ise süzgece göre. İkisini
+              aynı kümeden hesaplamak için listeyi baştan sona okumak
+              gerekiyordu. */}
+          <div><dt>7+ gündür imza bekleyen</dt><dd className={imzaBekleyenGec ? "talep-uyari" : undefined}>{imzaBekleyenGec}</dd></div>
+          <div className="cari-bakiye"><dt>Aktif sözleşme değeri</dt><dd>{money(sayiAl(ozet.aktif_deger), "TRY")}</dd></div>
         </dl>
       </nav>
 
       <div className="talep-izgara personel-iki ekip-izgara">
         <section className="panel-card talep-bilgi" aria-label="Sözleşme listesi">
           <div className="ekip-suzgec talep-suzgec">
-            <Link href={adres({ status: "" })} className={!status ? "is-active" : undefined}>Aktif <small>{aktifler.length}</small></Link>
-            <Link href={adres({ status: "arsiv" })} className={status === "arsiv" ? "is-active" : undefined}>Kapanan <small>{kapsam.length - aktifler.length}</small></Link>
-            <Link href={adres({ status: "tumu" })} className={status === "tumu" ? "is-active" : undefined}>Tümü <small>{kapsam.length}</small></Link>
+            <Link href={adres({ status: "" })} className={!status ? "is-active" : undefined}>Aktif <small>{aktifSayisi}</small></Link>
+            <Link href={adres({ status: "arsiv" })} className={status === "arsiv" ? "is-active" : undefined}>Kapanan <small>{tumSayi - aktifSayisi}</small></Link>
+            <Link href={adres({ status: "tumu" })} className={status === "tumu" ? "is-active" : undefined}>Tümü <small>{tumSayi}</small></Link>
             {seciliEtiket ? <span className="talep-suzgec-etiket">{seciliEtiket}</span> : null}
             {/* Temsilci süzgeci eskiden sağdaki temsilci kartındaydı; o kartın
                 yerini istatistikler aldı, süzgeç buraya geldi. */}
@@ -320,8 +363,7 @@ export default async function ContractsPage({ searchParams }: Props) {
                 </thead>
                 <tbody>
                   {rows.map(({ row, grup }) => {
-                    const customer = row.crm_opportunities;
-                    const repId = customer?.assigned_employee_id;
+                    const repId = row.assigned_employee_id;
                     const representativeName = repId ? (representativeMap.get(repId) ?? "Pasif personel") : null;
                     const gecikti = grup === "sent" && (daysSince(row.sent_at) ?? 0) >= 7;
                     const alt =
@@ -333,8 +375,8 @@ export default async function ContractsPage({ searchParams }: Props) {
                         <td className="crm-table-mono" data-label="Sözleşme No">
                           <Link className="crm-row-link" href={`/panel/crm/contracts/${row.id}`} aria-label={`${row.contract_no} sözleşmesini aç`}>{row.contract_no}</Link>
                         </td>
-                        <CustomerCell name={customer?.customer_name} phone={customer?.contact_phone} email={customer?.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
-                        <ServiceCell service={String(customer?.request_details?.service_type ?? "")} />
+                        <CustomerCell name={row.customer_name ?? undefined} phone={row.contact_phone} email={row.contact_email} href={`/panel/crm/musteri/${row.opportunity_id}`} />
+                        <ServiceCell service={String(row.request_details?.service_type ?? "")} />
                         <RepresentativeCell name={representativeName} />
                         <td data-label="Tutar" className="crm-col-amount">{money(Number(row.amount), row.currency || "TRY")}</td>
                         <td data-label="Durum">
@@ -350,12 +392,24 @@ export default async function ContractsPage({ searchParams }: Props) {
                 </tbody>
               </table>
               <SatirTiklama />
+              {/* Sayfalayıcı: teklif ve posta listeleriyle aynı kalıp. */}
+              {sonSayfa > 1 ? (
+                <nav className="liste-sayfalar" aria-label="Sayfalar">
+                  {sayfaNo > 1
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo - 1 })}>← Önceki</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">← Önceki</span>}
+                  <small>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} sözleşme` : ""}</small>
+                  {sayfaNo < sonSayfa
+                    ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo + 1 })}>Sonraki →</Link>
+                    : <span className="panel-secondary is-disabled" aria-disabled="true">Sonraki →</span>}
+                </nav>
+              ) : null}
             </div>
           ) : (
             <div className="crm-empty-state talep-bos-kutu">
-              <h2>{all.length === 0 ? "Henüz sözleşme yok" : filtered ? "Eşleşen sözleşme yok" : "Aktif sözleşme yok"}</h2>
+              <h2>{tumSayi === 0 ? "Henüz sözleşme yok" : filtered ? "Eşleşen sözleşme yok" : "Aktif sözleşme yok"}</h2>
               <p>
-                {all.length === 0
+                {tumSayi === 0
                   ? "Sözleşmeler kabul edilen bir tekliften “Sözleşmeye dönüştür” ile ya da talep sayfasındaki “Direkt sözleşme” ile hazırlanır."
                   : filtered
                     ? "Aramayı veya süzgeci değiştirip yeniden deneyin."
@@ -363,7 +417,7 @@ export default async function ContractsPage({ searchParams }: Props) {
               </p>
               <div className="crm-empty-actions">
                 {filtered ? <Link className="panel-secondary" href="/panel/crm/contracts">Süzgeci temizle</Link> : null}
-                {all.length === 0 ? <Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link> : null}
+                {tumSayi === 0 ? <Link className="panel-primary" href="/panel/crm/proposals">Tekliflere git</Link> : null}
               </div>
             </div>
           )}
@@ -373,9 +427,9 @@ export default async function ContractsPage({ searchParams }: Props) {
           kapsam="tüm sözleşmeler"
           kutular={[
             { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni sözleşme", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
-            { ad: "İmzalanma oranı", deger: imzaOrani === null ? "—" : `%${imzaOrani}`, alt: `${imzalananlar.length} imzalı · ${kapananSayi} red/iptal` },
-            { ad: "Ortalama imza süresi", deger: ortalamaImza === null ? "—" : ortalamaImza < 1 ? "Aynı gün" : `${Math.round(ortalamaImza)} gün`, alt: `gönderimden imzaya · ${imzaSureleri.length} sözleşme` },
-            { ad: "İmza bekleyen", deger: String(imzaBekleyen.length), alt: imzaBekleyenGec ? `${imzaBekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: imzaBekleyenGec ? "uyari" : undefined },
+            { ad: "İmzalanma oranı", deger: imzaOrani === null ? "—" : `%${imzaOrani}`, alt: `${imzalananSayisi} imzalı · ${kapananSayi} red/iptal` },
+            { ad: "Ortalama imza süresi", deger: ortalamaImza === null ? "—" : ortalamaImza < 1 ? "Aynı gün" : `${Math.round(ortalamaImza)} gün`, alt: `gönderimden imzaya · ${imzaSuresiAdet} sözleşme` },
+            { ad: "İmza bekleyen", deger: String(imzaBekleyenSayisi), alt: imzaBekleyenGec ? `${imzaBekleyenGec} tanesi 7+ gündür` : "hepsi 7 günden yeni", ton: imzaBekleyenGec ? "uyari" : undefined },
           ]}
           gruplar={[
             { baslik: "Son 6 ay · imzalanan değer", satirlar: aylikImza.map((ay) => ({ ad: `${ay.ad} · ${ay.adet} sözleşme`, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
