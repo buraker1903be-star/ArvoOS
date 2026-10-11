@@ -17,6 +17,7 @@ import {
 } from "@/lib/customer-message-templates";
 import { TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
@@ -87,8 +88,7 @@ type TeklifSatiri = {
 /** Adresteki durum değeri; eski bağlantılar (?status=sent) çalışmaya devam ediyor. */
 const DURUMLAR = ["", "draft", "sent", "accepted", "rejected", "expired", "arsiv", "tumu"] as const;
 const SERIT: TeklifGrubu[] = ["draft", "sent", "accepted", "rejected", "expired"];
-/* Sayfa boyu posta listesiyle aynı. */
-const SAYFA_BOYU = 50;
+
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(v / 100);
 const GRUP_TONU: Record<TeklifGrubu, string> = { draft: "neutral", sent: "info", accepted: "success", rejected: "danger", expired: "warning", eski: "neutral", arsiv: "neutral" };
@@ -121,7 +121,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
     ve telefonuna da bakabiliyor (PostgREST gömülü tabloyla ana
     tabloyu aynı `or` içinde birleştiremiyor).
   */
-  const sayfaNo = Math.max(1, Number.parseInt(p.sayfa ?? "1", 10) || 1);
+  const sayfaNo = sayfaNumarasi(p.sayfa);
   const desen = aramaDeseni(search);
   const telefon = telefonAnahtari(search);
   const AKTIF: TeklifGrubu[] = ["draft", "sent"];
@@ -171,7 +171,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   ] = await Promise.all([
     grupSuzgeci(suzulmus())
       .order("created_at", { ascending: false })
-      .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1),
+      .range(...sayfaAraligi(sayfaNo)),
     supabase
       .from("hr_employees")
       .select("id,full_name,can_receive_sales_requests,employment_status")
@@ -193,9 +193,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const employees = (employeeData ?? []) as { id: string; full_name: string; can_receive_sales_requests: boolean; employment_status: string }[];
   const representativeMap = new Map(employees.map((e) => [e.id, e.full_name]));
   const rows = ((data ?? []) as unknown as TeklifSatiri[]).map((row) => ({ row, grup: row.teklif_grubu }));
-  const sonSayfa = typeof suzgecSayisi === "number"
-    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
-    : rows.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
+  const sonSayfa = sonSayfaNo(suzgecSayisi, rows.length, sayfaNo);
 
   const lastContacts = await fetchLastContacts(
     supabase,

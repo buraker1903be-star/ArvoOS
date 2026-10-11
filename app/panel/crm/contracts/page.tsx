@@ -20,6 +20,7 @@ import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
@@ -79,8 +80,7 @@ type SozlesmeSatiri = {
 };
 const GRUPLAR = Object.keys(SOZLESME_GRUP_ADLARI) as SozlesmeGrubu[];
 const SERIT: SozlesmeGrubu[] = ["draft", "sent", "imzali", "operasyonda", "tamam"];
-/* Sayfa boyu teklif ve posta listeleriyle aynı. */
-const SAYFA_BOYU = 50;
+
 const GRUP_TONU: Record<SozlesmeGrubu, string> = { draft: "neutral", sent: "info", imzali: "warning", operasyonda: "success", tamam: "neutral", rejected: "danger", cancelled: "danger" };
 const money = (v: number, c: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: c }).format(v / 100);
@@ -110,7 +110,7 @@ export default async function ContractsPage({ searchParams }: Props) {
     crm_sozlesme_liste üçünü birleştiriyor ve grubu kendisi veriyor;
     istatistikler de veritabanında sayılıyor.
   */
-  const sayfaNo = Math.max(1, Number.parseInt(p.sayfa ?? "1", 10) || 1);
+  const sayfaNo = sayfaNumarasi(p.sayfa);
   const desen = aramaDeseni(search);
   const telefon = telefonAnahtari(search);
 
@@ -155,7 +155,7 @@ export default async function ContractsPage({ searchParams }: Props) {
   ] = await Promise.all([
     grupSuzgeci(suzulmus())
       .order("created_at", { ascending: false })
-      .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1),
+      .range(...sayfaAraligi(sayfaNo)),
     supabase
       .from("hr_employees")
       .select("id,full_name,can_receive_sales_requests,employment_status")
@@ -171,9 +171,7 @@ export default async function ContractsPage({ searchParams }: Props) {
 
   const representativeMap = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((e) => [e.id, e.full_name]));
   const rows = ((data ?? []) as unknown as SozlesmeSatiri[]).map((row) => ({ row, grup: row.sozlesme_grubu }));
-  const sonSayfa = typeof suzgecSayisi === "number"
-    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
-    : rows.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
+  const sonSayfa = sonSayfaNo(suzgecSayisi, rows.length, sayfaNo);
 
   /* Şerit sayıları: süzgeçlerle aynı kümeden, durum süzgecinden
      bağımsız. Üstteki Aktif/Kapanan/Tümü da bunlardan türüyor —
