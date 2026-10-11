@@ -6,12 +6,15 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon, StgWidget } from "../settings/settings-ui";
+import { StgIcon } from "../settings/settings-ui";
 import { KURULUM_ADI, KURULUM_TONU, basHarfleri, depolama, para, tarihSaat } from "./bicim";
+import { DAVET_DURUM_ADLARI } from "../hr/davet-durumu";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
 import { KiraciDosyasi, type DosyaDaveti, type DosyaKurumu, type DosyaUyeligi } from "./kiraci-dosyasi";
+import "../crm/crm.css";
+import "../crm/kayit-detay/kayit-detay.css";
 import "../settings/settings.css";
 import "./platform.css";
 
@@ -32,6 +35,28 @@ import "./platform.css";
 
 type ManagedOrganization = DosyaKurumu;
 type Invitation = DosyaDaveti;
+/* Görünümün satırı: kurum + lisans + aktif üye + en son davet. */
+type KiraciSatiri = DosyaKurumu & {
+  user_limit: number | null;
+  storage_limit_mb: number | null;
+  monthly_fee: number | null;
+  current_period_end: string | null;
+  license_status: string | null;
+  trial_ends_at: string | null;
+  aktif_uye: number;
+  davet_eposta: string | null;
+  davet_durumu: string | null;
+  davet_gonderildi: string | null;
+  davet_kabul: string | null;
+  davet_hatasi: string | null;
+};
+/* Sütunlar sayılı: `*` yan sorguları boşuna işletir (AGENTS.md). */
+const KIRACI_SUTUNLARI = [
+  "id", "name", "display_name", "slug", "status", "plan_code", "sector", "kind",
+  "custom_domain", "custom_domain_status", "provisioning_state", "logo_url", "contact_phone",
+  "user_limit", "storage_limit_mb", "monthly_fee", "current_period_end", "license_status", "trial_ends_at",
+  "aktif_uye", "davet_eposta", "davet_durumu", "davet_gonderildi", "davet_kabul", "davet_hatasi",
+].join(",");
 
 
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
@@ -48,17 +73,40 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   if (!isPlatformOwner) notFound();
   const params = await searchParams;
 
-  const [{ data: organizationData, error: organizationError }, { data: invitationData }, { data: plans }] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,slug,status,plan_code,sector,custom_domain,custom_domain_status,provisioning_state,logo_url,kind,contact_phone").order("name"),
-    supabase.from("organization_invitations").select("organization_id,email,status,sent_at,accepted_at,error_message").order("created_at", { ascending: false }),
+  /*
+    TEK GÖRÜNÜM, KİRACI BAŞINA TEK SATIR (12.10.2026).
+
+    Eskiden üç tablo ayrı ayrı ve BÜTÜN kiracılar için okunuyordu:
+    organizations, bütün zamanların bütün davetleri ve bütün
+    kiracıların bütün üyelikleri. Son ikisi iş hacmiyle büyüyor
+    (personel giriş çıkışı); satır tavanına çarpıldığı gün kurulum
+    rozetleri ve kota sayıları sessizce yanlışlanırdı — hem de lisans
+    kararının okunduğu yerde.
+
+    platform_kiraci_liste kiracı başına tek satır veriyor: lisans,
+    aktif üye sayısı ve EN SON davet yan sorgularla. Kiracı sayısı
+    bilerek sınırlanmıyor; o, Arvo'nun müşteri sayısı kadar ve
+    Türkçe duyarsız arama ekranda kalabiliyor.
+  */
+  const [{ data: organizationData, error: organizationError }, { data: plans }] = await Promise.all([
+    supabase.from("platform_kiraci_liste").select(KIRACI_SUTUNLARI).order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
   ]);
   if (organizationError) throw new Error("Kurum listesi okunamadı.");
-  const organizations = (organizationData ?? []) as ManagedOrganization[];
-  const latestInvitation = new Map<string, Invitation>();
-  for (const invitation of (invitationData ?? []) as Invitation[]) {
-    if (!latestInvitation.has(invitation.organization_id)) latestInvitation.set(invitation.organization_id, invitation);
-  }
+  const kiracilar = (organizationData ?? []) as unknown as KiraciSatiri[];
+  const organizations: ManagedOrganization[] = kiracilar;
+  const latestInvitation = new Map<string, Invitation>(
+    kiracilar
+      .filter((satir) => satir.davet_eposta)
+      .map((satir) => [satir.id, {
+        organization_id: satir.id,
+        email: satir.davet_eposta!,
+        status: satir.davet_durumu ?? "pending",
+        sent_at: satir.davet_gonderildi,
+        accepted_at: satir.davet_kabul,
+        error_message: satir.davet_hatasi,
+      }]),
+  );
   const planList = (plans ?? []).map((plan) => ({ code: String(plan.code), name: String(plan.name) }));
   const planNames = new Map(planList.map((plan) => [plan.code, plan.name]));
 
@@ -78,9 +126,15 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     ayrı sayım sorgusu, kurum sayısı kadar gidiş dönüş demekti; satırlar
     zaten az, bellekte gruplanıyor.
   */
-  const [{ data: tumUyelikler }, { data: tumLisanslar }, { data: depolamalar }] = await Promise.all([
-    supabase.from("organization_memberships").select("organization_id,user_id,role,is_active"),
-    supabase.from("organization_licenses").select("organization_id,user_limit,storage_limit_mb,monthly_fee,current_period_end,license_status,trial_ends_at"),
+  const [{ data: tumUyelikler }, { data: depolamalar }] = await Promise.all([
+    /* Üyelik SATIRLARI yalnızca açık olan kiracı için: dosya listeyi
+       kişi kişi gösteriyor, liste ekranı yalnızca SAYIYI istiyor ve o
+       görünümden geliyor. Eskiden bütün kiracıların bütün üyelikleri
+       okunuyordu. */
+    selected
+      ? supabase.from("organization_memberships").select("organization_id,user_id,role,is_active")
+          .eq("organization_id", selected.id)
+      : Promise.resolve({ data: [] }),
     /*
       Depolama kullanımı storage.objects'ten geliyor; o tablo PostgREST'e
       açık değil ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM
@@ -92,13 +146,21 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const depolamaBayt = new Map(
     ((depolamalar ?? []) as { organization_id: string; bytes: number }[]).map((row) => [row.organization_id, Number(row.bytes ?? 0)]),
   );
-  const aktifUyeSayisi = new Map<string, number>();
-  for (const satir of (tumUyelikler ?? []) as { organization_id: string; is_active: boolean }[]) {
-    if (satir.is_active) aktifUyeSayisi.set(satir.organization_id, (aktifUyeSayisi.get(satir.organization_id) ?? 0) + 1);
-  }
+  const aktifUyeSayisi = new Map(kiracilar.map((satir) => [satir.id, Number(satir.aktif_uye)]));
+  /* Lisans alanları görünümde; lisansı olmayan kiracı için satır YOK
+     (eskiden de yoktu, kota hesabı bunu bekliyor). */
   const lisansById = new Map(
-    ((tumLisanslar ?? []) as { organization_id: string; user_limit: number; storage_limit_mb: number; monthly_fee: number | null; current_period_end: string | null; license_status: string; trial_ends_at: string | null }[])
-      .map((row) => [row.organization_id, row]),
+    kiracilar
+      .filter((satir) => satir.user_limit !== null && satir.storage_limit_mb !== null)
+      .map((satir) => [satir.id, {
+        organization_id: satir.id,
+        user_limit: Number(satir.user_limit),
+        storage_limit_mb: Number(satir.storage_limit_mb),
+        monthly_fee: satir.monthly_fee,
+        current_period_end: satir.current_period_end,
+        license_status: satir.license_status ?? "trial",
+        trial_ends_at: satir.trial_ends_at,
+      }]),
   );
   const kotaById = new Map(
     [...lisansById.entries()].map(([id, lisans]) => [id, kotaDurumu({
@@ -152,6 +214,18 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       || sadelestir(item.name).includes(anahtar)
       || sadelestir(item.slug).includes(anahtar));
 
+
+  /* Süzgeci değiştirirken arama korunuyor: kurucu daralttığı listeden
+     şeride tıklayınca aramasını kaybetmesin (panelin liste kuralı). */
+  const adres = (ek: { filtre?: string; ara?: string }) => {
+    const q = new URLSearchParams();
+    const yeniFiltre = ek.filtre ?? filtre ?? "";
+    const yeniAra = ek.ara ?? ara;
+    if (yeniAra) q.set("ara", yeniAra);
+    if (yeniFiltre) q.set("filtre", yeniFiltre);
+    const metin = q.toString();
+    return metin ? `/panel/platform?${metin}` : "/panel/platform";
+  };
 
   const invitation = selected ? latestInvitation.get(selected.id) ?? null : null;
   const label = selected ? selected.display_name || selected.name : null;
@@ -240,13 +314,40 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     {/* Platform geneli sayılar yalnızca listede. Tek kiracının dosyası
         açıkken "kaç müşterim var" bir şey anlatmıyor; dosyanın kendi
         özeti hemen altında duruyor. */}
+    {/*
+      ŞERİT SÜZGECİN KENDİSİ (12.10.2026). Eskiden dört sayı kart
+      olarak duruyordu: "Kurulum bekliyor 3" yazıyor ama o üçünü
+      görmek için menüye ya da aşağıdaki seçime gitmek gerekiyordu.
+      Panelin altı listesinde sayı zaten bağlantıdır; kurucu
+      konsolunda da öyle. Sıfır da bir cevap olduğu için dördü de her
+      zaman çiziliyor.
+    */}
     {selected ? null : (
-      <div className="stg-widgets" aria-label="Platform özeti">
-        <StgWidget tone="info" icon="building" label="Müşteri kurum" value={customers.length} note={`${customers.length + 1} kurum kaydı`} />
-        <StgWidget tone="success" icon="check" label="Kullanımda" value={activeCount} note="Sahibi panele girmiş" />
-        <StgWidget tone={pendingCount ? "warning" : "neutral"} icon="users" label="Kurulum bekliyor" value={pendingCount} note={pendingCount ? "Sahip daveti tamamlanmadı" : "Bekleyen yok"} />
-        <StgWidget tone={issueCount ? "danger" : "neutral"} icon="shield" label="Dikkat gerektiren" value={issueCount} note={issueCount ? "Kurulum hatası ya da kota aşımı" : "Sorun yok"} />
-      </div>
+      <nav className="kayit-serit talep-serit" aria-label="Kiracı özeti">
+        <dl>
+          <div className={!filtre ? "is-active" : undefined}>
+            <dt>Müşteri kurum</dt>
+            <dd><Link href={adres({ filtre: "" })} aria-current={!filtre ? "page" : undefined}>{customers.length}</Link></dd>
+          </div>
+          <div>
+            <dt>Kullanımda</dt>
+            <dd className="cari-arti">{activeCount}</dd>
+          </div>
+          <div className={filtre === "kurulum" ? "is-active" : undefined}>
+            <dt>Kurulum bekliyor</dt>
+            <dd className={pendingCount ? "talep-uyari" : undefined}>
+              <Link href={adres({ filtre: "kurulum" })} aria-current={filtre === "kurulum" ? "page" : undefined}>{pendingCount}</Link>
+            </dd>
+          </div>
+          <div className={filtre === "dikkat" ? "is-active" : undefined}>
+            <dt>Dikkat gerektiren</dt>
+            <dd className={issueCount ? "cari-eksi" : undefined}>
+              <Link href={adres({ filtre: "dikkat" })} aria-current={filtre === "dikkat" ? "page" : undefined}>{issueCount}</Link>
+            </dd>
+          </div>
+          <div><dt>Kendi markamız</dt><dd>{organizations.length - customers.length}</dd></div>
+        </dl>
+      </nav>
     )}
 
     {selected ? (
@@ -314,6 +415,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               <span>Kullanıcı</span>
               <span>Depolama</span>
               <span>Aylık ücret</span>
+              <span>Son davet</span>
               <span />
             </div>
 
@@ -359,6 +461,21 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                       {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
                     </span>
                     <span data-etiket="Aylık ücret">{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</span>
+
+                    {/* Son davet: kurulum bekleyen kiracıda kurucunun
+                        ilk sorusu "davet gitti mi, kabul edildi mi".
+                        Hata varsa kırmızı — sebebi dosyada yazılı. */}
+                    <span data-etiket="Son davet" data-tone={itemInvite?.status === "failed" ? "danger" : undefined}>
+                      {itemInvite
+                        ? <>
+                            <b>{DAVET_DURUM_ADLARI[itemInvite.status] ?? itemInvite.status}</b>
+                            <small className="plt-substatus">
+                              {itemInvite.accepted_at ? tarihSaat(itemInvite.accepted_at)
+                                : itemInvite.sent_at ? tarihSaat(itemInvite.sent_at) : "—"}
+                            </small>
+                          </>
+                        : "—"}
+                    </span>
 
                     <span className="plt-kiracilar-uc" aria-hidden="true">›</span>
                   </Link>
