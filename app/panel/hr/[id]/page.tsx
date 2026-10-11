@@ -50,7 +50,7 @@ import "../../crm/kayit-detay/kayit-detay.css";
 type Department = { id: string; name: string; is_active: boolean };
 type Employee = { id: string; user_id: string | null; department_id: string | null; employee_no: string | null; full_name: string; job_title: string | null; email: string | null; phone: string | null; employment_type: string; employment_status: string; start_date: string | null; can_receive_sales_requests: boolean; commission_rate: number; operation_commission_rate: number };
 type Member = { user_id: string; role: string; is_active: boolean };
-type Invitation = { id: string; email: string; role: string; status: string; expires_at: string };
+type Invitation = { id: string; email: string; role: string; status: string; expires_at: string; error_message: string | null; created_at: string };
 type Doc = { id: string; file_name: string; file_size: number | null; created_at: string };
 type Talep = { id: string; title: string | null; customer_name: string | null; stage: string | null; created_at: string };
 type Is = { id: string; title: string; customer_name: string | null; status: string; due_date: string | null };
@@ -170,7 +170,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const postaGorur = izin("posta.gor");
   const [memberResult, invitationResult, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
     canManageTeam && employee.user_id ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", org).eq("user_id", employee.user_id).maybeSingle() : Promise.resolve({ data: null }),
-    canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at,error_message").eq("organization_id", org).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
+    canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at,error_message,created_at").eq("organization_id", org).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
     crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
     postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
   ]);

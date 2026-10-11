@@ -21,7 +21,7 @@ import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, 
 type Employee = { id: string; user_id: string | null; department_id: string | null; full_name: string; job_title: string | null; email: string | null; employment_status: string; can_receive_sales_requests: boolean };
 type Department = { id: string; name: string; is_active: boolean };
 type Member = { user_id: string; is_active: boolean };
-type Invitation = { id: string; email: string; status: string; expires_at: string; error_message: string | null };
+type Invitation = { id: string; email: string; status: string; expires_at: string; error_message: string | null; created_at: string };
 /* Erişim listesinin sırası: yapılacak iş olanlar üstte. */
 const DURUM_SIRASI = ["invite-failed", "not-invited", "no-email", "invited"];
 const sira = (durum: string) => {
@@ -64,7 +64,7 @@ export default async function HrOverviewPage() {
     supabase.from("hr_employees").select("id,user_id,department_id,full_name,job_title,email,employment_status,can_receive_sales_requests").eq("organization_id", organizationId).order("full_name"),
     supabase.from("hr_departments").select("id,name,is_active").eq("organization_id", organizationId).order("name"),
     canManageTeam ? supabase.from("organization_memberships").select("user_id,is_active").eq("organization_id", organizationId) : none,
-    canManageTeam ? supabase.from("organization_invitations").select("id,email,status,expires_at,error_message").eq("organization_id", organizationId).in("status", [...OKUNAN_DAVET_DURUMLARI]) : none,
+    canManageTeam ? supabase.from("organization_invitations").select("id,email,status,expires_at,error_message,created_at").eq("organization_id", organizationId).in("status", [...OKUNAN_DAVET_DURUMLARI]) : none,
     canSeeRecords ? supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId) : none,
     canSeeRecords ? supabase.from("hr_confidentiality_agreements").select("employee_id,status").eq("organization_id", organizationId) : none,
     /* Son 28 günün girişleri (14 gün + önceki 14 günle kıyas). Sınırsız:

@@ -36,7 +36,19 @@ export type DavetSatiri = {
   status: string;
   expires_at: string;
   error_message?: string | null;
+  /** Satırın açıldığı an; "gönderimi yarıda kalmış" davet için. */
+  created_at?: string | null;
 };
+
+/*
+  TAKILI KALMIŞ DAVET. Kenar fonksiyonu satırı önce `pending` yazıp
+  sonra e-postayı gönderiyor ve `sent`e çeviriyor; hata olursa `failed`
+  yazıyor. İkisi de olmazsa (süre aşımı, bellek) satır `pending`
+  kalıyor ve panel yedi gün boyunca "Gönderiliyor" diyor. Eşik bir
+  kenar fonksiyonunun azami süresinin kat kat üstünde: yavaş bir
+  gönderim yanlışlıkla sorunlu görünmesin.
+*/
+const TAKILMA_ESIGI = 15 * 60 * 1000;
 
 /** Sebep metni kısa tutuluyor: kutu tek satırlık, uzun hata taşıyor. */
 const ENCOK = 160;
@@ -61,6 +73,9 @@ export function davetSorunu<T extends DavetSatiri>(davet: T, simdi: number): str
     return sebep ? kisalt(sebep) : "Davet e-postası gönderilemedi.";
   }
   if (Date.parse(davet.expires_at) <= simdi) return "Davetin süresi doldu; bağlantı artık açılmıyor.";
+  if (davet.status === "pending" && davet.created_at && simdi - Date.parse(davet.created_at) > TAKILMA_ESIGI) {
+    return "Davet gönderimi yarıda kaldı; yeniden gönderin.";
+  }
   return null;
 }
 

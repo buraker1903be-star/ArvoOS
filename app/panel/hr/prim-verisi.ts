@@ -17,6 +17,16 @@ import type { CommissionPayment } from "@/lib/commission-ledger";
 
 export type PrimPersoneli = { id: string; full_name: string; job_title: string | null; employment_status: string; commission_rate: number; operation_commission_rate: number };
 
+/*
+  OKUMALAR BİLEREK TÜM ZAMANLARI KAPSIYOR.
+
+  Prim, tahsilat gerçekleştikçe hak ediliyor ve ödendikçe düşüyor;
+  bakiye ömür boyu birikiyor. Pencereyle daraltmak (ör. "son altı ay")
+  eski bir tahsilatın hak ettiği ama henüz ödenmemiş primi
+  görünmezden gelmek, yani personele eksik ödeme demek. Liste
+  sayfalarındaki sunucuda-süzme kuralı buraya UYGULANMAZ; sınırsız
+  okuma burada hesabın gereği.
+*/
 export async function primVerisi(supabase: SupabaseClient, orgId: string) {
   const [employeeResult, opportunityResult, contractResult, operationResult, collectionResult, rateResult, paymentResult] = await Promise.all([
     supabase.from("hr_employees").select("id,full_name,job_title,employment_status,commission_rate,operation_commission_rate").eq("organization_id", orgId).order("full_name"),

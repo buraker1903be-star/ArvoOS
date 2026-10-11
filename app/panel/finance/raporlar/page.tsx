@@ -210,12 +210,44 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const queryStart = start < trendStart ? start : trendStart;
   const organizationId = membership.organization_id;
 
+  /*
+    OKUMALAR PENCEREYLE SINIRLI (12.10.2026).
+
+    Talep, sözleşme ve maliyet kalemleri kurumun TAMAMI için, zaman
+    sınırı olmadan çekiliyordu. Defter ve talep tablosu hiç küçülmüyor:
+    PostgREST'in satır tavanına çarpıldığı gün raporun sayıları
+    sessizce eksilirdi — hem de paranın raporlandığı yerde (AGENTS.md
+    "Rakam denetimi").
+
+    Pencere `queryStart`: istenen aralık ya da altı aylık trend, hangisi
+    eskiyse. Daraltma SAYIYI DEĞİŞTİRMİYOR, her kullanım tek tek
+    izlendi:
+
+    - Talepler: `incoming` created_at'e, `wonOpportunities`/`lost`
+      updated_at'e, trend dilimleri son altı aya bakıyor. İki tarihi de
+      pencereden ESKİ olan bir kayıt hiçbirine giremez — `or` süzgeci
+      tam olarak bunu söylüyor. "Satışa dönen" kümesi tüm zamanların
+      kazanılmış taleplerinden kuruluyordu ama yalnızca aralık
+      içindeki talepleri sınıflamak için kullanılıyor; onların kimliği
+      zaten pencerede.
+    - Sözleşmeler: aynı gerekçe (signed_at ya da created_at).
+      Aralıktaki bir talebin sözleşmesi, talepten sonra açıldığı için
+      pencerenin içinde kalır.
+    - Maliyet kalemleri İKİ sorguya ayrıldı: tarihli kullanımlar
+      (ödenen maliyet, maliyet serisi) pencereyle; "imzalı sözleşmenin
+      maliyeti" ise KALEM TARİHİNE BAKMADAN sözleşme kimliğiyle —
+      kalem sözleşmeden aylar sonra girilebiliyor, tarihle süzmek kârı
+      yanlış hesaplardı.
+  */
+  const pencereBasi = queryStart.toISOString();
   const [opportunityResult, proposalResult, contractResult, transactionResult,costResult,entryResult] = await Promise.all([
-    supabase.from("crm_opportunities").select("id,stage,estimated_value,source,lost_reason,created_at,updated_at").eq("organization_id", organizationId),
-    supabase.from("crm_proposals").select("id,opportunity_id,amount,status,superseded_by,created_at").eq("organization_id", organizationId).gte("created_at", queryStart.toISOString()),
-    supabase.from("crm_contracts").select("id,opportunity_id,amount,status,signed_at,created_at").eq("organization_id", organizationId),
-    supabase.from("finance_transactions").select("transaction_type,status,amount,category,paid_at,created_at").eq("organization_id", organizationId).gte("created_at", queryStart.toISOString()),
-    supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date").eq("organization_id",organizationId),
+    supabase.from("crm_opportunities").select("id,stage,estimated_value,source,lost_reason,created_at,updated_at").eq("organization_id", organizationId)
+      .or(`created_at.gte.${pencereBasi},updated_at.gte.${pencereBasi}`),
+    supabase.from("crm_proposals").select("id,opportunity_id,amount,status,superseded_by,created_at").eq("organization_id", organizationId).gte("created_at", pencereBasi),
+    supabase.from("crm_contracts").select("id,opportunity_id,amount,status,signed_at,created_at").eq("organization_id", organizationId)
+      .or(`signed_at.gte.${pencereBasi},created_at.gte.${pencereBasi}`),
+    supabase.from("finance_transactions").select("transaction_type,status,amount,category,paid_at,created_at").eq("organization_id", organizationId).gte("created_at", pencereBasi),
+    supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date").eq("organization_id",organizationId).gte("cost_date",dateKey(queryStart)),
     supabase.from("account_entries").select("entry_type,source_type,amount,transaction_date").eq("organization_id",organizationId).gte("transaction_date",dateKey(queryStart)),
   ]);
   if (opportunityResult.error) throw new Error(`CRM raporu okunamadı: ${opportunityResult.error.message}`);
@@ -268,7 +300,17 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const conversion = reached.length ? (huniSatis.length / reached.length) * 100 : 0;
   const averageSale = sales ? salesValue / sales : 0;
   const signedContractIds=new Set(signedContracts.map(row=>row.id));
-  const contractedCost=costItems.filter(row=>signedContractIds.has(row.contract_id)).reduce((sum,row)=>sum+Number(row.amount),0);
+  /* İmzalı sözleşmelerin maliyeti: kalem TARİHİNDEN bağımsız, sözleşme
+     kimliğiyle toplanıyor (kalem sözleşmeden aylar sonra girilebiliyor;
+     pencereyle süzmek brüt kârı yanlış gösterirdi). Sorgu yalnızca
+     aralıktaki imzalı sözleşmeler için, yani liste kısa. */
+  const { data: sozlesmeMaliyetleri, error: maliyetHatasi } = signedContractIds.size
+    ? await supabase.from("contract_cost_items").select("contract_id,amount")
+        .eq("organization_id", organizationId).in("contract_id", [...signedContractIds])
+    : { data: [], error: null };
+  if (maliyetHatasi) throw new Error("Sözleşme maliyetleri okunamadı: " + maliyetHatasi.message);
+  const contractedCost=((sozlesmeMaliyetleri ?? []) as { contract_id: string; amount: number }[])
+    .reduce((sum,row)=>sum+Number(row.amount),0);
   const grossProfit=salesValue-contractedCost;
   const grossMargin=salesValue?grossProfit/salesValue*100:0;
   const collections=accountEntries.filter(row=>row.entry_type==="credit"&&inRange(row.transaction_date)).reduce((sum,row)=>sum+Number(row.amount),0);

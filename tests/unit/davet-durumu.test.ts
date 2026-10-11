@@ -79,3 +79,19 @@ test("iptal edilen davet (expired) hiç okunmuyor", () => {
      bilerek kapattığı davet sorun değil, listede de görünmemeli. */
   assert.deepEqual([...OKUNAN_DAVET_DURUMLARI], ["pending", "sent", "failed"]);
 });
+
+test("yarıda kalmış gönderim (pending, eski) sorunlu", () => {
+  /*
+    Kenar fonksiyonu satırı önce `pending` yazıp sonra `sent`e
+    çeviriyor; hata olursa `failed`. İkisi de olmazsa (süre aşımı)
+    satır pending kalıyor ve panel yedi gün "Gönderiliyor" diyordu.
+  */
+  const taze = { id: "1", email: "a@x.com", status: "pending", expires_at: yarin, created_at: "2026-10-12T08:55:00Z" };
+  assert.equal(davetSorunu(taze, SIMDI), null, "beş dakikalık pending normal");
+  const takili = { ...taze, created_at: "2026-10-12T08:30:00Z" };
+  assert.match(davetSorunu(takili, SIMDI) ?? "", /yarıda kaldı/i);
+  // `sent` olan eski satır sorun değil: gönderim tamamlanmış.
+  assert.equal(davetSorunu({ ...takili, status: "sent" }, SIMDI), null);
+  // created_at bilinmiyorsa (bazı sorgular okumuyor) varsayım yapılmıyor.
+  assert.equal(davetSorunu({ ...taze, created_at: null }, SIMDI), null);
+});
