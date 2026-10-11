@@ -14610,6 +14610,44 @@ alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_
 
 alter table public.whatsapp_quick_replies add constraint whatsapp_quick_replies_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+create or replace view public.crm_sozlesme_liste with (security_invoker=true, security_barrier=true) as
+ SELECT c.id,
+    c.organization_id,
+    c.opportunity_id,
+    c.contract_no,
+    c.title,
+    c.amount,
+    c.currency,
+    c.due_date,
+    c.status,
+    c.sent_at,
+    c.signed_at,
+    c.view_count,
+    c.workflow_id,
+    c.created_at,
+        CASE
+            WHEN c.status = 'rejected'::text THEN 'rejected'::text
+            WHEN c.status = 'cancelled'::text THEN 'cancelled'::text
+            WHEN c.status = 'completed'::text OR c.workflow_id IS NOT NULL AND (w.status = ANY (ARRAY['completed'::text, 'archived'::text])) THEN 'tamam'::text
+            WHEN c.status = 'signed'::text THEN
+            CASE
+                WHEN c.workflow_id IS NOT NULL THEN 'operasyonda'::text
+                ELSE 'imzali'::text
+            END
+            WHEN c.status = 'sent'::text THEN 'sent'::text
+            ELSE 'draft'::text
+        END AS sozlesme_grubu,
+    w.status AS is_durumu,
+    o.customer_name,
+    o.contact_email,
+    o.contact_phone,
+    private.arvo_search_digits(o.contact_phone) AS telefon_rakamlari,
+    o.assigned_employee_id,
+    o.request_details
+   FROM crm_contracts c
+     JOIN crm_opportunities o ON o.id = c.opportunity_id
+     LEFT JOIN operation_workflows w ON w.id = c.workflow_id;
+
 create or replace view public.crm_teklif_liste with (security_invoker=true, security_barrier=true) as
  SELECT p.id,
     p.organization_id,

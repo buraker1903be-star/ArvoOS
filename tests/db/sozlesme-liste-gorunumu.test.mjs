@@ -16,7 +16,10 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011081708_sozlesme_liste_gorunumu.sql"];
+const MIGRATIONLAR = [
+  "20261011081708_sozlesme_liste_gorunumu.sql",
+  "20261011083051_sozlesme_istatistikleri.sql",
+];
 const ORNEKLER = JSON.parse(
   fs.readFileSync(path.resolve(import.meta.dirname, "../fixtures/sozlesme-gruplari.json"), "utf8"),
 ).ornekler;
@@ -116,5 +119,40 @@ test("anon görünüme erişemiyor", async () => {
   await islem(db, async () => {
     await rol(db, "anon");
     await reddedilir(db, `select * from public.crm_sozlesme_liste`, [], /permission denied/i);
+  });
+});
+
+/*
+  ÖZET İŞLEVİ. Kart tüm sözleşmeleri okuyup bellekte sayıyordu; sayım
+  veritabanına taşındı. Örnek tablosundaki dokuz sözleşme burada da
+  kullanılıyor: gruplar zaten sınandı, burada o grupların SAYIYA nasıl
+  döndüğü sınanıyor.
+*/
+test("özet işlevi grupları doğru sayıyor", async () => {
+  await islem(db, async () => {
+    await rol(db, "authenticated", SAHIP);
+    const { rows } = await db.query(`select public.crm_sozlesme_istatistikleri($1) as o`, [KURUM]);
+    const o = rows[0].o;
+    assert.equal(o.toplam, ORNEKLER.length);
+    // imzali + operasyonda + tamam (örnek tablosunda: 1 + 1 + 3)
+    assert.equal(o.imzalanan, ORNEKLER.filter((x) => ["imzali", "operasyonda", "tamam"].includes(x.grup)).length);
+    assert.equal(o.kapanan, ORNEKLER.filter((x) => ["rejected", "cancelled"].includes(x.grup)).length);
+    assert.equal(o.imza_bekleyen, ORNEKLER.filter((x) => x.grup === "sent").length);
+    /* Aktif değer: taslak + imza bekleyen + imzalı (iş açılmamış).
+       Her örnek 1000 kuruş. */
+    assert.equal(Number(o.aktif_deger), ORNEKLER.filter((x) => ["draft", "sent", "imzali"].includes(x.grup)).length * 1000);
+    assert.deepEqual(o.hizmetler, [{ ad: "Belirtilmedi", adet: ORNEKLER.length }]);
+  });
+});
+
+test("özet işlevi başka kurumda sıfır, anon'a kapalı", async () => {
+  await islem(db, async () => {
+    await rol(db, "authenticated", YABANCI);
+    const { rows } = await db.query(`select public.crm_sozlesme_istatistikleri($1) as o`, [KURUM]);
+    assert.equal(rows[0].o.toplam, 0);
+  });
+  await islem(db, async () => {
+    await rol(db, "anon");
+    await reddedilir(db, `select public.crm_sozlesme_istatistikleri($1)`, [KURUM], /permission denied/i);
   });
 });
