@@ -18,17 +18,13 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 /*
-  Sıra önemli: ilki görünümü ve özet işlevini kuruyor, ikincisi
-  görünümün SON hâlini (sonuna updated_at eklenmiş) yazıyor. Eski
-  olanı tek başına bırakmak, görünümü updated_at'siz hâline
-  döndürürdü. Liste boşaltılamıyor: döküm görünüm yetkilerini
-  taşımıyor, yani "anon erişemiyor" senaryosunu ayakta tutan şey
-  migration'ın kendi revoke satırı (AGENTS.md "Testler").
+  Yalnızca görünümün SON hâlini kuran migration. Özet işlevi ve
+  görünümün gövdesi artık anlık görüntüde; liste boşaltılamıyor çünkü
+  döküm görünüm yetkilerini taşımıyor, yani "anon erişemiyor"
+  senaryosunu ayakta tutan şey bu dosyanın revoke satırı (AGENTS.md
+  "Testler").
 */
-const MIGRATIONLAR = [
-  "20261011085634_operasyon_is_liste.sql",
-  "20261011151018_operasyon_genel_bakis_ozeti.sql",
-];
+const MIGRATIONLAR = ["20261011151018_operasyon_genel_bakis_ozeti.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000a2a1";
 const BASKA = "00000000-0000-4000-8000-00000000a2a2";

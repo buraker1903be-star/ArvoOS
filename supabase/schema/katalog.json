@@ -1110,6 +1110,7 @@
       "start_date",
       "status",
       "title",
+      "updated_at",
       "waiting_party",
       "waiting_since"
     ],
@@ -1877,6 +1878,7 @@
     "mark_crm_proposal_viewed",
     "mark_message_channel_read",
     "next_document_number",
+    "operasyon_genel_bakis_ozeti",
     "operasyon_is_istatistikleri",
     "portal_payment_settled",
     "portal_workflow_payment_status",
@@ -1892,6 +1894,7 @@
     "settle_arvoculture_storefront_order",
     "sign_crm_contract",
     "sign_crm_contract_v2",
+    "sozlesme_maliyet_toplamlari",
     "submit_public_lead",
     "submit_site_lead",
     "sync_contract_status_from_workflow",
