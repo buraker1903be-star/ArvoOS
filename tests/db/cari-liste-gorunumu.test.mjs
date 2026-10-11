@@ -103,10 +103,16 @@ test("tahsilat özeti pencereleri", async () => {
     */
     assert.equal(o.gunluk.reduce((t, g) => t + Number(g.toplam), 0), 40000);
     assert.equal(o.gunluk.length, 1, "tek güne yazılmış tek tahsilat");
-    const besGunOnce = (await tek(
-      `select to_char(((timezone('Europe/Istanbul', now()))::date - 5), 'YYYY-MM-DD') as g`,
+    /* Beklenen gün TABLOYA SORULUYOR, elle hesaplanmıyor: tohum
+       hareketi `(now() - 5 gün)::date` ile yazıyor, yani UTC gününe.
+       Beklenen günü Türkiye gününden hesaplamak, UTC'de 21:00'den
+       sonra koşan testi düşürüyordu (12.10.2026 gecesi yaşandı) —
+       işlevin kendisi doğruydu, kıyasın tarafları farklı takvimdeydi. */
+    const kayitGunu = (await tek(
+      `select to_char(transaction_date, 'YYYY-MM-DD') as g
+       from public.account_entries where description = 'Havale'`,
     )).g;
-    assert.equal(o.gunluk[0].gun, besGunOnce);
+    assert.equal(o.gunluk[0].gun, kayitGunu);
     assert.equal(Number(o.gunluk[0].adet), 1);
   });
 });

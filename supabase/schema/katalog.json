@@ -1786,6 +1786,7 @@
     "arc_update_order_status",
     "arc_variant_available",
     "archive_inactive_crm_proposal",
+    "arvo_auth_kullanici_id",
     "arvo_can_access_message_channel",
     "arvo_can_access_opportunity",
     "arvo_cancel_contract_addendum",

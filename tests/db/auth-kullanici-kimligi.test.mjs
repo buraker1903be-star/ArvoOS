@@ -18,9 +18,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-/* İşlev henüz anlık görüntüde değil (migration canlıya uygulanmadı). */
+/* Boş: işlev ve yetkisi anlık görüntüde (fonksiyon yetkileri dökümde
+   taşınıyor). */
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011171804_auth_kullanici_kimligi.sql"];
+const MIGRATIONLAR = [];
 
 const VAR = "00000000-0000-4000-8000-00000000f1a1";
 const SILINMIS = "00000000-0000-4000-8000-00000000f1a2";
