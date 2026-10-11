@@ -1794,6 +1794,7 @@
     "arvo_custom_domain_available",
     "arvo_is_member",
     "arvo_is_message_channel_member",
+    "arvo_kimlik_postasi_markasi",
     "arvo_message_unread_counts",
     "arvo_ops_musteri_kunyesi_yaz",
     "arvo_public_contract_audit",

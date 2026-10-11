@@ -22,7 +22,10 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011170211_kimlik_postasi_markasi.sql"];
+/* Boş: işlev artık anlık görüntüde ve yetkileri de dökümde
+   (fonksiyon yetkileri taşınıyor, görünüm yetkileri taşınmıyor —
+   AGENTS.md "Testler"). */
+const MIGRATIONLAR = [];
 
 const KURUM = "00000000-0000-4000-8000-00000000e1a1";
 const BASKA = "00000000-0000-4000-8000-00000000e1a2";
