@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bakiyeyeSigdir, taksitleriDagit } from "@/lib/taksit-dagitimi";
 import { oran } from "@/lib/liste-istatistik";
 import { buildAccountBalances, netTahsilatToplamdan, type CariToplam } from "../account-balances";
-import { gunlukSeri } from "@/lib/gunluk-seri";
+import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi } from "../../os/genel-bakis";
 
 /*
@@ -60,11 +60,11 @@ export default async function FinanceOverviewPage() {
   const organizationId = membership.organization_id;
   const today = todayInIstanbul();
   const monthKey = today.slice(0, 7);
-  /* Grafik penceresi: bugün dahil 14 gün. Tarih dizgesinden
-     hesaplanıyor; sunucu UTC'de ama "today" zaten Türkiye günü. */
-  const onDortGunOnce = new Date(Date.parse(`${today}T00:00:00+03:00`) - 13 * 86_400_000)
-    .toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
   const maliyetGorur = izin("finance.maliyet.yonet");
+  /* "İmzalı sayılan" sözleşme durumları: bakiye ve kâr oranı aynı
+     kümeden bakıyor; maliyet toplamları işlevine de parametre olarak
+     bu gidiyor (SQL'e kopyalanmadı). */
+  const IMZALI = ["signed", "completed"] as const;
 
   const [
     { data: partyData, error: partyError },
@@ -73,7 +73,6 @@ export default async function FinanceOverviewPage() {
     { data: creditData, error: creditError },
     { data: costData },
     { data: ozetVerisi, error: ozetHatasi },
-    { data: seriVerisi, error: seriHatasi },
   ] = await Promise.all([
     /* Cariler TOPLAMLARIYLA (cari_liste): her carinin bütün
        hareketlerini yalnızca dört toplam için taşımak, defter
@@ -83,29 +82,26 @@ export default async function FinanceOverviewPage() {
       .eq("organization_id", organizationId).eq("is_active", true).in("party_type", ["customer", "both"]),
     supabase.from("crm_contracts")
       .select("id,party_id,amount,contract_no,title,payment_plan_id,service_cost,crm_opportunities(customer_name)")
-      .eq("organization_id", organizationId).in("status", ["signed", "completed"]),
+      .eq("organization_id", organizationId).in("status", [...IMZALI]),
     supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", organizationId).order("due_date"),
     supabase.from("account_entries")
       .select("id,amount,transaction_date,description,party_id,account_parties(name)")
       .eq("organization_id", organizationId).eq("entry_type", "credit")
       .order("transaction_date", { ascending: false }).order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
-    // Kâr oranı yalnızca maliyeti görebilene (İş Maliyetleri sekmesiyle aynı yetki).
-    maliyetGorur ? supabase.from("contract_cost_items").select("contract_id,amount").eq("organization_id", organizationId) : Promise.resolve({ data: [] }),
+    /* Kâr oranı yalnızca maliyeti görebilene (İş Maliyetleri sekmesiyle
+       aynı yetki). Toplama veritabanında: kalem sayısı sözleşme
+       sayısının katı, sonuç sözleşme başına tek satır. */
+    maliyetGorur
+      ? supabase.rpc("sozlesme_maliyet_toplamlari", { p_organization_id: organizationId, p_durumlar: [...IMZALI] })
+      : Promise.resolve({ data: [] }),
     // Aylık tahsilat toplamları (bu ayın tahsilatı buradan).
     supabase.rpc("cari_tahsilat_ozeti", { p_organization_id: organizationId }),
-    /* Son 14 günün tahsilatı: grafik GÜN GÜN çizdiği için tek tek
-       kayıt gerekiyor, ama yalnızca iki haftalık pencere. */
-    supabase.from("account_entries")
-      .select("amount,transaction_date")
-      .eq("organization_id", organizationId).eq("entry_type", "credit")
-      .gte("transaction_date", onDortGunOnce),
   ]);
   if (partyError) throw new Error("Müşteriler okunamadı: " + partyError.message);
   if (contractError) throw new Error("Sözleşme bakiyeleri okunamadı: " + contractError.message);
   if (installmentError) throw new Error("Ödeme taksitleri okunamadı: " + installmentError.message);
   if (creditError) throw new Error("Tahsilatlar okunamadı: " + creditError.message);
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
-  if (seriHatasi) throw new Error("Tahsilat grafiği okunamadı: " + seriHatasi.message);
 
   const contracts = (contractData ?? []) as unknown as Contract[];
   const { accounts, totals } = buildAccountBalances((partyData ?? []) as unknown as Party[], contracts);
@@ -113,7 +109,10 @@ export default async function FinanceOverviewPage() {
   const hesapAdi = new Map(accounts.map((a) => [a.id, adBicimi(a.name, "Müşteri")]));
 
   // Bu ay tahsilat: aylık toplamlar veritabanından (cari_tahsilat_ozeti).
-  const ozet = (ozetVerisi ?? {}) as { aylik?: { ay: string; adet: number; toplam: number }[] };
+  const ozet = (ozetVerisi ?? {}) as {
+    aylik?: { ay: string; adet: number; toplam: number }[];
+    gunluk?: { gun: string; adet: number; toplam: number }[];
+  };
   const buAy = (ozet.aylik ?? []).find((ay) => ay.ay === monthKey);
   const monthCollections = Number(buAy?.toplam ?? 0);
   const monthCreditCount = Number(buAy?.adet ?? 0);
@@ -188,8 +187,9 @@ export default async function FinanceOverviewPage() {
   const tahsilOrani = oran(totals.collections, totals.debt + totals.refunds);
   let karOrani: number | null = null;
   if (maliyetGorur && contracts.length) {
-    const maliyetler = new Map<string, number>();
-    for (const item of (costData ?? []) as { contract_id: string; amount: number }[]) maliyetler.set(item.contract_id, (maliyetler.get(item.contract_id) ?? 0) + Number(item.amount));
+    const maliyetler = new Map(
+      ((costData ?? []) as { id: string; maliyet: number }[]).map((satir) => [satir.id, Number(satir.maliyet)]),
+    );
     // İş Maliyetleri sekmesindeki ortalamayla aynı: işlerin kâr oranlarının ortalaması.
     karOrani = Math.round(contracts.reduce((t, c) => {
       const tutar = Number(c.amount);
@@ -200,13 +200,13 @@ export default async function FinanceOverviewPage() {
 
   const credits = (creditData ?? []) as unknown as CreditRow[];
 
-  /* Grafik: son 14 günün tahsilatı, tutar (kuruş) olarak. Kayıtta saat
-     yok; gün Türkiye takvimiyle. */
-  const sonIkiHafta = (seriVerisi ?? []) as { amount: number; transaction_date: string }[];
-  const seri = gunlukSeri(
-    sonIkiHafta.map((kayit) => `${kayit.transaction_date}T12:00:00+03:00`),
-    simdi(), 14,
-    sonIkiHafta.map((kayit) => Number(kayit.amount)),
+  /* Grafik: son 14 günün tahsilatı, tutar (kuruş) olarak. Gün toplamı
+     veritabanından (cari_tahsilat_ozeti.gunluk); eskiden pencereye
+     giren her tahsilat kaydı tek tek okunuyordu. Çubuk TUTARI
+     gösteriyor, bu yüzden dilime adet değil toplam yazılıyor. */
+  const seri = gunlukSeriDilimler(
+    (ozet.gunluk ?? []).map((g) => ({ gun: g.gun, adet: Number(g.toplam) })),
+    simdi(),
   );
 
   return (

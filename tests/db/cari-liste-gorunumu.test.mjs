@@ -17,7 +17,15 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261011134559_cari_liste_gorunumu.sql"];
+/* Sıra önemli: ilki görünümü ve tahsilat özetini kuruyor, ikincisi
+   özete `gunluk` dilimlerini ekleyip maliyet toplamları işlevini
+   getiriyor. Eski olanı tek başına bırakmak özeti gunluk'suz hâline
+   döndürürdü. Liste boşaltılamıyor: döküm görünüm yetkilerini
+   taşımıyor (AGENTS.md "Testler"). */
+const MIGRATIONLAR = [
+  "20261011134559_cari_liste_gorunumu.sql",
+  "20261011152124_finans_genel_bakis_toplamlari.sql",
+];
 /* Ortak örnek tablosu: aynı hareketler TypeScript tarafında da
    sınanıyor (tests/unit/cari-bakiye.test.ts). */
 const ORNEK = JSON.parse(
@@ -87,6 +95,59 @@ test("tahsilat özeti pencereleri", async () => {
     assert.equal(Number(o.son30), 40000);
     assert.equal(Number(o.onceki30), 10000);
     assert.equal(o.aylik.reduce((t, a) => t + Number(a.toplam), 0), 50000);
+    /*
+      GÜNLÜK DİLİMLER (grafik). Pencere 28 gün: 5 gün önceki 40.000
+      içinde, 45 gün önceki 10.000 dışında. Grafik TUTAR çiziyor, bu
+      yüzden dilimde toplam da var — eskiden pencereye giren her
+      tahsilat kaydı tek tek okunup bellekte toplanıyordu.
+    */
+    assert.equal(o.gunluk.reduce((t, g) => t + Number(g.toplam), 0), 40000);
+    assert.equal(o.gunluk.length, 1, "tek güne yazılmış tek tahsilat");
+    const besGunOnce = (await tek(
+      `select to_char(((timezone('Europe/Istanbul', now()))::date - 5), 'YYYY-MM-DD') as g`,
+    )).g;
+    assert.equal(o.gunluk[0].gun, besGunOnce);
+    assert.equal(Number(o.gunluk[0].adet), 1);
+  });
+});
+
+test("sözleşme maliyeti sözleşme başına tek satır", async () => {
+  await islem(db, async () => {
+    await rol(db, "postgres");
+    /* Gerçek zincir: fırsat → kabul edilmiş teklif → imzalı sözleşme.
+       İki maliyet kalemi tek satırda toplanmalı; imzalı olmayan
+       sözleşmenin kalemi hiç gelmemeli. */
+    const kur = async (no, durum) => (await tek(
+      `with f as (
+         insert into public.crm_opportunities (organization_id,title,customer_name,contact_phone,contact_email,stage,estimated_value,probability,created_by,created_at,updated_at,request_details)
+         values ($1,$2,'Maliyet Musteri','05320000000','m@x.com','contract',1000,80,$3,now(),now(),'{}'::jsonb)
+         returning id
+       ), t as (
+         insert into public.crm_proposals (organization_id,opportunity_id,proposal_no,title,amount,currency,status,access_token_hash,created_by,created_at,updated_at,view_count,tax_status)
+         select $1, f.id, $2, $2, 100000, 'TRY', 'accepted', $2, $3, now(), now(), 0, 'included' from f
+         returning id, opportunity_id
+       )
+       insert into public.crm_contracts (organization_id,opportunity_id,proposal_id,contract_no,title,amount,currency,status,access_token_hash,created_by,created_at,updated_at)
+       select $1, t.opportunity_id, t.id, $2, $2, 100000, 'TRY', $4, $2 || 'c', $3, now(), now() from t
+       returning id`,
+      [KURUM, no, SAHIP, durum],
+    )).id;
+    const imzali = await kur("SOZ-M1", "signed");
+    const taslak = await kur("SOZ-M2", "draft");
+    await db.query(
+      `insert into public.contract_cost_items (id,organization_id,contract_id,category,description,amount,cost_date,status,created_by,created_at,updated_at)
+       values (gen_random_uuid(),$1,$2,'personel','Editör',30000,current_date,'paid',$4,now(),now()),
+              (gen_random_uuid(),$1,$2,'personel','Analiz',20000,current_date,'planned',$4,now(),now()),
+              (gen_random_uuid(),$1,$3,'personel','Taslağın kalemi',70000,current_date,'planned',$4,now(),now())`,
+      [KURUM, imzali, taslak, SAHIP],
+    );
+    await rol(db, "authenticated", SAHIP);
+    const { o } = await tek(
+      `select public.sozlesme_maliyet_toplamlari($1,$2) as o`, [KURUM, ["signed", "completed"]],
+    );
+    assert.equal(o.length, 1, "yalnızca imzalı sözleşme");
+    assert.equal(o[0].id, imzali);
+    assert.equal(Number(o[0].maliyet), 50000, "iki kalem toplanmış");
   });
 });
 
@@ -100,5 +161,6 @@ test("başka kurumun kullanıcısı cari görmüyor, anon erişemiyor", async ()
     await rol(db, "anon");
     await reddedilir(db, `select * from public.cari_liste`, [], /permission denied/i);
     await reddedilir(db, `select public.cari_tahsilat_ozeti($1)`, [KURUM], /permission denied/i);
+    await reddedilir(db, `select public.sozlesme_maliyet_toplamlari($1,$2)`, [KURUM, ["signed"]], /permission denied/i);
   });
 });
