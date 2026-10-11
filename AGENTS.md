@@ -110,6 +110,40 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   `lib/site/host-rules.ts` içinde saf fonksiyonlardadır; proxy ve `robots.ts`
   oradan okur, kopya mantık yazılmaz.
 
+## Liste sayfaları
+
+Dört büyük liste (talepler, teklifler, sözleşmeler, işler) 11.10.2026'da
+aynı yapıya geçti. Yeni bir liste yazarken ya da bunlara dokunurken:
+
+- **Süzme, sayma ve sayfalama SUNUCUDA.** Kurumun bütün kayıtlarını
+  çekip bellekte süzmek, kayıt sayısı büyüdükçe yavaşlamakla kalmıyor;
+  PostgREST'in satır tavanına çarptığı gün sayılar sessizce eksiliyor
+  (`npm run check:rakamlar` bu sınıfı arıyor). Sayfa boyu ve son sayfa
+  hesabı `lib/liste-sayfalama.ts`'te.
+- **Arama için düz bir GÖRÜNÜM.** Müşteri adı, e-posta ve telefon
+  fırsat kaydında, temsilci adı personel tablosunda; PostgREST tek bir
+  `or` içinde ana tabloyla gömülü tabloyu birleştiremiyor. Görünümler:
+  `crm_talep_liste`, `crm_teklif_liste`, `crm_sozlesme_liste`,
+  `operasyon_is_liste`. Hepsi `security_invoker` — RLS çağıranın
+  yetkisiyle işliyor; invoker OLMAYAN bir görünüm tablo RLS'ini atlar.
+- **Telefon araması rakam anahtarıyla.** Veritabanı
+  `arvo_search_digits` ile on haneli yerel numaraya iniyor; arama
+  terimi de aynı indirgemeden geçmeli (`lib/liste-arama.ts`), yoksa
+  telefonla arama hiçbir şey bulmaz.
+- **Kartın sayıları ÖZET İŞLEVİNDEN**, listeden değil: sayfalanmış
+  listeden hesaplanan "ortalama" sessizce "bu sayfanın ortalaması"
+  olur. Şerit sayıları ise `head` sorgularından ve listeyle AYNI
+  süzgeç kümesinden gelir — iki ayrı yerde kurulan süzgeç, listede bir
+  şey gösterip rozette başka sayı yazmanın en kolay yolu.
+- **Türetilmiş kural NEREDE yaşayacak, üç seçenek var ve üçü de
+  kullanıldı.** Yalnızca kendi satırına bakıyorsa üretilmiş sütun
+  (`crm_proposals.teklif_grubu` — indekslenebilir). Başka tabloya
+  bakıyorsa görünümün ifadesi (`sozlesme_grubu`: iş akışının durumuna
+  da bakıyor) — bu durumda TypeScript'teki ikiziyle arasına ORTAK BİR
+  ÖRNEK TABLOSU konur (`tests/fixtures/*-gruplari.json`), iki test
+  birden aynı tabloyu sınar. Kural bir listeyse (aşama kümeleri) işleve
+  PARAMETRE olarak geçilir; SQL'e kopyalanmaz.
+
 ## Sunucu işlemleri
 
 Panel işlemleri `runPanelAction` ile sarılır (`lib/panel-action.ts`): üretimde
