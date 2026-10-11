@@ -46,13 +46,13 @@ type Details = {
   scope?: string;
 };
 /* Görünümün satırı: fırsat + arama alanları (telefon anahtarı, hizmet
-   türü, temsilci adı) + son yorum zamanı, hepsi düz. */
+   türü, temsilci adı), hepsi düz. Görünümdeki `son_yorum_at` burada
+   YOK — aşağıdaki SUTUNLAR listesine de bilerek alınmadı. */
 type TalepSatiri = {
   id: string;
   telefon_rakamlari: string | null;
   hizmet_turu: string | null;
   temsilci_adi: string | null;
-  son_yorum_at: string | null;
   title: string;
   customer_name: string;
   contact_email: string | null;
@@ -68,6 +68,25 @@ type TalepSatiri = {
   lost_reason: string | null;
   created_at: string;
 };
+
+/*
+  SÜTUNLAR SAYILI, `*` DEĞİL.
+
+  Görünümdeki `son_yorum_at` bir yan sorgudan geliyor ve bu listede
+  gösterilmiyor: son temas bilgisi yorumun GÖVDESİNİ ve yazarını da
+  istediği için zaten ayrıca okunuyor (fetchLastContacts, yalnızca bu
+  sayfadaki kayıtlar için). `*` ile okurken yan sorgu süzgece uyan her
+  satır için işliyordu — sütun istenmeyince Postgres yan sorguyu
+  tamamen atıyor (400 talep × 50 yorum: 4,9 ms → 2,4 ms, yorum
+  tablosuna hiç gidilmiyor). Buraya yeni sütun eklerken listeye de
+  ekleyin; `*`'a dönmek yan sorguyu geri getirir.
+*/
+const SUTUNLAR = [
+  "id", "title", "customer_name", "contact_email", "contact_phone",
+  "telefon_rakamlari", "hizmet_turu", "temsilci_adi", "stage",
+  "estimated_value", "expected_close_date", "source", "notes",
+  "request_details", "assigned_employee_id", "lost_reason", "created_at",
+].join(",");
 type SalesRepresentative = {
   id: string;
   full_name: string;
@@ -126,7 +145,7 @@ export default async function RequestsPage({
   const suzulmus = (sayarak = false) => {
     let q = sayarak
       ? supabase.from("crm_talep_liste").select("id", { count: "exact", head: true })
-      : supabase.from("crm_talep_liste").select("*", { count: "exact" });
+      : supabase.from("crm_talep_liste").select(SUTUNLAR, { count: "exact" });
     q = q.eq("organization_id", membership.organization_id);
     if (desen) {
       q = q.or([
