@@ -18,6 +18,11 @@ export const priorityNames: Record<string, string> = { low: "Düşük", normal: 
 export const priorityTones: Record<string, string> = { low: "info", normal: "neutral", high: "warning", urgent: "danger" };
 /** Aktif işler tablosunda ve genel bakışta sayılan durumlar */
 export const activeStatuses = ["planned", "in_progress", "blocked"] as const;
+/* "Süren" iş: üzerinde çalışılan + beklemeye alınmış. Genel bakışın
+   "Devam eden işler" kartı ve işler listesinin "Devam + bekleyen"
+   süzgeci aynı kümeyi kullanıyor; özet işlevine de parametre olarak
+   bu gidiyor (SQL'e kopyalanmadı). */
+export const surenStatuses = ["in_progress", "blocked"] as const;
 
 /** Bugünün İstanbul tarihi, "YYYY-MM-DD" */
 export const todayIstanbul = () => new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());

@@ -3,10 +3,10 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { formatSubject } from "@/lib/table-format";
-import { gunlukSeri } from "@/lib/gunluk-seri";
-import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "../os/genel-bakis";
+import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../os/genel-bakis";
 import { relativeTime } from "../crm/last-contact";
-import { activeStatuses, addDaysKey, dueBadge, stepProgress, todayIstanbul, workflowStatusNames } from "./ops-shared";
+import { activeStatuses, addDaysKey, adimIlerlemesi, dueBadge, surenStatuses, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
 import "./operations.css";
 
@@ -23,20 +23,29 @@ type Workflow = {
   title: string;
   customer_name: string | null;
   status: string;
-  priority: string;
   due_date: string | null;
   created_at: string;
   updated_at: string;
   assigned_employee_id: string | null;
-  operation_steps: OverviewStep[] | null;
 };
-type OverviewStep = {
+/* Süren işler kartı adım sayılarını da gösteriyor: görünümden hazır
+   geliyor (operasyon_is_liste), adımların kendisi okunmuyor. */
+type SurenIs = Workflow & { adim_toplam: number; adim_tamam: number };
+/* Yaklaşan aşama: adım + işinin görünen alanları (gömülü). */
+type AsamaSatiri = {
   id: string;
   title: string;
-  due_date: string | null;
-  is_completed: boolean;
-  sort_order: number;
+  due_date: string;
   assigned_employee_id: string | null;
+  operation_workflows: { id: string; title: string; customer_name: string | null; assigned_employee_id: string | null }
+    | { id: string; title: string; customer_name: string | null; assigned_employee_id: string | null }[]
+    | null;
+};
+/* Özet işlevinin döndürdüğü sayılar (operasyon_genel_bakis_ozeti). */
+type Ozet = {
+  planlanan: number; planlanan_atanmamis: number; suren: number; tikali: number;
+  termin_gecmis: number; termin_yakin: number; asama_gecmis: number; asama_yakin: number;
+  seri: { gun: string; adet: number }[];
 };
 type MessageRow = {
   id: string;
@@ -65,14 +74,62 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);
 
-  const [{ data, error }, { data: employeeData, error: employeeError }, { data: messageData, error: messageError }, { count: okunmamisSayisi }, { data: tamamlananData, error: tamamlananError }] = await Promise.all([
-    supabase.from("operation_workflows")
-      // Adımın kendi alanları da geliyor: "yaklaşan aşamalar" kartı AŞAMA
-      // düzeyinde, işin termini düzeyinde değil.
-      .select("id,title,customer_name,status,priority,due_date,created_at,updated_at,assigned_employee_id,operation_steps(id,title,due_date,is_completed,sort_order,assigned_employee_id)")
-      .eq("organization_id", organizationId)
-      .in("status", [...activeStatuses])
-      .order("created_at", { ascending: false }),
+  /*
+    SAYILAR VERİTABANINDAN, LİSTELER ALTI SATIRLIK (11.10.2026).
+
+    Eskiden kurumun BÜTÜN aktif işleri, her birinin aşamalarıyla
+    birlikte (gömülü operation_steps) çekiliyordu — panelin en ağır
+    okuması. Kartların sayıları da o diziden geliyordu; PostgREST'in
+    satır tavanına çarpıldığı gün hepsi sessizce eksilirdi (AGENTS.md
+    "Rakam denetimi"). Artık her kart yalnızca gösterdiği altı satırı
+    okuyor, sayılar operasyon_genel_bakis_ozeti'nden.
+
+    Planlanan işler İKİ sorgu: atanmamışlar üstte, sonra en yeniler.
+    PostgREST ifadeye göre sıralayamıyor ("atanmış mı" bir sütun
+    değil); tek sorguda assigned_employee_id'ye göre sıralamak
+    atanmışları kimlik sırasına dizerdi.
+
+    Süren işler GÖRÜNÜMDEN: kart adım yüzdesini gösteriyor, görünüm
+    adim_toplam/adim_tamam'ı hazır veriyor. Planlanan ve aşama
+    sorguları yüzde göstermiyor, onlar tabloyu okuyor — görünümün yan
+    sorguları boşuna işlemesin.
+  */
+  const IS_SUTUNLARI = "id,title,customer_name,status,due_date,created_at,updated_at,assigned_employee_id";
+  const [
+    { data: planlananAtanmamisData, error: planlananAtanmamisError },
+    { data: planlananAtanmisData, error: planlananAtanmisError },
+    { data: surenData, error: surenError },
+    { data: asamaData, error: asamaError },
+    { data: employeeData, error: employeeError },
+    { data: messageData, error: messageError },
+    { count: okunmamisSayisi },
+    { data: ozetVerisi, error: ozetError },
+  ] = await Promise.all([
+    supabase.from("operation_workflows").select(IS_SUTUNLARI)
+      .eq("organization_id", organizationId).eq("status", "planned").is("assigned_employee_id", null)
+      .order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    supabase.from("operation_workflows").select(IS_SUTUNLARI)
+      .eq("organization_id", organizationId).eq("status", "planned").not("assigned_employee_id", "is", null)
+      .order("created_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    // Termini en yakın olan üstte; tarihi olmayanlar sonda.
+    supabase.from("operasyon_is_liste").select(`${IS_SUTUNLARI},adim_toplam,adim_tamam`)
+      .eq("organization_id", organizationId).in("status", [...surenStatuses])
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("updated_at", { ascending: false }).limit(GENEL_BAKIS_SATIR),
+    /*
+      YAKLAŞAN AŞAMALAR — operasyoncunun kendi cümlesiyle "hangi
+      maddenin tarihi yaklaşıyor". Bu sayfa bir zamanlar yalnızca İŞİN
+      terminine bakıyordu; oysa sekiz aşamalı bir işte asıl kaçırılan,
+      işin termini daha uzakken gecikmiş olan ara teslim. Pencere işin
+      terminiyle aynı: bugüne kadar gecikmişler + önümüzdeki 7 gün.
+      !inner: adımın işi RLS'te görünmüyorsa adım da gelmez.
+    */
+    supabase.from("operation_steps")
+      .select("id,title,due_date,assigned_employee_id,operation_workflows!inner(id,title,customer_name,assigned_employee_id,status)")
+      .eq("organization_id", organizationId).eq("is_completed", false)
+      .not("due_date", "is", null).lte("due_date", weekEnd)
+      .in("operation_workflows.status", [...activeStatuses])
+      .order("due_date", { ascending: true }).order("title").limit(GENEL_BAKIS_SATIR),
     supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active"),
     // !inner: mesajın işi RLS'te görünmüyorsa (başkasının işi) mesaj da gelmez
     supabase.from("customer_file_messages")
@@ -86,8 +143,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
     /*
       Okunmamış mesaj sayısı AYRI ve sınırsız sorguda. Yukarıdaki liste
       önizleme için sınırlı; sayısını ondan almak, sınır aşıldığında
-      kutucuğun sessizce "500"de donması demekti (aynı sayfada arşiv sayısı
-      zaten bu teknikle alınıyor).
+      kutucuğun sessizce "500"de donması demekti.
     */
     supabase.from("customer_file_messages")
       .select("id,operation_workflows!inner(id)", { count: "exact", head: true })
@@ -95,67 +151,55 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
       .eq("sender_type", "customer")
       .is("read_at", null)
       .neq("operation_workflows.status", "cancelled"),
-    /* Grafik: son 28 günde tamamlanan aşamalar (14 gün + önceki 14 günle
-       kıyas). Sınırsız: sayı bu satırlardan çıkıyor. RLS, yönetici
-       olmayana yalnızca kendi işlerinin aşamalarını verir. */
-    supabase.from("operation_steps").select("completed_at")
-      .eq("organization_id", organizationId).eq("is_completed", true).gte("completed_at", seriBaslangici()),
+    supabase.rpc("operasyon_genel_bakis_ozeti", {
+      p_organization_id: organizationId,
+      p_aktif: [...activeStatuses],
+      p_suren: [...surenStatuses],
+    }),
   ]);
-  if (error) throw new Error("İş akışları okunamadı: " + error.message);
+  if (planlananAtanmamisError || planlananAtanmisError || surenError)
+    throw new Error("İş akışları okunamadı: " + (planlananAtanmamisError ?? planlananAtanmisError ?? surenError)!.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (messageError) throw new Error("Müşteri mesajları okunamadı: " + messageError.message);
-  /* Grafik okunamazsa sayfa düşmez; uyarı satırı söyler. */
-  const uyarilar = tamamlananError ? ["Tamamlanan aşamalar"] : [];
-  const seri = gunlukSeri(((tamamlananData ?? []) as { completed_at: string | null }[]).map((row) => row.completed_at ?? ""), simdi());
+  /* Grafik ya da aşama listesi okunamazsa sayfa düşmez; uyarı satırı söyler. */
+  const uyarilar = [
+    ...(ozetError ? ["Operasyon sayıları"] : []),
+    ...(asamaError ? ["Yaklaşan aşamalar"] : []),
+  ];
+  const ozet = (ozetVerisi ?? {}) as Partial<Ozet>;
+  const sayi = (deger: number | undefined) => Number(deger ?? 0);
+  const seri = gunlukSeriDilimler(ozet.seri ?? [], simdi());
 
-  const workflows = (data ?? []) as Workflow[];
   const employeeName = new Map(((employeeData ?? []) as { id: string; full_name: string }[]).map((row) => [row.id, formatPersonName(row.full_name)]));
-  const assigneeOf = (workflow: Workflow) => (workflow.assigned_employee_id ? employeeName.get(workflow.assigned_employee_id) ?? "Pasif personel" : null);
+  const personAdi = (id: string | null) => (id ? employeeName.get(id) ?? "Pasif personel" : null);
+  const assigneeOf = (workflow: { assigned_employee_id: string | null }) => personAdi(workflow.assigned_employee_id);
 
-  // Kartlar
-  const planned = workflows.filter((workflow) => workflow.status === "planned");
-  const unassignedPlanned = planned.filter((workflow) => !workflow.assigned_employee_id).length;
-  // Atanmamış yeni işler üstte, sonra en yeni
-  const plannedList = [...planned].sort((a, b) => Number(Boolean(a.assigned_employee_id)) - Number(Boolean(b.assigned_employee_id)) || b.created_at.localeCompare(a.created_at));
+  // Kartlar: atanmamış yeni işler üstte, sonra en yeni.
+  const plannedList = [
+    ...((planlananAtanmamisData ?? []) as Workflow[]),
+    ...((planlananAtanmisData ?? []) as Workflow[]),
+  ].slice(0, GENEL_BAKIS_SATIR);
+  const unassignedPlanned = sayi(ozet.planlanan_atanmamis);
+  const ongoingList = (surenData ?? []) as unknown as SurenIs[];
+  const blockedCount = sayi(ozet.tikali);
 
-  const ongoing = workflows.filter((workflow) => workflow.status === "in_progress" || workflow.status === "blocked");
-  const blockedCount = ongoing.filter((workflow) => workflow.status === "blocked").length;
-  const ongoingList = [...ongoing].sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999") || b.updated_at.localeCompare(a.updated_at));
+  const yaklasanAsamalar = ((asamaData ?? []) as unknown as AsamaSatiri[]).map((satir) => {
+    const is = Array.isArray(satir.operation_workflows) ? satir.operation_workflows[0] : satir.operation_workflows;
+    return {
+      id: satir.id,
+      baslik: satir.title,
+      tarih: satir.due_date,
+      isId: is?.id ?? "",
+      musteri: is?.customer_name || "Kurum içi iş",
+      // Adımın kendi sorumlusu yoksa işin sorumlusu (panodaki kuralla aynı).
+      sorumlu: satir.assigned_employee_id ? personAdi(satir.assigned_employee_id) : personAdi(is?.assigned_employee_id ?? null),
+    };
+  });
+  const gecikenAsama = sayi(ozet.asama_gecmis);
+  const asamaToplami = gecikenAsama + sayi(ozet.asama_yakin);
 
-  /*
-    YAKLAŞAN AŞAMALAR — operasyoncunun kendi cümlesiyle "hangi maddenin
-    tarihi yaklaşıyor". Bu sayfa şimdiye kadar yalnızca İŞİN terminine
-    bakıyordu; oysa sekiz aşamalı bir işte asıl kaçırılan, işin termini
-    daha uzakken gecikmiş olan ara teslim. İkisi ayrı kartlarda duruyor:
-    biri "iş ne zaman teslim edilecek", diğeri "şu an hangi maddeye
-    yetişmek gerekiyor".
-
-    Pencere işin terminiyle aynı: bugüne kadar gecikmişler + önümüzdeki
-    7 gün.
-  */
-  const yaklasanAsamalar = workflows
-    .flatMap((workflow) =>
-      (workflow.operation_steps ?? [])
-        .filter((step) => step.due_date && !step.is_completed && step.due_date <= weekEnd)
-        .map((step) => ({
-          id: step.id,
-          baslik: step.title,
-          tarih: step.due_date!,
-          isId: workflow.id,
-          isBasligi: workflow.title,
-          musteri: workflow.customer_name || "Kurum içi iş",
-          // Adımın kendi sorumlusu yoksa işin sorumlusu (panodaki kuralla aynı).
-          sorumlu: step.assigned_employee_id
-            ? employeeName.get(step.assigned_employee_id) ?? "Pasif personel"
-            : assigneeOf(workflow),
-        })),
-    )
-    .sort((a, b) => a.tarih.localeCompare(b.tarih) || a.baslik.localeCompare(b.baslik, "tr"));
-  const gecikenAsama = yaklasanAsamalar.filter((asama) => asama.tarih < today).length;
-
-  const dueList = workflows.filter((workflow) => workflow.due_date && workflow.due_date <= weekEnd).sort((a, b) => a.due_date!.localeCompare(b.due_date!));
-  const overdueCount = dueList.filter((workflow) => workflow.due_date! < today).length;
-  const dueSoonCount = dueList.length - overdueCount;
+  const overdueCount = sayi(ozet.termin_gecmis);
+  const dueSoonCount = sayi(ozet.termin_yakin);
 
   const messages = ((messageData ?? []) as unknown as MessageRow[]).map((row) => ({ ...row, workflow: Array.isArray(row.operation_workflows) ? row.operation_workflows[0] : row.operation_workflows }));
   // İş başına tek satır: en son mesaj + o işteki okunmamış sayısı.
@@ -196,7 +240,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
           daha uzakken gecikmiş ara teslim asıl kaçırılan şey; gecikmeler en
           üstte (tarih sırası).
         */}
-        <ListeKarti baslik="Yaklaşan aşamalar" alt={gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek"} bos="Yaklaşan aşama yok. Aşama tarihleri iş detayında “Tarihleri dağıt” ile doldurulabilir." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={yaklasanAsamalar.length}>
+        <ListeKarti baslik="Yaklaşan aşamalar" alt={gecikenAsama ? `${gecikenAsama} aşamanın teslimi gecikti` : "Önümüzdeki 7 gün içinde teslim edilecek"} bos="Yaklaşan aşama yok. Aşama tarihleri iş detayında “Tarihleri dağıt” ile doldurulabilir." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamaToplami}>
           {yaklasanAsamalar.slice(0, GENEL_BAKIS_SATIR).map((asama) => {
             const rozet = dueBadge(asama.tarih, today);
             return (
@@ -212,7 +256,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
           })}
         </ListeKarti>
 
-        <ListeKarti baslik="Yeni gelen işler" alt={unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"} bos="Yeni iş yok. Sözleşmesi onaylanan işler burada belirir." href={`${ISLER}?durum=planned`} hrefEtiket="Tümünü gör" sayi={plannedList.length}>
+        <ListeKarti baslik="Yeni gelen işler" alt={unassignedPlanned ? `${unassignedPlanned} iş sorumlu bekliyor` : "Planlanan, henüz başlamamış işler"} bos="Yeni iş yok. Sözleşmesi onaylanan işler burada belirir." href={`${ISLER}?durum=planned`} hrefEtiket="Tümünü gör" sayi={sayi(ozet.planlanan)}>
           {plannedList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
             const sorumlu = assigneeOf(workflow);
             return (
@@ -230,9 +274,9 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
         </ListeKarti>
 
         {/* Termin bilgisi (eski "Teslim tarihi yaklaşan" kartı) burada rozet olarak. */}
-        <ListeKarti baslik="Devam eden işler" alt={blockedCount ? `${blockedCount} iş beklemede` : overdueCount || dueSoonCount ? `${overdueCount ? `${overdueCount} geciken, ` : ""}bu hafta ${dueSoonCount} teslim` : "Üzerinde çalışılan işler"} bos="Şu an devam eden iş yok." href={`${ISLER}?durum=devam`} hrefEtiket="Tümünü gör" sayi={ongoingList.length}>
+        <ListeKarti baslik="Devam eden işler" alt={blockedCount ? `${blockedCount} iş beklemede` : overdueCount || dueSoonCount ? `${overdueCount ? `${overdueCount} geciken, ` : ""}bu hafta ${dueSoonCount} teslim` : "Üzerinde çalışılan işler"} bos="Şu an devam eden iş yok." href={`${ISLER}?durum=devam`} hrefEtiket="Tümünü gör" sayi={sayi(ozet.suren)}>
           {ongoingList.slice(0, GENEL_BAKIS_SATIR).map((workflow) => {
-            const ilerleme = stepProgress(workflow.operation_steps);
+            const ilerleme = adimIlerlemesi(Number(workflow.adim_tamam), Number(workflow.adim_toplam));
             const rozet = dueBadge(workflow.due_date, today, workflow.status);
             return (
               <ListeSatiri

@@ -15,7 +15,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { archiveWorkflow } from "../actions";
 import { WorkflowCreateForm } from "../workflow-create-form";
-import { OpsIcon, addDaysKey, adimIlerlemesi, dueBadge, priorityNames, priorityTones, shortDate, todayIstanbul, workflowStatusNames } from "../ops-shared";
+import { OpsIcon, addDaysKey, adimIlerlemesi, dueBadge, priorityNames, priorityTones, shortDate, surenStatuses, todayIstanbul, workflowStatusNames } from "../ops-shared";
 import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import "../../crm/crm.css";
 import "../operations.css";
@@ -96,7 +96,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
      tamamlanan işi dışarıda bırakıyor: biten işin gecikmesi yok. */
   const digerSuzgecler = (q: ReturnType<typeof suzulmus>) => {
     let s = q;
-    if (selectedStatus === "devam") s = s.in("status", ["in_progress", "blocked"]);
+    if (selectedStatus === "devam") s = s.in("status", [...surenStatuses]);
     else if (selectedStatus) s = s.eq("status", selectedStatus);
     if (selectedDue) {
       s = s.neq("status", "completed").not("due_date", "is", null);
