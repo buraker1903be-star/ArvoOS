@@ -1,0 +1,14 @@
+{
+  "aciklama": "Sözleşmenin listedeki grubu. Aynı tablo iki yerde sınanıyor: lib/sozlesme-grubu.ts (tests/unit/sozlesme-grubu.test.ts) ve crm_sozlesme_liste görünümünün sozlesme_grubu sütunu (tests/db/sozlesme-liste-gorunumu.test.mjs). Biri değişip öteki kalırsa test kırılır. is_durumu: bağlı iş akışının durumu (null = iş açılmamış).",
+  "ornekler": [
+    { "ad": "taslak", "status": "draft", "is_durumu": null, "grup": "draft" },
+    { "ad": "imza bekliyor", "status": "sent", "is_durumu": null, "grup": "sent" },
+    { "ad": "imzalı, iş açılmadı: aktif listede kalır", "status": "signed", "is_durumu": null, "grup": "imzali" },
+    { "ad": "imzalı, iş açıldı: operasyonda", "status": "signed", "is_durumu": "in_progress", "grup": "operasyonda" },
+    { "ad": "işi tamamlandı", "status": "signed", "is_durumu": "completed", "grup": "tamam" },
+    { "ad": "işi arşivlendi", "status": "signed", "is_durumu": "archived", "grup": "tamam" },
+    { "ad": "sözleşme tamamlandı", "status": "completed", "is_durumu": null, "grup": "tamam" },
+    { "ad": "reddedildi", "status": "rejected", "is_durumu": null, "grup": "rejected" },
+    { "ad": "iptal edildi, işi tamamlanmış olsa bile", "status": "cancelled", "is_durumu": "completed", "grup": "cancelled" }
+  ]
+}
