@@ -61,8 +61,8 @@ export const SEMA = path.resolve(import.meta.dirname, "../../supabase/schema/can
   check:db-testleri tam bunu arıyor.
 */
 export const BEKLEYEN_MIGRATIONLAR = [
-  // 10.10.2026: teklif_grubu üretilmiş sütununun çağırdığı fonksiyonun yetkisi.
-  "20261010200419_teklif_grubu_yetkisi.sql",
+  // Şu an boş: döküm 11.10.2026'da yenilendi, canlıdaki her şey anlık
+  // görüntüde. Dolu bırakmak migration'ı iki kez uygulamak demek.
 ];
 
 /** Canlı şemayla kurulmuş, boş bir veritabanı. */

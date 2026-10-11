@@ -52,8 +52,17 @@ export function shortDate(value: string | null | undefined) {
 /** Görev ilerlemesi yüzdesi */
 export function stepProgress(steps: { is_completed: boolean }[] | null | undefined) {
   const list = steps ?? [];
-  const done = list.filter((step) => step.is_completed).length;
-  return { done, total: list.length, percentage: list.length ? Math.round((done / list.length) * 100) : 0 };
+  return adimIlerlemesi(list.filter((step) => step.is_completed).length, list.length);
+}
+
+/*
+  Adım sayıları hazır geldiğinde (işler listesi artık görünümden
+  "adim_toplam/adim_tamam" okuyor, adımların kendisini değil) aynı
+  yüzde hesabı. İki ayrı yuvarlama, aynı işin panoda %67, listede %66
+  görünmesi demekti.
+*/
+export function adimIlerlemesi(tamam: number, toplam: number) {
+  return { done: tamam, total: toplam, percentage: toplam ? Math.round((tamam / toplam) * 100) : 0 };
 }
 
 const iconPaths: Record<string, ReactNode> = {

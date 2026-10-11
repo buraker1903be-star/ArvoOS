@@ -7,13 +7,15 @@ import { fetchLastContacts } from "../../crm/last-contact";
 import { CustomerCell, LastContactCell, RepresentativeCell } from "../../crm/table-cells";
 import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "../../crm/istatistik-karti";
-import { aylik, enCok, oran, son30Degisim } from "@/lib/liste-istatistik";
+import { aylikDilimler, oran } from "@/lib/liste-istatistik";
+import { aramaDeseni } from "@/lib/liste-arama";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { simdi } from "../../os/genel-bakis";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { archiveWorkflow } from "../actions";
 import { WorkflowCreateForm } from "../workflow-create-form";
-import { OpsIcon, addDaysKey, dueBadge, priorityNames, priorityTones, shortDate, stepProgress, todayIstanbul, workflowStatusNames } from "../ops-shared";
+import { OpsIcon, addDaysKey, adimIlerlemesi, dueBadge, priorityNames, priorityTones, shortDate, todayIstanbul, workflowStatusNames } from "../ops-shared";
 import { BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import "../../crm/crm.css";
 import "../operations.css";
@@ -36,68 +38,140 @@ const boardStatuses = ["planned", "in_progress", "blocked", "completed"] as cons
 // "devam": devam eden + beklemede (genel bakıştaki kartla aynı küme)
 const statusFilters = [...boardStatuses, "devam"] as const;
 const dueFilters = ["yaklasan", "geciken"] as const;
-type Step = { id: string; title: string; is_completed: boolean; sort_order: number };
 type Employee = { id: string; full_name: string; job_title: string | null; user_id: string | null };
-type Workflow = { id: string; title: string; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; delivered_at: string | null; created_at: string; contract_id: string | null; assigned_employee_id: string | null; waiting_party: string; waiting_since: string | null; operation_steps: Step[] };
+/* Görünümün satırı: iş + adım sayıları + okunmamış mesaj + sözleşme ve
+   müşteri bilgisi, hepsi düz. Adımların kendisi listede gerekmiyordu;
+   yalnızca "kaçı tamam" gösteriliyor. */
+type IsSatiri = {
+  id: string; title: string; customer_name: string | null; description: string | null;
+  status: string; priority: string; start_date: string | null; due_date: string | null;
+  delivered_at: string | null; created_at: string; contract_id: string | null;
+  assigned_employee_id: string | null; waiting_party: string; waiting_since: string | null;
+  adim_toplam: number; adim_tamam: number; okunmamis_mesaj: number;
+  opportunity_id: string | null; invoice_id: string | null;
+  contact_phone: string | null; contact_email: string | null;
+};
 
-export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string; sorumlu?: string }> }) {
-  const { arama, durum, termin, mesaj, sorumlu } = await searchParams;
-  const search = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
+export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: string }> }) {
+  const { arama, durum, termin, mesaj, sorumlu, sayfa } = await searchParams;
   const selectedStatus = (statusFilters as readonly string[]).includes(durum ?? "") ? durum! : "";
   const selectedDue = (dueFilters as readonly string[]).includes(termin ?? "") ? termin! : "";
   const onlyUnread = mesaj === "yeni";
   const selectedOwner = (sorumlu ?? "").trim().slice(0, 80);
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+
   /*
-    Arşivlenen işler de okunuyor: istatistik kartı (zamanında teslim, aylık
-    tamamlanan) arşivdekiler olmadan eksik kalırdı. Listede gösterilmez.
+    LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026) — teklif ve sözleşme
+    listeleriyle aynı dönüşüm. Eskiden kurumun bütün işleri (arşiv
+    dahil) adımlarıyla çekiliyor, sonra sözleşme bağlantısı, müşteri
+    iletişimi, okunmamış mesaj sayısı ve ödenmiş faturalar AYRI
+    sorgularla okunup bellekte birleştiriliyordu.
+
+    operasyon_is_liste hepsini tek satırda veriyor (adım ve mesaj
+    sayıları yan sorgularla); kartın sayıları da veritabanından.
   */
-  const [{ data, error }, { data: employeeData, error: employeeError }] = await Promise.all([
-    supabase.from("operation_workflows").select("id,title,customer_name,description,status,priority,start_date,due_date,delivered_at,created_at,contract_id,assigned_employee_id,waiting_party,waiting_since,operation_steps(id,title,is_completed,sort_order)").eq("organization_id", membership.organization_id).neq("status", "cancelled").order("created_at", { ascending: false }),
-    supabase.from("hr_employees").select("id,full_name,job_title,user_id").eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
+  const sayfaNo = sayfaNumarasi(sayfa);
+  const bugun = todayIstanbul();
+  const haftaSonu = addDaysKey(bugun, 7);
+  const desen = aramaDeseni(arama ?? "");
+
+  /* Süzgeçler tek yerden: liste ve sayımlar aynı kümeyi görmeli.
+     Arşiv listede yok (kendi sayfasında), iptal hiçbir yerde. */
+  const suzulmus = (sayarak = false) => {
+    let q = sayarak
+      ? supabase.from("operasyon_is_liste").select("id", { count: "exact", head: true })
+      : supabase.from("operasyon_is_liste").select("*", { count: "exact" });
+    q = q.eq("organization_id", membership.organization_id)
+      .neq("status", "cancelled")
+      .neq("status", "archived");
+    if (desen) q = q.or(`title.ilike.*${desen}*,customer_name.ilike.*${desen}*`);
+    if (selectedOwner === "atanmamis") q = q.is("assigned_employee_id", null);
+    else if (selectedOwner) q = q.eq("assigned_employee_id", selectedOwner);
+    return q;
+  };
+
+  /* Durum, termin ve mesaj süzgeçleri. "devam" = devam eden +
+     beklemede (genel bakıştaki kartla aynı küme). Termin süzgeçleri
+     tamamlanan işi dışarıda bırakıyor: biten işin gecikmesi yok. */
+  const digerSuzgecler = (q: ReturnType<typeof suzulmus>) => {
+    let s = q;
+    if (selectedStatus === "devam") s = s.in("status", ["in_progress", "blocked"]);
+    else if (selectedStatus) s = s.eq("status", selectedStatus);
+    if (selectedDue) {
+      s = s.neq("status", "completed").not("due_date", "is", null);
+      s = selectedDue === "geciken" ? s.lt("due_date", bugun) : s.lte("due_date", haftaSonu);
+    }
+    if (onlyUnread) s = s.gt("okunmamis_mesaj", 0);
+    return s;
+  };
+
+  const sayim = async (q: ReturnType<typeof suzulmus>) => (await q).count ?? 0;
+
+  const [
+    { data, error, count: suzgecSayisi },
+    { data: employeeData, error: employeeError },
+    { data: ozetVerisi, error: ozetHatasi },
+    tumSayi,
+    gecikenSayisi,
+    okunmamisSayisi,
+    ...durumSayilari
+  ] = await Promise.all([
+    /* Sıralama: yeni müşteri mesajı olan işler üstte (eskiden bellekte
+       sıralanıyordu, yani yalnızca o sayfanın içinde doğruydu). */
+    digerSuzgecler(suzulmus())
+      .order("okunmamis_mesaj", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]),
+    supabase.from("hr_employees").select("id,full_name,job_title,user_id")
+      .eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
+    supabase.rpc("operasyon_is_istatistikleri", { p_organization_id: membership.organization_id }),
+    sayim(suzulmus(true)),
+    sayim(suzulmus(true).neq("status", "completed").lt("due_date", bugun)),
+    sayim(suzulmus(true).gt("okunmamis_mesaj", 0)),
+    ...boardStatuses.map((durum) => sayim(suzulmus(true).eq("status", durum))),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
-  const tumu = (data ?? []) as Workflow[];
-  const workflows = tumu.filter((workflow) => workflow.status !== "archived");
-  const archivedCount = tumu.length - workflows.length;
+  if (ozetHatasi) throw new Error("İş istatistikleri okunamadı: " + ozetHatasi.message);
+
+  const workflows = (data ?? []) as unknown as IsSatiri[];
+  const sonSayfa = sonSayfaNo(suzgecSayisi, workflows.length, sayfaNo);
   const employees = (employeeData ?? []) as Employee[];
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
-  const contractIds = [...new Set(workflows.map((workflow) => workflow.contract_id).filter((value): value is string => Boolean(value)))];
-  const { data: workflowContracts, error: workflowContractsError } = contractIds.length
-    ? await supabase.from("ops_contracts").select("id,opportunity_id,invoice_id").in("id", contractIds)
-    : { data: [], error: null };
-  if (workflowContractsError) throw new Error("İşlerin CRM bağlantıları okunamadı: " + workflowContractsError.message);
-  const opportunityByContract = new Map((workflowContracts ?? []).map((contract) => [contract.id, contract.opportunity_id]));
-  const operationOpportunityIds = [...new Set((workflowContracts ?? []).map((contract) => contract.opportunity_id))];
-  /*
-    İletişim bilgisi AYRI SORGUYLA. Önce ops_contracts içine gömülüydü
-    (crm_opportunities(...)); operasyon artık tutarsız GÖRÜNÜMLERDEN
-    okuyor ve PostgREST iki görünüm arasında ilişki çıkaramıyor —
-    görünümlerin yabancı anahtarı yok, gömme sessizce boş dönerdi.
-  */
-  const { data: contactRows, error: contactError } = operationOpportunityIds.length
-    ? await supabase.from("ops_opportunities").select("id,contact_phone,contact_email").in("id", operationOpportunityIds)
-    : { data: [], error: null };
-  if (contactError) throw new Error("Müşteri iletişimi okunamadı: " + contactError.message);
-  const contactByOpportunity = new Map(((contactRows ?? []) as { id: string; contact_phone: string | null; contact_email: string | null }[])
-    .map((row) => [row.id, { phone: row.contact_phone, email: row.contact_email }]));
-  const contactByContract = new Map((workflowContracts ?? []).map((contract) =>
-    [contract.id, contactByOpportunity.get(contract.opportunity_id) ?? { phone: null, email: null }]));
-  const lastContacts = await fetchLastContacts(supabase, membership.organization_id, operationOpportunityIds);
-  const today = todayIstanbul();
-  const weekEnd = addDaysKey(today, 7);
-  // Müşteriden gelen, henüz okunmamış mesajlar: ilgili iş satırında kırmızı belirteç
-  const workflowIdsForMessages = workflows.map((workflow) => workflow.id);
-  const { data: unreadMessageRows } = workflowIdsForMessages.length
-    ? await supabase.from("customer_file_messages").select("workflow_id").eq("organization_id", membership.organization_id).eq("sender_type", "customer").is("read_at", null).in("workflow_id", workflowIdsForMessages)
-    : { data: [] as { workflow_id: string }[] };
-  const unreadByWorkflow = new Map<string, number>();
-  for (const row of (unreadMessageRows ?? []) as { workflow_id: string | null }[]) {
-    if (row.workflow_id) unreadByWorkflow.set(row.workflow_id, (unreadByWorkflow.get(row.workflow_id) ?? 0) + 1);
+  const durumSayisi = (durum: string) => durumSayilari[boardStatuses.indexOf(durum as (typeof boardStatuses)[number])] ?? 0;
+
+  const ozet = (ozetVerisi ?? {}) as {
+    toplam?: number; arsiv?: number; son30?: number; onceki30?: number;
+    teslimli?: number; zamaninda?: number; adim_toplam?: number; adim_tamam?: number;
+    musteri_bekleyen?: number; okunmamis_is?: number;
+    aylik?: { ay: string; adet: number; toplam: number }[];
+    sorumlular?: { personel: string | null; adet: number }[];
+  };
+  const sayiAl = (deger: number | null | undefined) => Number(deger ?? 0);
+  const archivedCount = sayiAl(ozet.arsiv);
+
+  /* Ödeme kapanmış mı: yalnızca BU SAYFADAKİ tamamlanan işlerin
+     faturaları soruluyor. Eskiden kurumun bütün işlerinin faturaları
+     tek seferde okunuyordu. */
+  const invoiceIds = [...new Set(workflows.filter((w) => w.status === "completed" && w.invoice_id).map((w) => w.invoice_id!))];
+  const paidInvoiceIds = new Set<string>();
+  if (invoiceIds.length) {
+    const { data: invoices } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
+    for (const invoice of invoices ?? []) if (invoice.status === "paid") paidInvoiceIds.add(invoice.id);
   }
-  const unreadWorkflowCount = [...unreadByWorkflow.values()].filter(Boolean).length;
+  const readyForArchive = (workflow: IsSatiri) => {
+    if (workflow.status !== "completed") return false;
+    if (!workflow.contract_id) return true;
+    if (!workflow.invoice_id) return workflow.opportunity_id !== null;
+    return paidInvoiceIds.has(workflow.invoice_id);
+  };
+
+  const lastContacts = await fetchLastContacts(
+    supabase,
+    membership.organization_id,
+    [...new Set(workflows.map((workflow) => workflow.opportunity_id).filter((v): v is string => Boolean(v)))],
+  );
   // Termini ve arşivi yöneticiler ve işin sorumlusu yönetebilir (actions.ts isManagerOrAssignee)
   const canManage = izin("operations.is.yonet");
   /*
@@ -108,45 +182,12 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   */
   const musteriBaglantisi = modules.some((module) => module.code === "crm") && (izin("crm.musteri.sorgula") || canManage);
   const myEmployeeId = employees.find((employee) => employee.user_id === userId)?.id ?? null;
-  const canActOn = (workflow: Workflow) => canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
+  const canActOn = (workflow: IsSatiri) => canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
+  const hasFilter = Boolean(arama || selectedStatus || selectedDue || onlyUnread || selectedOwner);
 
-  // Tamamlanan işin ödemesi kapandıysa (ya da bekleyecek fatura yoksa)
-  // "arşive hazır" ipucu gösterilir. Arşivleme artık elle yapılır.
-  const invoiceIds = (workflowContracts ?? []).map((contract) => (contract as { invoice_id?: string | null }).invoice_id).filter((value): value is string => Boolean(value));
-  const paidInvoiceIds = new Set<string>();
-  if (invoiceIds.length && workflows.some((workflow) => workflow.status === "completed")) {
-    const { data: invoices } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
-    for (const invoice of invoices ?? []) if (invoice.status === "paid") paidInvoiceIds.add(invoice.id);
-  }
-  const invoiceByContract = new Map((workflowContracts ?? []).map((contract) => [contract.id, (contract as { invoice_id?: string | null }).invoice_id ?? null]));
-  const readyForArchive = (workflow: Workflow) => {
-    if (workflow.status !== "completed") return false;
-    if (!workflow.contract_id) return true;
-    if (!invoiceByContract.has(workflow.contract_id)) return false;
-    const invoiceId = invoiceByContract.get(workflow.contract_id);
-    return !invoiceId || paidInvoiceIds.has(invoiceId);
-  };
-
-  const gecikmis = (workflow: Workflow) => Boolean(workflow.due_date) && workflow.status !== "completed" && workflow.due_date! < today;
-  const sorumluUyar = (workflow: Workflow) => !selectedOwner || (selectedOwner === "atanmamis" ? !workflow.assigned_employee_id : workflow.assigned_employee_id === selectedOwner);
-  const aramaUyar = (workflow: Workflow) => !search || [workflow.title, workflow.customer_name].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR").includes(search);
-  const filteredWorkflows = workflows.filter((workflow) => {
-    if (!aramaUyar(workflow) || !sorumluUyar(workflow)) return false;
-    if (selectedStatus === "devam" ? !["in_progress", "blocked"].includes(workflow.status) : selectedStatus && workflow.status !== selectedStatus) return false;
-    if (selectedDue) {
-      if (!workflow.due_date || workflow.status === "completed") return false;
-      if (selectedDue === "geciken" && workflow.due_date >= today) return false;
-      if (selectedDue === "yaklasan" && workflow.due_date > weekEnd) return false;
-    }
-    if (onlyUnread && !unreadByWorkflow.get(workflow.id)) return false;
-    return true;
-  });
-  const hasFilter = Boolean(search || selectedStatus || selectedDue || onlyUnread || selectedOwner);
-
-  // Şerit sayıları arama ve sorumlu süzgecine göre, durum süzgecinden bağımsız.
-  const kapsam = workflows.filter((workflow) => aramaUyar(workflow) && sorumluUyar(workflow));
-  const durumSayisi = (status: string) => kapsam.filter((workflow) => workflow.status === status).length;
-  const adres = (ek: { durum?: string; termin?: string; mesaj?: string; sorumlu?: string }) => {
+  /* Süzgeç değişince sayfa başa dönüyor; numara yalnızca
+     sayfalayıcıdan taşınıyor. */
+  const adres = (ek: { durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: number }) => {
     const q = new URLSearchParams();
     const d = ek.durum ?? selectedStatus;
     const t = ek.termin ?? selectedDue;
@@ -157,6 +198,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     if (t) q.set("termin", t);
     if (m) q.set("mesaj", m);
     if (s) q.set("sorumlu", s);
+    if (ek.sayfa && ek.sayfa > 1) q.set("sayfa", String(ek.sayfa));
     const qs = q.toString();
     return qs ? `/panel/operations/isler?${qs}` : "/panel/operations/isler";
   };
@@ -167,17 +209,25 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     (Türkiye saatiyle) termin gününden sonra değilse.
   */
   const an = simdi();
-  const { son30, degisim } = son30Degisim(tumu.map((workflow) => workflow.created_at), an);
-  const teslimGunu = (deger: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(Date.parse(deger));
-  const teslimli = tumu.filter((workflow) => workflow.delivered_at && workflow.due_date);
-  const zamaninda = teslimli.filter((workflow) => teslimGunu(workflow.delivered_at!) <= workflow.due_date!).length;
-  const zamanindaOrani = oran(zamaninda, teslimli.length);
-  const aktifIsler = workflows.filter((workflow) => workflow.status !== "completed");
-  const aktifAdimlar = aktifIsler.flatMap((workflow) => workflow.operation_steps ?? []);
-  const ilerleme = oran(aktifAdimlar.filter((step) => step.is_completed).length, aktifAdimlar.length);
-  const musteriBekleyen = aktifIsler.filter((workflow) => bekleyenTarafMi(workflow.waiting_party) && workflow.waiting_party !== "us").length;
-  const aylikTeslim = aylik(tumu.map((workflow) => ({ tarih: workflow.delivered_at })), 6, an);
-  const sorumluYuku = enCok(aktifIsler.map((workflow) => workflow.assigned_employee_id ? formatPersonName(employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel") : "Atanmamış"), 5);
+  /* Kartın sayıları veritabanından (operasyon_is_istatistikleri):
+     arşivdekiler de sayılıyor — zamanında teslim ve aylık teslim
+     onlarsız eksik kalırdı — ama adım ilerlemesi ve sorumlu yükü
+     yalnızca aktif işlerden. */
+  const son30 = sayiAl(ozet.son30);
+  const onceki30 = sayiAl(ozet.onceki30);
+  const degisim = onceki30 ? Math.round(((son30 - onceki30) / onceki30) * 100) : null;
+  const teslimliSayisi = sayiAl(ozet.teslimli);
+  const zamaninda = sayiAl(ozet.zamaninda);
+  const zamanindaOrani = oran(zamaninda, teslimliSayisi);
+  const ilerleme = oran(sayiAl(ozet.adim_tamam), sayiAl(ozet.adim_toplam));
+  const musteriBekleyen = sayiAl(ozet.musteri_bekleyen);
+  const aylikTeslim = aylikDilimler(ozet.aylik ?? [], 6, an);
+  /* Sorumlu yükü: kimlikler özetten, adlar burada. Pasif personelin
+     adı haritada yok; "Pasif personel" diye görünmesi bilinçli. */
+  const sorumluYuku = (ozet.sorumlular ?? []).map((satir) => [
+    satir.personel ? formatPersonName(employeeMap.get(satir.personel) ?? "Pasif personel") : "Atanmamış",
+    Number(satir.adet),
+  ] as [string, number]);
 
   return <main className="talep cari ekip talepler teklifler liste-sayfa">
     <header className="talep-bas">
@@ -201,11 +251,11 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
         ))}
         <div className={selectedDue === "geciken" ? "is-active" : undefined}>
           <dt>Termini geçen</dt>
-          <dd className={kapsam.some(gecikmis) ? "talep-uyari" : undefined}><Link href={adres({ durum: "", termin: "geciken", mesaj: "" })}>{kapsam.filter(gecikmis).length}</Link></dd>
+          <dd className={gecikenSayisi ? "talep-uyari" : undefined}><Link href={adres({ durum: "", termin: "geciken", mesaj: "" })}>{gecikenSayisi}</Link></dd>
         </div>
         <div className={onlyUnread ? "is-active" : undefined}>
           <dt>Yeni müşteri mesajı</dt>
-          <dd className={unreadWorkflowCount ? "talep-uyari" : undefined}><Link href={adres({ durum: "", termin: "", mesaj: "yeni" })}>{unreadWorkflowCount}</Link></dd>
+          <dd className={okunmamisSayisi ? "talep-uyari" : undefined}><Link href={adres({ durum: "", termin: "", mesaj: "yeni" })}>{okunmamisSayisi}</Link></dd>
         </div>
       </dl>
     </nav>
@@ -213,7 +263,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="İş listesi">
         <div className="ekip-suzgec talep-suzgec">
-          <Link href={adres({ durum: "", termin: "", mesaj: "" })} className={!selectedStatus && !selectedDue && !onlyUnread ? "is-active" : undefined}>Tümü <small>{kapsam.length}</small></Link>
+          <Link href={adres({ durum: "", termin: "", mesaj: "" })} className={!selectedStatus && !selectedDue && !onlyUnread ? "is-active" : undefined}>Tümü <small>{tumSayi}</small></Link>
           <Link href={adres({ durum: "devam", termin: "", mesaj: "" })} className={selectedStatus === "devam" ? "is-active" : undefined}>Devam + bekleyen <small>{durumSayisi("in_progress") + durumSayisi("blocked")}</small></Link>
           <Link href={adres({ durum: "", termin: "yaklasan", mesaj: "" })} className={selectedDue === "yaklasan" ? "is-active" : undefined}>7 gün içinde</Link>
           {/* Sorumlu süzgeci seçince uygulanır; durum, termin ve mesaj süzgeçleri korunur. */}
@@ -230,25 +280,28 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
           </form>
         </div>
 
-        {filteredWorkflows.length ? (
+        {workflows.length ? (
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="operations">
               <thead><tr><th>İş</th><th>Müşteri</th><th className="crm-col-rep">Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th className="crm-col-date">Termin</th><th className="crm-col-contact">Son temas</th><th></th></tr></thead>
-              <tbody>{[...filteredWorkflows].sort((a, b) => Number((unreadByWorkflow.get(b.id) ?? 0) > 0) - Number((unreadByWorkflow.get(a.id) ?? 0) > 0)).map((workflow) => {
-                const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
-                const { done, percentage } = stepProgress(steps);
-                const opportunityId = workflow.contract_id ? opportunityByContract.get(workflow.contract_id) : null;
-                const contact = workflow.contract_id ? contactByContract.get(workflow.contract_id) : null;
+              {/* Sıralama sunucuda: yeni mesajlı işler üstte. Eskiden
+                  bellekte sıralanıyordu, yani yalnızca o sayfanın
+                  içinde doğruydu. */}
+              <tbody>{workflows.map((workflow) => {
+                const { done, percentage } = adimIlerlemesi(Number(workflow.adim_tamam), Number(workflow.adim_toplam));
+                const adimSayisi = Number(workflow.adim_toplam);
+                const opportunityId = workflow.opportunity_id;
+                const contact = { phone: workflow.contact_phone, email: workflow.contact_email };
                 /*
                   Termin metni ops-shared/dueBadge'den: pano, genel bakış ve iş
                   detayı da aynı fonksiyonu kullanıyor.
                 */
-                const terminRozeti = dueBadge(workflow.due_date, today, workflow.status);
-                const unreadMessages = unreadByWorkflow.get(workflow.id) ?? 0;
+                const terminRozeti = dueBadge(workflow.due_date, bugun, workflow.status);
+                const unreadMessages = Number(workflow.okunmamis_mesaj);
                 const canAct = canActOn(workflow);
                 return <tr key={workflow.id} className={unreadMessages ? "has-alert" : undefined}>
                   {/* Satırın tamamı bu bağlantıyla tıklanır (kayit-detay.css, ilk hücre) */}
-                  <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{steps.length ? `${done}/${steps.length} adım tamamlandı` : "Adım yok"}</span>{unreadMessages ? <span className="crm-alert-chip">{unreadMessages} yeni müşteri mesajı</span> : null}</Link></td>
+                  <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{adimSayisi ? `${done}/${adimSayisi} adım tamamlandı` : "Adım yok"}</span>{unreadMessages ? <span className="crm-alert-chip">{unreadMessages} yeni müşteri mesajı</span> : null}</Link></td>
                   <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} href={musteriBaglantisi && opportunityId ? `/panel/crm/musteri/${opportunityId}` : null} />
                   <RepresentativeCell label="Sorumlu" name={workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null} />
                   <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
@@ -260,7 +313,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                     */}
                     {bekleyenTarafMi(workflow.waiting_party) && workflow.waiting_party !== "us" ? (
                       <span className="status-pill" data-tone={BEKLEYEN_TARAF_TONLARI[workflow.waiting_party]}>
-                        {beklemeOzeti(workflow.waiting_party, workflow.waiting_since, today)}
+                        {beklemeOzeti(workflow.waiting_party, workflow.waiting_since, bugun)}
                       </span>
                     ) : null}
                     {workflow.status === "completed" && canAct ? (
@@ -279,6 +332,18 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
               })}</tbody>
             </table>
             <SatirTiklama />
+            {/* Sayfalayıcı: teklif, sözleşme ve posta listeleriyle aynı. */}
+            {sonSayfa > 1 ? (
+              <nav className="liste-sayfalar" aria-label="Sayfalar">
+                {sayfaNo > 1
+                  ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo - 1 })}>← Önceki</Link>
+                  : <span className="panel-secondary is-disabled" aria-disabled="true">← Önceki</span>}
+                <small>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} iş` : ""}</small>
+                {sayfaNo < sonSayfa
+                  ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo + 1 })}>Sonraki →</Link>
+                  : <span className="panel-secondary is-disabled" aria-disabled="true">Sonraki →</span>}
+              </nav>
+            ) : null}
           </div>
         ) : (
           <div className="crm-empty-state talep-bos-kutu">
@@ -295,8 +360,8 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
         kapsam="tüm işler (arşiv dahil)"
         kutular={[
           { ad: "Son 30 gün", deger: String(son30), alt: degisimYazisi(degisim) ?? "yeni iş", ton: degisim !== null && degisim < 0 ? "uyari" : degisim !== null ? "arti" : undefined },
-          { ad: "Zamanında teslim", deger: zamanindaOrani === null ? "—" : `%${zamanindaOrani}`, alt: `${zamaninda}/${teslimli.length} terminli iş` },
-          { ad: "Aktif işlerde ilerleme", deger: ilerleme === null ? "—" : `%${ilerleme}`, alt: `${aktifIsler.length} aktif iş` },
+          { ad: "Zamanında teslim", deger: zamanindaOrani === null ? "—" : `%${zamanindaOrani}`, alt: `${zamaninda}/${teslimliSayisi} terminli iş` },
+          { ad: "Aktif işlerde ilerleme", deger: ilerleme === null ? "—" : `%${ilerleme}`, alt: `${sayiAl(ozet.adim_tamam)}/${sayiAl(ozet.adim_toplam)} adım` },
           { ad: "Müşteriyi bekleyen", deger: String(musteriBekleyen), alt: "top müşteride ya da üçüncü tarafta" },
         ]}
         gruplar={[
