@@ -34,6 +34,7 @@ import "../operations.css";
 import "../../crm/request-page.css";
 import "./detail.css";
 import "../../crm/kayit-detay/kayit-detay.css";
+import "../../components/kayit-formu.css";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
 type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
@@ -317,8 +318,9 @@ export default async function OperationDetailPage({
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               {canAssign ? (
-                <PanelDrawer triggerLabel="Sorumlu ata" kicker="OPERASYON" title={formatSubject(workflow.title)} description="Bu işi yürütecek personeli seçin." triggerClassName="os-menu-item">
-                  <form className="panel-form" action={assignWorkflow}>
+                <PanelDrawer triggerLabel="Sorumlu ata" kicker={`İŞ · ${formatSubject(workflow.title)}`} title="Operasyon sorumlusu ata" description="Bu işi yürütecek personeli seçin; seçilen kişi bilgilendirilir." triggerClassName="os-menu-item">
+                  {/* Ortak form düzeni (components/kayit-formu.css), talep ve sözleşme çekmeceleriyle aynı. */}
+                  <form className="panel-form kayit-formu" action={assignWorkflow}>
                     <input type="hidden" name="workflow_id" value={workflow.id} />
                     <label className="wide">Operasyon sorumlusu
                       <select name="assigned_employee_id" defaultValue={workflow.assigned_employee_id ?? ""}>
@@ -326,7 +328,10 @@ export default async function OperationDetailPage({
                         {employees.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}
                       </select>
                     </label>
-                    <div className="wide panel-form-actions"><button className="panel-primary">Atamayı kaydet</button></div>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p>İş bu kişinin listesine düşer.</p>
+                      <button className="panel-primary">Atamayı kaydet</button>
+                    </div>
                   </form>
                 </PanelDrawer>
               ) : null}
@@ -340,7 +345,7 @@ export default async function OperationDetailPage({
               ) : null}
               <Link className="os-menu-item" href={isArchived ? "/panel/operations/arsiv" : "/panel/operations/isler"}>{isArchived ? "Arşive dön" : "İşlere dön"}</Link>
               {canDelete ? (
-                <PanelDrawer triggerLabel="İşi sil" title="İşi sil" description="Silme geri alınamaz." triggerClassName="os-menu-item is-danger">
+                <PanelDrawer triggerLabel="İşi sil" kicker={`İŞ · ${formatSubject(workflow.title)}`} title="İşi sil" description="Silme geri alınamaz." triggerClassName="os-menu-item is-danger">
                   <div className="panel-danger-zone">
                     <small className="panel-kicker">KALICI İŞLEM</small>
                     <p>İş, görevleri ve kayıtlarıyla birlikte silinir. Tamamlanan işi silmek yerine arşivleyin.</p>

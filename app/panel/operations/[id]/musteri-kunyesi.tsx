@@ -1,4 +1,6 @@
 import { PanelModal } from "../../components/panel-modal";
+// Ortak form düzeni; bileşen stilini kendisi alıyor (AGENTS.md).
+import "../../components/kayit-formu.css";
 import { ILETISIM_ALANLARI, KUNYE_ALANLARI, KUNYE_EN_UZUN, doluAlanlar, type Kunye } from "@/lib/musteri-kunyesi";
 import { formatPhone } from "@/lib/format-phone";
 import { updateCustomerProfile } from "../actions";
@@ -54,20 +56,25 @@ export function MusteriKunyesi({
           <PanelModal
             triggerClassName="panel-secondary opd-kunye-duzenle"
             triggerLabel="Düzenle"
-            title="Müşteri künyesi"
+            title="Müşteri künyesini düzenle"
             description="Operasyonun müşteri hakkında gördüğü bilgiler. Boş bıraktığınız alan künyeden kalkar."
-            kicker="OPERASYON"
+            kicker="İŞ · MÜŞTERİ"
             boy="dar"
             /* Tek seferlik form: kaydedince kapanmalı. Sohbet ve dosya
                pencereleri bunu bilerek istemiyor. */
             basaridaKapan
           >
-            <form action={updateCustomerProfile} className="opd-kunye-form">
+            {/* DÜZEN (2026-10): talep, teklif ve müşteri sayfasıyla aynı ortak
+                form (components/kayit-formu.css), iki bölüm. Eskiden kendi
+                tek sütunlu stiliyle (opd-kunye-form) ve düz bir çizgiyle
+                ayrılıyordu; kaydet düğmesi formun ortasında kalıyordu. */}
+            <form action={updateCustomerProfile} className="panel-form kayit-formu">
               <input type="hidden" name="opportunity_id" value={opportunityId} />
               <input type="hidden" name="workflow_id" value={workflowId} />
+              <p className="wide kayit-formu-bolum">İletişim</p>
               {ILETISIM_ALANLARI.map((alan) => (
-                <label key={alan.anahtar}>
-                  <span>{alan.etiket}{alan.zorunlu ? " *" : ""}</span>
+                <label key={alan.anahtar} className={alan.anahtar === "customer_name" ? "wide" : undefined}>
+                  <span>{alan.etiket}{alan.zorunlu ? <b className="req" aria-hidden="true">*</b> : null}</span>
                   <input
                     name={alan.anahtar}
                     type={alan.tur ?? "text"}
@@ -75,7 +82,6 @@ export function MusteriKunyesi({
                     defaultValue={String(iletisim?.[alan.anahtar as keyof typeof iletisim] ?? "")}
                     placeholder={alan.ornek}
                     maxLength={KUNYE_EN_UZUN}
-                    className="panel-input"
                   />
                 </label>
               ))}
@@ -85,13 +91,13 @@ export function MusteriKunyesi({
                   okuyor. İmza kanıtı (signed_name) yerinde kalıyor ama
                   düzeltmenin nereye kadar gittiği görünmeli. */}
               {sozlesmeImzali ? (
-                <p className="opd-kunye-uyari" role="status">
+                <p className="wide opd-kunye-uyari" role="status">
                   Bu iş imzalı bir sözleşmeye bağlı. Ad ve e-posta sözleşme belgesinde de
                   değişir; imza kaydı olduğu gibi kalır.
                 </p>
               ) : null}
 
-              <hr className="opd-kunye-ayrac" />
+              <p className="wide kayit-formu-bolum">Künye</p>
 
               {KUNYE_ALANLARI.map((alan) => (
                 <label key={alan.anahtar}>
@@ -101,11 +107,13 @@ export function MusteriKunyesi({
                     defaultValue={String(kunye?.[alan.anahtar] ?? "")}
                     placeholder={alan.ornek}
                     maxLength={KUNYE_EN_UZUN}
-                    className="panel-input"
                   />
                 </label>
               ))}
-              <button type="submit" className="panel-primary">Kaydet</button>
+              <div className="wide panel-form-actions kayit-formu-eylem">
+                <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                <button type="submit" className="panel-primary">Değişiklikleri kaydet</button>
+              </div>
             </form>
           </PanelModal>
         ) : null}
