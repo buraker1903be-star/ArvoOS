@@ -148,3 +148,50 @@
   .os-root .panel-content .talep-tablo .crm-data-table tbody td>:is(.ops-progress-mini,.cari-oran-cubuk),
   .os-root .panel-content .talep-tablo .crm-data-table tbody td .musteri-tahsil>.cari-oran-cubuk{display:none}
 }
+
+/* ---------- ALT SEKME ÇUBUĞU ----------
+   Eskiden telefonda masaüstü dock'u küçültülmüş hâliyle duruyordu:
+   yüzen, yazısız ikonlar, sığmayanlar yana kayıyordu (dokuz uygulamanın
+   üçü ekran dışındaydı). Telefon uygulamalarındaki gibi ekranın altına
+   yapışık, beş sekme, ikonun altında adı: Ana ekran, ilk üç uygulama ve
+   "Uygulamalar" (gerisi orada). Güvenli alan (ana ekran çubuğu)
+   boşluğu çubuğun içinde. Bölüm menüsü (ikinci dock) çubuğun hemen
+   üstünde açılır; konumu os-dock.tsx çubuğun üst kenarından hesaplıyor. */
+@media (max-width:760px){
+  .os-root{--os-tab-h:58px;--os-dock-space:calc(var(--os-tab-h) + 20px)}
+  .os-root .os-dock{
+    left:0;right:0;bottom:0;transform:none;max-width:none;
+    display:flex;justify-content:space-around;align-items:stretch;gap:0;
+    padding:4px 4px env(safe-area-inset-bottom);overflow:hidden;
+    border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;
+    background:color-mix(in srgb,var(--surface) 94%,transparent);
+  }
+  .os-root .os-dock-sep{display:none}
+  /* Ana ekran + ilk üç uygulama + Uygulamalar düğmesi (son çocuk). */
+  .os-root .os-dock>.os-dock-item:nth-child(n+6):not(:last-child){display:none}
+  .os-root .os-dock-item{
+    flex:1 1 0;min-width:0;width:auto;height:var(--os-tab-h);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    border-radius:var(--r-md);background:none;color:var(--muted);transform:none;
+  }
+  .os-root .os-dock-item:hover{transform:none;background:none}
+  .os-root .os-dock-item:active{background:var(--surface-2)}
+  .os-root .os-dock-item.is-active{background:none;color:var(--primary)}
+  .os-root .os-dock-item.is-active::after{display:none}
+  .os-root .os-dock-item.is-sub-open{background:var(--surface-2)}
+  .os-root .os-dock-label{
+    position:static;transform:none;opacity:1;padding:0;border-radius:0;background:none;color:inherit;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:var(--fw-medium);pointer-events:none;
+  }
+  .os-root .os-dock-item.is-sub-open .os-dock-label{display:block}
+  .os-root .os-dock-badge{top:4px;right:calc(50% - 22px)}
+
+  /* Uygulamalar penceresi alttan açılan sayfa. */
+  .os-root .os-launcher{
+    width:100%;max-width:none;max-height:85dvh;margin:auto 0 0;
+    border-radius:var(--r-xl) var(--r-xl) 0 0;padding-bottom:env(safe-area-inset-bottom);
+  }
+  .os-root .os-launcher-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-4) var(--sp-2);padding:var(--sp-3) var(--sp-4) var(--sp-5)}
+  .os-root .os-launcher-app{font-size:12px}
+  .os-root .os-launcher-head{padding:var(--sp-5) var(--sp-4) var(--sp-1)}
+}
