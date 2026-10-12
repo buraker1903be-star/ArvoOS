@@ -6,6 +6,7 @@ import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } f
 import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
+import { BelgeMetinleri } from "./belge-metinleri";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
@@ -56,13 +57,14 @@ const BOLUMLER = [
   { id: "genel", icon: "building", label: "Genel" },
   { id: "resmi-bilgiler", icon: "doc", label: "Resmi bilgiler" },
   { id: "kurumsal-kimlik", icon: "palette", label: "Kurumsal kimlik" },
+  { id: "belge-metinleri", icon: "doc", label: "Belge metinleri" },
   { id: "alan-adi", icon: "globe", label: "Alan adı" },
   { id: "entegrasyonlar", icon: "plug", label: "Entegrasyonlar" },
 ] as const;
 type BolumKodu = (typeof BOLUMLER)[number]["id"];
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ bolum?: string; baglanti?: string }> }) {
-  const { bolum: istenenBolum, baglanti: istenenBaglanti } = await searchParams;
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ bolum?: string; baglanti?: string; belge?: string }> }) {
+  const { bolum: istenenBolum, baglanti: istenenBaglanti, belge: istenenBelge } = await searchParams;
   const { organization, membership, modules, supabase, izin } = await getPanelContext();
   const bolum: BolumKodu = BOLUMLER.find((aday) => aday.id === istenenBolum)?.id ?? "genel";
   const enabledCodes = new Set(modules.map((module) => module.code));
@@ -324,6 +326,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </form>
       </StgSection>
       </> : null}
+
+      {bolum === "belge-metinleri" ? <BelgeMetinleri tur={istenenBelge === "teklif" ? "proposal" : "contract"} /> : null}
 
       {bolum === "alan-adi" ? <>
       <StgSection

@@ -17,12 +17,15 @@ export const loadPublicContract = cache(async (token: string) => {
   const { data, error } = await supabase.rpc("get_public_crm_contract", { public_token: token });
   const base = first(data as DocumentRow | DocumentRow[] | null);
   if (error || !base) return null;
-  const [auditResult, linkResult, legalResult, planResult] = await Promise.all([
+  const [auditResult, linkResult, legalResult, planResult, metinResult] = await Promise.all([
     supabase.rpc("arvo_public_contract_audit", { public_token: token }),
     supabase.rpc("arvo_public_contract_links", { public_token: token }),
     supabase.rpc("arvo_public_organization_legal", { public_token: token, document_type: "contract" }),
     supabase.rpc("arvo_public_contract_plan", { public_token: token }),
+    supabase.rpc("arvo_public_document_text", { public_token: token, document_type: "contract" }),
   ]);
+  // Kurumun metni okunamazsa (migration yok) belge Arvo'nun metniyle açılır.
+  if (metinResult.error) console.error("arvo_public_document_text failed", { code: metinResult.error.code, message: metinResult.error.message });
   // İş planı / ek protokoller okunamazsa (migration uygulanmadıysa) belge onlarsız açılır.
   if (planResult.error) console.error("arvo_public_contract_plan failed", { code: planResult.error.code, message: planResult.error.message });
   const plan = planResult.error ? null : (planResult.data as { work_plan?: unknown; addenda?: unknown; tracking_code?: unknown } | null);
@@ -33,5 +36,5 @@ export const loadPublicContract = cache(async (token: string) => {
   const audit = auditResult.error ? null : (first(auditResult.data as DocumentRow | DocumentRow[] | null) as ContractAudit | null);
   const links = linkResult.error ? null : (first(linkResult.data as DocumentRow | DocumentRow[] | null) as { proposal_share_token: string | null; proposal_no: string | null } | null);
   const verificationHash = await contractVerificationHash(row);
-  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda), trackingCode: typeof plan?.tracking_code === "string" && plan.tracking_code ? plan.tracking_code : null };
+  return { supabase, row, audit, auditAvailable: !auditResult.error, links, verificationHash, workPlan: plan?.work_plan ?? null, addenda: normalizeAddenda(plan?.addenda), trackingCode: typeof plan?.tracking_code === "string" && plan.tracking_code ? plan.tracking_code : null, kurum: metinResult.error ? null : (metinResult.data as unknown) };
 });

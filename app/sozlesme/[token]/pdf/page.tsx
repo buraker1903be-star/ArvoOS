@@ -23,6 +23,7 @@ export default async function PublicContractPdfPage({ params }: { params: Promis
     row={loaded.row}
     workPlan={loaded.workPlan}
     addenda={loaded.addenda}
+    kurum={loaded.kurum}
     audit={loaded.audit}
     auditAvailable={loaded.auditAvailable}
     verificationUrl={`${origin}/sozlesme/${token}`}

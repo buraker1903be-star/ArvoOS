@@ -35,6 +35,7 @@ export default async function PublicProposalPdfPage({ params }: { params: Promis
   return <ProposalDocument
     row={loaded.row}
     decision={loaded.decision}
+    kurum={loaded.kurum}
     verificationUrl={`${origin}/teklif/${token}`}
     mode="print"
     backHref={`/teklif/${encodeURIComponent(token)}`}

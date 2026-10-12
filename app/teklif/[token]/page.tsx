@@ -57,7 +57,7 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
  const {result}=await searchParams;
  const loaded=await loadPublicProposal(token);
  if(!loaded)notFound();
- const {supabase,row,decision,awaitingCustomer,canReject}=loaded;
+ const {supabase,row,decision,awaitingCustomer,canReject,kurum}=loaded;
  await supabase.rpc("mark_crm_proposal_viewed",{public_token:token});
  const audit=await requestAudit();
  await supabase.rpc("log_public_document_access",{
@@ -91,5 +91,6 @@ export default async function PublicProposalPage({params,searchParams}:{params:P
   pdfHref={`/teklif/${encodeURIComponent(token)}/pdf`}
   notice={result?resultNotices[result]??null:null}
   actions={actions}
+  kurum={kurum}
  />;
 }

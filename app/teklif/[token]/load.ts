@@ -17,10 +17,13 @@ export const loadPublicProposal = cache(async (token: string) => {
   const { data, error } = await supabase.rpc("get_public_crm_proposal", { public_token: token });
   const row = first(data as DocumentRow | DocumentRow[] | null);
   if (error || !row) return null;
-  const [{ data: decisionRows }, legalResult] = await Promise.all([
+  const [{ data: decisionRows }, legalResult, metinResult] = await Promise.all([
     supabase.rpc("arvo_public_proposal_decision", { public_token: token }),
     supabase.rpc("arvo_public_organization_legal", { public_token: token, document_type: "proposal" }),
+    supabase.rpc("arvo_public_document_text", { public_token: token, document_type: "proposal" }),
   ]);
+  // Kurumun metni okunamazsa (migration yok) belge Arvo'nun metniyle açılır.
+  if (metinResult.error) console.error("arvo_public_document_text failed", { code: metinResult.error.code, message: metinResult.error.message });
   // Resmi/banka bilgisi okunamazsa belge alt bilgi metniyle çizilir (eski davranış).
   if (legalResult.error) console.error("arvo_public_organization_legal failed", { code: legalResult.error.code, message: legalResult.error.message });
   const legal = legalResult.error ? null : first(legalResult.data as DocumentRow | DocumentRow[] | null);
@@ -42,5 +45,5 @@ export const loadPublicProposal = cache(async (token: string) => {
     payment_plan_type: row.payment_plan_type ?? decision?.payment_plan_type ?? null,
     payment_schedule: row.payment_schedule ?? decision?.payment_schedule ?? null,
   };
-  return { supabase, row: merged, decision, awaitingCustomer, canReject: awaitingCustomer ? raw?.contract_signed !== true : true };
+  return { supabase, row: merged, decision, awaitingCustomer, canReject: awaitingCustomer ? raw?.contract_signed !== true : true, kurum: metinResult.error ? null : (metinResult.data as unknown) };
 });

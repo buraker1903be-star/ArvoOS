@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { akademikMerkezTemplate, arvoOSGeneralTemplate, type ContractClause, type ContractTemplate } from "@/lib/contract-templates";
 import type { WorkPlanItem } from "@/lib/work-plan";
+import { birimleriYaz, etkinSira, kalinAyir, kurumMetniCoz, metniCoz, surumleriBirlestir, yerTutucuDoldur, type Birim, type MaddeMetni } from "@/lib/belge-metni";
 import { BankAccountBox, PartyCard, PaymentPlanTable, TaxTotals, WorkPlanTable, customerRows, providerRows, providerTaxLine, type Customer, type Provider } from "./blocks";
-import { amountInWords, formatDate, formatDateTime, formatMoney, numberToTurkishWords, type LegalTextVersion, type PartyKind, type ScheduleRow, type TaxBreakdown } from "./format";
+import { LEGAL_TEXT_VERSION, amountInWords, formatDate, formatDateTime, formatMoney, numberToTurkishWords, type LegalTextVersion, type PartyKind, type ScheduleRow, type TaxBreakdown } from "./format";
 import { formatIban } from "./identifiers";
 
 /**
@@ -45,6 +46,12 @@ export type ContractContext = {
   city: string | null;
   /** Gösterilecek yasal metin sürümü (imzalıysa onaylanan sürüm). */
   textVersion: LegalTextVersion;
+  /**
+   * Şablon kipi: veriye bağlı her yer yer tutucu ({musteri}, {madde:odeme} …)
+   * olarak yazılır. Yalnızca Ayarlar → Belge metinleri'nin başlangıç
+   * metnini üretmek için; belge çizerken hiç açık değil.
+   */
+  sablon?: boolean;
 };
 
 const commonTitles = new Set(
@@ -56,13 +63,23 @@ export function specialClausesFor(template: ContractTemplate) {
   return template.clauses.filter((clause) => !commonTitles.has(clause.title));
 }
 
-type Block = { t: "p"; c: ReactNode } | { t: "ul"; items: ReactNode[] } | { t: "node"; c: ReactNode } | { t: "h"; c: ReactNode };
+/*
+  "blok": veriden çizilen parça (taraf kartları, ödeme tablosu …). Adı,
+  kurumun metninde [[ad]] olarak geçer; şablon kipinde metne o işaret
+  yazılır. Eskiden "node" adıyla adsızdı.
+*/
+type Block = { t: "p"; c: ReactNode } | { t: "ul"; items: ReactNode[] } | { t: "blok"; ad: string; c: ReactNode } | { t: "h"; c: ReactNode };
 type Article = { key: string; title: string; blocks: Block[] };
 
 const P = (c: ReactNode): Block => ({ t: "p", c });
 const UL = (...items: ReactNode[]): Block => ({ t: "ul", items });
-const N = (c: ReactNode): Block => ({ t: "node", c });
+const BLOK = (ad: string, c: ReactNode = null): Block => ({ t: "blok", ad, c });
 const H = (c: ReactNode): Block => ({ t: "h", c });
+
+/** Silinemeyen maddeler: sözleşmenin kurulması ve tüketici korumaları bunlara dayanıyor. */
+export const ZORUNLU_MADDELER = ["parties", "payment", "withdrawal", "evidence", "effect"] as const;
+/** Yürürlük maddesi her zaman sonda (madde sayısını o söylüyor). */
+export const SON_MADDE = "effect";
 
 function articleKeys(ctx: ContractContext) {
   return [
@@ -72,36 +89,120 @@ function articleKeys(ctx: ContractContext) {
   ];
 }
 
-export function contractArticleCount(ctx: ContractContext) {
-  return articleKeys(ctx).length;
+export function contractArticleCount(ctx: ContractContext, kurum?: unknown) {
+  return etkinSira(articleKeys(ctx), kurumMetniCoz(kurum), ZORUNLU_MADDELER, SON_MADDE).length;
 }
 
-function buildArticles(ctx: ContractContext): Article[] {
-  const keys = articleKeys(ctx);
-  const no = (key: string) => keys.indexOf(key) + 1;
-  const consumer = ctx.kind === "consumer";
-  const sp = ctx.provider.name;
-  const money = (value: number) => formatMoney(value, ctx.currency);
+/*
+  VERİYE BAĞLI CÜMLELER. Arvo'nun maddesi de, kurumun yer tutucusu da
+  ({baslangic_cumlesi} …) aynı yardımcıdan okur: değiştirilmemiş madde
+  eskisiyle birebir aynı çıkar, kurum da cümleyi elle yazmadan kullanır.
+  Şablon kipinde her biri kendi yer tutucusunu döndürür.
+*/
+const S = (ctx: ContractContext, yerTutucu: string, deger: () => string) => (ctx.sablon ? `{${yerTutucu}}` : deger());
+const teklifNumarali = (ctx: ContractContext) => S(ctx, "teklif_no_numarali", () => (ctx.proposalNo ? `${ctx.proposalNo} numaralı ` : ""));
+const yetkiliMahkeme = (ctx: ContractContext) => S(ctx, "yetkili_mahkeme", () => (ctx.city ? `${ctx.city} Mahkemeleri ve İcra Daireleri` : "Hizmet Sağlayıcı’nın merkezinin bulunduğu yer mahkemeleri ve icra daireleri"));
+const baslangicCumlesi = (ctx: ContractContext) => S(ctx, "baslangic_cumlesi", () => (ctx.startDate
+  ? `Hizmet’e ${formatDate(ctx.startDate)} tarihinde başlanması planlanmıştır.`
+  : "Hizmet’e, Sözleşme’nin kurulmasını ve varsa ön ödemenin Hizmet Sağlayıcı’nın hesabına geçmesini müteakip başlanır."));
+const teslimCumlesi = (ctx: ContractContext) => S(ctx, "teslim_cumlesi", () => (ctx.dueDate ? `Hizmet’in teslim tarihi ${formatDate(ctx.dueDate)} olarak belirlenmiştir.` : "Teslim tarihi, Teklif’te belirtilen takvime göre belirlenir."));
+const isPlaniCumlesi = (ctx: ContractContext) => S(ctx, "is_plani_cumlesi", () => (ctx.workPlan.length
+  ? "Ara teslimler ve iş planı aşağıdaki takvimde gösterilmiştir. Takvimde yapılacak değişiklikler Taraflar’ın yazılı veya doğrulanabilir elektronik mutabakatıyla (ek protokol) geçerli olur."
+  : "Ara teslimler ve iş planı Taraflar’ın yazılı mutabakatıyla belirlenebilir."));
+const bedelCumlesi = (ctx: ContractContext) => S(ctx, "bedel_cumlesi", () => {
   const { tax } = ctx;
-  const court = ctx.city ? `${ctx.city} Mahkemeleri ve İcra Daireleri` : "Hizmet Sağlayıcı’nın merkezinin bulunduğu yer mahkemeleri ve icra daireleri";
-  const count = keys.length;
-  const letters = "abcçdefgğhıijklmnoöprsştuüvyz";
-  const v30 = ctx.textVersion === "3.0";
-  const bank = !v30 && ctx.provider.iban ? ctx.provider : null;
-  const holder = ctx.provider.accountHolder || sp;
-  const noticeParts = [
+  const money = (value: number) => formatMoney(value, ctx.currency);
+  return tax.status === "included" || tax.status === "excluded"
+    ? `Sözleşme Bedeli; ${money(tax.net)} hizmet bedeli ile %${tax.rate.toLocaleString("tr-TR")} oranında ${money(tax.tax)} katma değer vergisinden (“KDV”) oluşan toplam ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. ${tax.status === "included" ? "Teklif’te fiyat KDV dahil olarak belirlenmiştir." : "Teklif’te fiyat KDV hariç olarak belirlenmiş olup KDV, 3065 sayılı Katma Değer Vergisi Kanunu uyarınca ayrıca hesaplanmıştır."}`
+    : tax.status === "exempt"
+      ? `Sözleşme Bedeli ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. Hizmet’e KDV istisnası uygulanmakta olup istisnanın yasal dayanağı faturada gösterilir.`
+      : `Sözleşme Bedeli ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. Bedele ilişkin KDV ve diğer vergiler ilgili mevzuata göre faturada gösterilir.`;
+});
+const bankaHesabi = (ctx: ContractContext) => (ctx.textVersion !== "3.0" && ctx.provider.iban ? ctx.provider : null);
+const havaleKosulu = (ctx: ContractContext, no: (key: string) => number | string) => S(ctx, "havale_kosulu", () => (bankaHesabi(ctx)
+  ? `Ödemeler yalnızca aşağıda bilgileri gösterilen, ${ctx.provider.accountHolder || ctx.provider.name} adına kayıtlı banka hesabına yapılır. Ödeme açıklamasına ${ctx.contractNo} sözleşme numarası yazılır; hesap bilgileri faturada da gösterilir.`
+  : `Ödemeler yalnızca ${ctx.provider.name} unvanına kayıtlı banka hesabına yapılır. Hesap bilgileri (IBAN) faturada ve Hizmet Sağlayıcı’nın ${no("parties")}. maddedeki kayıtlı iletişim kanalları üzerinden yazılı olarak bildirilir. Ödeme açıklamasına ${ctx.contractNo} sözleşme numarası yazılır.`));
+const veriSorumlusuIletisim = (ctx: ContractContext) => S(ctx, "veri_sorumlusu_iletisim", () => `${ctx.provider.email ? `, e-posta: ${ctx.provider.email}` : ""}${ctx.provider.phone ? `, telefon: ${ctx.provider.phone}` : ""}`);
+const erkenBaslamaCumlesi = (ctx: ContractContext) => S(ctx, "erken_baslama_cumlesi", () => (ctx.earlyStart === true
+  ? "Müşteri, elektronik onay sırasında Hizmet’e cayma süresi dolmadan başlanmasını ayrı bir onay kutusuyla açıkça talep etmiş ve bu durumda ifasına başlanan hizmet bakımından cayma hakkını kullanamayacağı hususunda bilgilendirildiğini beyan etmiştir."
+  : ctx.earlyStart === false
+    ? "Müşteri, elektronik onay sırasında cayma süresi içinde ifaya başlanmasını talep etmemiştir; Hizmet’e, Müşteri ayrıca yazılı olarak talep etmedikçe cayma süresinin sona ermesinden sonra başlanır."
+    : "Cayma süresi içinde ifaya başlanmasına ilişkin talep, elektronik onay ekranında isteğe bağlı ayrı bir onay kutusu ile alınır; bu kutunun işaretlenmemesi Sözleşme’nin kurulmasına engel değildir."));
+const bildirimAdresleri = (ctx: ContractContext) => S(ctx, "bildirim_adresleri", () => {
+  const parcalar = [
     ctx.provider.address ? `bildirim adresi: ${ctx.provider.address.replace(/\s*\n+\s*/g, ", ")}` : null,
     ctx.provider.email ? `elektronik posta adresi: ${ctx.provider.email}` : null,
   ].filter(Boolean);
+  return ctx.textVersion !== "3.0" && parcalar.length ? `Hizmet Sağlayıcı’nın ${parcalar.join("; ")}.` : "";
+});
+const kurulusCumlesi = (ctx: ContractContext) => S(ctx, "kurulus_cumlesi", () => (ctx.signedAt
+  ? `Sözleşme, Müşteri tarafından ${formatDateTime(ctx.signedAt)} tarihinde Elektronik Belge Sistemi üzerinden okunup elektronik olarak onaylanmak suretiyle kurulmuş ve aynı tarihte yürürlüğe girmiştir.`
+  : "Sözleşme, Müşteri’nin Elektronik Belge Sistemi üzerinden elektronik onayını tamamladığı tarihte kurulur ve yürürlüğe girer. Onayın tarihi, saati ve işlem kayıtları imza bölümünde gösterilir."));
+const duzenlemeTarihi = (ctx: ContractContext) => S(ctx, "duzenleme_tarihi", () => formatDate(ctx.createdAt));
+
+/** Kurumun metninde kullanılabilecek yer tutucular (Ayarlar'daki yardım listesi de buradan). */
+export const SOZLESME_YER_TUTUCULARI: { ad: string; aciklama: string }[] = [
+  { ad: "hizmet_saglayici", aciklama: "Kurumun unvanı" },
+  { ad: "musteri", aciklama: "Müşterinin adı / unvanı" },
+  { ad: "sozlesme_no", aciklama: "Sözleşme numarası" },
+  { ad: "hizmet_adi", aciklama: "Sözleşmenin başlığı (hizmet)" },
+  { ad: "teklif_no", aciklama: "Dayandığı teklifin numarası (yoksa boş)" },
+  { ad: "teklif_no_numarali", aciklama: "“TKF-… numaralı ” (teklif yoksa boş)" },
+  { ad: "sozlesme_bedeli", aciklama: "Vergiler dahil toplam bedel" },
+  { ad: "sozlesme_bedeli_yazi", aciklama: "Toplam bedelin yazıyla" },
+  { ad: "hizmet_bedeli", aciklama: "KDV hariç hizmet bedeli" },
+  { ad: "kdv_tutari", aciklama: "KDV tutarı" },
+  { ad: "kdv_orani", aciklama: "KDV oranı (ör. %20)" },
+  { ad: "baslangic_tarihi", aciklama: "Başlangıç tarihi (yoksa —)" },
+  { ad: "teslim_tarihi", aciklama: "Teslim tarihi (yoksa —)" },
+  { ad: "duzenleme_tarihi", aciklama: "Sözleşmenin düzenlenme tarihi" },
+  { ad: "sehir", aciklama: "Kurumun ili" },
+  { ad: "yetkili_mahkeme", aciklama: "“İstanbul Mahkemeleri ve İcra Daireleri”" },
+  { ad: "madde_sayisi", aciklama: "Sözleşmenin madde sayısı" },
+  { ad: "madde_sayisi_yazi", aciklama: "Madde sayısı yazıyla" },
+  { ad: "hesap_sahibi", aciklama: "Banka hesabının sahibi" },
+  { ad: "baslangic_cumlesi", aciklama: "Başlangıç cümlesi (tarih varsa tarihli)" },
+  { ad: "teslim_cumlesi", aciklama: "Teslim cümlesi (tarih varsa tarihli)" },
+  { ad: "is_plani_cumlesi", aciklama: "Ara teslim takvimine atıf cümlesi" },
+  { ad: "bedel_cumlesi", aciklama: "KDV durumuna göre bedel cümlesi" },
+  { ad: "havale_kosulu", aciklama: "Havale/EFT koşulu (IBAN girilmişse hesaplı)" },
+  { ad: "veri_sorumlusu_iletisim", aciklama: "“, e-posta: …, telefon: …”" },
+  { ad: "erken_baslama_cumlesi", aciklama: "Cayma süresinde başlama onayına göre cümle" },
+  { ad: "bildirim_adresleri", aciklama: "Kurumun bildirim adresi cümlesi" },
+  { ad: "kurulus_cumlesi", aciklama: "İmza tarihine göre kuruluş cümlesi" },
+];
+
+/** [[blok]] adları: veriden çizilen, kurumun yazmadığı parçalar. */
+export const SOZLESME_BLOKLARI: { ad: string; aciklama: string }[] = [
+  { ad: "taraflar", aciklama: "Hizmet sağlayıcı ve müşteri kartları" },
+  { ad: "kapsam", aciklama: "Hizmet kapsamı listesi" },
+  { ad: "is_plani", aciklama: "Ara teslim takvimi (varsa)" },
+  { ad: "kdv_toplami", aciklama: "Ara toplam, KDV, genel toplam" },
+  { ad: "odeme_plani", aciklama: "Ödeme planı tablosu" },
+  { ad: "banka_hesabi", aciklama: "Banka hesabı kutusu (IBAN girilmişse)" },
+];
+
+/** Kurumun metni bir maddeden zorunlu bloğu çıkarsa da veri belgede kalsın. */
+const ZORUNLU_BLOKLAR: Record<string, string[]> = { parties: ["taraflar"], payment: ["odeme_plani"] };
+
+function buildArticles(ctx: ContractContext, keys: string[] = articleKeys(ctx)): Record<string, Article> {
+  const sablon = Boolean(ctx.sablon);
+  const no = (key: string): number | string => (sablon ? `{madde:${key}}` : keys.indexOf(key) + 1);
+  const consumer = ctx.kind === "consumer";
+  const sp = sablon ? "{hizmet_saglayici}" : ctx.provider.name;
+  const { tax } = ctx;
+  const court = yetkiliMahkeme(ctx);
+  const count = sablon ? "{madde_sayisi}" : keys.length;
+  const countWords = sablon ? "{madde_sayisi_yazi}" : numberToTurkishWords(keys.length);
+  const letters = "abcçdefgğhıijklmnoöprsştuüvyz";
+  const v30 = ctx.textVersion === "3.0";
+  const bank = bankaHesabi(ctx);
 
   const articles: Record<string, Article> = {
     parties: {
       key: "parties", title: "Taraflar", blocks: [
         P("İşbu Hizmet Sözleşmesi (“Sözleşme”), aşağıda bilgileri yer alan taraflar arasında, aşağıdaki hüküm ve koşullar dahilinde elektronik ortamda akdedilmiştir."),
-        N(<div className="doc-grid-2">
-          <PartyCard role="Hizmet Sağlayıcı" name={ctx.provider.name} rows={providerRows(ctx.provider)} />
-          <PartyCard role={consumer ? "Müşteri / Tüketici" : "Müşteri / Alıcı"} name={ctx.customer.name} rows={customerRows(ctx.customer)} />
-        </div>),
+        BLOK("taraflar", <TaraflarBlogu ctx={ctx} />),
         P("Hizmet Sağlayıcı ve Müşteri, Sözleşme’de birlikte “Taraflar”, ayrı ayrı “Taraf” olarak anılacaktır."),
         P(`Taraflar, işbu maddede gösterilen adres ve elektronik posta adreslerinin Sözleşme’den doğan her türlü bildirim bakımından geçerli iletişim adresleri olduğunu ve değişikliklerin ${no("notices")}. madde uyarınca bildirileceğini kabul eder.`),
         P(consumer
@@ -113,7 +214,7 @@ function buildArticles(ctx: ContractContext): Article[] {
       key: "definitions", title: "Tanımlar", blocks: [
         P("Sözleşme’de geçen aşağıdaki terimler, karşılarında gösterilen anlamları taşır:"),
         UL(
-          <><b>Sözleşme:</b> İşbu Hizmet Sözleşmesi, ekleri{ctx.proposalNo ? ` ve ayrılmaz parçası olan ${ctx.proposalNo} numaralı Teklif` : " ve ayrılmaz parçası olan Teklif"}.</>,
+          <><b>Sözleşme:</b> İşbu Hizmet Sözleşmesi, ekleri ve ayrılmaz parçası olan {teklifNumarali(ctx)}Teklif.</>,
           <><b>Hizmet:</b> {no("scope")}. maddede konusu ve kapsamı belirtilen, Hizmet Sağlayıcı tarafından Müşteri’ye sunulacak hizmet, çalışma ve teslimlerin tümü.</>,
           <><b>Teklif:</b> Müşteri’nin kabul ettiği; Hizmet’in kapsamını, bedelini ve ticari koşullarını gösteren belge.</>,
           <><b>Sözleşme Bedeli:</b> {no("payment")}. maddede belirtilen, vergiler dahil toplam hizmet bedeli.</>,
@@ -130,20 +231,18 @@ function buildArticles(ctx: ContractContext): Article[] {
       key: "scope", title: "Sözleşmenin Konusu ve Kapsamı", blocks: [
         P(`İşbu Sözleşme’nin konusu, “${ctx.title}” hizmetinin Hizmet Sağlayıcı tarafından Sözleşme ve Teklif’te belirtilen kapsam ve koşullarla ifası ile Sözleşme Bedeli’nin Müşteri tarafından ödenmesine ilişkin Taraflar’ın karşılıklı hak ve yükümlülüklerinin 6098 sayılı Türk Borçlar Kanunu (“TBK”)${consumer ? ", TKHK ve Mesafeli Sözleşmeler Yönetmeliği (“Yönetmelik”)" : ""} ve ilgili mevzuat çerçevesinde düzenlenmesidir.`),
         P("Hizmet kapsamı aşağıdaki kalemlerden oluşur:"),
-        UL(...ctx.scopeItems),
+        sablon ? BLOK("kapsam") : UL(...ctx.scopeItems),
         P("Kapsamda açıkça yer almayan iş, ek teslim, ek revizyon veya değişiklik talepleri kapsam dışıdır. Bu talepler, Taraflar’ın yazılı mutabakatıyla belirlenecek ek süre ve ek bedel karşılığında yerine getirilir."),
-        P(`${ctx.proposalNo ? `${ctx.proposalNo} numaralı ` : ""}Teklif, Sözleşme’nin eki ve ayrılmaz parçasıdır. Sözleşme ile Teklif arasında çelişki bulunması halinde, emredici hükümler saklı kalmak kaydıyla Sözleşme hükümleri uygulanır.`),
+        P(`${teklifNumarali(ctx)}Teklif, Sözleşme’nin eki ve ayrılmaz parçasıdır. Sözleşme ile Teklif arasında çelişki bulunması halinde, emredici hükümler saklı kalmak kaydıyla Sözleşme hükümleri uygulanır.`),
         P("Sözleşme’de hüküm bulunmayan hallerde, Hizmet’in hukuki niteliğine göre TBK’nın eser sözleşmesine (m.470 vd.) veya vekâlet sözleşmesine (m.502 vd.) ilişkin hükümleri uygulanır."),
       ],
     },
     term: {
       key: "term", title: "Hizmet Süresi, Teslim ve Termin", blocks: [
         P("Sözleşme, Müşteri’nin elektronik onayı ile kurulur ve Hizmet’in eksiksiz ifası ile Taraflar’ın Sözleşme’den doğan tüm edimlerini yerine getirmesine kadar yürürlükte kalır."),
-        P(`${ctx.startDate ? `Hizmet’e ${formatDate(ctx.startDate)} tarihinde başlanması planlanmıştır.` : "Hizmet’e, Sözleşme’nin kurulmasını ve varsa ön ödemenin Hizmet Sağlayıcı’nın hesabına geçmesini müteakip başlanır."}${consumer ? ` Cayma süresi içinde ifaya başlanması, ${no("withdrawal")}. madde uyarınca Müşteri’nin açık talebine bağlıdır.` : ""}`),
-        P(`${ctx.dueDate ? `Hizmet’in teslim tarihi ${formatDate(ctx.dueDate)} olarak belirlenmiştir.` : "Teslim tarihi, Teklif’te belirtilen takvime göre belirlenir."} ${ctx.workPlan.length
-          ? "Ara teslimler ve iş planı aşağıdaki takvimde gösterilmiştir. Takvimde yapılacak değişiklikler Taraflar’ın yazılı veya doğrulanabilir elektronik mutabakatıyla (ek protokol) geçerli olur."
-          : "Ara teslimler ve iş planı Taraflar’ın yazılı mutabakatıyla belirlenebilir."}`),
-        ...(ctx.workPlan.length ? [N(<WorkPlanTable items={ctx.workPlan} />)] : []),
+        P(`${baslangicCumlesi(ctx)}${consumer ? ` Cayma süresi içinde ifaya başlanması, ${no("withdrawal")}. madde uyarınca Müşteri’nin açık talebine bağlıdır.` : ""}`),
+        P(`${teslimCumlesi(ctx)} ${isPlaniCumlesi(ctx)}`),
+        ...(ctx.workPlan.length || sablon ? [BLOK("is_plani", ctx.workPlan.length ? <WorkPlanTable items={ctx.workPlan} /> : null)] : []),
         P("Müşteri’den kaynaklanan gecikmeler (bilgi, belge, erişim, onay veya ödeme gecikmeleri dahil) ile mücbir sebep halleri, teslim süresini gecikme süresi kadar uzatır. Hizmet Sağlayıcı bu durumu Müşteri’ye makul süre içinde bildirir."),
         P(consumer
           ? "Teslim; Elektronik Belge Sistemi, elektronik posta veya Taraflar’ca kararlaştırılan başka bir kanal üzerinden yapılır. Müşteri, teslim edilen hizmetteki eksiklik ve ayıpları Hizmet Sağlayıcı’ya bildirebilir; ayıplı hizmete ilişkin TKHK m.13 ve m.15’te düzenlenen seçimlik haklar ile m.16’daki zamanaşımı hükümleri saklıdır ve bu madde Müşteri’nin kanuni haklarını sınırlandırmaz."
@@ -169,22 +268,16 @@ function buildArticles(ctx: ContractContext): Article[] {
     },
     payment: {
       key: "payment", title: "Ücret ve Ödeme Koşulları", blocks: [
-        P(tax.status === "included" || tax.status === "excluded"
-          ? `Sözleşme Bedeli; ${money(tax.net)} hizmet bedeli ile %${tax.rate.toLocaleString("tr-TR")} oranında ${money(tax.tax)} katma değer vergisinden (“KDV”) oluşan toplam ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. ${tax.status === "included" ? "Teklif’te fiyat KDV dahil olarak belirlenmiştir." : "Teklif’te fiyat KDV hariç olarak belirlenmiş olup KDV, 3065 sayılı Katma Değer Vergisi Kanunu uyarınca ayrıca hesaplanmıştır."}`
-          : tax.status === "exempt"
-            ? `Sözleşme Bedeli ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. Hizmet’e KDV istisnası uygulanmakta olup istisnanın yasal dayanağı faturada gösterilir.`
-            : `Sözleşme Bedeli ${money(tax.gross)} (${amountInWords(tax.gross, ctx.currency)}) tutarındadır. Bedele ilişkin KDV ve diğer vergiler ilgili mevzuata göre faturada gösterilir.`),
-        N(<TaxTotals tax={tax} currency={ctx.currency} />),
+        P(bedelCumlesi(ctx)),
+        BLOK("kdv_toplami", <TaxTotals tax={tax} currency={ctx.currency} />),
         P("Sözleşme Bedeli aşağıdaki ödeme planına göre ödenir. Vade tarihi belirtilmeyen ödemeler, “Vade / Koşul” sütununda belirtilen olayın gerçekleşmesiyle muaccel olur:"),
-        N(<PaymentPlanTable rows={ctx.schedule} currency={ctx.currency} />),
+        BLOK("odeme_plani", <PaymentPlanTable rows={ctx.schedule} currency={ctx.currency} />),
         P("Ödemeler aşağıdaki yöntemlerle yapılabilir:"),
         UL(
-          bank
-            ? <><b>Banka havalesi / EFT:</b> Ödemeler yalnızca aşağıda bilgileri gösterilen, {holder} adına kayıtlı banka hesabına yapılır. Ödeme açıklamasına {ctx.contractNo} sözleşme numarası yazılır; hesap bilgileri faturada da gösterilir.</>
-            : <><b>Banka havalesi / EFT:</b> Ödemeler yalnızca {sp} unvanına kayıtlı banka hesabına yapılır. Hesap bilgileri (IBAN) faturada ve Hizmet Sağlayıcı’nın {no("parties")}. maddedeki kayıtlı iletişim kanalları üzerinden yazılı olarak bildirilir. Ödeme açıklamasına {ctx.contractNo} sözleşme numarası yazılır.</>,
+          <><b>Banka havalesi / EFT:</b> {havaleKosulu(ctx, no)}</>,
           <><b>Kredi kartı / banka kartı:</b> Hizmet Sağlayıcı’nın ilettiği güvenli ödeme bağlantısı üzerinden, 6493 sayılı Kanun kapsamında faaliyet gösteren yetkili ödeme kuruluşu veya banka altyapısı aracılığıyla ödeme yapılabilir. Kart bilgileri Hizmet Sağlayıcı tarafından görülmez ve saklanmaz; taksitlendirme ve buna bağlı maliyetler ilgili bankanın koşullarına tabidir.</>,
         ),
-        ...(bank ? [N(<BankAccountBox provider={bank} />)] : []),
+        ...(bank || sablon ? [BLOK("banka_hesabi", bank ? <BankAccountBox provider={bank} /> : null)] : []),
         P(`Hesap bilgisi değişikliğine ilişkin bildirimler, Hizmet Sağlayıcı’nın ${no("parties")}. maddede yer alan kayıtlı iletişim bilgileri üzerinden teyit edilmedikçe geçerli değildir. Müşteri, ödeme öncesinde alıcı hesabın ${sp} adına kayıtlı olduğunu kontrol etmekle yükümlüdür; üçüncü kişiler adına açılmış hesaplara yapılan ödemeler Hizmet Sağlayıcı’ya karşı ifa sonucunu doğurmaz.`),
         P(`Hizmet Sağlayıcı, her ödeme veya hizmet ifası için 213 sayılı Vergi Usul Kanunu (“VUK”) ve ilgili mevzuat uyarınca fatura (e-Fatura veya e-Arşiv Fatura) düzenler ve Müşteri’nin ${no("parties")}. maddedeki elektronik posta adresine iletir.${consumer ? "" : " Müşteri, faturanın içeriğine 6102 sayılı Türk Ticaret Kanunu (“TTK”) m.21/2 uyarınca faturayı aldığı tarihten itibaren 8 (sekiz) gün içinde itiraz edebilir."}`),
         P("Vadesi belirli bir günde kararlaştırılan ödemelerde Müşteri, bu günün geçmesiyle ihtara gerek kalmaksızın temerrüde düşer (TBK m.117/2). Vadesi bir olaya bağlanan ödemelerde temerrüt, olayın gerçekleştiğinin Müşteri’ye Yazılı Bildirimi ve ödemeye çağrılmasıyla gerçekleşir (TBK m.117/1)."),
@@ -202,11 +295,7 @@ function buildArticles(ctx: ContractContext): Article[] {
         P(`Cayma hakkının kullanıldığına ilişkin bildirimin bu süre içinde Hizmet Sağlayıcı’nın ${no("parties")}. maddede yer alan elektronik posta adresine veya adresine yazılı olarak ya da kalıcı veri saklayıcısı ile yöneltilmesi yeterlidir (Yönetmelik m.11). Müşteri, cayma bildirimi için Ek-1 Ön Bilgilendirme Formu’ndaki iletişim bilgilerini kullanabilir.`),
         P("Hizmet Sağlayıcı, cayma bildiriminin kendisine ulaştığı tarihten itibaren 14 (on dört) gün içinde tahsil ettiği tüm ödemeleri, Müşteri’nin ödemede kullandığı araca uygun şekilde ve Müşteri’ye herhangi bir masraf veya yükümlülük getirmeksizin tek seferde iade eder (Yönetmelik m.13)."),
         P("Yönetmelik m.15/1-(ğ) uyarınca, cayma hakkı süresi sona ermeden önce Müşteri’nin onayı ile ifasına başlanan hizmetlere ilişkin sözleşmelerde cayma hakkı kullanılamaz. Hizmet Sağlayıcı, Müşteri’nin açık talebi ve bu sonuç hakkında bilgilendirildiğine ilişkin onayı olmaksızın cayma süresi dolmadan Hizmet’in ifasına başlamaz."),
-        P(ctx.earlyStart === true
-          ? "Müşteri, elektronik onay sırasında Hizmet’e cayma süresi dolmadan başlanmasını ayrı bir onay kutusuyla açıkça talep etmiş ve bu durumda ifasına başlanan hizmet bakımından cayma hakkını kullanamayacağı hususunda bilgilendirildiğini beyan etmiştir."
-          : ctx.earlyStart === false
-            ? "Müşteri, elektronik onay sırasında cayma süresi içinde ifaya başlanmasını talep etmemiştir; Hizmet’e, Müşteri ayrıca yazılı olarak talep etmedikçe cayma süresinin sona ermesinden sonra başlanır."
-            : "Cayma süresi içinde ifaya başlanmasına ilişkin talep, elektronik onay ekranında isteğe bağlı ayrı bir onay kutusu ile alınır; bu kutunun işaretlenmemesi Sözleşme’nin kurulmasına engel değildir."),
+        P(erkenBaslamaCumlesi(ctx)),
       ],
     } : {
       key: "withdrawal", title: "Cayma Hakkı", blocks: [
@@ -234,7 +323,7 @@ function buildArticles(ctx: ContractContext): Article[] {
     },
     privacy: {
       key: "privacy", title: "Kişisel Verilerin Korunması", blocks: [
-        P(`Hizmet Sağlayıcı, Sözleşme kapsamında işlenen kişisel veriler bakımından KVKK uyarınca veri sorumlusudur. Veri sorumlusu: ${sp}${ctx.provider.email ? `, e-posta: ${ctx.provider.email}` : ""}${ctx.provider.phone ? `, telefon: ${ctx.provider.phone}` : ""}.`),
+        P(`Hizmet Sağlayıcı, Sözleşme kapsamında işlenen kişisel veriler bakımından KVKK uyarınca veri sorumlusudur. Veri sorumlusu: ${sp}${veriSorumlusuIletisim(ctx)}.`),
         P("Sözleşme kapsamında Müşteri’ye ve Müşteri yetkililerine ait kimlik (ad soyad, T.C. kimlik veya vergi kimlik numarası), iletişim (adres, telefon, elektronik posta), müşteri işlem (teklif, sözleşme ve talep kayıtları), finans (ödeme, fatura ve banka bilgileri) ve işlem güvenliği (IP adresi, tarih-saat, cihaz ve tarayıcı bilgisi, elektronik imza görüntüsü, erişim kayıtları) kategorilerindeki kişisel veriler işlenir."),
         P("Kişisel veriler; Sözleşme’nin kurulması ve ifası (KVKK m.5/2-c), Hizmet Sağlayıcı’nın vergi, ticaret ve muhasebe mevzuatından doğan hukuki yükümlülüklerinin yerine getirilmesi (m.5/2-ç), bir hakkın tesisi, kullanılması veya korunması (m.5/2-e) ve ilgili kişinin temel hak ve özgürlüklerine zarar vermemek kaydıyla Hizmet Sağlayıcı’nın meşru menfaatleri (m.5/2-f) hukuki sebeplerine dayanılarak; hukuka ve dürüstlük kurallarına uygun, amaçla bağlantılı, sınırlı ve ölçülü şekilde işlenir (m.4). Açık rıza gerektiren işlemler için Sözleşme’den bağımsız olarak ayrıca açık rıza alınır."),
         P("Hizmet için zorunlu olmadıkça özel nitelikli kişisel veri işlenmez; işlenmesinin gerekmesi halinde KVKK m.6’da öngörülen şartlara uyulur."),
@@ -292,7 +381,7 @@ function buildArticles(ctx: ContractContext): Article[] {
     notices: {
       key: "notices", title: "Tebligat ve Bildirimler", blocks: [
         P(`Taraflar, ${no("parties")}. maddede belirtilen adres ve elektronik posta adreslerini Sözleşme’den doğan her türlü bildirim için geçerli adres olarak kabul eder. Adres değişiklikleri, değişiklikten itibaren 7 (yedi) gün içinde karşı Taraf’a Yazılı Bildirimle bildirilmedikçe eski adrese yapılan bildirimler geçerli sayılır.`),
-        ...(!v30 && noticeParts.length ? [P(`Hizmet Sağlayıcı’nın ${noticeParts.join("; ")}.`)] : []),
+        ...(sablon || bildirimAdresleri(ctx) ? [P(bildirimAdresleri(ctx))] : []),
         P("Günlük iletişim ve operasyonel bildirimler elektronik posta veya Elektronik Belge Sistemi üzerinden yapılabilir."),
         P(v30 ? (consumer
           ? "Temerrüt ve fesih gibi hukuki sonuç doğuran bildirimler; noter, iadeli taahhütlü posta, 7201 sayılı Tebligat Kanunu m.7/a kapsamında kayıtlı elektronik posta (KEP) veya karşı Taraf’ın elektronik posta adresine gönderilen ve gönderim kaydı saklanan elektronik posta ile yapılır. Müşteri’nin cayma bildirimine ilişkin Yönetmelik hükümleri saklıdır."
@@ -323,16 +412,14 @@ function buildArticles(ctx: ContractContext): Article[] {
     },
     effect: {
       key: "effect", title: "Yürürlük", blocks: [
-        P(`İşbu Sözleşme ${count} (${numberToTurkishWords(count)}) maddeden${consumer ? " ve Ek-1 Ön Bilgilendirme Formu’ndan" : ""} ibaret olup, ${ctx.proposalNo ? `${ctx.proposalNo} numaralı ` : ""}Teklif ile birlikte bir bütündür.`),
-        P(ctx.signedAt
-          ? `Sözleşme, Müşteri tarafından ${formatDateTime(ctx.signedAt)} tarihinde Elektronik Belge Sistemi üzerinden okunup elektronik olarak onaylanmak suretiyle kurulmuş ve aynı tarihte yürürlüğe girmiştir.`
-          : "Sözleşme, Müşteri’nin Elektronik Belge Sistemi üzerinden elektronik onayını tamamladığı tarihte kurulur ve yürürlüğe girer. Onayın tarihi, saati ve işlem kayıtları imza bölümünde gösterilir."),
+        P(`İşbu Sözleşme ${count} (${countWords}) maddeden${consumer ? " ve Ek-1 Ön Bilgilendirme Formu’ndan" : ""} ibaret olup, ${teklifNumarali(ctx)}Teklif ile birlikte bir bütündür.`),
+        P(kurulusCumlesi(ctx)),
         P("Sözleşme’nin herhangi bir hükmünün geçersiz sayılması, TBK m.27/2 çerçevesinde diğer hükümlerin geçerliliğini etkilemez; geçersiz hüküm, Taraflar’ın ortak amacına en yakın geçerli hükümle ikame edilir."),
-        P(`Sözleşme’nin düzenlenme tarihi ${formatDate(ctx.createdAt)}, belge referans numarası ${ctx.contractNo}’dir.`),
+        P(`Sözleşme’nin düzenlenme tarihi ${duzenlemeTarihi(ctx)}, belge referans numarası ${ctx.contractNo}’dir.`),
       ],
     },
   };
-  return keys.map((key) => articles[key]);
+  return articles;
 }
 
 function ArticleView({ article, index }: { article: Article; index: number }) {
@@ -343,8 +430,8 @@ function ArticleView({ article, index }: { article: Article; index: number }) {
     }
     if (block.t === "ul") return <ul key={blockIndex}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}</ul>;
     if (block.t === "h") return <h4 key={blockIndex}>{block.c}</h4>;
-    return <div className="doc-block" key={blockIndex}>{block.c}</div>;
-  });
+    return block.c === null ? null : <div className="doc-block" key={blockIndex}>{block.c}</div>;
+  }).filter((node) => node !== null);
   const [first, ...rest] = rendered;
   return <section className="doc-article">
     <div className="doc-keep"><h2><em>Madde {index}</em>{article.title}</h2>{first}</div>
@@ -352,8 +439,174 @@ function ArticleView({ article, index }: { article: Article; index: number }) {
   </section>;
 }
 
-export function ContractArticles({ ctx }: { ctx: ContractContext }) {
-  return <div className="doc-articles">{buildArticles(ctx).map((article, index) => <ArticleView key={article.key} article={article} index={index + 1} />)}</div>;
+function TaraflarBlogu({ ctx }: { ctx: ContractContext }) {
+  return <div className="doc-grid-2">
+    <PartyCard role="Hizmet Sağlayıcı" name={ctx.provider.name} rows={providerRows(ctx.provider)} />
+    <PartyCard role={ctx.kind === "consumer" ? "Müşteri / Tüketici" : "Müşteri / Alıcı"} name={ctx.customer.name} rows={customerRows(ctx.customer)} />
+  </div>;
+}
+
+/** [[blok]] → veriden çizilen parça; verisi yoksa (iş planı, IBAN) hiç çizilmez. */
+function blokCiz(ctx: ContractContext, ad: string): Block | null {
+  const bank = bankaHesabi(ctx);
+  switch (ad) {
+    case "taraflar": return BLOK(ad, <TaraflarBlogu ctx={ctx} />);
+    case "kapsam": return UL(...ctx.scopeItems);
+    case "is_plani": return ctx.workPlan.length ? BLOK(ad, <WorkPlanTable items={ctx.workPlan} />) : null;
+    case "kdv_toplami": return BLOK(ad, <TaxTotals tax={ctx.tax} currency={ctx.currency} />);
+    case "odeme_plani": return BLOK(ad, <PaymentPlanTable rows={ctx.schedule} currency={ctx.currency} />);
+    case "banka_hesabi": return bank ? BLOK(ad, <BankAccountBox provider={bank} />) : null;
+    default: return null;
+  }
+}
+
+/** Kurumun metnindeki yer tutucuların bu belgedeki değerleri. */
+function yerTutucuDegerleri(ctx: ContractContext, no: (key: string) => number): Record<string, string> {
+  const money = (value: number) => formatMoney(value, ctx.currency);
+  const sayi = ctx.sablon ? 0 : 0;
+  void sayi;
+  return {
+    hizmet_saglayici: ctx.provider.name,
+    musteri: ctx.customer.name,
+    sozlesme_no: ctx.contractNo,
+    hizmet_adi: ctx.title,
+    teklif_no: ctx.proposalNo ?? "",
+    teklif_no_numarali: teklifNumarali(ctx),
+    sozlesme_bedeli: money(ctx.tax.gross),
+    sozlesme_bedeli_yazi: amountInWords(ctx.tax.gross, ctx.currency),
+    hizmet_bedeli: money(ctx.tax.net),
+    kdv_tutari: money(ctx.tax.tax),
+    kdv_orani: `%${ctx.tax.rate.toLocaleString("tr-TR")}`,
+    baslangic_tarihi: formatDate(ctx.startDate),
+    teslim_tarihi: formatDate(ctx.dueDate),
+    duzenleme_tarihi: duzenlemeTarihi(ctx),
+    sehir: ctx.city ?? "",
+    yetkili_mahkeme: yetkiliMahkeme(ctx),
+    hesap_sahibi: ctx.provider.accountHolder || ctx.provider.name,
+    baslangic_cumlesi: baslangicCumlesi(ctx),
+    teslim_cumlesi: teslimCumlesi(ctx),
+    is_plani_cumlesi: isPlaniCumlesi(ctx),
+    bedel_cumlesi: bedelCumlesi(ctx),
+    havale_kosulu: havaleKosulu(ctx, no),
+    veri_sorumlusu_iletisim: veriSorumlusuIletisim(ctx),
+    erken_baslama_cumlesi: erkenBaslamaCumlesi(ctx),
+    bildirim_adresleri: bildirimAdresleri(ctx),
+    kurulus_cumlesi: kurulusCumlesi(ctx),
+  };
+}
+
+/** **kalın** işaretli metni çizer. */
+function satirIci(metin: string): ReactNode {
+  const parcalar = kalinAyir(metin);
+  return parcalar.length === 1 && !parcalar[0].kalin ? metin : <>{parcalar.map((parca, sira) => (parca.kalin ? <b key={sira}>{parca.metin}</b> : parca.metin))}</>;
+}
+
+/** Kurumun yazdığı madde: metin → bloklar. Zorunlu blok çıkarılmışsa sona eklenir. */
+function metindenMadde(ctx: ContractContext, key: string, madde: MaddeMetni, sira: string[]): Article {
+  const no = (anahtar: string) => sira.indexOf(anahtar) + 1;
+  const degerler = { ...yerTutucuDegerleri(ctx, no), madde_sayisi: String(sira.length), madde_sayisi_yazi: numberToTurkishWords(sira.length) };
+  const doldur = (metin: string) => yerTutucuDoldur(metin, degerler, (anahtar) => no(anahtar) || null).trim();
+  const blocks: Block[] = [];
+  const kullanilan = new Set<string>();
+  for (const satir of metniCoz(madde.metin, ctx.kind === "consumer")) {
+    if (satir.tur === "blok") {
+      kullanilan.add(satir.ad);
+      const blok = blokCiz(ctx, satir.ad);
+      if (blok) blocks.push(blok);
+    } else if (satir.tur === "liste") {
+      const ogeler = satir.ogeler.map(doldur).filter(Boolean);
+      if (ogeler.length) blocks.push(UL(...ogeler.map(satirIci)));
+    } else {
+      const metin = doldur(satir.metin);
+      if (metin) blocks.push(satir.tur === "baslik" ? H(satirIci(metin)) : P(satirIci(metin)));
+    }
+  }
+  for (const ad of ZORUNLU_BLOKLAR[key] ?? []) {
+    if (kullanilan.has(ad)) continue;
+    const blok = blokCiz(ctx, ad);
+    if (blok) blocks.push(blok);
+  }
+  return { key, title: madde.baslik, blocks };
+}
+
+/**
+ * Belgenin maddeleri: kurumun sırası ve değiştirdiği maddeler, gerisi
+ * Arvo'nun metni. Kurum metni yoksa (ya da '{}') çıktı eskisiyle aynı.
+ */
+function etkinMaddeler(ctx: ContractContext, kurum: unknown): Article[] {
+  const metin = kurumMetniCoz(kurum);
+  const sira = etkinSira(articleKeys(ctx), metin, ZORUNLU_MADDELER, SON_MADDE)
+    // Arvo'nun "özel hükümler" maddesi yalnızca şablonda özel hüküm varsa anlamlı.
+    .filter((key) => key !== "special" || ctx.specialClauses.length || metin.maddeler?.special);
+  const varsayilan = buildArticles(ctx, sira);
+  return sira
+    .map((key) => (metin.maddeler?.[key] ? metindenMadde(ctx, key, metin.maddeler[key], sira) : varsayilan[key]))
+    .filter((article): article is Article => Boolean(article));
+}
+
+export function ContractArticles({ ctx, kurum }: { ctx: ContractContext; kurum?: unknown }) {
+  return <div className="doc-articles">{etkinMaddeler(ctx, kurum).map((article, index) => <ArticleView key={article.key} article={article} index={index + 1} />)}</div>;
+}
+
+/* ---------- Düzenleme ekranının başlangıç metni ---------- */
+
+/** React düğümünü kurumun söz dizimine çevirir (<b> → **…**). */
+function dugumMetni(dugum: ReactNode): string {
+  if (dugum === null || dugum === undefined || typeof dugum === "boolean") return "";
+  if (typeof dugum === "string" || typeof dugum === "number") return String(dugum);
+  if (Array.isArray(dugum)) return dugum.map(dugumMetni).join("");
+  if (isValidElement<{ children?: ReactNode }>(dugum)) {
+    const ic = dugumMetni(dugum.props.children);
+    return dugum.type === "b" || dugum.type === "strong" ? `**${ic}**` : ic;
+  }
+  return "";
+}
+
+function birimler(article: Article): Birim[] {
+  return article.blocks.flatMap((block): Birim[] => {
+    if (block.t === "p") return [{ tur: "p", metin: dugumMetni(block.c) }];
+    if (block.t === "h") return [{ tur: "h", metin: dugumMetni(block.c) }];
+    if (block.t === "ul") return block.items.map((item) => ({ tur: "li", metin: dugumMetni(item) }));
+    return [{ tur: "blok", metin: block.ad }];
+  });
+}
+
+/**
+ * Arvo'nun maddeleri, kurumun düzenleyeceği söz diziminde: tüketici ve
+ * tacir sürümleri tek metinde ("[tüketici]" / "[tacir]" önekli satırlar).
+ * Özel hükümler kurumun şablonundan (akademik, yazılım …) gelir.
+ */
+export function sozlesmeVarsayilanMetinleri(specialClauses: ContractClause[]): { anahtar: string; baslik: string; metin: string; zorunlu: boolean }[] {
+  const temel = (kind: PartyKind): ContractContext => ({
+    kind,
+    contractNo: "{sozlesme_no}",
+    title: "{hizmet_adi}",
+    provider: { name: "{hizmet_saglayici}" } as Provider,
+    customer: { name: "{musteri}" } as Customer,
+    scopeItems: [],
+    proposalNo: null,
+    startDate: null,
+    dueDate: null,
+    createdAt: null,
+    signedAt: null,
+    currency: "TRY",
+    tax: { status: "excluded", rate: 20, net: 0, tax: 0, gross: 0 } as TaxBreakdown,
+    schedule: [],
+    workPlan: [],
+    specialClauses,
+    earlyStart: null,
+    city: null,
+    textVersion: LEGAL_TEXT_VERSION,
+    sablon: true,
+  });
+  const tuketici = buildArticles(temel("consumer"));
+  const tacir = buildArticles(temel("merchant"));
+  return articleKeys(temel("merchant")).map((anahtar) => ({
+    anahtar,
+    baslik: tacir[anahtar].title,
+    metin: birimleriYaz(surumleriBirlestir(birimler(tuketici[anahtar]), birimler(tacir[anahtar]))),
+    zorunlu: (ZORUNLU_MADDELER as readonly string[]).includes(anahtar),
+  }));
 }
 
 /** İmzası yeni metinden önce alınmış sözleşmeler: onaylandıkları metinle gösterilir. */

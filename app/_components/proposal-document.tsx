@@ -5,6 +5,73 @@ import { BankAccountBox, DocFooter, DocHeader, PartyCard, PaymentPlanTable, Sect
 import { documentCss } from "@/app/_components/legal/document-styles";
 import { amountInWords, computeTaxBreakdown, formatDate, formatDateTime, formatMoney, pdfFileName, safeBrandColor, splitScope, summarizeUserAgent, type DocumentRow } from "@/app/_components/legal/format";
 import { buildSchedule } from "@/app/_components/legal/schedule";
+import { etkinSira, kalinAyir, kurumMetniCoz, metniCoz, yerTutucuDoldur, type KurumMetni } from "@/lib/belge-metni";
+
+/*
+  KURUMUN TEKLİF METNİ (12.10.2026, lib/belge-metni): giriş cümlesi,
+  ödeme notları, geçerlilik ve kabul, gizlilik ve kurumun eklediği
+  bölümler Ayarlar → Belge metinleri'nden değişir. Kapsam, fiyat ve ödeme
+  tablosu ile karar alanı veriden çizilir, metin değildir. Kurum bir
+  bölümü değiştirmediyse aşağıdaki JSX aynen çizilir.
+*/
+export const TEKLIF_VARSAYILAN_SIRA = ["odeme_notlari", "kabul", "gizlilik"] as const;
+export const TEKLIF_ZORUNLU = ["odeme_notlari", "kabul"] as const;
+
+export const TEKLIF_YER_TUTUCULARI: { ad: string; aciklama: string }[] = [
+  { ad: "teklif_veren", aciklama: "Kurumun unvanı" },
+  { ad: "musteri", aciklama: "Teklif sunulan müşteri" },
+  { ad: "teklif_no", aciklama: "Teklif numarası" },
+  { ad: "teklif_tutari", aciklama: "Vergiler dahil teklif tutarı" },
+  { ad: "gecerlilik_tarihi", aciklama: "Teklifin geçerlilik tarihi" },
+  { ad: "tahmini_teslim", aciklama: "Tahmini teslim tarihi (yoksa “sözleşmede belirlenecektir”)" },
+  { ad: "hesap_sahibi", aciklama: "Banka hesabının sahibi" },
+  { ad: "havale_kosulu", aciklama: "Havale/EFT koşulu (IBAN girilmişse hesaplı)" },
+];
+export const TEKLIF_BLOKLARI: { ad: string; aciklama: string }[] = [
+  { ad: "banka_hesabi", aciklama: "Banka hesabı kutusu (IBAN girilmişse)" },
+];
+
+/** Düzenleme ekranının başlangıç metni: aşağıdaki JSX'in söz dizimindeki karşılığı. */
+export const TEKLIF_VARSAYILAN: { anahtar: string; baslik: string; metin: string; zorunlu: boolean }[] = [
+  { anahtar: "giris", baslik: "Giriş cümlesi", zorunlu: true, metin: "Sayın {musteri}, talebiniz doğrultusunda hazırlanan hizmet kapsamı, fiyatlandırma ve ticari koşullar aşağıda bilgilerinize sunulmuştur." },
+  { anahtar: "odeme_notlari", baslik: "Ödeme Koşulları", zorunlu: true, metin: [
+    "- Ödemeler, teklifin kabulüyle oluşturulan Hizmet Sözleşmesi’ndeki ödeme planına göre, aynı tutarlarla yapılır.",
+    "- **Havale / EFT:** {havale_kosulu}",
+    "- **Kredi / banka kartı:** güvenli ödeme bağlantısı üzerinden; kart bilgileri tarafımızca görülmez ve saklanmaz.",
+    "- Her ödeme için 213 sayılı Vergi Usul Kanunu uyarınca e-Fatura / e-Arşiv Fatura düzenlenir.",
+    "",
+    "[[banka_hesabi]]",
+  ].join("\n") },
+  { anahtar: "kabul", baslik: "Geçerlilik ve Kabul", zorunlu: true, metin: [
+    "- Bu teklif {gecerlilik_tarihi} tarihine kadar geçerlidir. Bu tarihten sonra fiyat ve koşullar yeniden değerlendirilir.",
+    "- Teklifin elektronik olarak kabulüyle aynı kapsam, bedel ve ödeme planını içeren Hizmet Sözleşmesi oluşturulur ve onayınıza sunulur; hizmet ilişkisi sözleşmenin onaylanmasıyla kurulur.",
+    "- Tahmini teslim tarihi {tahmini_teslim}; kesin iş takvimi sözleşmede yer alır.",
+    "- Kapsamda yer almayan talepler ayrıca fiyatlandırılır.",
+    "- Tüketici sıfatıyla hareket eden müşterilerin 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği’nden doğan hakları (cayma hakkı dahil) saklıdır.",
+  ].join("\n") },
+  { anahtar: "gizlilik", baslik: "Gizlilik", zorunlu: false, metin: [
+    "Bu teklif ve ekleri yalnızca muhatabı için hazırlanmıştır. İçerdiği fiyat, kapsam ve yöntem bilgileri ticari sır niteliğinde olup {teklif_veren}’in yazılı onayı olmaksızın üçüncü kişilerle paylaşılamaz, çoğaltılamaz veya teklifin değerlendirilmesi dışında bir amaçla kullanılamaz.",
+    "",
+    "Teklif sürecinde paylaşılan kişisel veriler 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında yalnızca teklifin hazırlanması, değerlendirilmesi ve sözleşme süreci amacıyla işlenir.",
+  ].join("\n") },
+];
+
+function satirIci(metin: string): ReactNode {
+  const parcalar = kalinAyir(metin);
+  return parcalar.length === 1 && !parcalar[0].kalin ? metin : <>{parcalar.map((parca, sira) => (parca.kalin ? <b key={sira}>{parca.metin}</b> : parca.metin))}</>;
+}
+
+/** Kurumun yazdığı bölüm gövdesi: paragraf, liste ve banka kutusu. */
+function MetinGovdesi({ metin, degerler, banka }: { metin: string; degerler: Record<string, string>; banka: ReactNode }) {
+  const doldur = (deger: string) => yerTutucuDoldur(deger, degerler, () => null).trim();
+  return <>{metniCoz(metin, null).map((satir, sira) => {
+    if (satir.tur === "blok") return satir.ad === "banka_hesabi" && banka ? <div key={sira} style={{ marginTop: "3mm" }}>{banka}</div> : null;
+    if (satir.tur === "liste") return <ul className="doc-list" key={sira}>{satir.ogeler.map(doldur).filter(Boolean).map((oge, i) => <li key={i}>{satirIci(oge)}</li>)}</ul>;
+    const deger = doldur(satir.metin);
+    if (!deger) return null;
+    return satir.tur === "baslik" ? <h4 key={sira}>{satirIci(deger)}</h4> : <p key={sira}>{satirIci(deger)}</p>;
+  })}</>;
+}
 
 const statuses: Record<string, string> = { draft: "Taslak", sent: "Onay bekliyor", accepted: "Kabul edildi", rejected: "Reddedildi", expired: "Süresi doldu", archived: "Karar tamamlandı" };
 
@@ -32,9 +99,11 @@ type Props = {
   logDocumentId?: string | null;
   actions?: ReactNode;
   notice?: string | null;
+  /** Kurumun teklif metni (kopya ya da güncel); yoksa Arvo'nun metni. */
+  kurum?: unknown;
 };
 
-export function ProposalDocument({ row, decision, verificationUrl, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, actions, notice }: Props) {
+export function ProposalDocument({ row, decision, verificationUrl, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, actions, notice, kurum }: Props) {
   const provider = providerFromRow(row, "Teklif Veren");
   const customer: Customer = { name: String(row.customer_name || "Müşteri"), email: row.contact_email || null, phone: row.contact_phone || null, address: row.customer_address || null };
   const currency = String(row.currency || "TRY");
@@ -48,6 +117,24 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
   const css = documentCss({ footerLeft: `${row.proposal_no || ""} · Hizmet Teklifi · ${provider.name}` });
   const rootClass = ["doc-root", print ? "doc-print" : "", print && overlay ? "doc-print-overlay" : ""].filter(Boolean).join(" ");
   const taxCell = tax.status === "included" || tax.status === "excluded" ? `%${tax.rate.toLocaleString("tr-TR")}` : tax.status === "exempt" ? "İstisna" : "—";
+  const metin: KurumMetni = kurumMetniCoz(kurum);
+  const sira = etkinSira(TEKLIF_VARSAYILAN_SIRA, metin, TEKLIF_ZORUNLU);
+  const degerler: Record<string, string> = {
+    teklif_veren: provider.name,
+    musteri: customer.name,
+    teklif_no: String(row.proposal_no || ""),
+    teklif_tutari: formatMoney(tax.gross, currency),
+    gecerlilik_tarihi: formatDate(row.valid_until),
+    tahmini_teslim: formatDate(row.estimated_delivery_date, "sözleşmede belirlenecektir"),
+    hesap_sahibi: provider.accountHolder || provider.name,
+    havale_kosulu: provider.iban
+      ? `yalnızca aşağıda bilgileri gösterilen, ${provider.accountHolder || provider.name} adına kayıtlı banka hesabına; ödeme açıklamasına ${row.proposal_no || "belge"} numarası yazılmalıdır. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.`
+      : `yalnızca ${provider.name} unvanına kayıtlı banka hesabına; hesap bilgileri fatura ve yazılı bildirimle iletilir. Hesap değişikliği bildirimleri kayıtlı iletişim kanallarımızdan teyit edilmeden dikkate alınmamalıdır.`,
+  };
+  const banka = provider.iban ? <BankAccountBox provider={provider} /> : null;
+  const kurumGovdesi = (anahtar: string) => (metin.maddeler?.[anahtar] ? <MetinGovdesi metin={metin.maddeler[anahtar].metin} degerler={degerler} banka={banka} /> : null);
+  // 01 kapsam ve 02 fiyat sabit; sıradaki bölümler 03'ten başlar, karar en sonda.
+  const bolumNo = (sira0: number) => String(sira0 + 3).padStart(2, "0");
 
   return <main className={rootClass} style={{ "--doc-brand": safeBrandColor(row.organization_primary_color) } as CSSProperties}>
     <style>{css}</style>
@@ -64,7 +151,7 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
       <section className="doc-title">
         <div className="doc-kicker">Teklif Konusu</div>
         <h1>{title}</h1>
-        <p>Sayın {customer.name}, talebiniz doğrultusunda hazırlanan hizmet kapsamı, fiyatlandırma ve ticari koşullar aşağıda bilgilerinize sunulmuştur.</p>
+        {metin.maddeler?.giris ? <MetinGovdesi metin={metin.maddeler.giris.metin} degerler={degerler} banka={null} /> : <p>Sayın {customer.name}, talebiniz doğrultusunda hazırlanan hizmet kapsamı, fiyatlandırma ve ticari koşullar aşağıda bilgilerinize sunulmuştur.</p>}
       </section>
       {notice && !print ? <div className="doc-notice print-hide">{notice}</div> : null}
 
@@ -101,9 +188,12 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
         <TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} />
       </section>
 
-      <section className="doc-sec">
-        <SectionHeading index="03">Ödeme Koşulları</SectionHeading>
-        <PaymentPlanTable rows={schedule} currency={currency} />
+      {sira.map((anahtar, sira0) => {
+        const kurumBolumu = metin.maddeler?.[anahtar];
+        if (anahtar === "odeme_notlari") return <section className="doc-sec" key={anahtar}>
+          <SectionHeading index={bolumNo(sira0)}>{kurumBolumu?.baslik ?? "Ödeme Koşulları"}</SectionHeading>
+          <PaymentPlanTable rows={schedule} currency={currency} />
+          {kurumBolumu ? <div className="doc-box" style={{ marginTop: "3mm" }}>{kurumGovdesi(anahtar)}</div> : <>
         <div className="doc-box" style={{ marginTop: "3mm" }}><ul className="doc-list">
           <li>Ödemeler, teklifin kabulüyle oluşturulan Hizmet Sözleşmesi’ndeki ödeme planına göre, aynı tutarlarla yapılır.</li>
           {provider.iban
@@ -112,10 +202,11 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
           <li><b>Kredi / banka kartı:</b> güvenli ödeme bağlantısı üzerinden; kart bilgileri tarafımızca görülmez ve saklanmaz.</li>
           <li>Her ödeme için 213 sayılı Vergi Usul Kanunu uyarınca e-Fatura / e-Arşiv Fatura düzenlenir.</li>
         </ul>{provider.iban ? <div style={{ marginTop: "3mm" }}><BankAccountBox provider={provider} /></div> : null}</div>
-      </section>
-
-      <section className="doc-sec">
-        <SectionHeading index="04">Geçerlilik ve Kabul</SectionHeading>
+          </>}
+        </section>;
+        if (anahtar === "kabul") return <section className="doc-sec" key={anahtar}>
+          <SectionHeading index={bolumNo(sira0)}>{kurumBolumu?.baslik ?? "Geçerlilik ve Kabul"}</SectionHeading>
+          {kurumBolumu ? <div className="doc-box">{kurumGovdesi(anahtar)}</div> : <>
         <div className="doc-box"><ul className="doc-list">
           <li>Bu teklif {formatDate(row.valid_until)} tarihine kadar geçerlidir. Bu tarihten sonra fiyat ve koşullar yeniden değerlendirilir.</li>
           <li>Teklifin elektronik olarak kabulüyle aynı kapsam, bedel ve ödeme planını içeren Hizmet Sözleşmesi oluşturulur ve onayınıza sunulur; hizmet ilişkisi sözleşmenin onaylanmasıyla kurulur.</li>
@@ -123,18 +214,26 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
           <li>Kapsamda yer almayan talepler ayrıca fiyatlandırılır.</li>
           <li>Tüketici sıfatıyla hareket eden müşterilerin 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği’nden doğan hakları (cayma hakkı dahil) saklıdır.</li>
         </ul></div>
-      </section>
-
-      <section className="doc-sec">
-        <SectionHeading index="05">Gizlilik</SectionHeading>
+          </>}
+        </section>;
+        if (anahtar === "gizlilik") return <section className="doc-sec" key={anahtar}>
+          <SectionHeading index={bolumNo(sira0)}>{kurumBolumu?.baslik ?? "Gizlilik"}</SectionHeading>
+          {kurumBolumu ? <div className="doc-box">{kurumGovdesi(anahtar)}</div> : <>
         <div className="doc-box">
           <p>Bu teklif ve ekleri yalnızca muhatabı için hazırlanmıştır. İçerdiği fiyat, kapsam ve yöntem bilgileri ticari sır niteliğinde olup {provider.name}’in yazılı onayı olmaksızın üçüncü kişilerle paylaşılamaz, çoğaltılamaz veya teklifin değerlendirilmesi dışında bir amaçla kullanılamaz.</p>
           <p>Teklif sürecinde paylaşılan kişisel veriler 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında yalnızca teklifin hazırlanması, değerlendirilmesi ve sözleşme süreci amacıyla işlenir.</p>
         </div>
-      </section>
+          </>}
+        </section>;
+        // Kurumun eklediği bölüm.
+        return kurumBolumu ? <section className="doc-sec" key={anahtar}>
+          <SectionHeading index={bolumNo(sira0)}>{kurumBolumu.baslik}</SectionHeading>
+          <div className="doc-box">{kurumGovdesi(anahtar)}</div>
+        </section> : null;
+      })}
 
       <section className="doc-sec doc-sign-block">
-        <SectionHeading index="06">Karar</SectionHeading>
+        <SectionHeading index={bolumNo(sira.length)}>Karar</SectionHeading>
         <div className="doc-sign">
           <div className="doc-sign-card">
             <h3>Teklif Veren</h3>

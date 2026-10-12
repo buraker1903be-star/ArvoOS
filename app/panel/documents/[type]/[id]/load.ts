@@ -9,8 +9,8 @@ import type { ProposalDecision } from "@/app/_components/proposal-document";
 import { normalizeAddenda, type ContractAddendum } from "@/lib/work-plan";
 
 export type PanelDocument =
-  | { type: "contract"; row: DocumentRow; audit: ContractAudit; auditAvailable: boolean; verificationUrl: string | null; verificationHash: string | null; number: string; workPlan: unknown; addenda: ContractAddendum[] }
-  | { type: "proposal"; row: DocumentRow; decision: ProposalDecision | null; verificationUrl: string | null; number: string };
+  | { type: "contract"; row: DocumentRow; audit: ContractAudit; auditAvailable: boolean; verificationUrl: string | null; verificationHash: string | null; number: string; workPlan: unknown; addenda: ContractAddendum[]; kurum: unknown }
+  | { type: "proposal"; row: DocumentRow; decision: ProposalDecision | null; verificationUrl: string | null; number: string; kurum: unknown };
 
 const one = <T,>(value: T | T[] | null | undefined): T | null => (Array.isArray(value) ? value[0] ?? null : value ?? null);
 
@@ -30,6 +30,19 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
   // bilgi metniyle (eski davranış) açılmaya devam eder.
   const legalQuery = Promise.resolve(supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", organizationId).maybeSingle())
     .then(({ data, error }) => (error ? null : (data as DocumentRow | null)), () => null);
+  /*
+    Kurumun metni: belgenin kopyası (imzalı sözleşme, kararlanan teklif)
+    varsa o, yoksa kurumun güncel metni. İkisi de ayrı okunur; okunamazsa
+    (migration uygulanmadıysa) belge Arvo'nun metniyle açılır.
+  */
+  const kurumMetni = async (tablo: "crm_contracts" | "crm_proposals", tur: "contract" | "proposal") => {
+    const [kopya, guncel] = await Promise.all([
+      supabase.from(tablo).select("document_text").eq("id", id).eq("organization_id", organizationId).maybeSingle(),
+      supabase.from("organization_document_texts").select("content").eq("organization_id", organizationId).eq("document_type", tur).maybeSingle(),
+    ]);
+    const belgedeki = kopya.error ? null : (kopya.data as { document_text?: unknown } | null)?.document_text ?? null;
+    return belgedeki ?? (guncel.error ? null : (guncel.data as { content?: unknown } | null)?.content ?? null);
+  };
   const organizationFields = (organization: DocumentRow, legal: DocumentRow | null) => ({
     ...organizationLegalFields(legal),
     organization_name: organization.name,
@@ -98,6 +111,7 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
       number: contract.contract_no,
       workPlan: planError ? null : (planRow as DocumentRow | null)?.work_plan ?? null,
       addenda: addendaError ? [] : normalizeAddenda(addendaRows),
+      kurum: await kurumMetni("crm_contracts", "contract"),
     };
   }
 
@@ -136,5 +150,6 @@ export const loadPanelDocument = cache(async (type: string, id: string): Promise
     decision,
     verificationUrl: proposal.share_token && host ? `https://${host}/teklif/${proposal.share_token}` : null,
     number: proposal.proposal_no,
+    kurum: await kurumMetni("crm_proposals", "proposal"),
   };
 });

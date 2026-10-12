@@ -52,6 +52,8 @@ type Props = {
   addendumActions?: (addendum: ContractAddendum) => ReactNode;
   /** Müşterinin takip kodu (yalnızca herkese açık sayfada; takip ekranına kısayol) */
   trackingCode?: string | null;
+  /** Kurumun sözleşme metni: imzalıysa imza anındaki kopya, değilse güncel metin (lib/belge-metni). */
+  kurum?: unknown;
 };
 
 const consentLabels: [string, string][] = [
@@ -70,7 +72,7 @@ export function contractCustomerKind(row: DocumentRow) {
   return detectCustomerKind({ name: row?.customer_name, taxNumber: row?.customer_tax_number, taxOffice: row?.customer_tax_office });
 }
 
-export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions, trackingCode }: Props) {
+export function ContractDocument({ row, audit, auditAvailable = false, verificationUrl, verificationHash, mode = "screen", overlay, toolbarLeft, pdfHref, backHref, logDocumentId, signatureForm, notice, errorMessage, proposalLink, workPlan, addenda, addendumActions, trackingCode, kurum }: Props) {
   const signed = isContractSigned(row);
   /*
     KAYITLI anahtar önce gelir. İmza fonksiyonu imzalarken
@@ -175,7 +177,7 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
         <section className="doc-sec"><SectionHeading>Hizmet Kapsamı</SectionHeading><div className="doc-box"><ul className="doc-list">{ctx.scopeItems.map((item, index) => <li key={index}>{item}</li>)}</ul></div></section>
         <section className="doc-sec"><SectionHeading>Ücret ve Ödeme Planı</SectionHeading><PaymentPlanTable rows={schedule} currency={currency} /><TaxTotals tax={tax} currency={currency} words={amountInWords(tax.gross, currency)} /></section>
         <section className="doc-sec"><SectionHeading>Sözleşme Hükümleri</SectionHeading><LegacyArticles clauses={template.clauses} /></section>
-      </> : <section className="doc-sec"><ContractArticles ctx={ctx} /></section>}
+      </> : <section className="doc-sec"><ContractArticles ctx={ctx} kurum={kurum} /></section>}
 
       <section className="doc-sec doc-sign-block">
         <SectionHeading>İmzalar ve Elektronik Onay Kaydı</SectionHeading>

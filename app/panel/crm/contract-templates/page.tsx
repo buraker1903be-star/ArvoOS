@@ -16,9 +16,9 @@ import "../kayit-detay/kayit-detay.css";
   JavaScript'te sayıyordu (sınırsız sorgu, yalnızca dört rakam için).
   Artık her sayım kendi head sorgusunda.
 
-  Şablonlar panelden düzenlenmiyor: metin kodda (lib/contract-templates)
-  ve imzalanan sözleşme onaylandığı sürümle korunuyor. Sayfa bu yüzden
-  bir liste değil, bir künye.
+  Arvo şablonu kodda (lib/contract-templates); kurum her maddeyi Ayarlar →
+  Belge metinleri'nde değiştirebiliyor (12.10.2026). Bu sayfa künye olarak
+  kaldı ve oraya yönlendiriyor.
 */
 
 export default async function SozlesmeSablonlari() {
@@ -61,6 +61,7 @@ export default async function SozlesmeSablonlari() {
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/crm/contracts">← Sözleşmeler</Link>
+        <Link className="panel-primary" href="/panel/settings?bolum=belge-metinleri">Metni düzenle</Link>
       </div>
     </header>
 
@@ -109,10 +110,15 @@ export default async function SozlesmeSablonlari() {
           maddelerinden oluşur. Tüketici müşterilerde Ön Bilgilendirme Formu ek olarak eklenir.
           Şablona özgü maddeler &ldquo;Hizmete Özgü Özel Hükümler&rdquo; maddesinde korunur.
         </p>
+        <div className="cari-baslik"><h2>Kurumun metni</h2><small>Ayarlar → Belge metinleri</small></div>
+        <p className="cari-not">
+          Her madde kurumunuzun kendi metniyle değiştirilebilir; madde eklenip çıkarılabilir. Değiştirmediğiniz
+          madde Arvo&rsquo;nun metni olarak kalır. Kurumun metni sözleşme imzalandığı anda belgeye kopyalanır.
+        </p>
         <div className="cari-baslik"><h2>Sürüm politikası</h2><small>imzalanan değişmez</small></div>
         <p className="cari-not">
           Metin değişiklikleri yeni bir sürüm olarak yayımlanır. İmzalanmış sözleşmeler, onaylandıkları
-          şablon anahtarı ve sürüm numarasıyla korunur; sonradan değişen metin onlara uygulanmaz.
+          şablon anahtarı, sürüm numarası ve kurum metninin kopyasıyla korunur; sonradan değişen metin onlara uygulanmaz.
         </p>
       </aside>
     </div>
