@@ -16,6 +16,7 @@ import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
+import { TaksitDuzenleFormu, TaksitPlaniFormu } from "./taksit-formlari";
 
 /*
   CARİ HESAP İÇERİĞİ (2026-10): müşteri sayfasında ortada açılan pencere.
@@ -171,6 +172,14 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
       ilkVade: acik[0]?.due_date ?? todayInIstanbul(),
     };
   }).filter((p) => p.kalan > 0);
+  /* Ödeme takvimi pencerelerinin önizlemesi (taksit-formlari.tsx): plan,
+     sunucu işleminin okuduğu gibi (finance/actions.ts planiOku) — iptal
+     hariç, taksit numarasına göre, vadesiz taksit bugünle; ödenen kısım
+     cari dağılımından (sunucu da aynı dağılımı kullanıyor). */
+  const planTaksitleri = (planId: string) => dagitilmis
+    .filter((t) => t.payment_plan_id === planId && t.status !== "cancelled")
+    .sort((a, b) => a.installment_no - b.installment_no)
+    .map((t, i) => ({ id: t.id, no: i + 1, vade: t.due_date ?? todayInIstanbul(), tutar: Number(t.amount), odenen: t.odenen }));
   // Sözleşmeye bağlantı yalnızca CRM'i olana: yoksa sayfa hata verirdi.
   const crmVar = modules.some((m) => m.code === "crm");
   const tahsilOrani = debt + refunds > 0 ? Math.round((collections / (debt + refunds)) * 100) : 0;
@@ -450,30 +459,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       title="Taksit planı"
                       description={`Sözleşme ${money(Number(p.sozlesme.amount))} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
                     >
-                      <form className="panel-form fin-form kayit-formu" action={taksitSecenegiDegistir}>
-                        <input type="hidden" name="plan_id" value={p.planId} />
-                        <label>
-                          <span>Taksit sayısı<b className="req" aria-hidden="true">*</b></span>
-                          <input name="adet" type="number" min={1} max={36} step={1} required defaultValue={Math.max(1, p.acikAdet)} />
-                        </label>
-                        <label>
-                          Aralık
-                          <select name="aralik" defaultValue="1">
-                            <option value="1">Her ay</option>
-                            <option value="2">İki ayda bir</option>
-                            <option value="3">Üç ayda bir</option>
-                            <option value="6">Altı ayda bir</option>
-                          </select>
-                        </label>
-                        <label className="wide">
-                          <span>İlk taksitin vadesi<b className="req" aria-hidden="true">*</b></span>
-                          <input name="ilk_vade" type="date" required defaultValue={p.ilkVade} />
-                        </label>
-                        <p className="fin-form-note">Ödenen {money(p.odenen)} olduğu gibi kalır; kalan {money(p.kalan)} seçilen sayıda taksite eşit bölünür (artan kuruş baştaki taksitlere). Toplam sözleşme tutarında kalır.</p>
-                        <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-                          <button className="panel-primary">Taksit planını kaydet</button>
-                        </div>
-                      </form>
+                      <TaksitPlaniFormu planId={p.planId} taksitler={planTaksitleri(p.planId)} toplam={Number(p.sozlesme.amount)} ilkVade={p.ilkVade} acikAdet={p.acikAdet} eylem={taksitSecenegiDegistir} />
                     </PanelDrawer>
                   ))}
                 </div>
@@ -500,25 +486,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                           title={`${sozlesme?.contract_no ?? "Sözleşme"} · ${t.installment_no}. taksit`}
                           description={`${money(Number(t.amount))} · vade ${t.due_date ? date(t.due_date) : "yok"}${t.odenen > 0 ? ` · ${money(t.odenen)} ödendi` : ""}`}
                         >
-                          <form className="panel-form fin-form kayit-formu" action={taksitiDuzenle}>
-                            <input type="hidden" name="installment_id" value={t.id} />
-                            <label>
-                              <span>Vade tarihi<b className="req" aria-hidden="true">*</b></span>
-                              <input name="due_date" type="date" required defaultValue={t.due_date ?? todayInIstanbul()} />
-                            </label>
-                            <label>
-                              <span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span>
-                              <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(t.amount))} />
-                            </label>
-                            <label className="wide cari-kaydir">
-                              <input name="sonrakiler" type="checkbox" />
-                              <span>Sonraki taksitlerin vadesini de aynı gün kadar kaydır</span>
-                            </label>
-                            <p className="fin-form-note">Tutar değişirse fark sonraki taksitlere aktarılır (son taksit azalırsa fark bir ay sonra yeni taksit olur); toplam sözleşme tutarında kalır.</p>
-                            <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
-                              <button className="panel-primary">Kaydet</button>
-                            </div>
-                          </form>
+                          <TaksitDuzenleFormu taksitId={t.id} plan={planTaksitleri(t.payment_plan_id).map(({ no, vade, tutar }) => ({ no, vade, tutar }))} hedefNo={planTaksitleri(t.payment_plan_id).findIndex((x) => x.id === t.id) + 1} eylem={taksitiDuzenle} />
                         </PanelDrawer>
                       ) : null}
                     </li>

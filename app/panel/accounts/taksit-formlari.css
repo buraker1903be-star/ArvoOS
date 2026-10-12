@@ -1,0 +1,12 @@
+/* Ödeme takvimi pencerelerinin önizlemesi (taksit-formlari.tsx). */
+.taksit-onizleme{display:grid;gap:var(--sp-2);padding:12px 14px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2)}
+.taksit-onizleme-bas{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--sp-2)}
+.taksit-onizleme-bas small{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.taksit-onizleme-bas b{color:var(--ink);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.taksit-onizleme ol{display:grid;gap:2px;margin:0;padding:0;list-style:none;max-height:260px;overflow:auto}
+.taksit-onizleme li{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--sp-2);padding:6px 8px;border-radius:8px;font-size:13px;color:var(--ink-soft)}
+.taksit-onizleme li[data-degisti]{background:var(--surface);color:var(--ink)}
+.taksit-onizleme li[data-degisti] b{color:var(--primary)}
+.taksit-onizleme li b{font-weight:600;font-variant-numeric:tabular-nums}
+.taksit-onizleme-no{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--surface);color:var(--muted);font-size:11px;font-weight:700}
+.taksit-onizleme-hata{margin:0;padding:10px 12px;border-radius:12px;background:var(--warning-soft);color:var(--warning);font-size:13px}
