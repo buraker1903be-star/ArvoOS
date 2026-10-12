@@ -75,7 +75,6 @@
 
   /* Temsilci: baş harf yuvarlağı küçük. */
   .os-root .panel-content .talep-tablo .crm-rep{display:inline-flex;gap:5px;font-size:12.5px;color:var(--ink-soft)}
-  .os-root .panel-content .talep-tablo .crm-rep>i{width:18px;height:18px;font-size:9px}
   .os-root .panel-content .talep-tablo .crm-last-contact-who{display:none}
 
   /* Yalnızca ok olan eylem hücresi gizli (satırın tamamı dokunulabilir);
