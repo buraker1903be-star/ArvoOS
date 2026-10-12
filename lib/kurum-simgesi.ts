@@ -14,6 +14,12 @@ import { readableOn } from "./tenant-theme";
   Panel, giriş, şifre ve iş durumu sayfaları aynı kuralı buradan alır
   (eskiden beş dosyada `icons: { icon: marka.logo_url }` vardı).
 
+  YAYIN BİZDEN (12.10.2026): simge kurumun kendi alan adında BİZİM
+  adresimizden veriliyor (app/kurum-simgesi, app/favicon.ico). Eskiden
+  sayfa etiketi doğrudan depo adresini gösteriyordu ve kök adresteki
+  /favicon.ico (tarayıcıların ve arama motorlarının doğrudan istediği)
+  hiç yoktu: sekmede bir an boş simge, arama sonucunda simgesiz kayıt.
+
   Saf modül: birim testi tests/unit/kurum-simgesi.test.ts.
 */
 
@@ -36,16 +42,43 @@ export function harfSimgesiSvg(ad: string | null | undefined, renk: string | nul
     + `</svg>`;
 }
 
-/** Yalnızca https adresi kabul edilir; başka her şey (javascript:, data:) yok sayılır. */
-const httpsMi = (adres: string | null | undefined): adres is string => {
-  if (!adres) return false;
-  try { return new URL(adres).protocol === "https:"; } catch { return false; }
-};
+/*
+  Sunucu yalnızca KENDİ deposundaki kurum görselini indirir: ayar
+  ekranının yüklediği dosya (organization-assets/<kurum>/favicon.*).
+  Başka bir adres yazılmış olsa bile indirilmez — kullanıcıdan gelen
+  adresi sunucuya indirtmek, kurumu yöneten birinin sunucunun ağındaki
+  bir şeyi kendi alan adında yayınlatması demek (AGENTS.md, logo kuralı).
+*/
+export function depodakiSimgeMi(adres: string | null | undefined, supabaseUrl: string | null | undefined, kurumId: string): adres is string {
+  if (!adres || !supabaseUrl) return false;
+  try {
+    const url = new URL(adres);
+    const depo = new URL(supabaseUrl);
+    return url.protocol === "https:" && url.host === depo.host
+      && /^\/storage\/v1\/object\/public\/organization-assets\/[0-9a-f-]{36}\/favicon\.(png|jpg|webp)$/.test(url.pathname)
+      && url.pathname.split("/")[6] === kurumId;
+  } catch { return false; }
+}
+
+/** Önbellek anahtarı: simge ya da renk/ad değişince sekme yenisini çeker. */
+export function simgeSurumu(marka: KurumMarkasi): string {
+  const kaynak = marka.favicon_url ? marka.favicon_url : `${marka.name}|${marka.primary_color ?? ""}`;
+  let h = 5381;
+  for (let i = 0; i < kaynak.length; i++) h = ((h * 33) ^ kaynak.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
 
 export type KurumMarkasi = { name: string; primary_color: string | null; favicon_url?: string | null };
 
-/** Next metadata `icons` alanı. */
+export const SIMGE_YOLU = "/kurum-simgesi";
+
+/** Next metadata `icons` alanı: her zaman bizim adresimiz (yüklenen simge ya da baş harf oradan). */
 export function kurumSimgeleri(marka: KurumMarkasi): { icon: string; apple?: string } {
-  if (httpsMi(marka.favicon_url)) return { icon: marka.favicon_url, apple: marka.favicon_url };
-  return { icon: `data:image/svg+xml,${encodeURIComponent(harfSimgesiSvg(marka.name, marka.primary_color))}` };
+  const adres = `${SIMGE_YOLU}?v=${simgeSurumu(marka)}`;
+  return marka.favicon_url ? { icon: adres, apple: adres } : { icon: adres };
+}
+
+/** Ayar ekranındaki önizleme için baş harf simgesi (yükleme yokken). */
+export function harfSimgesiAdresi(marka: KurumMarkasi): string {
+  return `data:image/svg+xml,${encodeURIComponent(harfSimgesiSvg(marka.name, marka.primary_color))}`;
 }

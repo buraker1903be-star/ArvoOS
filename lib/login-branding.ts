@@ -9,7 +9,7 @@ import { readableOn } from "@/lib/tenant-theme";
 
 const DEFAULT_APP_HOST = "app.arvo-os.com";
 
-export type LoginBrand = { name: string; logo_url: string | null; primary_color: string | null; website_url: string | null; favicon_url: string | null };
+export type LoginBrand = { id: string; name: string; logo_url: string | null; primary_color: string | null; website_url: string | null; favicon_url: string | null };
 
 /*
   İstek başına TEK KEZ okunuyor (React cache). Aynı istek içinde hem
@@ -25,7 +25,7 @@ export const getLoginBrand = cache(async function getLoginBrand(): Promise<Login
   if (!organizationId) return null;
   const { data } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
   const org = Array.isArray(data) ? data[0] : data;
-  return org ? { name: org.name, logo_url: org.logo_url, primary_color: org.primary_color, website_url: org.website_url ?? null, favicon_url: org.favicon_url ?? null } : null;
+  return org ? { id: org.id, name: org.name, logo_url: org.logo_url, primary_color: org.primary_color, website_url: org.website_url ?? null, favicon_url: org.favicon_url ?? null } : null;
 });
 
 // Kurumun rengi düğmeye geçer; açık bir renkte beyaz yazı kaybolmasın diye

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getLoginBrand } from "@/lib/login-branding";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 // Ana ekrana eklenen panel: tarayıcı çubuğu olmadan (standalone) açılır.
 // Renkler panel-tokens.css'teki iOS zemini (#f2f2f7) ile aynı; açılış
@@ -39,7 +40,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     // PNG'ler: Android ana ekran + açılış ekranı 192/512 ister; maskable
     // sürümde logo güvenli alanda (%80 daire) kalır, kenarlar kırpılabilir.
     icons: [
-      ...(marka?.logo_url ? [{ src: marka.logo_url, sizes: "any", purpose: "any" as const }] : []),
+      // Logo değil kare simge (12.10.2026): yatay logo ana ekranda da sıkışıyordu.
+      // Bizim adresimizden: kurumun yüklediği simge ya da baş harfi (app/kurum-simgesi).
+      ...(marka ? [{ src: kurumSimgeleri(marka).icon, sizes: "any", purpose: "any" as const }] : []),
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },

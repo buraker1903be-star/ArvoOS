@@ -8,7 +8,7 @@ import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { BelgeMetinleri } from "./belge-metinleri";
 import { HizmetTurleri } from "./hizmet-turleri";
-import { kurumSimgeleri } from "@/lib/kurum-simgesi";
+import { harfSimgesiAdresi } from "@/lib/kurum-simgesi";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
@@ -288,7 +288,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <small>Kare görsel (ör. 512×512 PNG), logonuzun yalnızca simge kısmı. Kendi alan adınızda tarayıcı sekmesinde ve yer imlerinde görünür. Yüklemezseniz kurum adınızın baş harfi kurumsal renginizle gösterilir.</small>
             </label>
             <div className="stg-signature-preview stg-sekme-simgesi">
-              <img src={faviconUrl ?? kurumSimgeleri({ name: organization.name, primary_color: branding?.primary_color ?? null }).icon} alt="Sekme simgesi önizlemesi" />
+              <img src={faviconUrl ?? harfSimgesiAdresi({ name: organization.name, primary_color: branding?.primary_color ?? null })} alt="Sekme simgesi önizlemesi" />
               {faviconUrl ? null : <span>Baş harf (yüklenmedi)</span>}
             </div>
             {faviconUrl ? <label className="stg-check"><input name="remove_favicon" type="checkbox" disabled={!canManage} />Yüklenen simgeyi kaldır, baş harfe dön</label> : null}
