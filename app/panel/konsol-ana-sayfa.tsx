@@ -70,18 +70,26 @@ export async function KonsolAnaSayfa() {
   const admin = createAdminClient();
 
   const [
-    { data: kurumSatirlari },
-    { data: uyelikler },
-    { data: cekirdekSatirlari },
+    { data: kiraciSatirlari },
     { data: urunSatirlari },
     bekleyenOdeme,
     { data: profil },
     { data: personel },
     { data: depolamalar },
   ] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,kind,provisioning_state,contact_phone").order("name"),
-    supabase.from("organization_memberships").select("organization_id,is_active"),
-    supabase.from("organization_licenses").select("organization_id,license_status,monthly_fee,user_limit,storage_limit_mb"),
+    /*
+      KURUM, LİSANS VE AKTİF ÜYE SAYISI TEK GÖRÜNÜMDEN (12.10.2026).
+
+      Üçü ayrı okunuyordu ve ortadaki en pahalısıydı: bütün
+      kiracıların BÜTÜN üyelikleri, yalnızca kurum başına "kaç aktif
+      üye" sayısı için. O tablo personel giriş çıkışıyla büyüyor;
+      satır tavanına çarpıldığı gün kota rozetleri sessizce "limit
+      aşılmadı" derdi. platform_kiraci_liste kiracı başına tek satır
+      veriyor, sayım yan sorguda.
+    */
+    supabase.from("platform_kiraci_liste")
+      .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye")
+      .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
@@ -120,18 +128,31 @@ export async function KonsolAnaSayfa() {
     randevuKopyalari(),
   ]);
 
-  const kurumlar = (kurumSatirlari ?? []) as Kurum[];
+  /* Görünümün satırı hem kurumu hem lisansı taşıyor; ikisi burada
+     ayrılıyor. Lisans alanı boş olan kurum (tetikleyici lisansı
+     açmamışsa) kota ve ödeyen hesabına girmiyor — eski davranış da
+     böyleydi, çünkü o kurumun lisans SATIRI yoktu. */
+  const kiracilar = (kiraciSatirlari ?? []) as unknown as (Kurum & {
+    license_status: string | null; monthly_fee: number | null;
+    user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
+  })[];
+  const kurumlar = kiracilar as Kurum[];
   const musteriler = kurumlar.filter((kurum) => kurum.kind !== "internal");
   const kurumAdi = new Map(kurumlar.map((kurum) => [kurum.id, kurum.display_name || kurum.name]));
 
-  const aktifUye = new Map<string, number>();
-  for (const satir of (uyelikler ?? []) as { organization_id: string; is_active: boolean }[]) {
-    if (satir.is_active) aktifUye.set(satir.organization_id, (aktifUye.get(satir.organization_id) ?? 0) + 1);
-  }
+  const aktifUye = new Map(kiracilar.map((satir) => [satir.id, Number(satir.aktif_uye)]));
   const depolamaBayt = new Map(
     ((depolamalar ?? []) as { organization_id: string; bytes: number }[]).map((satir) => [satir.organization_id, Number(satir.bytes ?? 0)]),
   );
-  const cekirdek = (cekirdekSatirlari ?? []) as CekirdekLisans[];
+  const cekirdek: CekirdekLisans[] = kiracilar
+    .filter((satir) => satir.license_status !== null && satir.user_limit !== null && satir.storage_limit_mb !== null)
+    .map((satir) => ({
+      organization_id: satir.id,
+      license_status: satir.license_status!,
+      monthly_fee: satir.monthly_fee,
+      user_limit: Number(satir.user_limit),
+      storage_limit_mb: Number(satir.storage_limit_mb),
+    }));
   const kota = new Map(cekirdek.map((lisans) => [lisans.organization_id, kotaDurumu({
     organizationId: lisans.organization_id,
     kullaniciSayisi: aktifUye.get(lisans.organization_id) ?? 0,
