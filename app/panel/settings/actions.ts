@@ -56,10 +56,19 @@ async function updateDocumentBranding__impl(formData: FormData) {
   // Logo dosyası yüklendiyse adres alanının yerine geçer
   const uploadedLogo = await uploadOrganizationImage(supabase, membership.organization_id, formData.get("logo_file"), "logo", "Logo");
 
+  /* Sekme simgesi (kare; lib/kurum-simgesi). Yalnızca yüklenince ya da
+     kaldırılınca yazılıyor: sütun 20261012111830 ile geldi ve her
+     kayıtta yazılsaydı migration'dan önce bütün formu düşürürdü. */
+  const uploadedFavicon = await uploadOrganizationImage(supabase, membership.organization_id, formData.get("favicon_file"), "favicon", "Sekme simgesi");
+  const faviconDegisimi = uploadedFavicon
+    ? { favicon_url: uploadedFavicon }
+    : formData.get("remove_favicon") === "on" ? { favicon_url: null } : {};
+
   const { data: saved, error } = await supabase
     .from("organizations")
     .update({
       logo_url: uploadedLogo ?? (text(formData, "logo_url", 1000) || null),
+      ...faviconDegisimi,
       primary_color: primaryColor,
       document_footer: text(formData, "document_footer", 500) || null,
       contact_email: text(formData, "contact_email", 240) || null,

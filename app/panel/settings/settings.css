@@ -124,6 +124,9 @@
 .stg-signature-preview{display:grid;place-items:center;min-height:150px;padding:14px;border:1px dashed var(--line);border-radius:12px;background:#fff;text-align:center}
 .stg-signature-preview img{max-width:100%;max-height:132px;object-fit:contain}
 .stg-signature-preview span{color:var(--muted);font-size:13px}
+/* Sekme simgesi önizlemesi: gerçek boyutuna yakın, kare (sıkışma burada da görünsün). */
+.stg-sekme-simgesi{min-height:110px;gap:8px}
+.stg-sekme-simgesi img{width:64px;height:64px;border-radius:14px;object-fit:cover}
 .panel-root .stg .stg-check{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:0;color:var(--ink);font-size:13.5px;font-weight:600}
 .panel-root .stg .stg-check input{flex:none;width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--danger)}
 /*

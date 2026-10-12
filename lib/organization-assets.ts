@@ -15,7 +15,7 @@ export async function uploadOrganizationImage(
   supabase: PanelSupabase,
   organizationId: string,
   file: FormDataEntryValue | null,
-  name: "logo" | "signature-stamp",
+  name: "logo" | "signature-stamp" | "favicon",
   label: string,
 ): Promise<string | null> {
   if (!(file instanceof File) || file.size === 0) return null;

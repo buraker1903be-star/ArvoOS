@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { setInitialPassword } from "./actions";
 import "../../login/login.css";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -16,7 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | Şifre Oluştur`,
     description: `${marka.name} hesabınız için şifre belirleyin.`,
-    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+    // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
+    icons: kurumSimgeleri(marka),
   };
 }
 

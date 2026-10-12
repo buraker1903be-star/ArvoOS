@@ -8,6 +8,7 @@ import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { BelgeMetinleri } from "./belge-metinleri";
 import { HizmetTurleri } from "./hizmet-turleri";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
@@ -92,10 +93,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   /* İki kurum okuması birlikte: ayrı ayrı beklendiğinde sayfa iki tur
      sürüyordu. Resmi/banka alanları ayrı sorguda kalıyor — migration
      uygulanmadıysa sayfanın geri kalanı çalışmaya devam etsin. */
-  const [{ data: orgRow }, { data: legalRow, error: legalError }] = await Promise.all([
+  const [{ data: orgRow }, { data: legalRow, error: legalError }, { data: faviconRow, error: faviconError }] = await Promise.all([
     supabase.from("organizations").select("logo_url,primary_color,document_footer,contact_email,contact_phone,website_url,signature_stamp_url,custom_domain,custom_domain_status,custom_domain_verification,custom_domain_updated_at,revision_days,tracking_show_phases").eq("id", membership.organization_id).single(),
     supabase.from("organizations").select(ORGANIZATION_LEGAL_COLUMNS).eq("id", membership.organization_id).maybeSingle(),
+    // Sekme simgesi ayrı: sütun 20261012111830 ile geldi, migration'dan önce de sayfa açılsın.
+    bolum === "kurumsal-kimlik" ? supabase.from("organizations").select("favicon_url").eq("id", membership.organization_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
+  const faviconAcik = bolum === "kurumsal-kimlik" && !faviconError;
+  const faviconUrl = (faviconRow as { favicon_url: string | null } | null)?.favicon_url ?? null;
   const legalAvailable=!legalError;
   const legal=legalDetailsFrom(legalAvailable?(legalRow as Record<string,unknown>|null):null);
   const legalFilled=[legal.legal_address,legal.legal_city,legal.tax_office,legal.tax_number,legal.iban].filter(Boolean).length;
@@ -274,6 +279,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </div>
           </div>
           <label className="wide"><span>Logo adresi (URL) <small className="stg-optional">dosya yüklemek yerine</small></span><input name="logo_url" type="url" defaultValue={branding?.logo_url ?? ""} placeholder="https://.../logo.png" disabled={!canManage} /></label>
+          {/* Sekme simgesi: yatay logo tarayıcı sekmesinde 16×16'ya
+              sıkışıp okunmuyordu (lib/kurum-simgesi). Yüklenmezse
+              kurumun baş harfi kendi renginde gösteriliyor. */}
+          {faviconAcik ? <div className="wide stg-signature">
+            <label>Sekme simgesi
+              <input name="favicon_file" type="file" accept="image/png,image/jpeg,image/webp" disabled={!canManage} />
+              <small>Kare görsel (ör. 512×512 PNG), logonuzun yalnızca simge kısmı. Kendi alan adınızda tarayıcı sekmesinde ve yer imlerinde görünür. Yüklemezseniz kurum adınızın baş harfi kurumsal renginizle gösterilir.</small>
+            </label>
+            <div className="stg-signature-preview stg-sekme-simgesi">
+              <img src={faviconUrl ?? kurumSimgeleri({ name: organization.name, primary_color: branding?.primary_color ?? null }).icon} alt="Sekme simgesi önizlemesi" />
+              {faviconUrl ? null : <span>Baş harf (yüklenmedi)</span>}
+            </div>
+            {faviconUrl ? <label className="stg-check"><input name="remove_favicon" type="checkbox" disabled={!canManage} />Yüklenen simgeyi kaldır, baş harfe dön</label> : null}
+          </div> : null}
           <label>Kurumsal renk<span className="stg-color"><input name="primary_color" type="color" defaultValue={branding?.primary_color ?? DEFAULT_BRAND_COLOR} disabled={!canManage} /><small>Belge başlıkları ve vurgular</small></span></label>
 
           <p className="wide kayit-formu-bolum">Belgedeki iletişim bilgileri</p>

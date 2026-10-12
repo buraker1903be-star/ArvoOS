@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { StatusLookupForm } from "../durum/[slug]/lookup-form";
 import { OrgLookupShell } from "../durum/[slug]/lookup-shell";
 import "../durum/[slug]/status-lookup.css";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -18,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | İş Durumu Sorgula`,
     description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
-    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+    // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
+    icons: kurumSimgeleri(marka),
   };
 }
 

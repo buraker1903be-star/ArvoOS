@@ -43,6 +43,7 @@ import "./panel-ui.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 /*
   SEKME BAŞLIĞI VE SİMGESİ KURUMUN (11.10.2026).
@@ -68,7 +69,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | Panel`,
     description: `${marka.name} çalışma alanı`,
-    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+    // Sekme simgesi logo değil: yatay logo 16×16 kareye sıkışıyordu (lib/kurum-simgesi).
+    icons: kurumSimgeleri(marka),
   };
 }
 
