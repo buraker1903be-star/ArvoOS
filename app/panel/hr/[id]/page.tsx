@@ -7,6 +7,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { isManagementDepartmentName, MANAGEMENT_EMPLOYMENT_STATUSES } from "@/lib/management-department";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
+import { KisiYetkileri } from "../../settings/permissions/kisi-yetkileri";
 import { ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "../prim-verisi";
 import { DAVET_DURUM_ADLARI, kisininDaveti, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
@@ -199,7 +200,15 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const primToplami = prim ? ledgerTotals(employee.id, prim.accruals, prim.payments) : null;
   const gizlilikler = (gizlilikSonuc.data ?? []) as Gizlilik[];
   const temelAdres = `/panel/hr/${employee.id}`;
-  const pencere = arama.pencere === "prim" ? "prim" : null;
+  const pencere = arama.pencere === "prim" || arama.pencere === "yetki" ? arama.pencere : null;
+  /*
+    YETKİLER PENCERESİ (2026-10): kişinin hangi modülleri görebildiği ve
+    hangi işlemleri yapabildiği, Ayarlar → Yetkilendirme → kişi sayfasıyla
+    aynı bileşen (settings/permissions/kisi-yetkileri.tsx). Eskiden yalnızca
+    Ayarlar'daydı. Yalnızca panel hesabı olan personel için: yetki üyeliğe
+    yazılıyor, hesabı olmayanın üyeliği yok.
+  */
+  const yetkiDuzenler = izin("settings.yetki.yonet") && Boolean(employee.user_id);
 
   const isOwner = membership.role === "owner";
   // Yönetici departmanındaki aktif/izinli çalışanın rolü departmandan gelir
@@ -258,6 +267,20 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               kapaninca={pencere === "prim" ? temelAdres : undefined}
             >
               <PrimPenceresi veri={prim} employeeId={employee.id} temelAdres={temelAdres} donemKodu={arama.prim} baslangic={arama.prim_bas} bitis={arama.prim_bit} />
+            </PanelModal>
+          ) : null}
+          {yetkiDuzenler && employee.user_id ? (
+            <PanelModal
+              triggerLabel="Yetkiler"
+              triggerClassName="panel-secondary"
+              kicker="YETKİLER"
+              title={employee.full_name}
+              description="Görebildiği modüller ve yapabildiği işlemler; rol kuralı ya da kişiye özel istisna."
+              boy="tam"
+              baslangicAcik={pencere === "yetki"}
+              kapaninca={pencere === "yetki" ? temelAdres : undefined}
+            >
+              <KisiYetkileri hedef={employee.user_id} />
             </PanelModal>
           ) : null}
           {canManageTeam ? (
@@ -402,7 +425,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
         {canManageTeam || gizlilikGorur ? (
           <section className="panel-card talep-bilgi cari-sag" aria-label="Erişim ve özlük dosyası">
             {canManageTeam ? <>
-            <div className="cari-baslik"><h2>Panel erişimi</h2></div>
+            <div className="cari-baslik"><h2>Panel erişimi</h2>{yetkiDuzenler ? <Link className="personel-tumu" href={`${temelAdres}?pencere=yetki`} scroll={false}>Yetkileri düzenle</Link> : null}</div>
             <div className="personel-erisim">
               {member ? (
                 employee.user_id === userId ? (

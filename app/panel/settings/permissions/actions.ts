@@ -177,6 +177,8 @@ async function updateMemberPermissions__impl(formData: FormData) {
 
   revalidatePath("/panel/settings/permissions");
   revalidatePath(`/panel/settings/permissions/${hedef}`);
+  // Aynı ekran personel detayında "Yetkiler" penceresi olarak da açılıyor.
+  revalidatePath("/panel/hr/[id]", "page");
   revalidatePath("/panel");
 }
 
@@ -278,6 +280,8 @@ async function applyPermissionProfile__impl(formData: FormData) {
 
   revalidatePath("/panel/settings/permissions");
   revalidatePath(`/panel/settings/permissions/${hedef}`);
+  // Aynı ekran personel detayında "Yetkiler" penceresi olarak da açılıyor.
+  revalidatePath("/panel/hr/[id]", "page");
   revalidatePath("/panel");
 }
 
