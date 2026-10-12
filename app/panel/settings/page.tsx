@@ -20,6 +20,7 @@ import { arvoWhatsappKontrol } from "./whatsapp/actions";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./settings-legal.css";
 import "./settings.css";
+import "../components/kayit-formu.css";
 
 const roleNames: Record<string, string> = {owner:"Kurum Sahibi",admin:"Yönetici",manager:"Yönetici",member:"Satış Personeli",operasyoncu:"Operasyon Personeli"};
 const integrationCodes = new Set(["banking","payments","e_invoice","billing","integrations","domains"]);
@@ -254,7 +255,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         description="Logo, renk, iletişim bilgileri ve kaşe-imza görseli A4 belgelerde otomatik kullanılır."
         aside={canManage ? null : <StgReadOnly />}
       >
-        <form className="panel-form" action={updateDocumentBranding}>
+        {/* DÜZEN (2026-10): panelin ortak kayıt formu (components/kayit-formu.css)
+            ve dört bölüm. Eskiden alanlar tek parça sıralanıyor, girilen metin
+            800 kalınlıkta görünüyordu. Alan adları aynı. */}
+        <form className="panel-form kayit-formu" action={updateDocumentBranding}>
+          <p className="wide kayit-formu-bolum">Logo ve renk</p>
           <div className="wide stg-signature">
             <label>Logo
               <input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp" disabled={!canManage} />
@@ -264,12 +269,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               {branding?.logo_url ? <img src={branding.logo_url} alt="Kurum logosu" /> : <span>Henüz logo yüklenmedi.</span>}
             </div>
           </div>
-          <label className="wide">Logo adresi (URL) <small className="stg-optional">dosya yüklemek yerine</small><input name="logo_url" type="url" defaultValue={branding?.logo_url ?? ""} placeholder="https://.../logo.png" disabled={!canManage} /></label>
+          <label className="wide"><span>Logo adresi (URL) <small className="stg-optional">dosya yüklemek yerine</small></span><input name="logo_url" type="url" defaultValue={branding?.logo_url ?? ""} placeholder="https://.../logo.png" disabled={!canManage} /></label>
           <label>Kurumsal renk<span className="stg-color"><input name="primary_color" type="color" defaultValue={branding?.primary_color ?? DEFAULT_BRAND_COLOR} disabled={!canManage} /><small>Belge başlıkları ve vurgular</small></span></label>
-          <label>E-posta<input name="contact_email" type="email" defaultValue={branding?.contact_email ?? ""} disabled={!canManage} /></label>
-          <label>Telefon<input name="contact_phone" defaultValue={branding?.contact_phone ?? ""} disabled={!canManage} /></label>
-          <label>Web sitesi<input name="website_url" type="url" defaultValue={branding?.website_url ?? ""} disabled={!canManage} /></label>
 
+          <p className="wide kayit-formu-bolum">Belgedeki iletişim bilgileri</p>
+          <label>E-posta<input name="contact_email" type="email" defaultValue={branding?.contact_email ?? ""} placeholder="info@firmaniz.com" disabled={!canManage} /></label>
+          <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={branding?.contact_phone ?? ""} placeholder="0212 000 00 00" disabled={!canManage} /></label>
+          <label className="wide">Web sitesi<input name="website_url" type="url" defaultValue={branding?.website_url ?? ""} placeholder="https://firmaniz.com" disabled={!canManage} /></label>
+
+          <p className="wide kayit-formu-bolum">Kaşe ve imza</p>
           <div className="wide stg-signature">
             <label>Kaşe ve imza görseli
               <input name="signature_file" type="file" accept="image/png,image/jpeg,image/webp" disabled={!canManage} />
@@ -287,7 +295,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             görmüyordu. Pencere teslim anından türetiliyor, bitimine bir
             hafta kala bildirim düşüyor.
           */}
-          <label>Revizyon süresi (gün)
+          <p className="wide kayit-formu-bolum">Teslim ve takip</p>
+          <label className="wide">Ücretsiz revizyon süresi (gün)
             <input
               name="revision_days"
               type="number"
@@ -311,7 +320,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </span>
           </label>
           <label className="wide">Belge alt bilgisi<textarea name="document_footer" defaultValue={branding?.document_footer ?? ""} placeholder="Kısa kurumsal açıklama veya yasal not. Adres ve vergi bilgileri “Resmi bilgiler ve banka” bölümünden gelir; o bölüm boşsa bu metin adres yerine kullanılır." disabled={!canManage} /></label>
-          {canManage ? <div className="wide panel-form-actions"><button className="panel-primary">Kurumsal Kimliği Kaydet</button></div> : null}
+          {canManage ? <div className="wide panel-form-actions kayit-formu-eylem"><p>Görseller PNG, JPG ya da WEBP; en fazla 5 MB.</p><button className="panel-primary">Kurumsal kimliği kaydet</button></div> : null}
         </form>
       </StgSection>
       </> : null}
@@ -335,9 +344,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <b>1. Adresi yazın</b>
             <span>Panel için ayrı bir alt alan adı seçin — web sitenizin adresi değil.</span>
             {canManage ? (
-              <form className="panel-form" action={updateCustomDomain}>
+              <form className="panel-form kayit-formu" action={updateCustomDomain}>
                 <AlanAdiFormu baslangic={domainInfo?.custom_domain ?? ""} canManage={canManage} />
-                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet ve bağla</button></div>
+                <div className="wide panel-form-actions kayit-formu-eylem"><p>Kaydettikten sonra DNS kaydını ekleyin (2. adım).</p><button className="panel-primary" type="submit">Kaydet ve bağla</button></div>
               </form>
             ) : <p className="stg-muted"><StgIcon name="lock" size={16} />Bu ayarı yalnızca kurum sahibi veya yönetici değiştirebilir.</p>}
           </li>
@@ -442,10 +451,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               </div>
               {posta.kullanilabilir ? (
                 <>
-                  <form className="panel-form" action={savePostaHesabi}>
-                    <label className="wide">Ortak posta adresi<input name="adres" type="email" required defaultValue={posta.adres ?? ""} autoComplete="off" placeholder="info@firmaniz.com" /></label>
-                    <label className="wide">Google istemci kimliği (client ID)<input name="client_id" required autoComplete="off" /></label>
-                    <label className="wide">Google gizli anahtarı (client secret)<input name="client_secret" type="password" required autoComplete="new-password" placeholder={posta.kayitliMi ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+                  <form className="panel-form kayit-formu" action={savePostaHesabi}>
+                    <label className="wide"><span>Ortak posta adresi<b className="req" aria-hidden="true">*</b></span><input name="adres" type="email" required defaultValue={posta.adres ?? ""} autoComplete="off" placeholder="info@firmaniz.com" /></label>
+                    <label className="wide"><span>Google istemci kimliği (client ID)<b className="req" aria-hidden="true">*</b></span><input name="client_id" required autoComplete="off" placeholder="…apps.googleusercontent.com" /></label>
+                    <label className="wide"><span>Google gizli anahtarı (client secret)<b className="req" aria-hidden="true">*</b></span><input name="client_secret" type="password" required autoComplete="new-password" placeholder={posta.kayitliMi ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
                     <p className="wide stg-paytr-note">
                       Bu değerler sizin Google Cloud projenizden gelir, Arvo&apos;dan değil. Kendi Workspace&apos;inizde bir proje açıp Gmail API&apos;sini etkinleştirin,
                       OAuth onay ekranını <b>Internal</b> seçin ve bir Web istemcisi oluşturun. Onay ekranı Internal olduğu sürece Google doğrulaması ve güvenlik
@@ -459,7 +468,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                       isteğin geldiği adresle birebir eşleşen kaydı kabul ediyor.
                     </p>
                     <p className="wide stg-paytr-note">Kurum imzası posta ekranında düzenlenir (Posta → Kutu durumu). Gizli anahtar şifreli saklanır, ekranda bir daha gösterilmez. Anahtarları değiştirmek Google iznini sıfırlar; yeniden bağlanmanız gerekir.</p>
-                    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
+                    <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">{posta.kayitliMi ? "Anahtarları güncelle" : "Anahtarları kaydet"}</button></div>
                   </form>
                   {posta.kayitliMi ? (
                     <div className="stg-paytr-foot">
@@ -496,15 +505,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 </span>
               </div>
               {whatsapp.available ? (
-                <form className="panel-form" action={saveWhatsappAccount}>
-                  <label>WhatsApp Business hesap kimliği (WABA ID)<input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
-                  <label>Numara kimliği (phone number ID)<input name="phone_number_id" inputMode="numeric" required defaultValue={whatsapp.phoneNumberId ?? ""} autoComplete="off" /></label>
-                  <label className="wide">Kalıcı erişim anahtarı<input name="access_token" type="password" autoComplete="new-password" required placeholder={whatsapp.connected ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
+                <form className="panel-form kayit-formu" action={saveWhatsappAccount}>
+                  <label><span>WhatsApp Business hesap kimliği (WABA ID)<b className="req" aria-hidden="true">*</b></span><input name="waba_id" inputMode="numeric" required defaultValue={whatsapp.wabaId ?? ""} autoComplete="off" /></label>
+                  <label><span>Numara kimliği (phone number ID)<b className="req" aria-hidden="true">*</b></span><input name="phone_number_id" inputMode="numeric" required defaultValue={whatsapp.phoneNumberId ?? ""} autoComplete="off" /></label>
+                  <label className="wide"><span>Kalıcı erişim anahtarı<b className="req" aria-hidden="true">*</b></span><input name="access_token" type="password" autoComplete="new-password" required placeholder={whatsapp.connected ? "Değiştirmek için yeni anahtarı girin" : ""} /></label>
                   <p className="wide stg-paytr-note">
                     Bu değerler Meta Business → WhatsApp Manager → API Kurulumu ekranında yer alır. Anahtar şifreli saklanır, ekranda bir daha gösterilmez.
                     Bağlarken numara Meta&apos;ya sorulur; anahtar yanlışsa kayıt hiç yazılmaz. Numara bağlamayan kurumların mesajları Arvo&apos;nun ortak numarasından gider.
                   </p>
-                  <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{whatsapp.connected ? "Güncelle" : "Numarayı bağla"}</button></div>
+                  <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">{whatsapp.connected ? "Güncelle" : "Numarayı bağla"}</button></div>
                 </form>
               ) : (
                 <p className="stg-muted"><StgIcon name="lock" size={16} />WhatsApp için sunucu şifreleme anahtarı henüz tanımlanmadı. Platform yöneticisi PAYMENT_CREDENTIALS_KEY değerini ekleyince bu alan açılır.</p>

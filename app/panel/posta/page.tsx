@@ -11,6 +11,8 @@ import { TopluIslem } from "./toplu-islem";
 import { OtomatikSecim } from "../crm/otomatik-secim";
 import "../crm/kayit-detay/kayit-detay.css";
 import "./posta.css";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 /*
   ORTAK GELEN KUTUSU — konuşma listesi.
@@ -597,12 +599,12 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir, kurum }: {
         şey. İlk sürümde Ayarlar'a konmuştu ve kullanıcı bulamadı.
       */}
       {imzaDuzenlenebilir ? (
-        <form className="panel-form posta-imza" action={postaImzasi}>
+        <form className="panel-form posta-imza kayit-formu" action={postaImzasi}>
           <label className="wide">
             Kurum imzası
             <textarea name="imza" rows={4} maxLength={2000} defaultValue={hesap.imza ?? ""} placeholder={"Akademik Merkez\nuzman@akademikmerkez.com"} />
           </label>
-          <p className="wide posta-not">
+          <p className="wide kayit-formu-not">
             Giden her mesajın sonuna eklenir; personelin ayrıca yazmasına gerek kalmaz. Yazdığınız kutuda görünmez.
             İlk satır yanıtı yazan personelin adı olur, yanında kurum logonuz gider. Boş bırakırsanız
             kurumun Ayarlar&apos;daki bilgileri (ad, e-posta, telefon, site) yazılır — aşağıdaki önizleme
@@ -614,7 +616,7 @@ function IstatistikKarti({ hesap, sayi, imzaDuzenlenebilir, kurum }: {
               <div dangerouslySetInnerHTML={{ __html: onizleme }} />
             </div>
           ) : null}
-          <div className="wide panel-form-actions"><button className="panel-secondary" type="submit">İmzayı kaydet</button></div>
+          <div className="wide panel-form-actions kayit-formu-eylem"><p>Boş bırakılırsa Ayarlar&apos;daki kurum bilgileri kullanılır.</p><button className="panel-primary" type="submit">İmzayı kaydet</button></div>
         </form>
       ) : onizleme ? (
         <div className="posta-imza-onizleme">

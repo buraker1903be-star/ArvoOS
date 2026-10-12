@@ -1,6 +1,8 @@
 import { StgIcon } from "./settings-ui";
 import { removeProviderSettings, saveProviderSettings } from "../finance/odeme-saglayici-actions";
 import type { ProviderStatus } from "@/lib/payments/durum";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 // Ödeme sağlayıcısı kartı: PayTR ve Garanti aynı kalıptan çiziliyor.
 // Hangi alanların sorulacağı kayıt defterinden geliyor
@@ -45,10 +47,10 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
           bilgilerin üzerine yazabilirdi. Sayfayı yenileyin, sürerse sunucu günlüğüne bakın.
         </p>
       ) : status.available ? (
-        <form className="panel-form" action={saveProviderSettings}>
+        <form className="panel-form kayit-formu" action={saveProviderSettings}>
           <input type="hidden" name="provider" value={spec.code} />
           <label>
-            {spec.merchantLabel}
+            <span>{spec.merchantLabel}<b className="req" aria-hidden="true">*</b></span>
             <input name="merchant_id" inputMode="numeric" required defaultValue={status.merchantId ?? ""} autoComplete="off" />
           </label>
 
@@ -60,7 +62,7 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
           */}
           {spec.identifiers.map((alan) => (
             <label key={alan.key}>
-              {alan.label}
+              <span>{alan.label}{alan.required ? <b className="req" aria-hidden="true">*</b> : null}</span>
               <input
                 name={alan.key}
                 inputMode="numeric"
@@ -76,7 +78,7 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
             const kayitli = status.storedKeys.includes(secret.key);
             return (
               <label key={secret.key}>
-                {secret.label}
+                <span>{secret.label}{secret.required && !kayitli ? <b className="req" aria-hidden="true">*</b> : null}</span>
                 <input
                   name={secret.key}
                   type="password"
@@ -108,7 +110,8 @@ export function OdemeSaglayiciKarti({ status }: { status: ProviderStatus }) {
             {!spec.checkoutReady ? " Bu sağlayıcının tahsilat akışı henüz açılmadı; bilgiler şimdiden kaydedilebilir." : ""}
           </p>
 
-          <div className="wide panel-form-actions">
+          <div className="wide panel-form-actions kayit-formu-eylem">
+            <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
             <button className="panel-primary" type="submit">{status.connected ? "Güncelle" : `${spec.name} bilgilerini kaydet`}</button>
           </div>
         </form>

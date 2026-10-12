@@ -8,6 +8,8 @@ import { loadNotifications } from "./load-notifications";
 import { NotificationIcon as Icon } from "./notification-icon";
 import { DuyuruMetni } from "./duyuru-metni";
 import "./notifications.css";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 const TZ = "Europe/Istanbul";
 const DAY = 24 * 60 * 60 * 1000;
@@ -52,11 +54,11 @@ export default async function NotificationsPage({ searchParams }: { searchParams
 
   const groups = groupByDay(notifications);
 
-  const announcementForm = <form className="panel-form notification-compose-form" action={sendManagementAnnouncement}>
+  const announcementForm = <form className="panel-form notification-compose-form kayit-formu" action={sendManagementAnnouncement}>
     <label className="wide">Alıcı<select name="recipient_user_id" defaultValue="all"><option value="all">Tüm personel</option>{(employeeRows ?? []).map((employee) => <option value={employee.user_id!} key={employee.user_id!}>{employee.full_name}{employee.job_title ? ` · ${employee.job_title}` : ""}</option>)}</select></label>
-    <label className="wide">Duyuru başlığı<input name="title" required minLength={3} maxLength={120} placeholder="Örn. Haftalık ekip toplantısı" /></label>
-    <label className="wide">Duyuru metni<textarea name="message" required minLength={3} maxLength={2000} rows={6} placeholder="Personele iletilecek duyuruyu yazın..." /></label>
-    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Duyuruyu Gönder</button></div>
+    <label className="wide"><span>Duyuru başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={3} maxLength={120} placeholder="Örn. Haftalık ekip toplantısı" /></label>
+    <label className="wide"><span>Duyuru metni<b className="req" aria-hidden="true">*</b></span><textarea name="message" required minLength={3} maxLength={2000} rows={6} placeholder="Personele iletilecek duyuruyu yazın..." /></label>
+    <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Duyuruyu gönder</button></div>
   </form>;
 
   return <div className="ntf-page">
@@ -68,7 +70,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       </div>
       <div className="panel-page-actions">
         <span className="status-pill" data-tone={unreadCount ? "info" : undefined}>{unreadCount ? `${unreadCount} okunmamış` : "Hepsi okundu"}</span>
-        {canAnnounce ? <PanelDrawer triggerLabel="+ Duyuru gönder" kicker="YÖNETİCİ DUYURUSU" title="Yeni duyuru" description="Tüm personele ya da seçtiğiniz kişiye bildirim gönderin.">{announcementForm}</PanelDrawer> : null}
+        {canAnnounce ? <PanelDrawer triggerLabel="+ Duyuru gönder" kicker="YÖNETİCİ DUYURUSU" title="Yeni duyuru" description="Tüm personele ya da seçtiğiniz kişiye bildirim olarak gider.">{announcementForm}</PanelDrawer> : null}
       </div>
     </div>
 

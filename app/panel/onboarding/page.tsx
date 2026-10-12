@@ -4,6 +4,8 @@ import { StgIcon, StgSection } from "../settings/settings-ui";
 import { completeOnboarding } from "./actions";
 import "../settings/settings.css";
 import "../platform/platform.css";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 // Kayıtlı renk yoksa panelin kendi vurgusu (Ayarlar'daki varsayılanla aynı)
 const DEFAULT_BRAND_COLOR = "#8e6d33";
@@ -37,8 +39,9 @@ export default async function OnboardingPage() {
 
     <div className="plt-onboard">
       <StgSection id="kurum" wide icon="building" tone="gold" kicker="1 · KURUM VE MARKA" title="Temel bilgiler" description="Teklif ve sözleşmelerinizde, müşteri takip ekranında bu bilgiler kullanılır.">
-        <form className="panel-form" action={completeOnboarding}>
-          <label className="wide">Resmi kurum adı
+        <form className="panel-form kayit-formu" action={completeOnboarding}>
+          <p className="wide kayit-formu-bolum">Kurum</p>
+          <label className="wide"><span>Resmi kurum adı<b className="req" aria-hidden="true">*</b></span>
             <input name="legal_name" defaultValue={onboarding?.legal_name || current?.legal_name || organization.name} minLength={2} maxLength={180} required autoComplete="organization" />
           </label>
           <label>Telefon
@@ -47,7 +50,8 @@ export default async function OnboardingPage() {
           <label>Web sitesi
             <input name="website" defaultValue={onboarding?.website || current?.website_url || ""} placeholder="https://firma.com" inputMode="url" />
           </label>
-          <label className="wide">Logo <small className="plt-optional">isteğe bağlı</small>
+          <p className="wide kayit-formu-bolum">Marka</p>
+          <label className="wide"><span>Logo <small className="plt-optional">isteğe bağlı</small></span>
             <input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp" />
             <small className="plt-field-note">PNG, JPG veya WEBP, en fazla 5 MB. Şeffaf arka planlı yatay logo en iyi sonucu verir.{logoUrl ? " Seçmezseniz mevcut logo kullanılır." : ""}</small>
           </label>
@@ -55,7 +59,7 @@ export default async function OnboardingPage() {
           <label>Marka rengi
             <span className="stg-color"><input name="primary_color" type="color" defaultValue={savedColor ?? currentColor ?? DEFAULT_BRAND_COLOR} /><small>Belge başlıkları ve vurgular</small></span>
           </label>
-          <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kurulumu tamamla ve panele geç</button></div>
+          <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alan zorunlu; gerisi sonradan Ayarlar&apos;dan değişir.</p><button className="panel-primary" type="submit">Kurulumu tamamla ve panele geç</button></div>
         </form>
       </StgSection>
 
