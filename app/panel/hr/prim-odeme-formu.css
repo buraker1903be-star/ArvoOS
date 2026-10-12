@@ -13,3 +13,6 @@
 @media (max-width:640px){
   .panel-root .kayit-formu input.prim-is-tutar{width:110px;font-size:16px}
 }
+/* İşaret kutusu: panelin genel alan kuralı (panel-ui.css) onu tam genişlikte
+   bir metin kutusu gibi çiziyordu (146 piksel); burada kendi boyunda. */
+:is(.os-root,.panel-root) .kayit-formu .prim-isler .prim-is-sec > input[type="checkbox"]{flex:none;width:18px;min-width:18px;height:18px;min-height:0;margin:0;padding:0;border-radius:5px;accent-color:var(--primary)}
