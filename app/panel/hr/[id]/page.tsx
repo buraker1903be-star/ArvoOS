@@ -33,6 +33,7 @@ import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
+import "../../components/kayit-formu.css";
 
 /*
   PERSONEL DETAYI (2026-10): talep, teklif, sözleşme, iş ve cari
@@ -239,22 +240,29 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   ];
   const hareketSekmesi = sekmeler.indexOf("Hareketler");
 
+  /* DÜZEN (2026-10): talep, teklif ve sözleşme çekmeceleriyle aynı ortak
+     form (components/kayit-formu.css): bölüm ayırıcıları, zorunlu alan
+     işareti, alt kaydet çubuğu. hr-form sınıfı bilerek yok: onun alan kuralı
+     özgüllükte ortak formun açılır liste okunu eziyordu (hr.css). */
   const editForm = (
-    <form className="panel-form hr-form" action={updateEmployee}>
+    <form className="panel-form kayit-formu" action={updateEmployee}>
       <input type="hidden" name="employee_id" value={employee.id} />
-      <p className="wide hr-form-section">Kimlik ve görev</p>
-      <label className="wide">Ad soyad<input name="full_name" required defaultValue={employee.full_name} /></label>
-      <label>Pozisyon<input name="job_title" defaultValue={employee.job_title ?? ""} /></label>
+      <p className="wide kayit-formu-bolum">Kimlik ve görev</p>
+      <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} defaultValue={employee.full_name} /></label>
+      <label>Pozisyon<input name="job_title" defaultValue={employee.job_title ?? ""} placeholder="Örn. Satış Uzmanı" /></label>
       <label>Departman<select name="department_id" defaultValue={employee.department_id ?? ""}><option value="">Departman seçin</option>{departments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
       <label>Durum<select name="employment_status" defaultValue={employee.employment_status}><option value="active">Aktif</option><option value="on_leave">İzinli</option><option value="inactive">Pasif</option><option value="terminated">İşten ayrıldı</option></select></label>
-      <p className="wide hr-form-section">İletişim</p>
-      <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} /></label>
-      <label>Telefon<input name="phone" defaultValue={employee.phone ?? ""} /></label>
-      <p className="wide hr-form-section">Prim ve satış</p>
+      <p className="wide kayit-formu-bolum">İletişim</p>
+      <label>E-posta<input name="email" type="email" defaultValue={employee.email ?? ""} placeholder="ornek@kurum.com" /></label>
+      <label>Telefon<input name="phone" type="tel" inputMode="tel" defaultValue={employee.phone ?? ""} placeholder="05xx xxx xx xx" /></label>
+      <p className="wide kayit-formu-bolum">Prim ve satış</p>
       <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.commission_rate} /></label>
       <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue={employee.operation_commission_rate} /></label>
       <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" defaultChecked={employee.can_receive_sales_requests} /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
-      <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Kaydet</button></div>
+      <div className="wide panel-form-actions kayit-formu-eylem">
+        <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+        <button className="panel-primary" type="submit">Değişiklikleri kaydet</button>
+      </div>
     </form>
   );
 
@@ -295,7 +303,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             </PanelModal>
           ) : null}
           {canManageTeam ? (
-            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker="PERSONEL" title="Personeli Düzenle" description={employee.full_name}>{editForm}</PanelDrawer>
+            <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli düzenle" description="Kimlik, görev, iletişim ve prim oranları. Panel rolü ve yetkiler ayrı yerden değişir.">{editForm}</PanelDrawer>
           ) : null}
           <details className="os-menu talep-menu">
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
@@ -304,7 +312,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               {/* Yanlış açılan kaydı silme: yalnızca panel hesabı olmayan
                   personelde; bağlı kaydı olanı işlem reddediyor (actions.ts). */}
               {izin("hr.personel.yonet") && !employee.user_id ? (
-                <PanelDrawer triggerLabel="Personeli sil" triggerClassName="os-menu-item is-danger" kicker="PERSONEL" title="Personeli sil" description={`${employee.full_name} · silme geri alınamaz`}>
+                <PanelDrawer triggerLabel="Personeli sil" triggerClassName="os-menu-item is-danger" kicker={`PERSONEL · ${employee.full_name}`} title="Personeli sil" description="Silme geri alınamaz.">
                   <div className="panel-danger-zone">
                     <p>Yalnızca yanlış açılmış, hiçbir kaydı olmayan personel silinir. Talep, iş, randevu, prim, belge ya da imzalı sözleşmesi olan personel silinmez; onun durumunu &quot;İşten ayrıldı&quot; yapın.</p>
                     <form action={personelSil}>
@@ -459,9 +467,15 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                 ) : member.role === "owner" && !isOwner ? (
                   <span className="status-pill" data-tone="gold">{roleNames.owner}</span>
                 ) : (
+                  /* Eskiden rolün yanında bir "Aktif" kutusu vardı ve altındaki
+                     "Erişimi kapat/aç" düğmesiyle aynı işi yapıyordu; dar
+                     ekranda rol adı "Operasyon Per…" diye kesiliyordu. Erişim
+                     artık yalnızca o düğmeden değişiyor; burada mevcut durum
+                     gizli alanla korunuyor (işlem kutu yoksa "kapalı" sayıyor). */
                   <form className="hr-access-form" action={updateTeamMemberAccess}>
                     <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
-                    <select name="role" defaultValue={member.role} aria-label="Rol">
+                    {member.is_active ? <input type="hidden" name="is_active" value="on" /> : null}
+                    <select name="role" defaultValue={member.role} aria-label="Panel rolü">
                       <option value="member">Satış Personeli</option>
                       <option value="operasyoncu">Operasyon Personeli</option>
                       <option value="admin">Yönetici</option>
@@ -469,8 +483,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                       {member.role === "manager" ? <option value="manager">Yönetici (sınırlı)</option> : null}
                       {isOwner ? <option value="owner">Kurum Sahibi</option> : null}
                     </select>
-                    <label className="hr-toggle"><input type="checkbox" name="is_active" defaultChecked={member.is_active} /> Aktif</label>
-                    <button className="panel-secondary" type="submit">Kaydet</button>
+                    <button className="panel-secondary" type="submit">Rolü kaydet</button>
                   </form>
                 )
               ) : pendingInvite ? (

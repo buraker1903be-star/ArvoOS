@@ -122,11 +122,12 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .panel-root .hr-form input::placeholder{color:var(--dim)}
 .panel-root .hr-form-section{margin:8px 0 -4px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .panel-root .hr-form-section:first-child{margin-top:0}
-.panel-root .hr-form label.hr-check{flex-direction:row;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);cursor:pointer}
-.panel-root .hr-form .hr-check input{flex:none;width:20px;height:20px;margin:0;accent-color:var(--accent)}
-.panel-root .hr-form .hr-check>span{display:flex;flex-direction:column;gap:2px}
-.panel-root .hr-form .hr-check b{color:var(--ink);font-size:14px;font-weight:650}
-.panel-root .hr-form .hr-check small{color:var(--muted);font-size:12.5px;font-weight:500}
+/* Onay kutusu kartı ortak kayıt formunda da (personel düzenleme). */
+.panel-root :is(.hr-form,.kayit-formu) label.hr-check{flex-direction:row;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);cursor:pointer}
+.panel-root :is(.hr-form,.kayit-formu) .hr-check input{flex:none;width:20px;height:20px;margin:0;accent-color:var(--accent)}
+.panel-root :is(.hr-form,.kayit-formu) .hr-check>span{display:flex;flex-direction:column;gap:2px}
+.panel-root :is(.hr-form,.kayit-formu) .hr-check b{color:var(--ink);font-size:14px;font-weight:650}
+.panel-root :is(.hr-form,.kayit-formu) .hr-check small{color:var(--muted);font-size:12.5px;font-weight:500}
 .panel-root .hr-form-alert{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:14px;font-size:13.5px;line-height:1.45}
 .panel-root .hr-form-alert p{margin:0;color:var(--hr-ink-2);font-size:13px}
 .panel-root .hr-form-alert.is-danger{background:var(--danger-soft);color:var(--danger);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 24%,transparent)}
@@ -169,11 +170,9 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .hr-access-label{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;font-weight:600;white-space:nowrap}
 .hr-access-body{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-left:auto}
 .hr-access-body form{margin:0}
-.hr-access-form{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
-.panel-root .hr-access-form select{height:34px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600}
+.hr-access-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.panel-root .hr-access-form select{flex:1 1 220px;min-width:0;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600}
 .panel-root .hr-access-form select:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
-.hr-toggle{display:inline-flex;align-items:center;gap:6px;color:var(--hr-ink-2);font-size:12.5px;font-weight:600;cursor:pointer}
-.panel-root .hr-toggle input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
 
 /* Departmanlar ve davetler: yan kart listeleri */
 .hr-list{display:flex;flex-direction:column;margin:0 -8px;padding:0;list-style:none}
@@ -232,7 +231,6 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
   .hr-person-actions>*{flex:1}
   .hr-access-body{margin-left:0;width:100%}
   .hr-access-form{width:100%}
-  .panel-root .hr-access-form select{flex:1;min-width:0}
 }
 @media(max-width:700px){
   /* Tablolar etiketli kartlara döner; sayfa yatay kaymaz */
