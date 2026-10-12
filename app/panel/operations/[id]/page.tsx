@@ -35,6 +35,7 @@ import "../../crm/request-page.css";
 import "./detail.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../components/kayit-formu.css";
+import { PortalZiyareti } from "../../crm/portal-ziyareti";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
 type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
@@ -440,6 +441,8 @@ export default async function OperationDetailPage({
             <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
             <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
             <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>
+            {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
+            {contract?.tracking_code ? <div><dt>Müşteri portalı</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
           </dl>
 
           {/* TERMİN: tarih, durumu ve (yetkisi olana) değiştirme alanı. */}

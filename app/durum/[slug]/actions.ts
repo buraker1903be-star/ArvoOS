@@ -17,7 +17,8 @@ const empty={code:null,files:null,asamalar:null} as const;
 export async function lookupStatus(orgSlug:string,_previousState:LookupState,formData:FormData):Promise<LookupState>{
  const code=String(formData.get("tracking_code")??"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
  if(code.length!==6)return {error:"Lütfen size gönderilen 6 haneli takip kodunu girin.",results:null,...empty};
- const access=await openTrackingAccess(code);
+ // Sorgu ekranından giriş: portal ziyaretinde "son giriş" olarak yazılır.
+ const access=await openTrackingAccess(code,"giris");
  if(!access.ok)return {error:trackingAccessMessage(access.reason),results:null,...empty};
  const {supabase}=access;
  const {data,error}=await supabase.rpc("lookup_contract_by_tracking_code",{p_org_slug:orgSlug,p_tracking_code:code});

@@ -48,8 +48,13 @@ async function clientIp() {
 /**
  * Takip koduyla veri okuyan HER işlemin başında çağrılır: denemeyi kaydeder
  * ve sınır aşıldıysa erişimi reddeder.
+ *
+ * tur = "giris": müşteri sorgu ekranından kodunu girdi. Kapı geçerli kodda
+ * sözleşmenin portal ziyaretini yazıyor (20261012131639): her çağrı "son
+ * görülme"yi (çevrimiçi), yalnızca giriş "son giriş"i ve giriş sayısını
+ * günceller. Açık sekmenin 20 sn'lik yenilemesi giriş sayılmaz.
  */
-export async function openTrackingAccess(code: string): Promise<TrackingAccess> {
+export async function openTrackingAccess(code: string, tur?: "giris"): Promise<TrackingAccess> {
   const supabase = createAdminClient();
   if (!supabase) {
     // Sessizce boş sonuç döndürmek müşteriye "sözleşme bulunamadı" dedirtir
@@ -57,10 +62,14 @@ export async function openTrackingAccess(code: string): Promise<TrackingAccess> 
     console.error("[takip] SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY tanımlı değil; takip sorgulaması kapalı.");
     return { ok: false, reason: "unavailable" };
   }
-  const { data, error } = await supabase.rpc("arvo_tracking_guard", {
-    p_client_ip: await clientIp(),
-    p_code: code,
-  });
+  const ip = await clientIp();
+  let { data, error } = await supabase.rpc("arvo_tracking_guard", tur ? { p_client_ip: ip, p_code: code, p_tur: tur } : { p_client_ip: ip, p_code: code });
+  /* Migration (20261012131639) uygulanmadan önce kapının üçüncü parametresi
+     yok: PostgREST işlevi bulamıyor (PGRST202). Portal bu yüzden kapanmasın;
+     giriş kaydı olmadan eski çağrıyla devam edilir. */
+  if ((error?.code === "PGRST202" || error?.code === "42883") && tur) {
+    ({ data, error } = await supabase.rpc("arvo_tracking_guard", { p_client_ip: ip, p_code: code }));
+  }
   if (error) {
     console.error("[takip] sorgulama sınırı denetlenemedi", { code: error.code, message: error.message });
     return { ok: false, reason: "unavailable" };

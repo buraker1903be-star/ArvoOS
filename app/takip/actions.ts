@@ -247,7 +247,8 @@ export async function lookupTracking(
     return { error: "Lütfen size gönderilen takip kodunu eksiksiz girin.", result: null };
   }
 
-  const access = await openTrackingAccess(code);
+  // Sorgu ekranından giriş: portal ziyaretinde "son giriş" olarak yazılır.
+  const access = await openTrackingAccess(code, "giris");
   if (!access.ok) return { error: trackingAccessMessage(access.reason), result: null };
   const { supabase } = access;
 

@@ -42,6 +42,7 @@ import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
+import { PortalZiyareti } from "../../portal-ziyareti";
 
 /*
   SÖZLEŞME DETAYI (2026-10): talep ve teklif detayıyla aynı üç sütun.
@@ -447,6 +448,8 @@ export default async function ContractDetailPage({ params }: Props) {
               <h3>Takip ekranı</h3>
               <p className="sozlesme-takip-kod">{data.tracking_code}</p>
               <p className="talep-gecmis-ozet">{trackingOpen ? "Müşteri takip ekranına girebilir." : "İmzadan sonra açılır."}</p>
+              {/* Müşteri portala girdi mi, şu an ekranda mı (20261012131639). */}
+              <p className="talep-gecmis-ozet"><PortalZiyareti contractId={data.id} /></p>
               <div className="talep-iletisim">
                 <PanelDrawer triggerLabel="Takip kodunu gönder" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Takip kodu" description="Müşteri bu kodla takip ekranında kendi iş durumunu görür ve soru sorar." triggerClassName="panel-secondary">
                   <div className="sozlesme-takip">
