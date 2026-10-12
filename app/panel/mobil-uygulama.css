@@ -212,3 +212,11 @@
   .os-root .panel-content .ops-pano{scroll-snap-type:x mandatory;scroll-padding-left:0;gap:var(--sp-3)}
   .os-root .panel-content .ops-pano-kolon{flex:0 0 calc(100% - 40px);scroll-snap-align:start}
 }
+
+@media (max-width:760px){
+  /* Mesajlar araması: genel alan kuralı içteki kutuya ikinci bir çerçeve
+     ve zemin veriyordu; arama çubuğunun kendisi zaten çerçeveli. */
+  /* !important bilerek: genel alan kuralı (panel-ui.css) zincirli :not()
+     seçicileriyle (0,8,1) ağırlığında; yalnızca bu tek arama kutusu için. */
+  .os-root .panel-content .msg-search input{min-width:0;height:36px !important;min-height:0 !important;margin:0;padding:0 !important;border:0 !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;font-size:16px}
+}
