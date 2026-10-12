@@ -195,3 +195,20 @@
   .os-root .os-launcher-app{font-size:12px}
   .os-root .os-launcher-head{padding:var(--sp-5) var(--sp-4) var(--sp-1)}
 }
+
+/* ---------- UYGULAMA DAVRANIŞI ----------
+   Dokununca çıkan gri vurgu yok, çift dokunma yakınlaştırmıyor (düğmeye
+   art arda basmak sayfayı büyütüyordu), çubuklarda metin seçilmiyor. */
+@media (max-width:760px){
+  .os-root :is(a,button,summary,label,select,[role="button"]){-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .os-root :is(.os-dock,.os-bar,.os-subdock){-webkit-user-select:none;user-select:none}
+  .os-root .os-bar{padding-left:max(var(--sp-3),env(safe-area-inset-left));padding-right:max(var(--sp-3),env(safe-area-inset-right))}
+
+  /* PANO: süzgeçler iki sütun (üç seçim alt alta ekranın yarısını
+     kaplıyordu), sütunlar ekran genişliğinde ve parmakla tek tek kayar. */
+  .os-root .panel-content .pano-suzgec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2)}
+  .os-root .panel-content .pano-suzgec>*{min-width:0;width:100%}
+  .os-root .panel-content .pano-suzgec>:last-child:nth-child(odd){grid-column:1/-1}
+  .os-root .panel-content .ops-pano{scroll-snap-type:x mandatory;scroll-padding-left:0;gap:var(--sp-3)}
+  .os-root .panel-content .ops-pano-kolon{flex:0 0 calc(100% - 40px);scroll-snap-align:start}
+}
