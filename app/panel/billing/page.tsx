@@ -6,6 +6,8 @@ import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { submitBankTransferPayment } from "./actions";
 import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
 import "../team.css";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 function formatTry(value: number) {
   return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(value / 100);
@@ -165,17 +167,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
     {canSubmit ? <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME BİLDİRİMİ</small><h2>Dekont gönder</h2></div><span className="status-pill">Manuel onay</span></div>
-      <form className="panel-form" action={submitBankTransferPayment}>
+      <form className="panel-form kayit-formu" action={submitBankTransferPayment}>
         {/* Önceden ürün gönderilmiyordu (varsayılan ArvoOS); ArvoARC/Randevu için
             havaleyle ödeyen kurumun o ürünün lisansı uzamıyordu. */}
         <label>Ürün<select name="product" defaultValue="arvoos">{subscriptions.map((product) => <option key={product.code} value={product.code}>{product.name}</option>)}</select></label>
-        <label>Banka hesabı<select name="bank_account_id" required>{(bankAccounts ?? []).map((account) => <option key={account.id} value={account.id}>{account.bank_name} · {formatIban(account.iban)}</option>)}</select></label>
+        <label><span>Banka hesabı<b className="req" aria-hidden="true">*</b></span><select name="bank_account_id" required>{(bankAccounts ?? []).map((account) => <option key={account.id} value={account.id}>{account.bank_name} · {formatIban(account.iban)}</option>)}</select></label>
         <label>Paket<select name="plan_code" defaultValue={license?.plan_code ?? organization.plan_code}><option value="starter">Starter</option><option value="professional">Professional</option><option value="enterprise">Enterprise</option></select></label>
-        <label>Tutar (TL)<input name="amount" inputMode="decimal" min="1" step="0.01" required placeholder="0,00" /></label>
-        <label>İşlem / referans no<input name="reference_no" maxLength={120} placeholder="Opsiyonel" /></label>
-        <label className="wide">Dekont<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label>
+        <label><span>Tutar (TL)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" min="1" step="0.01" required placeholder="0,00" /></label>
+        <label>İşlem / referans no<input name="reference_no" maxLength={120} placeholder="İsteğe bağlı" /></label>
+        <label className="wide"><span>Dekont<b className="req" aria-hidden="true">*</b></span><input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label>
         <label className="wide">Not<textarea name="customer_note" maxLength={1000} rows={3} placeholder="Ödemeyle ilgili açıklama" /></label>
-        <div className="wide management-submit"><small>PDF, JPG, PNG veya WEBP · en fazla 10 MB</small><button className="panel-primary" type="submit">Dekontu gönder</button></div>
+        <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> zorunlu · dekont PDF, JPG, PNG veya WEBP, en fazla 10 MB</p><button className="panel-primary" type="submit">Dekontu gönder</button></div>
       </form>
     </section> : <div className="platform-note"><span>i</span><p>Dekont gönderimi yalnızca kurum sahibi veya yöneticisi tarafından yapılabilir.</p></div>}
 
