@@ -10,6 +10,7 @@ import { requestStageNames } from "./request-status";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { noteReturningCustomer } from "./customer-history-query";
+import { DIGER } from "@/lib/hizmet-turleri";
 
 const defaultProbability: Record<string, number> = {
   lead: 10,
@@ -121,7 +122,7 @@ async function createOpportunity__impl(formData: FormData) {
     throw new Error("Talep konusu en az 2 karakter olmalıdır.");
   if (customerName.length < 2)
     throw new Error("Müşteri veya kurum adı en az 2 karakter olmalıdır.");
-  if (selectedServiceType === "Diğer" && customServiceType.length < 2)
+  if (selectedServiceType === DIGER && customServiceType.length < 2)
     throw new Error("Diğer hizmet türünü yazmalısınız.");
   const canAssign = yetkiler.has("crm.kayit.ata");
   let assignment;
@@ -160,7 +161,7 @@ async function createOpportunity__impl(formData: FormData) {
     department: text(formData, "department", 180),
     academic_level: text(formData, "academic_level", 80),
     service_type:
-      selectedServiceType === "Diğer" ? customServiceType : selectedServiceType,
+      selectedServiceType === DIGER ? customServiceType : selectedServiceType,
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };

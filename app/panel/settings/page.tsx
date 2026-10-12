@@ -7,6 +7,7 @@ import { LegalDetailsForm } from "./legal-details-form";
 import { legalDetailsFrom, validateLegalDetails } from "./legal-details";
 import { StgIcon, StgLinkRow, StgReadOnly, StgSection, StgValueRow, type StgTone } from "./settings-ui";
 import { BelgeMetinleri } from "./belge-metinleri";
+import { HizmetTurleri } from "./hizmet-turleri";
 import { saglayiciDurumlari } from "@/lib/payments/durum";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { OdemeSaglayiciKarti, saglayiciRozeti } from "./odeme-saglayici-karti";
@@ -58,6 +59,7 @@ const BOLUMLER = [
   { id: "resmi-bilgiler", icon: "doc", label: "Resmi bilgiler" },
   { id: "kurumsal-kimlik", icon: "palette", label: "Kurumsal kimlik" },
   { id: "belge-metinleri", icon: "doc", label: "Belge metinleri" },
+  { id: "hizmet-turleri", icon: "briefcase", label: "Hizmet türleri" },
   { id: "alan-adi", icon: "globe", label: "Alan adı" },
   { id: "entegrasyonlar", icon: "plug", label: "Entegrasyonlar" },
 ] as const;
@@ -328,6 +330,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </> : null}
 
       {bolum === "belge-metinleri" ? <BelgeMetinleri tur={istenenBelge === "teklif" ? "proposal" : "contract"} /> : null}
+
+      {bolum === "hizmet-turleri" ? <HizmetTurleri /> : null}
 
       {bolum === "alan-adi" ? <>
       <StgSection

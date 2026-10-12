@@ -29,6 +29,8 @@ import "../../crm.css";
 import "../../request-page.css";
 import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
+import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
+import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 
 /*
   TALEP DETAYI (2026-10): üç sütun.
@@ -199,9 +201,11 @@ export default async function RequestDetailPage({
   }
 
   // Müşteriyle yazışmalar (WhatsApp ve posta sekmeleri); müşteri sayfasıyla aynı kural.
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri] = await Promise.all([
     musteriWhatsapp(membership.organization_id, item.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [item.id], eposta: item.contact_email }) : Promise.resolve([]),
+    // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
+    kurumHizmetTurleri(supabase, membership.organization_id),
   ]);
   const gecmisSayilari = gecmis
     ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
@@ -224,7 +228,7 @@ export default async function RequestDetailPage({
 
       <p className="wide kayit-formu-bolum">Talep</p>
       <label className="wide"><span>Talep konusu<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} defaultValue={item.title} /></label>
-      <label>Hizmet türü<input name="service_type" defaultValue={d.service_type || ""} /></label>
+      <label>Hizmet türü<input name="service_type" list="hizmet-turu-onerileri" defaultValue={d.service_type || ""} /><HizmetTuruOnerileri liste={hizmetTurleri.liste} /></label>
       {calismaTurleri.length ? (
         /* İş açılırken üretilecek görev listesini bu belirliyor. */
         <label>Çalışma türü

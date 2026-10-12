@@ -11,6 +11,8 @@ import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { RequestEntryForm } from "./request-entry-form";
+import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
+import { formSecenekleri } from "@/lib/hizmet-turleri";
 import { CustomerLookupButton } from "./customer-lookup";
 import { requestStageNames } from "./request-status";
 import { EmptyNewRequestButton } from "./empty-new-request";
@@ -171,6 +173,8 @@ export default async function RequestsPage({
   const sayim = async (asama: string) => (await suzulmus(true).eq("stage", asama)).count ?? 0;
   const SERIT_ASAMALARI = [...active, ...ILERLEYEN, "lost"];
 
+  // Talep formunun hizmet türleri (Ayarlar → Hizmet türleri); listeyle birlikte okunuyor.
+  const hizmetTurleriSozu = kurumHizmetTurleri(supabase, membership.organization_id);
   const [
     { data, error, count: suzgecSayisi },
     { data: stages, error: stageError },
@@ -223,6 +227,7 @@ export default async function RequestsPage({
   );
   const academicMode = (stages ?? []).some((s) => s.code === "academic_review");
   const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
+  const hizmetTurleri = formSecenekleri((await hizmetTurleriSozu).liste);
 
   const rows = (data ?? []) as unknown as TalepSatiri[];
   const sonSayfa = sonSayfaNo(suzgecSayisi, rows.length, sayfaNo);
@@ -310,6 +315,7 @@ export default async function RequestsPage({
               salesRepresentatives={representatives}
               canAssign={canAssign}
               calismaTurleri={calismaTurleri}
+              hizmetTurleri={hizmetTurleri}
             />
           </PanelDrawer>
         </div>

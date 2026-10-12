@@ -7,7 +7,11 @@ import { NEW_REQUEST_PREFILL_EVENT, type NewRequestPrefill } from "./customer-hi
 // Bileşen stilini kendisi alıyor (AGENTS.md: sınıfın CSS'i rotaya kendi importuyla girer).
 import "../components/kayit-formu.css";
 
-const serviceTypes = ["Tez Danışmanlığı","Akademik Çeviri","Literatür Danışmanlığı","Veri Analizi","Makale Danışmanlığı","Biçimsel Düzenleme","Araştırma Tasarımı","Doçentlik Başvuru Danışmanlığı","Diğer"];
+import { DIGER, VARSAYILAN_HIZMET_TURLERI, formSecenekleri } from "@/lib/hizmet-turleri";
+
+/* Hizmet türleri kurumun listesinden (Ayarlar → Hizmet türleri,
+   lib/hizmet-turleri). Eskiden burada sabit bir akademik liste vardı;
+   başka işi yapan kurum her talepte "Diğer"i seçip elle yazıyordu. */
 type SalesRepresentative={id:string;full_name:string;job_title:string|null};
 /*
   Çalışma türü: işin görev listesini belirliyor. Türü satışçı seçiyor
@@ -17,7 +21,7 @@ type SalesRepresentative={id:string;full_name:string;job_title:string|null};
 */
 type CalismaTuru={code:string;name:string;is_default:boolean};
 
-export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign, calismaTurleri = [] }: { academicMode: boolean; salesRepresentatives: SalesRepresentative[]; canAssign: boolean; calismaTurleri?: CalismaTuru[] }) {
+export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign, calismaTurleri = [], hizmetTurleri = formSecenekleri(VARSAYILAN_HIZMET_TURLERI) }: { academicMode: boolean; salesRepresentatives: SalesRepresentative[]; canAssign: boolean; calismaTurleri?: CalismaTuru[]; hizmetTurleri?: string[] }) {
   const [serviceType, setServiceType] = useState("");
   // Geri dönen müşteri kontrolü için ad ve telefon izlenir (alanlar yine kontrolsüz)
   const [customerName, setCustomerName] = useState("");
@@ -97,8 +101,8 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
       </label>
     ) : null}
     {academicMode ? <>
-      <label><span>Hizmet türü<b className="req" aria-hidden="true">*</b></span><select name="service_type" required value={serviceType} onChange={(event) => setServiceType(event.target.value)}><option value="" disabled>Seçin</option>{serviceTypes.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
-      {serviceType === "Diğer" ? <label className="wide request-other-service"><span>Diğer hizmet<b className="req" aria-hidden="true">*</b></span><input name="other_service_type" required minLength={2} maxLength={120} placeholder="Hizmet türünü yazın" /></label> : null}
+      <label><span>Hizmet türü<b className="req" aria-hidden="true">*</b></span><select name="service_type" required value={serviceType} onChange={(event) => setServiceType(event.target.value)}><option value="" disabled>Seçin</option>{hizmetTurleri.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
+      {serviceType === DIGER ? <label className="wide request-other-service"><span>Diğer hizmet<b className="req" aria-hidden="true">*</b></span><input name="other_service_type" required minLength={2} maxLength={120} placeholder="Hizmet türünü yazın" /></label> : null}
     </> : null}
     <label className="wide"><span>Talep konusu<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} placeholder={academicMode ? "Örn. Yüksek lisans tezi analiz desteği" : "Talebin kısa başlığı"} /></label>
 

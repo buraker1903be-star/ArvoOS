@@ -144,6 +144,8 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
       { key: "settings.kurulum.yonet", modul: null, label: "Kurulum sihirbazı", aciklama: "Kurum ilk kurulum adımlarını yürütür", varsayilan: YONETIM },
       // RLS de yazmayı owner/admin'e açıyor (20261012083920): yalnızca daraltılabilir.
       { key: "settings.belge_metni.yonet", modul: null, label: "Belge metinleri", aciklama: "Sözleşme ve teklif metinlerini düzenler", varsayilan: YONETIM, rlsBagli: true },
+      // RLS de yazmayı owner/admin'e açıyor (20261012110702): yalnızca daraltılabilir.
+      { key: "settings.hizmet_turu.yonet", modul: null, label: "Hizmet türleri", aciklama: "Talep formundaki hizmet türü listesini düzenler", varsayilan: YONETIM, rlsBagli: true },
       { key: "bildirim.duyuru.gonder", modul: null, label: "Duyuru gönderme", aciklama: "Kurum içi duyuru yayınlar", varsayilan: YONETIM_VE_SEF },
     ],
   },

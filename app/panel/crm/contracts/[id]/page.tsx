@@ -40,6 +40,8 @@ import "../../request-page.css";
 import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
+import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
+import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 
 /*
   SÖZLEŞME DETAYI (2026-10): talep ve teklif detayıyla aynı üç sütun.
@@ -169,9 +171,11 @@ export default async function ContractDetailPage({ params }: Props) {
      müşteri sayfasıyla aynı kural (../../musteri-yazismalari.tsx). Posta
      sözleşmenin talebine bağlı ya da müşterinin adresiyle eşleşenler. */
   const postaGorur = izin("posta.gor");
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri] = await Promise.all([
     musteriWhatsapp(membership.organization_id, customer?.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [data.opportunity_id], eposta: customer?.contact_email }) : Promise.resolve([]),
+    // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
+    kurumHizmetTurleri(supabase, membership.organization_id),
   ]);
   const messages = shareUrl
     ? contractMessages({
@@ -245,7 +249,7 @@ export default async function ContractDetailPage({ params }: Props) {
                     <label>E-posta<input name="contact_email" type="email" defaultValue={customer?.contact_email ?? ""} placeholder="ornek@eposta.com" /></label>
 
                     <p className="wide kayit-formu-bolum">Hizmet ve akademik künye</p>
-                    <label>Hizmet türü<input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} /></label>
+                    <label>Hizmet türü<input name="service_type" list="hizmet-turu-onerileri" defaultValue={String(customer?.request_details?.service_type ?? "")} /><HizmetTuruOnerileri liste={hizmetTurleri.liste} /></label>
                     <label>Akademik düzey<input name="academic_level" list="sozlesme-akademik-duzey" defaultValue={String(customer?.request_details?.academic_level ?? "")} placeholder="Seçin ya da yazın" /></label>
                     <label>Üniversite<input name="university" defaultValue={String(customer?.request_details?.university ?? "")} placeholder="Örn. İstanbul Üniversitesi" /></label>
                     <label>Bölüm / alan<input name="department" defaultValue={String(customer?.request_details?.department ?? "")} placeholder="Örn. İşletme" /></label>
