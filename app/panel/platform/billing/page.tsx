@@ -5,7 +5,9 @@ import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/set
 import { PAKET_ADI, para, tarih } from "../bicim";
 import { productName } from "@/lib/products";
 import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
-import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
+/* Gösterilen liste: kanal başına bu kadar satır okunuyor, toplam
+   veritabanından geliyor. */
+const LISTE = 20;
 import "../../settings/settings.css";
 import "../platform.css";
 import { abonelikHatirlatmasiGonder } from "../actions";
@@ -70,6 +72,7 @@ export default async function BillingPage() {
     { data: havaleler },
     { data: kartOdemeleri },
     { data: aboneOdemeleri },
+    { data: tahsilatOzeti, error: ozetHatasi },
   ] = await Promise.all([
     supabase.from("organizations").select("id").eq("kind", "internal"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due"]),
@@ -86,12 +89,33 @@ export default async function BillingPage() {
       sayılmıyordu: "Tahsil edildi" yalnızca havale ve bireysel aboneyi
       topluyor, PayTR'den gelen kurum ödemelerini atlıyordu.
     */
-    supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product").eq("status", "approved"),
+    /*
+      LİSTE KISA, TOPLAM KESİN (12.10.2026).
+
+      Eskiden her kanalda `.limit(50)` vardı ve "Tahsil edildi" son 50
+      kaydın toplamıydı; düzeltme olarak sınır kaldırılıp BÜTÜN kayıtlar
+      okunmaya başlandı. Doğru ama aynı hatanın daha büyük eşikli hâli:
+      satır tavanına çarpıldığı gün toplam yine sessizce eksilirdi, hem
+      de gelir ekranında. Artık toplam, sayı, bu ay ve para birimleri
+      platform_tahsilat_ozeti'nden; buradaki üç sorgu yalnızca
+      GÖSTERİLEN son yirmi satır için.
+
+      Her kanaldan yirmi satır almak yeterli: üçü de tarihe göre
+      azalan sıradaysa, birleşik listenin ilk yirmisi ancak bu
+      kümelerden gelebilir.
+    */
+    supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product")
+      .eq("status", "approved").order("reviewed_at", { ascending: false, nullsFirst: false }).limit(LISTE),
     // tuzak-tamam: burada ABONELİK değil TAHSİLAT olarak okunuyor; bu tablo
     // yalnızca arvo_record_paytr_payment tarafından yazılan kart ödeme günlüğü.
-    supabase.from("billing_subscriptions").select("id,organization_id,product,unit_amount,currency,created_at,provider"),
-    supabase.from("subscriber_payments").select("id,amount,currency,paid_at"),
+    supabase.from("billing_subscriptions").select("id,organization_id,product,unit_amount,currency,created_at,provider")
+      .order("created_at", { ascending: false }).limit(LISTE),
+    supabase.from("subscriber_payments").select("id,amount,currency,paid_at")
+      .order("paid_at", { ascending: false, nullsFirst: false }).limit(LISTE),
+    supabase.rpc("platform_tahsilat_ozeti"),
   ]);
+  if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
+  const ozet = (tahsilatOzeti ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
   // Otomatik çekim yok: dönem sonu yaklaşanlar burada, kurucu WhatsApp'tan hatırlatır.
   const reminders = remindersNow((productLicenses ?? []) as RenewalLicense[], (organizationRows ?? []) as RenewalOrganization[]);
 
@@ -199,17 +223,15 @@ export default async function BillingPage() {
     "Tahsil edildi" son 50 kaydın toplamıydı; 51. ödemeden sonra rakam
     sessizce eksilmeye başlıyordu. Liste kısa kalıyor, toplam kısalmıyor.
   */
-  const toplamTahsilat = tahsilatlar.reduce((sum, satir) => sum + satir.amount, 0);
+  const toplamTahsilat = Number(ozet.toplam ?? 0);
+  const tahsilatAdedi = Number(ozet.adet ?? 0);
   /*
     Ay sınırı Türkiye saatiyle ve ZAMAN DAMGASI olarak karşılaştırılıyor.
     Metin karşılaştırması (`satir.tarih >= ayBasi`) burada çalışıyor gibi
     görünürdü ama PostgREST "…+00:00", toISOString() ise "…Z" yazıyor;
     aynı saniyeye denk gelen iki kayıtta sonuç sessizce sapardı.
   */
-  const ayBasiMs = istanbulMidnight(`${todayInIstanbul().slice(0, 7)}-01`).getTime();
-  const buAyTahsilat = tahsilatlar
-    .filter((satir) => satir.tarih && new Date(satir.tarih).getTime() >= ayBasiMs)
-    .reduce((sum, satir) => sum + satir.amount, 0);
+  const buAyTahsilat = Number(ozet.bu_ay ?? 0);
 
   /*
     Para birimi karışırsa toplam anlamsız olur: 100 ₺ ile 100 $ toplanıp tek
@@ -217,7 +239,7 @@ export default async function BillingPage() {
     gereği TRY (AGENTS.md "Para kuruş cinsinden tamsayı"); karışma ancak
     tahsilat kayıtlarından gelebilir.
   */
-  const birimler = new Set(tahsilatlar.map((satir) => satir.currency || "TRY"));
+  const birimler = new Set((ozet.birimler ?? []).map((birim) => birim || "TRY"));
   if (abonelikler.length) birimler.add("TRY");
   const currency = birimler.size === 1 ? [...birimler][0] : "TRY";
   const birimKarisik = birimler.size > 1;
@@ -290,7 +312,7 @@ export default async function BillingPage() {
           son 50 kaydın toplamı "tahsil edildi" diye yazılıyordu. */}
       <StgWidget
         tone="success" icon="check" label="Bu ay tahsil edilen" value={para(buAyTahsilat, currency)}
-        note={`Tüm zamanlar ${para(toplamTahsilat, currency)} · ${tahsilatlar.length} ödeme`}
+        note={`Tüm zamanlar ${para(toplamTahsilat, currency)} · ${tahsilatAdedi} ödeme`}
       />
       <StgWidget
         tone="info" icon="box" label="Aktif abonelik" value={odeyenler.length}
@@ -377,7 +399,7 @@ export default async function BillingPage() {
       <StgSection
         id="tahsilat" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler"
         description="Havale/EFT onayları, kart ödemeleri ve bireysel abone ödemeleri. Liste son 20 kayıt; yukarıdaki toplamlar tüm kayıtlardan."
-        aside={<span className="status-pill">{tahsilatlar.length} kayıt</span>}
+        aside={<span className="status-pill">{tahsilatAdedi} kayıt</span>}
       >
         {sonTahsilatlar.length ? (
           <div className="stg-list">
