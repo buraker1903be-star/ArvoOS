@@ -153,45 +153,7 @@
   display: flex;
   flex-direction: column;
 }
-.proposal-drawer-intro {
-  margin: 0 -30px 24px;
-  padding: 24px 30px;
-  border-bottom: 1px solid var(--ux-line);
-  background: var(--surface-2);
-}
-.proposal-drawer-intro small {
-  display: block;
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-}
-.proposal-drawer-intro h3 {
-  margin: 10px 0 8px;
-  font: 750 22px/1.2 var(--font-heading);
-  color: var(--ux-primary);
-}
-.proposal-drawer-intro p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.65;
-}
-.proposal-builder {
-  gap: 18px;
-}
-.proposal-builder label {
-  font-size: 13px;
-}
-.proposal-builder input,
-.proposal-builder select,
-.proposal-builder textarea {
-  font-size: 12px;
-  min-height: 46px;
-}
-.proposal-builder textarea {
-  min-height: 112px;
-}
+/* Alanların ölçüsü ortak kayıt formundan (components/kayit-formu.css). */
 
 .proposal-live-summary {
   display: grid;
@@ -254,13 +216,6 @@
 .proposal-payment-breakdown > div:last-child {
   border-bottom: 0;
 }
-.proposal-builder .panel-form-actions {
-  margin-top: 2px;
-}
-.proposal-builder .panel-form-actions .panel-primary {
-  min-height: 46px;
-  font-size: 11px;
-}
 
 @media (max-width: 1100px) {
   .crm-request-card {
@@ -295,13 +250,6 @@
   .crm-page-stack .panel-drawer-close {
     top: 16px;
     right: 20px;
-  }
-  .proposal-drawer-intro {
-    margin: 0 -20px 20px;
-    padding: 20px;
-  }
-  .proposal-drawer-intro h3 {
-    font-size: 20px;
   }
   .proposal-builder {
     gap: 15px;
@@ -426,8 +374,14 @@
 }
 
 @media (max-width: 760px) {
+  /* Telefonda alan yazısı 16px (iOS yakınlaştırmasın diye); eskiden 46px
+     sütun "100"ü sığdırmıyor, yüzde "5" diye kesik görünüyordu. */
   .custom-plan-row {
-    grid-template-columns: 18px minmax(0, 1fr) 46px 26px;
+    grid-template-columns: 18px minmax(0, 1fr) 64px 16px;
+  }
+  .custom-plan-row input {
+    padding: 8px 6px;
+    text-align: center;
   }
   .custom-plan-amount {
     grid-column: 2 / span 3;

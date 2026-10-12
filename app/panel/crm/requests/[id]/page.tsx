@@ -169,10 +169,9 @@ export default async function RequestDetailPage({
     : adim === 4 ? (is ? { href: `/panel/operations/${is.id}`, label: "İşe git" } : gecerliSozlesme ? { href: `/panel/crm/contracts/${gecerliSozlesme.id}`, label: "Sözleşmeye git" } : { href: "/panel/operations/isler", label: "İşlere git" })
     : null;
   const teklifCekmecesi = (etiket: string, sinif: string) => (
-    <PanelDrawer triggerLabel={etiket} title="Teklif Oluştur" triggerClassName={sinif}>
+    <PanelDrawer triggerLabel={etiket} kicker="YENİ TEKLİF" title={`${musteri} için teklif`} description="Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin." triggerClassName={sinif}>
       <ProposalBuilderForm
         opportunityId={item.id}
-        customerName={item.customer_name}
         title={item.title}
         scope={d.scope || item.notes || item.title}
         representatives={temsilciler}
@@ -350,12 +349,13 @@ export default async function RequestDetailPage({
               {item.stage !== "proposal" && !arsivde ? (
                 <PanelDrawer
                   triggerLabel="Direkt sözleşme oluştur"
-                  title="Direkt Sözleşme Oluştur"
+                  kicker="DİREKT SÖZLEŞME"
+                  title={`${musteri} için sözleşme`}
+                  description="Tutarı ve ödeme planını belirleyin; müşteri onayı beklenmeden sözleşme hemen oluşturulur."
                   triggerClassName="os-menu-item"
                 >
                   <ProposalBuilderForm
                     opportunityId={item.id}
-                    customerName={item.customer_name}
                     title={item.title}
                     scope={d.scope || item.notes || item.title}
                     representatives={temsilciler}

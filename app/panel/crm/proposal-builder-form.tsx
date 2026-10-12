@@ -16,10 +16,11 @@ import {
   type PaymentScheduleItem,
 } from "@/lib/payment-schedule";
 import { ScheduleDateRows } from "./schedule-date-rows";
+// Ortak çekmece formu düzeni; bileşen stilini kendisi alıyor (AGENTS.md).
+import "../components/kayit-formu.css";
 
 type Props = {
   opportunityId: string;
-  customerName: string;
   title: string;
   scope: string;
   mode?: "proposal" | "contract";
@@ -60,7 +61,6 @@ function SubmitButton({ customPlanValid, mode, blocked = false }: { customPlanVa
 
 export function ProposalBuilderForm({
   opportunityId,
-  customerName,
   title,
   scope,
   mode = "proposal",
@@ -130,37 +130,27 @@ export function ProposalBuilderForm({
     : getPaymentPlanLabel(plan);
   const customPlanValid = (plan !== "custom" || customPercentTotal === 100) && !scheduleDateIssue(schedule);
 
+  const belge = mode === "contract" ? "Sözleşme" : "Teklif";
+
+  /*
+    DÜZEN (2026-10): talep girişiyle aynı ortak form (components/kayit-formu.css)
+    ve dört bölüm — ${belge}, Tutar ve ödeme, Tarihler, özet. Eskiden alanlar
+    tek parça sıralanıyor, girilen metin kalın görünüyor ve formun üstünde
+    çekmece başlığını tekrar eden gri bir bant duruyordu; müşteri adı artık
+    çekmece başlığında (requests/[id]/page.tsx). Alan adları aynı.
+  */
   return (
     <div className="proposal-drawer-content">
-      <section className="proposal-drawer-intro">
-        <small>{mode === "contract" ? "DİREKT SÖZLEŞME" : "YENİ TEKLİF"}</small>
-        <h3
-          style={{
-            fontSize: "18px",
-            lineHeight: 1.25,
-            margin: "8px 0 10px",
-            maxWidth: "calc(100% - 8px)",
-          }}
-        >
-          {customerName} için {mode === "contract" ? "sözleşme" : "teklif"}
-        </h3>
-        <p style={{ margin: 0, paddingBottom: "2px" }}>
-          {mode === "contract"
-            ? "Tutarı ve ödeme planını belirleyin — müşteri onayı beklenmeden sözleşme hemen oluşturulacak."
-            : "Tutarı, ödeme planını ve tahmini teslim tarihini belirleyin."}
-        </p>
-      </section>
-
-      <form className="panel-form proposal-builder" action={formAction}>
+      <form className="panel-form proposal-builder kayit-formu" action={formAction}>
         <input type="hidden" name="opportunity_id" value={opportunityId} />
         <input type="hidden" name="payment_schedule" value={JSON.stringify(schedule)} />
         <input type="hidden" name="payment_plan_type" value={plan} />
         <input type="hidden" name="payment_plan" value={planText} />
 
         {state.error ? (
-          <div className="wide panel-form-error" role="alert" aria-live="assertive" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>
-            <strong>{mode === "contract" ? "Sözleşme oluşturulamadı" : "Teklif oluşturulamadı"}</strong>
-            <p style={{ margin: "6px 0 0" }}>{state.error}</p>
+          <div className="wide panel-form-error kayit-formu-hata" role="alert" aria-live="assertive">
+            <strong>{belge} oluşturulamadı</strong>
+            <p>{state.error}</p>
           </div>
         ) : null}
 
@@ -172,13 +162,13 @@ export function ProposalBuilderForm({
                 <strong>Satış temsilcisi atanmamış</strong>
                 <p>
                   {representatives.length
-                    ? `Bu talebe henüz satış temsilcisi atanmadı. ${mode === "contract" ? "Sözleşme" : "Teklif"} oluşturmak için bir temsilci seçin; seçtiğiniz kişi talebe atanır ve bilgilendirilir.`
+                    ? `Bu talebe henüz satış temsilcisi atanmadı. ${belge} oluşturmak için bir temsilci seçin; seçtiğiniz kişi talebe atanır ve bilgilendirilir.`
                     : "Satış talebi alabilen aktif personel yok. Önce İnsan Kaynakları'ndan bir personeli satış temsilcisi olarak işaretleyin."}
                 </p>
               </div>
             </div>
             {representatives.length ? (
-              <label className="wide proposal-rep-select">Satış temsilcisi<b className="req" aria-hidden="true">*</b>
+              <label className="wide proposal-rep-select"><span>Satış temsilcisi<b className="req" aria-hidden="true">*</b></span>
                 <select name="assigned_employee_id" required defaultValue="">
                   <option value="" disabled>Temsilci seçin</option>
                   {representatives.map((employee) => <option value={employee.id} key={employee.id}>{employee.full_name}</option>)}
@@ -188,13 +178,14 @@ export function ProposalBuilderForm({
           </>
         ) : null}
 
-        <label className="wide">Teklif başlığı<input name="title" required defaultValue={title} /></label>
-        <label>Teklif tutarı<input name="amount" type="number" min="0" step="0.01" required onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
+        <p className="wide kayit-formu-bolum">{belge}</p>
+        <label className="wide"><span>{belge} başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" required defaultValue={title} /></label>
+        <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required defaultValue={scope} placeholder="Verilecek hizmetler ve teslimler" /></label>
+
+        <p className="wide kayit-formu-bolum">Tutar ve ödeme</p>
+        <label><span>{belge} tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" min="0" step="0.01" required placeholder="0,00" onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
         <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
-        <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">1. Peşin Ödeme</option><option value="half">2. Ön Ödeme (Sözleşme Onayında) + Son Ödeme (Teslim Öncesi)</option><option value="third">3. Ön Ödeme (Sözleşme Onayında) + Ara Ödeme + Son Ödeme (Teslim Öncesi)</option><option value="custom">4. Özel Ödeme Planı (Taksitli)</option></select></label>
-        <label>Tahmini teslim tarihi<input name="estimated_delivery_date" type="date" min={today()} required /></label>
-        <label>Geçerlilik tarihi<input name="valid_until" type="date" min={today()} /></label>
-        <label className="wide">Hizmet kapsamı<textarea name="scope" required defaultValue={scope} /></label>
+        <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">Peşin ödeme</option><option value="half">Ön ödeme (sözleşme onayında) + son ödeme (teslim öncesi)</option><option value="third">Ön ödeme + ara ödeme + son ödeme (teslim öncesi)</option><option value="custom">Özel ödeme planı (taksitli)</option></select></label>
 
         {plan === "custom" ? (
           <section className="wide custom-plan-editor">
@@ -217,8 +208,12 @@ export function ProposalBuilderForm({
 
         <ScheduleDateRows schedule={schedule} dates={dueDates} onChange={(sequence, value) => setDueDates((current) => ({ ...current, [sequence]: value }))} />
 
+        <p className="wide kayit-formu-bolum">Tarihler</p>
+        <label><span>Tahmini teslim tarihi<b className="req" aria-hidden="true">*</b></span><input name="estimated_delivery_date" type="date" min={today()} required /></label>
+        <label>{mode === "contract" ? "Son geçerlilik tarihi" : "Teklifin geçerlilik tarihi"}<input name="valid_until" type="date" min={today()} /></label>
+
         <section className="proposal-live-summary wide" aria-live="polite">
-          <header><span>TEKLİF ÖZETİ</span><strong>{money(calculation.gross)}</strong></header>
+          <header><span>{mode === "contract" ? "SÖZLEŞME ÖZETİ" : "TEKLİF ÖZETİ"}</span><strong>{money(calculation.gross)}</strong></header>
           <div><span>Ara toplam</span><b>{money(calculation.net)}</b></div>
           <div><span>KDV</span><b>{money(calculation.vat)}</b></div>
           <div className="proposal-summary-total"><span>Genel toplam</span><strong>{money(calculation.gross)}</strong></div>
@@ -228,7 +223,10 @@ export function ProposalBuilderForm({
           </section>
         </section>
 
-        <div className="wide panel-form-actions"><SubmitButton customPlanValid={customPlanValid} mode={mode} blocked={needsRepresentative && !representatives.length} /></div>
+        <div className="wide panel-form-actions kayit-formu-eylem">
+          <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.{mode === "contract" ? " Müşteri onayı beklenmeden sözleşme hemen oluşturulur." : ""}</p>
+          <SubmitButton customPlanValid={customPlanValid} mode={mode} blocked={needsRepresentative && !representatives.length} />
+        </div>
       </form>
     </div>
   );

@@ -5,7 +5,7 @@ import { createOpportunity } from "./actions";
 import { CustomerHistoryNotice } from "./customer-history";
 import { NEW_REQUEST_PREFILL_EVENT, type NewRequestPrefill } from "./customer-history-keys";
 // Bileşen stilini kendisi alıyor (AGENTS.md: sınıfın CSS'i rotaya kendi importuyla girer).
-import "./talep-formu.css";
+import "../components/kayit-formu.css";
 
 const serviceTypes = ["Tez Danışmanlığı","Akademik Çeviri","Literatür Danışmanlığı","Veri Analizi","Makale Danışmanlığı","Biçimsel Düzenleme","Araştırma Tasarımı","Doçentlik Başvuru Danışmanlığı","Diğer"];
 type SalesRepresentative={id:string;full_name:string;job_title:string|null};
@@ -78,16 +78,16 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
     Kapsam ve plan. Eskiden tek parça bir liste olarak sıralanıyordu;
     zorunlu alanlar arada kayboluyor, "Telefon" tek başına bir satırda
     kalıyordu. Alan adları (name) aynı: createOpportunity değişmedi.
-    Görünüm panelin personel formuyla aynı ölçüde (talep-formu.css).
+    Görünüm panelin ortak kayıt formu düzeninde (components/kayit-formu.css).
   */
   const ontanimli = calismaTurleri.find((tur) => tur.is_default);
-  return <form ref={formRef} className="panel-form request-entry-form talep-formu" action={createOpportunity} onReset={resetLookup}>
+  return <form ref={formRef} className="panel-form request-entry-form kayit-formu" action={createOpportunity} onReset={resetLookup}>
     {postaThreadId ? <>
       <input type="hidden" name="posta_thread_id" value={postaThreadId} />
-      <p className="wide talep-formu-not">Bu talep bir posta yazışmasından açılıyor; kaydedilince yazışma talebe bağlanacak.</p>
+      <p className="wide kayit-formu-not">Bu talep bir posta yazışmasından açılıyor; kaydedilince yazışma talebe bağlanacak.</p>
     </> : null}
 
-    <p className="wide talep-formu-bolum">Talep</p>
+    <p className="wide kayit-formu-bolum">Talep</p>
     {calismaTurleri.length ? (
       <label>Çalışma türü
         <select name="step_template_set" defaultValue="">
@@ -102,7 +102,7 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
     </> : null}
     <label className="wide"><span>Talep konusu<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} placeholder={academicMode ? "Örn. Yüksek lisans tezi analiz desteği" : "Talebin kısa başlığı"} /></label>
 
-    <p className="wide talep-formu-bolum">Müşteri</p>
+    <p className="wide kayit-formu-bolum">Müşteri</p>
     <label className={academicMode ? undefined : "wide"}><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" required minLength={2} maxLength={180} autoComplete="off" placeholder="Ad soyad ya da kurum adı" onChange={(event) => { setCustomerName(event.target.value); setPrefilled(false); }} onFocus={() => setLookupField("name")} onBlur={() => setLookupField(null)} /></label>
     {academicMode ? <label>Müşteri türü<select name="customer_type" defaultValue="Bireysel"><option>Bireysel</option><option>Kurumsal</option></select></label> : null}
     <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" autoComplete="off" placeholder="05xx xxx xx xx" onChange={(event) => { setPhone(event.target.value); setPrefilled(false); }} onFocus={() => setLookupField("phone")} onBlur={() => setLookupField(null)} /></label>
@@ -110,7 +110,7 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
     <CustomerHistoryNotice key={formVersion} name={customerName} phone={phone} editing={lookupField !== null} autoOpen={!prefilled} />
 
     {academicMode ? <>
-      <p className="wide talep-formu-bolum">Akademik künye</p>
+      <p className="wide kayit-formu-bolum">Akademik künye</p>
       <label>Üniversite<input name="university" placeholder="Örn. İstanbul Üniversitesi" /></label>
       <label>Bölüm / alan<input name="department" placeholder="Örn. İşletme" /></label>
       {/* Öneri listesi: sık değerler hazır, kayıtlı eski değerler gibi serbest metin de girilebilir. */}
@@ -120,17 +120,17 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
       <datalist id="talep-calisma-dili"><option value="Türkçe" /><option value="İngilizce" /><option value="Arapça" /><option value="Almanca" /></datalist>
     </> : null}
 
-    <p className="wide talep-formu-bolum">Kapsam ve plan</p>
+    <p className="wide kayit-formu-bolum">Kapsam ve plan</p>
     {academicMode ? <label className="wide"><span>Beklenen kapsam ve teslimler<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required placeholder="Hangi bölümler, hangi teslimler, özel istekler…" /></label> : null}
     <label>Planlanan teslim tarihi<input name="expected_close_date" type="date" /></label>
     <label>Talep kaynağı<input name="source" list="talep-kaynagi" placeholder="Seçin ya da yazın" /></label>
     <datalist id="talep-kaynagi"><option value="WhatsApp" /><option value="Telefon" /><option value="Instagram" /><option value="Web sitesi" /><option value="E-posta" /><option value="Referans" /></datalist>
     {canAssign
       ? <label className="wide">Satış temsilcisi<select name="assigned_employee_id" defaultValue=""><option value="">Atanmamış</option>{salesRepresentatives.map((employee)=><option value={employee.id} key={employee.id}>{employee.full_name}{employee.job_title?` · ${employee.job_title}`:""}</option>)}</select></label>
-      : <p className="wide talep-formu-not">Bu talep otomatik olarak size atanacak.</p>}
+      : <p className="wide kayit-formu-not">Bu talep otomatik olarak size atanacak.</p>}
     <label className="wide">Ek not<textarea name="notes" placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
 
-    <div className="wide panel-form-actions talep-formu-eylem">
+    <div className="wide panel-form-actions kayit-formu-eylem">
       <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
       <button className="panel-primary" type="submit">Talebi kaydet</button>
     </div>
