@@ -704,3 +704,11 @@
 
 /* Revizyon kapsamı uzun olabiliyor: çizelgede paragraf gibi aksın. */
 .os-root .kayit-zaman-kapsam{white-space:pre-wrap}
+
+/* Belge önizlemesi (documents/[type]/[id]/preview): panel başlığının altında
+   müşteriye giden belge, kâğıt kartı içinde. Belgenin kendi kökü (doc-root)
+   tam ekran ve bej zeminle çiziliyor; panelde kart gibi dursun. */
+.os-root .belge-onizleme-not{margin:0 0 var(--sp-3);color:var(--muted);font-size:var(--fs-sm)}
+.os-root .belge-onizleme-kagit{border:1px solid var(--line-soft);border-radius:16px;overflow:hidden}
+.os-root .belge-onizleme-kagit .doc-root{min-height:0;padding:24px 12px 40px}
+.os-root .belge-onizleme .talep-bas-eylem{align-items:center}

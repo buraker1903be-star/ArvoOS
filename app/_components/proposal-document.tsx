@@ -140,7 +140,7 @@ export function ProposalDocument({ row, decision, verificationUrl, mode = "scree
     <style>{css}</style>
     {print
       ? <PrintAutorun fileName={fileName} backHref={backHref} />
-      : <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="proposal" documentId={logDocumentId ?? undefined} documentNumber={row.proposal_no} /> : null}</div></div>}
+      : toolbarLeft || pdfHref ? <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="proposal" documentId={logDocumentId ?? undefined} documentNumber={row.proposal_no} /> : null}</div></div> : null}
     <article className="doc-sheet">
       <div className="doc-band" />
       <DocHeader provider={provider} kicker="Hizmet Teklifi" number={String(row.proposal_no || "")} meta={[

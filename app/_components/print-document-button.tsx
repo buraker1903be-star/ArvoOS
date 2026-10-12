@@ -8,12 +8,14 @@ type PrintDocumentButtonProps = {
   documentId?: string;
   documentNumber?: string;
   label?: string;
+  /** Panelde panelin düğme sınıfı (panel-primary); belgede doc-btn. */
+  className?: string;
 };
 
 // "PDF olarak indir": belgeyi yalnızca A4 kâğıttan oluşan ayrı bir sayfada
 // açar; o sayfa tarayıcının yazdırma penceresini kendiliğinden açar ve
 // kaydedilecek dosyanın adını belge numarasıyla belirler.
-export function PrintDocumentButton({ href, documentType, documentId, documentNumber, label = "PDF olarak indir" }: PrintDocumentButtonProps) {
+export function PrintDocumentButton({ href, documentType, documentId, documentNumber, label = "PDF olarak indir", className = "doc-btn doc-btn-primary print-hide" }: PrintDocumentButtonProps) {
   const logAccess = () => {
     if (!documentType || !documentId) return;
     try {
@@ -34,7 +36,7 @@ export function PrintDocumentButton({ href, documentType, documentId, documentNu
   };
 
   return (
-    <a href={href} target="_blank" rel="noopener" onClick={logAccess} className="doc-btn doc-btn-primary print-hide">
+    <a href={href} target="_blank" rel="noopener" onClick={logAccess} className={className}>
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 12.5h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       {label}
     </a>

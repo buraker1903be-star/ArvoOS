@@ -138,7 +138,7 @@ export function ContractDocument({ row, audit, auditAvailable = false, verificat
     <style>{css}</style>
     {print
       ? <PrintAutorun fileName={fileName} backHref={backHref} />
-      : <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="contract" documentId={logDocumentId ?? undefined} documentNumber={row.contract_no} /> : null}</div></div>}
+      : toolbarLeft || pdfHref ? <div className="doc-toolbar print-hide"><div>{toolbarLeft}</div><div className="doc-toolbar-actions">{pdfHref ? <PrintDocumentButton href={pdfHref} documentType="contract" documentId={logDocumentId ?? undefined} documentNumber={row.contract_no} /> : null}</div></div> : null}
     <article className="doc-sheet">
       <div className="doc-band" />
       <DocHeader provider={provider} kicker="Hizmet Sözleşmesi" number={String(row.contract_no || "")} meta={[
