@@ -90,6 +90,82 @@ async function primOdemesiKaydet__impl(formData: FormData) {
   refresh();
 }
 
+/*
+  Prim ödemesini DÜZENLEME (12.10.2026). Eskiden yanlış girilen ödeme
+  yalnızca silinip yeniden girilebiliyordu; bu sırada finanstaki gider
+  kaydı da silinip yeniden açılıyor, kayıt tarihi ve kimliği değişiyordu.
+
+  Gider kaydı ödemeyle aynı kalır: tutar, tarih ve açıklama ona da yazılır.
+  Yöntem mahsuba dönerse gider kalkar (mahsup para çıkışı değil),
+  mahsuptan başka bir yönteme dönerse gider açılır.
+*/
+async function primOdemesiDuzenle__impl(formData: FormData) {
+  const { supabase, membership, userId } = await primContext();
+  const id = String(formData.get("id") ?? "");
+  const lira = parseTurkishAmount(String(formData.get("amount") ?? ""));
+  const amount = Number.isFinite(lira) ? Math.round(lira * 100) : 0;
+  const paidOn = String(formData.get("paid_on") ?? "");
+  const method = String(formData.get("method") ?? "havale");
+  const note = String(formData.get("note") ?? "").trim().slice(0, 300);
+
+  if (!UUID.test(id)) throw new Error("Kayıt bulunamadı.");
+  if (!amount || amount <= 0) throw new Error("Ödenen tutarı yazın (ör. 8.500).");
+  if (!DATE.test(paidOn)) throw new Error("Ödeme tarihi geçersiz.");
+  if (!METHODS.has(method)) throw new Error("Ödeme yöntemi geçersiz.");
+
+  const { data: payment, error: readError } = await supabase
+    .from("hr_commission_payments").select("id,employee_id,finance_transaction_id")
+    .eq("id", id).eq("organization_id", membership.organization_id).maybeSingle();
+  if (readError) throw new Error(`Prim ödemesi okunamadı: ${readError.message}`);
+  if (!payment) throw new Error("Kayıt bulunamadı.");
+
+  // RLS engellediğinde update hata vermez, 0 satır döner; ayrıca bakılıyor.
+  const { data: saved, error } = await supabase.from("hr_commission_payments")
+    .update({ amount, paid_on: paidOn, method, note: note || null })
+    .eq("id", id).eq("organization_id", membership.organization_id)
+    .select("id");
+  if (error) throw new Error(`Prim ödemesi kaydedilemedi: ${error.message}`);
+  if (!saved?.length) throw new Error("Prim ödemesi kaydedilemedi: bu işlem için yetkiniz yok.");
+
+  // Gider kaydı: ödeme kaydedildi; gider yazılamazsa ödeme geri alınmaz (yukarıdaki ilke).
+  const giderId = payment.finance_transaction_id as string | null;
+  if (method === "mahsup") {
+    if (giderId) {
+      const { error: silHata } = await supabase.from("finance_transactions").delete().eq("id", giderId).eq("organization_id", membership.organization_id);
+      if (silHata) console.error("[prim] gider kaydı kaldırılamadı", silHata.message);
+      else await supabase.from("hr_commission_payments").update({ finance_transaction_id: null }).eq("id", id);
+    }
+  } else if (giderId) {
+    const { error: giderHata } = await supabase.from("finance_transactions")
+      .update({ amount, due_date: paidOn, paid_at: paidOn, notes: note || null, updated_at: new Date().toISOString() })
+      .eq("id", giderId).eq("organization_id", membership.organization_id);
+    if (giderHata) console.error("[prim] gider kaydı güncellenemedi", giderHata.message);
+  } else {
+    const { data: employee } = await supabase
+      .from("hr_employees").select("full_name")
+      .eq("id", payment.employee_id).eq("organization_id", membership.organization_id).maybeSingle();
+    const ad = employee?.full_name ?? "Personel";
+    const { data: transaction, error: financeError } = await supabase.from("finance_transactions").insert({
+      organization_id: membership.organization_id,
+      transaction_type: "expense",
+      status: "paid",
+      title: `Prim ödemesi · ${ad}`,
+      counterparty: ad,
+      category: "Personel Primi",
+      amount,
+      currency: "TRY",
+      due_date: paidOn,
+      paid_at: paidOn,
+      notes: note || null,
+      created_by: userId ?? null,
+    }).select("id").single();
+    if (financeError) console.error("[prim] gider kaydı yazılamadı", financeError.message);
+    else await supabase.from("hr_commission_payments").update({ finance_transaction_id: transaction.id }).eq("id", id);
+  }
+
+  refresh();
+}
+
 async function primOdemesiSil__impl(formData: FormData) {
   const { supabase, membership } = await primContext();
   const id = String(formData.get("id") ?? "");
@@ -113,6 +189,9 @@ async function primOdemesiSil__impl(formData: FormData) {
 
 export async function primOdemesiKaydet(...args: Parameters<typeof primOdemesiKaydet__impl>) {
   return runPanelAction(() => primOdemesiKaydet__impl(...args), "Prim ödemesi kaydedildi");
+}
+export async function primOdemesiDuzenle(...args: Parameters<typeof primOdemesiDuzenle__impl>) {
+  return runPanelAction(() => primOdemesiDuzenle__impl(...args), "Prim ödemesi güncellendi");
 }
 export async function primOdemesiSil(...args: Parameters<typeof primOdemesiSil__impl>) {
   return runPanelAction(() => primOdemesiSil__impl(...args), "Prim ödemesi silindi");

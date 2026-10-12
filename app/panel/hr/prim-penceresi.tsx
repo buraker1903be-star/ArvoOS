@@ -5,7 +5,8 @@ import { employeeLedger, ledgerTotals } from "@/lib/commission-ledger";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/prim-donemi";
 import { PanelDrawer } from "../components/panel-drawer";
-import { primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
+import { primOdemesiDuzenle, primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
+import type { CommissionPayment } from "@/lib/commission-ledger";
 import type { primVerisi } from "./prim-verisi";
 import "../finance/finance.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
@@ -29,6 +30,36 @@ const money = (value: number) => new Intl.NumberFormat("tr-TR", { style: "curren
 const percent = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(value);
 const dateText = (value: string) => new Date(`${value}T12:00:00+03:00`).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "short", year: "numeric" });
 
+const req = <b className="req" aria-hidden="true">*</b>;
+const liraYazisi = (kurus: number) => (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/*
+  Ödeme formu: yeni kayıt ve DÜZENLEME aynı alanlarla (12.10.2026).
+  Eskiden yanlış girilen ödeme yalnızca silinip yeniden girilebiliyordu.
+*/
+function OdemeFormu({ personelId, odeme, oneri }: { personelId: string; odeme?: CommissionPayment; oneri?: string }) {
+  return (
+    <form className="panel-form fin-form kayit-formu" action={odeme ? primOdemesiDuzenle : primOdemesiKaydet}>
+      {odeme ? <input type="hidden" name="id" value={odeme.id} /> : <input type="hidden" name="employee_id" value={personelId} />}
+      <label><span>Tutar (₺){req}</span><input name="amount" inputMode="decimal" required defaultValue={odeme ? liraYazisi(odeme.amount) : undefined} placeholder={oneri} autoComplete="off" /></label>
+      <label><span>Tarih{req}</span><input name="paid_on" type="date" required defaultValue={odeme?.paidOn ?? todayInIstanbul()} /></label>
+      <label>Yöntem
+        <select name="method" defaultValue={odeme?.method ?? "havale"}>
+          <option value="havale">Havale / EFT</option>
+          <option value="nakit">Nakit</option>
+          <option value="mahsup">Mahsup</option>
+          <option value="diger">Diğer</option>
+        </select>
+      </label>
+      <label>Açıklama<input name="note" maxLength={300} defaultValue={odeme?.note ?? undefined} placeholder="Eylül primi" autoComplete="off" /></label>
+      <p className="fin-form-note">{odeme
+        ? "Finanstaki gider kaydı da aynı tutar ve tarihle güncellenir. Mahsuba çevrilen ödemenin gider kaydı kalkar (mahsup para çıkışı değil)."
+        : "Ödemeyi tek tek prim satırına bağlamazsınız; tutarı yazarsınız, bakiye kendini kapatır. Mahsup dışındaki ödemeler finansa gider olarak düşer."}</p>
+      <div className="wide panel-form-actions kayit-formu-eylem"><p>{req} işaretli alanlar zorunlu.</p><button className="panel-primary">{odeme ? "Değişiklikleri kaydet" : "Ödemeyi kaydet"}</button></div>
+    </form>
+  );
+}
+
 /** veri: primVerisi() sonucu; sayfa bakiyeyi başlıkta da gösterdiği için bir kez okuyup buraya veriyor. */
 export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string }) {
   const { izin } = await getPanelContext();
@@ -48,6 +79,7 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
   const satisToplam = satis.reduce((sum, row) => sum + row.amount, 0);
   const operasyonToplam = operasyon.reduce((sum, row) => sum + row.amount, 0);
   const donemOdemesi = payments.filter((p) => p.employeeId === employeeId && gunDonemde(p.paidOn, donem)).reduce((sum, p) => sum + p.amount, 0);
+  const odemeById = new Map(payments.filter((p) => p.employeeId === employeeId).map((p) => [p.id, p]));
   const seciliKod = donem?.kod ?? "tum";
   const donemAdresi = (kod: string) => (kod === "tum" ? `${temelAdres}?pencere=prim` : `${temelAdres}?pencere=prim&prim=${kod}`);
 
@@ -56,22 +88,7 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
       {canManage ? (
         <div className="cari-pencere-eylem">
           <PanelDrawer triggerLabel="Ödeme kaydet" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesi" description={`Bakiye: ${money(toplam.balance)}`}>
-            <form className="panel-form fin-form kayit-formu" action={primOdemesiKaydet}>
-              <input type="hidden" name="employee_id" value={personel.id} />
-              <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" required placeholder={toplam.balance > 0 ? String(Math.round(toplam.balance / 100)) : "0"} autoComplete="off" /></label>
-              <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="paid_on" type="date" required defaultValue={todayInIstanbul()} /></label>
-              <label>Yöntem
-                <select name="method" defaultValue="havale">
-                  <option value="havale">Havale / EFT</option>
-                  <option value="nakit">Nakit</option>
-                  <option value="mahsup">Mahsup</option>
-                  <option value="diger">Diğer</option>
-                </select>
-              </label>
-              <label>Açıklama<input name="note" maxLength={300} placeholder="Eylül primi" autoComplete="off" /></label>
-              <p className="fin-form-note">Ödemeyi tek tek prim satırına bağlamazsınız; tutarı yazarsınız, bakiye kendini kapatır. Mahsup dışındaki ödemeler finansa gider olarak düşer.</p>
-              <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Ödemeyi kaydet</button></div>
-            </form>
+            <OdemeFormu personelId={personel.id} oneri={toplam.balance > 0 ? String(Math.round(toplam.balance / 100)) : "0"} />
           </PanelDrawer>
         </div>
       ) : null}
@@ -115,10 +132,17 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
                   </span>
                   <strong className={h.kind === "payment" ? "cari-arti" : undefined}>{h.kind === "payment" ? `−${money(h.payment)}` : `+${money(h.accrual)}`}</strong>
                   {canManage && h.kind === "payment" ? (
-                    <form action={primOdemesiSil}>
-                      <input type="hidden" name="id" value={h.id} />
-                      <button className="panel-secondary cari-taksit-btn" type="submit" title="Ödemeyi sil">Sil</button>
-                    </form>
+                    <span className="prim-odeme-eylem">
+                      {odemeById.get(h.id) ? (
+                        <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary cari-taksit-btn" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesini düzenle" description={`${dateText(h.date)} · ${money(h.payment)}`}>
+                          <OdemeFormu personelId={personel.id} odeme={odemeById.get(h.id)} />
+                        </PanelDrawer>
+                      ) : null}
+                      <form action={primOdemesiSil}>
+                        <input type="hidden" name="id" value={h.id} />
+                        <button className="panel-secondary cari-taksit-btn" type="submit" title="Ödemeyi sil">Sil</button>
+                      </form>
+                    </span>
                   ) : null}
                 </li>
               ))}
