@@ -1,6 +1,8 @@
 import { odemeTutari } from "@/lib/odeme-baglantisi";
 import { cancelPaymentLink, createPaymentLink, sendPaymentLink } from "./actions";
 import { KopyalaDugmesi } from "./kopyala-dugmesi";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 /*
   CARİ ÖDEME BAĞLANTISI ekranı (2026-10): Finans → PAYTR Tahsilatları
@@ -42,10 +44,10 @@ export function OdemeBaglantisiFormu({ partyId, acikBakiye, telefonVar, epostaVa
     return <p className="fin-form-note">PayTR bağlı değil. Ayarlar → Ödeme sağlayıcısı bölümünden mağaza bilgilerini girin.</p>;
   }
   return (
-    <form className="panel-form fin-form cari-link-form" action={createPaymentLink}>
+    <form className="panel-form fin-form kayit-formu cari-link-form" action={createPaymentLink}>
       <input type="hidden" name="party_id" value={partyId} />
       <label>
-        Müşterinin ödeyeceği tutar (₺)
+        <span>Müşterinin ödeyeceği tutar (₺)<b className="req" aria-hidden="true">*</b></span>
         <input name="amount" inputMode="decimal" placeholder="5.000" autoComplete="off" required />
       </label>
       <label>

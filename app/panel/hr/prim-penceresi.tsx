@@ -8,6 +8,8 @@ import { PanelDrawer } from "../components/panel-drawer";
 import { primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
 import type { primVerisi } from "./prim-verisi";
 import "../finance/finance.css";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 /*
   PRİM PENCERESİ (2026-10): personel detayında "Prim" düğmesiyle ortada
@@ -53,11 +55,11 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
     <div className="cari-pencere prim-pencere">
       {canManage ? (
         <div className="cari-pencere-eylem">
-          <PanelDrawer triggerLabel="Ödeme kaydet" kicker="PRİM ÖDEMESİ" title={`${personel.full_name} · Prim ödemesi`} description={`Bakiye: ${money(toplam.balance)}`}>
-            <form className="panel-form fin-form" action={primOdemesiKaydet}>
+          <PanelDrawer triggerLabel="Ödeme kaydet" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesi" description={`Bakiye: ${money(toplam.balance)}`}>
+            <form className="panel-form fin-form kayit-formu" action={primOdemesiKaydet}>
               <input type="hidden" name="employee_id" value={personel.id} />
-              <label>Tutar (₺)<input name="amount" inputMode="decimal" required placeholder={toplam.balance > 0 ? String(Math.round(toplam.balance / 100)) : "0"} autoComplete="off" /></label>
-              <label>Tarih<input name="paid_on" type="date" required defaultValue={todayInIstanbul()} /></label>
+              <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" required placeholder={toplam.balance > 0 ? String(Math.round(toplam.balance / 100)) : "0"} autoComplete="off" /></label>
+              <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="paid_on" type="date" required defaultValue={todayInIstanbul()} /></label>
               <label>Yöntem
                 <select name="method" defaultValue="havale">
                   <option value="havale">Havale / EFT</option>
@@ -68,7 +70,7 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
               </label>
               <label>Açıklama<input name="note" maxLength={300} placeholder="Eylül primi" autoComplete="off" /></label>
               <p className="fin-form-note">Ödemeyi tek tek prim satırına bağlamazsınız; tutarı yazarsınız, bakiye kendini kapatır. Mahsup dışındaki ödemeler finansa gider olarak düşer.</p>
-              <div className="panel-form-actions wide"><button className="panel-primary">Ödemeyi kaydet</button></div>
+              <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Ödemeyi kaydet</button></div>
             </form>
           </PanelDrawer>
         </div>

@@ -21,6 +21,8 @@ import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 import { OtomatikSecim } from "../crm/otomatik-secim";
 import { formatPersonName } from "@/lib/format-name";
 import { formatPhone } from "@/lib/format-phone";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
@@ -201,8 +203,8 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                   <PanelDrawer
                     triggerLabel="Ödeme linki"
                     triggerClassName="panel-secondary cari-tahsilat-btn"
-                    kicker="ÖDEME BAĞLANTISI"
-                    title={`${a.name} · Ödeme linki`}
+                    kicker={`CARİ · ${a.name}`}
+                    title="Ödeme linki"
                     description="Müşterinin söylediği tutarla PayTR bağlantısı oluşturun ve gönderin."
                   >
                     <OdemeBaglantisiFormu partyId={a.id} acikBakiye={a.balance} telefonVar={Boolean(normalizePhone(String(a.phone ?? "")))} epostaVar={Boolean(a.email?.trim())} hazir />
@@ -212,15 +214,15 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                   <PanelDrawer
                     triggerLabel="Tahsilat"
                     triggerClassName="panel-secondary cari-tahsilat-btn"
-                    kicker="TAHSİLAT"
-                    title={`${a.name} · Tahsilat`}
+                    kicker={`CARİ · ${a.name}`}
+                    title="Tahsilat"
                     description={`Açık bakiye: ${money(a.balance)}`}
                   >
-                    <form className="panel-form fin-form" action={createCollection}>
+                    <form className="panel-form fin-form kayit-formu" action={createCollection}>
                       <input type="hidden" name="party_id" value={a.id} />
                       <label>
-                        Tahsilat tutarı (₺)
-                        <input name="amount" type="number" min="0.01" max={a.balance / 100} step="0.01" required />
+                        <span>Tahsilat tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
+                        <input name="amount" type="number" min="0.01" max={a.balance / 100} step="0.01" required placeholder="0,00" />
                       </label>
                       <label>
                         Tarih
@@ -228,14 +230,14 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                       </label>
                       <label>
                         Referans / dekont no
-                        <input name="reference_no" maxLength={100} />
+                        <input name="reference_no" maxLength={100} placeholder="İsteğe bağlı" />
                       </label>
                       <label className="wide">
-                        Açıklama
+                        <span>Açıklama<b className="req" aria-hidden="true">*</b></span>
                         <input name="description" defaultValue="Müşteri tahsilatı" minLength={2} maxLength={500} required />
                       </label>
                       <p className="fin-form-note">En fazla açık bakiye kadar ({money(a.balance)}) tahsilat kaydedebilirsiniz.</p>
-                      <div className="panel-form-actions wide">
+                      <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                         <button className="panel-primary">Tahsilatı kaydet</button>
                       </div>
                     </form>

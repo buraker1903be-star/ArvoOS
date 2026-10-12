@@ -4,6 +4,8 @@ import { PanelDrawer } from "../../components/panel-drawer";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { addContractCostItem, deleteContractCostItem, updateContractCostItem } from "../actions";
 import { initials } from "../finance-ui";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../../components/kayit-formu.css";
 
 /*
   İŞ MALİYETİ DETAYI (2026-10): İş Maliyetleri listesinde satıra
@@ -50,16 +52,16 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
     <section className="panel-card talep-bilgi" aria-label="Maliyet kalemi ekle">
       <h2>Maliyet kalemi ekle</h2>
       <p className="talep-not">Bu işe bağlı planlanan ya da ödenen bir gideri kaydedin.</p>
-        <form className="panel-form fin-form fin-form-grid" action={addContractCostItem}>
+        <form className="panel-form fin-form kayit-formu fin-form-grid" action={addContractCostItem}>
           <input type="hidden" name="contract_id" value={contract.id}/>
           <label>Kategori<select name="category"><option>Dış hizmet</option><option>Personel</option><option>Yazılım / Lisans</option><option>Belge / Resmî gider</option><option>Diğer</option></select></label>
-          <label className="fin-span-2">Açıklama<input name="description" minLength={2} maxLength={300} required placeholder="Örn. çeviri hizmeti"/></label>
+          <label className="fin-span-2"><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" minLength={2} maxLength={300} required placeholder="Örn. çeviri hizmeti"/></label>
           <label>Hizmet sağlayıcı<input name="supplier" maxLength={180}/></label>
-          <label>Tutar (₺)<input name="amount" type="number" min="0.01" step="0.01" required/></label>
-          <label>Tarih<input name="cost_date" type="date" defaultValue={todayIso()} required/></label>
+          <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label>
+          <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={todayIso()} required/></label>
           <label>Durum<select name="status"><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
-          <label>Belge / Referans<input name="reference_no" maxLength={120}/></label>
-          <div className="fin-form-actions"><button className="panel-primary">Maliyet kalemi ekle</button></div>
+          <label>Belge / Referans<input name="reference_no" maxLength={120} placeholder="İsteğe bağlı" /></label>
+          <div className="wide fin-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Maliyet kalemi ekle</button></div>
         </form>
     </section>
 
@@ -95,17 +97,17 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                   <td className="crm-table-mono" data-label="Tutar">{money(Number(item.amount),contract.currency)}</td>
                   <td className="crm-table-actions maliyet-eylem">
                     <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary satir-ac" kicker="MALİYET KALEMİ" title="Maliyet kalemini düzenle" description={`${item.category} · ${money(Number(item.amount),contract.currency)}`}>
-                      <form className="panel-form fin-form" action={updateContractCostItem}>
+                      <form className="panel-form fin-form kayit-formu" action={updateContractCostItem}>
                         <input type="hidden" name="item_id" value={item.id}/>
                         <input type="hidden" name="contract_id" value={contract.id}/>
-                        <label>Kategori<input name="category" defaultValue={item.category} required/></label>
-                        <label>Açıklama<input name="description" defaultValue={item.description} required/></label>
+                        <label><span>Kategori<b className="req" aria-hidden="true">*</b></span><input name="category" defaultValue={item.category} required/></label>
+                        <label><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" defaultValue={item.description} required/></label>
                         <label>Sağlayıcı<input name="supplier" defaultValue={item.supplier||""}/></label>
-                        <label>Tutar (₺)<input name="amount" type="number" min="0.01" step="0.01" defaultValue={Number(item.amount)/100} required/></label>
-                        <label>Tarih<input name="cost_date" type="date" defaultValue={item.cost_date} required/></label>
+                        <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" min="0.01" step="0.01" defaultValue={Number(item.amount)/100} required/></label>
+                        <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={item.cost_date} required/></label>
                         <label>Durum<select name="status" defaultValue={item.status}><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
                         <label className="wide">Referans<input name="reference_no" defaultValue={item.reference_no||""}/></label>
-                        <div className="panel-form-actions wide"><button className="panel-primary">Değişiklikleri kaydet</button></div>
+                        <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Değişiklikleri kaydet</button></div>
                       </form>
                     </PanelDrawer>
                     <form action={deleteContractCostItem}>

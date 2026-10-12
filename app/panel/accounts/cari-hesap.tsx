@@ -14,6 +14,8 @@ import { createAdditionalService, createCollection, createRefund, deleteParty, h
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { taksitiDuzenle, taksitSecenegiDegistir } from "../finance/actions";
 import { type FinTone } from "../finance/finance-ui";
+// Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
+import "../components/kayit-formu.css";
 
 /*
   CARİ HESAP İÇERİĞİ (2026-10): müşteri sayfasında ortada açılan pencere.
@@ -182,19 +184,19 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
           <PanelDrawer
             triggerLabel="Ödeme linki"
             triggerClassName="panel-secondary"
-            kicker="ÖDEME BAĞLANTISI"
-            title={`${current.name} · Ödeme linki`}
+            kicker={`CARİ · ${current.name}`}
+            title="Ödeme linki"
             description="Müşterinin söylediği tutarla PayTR bağlantısı oluşturun ve gönderin."
           >
             <OdemeBaglantisiFormu partyId={partyId} acikBakiye={balance} telefonVar={telefonVar} epostaVar={epostaVar} hazir={paytrHazir} />
           </PanelDrawer>
         ) : null}
-        <PanelDrawer triggerLabel="Tahsilat" kicker="TAHSİLAT" title={`${current.name} · Tahsilat`} description={`Açık bakiye: ${money(balance)}`}>
-          <form className="panel-form fin-form" action={createCollection}>
+        <PanelDrawer triggerLabel="Tahsilat" kicker={`CARİ · ${current.name}`} title="Tahsilat" description={`Açık bakiye: ${money(balance)}`}>
+          <form className="panel-form fin-form kayit-formu" action={createCollection}>
             <input type="hidden" name="party_id" value={partyId} />
             <label>
-              Tahsilat tutarı (₺)
-              <input name="amount" type="number" min="0.01" max={balance / 100} step="0.01" required />
+              <span>Tahsilat tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
+              <input name="amount" type="number" min="0.01" max={balance / 100} step="0.01" required placeholder="0,00" />
             </label>
             <label>
               Tarih
@@ -202,16 +204,16 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
             </label>
             <label>
               Referans / dekont no
-              <input name="reference_no" />
+              <input name="reference_no" placeholder="İsteğe bağlı" />
             </label>
             <label className="wide">
-              Açıklama
+              <span>Açıklama<b className="req" aria-hidden="true">*</b></span>
               <input name="description" defaultValue="Müşteri tahsilatı" required />
             </label>
             <p className="fin-form-note">
               {balance ? `En fazla açık bakiye kadar (${money(balance)}) tahsilat kaydedebilirsiniz.` : "Bu carinin açık bakiyesi yok; yeni tahsilat kaydedilemez."}
             </p>
-            <div className="panel-form-actions wide">
+            <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
               <button className="panel-primary" disabled={!balance}>Tahsilatı kaydet</button>
             </div>
           </form>
@@ -219,12 +221,12 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
         <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
-            <PanelDrawer triggerLabel="Ek hizmet" triggerClassName="os-menu-item" kicker="EK HİZMET" title={`${current.name} · Ek Hizmet`} description="Yeni hizmeti cari bakiyeye ekleyin.">
-              <form className="panel-form fin-form" action={createAdditionalService}>
+            <PanelDrawer triggerLabel="Ek hizmet" triggerClassName="os-menu-item" kicker={`CARİ · ${current.name}`} title="Ek hizmet" description="Yeni hizmeti cari bakiyeye ekleyin.">
+              <form className="panel-form fin-form kayit-formu" action={createAdditionalService}>
                 <input type="hidden" name="party_id" value={partyId} />
                 <label>
-                  Hizmet tutarı (₺)
-                  <input name="amount" type="number" min="0.01" step="0.01" required />
+                  <span>Hizmet tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
+                  <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" />
                 </label>
                 <label>
                   İşlem tarihi
@@ -236,23 +238,23 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 </label>
                 <label>
                   Referans
-                  <input name="reference_no" />
+                  <input name="reference_no" placeholder="İsteğe bağlı" />
                 </label>
                 <label className="wide">
-                  Hizmet açıklaması
+                  <span>Hizmet açıklaması<b className="req" aria-hidden="true">*</b></span>
                   <input name="description" minLength={2} maxLength={500} required />
                 </label>
-                <div className="panel-form-actions wide">
+                <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                   <button className="panel-primary">Cari hesaba ekle</button>
                 </div>
               </form>
             </PanelDrawer>
-            <PanelDrawer triggerLabel="İade" triggerClassName="os-menu-item" kicker="İADE" title={`${current.name} · İade`} description={`İade edilebilir: ${money(refundable)}`}>
-              <form className="panel-form fin-form" action={createRefund}>
+            <PanelDrawer triggerLabel="İade" triggerClassName="os-menu-item" kicker={`CARİ · ${current.name}`} title="İade" description={`İade edilebilir: ${money(refundable)}`}>
+              <form className="panel-form fin-form kayit-formu" action={createRefund}>
                 <input type="hidden" name="party_id" value={partyId} />
                 <label>
-                  İade tutarı (₺)
-                  <input name="amount" type="number" min="0.01" max={refundable / 100} step="0.01" required />
+                  <span>İade tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
+                  <input name="amount" type="number" min="0.01" max={refundable / 100} step="0.01" required placeholder="0,00" />
                 </label>
                 <label>
                   Tarih
@@ -260,14 +262,14 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 </label>
                 <label>
                   Referans / dekont no
-                  <input name="reference_no" />
+                  <input name="reference_no" placeholder="İsteğe bağlı" />
                 </label>
                 <label className="wide">
-                  İade nedeni
+                  <span>İade nedeni<b className="req" aria-hidden="true">*</b></span>
                   <input name="description" required />
                 </label>
                 {collections <= refunds ? <p className="fin-form-note">İade edilebilecek tahsilat yok.</p> : null}
-                <div className="panel-form-actions wide">
+                <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                   <button className="panel-primary" disabled={collections <= refunds}>İadeyi kaydet</button>
                 </div>
               </form>
@@ -355,18 +357,18 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       </dl>
                       {elleTur ? (
                         <>
-                          <form className="panel-form fin-form cari-hareket-duzelt" action={hareketiDuzelt}>
+                          <form className="panel-form fin-form kayit-formu cari-hareket-duzelt" action={hareketiDuzelt}>
                             <input type="hidden" name="entry_id" value={e.id} />
                             <label>
-                              Tutar (₺)
+                              <span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span>
                               <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(e.amount))} />
                             </label>
                             <label>
-                              İşlem tarihi
+                              <span>İşlem tarihi<b className="req" aria-hidden="true">*</b></span>
                               <input name="transaction_date" type="date" required defaultValue={e.transaction_date} />
                             </label>
                             <label className="wide">
-                              {elleTur === "iade" ? "İade nedeni" : elleTur === "ek-hizmet" ? "Hizmet açıklaması" : "Açıklama"}
+                              <span>{elleTur === "iade" ? "İade nedeni" : elleTur === "ek-hizmet" ? "Hizmet açıklaması" : "Açıklama"}<b className="req" aria-hidden="true">*</b></span>
                               <input name="description" required minLength={2} maxLength={480} defaultValue={aciklamaMetni} />
                             </label>
                             <label className="wide">
@@ -374,7 +376,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                               <input name="reference_no" defaultValue={referans ?? ""} placeholder="Boş bırakılırsa değişmez" />
                             </label>
                             <p className="fin-form-note">Taksitlerin ödeme durumu düzeltilen tutara göre yeniden hesaplanır.</p>
-                            <div className="panel-form-actions wide">
+                            <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                               <button className="panel-primary">Düzeltmeyi kaydet</button>
                             </div>
                           </form>
@@ -443,14 +445,14 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                       key={p.planId}
                       triggerLabel={planOzetleri.length > 1 ? `${p.sozlesme.contract_no} · taksit seçeneği` : "Taksit seçeneğini değiştir"}
                       triggerClassName="panel-secondary cari-taksit-btn"
-                      kicker="TAKSİT SEÇENEĞİ"
-                      title={`${p.sozlesme.contract_no} · taksit planı`}
+                      kicker={`SÖZLEŞME · ${p.sozlesme.contract_no}`}
+                      title="Taksit planı"
                       description={`Sözleşme ${money(Number(p.sozlesme.amount))} · ödenen ${money(p.odenen)} · kalan ${money(p.kalan)}`}
                     >
-                      <form className="panel-form fin-form" action={taksitSecenegiDegistir}>
+                      <form className="panel-form fin-form kayit-formu" action={taksitSecenegiDegistir}>
                         <input type="hidden" name="plan_id" value={p.planId} />
                         <label>
-                          Taksit sayısı
+                          <span>Taksit sayısı<b className="req" aria-hidden="true">*</b></span>
                           <input name="adet" type="number" min={1} max={36} step={1} required defaultValue={Math.max(1, p.acikAdet)} />
                         </label>
                         <label>
@@ -463,11 +465,11 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                           </select>
                         </label>
                         <label className="wide">
-                          İlk taksitin vadesi
+                          <span>İlk taksitin vadesi<b className="req" aria-hidden="true">*</b></span>
                           <input name="ilk_vade" type="date" required defaultValue={p.ilkVade} />
                         </label>
                         <p className="fin-form-note">Ödenen {money(p.odenen)} olduğu gibi kalır; kalan {money(p.kalan)} seçilen sayıda taksite eşit bölünür (artan kuruş baştaki taksitlere). Toplam sözleşme tutarında kalır.</p>
-                        <div className="panel-form-actions wide">
+                        <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                           <button className="panel-primary">Taksit planını kaydet</button>
                         </div>
                       </form>
@@ -497,14 +499,14 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                           title={`${sozlesme?.contract_no ?? "Sözleşme"} · ${t.installment_no}. taksit`}
                           description={`${money(Number(t.amount))} · vade ${t.due_date ? date(t.due_date) : "yok"}${t.odenen > 0 ? ` · ${money(t.odenen)} ödendi` : ""}`}
                         >
-                          <form className="panel-form fin-form" action={taksitiDuzenle}>
+                          <form className="panel-form fin-form kayit-formu" action={taksitiDuzenle}>
                             <input type="hidden" name="installment_id" value={t.id} />
                             <label>
-                              Vade tarihi
+                              <span>Vade tarihi<b className="req" aria-hidden="true">*</b></span>
                               <input name="due_date" type="date" required defaultValue={t.due_date ?? todayInIstanbul()} />
                             </label>
                             <label>
-                              Tutar (₺)
+                              <span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span>
                               <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(t.amount))} />
                             </label>
                             <label className="wide cari-kaydir">
@@ -512,7 +514,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                               <span>Sonraki taksitlerin vadesini de aynı gün kadar kaydır</span>
                             </label>
                             <p className="fin-form-note">Tutar değişirse fark sonraki taksitlere aktarılır (son taksit azalırsa fark bir ay sonra yeni taksit olur); toplam sözleşme tutarında kalır.</p>
-                            <div className="panel-form-actions wide">
+                            <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
                               <button className="panel-primary">Kaydet</button>
                             </div>
                           </form>
