@@ -18,30 +18,19 @@
 .ntf-page [data-tone="brand"]{--tone-bg:color-mix(in srgb,var(--brand-500) 14%,var(--surface));--tone-fg:var(--brand-600)}
 html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
-/* ---------- Filtre çipleri ----------
-   Satırlara sarılır: gizli kaydırma çubuklu tek satırda sağdaki başlıklar
-   görünmüyor ve fareyle ulaşılamıyordu. */
-.ntf-filters{display:flex;flex-wrap:wrap;gap:8px;padding:2px 2px 4px}
-.ntf-filters a{
-  flex:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 8px 0 14px;
-  border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
-  font-size:13.5px;font-weight:600;text-decoration:none;
-  transition:background-color .25s var(--ntf-ease),border-color .25s ease,color .2s ease,transform .3s var(--ntf-ease)
-}
-.ntf-filters a:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--line))}
-.ntf-filters a:active{transform:scale(.96)}
-.ntf-filters a.is-active{border-color:transparent;background:var(--primary);color:var(--n-0);box-shadow:0 6px 16px rgba(11,27,46,.16)}
-.ntf-filters b{min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:700;line-height:22px;text-align:center;font-variant-numeric:tabular-nums}
-.ntf-filters a.is-active b{background:color-mix(in srgb,var(--n-0) 18%,transparent);color:var(--n-0)}
-
-/* ---------- Liste kartı ---------- */
-.ntf-card{border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden}
-.ntf-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px 6px}
-.ntf-card-head h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
-.ntf-link{padding:6px 2px;border:0;background:none;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+/* ---------- Liste kartı ----------
+   Panel kartı (panel-card) ve ortak çipler (ekip-suzgec): eskiden sayfa
+   kendi kartını ve kendi çip dilini çiziyordu (12.10.2026). */
+.ntf-card{padding:var(--sp-4) var(--sp-4) var(--sp-2)}
+.ntf-suzgec{margin-bottom:var(--sp-2)}
+.ntf-baslik{align-items:center;flex-wrap:wrap;margin:var(--sp-2) 0 0}
+.ntf-baslik h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
+.ntf-baslik small{display:block;margin-top:2px}
+.ntf-baslik form{margin:0}
+.ntf-link{padding:6px 2px;border:0;background:none;color:var(--accent);font:inherit;font-size:var(--fs-sm);font-weight:600;cursor:pointer}
 .ntf-link:hover{text-decoration:underline;text-underline-offset:3px}
 
-.ntf-group{padding:0 10px 10px}
+.ntf-group{padding:0 0 var(--sp-2);margin:0 calc(var(--sp-2) * -1)}
 .ntf-day{margin:14px 12px 6px;color:var(--muted);font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 
 .ntf-item{
@@ -99,9 +88,8 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
 .notification-compose-form textarea{min-height:180px;resize:vertical}
 
 @media(max-width:620px){
-  .ntf-card{border-radius:18px}
-  .ntf-card-head{padding:16px 16px 4px}
-  .ntf-group{padding:0 4px 8px}
+  .ntf-card{padding:var(--sp-3) var(--sp-3) var(--sp-1)}
+  .ntf-group{margin:0 calc(var(--sp-1) * -1)}
   .ntf-item{grid-template-columns:36px minmax(0,1fr) 10px;gap:12px;padding:12px 10px}
   .ntf-item+.ntf-item::before{left:58px}
   .ntf-icon{width:36px;height:36px;border-radius:11px}

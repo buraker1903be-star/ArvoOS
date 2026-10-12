@@ -17,7 +17,9 @@ export const notificationFilters = [
 
 export type NotificationFilter = (typeof notificationFilters)[number];
 
-const knownCategories = new Set<string>(notificationFilters.flatMap((filter) => [...filter.categories]));
+/** Bir başlığa düşen bütün kategoriler ("Diğer" bunların dışındakiler). */
+export const bilinenKategoriler: readonly string[] = notificationFilters.flatMap((filter) => [...filter.categories]);
+const knownCategories = new Set<string>(bilinenKategoriler);
 
 export const inNotificationFilter = (category: string, filter: NotificationFilter) =>
   filter.key === "diger" ? !knownCategories.has(category) : (filter.categories as readonly string[]).includes(category);

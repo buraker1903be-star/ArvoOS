@@ -7,6 +7,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { toFeedItem, type NotificationFeedResult } from "./feed";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
 import { assertYetki } from "@/lib/yetkiler";
+import { bilinenKategoriler, notificationFilters, type NotificationFilter } from "./filters";
 
 // Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel ve
 // notification_user_reads tablosunda tutulur; eskiden bildirimin kendi
@@ -46,42 +47,67 @@ async function markNotificationRead__impl(formData: FormData) {
   revalidateNotifications();
 }
 
-async function markAllNotificationsRead__impl() {
+/*
+  "Okundu işaretle" SEÇİLİ BAŞLIĞA uygulanır (12.10.2026). Eskiden sayfada
+  "Posta" başlığı açıkken basılan düğme bütün başlıkları okunmuş yapıyordu;
+  görülmemiş talep ve müşteri bildirimleri sessizce kayboluyordu. Başlık
+  yoksa (çekmece, "Tümü") hepsi.
+
+  Toplu bildirimler artık sayfa sayfa işleniyor: eskiden yalnızca son 500
+  duyuru okunmuş sayılıyor, daha eskisi rozette "okunmamış" kalıyordu.
+*/
+const TOPLU_SAYFA = 500;
+const TOPLU_EN_FAZLA_SAYFA = 40;
+
+// Sorgu oluşturucunun türü zincirde değişiyor; yalnızca iki süzgeç yöntemi gerekiyor.
+type KategoriSuzulebilir = { in(sutun: string, degerler: readonly string[]): unknown; not(sutun: string, islec: string, deger: string): unknown };
+function kategoriSuz<Q>(sorgu: Q, filtre: NotificationFilter | null): Q {
+  if (!filtre) return sorgu;
+  const s = sorgu as unknown as KategoriSuzulebilir;
+  if (filtre.key === "diger") return s.not("category", "in", `(${bilinenKategoriler.join(",")})`) as Q;
+  return s.in("category", filtre.categories) as Q;
+}
+
+async function markAllNotificationsRead__impl(formData?: FormData) {
   const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
   const now = new Date().toISOString();
+  const istenen = formData ? String(formData.get("kategori") ?? "") : "";
+  const filtre = notificationFilters.find((aday) => aday.key === istenen) ?? null;
 
   if (isPlatformOwner) {
-    const { error } = await supabase.from("notifications")
+    const { error } = await kategoriSuz(supabase.from("notifications")
       .update({ read_at: now })
       .is("read_at", null)
-      .eq("audience", "founder");
+      .eq("audience", "founder"), filtre);
     if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
     revalidateNotifications();
     return;
   }
 
-  const { error: personalError } = await supabase.from("notifications")
+  const { error: personalError } = await kategoriSuz(supabase.from("notifications")
     .update({ read_at: now })
     .is("read_at", null)
     .eq("audience", "organization")
     .eq("organization_id", organization.id)
-    .eq("user_id", userId);
+    .eq("user_id", userId), filtre);
   if (personalError) throw new Error(`Bildirimler güncellenemedi: ${personalError.message}`);
 
-  const { data: broadcasts, error: broadcastError } = await supabase.from("notifications")
-    .select("id")
-    .eq("audience", "organization")
-    .eq("organization_id", organization.id)
-    .is("user_id", null)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (broadcastError) throw new Error(`Bildirimler okunamadı: ${broadcastError.message}`);
-  if (broadcasts?.length) {
+  for (let sayfa = 0; sayfa < TOPLU_EN_FAZLA_SAYFA; sayfa++) {
+    const { data: broadcasts, error: broadcastError } = await kategoriSuz(supabase.from("notifications")
+      .select("id")
+      .eq("audience", "organization")
+      .eq("organization_id", organization.id)
+      .is("user_id", null), filtre)
+      .order("created_at", { ascending: false })
+      .range(sayfa * TOPLU_SAYFA, (sayfa + 1) * TOPLU_SAYFA - 1);
+    if (broadcastError) throw new Error(`Bildirimler okunamadı: ${broadcastError.message}`);
+    if (!broadcasts?.length) break;
     const { error } = await supabase.from("notification_user_reads").upsert(
       broadcasts.map((item) => ({ notification_id: item.id, user_id: userId, read_at: now })),
       { onConflict: "notification_id,user_id", ignoreDuplicates: true },
     );
     if (error) throw new Error(`Bildirimler güncellenemedi: ${error.message}`);
+    if (broadcasts.length < TOPLU_SAYFA) break;
   }
   revalidateNotifications();
 }
