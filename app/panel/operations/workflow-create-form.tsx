@@ -1,6 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { createWorkflow } from "./actions";
 import "./operations.css";
+import "../components/kayit-formu.css";
 
 // "Yeni iş" formu (genel bakış ve işler sayfası ortak). Sunucu bileşeni:
 // sorumlu listesi burada okunur.
@@ -14,9 +15,12 @@ export async function WorkflowCreateForm() {
   const turler = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
   const ontanimli = turler.find((tur) => tur.is_default) ?? null;
   return (
-    <form className="panel-form" action={createWorkflow}>
-      <label>İş başlığı<input name="title" required minLength={2} maxLength={180} placeholder="Müşteri teslimat süreci" /></label>
-      <label>Müşteri / kurum<input name="customer_name" maxLength={160} /></label>
+    // Ortak kayıt formu düzeni (components/kayit-formu.css), iki bölüm.
+    <form className="panel-form kayit-formu" action={createWorkflow}>
+      <p className="wide kayit-formu-bolum">İş bilgileri</p>
+      <label className="wide"><span>İş başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} placeholder="Örn. Müşteri teslimat süreci" /></label>
+      <label className="wide">Müşteri / kurum<input name="customer_name" maxLength={160} placeholder="Boşsa kurum içi iş" /></label>
+      <p className="wide kayit-formu-bolum">Plan</p>
       <label>Öncelik<select name="priority" defaultValue="normal"><option value="low">Düşük</option><option value="normal">Normal</option><option value="high">Yüksek</option><option value="urgent">Acil</option></select></label>
       <label>Başlangıç durumu<select name="status" defaultValue="planned"><option value="planned">Planlandı</option><option value="in_progress">Devam ediyor</option><option value="blocked">Beklemede</option></select></label>
       <label>Termin<input name="due_date" type="date" /></label>
@@ -31,12 +35,12 @@ export async function WorkflowCreateForm() {
           </select>
         </label>
       ) : null}
-      <p className="wide panel-form-note">
+      <p className="wide kayit-formu-not">
         {turler.length
           ? "Görev listesi seçilen çalışma türünün şablonundan gelir; şablonu olmayan türde standart 8 adım kullanılır."
           : "Yeni işler standart 8 aşamalı görev planıyla otomatik oluşturulur."}
       </p>
-      <div className="wide panel-form-actions"><button className="panel-primary" type="submit">İşi oluştur</button></div>
+      <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">İşi oluştur</button></div>
     </form>
   );
 }

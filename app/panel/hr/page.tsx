@@ -12,6 +12,7 @@ import { IstatistikKarti } from "../crm/istatistik-karti";
 import { enCok, gunOnce, oran } from "@/lib/liste-istatistik";
 import { simdi } from "../os/genel-bakis";
 import "./hr.css";
+import "../components/kayit-formu.css";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
@@ -134,22 +135,25 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const durumSayisi = (kod: string) =>
     kod === "" ? depIci.length : kod === "pasif" ? depIci.filter(pasifMi).length : depIci.filter((item) => item.employment_status === kod).length;
 
-  const employeeForm = <form className="panel-form hr-form" action={createEmployee}>
-    <p className="wide hr-form-section">Kimlik</p>
-    <label className="wide">Ad soyad<input name="full_name" required minLength={2} placeholder="Örn. Ayşe Yılmaz" /></label>
-    <label>Personel numarası<input name="employee_no" /></label>
+  /* Ortak kayıt formu düzeni (components/kayit-formu.css): personel
+     detayındaki düzenleme çekmecesiyle aynı. hr-form sınıfı bilerek yok:
+     alan kuralı ortak formun açılır liste okunu eziyordu. */
+  const employeeForm = <form className="panel-form kayit-formu" action={createEmployee}>
+    <p className="wide kayit-formu-bolum">Kimlik</p>
+    <label className="wide"><span>Ad soyad<b className="req" aria-hidden="true">*</b></span><input name="full_name" required minLength={2} placeholder="Örn. Ayşe Yılmaz" /></label>
+    <label>Personel numarası<input name="employee_no" placeholder="İsteğe bağlı" /></label>
     <label>İşe giriş tarihi<input name="start_date" type="date" /></label>
-    <p className="wide hr-form-section">Görev</p>
+    <p className="wide kayit-formu-bolum">Görev</p>
     <label>Pozisyon<input name="job_title" placeholder="Örn. Satış Uzmanı" /></label>
     <label>Departman<select name="department_id" defaultValue=""><option value="">Departman seçin</option>{departments.filter((item) => item.is_active).map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
     <label>Çalışma tipi<select name="employment_type" defaultValue="full_time"><option value="full_time">Tam zamanlı</option><option value="part_time">Yarı zamanlı</option><option value="contractor">Sözleşmeli</option><option value="intern">Stajyer</option></select></label>
-    <p className="wide hr-form-section">İletişim</p>
-    <label>E-posta<input name="email" type="email" placeholder="ad@kurum.com" /></label><label>Telefon<input name="phone" placeholder="05xx xxx xx xx" /></label>
-    <p className="wide hr-form-section">Prim ve satış</p>
+    <p className="wide kayit-formu-bolum">İletişim</p>
+    <label>E-posta<input name="email" type="email" placeholder="ad@kurum.com" /></label><label>Telefon<input name="phone" type="tel" inputMode="tel" placeholder="05xx xxx xx xx" /></label>
+    <p className="wide kayit-formu-bolum">Prim ve satış</p>
     <label>Satış primi (%)<input name="commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
     <label>Operasyon primi (%)<input name="operation_commission_rate" type="number" min="0" max="100" step="0.01" defaultValue="0" /></label>
     <label className="wide hr-check"><input name="can_receive_sales_requests" type="checkbox" /><span><b>Satış talepleri atanabilir</b><small>Yeni satış talepleri bu personele atanabilir.</small></span></label>
-    <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Personeli Kaydet</button></div>
+    <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Personeli kaydet</button></div>
   </form>;
 
   /*
@@ -174,13 +178,13 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         <h1>Ekip ve personel</h1>
       </div>
       <div className="talep-bas-eylem">
-        {canManageTeam ? <PanelDrawer triggerLabel="Yeni personel" kicker="YENİ KAYIT" title="Yeni Personel" description="Personel ve görev bilgilerini kaydedin.">{employeeForm}</PanelDrawer> : null}
+        {canManageTeam ? <PanelDrawer triggerLabel="Yeni personel" kicker="YENİ KAYIT" title="Yeni personel" description="Kimlik, görev ve iletişim bilgileri. Panel erişimi kayıttan sonra personel sayfasından verilir.">{employeeForm}</PanelDrawer> : null}
         {canManageTeam ? <details className="os-menu talep-menu">
           <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
           <div className="os-menu-list" role="menu">
             {canManageTeam ? (
-              <PanelDrawer triggerLabel="Yeni departman" triggerClassName="os-menu-item" kicker="ORGANİZASYON" title="Yeni Departman">
-                <form className="panel-form hr-form" action={createDepartment}><label className="wide">Departman adı<input name="name" required placeholder="Örn. Satış" /></label><label className="wide">Kısa kod<input name="code" maxLength={30} placeholder="Örn. SAT" /></label><div className="wide panel-form-actions"><button className="panel-primary" type="submit">Departmanı Kaydet</button></div></form>
+              <PanelDrawer triggerLabel="Yeni departman" triggerClassName="os-menu-item" kicker="ORGANİZASYON" title="Yeni departman" description="Adında “Satış” ya da “Operasyon” geçen departmana o alanın müdür profili atanabilir.">
+                <form className="panel-form kayit-formu" action={createDepartment}><label className="wide"><span>Departman adı<b className="req" aria-hidden="true">*</b></span><input name="name" required placeholder="Örn. Satış" /></label><label className="wide">Kısa kod<input name="code" maxLength={30} placeholder="Örn. SAT" /></label><div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Departmanı kaydet</button></div></form>
               </PanelDrawer>
             ) : null}
           </div>
