@@ -38,6 +38,7 @@ import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "..
 import "../../request-page.css";
 import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
+import "../../../components/kayit-formu.css";
 
 /*
   SÖZLEŞME DETAYI (2026-10): talep ve teklif detayıyla aynı üç sütun.
@@ -242,90 +243,56 @@ export default async function ContractDetailPage({ params }: Props) {
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               {!locked ? (
-                <PanelDrawer triggerLabel="Düzenle" title={data.contract_no} description="Sözleşme bilgilerini kontrol edin." triggerClassName="os-menu-item">
-                  <form className="panel-form" action={updateContract}>
+                <PanelDrawer triggerLabel="Düzenle" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Sözleşmeyi düzenle" description="Kapsam, tutar, müşteri ve fatura bilgileri. Değişiklik imza bağlantısındaki metne de yansır." triggerClassName="os-menu-item">
+                  {/* DÜZEN (2026-10): talep girişi ve teklif formuyla aynı ortak
+                      form (components/kayit-formu.css), dört bölüm. Eskiden
+                      girilen metin kalın görünüyor, zorunlu alan belli
+                      değildi; müşteri adı boş kaydedilebiliyordu. */}
+                  <form className="panel-form kayit-formu" action={updateContract}>
                     <input type="hidden" name="contract_id" value={data.id} />
                     <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
                     <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
-                    <p className="wide panel-form-note">Müşteri / Talep Bilgileri</p>
-                    <label>
-                      Müşteri adı
-                      <input name="customer_name" defaultValue={customer?.customer_name ?? ""} />
-                    </label>
-                    <label>
-                      Telefon
-                      <input name="contact_phone" defaultValue={customer?.contact_phone ?? ""} />
-                    </label>
-                    <label>
-                      E-posta
-                      <input name="contact_email" defaultValue={customer?.contact_email ?? ""} />
-                    </label>
-                    <label>
-                      Hizmet türü
-                      <input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} />
-                    </label>
-                    <label>
-                      Akademik seviye
-                      <input name="academic_level" defaultValue={String(customer?.request_details?.academic_level ?? "")} />
-                    </label>
-                    <label>
-                      Üniversite
-                      <input name="university" defaultValue={String(customer?.request_details?.university ?? "")} />
-                    </label>
-                    <label>
-                      Bölüm
-                      <input name="department" defaultValue={String(customer?.request_details?.department ?? "")} />
-                    </label>
-                    <p className="wide panel-form-note">Sözleşme Bilgileri</p>
-                    <label>
-                      Başlık
-                      <input name="title" defaultValue={data.title} required />
-                    </label>
-                    <label>
-                      Tutar
-                      <input name="amount" type="number" step="0.01" min="0" defaultValue={(data.amount / 100).toFixed(2)} required />
-                    </label>
-                    <label className="wide">
-                      Kapsam
-                      <textarea name="scope" defaultValue={data.scope ?? ""} required />
-                    </label>
-                    <label>
-                      Ödeme planı
-                      <input name="payment_plan" defaultValue={data.payment_plan ?? ""} />
-                    </label>
-                    <label>
-                      Başlangıç
-                      <input name="start_date" type="date" defaultValue={data.start_date ?? ""} />
-                    </label>
-                    <label>
-                      Teslim
-                      <input name="due_date" type="date" defaultValue={data.due_date ?? ""} />
-                    </label>
-                    <label className="wide">
-                      Adres{" "}
-                      <small style={{ fontWeight: 400, color: "var(--muted)" }}>(kurumsal müşteri için)</small>
-                      <input name="customer_address" defaultValue={data.customer_address ?? ""} placeholder="Fatura/sözleşme adresi" />
-                    </label>
-                    <label>
-                      Vergi numarası
-                      <input name="customer_tax_number" defaultValue={data.customer_tax_number ?? ""} placeholder="VKN / TCKN" />
-                    </label>
-                    <label>
-                      Vergi dairesi
-                      <input name="customer_tax_office" defaultValue={data.customer_tax_office ?? ""} />
-                    </label>
+
+                    <p className="wide kayit-formu-bolum">Sözleşme</p>
+                    <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
+                    <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
+                    <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={(data.amount / 100).toFixed(2)} required /></label>
+                    <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
+                    <label>Başlangıç tarihi<input name="start_date" type="date" defaultValue={data.start_date ?? ""} /></label>
+                    <label>Teslim tarihi<input name="due_date" type="date" defaultValue={data.due_date ?? ""} /></label>
+                    <p className="wide kayit-formu-not">Taksitler ve vade tarihleri “⋯ → Ödeme planı”ndan değişir; tutar değişirse taksitler yeni toplama göre ölçeklenir.</p>
+
+                    <p className="wide kayit-formu-bolum">Müşteri</p>
+                    <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" defaultValue={customer?.customer_name ?? ""} required minLength={2} maxLength={180} /></label>
+                    <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={customer?.contact_phone ?? ""} placeholder="05xx xxx xx xx" /></label>
+                    <label>E-posta<input name="contact_email" type="email" defaultValue={customer?.contact_email ?? ""} placeholder="ornek@eposta.com" /></label>
+
+                    <p className="wide kayit-formu-bolum">Hizmet ve akademik künye</p>
+                    <label>Hizmet türü<input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} /></label>
+                    <label>Akademik düzey<input name="academic_level" list="sozlesme-akademik-duzey" defaultValue={String(customer?.request_details?.academic_level ?? "")} placeholder="Seçin ya da yazın" /></label>
+                    <label>Üniversite<input name="university" defaultValue={String(customer?.request_details?.university ?? "")} placeholder="Örn. İstanbul Üniversitesi" /></label>
+                    <label>Bölüm / alan<input name="department" defaultValue={String(customer?.request_details?.department ?? "")} placeholder="Örn. İşletme" /></label>
+                    <datalist id="sozlesme-akademik-duzey"><option value="Lisans" /><option value="Yüksek Lisans" /><option value="Doktora" /><option value="Tıpta Uzmanlık" /><option value="Doçentlik" /></datalist>
+
+                    <p className="wide kayit-formu-bolum">Fatura bilgileri</p>
+                    <p className="wide kayit-formu-not">Kurumsal müşteride sözleşmeye ve faturaya yazılır; bireysel müşteride boş bırakılabilir.</p>
+                    <label className="wide">Adres<input name="customer_address" defaultValue={data.customer_address ?? ""} placeholder="Fatura / sözleşme adresi" /></label>
+                    <label>Vergi numarası<input name="customer_tax_number" defaultValue={data.customer_tax_number ?? ""} placeholder="VKN / TCKN" /></label>
+                    <label>Vergi dairesi<input name="customer_tax_office" defaultValue={data.customer_tax_office ?? ""} /></label>
                     {/* Yalnızca Arvo'nun kendi kurumunda: kiracının kendi
                         müşterisiyle yaptığı sözleşme bizim aboneliğimizi açmaz. */}
                     {arvoKurumu ? <AbonelikAlanlari niyet={data.subscription_intent} /> : null}
-                    <div className="wide panel-form-actions">
-                      <button className="panel-primary">Kaydet</button>
+
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                      <button className="panel-primary">Değişiklikleri kaydet</button>
                     </div>
                   </form>
                 </PanelDrawer>
               ) : null}
               {/* İmzalı sözleşme veritabanında donmuş; değişiklik Ek Protokol ile */}
               {!locked ? (
-                <PanelDrawer triggerLabel="Ödeme planı" title={data.contract_no} description="Müşteri talebiyle ödeme planını ve vade tarihlerini revize edin." triggerClassName="os-menu-item">
+                <PanelDrawer triggerLabel="Ödeme planı" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Ödeme planı" description="Müşterinin talebiyle ödeme planını ve vade tarihlerini revize edin." triggerClassName="os-menu-item">
                   <ContractPaymentPlanForm
                     contractId={data.id}
                     amountCents={data.amount}
@@ -335,14 +302,14 @@ export default async function ContractDetailPage({ params }: Props) {
                 </PanelDrawer>
               ) : null}
               {!locked && planFeature ? (
-                <PanelDrawer triggerLabel="İş planı" title={data.contract_no} description="Ara teslim takvimini sözleşmeye yazın (madde 4)." triggerClassName="os-menu-item">
+                <PanelDrawer triggerLabel="İş planı" kicker={`SÖZLEŞME · ${data.contract_no}`} title="İş planı" description="Ara teslim takvimini sözleşmeye yazın (madde 4)." triggerClassName="os-menu-item">
                   <ContractWorkPlanForm contractId={data.id} initial={contractWorkPlan} />
                 </PanelDrawer>
               ) : null}
               {signed && planFeature ? (
-                <PanelDrawer triggerLabel="Ek protokol" title={`${data.contract_no} · Ek Protokol`} description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." triggerClassName="os-menu-item">
+                <PanelDrawer triggerLabel="Ek protokol" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Ek protokol" description="Ara teslim takvimini ve taksit vadelerini müşterinin onayına sunun." triggerClassName="os-menu-item">
                   {pendingAddendum ? (
-                    <p className="plan-form-hint">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
+                    <p className="kayit-formu-not">Ek Protokol {pendingAddendum.addendum_no} müşterinin onayını bekliyor. Yenisini göndermek için önce onu “İş planı ve ödeme takvimi” bölümünden geri çekin.</p>
                   ) : (
                     <ContractAddendumForm contractId={data.id} installments={installments} initialPlan={currentPlan} />
                   )}
@@ -352,21 +319,22 @@ export default async function ContractDetailPage({ params }: Props) {
               {!locked || canDelete ? (
                 <PanelDrawer
                   triggerLabel={locked ? "Sözleşmeyi sil" : "Sözleşmeyi kapat"}
+                  kicker={`SÖZLEŞME · ${data.contract_no}`}
                   title={locked ? "Sözleşmeyi sil" : "Sözleşmeyi kapat"}
                   description={locked ? "Silme geri alınamaz." : "Sözleşmenin neden kapatıldığını seçin. Bu bilgi raporlarda kullanılıyor."}
                   triggerClassName="os-menu-item is-danger"
                 >
                   {!locked ? (
-                    <form className="panel-form" action={markContractStatus}>
+                    <form className="panel-form kayit-formu" action={markContractStatus}>
                       <input type="hidden" name="contract_id" value={data.id} />
-                      <label className="wide">
-                        Kapanış sebebi
+                      <label className="wide"><span>Kapanış sebebi<b className="req" aria-hidden="true">*</b></span>
                         <select name="status" defaultValue="rejected" required>
                           <option value="rejected">Müşteri reddetti</option>
                           <option value="cancelled">İptal edildi</option>
                         </select>
                       </label>
-                      <div className="wide panel-form-actions">
+                      <div className="wide panel-form-actions kayit-formu-eylem">
+                        <p>Kayıt silinmez; sözleşme kapananlar arasında kalır.</p>
                         <button className="panel-primary">Sözleşmeyi kapat</button>
                       </div>
                     </form>
@@ -499,11 +467,13 @@ export default async function ContractDetailPage({ params }: Props) {
               <p className="sozlesme-takip-kod">{data.tracking_code}</p>
               <p className="talep-gecmis-ozet">{trackingOpen ? "Müşteri takip ekranına girebilir." : "İmzadan sonra açılır."}</p>
               <div className="talep-iletisim">
-                <PanelDrawer triggerLabel="Takip kodunu gönder" title={data.contract_no} description="Müşteri bu kodla kendi iş durumunu görebilir." triggerClassName="panel-secondary">
-                  <div className="crm-request-preview">
-                    <p><b>Takip Kodu</b></p>
-                    <p style={{ fontSize: 20, fontWeight: 800, letterSpacing: 3 }}>{data.tracking_code}</p>
-                    <p style={{ wordBreak: "break-all" }}>{trackingUrl}</p>
+                <PanelDrawer triggerLabel="Takip kodunu gönder" kicker={`SÖZLEŞME · ${data.contract_no}`} title="Takip kodu" description="Müşteri bu kodla takip ekranında kendi iş durumunu görür ve soru sorar." triggerClassName="panel-secondary">
+                  <div className="sozlesme-takip">
+                    <div className="sozlesme-takip-kart">
+                      <small>Takip kodu</small>
+                      <p className="sozlesme-takip-kod">{data.tracking_code}</p>
+                      <small className="sozlesme-takip-adres">{trackingUrl.replace(/^https:\/\//, "")}</small>
+                    </div>
                     {trackingToggleable ? (
                       <div className="tracking-toggle">
                         <p>

@@ -7,6 +7,8 @@ import type { WorkPlanItem } from "@/lib/work-plan";
 import { createContractAddendum, type ContractPlanState } from "./contract-plan-actions";
 import { ScheduleDateRows } from "./schedule-date-rows";
 import { WorkPlanEditor } from "./work-plan-editor";
+// Ortak çekmece formu düzeni; bileşen stilini kendisi alıyor (AGENTS.md).
+import "../components/kayit-formu.css";
 
 export type AddendumInstallment = {
   sequence: number;
@@ -18,7 +20,6 @@ export type AddendumInstallment = {
 };
 
 const initialState: ContractPlanState = { error: null, success: null };
-const boxStyle = { border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" };
 const CLOSED: Record<string, string> = { paid: "Ödendi · vadesi değiştirilemez", cancelled: "İptal · vadesi değiştirilemez" };
 
 function SubmitButton() {
@@ -59,10 +60,10 @@ export function ContractAddendumForm({
     .map((item) => ({ sequence: item.sequence, due_date: dates[item.sequence] }));
 
   return (
-    <form className="panel-form" action={formAction}>
+    <form className="panel-form kayit-formu" action={formAction}>
       <input type="hidden" name="contract_id" value={contractId} />
       <input type="hidden" name="payment_dates" value={JSON.stringify(changed)} />
-      <p className="wide plan-form-hint">
+      <p className="wide kayit-formu-not">
         İmzalı sözleşmenin metni değişmez. Takvim ve vade değişiklikleri ek protokol olarak sözleşme bağlantısında müşterinin onayına sunulur; onayı tarih-saat, IP ve cihaz bilgisiyle kaydedilir.
       </p>
       <WorkPlanEditor initial={initialPlan} hint="Onaylandığında bu takvim geçerli iş planı olur. Değişiklik yoksa satırları boş bırakın." />
@@ -70,13 +71,13 @@ export function ContractAddendumForm({
         <ScheduleDateRows schedule={schedule} dates={dates} locked={locked} title="TAKSİT VADELERİ" onChange={(sequence, value) => setDates((current) => ({ ...current, [sequence]: value }))} />
       ) : null}
       <label className="wide">
-        Müşteriye not <small style={{ fontWeight: 400, color: "var(--muted)" }}>(isteğe bağlı)</small>
+        Müşteriye not (isteğe bağlı)
         <textarea name="note" maxLength={2000} placeholder="Ör. Danışman görüşmesine göre ara teslim tarihleri netleştirildi." />
       </label>
-      <p className="wide plan-form-hint">{changed.length ? `${changed.length} taksidin vadesi değişecek.` : "Taksit vadelerinde değişiklik yok."}</p>
-      {state.error ? <div className="wide panel-form-error" role="alert" style={boxStyle}><strong>Gönderilemedi</strong><p style={{ margin: "6px 0 0" }}>{state.error}</p></div> : null}
-      {state.success ? <div className="wide panel-form-success" role="status" style={boxStyle}>{state.success}</div> : null}
-      <div className="wide panel-form-actions"><SubmitButton /></div>
+      <p className="wide kayit-formu-not">{changed.length ? `${changed.length} taksidin vadesi değişecek.` : "Taksit vadelerinde değişiklik yok."}</p>
+      {state.error ? <div className="wide panel-form-error kayit-formu-hata" role="alert"><strong>Gönderilemedi</strong><p>{state.error}</p></div> : null}
+      {state.success ? <div className="wide panel-form-success kayit-formu-basari" role="status">{state.success}</div> : null}
+      <div className="wide panel-form-actions kayit-formu-eylem"><SubmitButton /></div>
     </form>
   );
 }

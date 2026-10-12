@@ -35,7 +35,7 @@
 /* Bölüm başlığı: ince çizgiyle ayrılmış, büyük harf (personel formuyla aynı dil). */
 .panel-root .kayit-formu-bolum{margin:var(--sp-2) 0 calc(var(--sp-1) * -1);padding-top:var(--sp-4);border-top:1px solid var(--line-soft);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 /* Gizli alanlar (input[type=hidden]) formun başında durabiliyor; :first-child onları da sayıyor, bu yüzden "önünde gizli alandan başka bir şey yok" seçicisi. */
-.panel-root .kayit-formu-bolum:first-child,.panel-root .kayit-formu > input[type="hidden"] + .kayit-formu-bolum,.panel-root .kayit-formu-not + .kayit-formu-bolum{margin-top:0;padding-top:0;border-top:0}
+.panel-root .kayit-formu-bolum:first-child,.panel-root .kayit-formu > input[type="hidden"] + .kayit-formu-bolum,.panel-root .kayit-formu > .kayit-formu-not:first-child + .kayit-formu-bolum,.panel-root .kayit-formu > input[type="hidden"] + .kayit-formu-not + .kayit-formu-bolum{margin-top:0;padding-top:0;border-top:0}
 .panel-root .kayit-formu-not{margin:0;padding:10px 12px;border-radius:12px;background:var(--surface-2);color:var(--ink-soft);font-size:13px;line-height:1.45}
 
 /* Kaydet çubuğu: zorunlu alan notu solda, düğme sağda. */
@@ -45,5 +45,6 @@
 @media (max-width:640px){
   .panel-root .kayit-formu-eylem .panel-primary{width:100%}
 }
-.panel-root .kayit-formu-hata{padding:var(--sp-3) var(--sp-4);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent);border-radius:12px;background:color-mix(in srgb,var(--danger) 8%,transparent);color:var(--danger)}
+.panel-root .kayit-formu-hata{padding:var(--sp-3) var(--sp-4);border:1px solid var(--danger);border-radius:12px;background:var(--danger-soft);color:var(--danger)}
 .panel-root .kayit-formu-hata p{margin:4px 0 0;font-size:13px}
+.panel-root .kayit-formu-basari{padding:var(--sp-3) var(--sp-4);border:1px solid var(--success);border-radius:12px;background:var(--success-soft);color:var(--success);font-size:13px;font-weight:600}

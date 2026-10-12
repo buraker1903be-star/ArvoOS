@@ -14,6 +14,8 @@ import {
 } from "@/lib/payment-schedule";
 import { updateContractPaymentPlan, type UpdateContractPlanState } from "./contract-actions";
 import { ScheduleDateRows } from "./schedule-date-rows";
+// Ortak çekmece formu düzeni; bileşen stilini kendisi alıyor (AGENTS.md).
+import "../components/kayit-formu.css";
 
 const money = (value: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100);
@@ -88,7 +90,7 @@ export function ContractPaymentPlanForm({
   const valid = percentValid && !dateIssue;
 
   return (
-    <form className="panel-form" action={formAction}>
+    <form className="panel-form kayit-formu" action={formAction}>
       <input type="hidden" name="contract_id" value={contractId} />
       <input type="hidden" name="payment_plan_type" value={plan} />
       <input type="hidden" name="payment_plan_text" value={planText} />
@@ -121,10 +123,10 @@ export function ContractPaymentPlanForm({
 
       <ScheduleDateRows schedule={schedule} dates={dueDates} onChange={(sequence, value) => setDueDates((current) => ({ ...current, [sequence]: value }))} />
 
-      {state.error ? <div className="wide panel-form-error" role="alert" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}><strong>Kaydedilemedi</strong><p style={{ margin: "6px 0 0" }}>{state.error}</p></div> : null}
-      {state.success ? <div className="wide panel-form-success" role="status" style={{ border: "1px solid currentColor", borderRadius: "10px", padding: "12px 14px" }}>Ödeme planı güncellendi.</div> : null}
+      {state.error ? <div className="wide panel-form-error kayit-formu-hata" role="alert"><strong>Kaydedilemedi</strong><p>{state.error}</p></div> : null}
+      {state.success ? <div className="wide panel-form-success kayit-formu-basari" role="status">Ödeme planı güncellendi.</div> : null}
 
-      <div className="wide panel-form-actions"><SubmitButton valid={valid} /></div>
+      <div className="wide panel-form-actions kayit-formu-eylem"><SubmitButton valid={valid} /></div>
       {!percentValid ? <p className="wide custom-plan-hint">Kaydetmeden önce taksit yüzdelerini %100&apos;e tamamlayın.</p> : dateIssue ? <p className="wide custom-plan-hint">{dateIssue}</p> : null}
     </form>
   );

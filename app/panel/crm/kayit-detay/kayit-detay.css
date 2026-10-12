@@ -149,6 +149,14 @@
 /* Sözleşme detayı: takip kodu ve akıştaki müşteri mesajları. Mesajlar
    panelin içinde kayar, yanıt kutusu panelin altına yapışık durur
    (yorumlardaki yazma kutusuyla aynı görünüm). */
+/* Takip kodu penceresi: kod kartı + açma/kapama + gönderim. Eskiden satır içi stillerle duruyordu. */
+.sozlesme-takip{display:grid;gap:var(--sp-4)}
+.sozlesme-takip-kart{display:grid;gap:var(--sp-2);justify-items:center;padding:var(--sp-5) var(--sp-4);border:1px solid var(--line-soft);border-radius:14px;background:var(--surface-2);text-align:center}
+.sozlesme-takip-kart>small:first-child{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.sozlesme-takip-kart .sozlesme-takip-kod{font-size:28px}
+.sozlesme-takip-adres{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.sozlesme-takip .tracking-toggle{margin:0}
+.sozlesme-takip .panel-page-actions{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
 .sozlesme-takip-kod{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-lg);font-weight:var(--fw-semibold);letter-spacing:.18em;color:var(--ink)}
 .sozlesme-mesaj{display:flex;flex-direction:column;min-height:100%}
 .os-root .sozlesme-mesaj .contract-chat{flex:1;max-height:none;overflow:visible;padding:var(--sp-4);gap:var(--sp-3)}
