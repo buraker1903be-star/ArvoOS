@@ -20,6 +20,7 @@ import { KonsolNavigasyon } from "./konsol-navigasyon";
 import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
 import { OsDock } from "./os/os-dock";
+import { OsGeri } from "./os/os-geri";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
@@ -314,6 +315,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       <GlobalActionFeedback />
       <FlashToast />
       <header className="os-bar">
+        {/* Telefonda alt sayfalarda geri (ana ekrana eklenen uygulamada tarayıcının geri tuşu yok). */}
+        <OsGeri uygulamalar={uygulamalar} />
         <Link className="os-brand" href="/panel" aria-label={`${brandName} ana ekran`}>
           {brandLogoUrl ? <img src={brandLogoUrl} alt="" /> : <i aria-hidden="true">{brandName.slice(0, 1).toLocaleUpperCase("tr")}</i>}
           <span><b>{brandName}</b><OsUygulamaAdi uygulamalar={uygulamalar} /></span>

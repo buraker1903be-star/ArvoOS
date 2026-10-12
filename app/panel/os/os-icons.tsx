@@ -6,7 +6,7 @@ import type { OsIkon } from "./os-apps";
   başlatıcı ikonla tanınıyor. Çizgi ikonlar `currentColor` alır: kurum
   rengi ve koyu tema kendiliğinden işler.
 */
-const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external" | "sun" | "moon" | "plus", React.ReactNode> = {
+const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external" | "sun" | "moon" | "plus" | "back", React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
   crm: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.4 3.5 5.2" /></>,
   operations: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" /></>,
@@ -27,6 +27,7 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  back: <path d="m15 5-7 7 7 7" />,
 };
 
 export type OsIkonAdi = keyof typeof YOLLAR;

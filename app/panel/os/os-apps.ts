@@ -187,3 +187,46 @@ export function canliTablolar(yol: string): string[] {
   const temiz = yol.length > 1 ? yol.replace(/\/+$/, "") : yol;
   return CANLI_SAYFALAR[temiz] ?? [];
 }
+
+/*
+  TELEFONDA GERİ (12.10.2026). Ana ekrana eklenen panel tarayıcı çubuğu
+  olmadan açılıyor; iPhone'da bu kipte geri tuşu da kenardan kaydırma da
+  yok. Talep detayından listeye dönmenin tek yolu alttaki sekmeye basıp
+  baştan gelmekti. Üst çubuktaki geri düğmesi (os-geri.tsx) alt
+  sayfalarda görünür; kök sayfalar alt çubuk ve bölüm menüsünden zaten
+  erişilenler (uygulamanın ve bölümlerinin kendi adresi).
+*/
+const yolKoku = (href: string) => href.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+
+/** Alt çubuktan ya da bölüm menüsünden doğrudan açılan sayfa mı (geri düğmesi gerekmez)? */
+export function kokSayfaMi(uygulamalar: OsUygulama[], yol: string): boolean {
+  const y = yolKoku(yol);
+  if (y === "/panel") return true;
+  return uygulamalar.some((u) => yolKoku(u.href) === y || (u.bolumler ?? []).some((b) => yolKoku(b.href) === y));
+}
+
+/**
+ * Uygulama içi geçmiş yokken (bildirimden, bağlantıdan açılan sayfa) geri
+ * nereye gider: sayfayı kapsayan en yakın bölüm ya da uygulama; yoksa ana ekran.
+ */
+export function geriHedefi(uygulamalar: OsUygulama[], yol: string): string {
+  const y = yolKoku(yol);
+  let hedef = "/panel";
+  let uzunluk = 0;
+  for (const u of uygulamalar) {
+    // Uygulamanın yol öneki (ör. /panel/crm) bir adres değil, kapsam: oraya
+    // değil uygulamanın ana sayfasına dönülür. Aynı uzunlukta bölüm varsa bölüm kazanır.
+    const adaylar = [
+      { kok: yolKoku(u.href), hedef: u.href },
+      ...(u.bolumler ?? []).map((b) => ({ kok: yolKoku(b.href), hedef: b.href })),
+      ...u.yollar.map((onek) => ({ kok: yolKoku(onek), hedef: u.href })),
+    ];
+    for (const aday of adaylar) {
+      if (aday.kok !== y && y.startsWith(`${aday.kok}/`) && aday.kok.length > uzunluk) {
+        hedef = aday.hedef;
+        uzunluk = aday.kok.length;
+      }
+    }
+  }
+  return hedef;
+}
