@@ -112,9 +112,15 @@ export default async function PanelPage() {
   ] = await Promise.all([
     // Trend: yalnızca son 28 günün oluşturulma tarihleri (sınırsız, sayım doğru).
     canSeeCrm ? supabase.from("crm_opportunities").select("created_at").eq("organization_id", organizationId).gte("created_at", seriBaslangici()) : none,
+    /* Açık işler termine göre: en az günü kalan (gecikmiş olan) en üstte,
+       termini girilmemiş iş en sonda. Eskiden son güncellenen altı iş
+       sırasız listeleniyordu; 10 gün kalan iş 79 gün kalanın altında
+       kalıyor, yaklaşan termin gözden kaçabiliyordu. Sıralama sorguda:
+       bellekte sıralamak yalnızca son güncellenen altı işi dizerdi. */
     canSeeOperations
       ? supabase.from("operation_workflows").select("id,title,customer_name,status,due_date,updated_at")
           .eq("organization_id", organizationId).in("status", [...activeStatuses])
+          .order("due_date", { ascending: true, nullsFirst: false })
           .order("updated_at", { ascending: false }).limit(LISTE)
       : none,
     /* Yaklaşan aşamalar: tamamlanmamış, tarihi olan; gecikmişler en üstte
@@ -248,7 +254,7 @@ export default async function PanelPage() {
 
       <ListeIzgarasi>
         {canSeeOperations ? (
-          <ListeKarti baslik="Operasyon" alt={`Son ${LISTE} operasyon`} bos="Açık operasyon yok." href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
+          <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos="Açık operasyon yok." href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
             {isler.map((is) => {
               const rozet = dueBadge(is.due_date, today, is.status);
               return (
