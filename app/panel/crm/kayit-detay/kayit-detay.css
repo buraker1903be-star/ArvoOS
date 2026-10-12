@@ -676,6 +676,8 @@
   background:var(--surface-2);color:var(--muted);font-style:normal;font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .os-root .kayit-zaman li[data-durum="complete"] i{background:var(--success-soft);color:var(--success)}
 .os-root .kayit-zaman li[data-durum="current"] i{background:var(--warning-soft);color:var(--warning)}
+/* Ret, iptal, geciken taksit: süreç orada kırıldı (belge yaşam döngüsü). */
+.os-root .kayit-zaman li[data-durum="danger"] i{background:var(--danger-soft);color:var(--danger)}
 .os-root .kayit-zaman h3{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
 .os-root .kayit-zaman p{margin:4px 0 0;color:var(--muted);font-size:var(--fs-sm)}
 .os-root .kayit-zaman small{display:block;margin-top:4px;color:var(--dim);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}

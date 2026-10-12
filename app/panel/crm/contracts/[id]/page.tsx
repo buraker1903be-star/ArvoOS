@@ -12,7 +12,8 @@ import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
 import { workflowStatusNames } from "../../../operations/ops-shared";
 import { todayInIstanbul } from "@/lib/istanbul-date";
-import { netTahsilat, taksitleriDagit, type TaksitDurumu } from "@/lib/taksit-dagitimi";
+import type { TaksitDurumu } from "@/lib/taksit-dagitimi";
+import { cariTaksitSonuclari, taksitDurumu as taksitDurumuCoz } from "../taksit-durumu";
 import { formatSubject } from "@/lib/table-format";
 import { proposalStatusLabel } from "../../status-labels";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
@@ -114,36 +115,12 @@ export default async function ContractDetailPage({ params }: Props) {
     const item = storedSchedule.find((scheduleItem) => scheduleItem.sequence === row.installment_no);
     return { sequence: row.installment_no, label: installmentLabel(item?.label, row.installment_no), amount: Number(row.amount), due_date: row.due_date, trigger: item?.trigger || null, status: row.status };
   });
-  /*
-    ÖDEME ÖZETİ: kaç taksitin ve ne kadarının ödendiği, vadesi geçen.
-    Taksitin kendi status sütunu cari tahsilatıyla güncellenmiyor (tahsil
-    edilmiş taksit "ödenmedi" görünüyordu). Sözleşmenin carisi varsa
-    durumlar cari dökümünden türetilir: carinin net tahsilatı, carinin
-    BÜTÜN sözleşmelerinin taksitlerine en eski vadeden dağıtılır (cari
-    detayıyla aynı kural, lib/taksit-dagitimi.ts); burada bu sözleşmenin
-    taksitlerine düşen sonuç gösterilir. Carisi yoksa taksitin kendi durumu.
-  */
+  /* ÖDEME ÖZETİ: kaç taksitin ve ne kadarının ödendiği, vadesi geçen.
+     Kural ortak yardımcıda (../taksit-durumu.ts): yaşam döngüsü sayfası
+     da aynı sonucu gösteriyor. */
   const bugunAnahtari = todayInIstanbul();
-  let taksitSonucu: Map<number, { odenen: number; kalan: number; durum: TaksitDurumu }> | null = null;
-  if (data.party_id && data.payment_plan_id && installments.length) {
-    const [{ data: hareketler }, { data: cariSozlesmeler }] = await Promise.all([
-      supabase.from("account_entries").select("entry_type,source_type,amount").eq("organization_id", membership.organization_id).eq("party_id", data.party_id),
-      supabase.from("crm_contracts").select("payment_plan_id").eq("organization_id", membership.organization_id).eq("party_id", data.party_id).in("status", ["signed", "completed"]),
-    ]);
-    const planIds = [...new Set([data.payment_plan_id, ...((cariSozlesmeler ?? []) as { payment_plan_id: string | null }[]).map((c) => c.payment_plan_id).filter((v): v is string => Boolean(v))])];
-    const { data: tumTaksitler } = await supabase.from("payment_installments").select("id,payment_plan_id,installment_no,due_date,amount,status").eq("organization_id", membership.organization_id).in("payment_plan_id", planIds);
-    if (hareketler && tumTaksitler) {
-      const dagilim = taksitleriDagit(tumTaksitler as { id: string; payment_plan_id: string; installment_no: number; due_date: string | null; amount: number; status: string }[], netTahsilat(hareketler as { entry_type: string; source_type: string | null; amount: number }[]), bugunAnahtari);
-      taksitSonucu = new Map(dagilim.filter((t) => t.payment_plan_id === data.payment_plan_id).map((t) => [t.installment_no, { odenen: t.odenen, kalan: t.kalan, durum: t.durum }]));
-    }
-  }
-  const taksitDurumu = (row: AddendumInstallment): { odenen: number; durum: TaksitDurumu } => {
-    const sonuc = taksitSonucu?.get(row.sequence);
-    if (sonuc) return sonuc;
-    if (row.status === "paid") return { odenen: row.amount, durum: "odendi" };
-    if (row.status === "cancelled") return { odenen: 0, durum: "iptal" };
-    return { odenen: 0, durum: row.due_date && row.due_date < bugunAnahtari ? "gecikti" : "bekliyor" };
-  };
+  const taksitSonucu = installments.length ? await cariTaksitSonuclari(supabase, membership.organization_id, data, bugunAnahtari) : null;
+  const taksitDurumu = (row: AddendumInstallment) => taksitDurumuCoz({ no: row.sequence, amount: row.amount, status: row.status, due_date: row.due_date }, taksitSonucu, bugunAnahtari);
   const odenen = installments.filter((row) => taksitDurumu(row).durum === "odendi");
   const odenenTutar = installments.reduce((sum, row) => sum + taksitDurumu(row).odenen, 0);
   const taksitToplami = installments.reduce((sum, row) => sum + row.amount, 0);
