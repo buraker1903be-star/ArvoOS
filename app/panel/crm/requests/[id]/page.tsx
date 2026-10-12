@@ -28,6 +28,7 @@ import { TalepAkis } from "../../kayit-detay/kayit-akis";
 import "../../crm.css";
 import "../../request-page.css";
 import "../../kayit-detay/kayit-detay.css";
+import "../../../components/kayit-formu.css";
 
 /*
   TALEP DETAYI (2026-10): üç sütun.
@@ -45,6 +46,8 @@ import "../../kayit-detay/kayit-detay.css";
 
 type Details = {
   service_type?: string;
+  academic_level?: string;
+  language?: string;
   university?: string;
   department?: string;
   scope?: string;
@@ -204,71 +207,70 @@ export default async function RequestDetailPage({
     ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
     : [];
 
+  /*
+    DÜZENLEME FORMU (2026-10): talep girişiyle aynı bölümler ve ortak
+    düzen (components/kayit-formu.css). Eskiden yalnızca sekiz alan
+    vardı: teslim tarihi, kaynak, not ve akademik künye girişte
+    sorulup burada düzeltilemiyordu (sunucu işlemi hepsini zaten
+    kabul ediyor). Akademik bölüm, talepte akademik bilgi varsa ya da
+    hizmet türü girilmişse görünür; kurumsal kiracıda boş künye
+    alanları çizilmesin.
+  */
+  const akademik = Boolean(d.academic_level || d.university || d.department || d.language || d.faculty || d.program);
   const edit = (
-    <form className="panel-form" action={updateOpportunity}>
+    <form className="panel-form kayit-formu" action={updateOpportunity}>
       <input type="hidden" name="opportunity_id" value={item.id} />
       <input type="hidden" name="current_details" value={JSON.stringify(d)} />
-      <label>
-        Talep konusu
-        <input name="title" required defaultValue={item.title} />
-      </label>
-      <label>
-        Müşteri / kurum
-        <input
-          name="customer_name"
-          required
-          defaultValue={item.customer_name}
-        />
-      </label>
-      <label>
-        Hizmet türü
-        <input name="service_type" defaultValue={d.service_type || ""} />
-      </label>
+
+      <p className="wide kayit-formu-bolum">Talep</p>
+      <label className="wide"><span>Talep konusu<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} defaultValue={item.title} /></label>
+      <label>Hizmet türü<input name="service_type" defaultValue={d.service_type || ""} /></label>
       {calismaTurleri.length ? (
         /* İş açılırken üretilecek görev listesini bu belirliyor. */
-        <label>
-          Çalışma türü
+        <label>Çalışma türü
           <select name="step_template_set" defaultValue={item.step_template_set ?? ""}>
             <option value="">Öntanımlı</option>
             {calismaTurleri.map((tur) => <option value={tur.code} key={tur.code}>{tur.name}</option>)}
           </select>
         </label>
       ) : null}
+
+      <p className="wide kayit-formu-bolum">Müşteri</p>
+      <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" required minLength={2} maxLength={180} defaultValue={item.customer_name} /></label>
+      <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={item.contact_phone || ""} placeholder="05xx xxx xx xx" /></label>
+      <label>E-posta<input name="contact_email" type="email" defaultValue={item.contact_email || ""} placeholder="ornek@eposta.com" /></label>
+
+      {akademik ? <>
+        <p className="wide kayit-formu-bolum">Akademik künye</p>
+        <label>Üniversite<input name="university" defaultValue={d.university || ""} placeholder="Örn. İstanbul Üniversitesi" /></label>
+        <label>Bölüm / alan<input name="department" defaultValue={d.department || ""} placeholder="Örn. İşletme" /></label>
+        <label>Akademik düzey<input name="academic_level" list="talep-duzenle-duzey" defaultValue={d.academic_level || ""} placeholder="Seçin ya da yazın" /></label>
+        <label>Çalışma dili<input name="language" list="talep-duzenle-dil" defaultValue={d.language || ""} /></label>
+        <datalist id="talep-duzenle-duzey"><option value="Lisans" /><option value="Yüksek Lisans" /><option value="Doktora" /><option value="Tıpta Uzmanlık" /><option value="Doçentlik" /></datalist>
+        <datalist id="talep-duzenle-dil"><option value="Türkçe" /><option value="İngilizce" /><option value="Arapça" /><option value="Almanca" /></datalist>
+      </> : null}
+
+      <p className="wide kayit-formu-bolum">Kapsam ve plan</p>
+      <label className="wide">Beklenen kapsam ve teslimler<textarea name="scope" defaultValue={d.scope || ""} placeholder="Hangi bölümler, hangi teslimler, özel istekler…" /></label>
+      <label>Planlanan teslim tarihi<input name="expected_close_date" type="date" defaultValue={item.expected_close_date ?? ""} /></label>
+      <label>Talep kaynağı<input name="source" list="talep-duzenle-kaynak" defaultValue={item.source ?? ""} placeholder="Seçin ya da yazın" /></label>
+      <datalist id="talep-duzenle-kaynak"><option value="WhatsApp" /><option value="Telefon" /><option value="Instagram" /><option value="Web sitesi" /><option value="E-posta" /><option value="Referans" /></datalist>
       {canManage ? (
-        <label>
-          Satış temsilcisi
-          <select
-            name="assigned_employee_id"
-            defaultValue={item.assigned_employee_id ?? ""}
-          >
+        <label className="wide">Satış temsilcisi
+          <select name="assigned_employee_id" defaultValue={item.assigned_employee_id ?? ""}>
             <option value="">Atanmamış</option>
             {unlistedAssignee ? (
-              <option value={item.assigned_employee_id ?? ""}>
-                {unlistedAssignee} (atamaya kapalı)
-              </option>
+              <option value={item.assigned_employee_id ?? ""}>{unlistedAssignee} (atamaya kapalı)</option>
             ) : null}
-            {(employees ?? []).map((e) => (
-              <option value={e.id} key={e.id}>
-                {e.full_name}
-              </option>
-            ))}
+            {(employees ?? []).map((e) => <option value={e.id} key={e.id}>{e.full_name}</option>)}
           </select>
         </label>
       ) : null}
-      <label>
-        Telefon
-        <input name="contact_phone" defaultValue={item.contact_phone || ""} />
-      </label>
-      <label>
-        E-posta
-        <input name="contact_email" defaultValue={item.contact_email || ""} />
-      </label>
-      <label className="wide">
-        Kapsam
-        <textarea name="scope" defaultValue={d.scope || ""} />
-      </label>
-      <div className="wide panel-form-actions">
-        <button className="panel-primary">Kaydet</button>
+      <label className="wide">Ek not<textarea name="notes" defaultValue={item.notes ?? ""} placeholder="Görüşmeden notlar, hatırlatmalar" /></label>
+
+      <div className="wide panel-form-actions kayit-formu-eylem">
+        <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+        <button className="panel-primary">Değişiklikleri kaydet</button>
       </div>
     </form>
   );
@@ -310,26 +312,26 @@ export default async function RequestDetailPage({
           <details className="os-menu talep-menu">
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
-              <PanelDrawer triggerLabel="Düzenle" title="Talebi Düzenle" triggerClassName="os-menu-item">
+              <PanelDrawer triggerLabel="Düzenle" kicker={`TALEP · TLP-${item.id.slice(0, 8).toUpperCase()}`} title="Talebi düzenle" description="Talep, müşteri ve kapsam bilgileri. Değişiklik kayıt geçmişine yazılır." triggerClassName="os-menu-item">
                 {edit}
               </PanelDrawer>
               {canManage ? (
                 <PanelDrawer
                   triggerLabel="Temsilci ata"
-                  title="Satış Temsilcisi Ata"
-                  description="Talebi yürütecek temsilciyi seçin."
+                  kicker={`TALEP · TLP-${item.id.slice(0, 8).toUpperCase()}`}
+                  title="Satış temsilcisi ata"
+                  description="Talebi yürütecek temsilciyi seçin; seçilen kişi bilgilendirilir."
                   triggerClassName="os-menu-item"
                 >
-                  <form className="panel-form" action={assignOpportunity}>
+                  <form className="panel-form kayit-formu" action={assignOpportunity}>
                     <input type="hidden" name="opportunity_id" value={item.id} />
-                    <label className="wide">
-                      Satış temsilcisi
+                    <label className="wide"><span>Satış temsilcisi<b className="req" aria-hidden="true">*</b></span>
                       <select
                         name="assigned_employee_id"
                         defaultValue={item.assigned_employee_id ?? ""}
                         required
                       >
-                        <option value="">Seçiniz</option>
+                        <option value="">Temsilci seçin</option>
                         {(employees ?? []).map((e) => (
                           <option value={e.id} key={e.id}>
                             {e.full_name}
@@ -337,8 +339,9 @@ export default async function RequestDetailPage({
                         ))}
                       </select>
                     </label>
-                    <div className="wide panel-form-actions">
-                      <button className="panel-primary">Temsilciyi Kaydet</button>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p>Talep bu kişinin listesine düşer.</p>
+                      <button className="panel-primary">Temsilciyi kaydet</button>
                     </div>
                   </form>
                 </PanelDrawer>
@@ -374,14 +377,13 @@ export default async function RequestDetailPage({
                 <PanelDrawer
                   triggerLabel="Arşivle"
                   triggerClassName="os-menu-item is-danger"
-                  kicker="ARŞİVLE"
-                  title={`${item.customer_name} · Talebi arşivle`}
+                  kicker={`TALEP · TLP-${item.id.slice(0, 8).toUpperCase()}`}
+                  title="Talebi arşivle"
                   description="Kayıt silinmez: aşaması “Arşivlendi” olur, sebebi talebin üstünde ve kayıt geçmişinde kalır."
                 >
-                  <form className="panel-form" action={archiveOpportunity}>
+                  <form className="panel-form kayit-formu" action={archiveOpportunity}>
                     <input type="hidden" name="opportunity_id" value={item.id} />
-                    <label className="wide">
-                      İptal / arşiv sebebi
+                    <label className="wide"><span>Arşiv sebebi<b className="req" aria-hidden="true">*</b></span>
                       <textarea
                         name="archive_reason"
                         required
@@ -391,7 +393,8 @@ export default async function RequestDetailPage({
                         placeholder="Örn. Müşteri bütçe nedeniyle vazgeçti."
                       />
                     </label>
-                    <div className="panel-form-actions wide">
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p><b className="req" aria-hidden="true">*</b> işaretli alan zorunlu.</p>
                       <button className="panel-danger">Talebi arşivle</button>
                     </div>
                   </form>
