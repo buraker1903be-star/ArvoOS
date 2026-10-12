@@ -57,3 +57,5 @@
 @media(max-width:760px) and (prefers-reduced-motion:reduce){
   .panel-root .panel-drawer-root .panel-drawer{transition:none}
 }
+/* Geniş pencere (PanelDrawer genis): içinde liste olan formlar. Telefonda zaten tam genişlik. */
+.panel-drawer-root .panel-drawer.is-genis{width:min(960px,100%)}

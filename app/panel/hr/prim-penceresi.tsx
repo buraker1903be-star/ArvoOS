@@ -81,7 +81,7 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
     <div className="cari-pencere prim-pencere">
       {canManage ? (
         <div className="cari-pencere-eylem">
-          <PanelDrawer triggerLabel="Ödeme kaydet" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesi" description={`Bakiye: ${money(toplam.balance)}`}>
+          <PanelDrawer genis triggerLabel="Ödeme kaydet" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesi" description={`Bakiye: ${money(toplam.balance)}`}>
             <PrimOdemeFormu eylem={primOdemesiKaydet} personelId={personel.id} isler={yeniOdemeIsleri} dagitimAcik={dagitimAcik} oneri={toplam.balance > 0 ? String(Math.round(toplam.balance / 100)) : "0"} />
           </PanelDrawer>
         </div>
@@ -129,7 +129,7 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
                   {canManage && h.kind === "payment" ? (
                     <span className="prim-odeme-eylem">
                       {odemeById.get(h.id) ? (
-                        <PanelDrawer triggerLabel="Düzenle" triggerClassName="panel-secondary cari-taksit-btn" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesini düzenle" description={`${dateText(h.date)} · ${money(h.payment)}`}>
+                        <PanelDrawer genis triggerLabel="Düzenle" triggerClassName="panel-secondary cari-taksit-btn" kicker={`PERSONEL · ${personel.full_name}`} title="Prim ödemesini düzenle" description={`${dateText(h.date)} · ${money(h.payment)}`}>
                           <PrimOdemeFormu eylem={primOdemesiDuzenle} personelId={personel.id} odeme={odemeById.get(h.id)} isler={duzenlemeIsleri(h.id)} dagitimAcik={dagitimAcik}
                             mevcut={Object.fromEntries(odemeDagilimi(h.id).filter((d) => d.contractId).map((d) => [d.contractId as string, d.amount]))} />
                         </PanelDrawer>

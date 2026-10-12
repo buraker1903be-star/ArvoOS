@@ -13,6 +13,8 @@ type PanelDrawerProps = {
   kicker?: string;
   /** Tetikleyici butonun stili (panel-primary / panel-secondary) */
   triggerClassName?: string;
+  /** Geniş pencere (960 px): içinde liste ya da tablo olan formlar için (ör. prim ödemesinin iş listesi). */
+  genis?: boolean;
   children: ReactNode;
 };
 
@@ -22,7 +24,7 @@ const subscribeNothing = () => () => undefined;
 // tema değişkenleri orada) çizilir. Düğmenin üst öğelerinden biri transform,
 // filter ya da backdrop-filter taşıyınca position:fixed o öğeye hapsoluyor
 // ve pencere görünmez oluyordu ("+ Yeni talep" açılmıyordu).
-export function PanelDrawer({ triggerLabel, title, description, kicker, triggerClassName = "panel-primary", children }: PanelDrawerProps) {
+export function PanelDrawer({ triggerLabel, title, description, kicker, triggerClassName = "panel-primary", genis = false, children }: PanelDrawerProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
@@ -52,7 +54,7 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
   const drawer = (
     <div className={open ? "panel-drawer-root open" : "panel-drawer-root"} aria-hidden={!open}>
       <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
-      <aside className="panel-drawer" role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>
+      <aside className={genis ? "panel-drawer is-genis" : "panel-drawer"} role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>
         <header className="panel-drawer-header">
           <div>{kicker ? <small className="panel-kicker">{kicker}</small> : null}<h2 id={titleId}>{title}</h2>{description ? <p>{description}</p> : null}</div>
           <button className="panel-drawer-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>

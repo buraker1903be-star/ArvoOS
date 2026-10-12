@@ -1,5 +1,5 @@
 /* Prim ödemesi formu: işlere dağıtım listesi (prim-odeme-formu.tsx). */
-.prim-isler{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:var(--r-md);max-height:280px;overflow:auto}
+.prim-isler{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:var(--r-md);max-height:min(360px,40dvh);overflow:auto}
 .prim-isler li{display:flex;align-items:center;gap:var(--sp-2);min-height:52px;padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
 .prim-isler li:first-child{border-top:0}
 .prim-isler li.is-secili{background:color-mix(in srgb,var(--primary) 5%,transparent)}
