@@ -100,3 +100,14 @@ test("erken ödeme: hak edilmemiş işe dağıtılan ödeme avans (negatif açı
   const sonra = isPrimleri("gizem", [satir({ type: "Operasyon", contractId: "s2", reference: "SOZ-2", amount: 50000 })], payments, [{ paymentId: "o1", contractId: "s2", amount: 20000 }]);
   assert.equal(sonra[0].acik, 30000);
 });
+
+test("kapanan iş: hak edilmiş ve tamamı ödenmiş; avanslı, süren ve beklenen primi olan iş açık kalır", async () => {
+  const { isKapandi } = await import("../../lib/prim-is-dagilimi.ts");
+  const is = { contractId: "s1", reference: "SOZ-1", customer: "A", satis: 0, operasyon: 470000, hakEdilen: 470000, odenen: 470000, acik: 0, beklenen: 0, devam: false, sonTarih: "2026-10-07" };
+  assert.equal(isKapandi(is), true);
+  assert.equal(isKapandi({ ...is, odenen: 400000, acik: 70000 }), false);
+  assert.equal(isKapandi({ ...is, odenen: 500000, acik: -30000 }), false);
+  assert.equal(isKapandi({ ...is, beklenen: 10000 }), false);
+  assert.equal(isKapandi({ ...is, devam: true }), false);
+  assert.equal(isKapandi({ ...is, hakEdilen: 0, odenen: 0 }), false);
+});

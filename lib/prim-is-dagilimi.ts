@@ -183,3 +183,13 @@ export function dagitimOku(ham: string): DagitimKalemi[] | { hata: string } {
     return { hata: "Dağıtım listesi okunamadı." };
   }
 }
+
+/*
+  KAPANAN İŞ (12.10.2026): primi hak edilmiş ve tamamı ödenmiş, iş de
+  sürmüyor, hak edilecek bir şey kalmamış. Prim penceresinde bunlar
+  "Arşiv" sekmesine iniyor; açık listede yalnızca takip edilecekler kalıyor.
+  Avanslı (acik < 0) ve hâlâ prim doğacak iş kapanmış sayılmaz.
+*/
+export function isKapandi(is: IsPrimi): boolean {
+  return is.hakEdilen > 0 && is.acik === 0 && is.beklenen <= 0 && !is.devam;
+}

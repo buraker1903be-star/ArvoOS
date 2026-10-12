@@ -6,7 +6,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/prim-donemi";
 import { PanelDrawer } from "../components/panel-drawer";
 import { primOdemesiDuzenle, primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
-import { baglanmamisKisim, beklenenPrimler, isPrimleri } from "@/lib/prim-is-dagilimi";
+import { baglanmamisKisim, beklenenPrimler, isKapandi, isPrimleri } from "@/lib/prim-is-dagilimi";
 import { PrimOdemeFormu, type FormIsi } from "./prim-odeme-formu";
 import type { primVerisi } from "./prim-verisi";
 import "../finance/finance.css";
@@ -32,7 +32,7 @@ const percent = (value: number) => new Intl.NumberFormat("tr-TR", { maximumFract
 const dateText = (value: string) => new Date(`${value}T12:00:00+03:00`).toLocaleDateString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "short", year: "numeric" });
 
 /** veri: primVerisi() sonucu; sayfa bakiyeyi başlıkta da gösterdiği için bir kez okuyup buraya veriyor. */
-export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string }) {
+export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis, isSekmesi }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string; /** ?prim_is=arsiv: kapanan işler. */ isSekmesi?: string }) {
   const { izin } = await getPanelContext();
   const canManage = izin("hr.prim.yonet");
   const { employees, accruals, payments, dagitimlar, dagitimAcik, beklenenGirdisi } = veri;
@@ -75,6 +75,23 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
     return kalemler.map((d) => `${isAdi.get(d.contractId as string) ?? "İş"} ${money(d.amount)}`).join(" + ") + (bagsiz ? ` + işe bağlanmamış ${money(bagsiz)}` : "");
   };
   const seciliKod = donem?.kod ?? "tum";
+  /* İş bazında prim: kapanan işler (primi hak edilip tamamı ödenmiş)
+     ARŞİV sekmesinde; açık listede yalnızca takip edilecekler kalıyor
+     (12.10.2026). Eskiden kapanan işler "Kapandı" yazısıyla listede
+     duruyor, iş sayısı arttıkça açık olanlar aralarında kayboluyordu.
+     Sekme adreste; dönem süzgeci de korunuyor. */
+  const arsivde = isSekmesi === "arsiv";
+  const kapananIsler = isler.filter(isKapandi);
+  const acikIsler = isler.filter((is) => !isKapandi(is));
+  const gosterilenIsler = arsivde ? kapananIsler : acikIsler;
+  const isSekmeAdresi = (arsiv: boolean) => {
+    const p = new URLSearchParams({ pencere: "prim" });
+    if (donemKodu) p.set("prim", donemKodu);
+    if (baslangic) p.set("prim_bas", baslangic);
+    if (bitis) p.set("prim_bit", bitis);
+    if (arsiv) p.set("prim_is", "arsiv");
+    return `${temelAdres}?${p.toString()}`;
+  };
   const donemAdresi = (kod: string) => (kod === "tum" ? `${temelAdres}?pencere=prim` : `${temelAdres}?pencere=prim&prim=${kod}`);
 
   return (
@@ -158,8 +175,12 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
           </dl>
           {dagitimAcik && isler.length ? <>
             <div className="cari-baslik prim-is-baslik"><h3>İş bazında prim</h3><small>tüm zamanlar</small></div>
-            <ul className="prim-is-ozet">
-              {isler.map((is) => (
+            <nav className="ekip-suzgec talep-suzgec prim-is-sekme" aria-label="İş bazında prim">
+              <Link href={isSekmeAdresi(false)} scroll={false} className={!arsivde ? "is-active" : undefined} aria-current={!arsivde ? "page" : undefined}>Açık <small>{acikIsler.length}</small></Link>
+              <Link href={isSekmeAdresi(true)} scroll={false} className={arsivde ? "is-active" : undefined} aria-current={arsivde ? "page" : undefined}>Arşiv <small>{kapananIsler.length}</small></Link>
+            </nav>
+            {gosterilenIsler.length ? <ul className="prim-is-ozet">
+              {gosterilenIsler.map((is) => (
                 <li key={is.contractId}>
                   <span>
                     <b>{is.reference}{is.devam ? <em className="prim-is-devam">iş sürüyor</em> : null}</b>
@@ -168,7 +189,8 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
                   <strong className={is.acik > 0 ? "talep-uyari" : is.acik < 0 ? undefined : "cari-arti"}>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? `${money(-is.acik)} avans` : is.beklenen > 0 ? "—" : "Kapandı"}</strong>
                 </li>
               ))}
-            </ul>
+            </ul> : <p className="ic-akis-bos">{arsivde ? "Henüz primi tamamen ödenip kapanan iş yok." : "Takip edilecek açık iş yok; bütün işlerin primi ödenmiş. Kapananlar Arşiv'de."}</p>}
+            {arsivde ? <p className="talep-bos cari-not">Arşivde primi hak edilip tamamı ödenen işler var. Bir işe sonradan yeni prim doğarsa (ör. ek tahsilat) iş kendiliğinden açık listeye döner.</p> : null}
             <p className="talep-bos cari-not">Açık prim, işin hak edilen priminden o işe istinaden yapılan ödemeler düşülerek bulunur. Henüz hak edilmemiş işe yapılan erken ödeme “avans” görünür; iş tamamlanıp prim hak edilince ona sayılır. “Hak edilecek” tahminidir: bugünkü orandan, kesin rakam hak edilince oluşur. İşe bağlanmadan yapılan ödemeler burada değil, yalnızca bakiyede görünür.</p>
           </> : null}
           <p className="talep-bos cari-not">Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden, tahsilat tarihindeki oranla hesaplanır; tahsil edilmemiş satıştan prim doğmaz. Operasyon primi iş tamamlanınca hak edilir.</p>
