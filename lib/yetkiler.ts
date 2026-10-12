@@ -61,8 +61,16 @@ const YONETIM_SEF_VE_SATIS = ["admin", "manager", "member"] as const;
    Kısıtlamak isteyen kurum rol ya da kişi düzeyinde kapatır. */
 const HERKES = ["admin", "manager", "member", "operasyoncu"] as const;
 
-export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; yetkiler: readonly YetkiTanimi[] }[] = [
+/*
+  Grubun KALICI KİMLİĞİ (id) 12.10.2026'da eklendi: Yetkilendirme
+  ekranı artık grupları ayrı panellerde gösteriyor ve adreste bu
+  kimliği taşıyor (?bolum=yetki-crm). Başlığı anahtar yapmak, başlık
+  bir gün değişince paylaşılan adresi ve kaydetme işlemini birden
+  kırardı.
+*/
+export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik: string; yetkiler: readonly YetkiTanimi[] }[] = [
   {
+    id: "crm",
     modul: "crm",
     baslik: "CRM · Müşteri ve Satış",
     yetkiler: [
@@ -80,6 +88,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     ],
   },
   {
+    id: "operations",
     modul: "operations",
     baslik: "Operasyon",
     yetkiler: [
@@ -97,6 +106,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     ],
   },
   {
+    id: "finance",
     modul: "finance",
     baslik: "Finans",
     yetkiler: [
@@ -112,6 +122,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     ],
   },
   {
+    id: "hr",
     modul: "hr",
     baslik: "İnsan Kaynakları",
     yetkiler: [
@@ -125,6 +136,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     ],
   },
   {
+    id: "posta",
     modul: "posta",
     baslik: "Posta",
     yetkiler: [
@@ -135,6 +147,7 @@ export const YETKI_GRUPLARI: readonly { modul: string | null; baslik: string; ye
     ],
   },
   {
+    id: "kurum",
     modul: null,
     baslik: "Kurum ayarları",
     yetkiler: [
@@ -157,6 +170,24 @@ const YETKI_HARITASI = new Map(TUM_YETKILER.map((yetki) => [yetki.key, yetki]));
 
 export function yetkiTanimi(key: string): YetkiTanimi | undefined {
   return YETKI_HARITASI.get(key);
+}
+
+/*
+  BİR GRUBUN YETKİLERİ — Yetkilendirme ekranı grup grup kaydettiği
+  için gerekli.
+
+  Ekran eskiden kırk kadar yetkinin tamamını tek formda gönderiyordu
+  ve kaydetme işlemi formda OLMAYAN her anahtarı "kapalı" sayıyordu.
+  Gruplar ayrı panellere bölününce bu kalıp, bir grubu kaydetmenin
+  diğer bütün yetkileri sessizce kapatması demek olurdu. İşlem artık
+  yalnızca gönderilen grubun anahtarlarını yazıyor; hangi anahtarların
+  o gruba ait olduğunu burası söylüyor.
+
+  Tanınmayan kimlik boş dizi döner: çağıran "grup yok" diye hata
+  vermeli, sessizce hiçbir şey yazmamalı.
+*/
+export function grubunYetkileri(grupId: string | null | undefined): readonly YetkiTanimi[] {
+  return YETKI_GRUPLARI.find((grup) => grup.id === grupId)?.yetkiler ?? [];
 }
 
 export type YetkiKurali = { capability_key: string; allowed: boolean };

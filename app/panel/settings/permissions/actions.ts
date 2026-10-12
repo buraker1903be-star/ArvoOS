@@ -5,7 +5,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
-import { TUM_YETKILER, varsayilanAcikMi, yetkiDegisikligiEngeli } from "@/lib/yetkiler";
+import { TUM_YETKILER, grubunYetkileri, varsayilanAcikMi, yetkiDegisikligiEngeli } from "@/lib/yetkiler";
 import { profilBul, profilDepartmanEngeli, profilModulKararlari } from "@/lib/yetki-profilleri";
 import { yonetimDepartmanindaMi } from "@/lib/yonetim-departmani";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
@@ -59,19 +59,40 @@ async function updateCapabilityPermissions__impl(formData: FormData) {
   const acikMi = (rol: string, key: string) => formData.get(`cap:${rol}:${key}`) === "on";
 
   /*
+    YALNIZCA GÖNDERİLEN GRUP YAZILIYOR (12.10.2026).
+
+    Ekran kırk kadar yetkinin tamamını tek formda gönderiyordu ve
+    buradaki kalıp, formda OLMAYAN her anahtarı "kapalı" sayıyor.
+    Yetkilendirme ekranı gruplara bölününce (her grup ayrı panel, ayrı
+    form) aynı kalıp, bir grubu kaydetmenin diğer BÜTÜN yetkileri
+    sessizce kapatması demek olurdu — kurum farkı ancak biri
+    "düğmem kayboldu" dediğinde görürdü.
+
+    Grup kimliği formdan geliyor ve tanınmayan kimlik hata veriyor:
+    sessizce hiçbir şey yazmamak, kullanıcıya "kaydedildi" demekten
+    iyidir.
+  */
+  const grupId = String(formData.get("grup") ?? "").trim();
+  const grupYetkileri = grubunYetkileri(grupId);
+  if (!grupYetkileri.length) throw new Error("Yetki grubu tanınmadı; sayfayı yenileyip tekrar deneyin.");
+
+  /*
     Kendi ayağına sıkma koruması: Yetkilendirme ekranını açan Yönetici kendi
     "Yetkilendirme" kutucuğunu kapatırsa sayfaya bir daha giremez ve geri
     açacak tek kişi Kurum Sahibi kalır. Küçük kurumlarda o kişi aynı kişi.
+    Yalnızca o anahtarın bulunduğu grup kaydedilirken bakılıyor.
   */
-  const engel = yetkiDegisikligiEngeli({
-    rol: membership.role,
-    kendisiMi: PERMISSION_ROLES.some((role) => role.key === membership.role),
-    yetkiYonetimiAcikKaliyor: acikMi(membership.role, YETKI_YONETIMI),
-  });
-  if (engel) throw new Error(engel);
+  if (grupYetkileri.some((yetki) => yetki.key === YETKI_YONETIMI)) {
+    const engel = yetkiDegisikligiEngeli({
+      rol: membership.role,
+      kendisiMi: PERMISSION_ROLES.some((role) => role.key === membership.role),
+      yetkiYonetimiAcikKaliyor: acikMi(membership.role, YETKI_YONETIMI),
+    });
+    if (engel) throw new Error(engel);
+  }
 
   const rows = PERMISSION_ROLES.flatMap((role) =>
-    TUM_YETKILER.map((yetki) => ({
+    grupYetkileri.map((yetki) => ({
       organization_id: membership.organization_id,
       role: role.key,
       capability_key: yetki.key,

@@ -2,17 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  TUM_YETKILER,
-  YETKI_GRUPLARI,
-  acilabilirMi,
-  assertYetki,
-  etkinYetkiler,
-  gizliModulleriHesapla,
-  varsayilanAcikMi,
-  yetkiDegisikligiEngeli,
-  yetkiTanimi,
-} from "@/lib/yetkiler";
+import { TUM_YETKILER, YETKI_GRUPLARI, acilabilirMi, assertYetki, etkinYetkiler, gizliModulleriHesapla, grubunYetkileri, varsayilanAcikMi, yetkiDegisikligiEngeli, yetkiTanimi } from "@/lib/yetkiler";
 
 test("kurum sahibi hiçbir kuralla kısıtlanamaz", () => {
   // Kendi panelinden kilitlenip dışarıda kalmayı önlemek için.
@@ -218,4 +208,23 @@ test("panelde yetki kararı rol listesiyle verilmiyor", () => {
   };
   gez(kok);
   assert.deepEqual(bulunan, [], `yetki kararı rol listesiyle veriliyor:\n${bulunan.join("\n")}`);
+});
+
+test("grup kimlikleri tekil ve her yetki tam bir grupta", () => {
+  /*
+    Yetkilendirme ekranı grupları ayrı panellerde gösteriyor ve grup
+    grup kaydediyor; kimlik adreste taşınıyor. İki grubun aynı kimliği
+    olması, bir grubu kaydederken diğerinin yetkilerini yazmak demek.
+  */
+  const kimlikler = YETKI_GRUPLARI.map((grup) => grup.id);
+  assert.equal(new Set(kimlikler).size, kimlikler.length, "yinelenen grup kimliği");
+  for (const kimlik of kimlikler) assert.match(kimlik, /^[a-z-]+$/, `kimlik adrese uygun değil: ${kimlik}`);
+  // Her yetki tam olarak bir grupta: grup grup kaydetme hiçbir anahtarı atlamamalı.
+  const toplam = YETKI_GRUPLARI.reduce((t, grup) => t + grubunYetkileri(grup.id).length, 0);
+  assert.equal(toplam, TUM_YETKILER.length);
+});
+
+test("tanınmayan grup boş dizi döner (sessizce yazmasın)", () => {
+  assert.deepEqual([...grubunYetkileri("yok")], []);
+  assert.deepEqual([...grubunYetkileri(null)], []);
 });

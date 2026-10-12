@@ -5,6 +5,9 @@ import { YETKI_GRUPLARI, acilabilirMi, varsayilanAcikMi } from "@/lib/yetkiler";
 import { updateCapabilityPermissions, updateModulePermissions } from "./actions";
 import { StgIcon, StgSection } from "../settings-ui";
 import "../settings.css";
+/* talep-bas* ve kayit-serit sınıfları orada: sayfa kullandığı CSS'i
+   kendisi import etmeli (AGENTS.md; npm run check:css denetliyor). */
+import "../../crm/kayit-detay/kayit-detay.css";
 
 const moduleMeta: Record<string, { icon: string; note: string }> = {
   crm: { icon: "users", note: "Talepler, teklifler, sözleşmeler" },
@@ -24,7 +27,21 @@ const ROL_ETIKETI = new Map<string, string>([
 type Uyelik = { user_id: string; role: string; is_active: boolean };
 type Personel = { user_id: string | null; full_name: string; job_title: string | null };
 
-export default async function PermissionsPage() {
+/*
+  BÖLÜMLER SOL RAYDA, HER BİRİ AYRI PANELDE (12.10.2026).
+
+  Sayfa üç bölümü üst üste çiziyordu ve ortadaki tek başına kırk
+  kadar yetki × dört rol: ekran boyunca kaydırmadan "Finans'ta kim ne
+  yapabiliyor" sorusuna bakılamıyordu. Ayarlar sayfasının kabul edilen
+  düzeni burada da geçerli — sol ray, sağ panel, bölüm adreste
+  (?bolum=): geri tuşu ve paylaşılan bağlantı çalışıyor.
+
+  Yetki grupları ayrı panellere bölününce kaydetme de grup bazlı oldu
+  (actions.ts): aksi hâlde bir grubu kaydetmek, formda olmayan bütün
+  yetkileri sessizce kapatırdı.
+*/
+export default async function PermissionsPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
+  const { bolum: istenenBolum } = await searchParams;
   const { supabase, membership, userId, izin } = await getPanelContext();
 
   if (!izin("settings.yetki.yonet")) {
@@ -66,12 +83,51 @@ export default async function PermissionsPage() {
   const yetkiAcikMi = (rol: string, key: string) =>
     yetkiKurali.has(`${rol}:${key}`) ? yetkiKurali.get(`${rol}:${key}`)! : varsayilanAcikMi(rol, key);
 
-  return <div className="stg">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">YÖNETİM · AYARLAR</small><h1>Yetkilendirme</h1><p>Hangi rol hangi modülü görür, hangi işlemi yapar; gerekirse tek bir kişi için istisna tanımlayın.</p></div>
-      <div className="panel-page-actions"><Link className="panel-secondary" href="/panel/settings">← Ayarlara dön</Link></div>
-    </div>
+  /*
+    Bölümler: modül erişimi, her yetki grubu için bir panel, kişiler.
+    Kimlik adreste taşınıyor ve YETKI_GRUPLARI'nın kalıcı kimliğinden
+    geliyor (başlık değişince bağlantı kırılmasın).
+  */
+  const BOLUMLER = [
+    { id: "modul", label: "Modül erişimi", icon: "shield" },
+    ...YETKI_GRUPLARI.map((grup) => ({
+      id: `yetki-${grup.id}`,
+      label: grup.baslik,
+      icon: moduleMeta[grup.modul ?? ""]?.icon ?? "lock",
+    })),
+    { id: "kisiler", label: "Kişiler", icon: "users" },
+  ];
+  const bolum = BOLUMLER.some((aday) => aday.id === istenenBolum) ? istenenBolum! : "modul";
+  const seciliGrup = YETKI_GRUPLARI.find((grup) => `yetki-${grup.id}` === bolum) ?? null;
 
+  return <main className="talep cari stg ayar-duzen">
+    <header className="talep-bas ayar-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">YÖNETİM · AYARLAR</small>
+        <h1>Yetkilendirme</h1>
+        <p>Hangi rol hangi modülü görür, hangi işlemi yapar; gerekirse tek bir kişi için istisna tanımlayın.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/settings">← Ayarlara dön</Link>
+      </div>
+    </header>
+
+    <div className="ayar-govde">
+      <nav className="stg-nav ayar-ray" aria-label="Yetkilendirme bölümleri">
+        {BOLUMLER.map((aday) => (
+          <Link
+            key={aday.id}
+            href={aday.id === "modul" ? "/panel/settings/permissions" : `/panel/settings/permissions?bolum=${aday.id}`}
+            className={aday.id === bolum ? "is-active" : undefined}
+            aria-current={aday.id === bolum ? "page" : undefined}
+          >
+            <StgIcon name={aday.icon} size={16} />{aday.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="ayar-panel">
+        {bolum === "modul" ? (
     <StgSection
       id="yetki-matrisi" wide icon="shield" tone="success"
       kicker="ROL VE MODÜL ERİŞİMİ" title="Modül erişimi"
@@ -123,16 +179,21 @@ export default async function PermissionsPage() {
         </div>
       </form>
     </StgSection>
+        ) : null}
 
+        {seciliGrup ? (
     <StgSection
       id="yetenek-matrisi" wide icon="grid" tone="info"
-      kicker="İŞLEM YETKİLERİ" title="Rol yetkileri"
+      kicker="İŞLEM YETKİLERİ" title={seciliGrup!.baslik}
       description="Modülü görmek ile o modülde iş yapmak ayrı sorular. Buradaki her satır tek bir işleme karşılık gelir; kapatıldığında hem düğme kaybolur hem sunucu işlemi reddeder. Modülü kapalı olan rolde, o modülün yetkileri de kapalıdır."
     >
+      {/* Form YALNIZCA bu grubu gönderiyor; grup kimliği gizli alanda
+          (kaydetme işlemi onu okuyor ve başka grubun anahtarlarına
+          dokunmuyor). */}
       <form action={updateCapabilityPermissions}>
-        {YETKI_GRUPLARI.map((grup) => (
-          <div className="stg-perm-group" key={grup.baslik}>
-            <h3>{grup.baslik}</h3>
+        <input type="hidden" name="grup" value={seciliGrup!.id} />
+        {[seciliGrup!].map((grup) => (
+          <div className="stg-perm-group" key={grup.id}>
             <div className="stg-perm-scroll">
               <table className="stg-perm">
                 <thead>
@@ -177,11 +238,13 @@ export default async function PermissionsPage() {
         ))}
         <div className="stg-savebar">
           <p><StgIcon name="lock" size={16} />Kilitli hücreler veritabanı kuralına bağlı: kısıtlanabilir, açılamaz. Kendi Yetkilendirme yetkinizi de kapatamazsınız.</p>
-          <button className="panel-primary" type="submit">Yetkileri Kaydet</button>
+          <button className="panel-primary" type="submit">{seciliGrup!.baslik} Yetkilerini Kaydet</button>
         </div>
       </form>
     </StgSection>
+        ) : null}
 
+        {bolum === "kisiler" ? (
     <StgSection
       id="kisi-yetkileri" wide icon="users" tone="gold"
       kicker="KİŞİ BAZLI İSTİSNA" title="Kişiler"
@@ -210,5 +273,8 @@ export default async function PermissionsPage() {
             })}
           </div>}
     </StgSection>
-  </div>;
+        ) : null}
+      </div>
+    </div>
+  </main>;
 }
