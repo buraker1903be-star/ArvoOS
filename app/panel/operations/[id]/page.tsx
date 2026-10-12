@@ -442,7 +442,7 @@ export default async function OperationDetailPage({
             <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
             <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>
             {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
-            {contract?.tracking_code ? <div><dt>Müşteri portalı</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
+            {contract?.tracking_code ? <div><dt>Portal</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
           </dl>
 
           {/* TERMİN: tarih, durumu ve (yetkisi olana) değiştirme alanı. */}

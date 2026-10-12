@@ -1,10 +1,10 @@
 /* Müşteri takip portalı ziyareti (portal-ziyareti.tsx). */
-.portal-ziyaret{display:inline-flex;flex-wrap:wrap;align-items:center;column-gap:6px;row-gap:2px;font-size:var(--fs-sm);color:var(--ink)}
-.portal-ziyaret>i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--n-300)}
-.portal-ziyaret b{font-weight:var(--fw-medium)}
-.portal-ziyaret small{flex-basis:100%;padding-left:14px;color:var(--muted);font-size:var(--fs-micro)}
-.portal-ziyaret.is-sade small{flex-basis:auto;padding-left:0}
-.portal-ziyaret.is-sade small::before{content:"· "}
-.portal-ziyaret[data-durum="cevrimici"]>i{background:var(--success);box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 22%,transparent)}
-.portal-ziyaret[data-durum="cevrimici"] b{color:var(--success)}
-.portal-ziyaret[data-durum="hic"] b{color:var(--muted);font-weight:400}
+.portal-ziyaret{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;font-size:var(--fs-sm);color:var(--ink)}
+.portal-ziyaret-ana{display:inline-flex;align-items:center;gap:6px;font-weight:var(--fw-medium);white-space:nowrap}
+.portal-ziyaret-ana>i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--n-300)}
+.portal-ziyaret small{color:var(--muted);font-size:var(--fs-micro)}
+/* Künye satırı: değer öteki satırlar gibi sağda. */
+.portal-ziyaret.is-sade{align-items:flex-end;text-align:right}
+.portal-ziyaret[data-durum="cevrimici"] .portal-ziyaret-ana{color:var(--success)}
+.portal-ziyaret[data-durum="cevrimici"] .portal-ziyaret-ana>i{background:var(--success);box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 22%,transparent)}
+.portal-ziyaret[data-durum="hic"] .portal-ziyaret-ana{color:var(--muted);font-weight:400}
