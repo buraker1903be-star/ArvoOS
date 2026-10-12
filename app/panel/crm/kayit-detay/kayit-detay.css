@@ -72,7 +72,10 @@
 @media (max-width:1200px){
   .talep-izgara{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
   .talep-izgara>.talep-akis{grid-column:1/-1}
-  .talep-akis-panel,.os-root .talep-izgara>:is(.talep-bilgi,.talep-musteri){max-height:none}
+  /* Seçici sütun sınırındakiyle (:not(.ekip-izgara)) aynı özgüllükte olmalı. Eskiden
+     daha zayıftı ve hiç işlemiyordu: telefonda müşteri ve bilgi kartları ekranın bir
+     bölümünde kesilip kendi içinde kayıyordu (12.10.2026, sözleşme detayında ölçüldü). */
+  .talep-akis-panel,.os-root .talep-izgara:not(.ekip-izgara)>:is(.talep-bilgi,.talep-musteri){max-height:none}
 }
 @media (max-width:760px){
   .talep-izgara{grid-template-columns:minmax(0,1fr)}
