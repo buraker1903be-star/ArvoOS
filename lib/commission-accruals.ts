@@ -28,6 +28,8 @@ export type AccrualRow = {
   employeeId: string;
   customer: string;
   reference: string;
+  /** Primin doğduğu iş (sözleşme); prim ödemesi işlere buna göre dağıtılır. Sözleşmesiz operasyon priminde null. */
+  contractId: string | null;
   /** Prim matrahı (iadede negatif). */
   base: number;
   rate: number;
@@ -90,6 +92,7 @@ export function buildAccrualRows({ employees, opportunities, contracts, operatio
         employeeId: employee.id,
         customer: opportunity?.customer_name || "Müşteri",
         reference: piece.amount < 0 ? `${contract.contract_no} · iade` : contract.contract_no,
+        contractId: contract.id,
         base: piece.amount,
         rate,
         amount,
@@ -109,6 +112,7 @@ export function buildAccrualRows({ employees, opportunities, contracts, operatio
       employeeId: item.employee_id,
       customer: opportunity?.customer_name || "Tamamlanan iş",
       reference: contract?.contract_no || `İş ${item.workflow_id.slice(0, 8)}`,
+      contractId: contract?.id ?? null,
       base: Number(item.base_amount),
       rate: Number(item.commission_rate),
       amount: Number(item.commission_amount),

@@ -9,6 +9,10 @@ import type { AccrualRow } from "./commission-accruals";
   eşleştirme, 12 satırlık primi tek havaleyle ödeyince kullanılamaz hale
   geliyordu.
 
+  12.10.2026'dan beri ödeme İSTEĞE BAĞLI olarak işlere dağıtılabiliyor
+  (lib/prim-is-dagilimi: "hangi işlere istinaden"). Bu bakiyeyi
+  değiştirmez; bakiye burada yine toplamdan hesaplanır.
+
   Saf modül; testi tests/unit/commission-ledger.test.ts.
 */
 

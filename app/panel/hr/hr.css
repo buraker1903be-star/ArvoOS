@@ -290,3 +290,13 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 /* Personel detayı → Panel erişimi: erişimi kapat/aç ve departmana uygun müdür profili. */
 .personel-erisim-eylem{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
 .personel-erisim-eylem form{margin:0}
+/* Prim penceresi: ödemenin dayandığı işler ve iş bazında açık prim (lib/prim-is-dagilimi). */
+.prim-dagilim{color:var(--ink-soft) !important}
+.prim-is-baslik{margin-top:var(--sp-4)}
+.prim-is-ozet{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
+.prim-is-ozet li{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:48px;padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
+.prim-is-ozet li:first-child{border-top:0}
+.prim-is-ozet span{display:flex;flex-direction:column;min-width:0}
+.prim-is-ozet b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.prim-is-ozet small{color:var(--muted);font-size:var(--fs-micro)}
+.prim-is-ozet strong{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}

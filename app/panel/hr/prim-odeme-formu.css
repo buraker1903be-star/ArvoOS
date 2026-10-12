@@ -1,0 +1,15 @@
+/* Prim ödemesi formu: işlere dağıtım listesi (prim-odeme-formu.tsx). */
+.prim-isler{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:var(--r-md);max-height:280px;overflow:auto}
+.prim-isler li{display:flex;align-items:center;gap:var(--sp-2);min-height:52px;padding:var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
+.prim-isler li:first-child{border-top:0}
+.prim-isler li.is-secili{background:color-mix(in srgb,var(--primary) 5%,transparent)}
+.panel-root .kayit-formu .prim-is-sec{flex:1;display:flex;flex-direction:row;align-items:center;gap:var(--sp-2);min-width:0;margin:0;cursor:pointer}
+.prim-is-sec span{display:flex;flex-direction:column;min-width:0}
+.prim-is-sec b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
+.prim-is-sec small{color:var(--muted);font-size:var(--fs-micro);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panel-root .kayit-formu input.prim-is-tutar{flex:none;width:130px;min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm);text-align:right;font-variant-numeric:tabular-nums}
+.prim-dagitim-ozet{margin:0;padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm)}
+.prim-dagitim-ozet[data-hata]{background:var(--danger-soft);color:var(--danger)}
+@media (max-width:640px){
+  .panel-root .kayit-formu input.prim-is-tutar{width:110px;font-size:16px}
+}

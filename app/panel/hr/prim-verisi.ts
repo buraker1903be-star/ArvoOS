@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildAccrualRows, type AccrualRow } from "@/lib/commission-accruals";
 import type { RateHistoryRow } from "@/lib/commission-allocation";
 import type { CommissionPayment } from "@/lib/commission-ledger";
+import type { PrimDagitimi } from "@/lib/prim-is-dagilimi";
 
 /*
   PRİM VERİSİ (2026-10): personel detayındaki prim penceresi ve personel
@@ -28,7 +29,7 @@ export type PrimPersoneli = { id: string; full_name: string; job_title: string |
   okuma burada hesabın gereği.
 */
 export async function primVerisi(supabase: SupabaseClient, orgId: string) {
-  const [employeeResult, opportunityResult, contractResult, operationResult, collectionResult, rateResult, paymentResult] = await Promise.all([
+  const [employeeResult, opportunityResult, contractResult, operationResult, collectionResult, rateResult, paymentResult, dagitimResult] = await Promise.all([
     supabase.from("hr_employees").select("id,full_name,job_title,employment_status,commission_rate,operation_commission_rate").eq("organization_id", orgId).order("full_name"),
     supabase.from("crm_opportunities").select("id,customer_name,assigned_employee_id").eq("organization_id", orgId),
     supabase.from("crm_contracts").select("id,contract_no,opportunity_id,party_id,amount,signed_at,created_at").eq("organization_id", orgId).in("status", ["signed", "completed"]),
@@ -38,6 +39,8 @@ export async function primVerisi(supabase: SupabaseClient, orgId: string) {
     // Oran geçmişi okunamazsa bugünkü oranla devam edilir.
     supabase.from("hr_employee_commission_rates").select("employee_id,commission_rate,valid_from").eq("organization_id", orgId),
     supabase.from("hr_commission_payments").select("id,employee_id,amount,paid_on,method,note").eq("organization_id", orgId).order("paid_on", { ascending: false }),
+    // Ödemenin işlere dağılımı (20261012115936); ödemeler gibi tüm zamanlar — iş başına açık prim bir toplam.
+    supabase.from("hr_commission_payment_allocations").select("payment_id,contract_id,amount").eq("organization_id", orgId),
   ]);
   if (employeeResult.error) throw new Error("Personeller okunamadı: " + employeeResult.error.message);
   if (contractResult.error) throw new Error("Sözleşmeler okunamadı: " + contractResult.error.message);
@@ -62,5 +65,15 @@ export async function primVerisi(supabase: SupabaseClient, orgId: string) {
     method: row.method as string,
     note: (row.note as string | null) ?? null,
   }));
-  return { employees, accruals, payments };
+  /* Dağılım okunamazsa (ör. migration henüz uygulanmadı) özellik kapalı
+     gösterilir; bakiye ona bağlı değil. "Okunamadı"yı "dağıtım yok" saymıyoruz:
+     dagitimAcik=false iken ekran dağıtım düzenlemeyi de kapatıyor, yoksa
+     düzenleme formu var olan dağıtımı boş sanıp silerdi. */
+  const dagitimAcik = !dagitimResult.error;
+  const dagitimlar: PrimDagitimi[] = dagitimAcik ? (dagitimResult.data ?? []).map((row) => ({
+    paymentId: row.payment_id as string,
+    contractId: (row.contract_id as string | null) ?? null,
+    amount: Number(row.amount),
+  })) : [];
+  return { employees, accruals, payments, dagitimlar, dagitimAcik };
 }
