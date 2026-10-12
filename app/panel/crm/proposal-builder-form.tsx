@@ -224,7 +224,7 @@ export function ProposalBuilderForm({
         </section>
 
         <div className="wide panel-form-actions kayit-formu-eylem">
-          <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.{mode === "contract" ? " Müşteri onayı beklenmeden sözleşme hemen oluşturulur." : ""}</p>
+          <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
           <SubmitButton customPlanValid={customPlanValid} mode={mode} blocked={needsRepresentative && !representatives.length} />
         </div>
       </form>
