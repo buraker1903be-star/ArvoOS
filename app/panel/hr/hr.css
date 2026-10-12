@@ -300,3 +300,4 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .prim-is-ozet b{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
 .prim-is-ozet small{color:var(--muted);font-size:var(--fs-micro)}
 .prim-is-ozet strong{flex:none;font-size:var(--fs-sm);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums}
+.prim-is-ozet .prim-is-devam{margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--info-soft);color:var(--info);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-medium)}

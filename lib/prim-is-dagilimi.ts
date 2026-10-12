@@ -14,6 +14,14 @@ import type { CommissionPayment } from "./commission-ledger";
   kurumu satır satır eşleştirmeye zorlamıyoruz. Bu modül yalnızca iş
   başına "hak edilen / ödenen / açık" gösterir.
 
+  ERKEN ÖDEME (avans): prim bazen iş bitmeden ödeniyor. Operasyon primi
+  iş tamamlanınca, satış primi tahsilat oldukça hak ediliyor; o ana kadar
+  işin "hak edilen"i sıfır. Bu yüzden listede DEVAM EDEN işler de var
+  (beklenenPrimler): personelin yürüttüğü açık operasyon işleri ve
+  satış temsilcisi olduğu, tahsilatı tamamlanmamış sözleşmeler — yanında
+  tahmini "hak edilecek" prim. Erken ödenen tutar işte "avans" görünür;
+  prim hak edildikçe ona sayılır.
+
   Veritabanı tarafı: hr_commission_payment_allocations,
   arvo_prim_odemesi_dagit (20261012115936). Saf modül; testi
   tests/unit/prim-is-dagilimi.test.ts.
@@ -32,28 +40,100 @@ export type IsPrimi = {
   hakEdilen: number;
   /** Bu işe dağıtılmış ödemeler. */
   odenen: number;
-  /** hakEdilen − odenen; negatifse işe fazla dağıtılmış. */
+  /** hakEdilen − odenen; negatifse erken ödenmiş (avans). */
   acik: number;
+  /** Henüz hak edilmemiş, tahmini kalan prim (iş sürüyor / tahsilat bekleniyor). Kesin değil. */
+  beklenen: number;
+  /** Personelin yürüttüğü operasyon işi hâlâ açık. */
+  devam: boolean;
   /** En son prim hareketinin günü; sıralama için. */
   sonTarih: string;
 };
 
 const temizReferans = (reference: string) => reference.replace(/ · iade$/, "");
 
+export type BeklenenIs = { contractId: string; reference: string; customer: string; beklenen: number; devam: boolean };
+
+export type BeklenenGirdi = {
+  employeeId: string;
+  /** Yüzde (10 = %10). */
+  satisOrani: number;
+  operasyonOrani: number;
+  /** İmzalı sözleşmeler (kuruş). */
+  sozlesmeler: { id: string; contract_no: string; opportunity_id: string; amount: number | string }[];
+  firsatlar: { id: string; customer_name: string | null; assigned_employee_id: string | null }[];
+  /** Açık (tamamlanmamış, iptal edilmemiş) operasyon işleri. */
+  acikIsler: { contract_id: string | null; assigned_employee_id: string | null }[];
+};
+
+const yuzde = (tutar: number, oran: number) => Math.round((tutar * oran) / 100);
+
+/*
+  Henüz hak edilmemiş prim, TAHMİN. Kesin rakam hak edilince
+  (lib/commission-accruals ve accrue_operation_commission) oluşur:
+  - Satış: sözleşme tutarı × bugünkü satış oranı, eksi şimdiye kadar
+    tahsilattan hak edilen satış primi. Oran tahsilat günündeki orandan
+    hesaplandığı için kesin rakam biraz farklı olabilir.
+  - Operasyon: personelin yürüttüğü AÇIK iş için sözleşme tutarı ×
+    bugünkü operasyon oranı (iş tamamlanınca aynı formülle hak edilir).
+*/
+export function beklenenPrimler(g: BeklenenGirdi, accruals: AccrualRow[]): BeklenenIs[] {
+  const firsat = new Map(g.firsatlar.map((f) => [f.id, f]));
+  const sozlesme = new Map(g.sozlesmeler.map((s) => [s.id, s]));
+  const satisHakEdilen = new Map<string, number>();
+  for (const a of accruals) {
+    if (a.employeeId === g.employeeId && a.type === "Satış" && a.contractId) satisHakEdilen.set(a.contractId, (satisHakEdilen.get(a.contractId) ?? 0) + a.amount);
+  }
+  const sonuc = new Map<string, BeklenenIs>();
+  const ekle = (sId: string, tutar: number, devam: boolean) => {
+    const s = sozlesme.get(sId);
+    if (!s) return;
+    const onceki = sonuc.get(sId);
+    sonuc.set(sId, {
+      contractId: sId, reference: s.contract_no, customer: firsat.get(s.opportunity_id)?.customer_name || "Müşteri",
+      beklenen: (onceki?.beklenen ?? 0) + tutar, devam: Boolean(onceki?.devam) || devam,
+    });
+  };
+  if (g.satisOrani > 0) {
+    for (const s of g.sozlesmeler) {
+      if (firsat.get(s.opportunity_id)?.assigned_employee_id !== g.employeeId) continue;
+      const kalan = yuzde(Number(s.amount), g.satisOrani) - (satisHakEdilen.get(s.id) ?? 0);
+      if (kalan > 0) ekle(s.id, kalan, false);
+    }
+  }
+  if (g.operasyonOrani > 0) {
+    for (const is of g.acikIsler) {
+      if (is.assigned_employee_id !== g.employeeId || !is.contract_id) continue;
+      const s = sozlesme.get(is.contract_id);
+      if (s) ekle(s.id, yuzde(Number(s.amount), g.operasyonOrani), true);
+    }
+  }
+  return [...sonuc.values()];
+}
+
 /** Personelin iş başına primi. Sözleşmesiz operasyon primleri (contractId yok) burada yer almaz; bakiyede vardır. */
-export function isPrimleri(employeeId: string, accruals: AccrualRow[], payments: CommissionPayment[], dagitimlar: PrimDagitimi[]): IsPrimi[] {
+export function isPrimleri(employeeId: string, accruals: AccrualRow[], payments: CommissionPayment[], dagitimlar: PrimDagitimi[], beklenenler: BeklenenIs[] = []): IsPrimi[] {
   const isler = new Map<string, IsPrimi>();
   for (const row of accruals) {
     if (row.employeeId !== employeeId || !row.contractId) continue;
     const gun = row.date.slice(0, 10);
     const is = isler.get(row.contractId) ?? {
       contractId: row.contractId, reference: temizReferans(row.reference), customer: row.customer,
-      satis: 0, operasyon: 0, hakEdilen: 0, odenen: 0, acik: 0, sonTarih: gun,
+      satis: 0, operasyon: 0, hakEdilen: 0, odenen: 0, acik: 0, beklenen: 0, devam: false, sonTarih: gun,
     };
     if (row.type === "Satış") is.satis += row.amount; else is.operasyon += row.amount;
     is.hakEdilen += row.amount;
     if (gun > is.sonTarih) is.sonTarih = gun;
     isler.set(row.contractId, is);
+  }
+  for (const b of beklenenler) {
+    const is = isler.get(b.contractId) ?? {
+      contractId: b.contractId, reference: b.reference, customer: b.customer,
+      satis: 0, operasyon: 0, hakEdilen: 0, odenen: 0, acik: 0, beklenen: 0, devam: false, sonTarih: "",
+    };
+    is.beklenen += b.beklenen;
+    is.devam = is.devam || b.devam;
+    isler.set(b.contractId, is);
   }
   const personelinOdemeleri = new Set(payments.filter((p) => p.employeeId === employeeId).map((p) => p.id));
   for (const d of dagitimlar) {

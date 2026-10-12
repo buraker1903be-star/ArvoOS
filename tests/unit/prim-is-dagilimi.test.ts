@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { AccrualRow } from "../../lib/commission-accruals.ts";
 import type { CommissionPayment } from "../../lib/commission-ledger.ts";
-import { baglanmamisKisim, dagitimDenetle, dagitimOku, isPrimleri } from "../../lib/prim-is-dagilimi.ts";
+import { baglanmamisKisim, beklenenPrimler, dagitimDenetle, dagitimOku, isPrimleri } from "../../lib/prim-is-dagilimi.ts";
 
 /*
   PRİM ÖDEMESİNİN İŞLERE DAĞILIMI (lib/prim-is-dagilimi). Ödeme işlere
@@ -60,4 +60,43 @@ test("formdan gelen dağıtım: boş = dağıtımsız, bozuk = hata (sessizce da
   assert.deepEqual(dagitimOku(`[{"contract_id":"s1","amount":314000}]`), [{ contractId: "s1", amount: 314000 }]);
   assert.ok("hata" in (dagitimOku("{bozuk") as object));
   assert.ok("hata" in (dagitimOku(`{"contract_id":"s1"}`) as object));
+});
+
+test("beklenen prim: satış kalanı (hak edilen düşülmüş) ve personelin AÇIK operasyon işi", () => {
+  const g = {
+    employeeId: "gizem", satisOrani: 10, operasyonOrani: 10,
+    sozlesmeler: [
+      { id: "s1", contract_no: "SOZ-1", opportunity_id: "f1", amount: 1000000 },
+      { id: "s2", contract_no: "SOZ-2", opportunity_id: "f2", amount: "500000" },
+      { id: "s3", contract_no: "SOZ-3", opportunity_id: "f3", amount: 300000 },
+    ],
+    firsatlar: [
+      { id: "f1", customer_name: "Ayşe", assigned_employee_id: "gizem" },
+      { id: "f2", customer_name: "Can", assigned_employee_id: "erencan" },
+      { id: "f3", customer_name: "Ece", assigned_employee_id: "gizem" },
+    ],
+    acikIsler: [
+      { contract_id: "s2", assigned_employee_id: "gizem" },   // satışı başkasının, operasyonu Gizem'in
+      { contract_id: "s1", assigned_employee_id: "erencan" }, // başkasının işi sayılmaz
+      { contract_id: null, assigned_employee_id: "gizem" },   // sözleşmesiz iş listeye girmez
+    ],
+  };
+  // SOZ-1'in 40.000 satış primi tahsilattan hak edilmiş: kalan 60.000. SOZ-3 tamamen tahsil edilmiş: beklenen yok.
+  const accruals = [satir({ contractId: "s1", amount: 40000 }), satir({ contractId: "s3", amount: 30000 })];
+  const sonuc = beklenenPrimler(g, accruals);
+  assert.deepEqual(sonuc.map((b) => [b.reference, b.customer, b.beklenen, b.devam]).sort(), [
+    ["SOZ-1", "Ayşe", 60000, false],
+    ["SOZ-2", "Can", 50000, true],
+  ]);
+  assert.deepEqual(beklenenPrimler({ ...g, satisOrani: 0, operasyonOrani: 0 }, accruals), []);
+});
+
+test("erken ödeme: hak edilmemiş işe dağıtılan ödeme avans (negatif açık), beklenen yerinde", () => {
+  const beklenen = [{ contractId: "s2", reference: "SOZ-2", customer: "Can", beklenen: 50000, devam: true }];
+  const payments = [odeme({ id: "o1", amount: 20000 })];
+  const isler = isPrimleri("gizem", [], payments, [{ paymentId: "o1", contractId: "s2", amount: 20000 }], beklenen);
+  assert.deepEqual(isler.map((i) => [i.reference, i.hakEdilen, i.odenen, i.acik, i.beklenen, i.devam]), [["SOZ-2", 0, 20000, -20000, 50000, true]]);
+  // İş tamamlanıp 50.000 hak edilince avans ona sayılır: açık 30.000.
+  const sonra = isPrimleri("gizem", [satir({ type: "Operasyon", contractId: "s2", reference: "SOZ-2", amount: 50000 })], payments, [{ paymentId: "o1", contractId: "s2", amount: 20000 }]);
+  assert.equal(sonra[0].acik, 30000);
 });

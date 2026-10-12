@@ -6,7 +6,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/prim-donemi";
 import { PanelDrawer } from "../components/panel-drawer";
 import { primOdemesiDuzenle, primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
-import { baglanmamisKisim, isPrimleri } from "@/lib/prim-is-dagilimi";
+import { baglanmamisKisim, beklenenPrimler, isPrimleri } from "@/lib/prim-is-dagilimi";
 import { PrimOdemeFormu, type FormIsi } from "./prim-odeme-formu";
 import type { primVerisi } from "./prim-verisi";
 import "../finance/finance.css";
@@ -35,7 +35,7 @@ const dateText = (value: string) => new Date(`${value}T12:00:00+03:00`).toLocale
 export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, baslangic, bitis }: { veri: Awaited<ReturnType<typeof primVerisi>>; employeeId: string; temelAdres: string; donemKodu?: string; baslangic?: string; bitis?: string }) {
   const { izin } = await getPanelContext();
   const canManage = izin("hr.prim.yonet");
-  const { employees, accruals, payments, dagitimlar, dagitimAcik } = veri;
+  const { employees, accruals, payments, dagitimlar, dagitimAcik, beklenenGirdisi } = veri;
   const personel = employees.find((item) => item.id === employeeId);
   if (!personel) return <p className="ic-akis-bos">Personel bulunamadı.</p>;
 
@@ -53,15 +53,19 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
   const odemeById = new Map(payments.filter((p) => p.employeeId === employeeId).map((p) => [p.id, p]));
   /* İş bazında prim (lib/prim-is-dagilimi): ödemenin hangi işlere
      istinaden yapıldığı. Bakiye yine toplamdan (yukarıdaki şerit). */
-  const isler = isPrimleri(employeeId, accruals, payments, dagitimlar);
+  const girdi = beklenenGirdisi(employeeId);
+  const isler = isPrimleri(employeeId, accruals, payments, dagitimlar, girdi ? beklenenPrimler(girdi, accruals) : []);
+  const formIsi = ({ contractId, reference, customer, acik, beklenen, devam }: (typeof isler)[number], geriEklenen = 0): FormIsi =>
+    ({ contractId, reference, customer, acik: acik + geriEklenen, beklenen, devam });
   const isAdi = new Map(isler.map((is) => [is.contractId, is.reference]));
-  const yeniOdemeIsleri: FormIsi[] = isler.filter((is) => is.acik > 0).map(({ contractId, reference, customer, acik }) => ({ contractId, reference, customer, acik }));
+  // Ödenebilecek: hak edilip ödenmemiş ya da henüz hak edilmemiş (erken ödeme) primi kalan işler.
+  const yeniOdemeIsleri: FormIsi[] = isler.filter((is) => is.acik > 0 || is.acik + is.beklenen > 0).map((is) => formIsi(is));
   const odemeDagilimi = (odemeId: string) => dagitimlar.filter((d) => d.paymentId === odemeId);
   // Düzenlemede: açık prim, bu ödemenin payı geri eklenerek; bu ödemenin dağıtıldığı iş açığı kapanmış olsa da listede.
   const duzenlemeIsleri = (odemeId: string): FormIsi[] => {
     const pay = new Map(odemeDagilimi(odemeId).filter((d) => d.contractId).map((d) => [d.contractId as string, d.amount]));
-    return isler.filter((is) => is.acik > 0 || pay.has(is.contractId))
-      .map(({ contractId, reference, customer, acik }) => ({ contractId, reference, customer, acik: acik + (pay.get(contractId) ?? 0) }));
+    return isler.filter((is) => is.acik > 0 || is.acik + is.beklenen > 0 || pay.has(is.contractId))
+      .map((is) => formIsi(is, pay.get(is.contractId) ?? 0));
   };
   const dagilimYazisi = (odemeId: string) => {
     const odeme = odemeById.get(odemeId);
@@ -157,12 +161,15 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
             <ul className="prim-is-ozet">
               {isler.map((is) => (
                 <li key={is.contractId}>
-                  <span><b>{is.reference}</b><small>{is.customer} · hak edilen {money(is.hakEdilen)} · ödenen {money(is.odenen)}</small></span>
-                  <strong className={is.acik > 0 ? "talep-uyari" : is.acik < 0 ? undefined : "cari-arti"}>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? `+${money(-is.acik)} fazla` : "Kapandı"}</strong>
+                  <span>
+                    <b>{is.reference}{is.devam ? <em className="prim-is-devam">iş sürüyor</em> : null}</b>
+                    <small>{is.customer} · hak edilen {money(is.hakEdilen)} · ödenen {money(is.odenen)}{is.beklenen > 0 ? ` · hak edilecek ~${money(is.beklenen)}` : ""}</small>
+                  </span>
+                  <strong className={is.acik > 0 ? "talep-uyari" : is.acik < 0 ? undefined : "cari-arti"}>{is.acik > 0 ? money(is.acik) : is.acik < 0 ? `${money(-is.acik)} avans` : is.beklenen > 0 ? "—" : "Kapandı"}</strong>
                 </li>
               ))}
             </ul>
-            <p className="talep-bos cari-not">Açık prim, işin hak edilen priminden o işe istinaden yapılan ödemeler düşülerek bulunur. İşe bağlanmadan yapılan ödemeler burada değil, yalnızca bakiyede görünür.</p>
+            <p className="talep-bos cari-not">Açık prim, işin hak edilen priminden o işe istinaden yapılan ödemeler düşülerek bulunur. Henüz hak edilmemiş işe yapılan erken ödeme “avans” görünür; iş tamamlanıp prim hak edilince ona sayılır. “Hak edilecek” tahminidir: bugünkü orandan, kesin rakam hak edilince oluşur. İşe bağlanmadan yapılan ödemeler burada değil, yalnızca bakiyede görünür.</p>
           </> : null}
           <p className="talep-bos cari-not">Satış primi yalnızca müşteriden gerçekleşen tahsilat üzerinden, tahsilat tarihindeki oranla hesaplanır; tahsil edilmemiş satıştan prim doğmaz. Operasyon primi iş tamamlanınca hak edilir.</p>
         </section>

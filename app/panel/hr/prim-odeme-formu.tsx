@@ -15,11 +15,18 @@ import "./prim-odeme-formu.css";
   tutarı seçilenlerin toplamıyla kendiliğinden dolar ama elle büyütülebilir
   (fark "işe bağlanmamış" kalır). Hiç iş seçmeden de kaydedilebilir.
 
+  Erken ödeme: iş bitmeden de seçilebiliyor ("iş sürüyor", tahmini
+  "hak edilecek" primle); ödenen tutar o işte avans olarak durur.
+
   Kural sunucuda da aynı (dagitimDenetle); buradaki denetim yalnızca
   kaydetmeden önce söylemek için.
 */
 
-export type FormIsi = { contractId: string; reference: string; customer: string; acik: number };
+/** acik: hak edilip ödenmemiş (negatifse avans); beklenen: henüz hak edilmemiş tahmini prim. */
+export type FormIsi = { contractId: string; reference: string; customer: string; acik: number; beklenen: number; devam: boolean };
+/* İşaretlenince önerilen tutar: hak edilmiş açık prim varsa o; yoksa
+   (erken ödeme) henüz hak edilmemiş kalan — avans düşülerek. */
+const onerilen = (is: FormIsi) => (is.acik > 0 ? is.acik : Math.max(0, is.acik + is.beklenen));
 export type FormOdemesi = { id: string; amount: number; paidOn: string; method: string; note: string | null };
 
 const para = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(kurus / 100);
@@ -55,7 +62,7 @@ export function PrimOdemeFormu({ eylem, personelId, odeme, isler, mevcut = {}, d
 
   const sec = (is: FormIsi, acik: boolean) => setSecili((onceki) => {
     const yeni = { ...onceki };
-    if (acik) yeni[is.contractId] = is.acik > 0 ? liraYazisi(is.acik) : "";
+    if (acik) yeni[is.contractId] = onerilen(is) > 0 ? liraYazisi(onerilen(is)) : "";
     else delete yeni[is.contractId];
     return yeni;
   });
@@ -79,8 +86,8 @@ export function PrimOdemeFormu({ eylem, personelId, odeme, isler, mevcut = {}, d
                   <label className="prim-is-sec">
                     <input type="checkbox" checked={isaretli} onChange={(o) => sec(is, o.target.checked)} />
                     <span>
-                      <b>{is.reference}</b>
-                      <small>{is.customer} · açık prim {para(is.acik)}</small>
+                      <b>{is.reference}{is.devam ? <em className="prim-is-devam">iş sürüyor</em> : null}</b>
+                      <small>{is.customer}{is.acik > 0 ? ` · açık prim ${para(is.acik)}` : ""}{is.acik < 0 ? ` · avans ${para(-is.acik)}` : ""}{is.beklenen > 0 ? ` · hak edilecek ~${para(is.beklenen)}` : ""}</small>
                     </span>
                   </label>
                   {isaretli ? (

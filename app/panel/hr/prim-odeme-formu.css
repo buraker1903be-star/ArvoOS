@@ -16,3 +16,5 @@
 /* İşaret kutusu: panelin genel alan kuralı (panel-ui.css) onu tam genişlikte
    bir metin kutusu gibi çiziyordu (146 piksel); burada kendi boyunda. */
 :is(.os-root,.panel-root) .kayit-formu .prim-isler .prim-is-sec > input[type="checkbox"]{flex:none;width:18px;min-width:18px;height:18px;min-height:0;margin:0;padding:0;border-radius:5px;accent-color:var(--primary)}
+/* "iş sürüyor": henüz hak edilmemiş, erken (avans) ödenebilecek iş. */
+.prim-is-devam{margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--info-soft);color:var(--info);font-size:var(--fs-micro);font-style:normal;font-weight:var(--fw-medium)}

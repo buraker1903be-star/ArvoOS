@@ -7,7 +7,7 @@ import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { assertYetki } from "@/lib/yetkiler";
-import { dagitimDenetle, dagitimOku, type DagitimKalemi } from "@/lib/prim-is-dagilimi";
+import { beklenenPrimler, dagitimDenetle, dagitimOku, type DagitimKalemi } from "@/lib/prim-is-dagilimi";
 import { primVerisi } from "./prim-verisi";
 
 /*
@@ -45,7 +45,12 @@ async function dagitimHazirla(supabase: Awaited<ReturnType<typeof primContext>>[
   if ("hata" in kalemler) throw new Error(kalemler.hata);
   if (!kalemler.length) return [];
   const veri = await primVerisi(supabase, orgId);
-  const izinli = new Set(veri.accruals.filter((a) => a.employeeId === employeeId && a.contractId).map((a) => a.contractId as string));
+  // Hak edilmiş primi olan işler ve henüz hak edilmemiş (avans ödenebilecek) açık işler.
+  const girdi = veri.beklenenGirdisi(employeeId);
+  const izinli = new Set([
+    ...veri.accruals.filter((a) => a.employeeId === employeeId && a.contractId).map((a) => a.contractId as string),
+    ...(girdi ? beklenenPrimler(girdi, veri.accruals).map((b) => b.contractId) : []),
+  ]);
   const hata = dagitimDenetle(tutar, kalemler, izinli);
   if (hata) throw new Error(hata);
   return kalemler;
