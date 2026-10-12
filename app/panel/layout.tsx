@@ -40,6 +40,8 @@ import "./panel-tables.css";
 import "./panel-motion.css";
 import "./os-shell.css";
 import "./panel-ui.css";
+// Telefonda uygulama gibi: yalnızca ≤760px kuralları (masaüstüne dokunmaz).
+import "./mobil-uygulama.css";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";

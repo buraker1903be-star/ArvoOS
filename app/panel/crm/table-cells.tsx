@@ -77,7 +77,8 @@ export function RepresentativeCell({ name, label = "Temsilci" }: { name: string 
 
 export function DateCell({ label, value }: { label: string; value?: string | null }) {
   return (
-    <td data-label={label} className="crm-col-date">
+    // data-bos: telefonda boş tarih ("—") satırda yer kaplamasın (mobil-uygulama.css).
+    <td data-label={label} className="crm-col-date" data-bos={value ? undefined : ""}>
       {value ? new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString("tr-TR") : "—"}
     </td>
   );
