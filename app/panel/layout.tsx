@@ -21,6 +21,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
 import { OsDock } from "./os/os-dock";
 import { OsGeri } from "./os/os-geri";
+import { OsBolumSeridi } from "./os/os-bolum-seridi";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
@@ -338,6 +339,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
           <OsKullaniciMenusu ad={benimAdim} rol={roleName} kurum={brandName} paket={organization.plan_code} workspaces={workspaces} aktifKurumId={organization.id} cikis={logout} ekibeGizli={ekibeGizli} gorunurluk={cevrimiciGorunurlugu} />
         </div>
       </header>
+      {/* Telefonda açık uygulamanın bölümleri (masaüstünde gizli; orada dock'un ikinci katı). */}
+      <OsBolumSeridi uygulamalar={uygulamalar} />
       <section className="os-workspace">
         <div className="panel-content">{agreementBanner}{children}</div>
       </section>

@@ -111,7 +111,10 @@ export function OsDock({ uygulamalar, digerUygulamalar }: { uygulamalar: OsUygul
         onKeyDown={ikonKlavye(uygulama)}
         onPointerDown={(olay) => zaman.isaretciKaydet(olay.pointerType)}
         onClick={(olay) => {
-          if (!zaman.dokunmaMi() || !altBolumler(uygulama).length) return;
+          /* Telefonda (≤760px) sekme uygulamayı doğrudan açar; bölümler
+             sayfanın üstündeki şeritte (os-bolum-seridi.tsx). Bu ara menü
+             telefonda yazıyı kaydırıyor, bağlantıları dokunuşu kaçırıyordu. */
+          if (!zaman.dokunmaMi() || !altBolumler(uygulama).length || window.matchMedia("(max-width: 760px)").matches) return;
           olay.preventDefault();
           if (alt?.key === uygulama.key) kapat(0);
           else { zaman.iptal(); setAlt({ key: uygulama.key, ...konum(olay.currentTarget) }); }

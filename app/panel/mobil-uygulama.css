@@ -233,3 +233,33 @@
   .os-root .os-geri:active{background:var(--surface-2)}
   .os-root .os-bar:has(>.os-geri) .os-brand{display:none}
 }
+
+/* ---------- BÖLÜM ŞERİDİ (os-bolum-seridi.tsx) ----------
+   Açık uygulamanın bölümleri üst çubuğun altında, yana kayan sekmeler;
+   sayfa kayarken üstte kalır. Masaüstünde gizli. */
+.os-bolum-serit{display:none}
+@media (max-width:760px){
+  .os-root .os-bolum-serit{
+    position:sticky;top:var(--os-bar-h);z-index:50;
+    display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
+    padding:6px var(--sp-3);border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 94%,transparent);
+    -webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);
+  }
+  .os-root .os-bolum-serit::-webkit-scrollbar{display:none}
+  .os-root .os-bolum-serit a{
+    flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;
+    color:var(--muted);font-size:14px;font-weight:var(--fw-medium);text-decoration:none;white-space:nowrap;
+  }
+  .os-root .os-bolum-serit a:active{background:var(--surface-2)}
+  .os-root .os-bolum-serit a.is-active{background:var(--primary-soft);color:var(--primary);font-weight:var(--fw-semibold)}
+  /* Ara menü telefonda hiç açılmaz; açık kalmışsa (ekran döndürme) görünmesin. */
+  .os-root .os-subdock{display:none}
+  /* Basılan sekmenin "açık" görünümü telefonda yok (yazı kayıyordu). */
+  .os-root .os-dock-item.is-sub-open{background:none}
+}
+@media (max-width:760px){
+  /* Masaüstünün "üstüne gelince ipucu" kuralı yazıyı translateX(-50%) ile
+     sola kaydırıyordu: basılan sekmenin adı ikonun soluna kayıyordu. */
+  .os-root .os-dock .os-dock-item:is(:hover,:focus,:active,.is-sub-open) .os-dock-label{transform:none;opacity:1}
+}
