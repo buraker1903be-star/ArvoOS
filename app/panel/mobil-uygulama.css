@@ -313,3 +313,10 @@
      yükleniyor; telefonda boy farkı yok, hepsi alttan tam genişlik. */
   .panel-root .panel-modal-root[data-boy]{align-items:flex-end;padding:0}
 }
+
+/* Arama paleti: telefonda klavye yok; "Esc", "↑↓ gez · Enter aç" ipuçları
+   yer kaplıyor ve yanlış şey söylüyordu. Palet ekranın üst yarısında. */
+@media (max-width:760px){
+  .os-root .os-palette kbd,.os-root .os-palette-foot{display:none}
+  .os-root .os-palette{margin-top:calc(8px + env(safe-area-inset-top))}
+}
