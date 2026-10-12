@@ -7,6 +7,7 @@ import { inNotificationFilter, notificationFilters as filters } from "./filters"
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
 import { NotificationIcon as Icon } from "./notification-icon";
 import { DuyuruMetni } from "./duyuru-metni";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 // Sayfa düzeni (talep-bas, kayit-serit, ekip-suzgec) panelin öteki sayfalarıyla ortak.
 import "../crm/kayit-detay/kayit-detay.css";
 import "./notifications.css";
@@ -73,7 +74,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const baslikta = selectedFilter ? allNotifications.filter((item) => inNotificationFilter(item.category, selectedFilter)) : allNotifications;
   const notifications = yalnizOkunmamis ? baslikta.filter((item) => !item.read_at) : baslikta;
   const visibleUnread = baslikta.filter((item) => !item.read_at).length;
-  const bugun = dayKey(Date.now());
+  const bugun = todayInIstanbul();
   const bugunGelen = allNotifications.filter((item) => dayKey(item.created_at) === bugun).length;
   const duyuruOkunmamis = allNotifications.filter((item) => item.category === "management_announcement" && !item.read_at).length;
 
