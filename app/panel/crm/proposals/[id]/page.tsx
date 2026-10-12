@@ -34,6 +34,7 @@ import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "..
 import "../../request-page.css";
 import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
+import "../../../components/kayit-formu.css";
 
 /*
   TEKLİF DETAYI (2026-10): talep detayıyla aynı üç sütun.
@@ -228,52 +229,24 @@ export default async function ProposalDetailPage({ params }: Props) {
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               {!locked ? (
-                <PanelDrawer triggerLabel="Düzenle" title={data.proposal_no} description="Teklif bilgilerini kontrol edin." triggerClassName="os-menu-item">
-                  <form className="panel-form" action={updateProposal}>
+                <PanelDrawer triggerLabel="Düzenle" kicker={`TEKLİF · ${data.proposal_no}`} title="Teklifi düzenle" description="Kapsam, tutar, geçerlilik ve müşteri bilgileri. Değişiklik müşteriye giden teklif bağlantısına da yansır." triggerClassName="os-menu-item">
+                  {/* DÜZEN (2026-10): teklif oluşturma ve sözleşme düzenlemeyle
+                      aynı ortak form (components/kayit-formu.css). Eskiden
+                      girilen metin kalın görünüyor, zorunlu alan belli
+                      değildi; müşteri adı boş kaydedilebiliyordu. */}
+                  <form className="panel-form kayit-formu" action={updateProposal}>
                     <input type="hidden" name="proposal_id" value={data.id} />
                     <input type="hidden" name="opportunity_id" value={customer?.id ?? ""} />
                     <input type="hidden" name="current_details" value={JSON.stringify(customer?.request_details ?? {})} />
-                    <p className="wide panel-form-note">Müşteri / Talep Bilgileri</p>
-                    <label>
-                      Müşteri adı
-                      <input name="customer_name" defaultValue={customer?.customer_name ?? ""} />
-                    </label>
-                    <label>
-                      Telefon
-                      <input name="contact_phone" defaultValue={customer?.contact_phone ?? ""} />
-                    </label>
-                    <label>
-                      E-posta
-                      <input name="contact_email" defaultValue={customer?.contact_email ?? ""} />
-                    </label>
-                    <label>
-                      Hizmet türü
-                      <input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} />
-                    </label>
-                    <label>
-                      Akademik seviye
-                      <input name="academic_level" defaultValue={String(customer?.request_details?.academic_level ?? "")} />
-                    </label>
-                    <label>
-                      Üniversite
-                      <input name="university" defaultValue={String(customer?.request_details?.university ?? "")} />
-                    </label>
-                    <label>
-                      Bölüm
-                      <input name="department" defaultValue={String(customer?.request_details?.department ?? "")} />
-                    </label>
-                    <p className="wide panel-form-note">Teklif Bilgileri</p>
-                    <label>
-                      Başlık
-                      <input name="title" defaultValue={data.title} required />
-                    </label>
-                    <label>
-                      {taxStatus === "included" ? "Tutar (KDV dahil)" : taxStatus ? "Tutar (KDV hariç)" : "Tutar"}
-                      <input name="amount" type="number" step="0.01" min="0" defaultValue={(editableAmount / 100).toFixed(2)} required />
-                    </label>
+
+                    <p className="wide kayit-formu-bolum">Teklif</p>
+                    <label className="wide"><span>Teklif başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
+                    <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
+
+                    <p className="wide kayit-formu-bolum">Tutar ve geçerlilik</p>
+                    <label><span>{/* İstisnada KDV yok; eskiden "KDV hariç" yazıyordu. */ taxStatus === "included" ? "Tutar, KDV dahil (₺)" : taxStatus === "excluded" ? "Tutar, KDV hariç (₺)" : "Tutar (₺)"}<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={(editableAmount / 100).toFixed(2)} required /></label>
                     {taxStatus ? (
-                      <label>
-                        KDV durumu
+                      <label>KDV durumu
                         <select name="tax_status" defaultValue={taxStatus}>
                           <option value="excluded">KDV Hariç</option>
                           <option value="included">KDV Dahil</option>
@@ -281,20 +254,24 @@ export default async function ProposalDetailPage({ params }: Props) {
                         </select>
                       </label>
                     ) : null}
-                    <label className="wide">
-                      Kapsam
-                      <textarea name="scope" defaultValue={data.scope ?? ""} required />
-                    </label>
-                    <label>
-                      Ödeme planı
-                      <input name="payment_plan" defaultValue={data.payment_plan ?? ""} />
-                    </label>
-                    <label>
-                      Geçerlilik
-                      <input name="valid_until" type="date" defaultValue={data.valid_until ?? ""} />
-                    </label>
-                    <div className="wide panel-form-actions">
-                      <button className="panel-primary">Kaydet</button>
+                    <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
+                    <label>Geçerlilik tarihi<input name="valid_until" type="date" defaultValue={data.valid_until ?? ""} /></label>
+
+                    <p className="wide kayit-formu-bolum">Müşteri</p>
+                    <label className="wide"><span>Müşteri / kurum<b className="req" aria-hidden="true">*</b></span><input name="customer_name" defaultValue={customer?.customer_name ?? ""} required minLength={2} maxLength={180} /></label>
+                    <label>Telefon<input name="contact_phone" type="tel" inputMode="tel" defaultValue={customer?.contact_phone ?? ""} placeholder="05xx xxx xx xx" /></label>
+                    <label>E-posta<input name="contact_email" type="email" defaultValue={customer?.contact_email ?? ""} placeholder="ornek@eposta.com" /></label>
+
+                    <p className="wide kayit-formu-bolum">Hizmet ve akademik künye</p>
+                    <label>Hizmet türü<input name="service_type" defaultValue={String(customer?.request_details?.service_type ?? "")} /></label>
+                    <label>Akademik düzey<input name="academic_level" list="teklif-akademik-duzey" defaultValue={String(customer?.request_details?.academic_level ?? "")} placeholder="Seçin ya da yazın" /></label>
+                    <label>Üniversite<input name="university" defaultValue={String(customer?.request_details?.university ?? "")} placeholder="Örn. İstanbul Üniversitesi" /></label>
+                    <label>Bölüm / alan<input name="department" defaultValue={String(customer?.request_details?.department ?? "")} placeholder="Örn. İşletme" /></label>
+                    <datalist id="teklif-akademik-duzey"><option value="Lisans" /><option value="Yüksek Lisans" /><option value="Doktora" /><option value="Tıpta Uzmanlık" /><option value="Doçentlik" /></datalist>
+
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                      <button className="panel-primary">Değişiklikleri kaydet</button>
                     </div>
                   </form>
                 </PanelDrawer>
@@ -309,22 +286,23 @@ export default async function ProposalDetailPage({ params }: Props) {
               {!locked ? (
                 <PanelDrawer
                   triggerLabel="Teklifi kapat"
+                  kicker={`TEKLİF · ${data.proposal_no}`}
                   title="Teklifi kapat"
                   description="Kaydın neden kapatıldığını seçin. Bu bilgi raporlarda kullanılıyor."
                   triggerClassName="os-menu-item is-danger"
                 >
-                  <form className="panel-form" action={resolveProposal}>
+                  <form className="panel-form kayit-formu" action={resolveProposal}>
                     <input type="hidden" name="proposal_id" value={data.id} />
-                    <label className="wide">
-                      İptal sebebi
+                    <label className="wide"><span>Kapanış sebebi<b className="req" aria-hidden="true">*</b></span>
                       <select name="resolution" defaultValue="rejected" required>
                         <option value="rejected">Reddedildi</option>
                         <option value="expired">Süresi Doldu</option>
                         <option value="invalid">Hatalı Kayıt</option>
                       </select>
                     </label>
-                    <div className="wide panel-form-actions">
-                      <button className="panel-primary">Teklifi Kapat</button>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p>Kayıt silinmez; teklif kapananlar arasında kalır.</p>
+                      <button className="panel-primary">Teklifi kapat</button>
                     </div>
                   </form>
                   {canDelete ? (
