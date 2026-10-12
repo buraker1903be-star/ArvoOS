@@ -5,8 +5,8 @@ import { MusteriDetayi } from "../../../musteri/musteri-detayi";
   müşteri sayfasıyla ortak (app/panel/musteri/musteri-detayi.tsx). Cari
   hesap burada ortada açılan bir pencere; ?pencere=cari açık başlatır.
 */
-export default async function FinansMusteriPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pencere?: string }> }) {
+export default async function FinansMusteriPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pencere?: string; kayit?: string }> }) {
   const { id } = await params;
-  const { pencere } = await searchParams;
-  return <MusteriDetayi cariId={id} pencere={pencere} adres={`/panel/finance/musteri/${id}`} />;
+  const { pencere, kayit } = await searchParams;
+  return <MusteriDetayi cariId={id} pencere={pencere} kayit={kayit} adres={`/panel/finance/musteri/${id}`} />;
 }

@@ -51,9 +51,11 @@ const TUR_ADLARI: Record<HistoryKind, string> = { request: "Talep", proposal: "T
 const money = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(kurus / 100);
 const TALEP_ALANLARI = "id,customer_name,contact_phone,contact_email,request_details,source,created_at";
 
-export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
+export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: {
   talepId?: string;
   cariId?: string;
+  /** ?kayit=: kayıtlar tablosunun tür süzgeci (request, proposal, contract, job). */
+  kayit?: string;
   /** ?pencere=cari: cari penceresi açık başlar (eski cari adresinden gelen). */
   pencere?: string;
   /** Sayfanın kendi adresi: pencere kapanınca parametresiz buraya dönülür. */
@@ -96,6 +98,11 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
     gecmis = await findCustomerHistory(context, { phone: talep.contact_phone, name: talep.customer_name }, { maxItems: LOOKUP_MAX_ITEMS });
   }
   const kayitlar = gecmis?.items ?? [];
+  /* Tür süzgeci öteki listeler gibi (12.10.2026): çip ve şerit aynı süzgeç.
+     Eskiden kayıtlar tek tabloda karışık listeleniyordu. */
+  const seciliTur = TUR_SIRASI.includes(kayit as HistoryKind) ? (kayit as HistoryKind) : null;
+  const gorunenKayitlar = seciliTur ? kayitlar.filter((k) => k.kind === seciliTur) : kayitlar;
+  const turAdresi = (tur: HistoryKind | null) => (tur ? `${adres}?kayit=${tur}` : adres);
   const sayilar = gecmis?.counts ?? { request: 0, proposal: 0, contract: 0, job: 0 };
   const kimlikIleri = (anahtar: string) => kayitlar.filter((k) => k.key.startsWith(`${anahtar}:`)).map((k) => k.key.slice(anahtar.length + 1));
   const sozlesmeIdleri = kimlikIleri("contract");
@@ -317,7 +324,10 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
       <nav className="kayit-serit" aria-label="Müşteri özeti">
         <dl>
           {crmVar && talep ? TUR_SIRASI.map((tur) => (
-            <div key={tur}><dt>{tur === "request" ? "Teklifsiz talep" : TUR_ADLARI[tur]}</dt><dd>{sayilar[tur] ?? 0}</dd></div>
+            <div key={tur} className={seciliTur === tur ? "is-active" : undefined}>
+              <dt>{tur === "request" ? "Teklifsiz talep" : TUR_ADLARI[tur]}</dt>
+              <dd><Link href={turAdresi(seciliTur === tur ? null : tur)} scroll={false} aria-current={seciliTur === tur ? "true" : undefined}>{sayilar[tur] ?? 0}</Link></dd>
+            </div>
           )) : null}
           {gecmis?.contractedLabel ? <div><dt>Sözleşme değeri</dt><dd>{gecmis.contractedLabel}</dd></div> : null}
           {bakiye !== null ? <div className="cari-bakiye" data-tone={bakiye > 0 ? "warning" : "success"}><dt>Açık bakiye</dt><dd>{money(bakiye)}</dd></div> : null}
@@ -370,6 +380,15 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
             <small>{gecmis?.total ?? 0} kayıt{gecmis?.limited ? ` · son ${kayitlar.length}` : ""}</small>
           </div>
           {kayitlar.length ? (
+            <div className="ekip-suzgec talep-suzgec">
+              <Link href={turAdresi(null)} scroll={false} className={!seciliTur ? "is-active" : undefined}>Tümü <small>{kayitlar.length}</small></Link>
+              {TUR_SIRASI.map((tur) => {
+                const adet = kayitlar.filter((k) => k.kind === tur).length;
+                return adet ? <Link key={tur} href={turAdresi(tur)} scroll={false} className={seciliTur === tur ? "is-active" : undefined}>{TUR_ADLARI[tur]} <small>{adet}</small></Link> : null;
+              })}
+            </div>
+          ) : null}
+          {gorunenKayitlar.length ? (
             <div className="talep-tablo">
               {/* Satırın boş alanına tıklama da kaydı açar (crm/satir-tiklama.tsx). */}
               <SatirTiklama />
@@ -385,7 +404,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
                   </tr>
                 </thead>
                 <tbody>
-                  {kayitlar.map((k) => (
+                  {gorunenKayitlar.map((k) => (
                     <tr key={k.key}>
                       <td className="crm-table-mono" data-label="Tür">
                         {k.canOpen ? <Link className="crm-row-link" href={k.href} aria-label={`${k.kindLabel}: ${k.title}`}>{k.kindLabel}</Link> : k.kindLabel}
@@ -405,7 +424,7 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
             </div>
           ) : (
             <p className="ic-akis-bos">
-              {!crmVar ? "Talep, teklif ve sözleşme kayıtlarını görmek için CRM modülü gerekiyor." : talep ? "Bu müşterinin görebildiğiniz başka kaydı yok." : "Bu cariye bağlı bir talep ya da sözleşme yok."}
+              {!crmVar ? "Talep, teklif ve sözleşme kayıtlarını görmek için CRM modülü gerekiyor." : seciliTur && kayitlar.length ? `Bu müşterinin ${TUR_ADLARI[seciliTur].toLocaleLowerCase("tr")} kaydı yok.` : talep ? "Bu müşterinin görebildiğiniz başka kaydı yok." : "Bu cariye bağlı bir talep ya da sözleşme yok."}
             </p>
           )}
           {gecmis?.scopedToAssigned ? <p className="talep-bos cari-not">Yalnızca size atanmış kayıtlar listeleniyor.</p> : null}

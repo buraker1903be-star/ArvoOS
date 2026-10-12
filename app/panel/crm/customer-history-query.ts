@@ -4,9 +4,10 @@ import { formatSubject } from "@/lib/table-format";
 import { statusTone, type StatusTone } from "@/lib/status-tone";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { reportActionFailure } from "@/lib/action-diagnostics";
-import { contractStatusLabel, proposalStatusLabel } from "./status-labels";
+import { proposalStatusLabel } from "./status-labels";
 import { requestStageNames } from "./request-status";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
+import { sozlesmeGrubu, SOZLESME_GRUP_ADLARI, type SozlesmeGrubu } from "@/lib/sozlesme-grubu";
 import { nameKey, nameReady, phoneKey, phoneReady } from "./customer-history-keys";
 
 /**
@@ -117,6 +118,18 @@ const toneFor = (status: string): StatusTone => (status === "archived" ? "neutra
   "süresi doldu" ayrılıyor, kabul edilmiş teklif "Arşiv" görünüyordu.
 */
 const TEKLIF_GRUP_TONU: Record<TeklifGrubu, StatusTone> = { draft: "neutral", sent: "info", accepted: "success", rejected: "danger", expired: "warning", eski: "neutral", arsiv: "neutral" };
+/*
+  Sözleşme de listelerdeki grupla etiketlenir (12.10.2026). Eskiden ham
+  durum yazılıyordu: işi Operasyonda'ki sözleşme müşteri sayfasında
+  "İmzalandı", işi biten "İmzalandı" görünüyordu. İşin varlığı ve durumu
+  sözleşmenin işinden (iş numarası sözleşme numarası).
+*/
+const SOZLESME_GRUP_TONU: Record<SozlesmeGrubu, StatusTone> = { draft: "neutral", sent: "info", imzali: "warning", operasyonda: "success", tamam: "neutral", rejected: "danger", cancelled: "danger" };
+const IS_BITTI = new Set(["completed", "archived"]);
+function sozlesmeEtiketi(status: string, isDurumu: string | null | undefined): { statusLabel: string; tone: StatusTone } {
+  const grup = sozlesmeGrubu({ status, workflow_id: isDurumu ? "is" : null }, Boolean(isDurumu && IS_BITTI.has(isDurumu)));
+  return { statusLabel: SOZLESME_GRUP_ADLARI[grup], tone: SOZLESME_GRUP_TONU[grup] };
+}
 
 const KIND_LABELS: Record<HistoryKind, string> = { request: "Talep", proposal: "Teklif", contract: "Sözleşme", job: "İş" };
 
@@ -314,7 +327,7 @@ type HistoryRpcRow = {
   can_open: boolean | null;
 };
 
-function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean): Dated {
+function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean, isDurumlari: Map<string, string> = new Map()): Dated {
   const status = row.status ?? "";
   const cents = Number(row.amount) || 0;
   const currency = (row.currency || "TRY").toUpperCase();
@@ -353,8 +366,7 @@ function itemFromRow(row: HistoryRpcRow, operationsVisible: boolean): Dated {
       return {
         ...base,
         detail: joinParts(row.service_type, row.record_no),
-        statusLabel: contractStatusLabel(status),
-        tone: toneFor(status),
+        ...sozlesmeEtiketi(status, row.record_no ? isDurumlari.get(row.record_no) : null),
         person: rep,
         personRole: rep ? "Satış" : null,
         href: `/panel/crm/contracts/${row.record_id}`,
@@ -407,9 +419,11 @@ async function historyViaRpc(
   }
   const operationsVisible = canSeeOperations(context);
   const rows = (data ?? []) as HistoryRpcRow[];
+  // Sözleşme numarası → işinin durumu (aynı sonuçtaki iş satırlarından).
+  const isDurumlari = new Map(rows.filter((row) => row.kind === "job" && row.record_no).map((row) => [row.record_no as string, row.status ?? ""]));
   return {
     ok: true,
-    items: rows.map((row) => itemFromRow(row, operationsVisible)),
+    items: rows.map((row) => itemFromRow(row, operationsVisible, isDurumlari)),
     /* Künye bu kimliklerden okunuyor: eşleştirmeyi RPC zaten doğru
        yapıyor, ikinci bir eşleştirme yazmak onunla ayrışırdı. */
     opportunityIds: [...new Set(rows.map((row) => row.opportunity_id).filter((id): id is string => Boolean(id)))],
@@ -588,6 +602,7 @@ async function findCustomerHistoryViaRls(
   );
 
   const workflows: { row: WorkflowRow; match: HistoryMatch; opportunityId: string | null }[] = [];
+  const isDurumuById = new Map(((workflowResult.data ?? []) as WorkflowRow[]).map((row) => [row.id, row.status]));
   for (const row of (workflowResult.data ?? []) as WorkflowRow[]) {
     const contract = (row.contract_id && contractById.get(row.contract_id)) || contractByWorkflow.get(row.id);
     if (contract) {
@@ -661,8 +676,7 @@ async function findCustomerHistoryViaRls(
       detail: joinParts(serviceOf(parent.row.request_details), contract.contract_no),
       customerName: formatPersonName(parent.row.customer_name),
       amountLabel: cents ? formatMoney(cents, currency) : null,
-      statusLabel: contractStatusLabel(contract.status),
-      tone: toneFor(contract.status),
+      ...sozlesmeEtiketi(contract.status, contract.workflow_id ? (isDurumuById.get(contract.workflow_id) ?? "planned") : null),
       dateLabel: formatHistoryDate(at),
       person: rep,
       personRole: rep ? "Satış" : null,

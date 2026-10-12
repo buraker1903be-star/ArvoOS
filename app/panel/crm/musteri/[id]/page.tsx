@@ -5,8 +5,8 @@ import { MusteriDetayi } from "../../../musteri/musteri-detayi";
   detayıyla ortak (app/panel/musteri/musteri-detayi.tsx); iki adres modül
   kapısı yüzünden var (bkz. oradaki açıklama).
 */
-export default async function MusteriPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pencere?: string }> }) {
+export default async function MusteriPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pencere?: string; kayit?: string }> }) {
   const { id } = await params;
-  const { pencere } = await searchParams;
-  return <MusteriDetayi talepId={id} pencere={pencere} adres={`/panel/crm/musteri/${id}`} />;
+  const { pencere, kayit } = await searchParams;
+  return <MusteriDetayi talepId={id} pencere={pencere} kayit={kayit} adres={`/panel/crm/musteri/${id}`} />;
 }
