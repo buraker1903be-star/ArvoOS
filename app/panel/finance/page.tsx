@@ -141,12 +141,20 @@ function MaliyetTablosu({ rows, arama }: { rows: ProfitRow[]; arama: string }) {
                     {!row.costEntered ? "maliyet girilmedi" : row.paid >= row.cost ? "tamamı ödendi" : `${money(row.paid)} ödendi`}
                   </small>
                 </td>
-                <td className={row.profit < 0 ? "crm-col-amount talep-uyari" : "crm-col-amount cari-arti"} data-label="Kâr">{money(row.profit)}</td>
+                {/* Maliyeti girilmemiş işte kâr = sözleşme bedeli ve oran %100 görünüyordu:
+                    yanıltıcı. Kâr ancak maliyet girilince hesaplanır. */}
+                {row.costEntered ? (
+                  <td className={row.profit < 0 ? "crm-col-amount talep-uyari" : "crm-col-amount cari-arti"} data-label="Kâr">{money(row.profit)}</td>
+                ) : (
+                  <td className="crm-col-amount" data-label="Kâr"><span className="cari-sifir">—</span><small className="crm-waiting">maliyet bekleniyor</small></td>
+                )}
                 <td data-label="Kâr oranı">
-                  <span className="musteri-tahsil maliyet-oran" data-ton={row.margin < 0 ? "danger" : row.margin < 30 ? "warning" : "success"} title={`%${row.margin.toFixed(1)}`}>
-                    <span className="cari-oran-cubuk" aria-hidden="true"><i style={{ "--p": `${Math.max(0, Math.min(100, oranYuzde))}%` } as React.CSSProperties} /></span>
-                    <small>%{oranYuzde}</small>
-                  </span>
+                  {row.costEntered ? (
+                    <span className="musteri-tahsil maliyet-oran" data-ton={row.margin < 0 ? "danger" : row.margin < 30 ? "warning" : "success"} title={`%${row.margin.toFixed(1)}`}>
+                      <span className="cari-oran-cubuk" aria-hidden="true"><i style={{ "--p": `${Math.max(0, Math.min(100, oranYuzde))}%` } as React.CSSProperties} /></span>
+                      <small>%{oranYuzde}</small>
+                    </span>
+                  ) : <span className="cari-sifir">—</span>}
                 </td>
                 <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
               </tr>
@@ -344,7 +352,6 @@ export default async function FinancePage({
     devam etsin diye ?durum=kapali arşivi açık getiriyor.
   */
   const canManageCosts = izin("finance.maliyet.yonet");
-  const totalServiceCost = contracts.reduce((sum, contract) => sum + Number(contract.service_cost || 0), 0);
   const costItems=(costItemData??[]) as CostItem[];const costTotals=new Map<string,number>();for(const item of costItems)costTotals.set(item.contract_id,(costTotals.get(item.contract_id)??0)+Number(item.amount));
   const installments=(installmentData??[]) as Installment[];
   const employeeMap=new Map((employeeData??[]).map(employee=>[employee.id,employee.full_name]));const workflowMap=new Map((workflowData??[]).map(workflow=>[workflow.id,workflow.assigned_employee_id]));
@@ -373,9 +380,24 @@ export default async function FinancePage({
 
   // İş maliyetleri özeti (yalnızca gösterim; değerler tablodakiyle aynı kuralla)
   /* Maliyet listesinde arama: müşteri, iş konusu ya da sözleşme no. */
-  const maliyetSatirlari = mode === "maliyet" && query
+  const aranan = mode === "maliyet" && query
     ? profitRows.filter((row) => [row.customer, row.title, row.contractNo].join(" ").toLocaleLowerCase("tr-TR").includes(query))
     : profitRows;
+  /* Durum çipleri öteki listeler gibi (?durum=): zarar eden, maliyeti
+     girilmemiş, maliyeti tamamen ödenmemiş. Eskiden yalnızca arama vardı. */
+  const MALIYET_DURUMLARI: Record<string, { ad: string; uyar: (row: ProfitRow) => boolean }> = {
+    zarar: { ad: "Zarar eden", uyar: (row) => row.costEntered && row.profit < 0 },
+    girilmemis: { ad: "Maliyeti girilmemiş", uyar: (row) => !row.costEntered },
+    odenmemis: { ad: "Ödenmemiş maliyet", uyar: (row) => row.costEntered && row.paid < row.cost },
+  };
+  const maliyetDurumu = mode === "maliyet" && params.durum && MALIYET_DURUMLARI[params.durum] ? params.durum : "";
+  const maliyetSatirlari = maliyetDurumu ? aranan.filter(MALIYET_DURUMLARI[maliyetDurumu].uyar) : aranan;
+  const maliyetAdres = (durum: string) => {
+    const q = new URLSearchParams({ gorunum: "maliyet" });
+    if (params.arama) q.set("arama", params.arama);
+    if (durum) q.set("durum", durum);
+    return `/panel/finance?${q}`;
+  };
   /* Maliyet istatistikleri (sağ kart): bütün işlerden, aramadan bağımsız. */
   const maliyetAn = simdi();
   const maliyet30 = costItems.filter((item) => gunAraliginda(item.cost_date, 0, 30, maliyetAn)).reduce((t, item) => t + Number(item.amount), 0);
@@ -387,9 +409,22 @@ export default async function FinancePage({
   const kategoriToplam = new Map<string, number>();
   for (const item of costItems) kategoriToplam.set(item.category || "Diğer", (kategoriToplam.get(item.category || "Diğer") ?? 0) + Number(item.amount));
   const kategoriler = [...kategoriToplam.entries()].sort((x, y) => y[1] - x[1]).slice(0, 5);
-  const contractSum = contracts.reduce((s, c) => s + Number(c.amount), 0);
-  const profitSum = contracts.reduce((s, c) => s + Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost)), 0);
-  const averageMargin = Math.round(contracts.reduce((s, c) => s + (Number(c.amount) ? ((Number(c.amount) - (costTotals.get(c.id) ?? Number(c.service_cost))) / Number(c.amount)) * 100 : 0), 0) / (contracts.length || 1));
+  /*
+    ŞERİT VE KART TABLODAKİ SATIRLARDAN (12.10.2026). Eskiden "Maliyet
+    toplamı" sözleşmenin eski tek satırlık alanını (service_cost) topluyor,
+    tablo ise maliyet kalemlerini gösteriyordu: kalem girilen işte iki rakam
+    ayrışıyordu. Ortalama kâr oranı da maliyeti GİRİLMEMİŞ işleri %100
+    kârlı sayıp şişiyordu; artık yalnızca maliyeti girilen işlerden ve
+    tutara göre ağırlıklı (toplam kâr / toplam bedel).
+  */
+  const contractSum = profitRows.reduce((t, row) => t + row.amount, 0);
+  const totalCost = profitRows.reduce((t, row) => t + row.cost, 0);
+  // Kâr ve oran AYNI kümeden: maliyeti girilmemiş işin bedeli kâr sayılmasın.
+  const maliyetliIsler = profitRows.filter((row) => row.costEntered);
+  const maliyetliBedel = maliyetliIsler.reduce((t, row) => t + row.amount, 0);
+  const profitSum = maliyetliIsler.reduce((t, row) => t + row.profit, 0);
+  const averageMargin = maliyetliBedel ? Math.round((profitSum / maliyetliBedel) * 100) : null;
+  const odenmemisMaliyet = profitRows.filter((row) => row.costEntered && row.paid < row.cost);
   /*
     İSTATİSTİKLER (sağ kart): tüm carilerden, aramadan bağımsız. Tahsilat
     hareketleri cari dökümündeki "credit" kayıtları; vadesi geçen taksit
@@ -504,7 +539,7 @@ export default async function FinancePage({
   const paytrHazir = Boolean(paytr?.available && paytr.connected && paytr.enabled);
 
   return (
-    <main className={mode === "cari" || mode === "maliyet" ? "fin talep cari ekip talepler teklifler liste-sayfa" : "fin"}>
+    <main className="fin talep cari ekip talepler teklifler liste-sayfa">
       {/* İki görünüm de panel liste kalıbında: başlık sınıfı da ortak.
           Maliyet görünümü eskiden panel-pagehead kullanıyordu. */}
       <header className="talep-bas">
@@ -598,19 +633,23 @@ export default async function FinancePage({
           <nav className="kayit-serit talep-serit" aria-label="İş maliyetleri özeti">
             <dl>
               <div><dt>Toplam sözleşme</dt><dd>{money(contractSum)}</dd></div>
-              <div><dt>Maliyet toplamı</dt><dd>{money(totalServiceCost)}</dd></div>
+              <div><dt>Maliyet toplamı</dt><dd>{money(totalCost)}</dd></div>
               <div className="cari-bakiye" data-tone={profitSum >= 0 ? "success" : "warning"}><dt>Toplam kâr</dt><dd>{money(profitSum)}</dd></div>
-              <div><dt>Ortalama kâr oranı</dt><dd>%{averageMargin}</dd></div>
-              <div><dt>İş</dt><dd>{contracts.length}</dd></div>
+              <div><dt>Kâr oranı</dt><dd>{averageMargin === null ? "—" : `%${averageMargin}`}</dd></div>
+              <div className={maliyetDurumu === "girilmemis" ? "is-active" : undefined}><dt>Maliyeti girilmemiş</dt><dd className={maliyetsiz.length ? "talep-uyari" : undefined}><Link href={maliyetAdres("girilmemis")}>{maliyetsiz.length}</Link></dd></div>
             </dl>
           </nav>
 
           <div className="talep-izgara personel-iki ekip-izgara">
             <section className="panel-card talep-bilgi" aria-label="İş maliyetleri">
               <div className="ekip-suzgec talep-suzgec">
-                <span className="talep-suzgec-etiket">{maliyetSatirlari.length} iş</span>
+                <Link href={maliyetAdres("")} className={!maliyetDurumu ? "is-active" : undefined}>Tümü <small>{aranan.length}</small></Link>
+                {Object.entries(MALIYET_DURUMLARI).map(([kod, durum]) => (
+                  <Link key={kod} href={maliyetAdres(kod)} className={maliyetDurumu === kod ? "is-active" : undefined}>{durum.ad} <small>{aranan.filter(durum.uyar).length}</small></Link>
+                ))}
                 <form action="/panel/finance" className="talep-ara" role="search">
                   <input type="hidden" name="gorunum" value="maliyet" />
+                  {maliyetDurumu ? <input type="hidden" name="durum" value={maliyetDurumu} /> : null}
                   <input name="arama" defaultValue={params.arama ?? ""} placeholder="Müşteri, iş konusu veya sözleşme no" aria-label="İş ara" />
                 </form>
               </div>
@@ -618,8 +657,9 @@ export default async function FinancePage({
                 <MaliyetTablosu rows={maliyetSatirlari} arama={params.arama ?? ""} />
               ) : (
                 <div className="crm-empty-state talep-bos-kutu">
-                  <h2>{query ? "Aramaya uygun iş yok" : "Henüz imzalı iş yok"}</h2>
-                  <p>{query ? "Aramayı değiştirip yeniden deneyin." : "İmzalanan sözleşmeler maliyet ve kârlarıyla burada listelenir."}</p>
+                  <h2>{query || maliyetDurumu ? "Bu süzgece uyan iş yok" : "Henüz imzalı iş yok"}</h2>
+                  <p>{query || maliyetDurumu ? "Aramayı ya da süzgeci değiştirip yeniden deneyin." : "İmzalanan sözleşmeler maliyet ve kârlarıyla burada listelenir."}</p>
+                  {query || maliyetDurumu ? <div className="crm-empty-actions"><Link className="panel-secondary" href="/panel/finance?gorunum=maliyet">Süzgeci temizle</Link></div> : null}
                 </div>
               )}
             </section>
@@ -628,9 +668,9 @@ export default async function FinancePage({
               kapsam="tüm işler"
               kutular={[
                 { ad: "Son 30 gün maliyet", deger: kisaPara(maliyet30), alt: degisimYazisi(maliyetDegisim) ?? "önceki dönem yok", ton: maliyetDegisim !== null && maliyetDegisim > 0 ? "uyari" : undefined },
-                { ad: "Ortalama kâr oranı", deger: contracts.length ? `%${averageMargin}` : "—", alt: `${contracts.length} iş` },
+                { ad: "Kâr oranı", deger: averageMargin === null ? "—" : `%${averageMargin}`, alt: `maliyeti girilen ${maliyetliIsler.length} iş` },
                 { ad: "Zarar eden iş", deger: String(zarardaki.length), alt: zarardaki.length ? kisaPara(zarardaki.reduce((t, row) => t + row.profit, 0)) : "yok", ton: zarardaki.length ? "uyari" : undefined },
-                { ad: "Maliyeti girilmemiş", deger: String(maliyetsiz.length), alt: maliyetsiz.length ? "kâr eksik hesaplanıyor" : "hepsi girilmiş", ton: maliyetsiz.length ? "uyari" : undefined },
+                { ad: "Ödenmemiş maliyet", deger: String(odenmemisMaliyet.length), alt: odenmemisMaliyet.length ? kisaPara(odenmemisMaliyet.reduce((t, row) => t + row.cost - row.paid, 0)) : "hepsi ödendi", ton: odenmemisMaliyet.length ? "uyari" : undefined },
               ]}
               gruplar={[
                 { baslik: "Son 6 ay · maliyet", satirlar: aylikMaliyet.map((ay) => ({ ad: ay.ad, adet: ay.toplam, etiket: kisaPara(ay.toplam) })) },
