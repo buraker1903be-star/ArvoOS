@@ -14,6 +14,8 @@ import { StgIcon } from "../settings/settings-ui";
 import { KURULUM_ADI, KURULUM_TONU, LISANS_TONU, basHarfleri, depolama, para, tarih, tarihSaat } from "./bicim";
 import { toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { OwnerAccessLink } from "./owner-access-link";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../components/kayit-formu.css";
 
 /*
   Tek kiracının dosyası.
@@ -385,16 +387,16 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
           <span className="stg-card-icon" data-tone="info"><StgIcon name="palette" size={18} /></span>
           <div className="stg-card-title"><small>KURUM ÇEKİRDEĞİ</small><h2 id="ayarlar-title">Kurum ayarları</h2></div>
         </header>
-        <form className="panel-form" action={updateOrganizationSettings}>
+        <form className="panel-form kayit-formu" action={updateOrganizationSettings}>
           <input type="hidden" name="organization_id" value={targetId} />
-          <label className="wide">Yasal unvan<input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
-          <label className="wide">Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
-          <label>Sektör<input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
+          <label className="wide"><span>Yasal unvan<b className="req" aria-hidden="true">*</b></span><input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
+          <label className="wide"><span>Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small></span><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
+          <label><span>Sektör<b className="req" aria-hidden="true">*</b></span><input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
           <label>Kurum türü<select name="kind" defaultValue={selected.kind ?? "customer"}><option value="customer">Müşteri</option><option value="internal">Kendi markamız</option></select></label>
           <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
-          <label>İletişim telefonu <small className="plt-optional">ödeme hatırlatması buraya gider</small><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
+          <label><span>İletişim telefonu <small className="plt-optional">ödeme hatırlatması buraya gider</small></span><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
           <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
-          <div className="wide panel-form-actions"><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
+          <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
         </form>
       </section>
 

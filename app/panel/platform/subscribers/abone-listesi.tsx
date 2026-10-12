@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../../components/kayit-formu.css";
 
 /*
   Bireysel abone listesi.
@@ -175,7 +177,7 @@ function AboneFormu({ abone, kaydet, onBitti }: { abone: Abone; kaydet: (formDat
   const askida = deger.status === "suspended";
 
   return (
-    <form className="panel-form" action={(veri) => { kaydet(veri); onBitti(); }}>
+    <form className="panel-form kayit-formu" action={(veri) => { kaydet(veri); onBitti(); }}>
       <input type="hidden" name="subscriber_id" value={abone.id} />
       <label>
         Durum

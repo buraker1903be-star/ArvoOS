@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../../components/kayit-formu.css";
 
 /*
   Ek ürün aboneliği kartının formu (ArvoLab, ArvoARC, Randevu).
@@ -101,7 +103,7 @@ export function UrunFormu({
 
   return (
     <>
-    <form className="panel-form plt-urun-formu" action={kaydet}>
+    <form className="panel-form kayit-formu plt-urun-formu" action={kaydet}>
       <input type="hidden" name="organization_id" value={organizationId} />
       <input type="hidden" name="product" value={product} />
 

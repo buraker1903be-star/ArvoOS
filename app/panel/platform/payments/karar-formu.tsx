@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../../components/kayit-formu.css";
 
 /*
   Dekont kararı: onayla ya da reddet.
@@ -55,7 +57,7 @@ export function KararFormu({
   };
 
   return (
-    <form className="panel-form" action={kaydet} ref={form}>
+    <form className="panel-form kayit-formu" action={kaydet} ref={form}>
       <input type="hidden" name="payment_id" value={paymentId} />
       <input type="hidden" name="decision" ref={kararAlani} defaultValue="" />
       <label className="wide">
@@ -66,9 +68,12 @@ export function KararFormu({
           onChange={(olay) => setNot(olay.target.value)}
         />
       </label>
-      <div className="wide panel-form-actions">
+      <div className="wide panel-form-actions kayit-formu-eylem">
+        <p>Not müşteriye gösterilir; ret için zorunlu.</p>
+        <span className="kayit-formu-dugmeler">
         <button className="panel-secondary" type="button" onClick={() => gonder("rejected")}>Reddet</button>
         <button className="panel-primary" type="button" onClick={() => gonder("approved")}>Ödemeyi onayla</button>
+        </span>
       </div>
     </form>
   );

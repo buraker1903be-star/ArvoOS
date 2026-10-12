@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../../components/kayit-formu.css";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -131,7 +133,7 @@ export function LisansFormu({
 
       <fieldset className="plt-alan-grubu">
         <legend>Paket ve durum</legend>
-        <div className="panel-form">
+        <div className="panel-form kayit-formu">
           <label>
             Paket
             <select name="plan_code" value={deger.planCode} onChange={(o) => yaz("planCode", o.target.value)}>
@@ -154,7 +156,7 @@ export function LisansFormu({
 
       <fieldset className="plt-alan-grubu">
         <legend>Dönem</legend>
-        <div className="panel-form">
+        <div className="panel-form kayit-formu">
           <label>
             Deneme bitişi
             <input type="date" name="trial_ends_at" value={deger.trialEndsAt} onChange={(o) => yaz("trialEndsAt", o.target.value)} />
@@ -180,23 +182,23 @@ export function LisansFormu({
 
       <fieldset className="plt-alan-grubu">
         <legend>Kapasite</legend>
-        <div className="panel-form">
+        <div className="panel-form kayit-formu">
           <label>
-            Kullanıcı limiti
+            <span>Kullanıcı limiti<b className="req" aria-hidden="true">*</b></span>
             <input type="number" name="user_limit" min={1} required value={deger.userLimit} onChange={(o) => yaz("userLimit", o.target.value)} />
             <small className="plt-field-note" data-tone={aktifUye > (Number.parseInt(deger.userLimit, 10) || 0) ? "danger" : undefined}>
               şu an {sayiBicimi.format(aktifUye)} aktif üye
             </small>
           </label>
           <label>
-            Depolama limiti (MB)
+            <span>Depolama limiti (MB)<b className="req" aria-hidden="true">*</b></span>
             <input type="number" name="storage_limit_mb" min={1} required value={deger.storageLimitMb} onChange={(o) => yaz("storageLimitMb", o.target.value)} />
             <small className="plt-field-note">
               {Number.isFinite(mb) && mb > 0 ? `= ${gb(mb)} · şu an ${gb(kullanilanMb)} kullanılıyor` : `şu an ${gb(kullanilanMb)} kullanılıyor`}
             </small>
           </label>
           <label>
-            AI kredi limiti
+            <span>AI kredi limiti<b className="req" aria-hidden="true">*</b></span>
             <input type="number" name="ai_credit_limit" min={0} required value={deger.aiCreditLimit} onChange={(o) => yaz("aiCreditLimit", o.target.value)} />
             {/* Tüketim ölçülüyor ama HENÜZ KISITLAMIYOR: kredi bitince
                 asistanı durduran bir kural yok. Limitin ne işe yaradığını
@@ -247,7 +249,7 @@ export function LisansFormu({
       {askida || deger.suspensionReason ? (
         <fieldset className="plt-alan-grubu" data-tone={askida ? "danger" : undefined}>
           <legend>Askı</legend>
-          <div className="panel-form">
+          <div className="panel-form kayit-formu">
             <label className="wide">
               Askıya alma nedeni
               <input

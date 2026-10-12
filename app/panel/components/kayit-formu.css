@@ -56,3 +56,7 @@
 /* Dosya alanı: kutu kuralının dışında (yukarıda), kendi sade görünümü. Eskiden sayfanın genel kuralından kalın ve çerçevesiz çıkıyordu. */
 .panel-root .kayit-formu > label > input[type="file"]{width:100%;margin:0;padding:7px 8px;border:1px dashed var(--line);border-radius:12px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:500;cursor:pointer}
 .panel-root .kayit-formu > label > input[type="file"]::file-selector-button{margin-right:12px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+/* Uyarı tonlu alan (ör. kota aşımı): çerçeve kırmızı. Özgüllük alan kuralının üstünde. */
+.panel-root .kayit-formu > label[data-tone="danger"] > :is(input:not([type="checkbox"]):not([type="hidden"]),select){border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+/* Eylem çubuğunda birden çok düğme (ör. Reddet / Onayla) yan yana. */
+.panel-root .kayit-formu-dugmeler{display:flex;flex-wrap:wrap;gap:var(--sp-2)}

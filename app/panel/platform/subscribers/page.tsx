@@ -7,6 +7,8 @@ import { updateProductPlan, updateSubscriber } from "./actions";
 import { AboneListesi } from "./abone-listesi";
 import "../../settings/settings.css";
 import "../platform.css";
+// Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
+import "../../components/kayit-formu.css";
 
 type PlanRow = { product: string; individual_monthly_fee: number | null; trial_days: number };
 type SubscriberRow = {
@@ -120,11 +122,11 @@ export default async function SubscribersPage() {
               description={product.description}
               aside={<span className="status-pill" data-tone={tone}>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "Ücret yok"}</span>}
             >
-              <form className="panel-form" action={updateProductPlan}>
+              <form className="panel-form kayit-formu" action={updateProductPlan}>
                 <input type="hidden" name="product" value={product.code} />
                 <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
-                <label>Deneme süresi (gün)<input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
-                <div className="wide panel-form-actions"><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
+                <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
+                <div className="wide panel-form-actions kayit-formu-eylem"><p>Ücret boşsa bu ürün kartla satılmaz.</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
               </form>
             </StgSection>
           );
