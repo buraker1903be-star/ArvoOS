@@ -3,21 +3,47 @@ import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { canSeeFinanceReports } from "../finance-navigation";
 import { PrintReportButton } from "./print-report-button";
+import { monthStartKey, todayInIstanbul, istanbulMidnight } from "@/lib/istanbul-date";
+// Sayfa başlığı (talep-bas) öteki panel sayfalarıyla aynı düzen.
+import "../../crm/kayit-detay/kayit-detay.css";
 import "./reporting.css";
 
 const money = (amount: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(amount / 100);
 // Negatif oran "−%184" (eskiden "%-184" yazılıyordu).
 const percent = (value: number) => (Math.round(value) < 0 ? `−%${Math.abs(Math.round(value))}` : `%${Math.round(value)}`);
 const monthNames = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-function pad(value: number) { return String(value).padStart(2, "0"); }
-function dateKey(date: Date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
+/*
+  DÖNEM TÜRKİYE GÜNÜYLE (12.10.2026).
+
+  Eskiden aralık sunucunun yerel saatiyle (`new Date(yıl, ay, 1)`)
+  kuruluyor, kayıtlar da zaman damgasının UTC gününe (`slice(0, 10)`)
+  göre aralığa sokuluyordu. Sunucu UTC'de çalıştığı için ayın 1'inde
+  00:00–03:00 arasında gelen talep ya da imzalanan sözleşme önceki aya
+  yazılıyor; ayın ilk üç saatinde "Bu ay" hâlâ geçen ayı gösteriyordu.
+  Artık her şey "YYYY-AA-GG" Türkiye günü anahtarı: dönem bugünden,
+  kayıt kendi anından (`gunAnahtari`) türetiliyor.
+
+  Geçersiz özel aralık ("?baslangic=abc") eskiden `Invalid Date`
+  üretip sorgu penceresinde `toISOString` ile sayfayı düşürüyordu; artık
+  "Bu ay"a dönülüyor, ters girilen aralık düzeltiliyor.
+*/
+const GUN = /^\d{4}-\d{2}-\d{2}$/;
+const gecerliGun = (deger?: string): deger is string => Boolean(deger && GUN.test(deger) && !Number.isNaN(Date.parse(`${deger}T00:00:00Z`)));
+/** Ayın son günü; ay 1–12, taşma serbest. */
+const ayinSonGunu = (yil: number, ay: number) => new Date(Date.UTC(yil, ay, 0)).toISOString().slice(0, 10);
+/** Zaman damgası Türkiye gününe; yalın tarih ("2026-10-01") olduğu gibi. */
+const gunAnahtari = (deger: string) => (deger.length > 10 ? todayInIstanbul(new Date(deger)) : deger);
 function resolveRange(range?: string, customStart?: string, customEnd?: string) {
-  const now = new Date();
-  if (range === "gecen_ay") return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 0), key: range };
-  if (range === "bu_yil") return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31), key: range };
-  if (range === "ozel" && customStart && customEnd) return { start: new Date(`${customStart}T00:00:00`), end: new Date(`${customEnd}T23:59:59`), key: range };
-  return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0), key: "bu_ay" };
+  const [yil, ay] = todayInIstanbul().split("-").map(Number);
+  if (range === "gecen_ay") return { startKey: monthStartKey(yil, ay - 1), endKey: ayinSonGunu(yil, ay - 1), key: range };
+  if (range === "bu_yil") return { startKey: `${yil}-01-01`, endKey: `${yil}-12-31`, key: range };
+  if (range === "ozel" && gecerliGun(customStart) && gecerliGun(customEnd)) {
+    const [startKey, endKey] = customStart <= customEnd ? [customStart, customEnd] : [customEnd, customStart];
+    return { startKey, endKey, key: range };
+  }
+  return { startKey: monthStartKey(yil, ay), endKey: ayinSonGunu(yil, ay), key: "bu_ay" };
 }
+const gunYazisi = (gun: string) => { const [y, a, g] = gun.split("-"); return `${g}.${a}.${y}`; };
 
 // ---------------------------------------------------------------
 // Sunum yardımcıları (yalnızca görünüm; veri mantığına dokunmaz)
@@ -203,11 +229,11 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   // Finans kapısı (sahip/yönetici) layout'ta; burada Raporlar modülü ve rol yetkisi
   const access = { modules, yetkiler };
   if (!canSeeFinanceReports(access)) throw new Error("Raporlar modülüne erişiminiz yok.");
-  const { start, end, key } = resolveRange(params.aralik, params.baslangic, params.bitis);
-  const startKey = dateKey(start); const endKey = dateKey(end);
-  const inRange = (value: string | null) => Boolean(value && value.slice(0, 10) >= startKey && value.slice(0, 10) <= endKey);
-  const trendStart = new Date(end.getFullYear(), end.getMonth() - 5, 1);
-  const queryStart = start < trendStart ? start : trendStart;
+  const { startKey, endKey, key } = resolveRange(params.aralik, params.baslangic, params.bitis);
+  const inRange = (value: string | null) => { if (!value) return false; const gun = gunAnahtari(value); return gun >= startKey && gun <= endKey; };
+  const [sonYil, sonAy] = endKey.split("-").map(Number);
+  const trendStartKey = monthStartKey(sonYil, sonAy - 5);
+  const queryStartKey = startKey < trendStartKey ? startKey : trendStartKey;
   const organizationId = membership.organization_id;
 
   /*
@@ -219,7 +245,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
     sessizce eksilirdi — hem de paranın raporlandığı yerde (AGENTS.md
     "Rakam denetimi").
 
-    Pencere `queryStart`: istenen aralık ya da altı aylık trend, hangisi
+    Pencere `queryStartKey` (Türkiye gece yarısı): istenen aralık ya da altı aylık trend, hangisi
     eskiyse. Daraltma SAYIYI DEĞİŞTİRMİYOR, her kullanım tek tek
     izlendi:
 
@@ -239,7 +265,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       kalem sözleşmeden aylar sonra girilebiliyor, tarihle süzmek kârı
       yanlış hesaplardı.
   */
-  const pencereBasi = queryStart.toISOString();
+  const pencereBasi = istanbulMidnight(queryStartKey).toISOString();
   const [opportunityResult, proposalResult, contractResult, transactionResult,costResult,entryResult] = await Promise.all([
     supabase.from("crm_opportunities").select("id,stage,estimated_value,source,lost_reason,created_at,updated_at").eq("organization_id", organizationId)
       .or(`created_at.gte.${pencereBasi},updated_at.gte.${pencereBasi}`),
@@ -247,8 +273,8 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
     supabase.from("crm_contracts").select("id,opportunity_id,amount,status,signed_at,created_at").eq("organization_id", organizationId)
       .or(`signed_at.gte.${pencereBasi},created_at.gte.${pencereBasi}`),
     supabase.from("finance_transactions").select("transaction_type,status,amount,category,paid_at,created_at").eq("organization_id", organizationId).gte("created_at", pencereBasi),
-    supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date").eq("organization_id",organizationId).gte("cost_date",dateKey(queryStart)),
-    supabase.from("account_entries").select("entry_type,source_type,amount,transaction_date").eq("organization_id",organizationId).gte("transaction_date",dateKey(queryStart)),
+    supabase.from("contract_cost_items").select("contract_id,amount,status,cost_date").eq("organization_id",organizationId).gte("cost_date",queryStartKey),
+    supabase.from("account_entries").select("entry_type,source_type,amount,transaction_date").eq("organization_id",organizationId).gte("transaction_date",queryStartKey),
   ]);
   if (opportunityResult.error) throw new Error(`CRM raporu okunamadı: ${opportunityResult.error.message}`);
   if(proposalResult.error||contractResult.error||transactionResult.error||costResult.error||entryResult.error)throw new Error("Finansal rapor verileri eksiksiz okunamadı.");
@@ -337,16 +363,16 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const maxFunnel = Math.max(1, ...funnel.map((row) => row.value));
   const transitionRates = funnel.slice(0, -1).map((row, index) => ({ from: row.label, to: funnel[index + 1].label, rate: row.value ? (funnel[index + 1].value / row.value) * 100 : 0 }));
   const weakestStep = [...transitionRates].sort((a, b) => a.rate - b.rate)[0];
-  const months = Array.from({ length: 6 }, (_, index) => { const date = new Date(end.getFullYear(), end.getMonth() - (5 - index), 1); return { key: `${date.getFullYear()}-${pad(date.getMonth() + 1)}`, label: monthNames[date.getMonth()], leads: 0, sales: 0 }; });
-  for (const row of opportunities) { const bucket = months.find((month) => month.key === row.created_at.slice(0, 7)); if (bucket) bucket.leads += 1; }
-  for (const row of opportunities.filter((item) => item.stage === "won")) { const bucket = months.find((month) => month.key === row.updated_at.slice(0, 7)); if (bucket) bucket.sales += 1; }
+  const months = Array.from({ length: 6 }, (_, index) => { const ayKey = monthStartKey(sonYil, sonAy - (5 - index)).slice(0, 7); return { key: ayKey, label: monthNames[Number(ayKey.slice(5, 7)) - 1], leads: 0, sales: 0 }; });
+  for (const row of opportunities) { const bucket = months.find((month) => month.key === gunAnahtari(row.created_at).slice(0, 7)); if (bucket) bucket.leads += 1; }
+  for (const row of opportunities.filter((item) => item.stage === "won")) { const bucket = months.find((month) => month.key === gunAnahtari(row.updated_at).slice(0, 7)); if (bucket) bucket.sales += 1; }
   const maxTrend = Math.max(1, ...months.map((row) => row.leads));
   /* Kart grafikleri için aylık seriler (yukarıdaki months dilimleriyle).
      Satış imzalı sözleşmeden (imza tarihi), maliyet kalem tarihinden,
      tahsilat cari dökümündeki ödemelerden. */
   const aylikSeri = (kayitlar: { tarih: string | null; tutar: number }[], bicim: (n: number) => string): SeriNoktasi[] =>
     months.map((ay, sira) => {
-      const deger = kayitlar.filter((k) => k.tarih?.slice(0, 7) === ay.key).reduce((t, k) => t + k.tutar, 0);
+      const deger = kayitlar.filter((k) => k.tarih && gunAnahtari(k.tarih).slice(0, 7) === ay.key).reduce((t, k) => t + k.tutar, 0);
       return { ad: ay.label, deger, etiket: bicim(deger), simdiki: sira === months.length - 1 };
     });
   const adet = (n: number) => String(n);
@@ -355,7 +381,7 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const satisSerisi = aylikSeri(imzaliTumu.map((c) => ({ tarih: c.signed_at ?? c.created_at, tutar: 1 })), adet);
   const maliyetSerisi = aylikSeri(costItems.map((c) => ({ tarih: c.cost_date, tutar: Number(c.amount) })), money);
   const tahsilatSerisi = aylikSeri(accountEntries.filter((e) => e.entry_type === "credit").map((e) => ({ tarih: e.transaction_date, tutar: Number(e.amount) })), money);
-  const rangeLabel = key === "bu_ay" ? "Bu ay" : key === "gecen_ay" ? "Geçen ay" : key === "bu_yil" ? "Bu yıl" : `${start.toLocaleDateString("tr-TR")} – ${end.toLocaleDateString("tr-TR")}`;
+  const rangeLabel = key === "bu_ay" ? "Bu ay" : key === "gecen_ay" ? "Geçen ay" : key === "bu_yil" ? "Bu yıl" : `${gunYazisi(startKey)} – ${gunYazisi(endKey)}`;
 
   // --- Sunum: yukarıda hesaplanan değerlerden türetilir, yeni sorgu yok ---
   const oranOf = (pay: number, payda: number) => (payda ? (pay / payda) * 100 : null);
@@ -390,10 +416,10 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const trendEmpty = trendLeads === 0 && trendSales === 0;
 
   return <div className="rpt">
-    <div className="panel-pagehead rpt-pagehead">
-      <div><small className="panel-kicker">FİNANS</small><h1>Raporlar</h1></div>
-      <div className="panel-page-actions"><span className="status-pill rpt-range-pill" data-tone="gold">{rangeLabel}</span><PrintReportButton /></div>
-    </div>
+    <header className="talep-bas rpt-bas">
+      <div className="talep-bas-metin"><small className="panel-kicker">FİNANS</small><h1>Raporlar</h1></div>
+      <div className="talep-bas-eylem"><span className="status-pill rpt-range-pill" data-tone="gold">{rangeLabel}</span><PrintReportButton /></div>
+    </header>
 
     <section className="rpt-toolbar" aria-label="Rapor dönemi">
       <nav className="rpt-segment" aria-label="Hazır dönemler">
@@ -404,9 +430,9 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
       <form className={`rpt-range-form${key === "ozel" ? " is-active" : ""}`} method="get">
         <input type="hidden" name="aralik" value="ozel"/>
         <span className="rpt-range-label">Özel aralık</span>
-        <input name="baslangic" type="date" defaultValue={params.baslangic} required aria-label="Başlangıç tarihi"/>
+        <input name="baslangic" type="date" defaultValue={key === "ozel" ? startKey : undefined} required aria-label="Başlangıç tarihi"/>
         <span className="rpt-range-sep" aria-hidden="true">–</span>
-        <input name="bitis" type="date" defaultValue={params.bitis} required aria-label="Bitiş tarihi"/>
+        <input name="bitis" type="date" defaultValue={key === "ozel" ? endKey : undefined} required aria-label="Bitiş tarihi"/>
         <button className="panel-secondary" type="submit">Uygula</button>
       </form>
     </section>

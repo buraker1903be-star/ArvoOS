@@ -18,7 +18,7 @@
 html[data-theme="dark"] .rpt [data-tone="brand"]{--tone-fg:var(--brand-200)}
 
 /* ---------- Başlık ---------- */
-.panel-root .rpt-pagehead{margin-bottom:0}
+.rpt-bas .talep-bas-eylem{flex-wrap:wrap}
 .rpt-print-button{display:inline-flex;align-items:center;gap:7px}
 .rpt-print-button svg{flex:none}
 
@@ -204,7 +204,7 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
   .panel-root .rpt [data-tone="gold"]{--tone-fg:var(--primary)}
   .panel-root .rpt [data-tone]{--tone-bg:color-mix(in srgb,var(--tone-fg,var(--n-500)) 12%,var(--n-0))}
   .panel-root .rpt-toolbar,.panel-root .rpt-print-button,.panel-root .rpt-card-link{display:none!important}
-  .panel-root .rpt-pagehead .panel-page-actions{display:flex!important;width:auto}
+  .panel-root .rpt-bas .talep-bas-eylem{display:flex!important;width:auto}
   .panel-root .rpt-widgets{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
   .panel-root .rpt-widget{min-height:0;padding:10px 12px;border-radius:14px}
   .panel-root .rpt-widget::after{display:none}
