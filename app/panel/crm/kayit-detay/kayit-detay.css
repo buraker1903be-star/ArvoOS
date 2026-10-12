@@ -631,7 +631,25 @@
    olmalı. Otomatik tablo düzeninde ilk hücredeki dikey flex bağlantı
    "dar" sayılıyor ve müşteri sütunu onu eziyordu (iş maliyetlerinde de
    aynısı olmuştu). */
-.os-root .talep-tablo .crm-data-table[data-cols="belgeler"] :is(th,td):first-child{min-width:240px}
+/* Sabit tablo düzeni: sütun genişliği başlıktan gelir, içerik onu büyütemez. Belge sütunu kalanı alır.
+   eskiden uzun bir konu satırı tek satırda kaldığı için sütunu ~900 piksele açıyor,
+   tablo kutudan taşıp yatay kaydırma çıkıyor ve Durum sütunu kesiliyordu (12.10.2026). */
+@media (min-width:761px){
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"]{table-layout:fixed;width:100%}
+  /* Genel tablo kuralı ilk sütunu içeriği kadar yapıyor (width:1%); burada kalanı alsın. */
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:first-child{width:auto}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:nth-child(2){width:24%}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:nth-child(3){width:128px}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:nth-child(4){width:132px}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:nth-child(5){width:112px}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] thead th:nth-child(6){width:92px}
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] td{overflow:hidden}
+}
+/* Orta genişlikte (yanında istatistik kartı varken) tarih sütunu çekiliyor: yoksa belge sütunu 130–190 piksele sıkışıyordu. */
+@media (min-width:761px) and (max-width:1400px){
+  .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] :is(th,td):nth-child(5){display:none}
+}
+.os-root .talep-tablo .crm-data-table[data-cols="belgeler"] .crm-table-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .os-root .talep-tablo .crm-data-table[data-cols="belgeler"] .crm-table-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 
