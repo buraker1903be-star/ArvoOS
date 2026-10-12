@@ -212,8 +212,11 @@ export function documentCss({ footerLeft }: { footerLeft: string }) {
 .doc-form-legal{margin:0 0 4mm;font-size:7.6pt;line-height:1.55;color:var(--doc-muted)}
 .doc-form button[type=submit]{display:block;width:100%;min-height:50px;border:0;border-radius:10px;background:linear-gradient(180deg,#1d3354,#0b1b2e);box-shadow:0 0 0 1px rgba(201,166,106,.55),0 10px 22px rgba(11,27,46,.2);color:#fff;font:700 15px/1 var(--doc-font);letter-spacing:.03em;cursor:pointer}
 .doc-printbar{position:sticky;top:0;z-index:5;width:210mm;max-width:100%;margin:0 auto 14px;padding:12px 14px;border-radius:12px;background:rgba(11,27,46,.94);color:#fff;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 12px 30px rgba(11,27,46,.25)}
-.doc-printbar p{margin:0;flex:1 1 260px;font-size:12px;line-height:1.45;color:#d9dfe7}
-.doc-printbar p b{color:#fff}
+.doc-printbar-metin{display:grid;gap:2px;flex:1 1 280px;min-width:0}
+.doc-printbar-metin small{color:#9fb0c4;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.doc-printbar-metin b{color:#fff;font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.doc-printbar p{margin:2px 0 0;font-size:12px;line-height:1.45;color:#d9dfe7}
+.doc-printbar-eylem{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
 .doc-printbar .doc-btn{min-height:38px}
 .doc-printbar .doc-btn:not(.doc-btn-primary){background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
 @media screen{.doc-print-overlay{position:fixed;inset:0;z-index:2147483000;overflow:auto;-webkit-overflow-scrolling:touch}}
