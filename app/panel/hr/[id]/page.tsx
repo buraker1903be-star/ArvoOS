@@ -281,7 +281,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
               kicker="PRİM HESABI"
               title={employee.full_name}
               description={`Ödenecek bakiye ${money(primToplami.balance)}`}
-              boy="tam"
+              boy="ekran"
               baslangicAcik={pencere === "prim"}
               kapaninca={pencere === "prim" ? temelAdres : undefined}
             >

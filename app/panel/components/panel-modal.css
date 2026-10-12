@@ -15,6 +15,10 @@
 .panel-modal-root[data-boy="sohbet"]{--modal-w:780px}
 .panel-modal-root[data-boy="genis"]{--modal-w:940px}
 .panel-modal-root[data-boy="tam"]{--modal-w:1180px}
+/* "ekran": prim hesabı gibi hareket listesi + özet yan yana duran pencereler.
+   "tam" (1180) dizüstü ekranda iki sütunu sıkıştırıyordu; kenar boşluğu da daralıyor. */
+.panel-modal-root[data-boy="ekran"]{--modal-w:1480px;padding:16px}
+.panel-modal-root[data-boy="ekran"] .panel-modal{max-height:min(94dvh,1100px)}
 
 @keyframes panel-modal-fade{from{opacity:0}to{opacity:1}}
 @keyframes panel-modal-in{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
