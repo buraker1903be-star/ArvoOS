@@ -569,7 +569,6 @@
 .cari-pencere-izgara h3{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
 @media (max-width:900px){.cari-pencere-izgara{grid-template-columns:minmax(0,1fr)}}
 /* Müşteri bilgileri formunun ara başlıkları (Künye, Fatura bilgileri). */
-.musteri-form-baslik{margin:var(--sp-3) 0 0;padding-top:var(--sp-3);border-top:1px solid var(--line-soft);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 /* Müşterinin birden çok carisi: her biri ayrı bölüm, aralarında çizgi. */
 .cari-coklu-not{margin:0 0 var(--sp-4);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);background:var(--warning-soft);color:var(--warning);font-size:var(--fs-sm)}
 .cari-pencere-bolum+.cari-pencere-bolum{margin-top:var(--sp-6);padding-top:var(--sp-5);border-top:1px solid var(--line)}

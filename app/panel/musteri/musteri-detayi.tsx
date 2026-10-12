@@ -17,6 +17,7 @@ import { musteriBilgileriniKaydet } from "./actions";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
+import "../components/kayit-formu.css";
 import "../finance/finance.css";
 
 /*
@@ -245,15 +246,19 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
             </PanelModal>
           ) : null}
           {talepDuzenler || cariDuzenler ? (
-            <PanelDrawer triggerLabel="Bilgileri düzenle" triggerClassName="panel-secondary" kicker="MÜŞTERİ" title={`${musteri} · Bilgiler`} description="Ad, telefon ve e-posta CRM ile Finans arasında ortak; künye en son talebe yazılır.">
-              <form className="panel-form" action={musteriBilgileriniKaydet}>
+            <PanelDrawer triggerLabel="Bilgileri düzenle" triggerClassName="panel-secondary" kicker={`MÜŞTERİ · ${musteri}`} title="Müşteri bilgilerini düzenle" description="İletişim bilgileri CRM ile Finans arasında ortak; tek yerden değişir.">
+              {/* DÜZEN (2026-10): talep, teklif ve sözleşme formlarıyla aynı
+                  ortak düzen (components/kayit-formu.css). Eskiden bölüm
+                  başlıkları h3, girilen metin kalın ve zorunlu alan belirsizdi. */}
+              <form className="panel-form kayit-formu" action={musteriBilgileriniKaydet}>
                 {talepDuzenler && enSonTalep ? <input type="hidden" name="opportunity_id" value={enSonTalep} /> : null}
                 {cariDuzenler && cariKimligi ? <input type="hidden" name="party_id" value={cariKimligi} /> : null}
                 {talepDuzenler ? (
                   <>
+                    <p className="wide kayit-formu-bolum">İletişim</p>
                     {ILETISIM_ALANLARI.map((alan) => (
                       <label key={alan.anahtar} className={alan.anahtar === "customer_name" ? "wide" : undefined}>
-                        {alan.etiket}
+                        <span>{alan.etiket}{alan.zorunlu ? <b className="req" aria-hidden="true">*</b> : null}</span>
                         <input
                           name={alan.anahtar}
                           type={alan.tur ?? "text"}
@@ -264,7 +269,8 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
                         />
                       </label>
                     ))}
-                    <h3 className="wide musteri-form-baslik">Künye</h3>
+                    <p className="wide kayit-formu-bolum">Künye</p>
+                    <p className="wide kayit-formu-not">En son talebe yazılır; müşterinin eski talepleri olduğu gibi kalır.</p>
                     {KUNYE_ALANLARI.map((alan) => (
                       <label key={alan.anahtar}>
                         {alan.etiket}
@@ -280,24 +286,25 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres }: {
                         cariye de yansır, burada yalnızca cariye özgü bilgiler.
                         Talep yetkisi yoksa bu üç alan cariden düzenlenir ve
                         taleplere yansır. */}
-                    <h3 className="wide musteri-form-baslik">Fatura bilgileri</h3>
+                    <p className="wide kayit-formu-bolum">Fatura bilgileri</p>
                     {!talepDuzenler ? (
                       <>
-                        <label className="wide">Ad soyad / unvan<input name="cari_ad" required minLength={2} maxLength={180} defaultValue={cariKaydi?.name ?? ""} /></label>
+                        <label className="wide"><span>Ad soyad / unvan<b className="req" aria-hidden="true">*</b></span><input name="cari_ad" required minLength={2} maxLength={180} defaultValue={cariKaydi?.name ?? ""} /></label>
                         <label>Telefon<input name="cari_telefon" type="tel" maxLength={80} defaultValue={cariKaydi?.phone ?? ""} /></label>
                         <label>E-posta<input name="cari_eposta" type="email" maxLength={240} defaultValue={cariKaydi?.email ?? ""} /></label>
                       </>
                     ) : null}
-                    <label>Vergi no<input name="tax_number" maxLength={40} defaultValue={cariKaydi?.tax_number ?? ""} /></label>
+                    <label>Vergi no<input name="tax_number" maxLength={40} placeholder="VKN / TCKN" defaultValue={cariKaydi?.tax_number ?? ""} /></label>
                     <label>Vergi dairesi<input name="tax_office" maxLength={120} defaultValue={cariKaydi?.tax_office ?? ""} /></label>
-                    <label className="wide">Adres<textarea name="address" rows={2} maxLength={500} defaultValue={cariKaydi?.address ?? ""} /></label>
+                    <label className="wide">Adres<textarea name="address" rows={2} maxLength={500} placeholder="Fatura adresi" defaultValue={cariKaydi?.address ?? ""} /></label>
                   </>
                 ) : null}
-                <p className="fin-form-note wide">
-                  {talepDuzenler ? "Künye en son talebe yazılır. Ad, telefon ve e-posta müşterinin taleplerinde, işlerinde ve carisinde birlikte güncellenir." : "Ad, telefon ve e-posta müşterinin taleplerinde ve işlerinde de güncellenir."}
+                <p className="wide kayit-formu-not">
+                  {talepDuzenler ? "Ad, telefon ve e-posta müşterinin taleplerinde, işlerinde ve carisinde birlikte güncellenir." : "Ad, telefon ve e-posta müşterinin taleplerinde ve işlerinde de güncellenir."}
                 </p>
-                <div className="panel-form-actions wide">
-                  <button className="panel-primary">Kaydet</button>
+                <div className="wide panel-form-actions kayit-formu-eylem">
+                  <p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p>
+                  <button className="panel-primary">Değişiklikleri kaydet</button>
                 </div>
               </form>
             </PanelDrawer>
