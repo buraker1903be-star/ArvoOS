@@ -263,3 +263,53 @@
      sola kaydırıyordu: basılan sekmenin adı ikonun soluna kayıyordu. */
   .os-root .os-dock .os-dock-item:is(:hover,:focus,:active,.is-sub-open) .os-dock-label{transform:none;opacity:1}
 }
+
+/* ---------- LİSTE ÜSTÜ: özet ve süzgeç daha az yer ----------
+   Talepler'de ilk kayıt ekranın ortasından (485px) başlıyordu: özet
+   sayıları iki satır (138px), temsilci seçimi ile arama alt alta (96px).
+   Özet tek satırda yana kayar; seçim(ler) ve arama yan yana. */
+@media (max-width:760px){
+  .os-root .panel-content .kayit-serit{padding:10px 0;border-radius:var(--r-lg)}
+  .os-root .panel-content .kayit-serit>dl{
+    flex-wrap:nowrap;gap:0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
+    padding:0 var(--sp-4);scroll-padding:0 var(--sp-4);
+  }
+  .os-root .panel-content .kayit-serit>dl::-webkit-scrollbar{display:none}
+  .os-root .panel-content .kayit-serit>dl>div{flex:none;padding:0 14px;border-left:1px solid var(--line-soft)}
+  .os-root .panel-content .kayit-serit>dl>div:first-child{padding-left:0;border-left:0}
+  .os-root .panel-content .kayit-serit dt{white-space:nowrap}
+  .os-root .panel-content .kayit-serit dd{white-space:nowrap}
+
+  .os-root .panel-content .talep-ara:has(>select){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2);width:100%}
+  .os-root .panel-content .talep-ara:has(>select)>*{min-width:0;width:100%;margin:0}
+  .os-root .panel-content .talep-ara:has(>select)>:nth-child(odd):last-child{grid-column:1/-1}
+}
+
+/* ---------- ORTA PENCERELER alttan açılan sayfa (panel-modal) ----------
+   Cari hesap, prim hesabı, yetkiler… telefonda dört yanı 24px boşluklu
+   yüzen bir kutuydu; ekranın kenarları boşa gidiyordu ve kayıt
+   formlarıyla (çekmece, zaten alttan açılıyor) farklı davranıyordu. */
+@media (max-width:760px){
+  .os-root .panel-modal-root,.panel-root .panel-modal-root{align-items:flex-end;padding:0}
+  .os-root .panel-modal,.panel-root .panel-modal{
+    width:100%;max-width:none;max-height:calc(100dvh - 12px - env(safe-area-inset-top));margin:0;
+    border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .panel-root .panel-modal-root[data-boy] .panel-modal{max-height:calc(100dvh - 12px - env(safe-area-inset-top))}
+  .panel-root .panel-modal-header{padding:18px 64px 14px 18px}
+  .panel-root .panel-modal-close{top:14px;right:14px;width:36px;height:36px;border-radius:50%}
+  .panel-root .panel-modal-body{padding:16px 16px 20px}
+  /* Pencere içindeki özet de tek satırda yana kayar (liste üstüyle aynı). */
+  .panel-root .panel-modal .kayit-serit{padding:10px 0}
+  .panel-root .panel-modal .kayit-serit>dl{flex-wrap:nowrap;gap:0;overflow-x:auto;scrollbar-width:none;padding:0 var(--sp-4)}
+  .panel-root .panel-modal .kayit-serit>dl::-webkit-scrollbar{display:none}
+  .panel-root .panel-modal .kayit-serit>dl>div{flex:none;padding:0 14px;border-left:1px solid var(--line-soft)}
+  .panel-root .panel-modal .kayit-serit>dl>div:first-child{padding-left:0;border-left:0}
+  .panel-root .panel-modal .kayit-serit :is(dt,dd){white-space:nowrap}
+}
+@media (max-width:760px){
+  /* Boy seçenekleri (ör. "ekran": padding 16px) aynı ağırlıkta ve sonra
+     yükleniyor; telefonda boy farkı yok, hepsi alttan tam genişlik. */
+  .panel-root .panel-modal-root[data-boy]{align-items:flex-end;padding:0}
+}
