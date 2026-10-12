@@ -38,7 +38,15 @@ export type YetkiProfili = {
   acikModuller: readonly string[];
   /** Profilin tanımı sayılan yetenekler; kişiye "açık" yazılır. */
   acikYetkiler: readonly string[];
+  /**
+   * Profilin ait olduğu departman türü (2026-10). Satış departmanındaki
+   * kişi Satış Müdürü, operasyondaki Operasyon Müdürü olabilir;
+   * bkz. profilDepartmanEngeli.
+   */
+  departman: DepartmanTuru;
 };
+
+export type DepartmanTuru = "satis" | "operasyon";
 
 export const YETKI_PROFILLERI: readonly YetkiProfili[] = [
   {
@@ -55,8 +63,61 @@ export const YETKI_PROFILLERI: readonly YetkiProfili[] = [
       "operations.arsiv.yonet",
       "operations.ekip.gor",
     ],
+    departman: "operasyon",
+  },
+  {
+    key: "satis-muduru",
+    label: "Satış Müdürü",
+    aciklama:
+      "Bütün talepleri, teklifleri ve sözleşmeleri görür, personele atar, ekibin takvimini ve müşteri geçmişini izler. " +
+      "Operasyon, Finans, İnsan Kaynakları ve Raporlar kapalıdır; Dokümanlar ve Posta açık kalır.",
+    rol: "manager",
+    acikModuller: ["crm", "documents", "posta"],
+    acikYetkiler: [
+      "crm.kayit.ata",
+      "crm.talep.yonet",
+      "crm.talep.arsivle",
+      "crm.teklif.yonet",
+      "crm.sozlesme.yonet",
+      "crm.musteri.sorgula",
+      "crm.takvim.tum",
+    ],
+    departman: "satis",
   },
 ];
+
+/*
+  DEPARTMAN EŞLEŞMESİ (2026-10). Kurum sahibinin kuralı: satış
+  departmanındaki kişi Satış Müdürü, operasyon departmanındaki Operasyon
+  Müdürü olabilir — tersi bir yanlışlıktır (satışçıya operasyonun bütün
+  işlerini açmak). Departman adı serbest metin olduğu için tür adından
+  çıkarılıyor ("Satış Departmanı", "SATIŞ", "Operasyon Ekibi").
+
+  Adı iki türe de uymayan (ya da departmanı olmayan) kişiye her profil
+  açık: kurumun departman adlarını bilmiyoruz, tanımadığımız bir adla
+  müdürlüğü kilitlemek işi durdururdu.
+*/
+const kucult = (ad: string) => ad.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ı/g, "i");
+
+export function departmanTuru(departmanAdi: string | null | undefined): DepartmanTuru | null {
+  const ad = kucult(departmanAdi ?? "");
+  if (/\bsatis/.test(ad)) return "satis";
+  if (/\boperasyon/.test(ad)) return "operasyon";
+  return null;
+}
+
+/** Kişinin departmanına uygun profiller; tür tanınmıyorsa hepsi. */
+export function departmanaUygunProfiller(departmanAdi: string | null | undefined, profiller: readonly YetkiProfili[] = YETKI_PROFILLERI): YetkiProfili[] {
+  const tur = departmanTuru(departmanAdi);
+  return tur ? profiller.filter((profil) => profil.departman === tur) : [...profiller];
+}
+
+/** Profil bu departmana uygulanabilir mi; değilse kullanıcıya gösterilecek açıklama. */
+export function profilDepartmanEngeli(profil: YetkiProfili, departmanAdi: string | null | undefined): string | null {
+  const tur = departmanTuru(departmanAdi);
+  if (!tur || tur === profil.departman) return null;
+  return `${profil.label} yalnızca ${profil.departman === "satis" ? "satış" : "operasyon"} departmanındaki personele uygulanır; bu kişi "${departmanAdi}" departmanında. Önce departmanını değiştirin.`;
+}
 
 export const profilBul = (key: string | null | undefined) =>
   YETKI_PROFILLERI.find((profil) => profil.key === key) ?? null;

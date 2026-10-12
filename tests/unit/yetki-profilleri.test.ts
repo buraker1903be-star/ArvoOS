@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { profilBul, profilModulKararlari, profilUygulandiMi, YETKI_PROFILLERI } from "@/lib/yetki-profilleri";
+import { departmanaUygunProfiller, departmanTuru, profilBul, profilDepartmanEngeli, profilModulKararlari, profilUygulandiMi, YETKI_PROFILLERI } from "@/lib/yetki-profilleri";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
 import { TUM_YETKILER, varsayilanAcikMi } from "@/lib/yetkiler";
 
@@ -85,4 +85,31 @@ test("uygulandı mı: tam küme doğru, eksik parça yanlış", () => {
 test("bilinmeyen profil anahtarı null", () => {
   assert.equal(profilBul("yok-boyle-bir-profil"), null);
   assert.equal(profilBul(null), null);
+});
+
+test("departman türü addan çıkıyor; Türkçe harf ve büyük harf gözetilmez", () => {
+  assert.equal(departmanTuru("Satış Departmanı"), "satis");
+  assert.equal(departmanTuru("SATIŞ"), "satis");
+  assert.equal(departmanTuru("satis ekibi"), "satis");
+  assert.equal(departmanTuru("Operasyon Departmanı"), "operasyon");
+  assert.equal(departmanTuru("OPERASYON"), "operasyon");
+  assert.equal(departmanTuru("Yönetim Departmanı"), null);
+  assert.equal(departmanTuru(null), null);
+});
+
+test("satış departmanı Satış Müdürü, operasyon departmanı Operasyon Müdürü olabilir", () => {
+  const satis = profilBul("satis-muduru")!;
+  const operasyon = profilBul("operasyon-muduru")!;
+  assert.deepEqual(departmanaUygunProfiller("Satış Departmanı").map((p) => p.key), ["satis-muduru"]);
+  assert.deepEqual(departmanaUygunProfiller("Operasyon Departmanı").map((p) => p.key), ["operasyon-muduru"]);
+  assert.equal(profilDepartmanEngeli(satis, "Satış Departmanı"), null);
+  assert.equal(profilDepartmanEngeli(operasyon, "Operasyon Departmanı"), null);
+  assert.match(profilDepartmanEngeli(operasyon, "Satış Departmanı") ?? "", /yalnızca operasyon departmanındaki/);
+  assert.match(profilDepartmanEngeli(satis, "Operasyon Departmanı") ?? "", /yalnızca satış departmanındaki/);
+});
+
+test("tanınmayan ya da boş departmanda her profil açık", () => {
+  assert.equal(departmanaUygunProfiller("Muhasebe").length, YETKI_PROFILLERI.length);
+  assert.equal(departmanaUygunProfiller(null).length, YETKI_PROFILLERI.length);
+  for (const p of YETKI_PROFILLERI) assert.equal(profilDepartmanEngeli(p, "Muhasebe"), null);
 });

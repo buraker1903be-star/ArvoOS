@@ -3,6 +3,7 @@
 import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { CONFIDENTIALITY_AGREEMENT_TEXT, CONFIDENTIALITY_AGREEMENT_VERSION, confidentialityAgreementNumber } from "@/lib/confidentiality-agreement";
@@ -102,4 +103,82 @@ export async function createEmployee(...args: Parameters<typeof createEmployee__
 }
 export async function updateEmployee(...args: Parameters<typeof updateEmployee__impl>) {
   return runPanelAction(() => updateEmployee__impl(...args), "Personel bilgileri güncellendi");
+}
+
+/*
+  YANLIŞ AÇILAN PERSONELİ SİLME (2026-10).
+
+  Yalnızca HİÇBİR İZİ OLMAYAN kayıt silinir. hr_employees silinince
+  veritabanı şunları KASKATLA götürüyor: randevular, özlük belgeleri,
+  gizlilik sözleşmeleri, satış primi tahakkukları, izin talepleri, oran
+  geçmişi; şunları sahipsiz bırakıyor: atanmış talepler, işler, adımlar,
+  oturum kayıtları. Prim ödemesi ve operasyon primi ise silmeyi
+  reddediyor. Engel bu yüzeyin tamamına bakıyor (AGENTS.md "Silme engeli,
+  kaskat yüzeyi kadar geniş olmalı"); yalnızca personel eklenirken
+  kendiliğinden hazırlanan İMZALANMAMIŞ gizlilik sözleşmesi ve oran
+  geçmişi engel sayılmıyor — onlar kaydın kendisinin parçası.
+
+  Panel hesabı olan personel silinmez: oturum geçmişi, yazdığı yorumlar
+  ve kayıt izleri o hesaba bağlı. Doğru yol erişimi kapatmak ve durumu
+  "İşten ayrıldı" yapmak. Bekleyen davet de engel: önce iptal edilmeli,
+  yoksa davet kabul edilince kaydı olmayan bir üye doğar.
+
+  Engelin sorguları hata yutmaz: okunamayan bir engel "engel yok" demek
+  değil (AGENTS.md).
+*/
+async function personelSil__impl(formData: FormData) {
+  const { supabase, membership } = await hrContext();
+  const org = membership.organization_id;
+  const id = text(formData, "employee_id", 80);
+  if (!id) throw new Error("Personel seçilmedi.");
+
+  const { data: personel, error: personelHatasi } = await supabase.from("hr_employees")
+    .select("id,full_name,user_id,email").eq("id", id).eq("organization_id", org).maybeSingle();
+  if (personelHatasi) throw new Error("Personel okunamadı: " + personelHatasi.message);
+  if (!personel) throw new Error("Personel bulunamadı veya erişiminiz yok.");
+  if (personel.user_id) throw new Error("Panel hesabı olan personel silinmez: oturum ve kayıt geçmişi bu hesaba bağlı. Erişimini kapatıp durumunu \"İşten ayrıldı\" yapın.");
+
+  const say = (tablo: string, sutun: string, durum?: string) => {
+    const sorgu = supabase.from(tablo).select("id", { count: "exact", head: true }).eq("organization_id", org).eq(sutun, id);
+    return durum ? sorgu.eq("status", durum) : sorgu;
+  };
+  const kontroller: [string, PromiseLike<{ count: number | null; error: { message: string } | null }>][] = [
+    ["atanmış talep", say("crm_opportunities", "assigned_employee_id")],
+    ["atanmış iş", say("operation_workflows", "assigned_employee_id")],
+    ["atanmış iş adımı", say("operation_steps", "assigned_employee_id")],
+    ["randevu", say("crm_appointments", "employee_id")],
+    ["özlük belgesi", say("hr_employee_documents", "employee_id")],
+    ["imzalı gizlilik sözleşmesi", say("hr_confidentiality_agreements", "employee_id", "signed")],
+    ["satış primi", say("hr_sales_commissions", "employee_id")],
+    ["operasyon primi", say("hr_operation_commissions", "employee_id")],
+    ["prim ödemesi", say("hr_commission_payments", "employee_id")],
+    ["izin talebi", say("hr_leave_requests", "employee_id")],
+    ["oturum kaydı", say("user_session_logs", "employee_id")],
+  ];
+  const sonuclar = await Promise.all(kontroller.map(([, sorgu]) => sorgu));
+  const bagli: string[] = [];
+  sonuclar.forEach((sonuc, sira) => {
+    if (sonuc.error) throw new Error(`Silme engeli denetlenemedi (${kontroller[sira][0]}): ${sonuc.error.message}`);
+    if (sonuc.count) bagli.push(`${sonuc.count} ${kontroller[sira][0]}`);
+  });
+  if (bagli.length) throw new Error(`Bu personelin kayıtları var (${bagli.join(", ")}); silinemez. Durumunu "İşten ayrıldı" yapın.`);
+
+  if (personel.email) {
+    const { data: davetler, error: davetHatasi } = await supabase.from("organization_invitations")
+      .select("email").eq("organization_id", org).in("status", ["pending", "sent"]);
+    if (davetHatasi) throw new Error("Davetler okunamadı: " + davetHatasi.message);
+    if ((davetler ?? []).some((d) => String(d.email).toLowerCase() === String(personel.email).toLowerCase()))
+      throw new Error("Bu personele gönderilmiş bekleyen bir davet var; önce daveti iptal edin.");
+  }
+
+  const { data: silinen, error } = await supabase.from("hr_employees").delete().eq("id", id).eq("organization_id", org).select("id");
+  if (error) throw new Error("Personel silinemedi: " + error.message);
+  // RLS satırı sessizce elerse "sildim ama silinmedi" kalmasın.
+  if (!silinen?.length) throw new Error("Personel silinemedi: bu işlem için yetkiniz yok.");
+  revalidatePath("/panel/hr", "layout");
+  redirect("/panel/hr");
+}
+
+export async function personelSil(...args: Parameters<typeof personelSil__impl>) {
+  return runPanelAction(() => personelSil__impl(...args), "Personel kaydı silindi");
 }

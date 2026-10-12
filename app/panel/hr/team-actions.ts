@@ -250,3 +250,48 @@ export async function updateTeamMemberAccess(...args: Parameters<typeof updateTe
 export async function cancelInvitation(...args: Parameters<typeof cancelInvitation__impl>) {
   return runPanelAction(() => cancelInvitation__impl(...args));
 }
+
+/*
+  ERİŞİMİ KAPAT / AÇ (2026-10). Rol formundaki "Aktif" kutucuğu aynı
+  işi yapıyordu ama rolle birlikte kaydedildiği için gözden kaçıyordu:
+  erişimi kapatmak isteyen önce rol seçimini, sonra kutucuğu, sonra
+  Kaydet'i bulmak zorundaydı. Bu işlem yalnızca is_active'i değiştirir;
+  rol ve yetkiler olduğu gibi kalır, erişim geri açıldığında kişi
+  kaldığı yerden devam eder.
+
+  Korumalar rol formuyla aynı: Kurum Sahibi'ne yalnızca bir Kurum Sahibi
+  dokunur (politika da öyle, 20261011224845) ve kişi kendi erişimini
+  kapatamaz — kendini panelden atmış olurdu.
+*/
+async function erisimDegistir__impl(formData: FormData) {
+  const { supabase, membership, userId: ben } = await teamContext();
+  const hedef = String(formData.get("user_id") ?? "").trim();
+  const ac = formData.get("ac") === "1";
+  if (!hedef) throw new Error("Kullanıcı seçilmedi.");
+  if (hedef === ben && !ac) throw new Error("Kendi panel erişiminizi kapatamazsınız.");
+
+  const { data: hedefUyelik, error: okumaHatasi } = await supabase.from("organization_memberships")
+    .select("role").eq("organization_id", membership.organization_id).eq("user_id", hedef).maybeSingle();
+  if (okumaHatasi) throw new Error("Üyelik okunamadı: " + okumaHatasi.message);
+  if (!hedefUyelik) throw new Error("Bu kişinin panel üyeliği yok.");
+  if (hedefUyelik.role === "owner" && membership.role !== "owner")
+    throw new Error("Kurum Sahibi'nin erişimini yalnızca bir Kurum Sahibi değiştirebilir.");
+
+  const { data: guncellenen, error } = await supabase.from("organization_memberships")
+    .update({ is_active: ac })
+    .eq("organization_id", membership.organization_id).eq("user_id", hedef)
+    .select("user_id");
+  if (error) throw new Error("Erişim değiştirilemedi: " + error.message);
+  if (!guncellenen?.length) throw new Error("Erişim değiştirilemedi: yetkiniz yok veya kayıt bulunamadı.");
+  // Kapatılan personel diğer ürünlere de hemen giremesin (updateTeamMemberAccess ile aynı).
+  await Promise.all([
+    syncArcTenantQuietly(membership.organization_id),
+    syncRandevuTenantQuietly(membership.organization_id),
+    syncArvolabMembers(membership.organization_id),
+  ]);
+  revalidatePath("/panel/hr", "layout");
+}
+
+export async function erisimDegistir(formData: FormData) {
+  return runPanelAction(() => erisimDegistir__impl(formData), formData.get("ac") === "1" ? "Panel erişimi açıldı" : "Panel erişimi kapatıldı");
+}

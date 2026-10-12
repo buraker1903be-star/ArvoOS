@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
 import { TUM_YETKILER, varsayilanAcikMi, yetkiDegisikligiEngeli } from "@/lib/yetkiler";
-import { profilBul, profilModulKararlari } from "@/lib/yetki-profilleri";
+import { profilBul, profilDepartmanEngeli, profilModulKararlari } from "@/lib/yetki-profilleri";
 import { yonetimDepartmanindaMi } from "@/lib/yonetim-departmani";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
@@ -217,6 +217,18 @@ async function applyPermissionProfile__impl(formData: FormData) {
   if (await yonetimDepartmanindaMi(supabase, membership.organization_id, "user_id", hedef)) {
     throw new Error("Bu kişi Yönetici departmanında olduğu için Kurum Sahibi yetkisine sahip. Profil uygulamak için önce departmanını değiştirin.");
   }
+  /* Departman eşleşmesi (2026-10): satış departmanı Satış Müdürü,
+     operasyon departmanı Operasyon Müdürü olabilir (lib/yetki-profilleri.ts).
+     Ekran yalnızca uygun profili gösteriyor; burası doğrudan gönderilen
+     formu da reddediyor. Okunamazsa "engel yok" sayılmaz. */
+  const { data: personelSatiri, error: personelHatasi } = await supabase.from("hr_employees")
+    .select("hr_departments(name)")
+    .eq("organization_id", membership.organization_id).eq("user_id", hedef).maybeSingle();
+  if (personelHatasi) throw new Error("Personelin departmanı okunamadı: " + personelHatasi.message);
+  const departmanIliskisi = (personelSatiri as { hr_departments?: { name: string } | { name: string }[] | null } | null)?.hr_departments;
+  const departmanAdi = Array.isArray(departmanIliskisi) ? departmanIliskisi[0]?.name : departmanIliskisi?.name;
+  const departmanEngeli = profilDepartmanEngeli(profil, departmanAdi);
+  if (departmanEngeli) throw new Error(departmanEngeli);
 
   /* Kendine uygulama: profil yetkilendirmeyi kapatıyorsa sayfaya bir
      daha girilemez ve geri açacak tek kişi Kurum Sahibi kalır. */

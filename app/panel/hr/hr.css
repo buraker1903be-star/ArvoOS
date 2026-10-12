@@ -286,3 +286,6 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .prim-ozel input{min-height:34px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font:inherit;font-size:var(--fs-sm)}
 /* Ekip listesi: adın yanında çevrimiçi noktası (son 2 dakikada görülen). */
 .personel-cevrimici{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 2px var(--success-soft);vertical-align:middle}
+/* Personel detayı → Panel erişimi: erişimi kapat/aç ve departmana uygun müdür profili. */
+.personel-erisim-eylem{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
+.personel-erisim-eylem form{margin:0}

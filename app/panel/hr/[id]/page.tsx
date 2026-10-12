@@ -13,8 +13,11 @@ import { primVerisi } from "../prim-verisi";
 import { DAVET_DURUM_ADLARI, kisininDaveti, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
 import { PrimPenceresi } from "../prim-penceresi";
 import { PersonelHareketleri } from "../personel-hareketleri";
-import { updateEmployee } from "../actions";
-import { updateTeamMemberAccess, cancelInvitation } from "../team-actions";
+import { personelSil, updateEmployee } from "../actions";
+import { erisimDegistir, updateTeamMemberAccess, cancelInvitation } from "../team-actions";
+import { applyPermissionProfile } from "../../settings/permissions/actions";
+import { departmanaUygunProfiller, profilUygulandiMi } from "@/lib/yetki-profilleri";
+import { PERMISSION_MODULES } from "@/lib/role-permissions";
 import { InviteTeamForm } from "../invite-team-form";
 import { TeamInviteLink } from "../invite-link";
 import { uploadEmployeeDocument, deleteEmployeeDocument } from "../documents-actions";
@@ -169,12 +172,20 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
     ortak kutuyu görebilen (posta.gor).
   */
   const postaGorur = izin("posta.gor");
-  const [memberResult, invitationResult, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
+  /* Hazır profil düğmesinin "uygulandı" durumu için kişinin istisnaları
+     (yalnızca yetki yönetebilene ve panel hesabı olana). */
+  const profilOkunur = izin("settings.yetki.yonet") && Boolean(employee.user_id);
+  const bosIstisna = Promise.resolve({ data: [] as { key: string; acik: boolean }[] });
+  const [memberResult, invitationResult, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, kisiModulSonuc, kisiYetkiSonuc] = await Promise.all([
     canManageTeam && employee.user_id ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", org).eq("user_id", employee.user_id).maybeSingle() : Promise.resolve({ data: null }),
     canManageTeam && !employee.user_id && employee.email ? supabase.from("organization_invitations").select("id,email,role,status,expires_at,error_message,created_at").eq("organization_id", org).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
     crmVar ? musteriWhatsapp(org, employee.phone) : Promise.resolve({ numara: null, mesajlar: [] }),
     postaGorur ? musteriPostalari(supabase, org, { talepIdleri: [], eposta: employee.email, ilgilenenKullanici: employee.user_id }) : Promise.resolve([]),
+    profilOkunur ? supabase.from("member_module_permissions").select("module_key,can_access").eq("organization_id", org).eq("user_id", employee.user_id!) : bosIstisna,
+    profilOkunur ? supabase.from("member_capability_permissions").select("capability_key,allowed").eq("organization_id", org).eq("user_id", employee.user_id!) : bosIstisna,
   ]);
+  const kisiModul = new Map(((kisiModulSonuc.data ?? []) as { module_key?: string; can_access?: boolean }[]).map((r) => [String(r.module_key), Boolean(r.can_access)]));
+  const kisiYetki = new Map(((kisiYetkiSonuc.data ?? []) as { capability_key?: string; allowed?: boolean }[]).map((r) => [String(r.capability_key), Boolean(r.allowed)]));
   const member = memberResult.data as Member | null;
   const { davet: pendingInvite, sebep: davetSebebi } = kisininDaveti(
     (invitationResult.data ?? []) as Invitation[], employee.email, simdi(),
@@ -290,6 +301,19 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               <Link className="os-menu-item" href="/panel/hr">Ekip listesi</Link>
+              {/* Yanlış açılan kaydı silme: yalnızca panel hesabı olmayan
+                  personelde; bağlı kaydı olanı işlem reddediyor (actions.ts). */}
+              {izin("hr.personel.yonet") && !employee.user_id ? (
+                <PanelDrawer triggerLabel="Personeli sil" triggerClassName="os-menu-item is-danger" kicker="PERSONEL" title="Personeli sil" description={`${employee.full_name} · silme geri alınamaz`}>
+                  <div className="panel-danger-zone">
+                    <p>Yalnızca yanlış açılmış, hiçbir kaydı olmayan personel silinir. Talep, iş, randevu, prim, belge ya da imzalı sözleşmesi olan personel silinmez; onun durumunu &quot;İşten ayrıldı&quot; yapın.</p>
+                    <form action={personelSil}>
+                      <input type="hidden" name="employee_id" value={employee.id} />
+                      <button className="panel-danger" type="submit">Evet, {employee.full_name} kaydını sil</button>
+                    </form>
+                  </div>
+                </PanelDrawer>
+              ) : null}
             </div>
           </details>
         </div>
@@ -480,6 +504,36 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                   </div>
                 </>
               )}
+              {/*
+                ERİŞİM VE MÜDÜRLÜK (2026-10). Erişimi kapatıp açmak tek
+                düğme: rol formundaki "Aktif" kutucuğu gözden kaçıyordu.
+                Müdürlük, kişinin departmanına uygun hazır profil: satış
+                departmanı Satış Müdürü, operasyon departmanı Operasyon
+                Müdürü (lib/yetki-profilleri.ts; işlem de aynı kuralla
+                reddediyor). Kişinin kendisine, Kurum Sahibi'ne ve yönetim
+                departmanına gösterilmiyor — onların rolü elle değişmez.
+              */}
+              {member && employee.user_id !== userId && !managedByDepartment && member.role !== "owner" ? (
+                <div className="personel-erisim-eylem">
+                  <form action={erisimDegistir}>
+                    <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                    <input type="hidden" name="ac" value={member.is_active ? "0" : "1"} />
+                    <button className={member.is_active ? "panel-danger" : "panel-primary"} type="submit">{member.is_active ? "Erişimi kapat" : "Erişimi aç"}</button>
+                  </form>
+                  {profilOkunur ? departmanaUygunProfiller(departmentName).map((profil) => {
+                    const uygulandi = profilUygulandiMi(profil, { rol: member.role, modulIstisnalari: kisiModul, yetkiIstisnalari: kisiYetki }, PERMISSION_MODULES);
+                    return uygulandi ? (
+                      <span key={profil.key} className="status-pill" data-tone="success">{profil.label}</span>
+                    ) : (
+                      <form key={profil.key} action={applyPermissionProfile}>
+                        <input type="hidden" name="user_id" value={employee.user_id ?? ""} />
+                        <input type="hidden" name="profil" value={profil.key} />
+                        <button className="panel-secondary" type="submit" title={profil.aciklama}>{profil.label} yap</button>
+                      </form>
+                    );
+                  }) : null}
+                </div>
+              ) : null}
             </div>
 
             </> : null}

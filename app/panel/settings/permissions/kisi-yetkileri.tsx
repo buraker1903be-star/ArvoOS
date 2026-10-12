@@ -1,7 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_MODULES, PERMISSION_ROLES } from "@/lib/role-permissions";
 import { YETKI_GRUPLARI, acilabilirMi, gizliModulleriHesapla, varsayilanAcikMi } from "@/lib/yetkiler";
-import { YETKI_PROFILLERI, profilUygulandiMi } from "@/lib/yetki-profilleri";
+import { departmanaUygunProfiller, departmanTuru, profilUygulandiMi } from "@/lib/yetki-profilleri";
 import { applyPermissionProfile, updateMemberPermissions } from "./actions";
 import { StgIcon, StgSection } from "../settings-ui";
 // Bileşen CSS'ini kendisi alıyor: personel detayındaki pencerede de
@@ -48,8 +48,12 @@ export async function KisiYetkileri({ hedef }: { hedef: string }) {
   }
 
   const org = membership.organization_id;
-  const { data: uyelikVerisi, error: uyelikHatasi } = await supabase.from("organization_memberships").select("user_id,role,is_active")
-    .eq("organization_id", org).eq("user_id", hedef).maybeSingle();
+  const [{ data: uyelikVerisi, error: uyelikHatasi }, { data: personelSatiri }] = await Promise.all([
+    supabase.from("organization_memberships").select("user_id,role,is_active")
+      .eq("organization_id", org).eq("user_id", hedef).maybeSingle(),
+    supabase.from("hr_employees").select("hr_departments(name)")
+      .eq("organization_id", org).eq("user_id", hedef).maybeSingle(),
+  ]);
   if (uyelikHatasi) throw new Error("Üyelik okunamadı: " + uyelikHatasi.message);
   if (!uyelikVerisi) return <div className="stg-empty"><StgIcon name="lock" size={22} /><p>Bu kişinin kurumda panel üyeliği yok.</p></div>;
   const uyelik = uyelikVerisi as { user_id: string; role: string; is_active: boolean };
@@ -90,6 +94,16 @@ export async function KisiYetkileri({ hedef }: { hedef: string }) {
   });
   const acikModuller = PERMISSION_MODULES.filter((m) => !gizli.has(m.key)).map((m) => m.label);
 
+  /* Profiller kişinin departmanına göre: satış departmanı Satış Müdürü,
+     operasyon departmanı Operasyon Müdürü (lib/yetki-profilleri.ts). İşlem
+     de aynı kuralla reddediyor; burada yalnızca uymayanı göstermiyoruz. */
+  const iliski = (personelSatiri as { hr_departments?: { name: string } | { name: string }[] | null } | null)?.hr_departments;
+  const departmanAdi = Array.isArray(iliski) ? iliski[0]?.name : iliski?.name;
+  const profiller = departmanaUygunProfiller(departmanAdi);
+  const departmanNotu = departmanTuru(departmanAdi)
+    ? `Departmanı (${departmanAdi}) için uygun profil gösteriliyor.`
+    : "Departmanı satış ya da operasyon olarak tanınmadığı için iki profil de gösteriliyor.";
+
   return <div className="stg kisi-yetkileri">
     <p className="stg-muted kisi-yetki-ozet">
       <b>{rolAdi}</b>{uyelik.is_active ? "" : " · erişim kapalı"} · görebildiği modüller: {acikModuller.length ? acikModuller.join(", ") : "hiçbiri"}
@@ -106,10 +120,10 @@ export async function KisiYetkileri({ hedef }: { hedef: string }) {
     <StgSection
       id="kisi-profil" wide icon="shield" tone="success"
       kicker="HAZIR KÜME" title="Yetki profili"
-      description="Sık kullanılan yetki kümelerini tek adımda uygular: rol, modül erişimleri ve profilin tanım yetenekleri. Profil dışındaki kişisel yetenek istisnaları silinir, geri kalan her şey rolden gelir."
+      description={`Sık kullanılan yetki kümelerini tek adımda uygular: rol, modül erişimleri ve profilin tanım yetenekleri. Profil dışındaki kişisel yetenek istisnaları silinir, geri kalan her şey rolden gelir. ${departmanNotu}`}
     >
       <div className="stg-list">
-        {YETKI_PROFILLERI.map((profil) => {
+        {profiller.map((profil) => {
           const uygulandi = profilUygulandiMi(profil, {
             rol: uyelik.role,
             modulIstisnalari: kisiModul,
