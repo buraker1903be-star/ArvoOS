@@ -333,7 +333,8 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                     <span className="status-pill" data-tone={kind.tone}>{kind.label}</span>
                     <span className="cari-hareket-metin">
                       <b>{e.description}</b>
-                      <small>{date(e.transaction_date)}{e.reference_no ? ` · ${e.reference_no}` : ""}</small>
+                      {/* İç anahtar (TAH:<uuid>) gösterilmez; eskiden satırda ham referans yazıyordu. */}
+                      <small>{date(e.transaction_date)}{referans ? ` · ${referans}` : ""}</small>
                     </span>
                     <strong className={e.entry_type === "credit" ? "cari-arti" : undefined}>
                       {e.entry_type === "credit" ? "−" : "+"}
