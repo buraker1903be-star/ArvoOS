@@ -5,7 +5,7 @@ import { formatSubject } from "@/lib/table-format";
 import { RepresentativeCell } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { unarchiveWorkflow } from "../actions";
-import { OpsIcon, shortDate } from "../ops-shared";
+import { OpsIcon, shortDate, todayIstanbul } from "../ops-shared";
 import { aramaDeseni } from "@/lib/liste-arama";
 import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import "../../crm/crm.css";
@@ -38,9 +38,9 @@ type ArsivIsi = {
 };
 
 export default async function OperasyonArsivi({ searchParams }: {
-  searchParams: Promise<{ arama?: string; sayfa?: string }>;
+  searchParams: Promise<{ arama?: string; sayfa?: string; donem?: string; kaynak?: string }>;
 }) {
-  const { arama, sayfa } = await searchParams;
+  const { arama, sayfa, donem, kaynak } = await searchParams;
   /* Arama deseni SÜZGECE GİRMEDEN temizleniyor: PostgREST'in `or`
      süzgeci virgülle ayrılmış bir metin, yani "Yılmaz, Ayşe" diye
      arayan kullanıcı sorguyu bozuyor ve sayfa hata veriyordu
@@ -53,22 +53,57 @@ export default async function OperasyonArsivi({ searchParams }: {
   if (!modules.some((modul) => modul.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
 
-  let liste = supabase.from("operation_workflows")
-    .select("id,title,customer_name,due_date,archived_at,archived_by,assigned_employee_id", { count: "exact" })
-    .eq("organization_id", organizationId)
-    .eq("status", "archived")
+  /*
+    ŞERİT SÜZGEÇLERİ (12.10.2026). Sayfa yalnızca "Tümü" ve arama
+    kutusu taşıyordu; arşivin asıl soruları ("bu ay neyi kapattık",
+    "hangisi ödeme kapandığı için kendiliğinden kapandı") hiçbir yerde
+    yanıtlanmıyordu.
+
+    Şerit sayıları listeyle AYNI kümeden geliyor: aramaya saygılı,
+    yalnızca kendi süzgeçleri farklı. Sayının gösterdiği küme ile
+    tıklandığında açılan liste ayrı olursa rozet yanıltıcı olur
+    (AGENTS.md "Liste sayfaları").
+  */
+  const seciliDonem = donem === "ay" ? "ay" : null;
+  const seciliKaynak = kaynak === "otomatik" || kaynak === "elle" ? kaynak : null;
+  const ayBasi = `${todayIstanbul().slice(0, 7)}-01`;
+
+  const temel = (sayarak = false) => {
+    let q = sayarak
+      ? supabase.from("operation_workflows").select("id", { count: "exact", head: true })
+      : supabase.from("operation_workflows")
+          .select("id,title,customer_name,due_date,archived_at,archived_by,assigned_employee_id", { count: "exact" });
+    q = q.eq("organization_id", organizationId).eq("status", "archived");
+    if (desen) q = q.or(`title.ilike.*${desen}*,customer_name.ilike.*${desen}*`);
+    return q;
+  };
+  /* "Otomatik" = arşivleyen kişi yok: ödeme kapandığında tetikleyici
+     kapatıyor. "Elle" onun tersi. */
+  const suzgecle = <T extends ReturnType<typeof temel>>(q: T) => {
+    let s = q;
+    if (seciliDonem === "ay") s = s.gte("archived_at", ayBasi) as T;
+    if (seciliKaynak === "otomatik") s = s.is("archived_by", null) as T;
+    else if (seciliKaynak === "elle") s = s.not("archived_by", "is", null) as T;
+    return s;
+  };
+
+  const liste = suzgecle(temel())
     .order("archived_at", { ascending: false })
     .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]);
-  if (desen) liste = liste.or(`title.ilike.*${desen}*,customer_name.ilike.*${desen}*`);
 
   const [
     { data, error, count: suzgecSayisi },
     { count: toplam },
+    { count: buAy },
+    { count: otomatik },
+    { count: elle },
     { data: personelVerisi, error: personelHatasi },
   ] = await Promise.all([
     liste,
-    supabase.from("operation_workflows").select("id", { count: "exact", head: true })
-      .eq("organization_id", organizationId).eq("status", "archived"),
+    temel(true),
+    temel(true).gte("archived_at", ayBasi),
+    temel(true).is("archived_by", null),
+    temel(true).not("archived_by", "is", null),
     // Pasif personel de dahil: arşivdeki eski işlerin sorumlusu ayrılmış olabilir
     supabase.from("hr_employees").select("id,full_name,user_id,employment_status").eq("organization_id", organizationId),
   ]);
@@ -95,11 +130,16 @@ export default async function OperasyonArsivi({ searchParams }: {
 
   const sonSayfa = sonSayfaNo(suzgecSayisi, isler.length, sayfaNo);
 
-  const adres = (degisen: { arama?: string; sayfa?: string }) => {
+  /* Süzgeç değişince sayfa başa dönüyor; arama korunuyor. */
+  const adres = (degisen: { arama?: string; sayfa?: string; donem?: string; kaynak?: string }) => {
     const p = new URLSearchParams();
     const a = "arama" in degisen ? degisen.arama : aranan;
     const s = "sayfa" in degisen ? degisen.sayfa : "";
+    const d = "donem" in degisen ? degisen.donem : seciliDonem ?? "";
+    const k = "kaynak" in degisen ? degisen.kaynak : seciliKaynak ?? "";
     if (a) p.set("arama", a);
+    if (d) p.set("donem", d);
+    if (k) p.set("kaynak", k);
     if (s) p.set("sayfa", s);
     return p.size ? `/panel/operations/arsiv?${p}` : "/panel/operations/arsiv";
   };
@@ -116,14 +156,34 @@ export default async function OperasyonArsivi({ searchParams }: {
       </div>
     </header>
 
+    <nav className="kayit-serit talep-serit" aria-label="Arşiv özeti">
+      <dl>
+        <div className={!seciliDonem && !seciliKaynak ? "is-active" : undefined}>
+          <dt>Arşivdeki iş</dt>
+          <dd><Link href={adres({ donem: "", kaynak: "", sayfa: "" })}>{toplam ?? 0}</Link></dd>
+        </div>
+        <div className={seciliDonem === "ay" ? "is-active" : undefined}>
+          <dt>Bu ay arşivlenen</dt>
+          <dd><Link href={adres({ donem: "ay", sayfa: "" })}>{buAy ?? 0}</Link></dd>
+        </div>
+        <div className={seciliKaynak === "otomatik" ? "is-active" : undefined}>
+          <dt>Ödeme kapandı</dt>
+          <dd><Link href={adres({ kaynak: "otomatik", sayfa: "" })}>{otomatik ?? 0}</Link></dd>
+        </div>
+        <div className={seciliKaynak === "elle" ? "is-active" : undefined}>
+          <dt>Elle arşivlenen</dt>
+          <dd><Link href={adres({ kaynak: "elle", sayfa: "" })}>{elle ?? 0}</Link></dd>
+        </div>
+      </dl>
+    </nav>
+
     <div className="talep-izgara kayit-tek-izgara">
       <section className="panel-card talep-bilgi" aria-label="Arşivlenmiş işler">
         <div className="ekip-suzgec talep-suzgec">
-          <Link href={adres({ arama: "", sayfa: "" })} className={!aranan ? "is-active" : undefined}>
-            Tümü <small>{toplam ?? 0}</small>
-          </Link>
-          {aranan ? <span className="talep-suzgec-etiket">{suzgecSayisi ?? isler.length} sonuç</span> : null}
+          {aranan ? <span className="talep-suzgec-etiket">“{aranan}” · {suzgecSayisi ?? isler.length} sonuç</span> : null}
           <form className="talep-ara" method="get" action="/panel/operations/arsiv" role="search">
+            {seciliDonem ? <input type="hidden" name="donem" value={seciliDonem} /> : null}
+            {seciliKaynak ? <input type="hidden" name="kaynak" value={seciliKaynak} /> : null}
             <input name="arama" defaultValue={aranan} placeholder="İş başlığı ya da müşteri adı" aria-label="Arşivde ara" />
           </form>
         </div>
