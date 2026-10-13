@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { zamanliFetch } from "./zamanli-fetch";
 
 /**
  * Sunucuya özel (service role) Supabase istemcisi. Yalnızca sunucu
@@ -11,5 +12,5 @@ export function createAdminClient() {
   // Yeni biçim (sb_secret_…) ya da eski service_role anahtarı
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
-  return createSupabaseClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createSupabaseClient(url, key, { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: zamanliFetch } });
 }

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { zamanliFetch } from "./zamanli-fetch";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -8,6 +9,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      // Yavaş sorgular günlüğe (lib/supabase/zamanli-fetch).
+      global: { fetch: zamanliFetch },
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll(cookiesToSet) {
