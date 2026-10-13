@@ -5,7 +5,10 @@
 .site .layers{position:relative;transform-style:preserve-3d}
 .site .layer-main{position:relative}
 .site .layer-float{position:absolute;z-index:4;transform:translateZ(90px)}
-.site .layer-sign{right:1%;top:10%;width:clamp(210px,25%,310px)}
+/* İmza kartı 13.10.2026'da biraz aşağı indi: maketin üst çubuğu ve 14
+   günlük talep grafiği paneli tanıtan parçalar, kart onların üstünü
+   kapatıyordu. */
+.site .layer-sign{right:1%;top:24%;width:clamp(210px,25%,310px)}
 .site .layer-phone{left:1%;bottom:-8%;width:clamp(140px,17%,224px);transform:translateZ(140px)}
 .site .layer-card{right:1%;bottom:14%;width:clamp(210px,27%,320px)}
 .site .bob{animation:site-bob 7s ease-in-out infinite}

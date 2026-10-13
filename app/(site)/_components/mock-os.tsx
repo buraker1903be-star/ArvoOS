@@ -1,34 +1,37 @@
-// ArvoOS panel maketi: gerçek paneldeki gece mavisi kenar çubuğu, iOS tarzı
-// widget'lar ve tablolar. Veriler gösterim amaçlıdır (figcaption'da belirtilir).
+// ArvoOS panel maketi — panelin ŞEMATİK ikizi: yapısı gerçek, verisi
+// gösterim amaçlı (figcaption'da yazılı).
 //
-// 13.10.2026: maket panelin bugünkü ana ekranına yaklaştırıldı — menüye
-// Posta eklendi (modül panelde var ama makette yoktu) ve ana ekranın asıl
-// öğesi olan ON DÖRT GÜNLÜK talep grafiği öne alındı. Maket panelin
-// ekran görüntüsü değil, şematik ikizi: yapısı gerçek olmalı, verisi
-// değil.
+// 13.10.2026: maket panelin ESKİ kabuğunu gösteriyordu (koyu sol menü +
+// metin bağlantıları). Panel o kabuğu bıraktı: üstte sabit durum çubuğu
+// (kurumun kare simgesi, kurum adı, açık uygulamanın adı, arama, saat,
+// posta/bildirim, kullanıcı), altta ORTADA yüzen saydam dock (uygulama
+// simgeleri, açık olan vurgulu). İçerik tam genişlikte: ana ekranda
+// selamlama, on dört günlük talep grafiği, sayı kartları ve listeler.
+// Maket artık bunu gösteriyor.
 import type { Locale } from "@/lib/site/routes";
-import { BrandLogo } from "./marks";
 
 const T = {
   tr: {
     label: "ArvoOS panel arayüzü — örnek görünüm", cap: "Örnek arayüz · gösterim amaçlı veriler",
-    nav: ["Ana Sayfa", "CRM", "Operasyon", "Finans", "İnsan Kaynakları", "Posta", "Dokümanlar", "Raporlar"],
-    hello: "Günaydın", title: "Genel bakış",
+    kurum: "Akademik Merkez", uygulama: "Ana Ekran", ara: "Ara", saat: "09:24",
+    hello: "Günaydın, Ayşe", title: "Genel bakış",
     serie: "Yeni talepler", serieNote: "Son 14 gün", serieDelta: "+18%",
     widgets: [["Yeni talep", "12", "info"], ["Teklif bekleyen", "5", "gold"], ["Aktif iş", "18", "brand"], ["Tahsilat bekleyen", "7", "success"]],
     table: "Son teklifler",
     rows: [["Kuzey Klinik", "İmza bekliyor", "gold"], ["Atlas Eğitim", "Onaylandı", "success"], ["Mavi Danışmanlık", "Gönderildi", "info"], ["Ege Tasarım", "Taslak", "neutral"]],
-    flow: "İş akışı", steps: [["Keşif", 100], ["Uygulama", 64], ["Teslim", 28]], portal: "Müşteri portalı",
+    flow: "Yaklaşan aşamalar", steps: [["Keşif", 100], ["Uygulama", 64], ["Teslim", 28]],
+    dock: ["Ana Ekran", "CRM", "Operasyon", "Finans", "İnsan Kaynakları", "Posta", "Dokümanlar", "Raporlar"],
   },
   en: {
     label: "ArvoOS panel interface — sample view", cap: "Illustrative interface · sample data",
-    nav: ["Home", "CRM", "Operations", "Finance", "People", "Mail", "Documents", "Reports"],
-    hello: "Good morning", title: "Overview",
+    kurum: "Northside Group", uygulama: "Home", ara: "Search", saat: "09:24",
+    hello: "Good morning, Ayse", title: "Overview",
     serie: "New requests", serieNote: "Last 14 days", serieDelta: "+18%",
     widgets: [["New requests", "12", "info"], ["Awaiting proposal", "5", "gold"], ["Active jobs", "18", "brand"], ["Awaiting payment", "7", "success"]],
     table: "Recent proposals",
     rows: [["Northside Clinic", "Awaiting signature", "gold"], ["Atlas Academy", "Accepted", "success"], ["Blue Consulting", "Sent", "info"], ["Aegean Studio", "Draft", "neutral"]],
-    flow: "Job workflow", steps: [["Discovery", 100], ["Delivery", 64], ["Handover", 28]], portal: "Customer portal",
+    flow: "Upcoming stages", steps: [["Discovery", 100], ["Delivery", 64], ["Handover", 28]],
+    dock: ["Home", "CRM", "Operations", "Finance", "People", "Mail", "Documents", "Reports"],
   },
 } as const;
 
@@ -39,12 +42,21 @@ export function OsPanelMock({ locale }: { locale: Locale }) {
       <div className="mock-win" aria-hidden="true">
         <div className="mock-chrome"><i /><i /><i /><span className="mock-url">app.arvo-os.com/panel</span></div>
         <div className="mo-body">
-          <div className="mo-side">
-            <div className="mo-brand"><BrandLogo brand="arvoos" tone="dark" /></div>
-            {t.nav.map((n, i) => <div key={n} className={`mo-nav${i === 0 ? " on" : ""}`}><span>{n.slice(0, 1)}</span>{n}</div>)}
+          {/* Üst durum çubuğu: kurumun kare simgesi + adı + açık uygulama. */}
+          <div className="mo-bar">
+            <span className="mo-bar-brand"><i>A</i><span><b>{t.kurum}</b><small>{t.uygulama}</small></span></span>
+            <span className="mo-bar-search">{t.ara}<kbd>⌘K</kbd></span>
+            <span className="mo-bar-right">
+              <span className="mo-bar-clock">{t.saat}</span>
+              <span className="mo-bar-icon" data-nokta="evet" />
+              <span className="mo-bar-icon" />
+              <span className="mo-avatar" />
+            </span>
           </div>
+
           <div className="mo-main">
-            <div className="mo-top"><div><small>{t.hello}</small><b>{t.title}</b></div><span className="mo-search" /><span className="mo-avatar" /></div>
+            <div className="mo-top"><div><small>{t.hello}</small><b>{t.title}</b></div></div>
+
             {/* Ana ekranın ilk kartı: son 14 günün talepleri, önceki
                 dönemle kıyas rozetiyle (paneldeki SeriKarti'nın ikizi). */}
             <div className="mo-serie">
@@ -58,9 +70,11 @@ export function OsPanelMock({ locale }: { locale: Locale }) {
                 ))}
               </div>
             </div>
+
             <div className="mo-widgets">
               {t.widgets.map(([k, v, tone]) => <div key={k} className="mo-w" data-tone={tone}><span className="mo-dot" /><small>{k}</small><strong>{v}</strong></div>)}
             </div>
+
             <div className="mo-grid">
               <div className="mo-card">
                 <p className="mo-h">{t.table}</p>
@@ -71,10 +85,15 @@ export function OsPanelMock({ locale }: { locale: Locale }) {
               <div className="mo-card">
                 <p className="mo-h">{t.flow}</p>
                 {t.steps.map(([s, p]) => <div key={s} className="mo-prog"><span>{s}</span><i><b style={{ width: `${p}%` }} /></i></div>)}
-                <div className="mo-bars">{[38, 54, 46, 70, 62, 84, 76].map((h, i) => <i key={i} style={{ height: `${h}%` }} />)}</div>
-                <p className="mo-portal"><span className="mo-dot" data-tone="success" />{t.portal}</p>
               </div>
             </div>
+          </div>
+
+          {/* Altta ortada yüzen dock: uygulama simgeleri, açık olan vurgulu. */}
+          <div className="mo-dock">
+            {t.dock.map((ad, i) => (
+              <span key={ad} className={`mo-dock-item${i === 0 ? " on" : ""}`}>{ad.slice(0, 1)}</span>
+            ))}
           </div>
         </div>
       </div>
