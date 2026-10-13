@@ -3,6 +3,7 @@ import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
 import { arvolabKrediDurumu } from "@/lib/arvolab";
+import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 import { submitBankTransferPayment } from "./actions";
 import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
 import "../team.css";
@@ -23,12 +24,26 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const { supabase, organization, membership, izin } = await getPanelContext();
   const params = await searchParams;
 
-  const [{ data: bankAccounts }, { data: payments }, { data: license }, { data: productLicenses }] = await Promise.all([
+  const [{ data: bankAccounts }, { data: payments }, { data: license }, { data: productLicenses }, { count: aktifKullanici }] = await Promise.all([
     supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
     supabase.from("organization_payment_requests").select("id,plan_code,product,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
-    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee,user_limit,extra_user_fee,extra_user_cap").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("organization_product_licenses").select("product,status,monthly_fee,current_period_end").eq("organization_id", organization.id),
+    supabase.from("organization_memberships").select("user_id", { count: "exact", head: true })
+      .eq("organization_id", organization.id).eq("is_active", true),
   ]);
+
+  /*
+    EK KULLANICI (13.10.2026). Dahil kullanıcı sayısını aşan her koltuk
+    aylık ücretli; sayı türetilmiş (aktif üye − dahil limit), ayrı sayaç
+    yok (lib/kota-durumu). Ekranda göstermek şart: tutar ödeme
+    bağlantısına da giriyor (lib/license-checkout) ve müşterinin paket
+    fiyatından fazlasını ilk kez ödeme sayfasında görmesi doğru olmazdı.
+  */
+  const uyeSayisi = aktifKullanici ?? 0;
+  const dahilLimit = license?.user_limit ?? null;
+  const ekKoltuk = ekKullaniciSayisi(uyeSayisi, dahilLimit);
+  const ekUcret = ekKullaniciUcretiKurus(uyeSayisi, dahilLimit, license?.extra_user_fee ?? 0);
 
   const canSubmit = membership && izin("finance.lisans.yonet");
   // Kartla ödeme: ürünün aylık ücreti girilmiş + ArvoOS'un PayTR mağazası bağlı olmalı
@@ -39,7 +54,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const productRows = new Map(((productLicenses ?? []) as { product: string; status: string; monthly_fee: number | null; current_period_end: string | null }[]).map((row) => [row.product, row]));
   const subscriptions = PRODUCTS.map((product) => {
     const row = product.code === "arvoos" ? null : productRows.get(product.code);
-    const fee = Number((product.code === "arvoos" ? license?.monthly_fee : row?.monthly_fee) ?? 0);
+    /* ArvoOS'un tutarına ek koltuklar DAHİL: düğmede yazan rakam ile
+       PayTR'ye giden rakam aynı olmalı (lib/license-checkout aynı hesabı
+       bağlantıyı açarken yeniden yapıyor). */
+    const fee = Number((product.code === "arvoos" ? license?.monthly_fee : row?.monthly_fee) ?? 0)
+      + (product.code === "arvoos" ? ekUcret : 0);
     return {
       ...product,
       fee,
@@ -81,7 +100,18 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <div><dt>Durum</dt><dd>{license?.license_status ?? "trialing"}</dd></div>
           <div><dt>Paket</dt><dd>{license?.plan_code ?? organization.plan_code}</dd></div>
           <div><dt>Dönem sonu</dt><dd>{license?.current_period_end ? new Date(license.current_period_end).toLocaleDateString("tr-TR") : "—"}</dd></div>
+          <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} dahil` : sayi(uyeSayisi)}</dd></div>
+          {ekKoltuk > 0 ? (
+            <div><dt>Ek kullanıcı</dt><dd>{sayi(ekKoltuk)} × {formatTry(Number(license?.extra_user_fee ?? 0))} = {formatTry(ekUcret)} / ay</dd></div>
+          ) : null}
         </dl>
+        {dahilLimit && ekKoltuk === 0 && uyeSayisi >= dahilLimit ? (
+          <p className="panel-muted">
+            Dahil kullanıcı hakkınız dolu. Yeni kullanıcı davet edebilirsiniz; her biri
+            aylık {formatTry(Number(license?.extra_user_fee ?? 0))} olarak faturanıza eklenir
+            (en çok {sayi(Number(license?.extra_user_cap ?? 0))} ek kullanıcı).
+          </p>
+        ) : null}
       </article>
     </section>
 

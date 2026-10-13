@@ -28,6 +28,9 @@ type LicenseRow = {
   storage_limit_mb: number;
   ai_credit_limit: number;
   monthly_fee: number | null;
+  /** Ek koltuğun aylık bedeli (kuruş) ve dahil limitin üstüne açılabilen koltuk sayısı. */
+  extra_user_fee: number | null;
+  extra_user_cap: number | null;
   suspended_at: string | null;
   suspension_reason: string | null;
 };
@@ -312,6 +315,14 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                 { etiket: "Aylık ücret", deger: license.monthly_fee ? `${para(Number(license.monthly_fee))} / ay` : "girilmedi" },
                 { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
                 { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
+                /* Ek koltuk kurucunun en çok merak ettiği satır: kurum dahil
+                   limiti aşmışsa faturaya eklenen tutar budur. */
+                {
+                  etiket: "Ek kullanıcı",
+                  deger: Math.max(0, users - license.user_limit) > 0
+                    ? `${sayi(Math.max(0, users - license.user_limit))} × ${para(Number(license.extra_user_fee ?? 0))} / ay`
+                    : `yok · tavan ${sayi(Number(license.extra_user_cap ?? 0))}`,
+                },
               ],
               aktifUye: users,
               kullanilanMb: depolamaMb,
@@ -325,6 +336,8 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
                 storageLimitMb: String(license.storage_limit_mb),
                 aiCreditLimit: String(license.ai_credit_limit),
                 monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
+                extraUserFee: license.extra_user_fee ? String(Number(license.extra_user_fee) / 100) : "",
+                extraUserCap: String(Number(license.extra_user_cap ?? 0)),
                 suspensionReason: license.suspension_reason ?? "",
               },
             },

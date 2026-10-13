@@ -49,6 +49,10 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   const currentPeriodEnd = String(formData.get("current_period_end") ?? "").trim();
   const suspensionReason = String(formData.get("suspension_reason") ?? "").trim();
   const monthlyFee = readOptionalMonthlyFee(formData);
+  /* Ek koltuk: bedeli TL girilir (kuruşa çevrilir), tavan adettir.
+     Bedel boşsa 0 — "bu kurumdan ek koltuk için ücret alınmaz". */
+  const extraUserFee = readOptionalMonthlyFee(formData, "extra_user_fee") ?? 0;
+  const extraUserCap = readNonNegativeInteger(formData, "extra_user_cap");
 
   if (!organizationId) throw new Error("Kurum seçilmedi.");
   if (!planCodes.has(planCode)) throw new Error("Geçerli bir paket seçin.");
@@ -66,6 +70,8 @@ async function updateOrganizationLicense__impl(formData: FormData) {
     storage_limit_mb: storageLimitMb,
     ai_credit_limit: aiCreditLimit,
     monthly_fee: monthlyFee,
+    extra_user_fee: extraUserFee,
+    extra_user_cap: extraUserCap,
     suspended_at: licenseStatus === "suspended" ? now : null,
     suspension_reason: licenseStatus === "suspended" ? suspensionReason || "Kurucu tarafından askıya alındı" : null,
     updated_by: userData.user?.id ?? null,

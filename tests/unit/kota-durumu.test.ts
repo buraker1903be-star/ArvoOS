@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { davetEngeli, kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
+import { davetDurumu, ekKullaniciSayisi, ekKullaniciUcretiKurus, kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 
 const olc = (kullaniciSayisi: number, kullaniciLimiti: number) =>
   kotaDurumu({ organizationId: "o", kullaniciSayisi, kullaniciLimiti });
@@ -82,19 +82,45 @@ describe("kota sıralaması", () => {
   });
 });
 
-describe("davet engeli", () => {
-  test("limitin altında davet açık", () => {
-    assert.equal(davetEngeli(3, 10), null);
+describe("davet durumu ve ek kullanıcı", () => {
+  const BIRIM = 24_900; // 249 TL/ay, fiyat listesindeki ek kullanıcı kalemi
+  const dur = (aktif, limit, tavan = 10, birim = BIRIM) =>
+    davetDurumu({ aktifKullanici: aktif, limit, tavan, birimKurus: birim });
+
+  test("dahil limitin altında davet ücretsiz", () => {
+    const d = dur(2, 3);
+    assert.equal(d.engel, null);
+    assert.equal(d.yeniEkKoltuk, 0);
+    assert.equal(d.ekUcretKurus, 0);
   });
 
-  test("limite ulaşınca yeni davet durur", () => {
-    // 10 kullanıcılık pakette onuncu kullanıcı hakkın içinde; yeni davet
-    // on birinciyi yaratacağı için burada durduruluyor.
-    assert.match(davetEngeli(10, 10) ?? "", /limitiniz dolu \(10\/10\)/);
+  test("limite eşitken gönderilen davet İLK ek koltuğu açar", () => {
+    /*
+      Üç kullanıcılık pakette üçüncü kullanıcı hakkın içinde; yeni davet
+      dördüncüyü yaratıyor, yani ilk ücretli koltuk. Eskiden burada davet
+      DURUYORDU ve kullanıcıya "paketinizi yükseltin" deniyordu — oysa
+      fiyat listesi aynı kişiye 249 TL diyordu.
+    */
+    const d = dur(3, 3);
+    assert.equal(d.engel, null);
+    assert.equal(d.yeniEkKoltuk, 1);
+    assert.equal(d.ekUcretKurus, 24_900);
   });
 
-  test("limiti aşmış kurumda da durur", () => {
-    assert.match(davetEngeli(14, 10) ?? "", /14\/10/);
+  test("ek koltuklar birikir", () => {
+    assert.equal(dur(5, 3).yeniEkKoltuk, 3);
+    assert.equal(dur(5, 3).ekUcretKurus, 3 * BIRIM);
+  });
+
+  test("tavan dolunca davet durur", () => {
+    // 3 dahil + 2 ek koltuk = 5 kişilik hak; altıncı davet durur.
+    const d = dur(5, 3, 2);
+    assert.match(d.engel ?? "", /hakkınız doldu \(5\/3 dahil, 2 ek koltuk\)/);
+    assert.equal(d.ekUcretKurus, 0, "durdurulan davet ücret üretmemeli");
+  });
+
+  test("tavan sıfırken eski davranış: dahil limit dolunca durur", () => {
+    assert.match(dur(3, 3, 0).engel ?? "", /hakkınız doldu/);
   });
 
   test("lisans satırı yoksa sınır uygulanmaz", () => {
@@ -102,13 +128,55 @@ describe("davet engeli", () => {
       Olmayan bir limiti gerekçe gösterip daveti durdurmak, kurulumu yarım
       kalmış bir kurumu tamamen çalışmaz hale getirirdi.
     */
-    assert.equal(davetEngeli(99, null), null);
-    assert.equal(davetEngeli(99, undefined), null);
+    assert.equal(dur(99, null).engel, null);
+    assert.equal(dur(99, undefined).engel, null);
+    assert.equal(dur(99, null).ekUcretKurus, 0, "limitsiz kuruma ek koltuk faturalanmaz");
   });
 
   test("sıfır limit sınırsız sayılır", () => {
     // user_limit > 0 kısıtı var; yine de sıfır gelirse daveti kilitlemiyoruz.
-    assert.equal(davetEngeli(99, 0), null);
+    assert.equal(dur(99, 0).engel, null);
+    assert.equal(dur(99, 0).ekUcretKurus, 0);
+  });
+
+  test("birim fiyat girilmemişse koltuk sayılır, ücret sıfır kalır", () => {
+    /*
+      Ücreti olmayan bir kuruma (kurucunun kendi kurumu, özel anlaşma)
+      uydurma bir rakam yazmaktansa sıfır geçmek doğru: fatura tutarı
+      kurucunun girdiği değerden gelir.
+    */
+    const d = dur(5, 3, 10, null);
+    assert.equal(d.yeniEkKoltuk, 3);
+    assert.equal(d.ekUcretKurus, 0);
+  });
+});
+
+describe("ek kullanıcı ücreti", () => {
+  test("aktif üye dahil limitin altındayken ücret yok", () => {
+    assert.equal(ekKullaniciSayisi(2, 3), 0);
+    assert.equal(ekKullaniciUcretiKurus(2, 3, 24_900), 0);
+  });
+
+  test("aşan her kullanıcı ayrı ücretlenir", () => {
+    assert.equal(ekKullaniciSayisi(7, 3), 4);
+    assert.equal(ekKullaniciUcretiKurus(7, 3, 24_900), 99_600);
+  });
+
+  test("pasife alınan hesap ücreti aynı dönem içinde düşürür", () => {
+    /*
+      Sayı türetilmiş (aktif üye − dahil limit), ayrı bir sayaç yok: bir
+      hesap pasife alınınca ek koltuk kendiliğinden azalıyor. Ayrı sayaç
+      tutulsaydı pasife alma, silme ve davet iptali yollarının üçünü de
+      azaltmak gerekirdi; biri unutulsa kurum ödemediği koltuğa fatura
+      görürdü.
+    */
+    assert.equal(ekKullaniciUcretiKurus(6, 3, 24_900), 3 * 24_900);
+    assert.equal(ekKullaniciUcretiKurus(5, 3, 24_900), 2 * 24_900);
+  });
+
+  test("limit yoksa ücret yok", () => {
+    assert.equal(ekKullaniciUcretiKurus(99, null, 24_900), 0);
+    assert.equal(ekKullaniciUcretiKurus(99, 0, 24_900), 0);
   });
 });
 

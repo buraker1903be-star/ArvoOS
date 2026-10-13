@@ -86,6 +86,44 @@ export function kotayaGoreSirala(durumlar: KotaDurumu[]): KotaDurumu[] {
 }
 
 
+/*
+  EK KULLANICI (13.10.2026).
+
+  Fiyat listesi "pakete dahil kullanıcı sayısını aşan her kullanıcı için
+  249 TL/ay" diyordu ama sistemde karşılığı yoktu: `davetEngeli` limiti
+  dolan kurumu yalnızca durduruyor, "paketinizi yükseltin" diyordu. Yani
+  altıncı kullanıcıyı isteyen Başlangıç müşterisine liste 249 TL derken
+  panel +4.000 TL diyordu — yayımlanmış bir taahhüdün karşılanmaması.
+
+  Ölçüm AYRI BİR SAYAÇ TUTMUYOR: ek kullanıcı = aktif üye − dahil limit.
+  Türetilmiş olması kendi kendini düzeltiyor; bir hesap pasife alınınca
+  ücret aynı dönem içinde düşüyor. Ayrı bir sayaç tutsaydık pasife alma,
+  silme ve davet iptali yollarının üçünü de ayrıca azaltmak gerekirdi ve
+  biri unutulduğunda kurum ödemediği koltuğa fatura görürdü.
+
+  Üst sınır (`cap`) hâlâ var: sınırsız açılan koltuk, kurumun onay
+  vermediği bir faturaya dönüşür. Sınır dahil limitin ÜSTÜNE eklenir ve
+  lisans satırında durur; kurucu kurum bazında yükseltebilir.
+*/
+
+/** Ücretlendirilen ek koltuk sayısı. Limit yoksa (lisans satırı yok) sıfır. */
+export function ekKullaniciSayisi(aktifKullanici: number, limit: number | null | undefined): number {
+  if (limit === null || limit === undefined) return 0;
+  const l = Math.round(limit);
+  if (l <= 0) return 0;
+  return Math.max(0, Math.round(aktifKullanici || 0) - l);
+}
+
+/** Ek koltukların aylık bedeli, kuruş. */
+export function ekKullaniciUcretiKurus(
+  aktifKullanici: number,
+  limit: number | null | undefined,
+  birimKurus: number | null | undefined,
+): number {
+  const birim = Math.max(0, Math.round(birimKurus ?? 0));
+  return ekKullaniciSayisi(aktifKullanici, limit) * birim;
+}
+
 /**
  * Yeni bir kullanıcı davet edilebilir mi; edilemezse sebebi.
  *
@@ -99,16 +137,42 @@ export function kotayaGoreSirala(durumlar: KotaDurumu[]): KotaDurumu[] {
  * Kota bir yetki sınırı değil ticari sınır; bu yüzden RLS'in üç katmanlı
  * kuralına tabi değil.
  *
+ * Eskiden dahil limit dolunca davet DURUYORDU. Artık duran yer dahil
+ * limit + ek koltuk tavanı; arada kalan davetler ücretlendiriliyor ve
+ * `ekUcretKurus` ile çağırana bildiriliyor (kullanıcı onu görmeden
+ * davet göndermesin).
+ *
  * @param limit Lisanstaki user_limit; null ise (lisans satırı yok) sınır
  *              uygulanmaz — olmayan bir limiti gerekçe gösterip daveti
  *              durdurmak, kurulumu yarım kalmış kurumu çalışmaz kılardı.
+ * @param tavan Dahil limitin üstüne açılabilen ek koltuk sayısı.
  */
-export function davetEngeli(aktifKullanici: number, limit: number | null | undefined): string | null {
-  if (limit === null || limit === undefined) return null;
+export function davetDurumu(girdi: {
+  aktifKullanici: number;
+  limit: number | null | undefined;
+  tavan: number | null | undefined;
+  birimKurus: number | null | undefined;
+}): { engel: string | null; ekUcretKurus: number; yeniEkKoltuk: number } {
+  const { aktifKullanici, limit } = girdi;
+  if (limit === null || limit === undefined) return { engel: null, ekUcretKurus: 0, yeniEkKoltuk: 0 };
   const l = Math.round(limit);
-  if (l <= 0) return null;
-  // Limite EŞİT olmak aşım değil: 10 kullanıcılık pakette onuncu kullanıcı
-  // hakkın içinde. Yeni davet on birinciyi yaratacağı için burada bakılıyor.
-  if (aktifKullanici < l) return null;
-  return `Kullanıcı limitiniz dolu (${aktifKullanici}/${l}). Yeni kullanıcı davet etmek için paketinizi yükseltin ya da kullanılmayan bir hesabı pasife alın.`;
+  if (l <= 0) return { engel: null, ekUcretKurus: 0, yeniEkKoltuk: 0 };
+
+  const aktif = Math.max(0, Math.round(aktifKullanici || 0));
+  const tavan = Math.max(0, Math.round(girdi.tavan ?? 0));
+  const birim = Math.max(0, Math.round(girdi.birimKurus ?? 0));
+
+  // Davet GÖNDERİLDİKTEN sonraki durum hesaplanıyor: limite eşit olmak
+  // aşım değil, on kullanıcılık pakette onuncu kullanıcı hakkın içinde.
+  const sonra = aktif + 1;
+  if (sonra > l + tavan) {
+    return {
+      engel: `Kullanıcı hakkınız doldu (${aktif}/${l} dahil, ${tavan} ek koltuk). Yeni kullanıcı için paketinizi yükseltin ya da kullanılmayan bir hesabı pasife alın.`,
+      ekUcretKurus: 0,
+      yeniEkKoltuk: 0,
+    };
+  }
+
+  const yeniEkKoltuk = Math.max(0, sonra - l);
+  return { engel: null, ekUcretKurus: yeniEkKoltuk * birim, yeniEkKoltuk };
 }

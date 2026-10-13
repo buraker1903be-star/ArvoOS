@@ -6,6 +6,7 @@ import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId,
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { productName, type ProductCode } from "@/lib/products";
+import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 
 // Kurum lisansının kartla (PayTR Link) ödeme bağlantısı. İki yerden çağrılır:
 // ArvoOS Ödemeler sayfası (app/panel/billing/paytr-actions.ts) ve Randevu
@@ -39,9 +40,31 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
 
   let fee = 0;
   let planCode = organization.plan_code as string;
+  /* Bağlantının adında görünen ek: "… + 2 ek kullanıcı". Müşteri ödeme
+     sayfasında neden paket fiyatından fazlasını ödediğini görmeli. */
+  let ekNot = "";
   if (product === "arvoos") {
-    const { data: license } = await admin.from("organization_licenses").select("plan_code,monthly_fee").eq("organization_id", organizationId).maybeSingle();
-    fee = Number(license?.monthly_fee ?? 0);
+    /*
+      EK KULLANICI (13.10.2026). Paket fiyatına, dahil kullanıcı sayısını
+      aşan her koltuk için aylık bedel ekleniyor — fiyat listesinde
+      yayımlanmış kalem buydu ve bugüne kadar hiçbir yerde hesaba
+      girmiyordu.
+
+      Sayım tam burada, bağlantı açılırken yapılıyor: kurum dönem içinde
+      kullanıcı ekler/çıkarır, dondurulmuş bir sayı bir sonraki ödemede
+      yanlış tutar demek olurdu. Yalnızca ArvoOS'ta; öteki ürünlerin
+      koltuk kavramı yok (Randevu şube, ARC mağaza üzerinden fiyatlanıyor).
+    */
+    const [{ data: license }, { count: aktifKullanici }] = await Promise.all([
+      admin.from("organization_licenses").select("plan_code,monthly_fee,user_limit,extra_user_fee").eq("organization_id", organizationId).maybeSingle(),
+      admin.from("organization_memberships").select("user_id", { count: "exact", head: true })
+        .eq("organization_id", organizationId).eq("is_active", true),
+    ]);
+    const paket = Number(license?.monthly_fee ?? 0);
+    const ekKoltuk = ekKullaniciSayisi(aktifKullanici ?? 0, license?.user_limit ?? null);
+    const ekUcret = ekKullaniciUcretiKurus(aktifKullanici ?? 0, license?.user_limit ?? null, license?.extra_user_fee ?? 0);
+    fee = paket + ekUcret;
+    if (ekKoltuk > 0) ekNot = ` + ${ekKoltuk} ek kullanıcı`;
     planCode = license?.plan_code ?? planCode;
   } else {
     const [{ data: productLicense }, { data: license }] = await Promise.all([
@@ -83,7 +106,7 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
   let link: { id: string; url: string };
   try {
     link = await createPaytrInstallmentLink(credentials, {
-      name: `${productName(product)} · ${brand} · ${planNames[planCode] ?? planCode} aylık lisans`,
+      name: `${productName(product)} · ${brand} · ${planNames[planCode] ?? planCode} aylık lisans${ekNot}`,
       amountKurus: fee,
       expiry,
       callbackUrl: `https://${PLATFORM_HOST}/api/paytr/callback`,

@@ -39,6 +39,10 @@ export type LisansDegerleri = {
   storageLimitMb: string;
   aiCreditLimit: string;
   monthlyFee: string;
+  /** Ek koltuğun aylık bedeli, TL (boş = ücretsiz). */
+  extraUserFee: string;
+  /** Dahil limitin üstüne açılabilen koltuk sayısı. */
+  extraUserCap: string;
   suspensionReason: string;
 };
 
@@ -65,8 +69,12 @@ const DURUMLAR = [
   limitleri var ve paket değiştirmek onları sessizce silerdi.
 */
 const PAKET_VARSAYILANI: Record<string, { userLimit: number; storageLimitMb: number; aiCreditLimit: number }> = {
-  starter: { userLimit: 5, storageLimitMb: 5120, aiCreditLimit: 500 },
-  professional: { userLimit: 25, storageLimitMb: 51200, aiCreditLimit: 2500 },
+  /* 13.10.2026: dahil kullanıcı sayıları fiyat listesiyle eşitlendi
+     (Başlangıç 3, Kurumsal 15 — bkz. 20261013191844). Burası 5 ve 25'te
+     kalmıştı; kurucu "varsayılanı uygula" dediğinde kiracıya ödemediği
+     koltuk veriyordu. */
+  starter: { userLimit: 3, storageLimitMb: 5120, aiCreditLimit: 500 },
+  professional: { userLimit: 15, storageLimitMb: 51200, aiCreditLimit: 2500 },
   enterprise: { userLimit: 250, storageLimitMb: 512000, aiCreditLimit: 10000 },
 };
 
@@ -115,6 +123,10 @@ export function LisansFormu({
   const mb = Number.parseInt(deger.storageLimitMb, 10);
   const kredi = Number.parseInt(deger.aiCreditLimit, 10);
   const ucret = Number(deger.monthlyFee);
+  const ekUcret = Number(deger.extraUserFee);
+  const tavan = Number.parseInt(deger.extraUserCap, 10);
+  /* Şu an kaç koltuk ücretli: kurucu tavanı düşürürken kimseyi kilitlemesin. */
+  const ekKoltuk = Math.max(0, aktifUye - (Number.parseInt(deger.userLimit, 10) || 0));
   const varsayilan = PAKET_VARSAYILANI[deger.planCode];
   /*
     Varsayılanı uygulama önerisi yalnızca GERÇEKTEN farklıysa çıkıyor.
@@ -219,6 +231,37 @@ export function LisansFormu({
               {deger.monthlyFee && Number.isFinite(ucret) && ucret > 0
                 ? `${paraBicimi.format(ucret)} / ay`
                 : "Girilmezse kurum ArvoOS'u kartla ödeyemez."}
+            </small>
+          </label>
+          {/*
+            EK KULLANICI (13.10.2026). Dahil limiti aşan koltuk artık daveti
+            durdurmuyor, ücretlendiriliyor; iki alan da bu yüzden burada.
+            Varsayılan liste fiyatı (249 TL) ve 10 koltuk migration'dan
+            geliyor, burada yalnızca kuruma özel anlaşma için değiştirilir.
+          */}
+          <label>
+            Ek kullanıcı bedeli (TL / ay)
+            <input
+              type="number" name="extra_user_fee" min={0} step="0.01" value={deger.extraUserFee}
+              placeholder="Boşsa ek koltuk ücretsiz" onChange={(o) => yaz("extraUserFee", o.target.value)}
+            />
+            <small className="plt-field-note">
+              {ekUcret > 0
+                ? `Dahil limiti aşan her kullanıcı ${paraBicimi.format(ekUcret)} / ay`
+                : "Girilmezse bu kurumdan ek koltuk için ücret alınmaz."}
+            </small>
+          </label>
+          <label>
+            <span>Ek koltuk tavanı<b className="req" aria-hidden="true">*</b></span>
+            <input
+              type="number" name="extra_user_cap" min={0} required value={deger.extraUserCap}
+              onChange={(o) => yaz("extraUserCap", o.target.value)}
+            />
+            <small className="plt-field-note" data-tone={ekKoltuk > 0 ? "danger" : undefined}>
+              {Number.isFinite(tavan) && tavan > 0
+                ? `en çok ${sayiBicimi.format((Number.parseInt(deger.userLimit, 10) || 0) + tavan)} kullanıcı`
+                : "sıfır: dahil limit dolunca davet durur"}
+              {ekKoltuk > 0 ? ` · şu an ${sayiBicimi.format(ekKoltuk)} ek koltuk ücretli` : ""}
             </small>
           </label>
         </div>

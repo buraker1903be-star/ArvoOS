@@ -15,7 +15,8 @@ import { syncArvolabMembers } from "@/lib/arvolab";
 import { yonetimDepartmanindaMi as isManagementEmployee } from "@/lib/yonetim-departmani";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { assertYetki } from "@/lib/yetkiler";
-import { davetEngeli } from "@/lib/kota-durumu";
+import { davetDurumu } from "@/lib/kota-durumu";
+import { liraYaz } from "@/lib/lira";
 
 async function teamContext() {
   const context = await getPanelContext();
@@ -88,11 +89,16 @@ export async function inviteTeamMember(
   const [{ count: aktifKullanici }, { data: lisans }] = await Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true })
       .eq("organization_id", membership.organization_id).eq("is_active", true),
-    supabase.from("organization_licenses").select("user_limit")
+    supabase.from("organization_licenses").select("user_limit,extra_user_fee,extra_user_cap")
       .eq("organization_id", membership.organization_id).maybeSingle(),
   ]);
-  const engel = davetEngeli(aktifKullanici ?? 0, lisans?.user_limit ?? null);
-  if (engel) return { error: engel, success: false };
+  const kota = davetDurumu({
+    aktifKullanici: aktifKullanici ?? 0,
+    limit: lisans?.user_limit ?? null,
+    tavan: lisans?.extra_user_cap ?? 0,
+    birimKurus: lisans?.extra_user_fee ?? 0,
+  });
+  if (kota.engel) return { error: kota.engel, success: false };
 
   const requestHeaders = await headers();
   const redirectBase = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
@@ -104,7 +110,14 @@ export async function inviteTeamMember(
     const message = data?.error || (await extractFunctionErrorMessage(error, "Davet gönderilemedi. En son hatayı 'organization_invitations' tablosundan kontrol edin."));
     return { error: message, success: false };
   }
-  await flashSuccess("Davet gönderildi");
+  /*
+    Ücretli koltuk sessizce açılmıyor. Davet dahil limitin üstündeyse
+    bildirimde aylık artış da yazıyor: kurumun bunu ilk kez faturada
+    görmesi, yayımlanmış kalemi uygulamanın en kötü yolu olurdu.
+  */
+  await flashSuccess(kota.ekUcretKurus > 0
+    ? `Davet gönderildi · ${kota.yeniEkKoltuk} ek kullanıcı, aylık ${liraYaz(kota.ekUcretKurus)}`
+    : "Davet gönderildi");
   revalidatePath("/panel/hr", "layout"); // personel detayı (/panel/hr/[id]) da yenilensin
   return { error: null, success: true };
 }
