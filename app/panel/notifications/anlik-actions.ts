@@ -1,0 +1,79 @@
+"use server";
+
+import { getPanelContext } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { pushAdresiUygunMu } from "@/lib/anlik-bildirim";
+import { cihazlaraGonder, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
+
+/*
+  BU CİHAZDA ANLIK BİLDİRİM (20261013071812). Tablo istemciye kapalı;
+  kayıt burada OTURUMDAKİ kişiye ve kuruma bağlanıyor (service_role,
+  yetki = oturum: herkes yalnızca kendi cihazını açıp kapatabilir).
+
+  Dönüş düz nesne, runPanelAction değil: düğme sonucu kendi yerinde
+  yazıyor ("Açıldı", "Bu tarayıcı desteklemiyor"…); çerezli bildirim
+  burada ikinci bir ses olurdu.
+*/
+type Sonuc = { ok: true } | { ok: false; hata: string };
+
+const KAPALI = "Anlık bildirim bu kurulumda henüz açılmadı (sunucu anahtarları tanımlı değil).";
+
+export async function anlikBildirimAc(abonelik: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } }, cihaz: string): Promise<Sonuc> {
+  if (!pushYapilandi()) return { ok: false, hata: KAPALI };
+  const { userId, membership } = await getPanelContext();
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, hata: KAPALI };
+
+  const endpoint = typeof abonelik?.endpoint === "string" ? abonelik.endpoint : "";
+  const p256dh = typeof abonelik?.keys?.p256dh === "string" ? abonelik.keys.p256dh : "";
+  const auth = typeof abonelik?.keys?.auth === "string" ? abonelik.keys.auth : "";
+  if (!pushAdresiUygunMu(endpoint)) return { ok: false, hata: "Bu tarayıcının bildirim servisi tanınmadı." };
+  if (p256dh.length < 20 || p256dh.length > 200 || auth.length < 8 || auth.length > 100) return { ok: false, hata: "Bildirim anahtarı geçersiz." };
+
+  /*
+    Aynı cihaz (aynı adres) başka bir kişiyle kayıtlıysa yeni kişiye
+    geçer: ortak telefonda önceki kullanıcının bildirimleri sonrakine
+    düşmesin. Bir kişinin en çok 10 cihazı tutulur (eskiler silinir).
+  */
+  const { error } = await admin.from("push_subscriptions").upsert({
+    organization_id: membership.organization_id,
+    user_id: userId,
+    endpoint, p256dh, auth,
+    cihaz: cihaz.slice(0, 200) || null,
+    failure_count: 0,
+  }, { onConflict: "endpoint" });
+  if (error) return { ok: false, hata: "Cihaz kaydedilemedi: " + error.message };
+
+  const { data: fazla } = await admin.from("push_subscriptions").select("id")
+    .eq("user_id", userId).order("created_at", { ascending: false }).range(10, 100);
+  if (fazla?.length) await admin.from("push_subscriptions").delete().in("id", fazla.map((s) => s.id));
+  return { ok: true };
+}
+
+export async function anlikBildirimKapat(endpoint: string): Promise<Sonuc> {
+  const { userId } = await getPanelContext();
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, hata: KAPALI };
+  // Yalnızca kendi kaydı: başka birinin cihazını adresini bilse de kapatamaz.
+  const { error } = await admin.from("push_subscriptions").delete().eq("endpoint", endpoint).eq("user_id", userId);
+  if (error) return { ok: false, hata: "Kapatılamadı: " + error.message };
+  return { ok: true };
+}
+
+/** "Deneme gönder": yalnızca bu cihaza, bildirim kaydı açmadan. */
+export async function anlikBildirimDene(endpoint: string): Promise<Sonuc> {
+  if (!pushYapilandi()) return { ok: false, hata: KAPALI };
+  const { userId } = await getPanelContext();
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, hata: KAPALI };
+  const { data } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failure_count")
+    .eq("endpoint", endpoint).eq("user_id", userId).maybeSingle();
+  if (!data) return { ok: false, hata: "Bu cihaz kayıtlı değil; önce bildirimleri açın." };
+  const { gonderilen } = await cihazlaraGonder(admin, [data as PushCihazi], {
+    baslik: "ArvoOS bildirimleri açık",
+    metin: "İş atandığında, müşteri yazdığında ve size yorum geldiğinde burada haber vereceğiz.",
+    adres: "/panel/notifications",
+    etiket: "arvo-deneme",
+  });
+  return gonderilen ? { ok: true } : { ok: false, hata: "Deneme gönderilemedi; cihaz kaydı yenilenmeli. Kapatıp yeniden açın." };
+}

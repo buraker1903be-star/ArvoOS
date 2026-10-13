@@ -21,7 +21,7 @@
   Önbellek adı değişince eskiler silinir; bu dosyada bir şey değişirse
   SURUM artırılır.
 */
-const SURUM = "arvo-kabuk-1";
+const SURUM = "arvo-kabuk-2";
 const CEVRIMDISI = "/cevrimdisi.html";
 const ONCEDEN = [CEVRIMDISI, "/icon-192.png", "/icon-512.png", "/favicon.svg"];
 
@@ -69,4 +69,36 @@ self.addEventListener("fetch", (olay) => {
     })());
   }
   // Geri kalan her şey (veri, API, oturum) tarayıcının kendi yolundan.
+});
+
+/*
+  ANLIK BİLDİRİM (13.10.2026, 4. aşama). Sunucu (app/api/push/gonder)
+  yükü { baslik, metin, adres, etiket } olarak gönderiyor. Her push bir
+  bildirim GÖSTERMELİ: iOS ve Chrome sessiz push'a izin vermiyor,
+  göstermeyen sitenin iznini geri alıyor.
+*/
+self.addEventListener("push", (olay) => {
+  let yuk = {};
+  try { yuk = olay.data ? olay.data.json() : {}; } catch { yuk = { metin: olay.data ? olay.data.text() : "" }; }
+  const adres = typeof yuk.adres === "string" && yuk.adres.startsWith("/") && !yuk.adres.startsWith("//") ? yuk.adres : "/panel/notifications";
+  olay.waitUntil(self.registration.showNotification(yuk.baslik || "ArvoOS", {
+    body: yuk.metin || "",
+    tag: yuk.etiket || undefined,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { adres },
+  }));
+});
+
+// Dokununca: açık bir panel penceresi varsa onu öne getirip adrese götür, yoksa yeni pencere.
+self.addEventListener("notificationclick", (olay) => {
+  olay.notification.close();
+  const adres = new URL(olay.notification.data?.adres || "/panel", self.location.origin).href;
+  olay.waitUntil((async () => {
+    const pencereler = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const pencere = pencereler.find((p) => new URL(p.url).origin === self.location.origin);
+    if (!pencere) return self.clients.openWindow(adres);
+    await pencere.focus();
+    return "navigate" in pencere ? pencere.navigate(adres).catch(() => self.clients.openWindow(adres)) : undefined;
+  })());
 });

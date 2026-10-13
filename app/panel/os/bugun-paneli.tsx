@@ -5,6 +5,8 @@ import { dueBadge } from "@/lib/operasyon-termin";
 import { formatSubject } from "@/lib/table-format";
 import { activeStatuses } from "../operations/ops-shared";
 import { toggleWorkflowStep } from "../operations/actions";
+import { AnlikBildirimAyari } from "../notifications/anlik-bildirim-ayari";
+import { pushGenelAnahtar, pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import "./bugun-paneli.css";
 
 /*
@@ -167,6 +169,8 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
 
   return (
     <section className="bugun" aria-label="Bugün">
+      {/* Bildirim henüz açılmadıysa en üstte tek satırlık öneri (kapatılabilir). */}
+      <AnlikBildirimAyari genelAnahtar={pushYapilandi() ? pushGenelAnahtar() : null} gorunum="serit" />
       {kisayollar.length ? (
         <nav className="bugun-kisayol" aria-label="Hızlı işlemler">
           {kisayollar.map((k) => <Link key={k.ad} href={k.href} className={k.birincil ? "is-birincil" : undefined}>{k.birincil ? "+ " : ""}{k.ad}</Link>)}

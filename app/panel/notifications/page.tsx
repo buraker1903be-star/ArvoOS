@@ -7,6 +7,8 @@ import { inNotificationFilter, notificationFilters as filters } from "./filters"
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
 import { NotificationIcon as Icon } from "./notification-icon";
 import { DuyuruMetni } from "./duyuru-metni";
+import { AnlikBildirimAyari } from "./anlik-bildirim-ayari";
+import { pushGenelAnahtar, pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 // Sayfa düzeni (talep-bas, kayit-serit, ekip-suzgec) panelin öteki sayfalarıyla ortak.
 import "../crm/kayit-detay/kayit-detay.css";
@@ -107,6 +109,9 @@ export default async function NotificationsPage({ searchParams }: { searchParams
         {canAnnounce ? <PanelDrawer triggerLabel="+ Duyuru gönder" triggerClassName="panel-primary" kicker="YÖNETİCİ DUYURUSU" title="Yeni duyuru" description="Tüm personele ya da seçtiğiniz kişiye bildirim olarak gider.">{announcementForm}</PanelDrawer> : null}
       </div>
     </header>
+
+    {/* Bu cihazda anlık bildirim (web push, 13.10.2026). */}
+    <AnlikBildirimAyari genelAnahtar={pushYapilandi() ? pushGenelAnahtar() : null} />
 
     {/* ÖZET ŞERİDİ: okunmamış sayısı rozetle aynı işlevden (sınırsız). */}
     <nav className="kayit-serit talep-serit" aria-label="Bildirim özeti">
