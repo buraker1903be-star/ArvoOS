@@ -1,13 +1,20 @@
 // ArvoOS panel maketi: gerçek paneldeki gece mavisi kenar çubuğu, iOS tarzı
 // widget'lar ve tablolar. Veriler gösterim amaçlıdır (figcaption'da belirtilir).
+//
+// 13.10.2026: maket panelin bugünkü ana ekranına yaklaştırıldı — menüye
+// Posta eklendi (modül panelde var ama makette yoktu) ve ana ekranın asıl
+// öğesi olan ON DÖRT GÜNLÜK talep grafiği öne alındı. Maket panelin
+// ekran görüntüsü değil, şematik ikizi: yapısı gerçek olmalı, verisi
+// değil.
 import type { Locale } from "@/lib/site/routes";
 import { BrandLogo } from "./marks";
 
 const T = {
   tr: {
     label: "ArvoOS panel arayüzü — örnek görünüm", cap: "Örnek arayüz · gösterim amaçlı veriler",
-    nav: ["Ana Sayfa", "CRM", "Operasyon", "Finans", "İnsan Kaynakları", "Dokümanlar", "Raporlar"],
+    nav: ["Ana Sayfa", "CRM", "Operasyon", "Finans", "İnsan Kaynakları", "Posta", "Dokümanlar", "Raporlar"],
     hello: "Günaydın", title: "Genel bakış",
+    serie: "Yeni talepler", serieNote: "Son 14 gün", serieDelta: "+18%",
     widgets: [["Yeni talep", "12", "info"], ["Teklif bekleyen", "5", "gold"], ["Aktif iş", "18", "brand"], ["Tahsilat bekleyen", "7", "success"]],
     table: "Son teklifler",
     rows: [["Kuzey Klinik", "İmza bekliyor", "gold"], ["Atlas Eğitim", "Onaylandı", "success"], ["Mavi Danışmanlık", "Gönderildi", "info"], ["Ege Tasarım", "Taslak", "neutral"]],
@@ -15,8 +22,9 @@ const T = {
   },
   en: {
     label: "ArvoOS panel interface — sample view", cap: "Illustrative interface · sample data",
-    nav: ["Home", "CRM", "Operations", "Finance", "People", "Documents", "Reports"],
+    nav: ["Home", "CRM", "Operations", "Finance", "People", "Mail", "Documents", "Reports"],
     hello: "Good morning", title: "Overview",
+    serie: "New requests", serieNote: "Last 14 days", serieDelta: "+18%",
     widgets: [["New requests", "12", "info"], ["Awaiting proposal", "5", "gold"], ["Active jobs", "18", "brand"], ["Awaiting payment", "7", "success"]],
     table: "Recent proposals",
     rows: [["Northside Clinic", "Awaiting signature", "gold"], ["Atlas Academy", "Accepted", "success"], ["Blue Consulting", "Sent", "info"], ["Aegean Studio", "Draft", "neutral"]],
@@ -37,6 +45,19 @@ export function OsPanelMock({ locale }: { locale: Locale }) {
           </div>
           <div className="mo-main">
             <div className="mo-top"><div><small>{t.hello}</small><b>{t.title}</b></div><span className="mo-search" /><span className="mo-avatar" /></div>
+            {/* Ana ekranın ilk kartı: son 14 günün talepleri, önceki
+                dönemle kıyas rozetiyle (paneldeki SeriKarti'nın ikizi). */}
+            <div className="mo-serie">
+              <div className="mo-serie-head">
+                <span><small>{t.serie}</small><b>{t.serieNote}</b></span>
+                <span className="mo-pill" data-tone="success">{t.serieDelta}</span>
+              </div>
+              <div className="mo-serie-bars">
+                {[34, 52, 41, 63, 48, 72, 58, 66, 44, 79, 61, 88, 70, 96].map((h, i) => (
+                  <i key={i} style={{ height: `${h}%` }} data-bugun={i === 13 ? "evet" : undefined} />
+                ))}
+              </div>
+            </div>
             <div className="mo-widgets">
               {t.widgets.map(([k, v, tone]) => <div key={k} className="mo-w" data-tone={tone}><span className="mo-dot" /><small>{k}</small><strong>{v}</strong></div>)}
             </div>
