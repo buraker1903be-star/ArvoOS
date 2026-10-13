@@ -1,5 +1,9 @@
 import Link from "next/link";
 import "../components/mobil-satir.css";
+/* Son temas hücresinin sınıfları (.crm-last-contact*) crm.css'te:
+   bileşen posta ekranında da kullanılıyor ve o rotada stil
+   yüklenmiyordu (npm run check:css yakaladı). */
+import "./crm.css";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { initials } from "@/lib/table-format";

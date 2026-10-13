@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { anlikBildirimAc, anlikBildirimCihazKaldir, anlikBildirimDene, anlikBildirimOzeti, anlikBildirimTercih, type AnlikCihaz, type AnlikOzet } from "./anlik-actions";
 import "./anlik-bildirim.css";
+/* .talep-musteri kart düzeni orada: bu bileşen ana ekranda da
+   çiziliyor ve o rotada stil yüklenmiyordu (npm run check:css
+   yakaladı). Bileşen her yerde kullanılıyorsa CSS'ini kendisi import
+   eder — AGENTS.md. */
+import "../crm/kayit-detay/kayit-detay.css";
 
 /*
   BU CİHAZDA ANLIK BİLDİRİM (13.10.2026, mobil 4. aşama).
