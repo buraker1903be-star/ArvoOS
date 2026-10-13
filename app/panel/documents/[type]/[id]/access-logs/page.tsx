@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "@/app/panel/crm/table-cells";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
@@ -203,6 +204,16 @@ export default async function BelgeErisimGecmisi({ params, searchParams }: {
                       </td>
                       <td data-label="IP" className="crm-table-mono">{satir.access_ip || <span className="talep-bos">—</span>}</td>
                       <td data-label="Zaman" className="crm-table-mono">{tarihSaat(satir.created_at)}</td>
+                      <MobilSatir
+                        baslik={kim}
+                        durum={{ etiket: etiket.ad, ton: etiket.ton }}
+                        alt={[summarizeUserAgent(satir.user_agent) ?? "Cihaz bilinmiyor", yonlendiren ? `${yonlendiren} üzerinden` : null]}
+                        isaretler={[
+                          { metin: tarihSaat(satir.created_at), ton: "bilgi" },
+                          kaynak ? { metin: kaynak, ton: "sessiz" } : null,
+                          satir.access_ip ? { metin: satir.access_ip, ton: "sessiz" } : null,
+                        ]}
+                      />
                     </tr>
                   );
                 })}

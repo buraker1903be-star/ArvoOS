@@ -110,14 +110,16 @@ export function LastContactCell({ contact }: { contact?: LastContact | null }) {
   Bu hücre satırın telefondaki TEK görünümü: üç düzenli satır —
   başlık + durum / kim (müşteri · sorumlu) / kısa işaretler (termin,
   ilerleme, uyarılar; renk anlam taşıyor, etiket yok). Masaüstünde gizli
-  (mobil-satir.css); telefonda satırın öteki hücreleri gizli. Başlık
-  gerçek bağlantı: satırın geri kalanına dokunmak SatirTiklama ile
+  (mobil-satir.css); telefonda satırın öteki hücreleri gizli — yalnızca
+  DÜĞMESİ olan eylem hücresi (Tahsilat, Önizle, Sil…) altta kalır, çünkü
+  çekmeceyi açan düğme orada ve ikinci kez çizilemez. Başlık gerçek
+  bağlantı (href varsa): satırın geri kalanına dokunmak SatirTiklama ile
   aynı yere gider.
 */
 export type MobilIsaret = { metin: string; ton?: "sessiz" | "guclu" | "uyari" | "tehlike" | "basari" | "bilgi" };
 
 export function MobilSatir({ href, baslik, durum, alt = [], isaretler = [] }: {
-  href: string;
+  href?: string | null;
   baslik: string;
   durum?: { etiket: string; ton: string } | null;
   alt?: (string | null | undefined | false)[];
@@ -128,7 +130,7 @@ export function MobilSatir({ href, baslik, durum, alt = [], isaretler = [] }: {
   return (
     <td className="mobil-satir">
       <div className="ms-ust">
-        <Link className="ms-baslik" href={href}>{baslik}</Link>
+        {href ? <Link className="ms-baslik" href={href}>{baslik}</Link> : <span className="ms-baslik">{baslik}</span>}
         {durum ? <span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span> : null}
       </div>
       {altMetin ? <div className="ms-alt">{altMetin}</div> : null}

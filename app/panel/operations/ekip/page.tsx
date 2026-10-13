@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "../../crm/table-cells";
 import type { CSSProperties } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
@@ -188,6 +189,21 @@ export default async function EkipYukuPage() {
               <td data-label="Yeni mesaj" className={mesaj ? "talep-uyari" : undefined}>
                 {mesaj ? <Link href={sorumluAdresi(satir, { mesaj: "yeni" })}>{mesaj}</Link> : 0}
               </td>
+              {/* Telefonda yalnızca sıfır olmayan sayılar: "0 geciken" bilgi değil. */}
+              <MobilSatir
+                href={sorumluAdresi(satir)}
+                baslik={formatPersonName(satir.ad ?? "") || "İsimsiz personel"}
+                alt={[satir.unvan, satir.durum !== "active" ? "pasif" : null, bosta ? "müsait" : null]}
+                isaretler={[
+                  { metin: `${sayi(satir.acik_is)} açık iş`, ton: "guclu" },
+                  sayi(satir.suren_is) ? { metin: `${sayi(satir.suren_is)} süren`, ton: "bilgi" } : null,
+                  gecikenIs ? { metin: `${gecikenIs} termini geçen`, ton: "tehlike" } : null,
+                  sayi(satir.termin_yakin) ? { metin: `${sayi(satir.termin_yakin)} bu hafta`, ton: "uyari" } : null,
+                  sayi(satir.adim_toplam) ? { metin: `%${percentage} adım`, ton: "sessiz" } : null,
+                  gecikenAdim ? { metin: `${gecikenAdim} geciken adım`, ton: "tehlike" } : null,
+                  mesaj ? { metin: `${mesaj} yeni mesaj`, ton: "tehlike" } : null,
+                ]}
+              />
             </tr>
           );
         })}</tbody>

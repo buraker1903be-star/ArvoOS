@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -157,6 +158,16 @@ function MaliyetTablosu({ rows, arama }: { rows: ProfitRow[]; arama: string }) {
                   ) : <span className="cari-sifir">—</span>}
                 </td>
                 <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                <MobilSatir
+                  href={`/panel/finance?gorunum=maliyet&maliyet=${row.id}${ek}`}
+                  baslik={row.customer}
+                  alt={[row.contractNo, row.title]}
+                  isaretler={[
+                    { metin: money(row.amount), ton: "guclu" },
+                    row.costEntered ? { metin: `Maliyet ${money(row.cost)}`, ton: "bilgi" } : { metin: "Maliyet girilmedi", ton: "uyari" },
+                    row.costEntered ? { metin: `Kâr ${money(row.profit)} · %${oranYuzde}`, ton: row.margin < 0 ? "tehlike" : row.margin < 30 ? "uyari" : "basari" } : null,
+                  ]}
+                />
               </tr>
             );
           })}
@@ -253,6 +264,17 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                 ) : null}
                 <span className="crm-row-chevron" aria-hidden="true">›</span>
               </td>
+              <MobilSatir
+                href={`/panel/finance/musteri/${a.id}`}
+                baslik={a.name}
+                alt={[formatPhone(a.phone) || a.email || a.tax_number || "İletişim bilgisi yok"]}
+                isaretler={[
+                  a.balance > 0 ? { metin: `${money(a.balance)} açık`, ton: "guclu" } : { metin: "Kapandı", ton: "basari" },
+                  a.gecikmis > 0 ? { metin: `${money(a.gecikmis)} vadesi geçti`, ton: "tehlike" } : null,
+                  a.tahsilOrani !== null ? { metin: `%${a.tahsilOrani} tahsil`, ton: "sessiz" } : null,
+                  a.sonHareket ? { metin: kisaTarih(a.sonHareket), ton: "sessiz" } : null,
+                ]}
+              />
             </tr>
           ))}
         </tbody>

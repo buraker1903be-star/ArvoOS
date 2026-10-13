@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { htmlVarliklariniCoz, postaAramaDeseni } from "@/lib/posta-ayristirma";
@@ -413,6 +414,15 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                           <button className="panel-secondary posta-sil" type="submit">Sil</button>
                         </form>
                       </td>
+                      <MobilSatir
+                        href={satir.thread_id ? `/panel/posta/${satir.thread_id}` : `/panel/posta/yeni?taslak=${satir.id}`}
+                        baslik={satir.alici || (satir.thread_id ? "Yanıt taslağı" : "Alıcı yazılmamış")}
+                        alt={[satir.konu || "Konusuz"]}
+                        isaretler={[
+                          { metin: istanbulTarihSaat(satir.updated_at), ton: "bilgi" },
+                          { metin: satir.olusturan ? adlar.get(satir.olusturan) ?? "Ekipten biri" : "—", ton: "sessiz" },
+                        ]}
+                      />
                     </tr>
                   ))}
                 </tbody>
@@ -525,6 +535,20 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                             name="thread_id" value={konusma.thread_id}>Geri al</button>
                         ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
                       </td>
+                      {/* Telefonda: gönderen + durum / konu / zaman, müşteri, ilgilenen.
+                          Seçim kutusu telefonda yok (toplu işlem masaüstünde). */}
+                      <MobilSatir
+                        href={`/panel/posta/${konusma.thread_id}`}
+                        baslik={gonderen}
+                        durum={copGorunumu ? null : { etiket: etiket.ad, ton: etiket.ton }}
+                        alt={[`${konusma.konu || "(konu yok)"}${konusma.mesaj_sayisi > 1 ? ` (${konusma.mesaj_sayisi})` : ""}`]}
+                        isaretler={[
+                          { metin: istanbulTarihSaat(copGorunumu ? konusma.silindi_at : konusma.son_mesaj_at), ton: konusma.okunmamis ? "guclu" : "bilgi" },
+                          musteriAdi(konusma) ? { metin: String(musteriAdi(konusma)), ton: "bilgi" } : null,
+                          copGorunumu ? (silen ? { metin: `Silen: ${silen}`, ton: "sessiz" } : null)
+                            : ilgilenen ? { metin: konusma.ilgilenen_user_id === userId ? "Siz ilgileniyorsunuz" : ilgilenen, ton: "sessiz" } : null,
+                        ]}
+                      />
                     </tr>
                   );
                 })}

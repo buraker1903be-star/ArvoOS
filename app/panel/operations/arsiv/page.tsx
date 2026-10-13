@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { formatSubject } from "@/lib/table-format";
-import { RepresentativeCell } from "../../crm/table-cells";
+import { MobilSatir, RepresentativeCell } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { unarchiveWorkflow } from "../actions";
 import { OpsIcon, shortDate, todayIstanbul } from "../ops-shared";
@@ -228,6 +228,16 @@ export default async function OperasyonArsivi({ searchParams }: {
                             </form>
                           ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
                         </td>
+                        <MobilSatir
+                          href={`/panel/operations/${is.id}`}
+                          baslik={formatSubject(is.title)}
+                          alt={[is.customer_name || "Kurum içi iş", is.assigned_employee_id ? formatPersonName(adById.get(is.assigned_employee_id) ?? "Pasif personel") : "Atanmamış"]}
+                          isaretler={[
+                            yeniMesaj ? { metin: `${yeniMesaj} yeni mesaj`, ton: "tehlike" } : null,
+                            { metin: `Arşiv ${shortDate(is.archived_at)}`, ton: "bilgi" },
+                            { metin: is.archived_by ? adByUser.get(is.archived_by) ?? "Ekip üyesi" : "Otomatik (ödeme kapandı)", ton: "sessiz" },
+                          ]}
+                        />
                       </tr>
                     );
                   })}

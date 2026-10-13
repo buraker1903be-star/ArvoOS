@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "../crm/table-cells";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
@@ -417,6 +418,16 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
                       <td data-label="Durum"><span className="status-pill" data-tone={k.tone}>{k.statusLabel}</span></td>
                       <td className="crm-col-date" data-label="Tarih">{k.dateLabel}</td>
                       <td className="crm-table-actions">{k.canOpen ? <span className="crm-row-chevron" aria-hidden="true">›</span> : null}</td>
+                      <MobilSatir
+                        href={k.canOpen ? k.href : null}
+                        baslik={k.title}
+                        durum={{ etiket: k.statusLabel, ton: k.tone }}
+                        alt={[k.kindLabel, k.detail, k.person ? `${k.personRole ?? ""} ${k.person}`.trim() : null]}
+                        isaretler={[
+                          k.amountLabel ? { metin: k.amountLabel, ton: "guclu" } : null,
+                          k.dateLabel ? { metin: k.dateLabel, ton: "sessiz" } : null,
+                        ]}
+                      />
                     </tr>
                   ))}
                 </tbody>

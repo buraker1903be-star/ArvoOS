@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -283,6 +284,18 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
                       })() : null}
                       <td data-label="Durum"><span className="status-pill" data-tone={statusTones[employee.employment_status] ?? "neutral"}>{statusNames[employee.employment_status] ?? employee.employment_status}</span></td>
                       <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                      <MobilSatir
+                        href={`/panel/hr/${employee.id}`}
+                        baslik={employee.full_name}
+                        /* "Aktif" çoğunlukta; telefonda yalnızca farklı durum yazılır. */
+                        durum={employee.employment_status === "active" ? null : { etiket: statusNames[employee.employment_status] ?? employee.employment_status, ton: statusTones[employee.employment_status] ?? "neutral" }}
+                        alt={[employee.job_title || "Pozisyon belirtilmedi", departmentName]}
+                        isaretler={[
+                          employee.user_id && cevrimici.has(employee.user_id) ? { metin: "Çevrimiçi", ton: "basari" } : null,
+                          canManageTeam ? { metin: erisim.ad, ton: erisim.ton === "warning" ? "uyari" : erisim.ton === "info" ? "bilgi" : "sessiz" } : null,
+                          formatPhone(employee.phone) ? { metin: formatPhone(employee.phone), ton: "sessiz" } : null,
+                        ]}
+                      />
                     </tr>
                   );
                 })}

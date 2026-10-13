@@ -1,3 +1,4 @@
+import { MobilSatir } from "../../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../../components/panel-drawer";
@@ -116,6 +117,17 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                       <button className="panel-danger">Sil</button>
                     </form>
                   </td>
+                  <MobilSatir
+                    baslik={item.category}
+                    durum={{ etiket: item.status==="paid"?"Ödendi":"Planlandı", ton: statusTone(item.status) }}
+                    alt={[item.description]}
+                    isaretler={[
+                      { metin: money(Number(item.amount),contract.currency), ton: "guclu" },
+                      { metin: date(item.cost_date), ton: "sessiz" },
+                      item.supplier ? { metin: item.supplier, ton: "sessiz" } : null,
+                      item.reference_no ? { metin: item.reference_no, ton: "sessiz" } : null,
+                    ]}
+                  />
                 </tr>
               ))}
             </tbody>

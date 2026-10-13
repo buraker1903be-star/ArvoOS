@@ -10,9 +10,15 @@
 .crm-data-table td.mobil-satir{display:none}
 
 @media (max-width:760px){
-  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir){display:block;padding:13px 16px 12px}
-  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td:not(.mobil-satir){display:none !important}
-  .os-root .panel-content .talep-tablo .crm-data-table tbody tr>td.mobil-satir{display:block;width:100%;padding:0;color:var(--muted);font-size:13px;line-height:1.35}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir){display:flex;flex-direction:column;align-items:stretch;padding:13px 16px 12px}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td:not(.mobil-satir,.crm-table-actions){display:none !important}
+  /* Eylem hücresi yalnızca düğmesi varsa: altta, kendi boyunda düğmeler. */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions:is(:empty,:has(>.crm-row-chevron:only-child)){display:none !important}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions{order:1;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px;width:auto;margin:10px 0 0;padding:0}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions>*{display:inline-flex;margin:0}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions :is(button,a.panel-secondary,a.panel-primary){min-height:36px;padding:0 14px;font-size:13.5px}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions .crm-row-chevron{display:none}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr>td.mobil-satir{order:0;display:block;width:100%;padding:0;color:var(--muted);font-size:13px;line-height:1.35}
   .os-root .panel-content .talep-tablo .crm-data-table tbody tr>td.mobil-satir::before{content:none}
 
   /* 1. satır: başlık ve durum */
@@ -36,4 +42,21 @@
 
   /* Yeni mesajı olan satır: solda ince vurgu çizgisi. */
   .os-root .panel-content .talep-tablo .crm-data-table tbody tr.has-alert:has(>td.mobil-satir){box-shadow:inset 3px 0 0 var(--danger)}
+}
+
+@media (max-width:760px){
+  /* Okunmamış posta: başlık kalın, önünde nokta (masaüstündeki gibi). */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr[data-okunmamis] td.mobil-satir .ms-baslik{font-weight:700}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr[data-okunmamis] td.mobil-satir .ms-ust::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--primary)}
+  /* Pasif personel soluk. */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr.is-pasif td.mobil-satir{opacity:.6}
+}
+
+@media (max-width:760px){
+  /* Telefon satırlı tabloda sütun başlığı yok (posta kendi başlığını gösteriyordu). */
+  .os-root .panel-content .talep-tablo .crm-data-table:has(td.mobil-satir) thead{display:none}
+  /* Düğmeli satır: düğme sağda, satırla aynı hizada — ayrı bir satır kaplamasın. */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir):has(>td.crm-table-actions :is(button,a.panel-secondary,a.panel-primary)){display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:center}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.mobil-satir{grid-column:1;grid-row:1}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td.crm-table-actions{grid-column:2;grid-row:1;flex-direction:column;align-items:stretch;gap:6px;margin:0}
 }

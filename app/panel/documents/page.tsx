@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { CustomerCell, DateCell } from "../crm/table-cells";
+import { CustomerCell, DateCell, MobilSatir, kisaTarih } from "../crm/table-cells";
 import { OtomatikSecim } from "../crm/otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
@@ -291,6 +291,17 @@ export default async function BelgelerSayfasi({ searchParams }: {
                             yaşam döngüsü sayfasına uğramayı şart koşmak bir adım fazlaydı. */}
                         <Link className="panel-secondary" href={`/panel/documents/${tur}/${satir.id}/preview`}>Önizle</Link>
                       </td>
+                      <MobilSatir
+                        href={`/panel/documents/${tur}/${satir.id}`}
+                        baslik={satir.customer_name ?? "Müşteri"}
+                        durum={{ etiket: grupAdi(grup), ton: grupTonu(grup) }}
+                        alt={[altMetin]}
+                        isaretler={[
+                          { metin: para(satir.amount, satir.currency), ton: "guclu" },
+                          { metin: no, ton: "sessiz" },
+                          (sozlesmeMi ? satir.signed_at : satir.created_at) ? { metin: `${sozlesmeMi ? "İmza" : "Oluşturuldu"} ${kisaTarih(sozlesmeMi ? satir.signed_at : satir.created_at)}`, ton: "sessiz" } : null,
+                        ]}
+                      />
                     </tr>
                   );
                 })}
