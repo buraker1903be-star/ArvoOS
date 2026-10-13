@@ -24,7 +24,7 @@ export type NotificationRow = {
 };
 
 export type NotificationTone = "info" | "gold" | "success" | "danger" | "brand" | "neutral";
-export type NotificationIconName = "bubble" | "comment" | "person" | "briefcase" | "check" | "card" | "lifebuoy" | "megaphone" | "bell";
+export type NotificationIconName = "bubble" | "comment" | "person" | "briefcase" | "check" | "card" | "lifebuoy" | "megaphone" | "mail" | "bell";
 
 export type DescribedNotification = NotificationRow & {
   label: string;
@@ -61,7 +61,7 @@ export async function describeNotifications(
   const contractIds = idsFor(["customer_message"], "contract_id");
   const commentIds = idsFor(["internal_comment"], "comment_id");
   const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation", "site_lead"], "opportunity_id");
-  const workflowIds = idsFor(["operation_assignment", "operation_step_due"], "workflow_id");
+  const workflowIds = idsFor(["operation_assignment", "operation_step_due", "operation_waiting_party", "operation_revision_window"], "workflow_id");
 
   const [contractResult, messageResult, commentResult, opportunityResult, workflowResult] = await Promise.all([
     contractIds.length ? supabase.from("crm_contracts").select("id,contract_no,title,crm_opportunities(customer_name,request_details)").in("id", contractIds) : empty,
@@ -118,10 +118,13 @@ export async function describeNotifications(
           label: "Müşteri mesajı",
           tone: "info",
           icon: "bubble",
-          // Kurum sahibinin tarifi (13.10.2026): başlık müşterinin adı, altında mesajın kendisi.
-          headline: contract?.customer || "Müşteri",
+          /* Kurum sahibinin tarifi (13.10.2026): başlık müşterinin adı, altında
+             mesajın kendisi. Sözleşme okunamıyorsa (silinmiş ya da yetki yok)
+             eskiden başlıkta yalnızca "Müşteri" yazıyordu; artık
+             veritabanındaki başlık ve metindeki dosya numarası. */
+          headline: contract?.customer || row.title || "Müşteriden yeni mesaj",
           detail: body ? quote(body) : "Dosya takip sayfasından size yeni bir mesaj bıraktı.",
-          context: join(contract?.no, contract?.service),
+          context: join(contract?.no ?? row.message.match(/[A-Z]{2,5}-d{4}-d+/)?.[0], contract?.service),
           actionLabel: "Mesajı aç",
         };
       }
@@ -202,6 +205,54 @@ export async function describeNotifications(
           context: workflow ? join(formatSubject(workflow.title), formatPersonName(workflow.customer_name)) : null,
           actionLabel: "İşi aç",
         };
+      }
+      case "operation_waiting_party": {
+        // Adım karşı tarafta (müşteri / üçüncü taraf) bekliyor ve süresi geçti (adim-terminleri).
+        const workflow = workflows.get(meta(row, "workflow_id") ?? "");
+        return {
+          ...base,
+          label: "İş beklemesi",
+          tone: "gold",
+          icon: "briefcase",
+          headline: row.title,
+          detail: row.message,
+          context: workflow ? join(formatSubject(workflow.title), formatPersonName(workflow.customer_name)) : null,
+          actionLabel: "İşi aç",
+        };
+      }
+      case "operation_revision_window": {
+        // Teslimden sonraki revizyon hakkı doluyor / doldu (lib/revizyon.ts).
+        const workflow = workflows.get(meta(row, "workflow_id") ?? "");
+        return {
+          ...base,
+          label: "Revizyon süresi",
+          tone: meta(row, "state") === "ended" ? "neutral" : "gold",
+          icon: "briefcase",
+          headline: row.title,
+          detail: row.message,
+          context: workflow ? join(formatSubject(workflow.title), formatPersonName(workflow.customer_name)) : null,
+          actionLabel: "İşi aç",
+        };
+      }
+      case "posta_gelen": {
+        /* Ortak kutuya düşen posta (lib/posta-bildirim.ts). Metin
+           "Gönderen · Konu" biçiminde yazılıyor; başlıkta gönderen, altında
+           konu. Eskiden etiket "Bildirim", başlık hep "Yeni posta"ydı. */
+        const ayirac = row.message.indexOf(" · ");
+        const tekPosta = row.title === "Yeni posta" && ayirac > 0;
+        return {
+          ...base,
+          label: "Posta",
+          tone: "info",
+          icon: "mail",
+          headline: tekPosta ? row.message.slice(0, ayirac) : row.title,
+          detail: tekPosta ? row.message.slice(ayirac + 3) : row.message,
+          actionLabel: tekPosta ? "Postayı aç" : "Postaya git",
+        };
+      }
+      case "posta_esitleme": {
+        const durdu = meta(row, "durum") === "durdu";
+        return { ...base, label: "Posta", tone: durdu ? "danger" : "success", icon: "mail", headline: row.title, detail: row.message, actionLabel: "Postaya git" };
       }
       case "crm_won_automation": {
         const opportunity = opportunities.get(meta(row, "opportunity_id") ?? "");

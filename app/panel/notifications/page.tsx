@@ -2,14 +2,15 @@ import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
 import { deleteReadNotification, markAllNotificationsRead, markNotificationRead, sendManagementAnnouncement } from "./actions";
-import type { DescribedNotification } from "./describe";
-import { inNotificationFilter, notificationFilters as filters } from "./filters";
+import { describeNotifications, type DescribedNotification, type NotificationRow } from "./describe";
+import { basliklaraDagit, inNotificationFilter, kategoriParametresi, notificationFilters as filters, type BildirimOzeti, type BildirimOzetSatiri } from "./filters";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
+import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { NotificationIcon as Icon } from "./notification-icon";
 import { DuyuruMetni } from "./duyuru-metni";
 import { AnlikBildirimAyari } from "./anlik-bildirim-ayari";
 import { pushGenelAnahtar, pushYapilandi } from "@/lib/anlik-bildirim-gonder";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulMidnight, todayInIstanbul } from "@/lib/istanbul-date";
 // Sayfa düzeni (talep-bas, kayit-serit, ekip-suzgec) panelin öteki sayfalarıyla ortak.
 import "../crm/kayit-detay/kayit-detay.css";
 import "./notifications.css";
@@ -17,8 +18,11 @@ import "./notifications.css";
 import "../components/kayit-formu.css";
 
 const TZ = "Europe/Istanbul";
-/** Sayfada gösterilen en çok bildirim (çekmeceyle aynı sorgu). */
-const LISTE_SINIRI = 100;
+/** Migration uygulanmadıysa eski yolun okuduğu en çok bildirim. */
+const ESKI_SINIR = 100;
+const SUTUNLAR = "id,title,message,category,action_url,user_id,read_at,created_at,metadata";
+const islevYok = (error: { code?: string; message?: string } | null) =>
+  Boolean(error && (["PGRST202", "42883"].includes(error.code ?? "") || /could not find the function/i.test(error.message ?? "")));
 const DAY = 24 * 60 * 60 * 1000;
 const dayKey = (value: string | number) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
@@ -49,44 +53,86 @@ function groupByDay(items: DescribedNotification[]) {
   şeridi kayit-serit, başlık çipleri ekip-suzgec, liste panel-card.
   Eskiden sayfa kendi başlığını ve kendi çip dilini çiziyordu.
 
-  SAYILAR. "N okunmamış" eskiden son 100 bildirimden sayılıyordu; 100'den
-  fazla okunmamışı olan biri eksik sayı görüyordu ve üst çubuk rozeti
-  (veritabanından, sınırsız) başka bir sayı söylüyordu. Okunmamış sayısı
-  artık rozetle AYNI işlevden. Başlık sayıları listeden geliyor; liste
-  sınıra ulaştıysa bu açıkça yazılıyor ("son 100 bildirimde").
+  SUNUCUDA (13.10.2026, 20261013145720). Eskiden kişinin son 100
+  bildirimi çekilip başlık, "okunmamış" süzgeci ve çip sayıları bellekte
+  hesaplanıyordu: 100'ü geçen biri eski bildirimlerine ulaşamıyor, çip
+  sayıları "son 100'ün içinden" kalıyordu. Artık liste arvo_bildirimler'den
+  sayfa sayfa (diğer listelerle aynı sayfa boyu), şerit ve çip sayıları
+  AYNI işlevin üstündeki özetten (arvo_bildirim_ozeti). Okunmamış toplamı
+  rozetin işleviyle birebir aynı tanım; test eşitliği sabitliyor.
 
   "Okundu işaretle" seçili başlığa uygulanıyor (actions.ts): eskiden
   "Posta" açıkken basılan "Tümünü okundu işaretle" bütün başlıkları
   okunmuş yapıyordu.
 */
-export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ kategori?: string; durum?: string }> }) {
-  const { kategori, durum } = await searchParams;
+export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ kategori?: string; durum?: string; sayfa?: string }> }) {
+  const { kategori, durum, sayfa } = await searchParams;
+  const sayfaNo = sayfaNumarasi(sayfa);
   const selectedFilter = filters.find((filter) => filter.key === kategori) ?? null;
   const yalnizOkunmamis = durum === "okunmamis";
   const { supabase, userId, organization, isPlatformOwner, izin } = await getPanelContext();
   const canAnnounce = izin("bildirim.duyuru.gonder") && !isPlatformOwner;
 
-  // Liste sorgusu ve metin kurgusu çekmeceyle ortak (load-notifications.ts)
-  const [allNotifications, okunmamisToplam, { data: employeeRows }] = await Promise.all([
-    loadNotifications({ supabase, userId, organizationId: organization.id, isPlatformOwner }, LISTE_SINIRI),
-    countUnreadNotifications({ supabase, organizationId: organization.id, isPlatformOwner }),
+  const bugun = todayInIstanbul();
+  const kapsam = { p_org: organization.id, p_kurucu: isPlatformOwner };
+  const [listeSonucu, ozetSonucu, { data: employeeRows }] = await Promise.all([
+    supabase.rpc("arvo_bildirimler", { ...kapsam, ...kategoriParametresi(selectedFilter), p_okunmamis: yalnizOkunmamis }, { count: "exact" })
+      .select(SUTUNLAR)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]),
+    supabase.rpc("arvo_bildirim_ozeti", { ...kapsam, p_bugun: istanbulMidnight(bugun).toISOString() }),
     canAnnounce ? supabase.from("hr_employees").select("user_id,full_name,job_title").eq("organization_id", organization.id).eq("employment_status", "active").not("user_id", "is", null).order("full_name") : Promise.resolve({ data: [] }),
   ]);
-  const sinirda = allNotifications.length >= LISTE_SINIRI;
-  const baslikta = selectedFilter ? allNotifications.filter((item) => inNotificationFilter(item.category, selectedFilter)) : allNotifications;
-  const notifications = yalnizOkunmamis ? baslikta.filter((item) => !item.read_at) : baslikta;
-  const visibleUnread = baslikta.filter((item) => !item.read_at).length;
-  const bugun = todayInIstanbul();
-  const bugunGelen = allNotifications.filter((item) => dayKey(item.created_at) === bugun).length;
-  const duyuruOkunmamis = allNotifications.filter((item) => item.category === "management_announcement" && !item.read_at).length;
+
+  let notifications: DescribedNotification[];
+  let ozet: BildirimOzeti;
+  let suzgecSayisi: number | null;
+  let eskiYol = false;
+  if (islevYok(listeSonucu.error) || islevYok(ozetSonucu.error)) {
+    /* Migration henüz uygulanmadıysa eski yol: son 100 bildirim bellekte
+       süzülür (çekmeceyle aynı sorgu). Migration'dan sonra bu dal ölü. */
+    eskiYol = true;
+    const [hepsi, okunmamisSayisi] = await Promise.all([
+      loadNotifications({ supabase, userId, organizationId: organization.id, isPlatformOwner }, ESKI_SINIR),
+      countUnreadNotifications({ supabase, organizationId: organization.id, isPlatformOwner }),
+    ]);
+    const satirlar = new Map<string, { kategori: string; adet: number; okunmamis: number; bugun: number }>();
+    for (const item of hepsi) {
+      const satir = satirlar.get(item.category) ?? { kategori: item.category, adet: 0, okunmamis: 0, bugun: 0 };
+      satir.adet += 1;
+      if (!item.read_at) satir.okunmamis += 1;
+      if (dayKey(item.created_at) === bugun) satir.bugun += 1;
+      satirlar.set(item.category, satir);
+    }
+    ozet = { ...basliklaraDagit([...satirlar.values()]), okunmamis: okunmamisSayisi };
+    const suzulmus = hepsi
+      .filter((item) => !selectedFilter || inNotificationFilter(item.category, selectedFilter))
+      .filter((item) => !yalnizOkunmamis || !item.read_at);
+    suzgecSayisi = suzulmus.length;
+    notifications = suzulmus.slice(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1] + 1);
+  } else {
+    // Sayfa boş "bildiriminiz yok" demesin: okunamayan liste hata olarak gösterilir.
+    if (listeSonucu.error) throw new Error("Bildirimler okunamadı: " + listeSonucu.error.message);
+    if (ozetSonucu.error) throw new Error("Bildirim sayıları okunamadı: " + ozetSonucu.error.message);
+    notifications = await describeNotifications(supabase, organization.id, (listeSonucu.data ?? []) as unknown as NotificationRow[]);
+    ozet = basliklaraDagit((ozetSonucu.data ?? []) as BildirimOzetSatiri[]);
+    suzgecSayisi = listeSonucu.count ?? null;
+  }
+  const okunmamisToplam = ozet.okunmamis;
+  const visibleUnread = selectedFilter ? ozet.basliklar[selectedFilter.key]?.okunmamis ?? 0 : ozet.okunmamis;
+  const duyuruOkunmamis = ozet.basliklar.duyurular?.okunmamis ?? 0;
+  const sonSayfa = sonSayfaNo(suzgecSayisi, notifications.length, sayfaNo);
 
   const groups = groupByDay(notifications);
-  // Süzgeçler adreste birlikte duruyor: başlık + okunmamış.
-  const adres = (yeni: { kategori?: string | null; okunmamis?: boolean }) => {
+  /* Süzgeçler adreste birlikte duruyor: başlık + okunmamış. Süzgeç
+     değişince sayfa başa dönüyor; numara yalnızca sayfalayıcıdan taşınıyor. */
+  const adres = (yeni: { kategori?: string | null; okunmamis?: boolean; sayfa?: number }) => {
     const p = new URLSearchParams();
     const k = yeni.kategori === undefined ? selectedFilter?.key : yeni.kategori;
     if (k) p.set("kategori", k);
     if (yeni.okunmamis ?? yalnizOkunmamis) p.set("durum", "okunmamis");
+    if (yeni.sayfa && yeni.sayfa > 1) p.set("sayfa", String(yeni.sayfa));
     const q = p.toString();
     return q ? `/panel/notifications?${q}` : "/panel/notifications";
   };
@@ -113,21 +159,21 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     {/* Bu cihazda anlık bildirim (web push, 13.10.2026). */}
     <AnlikBildirimAyari genelAnahtar={pushYapilandi() ? pushGenelAnahtar() : null} />
 
-    {/* ÖZET ŞERİDİ: okunmamış sayısı rozetle aynı işlevden (sınırsız). */}
+    {/* ÖZET ŞERİDİ: sayılar özet işlevinden (sınırsız); okunmamış rozetle aynı tanım. */}
     <nav className="kayit-serit talep-serit" aria-label="Bildirim özeti">
       <dl>
         <div className={yalnizOkunmamis && !selectedFilter ? "is-active" : undefined}><dt>Okunmamış</dt><dd className={okunmamisToplam ? "talep-uyari" : "cari-arti"}><Link href={adres({ kategori: null, okunmamis: true })}>{okunmamisToplam}</Link></dd></div>
-        <div><dt>Bugün gelen</dt><dd>{bugunGelen}</dd></div>
+        <div><dt>Bugün gelen</dt><dd>{ozet.bugun}</dd></div>
         {duyuruOkunmamis ? <div><dt>Okunmamış duyuru</dt><dd><Link href={adres({ kategori: "duyurular", okunmamis: true })}>{duyuruOkunmamis}</Link></dd></div> : null}
-        <div><dt>{sinirda ? `Son ${LISTE_SINIRI} bildirim` : "Listede"}</dt><dd>{allNotifications.length}</dd></div>
+        <div className={!yalnizOkunmamis && !selectedFilter ? "is-active" : undefined}><dt>{eskiYol ? `Son ${ESKI_SINIR} bildirim` : "Toplam"}</dt><dd><Link href={adres({ kategori: null, okunmamis: false })}>{ozet.toplam}</Link></dd></div>
       </dl>
     </nav>
 
     <section className="panel-card ntf-card" aria-label="Bildirim listesi">
       <div className="ekip-suzgec talep-suzgec ntf-suzgec">
-        <Link className={!selectedFilter ? "is-active" : undefined} href={adres({ kategori: null })} aria-current={!selectedFilter ? "page" : undefined}>Tümü <small>{allNotifications.length}</small></Link>
+        <Link className={!selectedFilter ? "is-active" : undefined} href={adres({ kategori: null })} aria-current={!selectedFilter ? "page" : undefined}>Tümü <small>{ozet.toplam}</small></Link>
         {filters.map((filter) => {
-          const count = allNotifications.filter((item) => inNotificationFilter(item.category, filter)).length;
+          const count = ozet.basliklar[filter.key]?.adet ?? 0;
           const active = selectedFilter?.key === filter.key;
           if (!count && !active) return null; // boş başlık gösterilmez (çekmeceyle aynı)
           return <Link className={active ? "is-active" : undefined} href={adres({ kategori: filter.key })} key={filter.key} aria-current={active ? "page" : undefined}>{filter.label} <small>{count}</small></Link>;
@@ -138,7 +184,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       <div className="cari-baslik ntf-baslik">
         <div>
           <h2>{selectedFilter?.label ?? "Tüm bildirimler"}{yalnizOkunmamis ? " · okunmamış" : ""}</h2>
-          <small>{notifications.length} bildirim{sinirda ? ` · son ${LISTE_SINIRI} bildirimde` : ""}</small>
+          <small>{suzgecSayisi ?? notifications.length} bildirim{eskiYol ? ` · son ${ESKI_SINIR} bildirimde` : ""}</small>
         </div>
         {selectedFilter && visibleUnread > 0 ? <form action={markAllNotificationsRead}><input type="hidden" name="kategori" value={selectedFilter.key} /><button className="ntf-link" type="submit">Bu başlığı okundu işaretle</button></form> : null}
       </div>
@@ -183,7 +229,20 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             );
           })}
         </div>
-      )) : (
+      )) : null}
+      {/* Sayfalayıcı: talep, teklif, sözleşme ve iş listeleriyle aynı. */}
+      {sonSayfa > 1 ? (
+        <nav className="liste-sayfalar" aria-label="Sayfalar">
+          {sayfaNo > 1
+            ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo - 1 })}>← Önceki</Link>
+            : <span className="panel-secondary is-disabled" aria-disabled="true">← Önceki</span>}
+          <small>{sayfaNo} / {sonSayfa}{typeof suzgecSayisi === "number" ? ` · ${suzgecSayisi} bildirim` : ""}</small>
+          {sayfaNo < sonSayfa
+            ? <Link className="panel-secondary" href={adres({ sayfa: sayfaNo + 1 })}>Sonraki →</Link>
+            : <span className="panel-secondary is-disabled" aria-disabled="true">Sonraki →</span>}
+        </nav>
+      ) : null}
+      {groups.length ? null : (
         <div className="ntf-empty">
           <span className="ntf-icon" data-tone="neutral"><Icon name="bell" /></span>
           <h3>{yalnizOkunmamis ? "Okunmamış bildirim yok" : selectedFilter ? "Bu başlıkta bildirim yok" : "Henüz bildiriminiz yok"}</h3>
