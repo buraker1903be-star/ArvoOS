@@ -303,3 +303,7 @@
   .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):not(:first-child){width:1%;white-space:nowrap;padding-left:var(--sp-5);font-variant-numeric:tabular-nums}
   .os-root .talep-tablo [data-cols="ekip-yuku"] td:first-child .crm-table-title{white-space:nowrap}
 }
+/* Kartın iç boşluğu öteki listelerle aynı (20px). Bu kart ızgara dışında
+   kaldığı için 18px alıyordu; tablo kenara 20px uzandığından başlık satırı
+   kartın kenar çizgisinin üstüne 1px taşıyor, çizgiyi eziyordu. */
+.os-root .panel-content .ekip-yuku-kart{padding:var(--sp-5)}
