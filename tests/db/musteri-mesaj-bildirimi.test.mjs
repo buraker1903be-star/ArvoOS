@@ -119,7 +119,7 @@ describe("müşteri mesajı bildirimi", () => {
       assert.equal(mesaj.workflow_id, isId);
 
       const { rows } = await db.query(
-        `select user_id, audience, category, title, action_url, metadata, read_at
+        `select user_id, audience, category, title, message, action_url, metadata, read_at
            from public.notifications where organization_id = $1`, [KURUM]);
       assert.deepEqual(
         rows.map((r) => r.user_id).sort(),
@@ -133,7 +133,21 @@ describe("müşteri mesajı bildirimi", () => {
       for (const satir of rows) {
         assert.equal(satir.audience, "organization");
         assert.equal(satir.category, "customer_message");
-        assert.equal(satir.title, "Müşteriden yeni mesaj");
+        /*
+          Başlık MÜŞTERİNİN ADI, sabit bir cümle değil. notifications
+          üzerindeki `arvo_bildirim_metni` tetikleyicisi (BEFORE INSERT)
+          customer_message satırlarının başlığını müşterinin adıyla,
+          gövdesini de mesajın ilk 300 karakteriyle değiştiriyor: zil
+          listesinde "Müşteriden yeni mesaj" beş kez alt alta yazmak
+          hangi dosya olduğunu söylemiyordu.
+
+          Test 13.10.2026'ya kadar "Müşteriden yeni mesaj" bekliyordu ve
+          YEŞİLDİ — çünkü anlık görüntü o tetikleyiciden önceydi; döküm
+          yenilenince ortaya çıktı. İşlevin kendi gövdesi hâlâ sabit
+          cümleyi yazıyor, son sözü tetikleyici söylüyor.
+        */
+        assert.equal(satir.title, "Ayşe");
+        assert.equal(satir.message, "Etik kurul belgesini yükledim, bakar mısınız?");
         // İş varken bağlantı doğrudan iş detayına gidiyor; oradan mesaj
         // sekmesi bir tık uzakta.
         assert.equal(satir.action_url, `/panel/operations/${isId}`);

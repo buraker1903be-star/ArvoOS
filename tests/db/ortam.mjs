@@ -69,6 +69,29 @@ export const BEKLEYEN_MIGRATIONLAR = [
 const yetkiSatirlari = (sql) => sql.match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
 
 /**
+ * Bir migration'ın YALNIZCA yetki satırlarını uygular.
+ *
+ * Döküm yenilenince migration'ın DDL'i anlık görüntünün içine giriyor ve
+ * dosyayı bütün olarak yeniden uygulamak çakışıyor: 13.10.2026'da
+ * 20261012131639 böyle düştü (`create function arvo_tracking_guard` —
+ * işlev dökümde zaten vardı, `create or replace` değil `create` yazıyor).
+ *
+ * Dosyayı test listesinden tamamen çıkarmak da yanlış: döküm TABLO ve
+ * SÜTUN yetkilerini taşımıyor, düzenek de Supabase varsayılanını taklit
+ * edip her tabloyu anon'a açıyor. O migration'ın
+ * `revoke all on table … from anon` satırı gitseydi "anon erişemiyor"
+ * senaryosu hiçbir şey ölçmeyen, ama yeşil kalan bir teste dönerdi.
+ *
+ * Bu yüzden DDL atlanıp yalnızca grant/revoke satırları tekrarlanıyor.
+ */
+export async function migrationYetkileri(db, dosyaAdlari) {
+  for (const ad of dosyaAdlari) {
+    const sql = fs.readFileSync(path.resolve(import.meta.dirname, "../../supabase/migrations/", ad), "utf8");
+    for (const satir of yetkiSatirlari(sql)) await db.exec(satir);
+  }
+}
+
+/**
  * Supabase varsayılanını kurar, sonra verilen dosyaların yetki
  * satırlarını özgün sırasıyla tekrarlar — canlıdaki son durum bu.
  */

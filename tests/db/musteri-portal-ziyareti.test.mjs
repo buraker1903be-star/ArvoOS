@@ -12,11 +12,13 @@
 */
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
-import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
+/* 13.10.2026'da yenilenen döküm bu migration'ın DDL'ini taşıyor; dosyayı
+   bütün olarak uygulamak `create function` ile çakışıyor. Tablo yetkileri
+   dökümde YOK, o yüzden yalnızca grant/revoke satırları tekrarlanıyor
+   (gerekçe: ortam.mjs → migrationYetkileri). govde-tamam: DDL dökümden,
+   yetkiler dosyadan. */
 const MIGRATIONLAR = ["20261012131639_musteri_portal_ziyareti.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000e601";
@@ -31,7 +33,7 @@ const KOD = "ABC234";
 let db;
 before(async () => {
   db = await veritabani();
-  for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
+  await migrationYetkileri(db, MIGRATIONLAR);
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','sahip@x.com'),('${YABANCI}','yabanci@y.com');

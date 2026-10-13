@@ -4844,8 +4844,8 @@ CREATE OR REPLACE FUNCTION private.default_license_limits(p_plan plan_code)
  SET search_path TO ''
 AS $function$
   select case p_plan
-    when 'starter'::public.plan_code then jsonb_build_object('user_limit', 5, 'storage_limit_mb', 5120, 'ai_credit_limit', 500)
-    when 'professional'::public.plan_code then jsonb_build_object('user_limit', 25, 'storage_limit_mb', 51200, 'ai_credit_limit', 2500)
+    when 'starter'::public.plan_code then jsonb_build_object('user_limit', 3, 'storage_limit_mb', 5120, 'ai_credit_limit', 500)
+    when 'professional'::public.plan_code then jsonb_build_object('user_limit', 15, 'storage_limit_mb', 51200, 'ai_credit_limit', 2500)
     else jsonb_build_object('user_limit', 250, 'storage_limit_mb', 512000, 'ai_credit_limit', 10000)
   end;
 $function$
@@ -9953,31 +9953,6 @@ AS $function$
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.crm_talep_suz(p_org uuid, p_desen text, p_telefon text, p_temsilci text)
- RETURNS SETOF crm_talep_liste
- LANGUAGE sql
- STABLE
-AS $function$
-  select t.*
-  from public.crm_talep_liste t
-  where t.organization_id = p_org
-    and (
-      p_desen is null
-      or t.customer_name ilike '%' || p_desen || '%'
-      or t.title ilike '%' || p_desen || '%'
-      or t.contact_email ilike '%' || p_desen || '%'
-      or t.hizmet_turu ilike '%' || p_desen || '%'
-      or t.temsilci_adi ilike '%' || p_desen || '%'
-      or (p_telefon is not null and t.telefon_rakamlari ilike '%' || p_telefon || '%')
-    )
-    and (
-      p_temsilci is null
-      or (p_temsilci = 'atanmamis' and t.assigned_employee_id is null)
-      or t.assigned_employee_id::text = p_temsilci
-    )
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.crm_teklif_istatistikleri(p_organization_id uuid)
  RETURNS jsonb
  LANGUAGE sql
@@ -11725,29 +11700,6 @@ AS $function$
     ), '{}'::jsonb)
   )
   from public.operasyon_is_suz(p_org, p_desen, p_sorumlu) w
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.operasyon_is_suz(p_org uuid, p_desen text, p_sorumlu text)
- RETURNS SETOF operasyon_is_liste
- LANGUAGE sql
- STABLE
-AS $function$
-  select w.*
-  from public.operasyon_is_liste w
-  where w.organization_id = p_org
-    -- Arşiv listede yok (kendi sayfasında), iptal hiçbir yerde.
-    and w.status <> 'cancelled' and w.status <> 'archived'
-    and (
-      p_desen is null
-      or w.title ilike '%' || p_desen || '%'
-      or w.customer_name ilike '%' || p_desen || '%'
-    )
-    and (
-      p_sorumlu is null
-      or (p_sorumlu = 'atanmamis' and w.assigned_employee_id is null)
-      or w.assigned_employee_id::text = p_sorumlu
-    )
 $function$
 ;
 
@@ -16423,6 +16375,54 @@ create or replace view public.operasyon_is_liste with (security_invoker=true, se
      LEFT JOIN ops_contracts sozlesme ON sozlesme.id = w.contract_id
      LEFT JOIN ops_opportunities musteri ON musteri.id = sozlesme.opportunity_id;
 
+CREATE OR REPLACE FUNCTION public.crm_talep_suz(p_org uuid, p_desen text, p_telefon text, p_temsilci text)
+ RETURNS SETOF crm_talep_liste
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select t.*
+  from public.crm_talep_liste t
+  where t.organization_id = p_org
+    and (
+      p_desen is null
+      or t.customer_name ilike '%' || p_desen || '%'
+      or t.title ilike '%' || p_desen || '%'
+      or t.contact_email ilike '%' || p_desen || '%'
+      or t.hizmet_turu ilike '%' || p_desen || '%'
+      or t.temsilci_adi ilike '%' || p_desen || '%'
+      or (p_telefon is not null and t.telefon_rakamlari ilike '%' || p_telefon || '%')
+    )
+    and (
+      p_temsilci is null
+      or (p_temsilci = 'atanmamis' and t.assigned_employee_id is null)
+      or t.assigned_employee_id::text = p_temsilci
+    )
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.operasyon_is_suz(p_org uuid, p_desen text, p_sorumlu text)
+ RETURNS SETOF operasyon_is_liste
+ LANGUAGE sql
+ STABLE
+AS $function$
+  select w.*
+  from public.operasyon_is_liste w
+  where w.organization_id = p_org
+    -- Arşiv listede yok (kendi sayfasında), iptal hiçbir yerde.
+    and w.status <> 'cancelled' and w.status <> 'archived'
+    and (
+      p_desen is null
+      or w.title ilike '%' || p_desen || '%'
+      or w.customer_name ilike '%' || p_desen || '%'
+    )
+    and (
+      p_sorumlu is null
+      or (p_sorumlu = 'atanmamis' and w.assigned_employee_id is null)
+      or w.assigned_employee_id::text = p_sorumlu
+    )
+$function$
+;
+
 alter table public.account_entries enable row level security;
 
 alter table public.account_parties enable row level security;
@@ -18268,8 +18268,8 @@ grant execute on function public.arc_variant_available(p_stock integer, p_allow_
 
 revoke all on function public.archive_inactive_crm_proposal() from public;
 grant execute on function public.archive_inactive_crm_proposal() to anon;
-grant execute on function public.archive_inactive_crm_proposal() to service_role;
 grant execute on function public.archive_inactive_crm_proposal() to authenticated;
+grant execute on function public.archive_inactive_crm_proposal() to service_role;
 grant execute on function public.archive_inactive_crm_proposal() to public;
 
 revoke all on function public.arvo_auth_kullanici_id(p_email text) from public;
@@ -18458,8 +18458,8 @@ grant execute on function public.collect_payment_installment(target_installment_
 grant execute on function public.collect_payment_installment(target_installment_id uuid) to service_role;
 
 revoke all on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) from public;
-grant execute on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) to authenticated;
 grant execute on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) to service_role;
+grant execute on function public.complete_organization_onboarding(p_organization_id uuid, p_legal_name text, p_phone text, p_website text, p_logo_url text, p_primary_color text) to authenticated;
 
 revoke all on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) from public;
 grant execute on function public.create_arvoculture_return_request(p_order_number text, p_items jsonb, p_reason text, p_note text) to authenticated;
@@ -18641,9 +18641,9 @@ grant execute on function public.get_public_crm_proposal(public_token text) to a
 grant execute on function public.get_public_crm_proposal(public_token text) to public;
 
 revoke all on function public.get_public_organization_branding(p_slug text) from public;
-grant execute on function public.get_public_organization_branding(p_slug text) to anon;
-grant execute on function public.get_public_organization_branding(p_slug text) to service_role;
 grant execute on function public.get_public_organization_branding(p_slug text) to authenticated;
+grant execute on function public.get_public_organization_branding(p_slug text) to service_role;
+grant execute on function public.get_public_organization_branding(p_slug text) to anon;
 
 revoke all on function public.get_public_organization_branding_by_id(p_org_id uuid) from public;
 grant execute on function public.get_public_organization_branding_by_id(p_org_id uuid) to authenticated;
@@ -18830,10 +18830,10 @@ grant execute on function public.submit_site_lead(p_name text, p_email text, p_p
 grant execute on function public.submit_site_lead(p_name text, p_email text, p_phone text, p_company text, p_interest text, p_message text, p_locale text, p_page text, p_ip_hash text, p_consent boolean) to service_role;
 
 revoke all on function public.sync_contract_status_from_workflow() from public;
-grant execute on function public.sync_contract_status_from_workflow() to public;
 grant execute on function public.sync_contract_status_from_workflow() to anon;
 grant execute on function public.sync_contract_status_from_workflow() to service_role;
 grant execute on function public.sync_contract_status_from_workflow() to authenticated;
+grant execute on function public.sync_contract_status_from_workflow() to public;
 
 revoke all on function public.sync_contract_workflow_link() from public;
 grant execute on function public.sync_contract_workflow_link() to authenticated;
