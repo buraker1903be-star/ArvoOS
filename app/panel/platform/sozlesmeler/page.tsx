@@ -1,12 +1,16 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
-import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   Onay bekleyen sözleşmeler.
@@ -107,31 +111,39 @@ export default async function SozlesmelerPage() {
     };
   };
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
         <small className="panel-kicker">TİCARİ</small>
         <h1>Onay bekleyen sözleşmeler</h1>
         <p>İmzalanan sözleşmeler buraya düşer. İmza modülleri açmaz; tahsilatı doğruladıktan sonra onaylayın.</p>
       </div>
-    </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
+      </div>
+    </header>
 
     {/*
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "onay bekleyen
       yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
-    <div className="stg-widgets" aria-label="Kuyruk özeti">
-      <StgWidget
-        tone={bekleyenler.length ? "warning" : "success"} icon="doc" label="Onay bekliyor" value={bekleyenler.length}
-        note={bekleyenler.length ? "Tahsilatı doğrulayıp onaylayın" : "Kuyruk boş"}
-      />
-      <StgWidget
-        tone={bekleyenTutar ? "gold" : "neutral"} icon="wallet" label="Bekleyen tutar" value={para(bekleyenTutar, bekleyenBirim)}
-        note={bekleyenTutar ? "Onaylanınca modüller açılır" : "Bekleyen tutar yok"}
-      />
-      <StgWidget tone="success" icon="check" label="Onaylandı" value={onaylananSayisi} note="Abonelik açıldı" />
-      <StgWidget tone={reddedilenSayisi ? "danger" : "neutral"} icon="lock" label="Reddedildi" value={reddedilenSayisi} note={reddedilenSayisi ? "Sebebi kayıtta" : "Reddedilen istek yok"} />
-    </div>
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+
+      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
+      olmamasından daha çok şey söyler.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label="Kuyruk özeti">
+      <dl>
+        <div><dt>Onay bekliyor</dt><dd className={bekleyenler.length ? "talep-uyari" : undefined}>{bekleyenler.length}</dd><small>{bekleyenler.length ? "Tahsilatı doğrulayıp onaylayın" : "Kuyruk boş"}</small></div>
+        <div><dt>Bekleyen tutar</dt><dd>{para(bekleyenTutar, bekleyenBirim)}</dd><small>{bekleyenTutar ? "Onaylanınca modüller açılır" : "Bekleyen tutar yok"}</small></div>
+        <div><dt>Onaylandı</dt><dd className="cari-arti">{onaylananSayisi}</dd><small>Abonelik açıldı</small></div>
+        <div><dt>Reddedildi</dt><dd>{reddedilenSayisi}</dd><small>{reddedilenSayisi ? "Sebebi kayıtta" : "Reddedilen istek yok"}</small></div>
+      </dl>
+    </nav>
 
     {bekleyenler.length ? (
       <div className="istek-listesi">
@@ -170,5 +182,5 @@ export default async function SozlesmelerPage() {
         </div>
       </StgSection>
     ) : null}
-  </div>;
+  </main>;
 }

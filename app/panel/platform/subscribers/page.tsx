@@ -1,12 +1,16 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { updateProductPlan, updateSubscriber } from "./actions";
 import { AboneListesi } from "./abone-listesi";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 
@@ -65,10 +69,17 @@ export default async function SubscribersPage() {
   // Ücreti girilmemiş ürün kimseden para tahsil edemez; kurucunun görmesi gereken ilk şey bu.
   const ucretsizUrunler = SUBSCRIBER_PRODUCTS.filter((product) => !plans.get(product.code)?.individual_monthly_fee);
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small><h1>Bireysel Aboneler</h1><p>Kuruma bağlı olmayan kullanıcıların aboneliği, ürün fiyatı ve deneme süresi.</p></div>
-    </div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small>
+        <h1>Bireysel Aboneler</h1>
+        <p>Kuruma bağlı olmayan kullanıcıların aboneliği, ürün fiyatı ve deneme süresi.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/members">Tüm üyeler</Link>
+      </div>
+    </header>
 
     {ucretsizUrunler.length ? (
       <div className="plt-banner" data-tone="warning" role="status">
@@ -84,12 +95,23 @@ export default async function SubscribersPage() {
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "erişimi kapalı
       abone yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
-    <div className="stg-widgets" aria-label="Abone özeti">
-      <StgWidget tone="success" icon="wallet" label="Ödeyen abone" value={paying.length} note={monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "Aylık gelir yok"} />
-      <StgWidget tone={trialing.length ? "info" : "neutral"} icon="box" label="Denemede" value={trialing.length} note={trialing.length ? "Henüz ödeme yok" : "Denemede kimse yok"} />
-      <StgWidget tone={kapali ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={kapali} note={kapali ? "Süresi geçmiş ya da askıda" : "Kapalı abone yok"} />
-      <StgWidget tone="neutral" icon="users" label="Toplam kayıt" value={toplamKayit} note={eksikKapsam ? `En yeni ${subscribers.length} kayıt işleniyor` : "Tamamı listeleniyor"} />
-    </div>
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+
+      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
+      olmamasından daha çok şey söyler.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label="Abone özeti">
+      <dl>
+        <div><dt>Ödeyen abone</dt><dd className="cari-arti">{paying.length}</dd><small>{monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "Aylık gelir yok"}</small></div>
+        <div><dt>Denemede</dt><dd>{trialing.length}</dd><small>{trialing.length ? "Henüz ödeme yok" : "Denemede kimse yok"}</small></div>
+        <div><dt>Erişimi kapalı</dt><dd className={kapali ? "talep-uyari" : undefined}>{kapali}</dd><small>{kapali ? "Süresi geçmiş ya da askıda" : "Kapalı abone yok"}</small></div>
+        <div><dt>Toplam kayıt</dt><dd>{toplamKayit}</dd><small>{eksikKapsam ? `En yeni ${subscribers.length} kayıt işleniyor` : "Tamamı listeleniyor"}</small></div>
+      </dl>
+    </nav>
 
     {/*
       Plan kartları yan yana. Tek sütunda tam genişlik kaplıyorlardı: iki
@@ -172,5 +194,5 @@ export default async function SubscribersPage() {
         })}
       />
     </StgSection>
-  </div>;
+  </main>;
 }

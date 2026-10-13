@@ -38,17 +38,6 @@ export function StgIcon({ name, size = 18 }: { name: string; size?: number }) {
   );
 }
 
-/** iOS widget'ı: tonlu simge kutusu, etiket, büyük değer, not. */
-export function StgWidget({ tone, icon, label, value, note }: { tone: StgTone; icon: string; label: string; value: ReactNode; note?: ReactNode }) {
-  return (
-    <article className="stg-widget" data-tone={tone}>
-      <span className="stg-widget-icon"><StgIcon name={icon} /></span>
-      <small>{label}</small>
-      <strong>{value}</strong>
-      {note ? <span className="stg-widget-note">{note}</span> : null}
-    </article>
-  );
-}
 
 /** Bölüm kartı: tonlu simge, küçük üst başlık, başlık, açıklama, sağda isteğe bağlı rozet. */
 export function StgSection({ id, icon, tone = "neutral", kicker, title, description, aside, wide = false, children }: {

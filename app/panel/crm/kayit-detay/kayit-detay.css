@@ -181,6 +181,11 @@
 .kayit-serit dl>div{display:flex;flex-direction:column;gap:2px}
 .kayit-serit dt{color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium)}
 .kayit-serit dd{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;color:var(--ink)}
+/* Kurucu konsolunun şeritleri sayının altına bir not satırı koyuyor
+   ("3 bildirim · tüm zamanlar"); panelin şeritlerinde bu yok, oradan
+   gelen şeritler etkilenmiyor (13.10.2026). Notsuz bırakılsaydı sayfa
+   puntosunda, dt ve dd'den büyük bir satır olurdu. */
+.kayit-serit small{color:var(--muted);font-size:var(--fs-micro);line-height:1.35}
 .kayit-serit .cari-bakiye dd{font-size:var(--fs-lg)}
 .kayit-serit .cari-bakiye[data-tone="warning"] dd{color:var(--warning)}
 .kayit-serit .cari-bakiye[data-tone="success"] dd{color:var(--success)}

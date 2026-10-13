@@ -14,14 +14,6 @@
 .stg [data-tone="gold"]{--tone-bg:var(--accent-soft);--tone-fg:var(--accent-strong)}
 
 /* ---------- Widget şeridi ---------- */
-.stg-widgets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.stg-widget{position:relative;display:flex;flex-direction:column;min-width:0;min-height:132px;padding:16px 18px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm);overflow:hidden;transition:border-color .2s ease,box-shadow .2s ease}
-.stg-widget::after{content:"";position:absolute;inset:auto -30% -60% auto;width:140px;height:140px;border-radius:50%;background:var(--tone-bg,var(--surface-2));opacity:.55;pointer-events:none}
-.stg-widget-icon{position:relative;z-index:1;display:grid;place-items:center;width:34px;height:34px;margin-bottom:12px;border-radius:11px;background:var(--tone-bg,var(--surface-2));color:var(--tone-fg,var(--muted))}
-.stg-widget small{position:relative;z-index:1;color:var(--muted);font-size:13px;font-weight:600}
-.stg-widget strong{position:relative;z-index:1;color:var(--ink);font-size:24px;font-weight:700;line-height:1.15;letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.stg-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:12.5px}
-@media (hover:hover) and (pointer:fine){.stg-widget:hover{border-color:color-mix(in srgb,var(--tone-fg,var(--muted)) 26%,var(--line));box-shadow:var(--shadow-md)}}
 
 /* ---------- Özet şeridi ----------
    Panelin kendi şeridi (kayit-serit) kullanılıyor; buradaki tek fark
@@ -170,7 +162,6 @@
 
 /* ---------- Duyarlı ---------- */
 @media (max-width:1100px){
-  .stg-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:900px){
   .stg-grid{grid-template-columns:minmax(0,1fr)}
@@ -192,10 +183,6 @@
   .stg-perm tbody td::before{content:attr(data-label);color:var(--ink);font-size:14px}
 }
 @media (max-width:560px){
-  .stg-widgets{gap:10px}
-  .stg-widget{min-height:112px;padding:14px;border-radius:20px}
-  .stg-widget-icon{width:30px;height:30px;margin-bottom:10px;border-radius:10px}
-  .stg-widget strong{font-size:18px}
   .stg-card{gap:16px;padding:16px;border-radius:20px}
   .stg-card-icon{width:36px;height:36px;border-radius:11px}
   .stg-card-title h2{font-size:17px}
@@ -205,7 +192,7 @@
   .stg-savebar .panel-primary{width:100%}
 }
 @media (prefers-reduced-motion:reduce){
-  .stg-widget,.stg-nav a,.stg-link-row,.stg-link-row>svg,.stg-perm tbody tr,.stg-switch>span,.stg-switch>span::after{transition:none}
+  .stg-nav a,.stg-link-row,.stg-link-row>svg,.stg-perm tbody tr,.stg-switch>span,.stg-switch>span::after{transition:none}
 }
 
 /* --- Yetkilendirme: yetenek grupları ve kişi istisnaları --- */

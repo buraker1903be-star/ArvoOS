@@ -1,10 +1,14 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory } from "@/lib/member-directory";
 import { UyeListesi } from "./uye-listesi";
-import { StgIcon, StgWidget } from "../../settings/settings-ui";
+import { StgIcon } from "../../settings/settings-ui";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 export default async function MembersPage() {
   const { isPlatformOwner } = await getPanelContext();
@@ -37,10 +41,17 @@ export default async function MembersPage() {
   const acikSayisi = [...uyelikler.values()].filter(Boolean).length;
   const blocked = uyelikler.size - acikSayisi;
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · ÜYELER</small><h1>Tüm Üyeler</h1><p>ArvoOS, ArvoLab ve ArvoARC&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p></div>
-    </div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">PLATFORM · ÜYELER</small>
+        <h1>Tüm Üyeler</h1>
+        <p>ArvoOS, ArvoLab ve ArvoARC&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel aboneler</Link>
+      </div>
+    </header>
 
     {/*
       Eksik veriyle dolu bir liste, dolu bir liste gibi görünür. Uyarı
@@ -79,12 +90,23 @@ export default async function MembersPage() {
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "erişimi kapalı
       kimse yok" demek, satırın hiç olmamasından daha çok şey söyler.
     */}
-    <div className="stg-widgets" aria-label="Üye özeti">
-      <StgWidget tone="info" icon="users" label="Kişi" value={people.size} note={`${uyelikler.size} kurum üyeliği · ${rows.length} ürün kaydı`} />
-      <StgWidget tone="success" icon="check" label="Erişimi açık" value={acikSayisi} note="En az bir ürüne girebiliyor" />
-      <StgWidget tone={individuals.size ? "gold" : "neutral"} icon="box" label="Bireysel" value={individuals.size} note={individuals.size ? "Kuruma bağlı değil" : "Bireysel abone yok"} />
-      <StgWidget tone={blocked ? "warning" : "neutral"} icon="lock" label="Erişimi kapalı" value={blocked} note={blocked ? "Lisans, abonelik ya da üyelik kapalı" : "Kapalı üyelik yok"} />
-    </div>
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+
+      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
+      olmamasından daha çok şey söyler.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label="Üye özeti">
+      <dl>
+        <div><dt>Kişi</dt><dd>{people.size}</dd><small>{uyelikler.size} kurum üyeliği · {rows.length} ürün kaydı</small></div>
+        <div><dt>Erişimi açık</dt><dd className="cari-arti">{acikSayisi}</dd><small>En az bir ürüne girebiliyor</small></div>
+        <div><dt>Bireysel</dt><dd>{individuals.size}</dd><small>{individuals.size ? "Kuruma bağlı değil" : "Bireysel abone yok"}</small></div>
+        <div><dt>Erişimi kapalı</dt><dd className={blocked ? "talep-uyari" : undefined}>{blocked}</dd><small>{blocked ? "Lisans, abonelik ya da üyelik kapalı" : "Kapalı üyelik yok"}</small></div>
+      </dl>
+    </nav>
 
     {rows.length ? (
       <UyeListesi satirlar={rows} />
@@ -96,5 +118,5 @@ export default async function MembersPage() {
       <StgIcon name="users" size={16} />
       Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve ArvoARC&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
     </p>
-  </div>;
+  </main>;
 }

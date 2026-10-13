@@ -9,13 +9,16 @@ import { arvolabYansimasi } from "@/lib/arvolab";
 import { arcUrunKopyasi } from "@/lib/arc-bridge";
 import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
-import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
 import { UrunKartlari } from "./urun-kartlari";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string; kind: string | null };
 type LicenseRow = {
@@ -205,10 +208,10 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const cekirdekAcik = ["active", "trialing", "past_due"].includes(license.license_status);
   const acikUrunler = ADDON_PRODUCTS.filter((urun) => ["active", "trialing", "past_due"].includes(productLicenses.get(urun.code)?.status ?? "inactive"));
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
-      <div className="panel-page-actions">
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin"><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
+      <div className="talep-bas-eylem">
         <KiraciSecici
           secili={selected.id}
           kurumlar={organizations.map((kurum) => ({
@@ -219,7 +222,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         />
         <Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link>
       </div>
-    </div>
+    </header>
 
     {/*
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "kota aşımı yok"
@@ -229,29 +232,40 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
       rozetinde duruyor (limiti aşan kırmızı, yaklaşan sarı). Aynı bilgiyi
       iki yerde göstermek, birini güncelleyip diğerini unutmak demek.
     */}
-    <div className="stg-widgets" aria-label={`${label} lisans özeti`}>
-      <StgWidget
-        tone={durumTonu} icon="box" label="Lisans" value={durumAdi}
-        note={license.license_status === "trialing"
-          ? `Deneme bitişi ${tarih(license.trial_ends_at)}`
-          : license.current_period_end ? `Dönem sonu ${tarih(license.current_period_end)}` : "Dönem sonu girilmedi"}
-      />
-      <StgWidget
-        tone={kullanimTonu(userPercent)} icon="users" label="Kullanıcı"
-        value={`${users} / ${sayi(license.user_limit)}`} note={`%${userPercent} dolu`}
-      />
-      <StgWidget
-        tone={kullanimTonu(storagePercent)} icon="folder" label="Depolama"
-        value={depolama(depolamaMb)} note={`Limit ${depolama(license.storage_limit_mb)} · %${storagePercent} dolu`}
-      />
-      <StgWidget
-        tone={aiOlculdu ? kullanimTonu(aiPercent) : "neutral"} icon="chart" label="AI kredisi"
-        value={aiOlculdu ? `${sayi(aiKredi)} / ${sayi(license.ai_credit_limit)}` : "Ölçülemedi"}
-        note={aiOlculdu
-          ? `Bu ay · %${aiPercent} dolu`
-          : "ArvoLab'a ulaşılamadı; tanımlı hak " + sayi(license.ai_credit_limit)}
-      />
-    </div>
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label={`${label} lisans özeti`}>
+      <dl>
+        <div>
+          <dt>Lisans</dt>
+          <dd>{durumAdi}</dd>
+          <small>{license.license_status === "trialing"
+            ? `Deneme bitişi ${tarih(license.trial_ends_at)}`
+            : license.current_period_end ? `Dönem sonu ${tarih(license.current_period_end)}` : "Dönem sonu girilmedi"}</small>
+        </div>
+        <div>
+          <dt>Kullanıcı</dt>
+          <dd className={userPercent > 100 ? "talep-uyari" : undefined}>{users} / {sayi(license.user_limit)}</dd>
+          <small>%{userPercent} dolu</small>
+        </div>
+        <div>
+          <dt>Depolama</dt>
+          <dd className={storagePercent > 100 ? "talep-uyari" : undefined}>{depolama(depolamaMb)}</dd>
+          <small>Limit {depolama(license.storage_limit_mb)} · %{storagePercent} dolu</small>
+        </div>
+        <div>
+          <dt>AI kredisi</dt>
+          <dd>{aiOlculdu ? `${sayi(aiKredi)} / ${sayi(license.ai_credit_limit)}` : "Ölçülemedi"}</dd>
+          <small>{aiOlculdu
+            ? `Bu ay · %${aiPercent} dolu`
+            : "ArvoLab'a ulaşılamadı; tanımlı hak " + sayi(license.ai_credit_limit)}</small>
+        </div>
+      </dl>
+    </nav>
 
     <div className="stg-grid">
       <StgSection
@@ -396,5 +410,5 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         />
       </StgSection>
     </div>
-  </div>;
+  </main>;
 }

@@ -1,11 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { StgIcon, StgSection, StgWidget } from "../../settings/settings-ui";
+import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { LISANS_TONU } from "../bicim";
 import { Matris } from "./matris";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   Çapraz modül matrisi: hangi modül hangi kiracıda açık.
@@ -82,34 +86,45 @@ export default async function ModulMatrisiSayfasi() {
       : musteriler.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
   }));
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜN VE ERİŞİM</small>
         <h1>Modül matrisi</h1>
         <p>Hangi modül hangi kiracıda açık. Değişiklik kiracı dosyasında yapılır; bu ekran okunur.</p>
       </div>
-    </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform">Kiracılar</Link>
+      </div>
+    </header>
 
     {/*
       Ürün başına bir widget. Sayı, MÜŞTERİ kurumları sayıyor: kendi
       markalarımızı da katmak "ArvoLab'ı kaç kurum kullanıyor" sorusunun
       yanıtını kendimizle şişirirdi.
     */}
-    <div className="stg-widgets" aria-label="Modül özeti">
-      {sayim.map((urun) => (
-        <StgWidget
-          key={urun.code}
-          tone={urun.acik ? "success" : "neutral"}
-          icon={urun.code === "arvoos" ? "grid" : "box"}
-          label={urun.name}
-          value={`${urun.acik} / ${musteriler.length}`}
-          note={urun.bagimsiz
-            ? `${urun.bagimsiz} kiracı bağımsız modda`
-            : urun.acik ? "Tümü köprü üzerinden" : "Kullanan kiracı yok"}
-        />
-      ))}
-    </div>
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+
+      Hepsi her zaman çiziliyor: sıfır da bir cevaptır ve satırın hiç
+      olmamasından daha çok şey söyler.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label="Modül özeti">
+      <dl>
+        {sayim.map((urun) => (
+          <div key={urun.code}>
+            <dt>{urun.name}</dt>
+            <dd className={urun.acik ? "cari-arti" : undefined}>{urun.acik} / {musteriler.length}</dd>
+            <small>{urun.bagimsiz
+              ? `${urun.bagimsiz} kiracı bağımsız modda`
+              : urun.acik ? "Tümü köprü üzerinden" : "Kullanan kiracı yok"}</small>
+          </div>
+        ))}
+      </dl>
+    </nav>
 
     <StgSection
       id="matris" wide icon="grid" tone="info" kicker="ÇAPRAZ GÖRÜNÜM" title="Kiracı × modül"
@@ -154,5 +169,5 @@ export default async function ModulMatrisiSayfasi() {
         </>
       ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Henüz kurum yok. İlk müşteri kurulduğunda matris burada dolar.</p></div>}
     </StgSection>
-  </div>;
+  </main>;
 }

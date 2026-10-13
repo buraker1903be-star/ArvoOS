@@ -230,14 +230,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const invitation = selected ? latestInvitation.get(selected.id) ?? null : null;
   const label = selected ? selected.display_name || selected.name : null;
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
         <small className="panel-kicker">{selected ? "KİRACI DOSYASI" : "YALNIZCA ARVOOS KURUCU ERİŞİMİ"}</small>
         <h1>{selected ? label : "Kiracılar"}</h1>
         <p>{selected ? "Paket, modüller, üyeler ve kurulum durumu tek dosyada." : "Müşteri kurumlarını kurun, sahiplerini panele alın, paket ve modüllerini yönetin."}</p>
       </div>
-      <div className="panel-page-actions">
+      <div className="talep-bas-eylem">
         {selected
           ? <Link className="panel-secondary" href="/panel/platform">← Kiracı listesi</Link>
           : (
@@ -246,7 +246,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             </PanelDrawer>
           )}
       </div>
-    </div>
+    </header>
 
     {bridge?.broken ? (
       <div className="plt-banner" data-tone="danger" role="alert">
@@ -496,5 +496,5 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         )}
       </>
     )}
-  </div>;
+  </main>;
 }

@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { StgIcon, StgSection, StgValueRow, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, StgValueRow, type StgTone } from "../../settings/settings-ui";
 import { PAKET_ADI, para, tarihSaat } from "../bicim";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 
 const statusLabels: Record<string, string> = { pending: "İnceleme bekliyor", approved: "Onaylandı", rejected: "Reddedildi" };
 const statusTones: Record<string, StgTone> = { pending: "warning", approved: "success", rejected: "danger" };
@@ -69,21 +72,58 @@ export default async function PaymentApprovalsPage() {
   const currency = birimler.size === 1 ? [...birimler][0] : "TRY";
   const birimKarisik = birimler.size > 1;
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Ödeme Onayları</h1><p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p></div>
-    </div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">PLATFORM · FİNANS</small>
+        <h1>Ödeme Onayları</h1>
+        <p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/billing">Abonelikler</Link>
+      </div>
+    </header>
 
     {/*
+      13.10.2026: dört StgWidget kutusu yerine panelin özet şeridi.
+      Konsol kendi tasarım dilini kullanıyordu (stg-widgets); aynı
+      kurucunun gün içinde gidip geldiği panel ekranları şerit
+      kullanıyor ve iki dil arasında geçiş, sayıları her seferinde
+      yeniden aramak demekti.
+
       Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "karşılıksız
       bildirim yok" demek, satırın hiç olmamasından daha çok şey söyler.
+      Sayılar bölümlere bağlanıyor; şerit bakılıp geçilen bir kutu
+      değil, işin başladığı yer.
     */}
-    <div className="stg-widgets" aria-label="Ödeme özeti">
-      <StgWidget tone={incelenecekler.length ? "warning" : "neutral"} icon="wallet" label="İnceleme bekliyor" value={incelenecekler.length} note={incelenecekler.length ? `${para(pendingTotal, currency)} tutarında` : "Bekleyen dekont yok"} />
-      <StgWidget tone="success" icon="check" label="Onaylanan" value={para(approvedTotal, currency)} note={`${onaylilar.length} bildirim · tüm zamanlar`} />
-      <StgWidget tone={rejected ? "info" : "neutral"} icon="doc" label="Reddedilen" value={rejected} note={rejected ? "Müşteriye not yazıldı" : "Reddedilen bildirim yok"} />
-      <StgWidget tone={incidents.length ? "danger" : "neutral"} icon="shield" label="Karşılıksız" value={incidents.length} note={incidents.length ? "PayTR ödedi, kayıt oluşmadı" : "İşlenemeyen bildirim yok"} />
-    </div>
+    <nav className="kayit-serit talep-serit" aria-label="Ödeme özeti">
+      <dl>
+        <div>
+          <dt>İnceleme bekliyor</dt>
+          <dd className={incelenecekler.length ? "talep-uyari" : undefined}>
+            <a href="#bekleyen">{incelenecekler.length}</a>
+          </dd>
+          <small>{incelenecekler.length ? `${para(pendingTotal, currency)} tutarında` : "Bekleyen dekont yok"}</small>
+        </div>
+        <div>
+          <dt>Onaylanan</dt>
+          <dd className="cari-arti">{para(approvedTotal, currency)}</dd>
+          <small>{onaylilar.length} bildirim · tüm zamanlar</small>
+        </div>
+        <div>
+          <dt>Reddedilen</dt>
+          <dd>{rejected}</dd>
+          <small>{rejected ? "Müşteriye not yazıldı" : "Reddedilen bildirim yok"}</small>
+        </div>
+        <div>
+          <dt>Karşılıksız</dt>
+          <dd className={incidents.length ? "talep-uyari" : undefined}>
+            {incidents.length ? <a href="#karsiliksiz">{incidents.length}</a> : 0}
+          </dd>
+          <small>{incidents.length ? "PayTR ödedi, kayıt oluşmadı" : "İşlenemeyen bildirim yok"}</small>
+        </div>
+      </dl>
+    </nav>
 
     {incidents.length ? (
       <StgSection
@@ -206,5 +246,5 @@ export default async function PaymentApprovalsPage() {
         </div>
       </StgSection>
     ) : null}
-  </div>;
+  </main>;
 }

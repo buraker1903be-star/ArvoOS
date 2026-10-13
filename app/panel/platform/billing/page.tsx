@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { StgIcon, StgSection, StgWidget, type StgTone } from "../../settings/settings-ui";
+import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
 import { PAKET_ADI, para, tarih } from "../bicim";
 import { productName } from "@/lib/products";
 import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
@@ -10,6 +10,9 @@ import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
 const LISTE = 20;
 import "../../settings/settings.css";
 import "../platform.css";
+// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
+import "../../crm/crm.css";
+import "../../crm/kayit-detay/kayit-detay.css";
 import { abonelikHatirlatmasiGonder } from "../actions";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 
@@ -293,36 +296,53 @@ export default async function BillingPage() {
     .map((grup) => ({ ...grup, aylikToplamAdi: grup.aylikToplam ? para(grup.aylikToplam, currency) : "—" }))
     .sort((a, b) => b.aylikToplam - a.aylikToplam || a.ad.localeCompare(b.ad, "tr"));
 
-  return <div className="stg plt">
-    <div className="panel-pagehead">
-      <div><small className="panel-kicker">PLATFORM · FİNANS</small><h1>Abonelikler</h1><p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p></div>
-    </div>
+  return <main className="stg plt talep cari">
+    <header className="talep-bas">
+      <div className="talep-bas-metin">
+        <small className="panel-kicker">PLATFORM · FİNANS</small>
+        <h1>Abonelikler</h1>
+        <p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p>
+      </div>
+      <div className="talep-bas-eylem">
+        <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
+      </div>
+    </header>
 
     {/*
-      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "ödemesi
-      gecikmiş kurum yok" demek, satırın hiç olmamasından daha çok şey
-      söyler.
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+
+      Dördü de her zaman çiziliyor: "ödemesi gecikmiş kurum yok" demek,
+      satırın hiç olmamasından daha çok şey söyler.
     */}
-    <div className="stg-widgets" aria-label="Abonelik özeti">
-      <StgWidget
-        tone="gold" icon="wallet" label="Beklenen aylık" value={para(mrr, currency)}
-        note={denemeGeliri ? `${para(denemeGeliri, currency)} denemede` : ucretsiz ? `${ucretsiz} abonelikte ücret girilmedi` : "Denemede gelir yok"}
-      />
-      {/* Toplam BÜTÜN kayıtlardan; başlıkta bu ay, notta tüm zaman. Eskiden
-          son 50 kaydın toplamı "tahsil edildi" diye yazılıyordu. */}
-      <StgWidget
-        tone="success" icon="check" label="Bu ay tahsil edilen" value={para(buAyTahsilat, currency)}
-        note={`Tüm zamanlar ${para(toplamTahsilat, currency)} · ${tahsilatAdedi} ödeme`}
-      />
-      <StgWidget
-        tone="info" icon="box" label="Aktif abonelik" value={odeyenler.length}
-        note={denemedekiler.length ? `${denemedekiler.length} deneme sürüyor` : `${abonelikler.length} abonelik kaydı`}
-      />
-      <StgWidget
-        tone={pastDue ? "warning" : "neutral"} icon="shield" label="Ödemesi gecikmiş" value={pastDue}
-        note={pastDue ? "Hatırlatma gönderin" : "Gecikmiş abonelik yok"}
-      />
-    </div>
+    <nav className="kayit-serit talep-serit" aria-label="Abonelik özeti">
+      <dl>
+        <div>
+          <dt>Beklenen aylık</dt>
+          <dd>{para(mrr, currency)}</dd>
+          <small>{denemeGeliri ? `${para(denemeGeliri, currency)} denemede` : ucretsiz ? `${ucretsiz} abonelikte ücret girilmedi` : "Denemede gelir yok"}</small>
+        </div>
+        {/* Toplam BÜTÜN kayıtlardan; başlıkta bu ay, notta tüm zaman. Eskiden
+            son 50 kaydın toplamı "tahsil edildi" diye yazılıyordu. */}
+        <div>
+          <dt>Bu ay tahsil edilen</dt>
+          <dd className="cari-arti">{para(buAyTahsilat, currency)}</dd>
+          <small>Tüm zamanlar {para(toplamTahsilat, currency)} · {tahsilatAdedi} ödeme</small>
+        </div>
+        <div>
+          <dt>Aktif abonelik</dt>
+          <dd>{odeyenler.length}</dd>
+          <small>{denemedekiler.length ? `${denemedekiler.length} deneme sürüyor` : `${abonelikler.length} abonelik kaydı`}</small>
+        </div>
+        <div>
+          <dt>Ödemesi gecikmiş</dt>
+          <dd className={pastDue ? "talep-uyari" : undefined}>{pastDue}</dd>
+          <small>{pastDue ? "Hatırlatma gönderin" : "Gecikmiş abonelik yok"}</small>
+        </div>
+      </dl>
+    </nav>
 
     {/* Farklı para birimleri toplanamaz; toplamı doğru sanmaktansa
         güvenilmez olduğunu söylüyoruz. */}
@@ -421,5 +441,5 @@ export default async function BillingPage() {
         ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Henüz tahsilat kaydı yok. Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır.</p></div>}
       </StgSection>
     </div>
-  </div>;
+  </main>;
 }
