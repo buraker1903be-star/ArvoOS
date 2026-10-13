@@ -299,8 +299,8 @@
    eşit paylaşıyordu (13.10.2026). Kişi geniş, sayılar dar ve sağa yaslı. */
 @media (min-width:761px){
   .os-root .talep-tablo [data-cols="ekip-yuku"]{table-layout:auto}
-  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):first-child{width:auto;min-width:260px}
-  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):not(:first-child){width:1%;white-space:nowrap;padding-left:var(--sp-5);font-variant-numeric:tabular-nums}
+  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):first-child{width:auto;min-width:200px}
+  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):not(:first-child){width:1%;white-space:nowrap;padding-left:var(--sp-3);font-variant-numeric:tabular-nums}
   .os-root .talep-tablo [data-cols="ekip-yuku"] td:first-child .crm-table-title{white-space:nowrap}
 }
 /* Kartın iç boşluğu öteki listelerle aynı (20px). Bu kart ızgara dışında

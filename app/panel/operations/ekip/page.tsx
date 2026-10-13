@@ -5,6 +5,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { activeStatuses, adimIlerlemesi, surenStatuses } from "../ops-shared";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { departmanTuru } from "@/lib/yetki-profilleri";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
@@ -99,6 +100,24 @@ export default async function EkipYukuPage() {
   }), { acik: 0, gecikenIs: 0, gecikenAdim: 0, mesaj: 0 });
   /* "Müsait" ölçütü: aktif personel ve hiç açık işi yok. Pasif
      personel üstünde iş kaldıysa listede duruyor ama müsait sayılmaz. */
+  /* SAĞDAKİ İSTATİSTİK KARTI (öteki listelerle aynı düzen, 13.10.2026).
+     Sayılar operasyon ekibinin satırlarından; satırlar veritabanının
+     topladığı sayılar (operasyon_ekip_yuku), sınırlı bir listeden değil. */
+  const ekipToplam = satirlar.reduce((t, s) => ({
+    acik: t.acik + sayi(s.acik_is),
+    adim: t.adim + sayi(s.adim_toplam),
+    tamam: t.tamam + sayi(s.adim_tamam),
+    gecikenAdim: t.gecikenAdim + sayi(s.adim_gecmis),
+    hafta: t.hafta + sayi(s.termin_yakin),
+  }), { acik: 0, adim: 0, tamam: 0, gecikenAdim: 0, hafta: 0 });
+  const aktifKisi = satirlar.filter((s) => s.durum === "active").length;
+  const kisiBasi = aktifKisi ? Math.round((ekipToplam.acik / aktifKisi) * 10) / 10 : null;
+  const tamamOrani = ekipToplam.adim ? Math.round((ekipToplam.tamam / ekipToplam.adim) * 100) : null;
+  const acikAdim = ekipToplam.adim - ekipToplam.tamam;
+  const gecikmeOrani = acikAdim > 0 ? Math.round((ekipToplam.gecikenAdim / acikAdim) * 100) : null;
+  const kisiAdi = (s: Satir) => formatPersonName(s.ad ?? "") || "İsimsiz personel";
+  const siraliGrup = (deger: (s: Satir) => number, etiket?: (s: Satir) => string) =>
+    [...satirlar].sort((a, b) => deger(b) - deger(a)).map((s) => ({ ad: kisiAdi(s), adet: deger(s), etiket: etiket?.(s) }));
   const musait = satirlar.filter((s) => s.employee_id && s.durum === "active" && !sayi(s.acik_is)).length;
 
   return <main className="talep cari ekip talepler liste-sayfa">
@@ -125,6 +144,7 @@ export default async function EkipYukuPage() {
       </dl>
     </nav>
 
+    <div className="talep-izgara personel-iki ekip-izgara">
     <section className="panel-card talep-bilgi ekip-yuku-kart" aria-label="Operasyon ekibi">
     <div className="cari-baslik">
       <h2>{operasyonDepartmaniVar ? "Operasyon ekibi" : "Ekip"}</h2>
@@ -175,6 +195,25 @@ export default async function EkipYukuPage() {
       <SatirTiklama />
     </div>
     </section>
+
+    <IstatistikKarti
+      kapsam={operasyonDepartmaniVar ? "operasyon ekibi · açık işler" : "bütün personel · açık işler"}
+      kutular={[
+        { ad: "Kişi başı açık iş", deger: kisiBasi === null ? "—" : kisiBasi.toLocaleString("tr-TR"), alt: `${ekipToplam.acik} iş · ${aktifKisi} aktif kişi` },
+        { ad: "Adım tamamlanma", deger: tamamOrani === null ? "—" : `%${tamamOrani}`, alt: `${ekipToplam.tamam}/${ekipToplam.adim} adım` },
+        { ad: "Bu hafta teslim", deger: String(ekipToplam.hafta), alt: "7 gün içinde termini olan iş" },
+        { ad: "Geciken adım", deger: gecikmeOrani === null ? "—" : `%${gecikmeOrani}`, alt: `açık ${acikAdim} adımın ${ekipToplam.gecikenAdim} tanesi`, ton: ekipToplam.gecikenAdim ? "uyari" : undefined },
+      ]}
+      gruplar={[
+        { baslik: "Kişiye göre açık iş", satirlar: siraliGrup((s) => sayi(s.acik_is)) },
+        { baslik: "Kişiye göre geciken adım", satirlar: siraliGrup((s) => sayi(s.adim_gecmis)) },
+        { baslik: "Kişiye göre ilerleme", satirlar: siraliGrup(
+          (s) => adimIlerlemesi(sayi(s.adim_tamam), sayi(s.adim_toplam)).percentage,
+          (s) => (sayi(s.adim_toplam) ? `%${adimIlerlemesi(sayi(s.adim_tamam), sayi(s.adim_toplam)).percentage}` : "—"),
+        ) },
+      ]}
+    />
+    </div>
 
     {!satirlar.length ? (
       <div className="crm-empty-state talep-bos-kutu">
