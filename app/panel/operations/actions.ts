@@ -14,6 +14,7 @@ import { tasimaPlani } from "@/lib/operasyon-panosu";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
 import { logActivity, type FieldChange } from "@/lib/activity-log";
 import { assertYetki } from "@/lib/yetkiler";
+import { TEAM_BUCKET } from "./team-files-shared";
 
 // Elle seçilebilen durumlar. "archived" burada yok: arşive yalnızca
 // archiveWorkflow ile (ve yalnızca tamamlanan iş) gidilir, veritabanı
@@ -771,6 +772,15 @@ async function deleteWorkflow__impl(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .eq("workflow_id", workflowId);
   if (portalFilesError) throw new Error("Müşteri dosyaları okunamadı: " + portalFilesError.message);
+  /* Ekip içi dosyalar (20261013065421) da kaskatla gidiyor; yolları aynı
+     sebeple önceden okunur. Tablo henüz yoksa (migration öncesi) silinecek
+     ekip dosyası da yoktur — yalnızca o durumda hata yok sayılır. */
+  const { data: ekipDosyalari, error: ekipDosyaHatasi } = await supabase
+    .from("operation_team_files").select("storage_path")
+    .eq("organization_id", membership.organization_id)
+    .eq("workflow_id", workflowId);
+  const ekipTablosuYok = Boolean(ekipDosyaHatasi && ["42P01", "PGRST205"].includes(ekipDosyaHatasi.code ?? ""));
+  if (ekipDosyaHatasi && !ekipTablosuYok) throw new Error("Ekip dosyaları okunamadı: " + ekipDosyaHatasi.message);
 
   const { error: unlinkError } = await supabase.from("crm_contracts").update({ workflow_id: null }).eq("workflow_id", workflowId).eq("organization_id", membership.organization_id);
   if (unlinkError) throw new Error("Sözleşme bağlantısı kopartılamadı: " + unlinkError.message);
@@ -792,6 +802,11 @@ async function deleteWorkflow__impl(formData: FormData) {
   if (orphanPaths.length) {
     const { error: storageError } = await supabase.storage.from(PORTAL_BUCKET).remove(orphanPaths);
     if (storageError) console.error("[operations] iş silindi ama müşteri dosyaları depodan kaldırılamadı", { workflowId, paths: orphanPaths, message: storageError.message });
+  }
+  const ekipYollari = (ekipDosyalari ?? []).map((file) => file.storage_path).filter(Boolean);
+  if (ekipYollari.length) {
+    const { error: ekipDepoHatasi } = await supabase.storage.from(TEAM_BUCKET).remove(ekipYollari);
+    if (ekipDepoHatasi) console.error("[operations] iş silindi ama ekip dosyaları depodan kaldırılamadı", { workflowId, paths: ekipYollari, message: ekipDepoHatasi.message });
   }
 
   revalidateOperations();

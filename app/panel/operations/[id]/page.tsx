@@ -29,6 +29,8 @@ import { TalepAkis } from "../../crm/kayit-detay/kayit-akis";
 import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "../../crm/musteri-yazismalari";
 import { AnindaForm, AnindaYedek } from "./aninda";
 import { PortalFilesCard, type StaffPortalFile, type StaffPortalPayment } from "./portal-files";
+import { SahaDosyalari, type EkipDosyasi } from "./saha-dosyalari";
+import { TEAM_BUCKET } from "../team-files-shared";
 import type { PortalAccessRule } from "../portal-files-shared";
 import "../operations.css";
 import "../../crm/request-page.css";
@@ -190,7 +192,7 @@ export default async function OperationDetailPage({
   const canArchive = canEditDue;
   const archiverName = isArchived ? (workflow.archived_by ? formatPersonName((archiver as { full_name?: string } | null)?.full_name) || "Ekip üyesi" : "Otomatik (ödeme kapandı)") : null;
 
-  const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult] = await Promise.all([
+  const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult, ekipDosyaSonucu] = await Promise.all([
     contract?.opportunity_id
       ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage,kunye").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -203,6 +205,8 @@ export default async function OperationDetailPage({
     supabase.from("operation_customer_files").select("id,file_name,mime_type,size_bytes,note,access_rule,created_at,uploaded_by").eq("workflow_id", workflow.id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
     supabase.rpc("portal_workflow_payment_status", { p_workflow_id: workflow.id }),
     supabase.from("operation_customer_file_downloads").select("file_id").eq("workflow_id", workflow.id).eq("outcome", "granted").limit(5000),
+    // Ekip içi dosyalar (20261013065421): sahadan fotoğraf/belge, müşteri görmez.
+    supabase.from("operation_team_files").select("id,file_name,mime_type,size_bytes,note,created_at,uploaded_by,storage_path").eq("workflow_id", workflow.id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
   ]);
   if ("error" in commentsResult && commentsResult.error) throw new Error("Kurum içi yorumlar okunamadı: " + commentsResult.error.message);
 
@@ -215,7 +219,18 @@ export default async function OperationDetailPage({
   if (!portalSetupMissing && portalPaymentResult.error) throw new Error("Ödeme durumu okunamadı: " + portalPaymentResult.error.message);
   type PortalFileRow = { id: string; file_name: string; mime_type: string; size_bytes: number; note: string | null; access_rule: PortalAccessRule; created_at: string; uploaded_by: string | null };
   const portalFileRows = (portalSetupMissing ? [] : portalFilesResult.data ?? []) as PortalFileRow[];
-  const uploaderIds = [...new Set(portalFileRows.map((file) => file.uploaded_by).filter((value): value is string => Boolean(value)))];
+  /* Ekip içi dosyalar: migration (20261013065421) uygulanmadıysa bölüm
+     kurulum notu gösterir, sayfa kırılmaz. Önizleme için kısa ömürlü
+     imzalı adres (1 saat; kova özel). */
+  const ekipKurulumEksik = isMissingSchema(ekipDosyaSonucu.error);
+  if (!ekipKurulumEksik && ekipDosyaSonucu.error) throw new Error("Ekip dosyaları okunamadı: " + ekipDosyaSonucu.error.message);
+  type EkipDosyaSatiri = { id: string; file_name: string; mime_type: string; size_bytes: number; note: string | null; created_at: string; uploaded_by: string | null; storage_path: string };
+  const ekipDosyaSatirlari = (ekipKurulumEksik ? [] : ekipDosyaSonucu.data ?? []) as EkipDosyaSatiri[];
+  const { data: imzaliAdresler } = ekipDosyaSatirlari.length
+    ? await supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
+    : { data: [] };
+  const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
+  const uploaderIds = [...new Set([...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by).filter((value): value is string => Boolean(value)))];
   const { data: uploaderData } = uploaderIds.length
     ? await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
     : { data: [] };
@@ -234,6 +249,16 @@ export default async function OperationDetailPage({
     createdLabel: formatDate(file.created_at, true),
     uploaderName: (file.uploaded_by && uploaderNames.get(file.uploaded_by)) || "Ekip üyesi",
     downloads: downloadCounts.get(file.id) ?? 0,
+  }));
+  const ekipDosyalari: EkipDosyasi[] = ekipDosyaSatirlari.map((d) => ({
+    id: d.id,
+    fileName: d.file_name,
+    mimeType: d.mime_type,
+    sizeBytes: Number(d.size_bytes),
+    note: d.note,
+    createdLabel: formatDate(d.created_at, true),
+    uploaderName: (d.uploaded_by && uploaderNames.get(d.uploaded_by)) || "Ekip üyesi",
+    url: imzaliAdres.get(d.storage_path) ?? null,
   }));
   const paymentRow = (Array.isArray(portalPaymentResult.data) ? portalPaymentResult.data[0] : portalPaymentResult.data) as
     { has_contract: boolean; settled: boolean; total_amount: number | null; paid_amount: number | null; remaining_amount: number | null } | undefined;
@@ -538,6 +563,31 @@ export default async function OperationDetailPage({
                 <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20260912203000_customer_portal_files) henüz çalıştırılmadı. Çalıştırıldığında dosya gönderimi burada açılır.</span></p>
               ) : (
                 <PortalFilesCard workflowId={workflow.id} organizationId={organizationId} payment={portalPayment} files={portalFiles} downloadsConfigured={portalDownloadsConfigured} />
+              )}
+            </PanelModal>
+          </div>
+
+          {/*
+            SAHADAN FOTOĞRAF VE DOSYA (13.10.2026). Telefonda kameradan çekip
+            işe (ekip içi) ya da müşteriye eklemek; saha-dosyalari.tsx.
+          */}
+          <div className="talep-gecmis">
+            <h3>Fotoğraflar ve dosyalar</h3>
+            <PanelModal
+              triggerClassName="opd-ray-btn"
+              triggerTone="neutral"
+              triggerLabel="Fotoğraf / dosya ekle"
+              triggerNote={ekipKurulumEksik ? "Kurulum bekleniyor" : `Ekip içi · ${ekipDosyalari.length} dosya`}
+              title="Fotoğraflar ve dosyalar"
+              description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
+              kicker="OPERASYON"
+              boy="genis"
+              baslangicAcik={istenenPencere === "dosya"}
+            >
+              {ekipKurulumEksik ? (
+                <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı. Çalıştırıldığında fotoğraf ve dosya ekleme burada açılır.</span></p>
+              ) : (
+                <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
               )}
             </PanelModal>
           </div>
