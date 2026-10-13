@@ -15,7 +15,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { islem, rol, veritabani } from "./ortam.mjs";
 
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261013141922_liste_suzgeci_tek_tanim.sql");
+const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
+// İşlevleri yeniden yazan migration SONDA (satır içi: SET search_path yok).
+const MIGRATIONLAR = [
+  "20261013141922_liste_suzgeci_tek_tanim.sql",
+  "20261013143144_liste_suzgeci_satir_ici.sql",
+];
 const KURUM = "00000000-0000-4000-8000-000000007701";
 const OTEKI = "00000000-0000-4000-8000-000000007702";
 const SAHIP = "00000000-0000-4000-8000-000000007711";
@@ -25,7 +30,7 @@ let db;
 let gizemId;
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','s@x.com'),('${YABANCI}','y@x.com');
