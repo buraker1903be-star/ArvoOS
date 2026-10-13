@@ -60,6 +60,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   const isActive = (href: string) => (href === "/" || href === "/en" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const productsActive = t.productLinks.some((l) => isActive(l.href));
   const servicesActive = isActive(ROUTES.services[locale]);
+  const demoHref = `${ROUTES.contact[locale]}${locale === "tr" ? "?ilgi=arvoos" : "?interest=arvoos"}`;
 
   const trigger = (id: MenuId, label: string, active = false, extra = "") => (
     <button type="button" className={`hdr-link ${extra}`} aria-expanded={open === id} aria-controls={`hdr-${id}`} data-active={active || undefined} onClick={() => toggle(id)}>
@@ -114,29 +115,39 @@ export function SiteHeader({ locale }: { locale: Locale }) {
               {t.signInLinks.map((l) => <Item key={l.href} link={l} onNavigate={close} />)}
             </div>
           </div>
-          <Link className="btn btn-s hdr-cta" href={`${ROUTES.contact[locale]}${locale === "tr" ? "?ilgi=arvoos" : "?interest=arvoos"}`}>{t.demo}</Link>
+          <Link className="btn btn-s hdr-cta" href={demoHref}>{t.demo}</Link>
           <button type="button" className="hdr-burger" aria-expanded={sheet} aria-controls="hdr-sheet" aria-label={sheet ? t.close : t.menu} onClick={() => { setOpen(null); setSheet((s) => !s); }}>
             <span /><span />
           </button>
         </div>
       </div>
 
+      {/* Yaprak: kaydırılan gövde + DİBE SABİT ayak. Eskiden demo düğmesi
+          yalnızca üst barda, dil düğmesi de en altta duruyordu; telefonda
+          ikisine de ulaşmak bütün menüyü kaydırmayı gerektiriyordu. */}
       <div id="hdr-sheet" className="hdr-sheet" hidden={!sheet}>
-        <div className="wrap sheet-inner">
-          <p className="sheet-label">{t.products}</p>
-          {t.productLinks.map((l) => (l.external
-            ? <a key={l.href} className="sheet-link" href={l.href} target="_blank" rel="noopener" onClick={close}>{l.label}<small>{l.desc}</small></a>
-            : <Link key={l.href} className="sheet-link" href={l.href} onClick={close}>{l.label}<small>{l.desc}</small></Link>))}
-          <div className="sheet-sub">{t.arvoosLinks.map((l) => <Link key={l.href} href={l.href} onClick={close}>{l.label}</Link>)}</div>
-          <p className="sheet-label">{t.services}</p>
-          {t.serviceLinks.map((l) => <Link key={l.href} className="sheet-link sheet-link-s" href={l.href} onClick={close}>{l.label}</Link>)}
-          <p className="sheet-label">{t.company}</p>
-          <Link className="sheet-link sheet-link-s" href={ROUTES.pricing[locale]} onClick={close}>{t.pricing}</Link>
-          <Link className="sheet-link sheet-link-s" href={ROUTES.about[locale]} onClick={close}>{t.about}</Link>
-          <Link className="sheet-link sheet-link-s" href={ROUTES.contact[locale]} onClick={close}>{t.contact}</Link>
-          <p className="sheet-label">{t.signIn}</p>
-          <div className="sheet-signin">{t.signInLinks.map((l) => <a key={l.href} href={l.href} target="_blank" rel="noopener">{l.label} <span aria-hidden="true">↗</span></a>)}</div>
-          <div className="sheet-foot"><LangLink locale={locale} className="btn btn-ghost" label={t.langName} /></div>
+        <div className="sheet-scroll">
+          <div className="wrap sheet-inner">
+            <p className="sheet-label">{t.products}</p>
+            {t.productLinks.map((l) => (l.external
+              ? <a key={l.href} className="sheet-link" href={l.href} target="_blank" rel="noopener" onClick={close}><b>{l.label}</b><small>{l.desc}</small></a>
+              : <Link key={l.href} className="sheet-link" href={l.href} onClick={close}><b>{l.label}</b><small>{l.desc}</small></Link>))}
+            <div className="sheet-sub">{t.arvoosLinks.map((l) => <Link key={l.href} href={l.href} onClick={close}>{l.label}</Link>)}</div>
+            <p className="sheet-label">{t.services}</p>
+            {t.serviceLinks.map((l) => <Link key={l.href} className="sheet-link sheet-link-s" href={l.href} onClick={close}><b>{l.label}</b></Link>)}
+            <p className="sheet-label">{t.company}</p>
+            <Link className="sheet-link sheet-link-s" href={ROUTES.pricing[locale]} onClick={close}><b>{t.pricing}</b></Link>
+            <Link className="sheet-link sheet-link-s" href={ROUTES.about[locale]} onClick={close}><b>{t.about}</b></Link>
+            <Link className="sheet-link sheet-link-s" href={ROUTES.contact[locale]} onClick={close}><b>{t.contact}</b></Link>
+            <p className="sheet-label">{t.signIn}</p>
+            <div className="sheet-signin">{t.signInLinks.map((l) => <a key={l.href} href={l.href} target="_blank" rel="noopener">{l.label} <span aria-hidden="true">↗</span></a>)}</div>
+          </div>
+        </div>
+        <div className="sheet-foot">
+          <div className="wrap sheet-foot-in">
+            <Link className="btn btn-primary sheet-cta" href={demoHref} onClick={close}>{t.demo}</Link>
+            <LangLink locale={locale} className="btn btn-ghost sheet-lang" label={t.langName} />
+          </div>
         </div>
       </div>
     </header>

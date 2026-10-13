@@ -3,6 +3,7 @@
    ============================================================ */
 .site .hdr{position:fixed;inset:0 0 auto;z-index:100;height:var(--header-h);color:var(--ink);background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:inset 0 -1px 0 var(--line-soft)}
 .site .hdr[data-sheet]{background:#fff}
+.site .hdr[data-sheet] .hdr-cta{display:none}
 .site .hdr-bar{height:100%;display:flex;align-items:center;gap:12px}
 .site .hdr-logo{display:inline-flex;align-items:center;min-height:44px}
 .site .hdr-nav{margin-inline:auto}
@@ -55,17 +56,31 @@
   ama o çözüm "bu özellik none kalmalı" diye yazısız bir kurala
   dayanıyor; mutlak konum niyeti açıkça söylüyor.
 */
-.site .hdr-sheet{position:absolute;top:100%;left:0;right:0;height:calc(100dvh - var(--header-h));overflow-y:auto;overscroll-behavior:contain;background:#fff;color:var(--ink);animation:site-sheet .35s var(--ease) both}
+.site .hdr-sheet{position:absolute;top:100%;left:0;right:0;height:calc(100dvh - var(--header-h));display:flex;flex-direction:column;background:#fff;color:var(--ink);animation:site-sheet .35s var(--ease) both}
 .site .hdr-sheet[hidden]{display:none}
-.site .sheet-inner{padding:8px 0 48px}
-.site .sheet-label{margin:28px 0 4px;color:var(--muted);font-size:12px;font-weight:600}
-.site .sheet-link{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:48px;padding:8px 0;font-size:28px;font-weight:600;letter-spacing:-.025em}
-.site .sheet-link small{font-size:12px;font-weight:400;letter-spacing:0;color:var(--muted)}
-.site .sheet-link-s{min-height:44px;font-size:21px}
-.site .sheet-sub{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px}
-.site .sheet-sub a,.site .sheet-signin a{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:999px;background:var(--grey);font-size:15px}
-.site .sheet-signin{display:flex;flex-wrap:wrap;gap:8px}
-.site .sheet-foot{margin-top:32px}
+/* Gövde kayar, ayak dipte sabit durur. */
+.site .sheet-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.site .sheet-inner{padding:4px 0 24px}
+.site .sheet-label{margin:26px 0 2px;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+/*
+  Ürün satırı: ad ÜSTTE, açıklama ALTINDA. Eskiden ikisi tek satırda yan
+  yanaydı (`justify-content:space-between`) ve 375 pikselde çarpışıyordu:
+  "Arvo Randevu" ile "Salon randevu yönetimi" arasında bir karakterlik
+  boşluk kalıyordu. Punto da 28'den 22'ye indi — telefonda dört ürün +
+  dört hizmet + üç kurumsal bağlantı ekrana sığmıyordu.
+*/
+.site .sheet-link{display:block;padding:11px 0;box-shadow:inset 0 -1px 0 var(--line-soft)}
+.site .sheet-link b{display:block;font-size:22px;font-weight:600;letter-spacing:-.025em;line-height:1.2}
+.site .sheet-link small{display:block;margin-top:2px;font-size:13px;font-weight:400;letter-spacing:-.01em;color:var(--muted)}
+.site .sheet-link-s b{font-size:18px;letter-spacing:-.02em}
+.site .sheet-sub{display:flex;flex-wrap:wrap;gap:8px;padding-top:14px}
+.site .sheet-sub a,.site .sheet-signin a{display:inline-flex;align-items:center;min-height:40px;padding:0 15px;border-radius:999px;background:var(--grey);font-size:14px}
+.site .sheet-signin{display:flex;flex-wrap:wrap;gap:8px;padding-top:4px}
+/* Ayak: demo düğmesi ve dil her an parmağın altında, kaydırmadan. */
+.site .sheet-foot{flex:none;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:#fff;box-shadow:inset 0 1px 0 var(--line-soft),0 -8px 24px rgba(11,27,46,.06)}
+.site .sheet-foot-in{display:flex;align-items:center;gap:10px}
+.site .sheet-cta{flex:1;min-height:48px;font-size:16px}
+.site .sheet-lang{flex:none;min-height:48px;font-size:15px}
 @keyframes site-sheet{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (max-width:1023px){
   .site .hdr-nav,.site .hdr-signin,.site .hdr-lang{display:none}
