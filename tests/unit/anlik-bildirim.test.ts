@@ -43,9 +43,9 @@ describe("bildirim yükü", () => {
     }
   });
 
-  test("uzun metin kısaltılır, boş başlık ArvoOS olur", () => {
+  test("uzun metin kısaltılır, boş başlık «Yeni bildirim» olur (kurum adı ArvoOS olmayabilir)", () => {
     const yuk = bildirimYuku({ ...satir, title: "  ", message: "x".repeat(500) });
-    assert.equal(yuk.baslik, "ArvoOS");
+    assert.equal(yuk.baslik, "Yeni bildirim");
     assert.equal(yuk.metin.length, 240);
     assert.ok(yuk.metin.endsWith("…"));
   });

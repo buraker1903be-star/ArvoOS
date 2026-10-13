@@ -3,6 +3,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pushAdresiUygunMu } from "@/lib/anlik-bildirim";
+import { organizationBrandName } from "@/lib/customer-message-templates";
 import { cihazlaraGonder, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
 
 /*
@@ -63,14 +64,15 @@ export async function anlikBildirimKapat(endpoint: string): Promise<Sonuc> {
 /** "Deneme gönder": yalnızca bu cihaza, bildirim kaydı açmadan. */
 export async function anlikBildirimDene(endpoint: string): Promise<Sonuc> {
   if (!pushYapilandi()) return { ok: false, hata: KAPALI };
-  const { userId } = await getPanelContext();
+  const { userId, organization } = await getPanelContext();
   const admin = createAdminClient();
   if (!admin) return { ok: false, hata: KAPALI };
   const { data } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failure_count")
     .eq("endpoint", endpoint).eq("user_id", userId).maybeSingle();
   if (!data) return { ok: false, hata: "Bu cihaz kayıtlı değil; önce bildirimleri açın." };
   const { gonderilen } = await cihazlaraGonder(admin, [data as PushCihazi], {
-    baslik: "ArvoOS bildirimleri açık",
+    // Kurumun kendi adı: AkademikMerkez kullanıcısının kilit ekranında "ArvoOS" yazıyordu.
+    baslik: `${organizationBrandName({ slug: organization.slug, displayName: organization.display_name, legalName: organization.name })} bildirimleri açık`,
     metin: "İş atandığında, müşteri yazdığında ve size yorum geldiğinde burada haber vereceğiz.",
     adres: "/panel/notifications",
     etiket: "arvo-deneme",

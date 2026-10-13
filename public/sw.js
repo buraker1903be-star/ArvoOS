@@ -21,7 +21,7 @@
   Önbellek adı değişince eskiler silinir; bu dosyada bir şey değişirse
   SURUM artırılır.
 */
-const SURUM = "arvo-kabuk-2";
+const SURUM = "arvo-kabuk-3";
 const CEVRIMDISI = "/cevrimdisi.html";
 const ONCEDEN = [CEVRIMDISI, "/icon-192.png", "/icon-512.png", "/favicon.svg"];
 
@@ -81,7 +81,7 @@ self.addEventListener("push", (olay) => {
   let yuk = {};
   try { yuk = olay.data ? olay.data.json() : {}; } catch { yuk = { metin: olay.data ? olay.data.text() : "" }; }
   const adres = typeof yuk.adres === "string" && yuk.adres.startsWith("/") && !yuk.adres.startsWith("//") ? yuk.adres : "/panel/notifications";
-  olay.waitUntil(self.registration.showNotification(yuk.baslik || "ArvoOS", {
+  olay.waitUntil(self.registration.showNotification(yuk.baslik || "Yeni bildirim", {
     body: yuk.metin || "",
     tag: yuk.etiket || undefined,
     icon: "/icon-192.png",

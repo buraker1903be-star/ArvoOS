@@ -47,7 +47,7 @@ export function bildirimYuku(satir: { id: string; title: string | null; message:
     ? satir.action_url
     : "/panel/notifications";
   return {
-    baslik: kisalt((satir.title ?? "").trim() || "ArvoOS", 80),
+    baslik: kisalt((satir.title ?? "").trim() || "Yeni bildirim", 80),
     metin: kisalt((satir.message ?? "").trim(), 240),
     adres,
     // Aynı bildirim iki kez gelirse (yeniden deneme) telefonda tek kalır.
