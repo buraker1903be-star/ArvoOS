@@ -90,7 +90,11 @@ function bireyselSatirlariKur(aboneler: Abone[]): Satir[] {
       anahtar: `b-${abone.id}`,
       tur: "bireysel" as const,
       ad: abone.full_name?.trim() || abone.email,
-      alt: `${productName(abone.product as Parameters<typeof productName>[0])} · ${abone.email}`,
+      /* Adı girilmemiş abonede ad zaten e-posta: alt satıra ikinci kez
+         yazmak aynı adresi alt alta göstermek olurdu. */
+      alt: abone.full_name?.trim()
+        ? `${productName(abone.product as Parameters<typeof productName>[0])} · ${abone.email}`
+        : productName(abone.product as Parameters<typeof productName>[0]),
       href: "/panel/platform/subscribers",
       durum: !acik ? "Erişim kapalı" : abone.status === "trialing" ? "Denemede" : "Ödüyor",
       ton: (!acik ? "danger" : abone.status === "trialing" ? "warning" : "success") as Satir["ton"],
