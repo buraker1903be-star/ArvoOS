@@ -28,6 +28,17 @@ export function PostadanTalep() {
   const yol = usePathname();
   const parametreler = useSearchParams();
 
+  /* ?yeni=talep: telefondaki "Bugün" ekranının "+ Yeni talep" kısayolu
+     (os/bugun-paneli.tsx) boş formu doğrudan açar. */
+  useEffect(() => {
+    if (parametreler.get("yeni") !== "talep") return;
+    const zamanlayici = window.setTimeout(() => {
+      document.querySelector<HTMLButtonElement>(TETIKLEYICI)?.click();
+      router.replace(yol, { scroll: false });
+    }, 0);
+    return () => window.clearTimeout(zamanlayici);
+  }, [parametreler, router, yol]);
+
   useEffect(() => {
     if (parametreler.get("postadan") !== "1") return;
     const ad = (parametreler.get("musteri") ?? "").trim();

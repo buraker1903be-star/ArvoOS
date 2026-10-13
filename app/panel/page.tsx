@@ -15,6 +15,7 @@ import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
+import { BugunPaneli } from "./os/bugun-paneli";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
 
 /*
@@ -214,6 +215,10 @@ export default async function PanelPage() {
       baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
       uyari={failedQueries.map(([label]) => label)}
     >
+      {/* Telefonda "Bugün": hızlı işlemler, yönetici kutuları, adımlarım (masaüstünde gizli). */}
+      <BugunPaneli supabase={supabase} orgId={organizationId} userId={userId} izin={izin}
+        crmGorur={canSeeCrm && modulAcik("crm")} operasyonGorur={canSeeOperations}
+        finansGorur={canSee("finance") && modulAcik("finance") && izin("finance.gor")} />
       {showSetup ? (
         <section className="dash-card dash-setup" aria-label="Kurulum">
           <header className="dash-card-head">

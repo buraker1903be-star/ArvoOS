@@ -1,0 +1,39 @@
+/* Telefonda "Bugün" (bugun-paneli.tsx). Masaüstünde gizli: orada genel
+   bakış kartları aynen duruyor (kurum sahibinin kuralı). */
+.bugun{display:none}
+@media (max-width:760px){
+  .os-root .bugun{display:flex;flex-direction:column;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+
+  /* Hızlı işlemler: yatay kayan büyük düğmeler. */
+  .bugun-kisayol{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 calc(var(--sp-3) * -1);padding:0 var(--sp-3)}
+  .bugun-kisayol::-webkit-scrollbar{display:none}
+  .bugun-kisayol a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font-size:15px;font-weight:var(--fw-medium);text-decoration:none}
+  .bugun-kisayol a.is-birincil{border-color:transparent;background:var(--primary);color:var(--n-0)}
+  .bugun-kisayol a:active{transform:scale(.97)}
+
+  /* Yönetici kutuları: iki sütun, dokununca süzülmüş liste. */
+  .bugun-kutular{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .bugun-kutu{display:flex;flex-direction:column;gap:2px;min-height:72px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);text-decoration:none}
+  .bugun-kutu:active{background:var(--surface-2)}
+  .bugun-kutu b{font-size:22px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;line-height:1.2}
+  .bugun-kutu span{color:var(--muted);font-size:13px}
+  .bugun-kutu[data-ton="uyari"] b{color:var(--warning)}
+  .bugun-kutu[data-ton="arti"] b{color:var(--success)}
+
+  /* Adımlarım: büyük dokunma alanı, sağda Tamamla. */
+  .bugun-adimlar{padding:14px 0 6px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
+  .bugun-adimlar>header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 16px 8px}
+  .bugun-adimlar h2{margin:0;font-size:17px;font-weight:var(--fw-semibold)}
+  .bugun-adimlar header small{color:var(--muted);font-size:13px}
+  .bugun-adimlar ul{margin:0;padding:0;list-style:none}
+  .bugun-adimlar li{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-top:1px solid var(--line-soft)}
+  .bugun-adim-metin{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;color:inherit;text-decoration:none}
+  .bugun-adim-metin b{max-width:100%;font-size:15px;font-weight:var(--fw-medium);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bugun-adim-metin small{max-width:100%;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bugun-adim-metin .status-pill{margin-top:4px}
+  .bugun-adimlar form{flex:none;margin:0}
+  .bugun-tamamla{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border:1px solid color-mix(in srgb,var(--success) 35%,var(--line));border-radius:999px;background:var(--success-soft);color:var(--success);font:inherit;font-size:14px;font-weight:var(--fw-semibold);cursor:pointer}
+  .bugun-tamamla:active{transform:scale(.96)}
+  .bugun-bos{margin:0;padding:6px 16px 10px;color:var(--muted);font-size:14px}
+  .bugun-tumu{display:block;padding:12px 16px 8px;border-top:1px solid var(--line-soft);color:var(--primary);font-size:14px;font-weight:var(--fw-medium);text-decoration:none}
+}
