@@ -21,3 +21,10 @@
   .anlik-kart-eylem{flex-wrap:wrap}
   .anlik-kart-eylem button{flex:1 1 0;min-height:46px}
 }
+
+/* Gelen posta anahtarı (kişi kendisi açar). */
+.anlik-posta{display:flex;align-items:flex-start;gap:10px;margin-top:4px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:12px;background:var(--surface-2);cursor:pointer}
+.anlik-posta input{flex:none;width:18px;height:18px;margin:2px 0 0;accent-color:var(--primary)}
+.anlik-posta span{display:flex;flex-direction:column;gap:2px}
+.anlik-posta b{font-size:14px;font-weight:var(--fw-medium);color:var(--ink)}
+.anlik-posta small{color:var(--muted);font-size:12.5px;line-height:1.4}

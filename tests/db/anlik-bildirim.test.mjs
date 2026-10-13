@@ -9,6 +9,8 @@
   3. Haber verilemezse (pg_net hata fırlatıyor) bildirimin KENDİSİ yine
      yazılıyor — tetikleyici hiçbir durumda bildirimi düşürmez.
   4. Cihaz kayıtları istemciye kapalı: authenticated ve anon okuyamıyor.
+  5. Gelen posta (kuruma yayın, posta_gelen): yalnızca kurumda posta
+     anahtarı açık bir cihaz varsa haber gider; başka yayınlar hiç.
 
   pg_net ve Vault test düzeneğinde yok: en küçük taklitleri burada
   kuruluyor; net.http_post çağrıları bir tabloya yazılıyor.
@@ -20,7 +22,11 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-const MIGRATIONLAR = ["20261013071812_anlik_bildirim.sql"];
+// Posta dalı (20261013081415) işlevi yeniden yazıyor: SONDA.
+const MIGRATIONLAR = [
+  "20261013071812_anlik_bildirim.sql",
+  "20261013081415_anlik_bildirim_posta.sql",
+];
 
 const KURUM = "00000000-0000-4000-8000-00000000e701";
 const SAHIP = "00000000-0000-4000-8000-00000000e711";
@@ -65,9 +71,9 @@ before(async () => {
 const sirlariKur = () => db.exec(`
   insert into vault.decrypted_secrets values ('arvo_push_adres','https://app.arvo-os.com/api/push/gonder'),('arvo_push_sir','gizli-sir')
   on conflict (name) do nothing;`);
-const bildirimAc = (kime) => db.query(
+const bildirimAc = (kime, kategori = "operation") => db.query(
   `insert into public.notifications (organization_id,user_id,audience,category,title,message,action_url)
-   values ($1,$2,'organization','operation','Yeni iş','Size iş atandı','/panel/operations') returning id`, [KURUM, kime]);
+   values ($1,$2,'organization',$3,'Yeni iş','Size iş atandı','/panel/operations') returning id`, [KURUM, kime, kategori]);
 const cagrilar = async () => (await db.query(`select url, body, headers from net.cagrilar`)).rows;
 
 describe("meşru yol", () => {
@@ -111,6 +117,33 @@ describe("haber gitmeyen durumlar", () => {
       const { rows } = await bildirimAc(PERSONEL);
       const yazilan = await db.query(`select 1 from public.notifications where id = $1`, [rows[0].id]);
       assert.equal(yazilan.rows.length, 1, "haber verilemeyince bildirim de düştü");
+    }));
+});
+
+describe("gelen posta (kişi kendisi açarsa)", () => {
+  test("anahtar kapalıyken gelen posta haber vermez", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await bildirimAc(null, "posta_gelen");
+      assert.equal((await cagrilar()).length, 0);
+    }));
+
+  test("bir cihazda anahtar açıksa gelen posta tek haber verir", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await db.exec(`update public.push_subscriptions set posta = true`);
+      const { rows } = await bildirimAc(null, "posta_gelen");
+      const c = await cagrilar();
+      assert.equal(c.length, 1);
+      assert.equal(c[0].body.id, rows[0].id);
+    }));
+
+  test("anahtar açık olsa da posta dışındaki yayın (eşitleme durumu) gitmez", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await db.exec(`update public.push_subscriptions set posta = true`);
+      await bildirimAc(null, "posta_esitleme");
+      assert.equal((await cagrilar()).length, 0);
     }));
 });
 

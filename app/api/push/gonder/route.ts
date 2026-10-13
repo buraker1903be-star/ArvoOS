@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bildirimYuku } from "@/lib/anlik-bildirim";
-import { cihazlaraGonder, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
+import { cihazlaraGonder, postaGorenler, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,15 +44,27 @@ export async function POST(istek: Request) {
     console.error("[push] bildirim okunamadı", error.message);
     return Response.json({ hata: "okunamadı" }, { status: 500 });
   }
-  if (!satir || !satir.user_id || satir.audience !== "organization") return Response.json({ atlandi: "kişiye özel değil" });
+  if (!satir || satir.audience !== "organization") return Response.json({ atlandi: "kurum bildirimi değil" });
   if (Date.now() - new Date(satir.created_at).getTime() > ESKI) return Response.json({ atlandi: "eski" });
 
-  const { data: cihazlar, error: cihazHatasi } = await admin.from("push_subscriptions")
-    .select("id,endpoint,p256dh,auth,failure_count").eq("user_id", satir.user_id).eq("organization_id", satir.organization_id);
+  /*
+    Kişiye özel bildirim: o kişinin cihazları. Kuruma yayın yalnızca
+    gelen posta için (20261013081415): posta anahtarını açmış cihazlar,
+    sahibinin postayı görme yetkisi şimdi yeniden hesaplanarak.
+  */
+  const yayin = !satir.user_id;
+  if (yayin && satir.category !== "posta_gelen") return Response.json({ atlandi: "yayın" });
+  const sorgu = admin.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth,failure_count").eq("organization_id", satir.organization_id);
+  const { data: cihazlar, error: cihazHatasi } = await (yayin ? sorgu.eq("posta", true) : sorgu.eq("user_id", satir.user_id as string));
   if (cihazHatasi) {
     console.error("[push] cihazlar okunamadı", cihazHatasi.message);
     return Response.json({ hata: "cihazlar" }, { status: 500 });
   }
-  const sonuc = await cihazlaraGonder(admin, (cihazlar ?? []) as PushCihazi[], bildirimYuku(satir));
+  let hedefler = (cihazlar ?? []) as (PushCihazi & { user_id: string })[];
+  if (yayin) {
+    const gorenler = await postaGorenler(admin, satir.organization_id, [...new Set(hedefler.map((c) => c.user_id))]);
+    hedefler = hedefler.filter((c) => gorenler.has(c.user_id));
+  }
+  const sonuc = await cihazlaraGonder(admin, hedefler, bildirimYuku(satir));
   return Response.json(sonuc);
 }

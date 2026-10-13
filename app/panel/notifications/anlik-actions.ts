@@ -77,3 +77,31 @@ export async function anlikBildirimDene(endpoint: string): Promise<Sonuc> {
   });
   return gonderilen ? { ok: true } : { ok: false, hata: "Deneme gönderilemedi; cihaz kaydı yenilenmeli. Kapatıp yeniden açın." };
 }
+
+/*
+  Bu cihazın sunucudaki kaydı: kayıtlı mı, gelen posta açık mı. Tarayıcı
+  aboneliği tutup sunucu satırı yoksa (kayıt sırasında migration eksikti,
+  cihaz 404/410 ile silindi) kart "Açık" görünüp hiçbir şey gelmiyordu;
+  kart bunu okuyup kaydı yeniler.
+*/
+export async function anlikBildirimDurumu(endpoint: string): Promise<{ kayitli: boolean; posta: boolean; postaGorur: boolean }> {
+  const { userId, izin } = await getPanelContext();
+  const admin = createAdminClient();
+  const postaGorur = izin("posta.gor");
+  if (!admin || !pushYapilandi()) return { kayitli: false, posta: false, postaGorur };
+  const { data } = await admin.from("push_subscriptions").select("posta").eq("endpoint", endpoint).eq("user_id", userId).maybeSingle();
+  return { kayitli: Boolean(data), posta: Boolean(data?.posta), postaGorur };
+}
+
+/** "Gelen postaları da bildir" (20261013081415): yalnızca postayı görebilen açabilir. */
+export async function anlikBildirimPosta(endpoint: string, acik: boolean): Promise<Sonuc> {
+  const { userId, izin } = await getPanelContext();
+  if (acik && !izin("posta.gor")) return { ok: false, hata: "Ortak posta kutusunu görme yetkiniz yok." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, hata: KAPALI };
+  const { data, error } = await admin.from("push_subscriptions").update({ posta: acik })
+    .eq("endpoint", endpoint).eq("user_id", userId).select("id");
+  if (error) return { ok: false, hata: "Kaydedilemedi: " + error.message };
+  if (!data?.length) return { ok: false, hata: "Bu cihaz kayıtlı değil; bildirimleri kapatıp yeniden açın." };
+  return { ok: true };
+}

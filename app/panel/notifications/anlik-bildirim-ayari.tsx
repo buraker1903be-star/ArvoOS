@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { anlikBildirimAc, anlikBildirimDene, anlikBildirimKapat } from "./anlik-actions";
+import { anlikBildirimAc, anlikBildirimDene, anlikBildirimDurumu, anlikBildirimKapat, anlikBildirimPosta } from "./anlik-actions";
 import "./anlik-bildirim.css";
 
 /*
@@ -46,6 +46,8 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
   const [mesaj, setMesaj] = useState<{ ton: "ok" | "hata"; metin: string } | null>(null);
   const [seritKapali, setSeritKapali] = useState(false);
   const [bekliyor, basla] = useTransition();
+  // Gelen posta anahtarı (20261013081415): null = henüz okunmadı / yetki yok.
+  const [posta, setPosta] = useState<boolean | null>(null);
 
   useEffect(() => {
     let iptal = false;
@@ -60,12 +62,27 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       else {
         const kayit = await kayitBul();
         if (!kayit) yeni = "desteksiz";
-        else yeni = (await kayit.pushManager.getSubscription()) && Notification.permission === "granted" ? "acik" : "kapali";
+        else {
+          const abonelik = await kayit.pushManager.getSubscription();
+          yeni = abonelik && Notification.permission === "granted" ? "acik" : "kapali";
+          /* Tarayıcı abone ama sunucuda kayıt yoksa (kayıt anında kurulum
+             eksikti ya da servis cihazı düşürdü) kart "Açık" görünüp hiçbir
+             şey gelmiyordu: kayıt sessizce yenilenir. Yalnızca kartta —
+             şerit her ana ekran açılışında sunucuya gitmesin. */
+          if (abonelik && yeni === "acik" && gorunum === "kart") {
+            const d = await anlikBildirimDurumu(abonelik.endpoint);
+            if (!d.kayitli && genelAnahtar) {
+              const sonuc = await anlikBildirimAc(abonelik.toJSON(), cihazAdi());
+              if (!sonuc.ok && !iptal) setMesaj({ ton: "hata", metin: sonuc.hata });
+            }
+            if (!iptal) setPosta(d.postaGorur ? d.posta : null);
+          }
+        }
       }
       if (!iptal) setDurum(yeni);
     })().catch(() => { if (!iptal) setDurum("desteksiz"); });
     return () => { iptal = true; };
-  }, []);
+  }, [genelAnahtar, gorunum]);
 
   const ac = () => basla(async () => {
     setMesaj(null);
@@ -81,6 +98,8 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       if (!sonuc.ok) { await abonelik.unsubscribe().catch(() => undefined); setMesaj({ ton: "hata", metin: sonuc.hata }); return; }
       setDurum("acik");
       setMesaj({ ton: "ok", metin: "Açıldı. Bu cihaza iş, mesaj ve yorum bildirimleri gelecek." });
+      const d = await anlikBildirimDurumu(abonelik.endpoint);
+      setPosta(d.postaGorur ? d.posta : null);
     } catch (hata) {
       setMesaj({ ton: "hata", metin: `Açılamadı: ${(hata as Error).message}` });
     }
@@ -97,6 +116,16 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
     }
     setDurum("kapali");
     setMesaj({ ton: "ok", metin: "Bu cihazda kapatıldı." });
+  });
+
+  const postaDegistir = (acik: boolean) => basla(async () => {
+    setMesaj(null);
+    const abonelik = await (await kayitBul())?.pushManager.getSubscription();
+    if (!abonelik) { setDurum("kapali"); return; }
+    const sonuc = await anlikBildirimPosta(abonelik.endpoint, acik);
+    if (!sonuc.ok) { setMesaj({ ton: "hata", metin: sonuc.hata }); return; }
+    setPosta(acik);
+    setMesaj({ ton: "ok", metin: acik ? "Gelen postalar da bu cihaza bildirilecek." : "Gelen postalar artık bildirilmeyecek." });
   });
 
   const dene = () => basla(async () => {
@@ -128,8 +157,14 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
             : durum === "engelli" ? <>Bildirim izni bu tarayıcıda engellenmiş. Tarayıcının site ayarlarından bu siteye bildirim izni verip sayfayı yenileyin.</>
             : durum === "desteksiz" ? <>Bu tarayıcı anlık bildirimi desteklemiyor ya da uygulama kabuğu henüz yüklenmedi. Güncel Chrome, Edge, Firefox ya da Safari ile deneyin.</>
             : durum === "acik" ? <>Size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde ve adım termininiz yaklaştığında bu cihaz panel kapalıyken de haber verir.</>
-            : <>Panel kapalıyken de haber alın: size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde, adım termininiz yaklaştığında. Kuruma genel posta bildirimleri gelmez.</>}
+            : <>Panel kapalıyken de haber alın: size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde, adım termininiz yaklaştığında. Gelen postaları da isterseniz açtıktan sonra ayrıca seçebilirsiniz.</>}
         </p>
+        {durum === "acik" && posta !== null ? (
+          <label className="anlik-posta">
+            <input type="checkbox" checked={posta} disabled={bekliyor} onChange={(olay) => postaDegistir(olay.target.checked)} />
+            <span><b>Gelen postaları da bildir</b><small>Ortak kutuya düşen her yeni posta bu cihaza bildirilir (gönderen ve konu).</small></span>
+          </label>
+        ) : null}
         {mesaj ? <small className={mesaj.ton === "hata" ? "anlik-hata" : "anlik-ok"} role="status">{mesaj.metin}</small> : null}
       </div>
       <div className="anlik-kart-eylem">
