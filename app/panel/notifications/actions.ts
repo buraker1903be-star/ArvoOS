@@ -222,7 +222,10 @@ async function dismissReadNotifications__impl(formData?: FormData) {
   for (let tur = 0; tur < KALDIRMA_EN_FAZLA_TUR; tur++) {
     const { data, error } = await supabase
       .rpc("arvo_bildirimler", { p_org: organization.id, p_kurucu: isPlatformOwner, ...kategoriParametresi(filtre), p_okunmamis: false })
-      .select("id")
+      // Süzülen ve sıralanan sütunlar seçilmeli: PostgREST işlev sonucunda
+      // seçilmeyen sütuna göre sıralayamıyor ("column record.created_at does
+      // not exist" — ilk sürüm böyle düştü, 13.10.2026).
+      .select("id,read_at,created_at")
       .not("read_at", "is", null)
       .order("created_at", { ascending: false })
       .limit(KALDIRMA_SAYFASI);
