@@ -137,7 +137,13 @@ export const COMPANY = {
     display: "Yakuplu Mah. Hürriyet Bulvarı Skyport Residence No:1 D:113, 34524 Beylikdüzü / İstanbul",
   },
   foundingYear: null as number | null,
-  sameAs: [] as string[],
+  /* Sosyal hesap tek yerde: alt bilgideki bağlantı da, schema.org
+     Organization'ın sameAs'ı da buradan okuyor (lib/site/structured-data).
+     İki yere ayrı yazmak, hesap adı değişince birinin eski kalması
+     demekti. */
+  instagram: "arvoos.official",
+  get instagramUrl() { return `https://www.instagram.com/${this.instagram}/`; },
+  get sameAs(): string[] { return [this.instagramUrl]; },
   /*
     Künye alanları: mesafeli satış sözleşmesi ve ödeme kuruluşunun canlı mod
     incelemesi bunları arıyor. Boş bırakılan alan sayfalarda hiç gösterilmez —

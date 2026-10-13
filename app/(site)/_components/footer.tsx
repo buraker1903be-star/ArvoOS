@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { COMPANY, ROUTES, type Locale } from "@/lib/site/routes";
 import { CHROME, type NavLink } from "../_content/chrome";
-import { BrandLogo, ProductLogo } from "./marks";
+import { BrandLogo, InstagramMark, ProductLogo } from "./marks";
 import { LangLink } from "./lang-link";
 
 function Col({ title, links }: { title: string; links: NavLink[] }) {
@@ -53,6 +53,11 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             <strong>{COMPANY.legalName}</strong> · {COMPANY.address.display} · <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
           </address>
           <div className="ftr-meta">
+            {/* Hesap adı COMPANY'de tek yerde; schema.org sameAs'ı da
+                aynı yerden okuyor. */}
+            <a className="ftr-social" href={COMPANY.instagramUrl} target="_blank" rel="noopener" aria-label={`Instagram · @${COMPANY.instagram}`}>
+              <InstagramMark /><span>@{COMPANY.instagram}</span>
+            </a>
             <span>© {year} ArvoCulture Group. {t.rights}</span>
             <LangLink locale={locale} className="ftr-lang" label={t.langName} />
             <Link href={ROUTES.arvoos[locale]} className="ftr-credit" aria-label="Designed by ArvoOS">

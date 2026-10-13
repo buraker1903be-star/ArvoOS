@@ -80,3 +80,13 @@ export function Check({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function InstagramMark({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <rect x="2" y="2" width="12" height="12" rx="3.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="8" cy="8" r="2.9" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="11.6" cy="4.4" r=".95" fill="currentColor" />
+    </svg>
+  );
+}
