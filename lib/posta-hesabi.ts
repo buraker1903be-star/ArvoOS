@@ -89,6 +89,20 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
   };
 }
 
+/*
+  Menü için yalnızca bağlantı durumu (13.10.2026, hızlandırma). Yerleşim
+  her sayfa açılışında postaDurumu ile hesabın tamamını, imza dahil
+  okuyordu: tek satırlık tablo 416 KB (imzada gömülü görsel olabilir) ve
+  yavaş sorgu günlüğünde ortalama 0,31 sn. Menü yalnızca "bağlı mı"yı
+  soruyor.
+*/
+export async function postaBaglantiDurumu(organizationId: string): Promise<Pick<PostaDurumu, "durum">> {
+  const admin = createAdminClient();
+  if (!admin) return { durum: null };
+  const { data } = await admin.from("mail_accounts").select("status").eq("organization_id", organizationId).maybeSingle();
+  return { durum: (data?.status as PostaDurumu["durum"] | undefined) ?? null };
+}
+
 function sunucuHazirMi() {
   const admin = createAdminClient();
   if (!admin) throw new Error("Sunucu anahtarı tanımlı olmadığı için posta bağlantısı kullanılamıyor.");

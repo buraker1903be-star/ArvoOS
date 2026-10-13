@@ -45,7 +45,7 @@ import "./os-shell.css";
 import "./panel-ui.css";
 // Telefonda uygulama gibi: yalnızca ≤760px kuralları (masaüstüne dokunmaz).
 import "./mobil-uygulama.css";
-import { postaDurumu } from "@/lib/posta-hesabi";
+import { postaBaglantiDurumu } from "@/lib/posta-hesabi";
 import { OsPostaDugmesi } from "./os/os-posta-dugmesi";
 import { OsPostaUyarisi } from "./os/os-posta-uyarisi";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
@@ -229,7 +229,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         : supabase.from("organization_product_licenses")
             .select("product,status").eq("organization_id", membership.organization_id)
             .in("status", ["active", "trialing", "past_due"]),
-      postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
+      postaYetkisi ? postaBaglantiDurumu(membership.organization_id) : Promise.resolve(null),
       postaSayimSorgusu,
       /* Çevrimiçi ekip (yalnızca uygulama kabuğunda): son 3 dakikada görülenler
          ve adları. Çalışan listesini görme yetkisi olmayan rolde RLS boş döner;
@@ -261,7 +261,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         p_mesaj: hasMessages,
         p_esik: ucDakikaOnce,
       }),
-      postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
+      postaYetkisi ? postaBaglantiDurumu(membership.organization_id) : Promise.resolve(null),
     ]);
     if (error || !data) return null;
     const k = data as {

@@ -2,6 +2,8 @@ import { cache, type CSSProperties } from "react";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { readableOn } from "@/lib/tenant-theme";
+import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
+import { kisaOnbellek } from "@/lib/kisa-onbellek";
 
 // Giriş, şifremi unuttum ve şifre oluşturma ekranları kurumun kendi alan
 // adında (ör. panel.kurum.com) açıldığında kurumun logosu ve rengiyle
@@ -21,11 +23,15 @@ export const getLoginBrand = cache(async function getLoginBrand(): Promise<Login
   const host = (await headers()).get("host")?.split(":")[0] ?? "";
   if (!host || host === DEFAULT_APP_HOST) return null;
   const supabase = await createClient();
-  const { data: organizationId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
+  const organizationId = await alanAdiKurumu(supabase, host);
   if (!organizationId) return null;
-  const { data } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
-  const org = Array.isArray(data) ? data[0] : data;
-  return org ? { id: org.id, name: org.name, logo_url: org.logo_url, primary_color: org.primary_color, website_url: org.website_url ?? null, favicon_url: org.favicon_url ?? null } : null;
+  /* Marka kamusal bilgi; 60 sn önbellekli (lib/kisa-onbellek): her sayfa
+     açılışında okunuyordu. Ayarlardaki değişiklik en geç bir dakikada yansır. */
+  return kisaOnbellek("marka", organizationId, async () => {
+    const { data, error } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
+    const org = Array.isArray(data) ? data[0] : data;
+    return { marka: org ? { id: org.id, name: org.name, logo_url: org.logo_url, primary_color: org.primary_color, website_url: org.website_url ?? null, favicon_url: org.favicon_url ?? null } as LoginBrand : null, hata: Boolean(error) };
+  }, (sonuc) => !sonuc.hata).then((sonuc) => sonuc.marka);
 });
 
 // Kurumun rengi düğmeye geçer; açık bir renkte beyaz yazı kaybolmasın diye

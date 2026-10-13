@@ -7,6 +7,7 @@ import { StatusLookupForm } from "../durum/[slug]/lookup-form";
 import { OrgLookupShell } from "../durum/[slug]/lookup-shell";
 import "../durum/[slug]/status-lookup.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
+import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -30,7 +31,7 @@ export default async function CustomDomainStatusLookupPage({ searchParams }: { s
   const host = requestHeaders.get("host")?.split(":")[0] ?? "";
 
   const supabase = await createClient();
-  const { data: organizationId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
+  const organizationId = await alanAdiKurumu(supabase, host);
   if (!organizationId) notFound();
 
   const { data: orgData } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });

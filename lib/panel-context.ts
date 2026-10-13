@@ -49,10 +49,36 @@ export const getPanelContext = cache(async () => {
   const userId = auth?.claims?.sub;
   if (!userId) redirect("/login");
 
-  const { data: rows, error } = await supabase.rpc("get_my_workspaces");
-  if (error) throw new Error("Çalışma alanları okunamadı: " + error.message);
+  /*
+    BAĞLAM TEK ÇAĞRIDA (20261013121621). Kurum çoğu istekte çerezden
+    önceden belli: çalışma alanları, o kurumun modülleri ve yetki
+    kuralları tek gidiş-dönüşte (arvo_panel_baglami). Eskiden iki sıralı
+    adımda altı istek gidiyordu; dar bağlantı havuzunda her tıklamaya
+    kuyruk ekliyordu. Çerez yoksa, kurucu konsolundaysak ya da işlev
+    yoksa/hata verirse eski yol: önce çalışma alanları, sonra kurallar.
+  */
+  const cookieStore = await cookies();
+  const requestedOrganizationId = cookieStore.get(WORKSPACE_COOKIE)?.value;
+  const yonetimHostu = isManagementHost(hostFromHeaders(await headers()));
+  type OncedenBaglam = {
+    calisma_alanlari: WorkspaceRpcRow[]; org: string;
+    moduller: { module_code: string; arvo_modules: unknown }[];
+    rol_modul: (ModulKurali & { role: string })[]; kisi_modul: ModulKurali[];
+    rol_yetki: (YetkiKurali & { role: string })[]; kisi_yetki: YetkiKurali[];
+  };
+  let onceden: OncedenBaglam | null = null;
+  if (requestedOrganizationId && !yonetimHostu && /^[0-9a-f-]{36}$/i.test(requestedOrganizationId)) {
+    const { data, error: baglamHatasi } = await supabase.rpc("arvo_panel_baglami", { p_org: requestedOrganizationId });
+    if (!baglamHatasi && data) onceden = data as OncedenBaglam;
+  }
+  let rows: WorkspaceRpcRow[] | null = onceden?.calisma_alanlari ?? null;
+  if (!rows) {
+    const { data, error } = await supabase.rpc("get_my_workspaces");
+    if (error) throw new Error("Çalışma alanları okunamadı: " + error.message);
+    rows = (data ?? []) as WorkspaceRpcRow[];
+  }
 
-  const workspaces = ((rows ?? []) as WorkspaceRpcRow[]).map((row) => ({
+  const workspaces = (rows ?? []).map((row) => ({
     organizationId: row.organization_id,
     role: row.role,
     organization: {
@@ -71,9 +97,6 @@ export const getPanelContext = cache(async () => {
 
   if (!workspaces.length) redirect("/kurulum");
 
-  const cookieStore = await cookies();
-  const requestedOrganizationId = cookieStore.get(WORKSPACE_COOKIE)?.value;
-
   /*
     Kurucu yönetim alan adında çalışma alanı ZORLA Arvo'nun kendi kurumu.
 
@@ -83,7 +106,6 @@ export const getPanelContext = cache(async () => {
     tamamı kurucu konsolu, müşteri kurumunda yapılan bir geçiş buraya
     taşınmamalı.
   */
-  const yonetimHostu = isManagementHost(hostFromHeaders(await headers()));
   const selectedWorkspace = (yonetimHostu ? workspaces.find((item) => item.organization.slug === "arvo-os") : null)
     ?? workspaces.find((item) => item.organizationId === requestedOrganizationId)
     ?? workspaces.find((item) => item.organization.slug === "akademikmerkez")
@@ -103,9 +125,18 @@ export const getPanelContext = cache(async () => {
     yolunda olduğu için fazladan bir veritabanı turu her tıklamaya ekleniyordu.
     Kurum Sahibi için yetki sorgusu yok (kısıtlanamaz).
   */
+  // Seçilen kurum çerezdeki kurumsa kurallar tek çağrıdan geldi (rol burada süzülüyor).
+  const hazir = onceden && onceden.org === membership.organization_id ? onceden : null;
   const yetkiSorgulari = membership.role === "owner"
     ? null
-    : Promise.all([
+    : hazir
+      ? Promise.resolve([
+          { data: hazir.rol_modul.filter((r) => r.role === membership.role), error: null },
+          { data: hazir.kisi_modul, error: null },
+          { data: hazir.rol_yetki.filter((r) => r.role === membership.role), error: null },
+          { data: hazir.kisi_yetki, error: null },
+        ] as const)
+      : Promise.all([
         supabase.from("role_module_permissions").select("module_key,can_access")
           .eq("organization_id", membership.organization_id).eq("role", membership.role),
         supabase.from("member_module_permissions").select("module_key,can_access")
@@ -116,10 +147,12 @@ export const getPanelContext = cache(async () => {
           .eq("organization_id", membership.organization_id).eq("user_id", userId),
       ]);
   const [{ data: moduleRows, error: moduleError }, yetkiSonuclari] = await Promise.all([
-    supabase.from("organization_modules")
-      .select("module_code,arvo_modules(name,description,sort_order)")
-      .eq("organization_id", membership.organization_id)
-      .eq("is_enabled", true),
+    hazir
+      ? Promise.resolve({ data: hazir.moduller, error: null })
+      : supabase.from("organization_modules")
+          .select("module_code,arvo_modules(name,description,sort_order)")
+          .eq("organization_id", membership.organization_id)
+          .eq("is_enabled", true),
     yetkiSorgulari,
   ]);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");

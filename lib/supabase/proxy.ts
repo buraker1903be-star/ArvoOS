@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 import { isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
 import { resolvePath } from "@/lib/site/routes";
 
@@ -95,8 +96,8 @@ export async function updateSession(request: NextRequest) {
   const yonetimHostu = isManagementHost(host);
   let customDomainOrgId: string | null = null;
   if (!isAppHost && !yonetimHostu && host) {
-    const { data: resolvedOrgId } = await supabase.rpc("resolve_organization_by_domain", { p_domain: host });
-    customDomainOrgId = (resolvedOrgId as string | null) ?? null;
+    // 60 sn önbellekli (lib/alan-adi-kurumu): her istekte ayrı RPC gidiyordu.
+    customDomainOrgId = await alanAdiKurumu(supabase, host);
   }
 
   // Çalışma alanı çerezi yalnızca alan adına giriş anında (kök yol) veya
