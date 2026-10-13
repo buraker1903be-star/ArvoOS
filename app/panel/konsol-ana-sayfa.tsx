@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,6 +8,8 @@ import { randevuKopyalari, getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
+import { gunlukSeri } from "@/lib/gunluk-seri";
+import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { StgIcon } from "./settings/settings-ui";
 import { para, tarihSaat } from "./platform/bicim";
 import "./dashboard.css";
@@ -21,10 +22,21 @@ import "./dashboard.css";
   ekranda yanıtlanmıyordu — yanıtı yedi sayfayı tek tek gezerek
   topluyordu.
 
-  Kiracı panelinin ana sayfasıyla AYNI dil (dash-*): selamlama, dokunulabilir
-  widget'lar, odak listesi. Kurucu gün içinde iki kabuk arasında gidip
-  geliyor; ikisinin ana sayfası farklı görünürse hangi alan adında olduğu
-  her seferinde yeniden okunuyordu.
+  Kiracı panelinin ana ekranıyla AYNI BİLEŞENLER (os/genel-bakis):
+  selamlama, tam genişlikte 14 günlük grafik, altında dört liste kartı.
+  Kurucu gün içinde iki kabuk arasında gidip geliyor; ikisinin ana
+  sayfası farklı görünürse hangi alan adında olduğu her seferinde
+  yeniden okunuyordu.
+
+  13.10.2026'ya kadar konsol kendi düzenini çiziyordu (dash-widget
+  kutuları, dash-row listeleri) — panelin diline benziyordu ama ayrı
+  bir koddu ve panel genel bakış şablonuna geçtiğinde geride kaldı.
+  Artık aynı bileşenler: düzen tek yerde değişiyor.
+
+  Grafik 14 günlük TAHSİLAT. Konsolun ilk ekranında hiç eğilim yoktu;
+  kurucu "bu hafta geçen haftadan iyi mi" sorusunu hiçbir ekranda
+  göremiyordu. Sayı kartları grafiğin başlığına taşındı (panelde de
+  böyle: ayrı bir satır ekranı aşağı itiyordu).
 
   Sayfa okunur: buradan hiçbir şey yazılmıyor, her satır işin yapıldığı
   ekrana götürüyor. Aynı kuralı iki yerde uygulamak, birinin sapması demek.
@@ -52,10 +64,6 @@ function selamlama() {
 // Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
 const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrganization[]) =>
   renewalReminders(lisanslar, kurumlar, Date.now());
-
-const Chevron = () => (
-  <svg className="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-);
 
 type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null };
 type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
@@ -112,6 +120,28 @@ export async function KonsolAnaSayfa() {
         admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at").order("created_at", { ascending: false }).limit(6),
       ])
     : [{ count: null, error: null }, { data: [] }];
+
+  /*
+    GRAFİĞİN TAHSİLATLARI: üç kanal, PENCEREYLE sınırlı.
+
+    Sınır `.limit()` DEĞİL tarih: son 28 gün (14 gün + kıyas için önceki
+    14 gün). Satır sayısıyla sınırlamak, yoğun bir haftada grafiği
+    sessizce eksiltirdi — konsolun "Tahsil edildi" rakamı 22.09.2026'da
+    tam olarak böyle yanlış çıkmıştı. Zaman penceresi hem sınırlı hem
+    eksiksiz: pencerenin içindeki her kayıt geliyor.
+
+    Üç kanal Abonelikler sayfasındakiyle aynı: onaylanan havale, kartla
+    ödenen kurum aboneliği ve bireysel abone ödemesi.
+  */
+  const seriBasi = seriBaslangici();
+  const [{ data: havaleler }, { data: kartOdemeleri }, { data: bireyselOdemeler }] = await Promise.all([
+    supabase.from("organization_payment_requests").select("amount,reviewed_at")
+      .eq("status", "approved").gte("reviewed_at", seriBasi),
+    // tuzak-tamam: burada ABONELİK değil TAHSİLAT olarak okunuyor; bu tablo
+    // yalnızca arvo_record_paytr_payment tarafından yazılan kart ödeme günlüğü.
+    supabase.from("billing_subscriptions").select("unit_amount,created_at").gte("created_at", seriBasi),
+    supabase.from("subscriber_payments").select("amount,paid_at").gte("paid_at", seriBasi),
+  ]);
 
   const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya] = await Promise.all([
     getArvolabBridgeHealth(),
@@ -186,6 +216,26 @@ export async function KonsolAnaSayfa() {
   const sozlesmeSayisi = admin ? bekleyenSozlesme.count ?? 0 : null;
   const onayBekleyen = odemeSayisi + (sozlesmeSayisi ?? 0);
 
+  /*
+    Grafiğin dilimleri: tarih listesi + AĞIRLIK olarak tutar. gunlukSeri
+    ağırlıksız çağrılsaydı grafik "kaç ödeme" gösterirdi; kurucunun
+    sorduğu "ne kadar tahsil edildi".
+  */
+  const tahsilatKayitlari = [
+    ...((havaleler ?? []) as { amount: number | null; reviewed_at: string | null }[])
+      .map((satir) => ({ tarih: satir.reviewed_at, tutar: Number(satir.amount ?? 0) })),
+    ...((kartOdemeleri ?? []) as { unit_amount: number | null; created_at: string | null }[])
+      .map((satir) => ({ tarih: satir.created_at, tutar: Number(satir.unit_amount ?? 0) })),
+    ...((bireyselOdemeler ?? []) as { amount: number | null; paid_at: string | null }[])
+      .map((satir) => ({ tarih: satir.paid_at, tutar: Number(satir.amount ?? 0) })),
+  ].filter((satir) => satir.tarih);
+  const tahsilatSerisi = gunlukSeri(
+    tahsilatKayitlari.map((satir) => satir.tarih as string),
+    simdi(),
+    14,
+    tahsilatKayitlari.map((satir) => satir.tutar),
+  );
+
   const { selam, tarih } = selamlama();
   const ad = formatPersonName(
     (profil?.full_name as string | null | undefined) || (personel?.full_name as string | null | undefined),
@@ -242,55 +292,64 @@ export async function KonsolAnaSayfa() {
       : null,
   ].filter(Boolean) as { ad: string; not: string }[];
 
-  const widgetlar: { etiket: string; deger: string | number; not: string; href: string; icon: string; tone: Tone }[] = [
-    { etiket: "Müşteri kurum", deger: musteriler.length, not: `${kullanimda} tanesi kullanımda`, href: "/panel/platform", icon: "building", tone: "info" },
-    { etiket: "Beklenen aylık", deger: para(aylikGelir), not: "Ödeyen lisanslardan", href: "/panel/platform/billing", icon: "wallet", tone: "gold" },
-    {
-      etiket: "Onay bekleyen", deger: onayBekleyen, href: "/panel/platform/payments", icon: "check",
-      not: onayBekleyen ? `${odemeSayisi} ödeme${sozlesmeSayisi === null ? "" : ` · ${sozlesmeSayisi} sözleşme`}` : "Kuyruk boş",
-      tone: onayBekleyen ? "danger" : "success",
-    },
-    { etiket: "Dikkat gerektiren", deger: dikkatGerektiren, not: dikkatGerektiren ? "Kurulum hatası ya da kota aşımı" : "Sorun yok", href: "/panel/platform?filtre=dikkat", icon: "shield", tone: dikkatGerektiren ? "danger" : "success" },
+  /*
+    Sayı kartları kalktı: dört rakam grafiğin başlığına taşındı (panelde
+    de böyle — ayrı bir satır ekranı aşağı itiyor ve genel bakış tek
+    ekrana sığmıyordu).
+  */
+  const grafikOzeti = [
+    { ad: "Beklenen aylık", deger: para(aylikGelir), href: "/panel/platform/billing" },
+    /* "3 / 4": kaçının kullanımda olduğu bilgisi sayı kartından buraya taşındı. */
+    { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, href: "/panel/platform" },
+    { ad: "Onay bekleyen", deger: String(onayBekleyen), ton: onayBekleyen ? "danger" : undefined, href: "/panel/platform/payments" },
+    { ad: "Dikkat gerektiren", deger: String(dikkatGerektiren), ton: dikkatGerektiren ? "danger" : undefined, href: "/panel/platform?filtre=dikkat" },
   ];
 
   const odak = ([
-    { etiket: "Kurulum bekleyen kiracı", sayi: kurulumBekleyen, href: "/panel/platform?filtre=kurulum", icon: "users", tone: "info" },
+    { etiket: "Kurulum bekleyen kiracı", sayi: kurulumBekleyen, href: "/panel/platform?filtre=kurulum", tone: "info" },
     sozlesmeSayisi === null
       ? null
-      : { etiket: "Onay bekleyen sözleşme", sayi: sozlesmeSayisi, href: "/panel/platform/sozlesmeler", icon: "doc", tone: "gold" },
-    { etiket: "İncelenecek ödeme bildirimi", sayi: odemeSayisi, href: "/panel/platform/payments", icon: "wallet", tone: "gold" },
-    { etiket: `Dönemi ${REMINDER_WINDOW_DAYS} gün içinde dolan abonelik`, sayi: hatirlatmalar.length, href: "/panel/platform/billing", icon: "box", tone: "danger" },
-    { etiket: "Kota aşımı ya da kurulum hatası", sayi: dikkatGerektiren, href: "/panel/platform?filtre=dikkat", icon: "shield", tone: "danger" },
-  ] as ({ etiket: string; sayi: number; href: string; icon: string; tone: Tone } | null)[]).filter(Boolean) as { etiket: string; sayi: number; href: string; icon: string; tone: Tone }[];
+      : { etiket: "Onay bekleyen sözleşme", sayi: sozlesmeSayisi, href: "/panel/platform/sozlesmeler", tone: "gold" },
+    { etiket: "İncelenecek ödeme bildirimi", sayi: odemeSayisi, href: "/panel/platform/payments", tone: "gold" },
+    { etiket: `Dönemi ${REMINDER_WINDOW_DAYS} gün içinde dolan abonelik`, sayi: hatirlatmalar.length, href: "/panel/platform/billing", tone: "danger" },
+    { etiket: "Kota aşımı ya da kurulum hatası", sayi: dikkatGerektiren, href: "/panel/platform?filtre=dikkat", tone: "danger" },
+  ] as ({ etiket: string; sayi: number; href: string; tone: Tone } | null)[]).filter(Boolean) as { etiket: string; sayi: number; href: string; tone: Tone }[];
+
+  /*
+    Dikkat isteyen kiracılar KART OLARAK listeleniyor (13.10.2026).
+    Eskiden yalnızca bir sayıydı ve kurucu hangi kurum olduğunu görmek
+    için kiracı listesine gidip süzgeci kendisi kuruyordu.
+  */
+  const dikkatliler = musteriler
+    .filter((kurum) => kurum.provisioning_state === "failed" || kota.get(kurum.id)?.durum === "asildi")
+    .slice(0, GENEL_BAKIS_SATIR)
+    .map((kurum) => ({
+      id: kurum.id,
+      ad: kurum.display_name || kurum.name,
+      sebep: kurum.provisioning_state === "failed"
+        ? "Kurulum hatası"
+        : kota.get(kurum.id)?.kullanici.asildi ? "Kullanıcı limiti aşıldı" : "Depolama limiti aşıldı",
+    }));
 
   const bolumler = [
-    { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform", icon: "building" },
-    { etiket: "Lisans ve kota", not: "Paket, limit ve deneme süresi", href: "/panel/platform/licenses", icon: "box" },
-    { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing", icon: "wallet" },
-    { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller", icon: "grid" },
-    { etiket: "Tüm üyeler", not: "Üç ürünün kullanıcıları tek listede", href: "/panel/platform/members", icon: "users" },
-    { etiket: "Bireysel aboneler", not: "Kuruma bağlı olmayan kullanıcılar", href: "/panel/platform/subscribers", icon: "support" },
+    { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform" },
+    { etiket: "Lisans ve kota", not: "Paket, limit ve deneme süresi", href: "/panel/platform/licenses" },
+    { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing" },
+    { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller" },
+    { etiket: "Tüm üyeler", not: "Üç ürünün kullanıcıları tek listede", href: "/panel/platform/members" },
+    { etiket: "Bireysel aboneler", not: "Kuruma bağlı olmayan kullanıcılar", href: "/panel/platform/subscribers" },
   ];
 
   const kurulumlar = (kurulumKayitlari ?? []) as KurulumKaydi[];
 
   return (
-    <div className="dash">
-      <header className="dash-hero">
-        <div>
-          <small className="panel-kicker">{tarih.toLocaleUpperCase("tr-TR")}</small>
-          <h1>{selam}{ad ? `, ${ad}` : ""}</h1>
-          <p>{ozet}</p>
-        </div>
-        <div className="panel-page-actions">
-          <Link className="panel-secondary" href="/panel/platform/billing">Abonelikler</Link>
-          <Link className="panel-primary" href="/panel/platform">Tüm kiracılar</Link>
-        </div>
-      </header>
+    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} ust={tarih.toLocaleUpperCase("tr-TR")}>
+      <p className="dash-ozet-cumle">{ozet}</p>
 
       {/* Köprüler sessizce kopuyor: hata yalnızca karşı taraftaki günlükte
           kalıyor ve kurucu aylar sonra fark ediyordu. Konsolun ilk ekranı
-          bunu söylemeli. */}
+          bunu söylemeli. GenelBakis'in kendi `uyari` satırı "veri
+          okunamadı" içindir; bunun başlığı kopan köprünün adı. */}
       {kopruler.map((kopru) => (
         <p className="dash-uyari" data-tone="danger" role="alert" key={kopru.ad}>
           <span aria-hidden="true"><StgIcon name="shield" size={16} /></span>
@@ -298,69 +357,72 @@ export async function KonsolAnaSayfa() {
         </p>
       ))}
 
-      <section className="dash-widgets" aria-label="Platform özeti">
-        {widgetlar.map((widget) => (
-          <Link className="dash-widget" data-tone={widget.tone} href={widget.href} key={widget.etiket}>
-            <span className="dash-widget-icon"><StgIcon name={widget.icon} /></span>
-            <small>{widget.etiket}</small>
-            <strong>{widget.deger}</strong>
-            <span className="dash-widget-note">{widget.not}</span>
-          </Link>
-        ))}
-      </section>
+      <SeriKarti
+        baslik="Tahsilat"
+        alt="Son 14 gün"
+        seri={tahsilatSerisi}
+        birim={(deger) => para(deger)}
+        adet="tahsilat"
+        href="/panel/platform/billing"
+        ozet={grafikOzeti}
+      />
 
-      <section className="dash-grid">
-        <article className="dash-card dash-focus">
-          <header className="dash-card-head"><div><h2>Bugün neye bakmalı?</h2><p>Bekleyen işler</p></div></header>
-          <nav className="dash-list">
-            {odak.map((satir) => (
-              <Link className="dash-row" data-tone={satir.sayi ? satir.tone : "neutral"} href={satir.href} key={satir.etiket}>
-                <span className="dash-row-icon"><StgIcon name={satir.icon} size={17} /></span>
-                <span className="dash-row-label">{satir.etiket}</span>
-                <b className={`dash-row-count${satir.sayi ? "" : " is-zero"}`}>{satir.sayi}</b>
-                <Chevron />
-              </Link>
-            ))}
-          </nav>
-        </article>
+      <ListeIzgarasi etiket="Konsol">
+        <ListeKarti
+          baslik="Bugün neye bakmalı?" alt="Bekleyen işler"
+          bos="Bekleyen iş yok." sayi={odak.length}
+          href="/panel/platform" hrefEtiket="Kiracılar"
+        >
+          {odak.map((satir) => (
+            <ListeSatiri
+              key={satir.etiket}
+              href={satir.href}
+              baslik={satir.etiket}
+              sag={<span className="status-pill" data-tone={satir.sayi ? satir.tone : "neutral"}>{satir.sayi}</span>}
+            />
+          ))}
+        </ListeKarti>
 
-        <article className="dash-card">
-          <header className="dash-card-head"><div><h2>Bölümler</h2><p>Konsolun tamamı</p></div></header>
-          <nav className="dash-list">
-            {bolumler.map((bolum) => (
-              <Link className="dash-row" data-tone="brand" href={bolum.href} key={bolum.href}>
-                <span className="dash-row-icon"><StgIcon name={bolum.icon} size={17} /></span>
-                <span className="dash-row-label">{bolum.etiket}<small className="dash-row-note">{bolum.not}</small></span>
-                <Chevron />
-              </Link>
-            ))}
-          </nav>
-        </article>
+        <ListeKarti
+          baslik="Dikkat gerektiren" alt="Kurulum hatası ya da kota aşımı"
+          bos="Her kiracı yolunda." sayi={dikkatliler.length}
+          href="/panel/platform?filtre=dikkat" hrefEtiket="Tümü"
+        >
+          {dikkatliler.map((kurum) => (
+            <ListeSatiri
+              key={kurum.id}
+              href={`/panel/platform?organization=${kurum.id}`}
+              baslik={kurum.ad}
+              sag={<span className="status-pill" data-tone="danger">{kurum.sebep}</span>}
+            />
+          ))}
+        </ListeKarti>
 
-        <article className="dash-card">
-          <header className="dash-card-head"><div><h2>Son kurulum hareketleri</h2><p>Kurum açma ve giriş bağlantısı</p></div></header>
-          {kurulumlar.length ? (
-            <nav className="dash-list">
-              {kurulumlar.map((kayit) => (
-                <Link className="dash-row" data-tone={kayit.result === "error" ? "danger" : "success"} href={`/panel/platform?organization=${kayit.organization_id}`} key={kayit.id}>
-                  <span className="dash-row-icon"><StgIcon name={kayit.result === "error" ? "shield" : "check"} size={17} /></span>
-                  <span className="dash-row-label">
-                    {kurumAdi.get(kayit.organization_id) ?? "Kurum"}
-                    <small className="dash-row-note">{actionLabels[kayit.action] ?? kayit.action} · {tarihSaat(kayit.created_at)}</small>
-                  </span>
-                  <Chevron />
-                </Link>
-              ))}
-            </nav>
-          ) : (
-            <p className="dash-empty">
-              {admin
-                ? "Henüz kurulum kaydı yok. Yeni bir müşteri kurulduğunda adımları burada görürsünüz."
-                : "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor."}
-            </p>
-          )}
-        </article>
-      </section>
-    </div>
+        <ListeKarti
+          baslik="Son kurulum hareketleri" alt="Kurum açma ve giriş bağlantısı"
+          bos={admin
+            ? "Henüz kurulum kaydı yok. Yeni bir müşteri kurulduğunda adımları burada görürsünüz."
+            : "Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor."}
+          sayi={kurulumlar.length}
+        >
+          {kurulumlar.map((kayit) => (
+            <ListeSatiri
+              key={kayit.id}
+              href={`/panel/platform?organization=${kayit.organization_id}`}
+              baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
+              alt={actionLabels[kayit.action] ?? kayit.action}
+              sag={kayit.result === "error" ? <span className="status-pill" data-tone="danger">hata</span> : null}
+              zaman={tarihSaat(kayit.created_at)}
+            />
+          ))}
+        </ListeKarti>
+
+        <ListeKarti baslik="Bölümler" alt="Konsolun tamamı" bos="" sayi={bolumler.length}>
+          {bolumler.map((bolum) => (
+            <ListeSatiri key={bolum.href} href={bolum.href} baslik={bolum.etiket} alt={bolum.not} />
+          ))}
+        </ListeKarti>
+      </ListeIzgarasi>
+    </GenelBakis>
   );
 }

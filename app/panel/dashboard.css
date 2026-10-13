@@ -18,27 +18,17 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .dash-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .dash-hero h1{margin:6px 0 0;color:var(--ink);font-size:clamp(26px,2.2vw,var(--fs-2xl));font-weight:var(--fw-semibold);line-height:var(--lh-tight);letter-spacing:-.02em}
 .dash-hero p{margin:8px 0 0;max-width:620px;color:var(--muted);font-size:15px;line-height:1.5}
+/* Kurucu konsolunun selamlama altı özeti ("Bugün 1 kiracı dikkat
+   istiyor"). GenelBakis başlığın altına metin almıyor; cümle kartların
+   üstünde ayrı bir satır olarak duruyor (13.10.2026). */
+.dash-ozet-cumle{margin:-4px 0 0;max-width:620px;color:var(--muted);font-size:15px;line-height:1.5}
 
 /* ---------- Widget'lar ---------- */
-.dash-widgets{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-.dash-widget{
-  position:relative;display:flex;flex-direction:column;gap:2px;min-height:136px;padding:16px 16px 14px;
-  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-xs);
-  color:var(--ink);text-decoration:none;overflow:hidden;
-  transition:transform .45s var(--dash-ease),box-shadow .3s ease,border-color .2s ease
-}
 /* 2026-10: köşedeki dekoratif daire kaldırıldı (sade dil; koyu temada gri leke gibi duruyordu). */
-.dash-widget-icon{display:grid;place-items:center;width:34px;height:34px;margin-bottom:12px;border-radius:11px;background:var(--tone-bg);color:var(--tone-fg)}
-.dash-widget small{position:relative;z-index:1;color:var(--muted);font-size:13px;font-weight:600}
-.dash-widget strong{position:relative;z-index:1;font-size:var(--fs-2xl);font-weight:var(--fw-semibold);line-height:1.1;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
-.dash-widget-note{position:relative;z-index:1;margin-top:2px;color:var(--muted);font-size:var(--fs-sm)}
 @media(hover:hover) and (pointer:fine){
-  .dash-widget:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--primary) 32%,var(--line));box-shadow:var(--shadow-md)}
 }
-.dash-widget:active{transform:scale(.97)}
 
 /* ---------- Kartlar ---------- */
-.dash-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
 .dash-card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:20px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow-sm)}
 .dash-chart,.dash-activity{grid-column:span 2}
 .dash-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -71,15 +61,6 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 @keyframes dash-grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 
 /* Odak listesi (iOS gruplanmış liste) */
-.dash-list{display:flex;flex-direction:column;margin:0 -8px}
-.dash-row{position:relative;display:flex;align-items:center;gap:12px;min-height:50px;padding:8px;border-radius:12px;color:var(--ink);font-size:14.5px;text-decoration:none;transition:background-color .18s ease,transform .3s var(--dash-ease)}
-.dash-row+.dash-row::before{content:"";position:absolute;top:0;left:50px;right:8px;height:1px;background:var(--line-soft)}
-.dash-row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
-.dash-row:active{transform:scale(.985)}
-.dash-row-icon{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--tone-bg);color:var(--tone-fg)}
-.dash-row-label{flex:1;min-width:0}
-.dash-row-count{min-width:26px;height:24px;padding:0 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone-fg);font-size:13px;font-weight:700;line-height:24px;text-align:center;font-variant-numeric:tabular-nums}
-.dash-row-count.is-zero{background:transparent;color:var(--dim);font-weight:600}
 
 /* Aşama dağılımı */
 .dash-stage-list{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
@@ -123,14 +104,9 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-setup-state{color:var(--success)}
 
 @media(max-width:1180px){
-  .dash-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .dash-chart,.dash-activity{grid-column:1/-1}
 }
 @media(max-width:760px){
-  .dash-grid{grid-template-columns:minmax(0,1fr)}
-  .dash-widgets{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .dash-widget{min-height:124px;padding:14px;border-radius:20px}
-  .dash-widget strong{font-size:24px}
   .dash-bars{gap:4px;height:160px}
   .dash-card{padding:16px;border-radius:20px}
   .dash-setup .dash-card-head{flex-direction:column}
@@ -141,9 +117,7 @@ a.dash-setup-step:active{transform:scale(.985)}
 
 /* Satırın altındaki açıklama. Bölüm listesinde "Lisans ve kota" tek
    başına neyin nerede olduğunu söylemiyordu. */
-.dash-row-note{display:block;margin-top:1px;color:var(--muted);font-size:12.5px;line-height:1.35}
 /* Para tutarı widget'a sığmıyordu: "₺1.234.567,00" tek satıra kesiliyordu. */
-.dash-widget strong{overflow-wrap:anywhere}
 
 /* ---------- Canlı akış (2026-10) ----------
    Anlık tazelemeyle gelen hareket (son 3 dk) kurum renginde belirir ve
