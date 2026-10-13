@@ -132,7 +132,7 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
     if (gorunum === "kart") {
       const sinirli = () => Promise.race([
         anlikBildirimOzeti(endpoint).catch(() => undefined),
-        new Promise<undefined>((r) => setTimeout(() => r(undefined), 6000)),
+        new Promise<undefined>((r) => setTimeout(() => r(undefined), 4000)),
       ]);
       const o = (await sinirli()) ?? (await sinirli());
       if (iptal()) return;
