@@ -33,6 +33,18 @@ type Adim = {
 };
 
 const ADIM_SINIRI = 6;
+const MESAJ_SINIRI = 4;
+
+type BekleyenMesaj = {
+  workflow_id: string;
+  body: string;
+  created_at: string;
+  operation_workflows: { title: string; customer_name: string | null } | null;
+};
+
+const saatBicim = new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit" });
+const gunBicim = new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "numeric", month: "short" });
+const gunAnahtari = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" });
 
 async function adimlarim(supabase: SupabaseClient, orgId: string, benId: string): Promise<{ adimlar: Adim[]; hata: boolean }> {
   /*
@@ -78,7 +90,22 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
   const { data: ben } = await supabase.from("hr_employees").select("id").eq("organization_id", orgId).eq("user_id", userId).maybeSingle();
   const benId = (ben as { id?: string } | null)?.id ?? null;
 
-  const [adimSonucu, gecikenIs, atanmamisIs, imzaBekleyen, bugunTalep, okunmamisMesaj, tahsilat] = await Promise.all([
+  /*
+    YANIT BEKLEYEN MESAJLAR: sayı kutusu "kaç tane" diyordu, kime ve ne
+    yazıldığı için işler listesine, oradan işe, oradan da sayfanın en
+    altındaki sohbete inmek gerekiyordu. Burada son mesajlar iş başına
+    bir satır; dokununca telefonda sohbet doğrudan açılıyor
+    (?pencere=mesajlar). Okuma sınırlı ama yalnızca GÖSTERİM için —
+    sayı kutudaki head sorgusundan geliyor.
+  */
+  const mesajSorgusu = () => {
+    const q = supabase.from("customer_file_messages").select("workflow_id,body,created_at,operation_workflows!inner(title,customer_name,status,assigned_employee_id)")
+      .eq("organization_id", orgId).eq("sender_type", "customer").is("read_at", null).neq("operation_workflows.status", "cancelled")
+      .order("created_at", { ascending: false }).limit(40);
+    return yonetici ? q : q.eq("operation_workflows.assigned_employee_id", benId as string);
+  };
+
+  const [adimSonucu, gecikenIs, atanmamisIs, imzaBekleyen, bugunTalep, okunmamisMesaj, tahsilat, mesajSonucu] = await Promise.all([
     operasyonGorur && benId ? adimlarim(supabase, orgId, benId) : Promise.resolve({ adimlar: [] as Adim[], hata: false }),
     yonetici ? say(supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", [...activeStatuses]).lt("due_date", bugun)) : yok,
     yonetici ? say(supabase.from("operation_workflows").select("id", { count: "exact", head: true }).eq("organization_id", orgId).in("status", [...activeStatuses]).is("assigned_employee_id", null)) : yok,
@@ -97,7 +124,23 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
       ? supabase.from("account_entries").select("amount").eq("organization_id", orgId).eq("entry_type", "credit").eq("source_type", "payment").eq("transaction_date", bugun)
           .then((r) => (r.error ? null : ((r.data ?? []) as { amount: number }[]).reduce((t, e) => t + Number(e.amount), 0)))
       : yok,
+    operasyonGorur && (yonetici || benId)
+      ? mesajSorgusu().then((r) => {
+          // Liste yalnızca kısayol; okunamazsa ana ekran düşmesin ama iz kalsın.
+          if (r.error) console.error("[bugun] bekleyen mesajlar okunamadı", r.error.message);
+          return r.error ? [] : (r.data ?? []) as unknown as BekleyenMesaj[];
+        })
+      : Promise.resolve([] as BekleyenMesaj[]),
   ]);
+
+  // İş başına en yeni mesaj (sorgu yeniden eskiye sıralı).
+  const mesajIsleri = new Map<string, BekleyenMesaj>();
+  for (const m of mesajSonucu) if (!mesajIsleri.has(m.workflow_id)) mesajIsleri.set(m.workflow_id, m);
+  const bekleyenMesajlar = [...mesajIsleri.values()].slice(0, MESAJ_SINIRI);
+  const mesajZamani = (iso: string) => {
+    const t = new Date(iso);
+    return gunAnahtari.format(t) === bugun ? saatBicim.format(t) : gunBicim.format(t);
+  };
 
   const adimlar = adimSonucu.adimlar;
   const geciken = adimlar.filter((a) => a.due_date && a.due_date < bugun).length;
@@ -139,6 +182,28 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
             </Link>
           ))}
         </div>
+      ) : null}
+
+      {bekleyenMesajlar.length ? (
+        <section className="bugun-adimlar bugun-mesajlar" aria-label="Yanıt bekleyen mesajlar">
+          <header>
+            <h2>Yanıt bekleyen mesajlar</h2>
+            <small>{okunmamisMesaj ? `${okunmamisMesaj} okunmamış` : null}</small>
+          </header>
+          <ul>
+            {bekleyenMesajlar.map((m) => (
+              <li key={m.workflow_id}>
+                <Link href={`/panel/operations/${m.workflow_id}?pencere=mesajlar`} className="bugun-adim-metin">
+                  <b>{m.operation_workflows?.customer_name || formatSubject(m.operation_workflows?.title)}</b>
+                  <small className="bugun-mesaj-govde">{m.body}</small>
+                  <small>{formatSubject(m.operation_workflows?.title)} · {mesajZamani(m.created_at)}</small>
+                </Link>
+                <Link href={`/panel/operations/${m.workflow_id}?pencere=mesajlar`} className="bugun-tamamla" aria-label={`${m.operation_workflows?.customer_name ?? "Müşteri"}: yanıtla`}>Yanıtla</Link>
+              </li>
+            ))}
+          </ul>
+          {mesajIsleri.size > MESAJ_SINIRI ? <Link className="bugun-tumu" href={yonetici ? "/panel/operations/isler?mesaj=yeni" : `/panel/operations/isler?mesaj=yeni&sorumlu=${benId}`}>Mesajı olan bütün işler ›</Link> : null}
+        </section>
       ) : null}
 
       {/* Yöneticinin üstünde adım yoksa kart yer kaplamaz; sahadaki personel

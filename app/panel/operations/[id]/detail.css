@@ -252,11 +252,24 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-sohbet-yaz>div{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .opd-sohbet-yaz small{color:var(--muted);font-size:12.5px}
 .opd-sohbet-kapali{flex:none;margin:0;color:var(--muted);font-size:13.5px}
+/* Hazır yanıtlar (lib/hazir-yanitlar.ts): tek satır, yana kayar — sohbet
+   listesinin yüksekliğini yemesin. */
+.opd-sohbet-yaz>.opd-sohbet-hazir{display:flex;flex-direction:row;justify-content:flex-start;flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:0 2px}
+.opd-sohbet-hazir::-webkit-scrollbar{display:none}
+.opd-sohbet-hazir button{flex:none;min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:var(--fw-medium);white-space:nowrap;cursor:pointer}
+.opd-sohbet-hazir button:hover{border-color:var(--primary);color:var(--primary)}
 
 @media (max-width:620px){
   .opd-sohbet-satir{max-width:94%}
   .opd-sohbet-yaz>div{flex-direction:column;align-items:stretch}
+  .opd-sohbet-yaz>.opd-sohbet-hazir{flex-direction:row;align-items:center}
   .opd-sohbet-yaz .panel-primary{width:100%;justify-content:center}
+}
+/* Telefonda klavye kısayolu yok; iOS 16 pikselin altındaki alana dokununca sayfayı büyütüyor. */
+@media (max-width:760px){
+  .opd-sohbet-yaz small{display:none}
+  .opd-sohbet-yaz textarea{font-size:16px}
+  .opd-sohbet-hazir button{min-height:36px;font-size:13.5px}
 }
 
 /* Bilgiler: gruplanmış liste */
@@ -631,3 +644,15 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-v3 .talep-musteri .opd-kunye .opd-list>div{display:flex;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
 .opd-v3 .talep-musteri .opd-kunye .opd-list dt{color:var(--muted);font-size:var(--fs-sm)}
 .opd-v3 .talep-musteri .opd-kunye .opd-list dd{margin:0;text-align:right;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium);overflow-wrap:anywhere}
+
+/* TELEFON ÇUBUĞU (page.tsx): mesaj, fotoğraf, arama en üstte. Masaüstünde
+   yok — orada sohbet sağ sütunda zaten açık. */
+.opd-telefon{display:none}
+@media (max-width:760px){
+  .opd-telefon{display:flex;gap:8px}
+  .opd-telefon>*{flex:1 1 0}
+  .opd-telefon-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px;font-weight:var(--fw-semibold);text-decoration:none;cursor:pointer}
+  .opd-telefon-btn .panel-modal-trigger-text{text-align:center}
+  .opd-telefon-btn:active{background:var(--surface-2)}
+  .opd-telefon-btn .panel-modal-trigger-rozet{background:var(--danger);color:var(--n-0)}
+}

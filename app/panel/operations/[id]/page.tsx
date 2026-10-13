@@ -395,6 +395,49 @@ export default async function OperationDetailPage({
       ) : null}
 
       {/*
+        TELEFON ÇUBUĞU (13.10.2026; yalnızca telefonda, detail.css).
+        Telefonda sayfa tek sütuna iniyor ve müşteri sohbeti en altta
+        kalıyordu (390 piksel genişlikte ~6700 piksel aşağıda): sahadaki
+        personelin en sık iki işi, mesaja yanıt ve fotoğraf, en uzaktaydı.
+        Çubuk ikisini en üste alır; pencereler alttan açılan sayfa.
+        Bugün ekranındaki mesaj satırı ?pencere=mesajlar ile doğrudan
+        sohbeti açıyor (yalnızca telefonda; masaüstünde aynı adres sağdaki
+        sekmeyi seçiyor).
+      */}
+      <nav className="opd-telefon" aria-label="Hızlı işlemler">
+        <PanelModal
+          triggerClassName="opd-telefon-btn"
+          triggerLabel="Mesajlar"
+          triggerBadge={unreadCustomerMessages ? String(unreadCustomerMessages) : null}
+          title={musteriAdi ?? "Müşteri mesajları"}
+          kicker="MÜŞTERİ MESAJLARI"
+          boy="sohbet"
+          baslangicAcik={acilacakPencere === "mesajlar"}
+          yalnizcaTelefonda
+        >
+          <MarkCustomerMessagesRead workflowId={workflow.id} unread={unreadCustomerMessages} />
+          <MusteriSohbeti workflowId={workflow.id} messages={customerMessages} customerName={customerName} canReply={Boolean(contract)} bugun={bugunIstanbul} />
+        </PanelModal>
+        <PanelModal
+          triggerClassName="opd-telefon-btn"
+          triggerLabel="Fotoğraf"
+          title="Fotoğraflar ve dosyalar"
+          description="Sahadan çekilen fotoğrafı ya da belgeyi işe (yalnızca ekip) ya da müşteriye ekleyin."
+          kicker="OPERASYON"
+          boy="genis"
+        >
+          {ekipKurulumEksik ? (
+            <p className="opd-pf-banner" data-tone="warning" role="status"><b>Kurulum bekleniyor</b><span>Veritabanı güncellemesi (20261013065421_is_ekip_dosyalari) henüz çalıştırılmadı.</span></p>
+          ) : (
+            <SahaDosyalari workflowId={workflow.id} organizationId={organizationId} portalAcik={portalPayment.hasContract && !portalSetupMissing} dosyalar={ekipDosyalari} />
+          )}
+        </PanelModal>
+        {opportunity?.contact_phone ? (
+          <a className="opd-telefon-btn" href={`tel:${opportunity.contact_phone.replace(/[^\d+]/g, "")}`}>Ara</a>
+        ) : null}
+      </nav>
+
+      {/*
         DURUM ŞERİDİ: talep ve teklifteki aşama çizgisinin yerinde. Bu üç
         alan nadiren değişir ama sürekli görünmesi gerekir; değişince
         anında kaydeder.

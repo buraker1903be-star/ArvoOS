@@ -3,6 +3,7 @@
 import { useEffect, useRef, type FormEvent, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { replyCustomerFileMessage } from "../actions";
+import { HAZIR_YANITLAR, yanitaEkle } from "@/lib/hazir-yanitlar";
 
 export type SohbetMesaji = {
   id: string;
@@ -107,6 +108,16 @@ export function MusteriSohbeti({
     }
   };
 
+  // Hazır yanıt: cümleyi alana koyar, GÖNDERMEZ (lib/hazir-yanitlar.ts).
+  const hazirEkle = (metin: string) => {
+    const alan = alanRef.current;
+    if (!alan) return;
+    alan.value = yanitaEkle(alan.value, metin, customerName);
+    buyut();
+    alan.focus();
+    alan.setSelectionRange(alan.value.length, alan.value.length);
+  };
+
   const gonderildi = (olay: FormEvent<HTMLFormElement>) => {
     // React 19 eylemden sonra formu sıfırlıyor; yükseklik elle geri alınır.
     void olay;
@@ -162,6 +173,11 @@ export function MusteriSohbeti({
       {canReply ? (
         <form className="opd-sohbet-yaz" action={replyCustomerFileMessage} onSubmit={gonderildi} ref={formRef}>
           <input type="hidden" name="workflow_id" value={workflowId} />
+          <div className="opd-sohbet-hazir" role="group" aria-label="Hazır yanıtlar">
+            {HAZIR_YANITLAR.map((y) => (
+              <button key={y.etiket} type="button" onClick={() => hazirEkle(y.metin)} title={y.metin}>{y.etiket}</button>
+            ))}
+          </div>
           <textarea
             ref={alanRef} name="body" required minLength={2} maxLength={2000} rows={1}
             placeholder="Müşteriye yanıt yazın…" aria-label="Müşteriye yanıt"

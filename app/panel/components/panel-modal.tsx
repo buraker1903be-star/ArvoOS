@@ -40,6 +40,12 @@ type PanelModalProps = {
   kapaninca?: string;
   /** Düğme çizilmesin: pencere yalnızca adresten açılıyor (liste satırı gibi). */
   dugmesiz?: boolean;
+  /*
+    baslangicAcik yalnızca telefonda geçerli. İş detayındaki telefon
+    çubuğunun pencereleri: masaüstünde aynı derin bağlantı (?pencere=
+    mesajlar) sayfa içindeki sekmeyi açıyor, pencere üstüne açılmasın.
+  */
+  yalnizcaTelefonda?: boolean;
   children: ReactNode;
 };
 
@@ -67,9 +73,13 @@ const subscribeNothing = () => () => undefined;
 */
 export function PanelModal({
   triggerLabel, triggerNote, triggerBadge, triggerTone = "neutral", triggerClassName = "panel-secondary",
-  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, children,
+  title, description, kicker, boy = "orta", baslangicAcik = false, basaridaKapan = false, kapaninca, dugmesiz = false, yalnizcaTelefonda = false, children,
 }: PanelModalProps) {
-  const [open, setAcik] = useState(baslangicAcik);
+  /* Sunucuda pencere zaten çizilmiyor (portal istemciyi bekliyor); bu
+     yüzden ilk durumu tarayıcıda ekran genişliğine bakarak kurmak
+     hidrasyonu kaydırmaz. */
+  const [open, setAcik] = useState(() =>
+    baslangicAcik && (!yalnizcaTelefonda || (typeof window !== "undefined" && window.matchMedia("(max-width:760px)").matches)));
   const router = useRouter();
   const setOpen = useCallback((deger: boolean) => {
     setAcik(deger);

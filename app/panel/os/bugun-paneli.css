@@ -36,4 +36,8 @@
   .bugun-tamamla:active{transform:scale(.96)}
   .bugun-bos{margin:0;padding:6px 16px 10px;color:var(--muted);font-size:14px}
   .bugun-tumu{display:block;padding:12px 16px 8px;border-top:1px solid var(--line-soft);color:var(--primary);font-size:14px;font-weight:var(--fw-medium);text-decoration:none}
+
+  /* Yanıt bekleyen mesajlar: mesajın kendisi iki satıra kadar; Yanıtla mavi. */
+  .bugun-mesajlar .bugun-adim-metin .bugun-mesaj-govde{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--ink-soft);font-size:14px;white-space:normal}
+  .bugun-mesajlar .bugun-tamamla{flex:none;border-color:color-mix(in srgb,var(--primary) 35%,var(--line));background:color-mix(in srgb,var(--primary) 10%,var(--surface));color:var(--primary);text-decoration:none}
 }
