@@ -219,6 +219,14 @@ gerçek sütunlarını oradan okuyun — buradaki eski migration'dan değil.
 Migration uyguladıktan sonra anlık görüntüyü yenileyin; akış testleri onu
 kurar.
 
+**Görünümün satır tipini döndüren fonksiyon dökümde SONRA gelir.**
+`returns setof crm_talep_liste` yazan bir fonksiyon (liste süzgeçleri
+böyle) görünümden önce yazılırsa dökümden kurulan veritabanı hiç ayağa
+kalkmaz: 13.10.2026'da 423 akış testi tek hatayla düştü (`type
+"crm_talep_liste" does not exist`). Dışa aktarma betiği bunu artık
+katalogdan ayırıyor (ArvoARC/scripts/sema-disa-aktar.sql); yeni bir
+döküm almadan önce betiğin güncel olduğundan emin olun.
+
 **plpgsql gövdesi sütunları çalışma anında denetler.** Var olmayan bir sütuna
 başvuran fonksiyon oluşurken hata vermez, ilk çağrıda düşer. Yeni ya da
 değiştirilmiş her fonksiyonu gerçek tablo yapısıyla en az bir kez çalıştırın;

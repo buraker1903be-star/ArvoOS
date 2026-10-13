@@ -65,6 +65,22 @@ const OTHER_DATABASE_RECEIVERS = new Map([
 ]);
 
 const FROM_RE = /\.from\(\s*"([a-z_0-9]+)"\s*\)/g;
+/*
+  TABLO ADI HESAPLANMIŞSA zincir KİMSEYE yazılmaz (13.10.2026).
+
+  `.from(tur === "contract" ? "crm_contracts" : "crm_proposals")`
+  biçimini FROM_RE çözemiyor; o zincir bir ÖNCEKİ .from()'un
+  devamı sayılıyor ve sütunları yanlış tabloda aranıyordu. Belge
+  metinleri ekranı bu yüzden "organization_document_texts.created_at
+  yok" diye yanlış alarm veriyordu — oysa sorgu crm_contracts /
+  crm_proposals üzerindeydi ve ikisinde de o sütun var.
+
+  Yanlış alarm kaçırılan hata kadar zararlı: denetime güven kalmazsa
+  çıktısına bakılmaz (tests/unit/check-schema-usage.test.ts bunu
+  baştan beri söylüyor). Hesaplanmış ad artık zinciri bitiriyor,
+  sütunları da denetlenmiyor — tahmin yürütmek yerine susuyor.
+*/
+const FROM_HER = /\.from\(/g;
 const FILTER_RE = /\.(?:eq|neq|gt|gte|lt|lte|in|is|like|ilike|contains|order|not)\(\s*"([a-z_0-9]+)"/g;
 /** Zincirin bittiği yer: noktalı virgül ya da yeni bir ifadenin başı. */
 const KESME_RE = /;|\n\s*(const|let|if|return|await)\b/;
@@ -149,6 +165,14 @@ function sahipler(kaynak, baglar) {
     // Alıcı başka bir veritabanının istemcisiyse bu sorgu bizim değil.
     alici: kaynak.slice(Math.max(0, m.index - 60), m.index).match(/([A-Za-z_$][\w$]*)\s*$/)?.[1],
   }));
+  /* Çözülemeyen .from(): tablo bilinmiyor (tablo: null). Sahip olarak
+     listeye GİRİYOR ki önceki zinciri bitirsin, ama kendisi
+     denetlenmiyor. */
+  const cozulenler = new Set(liste.map((sahip) => sahip.index));
+  for (const m of kaynak.matchAll(FROM_HER)) {
+    if (cozulenler.has(m.index)) continue;
+    liste.push({ index: m.index, bas: m.index + m[0].length, tablo: null, alici: undefined });
+  }
   for (const [ad, tablo] of baglar) {
     // Yalnızca ÇAĞRI/zincir kullanımı: "sorgu = sorgu.gte(…)" satırındaki
     // atama hedefi sahip değil, sağdaki kullanım sahip.
@@ -204,6 +228,8 @@ export function dosyaSorunlari(kaynak, { tables, functions, etiket = "" }) {
 
   sahipListesi.forEach((sahip, i) => {
     if (sahip.alici && OTHER_DATABASE_RECEIVERS.has(sahip.alici)) return;
+    // Tablo adı hesaplanmış: zinciri bitirdi, kendisi denetlenmiyor.
+    if (sahip.tablo === null) return;
     const cols = tables.get(sahip.tablo);
     if (!cols) {
       // "tablo yok" yalnızca gerçek .from() çağrısında bildirilir; bağlı ad

@@ -512,6 +512,14 @@
       "status",
       "work_plan"
     ],
+    "crm_contract_portal_visits": [
+      "contract_id",
+      "first_login_at",
+      "last_login_at",
+      "last_seen_at",
+      "login_count",
+      "organization_id"
+    ],
     "crm_contracts": [
       "acceptance_recorded_at",
       "access_token_hash",
@@ -525,6 +533,7 @@
       "customer_address",
       "customer_tax_number",
       "customer_tax_office",
+      "document_text",
       "due_date",
       "first_viewed_at",
       "id",
@@ -607,6 +616,7 @@
       "created_by",
       "currency",
       "customer_responded_at",
+      "document_text",
       "estimated_delivery_date",
       "first_viewed_at",
       "gross_amount",
@@ -792,6 +802,14 @@
       "started_at",
       "status",
       "terminal_id"
+    ],
+    "hr_commission_payment_allocations": [
+      "amount",
+      "contract_id",
+      "created_at",
+      "id",
+      "organization_id",
+      "payment_id"
     ],
     "hr_commission_payments": [
       "amount",
@@ -1156,6 +1174,20 @@
       "title",
       "workflow_id"
     ],
+    "operation_team_files": [
+      "created_at",
+      "deleted_at",
+      "deleted_by",
+      "file_name",
+      "id",
+      "mime_type",
+      "note",
+      "organization_id",
+      "size_bytes",
+      "storage_path",
+      "uploaded_by",
+      "workflow_id"
+    ],
     "operation_workflow_comments": [
       "body",
       "created_at",
@@ -1251,6 +1283,13 @@
       "organization_id",
       "probability",
       "sort_order"
+    ],
+    "organization_document_texts": [
+      "content",
+      "document_type",
+      "organization_id",
+      "updated_at",
+      "updated_by"
     ],
     "organization_form_templates": [
       "code",
@@ -1385,9 +1424,16 @@
       "updated_at",
       "updated_by"
     ],
+    "organization_service_types": [
+      "organization_id",
+      "turler",
+      "updated_at",
+      "updated_by"
+    ],
     "organization_step_template_sets": [
       "code",
       "created_at",
+      "hizmet_turleri",
       "is_active",
       "is_default",
       "name",
@@ -1432,6 +1478,7 @@
       "custom_domain_verification",
       "display_name",
       "document_footer",
+      "favicon_url",
       "iban",
       "id",
       "kind",
@@ -1539,6 +1586,33 @@
       "sort_order",
       "updated_at"
     ],
+    "platform_kiraci_liste": [
+      "aktif_uye",
+      "contact_phone",
+      "current_period_end",
+      "custom_domain",
+      "custom_domain_status",
+      "davet_durumu",
+      "davet_eposta",
+      "davet_gonderildi",
+      "davet_hatasi",
+      "davet_kabul",
+      "display_name",
+      "id",
+      "kind",
+      "license_status",
+      "logo_url",
+      "monthly_fee",
+      "name",
+      "plan_code",
+      "provisioning_state",
+      "sector",
+      "slug",
+      "status",
+      "storage_limit_mb",
+      "trial_ends_at",
+      "user_limit"
+    ],
     "platform_subscription_requests": [
       "amount",
       "contract_id",
@@ -1599,6 +1673,26 @@
       "organization_id",
       "result",
       "state"
+    ],
+    "push_subscriptions": [
+      "auth",
+      "cihaz",
+      "created_at",
+      "endpoint",
+      "failure_count",
+      "id",
+      "last_success_at",
+      "organization_id",
+      "p256dh",
+      "posta",
+      "user_id"
+    ],
+    "push_tercihleri": [
+      "acik",
+      "organization_id",
+      "posta",
+      "updated_at",
+      "user_id"
     ],
     "role_capability_permissions": [
       "allowed",
@@ -1787,6 +1881,8 @@
     "arc_variant_available",
     "archive_inactive_crm_proposal",
     "arvo_auth_kullanici_id",
+    "arvo_bildirim_ozeti",
+    "arvo_bildirimler",
     "arvo_can_access_message_channel",
     "arvo_can_access_opportunity",
     "arvo_cancel_contract_addendum",
@@ -1795,18 +1891,24 @@
     "arvo_custom_domain_available",
     "arvo_is_member",
     "arvo_is_message_channel_member",
+    "arvo_is_turunu_degistir",
     "arvo_kimlik_postasi_markasi",
     "arvo_message_unread_counts",
     "arvo_ops_musteri_kunyesi_yaz",
+    "arvo_panel_baglami",
+    "arvo_panel_kabugu",
+    "arvo_prim_odemesi_dagit",
     "arvo_public_contract_audit",
     "arvo_public_contract_links",
     "arvo_public_contract_plan",
+    "arvo_public_document_text",
     "arvo_public_organization_legal",
     "arvo_public_proposal_decision",
     "arvo_record_contract_consents",
     "arvo_record_paytr_payment",
     "arvo_record_proposal_response_agent",
     "arvo_respond_contract_addendum",
+    "arvo_son_temaslar",
     "arvo_storage_usage",
     "arvo_taksitleri_kaydet",
     "arvo_tracking_asamalar",
@@ -1837,6 +1939,8 @@
     "crm_genel_bakis_ozeti",
     "crm_sozlesme_istatistikleri",
     "crm_talep_istatistikleri",
+    "crm_talep_serit",
+    "crm_talep_suz",
     "crm_teklif_istatistikleri",
     "delete_group_message_channel",
     "expire_due_crm_proposals",
@@ -1864,6 +1968,7 @@
     "get_public_organization_branding_by_id",
     "get_storefront_seller",
     "guard_operation_customer_file",
+    "guard_operation_team_file",
     "guard_operation_workflow_archive",
     "issue_crm_contract_link",
     "issue_crm_proposal_link",
@@ -1883,6 +1988,9 @@
     "operasyon_ekip_yuku",
     "operasyon_genel_bakis_ozeti",
     "operasyon_is_istatistikleri",
+    "operasyon_is_serit",
+    "operasyon_is_suz",
+    "platform_tahsilat_ozeti",
     "portal_payment_settled",
     "portal_workflow_payment_status",
     "provision_customer_organization",

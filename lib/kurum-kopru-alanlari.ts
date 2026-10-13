@@ -38,7 +38,18 @@ export const KURUM_KOPRU_ALANLARI = KURUM_KOPRU_SECIMI.split(",");
     revision_days        — revizyon penceresi, ArvoOS operasyonuna ait
     tracking_show_phases — ArvoOS takip sayfasının görünüm ayarı
 */
-export const ARVOOS_OZEL_KURUM_ALANLARI = ["revision_days", "tracking_show_phases"];
+/*
+  ArvoOS'ta duran, karşıya GİTMEYEN alanlar.
+
+  favicon_url (13.10.2026): sekme simgesi marka kümesinin parçası ve
+  logo_url ile primary_color karşıya gidiyor — ama ArvoARC'ın,
+  Randevu'nun ve Lab'ın organizations tablosunda böyle bir sütun YOK.
+  Taşıyan listeye eklemek, bu dosyanın yazılma sebebi olan hatayı
+  tekrarlamak demekti: hedefte olmayan tek bir sütun yazmanın tamamını
+  düşürüyor ve köprü bir gün boyunca sessizce durmuştu (01.10.2026).
+  Hedeflere sütun eklendiği gün buradan KURUM_KOPRU_SECIMI'ne taşınır.
+*/
+export const ARVOOS_OZEL_KURUM_ALANLARI = ["revision_days", "tracking_show_phases", "favicon_url"];
 
 /*
   LİSANS SATIRININ KARŞIYA GİDEN ALANLARI.
