@@ -122,10 +122,21 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
         yeni = abonelik && Notification.permission === "granted" ? "acik" : "kapali";
       }
     }
+    /*
+      Kişi özeti (ayarlar + cihazlar) sunucu işleminden geliyor. İstek
+      yarıda kesilirse (sayfa yenilemesiyle iptal edilen sunucu işlemi)
+      söz hiç sonuçlanmıyor ve kart "denetleniyor…"da takılı kalıyordu
+      (13.10.2026). Süre sınırıyla bekleniyor, gelmezse bir kez daha
+      isteniyor; cihazın kendi durumu özetten bağımsız yazılıyor.
+    */
     if (gorunum === "kart") {
-      const o = await anlikBildirimOzeti(endpoint);
+      const sinirli = () => Promise.race([
+        anlikBildirimOzeti(endpoint).catch(() => undefined),
+        new Promise<undefined>((r) => setTimeout(() => r(undefined), 6000)),
+      ]);
+      const o = (await sinirli()) ?? (await sinirli());
       if (iptal()) return;
-      setOzet(o);
+      if (o !== undefined) setOzet(o);
       if (yeni === "acik" && o && !o.buCihazKayitli) yeni = "kapali";
     }
     if (!iptal()) {
