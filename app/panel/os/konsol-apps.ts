@@ -17,21 +17,56 @@
 import type { OsUygulama } from "./os-apps";
 
 /*
-  Yol öneklerinde sıralama ÖNEMLİ DEĞİL, uzunluk önemli: etkinUygulama en
-  uzun eşleşeni seçiyor. "/panel/platform" bütün alt sayfaları
-  kapsıyormuş gibi görünüyor ama "/panel/platform/licenses" daha uzun
-  olduğu için lisans sayfasında Lisans uygulaması etkin sayılıyor.
+  DÖRT UYGULAMA + ANA EKRAN (14.10.2026). İlk sürümde konsolun dokuz
+  ekranı dokuz dock girdisiydi; dock bir başlatıcıya dönüştü ve
+  "nereye bakacağım" sorusu kolaylaşmadı, dağıldı. Yakın işler tek
+  uygulamada toplandı ve ayrıntı İKİNCİ KATA indi (bolumler): dock
+  simgesinin üstüne gelince bölümler açılıyor — panelde CRM ve Finans
+  nasıl çalışıyorsa öyle.
+
+  Üyeler dock'ta değil, başlatıcıda: gün içinde sürekli girilen bir
+  ekran değil, arada bakılan bir dizin. Müşteriler uygulamasının
+  bölümlerinden de ulaşılıyor.
+
+  Yol öneklerinde sıralama ÖNEMLİ DEĞİL, uzunluk önemli: etkinUygulama
+  en uzun eşleşeni seçiyor. "/panel/platform" Müşteriler uygulamasına
+  bağlı ama "/panel/platform/licenses" daha uzun olduğu için lisans
+  sayfasında Lisans uygulaması etkin sayılıyor.
 */
 export function konsolUygulamalari(): OsUygulama[] {
   return [
     { key: "home", label: "Ana ekran", href: "/panel", ikon: "home", yollar: [] },
-    { key: "kiracilar", label: "Kiracılar", href: "/panel/platform", ikon: "building", yollar: ["/panel/platform"] },
-    { key: "lisans", label: "Lisans ve kota", href: "/panel/platform/licenses", ikon: "documents", yollar: ["/panel/platform/licenses"] },
-    { key: "abonelik", label: "Abonelikler", href: "/panel/platform/billing", ikon: "finance", yollar: ["/panel/platform/billing"] },
-    { key: "odemeler", label: "Ödeme onayları", href: "/panel/platform/payments", ikon: "wallet", yollar: ["/panel/platform/payments"] },
-    { key: "sozlesmeler", label: "Sözleşmeler", href: "/panel/platform/sozlesmeler", ikon: "check", yollar: ["/panel/platform/sozlesmeler"] },
-    { key: "aboneler", label: "Bireysel aboneler", href: "/panel/platform/subscribers", ikon: "crm", yollar: ["/panel/platform/subscribers"] },
-    { key: "uyeler", label: "Üyeler", href: "/panel/platform/members", ikon: "hr", yollar: ["/panel/platform/members"] },
-    { key: "moduller", label: "Modül matrisi", href: "/panel/platform/moduller", ikon: "apps", yollar: ["/panel/platform/moduller"] },
+    {
+      key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "building",
+      /* Kiracı dosyası (/panel/platform) da bu uygulamanın içinde: dosya
+         müşteri listesinden açılıyor, ayrı bir uygulama değil. */
+      yollar: ["/panel/platform/musteriler", "/panel/platform"],
+      bolumler: [
+        { key: "liste", href: "/panel/platform/musteriler", label: "Tüm müşteriler" },
+        { key: "kurumsal", href: "/panel/platform/musteriler?tur=kurumsal", label: "Kurumsal" },
+        { key: "bireysel", href: "/panel/platform/musteriler?tur=bireysel", label: "Bireysel" },
+        { key: "kurulum", href: "/panel/platform", label: "Kiracı kurulumu" },
+        { key: "uyeler", href: "/panel/platform/members", label: "Üyeler" },
+      ],
+    },
+    {
+      key: "finans", label: "Finans", href: "/panel/platform/billing", ikon: "finance",
+      yollar: ["/panel/platform/billing", "/panel/platform/payments", "/panel/platform/sozlesmeler", "/panel/platform/subscribers"],
+      bolumler: [
+        { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
+        { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
+        { key: "sozlesmeler", href: "/panel/platform/sozlesmeler", label: "Sözleşme onayları" },
+        { key: "planlar", href: "/panel/platform/subscribers", label: "Abonelik ayarları" },
+      ],
+    },
+    {
+      key: "lisans", label: "Lisans", href: "/panel/platform/licenses", ikon: "documents",
+      yollar: ["/panel/platform/licenses", "/panel/platform/moduller"],
+      bolumler: [
+        { key: "kota", href: "/panel/platform/licenses", label: "Lisans ve kota" },
+        { key: "moduller", href: "/panel/platform/moduller", label: "Modül matrisi" },
+      ],
+    },
+    { key: "uyeler", label: "Üyeler", href: "/panel/platform/members", ikon: "hr", yollar: ["/panel/platform/members"], yalnizBaslatici: true },
   ];
 }

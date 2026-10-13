@@ -19,19 +19,39 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/"), "home");
   });
 
-  test("kiracı listesi alt sayfaları YUTMUYOR", () => {
-    assert.equal(etkin("/panel/platform"), "kiracilar");
-    /* Kiracı dosyası ayrı bir yol değil, aynı sayfanın sorgusu
-       (?organization=…); dock yalnızca YOLA bakıyor (usePathname sorguyu
-       taşımıyor), yani dosya açıkken de Kiracılar vurgulu kalıyor. */
-    assert.equal(etkin("/panel/platform/"), "kiracilar");
+  test("Müşteriler uygulaması alt sayfaları YUTMUYOR", () => {
+    assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
+    /* Kiracı dosyası ayrı bir yol değil, kiracı kurulum sayfasının
+       sorgusu (?organization=…); dock yalnızca YOLA bakıyor
+       (usePathname sorguyu taşımıyor). İkisi de Müşteriler'in içinde. */
+    assert.equal(etkin("/panel/platform"), "musteriler");
+    assert.equal(etkin("/panel/platform/"), "musteriler");
+
     assert.equal(etkin("/panel/platform/licenses"), "lisans");
-    assert.equal(etkin("/panel/platform/billing"), "abonelik");
-    assert.equal(etkin("/panel/platform/payments"), "odemeler");
-    assert.equal(etkin("/panel/platform/sozlesmeler"), "sozlesmeler");
-    assert.equal(etkin("/panel/platform/subscribers"), "aboneler");
+    assert.equal(etkin("/panel/platform/moduller"), "lisans");
+
+    assert.equal(etkin("/panel/platform/billing"), "finans");
+    assert.equal(etkin("/panel/platform/payments"), "finans");
+    assert.equal(etkin("/panel/platform/sozlesmeler"), "finans");
+    assert.equal(etkin("/panel/platform/subscribers"), "finans");
+
     assert.equal(etkin("/panel/platform/members"), "uyeler");
-    assert.equal(etkin("/panel/platform/moduller"), "moduller");
+  });
+
+  test("her bölüm gerçek bir adrese gidiyor ve uygulamasının yolunda", () => {
+    /* Bölüm, uygulamanın yollarından birinin altında olmazsa o bölüme
+       geçildiğinde dock başka bir uygulamayı vurgular. */
+    for (const uygulama of uygulamalar) {
+      for (const bolum of uygulama.bolumler ?? []) {
+        const yol = bolum.href.split("?")[0];
+        assert.ok(yol.startsWith("/panel"), `${uygulama.key}/${bolum.key}: panel dışı adres`);
+        const sahip = etkinUygulama(uygulamalar, yol)?.key;
+        assert.ok(
+          sahip === uygulama.key || uygulamalar.some((u) => u.key === sahip && u.yalnizBaslatici),
+          `${uygulama.key}/${bolum.key}: bölüm ${sahip} uygulamasına düşüyor`,
+        );
+      }
+    }
   });
 
   test("her uygulamanın anahtarı ve adresi benzersiz", () => {
@@ -51,10 +71,12 @@ describe("kurucu konsolu uygulamaları", () => {
     }
   });
 
-  test("hepsi dock'ta: konsolda yalnızca başlatıcıda duran uygulama yok", () => {
-    /* Panelde Posta ve Mesajlar dock'ta değil (gün boyu açık tutulan
-       ekranlar değil). Konsolun dokuz ekranının hepsi gün içinde gidip
-       gelinen ekranlar; birini başlatıcıya saklamak onu kaybetmek olur. */
-    assert.equal(uygulamalar.filter((u) => u.yalnizBaslatici).length, 0);
+  test("dock sade kalıyor: ana ekran dahil en çok beş girdi", () => {
+    /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi ve dock
+       bir başlatıcıya dönüşmüştü. Yakın işler tek uygulamada toplandı,
+       ayrıntı ikinci kata (bolumler) indi. Sayı yeniden büyümeye
+       başlarsa bu test söyler. */
+    const dockta = uygulamalar.filter((u) => !u.yalnizBaslatici);
+    assert.ok(dockta.length <= 5, `dock'ta ${dockta.length} girdi var`);
   });
 });
