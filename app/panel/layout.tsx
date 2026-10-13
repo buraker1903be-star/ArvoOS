@@ -12,7 +12,7 @@ import { FlashToast } from "./flash-toast";
 import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
 import { NotificationsDrawer } from "./notifications-drawer";
-import { loadMessagesInit } from "./messages/load-messages";
+import { loadMessagesInit, mesajlarBaslangici } from "./messages/load-messages";
 import { SidebarToggle } from "./sidebar-toggle";
 import { cookies, headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
@@ -150,7 +150,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const hasMessages = modules.some((module) => module.code.replaceAll("-", "_").toLowerCase() === "messages");
   // Toplu bildirimlerde okundu bilgisi kişiye özel; kurum sayacı veritabanı
   // fonksiyonunda hesaplanıyor (arvo_unread_notification_count).
-  const notificationQuery = isPlatformOwner
+  // Tembel: yalnızca eski yol çağırırsa çalışır (.then sorguyu hemen başlatıyordu).
+  const notificationQuery = () => isPlatformOwner
     ? supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null).eq("audience", "founder")
     : supabase.rpc("arvo_unread_notification_count", { p_organization_id: membership.organization_id })
         .then(({ data }) => ({ count: Number(data ?? 0) }));
@@ -163,7 +164,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   const ownEmployeeQuery = supabase.from("hr_employees").select("id,full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   // Mesaj çekmecesi ve /panel/messages aynı yükleyiciyi kullanır; okunmamış
   // sayısı sunucuda hesaplanır (eskiden son 1000 mesaj tarayıcıya çekiliyordu).
-  const messagesQuery = hasMessages ? loadMessagesInit(supabase, membership.organization_id, userId) : Promise.resolve(null);
+  const messagesQuery = () => (hasMessages ? loadMessagesInit(supabase, membership.organization_id, userId) : Promise.resolve(null));
   /*
     Bekleyen gizlilik sözleşmesi personel kaydı üzerinden TEK sorguda
     (hr_employees!inner): eskiden önce personel kaydı okunuyor, sonra onun
@@ -194,48 +195,100 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     ? supabase.from("mail_threads").select("thread_id", { count: "exact", head: true }).eq("organization_id", membership.organization_id).eq("okunmamis", true).is("silindi_at", null)
     : Promise.resolve({ count: 0 });
   const ucDakikaOnce = cevrimiciEsigi();
-  const [
-    { count: notificationUnreadCount },
-    { data: ownEmployee },
-    messagesInit,
-    { data: pendingAgreement },
-    { data: urunLisanslari },
-    postaBilgisi,
-    postaSayimi,
-    { data: varlikSatirlari },
-    { data: ekipSatirlari },
-    { data: kendiVarlikSatiri },
-  ] = await Promise.all([
-    notificationQuery,
-    ownEmployeeQuery,
-    messagesQuery,
-    pendingAgreementQuery,
-    konsolHostu
-      ? Promise.resolve({ data: null })
-      : supabase.from("organization_product_licenses")
-          .select("product,status").eq("organization_id", membership.organization_id)
-          .in("status", ["active", "trialing", "past_due"]),
-    postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
-    postaSayimSorgusu,
-    /* Çevrimiçi ekip (yalnızca uygulama kabuğunda): son 3 dakikada görülenler
-       ve adları. Çalışan listesini görme yetkisi olmayan rolde RLS boş döner;
-       avatarlar "Ekip üyesi" olur, kabuk bozulmaz. */
-    konsolHostu
-      ? Promise.resolve({ data: null })
-      /* Kendini ekibe çevrimdışı gösterenler bu listede yok (gizli).
-         Son görülme yine yazılıyor; personel ekranı gerçek durumu
-         göstermeye devam ediyor. */
-      : supabase.from("user_presence").select("user_id,last_seen_at,gizli").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce).eq("gizli", false),
-    konsolHostu
-      ? Promise.resolve({ data: null })
-      : supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
-    /* Kendi görünürlük tercihimiz: yukarıdaki liste gizlileri elediği
-       için oradan okunamıyor. Menüdeki anahtarın başlangıç hâli. */
-    konsolHostu
-      ? Promise.resolve({ data: null })
-      : supabase.from("user_presence").select("gizli")
-          .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
-  ]);
+  /*
+    KABUK TEK ÇAĞRIDA (20261013114758). Aşağıdaki on dört okuma (bildirim,
+    personel kaydı, gizlilik, lisanslar, posta sayısı, çevrimiçi ekip, ekip
+    adları, kendi görünürlüğüm ve mesaj çekmecesinin dört okuması) her
+    sayfa açılışında AYNI ANDA ayrı istek olarak gidiyor, sayfanın kendi
+    sorgularıyla birlikte veritabanının bağlantı havuzunda kuyruğa
+    giriyordu: tek satırlık okumalar canlıda ortalama 0,5–0,8 sn, en kötü
+    4,5 sn sürüyordu. arvo_panel_kabugu aynısını tek gidiş-dönüşte,
+    çağıranın yetkisiyle (security invoker, RLS aynen) yapıyor. İşlev yoksa
+    (migration henüz uygulanmadı) ya da hata verirse eski yol çalışır.
+    Posta durumu ayrı: service_role ile okunuyor (mail_accounts RLS'i).
+  */
+  const eskiYol = async () => {
+    const [
+      { count: notificationUnreadCount },
+      { data: ownEmployee },
+      messagesInit,
+      { data: pendingAgreement },
+      { data: urunLisanslari },
+      postaBilgisi,
+      postaSayimi,
+      { data: varlikSatirlari },
+      { data: ekipSatirlari },
+      { data: kendiVarlikSatiri },
+    ] = await Promise.all([
+      notificationQuery(),
+      ownEmployeeQuery,
+      messagesQuery(),
+      pendingAgreementQuery,
+      konsolHostu
+        ? Promise.resolve({ data: null })
+        : supabase.from("organization_product_licenses")
+            .select("product,status").eq("organization_id", membership.organization_id)
+            .in("status", ["active", "trialing", "past_due"]),
+      postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
+      postaSayimSorgusu,
+      /* Çevrimiçi ekip (yalnızca uygulama kabuğunda): son 3 dakikada görülenler
+         ve adları. Çalışan listesini görme yetkisi olmayan rolde RLS boş döner;
+         avatarlar "Ekip üyesi" olur, kabuk bozulmaz. */
+      konsolHostu
+        ? Promise.resolve({ data: null })
+        /* Kendini ekibe çevrimdışı gösterenler bu listede yok (gizli).
+           Son görülme yine yazılıyor; personel ekranı gerçek durumu
+           göstermeye devam ediyor. */
+        : supabase.from("user_presence").select("user_id,last_seen_at,gizli").eq("organization_id", membership.organization_id).gte("last_seen_at", ucDakikaOnce).eq("gizli", false),
+      konsolHostu
+        ? Promise.resolve({ data: null })
+        : supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", membership.organization_id).not("user_id", "is", null).limit(300),
+      /* Kendi görünürlük tercihimiz: yukarıdaki liste gizlileri elediği
+         için oradan okunamıyor. Menüdeki anahtarın başlangıç hâli. */
+      konsolHostu
+        ? Promise.resolve({ data: null })
+        : supabase.from("user_presence").select("gizli")
+            .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
+    ]);
+    return { notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari, postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri };
+  };
+  const tekCagri = async () => {
+    const [{ data, error }, postaBilgisi] = await Promise.all([
+      supabase.rpc("arvo_panel_kabugu", {
+        p_org: membership.organization_id,
+        p_kurucu: isPlatformOwner,
+        p_posta: postaYetkisi,
+        p_mesaj: hasMessages,
+        p_esik: ucDakikaOnce,
+      }),
+      postaYetkisi ? postaDurumu(membership.organization_id) : Promise.resolve(null),
+    ]);
+    if (error || !data) return null;
+    const k = data as {
+      bildirim: number; personel: { id: string; full_name: string } | null; gizlilik: string | null;
+      lisanslar: string[]; posta_okunmamis: number; varlik: { user_id: string; last_seen_at: string }[];
+      ekip: { user_id: string; full_name: string }[]; kendi_gizli: boolean;
+      mesaj?: { kisiler: unknown; kanallar: unknown; varlik: unknown; okunmamis: unknown };
+    };
+    return {
+      notificationUnreadCount: Number(k.bildirim ?? 0),
+      ownEmployee: k.personel,
+      messagesInit: hasMessages && k.mesaj
+        ? mesajlarBaslangici(membership.organization_id, userId, { employees: k.mesaj.kisiler, channelRows: k.mesaj.kanallar, presenceRows: k.mesaj.varlik, unreadRows: k.mesaj.okunmamis })
+        : null,
+      pendingAgreement: k.gizlilik ? { id: k.gizlilik } : null,
+      urunLisanslari: konsolHostu ? null : (k.lisanslar ?? []).map((product) => ({ product })),
+      postaBilgisi,
+      postaSayimi: { count: Number(k.posta_okunmamis ?? 0) },
+      varlikSatirlari: konsolHostu ? null : k.varlik,
+      ekipSatirlari: konsolHostu ? null : k.ekip,
+      kendiVarlikSatiri: konsolHostu ? null : { gizli: Boolean(k.kendi_gizli) },
+    };
+  };
+  const {
+    notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari,
+    postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri,
+  } = (await tekCagri()) ?? (await eskiYol());
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
   /*

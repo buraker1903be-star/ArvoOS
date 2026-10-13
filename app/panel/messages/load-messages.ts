@@ -29,6 +29,21 @@ export async function loadMessagesInit(
     supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", organizationId).eq("gizli", false),
     supabase.rpc("arvo_message_unread_counts", { p_organization_id: organizationId }),
   ]);
+  return mesajlarBaslangici(organizationId, userId, { employees, channelRows, presenceRows, unreadRows });
+}
+
+/*
+  Satırlardan çekmecenin ilk verisi. Panel yerleşimi aynı satırları tek
+  çağrıda (arvo_panel_kabugu, 20261013114758) alıyor; dönüşüm iki yolda
+  da AYNI işlevden geçsin ki çekmece hangi yoldan gelirse gelsin aynı
+  görünsün.
+*/
+export function mesajlarBaslangici(
+  organizationId: string,
+  userId: string,
+  satirlar: { employees: unknown; channelRows: unknown; presenceRows: unknown; unreadRows: unknown },
+): MessagesInit {
+  const { employees, channelRows, presenceRows, unreadRows } = satirlar;
   const lastSeen = new Map(((presenceRows ?? []) as { user_id: string; last_seen_at: string }[]).map((row) => [row.user_id, row.last_seen_at]));
   return {
     organizationId,
