@@ -182,6 +182,8 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-step-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .opd-step-body b{font-size:14.5px;font-weight:600;line-height:1.35}
 .opd-step-body small{color:var(--muted);font-size:12.5px}
+/* Görevi kim tikledi (tamamlayanın adı). */
+.opd-step-kim{color:var(--ink-soft);font-weight:var(--fw-medium)}
 .opd-step.is-done .opd-step-body b{color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 60%,transparent)}
 /*
   Görev satırının denetimleri açılır bölümde. Kapalıyken satır tek çizgi:

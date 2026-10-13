@@ -230,7 +230,12 @@ export default async function OperationDetailPage({
     ? await supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
     : { data: [] };
   const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
-  const uploaderIds = [...new Set([...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by).filter((value): value is string => Boolean(value)))];
+  /* Dosyayı yükleyen ve görevi tamamlayan kişilerin adları tek sorguda
+     (görevi kimin tiklediği satırın altında yazıyor, 13.10.2026). */
+  const uploaderIds = [...new Set([
+    ...[...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by),
+    ...steps.map((step) => (step.is_completed ? step.completed_by : null)),
+  ].filter((value): value is string => Boolean(value)))];
   const { data: uploaderData } = uploaderIds.length
     ? await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
     : { data: [] };
@@ -283,7 +288,7 @@ export default async function OperationDetailPage({
   const due = dueBadge(workflow.due_date, bugunIstanbul, workflow.status);
   const activities: Activity[] = [
     { id: `created-${workflow.id}`, title: "İş akışı oluşturuldu", detail: customerName, at: workflow.created_at, kind: "created" as const },
-    ...steps.filter((step) => step.completed_at).map((step) => ({ id: `step-${step.id}`, title: "Görev tamamlandı", detail: step.title, at: step.completed_at!, kind: "step" as const })),
+    ...steps.filter((step) => step.completed_at).map((step) => ({ id: `step-${step.id}`, title: "Görev tamamlandı", detail: step.completed_by ? `${step.title} · ${uploaderNames.get(step.completed_by) ?? "Ekip üyesi"}` : step.title, at: step.completed_at!, kind: "step" as const })),
     ...comments.map((comment) => ({ id: `comment-${comment.id}`, title: "Yorum eklendi", detail: comment.body.length > 90 ? `${comment.body.slice(0, 90)}…` : comment.body, at: comment.created_at, kind: "comment" as const })),
   ]
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
@@ -722,7 +727,13 @@ export default async function OperationDetailPage({
                         <span className="opd-step-body">
                           <b>{step.title}</b>
                           {step.is_completed ? (
-                            <small>Tamamlandı · {formatDate(step.completed_at, true)}</small>
+                            /* Kim tikledi: şablondaki görevleri kimin tamamladığı ekipçe görülsün
+                               (kurum sahibinin isteği). completed_by sunucuda oturumdaki kişiden
+                               yazılıyor; eski kayıtlarda boşsa yalnızca tarih kalır. */
+                            <small>
+                              Tamamlandı · {formatDate(step.completed_at, true)}
+                              {step.completed_by ? <> · <span className="opd-step-kim">{uploaderNames.get(step.completed_by) ?? "Ekip üyesi"}</span></> : null}
+                            </small>
                           ) : null}
                         </span>
                         {uyari ? (
