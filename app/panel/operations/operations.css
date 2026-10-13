@@ -293,3 +293,13 @@
     align-items: start;
   }
 }
+
+/* EKİP YÜKÜ tablosu (ekip/page.tsx). Sütun genişliği yoktu: kişi sütunu
+   90px'e sıkışıp ad iki satıra kırılıyor, sekiz sayı sütunu ise ekranı
+   eşit paylaşıyordu (13.10.2026). Kişi geniş, sayılar dar ve sağa yaslı. */
+@media (min-width:761px){
+  .os-root .talep-tablo [data-cols="ekip-yuku"]{table-layout:auto}
+  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):first-child{width:auto;min-width:260px}
+  .os-root .talep-tablo [data-cols="ekip-yuku"] :is(th,td):not(:first-child){width:1%;white-space:nowrap;padding-left:var(--sp-5);font-variant-numeric:tabular-nums}
+  .os-root .talep-tablo [data-cols="ekip-yuku"] td:first-child .crm-table-title{white-space:nowrap}
+}

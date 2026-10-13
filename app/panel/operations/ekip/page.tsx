@@ -4,6 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { activeStatuses, adimIlerlemesi, surenStatuses } from "../ops-shared";
 import { SatirTiklama } from "../../crm/satir-tiklama";
+import { departmanTuru } from "@/lib/yetki-profilleri";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
@@ -21,6 +22,16 @@ import "../operations.css";
   sunucuda, satır sayısı personel kadar. Her sayı işler listesine
   SÜZGEÇLİ bağlantı veriyor — ekran bakılıp geçilen bir tablo değil,
   işin başladığı yer.
+
+  YALNIZCA OPERASYON DEPARTMANI (13.10.2026). Eskiden kurumun bütün
+  personeli listeleniyordu: genel müdür, kurucu, satışçılar "müsait"
+  sayılıp operasyon ekibinin arasında duruyordu. Departman türü
+  lib/yetki-profilleri departmanTuru'ndan ("Operasyon Departmanı",
+  "Operasyon Ekibi"…; yetki profilleriyle aynı kural). Operasyon dışından
+  birinin üstünde açık iş varsa iş kaybolmasın diye şeritte ayrıca
+  sayılıyor. Kurumda operasyon türünde departman hiç yoksa süzgeç
+  uygulanmıyor (herkes listede, ekranda yazıyor) — bilmediğimiz bir
+  departman adı yüzünden liste boş kalmasın.
 
   Yetki: operations.ekip.gor (varsayılan yönetici + müdür). İşlerin
   tamamını görmek RLS'te ayrıca müdüre bağlı; bu sayfa yeni bir
@@ -56,21 +67,36 @@ export default async function EkipYukuPage() {
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   if (!izin("operations.ekip.gor")) throw new Error("Ekip yükünü görme yetkiniz yok.");
 
-  const { data, error } = await supabase.rpc("operasyon_ekip_yuku", {
-    p_organization_id: membership.organization_id,
-    p_aktif: [...activeStatuses],
-    p_suren: [...surenStatuses],
-  });
+  const [{ data, error }, { data: personelDepartmani, error: departmanHatasi }] = await Promise.all([
+    supabase.rpc("operasyon_ekip_yuku", {
+      p_organization_id: membership.organization_id,
+      p_aktif: [...activeStatuses],
+      p_suren: [...surenStatuses],
+    }),
+    // Kişi başına departman adı; personel sayısı kadar satır (sınırsız okuma bilerek).
+    supabase.from("hr_employees").select("id,hr_departments(name)").eq("organization_id", membership.organization_id),
+  ]);
   if (error) throw new Error("Ekip yükü okunamadı: " + error.message);
-  const satirlar = (data ?? []) as Satir[];
+  // Departman okunamazsa herkesi "operasyon dışı" saymak listeyi boşaltırdı: hata olarak gösterilir.
+  if (departmanHatasi) throw new Error("Personelin departmanı okunamadı: " + departmanHatasi.message);
+  const tumSatirlar = (data ?? []) as Satir[];
+  const departmanAdi = new Map(((personelDepartmani ?? []) as { id: string; hr_departments: { name: string } | { name: string }[] | null }[])
+    .map((p) => [p.id, (Array.isArray(p.hr_departments) ? p.hr_departments[0]?.name : p.hr_departments?.name) ?? null]));
+  const operasyonda = (s: Satir) => Boolean(s.employee_id) && departmanTuru(departmanAdi.get(s.employee_id as string)) === "operasyon";
+  const operasyonDepartmaniVar = tumSatirlar.some(operasyonda);
+  const satirlar = tumSatirlar.filter((s) => s.employee_id && (!operasyonDepartmaniVar || operasyonda(s)));
+  const atanmamis = tumSatirlar.find((s) => !s.employee_id);
+  const disaridaki = operasyonDepartmaniVar ? tumSatirlar.filter((s) => s.employee_id && !operasyonda(s)) : [];
+  const disaridakiIs = disaridaki.reduce((t, s) => t + sayi(s.acik_is), 0);
 
-  const toplam = satirlar.reduce((t, s) => ({
+  /* Şerit toplamları: listedeki operasyon ekibi + atanmamış + operasyon
+     dışındaki açık işler — kurumdaki açık işlerin tamamı, hiçbiri kaybolmuyor. */
+  const toplam = [...satirlar, ...(atanmamis ? [atanmamis] : []), ...disaridaki].reduce((t, s) => ({
     acik: t.acik + sayi(s.acik_is),
     gecikenIs: t.gecikenIs + sayi(s.termin_gecmis),
     gecikenAdim: t.gecikenAdim + sayi(s.adim_gecmis),
     mesaj: t.mesaj + sayi(s.okunmamis_mesaj),
   }), { acik: 0, gecikenIs: 0, gecikenAdim: 0, mesaj: 0 });
-  const atanmamis = satirlar.find((s) => !s.employee_id);
   /* "Müsait" ölçütü: aktif personel ve hiç açık işi yok. Pasif
      personel üstünde iş kaldıysa listede duruyor ama müsait sayılmaz. */
   const musait = satirlar.filter((s) => s.employee_id && s.durum === "active" && !sayi(s.acik_is)).length;
@@ -94,10 +120,16 @@ export default async function EkipYukuPage() {
         <div><dt>Geciken adım</dt><dd className={toplam.gecikenAdim ? "talep-uyari" : undefined}>{toplam.gecikenAdim}</dd></div>
         <div><dt>Yeni müşteri mesajı</dt><dd className={toplam.mesaj ? "talep-uyari" : undefined}><Link href={`${ISLER}?mesaj=yeni`}>{toplam.mesaj}</Link></dd></div>
         {atanmamis ? <div><dt>Atanmamış iş</dt><dd className="cari-eksi"><Link href={sorumluAdresi(atanmamis)}>{sayi(atanmamis.acik_is)}</Link></dd></div> : null}
+        {disaridakiIs ? <div><dt>Operasyon dışında</dt><dd title={disaridaki.filter((s) => sayi(s.acik_is)).map((s) => formatPersonName(s.ad ?? "")).join(", ")}>{disaridakiIs}</dd></div> : null}
         <div><dt>Müsait personel</dt><dd className={musait ? "cari-arti" : undefined}>{musait}</dd></div>
       </dl>
     </nav>
 
+    <section className="panel-card talep-bilgi ekip-yuku-kart" aria-label="Operasyon ekibi">
+    <div className="cari-baslik">
+      <h2>{operasyonDepartmaniVar ? "Operasyon ekibi" : "Ekip"}</h2>
+      <small>{satirlar.length} kişi{operasyonDepartmaniVar ? "" : " · operasyon departmanı tanımlı değil, bütün personel listeleniyor"}</small>
+    </div>
     <div className="talep-tablo">
       <table className="crm-data-table" data-cols="ekip-yuku">
         <thead><tr>
@@ -112,13 +144,12 @@ export default async function EkipYukuPage() {
           const bosta = Boolean(satir.employee_id) && !sayi(satir.acik_is);
           return (
             <tr key={satir.employee_id ?? "atanmamis"} data-href={sorumluAdresi(satir)}>
+              {/* Personel listesiyle aynı hücre: ad üstte, ünvan altta (eskiden bitişik yazılıyordu). */}
               <td data-label="Kişi">
-                <b>{satir.employee_id ? formatPersonName(satir.ad ?? "") || "İsimsiz personel" : "Atanmamış işler"}</b>
-                <small>
-                  {satir.employee_id
-                    ? [satir.unvan, satir.durum !== "active" ? "pasif" : null, bosta ? "müsait" : null].filter(Boolean).join(" · ") || "—"
-                    : "Sorumlusu olmayan işler en kolay kaybolan iştir"}
-                </small>
+                <Link className="crm-row-link" href={sorumluAdresi(satir)} aria-label={`${formatPersonName(satir.ad ?? "")} işlerini aç`}>
+                  <span className="crm-table-title">{formatPersonName(satir.ad ?? "") || "İsimsiz personel"}</span>
+                  <span className="crm-table-sub">{[satir.unvan, satir.durum !== "active" ? "pasif" : null, bosta ? "müsait" : null].filter(Boolean).join(" · ") || "—"}</span>
+                </Link>
               </td>
               <td data-label="Açık iş"><Link href={sorumluAdresi(satir)}>{sayi(satir.acik_is)}</Link></td>
               <td data-label="Süren">{sayi(satir.suren_is)}</td>
@@ -143,11 +174,12 @@ export default async function EkipYukuPage() {
       </table>
       <SatirTiklama />
     </div>
+    </section>
 
     {!satirlar.length ? (
       <div className="crm-empty-state talep-bos-kutu">
-        <h2>Personel kaydı yok</h2>
-        <p>İşleri kişilere atayabilmek için önce İnsan Kaynakları bölümünde personel kaydı açın.</p>
+        <h2>{operasyonDepartmaniVar ? "Operasyon ekibinde personel yok" : "Personel kaydı yok"}</h2>
+        <p>İşleri kişilere atayabilmek için İnsan Kaynakları bölümünde personeli operasyon departmanına ekleyin.</p>
       </div>
     ) : null}
   </main>;
