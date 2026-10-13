@@ -84,15 +84,36 @@ export type Plan = {
   Öğrenci indirimi YOK: ödeyen kitle zaten lisansüstü öğrencidir, indirim
   gelirin kendisini keserdi. Onlara dönük teklif yıllık pakettir — 10 ay
   bedeliyle 12 ay, yani bir tez dönemini kapsayan tek ödeme.
+
+  ArvoOS merdiveni 13.10.2026'da düzeltildi. Eskiden Başlangıç 2.990 TL /
+  5 kullanıcı (598 TL/kullanıcı), Kurumsal 6.990 TL / 25 kullanıcı
+  (280 TL/kullanıcı) idi: sayfanın bütün iddiası "kullanıcı başına değil"
+  iken KÜÇÜK müşteri kullanıcı başına iki katını ödüyordu. Hacmin tamamı
+  giriş basamağında ve giriş en pahalı yer olmamalı. Dahil kullanıcı
+  sayıları gerçekçi ekip büyüklüğüne çekildi (3 ve 15), fiyat da onunla
+  indi; aradaki fark ek kullanıcı kalemiyle kapanıyor. 20 kişilik bir
+  kurum eskiden 6.990 ödüyordu, şimdi 5.990 + 5 ek kullanıcı = 7.235:
+  üstte gelir korunuyor, girişte eşik 2.990'dan 1.990'a iniyor.
+
+  UYARI: ek kullanıcı kalemi (ADD_ONS) henüz FATURALANMIYOR. Panelde
+  `davetEngeli` limiti aşan daveti yalnızca durduruyor; ölçüm ve fatura
+  satırı yok. Bu merdiven ancak o kalem gerçekten işlediğinde tamamlanır,
+  yoksa altıncı kullanıcıyı isteyen müşteriye liste 249 TL derken sistem
+  "paketi yükselt" diyor.
+
+  ArvoARC'ın Ölçek basamağı 5.990'dan 3.990'a indi: ödeme, kargo,
+  pazaryeri ve stok senkronu YOK (bu iddialar arc.ts'te yasak), yani 5
+  mağazalık bir işletmeye ikas bandına yakın bir fiyat veriliyordu.
+  Entegrasyonlar geldiğinde yeniden bakılır.
 */
 export const PLANS: Plan[] = [
-  { code: "arvoos-baslangic", ad: { tr: "Başlangıç", en: "Starter" }, product: "arvoos", aylikKurus: tl(2990) },
-  { code: "arvoos-kurumsal", ad: { tr: "Kurumsal", en: "Business" }, product: "arvoos", aylikKurus: tl(6990), oneCikan: true },
+  { code: "arvoos-baslangic", ad: { tr: "Başlangıç", en: "Starter" }, product: "arvoos", aylikKurus: tl(1990) },
+  { code: "arvoos-kurumsal", ad: { tr: "Kurumsal", en: "Business" }, product: "arvoos", aylikKurus: tl(5990), oneCikan: true },
   { code: "arvoos-ozel", ad: { tr: "Özel kurum", en: "Enterprise" }, product: "arvoos", aylikKurus: null },
 
   { code: "arc-baslangic", ad: { tr: "Başlangıç", en: "Starter" }, product: "arc", aylikKurus: tl(1290) },
   { code: "arc-buyume", ad: { tr: "Büyüme", en: "Growth" }, product: "arc", aylikKurus: tl(2990), oneCikan: true },
-  { code: "arc-olcek", ad: { tr: "Ölçek", en: "Scale" }, product: "arc", aylikKurus: tl(5990) },
+  { code: "arc-olcek", ad: { tr: "Ölçek", en: "Scale" }, product: "arc", aylikKurus: tl(3990) },
 
   { code: "randevu-tek", ad: { tr: "Tek salon", en: "Single salon" }, product: "randevu", aylikKurus: tl(749), oneCikan: true },
   { code: "randevu-coklu", ad: { tr: "Çok şube", en: "Multi-branch" }, product: "randevu", aylikKurus: tl(1490) },

@@ -55,12 +55,12 @@ export const PRICING_TR: PricingContent = {
         {
           code: "arvoos-baslangic",
           text: "Müşteri, iş ve finans süreçlerini tek düzende yönetmek isteyen ekipler için.",
-          items: ["5 kullanıcı dahil", "Tek şube", "CRM ve satış hattı", "Teklif ve e-imzalı sözleşme", "Operasyon ve görev akışı", "Finans ve tahsilat takibi", "E-posta destek"],
+          items: ["3 kullanıcı dahil", "Tek şube", "CRM ve satış hattı", "Teklif ve e-imzalı sözleşme", "Operasyon ve görev akışı", "Finans ve tahsilat takibi", "E-posta destek"],
         },
         {
           code: "arvoos-kurumsal",
           text: "Birden çok ekibi veya şubeyi bağlantılı süreçlerle yönetmek isteyen kurumlar için.",
-          items: ["25 kullanıcı dahil", "Sınırsız şube", "Tüm modüller", "Müşteri takip portalı", "Rol × modül yetki matrisi", "Gelişmiş raporlama", "Öncelikli destek"],
+          items: ["15 kullanıcı dahil", "Sınırsız şube", "Tüm modüller", "Müşteri takip portalı", "Rol × modül yetki matrisi", "Gelişmiş raporlama", "Öncelikli destek"],
         },
         {
           code: "arvoos-ozel",
@@ -106,11 +106,11 @@ export const PRICING_TR: PricingContent = {
         {
           code: "randevu-coklu",
           text: "Birden çok salonu merkezden görmek ve şube bazında yetki vermek isteyen işletmeler için.",
-          items: ["5 şubeye kadar", "Sınırsız personel", "Şube bazlı takvim ve yetki", "Merkezî raporlar", "Öncelikli destek"],
+          items: ["3 şubeye kadar", "Sınırsız personel", "Şube bazlı takvim ve yetki", "Merkezî raporlar", "Öncelikli destek"],
         },
         {
           code: "randevu-zincir",
-          text: "Beşten çok şubesi olan ve kendi markasıyla görünmek isteyen zincirler için.",
+          text: "Üçten çok şubesi olan ve kendi markasıyla görünmek isteyen zincirler için.",
           items: ["Sınırsız şube", "Kuruma özel alan adı", "Kuruma özel iş akışları", "Kurulum ve ekip eğitimi"],
         },
       ],
@@ -150,7 +150,7 @@ export const PRICING_TR: PricingContent = {
     quote: "Teklif",
     items: [
       { code: "ek-kullanici", name: "Ek kullanıcı", text: "ArvoOS paketlerinde dahil olan kullanıcı sayısını aşan her kullanıcı için. ArvoLab zaten araştırmacı başına fiyatlandığı için bu kalem orada işlemez." },
-      { code: "ek-sube", name: "Ek şube", text: "Arvo Randevu Çok şube paketindeki beş şubeyi aşan her şube için." },
+      { code: "ek-sube", name: "Ek şube", text: "Arvo Randevu Çok şube paketindeki üç şubeyi aşan her şube için." },
       { code: "veri-aktarimi", name: "Veri aktarımı ve kurulum", text: "Mevcut sisteminizden veri taşıma, kullanıcı tanımlama ve ekip eğitimi. Kapsama göre tek seferlik ücretlendirilir." },
       { code: "ozel-gelistirme", name: "Kuruma özel geliştirme", text: "Kuruma özel iş akışı, ekran veya rapor geliştirmesi. Kapsam netleştikten sonra teklif edilir." },
     ],

@@ -48,12 +48,12 @@ export const PRICING_EN: PricingContent = {
         {
           code: "arvoos-baslangic",
           text: "For teams bringing customer, delivery and finance work into a single order.",
-          items: ["5 users included", "Single branch", "CRM and sales pipeline", "Proposals and e-signed contracts", "Operations and task flow", "Finance and collection tracking", "Email support"],
+          items: ["3 users included", "Single branch", "CRM and sales pipeline", "Proposals and e-signed contracts", "Operations and task flow", "Finance and collection tracking", "Email support"],
         },
         {
           code: "arvoos-kurumsal",
           text: "For organizations running several teams or branches on connected processes.",
-          items: ["25 users included", "Unlimited branches", "All modules", "Customer tracking portal", "Role × module permission matrix", "Advanced reporting", "Priority support"],
+          items: ["15 users included", "Unlimited branches", "All modules", "Customer tracking portal", "Role × module permission matrix", "Advanced reporting", "Priority support"],
         },
         {
           code: "arvoos-ozel",
@@ -99,11 +99,11 @@ export const PRICING_EN: PricingContent = {
         {
           code: "randevu-coklu",
           text: "For businesses that want a central view and per-branch permissions.",
-          items: ["Up to 5 branches", "Unlimited staff", "Per-branch calendar and permissions", "Central reports", "Priority support"],
+          items: ["Up to 3 branches", "Unlimited staff", "Per-branch calendar and permissions", "Central reports", "Priority support"],
         },
         {
           code: "randevu-zincir",
-          text: "For chains with more than five branches that want their own brand front.",
+          text: "For chains with more than three branches that want their own brand front.",
           items: ["Unlimited branches", "Custom domain", "Custom workflows", "Implementation and team training"],
         },
       ],
@@ -140,7 +140,7 @@ export const PRICING_EN: PricingContent = {
     quote: "On request",
     items: [
       { code: "ek-kullanici", name: "Additional user", text: "For each user beyond the number included in an ArvoOS plan. It does not apply to ArvoLab, which is already priced per researcher." },
-      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the five included in the Arvo Randevu Multi-branch plan." },
+      { code: "ek-sube", name: "Additional branch", text: "For each branch beyond the three included in the Arvo Randevu Multi-branch plan." },
       { code: "veri-aktarimi", name: "Data migration and setup", text: "Moving data from your current system, defining users and training the team. Charged once, based on scope." },
       { code: "ozel-gelistirme", name: "Custom development", text: "A workflow, screen or report specific to your organization. Quoted once the scope is clear." },
     ],
