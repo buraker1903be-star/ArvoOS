@@ -7,22 +7,68 @@ import { organizationBrandName } from "@/lib/customer-message-templates";
 import { cihazlaraGonder, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
 
 /*
-  BU CİHAZDA ANLIK BİLDİRİM (20261013071812). Tablo istemciye kapalı;
-  kayıt burada OTURUMDAKİ kişiye ve kuruma bağlanıyor (service_role,
-  yetki = oturum: herkes yalnızca kendi cihazını açıp kapatabilir).
+  ANLIK BİLDİRİM AYARLARI (20261013071812, kişi tercihi 20261013090223).
 
-  Dönüş düz nesne, runPanelAction değil: düğme sonucu kendi yerinde
-  yazıyor ("Açıldı", "Bu tarayıcı desteklemiyor"…); çerezli bildirim
-  burada ikinci bir ses olurdu.
+  İki ayrı şey var:
+  - CİHAZ kaydı (push_subscriptions): nereye gönderilecek. Yeni bir
+    cihaz yalnızca o cihazın kendisinden eklenebilir — izni tarayıcı
+    orada soruyor (Apple ve Google kuralı).
+  - KİŞİ tercihi (push_tercihleri): bildirim açık mı, gelen posta da mı.
+    Kurum sahibinin kuralı: "masaüstünden yapılan her ayar tüm etkin
+    cihazlarda da geçerli olmalı" — tercih hangi cihazdan değişirse
+    değişsin kişinin bütün cihazlarına uygulanıyor; cihaz listesinden
+    başka bir cihaz da kaldırılabiliyor.
+
+  Tablolar istemciye kapalı; burada service_role ile, OTURUMDAKİ kişinin
+  satırları üzerinde çalışılıyor (herkes yalnızca kendi ayarını değiştirir).
+
+  Dönüş düz nesne, runPanelAction değil: kart sonucu kendi yerinde
+  yazıyor; çerezli bildirim burada ikinci bir ses olurdu.
 */
 type Sonuc = { ok: true } | { ok: false; hata: string };
 
 const KAPALI = "Anlık bildirim bu kurulumda henüz açılmadı (sunucu anahtarları tanımlı değil).";
 
+export type AnlikCihaz = { id: string; cihaz: string; eklendi: string; sonBasari: string | null; buCihaz: boolean };
+export type AnlikOzet = { acik: boolean; posta: boolean; postaGorur: boolean; cihazlar: AnlikCihaz[]; buCihazKayitli: boolean };
+
+async function baglam() {
+  const { userId, membership, izin, organization } = await getPanelContext();
+  return { userId, orgId: membership.organization_id, izin, organization, admin: createAdminClient() };
+}
+
+/** Kişinin tercihi ve kayıtlı cihazları. endpoint: bu tarayıcının aboneliği (varsa). */
+export async function anlikBildirimOzeti(endpoint: string | null): Promise<AnlikOzet | null> {
+  const { userId, orgId, izin, admin } = await baglam();
+  if (!admin || !pushYapilandi()) return null;
+  const [tercih, cihazlar] = await Promise.all([
+    admin.from("push_tercihleri").select("acik,posta").eq("organization_id", orgId).eq("user_id", userId).maybeSingle(),
+    admin.from("push_subscriptions").select("id,endpoint,cihaz,created_at,last_success_at")
+      .eq("organization_id", orgId).eq("user_id", userId).order("created_at", { ascending: false }),
+  ]);
+  if (tercih.error || cihazlar.error) return null;
+  const postaGorur = izin("posta.gor");
+  const liste = (cihazlar.data ?? []).map((c) => ({
+    id: c.id as string,
+    cihaz: (c.cihaz as string | null) || "Cihaz",
+    eklendi: c.created_at as string,
+    sonBasari: (c.last_success_at as string | null) ?? null,
+    buCihaz: Boolean(endpoint) && c.endpoint === endpoint,
+  }));
+  return {
+    // Satırı olmayan kişi: açık, posta kapalı (20261013090223).
+    acik: tercih.data ? Boolean(tercih.data.acik) : true,
+    posta: postaGorur && Boolean(tercih.data?.posta),
+    postaGorur,
+    cihazlar: liste,
+    buCihazKayitli: liste.some((c) => c.buCihaz),
+  };
+}
+
+/** Bu cihazı ekler. Kişinin elle yaptığı bir açma: bildirimleri kapattıysa yeniden açar. */
 export async function anlikBildirimAc(abonelik: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } }, cihaz: string): Promise<Sonuc> {
   if (!pushYapilandi()) return { ok: false, hata: KAPALI };
-  const { userId, membership } = await getPanelContext();
-  const admin = createAdminClient();
+  const { userId, orgId, admin } = await baglam();
   if (!admin) return { ok: false, hata: KAPALI };
 
   const endpoint = typeof abonelik?.endpoint === "string" ? abonelik.endpoint : "";
@@ -37,7 +83,7 @@ export async function anlikBildirimAc(abonelik: { endpoint?: unknown; keys?: { p
     düşmesin. Bir kişinin en çok 10 cihazı tutulur (eskiler silinir).
   */
   const { error } = await admin.from("push_subscriptions").upsert({
-    organization_id: membership.organization_id,
+    organization_id: orgId,
     user_id: userId,
     endpoint, p256dh, auth,
     cihaz: cihaz.slice(0, 200) || null,
@@ -45,36 +91,54 @@ export async function anlikBildirimAc(abonelik: { endpoint?: unknown; keys?: { p
   }, { onConflict: "endpoint" });
   if (error) return { ok: false, hata: "Cihaz kaydedilemedi: " + error.message };
 
+  const { error: tercihHatasi } = await admin.from("push_tercihleri")
+    .upsert({ organization_id: orgId, user_id: userId, acik: true, updated_at: new Date().toISOString() }, { onConflict: "organization_id,user_id" });
+  if (tercihHatasi) return { ok: false, hata: "Tercih kaydedilemedi: " + tercihHatasi.message };
+
   const { data: fazla } = await admin.from("push_subscriptions").select("id")
     .eq("user_id", userId).order("created_at", { ascending: false }).range(10, 100);
   if (fazla?.length) await admin.from("push_subscriptions").delete().in("id", fazla.map((s) => s.id));
   return { ok: true };
 }
 
-export async function anlikBildirimKapat(endpoint: string): Promise<Sonuc> {
-  const { userId } = await getPanelContext();
-  const admin = createAdminClient();
+/** Kişinin tercihi: bütün cihazlarında geçerli. Gelen posta yalnızca postayı görebilene. */
+export async function anlikBildirimTercih(degisiklik: { acik?: boolean; posta?: boolean }): Promise<Sonuc> {
+  const { userId, orgId, izin, admin } = await baglam();
   if (!admin) return { ok: false, hata: KAPALI };
-  // Yalnızca kendi kaydı: başka birinin cihazını adresini bilse de kapatamaz.
-  const { error } = await admin.from("push_subscriptions").delete().eq("endpoint", endpoint).eq("user_id", userId);
-  if (error) return { ok: false, hata: "Kapatılamadı: " + error.message };
+  if (degisiklik.posta === true && !izin("posta.gor")) return { ok: false, hata: "Ortak posta kutusunu görme yetkiniz yok." };
+  const satir: Record<string, unknown> = { organization_id: orgId, user_id: userId, updated_at: new Date().toISOString() };
+  if (typeof degisiklik.acik === "boolean") satir.acik = degisiklik.acik;
+  if (typeof degisiklik.posta === "boolean") satir.posta = degisiklik.posta;
+  const { error } = await admin.from("push_tercihleri").upsert(satir, { onConflict: "organization_id,user_id" });
+  if (error) return { ok: false, hata: "Kaydedilemedi: " + error.message };
+  return { ok: true };
+}
+
+/** Bir cihazı listeden kaldırır (başka bir cihazdan da). Yalnızca kendi cihazı. */
+export async function anlikBildirimCihazKaldir(cihazId: string): Promise<Sonuc> {
+  const { userId, orgId, admin } = await baglam();
+  if (!admin) return { ok: false, hata: KAPALI };
+  const { data, error } = await admin.from("push_subscriptions").delete()
+    .eq("id", cihazId).eq("user_id", userId).eq("organization_id", orgId).select("id");
+  if (error) return { ok: false, hata: "Kaldırılamadı: " + error.message };
+  if (!data?.length) return { ok: false, hata: "Cihaz bulunamadı." };
   return { ok: true };
 }
 
 /*
   "Deneme gönder": kişinin bu kurumdaki BÜTÜN cihazlarına, bildirim kaydı
   açmadan. Eskiden yalnızca düğmeye basılan cihaza gidiyordu: kurum
-  sahibi masaüstünden basıp telefonunu bekledi (13.10.2026).
+  sahibi masaüstünden basıp telefonunu bekledi (13.10.2026). Bildirimler
+  kapalıyken de gider: denemenin amacı cihazın ulaşılabilir olduğunu görmek.
 */
 export async function anlikBildirimDene(): Promise<{ ok: true; gonderilen: number; toplam: number } | { ok: false; hata: string }> {
   if (!pushYapilandi()) return { ok: false, hata: KAPALI };
-  const { userId, organization, membership } = await getPanelContext();
-  const admin = createAdminClient();
+  const { userId, orgId, organization, admin } = await baglam();
   if (!admin) return { ok: false, hata: KAPALI };
   const { data, error } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failure_count")
-    .eq("user_id", userId).eq("organization_id", membership.organization_id);
+    .eq("user_id", userId).eq("organization_id", orgId);
   if (error) return { ok: false, hata: "Cihazlar okunamadı: " + error.message };
-  if (!data?.length) return { ok: false, hata: "Kayıtlı cihazınız yok; önce bildirimleri açın." };
+  if (!data?.length) return { ok: false, hata: "Kayıtlı cihazınız yok; önce bir cihazda bildirimleri açın." };
   const { gonderilen } = await cihazlaraGonder(admin, data as PushCihazi[], {
     // Kurumun kendi adı: AkademikMerkez kullanıcısının kilit ekranında "ArvoOS" yazıyordu.
     baslik: `${organizationBrandName({ slug: organization.slug, displayName: organization.display_name, legalName: organization.name })} bildirimleri açık`,
@@ -82,33 +146,5 @@ export async function anlikBildirimDene(): Promise<{ ok: true; gonderilen: numbe
     adres: "/panel/notifications",
     etiket: "arvo-deneme",
   });
-  return gonderilen ? { ok: true, gonderilen, toplam: data.length } : { ok: false, hata: "Deneme gönderilemedi; cihaz kaydı yenilenmeli. Kapatıp yeniden açın." };
-}
-
-/*
-  Bu cihazın sunucudaki kaydı: kayıtlı mı, gelen posta açık mı. Tarayıcı
-  aboneliği tutup sunucu satırı yoksa (kayıt sırasında migration eksikti,
-  cihaz 404/410 ile silindi) kart "Açık" görünüp hiçbir şey gelmiyordu;
-  kart bunu okuyup kaydı yeniler.
-*/
-export async function anlikBildirimDurumu(endpoint: string): Promise<{ kayitli: boolean; posta: boolean; postaGorur: boolean }> {
-  const { userId, izin } = await getPanelContext();
-  const admin = createAdminClient();
-  const postaGorur = izin("posta.gor");
-  if (!admin || !pushYapilandi()) return { kayitli: false, posta: false, postaGorur };
-  const { data } = await admin.from("push_subscriptions").select("posta").eq("endpoint", endpoint).eq("user_id", userId).maybeSingle();
-  return { kayitli: Boolean(data), posta: Boolean(data?.posta), postaGorur };
-}
-
-/** "Gelen postaları da bildir" (20261013081415): yalnızca postayı görebilen açabilir. */
-export async function anlikBildirimPosta(endpoint: string, acik: boolean): Promise<Sonuc> {
-  const { userId, izin } = await getPanelContext();
-  if (acik && !izin("posta.gor")) return { ok: false, hata: "Ortak posta kutusunu görme yetkiniz yok." };
-  const admin = createAdminClient();
-  if (!admin) return { ok: false, hata: KAPALI };
-  const { data, error } = await admin.from("push_subscriptions").update({ posta: acik })
-    .eq("endpoint", endpoint).eq("user_id", userId).select("id");
-  if (error) return { ok: false, hata: "Kaydedilemedi: " + error.message };
-  if (!data?.length) return { ok: false, hata: "Bu cihaz kayıtlı değil; bildirimleri kapatıp yeniden açın." };
-  return { ok: true };
+  return gonderilen ? { ok: true, gonderilen, toplam: data.length } : { ok: false, hata: "Deneme gönderilemedi; cihaz kayıtları yenilenmeli. Cihazda bildirimleri yeniden açın." };
 }

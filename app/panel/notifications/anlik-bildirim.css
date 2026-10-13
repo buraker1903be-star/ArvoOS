@@ -28,3 +28,20 @@
 .anlik-posta span{display:flex;flex-direction:column;gap:2px}
 .anlik-posta b{font-size:14px;font-weight:var(--fw-medium);color:var(--ink)}
 .anlik-posta small{color:var(--muted);font-size:12.5px;line-height:1.4}
+
+/* Kişi ayarları ve cihaz listesi (bütün cihazlarda geçerli). */
+.anlik-ayarlar{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.anlik-posta[data-pasif]{opacity:.55}
+.anlik-cihazlar{margin-top:6px}
+.anlik-cihazlar h3{display:flex;align-items:baseline;gap:6px;margin:0 0 4px;font-size:14px;font-weight:var(--fw-semibold);color:var(--ink)}
+.anlik-cihazlar h3 small{color:var(--muted);font-weight:400}
+.anlik-cihazlar ul{margin:0;padding:0;list-style:none}
+.anlik-cihazlar li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line-soft)}
+.anlik-cihazlar li:first-child{border-top:0}
+.anlik-cihazlar li>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.anlik-cihazlar li b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:var(--fw-medium);color:var(--ink)}
+.anlik-cihazlar li em{padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);font-size:11px;font-style:normal;font-weight:var(--fw-semibold)}
+.anlik-cihazlar li small{color:var(--muted);font-size:12.5px}
+.anlik-cihazlar li button{flex:none;min-height:34px;padding:0 12px;font-size:13px}
+.anlik-bos{margin:0;color:var(--muted);font-size:13px}
+.anlik-kart{align-items:flex-start}

@@ -48,14 +48,27 @@ export async function POST(istek: Request) {
   if (Date.now() - new Date(satir.created_at).getTime() > ESKI) return Response.json({ atlandi: "eski" });
 
   /*
-    Kişiye özel bildirim: o kişinin cihazları. Kuruma yayın yalnızca
-    gelen posta için (20261013081415): posta anahtarını açmış cihazlar,
-    sahibinin postayı görme yetkisi şimdi yeniden hesaplanarak.
+    Kişiye özel bildirim: o kişinin cihazları, bildirimleri kapatmadıysa.
+    Kuruma yayın yalnızca gelen posta için: postayı açmış kişilerin
+    cihazları, postayı görme yetkisi şimdi yeniden hesaplanarak. Tercih
+    KİŞİ başına (20261013090223): hangi cihazdan ayarlandıysa hepsinde.
   */
   const yayin = !satir.user_id;
   if (yayin && satir.category !== "posta_gelen") return Response.json({ atlandi: "yayın" });
-  const sorgu = admin.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth,failure_count").eq("organization_id", satir.organization_id);
-  const { data: cihazlar, error: cihazHatasi } = await (yayin ? sorgu.eq("posta", true) : sorgu.eq("user_id", satir.user_id as string));
+  const tercihSorgusu = admin.from("push_tercihleri").select("user_id,acik,posta").eq("organization_id", satir.organization_id);
+  const { data: tercihler, error: tercihHatasi } = await (yayin
+    ? tercihSorgusu.eq("posta", true).eq("acik", true)
+    : tercihSorgusu.eq("user_id", satir.user_id as string));
+  if (tercihHatasi) {
+    console.error("[push] tercihler okunamadı", tercihHatasi.message);
+    return Response.json({ hata: "tercihler" }, { status: 500 });
+  }
+  // Satırı olmayan kişi açık sayılır (yalnızca kişiye özelde; postada satır şart).
+  if (!yayin && tercihler?.length && !tercihler[0].acik) return Response.json({ atlandi: "kişi kapattı" });
+  const alicilar = yayin ? (tercihler ?? []).map((t) => t.user_id as string) : [satir.user_id as string];
+  if (!alicilar.length) return Response.json({ atlandi: "alıcı yok" });
+  const { data: cihazlar, error: cihazHatasi } = await admin.from("push_subscriptions")
+    .select("id,user_id,endpoint,p256dh,auth,failure_count").eq("organization_id", satir.organization_id).in("user_id", alicilar);
   if (cihazHatasi) {
     console.error("[push] cihazlar okunamadı", cihazHatasi.message);
     return Response.json({ hata: "cihazlar" }, { status: 500 });

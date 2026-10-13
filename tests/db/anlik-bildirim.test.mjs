@@ -9,8 +9,11 @@
   3. Haber verilemezse (pg_net hata fırlatıyor) bildirimin KENDİSİ yine
      yazılıyor — tetikleyici hiçbir durumda bildirimi düşürmez.
   4. Cihaz kayıtları istemciye kapalı: authenticated ve anon okuyamıyor.
-  5. Gelen posta (kuruma yayın, posta_gelen): yalnızca kurumda posta
-     anahtarı açık bir cihaz varsa haber gider; başka yayınlar hiç.
+  5. Gelen posta (kuruma yayın, posta_gelen): yalnızca kurumda postayı
+     açmış (kişi tercihi, 20261013090223) ve cihazı olan biri varsa haber
+     gider; başka yayınlar hiç.
+  6. Kişi bildirimleri kapattıysa (tercih acik = false) kişiye özel
+     bildirim de, gelen posta da gitmez — ayar bütün cihazlarında geçerli.
 
   pg_net ve Vault test düzeneğinde yok: en küçük taklitleri burada
   kuruluyor; net.http_post çağrıları bir tabloya yazılıyor.
@@ -22,10 +25,11 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-// Posta dalı (20261013081415) işlevi yeniden yazıyor: SONDA.
+// İşlevi yeniden yazan migration'lar SONDA, sırasıyla.
 const MIGRATIONLAR = [
   "20261013071812_anlik_bildirim.sql",
   "20261013081415_anlik_bildirim_posta.sql",
+  "20261013090223_anlik_bildirim_tercihleri.sql",
 ];
 
 const KURUM = "00000000-0000-4000-8000-00000000e701";
@@ -120,6 +124,36 @@ describe("haber gitmeyen durumlar", () => {
     }));
 });
 
+const postaAc = () => db.exec(`insert into public.push_tercihleri (organization_id,user_id,posta) values ('${KURUM}','${PERSONEL}',true)
+  on conflict (organization_id,user_id) do update set posta = true`);
+const bildirimleriKapat = () => db.exec(`insert into public.push_tercihleri (organization_id,user_id,acik) values ('${KURUM}','${PERSONEL}',false)
+  on conflict (organization_id,user_id) do update set acik = false`);
+
+describe("kişi tercihi bütün cihazlarda", () => {
+  test("bildirimleri kapatan kişiye kişiye özel bildirim gitmez", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await bildirimleriKapat();
+      await bildirimAc(PERSONEL);
+      assert.equal((await cagrilar()).length, 0);
+    }));
+
+  test("bildirimleri kapatan kişi postayı açık bıraksa da gelen posta gitmez", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await postaAc();
+      await bildirimleriKapat();
+      await bildirimAc(null, "posta_gelen");
+      assert.equal((await cagrilar()).length, 0);
+    }));
+
+  test("tercihler istemciye kapalı", async () =>
+    islem(db, async () => {
+      await rol(db, "authenticated", PERSONEL);
+      await reddedilir(db, `select 1 from public.push_tercihleri`, [], /permission denied/);
+    }));
+});
+
 describe("gelen posta (kişi kendisi açarsa)", () => {
   test("anahtar kapalıyken gelen posta haber vermez", async () =>
     islem(db, async () => {
@@ -131,7 +165,7 @@ describe("gelen posta (kişi kendisi açarsa)", () => {
   test("bir cihazda anahtar açıksa gelen posta tek haber verir", async () =>
     islem(db, async () => {
       await sirlariKur();
-      await db.exec(`update public.push_subscriptions set posta = true`);
+      await postaAc();
       const { rows } = await bildirimAc(null, "posta_gelen");
       const c = await cagrilar();
       assert.equal(c.length, 1);
@@ -141,7 +175,7 @@ describe("gelen posta (kişi kendisi açarsa)", () => {
   test("anahtar açık olsa da posta dışındaki yayın (eşitleme durumu) gitmez", async () =>
     islem(db, async () => {
       await sirlariKur();
-      await db.exec(`update public.push_subscriptions set posta = true`);
+      await postaAc();
       await bildirimAc(null, "posta_esitleme");
       assert.equal((await cagrilar()).length, 0);
     }));
