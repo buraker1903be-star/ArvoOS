@@ -41,6 +41,27 @@ async function kayitBul(): Promise<ServiceWorkerRegistration | null> {
   return Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 4000))]);
 }
 
+/*
+  BİLDİRİMİ GÖSTEREN KOD KABUĞUN YENİ SÜRÜMÜNDE. Kabuk yeni sürümü
+  "Yenile" denene kadar bekletiyor (form dolduran kaybetmesin); telefonda
+  eski kabuk (arvo-kabuk-1, push dinleyicisi yok) çalışmaya devam edince
+  bildirim Apple'dan telefona ulaşıyor ama ekranda HİÇBİR ŞEY
+  görünmüyordu (13.10.2026). Bildirim kartında bekleyen sürüm hemen
+  devreye alınır; kabuk controllerchange'de sayfayı yeniler.
+  Dönüş: yenileme başladıysa true (çağıran devam etmesin).
+*/
+async function kabuguGuncelle(kayit: ServiceWorkerRegistration): Promise<boolean> {
+  await kayit.update().catch(() => undefined);
+  const bekleyen = kayit.waiting ?? (kayit.installing ? await new Promise<ServiceWorker | null>((r) => {
+    const sw = kayit.installing as ServiceWorker;
+    sw.addEventListener("statechange", () => { if (sw.state === "installed") r(sw); else if (sw.state === "redundant") r(null); });
+    setTimeout(() => r(kayit.waiting), 5000);
+  }) : null);
+  if (!bekleyen || !navigator.serviceWorker.controller) return false;
+  bekleyen.postMessage("yeni-surumu-uygula");
+  return true;
+}
+
 export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAnahtar: string | null; gorunum?: "kart" | "serit" }) {
   const [durum, setDurum] = useState<Durum>("yukleniyor");
   const [mesaj, setMesaj] = useState<{ ton: "ok" | "hata"; metin: string } | null>(null);
@@ -68,6 +89,7 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       else {
         const kayit = await kayitBul();
         if (!kayit) yeni = "desteksiz";
+        else if (gorunum === "kart" && await kabuguGuncelle(kayit)) return; // sayfa yenileniyor
         else {
           const abonelik = await kayit.pushManager.getSubscription();
           yeni = abonelik && Notification.permission === "granted" ? "acik" : "kapali";
@@ -164,7 +186,7 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       <div className="anlik-kart-metin">
         <h2>Bu cihazda anlık bildirim <span className="status-pill" data-tone={durum === "acik" ? "success" : durum === "engelli" ? "danger" : "neutral"}>{durum === "acik" ? "Açık" : durum === "yukleniyor" ? "…" : "Kapalı"}</span></h2>
         <p>
-          {durum === "ios-ekle" ? <>iPhone&apos;da bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır: Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>, sonra uygulamayı ana ekrandaki simgeden açın. Ana ekran uygulaması Safari'den ayrı çalıştığı için bir kez yeniden giriş yapmanız gerekir; ardından Bildirimler sayfasından bildirimleri açın.</>
+          {durum === "ios-ekle" ? <>iPhone&apos;da bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır: Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>, sonra uygulamayı ana ekrandaki simgeden açın. Ana ekran uygulaması Safari&apos;den ayrı çalıştığı için bir kez yeniden giriş yapmanız gerekir; ardından Bildirimler sayfasından bildirimleri açın.</>
             : durum === "engelli" ? <>Bildirim izni bu tarayıcıda engellenmiş. Tarayıcının site ayarlarından bu siteye bildirim izni verip sayfayı yenileyin.</>
             : durum === "desteksiz" ? <>Bu tarayıcı anlık bildirimi desteklemiyor ya da uygulama kabuğu henüz yüklenmedi. Güncel Chrome, Edge, Firefox ya da Safari ile deneyin.</>
             : durum === "acik" ? <>Size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde ve adım termininiz yaklaştığında bu cihaz panel kapalıyken de haber verir.</>
