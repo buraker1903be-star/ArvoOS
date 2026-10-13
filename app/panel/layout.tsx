@@ -23,6 +23,7 @@ import { OsDock } from "./os/os-dock";
 import { OsGeri } from "./os/os-geri";
 import { OsBolumSeridi } from "./os/os-bolum-seridi";
 import { OsUygulamaKabugu } from "./os/os-uygulama-kabugu";
+import { basHarf, depodakiSimgeMi } from "@/lib/kurum-simgesi";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
@@ -160,7 +161,6 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // kurumun kendi logosunu ve tabela unvanını gösteriyor.
   const isPlatformOrg = organization.slug === "arvo-os";
   const brandName = organization.display_name || organization.name;
-  const brandLogoUrl = isPlatformOrg ? null : organization.logo_url;
   const ownEmployeeQuery = supabase.from("hr_employees").select("id,full_name").eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle();
   // Mesaj çekmecesi ve /panel/messages aynı yükleyiciyi kullanır; okunmamış
   // sayısı sunucuda hesaplanır (eskiden son 1000 mesaj tarayıcıya çekiliyordu).
@@ -250,7 +250,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         : supabase.from("user_presence").select("gizli")
             .eq("organization_id", membership.organization_id).eq("user_id", userId).maybeSingle(),
     ]);
-    return { notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari, postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri };
+    return { notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari, postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri, kurumSimgesi: null as string | null };
   };
   const tekCagri = async () => {
     const [{ data, error }, postaBilgisi] = await Promise.all([
@@ -267,7 +267,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     const k = data as {
       bildirim: number; personel: { id: string; full_name: string } | null; gizlilik: string | null;
       lisanslar: string[]; posta_okunmamis: number; varlik: { user_id: string; last_seen_at: string }[];
-      ekip: { user_id: string; full_name: string }[]; kendi_gizli: boolean;
+      ekip: { user_id: string; full_name: string }[]; kendi_gizli: boolean; simge?: string | null;
       mesaj?: { kisiler: unknown; kanallar: unknown; varlik: unknown; okunmamis: unknown };
     };
     return {
@@ -283,11 +283,12 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       varlikSatirlari: konsolHostu ? null : k.varlik,
       ekipSatirlari: konsolHostu ? null : k.ekip,
       kendiVarlikSatiri: konsolHostu ? null : { gizli: Boolean(k.kendi_gizli) },
+      kurumSimgesi: k.simge ?? null,
     };
   };
   const {
     notificationUnreadCount, ownEmployee, messagesInit, pendingAgreement, urunLisanslari,
-    postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri,
+    postaBilgisi, postaSayimi, varlikSatirlari, ekipSatirlari, kendiVarlikSatiri, kurumSimgesi,
   } = (await tekCagri()) ?? (await eskiYol());
   const messageUnreadCount = messagesInit ? Object.values(messagesInit.unread).reduce((total, count) => total + count, 0) : 0;
 
@@ -394,7 +395,17 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         {/* Telefonda alt sayfalarda geri (ana ekrana eklenen uygulamada tarayıcının geri tuşu yok). */}
         <OsGeri uygulamalar={uygulamalar} />
         <Link className="os-brand" href="/panel" aria-label={`${brandName} ana ekran`}>
-          {brandLogoUrl ? <img src={brandLogoUrl} alt="" /> : <i aria-hidden="true">{brandName.slice(0, 1).toLocaleUpperCase("tr")}</i>}
+          {/*
+            KARE MARKA SİMGESİ (13.10.2026). Eskiden kiracıda yatay logo
+            basılıyor, kurum adı ve açık uygulama gizleniyordu; ArvoOS'ta kare
+            "A" + ad + uygulama vardı. Kurum sahibinin tarifi: hepsi ArvoOS
+            gibi, "A" yerine kurumun yüklediği kare simge (Ayarlar → Kurumsal
+            kimlik). Yalnızca kendi depomuzdaki dosya gösterilir
+            (depodakiSimgeMi); yoksa kurum renginde baş harf.
+          */}
+          {!isPlatformOrg && depodakiSimgeMi(kurumSimgesi, process.env.NEXT_PUBLIC_SUPABASE_URL, organization.id)
+            ? <img src={kurumSimgesi} alt="" />
+            : <i aria-hidden="true">{basHarf(brandName)}</i>}
           <span><b>{brandName}</b><OsUygulamaAdi uygulamalar={uygulamalar} /></span>
         </Link>
         <OsAramaDugmesi />

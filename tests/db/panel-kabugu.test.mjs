@@ -18,7 +18,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261013114758_panel_kabugu_tek_cagri.sql");
+const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
+// İşlevi yeniden yazan migration SONDA (kurum simgesi alanı).
+const MIGRATIONLAR = [
+  // organizations.favicon_url (anlık görüntüden yeni).
+  "20261012111830_sekme_simgesi.sql",
+  "20261013114758_panel_kabugu_tek_cagri.sql",
+  "20261013144032_panel_kabugu_kurum_simgesi.sql",
+];
 const KURUM = "00000000-0000-4000-8000-00000000a701";
 const OTEKI = "00000000-0000-4000-8000-00000000a702";
 const SAHIP = "00000000-0000-4000-8000-00000000a711";
@@ -36,7 +43,7 @@ const kabuk = async (kim, posta = true, mesaj = true) => {
 
 before(async () => {
   db = await veritabani();
-  await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','s@x.com'),('${UYE}','u@x.com'),('${YABANCI}','y@x.com');
@@ -59,6 +66,7 @@ describe("panel kabuğu", () => {
     islem(db, async () => {
       const k = await kabuk(SAHIP);
       assert.equal(k.personel.full_name, "Sahip Kişi");
+      assert.ok("simge" in k, "kurum simgesi alanı yok");
       assert.deepEqual(k.lisanslar, ["arvolab"]);
       assert.equal(typeof k.bildirim, "number");
       assert.equal(k.posta_okunmamis, 0);

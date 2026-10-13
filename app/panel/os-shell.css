@@ -204,11 +204,10 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
   .os-live-pill.is-canli>i{animation:none}
 }
 
-/* Kurum logosu çoğunlukla kelime logosu (geniş): kare kutuya kırpılırsa
-   okunmuyordu. Yüksekliğe sığdırılır; ad zaten logoda yazdığı için metin
-   yalnızca ekran okuyucuya kalır, altında açık uygulamanın adı görünür. */
-.os-brand>img{width:auto;max-width:150px;height:28px;border-radius:0;object-fit:contain}
-.os-brand>img+span b{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Marka kutusu kare simge (13.10.2026): eskiden burada yatay kelime logosu
+   basılıyor ve kurum adı gizleniyordu. Artık kurumun kare simgesi (favicon)
+   34px kutuda, yanında ad ve açık uygulama — ArvoOS'taki "A" kutusu gibi. */
+.os-brand>img{background:var(--surface-2)}
 
 /* Mesaj ve bildirim çekmecelerinin tetikleyicileri (eski üst çubuktan):
    durum çubuğunda yalnızca ikon + rozet. */
@@ -221,10 +220,6 @@ html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 .os-bar .panel-quick-icon{width:auto;height:auto;background:transparent;color:inherit;border-radius:0}
 .os-bar .panel-unread-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:var(--r-pill);background:var(--danger);color:var(--n-0);font-size:11px;font-weight:var(--fw-semibold);line-height:16px;text-align:center}
 .os-live-pill.is-taze{background:var(--primary-soft);color:var(--primary)}
-/* Kurum logoları çoğunlukla açık zemin için çizilmiş (koyu yazı); koyu
-   temada okunmuyordu. Logo açık bir rozetin üstüne alınır. */
-html[data-theme="dark"] .os-brand>img{padding:3px 8px;border-radius:var(--r-sm);background:var(--n-0);box-sizing:content-box;height:24px}
-@media (max-width:520px){.os-brand>img{max-width:120px}}
 /* Saat ve üstünde tarih ("8 Ekim Perşembe"), sağa hizalı iki satır. */
 .os-clock{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:44px;line-height:1.2;font-family:inherit}
 .os-clock-date{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap}
