@@ -53,12 +53,14 @@ export function konsolUygulamalari(): OsUygulama[] {
       ],
     },
     {
-      key: "kullanicilar", label: "Kullanıcılar", href: "/panel/platform/members", ikon: "crm",
-      yollar: ["/panel/platform/members", "/panel/platform/musteriler"],
+      key: "kullanicilar", label: "Kullanıcılar", href: "/panel/platform/kullanicilar", ikon: "crm",
+      yollar: ["/panel/platform/kullanicilar", "/panel/platform/members", "/panel/platform/musteriler"],
       bolumler: [
-        { key: "uyeler", href: "/panel/platform/members", label: "Tüm üyeler" },
+        { key: "aktif", href: "/panel/platform/kullanicilar?evre=aktif", label: "Aktif kullanıcılar" },
+        { key: "pasif", href: "/panel/platform/kullanicilar?evre=pasif", label: "Pasif kullanıcılar" },
+        { key: "davet", href: "/panel/platform/kullanicilar?evre=davet", label: "Davet bekleyenler" },
         { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
-        { key: "bireysel", href: "/panel/platform/musteriler?tur=bireysel", label: "Bireysel aboneler" },
+        { key: "uyeler", href: "/panel/platform/members", label: "Kurum bazında üyeler" },
       ],
     },
     {

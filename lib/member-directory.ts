@@ -22,6 +22,11 @@ export interface DirectoryRow {
   userId: string;
   name: string | null;
   email: string | null;
+  /* İletişim: kurucu pasife düşen kullanıcıya ulaşmak istiyor
+     (14.10.2026). Yalnızca ArvoOS profilinde var; ArvoLab ayrı
+     veritabanında ve orada telefon tutulmuyor. */
+  phone: string | null;
+  title: string | null;
   scope: string;            // kurum adı ya da "Bireysel"
   role: string | null;
   individual: boolean;
@@ -110,10 +115,14 @@ export async function getMemberDirectory(): Promise<Directory> {
         metadata daveti gönderilirken doldurulduğu için, hesabı başka bir
         yoldan açılmış kişiler "—" görünüyordu — kurucunun kendisi dahil.
       */
-      admin.from("profiles").select("id,full_name"),
+      admin.from("profiles").select("id,full_name,phone,job_title"),
     ]);
 
   const userInfo = users.map;
+  const profilKaydi = new Map(((profiles ?? []) as { id: string; full_name: string | null; phone: string | null; job_title: string | null }[])
+    .map((satir) => [satir.id, satir]));
+  const profilTelefonu = (id: string) => profilKaydi.get(id)?.phone ?? null;
+  const profilUnvani = (id: string) => profilKaydi.get(id)?.job_title ?? null;
   const profilAdi = new Map(((profiles ?? []) as { id: string; full_name: string | null }[])
     .filter((satir) => satir.full_name?.trim())
     .map((satir) => [satir.id, satir.full_name!.trim()]));
@@ -137,6 +146,8 @@ export async function getMemberDirectory(): Promise<Directory> {
       product: "arvoos",
       userId: membership.user_id,
       name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
+      phone: profilTelefonu(membership.user_id),
+      title: profilUnvani(membership.user_id),
       email: user?.email ?? null,
       scope,
       role: membership.role,
@@ -155,6 +166,8 @@ export async function getMemberDirectory(): Promise<Directory> {
         product: "arc",
         userId: membership.user_id,
         name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
+        phone: profilTelefonu(membership.user_id),
+        title: profilUnvani(membership.user_id),
         email: user?.email ?? null,
         scope,
         role: membership.role,
@@ -176,6 +189,8 @@ export async function getMemberDirectory(): Promise<Directory> {
         product: "randevu",
         userId: membership.user_id,
         name: profilAdi.get(membership.user_id) ?? user?.name ?? null,
+        phone: profilTelefonu(membership.user_id),
+        title: profilUnvani(membership.user_id),
         email: user?.email ?? null,
         scope,
         role: membership.role,
@@ -237,6 +252,10 @@ export async function getMemberDirectory(): Promise<Directory> {
           product: "arvolab",
           userId: profile.id,
           name: profile.full_name ?? user?.name ?? null,
+          /* ArvoLab ayrı veritabanında ve orada telefon/unvan tutulmuyor;
+             uydurmak yerine boş geçiyoruz. */
+          phone: null,
+          title: null,
           email: user?.email ?? null,
           scope: organization ? organization.name : "Bireysel",
           role: profile.role,
@@ -258,6 +277,8 @@ export async function getMemberDirectory(): Promise<Directory> {
           product: "arvolab",
           userId: subscriber.external_user_id,
           name: subscriber.full_name,
+          phone: null,
+          title: null,
           email: subscriber.email,
           scope: "Bireysel",
           role: null,
