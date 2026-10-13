@@ -26,6 +26,16 @@ type Durum = "yukleniyor" | "desteksiz" | "ios-ekle" | "engelli" | "kapali" | "a
 
 const SERIT_ANAHTARI = "arvo:anlik-bildirim-serit-kapatildi";
 
+/* Bu cihazın durumu: tek satır başlık + kısa açıklama (yan kartın üstü). */
+const BU_CIHAZ: Record<Durum, { baslik: string; aciklama: string; ton: "basari" | "uyari" | "tehlike" | "sessiz" }> = {
+  yukleniyor: { baslik: "Bu cihaz denetleniyor…", aciklama: "Tarayıcının bildirim izni okunuyor.", ton: "sessiz" },
+  acik: { baslik: "Bu cihaz bildirim alıyor", aciklama: "Atama, müşteri mesajı, yorum ve termin bildirimleri anında gelir.", ton: "basari" },
+  kapali: { baslik: "Bu cihaz ekli değil", aciklama: "Eklemek için tarayıcının sorduğu izni vermeniz yeterli.", ton: "uyari" },
+  "ios-ekle": { baslik: "Önce ana ekrana ekleyin", aciklama: "", ton: "uyari" },
+  engelli: { baslik: "Bildirim izni engelli", aciklama: "Tarayıcının site ayarlarından bu siteye izin verip sayfayı yenileyin.", ton: "tehlike" },
+  desteksiz: { baslik: "Bu tarayıcı desteklemiyor", aciklama: "Güncel Chrome, Edge, Firefox ya da Safari ile deneyin.", ton: "sessiz" },
+};
+
 function base64UrlToUint8Array(metin: string) {
   const dolgu = "=".repeat((4 - (metin.length % 4)) % 4);
   const ham = atob((metin + dolgu).replace(/-/g, "+").replace(/_/g, "/"));
@@ -80,6 +90,9 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
   /* Kişinin tercihi ve cihazları (20261013090223): hangi cihazdan
      değişirse değişsin hepsinde geçerli. null = okunmadı / kurulum yok. */
   const [ozet, setOzet] = useState<AnlikOzet | null>(null);
+  /* Telefonda yan kart katlı başlar (yalnızca durum özeti); işlem
+     gerektiren bir durum okununca açılır. Geniş ekranda CSS yok sayar. */
+  const [katli, setKatli] = useState(true);
 
   /* Bu tarayıcının durumu + (kartta) sunucudaki kişi özeti. Tarayıcı abone
      ama sunucuda bu cihaz yoksa (başka bir cihazdan kaldırıldı) cihaz
@@ -115,7 +128,10 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       setOzet(o);
       if (yeni === "acik" && o && !o.buCihazKayitli) yeni = "kapali";
     }
-    if (!iptal()) setDurum(yeni);
+    if (!iptal()) {
+      setDurum(yeni);
+      if (yeni === "kapali" || yeni === "ios-ekle") setKatli(false);
+    }
   }, [gorunum]);
 
   useEffect(() => {
@@ -195,56 +211,94 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
 
   const cihazSayisi = ozet?.cihazlar.length ?? 0;
   const genelDurum = !ozet ? null : !ozet.acik ? { ad: "Kapalı", ton: "neutral" } : cihazSayisi ? { ad: "Açık", ton: "success" } : { ad: "Cihaz yok", ton: "neutral" };
+  const buCihaz = BU_CIHAZ[durum];
 
+  /*
+    YAN KART (13.10.2026). Eskiden listenin üstünde tam genişlikte bir
+    blok: uzun bir paragraf, gri kutulu onay kutuları ve kaba düğmeler;
+    listeyi ekranın altına itiyordu. Artık işler listesindeki istatistik
+    kartının yerinde: üstte bu cihazın durumu (tek satır + gereken tek
+    düğme), altında anahtarlar ve cihazlar. Telefonda kart listenin
+    altına düşmesin diye üstte, durum özetiyle KATLI duruyor; işlem
+    gerektiren durumda (cihaz ekli değil, ana ekrana eklenmeli) açık.
+  */
   return (
-    <section className="panel-card anlik-kart" aria-label="Anlık bildirim">
-      <div className="anlik-kart-metin">
-        <h2>Anlık bildirim {genelDurum ? <span className="status-pill" data-tone={genelDurum.ton}>{genelDurum.ad}</span> : null}</h2>
-        <p>
-          <b>Bu cihaz: </b>
-          {durum === "ios-ekle" ? <>iPhone&apos;da bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır: Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>, sonra uygulamayı ana ekrandaki simgeden açın. Ana ekran uygulaması Safari&apos;den ayrı çalıştığı için bir kez yeniden giriş yapmanız gerekir; ardından Bildirimler sayfasından bu cihazı ekleyin.</>
-            : durum === "engelli" ? <>bildirim izni bu tarayıcıda engellenmiş. Tarayıcının site ayarlarından bu siteye bildirim izni verip sayfayı yenileyin.</>
-            : durum === "desteksiz" ? <>bu tarayıcı anlık bildirimi desteklemiyor ya da uygulama kabuğu henüz yüklenmedi. Güncel Chrome, Edge, Firefox ya da Safari ile deneyin.</>
-            : durum === "acik" ? <>bildirim alıyor. Size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde ve adım termininiz yaklaştığında panel kapalıyken de haber verir.</>
-            : durum === "yukleniyor" ? <>denetleniyor…</>
-            : <>bildirim almıyor. Yeni bir cihaz yalnızca kendisinden eklenebilir (izni tarayıcı orada soruyor); ayarlar ise hangi cihazdan değişirse değişsin hepsinde geçerli.</>}
-        </p>
+    <section className="panel-card talep-musteri anlik-panel" data-katli={katli || undefined} aria-label="Anlık bildirimler">
+      <header className="anlik-bas">
+        <span className="anlik-simge" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></svg>
+        </span>
+        <div className="anlik-bas-metin">
+          <h2>Anlık bildirimler</h2>
+          <small>Panel kapalıyken de haber verir</small>
+        </div>
+        {genelDurum ? <span className="status-pill" data-tone={genelDurum.ton}>{genelDurum.ad}</span> : null}
+        <button type="button" className="anlik-katla" aria-expanded={!katli} aria-label={katli ? "Ayarları göster" : "Ayarları gizle"} onClick={() => setKatli((k) => !k)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      </header>
+
+      <div className="anlik-govde">
+        <div className="anlik-bu-cihaz" data-ton={buCihaz.ton}>
+          <i aria-hidden="true" />
+          <div>
+            <b>{buCihaz.baslik}</b>
+            {durum === "ios-ekle" ? (
+              <ol className="anlik-adimlar">
+                <li>Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b></li>
+                <li>Ana ekrandaki simgeden açıp giriş yapın</li>
+                <li>Bu sayfada <b>Bu cihazı ekle</b>&apos;ye dokunun</li>
+              </ol>
+            ) : <small>{buCihaz.aciklama}</small>}
+          </div>
+        </div>
+        {durum === "kapali" ? (
+          <button type="button" className="panel-primary anlik-ekle" onClick={ac} disabled={bekliyor || !genelAnahtar}>{bekliyor ? "Ekleniyor…" : "Bu cihazı ekle"}</button>
+        ) : null}
 
         {ozet ? (
-          <div className="anlik-ayarlar">
-            <label className="anlik-posta">
-              <input type="checkbox" checked={ozet.acik} disabled={bekliyor} onChange={(olay) => tercih({ acik: olay.target.checked })} />
-              <span><b>Anlık bildirimler</b><small>Bütün cihazlarınızda geçerli. Kapatınca hiçbir cihaza bildirim gitmez; cihazlar listede kalır.</small></span>
-            </label>
-            {ozet.postaGorur ? (
-              <label className="anlik-posta" data-pasif={!ozet.acik || undefined}>
-                <input type="checkbox" checked={ozet.posta} disabled={bekliyor || !ozet.acik} onChange={(olay) => tercih({ posta: olay.target.checked })} />
-                <span><b>Gelen postaları da bildir</b><small>Ortak kutuya düşen her yeni posta, gönderen ve konuyla, bütün cihazlarınıza.</small></span>
-              </label>
-            ) : null}
+          <>
+            <ul className="anlik-anahtarlar">
+              <li>
+                <span><b>Anlık bildirimler</b><small>Bütün cihazlarınızda</small></span>
+                <button type="button" role="switch" aria-checked={ozet.acik} aria-label="Anlık bildirimler" className={`anlik-anahtar${ozet.acik ? " is-on" : ""}`} disabled={bekliyor} onClick={() => tercih({ acik: !ozet.acik })}><i /></button>
+              </li>
+              {ozet.postaGorur ? (
+                <li data-pasif={!ozet.acik || undefined}>
+                  <span><b>Gelen postalar</b><small>Ortak kutuya düşen her yeni posta</small></span>
+                  <button type="button" role="switch" aria-checked={ozet.posta} aria-label="Gelen postaları bildir" className={`anlik-anahtar${ozet.posta ? " is-on" : ""}`} disabled={bekliyor || !ozet.acik} onClick={() => tercih({ posta: !ozet.posta })}><i /></button>
+                </li>
+              ) : null}
+            </ul>
+
             <div className="anlik-cihazlar">
               <h3>Cihazlarım <small>{cihazSayisi}</small></h3>
               {cihazSayisi ? (
                 <ul>
                   {ozet.cihazlar.map((c) => (
                     <li key={c.id}>
-                      <span>
-                        <b>{c.cihaz}{c.buCihaz ? <em>bu cihaz</em> : null}</b>
-                        <small>Eklendi {tarihBicim.format(new Date(c.eklendi))}{c.sonBasari ? ` · son bildirim ${tarihBicim.format(new Date(c.sonBasari))}` : ""}</small>
+                      <span className="anlik-cihaz-simge" aria-hidden="true">
+                        {/iPhone|iPad|Android/.test(c.cihaz)
+                          ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M11 18h2" /></svg>
+                          : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="4.5" width="17" height="11" rx="2" /><path d="M2 19.5h20" /></svg>}
                       </span>
-                      <button type="button" className="panel-secondary" onClick={() => kaldir(c)} disabled={bekliyor}>Kaldır</button>
+                      <span className="anlik-cihaz-metin">
+                        <b>{c.cihaz}{c.buCihaz ? <em>bu cihaz</em> : null}</b>
+                        <small>{c.sonBasari ? `Son bildirim ${tarihBicim.format(new Date(c.sonBasari))}` : `Eklendi ${tarihBicim.format(new Date(c.eklendi))}`}</small>
+                      </span>
+                      <button type="button" className="anlik-kaldir" onClick={() => kaldir(c)} disabled={bekliyor} aria-label={`${c.cihaz} cihazını kaldır`} title="Kaldır">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                      </button>
                     </li>
                   ))}
                 </ul>
-              ) : <p className="anlik-bos">Henüz cihaz yok. Telefonunuzdan bu sayfayı açıp &quot;Bu cihazı ekle&quot;ye dokunun.</p>}
+              ) : <p className="anlik-bos">Henüz cihaz yok. Telefonunuzdan bu sayfayı açıp cihazı ekleyin.</p>}
             </div>
-          </div>
+          </>
         ) : null}
-        {mesaj ? <small className={mesaj.ton === "hata" ? "anlik-hata" : "anlik-ok"} role="status">{mesaj.metin}</small> : null}
-      </div>
-      <div className="anlik-kart-eylem">
-        {durum === "kapali" ? <button type="button" className="panel-primary" onClick={ac} disabled={bekliyor || !genelAnahtar}>{bekliyor ? "Ekleniyor…" : "Bu cihazı ekle"}</button> : null}
-        {cihazSayisi ? <button type="button" className="panel-secondary" onClick={dene} disabled={bekliyor}>Deneme gönder</button> : null}
+
+        {mesaj ? <p className={mesaj.ton === "hata" ? "anlik-hata" : "anlik-ok"} role="status">{mesaj.metin}</p> : null}
+        {cihazSayisi ? <button type="button" className="panel-secondary anlik-dene" onClick={dene} disabled={bekliyor}>Deneme bildirimi gönder</button> : null}
       </div>
     </section>
   );

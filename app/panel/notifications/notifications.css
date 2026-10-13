@@ -21,8 +21,14 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
 /* ---------- Liste kartı ----------
    Panel kartı (panel-card) ve ortak çipler (ekip-suzgec): eskiden sayfa
    kendi kartını ve kendi çip dilini çiziyordu (12.10.2026). */
-.ntf-card{padding:var(--sp-4) var(--sp-4) var(--sp-2)}
+/* Liste sayfası düzeninde (13.10.2026): kart talep-bilgi, kayan alan
+   .ntf-akis (= .talep-tablo, os-shell.css .liste-sayfa). Çip satırı
+   yerinde kalır, yalnızca bildirimler kayar. */
 .ntf-suzgec{margin-bottom:var(--sp-2)}
+.ntf-baslik-oku{margin:0 0 0 auto}
+.ntf-akis{padding-right:var(--sp-1)}
+.ntf-not{margin:var(--sp-2) 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.ntf-akis .liste-sayfalar{margin-top:var(--sp-3)}
 .ntf-baslik{align-items:center;flex-wrap:wrap;margin:var(--sp-2) 0 0}
 .ntf-baslik h2{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
 .ntf-baslik small{display:block;margin-top:2px}
@@ -88,7 +94,6 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
 .notification-compose-form textarea{min-height:180px;resize:vertical}
 
 @media(max-width:620px){
-  .ntf-card{padding:var(--sp-3) var(--sp-3) var(--sp-1)}
   .ntf-group{margin:0 calc(var(--sp-1) * -1)}
   .ntf-item{grid-template-columns:36px minmax(0,1fr) 10px;gap:12px;padding:12px 10px}
   .ntf-item+.ntf-item::before{left:58px}

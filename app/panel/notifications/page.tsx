@@ -144,7 +144,14 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Duyuruyu gönder</button></div>
   </form>;
 
-  return <main className="talep cari ntf-page">
+  /*
+    LİSTE SAYFASI DÜZENİ (13.10.2026, işler listesiyle aynı iskelet):
+    sayfa ekrana sabit, bildirimler kartın İÇİNDE kayar (os-shell.css,
+    .liste-sayfa). Anlık bildirim ayarları sağdaki yan kartta; eskiden
+    listenin üstünde tam genişlikte bir blok olarak listeyi ekranın altına
+    itiyordu.
+  */
+  return <main className="talep cari ekip ntf-page liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">BİLDİRİM MERKEZİ</small>
@@ -156,9 +163,6 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       </div>
     </header>
 
-    {/* Bu cihazda anlık bildirim (web push, 13.10.2026). */}
-    <AnlikBildirimAyari genelAnahtar={pushYapilandi() ? pushGenelAnahtar() : null} />
-
     {/* ÖZET ŞERİDİ: sayılar özet işlevinden (sınırsız); okunmamış rozetle aynı tanım. */}
     <nav className="kayit-serit talep-serit" aria-label="Bildirim özeti">
       <dl>
@@ -169,7 +173,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       </dl>
     </nav>
 
-    <section className="panel-card ntf-card" aria-label="Bildirim listesi">
+    <div className="talep-izgara ekip-izgara ntf-izgara">
+    <section className="panel-card talep-bilgi ntf-card" aria-label="Bildirim listesi">
       <div className="ekip-suzgec talep-suzgec ntf-suzgec">
         <Link className={!selectedFilter ? "is-active" : undefined} href={adres({ kategori: null })} aria-current={!selectedFilter ? "page" : undefined}>Tümü <small>{ozet.toplam}</small></Link>
         {filters.map((filter) => {
@@ -179,16 +184,12 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           return <Link className={active ? "is-active" : undefined} href={adres({ kategori: filter.key })} key={filter.key} aria-current={active ? "page" : undefined}>{filter.label} <small>{count}</small></Link>;
         })}
         <Link className={`ekip-suzgec-dep${yalnizOkunmamis ? " is-active" : ""}`} href={adres({ okunmamis: !yalnizOkunmamis })} aria-current={yalnizOkunmamis ? "true" : undefined}>Yalnızca okunmamış</Link>
+        {selectedFilter && visibleUnread > 0 ? <form action={markAllNotificationsRead} className="ntf-baslik-oku"><input type="hidden" name="kategori" value={selectedFilter.key} /><button className="ntf-link" type="submit">Bu başlığı okundu işaretle</button></form> : null}
       </div>
 
-      <div className="cari-baslik ntf-baslik">
-        <div>
-          <h2>{selectedFilter?.label ?? "Tüm bildirimler"}{yalnizOkunmamis ? " · okunmamış" : ""}</h2>
-          <small>{suzgecSayisi ?? notifications.length} bildirim{eskiYol ? ` · son ${ESKI_SINIR} bildirimde` : ""}</small>
-        </div>
-        {selectedFilter && visibleUnread > 0 ? <form action={markAllNotificationsRead}><input type="hidden" name="kategori" value={selectedFilter.key} /><button className="ntf-link" type="submit">Bu başlığı okundu işaretle</button></form> : null}
-      </div>
-
+      {/* Kayan alan: gün grupları, sayfalayıcı ve boş durum. */}
+      <div className="talep-tablo ntf-akis">
+      {eskiYol ? <p className="ntf-not">Son {ESKI_SINIR} bildirim gösteriliyor.</p> : null}
       {groups.length ? groups.map((group) => (
         <div className="ntf-group" key={group.label}>
           <p className="ntf-day">{group.label}</p>
@@ -249,6 +250,11 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           <p>{yalnizOkunmamis ? "Hepsini okudunuz. Yeni bir iş, müşteri mesajı ya da duyuru gelince burada görünecek." : "Size bir iş atandığında, müşteri mesaj bıraktığında ya da duyuru geldiğinde burada görünecek."}</p>
         </div>
       )}
+      </div>
     </section>
+
+    {/* Anlık bildirim: kişinin ayarları ve cihazları (web push). */}
+    <AnlikBildirimAyari genelAnahtar={pushYapilandi() ? pushGenelAnahtar() : null} />
+    </div>
   </main>;
 }
