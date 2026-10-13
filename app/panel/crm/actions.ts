@@ -1,6 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
+import { calismaTuruBul } from "@/lib/is-adimlari";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -111,6 +112,27 @@ async function calismaTuruCoz(
   return kod;
 }
 
+/*
+  Çalışma türü seçilmediyse HİZMET TÜRÜNDEN (20261013104639): kurumun
+  eşlemesi (organization_step_template_sets.hizmet_turleri). Form bunu
+  tarayıcıda zaten seçiyor; burası formdan geçmeyen yollar (posta,
+  eski sekme) ve "Öntanımlı"da bırakılan seçim için. "*" ile okunuyor:
+  migration uygulanmadan önce sütun yoksa sorgu düşmesin, eşleme boş
+  sayılsın.
+*/
+async function hizmettenCalismaTuru(
+  supabase: Awaited<ReturnType<typeof crmContext>>["supabase"],
+  organizationId: string,
+  hizmetTuru: string,
+): Promise<string | null> {
+  if (!hizmetTuru) return null;
+  const { data, error } = await supabase
+    .from("organization_step_template_sets").select("*")
+    .eq("organization_id", organizationId).eq("is_active", true);
+  if (error) return null;
+  return calismaTuruBul((data ?? []) as { code: string; hizmet_turleri?: string[] | null }[], hizmetTuru);
+}
+
 async function createOpportunity__impl(formData: FormData) {
   const context = await crmContext();
   const { supabase, userId, membership, yetkiler } = context;
@@ -165,7 +187,8 @@ async function createOpportunity__impl(formData: FormData) {
     language: text(formData, "language", 80),
     scope: text(formData, "scope", 4000),
   };
-  const calismaTuru = await calismaTuruCoz(supabase, membership.organization_id, formData);
+  const calismaTuru = (await calismaTuruCoz(supabase, membership.organization_id, formData))
+    ?? await hizmettenCalismaTuru(supabase, membership.organization_id, details.service_type);
   const { error } = await supabase.from("crm_opportunities").insert({
     organization_id: membership.organization_id,
     step_template_set: calismaTuru,
@@ -294,7 +317,9 @@ async function updateOpportunity__impl(formData: FormData) {
   // Formda yoksa dokunulmuyor: türü olan bir fırsat, türü sormayan bir
   // düzenleme formundan geçince türünü kaybetmemeli.
   if (formData.has("step_template_set")) {
-    updates.step_template_set = await calismaTuruCoz(supabase, membership.organization_id, formData);
+    // "Öntanımlı" bırakıldıysa hizmet türünün eşlemesi (yoksa öntanımlı).
+    updates.step_template_set = (await calismaTuruCoz(supabase, membership.organization_id, formData))
+      ?? await hizmettenCalismaTuru(supabase, membership.organization_id, String(requestDetails.service_type ?? ""));
   }
   for (const [key, max, nullable] of [
     ["title", 180, false], ["customer_name", 180, false],

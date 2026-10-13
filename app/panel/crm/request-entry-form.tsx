@@ -8,6 +8,7 @@ import { NEW_REQUEST_PREFILL_EVENT, type NewRequestPrefill } from "./customer-hi
 import "../components/kayit-formu.css";
 
 import { DIGER, VARSAYILAN_HIZMET_TURLERI, formSecenekleri } from "@/lib/hizmet-turleri";
+import { calismaTuruBul } from "@/lib/is-adimlari";
 
 /* Hizmet türleri kurumun listesinden (Ayarlar → Hizmet türleri,
    lib/hizmet-turleri). Eskiden burada sabit bir akademik liste vardı;
@@ -19,10 +20,21 @@ type SalesRepresentative={id:string;full_name:string;job_title:string|null};
   eskiden tür yalnızca iş açılırken seçilebiliyor ve makale işi kurumun
   öntanımlı seti (tez) ile açılıyordu.
 */
-type CalismaTuru={code:string;name:string;is_default:boolean};
+type CalismaTuru={code:string;name:string;is_default:boolean;hizmet_turleri?:string[]};
 
 export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign, calismaTurleri = [], hizmetTurleri = formSecenekleri(VARSAYILAN_HIZMET_TURLERI) }: { academicMode: boolean; salesRepresentatives: SalesRepresentative[]; canAssign: boolean; calismaTurleri?: CalismaTuru[]; hizmetTurleri?: string[] }) {
   const [serviceType, setServiceType] = useState("");
+  /* Çalışma türü hizmet türünden kendiliğinden seçiliyor (Şablon sayfasındaki
+     eşleme, 20261013104639); satışçı yine değiştirebilir. Eşleme yoksa
+     seçim "Öntanımlı"da kalır. */
+  const [calismaTuru, setCalismaTuru] = useState("");
+  const [otomatikTur, setOtomatikTur] = useState(false);
+  const hizmetSecildi = (deger: string) => {
+    setServiceType(deger);
+    const kod = calismaTuruBul(calismaTurleri, deger);
+    setCalismaTuru(kod ?? "");
+    setOtomatikTur(Boolean(kod));
+  };
   // Geri dönen müşteri kontrolü için ad ve telefon izlenir (alanlar yine kontrolsüz)
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -36,7 +48,7 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
   const [postaThreadId, setPostaThreadId] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // Kayıttan sonra React formu sıfırlıyor; geçmiş uyarısı da sıfırlansın
-  const resetLookup = () => { setCustomerName(""); setPhone(""); setLookupField(null); setPrefilled(false); setPostaThreadId(null); setFormVersion((version) => version + 1); };
+  const resetLookup = () => { setCustomerName(""); setPhone(""); setLookupField(null); setPrefilled(false); setPostaThreadId(null); setFormVersion((version) => version + 1); setServiceType(""); setCalismaTuru(""); setOtomatikTur(false); };
 
   // Müşteri sorgulama penceresindeki "+ Bu müşteri için yeni talep"
   useEffect(() => {
@@ -92,18 +104,20 @@ export function RequestEntryForm({ academicMode, salesRepresentatives, canAssign
     </> : null}
 
     <p className="wide kayit-formu-bolum">Talep</p>
+    {academicMode ? <>
+      <label><span>Hizmet türü<b className="req" aria-hidden="true">*</b></span><select name="service_type" required value={serviceType} onChange={(event) => hizmetSecildi(event.target.value)}><option value="" disabled>Seçin</option>{hizmetTurleri.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
+      {serviceType === DIGER ? <label className="wide request-other-service"><span>Diğer hizmet<b className="req" aria-hidden="true">*</b></span><input name="other_service_type" required minLength={2} maxLength={120} placeholder="Hizmet türünü yazın" /></label> : null}
+    </> : null}
+    {/* Hizmet türünün ARDINDA: seçilen hizmet bu alanı dolduruyor. */}
     {calismaTurleri.length ? (
       <label>Çalışma türü
-        <select name="step_template_set" defaultValue="">
+        <select name="step_template_set" value={calismaTuru} onChange={(event) => { setCalismaTuru(event.target.value); setOtomatikTur(false); }}>
           <option value="">Öntanımlı{ontanimli ? ` (${ontanimli.name})` : ""}</option>
           {calismaTurleri.map((tur) => <option value={tur.code} key={tur.code}>{tur.name}</option>)}
         </select>
+        {otomatikTur ? <small className="kayit-formu-ipucu">Hizmet türüne göre seçildi; adımlar bu türün listesinden gelir.</small> : null}
       </label>
     ) : null}
-    {academicMode ? <>
-      <label><span>Hizmet türü<b className="req" aria-hidden="true">*</b></span><select name="service_type" required value={serviceType} onChange={(event) => setServiceType(event.target.value)}><option value="" disabled>Seçin</option>{hizmetTurleri.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
-      {serviceType === DIGER ? <label className="wide request-other-service"><span>Diğer hizmet<b className="req" aria-hidden="true">*</b></span><input name="other_service_type" required minLength={2} maxLength={120} placeholder="Hizmet türünü yazın" /></label> : null}
-    </> : null}
     <label className="wide"><span>Talep konusu<b className="req" aria-hidden="true">*</b></span><input name="title" required minLength={2} maxLength={180} placeholder={academicMode ? "Örn. Yüksek lisans tezi analiz desteği" : "Talebin kısa başlığı"} /></label>
 
     <p className="wide kayit-formu-bolum">Müşteri</p>

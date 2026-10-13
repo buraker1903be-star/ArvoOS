@@ -269,3 +269,20 @@ export function setAdiSorunu(ad: string): string | null {
   if (temiz.length < 2 || temiz.length > 80) return "Çalışma türünün adı 2–80 karakter olmalı.";
   return null;
 }
+
+/*
+  HİZMET TÜRÜ → ÇALIŞMA TÜRÜ (13.10.2026). Talep formunda hizmet türü
+  seçilince çalışma türü (dolayısıyla işin adım listesi) kendiliğinden
+  seçiliyor; eşleme çalışma türünün satırında (organization_step_template_sets.
+  hizmet_turleri), kurum Şablon sayfasından değiştirir. Hizmet türü
+  serbest metin olarak saklanıyor; karşılaştırma büyük/küçük harf ve baş/son
+  boşluk duyarsız, Türkçe kurallarıyla ("İ"/"ı").
+*/
+export function calismaTuruBul(
+  turler: readonly { code: string; hizmet_turleri?: readonly string[] | null }[],
+  hizmetTuru: string | null | undefined,
+): string | null {
+  const ara = (hizmetTuru ?? "").trim().toLocaleLowerCase("tr");
+  if (!ara) return null;
+  return turler.find((tur) => (tur.hizmet_turleri ?? []).some((ad) => ad.trim().toLocaleLowerCase("tr") === ara))?.code ?? null;
+}

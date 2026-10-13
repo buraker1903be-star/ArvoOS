@@ -255,6 +255,44 @@ async function deleteTemplateSet__impl(formData: FormData) {
   tazele();
 }
 
+/*
+  HİZMET TÜRÜ EŞLEMESİ (20261013104639): talepte bu hizmet türü seçilince
+  bu çalışma türü kendiliğinden seçilir. Bir hizmet türü TEK türe bağlı:
+  burada seçilen hizmet başka türün listesindeyse oradan çıkarılır —
+  iki türde birden olsaydı talep formu hangisini seçeceğini bilemezdi.
+*/
+async function setTemplateSetServices__impl(formData: FormData) {
+  const { supabase, membership } = await sablonContext();
+  const set = await setCoz(supabase, membership.organization_id, formData);
+  const secilen = [...new Set(formData.getAll("hizmet").map((d) => String(d).trim()).filter((d) => d.length >= 2 && d.length <= 120))];
+  if (secilen.length > 30) throw new Error("Bir çalışma türüne en fazla 30 hizmet türü bağlanabilir.");
+  const kucuk = new Set(secilen.map((d) => d.toLocaleLowerCase("tr")));
+
+  const { data: turler, error: okuma } = await supabase
+    .from("organization_step_template_sets").select("code,hizmet_turleri").eq("organization_id", membership.organization_id);
+  if (okuma) throw new Error("Çalışma türleri okunamadı: " + okuma.message);
+  for (const tur of (turler ?? []) as { code: string; hizmet_turleri: string[] | null }[]) {
+    if (tur.code === set.code) continue;
+    const kalan = (tur.hizmet_turleri ?? []).filter((d) => !kucuk.has(d.toLocaleLowerCase("tr")));
+    if (kalan.length === (tur.hizmet_turleri ?? []).length) continue;
+    const { error } = await supabase.from("organization_step_template_sets")
+      .update({ hizmet_turleri: kalan, updated_at: new Date().toISOString() })
+      .eq("organization_id", membership.organization_id).eq("code", tur.code);
+    if (error) throw new Error("Eşleme kaydedilemedi: " + error.message);
+  }
+  const { error } = await supabase.from("organization_step_template_sets")
+    .update({ hizmet_turleri: secilen, updated_at: new Date().toISOString() })
+    .eq("organization_id", membership.organization_id).eq("code", set.code);
+  if (error) throw new Error("Eşleme kaydedilemedi: " + error.message);
+  tazele();
+  // Talep formu eşlemeyi buradan okuyor.
+  revalidatePath("/panel/crm");
+}
+
+export async function setTemplateSetServices(...args: Parameters<typeof setTemplateSetServices__impl>) {
+  return runPanelAction(() => setTemplateSetServices__impl(...args), "Hizmet türü eşlemesi kaydedildi");
+}
+
 export async function createTemplateSet(...args: Parameters<typeof createTemplateSet__impl>) {
   return runPanelAction(() => createTemplateSet__impl(...args), "Çalışma türü eklendi");
 }

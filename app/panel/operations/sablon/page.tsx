@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { getPanelContext } from "@/lib/panel-context";
 import { OpsIcon } from "../ops-shared";
 import {
@@ -9,6 +10,7 @@ import {
   makeDefaultTemplateSet,
   renameTemplateSet,
   saveStepTemplate,
+  setTemplateSetServices,
 } from "../sablon-actions";
 import { ASAMA_EN_UZUN, OFSET_EN_COK, SABLON_EN_COK, SET_EN_COK, VARSAYILAN_ADIMLAR } from "@/lib/is-adimlari";
 import "../../crm/crm.css";
@@ -35,7 +37,7 @@ import "./sablon.css";
 */
 
 type SablonSatiri = { code: string; title: string; sort_order: number; day_offset: number | null; phase_title: string | null };
-type Tur = { code: string; name: string; sort_order: number; is_default: boolean };
+type Tur = { code: string; name: string; sort_order: number; is_default: boolean; hizmet_turleri?: string[] | null };
 
 // Kullanıcı satır ekleyebilsin diye listenin sonuna birkaç boş satır konur.
 const BOS_SATIR = 3;
@@ -48,12 +50,17 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
 
   const { data: turData, error: turHatasi } = await supabase
     .from("organization_step_template_sets")
-    .select("code,name,sort_order,is_default")
+    // "*": hizmet_turleri (20261013104639) migration'dan önce yoksa sayfa düşmesin.
+    .select("*")
     .eq("organization_id", membership.organization_id)
     .order("sort_order")
     .order("code");
   if (turHatasi) throw new Error("Çalışma türleri okunamadı: " + turHatasi.message);
   const turler = (turData ?? []) as Tur[];
+  // Hizmet türü eşlemesi için kurumun hizmet listesi ("Diğer" eşlenmez).
+  const hizmetListesi = (await kurumHizmetTurleri(supabase, membership.organization_id)).liste;
+  const hizmetSahibi = new Map<string, string>();
+  for (const t of turler) for (const h of t.hizmet_turleri ?? []) hizmetSahibi.set(h.toLocaleLowerCase("tr"), t.name);
 
   /*
     Seçili tür adresten geliyor; adreste yoksa öntanımlı, o da yoksa ilk
@@ -173,6 +180,38 @@ export default async function StepTemplatePage({ searchParams }: { searchParams:
             ) : null}
           </div>
         ) : <p className="sablon-hint">Türleri ve listeleri kurum sahibi ve yöneticiler düzenler.</p>}
+
+        {/*
+          HİZMET TÜRÜ EŞLEMESİ (20261013104639): talepte bu hizmet türlerinden
+          biri seçilince bu çalışma türü kendiliğinden seçilir ve iş bu
+          listenin adımlarıyla açılır. Bir hizmet türü tek türe bağlı;
+          başka türdeyse yanında yazıyor, işaretlenirse oradan taşınır.
+        */}
+        {seciliTur ? (
+          <div className="sablon-hizmet">
+            <h3>Otomatik seçildiği hizmet türleri</h3>
+            {canManage ? (
+              <form action={setTemplateSetServices}>
+                <input type="hidden" name="set_code" value={seciliTur.code} />
+                <div className="sablon-hizmet-liste">
+                  {hizmetListesi.map((hizmet) => {
+                    const sahip = hizmetSahibi.get(hizmet.toLocaleLowerCase("tr"));
+                    const bunda = (seciliTur.hizmet_turleri ?? []).some((h) => h.toLocaleLowerCase("tr") === hizmet.toLocaleLowerCase("tr"));
+                    return (
+                      <label key={hizmet}>
+                        <input type="checkbox" name="hizmet" value={hizmet} defaultChecked={bunda} />
+                        <span>{hizmet}{sahip && !bunda ? <small> · şu an {sahip}</small> : null}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <button className="panel-secondary" type="submit">Eşlemeyi kaydet</button>
+              </form>
+            ) : (
+              <p className="sablon-hint">{(seciliTur.hizmet_turleri ?? []).join(", ") || "Bağlı hizmet türü yok."}</p>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {seciliTur && satirlar.length === 0 ? (

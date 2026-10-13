@@ -201,7 +201,8 @@ export default async function RequestsPage({
     // Çalışma türleri ("Yeni talep" formundaki seçim) aynı adımda.
     supabase
       .from("organization_step_template_sets")
-      .select("code,name,is_default")
+      // "*": hizmet_turleri (20261013104639) migration'dan önce yoksa sorgu düşmesin.
+      .select("*")
       .eq("organization_id", membership.organization_id)
       .eq("is_active", true)
       .order("sort_order")
@@ -226,7 +227,8 @@ export default async function RequestsPage({
     representatives.map((item) => [item.id, item.full_name]),
   );
   const academicMode = (stages ?? []).some((s) => s.code === "academic_review");
-  const calismaTurleri = (turData ?? []) as { code: string; name: string; is_default: boolean }[];
+  const calismaTurleri = ((turData ?? []) as { code: string; name: string; is_default: boolean; hizmet_turleri?: string[] | null }[])
+    .map((t) => ({ code: t.code, name: t.name, is_default: t.is_default, hizmet_turleri: t.hizmet_turleri ?? [] }));
   const hizmetTurleri = formSecenekleri((await hizmetTurleriSozu).liste);
 
   const rows = (data ?? []) as unknown as TalepSatiri[];
