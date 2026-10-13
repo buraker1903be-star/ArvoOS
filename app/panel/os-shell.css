@@ -352,7 +352,10 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
 @media (max-width:1200px){
   /* Tek sütuna düşen dar ekranda iki ayrı kaydırma alanı birbirine giriyor:
      orada sayfa kayar, tablo değil. */
-  .os-root main.liste-sayfa{display:block;height:auto;min-height:0}
+  /* Flex KALIR, yalnızca yükseklik serbest: eskiden display:block'tu ve
+     .talep'in blok arası boşluğu (gap) da gidiyordu — özet şeridi ile
+     liste kartı birbirine yapışıyordu (13.10.2026, bütün listeler). */
+  .os-root main.liste-sayfa{display:flex;height:auto;min-height:0}
   .os-root main.liste-sayfa>.talep-izgara>.talep-bilgi{display:block;overflow:visible}
   .os-root main.liste-sayfa .talep-bilgi>.talep-tablo{overflow:visible}
 }
