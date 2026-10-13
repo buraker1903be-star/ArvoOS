@@ -43,7 +43,19 @@
 .site .hdr-burger span:last-child{top:25px}
 .site .hdr-burger[aria-expanded="true"] span:first-child{top:21.5px;transform:rotate(45deg)}
 .site .hdr-burger[aria-expanded="true"] span:last-child{top:21.5px;transform:rotate(-45deg)}
-.site .hdr-sheet{position:fixed;inset:var(--header-h) 0 0;overflow-y:auto;overscroll-behavior:contain;background:#fff;color:var(--ink);animation:site-sheet .35s var(--ease) both}
+/*
+  Mobil menü yaprağı başlığa GÖRE konumlanır, ekrana göre değil.
+  Eskiden `position:fixed; inset:var(--header-h) 0 0` yazıyordu ve menü
+  13.09.2026'daki yeniden tasarımdan beri hiç açılmıyordu: `.hdr`'ın
+  `backdrop-filter`'ı (açık cam etkisi) onu fixed çocukları için bir
+  KAPSAYICI BLOK yapıyor, dolayısıyla inset ekranın değil 52 piksellik
+  başlığın içinde çözülüyordu — üstten 52, alttan 0: yüksekliği sıfır
+  bir yaprak. React tarafı doğru çalışıyordu (hidden kalkıyor, burger
+  çarpıya dönüyor), görünecek alan yoktu. Blur'u kapatmak da düzeltirdi
+  ama o çözüm "bu özellik none kalmalı" diye yazısız bir kurala
+  dayanıyor; mutlak konum niyeti açıkça söylüyor.
+*/
+.site .hdr-sheet{position:absolute;top:100%;left:0;right:0;height:calc(100dvh - var(--header-h));overflow-y:auto;overscroll-behavior:contain;background:#fff;color:var(--ink);animation:site-sheet .35s var(--ease) both}
 .site .hdr-sheet[hidden]{display:none}
 .site .sheet-inner{padding:8px 0 48px}
 .site .sheet-label{margin:28px 0 4px;color:var(--muted);font-size:12px;font-weight:600}

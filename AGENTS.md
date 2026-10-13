@@ -102,6 +102,18 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   görünüyor (önceki sayfanın CSS'i yüklü), sayfa YENİLENİNCE düzen
   dağılıyordu (10.10.2026). Bir bileşen her yerde kullanılıyorsa CSS'ini
   kendisi import etsin. `npm run check:css` bunu CI'da denetliyor.
+- **Bulanık (`backdrop-filter`) bir kutunun içindeki `position:fixed`
+  çocuk EKRANA göre konumlanmaz.** `backdrop-filter` (ve `transform`,
+  `filter`, `perspective`, `contain`, `will-change`) kutuyu fixed
+  çocukları için bir KAPSAYICI BLOK yapar. Pazarlama sitesinin mobil
+  menüsü bu yüzden 13.09.2026'daki yeniden tasarımdan 13.10.2026'ya
+  kadar hiç açılmadı: yaprak `position:fixed; inset:var(--header-h) 0 0`
+  ile yazılmıştı, açık cam başlığın içinde çözülüyordu ve üstten 52,
+  alttan 0 — yüksekliği SIFIR bir kutu. React tarafı kusursuz
+  çalışıyordu (hidden kalkıyor, burger çarpıya dönüyor), hata da yoktu;
+  ekranda hiçbir şey yoktu. Bulanık bir kabuğun içine kaplama
+  yazarken konumu açıkça kabuğa göre kurun (`position:absolute;
+  top:100%`), ya da kaplamayı kabuğun DIŞINA taşıyın.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata
