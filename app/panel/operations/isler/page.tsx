@@ -4,7 +4,7 @@ import { statusTone } from "@/lib/status-tone";
 import { formatSubject } from "@/lib/table-format";
 import { formatPersonName } from "@/lib/format-name";
 import { fetchLastContacts } from "../../crm/last-contact";
-import { CustomerCell, LastContactCell, RepresentativeCell } from "../../crm/table-cells";
+import { CustomerCell, LastContactCell, MobilSatir, RepresentativeCell } from "../../crm/table-cells";
 import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "../../crm/istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
@@ -328,6 +328,24 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                   <td data-label="Termin" className={`crm-col-date${terminRozeti.late ? " is-late" : ""}`}>{workflow.due_date ? shortDate(workflow.due_date) : canAct ? <Link className="crm-inline-action" href={`/panel/operations/${workflow.id}#termin`}>+ Termin ekle</Link> : "—"}{workflow.due_date ? <small>{terminRozeti.label}</small> : null}</td>
                   <LastContactCell contact={opportunityId ? lastContacts.get(opportunityId) : null} />
                   <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                  {/* Telefondaki tek görünüm (table-cells.tsx → MobilSatir). */}
+                  <MobilSatir
+                    href={`/panel/operations/${workflow.id}`}
+                    baslik={formatSubject(workflow.title)}
+                    /* "Devam ediyor" işlerin çoğunda aynı: her satırda tekrarlanınca başlığı kesiyordu. Telefonda yalnızca farklı durum yazılır. */
+                    durum={workflow.status === "in_progress" ? null : { etiket: workflowStatusNames[workflow.status] ?? workflow.status, ton: statusTone(workflow.status) }}
+                    alt={[formatPersonName(workflow.customer_name) || "Kurum içi iş", workflow.assigned_employee_id ? formatPersonName(employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel") : "Atanmamış"]}
+                    isaretler={[
+                      unreadMessages ? { metin: `${unreadMessages} yeni mesaj`, ton: "tehlike" } : null,
+                      workflow.due_date
+                        ? { metin: terminRozeti.label, ton: terminRozeti.tone === "danger" ? "tehlike" : terminRozeti.tone === "warning" ? "uyari" : terminRozeti.tone === "success" ? "basari" : "bilgi" }
+                        : { metin: "Termin yok", ton: "sessiz" },
+                      { metin: adimSayisi ? `${done}/${adimSayisi} adım` : "Adım yok", ton: "sessiz" },
+                      bekleyenTarafMi(workflow.waiting_party) && workflow.waiting_party !== "us" ? { metin: beklemeOzeti(workflow.waiting_party, workflow.waiting_since, bugun), ton: "uyari" } : null,
+                      workflow.priority === "high" || workflow.priority === "urgent" ? { metin: priorityNames[workflow.priority] ?? workflow.priority, ton: workflow.priority === "urgent" ? "tehlike" : "uyari" } : null,
+                      workflow.status === "completed" && readyForArchive(workflow) ? { metin: "Ödeme kapandı", ton: "basari" } : null,
+                    ]}
+                  />
                 </tr>;
               })}</tbody>
             </table>

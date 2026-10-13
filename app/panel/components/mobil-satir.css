@@ -1,0 +1,39 @@
+/* ============================================================
+   TELEFONDA LİSTE SATIRI (crm/table-cells.tsx → MobilSatir)
+
+   Masaüstünde hücre yok sayılır; telefonda (≤760px) satırın TEK
+   görünümü olur ve öteki hücreler gizlenir. Seçiciler mobil-uygulama.css
+   ile aynı ağırlıkta + bir sınıf: oradaki genel liste kuralları (her
+   hücreyi "etiket değer" parçasına çeviren) bu satırlara uygulanmasın.
+   ============================================================ */
+
+.crm-data-table td.mobil-satir{display:none}
+
+@media (max-width:760px){
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir){display:block;padding:13px 16px 12px}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr:has(>td.mobil-satir)>td:not(.mobil-satir){display:none !important}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr>td.mobil-satir{display:block;width:100%;padding:0;color:var(--muted);font-size:13px;line-height:1.35}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr>td.mobil-satir::before{content:none}
+
+  /* 1. satır: başlık ve durum */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-ust{display:flex;align-items:center;gap:10px;min-width:0}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-baslik{flex:1;min-width:0;overflow:hidden;color:var(--ink);font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;text-decoration:none;text-overflow:ellipsis;white-space:nowrap}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-ust .status-pill{flex:none;min-height:0;padding:2px 8px;font-size:11.5px;white-space:nowrap}
+
+  /* 2. satır: kim — tek satır, taşarsa üç nokta */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-alt{margin-top:2px;overflow:hidden;color:var(--ink-soft);font-size:13.5px;text-overflow:ellipsis;white-space:nowrap}
+
+  /* 3. satır: kısa işaretler; anlam renkte. Ayraç nokta yok: satır kırılınca
+     alt satır bir noktayla başlıyordu — aralık yeterli. */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;margin-top:5px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>span{white-space:nowrap}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="sessiz"]{color:var(--dim)}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="guclu"]{color:var(--ink);font-weight:600}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="bilgi"]{color:var(--ink-soft)}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="uyari"]{color:var(--warning);font-weight:600}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="tehlike"]{color:var(--danger);font-weight:600}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="basari"]{color:var(--success);font-weight:600}
+
+  /* Yeni mesajı olan satır: solda ince vurgu çizgisi. */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody tr.has-alert:has(>td.mobil-satir){box-shadow:inset 3px 0 0 var(--danger)}
+}

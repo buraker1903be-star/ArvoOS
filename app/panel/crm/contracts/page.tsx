@@ -15,7 +15,7 @@ import {
   organizationBrandName,
 } from "@/lib/customer-message-templates";
 import { AKTIF_SOZLESME_GRUPLARI, SOZLESME_GRUP_ADLARI, type SozlesmeGrubu } from "@/lib/sozlesme-grubu";
-import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
+import { CustomerCell, DateCell, LastContactCell, MobilSatir, RepresentativeCell, ServiceCell, kisaTarih } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
@@ -384,6 +384,18 @@ export default async function ContractsPage({ searchParams }: Props) {
                         <DateCell label="Teslim" value={row.due_date} />
                         <LastContactCell contact={lastContacts.get(row.opportunity_id)} />
                         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                        <MobilSatir
+                          href={`/panel/crm/contracts/${row.id}`}
+                          baslik={formatPersonName(row.customer_name) || "—"}
+                          durum={{ etiket: SOZLESME_GRUP_ADLARI[grup], ton: GRUP_TONU[grup] }}
+                          alt={[String(row.request_details?.service_type ?? "").trim() || "Hizmet belirtilmedi", representativeName ? formatPersonName(representativeName) : "Atanmamış"]}
+                          isaretler={[
+                            { metin: money(Number(row.amount), row.currency || "TRY"), ton: "guclu" },
+                            { metin: row.contract_no, ton: "sessiz" },
+                            alt ? { metin: alt, ton: gecikti || grup === "imzali" ? "uyari" : "bilgi" } : null,
+                            row.due_date ? { metin: `Teslim ${kisaTarih(row.due_date)}`, ton: "sessiz" } : null,
+                          ]}
+                        />
                       </tr>
                     );
                   })}

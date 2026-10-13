@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { statusTone } from "@/lib/status-tone";
 import { fetchLastContacts } from "./last-contact";
-import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "./table-cells";
+import { CustomerCell, DateCell, LastContactCell, MobilSatir, RepresentativeCell, ServiceCell, kisaTarih } from "./table-cells";
 import { OtomatikSecim } from "./otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "./istatistik-karti";
 import { oran } from "@/lib/liste-istatistik";
@@ -408,6 +408,17 @@ export default async function RequestsPage({
                         <DateCell label="Teslim" value={item.expected_close_date} />
                         <LastContactCell contact={lastContacts.get(item.id)} />
                         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                        <MobilSatir
+                          href={`/panel/crm/requests/${item.id}`}
+                          baslik={formatPersonName(item.customer_name) || "—"}
+                          durum={{ etiket: requestStageNames[item.stage] ?? item.stage, ton: statusTone(item.stage) }}
+                          alt={[d.service_type?.trim() || "Hizmet belirtilmedi", ownerName ? formatPersonName(ownerName) : "Atanmamış"]}
+                          isaretler={[
+                            { metin: `TLP-${item.id.slice(0, 8).toUpperCase()}`, ton: "sessiz" },
+                            item.expected_close_date ? { metin: `Teslim ${kisaTarih(item.expected_close_date)}`, ton: "bilgi" } : null,
+                            item.stage === "lost" && item.lost_reason ? { metin: item.lost_reason, ton: "sessiz" } : null,
+                          ]}
+                        />
                       </tr>
                     );
                   })}

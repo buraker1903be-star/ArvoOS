@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "../components/mobil-satir.css";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { initials } from "@/lib/table-format";
@@ -97,4 +98,51 @@ export function LastContactCell({ contact }: { contact?: LastContact | null }) {
       )}
     </td>
   );
+}
+
+/*
+  TELEFONDA LİSTE SATIRI (13.10.2026). Masaüstündeki sütunlar telefonda
+  "etiket değer" parçaları hâlinde yan yana diziliyordu: dört beş parça
+  iki üç satıra kırılıyor, hangi sözcüğün etiket hangisinin değer olduğu
+  seçilmiyordu ("Sorumlu Berkcan Ağca İlerleme %5 Termin…"). Kurum
+  sahibinin tarifi: sade, kompakt, kaliteden ödün vermeden.
+
+  Bu hücre satırın telefondaki TEK görünümü: üç düzenli satır —
+  başlık + durum / kim (müşteri · sorumlu) / kısa işaretler (termin,
+  ilerleme, uyarılar; renk anlam taşıyor, etiket yok). Masaüstünde gizli
+  (mobil-satir.css); telefonda satırın öteki hücreleri gizli. Başlık
+  gerçek bağlantı: satırın geri kalanına dokunmak SatirTiklama ile
+  aynı yere gider.
+*/
+export type MobilIsaret = { metin: string; ton?: "sessiz" | "guclu" | "uyari" | "tehlike" | "basari" | "bilgi" };
+
+export function MobilSatir({ href, baslik, durum, alt = [], isaretler = [] }: {
+  href: string;
+  baslik: string;
+  durum?: { etiket: string; ton: string } | null;
+  alt?: (string | null | undefined | false)[];
+  isaretler?: (MobilIsaret | null | undefined | false)[];
+}) {
+  const altMetin = alt.filter(Boolean).join(" · ");
+  const isaretListesi = isaretler.filter((i): i is MobilIsaret => Boolean(i && i.metin));
+  return (
+    <td className="mobil-satir">
+      <div className="ms-ust">
+        <Link className="ms-baslik" href={href}>{baslik}</Link>
+        {durum ? <span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span> : null}
+      </div>
+      {altMetin ? <div className="ms-alt">{altMetin}</div> : null}
+      {isaretListesi.length ? (
+        <div className="ms-isaretler">
+          {isaretListesi.map((i, sira) => <span key={sira} data-ton={i.ton}>{i.metin}</span>)}
+        </div>
+      ) : null}
+    </td>
+  );
+}
+
+/** "2026-10-28" → "28 Eki". Yalnızca gün: saat dilimi kaydırmasın diye öğlen UTC. */
+export function kisaTarih(deger?: string | null) {
+  if (!deger) return null;
+  return new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${deger.slice(0, 10)}T12:00:00Z`));
 }

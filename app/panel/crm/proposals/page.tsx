@@ -18,7 +18,7 @@ import {
 import { TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
 import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
-import { CustomerCell, DateCell, LastContactCell, RepresentativeCell, ServiceCell } from "../table-cells";
+import { CustomerCell, DateCell, LastContactCell, MobilSatir, RepresentativeCell, ServiceCell, kisaTarih } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
@@ -400,6 +400,18 @@ export default async function ProposalsPage({ searchParams }: Props) {
                         <DateCell label="Geçerlilik" value={row.valid_until} />
                         <LastContactCell contact={lastContacts.get(row.opportunity_id)} />
                         <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                        <MobilSatir
+                          href={`/panel/crm/proposals/${row.id}`}
+                          baslik={formatPersonName(row.customer_name) || "—"}
+                          durum={{ etiket: TEKLIF_GRUP_ADLARI[grup], ton: GRUP_TONU[grup] ?? statusTone(row.status) }}
+                          alt={[String(row.request_details?.service_type ?? "").trim() || "Hizmet belirtilmedi", representativeName ? formatPersonName(representativeName) : "Atanmamış"]}
+                          isaretler={[
+                            { metin: money(Number(row.amount), row.currency || "TRY"), ton: "guclu" },
+                            { metin: row.revision_no > 0 ? `${row.proposal_no} · R${row.revision_no}` : row.proposal_no, ton: "sessiz" },
+                            grup === "sent" && row.sent_at ? { metin: waitingLabel(row.sent_at) ?? "", ton: (daysSince(row.sent_at) ?? 0) >= 7 ? "uyari" : "bilgi" } : null,
+                            row.valid_until && grup === "sent" ? { metin: `Geçerli ${kisaTarih(row.valid_until)}`, ton: "sessiz" } : null,
+                          ]}
+                        />
                       </tr>
                     );
                   })}
