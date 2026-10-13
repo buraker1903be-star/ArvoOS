@@ -88,6 +88,9 @@ const SUTUNLAR = [
   "telefon_rakamlari", "hizmet_turu", "temsilci_adi", "stage",
   "estimated_value", "expected_close_date", "source", "notes",
   "request_details", "assigned_employee_id", "lost_reason", "created_at",
+  // Sıralama sütunu SEÇİMDE de olmalı: liste işlevden (crm_talep_suz) okununca
+  // seçilmeyen sütuna göre sıralama PostgREST'te hata veriyor.
+  "updated_at",
 ].join(",");
 type SalesRepresentative = {
   id: string;
@@ -144,25 +147,21 @@ export default async function RequestsPage({
   const desen = aramaDeseni(arama ?? "");
   const telefon = telefonAnahtari(arama ?? "");
 
-  const suzulmus = (sayarak = false) => {
-    let q = sayarak
-      ? supabase.from("crm_talep_liste").select("id", { count: "exact", head: true })
-      : supabase.from("crm_talep_liste").select(SUTUNLAR, { count: "exact" });
-    q = q.eq("organization_id", membership.organization_id);
-    if (desen) {
-      q = q.or([
-        `customer_name.ilike.*${desen}*`,
-        `title.ilike.*${desen}*`,
-        `contact_email.ilike.*${desen}*`,
-        `hizmet_turu.ilike.*${desen}*`,
-        `temsilci_adi.ilike.*${desen}*`,
-        ...(telefon ? [`telefon_rakamlari.ilike.*${telefon}*`] : []),
-      ].join(","));
-    }
-    if (selectedRepresentative === "atanmamis") q = q.is("assigned_employee_id", null);
-    else if (selectedRepresentative) q = q.eq("assigned_employee_id", selectedRepresentative);
-    return q;
+  /*
+    SÜZGEÇ TEK TANIMDA (20261013141922): arama ve temsilci süzgeci
+    veritabanında (crm_talep_suz). Liste bu işlevden okunuyor, şerit
+    sayıları (crm_talep_serit) AYNI işlevin üstünden tek çağrıda —
+    AGENTS.md: şerit listeyle aynı süzgeçten. Eskiden süzgeç burada
+    PostgREST zinciri olarak kuruluyor, şeridin her aşaması için ayrı
+    bir sayım isteği gidiyordu (sayfa başına 8 istek).
+  */
+  const suzgecParametreleri = {
+    p_org: membership.organization_id,
+    p_desen: desen,
+    p_telefon: telefon,
+    p_temsilci: selectedRepresentative || null,
   };
+  const suzulmus = () => supabase.rpc("crm_talep_suz", suzgecParametreleri, { count: "exact" }).select(SUTUNLAR);
 
   /* Aşama süzgeci: "tumu" hepsi, seçili aşama tek, boşsa aktifler. */
   const asamaSuzgeci = (q: ReturnType<typeof suzulmus>) =>
@@ -170,8 +169,6 @@ export default async function RequestsPage({
     : selected ? q.eq("stage", selected)
     : q.in("stage", [...active]);
 
-  const sayim = async (asama: string) => (await suzulmus(true).eq("stage", asama)).count ?? 0;
-  const SERIT_ASAMALARI = [...active, ...ILERLEYEN, "lost"];
 
   // Talep formunun hizmet türleri (Ayarlar → Hizmet türleri); listeyle birlikte okunuyor.
   const hizmetTurleriSozu = kurumHizmetTurleri(supabase, membership.organization_id);
@@ -181,7 +178,7 @@ export default async function RequestsPage({
     { data: employeeData, error: employeeError },
     { data: turData },
     { data: ozetVerisi, error: ozetHatasi },
-    ...seritSayilari
+    { data: seritVerisi, error: seritHatasi },
   ] = await Promise.all([
     asamaSuzgeci(suzulmus())
       .order("updated_at", { ascending: false })
@@ -214,7 +211,7 @@ export default async function RequestsPage({
       p_aktif: [...active],
       p_ilerleyen: [...ILERLEYEN],
     }),
-    ...SERIT_ASAMALARI.map((asama) => sayim(asama)),
+    supabase.rpc("crm_talep_serit", suzgecParametreleri),
   ]);
   if (error) throw new Error("Talepler okunamadı: " + error.message);
   if (stageError)
@@ -222,6 +219,7 @@ export default async function RequestsPage({
   if (employeeError)
     throw new Error("Satış temsilcileri okunamadı: " + employeeError.message);
   if (ozetHatasi) throw new Error("Talep istatistikleri okunamadı: " + ozetHatasi.message);
+  if (seritHatasi) throw new Error("Talep sayıları okunamadı: " + seritHatasi.message);
   const representatives = (employeeData ?? []) as SalesRepresentative[];
   const representativeMap = new Map(
     representatives.map((item) => [item.id, item.full_name]),
@@ -235,7 +233,8 @@ export default async function RequestsPage({
   const sonSayfa = sonSayfaNo(suzgecSayisi, rows.length, sayfaNo);
   /* Şerit sayıları: arama ve temsilci süzgeciyle aynı kümeden, aşama
      süzgecinden bağımsız. */
-  const counts = (code: string) => seritSayilari[SERIT_ASAMALARI.indexOf(code)] ?? 0;
+  const seritSayilari = (seritVerisi ?? {}) as Record<string, number>;
+  const counts = (code: string) => Number(seritSayilari[code] ?? 0);
 
   /* Son temas yalnızca BU SAYFADAKİ kayıtlar için: eskiden aktif
      taleplerin tamamı için okunuyordu ("notsuz" sayacı onu istiyordu),

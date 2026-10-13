@@ -76,20 +76,15 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const haftaSonu = addDaysKey(bugun, 7);
   const desen = aramaDeseni(arama ?? "");
 
-  /* Süzgeçler tek yerden: liste ve sayımlar aynı kümeyi görmeli.
-     Arşiv listede yok (kendi sayfasında), iptal hiçbir yerde. */
-  const suzulmus = (sayarak = false) => {
-    let q = sayarak
-      ? supabase.from("operasyon_is_liste").select("id", { count: "exact", head: true })
-      : supabase.from("operasyon_is_liste").select("*", { count: "exact" });
-    q = q.eq("organization_id", membership.organization_id)
-      .neq("status", "cancelled")
-      .neq("status", "archived");
-    if (desen) q = q.or(`title.ilike.*${desen}*,customer_name.ilike.*${desen}*`);
-    if (selectedOwner === "atanmamis") q = q.is("assigned_employee_id", null);
-    else if (selectedOwner) q = q.eq("assigned_employee_id", selectedOwner);
-    return q;
-  };
+  /*
+    SÜZGEÇ TEK TANIMDA (20261013141922): iptal/arşiv hariç, arama ve
+    sorumlu süzgeci veritabanında (operasyon_is_suz). Liste bu işlevden,
+    şerit sayıları (operasyon_is_serit) AYNI işlevin üstünden tek
+    çağrıda — AGENTS.md: şerit listeyle aynı süzgeçten. Eskiden şeridin
+    her sayısı için ayrı bir sayım isteği gidiyordu (sayfa başına 7).
+  */
+  const suzgecParametreleri = { p_org: membership.organization_id, p_desen: desen, p_sorumlu: selectedOwner || null };
+  const suzulmus = () => supabase.rpc("operasyon_is_suz", suzgecParametreleri, { count: "exact" }).select("*");
 
   /* Durum, termin ve mesaj süzgeçleri. "devam" = devam eden +
      beklemede (genel bakıştaki kartla aynı küme). Termin süzgeçleri
@@ -106,16 +101,11 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     return s;
   };
 
-  const sayim = async (q: ReturnType<typeof suzulmus>) => (await q).count ?? 0;
-
   const [
     { data, error, count: suzgecSayisi },
     { data: employeeData, error: employeeError },
     { data: ozetVerisi, error: ozetHatasi },
-    tumSayi,
-    gecikenSayisi,
-    okunmamisSayisi,
-    ...durumSayilari
+    { data: seritVerisi, error: seritHatasi },
   ] = await Promise.all([
     /* Sıralama: yeni müşteri mesajı olan işler üstte (eskiden bellekte
        sıralanıyordu, yani yalnızca o sayfanın içinde doğruydu). */
@@ -126,20 +116,22 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     supabase.from("hr_employees").select("id,full_name,job_title,user_id")
       .eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
     supabase.rpc("operasyon_is_istatistikleri", { p_organization_id: membership.organization_id }),
-    sayim(suzulmus(true)),
-    sayim(suzulmus(true).neq("status", "completed").lt("due_date", bugun)),
-    sayim(suzulmus(true).gt("okunmamis_mesaj", 0)),
-    ...boardStatuses.map((durum) => sayim(suzulmus(true).eq("status", durum))),
+    supabase.rpc("operasyon_is_serit", { ...suzgecParametreleri, p_bugun: bugun }),
   ]);
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (ozetHatasi) throw new Error("İş istatistikleri okunamadı: " + ozetHatasi.message);
+  if (seritHatasi) throw new Error("İş sayıları okunamadı: " + seritHatasi.message);
+  const serit = (seritVerisi ?? {}) as { tum?: number; geciken?: number; okunmamis?: number; durumlar?: Record<string, number> };
+  const tumSayi = Number(serit.tum ?? 0);
+  const gecikenSayisi = Number(serit.geciken ?? 0);
+  const okunmamisSayisi = Number(serit.okunmamis ?? 0);
 
   const workflows = (data ?? []) as unknown as IsSatiri[];
   const sonSayfa = sonSayfaNo(suzgecSayisi, workflows.length, sayfaNo);
   const employees = (employeeData ?? []) as Employee[];
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee.full_name]));
-  const durumSayisi = (durum: string) => durumSayilari[boardStatuses.indexOf(durum as (typeof boardStatuses)[number])] ?? 0;
+  const durumSayisi = (durum: string) => Number(serit.durumlar?.[durum] ?? 0);
 
   const ozet = (ozetVerisi ?? {}) as {
     toplam?: number; arsiv?: number; son30?: number; onceki30?: number;
