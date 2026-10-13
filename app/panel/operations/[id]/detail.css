@@ -658,3 +658,10 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
   .opd-telefon-btn:active{background:var(--surface-2)}
   .opd-telefon-btn .panel-modal-trigger-rozet{background:var(--danger);color:var(--n-0)}
 }
+
+/* Çalışma türü ve "Türü değiştir" (20261013110047). */
+.opd-tur{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;color:var(--muted);font-size:12.5px}
+.opd-tur b{color:var(--ink-soft);font-weight:var(--fw-semibold)}
+.opd-tur-degistir{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:12.5px;font-weight:var(--fw-medium);cursor:pointer}
+.opd-tur-degistir:hover{text-decoration:underline}
+.opd-tur-bilgi{display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 14px 12px 30px;border-radius:12px;background:var(--surface-2);color:var(--ink-soft);font-size:13.5px;line-height:1.45}

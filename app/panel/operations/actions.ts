@@ -901,3 +901,39 @@ export async function assignStep(...args: Parameters<typeof assignStep__impl>) {
 export async function deleteWorkflow(...args: Parameters<typeof deleteWorkflow__impl>) {
   return runPanelAction(() => deleteWorkflow__impl(...args));
 }
+
+/*
+  İŞİN ÇALIŞMA TÜRÜNÜ DEĞİŞTİRME (20261013110047). İş yanlış türle
+  açıldıysa (makale işine tez listesi) işi görebilen herkes — sorumlu
+  personel dahil — düzeltebilsin. Kurallar veritabanı işlevinde: yetki
+  (arvo_can_access_workflow), tamamlanmış görevler korunur, boş liste
+  ve arşivdeki iş reddedilir.
+*/
+async function changeWorkType__impl(formData: FormData) {
+  const context = await operationContext();
+  const { supabase, membership } = context;
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  const setCode = String(formData.get("step_template_set") ?? "").trim();
+  if (!workflowId || !setCode) throw new Error("Çalışma türü seçilmedi.");
+  const [{ data: is }, { data: tur }] = await Promise.all([
+    supabase.from("operation_workflows").select("id,step_template_set").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle(),
+    supabase.from("organization_step_template_sets").select("code,name").eq("organization_id", membership.organization_id).eq("code", setCode).maybeSingle(),
+  ]);
+  if (!is) throw new Error("İş bulunamadı ya da bu iş için yetkiniz yok.");
+  if (!tur) throw new Error("Seçilen çalışma türü bulunamadı.");
+  if (is.step_template_set === setCode) throw new Error(`İş zaten “${tur.name}” türünde.`);
+
+  const { data, error } = await supabase.rpc("arvo_is_turunu_degistir", { p_workflow: workflowId, p_set: setCode });
+  if (error) throw new Error(error.message);
+  const sonuc = (data ?? {}) as { eklenen?: number; silinen?: number; korunan?: number };
+  await kayitDus(context, {
+    workflowId,
+    action: "work_type",
+    note: `“${tur.name}” türüne çevrildi: ${sonuc.eklenen ?? 0} görev eklendi, ${sonuc.silinen ?? 0} tamamlanmamış görev kaldırıldı${sonuc.korunan ? `, ${sonuc.korunan} tamamlanmış görev korundu` : ""}.`,
+  });
+  revalidateOperations();
+}
+
+export async function changeWorkType(...args: Parameters<typeof changeWorkType__impl>) {
+  return runPanelAction(() => changeWorkType__impl(...args), "Çalışma türü değiştirildi");
+}

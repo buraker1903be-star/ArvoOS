@@ -6,7 +6,7 @@ import { reportActionFailure } from "@/lib/action-diagnostics";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { addWorkflowStep, archiveWorkflow, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { addWorkflowStep, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -92,6 +92,20 @@ export default async function OperationDetailPage({
   const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
   const completedCount = steps.filter((step) => step.is_completed).length;
   const progress = steps.length ? Math.round((completedCount / steps.length) * 100) : 0;
+  /*
+    ÇALIŞMA TÜRÜ VE DEĞİŞTİRME (20261013110047): iş yanlış türle açıldıysa
+    işi görebilen herkes "Türü değiştir"le düzeltir. Türlerin görev sayısı
+    pencerede yazıyor (boş türe çevirmek reddediliyor). Kurum başına en çok
+    12 tür × 40 görev: tümü okunuyor (sınırsız okuma bilerek, küçük).
+  */
+  const [{ data: turSatirlari }, { data: turGorevleri }] = await Promise.all([
+    supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
+    supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
+  ]);
+  const turGorevSayisi = new Map<string, number>();
+  for (const satir of (turGorevleri ?? []) as { set_code: string }[]) turGorevSayisi.set(satir.set_code, (turGorevSayisi.get(satir.set_code) ?? 0) + 1);
+  const calismaTurleri = ((turSatirlari ?? []) as { code: string; name: string }[]).map((t) => ({ ...t, gorev: turGorevSayisi.get(t.code) ?? 0 }));
+  const mevcutTur = calismaTurleri.find((t) => t.code === workflow.step_template_set) ?? null;
   /*
     "Tarihleri dağıt" ÖNİZLEMESİ. Aynı saf fonksiyon sunucu işleminde de
     çalışıyor, yani düğmenin üstünde yazan sayı ile yapılacak iş birebir
@@ -661,6 +675,43 @@ export default async function OperationDetailPage({
             <div>
               <h2>Görevler</h2>
               <small>{completedCount}/{steps.length} tamamlandı{due.late ? " · termin geçti" : ""}</small>
+              {calismaTurleri.length ? (
+                <span className="opd-tur">
+                  Çalışma türü: <b>{mevcutTur?.name ?? "Öntanımlı"}</b>
+                  {!isArchived && calismaTurleri.length > 1 ? (
+                    <PanelDrawer
+                      triggerLabel="Türü değiştir"
+                      triggerClassName="opd-tur-degistir"
+                      kicker={`İŞ · ${formatSubject(workflow.title)}`}
+                      title="Çalışma türünü değiştir"
+                      description="İş yanlış türle açıldıysa görev listesini doğru türün listesine çevirin."
+                    >
+                      <form className="panel-form kayit-formu" action={changeWorkType}>
+                        <input type="hidden" name="workflow_id" value={workflow.id} />
+                        <label className="wide"><span>Yeni çalışma türü<b className="req" aria-hidden="true">*</b></span>
+                          <select name="step_template_set" required defaultValue="">
+                            <option value="" disabled>Seçin</option>
+                            {calismaTurleri.map((t) => (
+                              <option key={t.code} value={t.code} disabled={t.code === workflow.step_template_set || !t.gorev}>
+                                {t.name} · {t.gorev ? `${t.gorev} görev` : "listesi boş"}{t.code === workflow.step_template_set ? " (şu anki)" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <ul className="wide opd-tur-bilgi">
+                          <li><b>{completedCount}</b> tamamlanmış görev olduğu gibi kalır (kimin tiklediği dahil).</li>
+                          <li><b>{steps.length - completedCount}</b> tamamlanmamış görev kaldırılır, yerine yeni türün görevleri gelir; bu görevlerdeki tarih ve sorumlu atamaları da kalkar.</li>
+                          <li>Değişiklik işin kayıt geçmişine yazılır.</li>
+                        </ul>
+                        <div className="wide panel-form-actions kayit-formu-eylem">
+                          <p>Geri almak için türü yeniden değiştirebilirsiniz.</p>
+                          <button className="panel-primary" type="submit">Türü değiştir</button>
+                        </div>
+                      </form>
+                    </PanelDrawer>
+                  ) : null}
+                </span>
+              ) : null}
             </div>
             <strong>%{progress}</strong>
           </header>

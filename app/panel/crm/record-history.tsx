@@ -52,6 +52,7 @@ const ACTION_LABELS: Record<string, string> = {
   step_status: "bir aşamanın durumunu değiştirdi",
   step_due: "bir aşamanın tarihini değiştirdi",
   step_assign: "bir aşamaya sorumlu atadı",
+  work_type: "çalışma türünü değiştirdi",
   step_done: "bir aşamayı tamamladı",
   step_undone: "bir aşamayı yeniden açtı",
   /*
