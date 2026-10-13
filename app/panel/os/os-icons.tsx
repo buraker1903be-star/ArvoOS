@@ -22,6 +22,8 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   building: <><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16" /><path d="M15 9h3a2 2 0 0 1 2 2v10" /><path d="M8 7h3M8 11h3M8 15h3M3 21h18" /></>,
   wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h13a2 2 0 0 1 0 5H3" /><circle cx="16.5" cy="12.5" r=".9" fill="currentColor" stroke="none" /></>,
   check: <><circle cx="12" cy="12" r="8.5" /><path d="m8.5 12.3 2.4 2.4 4.6-5" /></>,
+  /* Sistem sağlığı: nabız çizgisi. */
+  pulse: <path d="M3 12h3.5l2-5.5 3.5 11 2.5-7 1.8 3.5H21" />,
   notifications: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,

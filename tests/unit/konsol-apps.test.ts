@@ -19,23 +19,29 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/"), "home");
   });
 
-  test("Müşteriler uygulaması alt sayfaları YUTMUYOR", () => {
-    assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
-    /* Kiracı dosyası ayrı bir yol değil, kiracı kurulum sayfasının
-       sorgusu (?organization=…); dock yalnızca YOLA bakıyor
-       (usePathname sorguyu taşımıyor). İkisi de Müşteriler'in içinde. */
-    assert.equal(etkin("/panel/platform"), "musteriler");
-    assert.equal(etkin("/panel/platform/"), "musteriler");
+  test("her sayfa doğru uygulamaya düşüyor", () => {
+    /* Konsolda bütün yollar /panel/platform ile başlıyor: Kurulumlar
+       uygulaması, dikkat edilmezse bütün alt sayfaları yutar ve dock
+       sen Finans'tayken bile Kurulumlar'ı vurgular. etkinUygulama en
+       UZUN eşleşeni seçtiği için alt sayfalar kendi uygulamasını
+       buluyor; bu test onu sabitliyor. */
+    assert.equal(etkin("/panel/platform"), "kurulumlar");
+    /* Kiracı dosyası ayrı bir yol değil, bu sayfanın sorgusu
+       (?organization=…); dock yalnızca YOLA bakıyor. */
+    assert.equal(etkin("/panel/platform/"), "kurulumlar");
+    assert.equal(etkin("/panel/platform/licenses"), "kurulumlar");
 
-    assert.equal(etkin("/panel/platform/licenses"), "lisans");
-    assert.equal(etkin("/panel/platform/moduller"), "lisans");
+    assert.equal(etkin("/panel/platform/members"), "kullanicilar");
+    assert.equal(etkin("/panel/platform/musteriler"), "kullanicilar");
+
+    assert.equal(etkin("/panel/platform/moduller"), "urunler");
+    assert.equal(etkin("/panel/platform/subscribers"), "urunler");
 
     assert.equal(etkin("/panel/platform/billing"), "finans");
     assert.equal(etkin("/panel/platform/payments"), "finans");
     assert.equal(etkin("/panel/platform/sozlesmeler"), "finans");
-    assert.equal(etkin("/panel/platform/subscribers"), "finans");
 
-    assert.equal(etkin("/panel/platform/members"), "uyeler");
+    assert.equal(etkin("/panel/platform/saglik"), "saglik");
   });
 
   test("her bölüm gerçek bir adrese gidiyor ve uygulamasının yolunda", () => {
@@ -71,12 +77,14 @@ describe("kurucu konsolu uygulamaları", () => {
     }
   });
 
-  test("dock sade kalıyor: ana ekran dahil en çok beş girdi", () => {
+  test("dock kurum sahibinin tarif ettiği altı uygulama", () => {
     /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi ve dock
-       bir başlatıcıya dönüşmüştü. Yakın işler tek uygulamada toplandı,
-       ayrıntı ikinci kata (bolumler) indi. Sayı yeniden büyümeye
-       başlarsa bu test söyler. */
-    const dockta = uygulamalar.filter((u) => !u.yalnizBaslatici);
-    assert.ok(dockta.length <= 5, `dock'ta ${dockta.length} girdi var`);
+       bir başlatıcıya dönüşmüştü. Liste artık işin ekseninde; yeni bir
+       ekran eklenince dock'a girdi eklemek yerine ilgili uygulamanın
+       bölümlerine inmeli. Sayı büyümeye başlarsa bu test söyler. */
+    assert.deepEqual(
+      uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
+      ["Ana Sayfa", "Kurulumlar", "Kullanıcılar", "Ürünler", "Finans", "Sistem Sağlığı"],
+    );
   });
 });

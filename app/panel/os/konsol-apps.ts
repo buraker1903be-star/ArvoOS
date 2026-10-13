@@ -17,16 +17,19 @@
 import type { OsUygulama } from "./os-apps";
 
 /*
-  DÖRT UYGULAMA + ANA EKRAN (14.10.2026). İlk sürümde konsolun dokuz
-  ekranı dokuz dock girdisiydi; dock bir başlatıcıya dönüştü ve
-  "nereye bakacağım" sorusu kolaylaşmadı, dağıldı. Yakın işler tek
-  uygulamada toplandı ve ayrıntı İKİNCİ KATA indi (bolumler): dock
-  simgesinin üstüne gelince bölümler açılıyor — panelde CRM ve Finans
-  nasıl çalışıyorsa öyle.
+  ALTI UYGULAMA (14.10.2026, kurum sahibinin tarifi): Ana Sayfa,
+  Kurulumlar, Kullanıcılar, Ürünler, Finans, Sistem Sağlığı.
 
-  Üyeler dock'ta değil, başlatıcıda: gün içinde sürekli girilen bir
-  ekran değil, arada bakılan bir dizin. Müşteriler uygulamasının
-  bölümlerinden de ulaşılıyor.
+  Önceki iki deneme yanlış eksendeydi. İlki konsolun dokuz EKRANINI
+  dokuz dock girdisi yaptı: dock bir başlatıcıya dönüştü, "nereye
+  bakacağım" sorusu kolaylaşmadı. İkincisi ekranları yakınlıklarına
+  göre topladı ama gruplar hâlâ ekran adlarıydı (Müşteriler, Finans,
+  Lisans). Bu liste İŞİN eksenine göre: kurucunun soruları "kurulum
+  tamam mı", "kim kullanıyor", "ürünlerde ne var", "para nerede",
+  "bir şey mi bozuldu".
+
+  Ayrıntı İKİNCİ KATTA (bolumler): dock simgesinin üstüne gelince
+  bölümler açılıyor — panelde CRM ve Finans nasıl çalışıyorsa öyle.
 
   Yol öneklerinde sıralama ÖNEMLİ DEĞİL, uzunluk önemli: etkinUygulama
   en uzun eşleşeni seçiyor. "/panel/platform" Müşteriler uygulamasına
@@ -35,38 +38,46 @@ import type { OsUygulama } from "./os-apps";
 */
 export function konsolUygulamalari(): OsUygulama[] {
   return [
-    { key: "home", label: "Ana ekran", href: "/panel", ikon: "home", yollar: [] },
+    { key: "home", label: "Ana Sayfa", href: "/panel", ikon: "home", yollar: [] },
     {
-      key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "building",
-      /* Kiracı dosyası (/panel/platform) da bu uygulamanın içinde: dosya
-         müşteri listesinden açılıyor, ayrı bir uygulama değil. */
-      yollar: ["/panel/platform/musteriler", "/panel/platform"],
+      key: "kurulumlar", label: "Kurulumlar", href: "/panel/platform", ikon: "building",
+      /* Kiracı dosyası ayrı bir yol değil, bu sayfanın sorgusu
+         (?organization=…); lisans ve kota da kurumun kurulumunun parçası. */
+      yollar: ["/panel/platform", "/panel/platform/licenses"],
       bolumler: [
-        { key: "liste", href: "/panel/platform/musteriler", label: "Tüm müşteriler" },
-        { key: "kurumsal", href: "/panel/platform/musteriler?tur=kurumsal", label: "Kurumsal" },
-        { key: "bireysel", href: "/panel/platform/musteriler?tur=bireysel", label: "Bireysel" },
-        { key: "kurulum", href: "/panel/platform", label: "Kiracı kurulumu" },
-        { key: "uyeler", href: "/panel/platform/members", label: "Üyeler" },
+        { key: "kiracilar", href: "/panel/platform", label: "Kiracılar" },
+        { key: "bekleyen", href: "/panel/platform?filtre=kurulum", label: "Kurulum bekleyenler" },
+        { key: "lisans", href: "/panel/platform/licenses", label: "Lisans ve kota" },
+      ],
+    },
+    {
+      key: "kullanicilar", label: "Kullanıcılar", href: "/panel/platform/members", ikon: "crm",
+      yollar: ["/panel/platform/members", "/panel/platform/musteriler"],
+      bolumler: [
+        { key: "uyeler", href: "/panel/platform/members", label: "Tüm üyeler" },
+        { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
+        { key: "bireysel", href: "/panel/platform/musteriler?tur=bireysel", label: "Bireysel aboneler" },
+      ],
+    },
+    {
+      key: "urunler", label: "Ürünler", href: "/panel/platform/moduller", ikon: "apps",
+      /* Ürün planı ve fiyatı (product_plans) ürün yapılandırmasıdır,
+         finans değil: fiyatı belirlemek ürünün kendi ayarı. */
+      yollar: ["/panel/platform/moduller", "/panel/platform/subscribers"],
+      bolumler: [
+        { key: "matris", href: "/panel/platform/moduller", label: "Modül matrisi" },
+        { key: "planlar", href: "/panel/platform/subscribers", label: "Ürün planları" },
       ],
     },
     {
       key: "finans", label: "Finans", href: "/panel/platform/billing", ikon: "finance",
-      yollar: ["/panel/platform/billing", "/panel/platform/payments", "/panel/platform/sozlesmeler", "/panel/platform/subscribers"],
+      yollar: ["/panel/platform/billing", "/panel/platform/payments", "/panel/platform/sozlesmeler"],
       bolumler: [
         { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
         { key: "sozlesmeler", href: "/panel/platform/sozlesmeler", label: "Sözleşme onayları" },
-        { key: "planlar", href: "/panel/platform/subscribers", label: "Abonelik ayarları" },
       ],
     },
-    {
-      key: "lisans", label: "Lisans", href: "/panel/platform/licenses", ikon: "documents",
-      yollar: ["/panel/platform/licenses", "/panel/platform/moduller"],
-      bolumler: [
-        { key: "kota", href: "/panel/platform/licenses", label: "Lisans ve kota" },
-        { key: "moduller", href: "/panel/platform/moduller", label: "Modül matrisi" },
-      ],
-    },
-    { key: "uyeler", label: "Üyeler", href: "/panel/platform/members", ikon: "hr", yollar: ["/panel/platform/members"], yalnizBaslatici: true },
+    { key: "saglik", label: "Sistem Sağlığı", href: "/panel/platform/saglik", ikon: "pulse", yollar: ["/panel/platform/saglik"] },
   ];
 }
