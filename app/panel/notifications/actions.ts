@@ -7,7 +7,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { toFeedItem, type NotificationFeedResult } from "./feed";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
 import { assertYetki } from "@/lib/yetkiler";
-import { bilinenKategoriler, notificationFilters, type NotificationFilter } from "./filters";
+import { bilinenKategoriler, kategoriParametresi, notificationFilters, type NotificationFilter } from "./filters";
 
 // Toplu bildirimlerde (user_id boş) okundu bilgisi kişiye özel ve
 // notification_user_reads tablosunda tutulur; eskiden bildirimin kendi
@@ -203,6 +203,42 @@ export async function markAllNotificationsReadFromDrawer(): Promise<{ ok: true }
   }
 }
 
+/*
+  OKUNANLARI TOPLU KALDIR (13.10.2026). Tek tek "Kaldır" vardı; yüzlerce
+  okunmuş bildirimi temizlemek için her birine basmak gerekiyordu. Seçili
+  başlıktaki (yoksa hepsi) OKUNMUŞ bildirimler kişi için gizlenir
+  (notification_user_dismissals) — silinmez, başkasının listesine
+  dokunmaz; okunmamışlar kalır (tek tek kaldırmayla aynı kural).
+  Bildirimler, listeyle aynı işlevden (arvo_bildirimler) sayfa sayfa
+  okunuyor: kaldırılanlar işlevden düştüğü için her tur baştan okunur.
+*/
+const KALDIRMA_SAYFASI = 500;
+const KALDIRMA_EN_FAZLA_TUR = 40;
+
+async function dismissReadNotifications__impl(formData?: FormData) {
+  const { supabase, userId, organization, isPlatformOwner } = await getPanelContext();
+  const istenen = formData ? String(formData.get("kategori") ?? "") : "";
+  const filtre = notificationFilters.find((aday) => aday.key === istenen) ?? null;
+  for (let tur = 0; tur < KALDIRMA_EN_FAZLA_TUR; tur++) {
+    const { data, error } = await supabase
+      .rpc("arvo_bildirimler", { p_org: organization.id, p_kurucu: isPlatformOwner, ...kategoriParametresi(filtre), p_okunmamis: false })
+      .select("id")
+      .not("read_at", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(KALDIRMA_SAYFASI);
+    if (error) throw new Error(`Bildirimler okunamadı: ${error.message}`);
+    const satirlar = (data ?? []) as { id: string }[];
+    if (!satirlar.length) break;
+    const { error: yazmaHatasi } = await supabase.from("notification_user_dismissals").upsert(
+      satirlar.map((satir) => ({ notification_id: satir.id, user_id: userId })),
+      { onConflict: "notification_id,user_id", ignoreDuplicates: true },
+    );
+    if (yazmaHatasi) throw new Error(`Bildirimler kaldırılamadı: ${yazmaHatasi.message}`);
+    if (satirlar.length < KALDIRMA_SAYFASI) break;
+  }
+  revalidateNotifications();
+}
+
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function markNotificationRead(...args: Parameters<typeof markNotificationRead__impl>) {
   return runPanelAction(() => markNotificationRead__impl(...args));
@@ -212,6 +248,9 @@ export async function markAllNotificationsRead(...args: Parameters<typeof markAl
 }
 export async function deleteReadNotification(...args: Parameters<typeof deleteReadNotification__impl>) {
   return runPanelAction(() => deleteReadNotification__impl(...args));
+}
+export async function dismissReadNotifications(...args: Parameters<typeof dismissReadNotifications__impl>) {
+  return runPanelAction(() => dismissReadNotifications__impl(...args), "Okunan bildirimler kaldırıldı");
 }
 export async function sendManagementAnnouncement(...args: Parameters<typeof sendManagementAnnouncement__impl>) {
   return runPanelAction(() => sendManagementAnnouncement__impl(...args), "Duyuru gönderildi");

@@ -27,8 +27,14 @@ html[data-theme="dark"] .ntf-page [data-tone="brand"]{--tone-fg:var(--brand-200)
 .ntf-suzgec{margin-bottom:var(--sp-2)}
 .ntf-baslik-oku{margin:0 0 0 auto}
 .ntf-akis{padding-right:var(--sp-1)}
-/* Gün gruplarının eksi kenar boşluğu yatay kaydırma çubuğu çıkarıyordu. */
-.os-root main.liste-sayfa .talep-bilgi>.ntf-akis{overflow-x:hidden}
+/* YATAY KAYDIRMA YOK. Gün gruplarının eksi kenar boşluğu kaydırma
+   alanından taşıyor, alta yatay çubuk çıkıyordu; os-shell.css'teki
+   "overflow:auto" aynı özgüllükte olduğu için yalnızca overflow-x yazmak
+   CSS yükleme sırasına kalıyordu. Taşma kaynağında kapatılıyor (grup
+   kayan alanın içinde eksi boşluk almaz), kural da daha özgül. */
+.ntf-akis .ntf-group{margin-left:0;margin-right:0}
+.os-root main.liste-sayfa.ntf-page .talep-bilgi>.ntf-akis{overflow-x:hidden}
+.ntf-toplu-kaldir p{margin:0 0 var(--sp-4);color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.5}
 .ntf-not{margin:var(--sp-2) 0 0;color:var(--muted);font-size:var(--fs-sm)}
 .ntf-akis .liste-sayfalar{margin-top:var(--sp-3)}
 .ntf-baslik{align-items:center;flex-wrap:wrap;margin:var(--sp-2) 0 0}

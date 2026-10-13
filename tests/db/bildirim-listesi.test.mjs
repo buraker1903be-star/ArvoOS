@@ -115,6 +115,21 @@ describe("bildirim listesi", () => {
       assert.deepEqual([Number(duyuru.adet), Number(duyuru.okunmamis)], [2, 1]);
     }));
 
+  test("okunanları toplu kaldırma: kişi kendi okuduklarını gizleyebilir, okunmamışlar kalır", async () =>
+    islem(db, async () => {
+      // actions.ts dismissReadNotifications'ın yaptığı: okunmuşları işlevden oku, kaldırma satırı yaz.
+      await rol(db, "authenticated", BEN);
+      await db.query(`
+        insert into public.notification_user_dismissals (notification_id, user_id)
+        select b.id, auth.uid() from public.arvo_bildirimler($1, false, null, false, false) b
+        where b.read_at is not null
+        on conflict (notification_id, user_id) do nothing`, [KURUM]);
+      assert.deepEqual((await liste()).map((s) => s.id), [N("01"), N("04"), N("05")]);
+      // Toplu duyuruyu öteki kişi hâlâ görüyor.
+      await rol(db, "authenticated", DIGER);
+      assert.deepEqual((await liste(["management_announcement"])).map((s) => s.id), [N("03"), N("04")]);
+    }));
+
   test("anon çağıramaz", async () =>
     islem(db, async () => {
       await rol(db, "anon");

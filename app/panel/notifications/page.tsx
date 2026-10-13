@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
-import { deleteReadNotification, markAllNotificationsRead, markNotificationRead, sendManagementAnnouncement } from "./actions";
+import { PanelModal } from "../components/panel-modal";
+import { deleteReadNotification, dismissReadNotifications, markAllNotificationsRead, markNotificationRead, sendManagementAnnouncement } from "./actions";
 import { describeNotifications, type DescribedNotification, type NotificationRow } from "./describe";
 import { basliklaraDagit, inNotificationFilter, kategoriParametresi, notificationFilters as filters, type BildirimOzeti, type BildirimOzetSatiri } from "./filters";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
@@ -123,6 +124,9 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const visibleUnread = selectedFilter ? ozet.basliklar[selectedFilter.key]?.okunmamis ?? 0 : ozet.okunmamis;
   const duyuruOkunmamis = ozet.basliklar.duyurular?.okunmamis ?? 0;
   const sonSayfa = sonSayfaNo(suzgecSayisi, notifications.length, sayfaNo);
+  // Toplu kaldırma seçili başlığa uygulanır; sayısı özetten (okunmuş = toplam − okunmamış).
+  const baslikSayisi = selectedFilter ? ozet.basliklar[selectedFilter.key] : { adet: ozet.toplam, okunmamis: ozet.okunmamis };
+  const okunmusSayisi = Math.max(0, (baslikSayisi?.adet ?? 0) - (baslikSayisi?.okunmamis ?? 0));
 
   const groups = groupByDay(notifications);
   /* Süzgeçler adreste birlikte duruyor: başlık + okunmamış. Süzgeç
@@ -159,6 +163,21 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       </div>
       <div className="talep-bas-eylem">
         {okunmamisToplam > 0 ? <form action={markAllNotificationsRead}><button className="panel-secondary" type="submit">Tümünü okundu işaretle</button></form> : null}
+        {okunmusSayisi > 0 && !eskiYol ? (
+          <PanelModal
+            triggerLabel="Okunanları kaldır"
+            kicker="TOPLU KALDIRMA"
+            title={`${okunmusSayisi} okunmuş bildirim kaldırılsın mı?`}
+            description={selectedFilter ? `Yalnızca "${selectedFilter.label}" başlığındaki okunmuş bildirimler.` : "Bütün başlıklardaki okunmuş bildirimler."}
+            basaridaKapan
+          >
+            <form action={dismissReadNotifications} className="ntf-toplu-kaldir">
+              {selectedFilter ? <input type="hidden" name="kategori" value={selectedFilter.key} /> : null}
+              <p>Bildirimler yalnızca sizin listenizden kalkar; okunmamışlar ve başka kişilerin listesi olduğu gibi kalır. Geri alınamaz.</p>
+              <div className="panel-form-actions"><button className="panel-danger" type="submit">{okunmusSayisi} bildirimi kaldır</button></div>
+            </form>
+          </PanelModal>
+        ) : null}
         {canAnnounce ? <PanelDrawer triggerLabel="+ Duyuru gönder" triggerClassName="panel-primary" kicker="YÖNETİCİ DUYURUSU" title="Yeni duyuru" description="Tüm personele ya da seçtiğiniz kişiye bildirim olarak gider.">{announcementForm}</PanelDrawer> : null}
       </div>
     </header>
