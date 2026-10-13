@@ -142,7 +142,22 @@ export default async function OperationsPanoPage({
   */
   const turler = (turSatirlari ?? []) as { code: string; name: string; is_default: boolean }[];
   const ontanimliTur = turler.find((tur) => tur.is_default)?.code ?? turler[0]?.code ?? null;
-  const seciliTur = turler.find((tur) => tur.code === istenenTur)?.code ?? ontanimliTur;
+  /*
+    TÜR SEKMELERİ İŞ SAYISIYLA, YALNIZCA İŞİ OLANLAR (13.10.2026, kurum
+    sahibinin isteği: "Tez (12) · Makale (1)"). Eskiden açılır listede
+    kurumun on türünün hepsi vardı; çoğu boş panoya götürüyordu. Seçili
+    tür adresten; yoksa öntanımlı tür (işi varsa), o da boşsa en çok işi
+    olan tür.
+  */
+  const turIsSayisi = new Map<string, number>();
+  for (const kayit of (data ?? []) as Kayit[]) {
+    const kod = kayit.step_template_set ?? ontanimliTur;
+    if (kod) turIsSayisi.set(kod, (turIsSayisi.get(kod) ?? 0) + 1);
+  }
+  const doluTurler = turler.filter((tur) => (turIsSayisi.get(tur.code) ?? 0) > 0);
+  const enKalabalik = [...doluTurler].sort((a, b) => (turIsSayisi.get(b.code) ?? 0) - (turIsSayisi.get(a.code) ?? 0))[0]?.code ?? null;
+  const seciliTur = turler.find((tur) => tur.code === istenenTur)?.code
+    ?? (ontanimliTur && turIsSayisi.get(ontanimliTur) ? ontanimliTur : enKalabalik ?? ontanimliTur);
 
   const tumSablon = (sablonSatirlari ?? []) as (SablonAsamasi & { set_code?: string | null })[];
   const kurumSablonu = seciliTur ? tumSablon.filter((satir) => (satir.set_code ?? "varsayilan") === seciliTur) : tumSablon;
@@ -251,6 +266,16 @@ export default async function OperationsPanoPage({
         </div>
       </header>
 
+      {doluTurler.length > 1 || (seciliTur && !doluTurler.some((t) => t.code === seciliTur)) ? (
+        <nav className="pano-turler" aria-label="Çalışma türleri">
+          {doluTurler.map((tur) => (
+            <Link key={tur.code} href={adres({ tur: tur.code })} className={`pano-tur${tur.code === seciliTur ? " is-active" : ""}`} aria-current={tur.code === seciliTur ? "page" : undefined}>
+              {tur.name}<small>{turIsSayisi.get(tur.code) ?? 0}</small>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
       {/* Özet ve süzgeç tek satırda: solda sayılar, sağda süzgeçler. */}
       <section className="kayit-serit talep-serit pano-serit" aria-label="Pano özeti ve süzgeç">
         <dl>
@@ -267,11 +292,8 @@ export default async function OperationsPanoPage({
           </div>
         </dl>
         <form method="get" action="/panel/operations/pano" className="pano-suzgec" role="search">
-          {turler.length > 1 ? (
-            <OtomatikSecim name="tur" defaultValue={seciliTur ?? ""} className="talep-temsilci-sec" label="Çalışma türü">
-              {turler.map((tur) => <option key={tur.code} value={tur.code}>{tur.name}</option>)}
-            </OtomatikSecim>
-          ) : seciliTur ? <input type="hidden" name="tur" value={seciliTur} /> : null}
+          {/* Tür artık üstteki sekmelerde; süzgeç seçili türü korusun. */}
+          {seciliTur ? <input type="hidden" name="tur" value={seciliTur} /> : null}
           <OtomatikSecim name="sorumlu" defaultValue={seciliSorumlu ?? ""} className="talep-temsilci-sec" label="Sorumlu">
             <option value="">Tüm sorumlular</option>
             <option value="yok">Atanmamış</option>

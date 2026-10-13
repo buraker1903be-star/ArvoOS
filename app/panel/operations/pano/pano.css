@@ -164,3 +164,16 @@
   .pano-suzgec{width:100%}
   .pano-ara{flex:1 1 160px;width:auto}
 }
+
+/* Çalışma türü sekmeleri: yalnızca işi olan türler, iş sayısıyla. */
+.pano-turler{display:flex;flex-wrap:wrap;gap:8px}
+.pano-tur{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:650;text-decoration:none;transition:background-color .2s ease,color .2s ease,border-color .2s ease}
+.pano-tur:hover{border-color:var(--primary);color:var(--ink)}
+.pano-tur small{display:grid;place-items:center;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.pano-tur.is-active{background:var(--ink);border-color:var(--ink);color:var(--n-0)}
+.pano-tur.is-active small{background:color-mix(in srgb,var(--n-0) 22%,transparent);color:var(--n-0)}
+@media (max-width:760px){
+  .pano-turler{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 calc(var(--sp-3) * -1);padding:0 var(--sp-3)}
+  .pano-turler::-webkit-scrollbar{display:none}
+  .pano-tur{flex:none}
+}
