@@ -269,6 +269,19 @@ export async function describeNotifications(
       }
       case "payment_submitted":
         return { ...base, label: "Ödeme", tone: "gold", icon: "card", headline: "Yeni ödeme bildirimi", detail: row.message, actionLabel: "Ödemeyi incele" };
+      case "subscription_reminder": {
+        // Abonelik ödeme hatırlatması (app/api/cron/abonelik-hatirlatma): 7/3/1/0 gün kala ve dolunca.
+        const ton = meta(row, "ton");
+        return {
+          ...base,
+          label: "Abonelik",
+          tone: ton === "tehlike" ? "danger" : ton === "uyari" ? "gold" : "info",
+          icon: "card",
+          headline: row.title || "Abonelik hatırlatması",
+          detail: row.message,
+          actionLabel: "Ödeme yap",
+        };
+      }
       case "payment_approved":
         return { ...base, label: "Ödeme", tone: "success", icon: "card", headline: "Ödemeniz onaylandı", detail: "EFT/Havale ödemeniz onaylandı, lisansınız aktif.", actionLabel: "Faturalara git" };
       case "payment_rejected": {

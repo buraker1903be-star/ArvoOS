@@ -10,7 +10,7 @@ export const notificationFilters = [
   { key: "yorumlar", label: "Yorumlar", categories: ["internal_comment"] },
   { key: "posta", label: "Posta", categories: ["posta_gelen", "posta_esitleme"] },
   { key: "duyurular", label: "Duyurular", categories: ["management_announcement"] },
-  { key: "odemeler", label: "Ödemeler", categories: ["payment_submitted", "payment_approved", "payment_rejected"] },
+  { key: "odemeler", label: "Ödemeler", categories: ["payment_submitted", "payment_approved", "payment_rejected", "subscription_reminder"] },
   { key: "destek", label: "Destek", categories: ["support_message"] },
   { key: "diger", label: "Diğer", categories: [] },
 ] as const;
