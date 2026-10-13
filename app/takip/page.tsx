@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getLoginBrand } from "@/lib/login-branding";
+import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { TakipForm } from "./takip-form";
 import { IconLock, IconSearch, IconShield } from "../durum/[slug]/status-view";
 import "../durum/[slug]/status-lookup.css";
@@ -21,7 +22,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${marka.name} | İş Takibi`,
     description: `${marka.name} işinizin güncel durumunu takip kodunuzla görüntüleyin.`,
-    ...(marka.logo_url ? { icons: { icon: marka.logo_url } } : {}),
+    /* Sekme simgesi kurumun yüklediği KARE simge (lib/kurum-simgesi), logo
+       değil: yatay logo 16×16 kareye sıkışıp bozuk görünüyordu (13.10.2026,
+       takip sayfası). Giriş ve iş durumu sayfaları zaten böyleydi. */
+    icons: kurumSimgeleri(marka),
   };
 }
 
