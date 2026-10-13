@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { planRandevuSync, randevuOrganizationIds, type RandevuSource } from "@/lib/randevu-bridge-plan";
 import type { Row } from "@/lib/arc-bridge-plan";
-import { KURUM_KOPRU_SECIMI } from "@/lib/kurum-kopru-alanlari";
+import { KURUM_KOPRU_SECIMI, lisansKopyasi } from "@/lib/kurum-kopru-alanlari";
 
 // Randevu köprüsü.
 //
@@ -110,7 +110,7 @@ export async function syncRandevuTenants(organizationId?: string): Promise<Rande
     result.organizations = plan.organizations.length;
 
     if (plan.licenses.length) {
-      const { error } = await hedef.from("organization_product_licenses").upsert(withoutActor(plan.licenses), { onConflict: "organization_id,product" });
+      const { error } = await hedef.from("organization_product_licenses").upsert(withoutActor(plan.licenses.map(lisansKopyasi)), { onConflict: "organization_id,product" });
       if (error) result.errors.push("lisanslar: " + error.message);
     }
 

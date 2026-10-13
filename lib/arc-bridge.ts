@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib/arc-bridge-plan";
-import { KURUM_KOPRU_SECIMI } from "@/lib/kurum-kopru-alanlari";
+import { KURUM_KOPRU_SECIMI, lisansKopyasi } from "@/lib/kurum-kopru-alanlari";
 
 // ArvoARC köprüsü.
 //
@@ -126,7 +126,7 @@ export async function syncArcTenants(organizationId?: string): Promise<ArcSyncRe
       if (error) result.errors.push("modüller: " + error.message);
     }
     if (plan.licenses.length) {
-      const { error } = await arc.from("organization_product_licenses").upsert(withoutActor(plan.licenses), { onConflict: "organization_id,product" });
+      const { error } = await arc.from("organization_product_licenses").upsert(withoutActor(plan.licenses.map(lisansKopyasi)), { onConflict: "organization_id,product" });
       if (error) result.errors.push("lisanslar: " + error.message);
     }
 

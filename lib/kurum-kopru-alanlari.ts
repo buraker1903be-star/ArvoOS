@@ -39,3 +39,35 @@ export const KURUM_KOPRU_ALANLARI = KURUM_KOPRU_SECIMI.split(",");
     tracking_show_phases — ArvoOS takip sayfasının görünüm ayarı
 */
 export const ARVOOS_OZEL_KURUM_ALANLARI = ["revision_days", "tracking_show_phases"];
+
+/*
+  LİSANS SATIRININ KARŞIYA GİDEN ALANLARI.
+
+  CANLI HATA (22.09.2026 → 13.10.2026): yukarıdaki kurum hatasının ikizi.
+  Lisanslar `select("*")` ile okunup hedefe olduğu gibi yazılıyordu;
+  20260922090245 ArvoOS'a integrated ve limits sütunlarını eklediği an
+  ArvoARC ve ArvoRandevu'ya lisans yazımı düştü ("Could not find the
+  'integrated' column of 'organization_product_licenses'") ve üç hafta
+  boyunca yalnızca günlükte kaldı: askıya alma, yenileme, deneme bitişi
+  karşıya geçmedi. Kurumlar ve üyelikler ayrı yazıldığı için geçiyordu.
+
+  Okuma yine "*": köprünün kapsamı integrated'a bakıyor (kopruluMu).
+  YAZMADAN önce satır bu listeye indiriliyor (lisansKopyasi).
+*/
+export const LISANS_KOPRU_ALANLARI = [
+  "organization_id", "product", "status", "plan_code", "monthly_fee",
+  "current_period_start", "current_period_end", "trial_ends_at",
+  "suspended_at", "suspension_reason", "updated_by", "created_at", "updated_at",
+];
+
+/*
+  ArvoOS'a özel lisans alanları — hedefte yok, gerek de yok:
+    integrated — köprünün kendisi bunu okuyor (kapsam kararı ArvoOS'ta)
+    limits     — ürün kotaları, ölçümü ArvoOS tarafında
+*/
+export const ARVOOS_OZEL_LISANS_ALANLARI = ["integrated", "limits"];
+
+/** Lisans satırını hedefe yazılacak alanlara indirir. */
+export function lisansKopyasi<T extends Record<string, unknown>>(satir: T): Record<string, unknown> {
+  return Object.fromEntries(LISANS_KOPRU_ALANLARI.filter((alan) => alan in satir).map((alan) => [alan, satir[alan]]));
+}

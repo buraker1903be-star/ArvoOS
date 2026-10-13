@@ -17,9 +17,23 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   ARVOOS_OZEL_KURUM_ALANLARI,
+  ARVOOS_OZEL_LISANS_ALANLARI,
   KURUM_KOPRU_ALANLARI,
   KURUM_KOPRU_SECIMI,
+  LISANS_KOPRU_ALANLARI,
+  lisansKopyasi,
 } from "../../lib/kurum-kopru-alanlari";
+
+/** Canlı şemadaki bir tablonun sütunları. */
+function tabloSutunlari(tablo: string): string[] {
+  const sema = fs.readFileSync(path.join(process.cwd(), "supabase/schema/canli-sema.sql"), "utf8");
+  const bas = sema.indexOf(`create table if not exists public.${tablo} (`);
+  assert.ok(bas >= 0, `${tablo} tablosu şemada bulunamadı`);
+  const govde = sema.slice(bas, sema.indexOf("\n);", bas));
+  return govde.split("\n").slice(1)
+    .map((satir) => satir.match(/^\s+([a-z_]+)\s/)?.[1])
+    .filter((ad): ad is string => Boolean(ad));
+}
 
 /** Canlı şemadaki organizations sütunları. */
 function semaSutunlari(): string[] {
@@ -83,5 +97,32 @@ describe("kurum köprüsü alanları", () => {
       );
       assert.match(kaynak, /from\("organizations"\)\.select\(KURUM_KOPRU_SECIMI\)/);
     }
+  });
+});
+
+/*
+  Lisanslar için aynı koruma: 20260922090245 integrated ve limits
+  sütunlarını ekleyince lisans eşitlemesi üç hafta sessizce düştü.
+*/
+describe("lisans köprüsü alanları", () => {
+  test("lisans tablosundaki her sütun ya taşınır ya ArvoOS'a özeldir", () => {
+    const bilinen = new Set([...LISANS_KOPRU_ALANLARI, ...ARVOOS_OZEL_LISANS_ALANLARI]);
+    const siniflandirilmamis = tabloSutunlari("organization_product_licenses").filter((s) => !bilinen.has(s));
+    assert.deepEqual(
+      siniflandirilmamis,
+      [],
+      `organization_product_licenses'a yeni sütun eklenmiş: ${siniflandirilmamis.join(", ")} — ` +
+        "lib/kurum-kopru-alanlari.ts içinde ya LISANS_KOPRU_ALANLARI'na ya da ARVOOS_OZEL_LISANS_ALANLARI'na ekleyin.",
+    );
+  });
+
+  test("taşınan her lisans alanı şemada gerçekten var", () => {
+    const sema = new Set(tabloSutunlari("organization_product_licenses"));
+    assert.deepEqual(LISANS_KOPRU_ALANLARI.filter((a) => !sema.has(a)), []);
+  });
+
+  test("hedefe yazılan satırda ArvoOS'a özel alan kalmıyor", () => {
+    const kopya = lisansKopyasi({ organization_id: "o", product: "arc", status: "active", integrated: true, limits: { x: 1 }, bilinmeyen: 1 });
+    assert.deepEqual(Object.keys(kopya).sort(), ["organization_id", "product", "status"]);
   });
 });
