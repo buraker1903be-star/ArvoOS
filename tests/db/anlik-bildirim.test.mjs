@@ -4,7 +4,7 @@
   Sınananlar:
   1. MEŞRU yol: kişiye özel bildirim açılınca, kişinin cihazı ve Vault
      sırları varsa sunucuya TEK haber gidiyor (adres, sır, bildirim kimliği).
-  2. Kuruma yayın (user_id boş), cihazı olmayan kişi, Vault'ta sır yok:
+  2. Cihazı olmayan kişi, Vault'ta sır yok (kuruma yayın 20261013100546'dan beri gider):
      haber gitmiyor.
   3. Haber verilemezse (pg_net hata fırlatıyor) bildirimin KENDİSİ yine
      yazılıyor — tetikleyici hiçbir durumda bildirimi düşürmez.
@@ -30,6 +30,7 @@ const MIGRATIONLAR = [
   "20261013071812_anlik_bildirim.sql",
   "20261013081415_anlik_bildirim_posta.sql",
   "20261013090223_anlik_bildirim_tercihleri.sql",
+  "20261013100546_bildirim_metinleri.sql",
 ];
 
 const KURUM = "00000000-0000-4000-8000-00000000e701";
@@ -94,9 +95,20 @@ describe("meşru yol", () => {
 });
 
 describe("haber gitmeyen durumlar", () => {
-  test("kuruma yayın (user_id boş) push'a gitmez", async () =>
+  /* Eskiden kuruma yayın push'a hiç gitmiyordu; kurum sahibinin kuralı
+     (13.10.2026, 20261013100546): bildirimlere düşen her şey telefona da
+     düşmeli. Cihazı olan etkin bir üye varsa haber gider. */
+  test("kuruma yayın, cihazı olan etkin üye varsa haber verir", async () =>
     islem(db, async () => {
       await sirlariKur();
+      await bildirimAc(null);
+      assert.equal((await cagrilar()).length, 1);
+    }));
+
+  test("kuruma yayın, cihazlı üye kurumdan ayrıldıysa haber vermez", async () =>
+    islem(db, async () => {
+      await sirlariKur();
+      await db.exec(`update public.organization_memberships set is_active = false where user_id = '${PERSONEL}'`);
       await bildirimAc(null);
       assert.equal((await cagrilar()).length, 0);
     }));
@@ -172,12 +184,11 @@ describe("gelen posta (kişi kendisi açarsa)", () => {
       assert.equal(c[0].body.id, rows[0].id);
     }));
 
-  test("anahtar açık olsa da posta dışındaki yayın (eşitleme durumu) gitmez", async () =>
+  test("posta dışındaki yayın (eşitleme durumu) posta anahtarından bağımsız, genel kuralla gider", async () =>
     islem(db, async () => {
       await sirlariKur();
-      await postaAc();
       await bildirimAc(null, "posta_esitleme");
-      assert.equal((await cagrilar()).length, 0);
+      assert.equal((await cagrilar()).length, 1);
     }));
 });
 

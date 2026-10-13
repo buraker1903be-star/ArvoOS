@@ -118,7 +118,8 @@ export async function describeNotifications(
           label: "Müşteri mesajı",
           tone: "info",
           icon: "bubble",
-          headline: `${contract?.customer || "Müşteri"} mesaj gönderdi`,
+          // Kurum sahibinin tarifi (13.10.2026): başlık müşterinin adı, altında mesajın kendisi.
+          headline: contract?.customer || "Müşteri",
           detail: body ? quote(body) : "Dosya takip sayfasından size yeni bir mesaj bıraktı.",
           context: join(contract?.no, contract?.service),
           actionLabel: "Mesajı aç",
@@ -147,8 +148,8 @@ export async function describeNotifications(
           label: "Talep ataması",
           tone: "brand",
           icon: "person",
-          headline: "Size yeni bir talep atandı",
-          detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Müşteri"} — ${formatSubject(opportunity.title) || "Yeni talep"}` : row.message,
+          headline: "Yeni Talep Ataması",
+          detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Müşteri"} müşterisinin talebi size atanmıştır.` : row.message,
           context: assigner ? `Atayan: ${assigner}` : null,
           actionLabel: "Talebi aç",
         };
@@ -176,7 +177,7 @@ export async function describeNotifications(
           label: "Operasyon ataması",
           tone: "success",
           icon: "briefcase",
-          headline: "Size yeni bir iş atandı",
+          headline: "Yeni İş Ataması",
           detail: workflow ? [formatSubject(workflow.title), formatPersonName(workflow.customer_name)].filter(Boolean).join(" — ") : row.message,
           context: assigner ? `Atayan: ${assigner}` : null,
           actionLabel: "İşi aç",
@@ -224,11 +225,26 @@ export async function describeNotifications(
           tone: accepted ? "success" : "danger",
           icon: accepted ? "check" : "bubble",
           headline: accepted ? `${customer} teklifi onayladı` : `${customer} teklifi reddetti`,
+          // Müşterinin adı ve teklif numarası birlikte (13.10.2026, kurum sahibinin tarifi).
           detail: accepted
-            ? "Müşteri teklifi takip ekranından ya da teklif sayfasından kendisi onayladı."
-            : "Müşteri teklifi reddetti; imzalanmamış sözleşme iptal edildi.",
+            ? `Müşteri ${customer}, ${meta(row, "proposal_no") ?? "teklif"} numaralı teklifi onayladı.`
+            : `Müşteri ${customer}, ${meta(row, "proposal_no") ?? "teklif"} numaralı teklifi reddetti; imzalanmamış sözleşme iptal edildi.`,
           context: meta(row, "proposal_no"),
           actionLabel: accepted ? "Sözleşmeyi aç" : "Kaydı aç",
+        };
+      }
+      case "contract_signed": {
+        // arvo_sozlesme_imza_bildirimi (20261013100546): eskiden imzanın hiç bildirimi yoktu.
+        const customer = formatPersonName(meta(row, "customer_name")) || "Müşteri";
+        return {
+          ...base,
+          label: "Sözleşme",
+          tone: "success",
+          icon: "check",
+          headline: `${customer} sözleşmeyi imzaladı`,
+          detail: row.message,
+          context: meta(row, "contract_no"),
+          actionLabel: "Sözleşmeyi aç",
         };
       }
       case "contract_addendum_accepted":
