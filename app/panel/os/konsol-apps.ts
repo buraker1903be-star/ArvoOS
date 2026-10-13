@@ -64,13 +64,15 @@ export function konsolUygulamalari(): OsUygulama[] {
       ],
     },
     {
-      key: "urunler", label: "Ürünler", href: "/panel/platform/moduller", ikon: "apps",
-      /* Ürün planı ve fiyatı (product_plans) ürün yapılandırmasıdır,
-         finans değil: fiyatı belirlemek ürünün kendi ayarı. */
-      yollar: ["/panel/platform/moduller", "/panel/platform/subscribers"],
+      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "apps",
+      /* Ürün planı ve fiyatı ürün yapılandırmasıdır, finans değil:
+         fiyatı belirlemek ürünün kendi ayarı, tahsilat Finans'ın. */
+      yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/subscribers"],
       bolumler: [
+        { key: "performans", href: "/panel/platform/urunler", label: "Ürünler" },
+        { key: "fiyat", href: "/panel/platform/urunler?bolum=fiyat", label: "Fiyatlandırma" },
         { key: "matris", href: "/panel/platform/moduller", label: "Modül matrisi" },
-        { key: "planlar", href: "/panel/platform/subscribers", label: "Ürün planları" },
+        { key: "planlar", href: "/panel/platform/subscribers", label: "Bireysel abone planları" },
       ],
     },
     {
