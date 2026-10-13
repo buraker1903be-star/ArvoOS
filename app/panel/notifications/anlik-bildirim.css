@@ -35,7 +35,9 @@
 .anlik-adimlar b{font-weight:var(--fw-semibold)}
 .os-root .anlik-ekle{width:100%;min-height:40px}
 
-/* Anahtarlar: satır + iOS tarzı anahtar */
+/* Anahtarlar: satır + iOS tarzı anahtar. Ölçüler .os-root ile: telefonun
+   genel dokunma kuralı (panel-mobile.css, düğmeye en az 44px) anahtarı
+   yuvarlak bir topa çeviriyordu. */
 .anlik-anahtarlar{margin:0;padding:0;list-style:none;border:1px solid var(--line-soft);border-radius:var(--r-md)}
 .anlik-anahtarlar li{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-3)}
 .anlik-anahtarlar li+li{border-top:1px solid var(--line-soft)}
@@ -43,7 +45,7 @@
 .anlik-anahtarlar span{display:flex;flex-direction:column;gap:1px;min-width:0}
 .anlik-anahtarlar b{color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .anlik-anahtarlar small{color:var(--muted);font-size:var(--fs-micro)}
-.anlik-anahtar{
+.os-root .anlik-panel .anlik-anahtar{
   position:relative;flex:none;width:40px;height:24px;min-height:0;padding:0;border:0;border-radius:var(--r-pill);
   background:var(--n-300);cursor:pointer;transition:background-color .2s ease
 }
@@ -64,7 +66,7 @@
 .anlik-cihaz-metin b{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .anlik-cihaz-metin em{flex:none;padding:1px 7px;border-radius:var(--r-pill);background:var(--info-soft);color:var(--info);font-size:11px;font-style:normal;font-weight:var(--fw-semibold)}
 .anlik-cihaz-metin small{color:var(--muted);font-size:var(--fs-micro)}
-.anlik-kaldir{
+.os-root .anlik-panel .anlik-kaldir{
   flex:none;display:grid;place-items:center;width:30px;height:30px;min-height:0;padding:0;border:0;border-radius:8px;
   background:transparent;color:var(--muted);cursor:pointer;transition:background-color .15s ease,color .15s ease
 }
@@ -80,7 +82,7 @@
    başlar — yalnızca başlık ve durum rozeti; ok ile açılır. */
 @media (max-width:1200px){
   .os-root .ntf-izgara>.anlik-panel{order:-1}
-  .anlik-katla{
+  .os-root .anlik-panel .anlik-katla{
     display:grid;place-items:center;flex:none;width:36px;height:36px;min-height:0;padding:0;border:0;border-radius:10px;
     background:var(--surface-2);color:var(--ink-soft);cursor:pointer
   }
