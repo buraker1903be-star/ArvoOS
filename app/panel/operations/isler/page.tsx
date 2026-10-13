@@ -52,8 +52,10 @@ type IsSatiri = {
   contact_phone: string | null; contact_email: string | null;
 };
 
-export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: string }> }) {
-  const { arama, durum, termin, mesaj, sorumlu, sayfa } = await searchParams;
+export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: string; sira?: string }> }) {
+  const { arama, durum, termin, mesaj, sorumlu, sayfa, sira } = await searchParams;
+  // Termin sıralaması (?sira=termin): en yakın termin en üstte.
+  const terminSirasi = sira === "termin";
   const selectedStatus = (statusFilters as readonly string[]).includes(durum ?? "") ? durum! : "";
   const selectedDue = (dueFilters as readonly string[]).includes(termin ?? "") ? termin! : "";
   const onlyUnread = mesaj === "yeni";
@@ -108,10 +110,16 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     { data: seritVerisi, error: seritHatasi },
   ] = await Promise.all([
     /* Sıralama: yeni müşteri mesajı olan işler üstte (eskiden bellekte
-       sıralanıyordu, yani yalnızca o sayfanın içinde doğruydu). */
-    digerSuzgecler(suzulmus())
-      .order("okunmamis_mesaj", { ascending: false })
-      .order("created_at", { ascending: false })
+       sıralanıyordu, yani yalnızca o sayfanın içinde doğruydu). Termin
+       sütunundan sıralanınca en yakın (en eski) termin başta, terminsiz
+       işler sonda; sıralama sunucuda, yani bütün sayfalar boyunca doğru. */
+    (terminSirasi
+      ? digerSuzgecler(suzulmus())
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false })
+      : digerSuzgecler(suzulmus())
+        .order("okunmamis_mesaj", { ascending: false })
+        .order("created_at", { ascending: false }))
       .range(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1]),
     supabase.from("hr_employees").select("id,full_name,job_title,user_id")
       .eq("organization_id", membership.organization_id).eq("employment_status", "active").order("full_name"),
@@ -179,7 +187,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
 
   /* Süzgeç değişince sayfa başa dönüyor; numara yalnızca
      sayfalayıcıdan taşınıyor. */
-  const adres = (ek: { durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: number }) => {
+  const adres = (ek: { durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: number; sira?: string }) => {
     const q = new URLSearchParams();
     const d = ek.durum ?? selectedStatus;
     const t = ek.termin ?? selectedDue;
@@ -190,6 +198,9 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     if (t) q.set("termin", t);
     if (m) q.set("mesaj", m);
     if (s) q.set("sorumlu", s);
+    // Sıralama süzgeç değişince de korunur; yalnızca açıkça "" verilince kalkar.
+    const r = ek.sira ?? (terminSirasi ? "termin" : "");
+    if (r) q.set("sira", r);
     if (ek.sayfa && ek.sayfa > 1) q.set("sayfa", String(ek.sayfa));
     const qs = q.toString();
     return qs ? `/panel/operations/isler?${qs}` : "/panel/operations/isler";
@@ -258,11 +269,14 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
           <Link href={adres({ durum: "", termin: "", mesaj: "" })} className={!selectedStatus && !selectedDue && !onlyUnread ? "is-active" : undefined}>Tümü <small>{tumSayi}</small></Link>
           <Link href={adres({ durum: "devam", termin: "", mesaj: "" })} className={selectedStatus === "devam" ? "is-active" : undefined}>Devam + bekleyen <small>{durumSayisi("in_progress") + durumSayisi("blocked")}</small></Link>
           <Link href={adres({ durum: "", termin: "yaklasan", mesaj: "" })} className={selectedDue === "yaklasan" ? "is-active" : undefined}>7 gün içinde</Link>
+          {/* Mobilde tablo başlığı yok; termin sıralaması buradan da açılıp kapanır. */}
+          <Link href={adres({ sira: terminSirasi ? "" : "termin" })} className={terminSirasi ? "is-active" : undefined} aria-pressed={terminSirasi}>Termine göre ↑</Link>
           {/* Sorumlu süzgeci seçince uygulanır; durum, termin ve mesaj süzgeçleri korunur. */}
           <form action="/panel/operations/isler" className="talep-ara talep-ara--secimli" role="search">
             {selectedStatus ? <input type="hidden" name="durum" value={selectedStatus} /> : null}
             {selectedDue ? <input type="hidden" name="termin" value={selectedDue} /> : null}
             {onlyUnread ? <input type="hidden" name="mesaj" value="yeni" /> : null}
+            {terminSirasi ? <input type="hidden" name="sira" value="termin" /> : null}
             <OtomatikSecim name="sorumlu" defaultValue={selectedOwner} className="talep-temsilci-sec" label="Sorumlu">
               <option value="">Tüm sorumlular</option>
               <option value="atanmamis">Atanmamış</option>
@@ -275,7 +289,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
         {workflows.length ? (
           <div className="talep-tablo">
             <table className="crm-data-table" data-cols="operations">
-              <thead><tr><th>İş</th><th>Müşteri</th><th className="crm-col-rep">Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th className="crm-col-date">Termin</th><th className="crm-col-contact">Son temas</th><th></th></tr></thead>
+              <thead><tr><th>İş</th><th>Müşteri</th><th className="crm-col-rep">Sorumlu</th><th>Öncelik</th><th>Durum</th><th>İlerleme</th><th className="crm-col-date" aria-sort={terminSirasi ? "ascending" : "none"}><Link className="liste-sirala" href={adres({ sira: terminSirasi ? "" : "termin" })} title={terminSirasi ? "Varsayılan sıralamaya dön" : "En yakın termin üstte"}>Termin{terminSirasi ? " ↑" : " ↕"}</Link></th><th className="crm-col-contact">Son temas</th><th></th></tr></thead>
               {/* Sıralama sunucuda: yeni mesajlı işler üstte. Eskiden
                   bellekte sıralanıyordu, yani yalnızca o sayfanın
                   içinde doğruydu. */}
