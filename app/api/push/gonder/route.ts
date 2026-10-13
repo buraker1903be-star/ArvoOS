@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bildirimYuku } from "@/lib/anlik-bildirim";
 import { cihazlaraGonder, postaGorenler, pushYapilandi, type PushCihazi } from "@/lib/anlik-bildirim-gonder";
@@ -33,7 +33,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ESKI = 10 * 60 * 1000;
 
 export async function POST(istek: Request) {
-  if (!yetkili(istek)) return Response.json({ hata: "yetkisiz" }, { status: 401 });
+  if (!yetkili(istek)) {
+    /* Şifrenin KENDİSİ değil, uzunluğu ve özetinin başı: Vault ile Vercel
+       uyuşmadığında hangisinin farklı olduğu kayıttan okunabilsin
+       (13.10.2026'da iki taraf saatlerce tahminle karşılaştırıldı). */
+    const ozet = (metin: string) => `${metin.length}:${createHash("sha256").update(metin).digest("hex").slice(0, 12)}`;
+    const gelen = (istek.headers.get("authorization") ?? "").replace(/^Bearer /, "").trim();
+    console.warn("[push] yetkisiz haber", { gelen: ozet(gelen), beklenen: ozet(process.env.PUSH_WEBHOOK_SECRET?.trim() ?? "") });
+    return Response.json({ hata: "yetkisiz" }, { status: 401 });
+  }
   if (!pushYapilandi()) return Response.json({ atlandi: "anahtar yok" });
   const admin = createAdminClient();
   if (!admin) return Response.json({ atlandi: "sunucu anahtarı yok" });
