@@ -18,6 +18,10 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   whatsapp: <><path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5a8.4 8.4 0 1 1 15.4-4.4Z" /><path d="M9 8.8c.2 3 2.6 5.6 5.7 6l1.1-1.4-1.8-1-.9.8a3.6 3.6 0 0 1-1.9-1.9l.8-.9-1-1.8Z" /></>,
   settings: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
   apps: <><rect x="4" y="4" width="6" height="6" rx="1.5" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><rect x="4" y="14" width="6" height="6" rx="1.5" /><rect x="14" y="14" width="6" height="6" rx="1.5" /></>,
+  /* Kurucu konsolu: kiracı (bina), tahsilat (cüzdan), onay (tik). */
+  building: <><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16" /><path d="M15 9h3a2 2 0 0 1 2 2v10" /><path d="M8 7h3M8 11h3M8 15h3M3 21h18" /></>,
+  wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h13a2 2 0 0 1 0 5H3" /><circle cx="16.5" cy="12.5" r=".9" fill="currentColor" stroke="none" /></>,
+  check: <><circle cx="12" cy="12" r="8.5" /><path d="m8.5 12.3 2.4 2.4 4.6-5" /></>,
   notifications: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,

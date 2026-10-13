@@ -4,7 +4,6 @@ import { getPanelContext } from "@/lib/panel-context";
 import { tenantTheme } from "@/lib/tenant-theme";
 import { getLoginBrand } from "@/lib/login-branding";
 import { logout } from "./actions";
-import { PanelBreadcrumb } from "./panel-breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
 import { NavProgress } from "./nav-progress";
 import { GlobalActionFeedback } from "./global-action-feedback";
@@ -13,13 +12,12 @@ import { PresenceHeartbeat } from "./presence-heartbeat";
 import { MessagesDrawer } from "./messages-drawer";
 import { NotificationsDrawer } from "./notifications-drawer";
 import { loadMessagesInit, mesajlarBaslangici } from "./messages/load-messages";
-import { SidebarToggle } from "./sidebar-toggle";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { hostFromHeaders, isManagementHost, MANAGEMENT_HOST } from "@/lib/site/host-rules";
-import { KonsolNavigasyon } from "./konsol-navigasyon";
 import { formatPersonName } from "@/lib/format-name";
 import { osUygulamalari } from "./os/os-apps";
 import { OsDock } from "./os/os-dock";
+import { konsolUygulamalari } from "./os/konsol-apps";
 import { OsGeri } from "./os/os-geri";
 import { OsBolumSeridi } from "./os/os-bolum-seridi";
 import { OsUygulamaKabugu } from "./os/os-uygulama-kabugu";
@@ -354,9 +352,6 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
   // (buton, aktif menü, rozet, odak halkası) o renge döner. Seçmediyse
   // panel-tokens.css içindeki fallback ArvoOS yeşilini kullanır.
   const tenantStyle = isPlatformOrg ? {} : tenantTheme(organization.brand_color);
-  // Daraltılmış menü tercihi (sidebar-toggle.tsx yazar): ilk çizimde doğru genişlik.
-  const navCollapsed = (await cookies()).get("arvo_nav")?.value === "collapsed";
-
   const agreementBanner = pendingAgreement
     ? <Link href={`/panel/confidentiality/${pendingAgreement.id}`} className="panel-agreement-banner"><span>Gizlilik sözleşmeniz imza bekliyor.</span><b>İncele ve İmzala →</b></Link>
     : null;
@@ -440,37 +435,63 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     </main></div>;
   }
 
-  /* Buradan sonrası yalnızca kurucu konsolu (yonetim.arvo-os.com): marka
-     platformun, çalışma alanı seçici ve mesaj çekmecesi yok. */
-  return <div className={navCollapsed ? "panel-root is-nav-collapsed" : "panel-root"} style={tenantStyle}><main className="panel-frame">
+  /*
+    KURUCU KONSOLU (yonetim.arvo-os.com) — 13.10.2026'dan beri AYNI
+    İŞLETİM SİSTEMİ KABUĞU.
+
+    Eskiden burası sol menü + breadcrumb çubuğuyla çiziliyordu ve gerekçe
+    "orası tek bir kurumun çalışma alanı değil" idi. Ama kabuğun kiracıya
+    özel parçaları (çalışma alanı seçici, mesaj çekmecesi, ekip varlığı,
+    posta) zaten tek tek eleniyor; geriye kalan dock mantığının konsolda
+    çalışmaması için bir sebep yoktu. Kurum sahibi gün içinde iki kabuk
+    arasında gidip geliyor ve birinde dock, ötekinde sol menü arıyordu.
+
+    Konsolda OLMAYANLAR ve sebepleri:
+      - çalışma alanı seçici: konsol tek bir kurumun paneli değil,
+      - mesaj ve posta: kurucunun kiracı yazışmaları buraya ait değil,
+      - ekip varlığı (OsCanli): konsolda ekip yok, platform var,
+      - bölüm şeridi: konsol uygulamalarının alt bölümü yok.
+    Kalanlar panelle birebir aynı bileşen.
+  */
+  const konsolUygulamalariListesi = konsolUygulamalari();
+  const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
+
+  return <div className="panel-root os-root os-konsol"><main className="panel-frame os-frame">
     <PresenceHeartbeat />
     <NavProgress />
     <GlobalActionFeedback />
     <FlashToast />
-    <aside id="panel-sidebar" className="panel-sidebar">
-      <Link className="panel-brand" href="/panel">
-        <i>◇</i>
-        <span><b>Kurucu Konsolu</b><small>PLATFORM YÖNETİMİ</small></span>
+    <header className="os-bar">
+      <OsGeri uygulamalar={konsolUygulamalariListesi} />
+      <Link className="os-brand" href="/panel" aria-label="Kurucu Konsolu ana ekran">
+        <i aria-hidden="true">◇</i>
+        <span><b>Kurucu Konsolu</b><OsUygulamaAdi uygulamalar={konsolUygulamalariListesi} /></span>
       </Link>
-      <KonsolNavigasyon uygulamaAdresi={`https://${DEFAULT_APP_HOST}/panel`} />
-      <div className="panel-sidebar-footer">
-        <SidebarToggle initialCollapsed={navCollapsed} />
-        <div className="panel-security"><i>✓</i><span><b>Güvenli oturum</b><small>Kurumsal veriler korunuyor</small></span></div>
-        <form className="panel-logout" action={logout}><button type="submit">↪ <span>Çıkış yap</span></button></form>
-      </div>
-    </aside>
-    <section className="panel-workspace">
-      <header className="panel-topbar">
-        <PanelBreadcrumb brandName={isPlatformOwner ? "Kurucu Merkezi" : brandName} />
-        <div className="panel-top-actions">
-          <div className="panel-quick-actions" aria-label="Hızlı erişim">
-            <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
-          </div>
+      <OsAramaDugmesi />
+      <div className="os-bar-right">
+        <OsSaat />
+        <div className="os-bar-actions">
+          <NotificationsDrawer unreadCount={notificationUnreadCount ?? 0} />
           <ThemeToggle />
-          <div className="panel-user"><span>{brandName[0]}</span><p><b>{roleName}</b><small>{organization.plan_code.toUpperCase()}</small></p></div>
         </div>
-      </header>
+        <OsMenuKapat />
+        <OsKullaniciMenusu
+          ad={konsolAdim} rol="Kurucu" kurum="ArvoOS" paket="PLATFORM"
+          workspaces={[]} aktifKurumId={organization.id} cikis={logout}
+          ekibeGizli={false} gorunurluk={cevrimiciGorunurlugu}
+        />
+      </div>
+    </header>
+    <section className="os-workspace">
       <div className="panel-content">{agreementBanner}{children}</div>
     </section>
+    {/* "Diğer uygulamalar": konsoldan kiracı paneline dönüş. Eskiden sol
+        menünün dibinde bir bağlantıydı. */}
+    <OsDock
+      uygulamalar={konsolUygulamalariListesi}
+      digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
+    />
+    <OsUygulamaKabugu />
+    <OsKomutPaleti uygulamalar={konsolUygulamalariListesi} cikis={logout} />
   </main></div>;
 }

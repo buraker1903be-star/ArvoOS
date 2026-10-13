@@ -20,7 +20,9 @@ import { uygulamaBolumleri, type Bolum, type BolumErisimi } from "./os-bolumler"
 
 export type OsIkon =
   | "home" | "crm" | "operations" | "finance" | "hr" | "documents"
-  | "posta" | "messages" | "settings" | "apps" | "notifications" | "whatsapp";
+  | "posta" | "messages" | "settings" | "apps" | "notifications" | "whatsapp"
+  /* Kurucu konsolunun uygulamaları (os/konsol-apps.ts). */
+  | "building" | "wallet" | "check";
 
 export type OsUygulama = {
   key: string;
