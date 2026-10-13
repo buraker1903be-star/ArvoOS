@@ -22,6 +22,7 @@ import { osUygulamalari } from "./os/os-apps";
 import { OsDock } from "./os/os-dock";
 import { OsGeri } from "./os/os-geri";
 import { OsBolumSeridi } from "./os/os-bolum-seridi";
+import { OsUygulamaKabugu } from "./os/os-uygulama-kabugu";
 import { OsCanli, OsSaat, OsUygulamaAdi } from "./os/os-status";
 import { OsAramaDugmesi, OsKomutPaleti } from "./os/os-command-palette";
 import { OsKullaniciMenusu } from "./os/os-user-menu";
@@ -345,6 +346,8 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
         <div className="panel-content">{agreementBanner}{children}</div>
       </section>
       <OsDock uygulamalar={uygulamalar} digerUygulamalar={digerUygulamalar} />
+      {/* Uygulama kabuğu: çevrimdışı ekranı, yeni sürüm uyarısı, ana ekrana ekleme önerisi. */}
+      <OsUygulamaKabugu />
       <OsKomutPaleti uygulamalar={uygulamalar} cikis={logout} />
       <OsCanliSayfa organizationId={membership.organization_id} />
       {/* Ctrl+K'daki müşteri araması bu pencereyi açar; yalnızca CRM'i görene. */}

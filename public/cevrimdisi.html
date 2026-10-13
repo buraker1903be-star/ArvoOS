@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Bağlantı yok</title>
+<!--
+  Uygulama kabuğunun (public/sw.js) bağlantı yokken gösterdiği ekran.
+  Hiçbir dış dosyaya bağlı değil: ağ yokken de eksiksiz açılmalı.
+  Kuruma özel marka yok — bu dosya her kurumda aynı ve önbellekte.
+-->
+<style>
+  :root{color-scheme:light dark;--zemin:#f2f2f7;--yuzey:#fff;--yazi:#0b1b2e;--soluk:#64748b;--vurgu:#0b2545}
+  @media (prefers-color-scheme:dark){:root{--zemin:#0b1220;--yuzey:#111a2b;--yazi:#e8edf5;--soluk:#94a3b8;--vurgu:#c9d6ea}}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:24px max(24px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:var(--zemin);color:var(--yazi);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:360px;width:100%;padding:32px 24px;border-radius:20px;background:var(--yuzey);text-align:center;box-shadow:0 10px 30px rgba(11,27,46,.08)}
+  .simge{width:56px;height:56px;margin:0 auto 16px;display:grid;place-items:center;border-radius:16px;background:color-mix(in srgb,var(--vurgu) 10%,transparent);color:var(--vurgu)}
+  h1{margin:0 0 8px;font-size:20px}
+  p{margin:0 0 24px;color:var(--soluk);font-size:15px}
+  button{width:100%;min-height:48px;border:0;border-radius:12px;background:var(--vurgu);color:var(--yuzey);font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <div class="simge" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5a15 15 0 0 1 20 0"/><path d="M5 12a10 10 0 0 1 14 0"/><path d="M8.5 15.5a5 5 0 0 1 7 0"/><path d="M12 19h.01"/><path d="M3 3l18 18"/></svg>
+  </div>
+  <h1>Bağlantı yok</h1>
+  <p>İnternet bağlantınızı kontrol edin. Bağlantı gelince kaldığınız yerden devam edebilirsiniz.</p>
+  <button type="button" onclick="location.reload()">Tekrar dene</button>
+</main>
+<script>
+  // Bağlantı geri gelince kendiliğinden yeniden dene.
+  window.addEventListener("online", function () { location.reload(); });
+</script>
+</body>
+</html>
