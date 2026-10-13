@@ -17,11 +17,15 @@ export const dynamic = "force-dynamic";
   Çok eski bir bildirim (10 dakika) yeniden gönderilmez.
 */
 function yetkili(istek: Request) {
-  const sir = process.env.PUSH_WEBHOOK_SECRET;
+  /* Baş ve sondaki boşluk yok sayılır: şifre Vault'a ve Vercel'e elle
+     yapıştırılıyor; araya giren bir satır sonu her haberi 401'e
+     düşürüyordu ve "Deneme gönder" (bu yolu kullanmıyor) çalıştığı için
+     fark edilmiyordu (13.10.2026). */
+  const sir = process.env.PUSH_WEBHOOK_SECRET?.trim();
   const baslik = istek.headers.get("authorization") ?? "";
   if (!sir || !baslik.startsWith("Bearer ")) return false;
   const beklenen = Buffer.from(sir);
-  const gelen = Buffer.from(baslik.slice("Bearer ".length));
+  const gelen = Buffer.from(baslik.slice("Bearer ".length).trim());
   return beklenen.length === gelen.length && timingSafeEqual(beklenen, gelen);
 }
 
