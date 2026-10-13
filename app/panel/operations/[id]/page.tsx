@@ -81,12 +81,23 @@ export default async function OperationDetailPage({
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
   const organizationId = membership.organization_id;
-  const { data: workflowData, error: workflowError } = await supabase
+  /*
+    SIRALI ADIMLAR AZALTILDI (13.10.2026, hızlandırma). Sayfa veritabanına
+    yedi SIRALI adımda gidiyordu; her adım canlıda ~0,2 sn. Birbirine bağlı
+    olmayan okumalar aynı adımda: çalışma türleri işle birlikte; dosya
+    önizleme adresleri, yükleyen adları ve WhatsApp/posta yazışmaları
+    birlikte (aşağıda).
+  */
+  const [{ data: workflowData, error: workflowError }, { data: turSatirlari }, { data: turGorevleri }] = await Promise.all([
+    supabase
     .from("operation_workflows")
     .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,revision_days,delivered_at,revision_until,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
-    .single();
+    .single(),
+    supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
+    supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
+  ]);
   if (workflowError || !workflowData) notFound();
   const workflow = workflowData as Workflow;
   const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
@@ -98,10 +109,6 @@ export default async function OperationDetailPage({
     pencerede yazıyor (boş türe çevirmek reddediliyor). Kurum başına en çok
     12 tür × 40 görev: tümü okunuyor (sınırsız okuma bilerek, küçük).
   */
-  const [{ data: turSatirlari }, { data: turGorevleri }] = await Promise.all([
-    supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
-    supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
-  ]);
   const turGorevSayisi = new Map<string, number>();
   for (const satir of (turGorevleri ?? []) as { set_code: string }[]) turGorevSayisi.set(satir.set_code, (turGorevSayisi.get(satir.set_code) ?? 0) + 1);
   const calismaTurleri = ((turSatirlari ?? []) as { code: string; name: string }[]).map((t) => ({ ...t, gorev: turGorevSayisi.get(t.code) ?? 0 }));
@@ -240,19 +247,38 @@ export default async function OperationDetailPage({
   if (!ekipKurulumEksik && ekipDosyaSonucu.error) throw new Error("Ekip dosyaları okunamadı: " + ekipDosyaSonucu.error.message);
   type EkipDosyaSatiri = { id: string; file_name: string; mime_type: string; size_bytes: number; note: string | null; created_at: string; uploaded_by: string | null; storage_path: string };
   const ekipDosyaSatirlari = (ekipKurulumEksik ? [] : ekipDosyaSonucu.data ?? []) as EkipDosyaSatiri[];
-  const { data: imzaliAdresler } = ekipDosyaSatirlari.length
-    ? await supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
-    : { data: [] };
-  const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
+  /*
+    WhatsApp ve Postalar (2026-10): müşteri sayfası, talep ve sözleşme
+    detayıyla aynı kural (crm/musteri-yazismalari.tsx). Yalnızca işin bir
+    sözleşmesi varsa: müşterinin numarası ve adresi oradan geliyor.
+    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), posta
+    yazışmalarını ortak kutuyu görebilen (posta.gor). Okuma burada
+    BAŞLATILIYOR, aşağıda bekleniyor: önizleme adresleri ve adlarla aynı anda.
+  */
+  const yazismaFirsati = opportunityResult.data as Opportunity | null;
+  const whatsappGorur = Boolean(contract?.opportunity_id) && crmVar;
+  const postaGorur = Boolean(contract?.opportunity_id) && izin("posta.gor");
+  const yazismaSozu = Promise.all([
+    whatsappGorur ? musteriWhatsapp(organizationId, yazismaFirsati?.contact_phone) : Promise.resolve({ numara: null, mesajlar: [] }),
+    postaGorur && contract?.opportunity_id
+      ? musteriPostalari(supabase, organizationId, { talepIdleri: [contract.opportunity_id], eposta: yazismaFirsati?.contact_email })
+      : Promise.resolve([]),
+  ]);
   /* Dosyayı yükleyen ve görevi tamamlayan kişilerin adları tek sorguda
      (görevi kimin tiklediği satırın altında yazıyor, 13.10.2026). */
   const uploaderIds = [...new Set([
     ...[...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by),
     ...steps.map((step) => (step.is_completed ? step.completed_by : null)),
   ].filter((value): value is string => Boolean(value)))];
-  const { data: uploaderData } = uploaderIds.length
-    ? await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
-    : { data: [] };
+  const [{ data: imzaliAdresler }, { data: uploaderData }] = await Promise.all([
+    ekipDosyaSatirlari.length
+      ? supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
+      : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+    uploaderIds.length
+      ? supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
   const uploaderNames = new Map(((uploaderData ?? []) as { user_id: string; full_name: string }[]).map((row) => [row.user_id, formatPersonName(row.full_name)]));
   const downloadCounts = new Map<string, number>();
   for (const row of (portalDownloadsResult.data ?? []) as { file_id: string | null }[]) {
@@ -312,21 +338,7 @@ export default async function OperationDetailPage({
     AKIŞ SEKMELERİ. Açılışta hangisinin seçili olacağını adres ya da
     okunmamış mesaj söylüyor; yoksa ekibin kendi yorumları.
   */
-  /*
-    WhatsApp ve Postalar (2026-10): müşteri sayfası, talep ve sözleşme
-    detayıyla aynı kural (crm/musteri-yazismalari.tsx). Yalnızca işin bir
-    sözleşmesi varsa: müşterinin numarası ve adresi oradan geliyor.
-    WhatsApp'ı CRM modülü olan görür (WhatsApp ekranının kuralı), posta
-    yazışmalarını ortak kutuyu görebilen (posta.gor).
-  */
-  const whatsappGorur = Boolean(contract?.opportunity_id) && crmVar;
-  const postaGorur = Boolean(contract?.opportunity_id) && izin("posta.gor");
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await Promise.all([
-    whatsappGorur ? musteriWhatsapp(organizationId, opportunity?.contact_phone) : Promise.resolve({ numara: null, mesajlar: [] }),
-    postaGorur && contract?.opportunity_id
-      ? musteriPostalari(supabase, organizationId, { talepIdleri: [contract.opportunity_id], eposta: opportunity?.contact_email })
-      : Promise.resolve([]),
-  ]);
+  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar] = await yazismaSozu;
   const sekmeler = [
     unreadCustomerMessages ? `Mesajlar · ${unreadCustomerMessages}` : "Mesajlar",
     ...(contract?.opportunity_id ? ["Yorumlar"] : []),
