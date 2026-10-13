@@ -1068,3 +1068,8 @@ dialog.plt-pencere {
   background: var(--danger-soft);
   padding: 14px; border-radius: 10px;
 }
+
+/* Kurulumlar → tamamlananlar: deneme günü tek satırda (rozet, gün, düğme).
+   Ayrı satırlara düşünce tablo satırı iki kat uzuyordu (14.10.2026). */
+.plt-deneme{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.plt-deneme input[type="number"]{width:64px}

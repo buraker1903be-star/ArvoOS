@@ -25,6 +25,7 @@ describe("kurucu konsolu uygulamaları", () => {
        sen Finans'tayken bile Kurulumlar'ı vurgular. etkinUygulama en
        UZUN eşleşeni seçtiği için alt sayfalar kendi uygulamasını
        buluyor; bu test onu sabitliyor. */
+    assert.equal(etkin("/panel/platform/kurulumlar"), "kurulumlar");
     assert.equal(etkin("/panel/platform"), "kurulumlar");
     /* Kiracı dosyası ayrı bir yol değil, bu sayfanın sorgusu
        (?organization=…); dock yalnızca YOLA bakıyor. */
