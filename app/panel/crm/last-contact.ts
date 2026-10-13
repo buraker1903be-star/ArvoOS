@@ -70,6 +70,27 @@ export async function fetchLastContacts(
   if (!opportunityIds.length) return result;
 
   /*
+    TEK VE HAFİF ÇAĞRI (20261013120208): talep başına yalnızca sayı ve en
+    son yorum, yazar adıyla. Aşağıdaki eski yol bütün yorumları gövdeleriyle
+    okuyordu; her yorum satırında çalışan RLS işlevi yüzünden canlıda
+    saniyeler sürüyordu. İşlev yoksa (migration uygulanmadı) eski yol.
+  */
+  const { data: ozet, error: ozetHatasi } = await supabase.rpc("arvo_son_temaslar", { p_org: organizationId, p_firsatlar: opportunityIds });
+  if (!ozetHatasi && Array.isArray(ozet)) {
+    for (const satir of ozet as { opportunity_id: string; sayi: number; son_tarih: string; son_govde: string | null; yazar: string | null }[]) {
+      const author = formatPersonName(satir.yazar) || "";
+      const body = (satir.son_govde ?? "").replace(/\s+/g, " ").trim();
+      result.set(satir.opportunity_id, {
+        count: Number(satir.sayi),
+        at: satir.son_tarih,
+        authorInitials: author ? initials(author) : "--",
+        preview: body.length > 60 ? body.slice(0, 60).trimEnd() + "…" : body,
+      });
+    }
+    return result;
+  }
+
+  /*
     Yorumlar ve kurumun panel hesabı olan personeli AYNI ANDA okunur; yazar
     adlarının neredeyse hepsi oradan çıkıyor. Eskiden yorumlar okunup
     bittikten sonra yazarlar için ikinci bir tur atılıyordu (talepler
