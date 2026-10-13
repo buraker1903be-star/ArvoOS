@@ -165,8 +165,10 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
     setMesaj(null);
     const abonelik = await (await kayitBul())?.pushManager.getSubscription();
     if (!abonelik) { setDurum("kapali"); return; }
-    const sonuc = await anlikBildirimDene(abonelik.endpoint);
-    setMesaj(sonuc.ok ? { ton: "ok", metin: "Deneme gönderildi; birkaç saniye içinde gelmeli." } : { ton: "hata", metin: sonuc.hata });
+    const sonuc = await anlikBildirimDene();
+    setMesaj(sonuc.ok
+      ? { ton: "ok", metin: sonuc.toplam > 1 ? `Deneme ${sonuc.gonderilen} cihazınıza gönderildi (bu cihaz dahil); birkaç saniye içinde gelmeli.` : "Deneme gönderildi; birkaç saniye içinde gelmeli." }
+      : { ton: "hata", metin: sonuc.hata });
   });
 
   if (gorunum === "serit") {

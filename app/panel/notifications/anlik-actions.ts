@@ -61,23 +61,28 @@ export async function anlikBildirimKapat(endpoint: string): Promise<Sonuc> {
   return { ok: true };
 }
 
-/** "Deneme gönder": yalnızca bu cihaza, bildirim kaydı açmadan. */
-export async function anlikBildirimDene(endpoint: string): Promise<Sonuc> {
+/*
+  "Deneme gönder": kişinin bu kurumdaki BÜTÜN cihazlarına, bildirim kaydı
+  açmadan. Eskiden yalnızca düğmeye basılan cihaza gidiyordu: kurum
+  sahibi masaüstünden basıp telefonunu bekledi (13.10.2026).
+*/
+export async function anlikBildirimDene(): Promise<{ ok: true; gonderilen: number; toplam: number } | { ok: false; hata: string }> {
   if (!pushYapilandi()) return { ok: false, hata: KAPALI };
-  const { userId, organization } = await getPanelContext();
+  const { userId, organization, membership } = await getPanelContext();
   const admin = createAdminClient();
   if (!admin) return { ok: false, hata: KAPALI };
-  const { data } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failure_count")
-    .eq("endpoint", endpoint).eq("user_id", userId).maybeSingle();
-  if (!data) return { ok: false, hata: "Bu cihaz kayıtlı değil; önce bildirimleri açın." };
-  const { gonderilen } = await cihazlaraGonder(admin, [data as PushCihazi], {
+  const { data, error } = await admin.from("push_subscriptions").select("id,endpoint,p256dh,auth,failure_count")
+    .eq("user_id", userId).eq("organization_id", membership.organization_id);
+  if (error) return { ok: false, hata: "Cihazlar okunamadı: " + error.message };
+  if (!data?.length) return { ok: false, hata: "Kayıtlı cihazınız yok; önce bildirimleri açın." };
+  const { gonderilen } = await cihazlaraGonder(admin, data as PushCihazi[], {
     // Kurumun kendi adı: AkademikMerkez kullanıcısının kilit ekranında "ArvoOS" yazıyordu.
     baslik: `${organizationBrandName({ slug: organization.slug, displayName: organization.display_name, legalName: organization.name })} bildirimleri açık`,
     metin: "İş atandığında, müşteri yazdığında ve size yorum geldiğinde burada haber vereceğiz.",
     adres: "/panel/notifications",
     etiket: "arvo-deneme",
   });
-  return gonderilen ? { ok: true } : { ok: false, hata: "Deneme gönderilemedi; cihaz kaydı yenilenmeli. Kapatıp yeniden açın." };
+  return gonderilen ? { ok: true, gonderilen, toplam: data.length } : { ok: false, hata: "Deneme gönderilemedi; cihaz kaydı yenilenmeli. Kapatıp yeniden açın." };
 }
 
 /*
