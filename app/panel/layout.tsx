@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { tenantTheme } from "@/lib/tenant-theme";
@@ -66,6 +66,27 @@ import { kurumSimgeleri } from "@/lib/kurum-simgesi";
   yönlendirme demek ve sayfa daha çizilmeden yönlendirme yapmak,
   "giriş yapılmadı" ekranını metadata'dan tetiklemek olurdu.
 */
+/*
+  PANELDE YAKINLAŞTIRMA KAPALI (13.10.2026, kurum sahibinin isteği).
+  Telefonda panel uygulama gibi kullanılıyor: iki parmakla ya da çift
+  dokunuşla sayfa büyüyünce düzen kayıyor, alt çubuk ekran dışına
+  çıkıyordu. Android Chrome bu satırı uyguluyor; iOS Safari erişilebilirlik
+  gereği "user-scalable=no"yu YOK SAYIYOR — orada hareketi
+  os-uygulama-kabugu.tsx engelliyor. Yalnızca panel: müşteriye giden
+  teklif/sözleşme belgesi ve pazarlama sitesi yakınlaştırılabilir kalır.
+*/
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#050c1a" },
+  ],
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const marka = await getLoginBrand();
   if (!marka) {

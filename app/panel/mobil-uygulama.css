@@ -11,6 +11,14 @@
    ve aynı ağırlıktaki kuralları ezerdi.
    ============================================================ */
 
+/* Çift dokunuşla büyütme kapalı (dokunmatik ekranların hepsinde, tablet
+   dahil — bu yüzden genişlik sorgusunun dışında). İki parmakla büyütme:
+   panel/layout.tsx viewport + os-uygulama-kabugu.tsx. Yan etkisi iyi:
+   tarayıcı çift dokunuşu beklemediği için dokunuşlar 300 ms gecikmesiz. */
+@media (pointer:coarse){
+  html:has(.os-root),html:has(.os-root) body{touch-action:manipulation}
+}
+
 @media (max-width:760px){
 
   /* ---------- LİSTELER: iki satırlık kompakt satır ----------
