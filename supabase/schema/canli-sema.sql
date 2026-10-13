@@ -1281,7 +1281,9 @@ create table if not exists public.organization_licenses (
   updated_by uuid,
   created_at timestamp with time zone not null,
   updated_at timestamp with time zone not null,
-  monthly_fee bigint
+  monthly_fee bigint,
+  extra_user_fee bigint not null,
+  extra_user_cap integer not null
 );
 
 create table if not exists public.organization_memberships (
@@ -13928,6 +13930,10 @@ alter table public.organization_licenses alter column ai_credits_used set defaul
 
 alter table public.organization_licenses alter column created_at set default now();
 
+alter table public.organization_licenses alter column extra_user_cap set default 10;
+
+alter table public.organization_licenses alter column extra_user_fee set default 24900;
+
 alter table public.organization_licenses alter column license_status set default 'trialing'::text;
 
 alter table public.organization_licenses alter column module_limits set default '{}'::jsonb;
@@ -14897,6 +14903,10 @@ alter table public.organization_invitations add constraint organization_invitati
 alter table public.organization_licenses add constraint organization_licenses_ai_credit_limit_check CHECK ((ai_credit_limit >= 0));
 
 alter table public.organization_licenses add constraint organization_licenses_ai_credits_used_check CHECK ((ai_credits_used >= 0));
+
+alter table public.organization_licenses add constraint organization_licenses_extra_user_cap_check CHECK ((extra_user_cap >= 0));
+
+alter table public.organization_licenses add constraint organization_licenses_extra_user_fee_check CHECK ((extra_user_fee >= 0));
 
 alter table public.organization_licenses add constraint organization_licenses_license_status_check CHECK ((license_status = ANY (ARRAY['trialing'::text, 'active'::text, 'past_due'::text, 'suspended'::text, 'canceled'::text])));
 
