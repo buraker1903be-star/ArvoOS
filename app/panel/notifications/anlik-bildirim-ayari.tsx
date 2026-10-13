@@ -57,7 +57,13 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       const anaEkranda = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
       const destek = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
       let yeni: Durum;
-      if (!destek) yeni = ios && !anaEkranda ? "ios-ekle" : "desteksiz";
+      /* iPhone'da Safari SEKMESİ push alamaz (Apple yalnızca ana ekrana
+         eklenmiş uygulamaya izin veriyor). Eskiden yalnızca PushManager'ın
+         varlığına bakılıyordu; yeni iOS sürümleri onu sekmede de tanımlıyor,
+         kart "Bildirimleri aç" gösteriyor, dokununca hiçbir şey olmuyordu
+         (13.10.2026, kurum sahibinin telefonu). */
+      if (ios && !anaEkranda) yeni = "ios-ekle";
+      else if (!destek) yeni = "desteksiz";
       else if (Notification.permission === "denied") yeni = "engelli";
       else {
         const kayit = await kayitBul();
@@ -89,7 +95,12 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
     if (!genelAnahtar) { setMesaj({ ton: "hata", metin: "Anlık bildirim bu kurulumda henüz açılmadı." }); return; }
     try {
       const izin = await Notification.requestPermission();
-      if (izin !== "granted") { setDurum(izin === "denied" ? "engelli" : "kapali"); return; }
+      if (izin !== "granted") {
+        setDurum(izin === "denied" ? "engelli" : "kapali");
+        // Eskiden sessizdi: izin penceresi kapatılınca kişi neden bir şey olmadığını bilmiyordu.
+        if (izin !== "denied") setMesaj({ ton: "hata", metin: "Bildirim izni verilmedi. Yeniden deneyip çıkan pencerede İzin Ver'e dokunun." });
+        return;
+      }
       const kayit = await kayitBul();
       if (!kayit) { setDurum("desteksiz"); return; }
       const abonelik = (await kayit.pushManager.getSubscription())
@@ -153,7 +164,7 @@ export function AnlikBildirimAyari({ genelAnahtar, gorunum = "kart" }: { genelAn
       <div className="anlik-kart-metin">
         <h2>Bu cihazda anlık bildirim <span className="status-pill" data-tone={durum === "acik" ? "success" : durum === "engelli" ? "danger" : "neutral"}>{durum === "acik" ? "Açık" : durum === "yukleniyor" ? "…" : "Kapalı"}</span></h2>
         <p>
-          {durum === "ios-ekle" ? <>iPhone&apos;da bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır: Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>, sonra uygulamayı ana ekrandan açıp buradan bildirimleri açın.</>
+          {durum === "ios-ekle" ? <>iPhone&apos;da bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır: Safari&apos;de <b>Paylaş</b> → <b>Ana Ekrana Ekle</b>, sonra uygulamayı ana ekrandaki simgeden açın. Ana ekran uygulaması Safari'den ayrı çalıştığı için bir kez yeniden giriş yapmanız gerekir; ardından Bildirimler sayfasından bildirimleri açın.</>
             : durum === "engelli" ? <>Bildirim izni bu tarayıcıda engellenmiş. Tarayıcının site ayarlarından bu siteye bildirim izni verip sayfayı yenileyin.</>
             : durum === "desteksiz" ? <>Bu tarayıcı anlık bildirimi desteklemiyor ya da uygulama kabuğu henüz yüklenmedi. Güncel Chrome, Edge, Firefox ya da Safari ile deneyin.</>
             : durum === "acik" ? <>Size iş ya da talep atandığında, müşteri yazdığında, size yorum geldiğinde ve adım termininiz yaklaştığında bu cihaz panel kapalıyken de haber verir.</>
