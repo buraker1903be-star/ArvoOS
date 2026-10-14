@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { isSubscriberProduct, productName } from "@/lib/products";
+import { BIREYSEL_PLAN_KODU } from "@/lib/paket-ucreti";
 
 // Bireysel abonelerin denetimi. Fiyat ve deneme süresi ürün geneli
 // (product_plans); askıya alma ve dönem tek tek abonede.
@@ -17,7 +18,11 @@ async function updateProductPlan__impl(formData: FormData) {
   const product = String(formData.get("product") ?? "").trim();
   if (!isSubscriberProduct(product)) throw new Error("Geçerli bir ürün seçin.");
 
-  const rawFee = String(formData.get("individual_monthly_fee") ?? "").trim();
+  /* Ücreti fiyat listesinden gelen ürünün (ArvoLab) tutarı burada
+     yazılmıyor; formda alanı da yok. Eski satırdaki tutar köprüde
+     artık okunmuyor. */
+  const listeden = product in BIREYSEL_PLAN_KODU;
+  const rawFee = listeden ? "" : String(formData.get("individual_monthly_fee") ?? "").trim();
   const fee = rawFee ? Math.round(Number(rawFee) * 100) : null;
   if (rawFee && (!Number.isSafeInteger(fee) || (fee ?? 0) <= 0)) throw new Error("Bireysel aylık ücret pozitif bir tutar olmalı.");
 
@@ -27,7 +32,7 @@ async function updateProductPlan__impl(formData: FormData) {
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await supabase.from("product_plans").upsert({
     product,
-    individual_monthly_fee: fee,
+    ...(listeden ? {} : { individual_monthly_fee: fee }),
     trial_days: trialDays,
     updated_by: userData.user?.id ?? null,
     updated_at: new Date().toISOString(),

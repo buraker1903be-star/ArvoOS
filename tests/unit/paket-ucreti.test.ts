@@ -66,3 +66,13 @@ describe("ücret sapması", () => {
     assert.equal(ucretSapmasi("enterprise", 1_200_000).durum, "teklif");
   });
 });
+
+test("konsoldan yayımlanan fiyat koddaki değerin yerine geçiyor", async () => {
+  const { fiyatlariBirlestir } = await import("@/lib/site/fiyat-kaynagi");
+  const fiyatlar = fiyatlariBirlestir([{ kod: "arvoos-baslangic", aylikKurus: 249_000 }]);
+  assert.equal(paketListeFiyatiKurus("starter", fiyatlar), 249_000);
+  // Yayımlanmamış basamak koddaki değerinde.
+  assert.equal(paketListeFiyatiKurus("professional", fiyatlar), paketListeFiyatiKurus("professional"));
+  assert.equal(ucretSapmasi("starter", 249_000, fiyatlar).durum, "liste");
+  assert.equal(ucretSapmasi("starter", paketListeFiyatiKurus("starter"), fiyatlar).durum, "farkli");
+});

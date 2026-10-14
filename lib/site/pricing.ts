@@ -95,11 +95,16 @@ export type Plan = {
   kurum eskiden 6.990 ödüyordu, şimdi 5.990 + 5 ek kullanıcı = 7.235:
   üstte gelir korunuyor, girişte eşik 2.990'dan 1.990'a iniyor.
 
-  UYARI: ek kullanıcı kalemi (ADD_ONS) henüz FATURALANMIYOR. Panelde
-  `davetEngeli` limiti aşan daveti yalnızca durduruyor; ölçüm ve fatura
-  satırı yok. Bu merdiven ancak o kalem gerçekten işlediğinde tamamlanır,
-  yoksa altıncı kullanıcıyı isteyen müşteriye liste 249 TL derken sistem
-  "paketi yükselt" diyor.
+  Ek kullanıcı kalemi 13.10.2026'dan beri gerçekten işliyor: ödeme
+  bağlantısı dahil sayıyı aşan her etkin kullanıcı için kalemi ekliyor
+  (lib/license-checkout). Birim bedel kiracının lisansında
+  (extra_user_fee); kurulumda "liste fiyatını uygula" onu da bu listeden
+  yazıyor.
+
+  TUTAR KONSOLDAN DA DEĞİŞİR (14.10.2026): buradaki rakamlar varsayılan;
+  Kurucu Konsolu → Ürünler → Fiyatlandırma'da yayımlanan tutar üstüne
+  yazar (lib/site/fiyat-kaynagi). Basamak eklemek, adı ve birimi hâlâ
+  burada.
 
   ArvoARC'ın Ölçek basamağı 5.990'dan 3.990'a indi: ödeme, kargo,
   pazaryeri ve stok senkronu YOK (bu iddialar arc.ts'te yasak), yani 5

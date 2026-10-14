@@ -1,14 +1,15 @@
 // llms.txt (llmstxt.org) ve llms-full.txt içerikleri. URL'ler yalnızca
 // ROUTES / PRODUCT_APPS / COMPANY'den türetilir. Uydurma istatistik, müşteri,
 // deneme süresi veya ödül YAZMAYIN. Fiyat 30.09.2026'dan beri yayımlanıyor
-// ama ELLE YAZILMAZ: tutarlar lib/site/pricing.ts'ten üretilir (fiyatListesi).
+// ama ELLE YAZILMAZ: tutarlar konsolda yayımlanan listeden, yoksa lib/site/pricing.ts'ten üretilir (fiyatListesi).
 // Eskiden "fiyat yazmayın" kuralı vardı; liste fiyatı olmadığı içindi. ArvoOS özellikleri panelde
 // arayüzü olan (doğrulanmış) özelliklerle sınırlıdır: stok, satın alma,
 // sevkiyat, e-fatura, banka mutabakatı, pazaryeri entegrasyonu YOK.
 // ArvoARC: e-ticaret ve mağazalar için self servis ürün + sipariş yönetimi;
 // entegrasyon/ödeme/kargo iddiası YOK.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, type Locale, type PageId } from "./routes";
-import { PRICED_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi, yillikKurus } from "./pricing";
+import { PRICED_PRODUCTS, YILLIK_BEDAVA_AY, planlar, tutarYaz, urunAdi } from "./pricing";
+import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
 export const LLMS_UPDATED = "2026-09-13";
 
@@ -103,16 +104,22 @@ const url = (id: PageId, locale: Locale) => absoluteUrl(ROUTES[id][locale]);
 /*
   Ücret satırları. Rakam ELLE YAZILMAZ: yapay zekâ motorlarının alıntıladığı
   metinde yanlış fiyat, sayfadaki yanlış fiyattan daha uzun yaşar.
+
+  YAYIMLANMIŞ FİYAT (14.10.2026). Tutarlar eskiden doğrudan koddan
+  okunuyordu: konsolda yayımlanan zam ücretler sayfasında görünüyor,
+  llms-full.txt eski rakamı söylemeye devam ediyordu. Çağıran
+  yayımlanmış tabloyu veriyor; verilmezse koddaki değer.
 */
-function fiyatListesi(locale: Locale): string {
+function fiyatListesi(locale: Locale, fiyatlar?: Fiyatlar): string {
   const tr = locale === "tr";
   return PRICED_PRODUCTS.map((product) => {
     const satirlar = planlar(product).map((plan) => {
-      const yillik = yillikKurus(plan);
+      const aylik = planTutari(plan, fiyatlar);
+      const yillik = planYillikTutari(plan, fiyatlar);
       const birim = plan.kisiBasi ? (tr ? "kullanıcı/" : "user/") : "";
-      const tutar = plan.aylikKurus === null || yillik === null
+      const tutar = aylik === null || yillik === null
         ? (tr ? "teklif usulü" : "on request")
-        : `${tutarYaz(plan.aylikKurus, locale)} TL/${birim}${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${birim}${tr ? "yıl" : "yr"}`;
+        : `${tutarYaz(aylik, locale)} TL/${birim}${tr ? "ay" : "mo"} · ${tutarYaz(yillik, locale)} TL/${birim}${tr ? "yıl" : "yr"}`;
       const enAz = plan.enAzKullanici
         ? tr ? ` (en az ${plan.enAzKullanici} kullanıcı)` : ` (from ${plan.enAzKullanici} users)`
         : "";
@@ -183,7 +190,7 @@ export function buildLlmsTxt(): string {
   return lines.join("\n");
 }
 
-export function buildLlmsFullTxt(): string {
+export function buildLlmsFullTxt(fiyatlar?: Fiyatlar): string {
   const u = (id: PageId, locale: Locale) => url(id, locale);
   const os = PRODUCT_APPS.arvoos;
   const lab = PRODUCT_APPS.arvolab;
@@ -249,7 +256,7 @@ Page: ${u("pricing", "en")}
 
 ArvoOS, ArvoARC and Arvo Randevu are priced per organization, not per user — each plan includes a set number of users. ArvoLab is the exception: it is priced per researcher (per seat); the Team tier is per-seat volume pricing from 3 users, and the Institution tier is an unlimited-user site licence. All amounts are in Turkish lira and exclude VAT. On annual billing you pay for 10 months and use 12 (${YILLIK_BEDAVA_AY} months free), invoiced once at the start of the period.
 
-${fiyatListesi("en")}
+${fiyatListesi("en", fiyatlar)}
 
 Charged separately: additional user, additional branch (Arvo Randevu), data migration and setup, custom development.
 
@@ -431,7 +438,7 @@ Sayfa: ${u("pricing", "tr")}
 
 ArvoOS, ArvoARC ve Arvo Randevu kurum başına fiyatlanır, kullanıcı başına değil — her pakette belirli sayıda kullanıcı dahildir. ArvoLab istisnadır: araştırmacı (koltuk) başına fiyatlanır; Ekip basamağı en az 3 kullanıcıyla koltuk başı hacim indirimidir, Kurum basamağı ise sınırsız kullanıcılı site lisansıdır. Tutarlar Türk lirasıdır ve KDV hariçtir. Yıllık ödemede 12 aylık kullanım için 10 aylık bedel ödenir (${YILLIK_BEDAVA_AY} ay bedava) ve tutar dönem başında tek seferde faturalanır.
 
-${fiyatListesi("tr")}
+${fiyatListesi("tr", fiyatlar)}
 
 Ayrıca ücretlendirilen kalemler: ek kullanıcı, ek şube (Arvo Randevu), veri aktarımı ve kurulum, kuruma özel geliştirme.
 

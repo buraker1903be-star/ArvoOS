@@ -6,6 +6,8 @@ import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId,
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { isSubscriberProduct, productName } from "@/lib/products";
+import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
+import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -78,8 +80,17 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   if (!admin) return json(503, { error: "unavailable" });
 
-  const { data: plan } = await admin.from("product_plans").select("individual_monthly_fee,trial_days").eq("product", product).maybeSingle();
-  const monthlyFee = plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) : null;
+  const [{ data: plan }, fiyatlar] = await Promise.all([
+    admin.from("product_plans").select("individual_monthly_fee,trial_days").eq("product", product).maybeSingle(),
+    yayimlananFiyatlar(),
+  ]);
+  /* Listede karşılığı olan ürünün (ArvoLab → Araştırmacı) fiyatı
+     YAYIMLANMIŞ listeden; öteki ürün product_plans'tan. Teklif usulüne
+     çevrilmiş basamak (null) kartla satılmaz. */
+  const listeFiyati = bireyselListeFiyatiKurus(product, fiyatlar);
+  const monthlyFee = listeFiyati !== undefined
+    ? (listeFiyati && listeFiyati > 0 ? listeFiyati : null)
+    : plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) : null;
 
   const columns = "id,status,trial_ends_at,current_period_start,current_period_end";
   let { data: subscriber } = await admin.from("product_subscribers").select(columns)

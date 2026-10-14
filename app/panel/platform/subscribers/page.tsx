@@ -5,6 +5,8 @@ import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/pr
 import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { updateProductPlan, updateSubscriber } from "./actions";
+import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
+import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { AboneListesi } from "./abone-listesi";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -47,15 +49,25 @@ export default async function SubscribersPage() {
     durumda bunu yazıyoruz.
   */
   const LISTE_SINIRI = 1000;
-  const [{ data: planData }, { data: subscriberData, count, error }] = await Promise.all([
+  const [{ data: planData }, { data: subscriberData, count, error }, fiyatlar] = await Promise.all([
     supabase.from("product_plans").select("product,individual_monthly_fee,trial_days"),
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,suspension_reason,created_at", { count: "exact" })
       .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
+    yayimlananFiyatlar(),
   ]);
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
 
-  const plans = new Map(((planData ?? []) as PlanRow[]).map((row) => [row.product, row]));
+  /* Listede karşılığı olan ürünün (ArvoLab → Araştırmacı) ücreti
+     yayımlanmış fiyat listesinden; köprü de oradan tahsil ediyor. */
+  const plans = new Map(((planData ?? []) as PlanRow[]).map((row) => {
+    const liste = bireyselListeFiyatiKurus(row.product, fiyatlar);
+    return [row.product, liste === undefined ? row : { ...row, individual_monthly_fee: liste }];
+  }));
+  for (const product of SUBSCRIBER_PRODUCTS) {
+    const liste = bireyselListeFiyatiKurus(product.code, fiyatlar);
+    if (liste !== undefined && !plans.has(product.code)) plans.set(product.code, { product: product.code, individual_monthly_fee: liste, trial_days: 14 });
+  }
   const subscribers = (subscriberData ?? []) as SubscriberRow[];
   const toplamKayit = count ?? subscribers.length;
   const eksikKapsam = toplamKayit > subscribers.length;
@@ -146,9 +158,16 @@ export default async function SubscribersPage() {
             >
               <form className="panel-form kayit-formu" action={updateProductPlan}>
                 <input type="hidden" name="product" value={product.code} />
-                <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
+                {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
+                  <p className="wide panel-muted">
+                    Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
+                    {" "}Değiştirmek için <Link href="/panel/platform/urunler?bolum=fiyat">Ürünler → Fiyatlandırma</Link>.
+                  </p>
+                ) : (
+                  <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
+                )}
                 <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
-                <div className="wide panel-form-actions kayit-formu-eylem"><p>Ücret boşsa bu ürün kartla satılmaz.</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
+                <div className="wide panel-form-actions kayit-formu-eylem"><p>{bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
               </form>
             </StgSection>
           );

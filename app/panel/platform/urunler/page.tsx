@@ -7,8 +7,10 @@ import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
-import { taslagiKaydet, taslagiYayimla, yayindanKaldir } from "./actions";
-import { para, sayi } from "../bicim";
+import { fiyatlariYayimla, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "./actions";
+import { para, sayi, tarihSaat } from "../bicim";
+import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
+import { YAYIN_KODU } from "@/lib/paket-ucreti";
 import "../../settings/settings.css";
 import "../platform.css";
 import "../../crm/crm.css";
@@ -56,12 +58,12 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
   birim: string;
   /** Sitede şu an geçerli tutar (kod + yayımlanmış veritabanı değeri). */
   cozulmus: number | null;
-  kayit?: { aylik_kurus: number | null; taslak_kurus: number | null; yayimlandi_at: string | null };
+  kayit?: FiyatKaydi;
   yillik?: boolean;
 }) {
   const konsoldan = Boolean(kayit?.yayimlandi_at);
   const taslak = kayit?.taslak_kurus ?? null;
-  const bekliyor = taslak !== null && taslak !== (kayit?.aylik_kurus ?? null);
+  const bekliyor = Boolean(kayit?.taslak_bekliyor);
   return (
     <tr>
       <td>
@@ -82,14 +84,18 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
             placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
           <button className="panel-secondary" type="submit">Kaydet</button>
         </form>
-        {bekliyor ? <small className="plt-substatus talep-uyari">yayım bekliyor</small> : null}
+        {bekliyor ? <small className="plt-substatus talep-uyari">yayım bekliyor: {taslak === null ? "Teklif" : para(taslak)}</small> : null}
       </td>
       <td>
+        {/* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
+            (14.10.2026): liste ya tamamen eski ya tamamen yeni. */}
         <div className="plt-fiyat-eylem">
-          <form action={taslagiYayimla}>
-            <input type="hidden" name="kod" value={kod} />
-            <button className="panel-primary" type="submit" disabled={!bekliyor}>Yayımla</button>
-          </form>
+          {bekliyor ? (
+            <form action={taslagiGeriAl}>
+              <input type="hidden" name="kod" value={kod} />
+              <button className="panel-secondary" type="submit">Geri al</button>
+            </form>
+          ) : null}
           {konsoldan ? (
             <form action={yayindanKaldir}>
               <input type="hidden" name="kod" value={kod} />
@@ -102,11 +108,18 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
   );
 }
 
+const GECMIS_ISLEMI: Record<string, string> = {
+  taslak: "Taslak",
+  taslak_iptal: "Taslak geri alındı",
+  yayim: "Yayımlandı",
+  koda_donus: "Koda döndü",
+};
+
 const ACIK_LISANS = new Set(["active", "trialing", "past_due"]);
 const ODEYEN = new Set(["active", "past_due"]);
 
 type Kiraci = {
-  id: string; kind: string | null; license_status: string | null;
+  id: string; kind: string | null; license_status: string | null; plan_code: string | null;
   monthly_fee: number | null; aktif_uye: number;
 };
 
@@ -120,12 +133,14 @@ export default async function UrunlerPage({ searchParams }: {
   const secili = bolum === "fiyat" ? "fiyat" : "urun";
 
   const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, { data: fiyatSatirlari }, arvolab, arc, randevu] = await Promise.all([
-    supabase.from("platform_kiraci_liste").select("id,kind,license_status,monthly_fee,aktif_uye"),
+    supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
     supabase.from("product_subscribers").select("product,status"),
     /* Kurucu taslağı da görüyor (RLS: kurucu_fiyati_okur); site yalnızca
        yayımlanmış satırı okuyor. */
-    supabase.from("platform_fiyat_listesi").select("kod,aylik_kurus,taslak_kurus,yayimlandi_at"),
+    /* "*": taslak_bekliyor sütunu 20261014064505 ile geldi; uygulanmadan
+       önce de sayfa açılsın (fiyatKaydi eski kurala düşüyor). */
+    supabase.from("platform_fiyat_listesi").select("*"),
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
@@ -173,16 +188,54 @@ export default async function UrunlerPage({ searchParams }: {
     Yayımlanmış tutarlar koddakinin üstüne yazılıyor; satırı olmayan ya da
     yayımlanmamış basamak koddaki değerinde kalıyor (lib/site/fiyat-kaynagi).
   */
-  type FiyatKaydi = { kod: string; aylik_kurus: number | null; taslak_kurus: number | null; yayimlandi_at: string | null };
-  const fiyatKayitlari = (fiyatSatirlari ?? []) as FiyatKaydi[];
+  const fiyatKayitlari = ((fiyatSatirlari ?? []) as Parameters<typeof fiyatKaydi>[0][]).map(fiyatKaydi);
   const kayitlar = new Map(fiyatKayitlari.map((satir) => [satir.kod, satir]));
   const cozulmus = fiyatlariBirlestir(
     fiyatKayitlari.filter((satir) => satir.yayimlandi_at).map((satir) => ({ kod: satir.kod, aylikKurus: satir.aylik_kurus })),
   );
   const yayimliSayisi = fiyatKayitlari.filter((satir) => satir.yayimlandi_at).length;
-  const bekleyenTaslak = fiyatKayitlari.filter(
-    (satir) => satir.taslak_kurus !== null && satir.taslak_kurus !== satir.aylik_kurus,
-  ).length;
+
+  /*
+    ÖNİZLEME VE DENETİM (14.10.2026): yayımlanacak her değişiklik önce →
+    sonra ve yüzdeyle; merdiveni bozan liste yayımlanamaz, büyük değişim
+    açık onay ister. Aynı denetim sunucu işleminde de çalışıyor.
+  */
+  const degisiklikler = bekleyenDegisiklikler(fiyatKayitlari, cozulmus);
+  const bekleyenTaslak = degisiklikler.length;
+  const denetim = fiyatDenetimi(yayimSonrasi(cozulmus, degisiklikler), degisiklikler);
+  /* Mevcut kiracıların ücreti listeyle KENDİLİĞİNDEN değişmez (yürürlükteki
+     dönem). Değişen ArvoOS basamağından liste fiyatıyla ödeyen kiracı
+     sayısı yazılıyor: yayımdan sonra Kurulumlar'da "listeden farklı"
+     görünecekler. */
+  const paketiniBul = new Map(Object.entries(YAYIN_KODU).map(([paket, kod]) => [kod, paket]));
+  const etkilenenKiraci = degisiklikler.reduce((toplam, d) => {
+    const paket = paketiniBul.get(d.kod);
+    if (!paket || d.eski === null) return toplam;
+    return toplam + kiracilar.filter((k) => k.plan_code === paket && Number(k.monthly_fee ?? 0) === d.eski).length;
+  }, 0);
+
+  /* Fiyat geçmişi: son otuz değişiklik. Migration uygulanmadıysa tablo
+     yok; bölüm "okunamadı" diyor, boş liste göstermiyor. */
+  const { data: gecmisSatirlari, error: gecmisHatasi } = secili === "fiyat"
+    ? await supabase.from("platform_fiyat_gecmisi")
+        .select("id,kod,islem,onceki_kurus,onceki_yayimli,yeni_kurus,kim,zaman")
+        .order("id", { ascending: false }).limit(30)
+    : { data: null, error: null };
+  const gecmis = (gecmisSatirlari ?? []) as {
+    id: number; kod: string; islem: string; onceki_kurus: number | null; onceki_yayimli: boolean;
+    yeni_kurus: number | null; kim: string | null; zaman: string;
+  }[];
+  const kimIdleri = [...new Set(gecmis.map((g) => g.kim).filter((k): k is string => Boolean(k)))];
+  const { data: kimSatirlari } = kimIdleri.length
+    ? await supabase.from("profiles").select("id,full_name").in("id", kimIdleri)
+    : { data: [] };
+  const kimAdi = new Map(((kimSatirlari ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p.full_name ?? "—"]));
+  const basamakAdi = (kod: string) => {
+    const plan = PLANS.find((p) => p.code === kod);
+    return plan ? `${urunAdi(plan.product)} · ${plan.ad.tr}` : EK_KALEM_ADI[kod] ?? kod;
+  };
+  const koddakiTutar = (kod: string) => PLANS.find((p) => p.code === kod)?.aylikKurus ?? ADD_ONS.find((a) => a.code === kod)?.aylikKurus ?? null;
+  const tutarYazi = (kurus: number | null) => (kurus === null ? "Teklif" : para(Number(kurus)));
 
   const adres = (kod: string) => `/panel/platform/urunler?bolum=${kod}`;
 
@@ -261,6 +314,60 @@ export default async function UrunlerPage({ searchParams }: {
       </section>
     ) : (
       <>
+        {degisiklikler.length ? (
+          <section className="panel-card" aria-label="Yayım önizlemesi">
+            <h2>Yayım önizlemesi <small className="plt-substatus">{sayi(degisiklikler.length)} değişiklik</small></h2>
+            <p className="panel-muted">
+              Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
+              (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
+              geçerli olur. Liste tek seferde, birlikte yayımlanır.
+            </p>
+            <div className="plt-table-scroll">
+              <table className="plt-table">
+                <thead><tr><th>Basamak</th><th>Şu an</th><th>Yayımlanınca</th><th>Değişim</th></tr></thead>
+                <tbody>
+                  {degisiklikler.map((d) => (
+                    <tr key={d.kod}>
+                      <td>{basamakAdi(d.kod)}<small className="plt-substatus plt-mono">{d.kod}</small></td>
+                      <td>{tutarYazi(d.eski)}</td>
+                      <td><b>{tutarYazi(d.yeni)}</b></td>
+                      <td className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
+                        {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {etkilenenKiraci ? (
+              <p className="panel-muted">
+                Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
+                dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
+              </p>
+            ) : null}
+            {denetim.hatalar.length ? (
+              <div className="plt-banner" data-tone="danger" role="alert">
+                <span className="plt-banner-icon">!</span>
+                <span><b>Bu liste yayımlanamaz</b>{denetim.hatalar.map((h) => <p key={h}>{h}</p>)}</span>
+              </div>
+            ) : null}
+            {denetim.uyarilar.length ? (
+              <div className="plt-banner" data-tone="warning">
+                <span className="plt-banner-icon">!</span>
+                <span><b>Yayımlamadan önce kontrol edin</b>{denetim.uyarilar.map((u) => <p key={u}>{u}</p>)}</span>
+              </div>
+            ) : null}
+            <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
+              {denetim.uyarilar.length ? (
+                <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
+              ) : null}
+              <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
+                {sayi(degisiklikler.length)} değişikliği yayımla
+              </button>
+            </form>
+          </section>
+        ) : null}
+
         <section className="panel-card" aria-label="Yayımlanmış fiyat listesi">
           <h2>Fiyatlandırma</h2>
           <p className="panel-muted">
@@ -279,8 +386,8 @@ export default async function UrunlerPage({ searchParams }: {
             <span className="plt-banner-icon">i</span>
             <span>
               <b>Taslak ve yayın ayrı</b>
-              Kaydettiğin tutar hiçbir yerde görünmez; &quot;Yayımla&quot; dedikten sonra sitede, JSON-LD&apos;de
-              ve sözleşme metinlerinde geçerli olur. &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
+              Kaydettiğin tutar hiçbir yerde görünmez; bekleyen taslaklar yukarıdaki önizlemede birlikte
+              yayımlanır. &quot;Geri al&quot; taslağı bırakır, &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
             </span>
           </p>
           {["arvoos", "arc", "randevu", "arvolab"].map((urun) => (
@@ -316,6 +423,36 @@ export default async function UrunlerPage({ searchParams }: {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="panel-card" aria-label="Fiyat geçmişi">
+          <h2>Fiyat geçmişi</h2>
+          <p className="panel-muted">Her taslak, yayım, geri alma ve koda dönüş; kim, ne zaman, neyden neye. Son otuz kayıt.</p>
+          {gecmisHatasi ? (
+            <p className="panel-muted">Geçmiş okunamadı ({gecmisHatasi.message}) — kayıt yok demek değil.</p>
+          ) : gecmis.length ? (
+            <div className="plt-table-scroll">
+              <table className="plt-table">
+                <thead><tr><th>Zaman</th><th>Basamak</th><th>İşlem</th><th>Önce → sonra</th><th>Kim</th></tr></thead>
+                <tbody>
+                  {gecmis.map((g) => (
+                    <tr key={g.id}>
+                      <td>{tarihSaat(g.zaman)}</td>
+                      <td>{basamakAdi(g.kod)}</td>
+                      <td>{GECMIS_ISLEMI[g.islem] ?? g.islem}</td>
+                      <td>
+                        {/* Yayımda önceki satır yoksa koddaki değer geçerliydi. */}
+                        {g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus)}
+                        {" → "}
+                        {g.islem === "koda_donus" ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.yeni_kurus)}
+                      </td>
+                      <td>{g.kim ? kimAdi.get(g.kim) ?? "—" : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="panel-muted">Henüz fiyat değişikliği yok.</p>}
         </section>
       </>
     )}

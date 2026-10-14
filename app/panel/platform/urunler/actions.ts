@@ -5,6 +5,8 @@ import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
+import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
+import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi } from "@/lib/fiyat-dogrulama";
 
 /*
   Fiyat taslağı ve yayımlama.
@@ -13,6 +15,14 @@ import { ADD_ONS, PLANS } from "@/lib/site/pricing";
   yazıldığı anda sitede görünürdü. Bugün fiyat değişikliği bir
   commit'ten ve gözden geçirmeden geçiyor; o emniyeti büsbütün
   bırakmıyoruz, kurucunun kendi onayına çeviriyoruz.
+
+  TOPLU YAYIM (14.10.2026). Eskiden her basamak ayrı yayımlanıyordu:
+  üç basamaklı bir zam üç ayrı yayımdı ve arada site yarı güncel bir
+  liste gösteriyordu. Artık bekleyen bütün taslaklar önizlemeden sonra
+  tek seferde yayımlanıyor (platform_fiyatlari_yayimla — tek UPDATE).
+  Denetim (lib/fiyat-dogrulama) burada da çalışıyor: önizlemeyi atlayan
+  bir istek de merdiveni bozan bir listeyi yayımlayamasın. Her değişiklik
+  platform_fiyat_gecmisi'ne tetikleyiciyle yazılıyor.
 */
 
 const BILINEN = new Set<string>([...PLANS.map((p) => p.code), ...ADD_ONS.map((a) => a.code)]);
@@ -51,11 +61,18 @@ async function taslagiKaydet__impl(formData: FormData) {
     if (!Number.isSafeInteger(kurus)) throw new Error("Tutar çok büyük.");
   }
 
+  /* Yayındaki tutarın aynısı yazıldıysa bekleyen bir değişiklik yok:
+     önizlemede "1.990 → 1.990" satırı çıkmasın. */
+  const { data: mevcut } = await supabase.from("platform_fiyat_listesi")
+    .select("aylik_kurus,yayimlandi_at").eq("kod", kod).maybeSingle();
+  const degismedi = Boolean(mevcut?.yayimlandi_at) && (mevcut?.aylik_kurus === null ? null : Number(mevcut?.aylik_kurus)) === kurus;
+
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await supabase.from("platform_fiyat_listesi").upsert({
     kod,
     tur: TUR.get(kod) ?? "plan",
     taslak_kurus: kurus,
+    taslak_bekliyor: !degismedi,
     updated_by: userData.user?.id ?? null,
     updated_at: new Date().toISOString(),
   }, { onConflict: "kod" });
@@ -64,27 +81,54 @@ async function taslagiKaydet__impl(formData: FormData) {
   revalidatePath("/panel/platform/urunler");
 }
 
-async function taslagiYayimla__impl(formData: FormData) {
+/* Fiyatı okuyan yüzeyler: yayımlanan fiyat oralarda hemen görünmeli.
+   llms-full.txt'nin CDN önbelleği on dakika (rotada yazılı). */
+function fiyatYuzeyleriniTazele() {
+  revalidatePath("/panel/platform/urunler");
+  revalidatePath("/panel/platform/kurulumlar");
+  revalidatePath("/panel/platform/subscribers");
+  revalidatePath("/ucretler");
+  revalidatePath("/en/pricing");
+}
+
+async function fiyatlariYayimla__impl(formData: FormData) {
+  const { supabase, isPlatformOwner } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const { data, error: okumaHatasi } = await supabase.from("platform_fiyat_listesi").select("*");
+  if (okumaHatasi) throw new Error("Fiyat listesi okunamadı: " + okumaHatasi.message);
+  const kayitlar = (data ?? []).map(fiyatKaydi);
+  const gecerli = fiyatlariBirlestir(kayitlar.filter((k) => k.yayimlandi_at).map((k) => ({ kod: k.kod, aylikKurus: k.aylik_kurus })));
+  const degisiklikler = bekleyenDegisiklikler(kayitlar, gecerli);
+  if (!degisiklikler.length) throw new Error("Yayımlanacak taslak yok.");
+
+  const { hatalar, uyarilar } = fiyatDenetimi(yayimSonrasi(gecerli, degisiklikler), degisiklikler);
+  if (hatalar.length) throw new Error("Yayımlanmadı: " + hatalar.join(" "));
+  // Uyarılar önizlemede gösteriliyor; kurucu kutuyu işaretlemeden geçmiyor.
+  if (uyarilar.length && formData.get("onay") !== "evet") {
+    throw new Error("Önizlemedeki uyarıları okuyup onay kutusunu işaretleyin.");
+  }
+
+  const { error } = await supabase.rpc("platform_fiyatlari_yayimla");
+  if (error) throw new Error("Yayımlanamadı: " + error.message);
+  fiyatYuzeyleriniTazele();
+}
+
+/* Bekleyen taslağı yayımlamadan bırakır: taslak yayındaki tutara döner. */
+async function taslagiGeriAl__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
   const kod = kodOku(formData);
 
   const { data: satir } = await supabase.from("platform_fiyat_listesi")
-    .select("taslak_kurus").eq("kod", kod).maybeSingle();
-  if (!satir) throw new Error("Önce bir taslak tutar kaydedin.");
-
+    .select("aylik_kurus").eq("kod", kod).maybeSingle();
+  if (!satir) throw new Error("Bu basamağın taslağı yok.");
   const { data: userData } = await supabase.auth.getUser();
-  const simdi = new Date().toISOString();
   const { error } = await supabase.from("platform_fiyat_listesi")
-    .update({ aylik_kurus: satir.taslak_kurus, yayimlandi_at: simdi, updated_by: userData.user?.id ?? null, updated_at: simdi })
+    .update({ taslak_kurus: satir.aylik_kurus, taslak_bekliyor: false, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() })
     .eq("kod", kod);
-  if (error) throw new Error("Yayımlanamadı: " + error.message);
-
+  if (error) throw new Error("Taslak geri alınamadı: " + error.message);
   revalidatePath("/panel/platform/urunler");
-  /* Ücretler sayfası ve llms.txt aynı rakamları kullanıyor; yayımlanan
-     fiyat oralarda da hemen görünmeli. */
-  revalidatePath("/ucretler");
-  revalidatePath("/en/pricing");
 }
 
 async function yayindanKaldir__impl(formData: FormData) {
@@ -99,21 +143,23 @@ async function yayindanKaldir__impl(formData: FormData) {
     demek olurdu ve taslak da birlikte giderdi.
   */
   const { error } = await supabase.from("platform_fiyat_listesi")
-    .update({ aylik_kurus: null, yayimlandi_at: null, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() })
+    /* Bekleyen taslak da kapanıyor: yoksa bir sonraki toplu yayım, koda
+       dönen basamağın eski taslağını istemeden yeniden yayımlardı. */
+    .update({ aylik_kurus: null, taslak_kurus: null, taslak_bekliyor: false, yayimlandi_at: null, updated_by: userData.user?.id ?? null, updated_at: new Date().toISOString() })
     .eq("kod", kod);
   if (error) throw new Error("Yayından kaldırılamadı: " + error.message);
-
-  revalidatePath("/panel/platform/urunler");
-  revalidatePath("/ucretler");
-  revalidatePath("/en/pricing");
+  fiyatYuzeyleriniTazele();
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function taslagiKaydet(...args: Parameters<typeof taslagiKaydet__impl>) {
   return runPanelAction(() => taslagiKaydet__impl(...args), "Taslak kaydedildi");
 }
-export async function taslagiYayimla(...args: Parameters<typeof taslagiYayimla__impl>) {
-  return runPanelAction(() => taslagiYayimla__impl(...args), "Fiyat yayımlandı");
+export async function fiyatlariYayimla(...args: Parameters<typeof fiyatlariYayimla__impl>) {
+  return runPanelAction(() => fiyatlariYayimla__impl(...args), "Fiyatlar yayımlandı");
+}
+export async function taslagiGeriAl(...args: Parameters<typeof taslagiGeriAl__impl>) {
+  return runPanelAction(() => taslagiGeriAl__impl(...args), "Taslak geri alındı");
 }
 export async function yayindanKaldir(...args: Parameters<typeof yayindanKaldir__impl>) {
   return runPanelAction(() => yayindanKaldir__impl(...args), "Fiyat yayından kaldırıldı; koddaki değer geçerli");

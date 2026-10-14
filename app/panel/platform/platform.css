@@ -1079,3 +1079,6 @@ dialog.plt-pencere {
 .plt-fiyat-form{display:flex;align-items:center;gap:var(--sp-2)}
 .plt-fiyat-form input[type="text"]{width:96px}
 .plt-fiyat-eylem{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+/* Fiyat yayım önizlemesi (urunler, 14.10.2026): onay kutusu ve toplu yayım düğmesi. */
+.plt-fiyat-yayim{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-3)}
+.plt-fiyat-onay{display:flex;align-items:center;gap:var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}

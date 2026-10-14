@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ucretSapmasi } from "@/lib/paket-ucreti";
+import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
@@ -27,7 +28,7 @@ import "../../crm/kayit-detay/kayit-detay.css";
   taramaktı.
 
   ÜCRET YAYIMLANMIŞ LİSTEDEN. Üçüncü aşamada paketin liste fiyatı
-  (lib/paket-ucreti, kaynağı lib/site/pricing) yazılı duruyor ve tek
+  (lib/paket-ucreti; konsolda yayımlanan tablo, yoksa lib/site/pricing) yazılı duruyor ve tek
   tıkla uygulanıyor; kurucu tutarı elle yazmıyordu diye değil, elle
   yazılan tutar listeden sapıyordu diye. Sapma hata sayılmıyor —
   çoğu kiracının pazarlıkla değişmiş tutarı var — yalnızca gösteriliyor.
@@ -59,11 +60,13 @@ export default async function KurulumlarPage({ searchParams }: {
   const { asama } = await searchParams;
   const secili = ASAMALAR.some((a) => a.kod === asama) ? asama! : "devam";
 
-  const [{ data: kiraciSatirlari }, { data: planSatirlari }] = await Promise.all([
+  const [{ data: kiraciSatirlari }, { data: planSatirlari }, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye")
       .order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
+    // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).
+    yayimlananFiyatlar(),
   ]);
 
   /*
@@ -98,7 +101,7 @@ export default async function KurulumlarPage({ searchParams }: {
 
   /* Ücreti girilmemiş ya da listeden sapan tamamlanan kurulumlar: üçüncü
      aşamanın asıl işi bu. */
-  const ucretsiz = tamamlananlar.filter((k) => ucretSapmasi(k.plan_code, k.monthly_fee).durum === "girilmedi").length;
+  const ucretsiz = tamamlananlar.filter((k) => ucretSapmasi(k.plan_code, k.monthly_fee, fiyatlar).durum === "girilmedi").length;
   const denemede = tamamlananlar.filter((k) => k.license_status === "trialing").length;
 
   const adres = (kod: string) => `/panel/platform/kurulumlar?asama=${kod}`;
@@ -202,7 +205,7 @@ export default async function KurulumlarPage({ searchParams }: {
               <thead><tr><th>Kiracı</th><th>Paket</th><th>Aylık ücret</th><th>Deneme</th><th>Dönem sonu</th></tr></thead>
               <tbody>
                 {tamamlananlar.map((kiraci) => {
-                  const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee);
+                  const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
                   return (
                     <tr key={kiraci.id}>
                       <td>
