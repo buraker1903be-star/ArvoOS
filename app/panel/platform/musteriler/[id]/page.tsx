@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kurumTuru } from "@/lib/kurum-turu";
+import { zorunlu } from "../../konsol-oku";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
@@ -157,8 +158,15 @@ export default async function MusteriDetayi({ params, searchParams }: {
       const veri = await kiraciDosyasiVerisi(supabase, id);
       return veri ? <KiraciDosyasi supabase={supabase} {...veri} pencerede /> : <KBos baslik="Kurum bulunamadı" />;
     }
-    const { data: uyelikler } = await (admin ?? supabase).from("organization_memberships")
+    /*
+      HATA YUTULMUYOR (konsol-oku). Okuma düştüğünde `?? []` listeyi
+      boşaltıyordu ve pencere "bu kurumun kullanıcısı yok" diyordu —
+      hem de erişimin açılıp kapatıldığı ekranda. Kurucu için "üye yok"
+      ile "üyeleri okuyamadım" aynı şey değil: birincisine bakıp geçer.
+    */
+    const uyelikSonucu = await (admin ?? supabase).from("organization_memberships")
       .select("organization_id,user_id,role,is_active").eq("organization_id", id);
+    const uyelikler = zorunlu(uyelikSonucu, "Kurumun üyelikleri");
     const uyeler = await kiraciUyeleriniOku(supabase, admin, id, (uyelikler ?? []) as { organization_id: string; user_id: string; role: string; is_active: boolean }[]);
     return (
       <KKart baslik="Kullanıcılar" aciklama="Kurumun panel hesapları; erişim buradan açılıp kapatılır." sag={<span className="status-pill">{sayi(Number(kurum.aktif_uye))}{kurum.user_limit ? ` / ${sayi(Number(kurum.user_limit))}` : ""}</span>}>

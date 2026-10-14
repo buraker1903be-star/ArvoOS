@@ -23,7 +23,12 @@ const hesapBilgisi = unstable_cache(
   async (userId: string) => {
     const admin = createAdminClient();
     if (!admin) return { email: null as string | null, name: null as string | null };
-    const { data } = await admin.auth.admin.getUserById(userId);
+    /* Sessiz dönmüyoruz: okuma düşerse satırda e-posta BOŞ görünüyor ve
+       "bu hesabın e-postası yok" ile "okuyamadım" ayırt edilemiyor.
+       Sayfayı düşürmüyor — tek üyenin bilgisi eksik kalır, listenin
+       tamamı değil. */
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    if (error) console.error("[konsol] hesap bilgisi okunamadı", userId, error.message);
     const ustveri = (data?.user?.user_metadata ?? {}) as { full_name?: string; name?: string };
     return { email: data?.user?.email ?? null, name: ustveri.full_name ?? ustveri.name ?? null };
   },
