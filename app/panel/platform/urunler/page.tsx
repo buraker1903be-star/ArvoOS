@@ -167,7 +167,7 @@ export default async function UrunlerPage({ searchParams }: {
               Kiracı = lisansı açık kurum (deneme dahil), grup markaları dahil — onlar da ürünü kullanıyor.
               Gelire ise yalnızca gerçek müşteriler giriyor, grup markalarının ücreti ayrıca &quot;grup içi değer&quot;
               olarak yazılıyor. Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
-              üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Kendi markalarımız sayımda yok.
+              üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Arvo&apos;nun kendi kaydı sayımda yok.
             </p>
           </div>
         </header>

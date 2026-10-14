@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kurumTuru } from "@/lib/kurum-turu";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
@@ -132,7 +133,15 @@ export default async function MusteriDetayi({ params, searchParams }: {
   const bekleyen = odemeler.filter((o) => o.status === "pending");
 
   const ad = kurum.display_name || kurum.name;
-  const grup = Boolean(kurum.grup_markasi);
+  /*
+    ÜCRET ÇERÇEVESİ ÜÇ TÜRE GÖRE (14.10.2026). `grup` yalnızca
+    grup_markasi'na bakıyordu: Arvo'nun kendi kaydında ekran "Aylık
+    tutar" yazıyor, oysa Müşteriler listesi aynı tutarı "grup içi
+    değer"e yazıyordu. Müşteri olmayan her kurumda (grup + arvo) tutar
+    grup içi değerdir (lib/kurum-turu).
+  */
+  const tur = kurumTuru(kurum);
+  const grup = tur !== "musteri";
   const acikUrun = kullandigi.find((u) => ACIK.has(u.status));
   const genelDurum = kurum.provisioning_state === "failed"
     ? { ad: "Kurulum hatası", ton: "danger" }
@@ -161,7 +170,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link> · {grup ? "GRUP MARKASI" : kurum.kind === "internal" ? "ARVO" : "KURUMSAL"}</small>
+        <small className="panel-kicker"><Link href="/panel/platform/musteriler">MÜŞTERİLER</Link> · {tur === "grup" ? "GRUP MARKASI" : tur === "arvo" ? "ARVO" : "KURUMSAL"}</small>
         <h1>{ad}</h1>
       </div>
       <nav className="talep-bas-eylem musteri-pencereleri" aria-label="Müşteri bölümleri">
@@ -201,7 +210,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
     {provisioned === "1" ? (
       <KNot ton="basari"><b>{ad} kuruldu.</b> Davet {kurum.davet_eposta ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse Kurum Ayarları&apos;ndan giriş bağlantısı oluşturup WhatsApp&apos;tan gönderin.</KNot>
     ) : null}
-    {grup ? <KNot>Grup markası: ücretleri müşteri gelirine ve tahsilata girmez, konsolda &quot;grup içi değer&quot; olarak toplanır.</KNot> : null}
+    {grup ? <KNot>{tur === "arvo" ? "Arvo&apos;nun kendi kaydı" : "Grup markası"}: ücretleri müşteri gelirine ve tahsilata girmez, konsolda &quot;grup içi değer&quot; olarak toplanır.</KNot> : null}
     {bekleyen.length ? (
       <KNot ton="uyari">{bekleyen.length} ödeme bildirimi onay bekliyor. <Link href={`${adres}?pencere=odemeler`} scroll={false}>Ödemeler&apos;de incele →</Link></KNot>
     ) : null}
