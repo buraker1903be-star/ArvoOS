@@ -17,15 +17,30 @@ import { before, test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = [
   /* Üyelik okuma politikası (yönetici kendi kurumunu görsün) henüz
      dökümde değil; görünümün kapsam senaryosu ona dayanıyor. */
   "20261011224845_uyelik_guncelleme_politikasi.sql",
-  "20261011230517_platform_kiraci_liste.sql",
 ];
+
+/*
+  Görünümün KENDİSİ artık dökümde ve orada grup_markasi sütunu da var
+  (14.10.2026). Migration'ı bütün olarak uygulamak "cannot drop columns
+  from view" ile düşüyor: `create or replace view` sütun ekleyebiliyor
+  ama düşüremiyor.
+
+  Dosyayı listeden tamamen çıkarmak da yanlış: döküm GÖRÜNÜM
+  yetkilerini taşımıyor ve düzenek Supabase varsayılanını taklit edip
+  her görünümü anon'a açıyor. O migration'ın `revoke … from anon`
+  satırı gitseydi aşağıdaki "anon görünüme erişemiyor" senaryosu
+  hiçbir şey ölçmeyen, ama yeşil kalan bir teste dönerdi (AGENTS.md).
+  Bu yüzden yalnızca yetki satırları tekrarlanıyor.
+  govde-tamam: DDL dökümden, yetkiler dosyadan.
+*/
+const YALNIZCA_YETKI = ["20261011230517_platform_kiraci_liste.sql"];
 
 const ARVO = "00000000-0000-4000-8000-00000000a0a1";
 const KIRACI = "00000000-0000-4000-8000-00000000a0a2";
@@ -43,6 +58,7 @@ const satirlar = async () => (await db.query(
 before(async () => {
   db = await veritabani();
   for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
+  await migrationYetkileri(db, YALNIZCA_YETKI);
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id, email) values

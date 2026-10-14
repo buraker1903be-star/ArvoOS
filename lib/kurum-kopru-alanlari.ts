@@ -48,8 +48,14 @@ export const KURUM_KOPRU_ALANLARI = KURUM_KOPRU_SECIMI.split(",");
   tekrarlamak demekti: hedefte olmayan tek bir sütun yazmanın tamamını
   düşürüyor ve köprü bir gün boyunca sessizce durmuştu (01.10.2026).
   Hedeflere sütun eklendiği gün buradan KURUM_KOPRU_SECIMI'ne taşınır.
+
+  grup_markasi (14.10.2026): kurumun KONSOLDAKİ türünü belirliyor
+  (lib/kurum-turu: arvo / grup / musteri) — müşteri gelirine girer mi,
+  tahsilatta sayılır mı, yenileme hatırlatması gider mi. Tamamı Arvo'nun
+  kendi raporlama kararı; ArvoLab, ArvoARC ve Randevu için hiçbir
+  anlamı yok ve o veritabanlarında böyle bir sütun da yok.
 */
-export const ARVOOS_OZEL_KURUM_ALANLARI = ["revision_days", "tracking_show_phases", "favicon_url"];
+export const ARVOOS_OZEL_KURUM_ALANLARI = ["revision_days", "tracking_show_phases", "favicon_url", "grup_markasi"];
 
 /*
   LİSANS SATIRININ KARŞIYA GİDEN ALANLARI.
