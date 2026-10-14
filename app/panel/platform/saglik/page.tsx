@@ -10,7 +10,7 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
+import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
 import { PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import "../platform.css";
@@ -50,10 +50,6 @@ const CRON_DURUM: Record<CronDurumu["durum"], { etiket: string; ton: string }> =
   dustu: { etiket: "Son koşma düştü", ton: "warning" },
   hic: { etiket: "Kayıt yok", ton: "neutral" },
 };
-
-/** "2 dakikada bir" / "her gün" — beklenen aralık vercel.json'dan geliyor. */
-const aralikMetni = (dk: number | null) =>
-  dk === null ? "aralık çıkarılamadı" : dk >= 24 * 60 ? "her gün" : `${dk} dakikada bir`;
 
 /** Kaydın ayrıntısındaki ilk hata cümlesi (varsa). */
 function cronHataMetni(ayrinti: unknown): string | null {
@@ -247,7 +243,7 @@ export default async function SistemSagligiPage() {
                 alt={is.durum === "hic"
                   ? "Koşma kaydı tutma bugün başladı; ilk koşmada yazılacak."
                   : sorunlu ? (hata ?? is.aciklama) : is.aciklama}
-                etiketler={[{ etiket: aralikMetni(is.aralikDk), ton: is.aralikDk === null ? "warning" : "neutral" }]}
+                etiketler={[{ etiket: cronAralikMetni(is.aralikDk), ton: is.aralikDk === null ? "warning" : "neutral" }]}
                 durum={CRON_DURUM[is.durum]}
                 deger={is.gecikmeDk === null ? "—" : gecenSure(is.gecikmeDk)}
                 degerAlt="en son koşma" />

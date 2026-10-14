@@ -165,3 +165,33 @@ export function cronDurumlari(kayitlar: CronKaydi[], simdi: Date): CronDurumu[] 
 
 /** Sorunlu işler (ekranda uyarı yazdıracaklar); "henüz kaydı yok" sorun sayılmaz. */
 export const cronSorunlari = (durumlar: CronDurumu[]) => durumlar.filter((d) => d.durum === "gecikti" || d.durum === "dustu");
+
+/** "2 dakikada bir" / "her gün" — ekran ve bildirim aynı cümleyi kuruyor. */
+export const cronAralikMetni = (dk: number | null) =>
+  dk === null ? "aralık çıkarılamadı" : dk >= 24 * 60 ? "her gün" : `${dk} dakikada bir`;
+
+/*
+  Kurucuya gidecek uyarının metni. Saat yazılmıyor, GEÇEN SÜRE yazılıyor:
+  bildirim telefonda saatler sonra okunabiliyor ve "17:50'de düştü" o anda
+  ne kadar eski olduğunu söylemiyor. Gövdenin ilk cümlesi "durursa ne olur"
+  — kurucu işin adından değil sonucundan karar veriyor.
+*/
+export function cronUyarisi(durum: CronDurumu): { baslik: string; metin: string } {
+  const sure = (dk: number | null) =>
+    dk === null ? "bilinmiyor"
+      : dk < 60 ? `${dk} dakika`
+      : dk < 48 * 60 ? `${Math.floor(dk / 60)} saat`
+      : `${Math.floor(dk / 1440)} gün`;
+  const basariliDk = durum.sonBasarili
+    ? Math.floor((Date.now() - durum.sonBasarili.getTime()) / 60000)
+    : null;
+  return {
+    baslik: durum.durum === "gecikti" ? `${durum.ad} gecikti` : `${durum.ad} düştü`,
+    metin: durum.durum === "gecikti"
+      ? `${durum.aciklama} Beklenen: ${cronAralikMetni(durum.aralikDk)}. ` +
+        (durum.sonBasarili
+          ? `En son başarılı koşma ${sure(basariliDk)} önce.`
+          : "Hiç başarılı koşması yok.")
+      : `${durum.aciklama} Son koşma hata verdi.`,
+  };
+}

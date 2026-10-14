@@ -361,6 +361,23 @@ export async function describeNotifications(
           context: sender ? `Gönderen: ${formatPersonName(sender)}` : null,
         };
       }
+      /*
+        Zamanlanmış iş gecikti ya da düştü (lib/cron-kaydi nöbeti). Kurucu
+        bildirim kanalının ilk üreticisi: zil, canlı akış ve liste ekranı
+        hazırdı ama hiçbir yer satır yazmıyordu. Varsayılan dal da bu satırı
+        okunur gösteriyordu ama "Bildirim · nötr" diye; duran bir eşitleme
+        işi kurucunun aynı gün bakması gereken bir şey.
+      */
+      case "cron_gecikti":
+        return {
+          ...base,
+          label: "Sistem",
+          tone: "danger",
+          icon: "lifebuoy",
+          headline: row.title,
+          detail: row.message,
+          actionLabel: "Sistem Sağlığı'nı aç",
+        };
       default:
         return { ...base, label: "Bildirim", tone: "neutral", icon: "bell", headline: row.title, detail: row.message };
     }

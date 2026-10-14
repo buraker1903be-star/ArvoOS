@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cronAraligiDk, cronDurumlari, cronIsleri, cronSorunlari, gecikmeEsigiDk, type CronKaydi } from "@/lib/cron-isleri";
+import { cronAralikMetni, cronAraligiDk, cronDurumlari, cronIsleri, cronSorunlari, cronUyarisi, gecikmeEsigiDk, type CronKaydi } from "@/lib/cron-isleri";
 
 test("cron aralığı yalnızca bu depodaki iki biçimden çıkarılır", () => {
   assert.equal(cronAraligiDk("*/2 * * * *"), 2);
@@ -110,4 +110,58 @@ test("zamanlayıcıda olmayan bir işin kaydı listeyi şişirmez", () => {
   const durumlar = cronDurumlari([kayit("/api/cron/kaldirilmis", {})], SIMDI);
   assert.ok(durumlar.every((d) => d.yol !== "/api/cron/kaldirilmis"));
   assert.ok(durumlar.every((d) => d.durum === "hic"));
+});
+
+test("aralık metni ekranda ve bildirimde aynı cümle", () => {
+  assert.equal(cronAralikMetni(2), "2 dakikada bir");
+  assert.equal(cronAralikMetni(10), "10 dakikada bir");
+  assert.equal(cronAralikMetni(24 * 60), "her gün");
+  assert.equal(cronAralikMetni(null), "aralık çıkarılamadı");
+});
+
+/*
+  Bildirim telefonda saatler sonra okunabiliyor: metinde saat değil GEÇEN
+  SÜRE yazıyor. İlk cümle "durursa ne olur" — kurucu işin adından değil
+  sonucundan karar veriyor.
+*/
+test("gecikme uyarısı beklenen aralığı ve son başarılı koşmayı söylüyor", () => {
+  const posta = "/api/cron/posta-esitleme";
+  const simdi = new Date();
+  const oncesi = (dk) => new Date(simdi.getTime() - dk * 60000).toISOString();
+  const durum = cronDurumlari([{
+    is_adi: posta, son_calisma: oncesi(1), son_basarili: oncesi(185), sonuc: "hata", sure_ms: 90, ayrinti: {},
+  }], simdi).find((d) => d.yol === posta)!;
+  assert.equal(durum.durum, "gecikti");
+
+  const uyari = cronUyarisi(durum);
+  assert.equal(uyari.baslik, "Posta eşitlemesi gecikti");
+  assert.match(uyari.metin, /ortak kutulara gelen e-posta panele düşmez/);
+  assert.match(uyari.metin, /2 dakikada bir/);
+  assert.match(uyari.metin, /3 saat önce/);
+  // Mutlak saat yazılmıyor.
+  assert.ok(!/\d{2}:\d{2}/.test(uyari.metin), uyari.metin);
+});
+
+test("hiç başarılı koşmamış iş için 'başarılı koşması yok' yazıyor", () => {
+  const posta = "/api/cron/posta-esitleme";
+  const simdi = new Date();
+  const durum = cronDurumlari([{
+    is_adi: posta, son_calisma: new Date(simdi.getTime() - 90 * 60000).toISOString(),
+    son_basarili: null, sonuc: "hata", sure_ms: null, ayrinti: {},
+  }], simdi).find((d) => d.yol === posta)!;
+  assert.equal(durum.durum, "gecikti");
+  assert.match(cronUyarisi(durum).metin, /Hiç başarılı koşması yok/);
+});
+
+test("yeni koşması düşen iş için başlık 'düştü'", () => {
+  const arc = "/api/cron/arc-sync";
+  const simdi = new Date();
+  const durum = cronDurumlari([{
+    is_adi: arc, son_calisma: new Date(simdi.getTime() - 60000).toISOString(),
+    son_basarili: new Date(simdi.getTime() - 3 * 60000).toISOString(), sonuc: "hata", sure_ms: 800, ayrinti: {},
+  }], simdi).find((d) => d.yol === arc)!;
+  assert.equal(durum.durum, "dustu");
+  const uyari = cronUyarisi(durum);
+  assert.equal(uyari.baslik, "ArvoARC köprüsü düştü");
+  assert.match(uyari.metin, /Son koşma hata verdi/);
 });
