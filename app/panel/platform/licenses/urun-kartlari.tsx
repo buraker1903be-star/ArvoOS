@@ -26,6 +26,8 @@ import { KListe, KOge } from "../konsol-ui";
 
 type Ozet = { etiket: string; deger: string };
 
+const URUN_SIMGESI: Record<string, string> = { arvoos: "OS", arvolab: "LB", arc: "RC", randevu: "RD" };
+
 type OrtakKart = {
   kod: string;
   ad: string;
@@ -121,7 +123,9 @@ export function UrunKartlari({
           return (
             <KOge
               key={kart.kod}
-              simge={kart.ad}
+              /* Dört ürünün adı da "Arvo" ile başlıyor; baş harf simgesi
+                 dördünde "AR" yazıyordu. Ürünün kısa kodu. */
+              simge={URUN_SIMGESI[kart.kod] ?? kart.ad}
               baslik={kart.ad}
               alt={ozet}
               durum={{ etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" }}
@@ -143,7 +147,12 @@ export function UrunKartlari({
                     disabled={calisiyor}
                     onClick={() => erisimDegistir(!kart.erisimAcik)}
                   ><i /></button>
-                ) : null}
+                ) : (
+                  /* Anahtarın yeri öteki satırlarda da ayrılıyor: yalnızca
+                     ArvoOS satırı daha geniş olunca durum ve ücret sütunu o
+                     satırda sola kayıyor, liste hizasız görünüyordu. */
+                  <span aria-hidden="true" style={{ width: 46, flex: "none" }} />
+                )}
                 <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
                   Düzenle
                 </button>

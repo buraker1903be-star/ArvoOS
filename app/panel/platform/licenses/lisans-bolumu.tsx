@@ -333,7 +333,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                   { etiket: "Paket", deger: row?.plan_code ? (PAKET_ADI[row.plan_code] ?? row.plan_code) : "belirtilmedi" },
                   { etiket: "Aylık ücret", deger: row?.monthly_fee ? `${para(Number(row.monthly_fee))} / ay` : "girilmedi" },
                   { etiket: "Dönem sonu", deger: tarih(row?.current_period_end ?? null) },
-                  { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "kota yok") },
+                  { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "yok") },
                 ],
                 kotalar,
                 baslangic: {
