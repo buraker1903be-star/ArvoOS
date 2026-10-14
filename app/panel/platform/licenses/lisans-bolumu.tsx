@@ -7,6 +7,7 @@ import { PLANS } from "@/lib/site/pricing";
 import { planTutari } from "@/lib/site/fiyat-kaynagi";
 import { paketListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
+import { limitSapmalari } from "@/lib/paket-limitleri";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { modulErisimiDegistir } from "../modul-actions";
@@ -15,6 +16,21 @@ import { UrunKartlari } from "./urun-kartlari";
 // Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
 // şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
 import "../platform.css";
+
+/*
+  Paketin varsayılanından sapan kapasite, değerin yanına kısa not.
+  Kural lib/paket-limitleri'nde (Sistem Sağlığı ekranıyla ortak); burada
+  yalnızca cümleye çevriliyor. Sapma yoksa boş metin döner.
+
+  Sistem Sağlığı "paketiyle uyuşmayan limitler" diye işaretlediğinde
+  kurucu buraya geliyor; sapmanın ne kadar olduğu burada da yazmazsa iki
+  ekran arasında gidip gelmek gerekiyor (14.10.2026).
+*/
+function kapasiteSapmasi(planCode: string | null, userLimit: number, storageLimitMb: number): string {
+  const sapmalar = limitSapmalari(planCode, { userLimit, storageLimitMb, aiCreditLimit: null });
+  if (!sapmalar.length) return "";
+  return ` · paket ${sapmalar.map((x) => `${x.alan} ${sayi(x.paket)}`).join(", ")}`;
+}
 
 type LicenseRow = {
   organization_id: string;
@@ -277,7 +293,18 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                    (pazarlık), ama görünür olmalı (lib/paket-ucreti ucretSapmasi). */
                 { etiket: "Liste", deger: listeMetni(paketListeFiyatiKurus(license.plan_code, fiyatlar)) },
                 { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
-                { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
+                /*
+                  Kapasitenin yanında PAKETİN varsayılanı: Sistem Sağlığı
+                  "paketiyle uyuşmayan limitler" diye işaretlediğinde kurucu
+                  buraya geliyor ve sapmanın ne kadar olduğunu burada da
+                  görmeli, yoksa iki ekran arasında gidip gelmek gerekiyor
+                  (14.10.2026). Sapma hata değil — pazarlıkla genişletilmiş
+                  limitler var — yalnızca yazılıyor.
+                */
+                {
+                  etiket: "Kapasite",
+                  deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}${kapasiteSapmasi(license.plan_code, license.user_limit, license.storage_limit_mb)}`,
+                },
                 /* Ek koltuk kurucunun en çok merak ettiği satır: kurum dahil
                    limiti aşmışsa faturaya eklenen tutar budur. */
                 {
