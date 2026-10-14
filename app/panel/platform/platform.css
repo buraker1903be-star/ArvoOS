@@ -1073,3 +1073,9 @@ dialog.plt-pencere {
    Ayrı satırlara düşünce tablo satırı iki kat uzuyordu (14.10.2026). */
 .plt-deneme{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
 .plt-deneme input[type="number"]{width:64px}
+
+/* Ürünler → fiyatlandırma: taslak kutusu ve iki düğme tablo hücresinde
+   tek satırda kalsın (14.10.2026). */
+.plt-fiyat-form{display:flex;align-items:center;gap:var(--sp-2)}
+.plt-fiyat-form input[type="text"]{width:96px}
+.plt-fiyat-eylem{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}

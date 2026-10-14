@@ -5,7 +5,9 @@ import { PRODUCTS, SUBSCRIBER_PRODUCTS } from "@/lib/products";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
-import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi, yillikKurus } from "@/lib/site/pricing";
+import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
+import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
+import { taslagiKaydet, taslagiYayimla, yayindanKaldir } from "./actions";
 import { para, sayi } from "../bicim";
 import "../../settings/settings.css";
 import "../platform.css";
@@ -43,6 +45,63 @@ const EK_KALEM_ADI: Record<string, string> = {
   "ozel-gelistirme": "Kuruma özel geliştirme",
 };
 
+/*
+  Fiyat satırı: yayındaki tutar, yıllık karşılığı, taslak kutusu ve iki
+  düğme. Taslak ile yayın AYRI: tek adım olsaydı yanlış yazılan bir rakam
+  yazıldığı anda sitede görünürdü.
+*/
+function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
+  kod: string;
+  ad: string;
+  birim: string;
+  /** Sitede şu an geçerli tutar (kod + yayımlanmış veritabanı değeri). */
+  cozulmus: number | null;
+  kayit?: { aylik_kurus: number | null; taslak_kurus: number | null; yayimlandi_at: string | null };
+  yillik?: boolean;
+}) {
+  const konsoldan = Boolean(kayit?.yayimlandi_at);
+  const taslak = kayit?.taslak_kurus ?? null;
+  const bekliyor = taslak !== null && taslak !== (kayit?.aylik_kurus ?? null);
+  return (
+    <tr>
+      <td>
+        {ad}
+        <small className="plt-substatus">{birim} · <span className="plt-mono">{kod}</span></small>
+      </td>
+      <td>
+        {cozulmus === null ? "Teklif" : para(cozulmus)}
+        <small className="plt-substatus">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</small>
+      </td>
+      {/* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada tire. */}
+      <td>{yillik ? (cozulmus === null ? "Teklif" : para(cozulmus * YILLIK_ODENEN_AY)) : "—"}</td>
+      <td>
+        <form action={taslagiKaydet} className="plt-fiyat-form">
+          <input type="hidden" name="kod" value={kod} />
+          <input type="text" name="tutar" inputMode="decimal"
+            defaultValue={taslak === null ? "" : String(taslak / 100)}
+            placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
+          <button className="panel-secondary" type="submit">Kaydet</button>
+        </form>
+        {bekliyor ? <small className="plt-substatus talep-uyari">yayım bekliyor</small> : null}
+      </td>
+      <td>
+        <div className="plt-fiyat-eylem">
+          <form action={taslagiYayimla}>
+            <input type="hidden" name="kod" value={kod} />
+            <button className="panel-primary" type="submit" disabled={!bekliyor}>Yayımla</button>
+          </form>
+          {konsoldan ? (
+            <form action={yayindanKaldir}>
+              <input type="hidden" name="kod" value={kod} />
+              <button className="panel-secondary" type="submit">Koda dön</button>
+            </form>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 const ACIK_LISANS = new Set(["active", "trialing", "past_due"]);
 const ODEYEN = new Set(["active", "past_due"]);
 
@@ -60,10 +119,13 @@ export default async function UrunlerPage({ searchParams }: {
   const { bolum } = await searchParams;
   const secili = bolum === "fiyat" ? "fiyat" : "urun";
 
-  const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, arvolab, arc, randevu] = await Promise.all([
+  const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, { data: fiyatSatirlari }, arvolab, arc, randevu] = await Promise.all([
     supabase.from("platform_kiraci_liste").select("id,kind,license_status,monthly_fee,aktif_uye"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
     supabase.from("product_subscribers").select("product,status"),
+    /* Kurucu taslağı da görüyor (RLS: kurucu_fiyati_okur); site yalnızca
+       yayımlanmış satırı okuyor. */
+    supabase.from("platform_fiyat_listesi").select("kod,aylik_kurus,taslak_kurus,yayimlandi_at"),
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
@@ -107,6 +169,21 @@ export default async function UrunlerPage({ searchParams }: {
   const toplamKurum = kiracilar.filter((k) => ACIK_LISANS.has(k.license_status ?? "")).length;
   const kopukKopru = satirlar.filter((s) => !s.saglik.ok).length;
 
+  /*
+    Yayımlanmış tutarlar koddakinin üstüne yazılıyor; satırı olmayan ya da
+    yayımlanmamış basamak koddaki değerinde kalıyor (lib/site/fiyat-kaynagi).
+  */
+  type FiyatKaydi = { kod: string; aylik_kurus: number | null; taslak_kurus: number | null; yayimlandi_at: string | null };
+  const fiyatKayitlari = (fiyatSatirlari ?? []) as FiyatKaydi[];
+  const kayitlar = new Map(fiyatKayitlari.map((satir) => [satir.kod, satir]));
+  const cozulmus = fiyatlariBirlestir(
+    fiyatKayitlari.filter((satir) => satir.yayimlandi_at).map((satir) => ({ kod: satir.kod, aylikKurus: satir.aylik_kurus })),
+  );
+  const yayimliSayisi = fiyatKayitlari.filter((satir) => satir.yayimlandi_at).length;
+  const bekleyenTaslak = fiyatKayitlari.filter(
+    (satir) => satir.taslak_kurus !== null && satir.taslak_kurus !== satir.aylik_kurus,
+  ).length;
+
   const adres = (kod: string) => `/panel/platform/urunler?bolum=${kod}`;
 
   return <main className="stg plt talep cari">
@@ -131,8 +208,10 @@ export default async function UrunlerPage({ searchParams }: {
         </div>
         <div className={secili === "fiyat" ? "is-active" : undefined}>
           <dt>Fiyatlandırma</dt>
-          <dd><Link href={adres("fiyat")} aria-current={secili === "fiyat" ? "page" : undefined}>{sayi(PLANS.length)}</Link></dd>
-          <small>Yayımlanmış basamak</small>
+          <dd className={bekleyenTaslak ? "talep-uyari" : undefined}>
+            <Link href={adres("fiyat")} aria-current={secili === "fiyat" ? "page" : undefined}>{sayi(PLANS.length + ADD_ONS.length)}</Link>
+          </dd>
+          <small>{bekleyenTaslak ? `${sayi(bekleyenTaslak)} taslak yayım bekliyor` : `${sayi(yayimliSayisi)} tutar konsoldan yayımlı`}</small>
         </div>
         <div>
           <dt>Lisanslı kurum</dt>
@@ -189,37 +268,36 @@ export default async function UrunlerPage({ searchParams }: {
             Yıllık seçenekte {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava).
             Tutarlar KDV hariçtir.
           </p>
-          {/* RAKAMLAR ŞU AN KODDA (lib/site/pricing.ts) ve bu ekran onları
-              OKUYOR. Konsoldan düzenlenebilir hale getirmek bir veritabanı
-              adımı istiyor; gerekçesi ve tasarımı kurum sahibiyle
-              konuşuluyor (14.10.2026). */}
-          <p className="plt-banner" data-tone="warning">
-            <span className="plt-banner-icon">!</span>
+          {/*
+            KOD VARSAYILAN, KONSOL ÜSTÜNE YAZAR (14.10.2026). Basamağın
+            kendisi — adı, birimi, hangi üründe olduğu — lib/site/pricing'te
+            kalıyor; buradan yalnızca TUTAR geçersiz kılınıyor. Veritabanı
+            okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
+            listesinde boş hücre, yanlış rakamdan da kötüdür.
+          */}
+          <p className="plt-banner" data-tone="info">
+            <span className="plt-banner-icon">i</span>
             <span>
-              <b>Bu ekran şu an okunur</b>
-              Rakamlar kodda tek kaynakta duruyor ve her değişiklik gözden geçirmeden yayına çıkmıyor.
-              Konsoldan düzenlenebilir hale getirmek için bir veritabanı adımı gerekiyor.
+              <b>Taslak ve yayın ayrı</b>
+              Kaydettiğin tutar hiçbir yerde görünmez; &quot;Yayımla&quot; dedikten sonra sitede, JSON-LD&apos;de
+              ve sözleşme metinlerinde geçerli olur. &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
             </span>
           </p>
           {["arvoos", "arc", "randevu", "arvolab"].map((urun) => (
             <div key={urun}>
               <h3>{urunAdi(urun as Parameters<typeof urunAdi>[0])}</h3>
-              <table className="plt-table">
-                <thead><tr><th>Basamak</th><th>Aylık</th><th>Yıllık</th><th>Birim</th></tr></thead>
-                <tbody>
-                  {planlar(urun as Parameters<typeof planlar>[0]).map((plan) => (
-                    <tr key={plan.code}>
-                      <td>
-                        {plan.ad.tr}
-                        {plan.oneCikan ? <small className="plt-substatus">öne çıkan</small> : null}
-                      </td>
-                      <td>{plan.aylikKurus === null ? "Teklif" : para(plan.aylikKurus)}</td>
-                      <td>{plan.aylikKurus === null ? "Teklif" : para(yillikKurus(plan) ?? 0)}</td>
-                      <td>{plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="plt-table-scroll">
+                <table className="plt-table">
+                  <thead><tr><th>Basamak</th><th>Yayındaki aylık</th><th>Yıllık</th><th>Taslak</th><th /></tr></thead>
+                  <tbody>
+                    {planlar(urun as Parameters<typeof planlar>[0]).map((plan) => (
+                      <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
+                        birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
+                        cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
         </section>
@@ -227,18 +305,17 @@ export default async function UrunlerPage({ searchParams }: {
         <section className="panel-card" aria-label="Ek hizmetler">
           <h2>Ek hizmetler</h2>
           <p className="panel-muted">Pakete dahil olmayan, ayrıca ücretlendirilen kalemler.</p>
-          <table className="plt-table">
-            <thead><tr><th>Kalem</th><th>Aylık</th><th>Kod</th></tr></thead>
-            <tbody>
-              {ADD_ONS.map((kalem) => (
-                <tr key={kalem.code}>
-                  <td>{EK_KALEM_ADI[kalem.code] ?? kalem.code}</td>
-                  <td>{kalem.aylikKurus === null ? "Teklif" : para(kalem.aylikKurus)}</td>
-                  <td className="plt-mono">{kalem.code}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="plt-table-scroll">
+            <table className="plt-table">
+              <thead><tr><th>Kalem</th><th>Yayındaki aylık</th><th>Yıllık</th><th>Taslak</th><th /></tr></thead>
+              <tbody>
+                {ADD_ONS.map((kalem) => (
+                  <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
+                    birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </>
     )}
