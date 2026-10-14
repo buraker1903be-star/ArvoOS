@@ -1,4 +1,4 @@
--- Canlı şema dışa aktarımı: 2026-10-13
+-- Canlı şema dışa aktarımı: 2026-10-14
 -- scripts/sema-disa-aktar.sql ile üretildi. Elle düzenlemeyin.
 -- Sıra: tipler, sekanslar, tablolar, fonksiyonlar, varsayılanlar,
 -- kısıtlar, yabancı anahtarlar, indeksler, görünümler, RLS, politikalar,
@@ -1545,6 +1545,16 @@ create table if not exists public.platform_bank_accounts (
   is_active boolean not null,
   sort_order integer not null,
   created_at timestamp with time zone not null,
+  updated_at timestamp with time zone not null
+);
+
+create table if not exists public.platform_fiyat_listesi (
+  kod text not null,
+  tur text not null,
+  aylik_kurus bigint,
+  taslak_kurus bigint,
+  yayimlandi_at timestamp with time zone,
+  updated_by uuid,
   updated_at timestamp with time zone not null
 );
 
@@ -14106,6 +14116,8 @@ alter table public.platform_bank_accounts alter column sort_order set default 0;
 
 alter table public.platform_bank_accounts alter column updated_at set default now();
 
+alter table public.platform_fiyat_listesi alter column updated_at set default now();
+
 alter table public.platform_subscription_requests alter column created_at set default now();
 
 alter table public.platform_subscription_requests alter column currency set default 'TRY'::text;
@@ -15077,6 +15089,14 @@ alter table public.plans add constraint plans_pkey PRIMARY KEY (code);
 alter table public.platform_bank_accounts add constraint platform_bank_accounts_iban_key UNIQUE (iban);
 
 alter table public.platform_bank_accounts add constraint platform_bank_accounts_pkey PRIMARY KEY (id);
+
+alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_aylik_check CHECK (((aylik_kurus IS NULL) OR (aylik_kurus >= 0)));
+
+alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_pkey PRIMARY KEY (kod);
+
+alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_taslak_check CHECK (((taslak_kurus IS NULL) OR (taslak_kurus >= 0)));
+
+alter table public.platform_fiyat_listesi add constraint platform_fiyat_listesi_tur_check CHECK ((tur = ANY (ARRAY['plan'::text, 'ek'::text])));
 
 alter table public.platform_subscription_requests add constraint platform_subscription_requests_pkey PRIMARY KEY (id);
 
@@ -16627,6 +16647,8 @@ alter table public.plans enable row level security;
 
 alter table public.platform_bank_accounts enable row level security;
 
+alter table public.platform_fiyat_listesi enable row level security;
+
 alter table public.platform_subscription_requests enable row level security;
 
 alter table public.product_plans enable row level security;
@@ -17758,6 +17780,19 @@ create policy authenticated_read_active_bank_accounts on public.platform_bank_ac
 create policy founder_manage_bank_accounts on public.platform_bank_accounts as PERMISSIVE for ALL to authenticated
   using (( SELECT private.is_arvoos_founder() AS is_arvoos_founder))
   with check (( SELECT private.is_arvoos_founder() AS is_arvoos_founder));
+
+create policy herkes_yayimlanan_fiyati_okur on public.platform_fiyat_listesi as PERMISSIVE for SELECT to anon, authenticated
+  using ((yayimlandi_at IS NOT NULL));
+
+create policy kurucu_fiyati_gunceller on public.platform_fiyat_listesi as PERMISSIVE for UPDATE to authenticated
+  using (private.is_arvoos_founder())
+  with check (private.is_arvoos_founder());
+
+create policy kurucu_fiyati_okur on public.platform_fiyat_listesi as PERMISSIVE for SELECT to authenticated
+  using (private.is_arvoos_founder());
+
+create policy kurucu_fiyati_yazar on public.platform_fiyat_listesi as PERMISSIVE for INSERT to authenticated
+  with check (private.is_arvoos_founder());
 
 create policy founder_manage_product_plans on public.product_plans as PERMISSIVE for ALL to authenticated
   using (( SELECT private.is_arvoos_founder() AS is_arvoos_founder))
