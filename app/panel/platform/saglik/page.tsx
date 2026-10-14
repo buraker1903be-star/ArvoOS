@@ -10,8 +10,9 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { PAKET_ADI, para, sayi, tarihSaat } from "../bicim";
-import { KBos, KKart, KListe, KOge } from "../konsol-ui";
+import { cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
+import { PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import "../platform.css";
 
 /*
@@ -35,6 +36,33 @@ import "../platform.css";
 
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
+/*
+  Şimdiki zaman MODÜL KAPSAMINDA okunuyor: `new Date()` render gövdesinde
+  react-hooks saflık kuralını bozuyor (bu dosyada bir kez yaşandı).
+*/
+function cronTablosu(satirlar: CronKaydi[]) {
+  return cronDurumlari(satirlar, new Date());
+}
+
+const CRON_DURUM: Record<CronDurumu["durum"], { etiket: string; ton: string }> = {
+  tamam: { etiket: "Çalışıyor", ton: "success" },
+  gecikti: { etiket: "Gecikti", ton: "danger" },
+  dustu: { etiket: "Son koşma düştü", ton: "warning" },
+  hic: { etiket: "Kayıt yok", ton: "neutral" },
+};
+
+/** "2 dakikada bir" / "her gün" — beklenen aralık vercel.json'dan geliyor. */
+const aralikMetni = (dk: number | null) =>
+  dk === null ? "aralık çıkarılamadı" : dk >= 24 * 60 ? "her gün" : `${dk} dakikada bir`;
+
+/** Kaydın ayrıntısındaki ilk hata cümlesi (varsa). */
+function cronHataMetni(ayrinti: unknown): string | null {
+  const hata = (ayrinti as { hata?: unknown } | null)?.hata;
+  if (typeof hata === "string" && hata) return hata;
+  if (Array.isArray(hata) && typeof hata[0] === "string" && hata[0]) return hata[0];
+  return null;
+}
+
 type Kiraci = {
   id: string; name: string; display_name: string | null; kind: string | null;
   provisioning_state: string; license_status: string | null; plan_code: string | null;
@@ -46,13 +74,14 @@ export default async function SistemSagligiPage() {
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
 
-  const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }] = await Promise.all([
+  const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }, { data: cronSatirlari, error: cronHatasi }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status"),
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
-    depolamaKullanimi().then((data) => ({ data })),
+    depolamaKullanimi().then((data) => ({ data: data as { organization_id: string; bytes: number }[], error: null })),
+    supabase.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti"),
   ]);
 
   const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari] = await Promise.all([
@@ -129,12 +158,18 @@ export default async function SistemSagligiPage() {
     { ad: "Arvo Randevu", bozuk: !randevu.ok, not: randevu.ok ? "Yanıt veriyor" : randevu.error ? `Bağlanılamadı: ${randevu.error}` : `Tanımsız değişken: ${randevu.missing.join(", ")}` },
   ];
 
+  /* OKUNAMAYAN KAYNAK "SORUN YOK" DEĞİL: kayıtlar okunamazsa her iş
+     "henüz kaydı yok" görünürdü ve bu nötr durum sessizce yeşil sayılırdı.
+     Hata kartın kendisinde yazılı; sayım da yapılmıyor. */
+  const cronDurum = cronHatasi ? [] : cronTablosu((cronSatirlari ?? []) as unknown as CronKaydi[]);
+  const cronSorun = cronSorunlari(cronDurum);
+
   const kurulumHatalari = (kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[];
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
-  const toplamSorun = kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
+  const toplamSorun = cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
 
   return <main className="plt talep cari">
     <header className="talep-bas">
@@ -160,6 +195,13 @@ export default async function SistemSagligiPage() {
           <small>{kopukKopru ? `${sayi(kopukKopru)} köprü yanıt vermiyor` : "Üçü de yanıt veriyor"}</small>
         </div>
         <div>
+          <dt>Zamanlanmış iş</dt>
+          <dd className={cronSorun.length ? "talep-uyari" : cronHatasi ? "talep-uyari" : "cari-arti"}>
+            {cronHatasi ? "—" : <>{sayi(cronDurum.length - cronSorun.length)} / {sayi(cronDurum.length)}</>}
+          </dd>
+          <small>{cronHatasi ? "Kayıtlar okunamadı" : cronSorun.length ? `${sayi(cronSorun.length)} iş gecikti ya da düştü` : "Hepsi zamanında koşuyor"}</small>
+        </div>
+        <div>
           <dt>Kota</dt>
           <dd className={kotalar.length ? "talep-uyari" : undefined}>{sayi(kotalar.length)}</dd>
           <small>{kotalar.length ? "Limite yaklaşan ya da aşan kiracı" : "Kota sorunu yok"}</small>
@@ -178,6 +220,34 @@ export default async function SistemSagligiPage() {
         başlıksız tek satır — kiracı simgesi, başlık, altında tek satır
         özet, sağda durum ve değer. Eskiden üç-beş sütunlu tablolardı
         (KTablo + MobilSatir), kurum adları ikiye kırılıyordu. */}
+    {/* ZAMANLANMIŞ İŞLER EN BAŞTA: aşağıdaki bölümlerin çoğu bunların
+        BELİRTİSİ. Posta eşitlemesi durduğunda kullanıcı "postalar
+        gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat"
+        görünüyor; sebep burada yazılı. */}
+    <KKart baslik="Zamanlanmış işler"
+      aciklama="Beş iş ekosistemi taşıyor ve hiçbiri koştuğunu kaydetmiyordu: biri sessizce dursa belirti kullanıcıda çıkıyordu.">
+      {cronHatasi ? (
+        <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
+      ) : (
+        <KListe>
+          {cronDurum.map((is) => {
+            const sorunlu = is.durum === "gecikti" || is.durum === "dustu";
+            const hata = cronHataMetni(is.ayrinti ?? null);
+            return (
+              <KOge key={is.yol} baslik={is.ad}
+                alt={is.durum === "hic"
+                  ? "Koşma kaydı tutma bugün başladı; ilk koşmada yazılacak."
+                  : sorunlu ? (hata ?? is.aciklama) : is.aciklama}
+                etiketler={[{ etiket: aralikMetni(is.aralikDk), ton: is.aralikDk === null ? "warning" : "neutral" }]}
+                durum={CRON_DURUM[is.durum]}
+                deger={is.gecikmeDk === null ? "—" : gecenSure(is.gecikmeDk)}
+                degerAlt="en son koşma" />
+            );
+          })}
+        </KListe>
+      )}
+    </KKart>
+
     <KKart baslik="Ürün köprüleri"
       aciklama="Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.">
       <KListe>

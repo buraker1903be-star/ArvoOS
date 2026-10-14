@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import {
   hatirlatilacaklar,
@@ -57,11 +58,20 @@ type IsSatiri = {
   waiting_party: string; waiting_note: string | null; waiting_since: string | null;
 };
 
+// Koşma kaydı lib/cron-kaydi ile; yetkisiz istek kaydedilmez. Gövde
+// Response değil CronKosusu döndürüyor: altı erken dönüşten birinde kaydı
+// atlamak işi "durmuş" gösterirdi, tip buna izin vermiyor.
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("Yetkisiz", { status: 401 });
+  return cronRotasi("/api/cron/adim-terminleri", kosu);
+}
 
+async function kosu(): Promise<CronKosusu> {
   const admin = createAdminClient();
-  if (!admin) return Response.json({ error: "Sunucu anahtarı tanımlı değil." }, { status: 503 });
+  if (!admin) return {
+    yanit: Response.json({ error: "Sunucu anahtarı tanımlı değil." }, { status: 503 }),
+    sonuc: "hata", ayrinti: { hata: "Sunucu anahtarı tanımlı değil." },
+  };
 
   const bugun = todayInIstanbul();
   /*
@@ -82,11 +92,12 @@ export async function GET(request: Request) {
     .limit(TEK_SEFERDE);
   if (error) {
     console.error("[adim-terminleri] adımlar okunamadı", error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return { yanit: Response.json({ error: error.message }, { status: 500 }), sonuc: "hata", ayrinti: { hata: error.message } };
   }
 
   const satirlar = (data ?? []) as HatirlatilacakAdim[];
-  if (satirlar.length === 0) return Response.json({ aday: 0, gonderilen: 0 });
+  // Aday yok: iş koştu ve yapacak bir şey olmadığını gördü — başarı.
+  if (satirlar.length === 0) return { yanit: Response.json({ aday: 0, gonderilen: 0 }), sonuc: "tamam", ayrinti: { aday: 0, gonderilen: 0 } };
 
   /*
     İşler ayrı sorguyla okunuyor, gömülü ilişkiyle değil: operation_steps →
@@ -100,7 +111,7 @@ export async function GET(request: Request) {
     .in("id", [...new Set(satirlar.map((satir) => satir.workflow_id))]);
   if (isHatasi) {
     console.error("[adim-terminleri] işler okunamadı", isHatasi.message);
-    return Response.json({ error: isHatasi.message }, { status: 500 });
+    return { yanit: Response.json({ error: isHatasi.message }, { status: 500 }), sonuc: "hata", ayrinti: { hata: isHatasi.message } };
   }
   const isHaritasi = new Map((isler ?? []).map((is) => [is.id as string, is as IsSatiri]));
 
@@ -112,7 +123,7 @@ export async function GET(request: Request) {
   const acikIsler = satirlar.filter((satir) =>
     ["planned", "in_progress", "blocked"].includes(isHaritasi.get(satir.workflow_id)?.status ?? ""));
   const gonderilecek = hatirlatilacaklar(acikIsler, bugun);
-  if (gonderilecek.length === 0) return Response.json({ aday: acikIsler.length, gonderilen: 0 });
+  if (gonderilecek.length === 0) return { yanit: Response.json({ aday: acikIsler.length, gonderilen: 0 }), sonuc: "tamam", ayrinti: { aday: acikIsler.length, gonderilen: 0 } };
 
   // Sorumlu kimliği → kullanıcı: bildirim kişiye gider, personele değil.
   const calisanIdleri = [...new Set(
@@ -184,10 +195,11 @@ export async function GET(request: Request) {
 
   const revizyon = await revizyonHatirlat(admin, bugun);
 
-  return Response.json(
-    { aday: acikIsler.length, gonderilen, revizyon },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return {
+    yanit: Response.json({ aday: acikIsler.length, gonderilen, revizyon }, { headers: { "Cache-Control": "no-store" } }),
+    sonuc: "tamam",
+    ayrinti: { aday: acikIsler.length, gonderilen, revizyon },
+  };
 }
 
 /*

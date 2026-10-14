@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { syncArcTenants } from "@/lib/arc-bridge";
+import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 
 // ArvoARC köprüsünün tam eşitlemesi (lib/arc-bridge.ts). Vercel zamanlayıcısı
 // 10 dakikada bir çağırır (vercel.json). Anında aktarımın kaçırdığı her
@@ -22,12 +23,26 @@ function authorized(request: Request) {
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
+// Koşma kaydı lib/cron-kaydi ile; yetkisiz istek KAYDEDİLMEZ (dışarıdan
+// tablo şişirilmesin), kayıt da zamanlayıcının kendi çağrısını ölçsün.
 export async function GET(request: Request) {
   if (!authorized(request)) return new Response("Yetkisiz", { status: 401 });
+  return cronRotasi("/api/cron/arc-sync", kosu);
+}
+
+async function kosu(): Promise<CronKosusu> {
   const result = await syncArcTenants();
   // Kısmi hata da başarısızlıktır: 200 dönmek Vercel'in zamanlayıcı
   // geçmişinde "sorun yok" gösteriyor, eksik kalan aktarım hiç fark edilmiyordu.
   const failed = result.status === "failed" || result.status === "partial";
   if (failed) console.error("[arc] zamanlanmış eşitleme eksik", result.status, result.errors);
-  return Response.json(result, { status: failed ? 500 : 200, headers: { "Cache-Control": "no-store" } });
+  /* "not_configured" İŞİN KENDİSİ İÇİN BAŞARI: iş koştu ve yapacak bir şey
+     olmadığını doğru gördü. Köprünün yapılandırmasını Sistem Sağlığı'nın
+     "Ürün köprüleri" kartı söylüyor; aynı şeyi iki kart birden bağırırsa
+     ikisi de okunmaz olur. */
+  return {
+    yanit: Response.json(result, { status: failed ? 500 : 200, headers: { "Cache-Control": "no-store" } }),
+    sonuc: result.status === "failed" ? "hata" : result.status === "partial" ? "eksik" : "tamam",
+    ayrinti: { durum: result.status, kurum: result.organizations, uyelik: result.memberships, hata: result.errors.slice(0, 5) },
+  };
 }

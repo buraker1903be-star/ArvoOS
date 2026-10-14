@@ -7,6 +7,7 @@ import { yetkisiOlanlar } from "@/lib/kisi-yetkileri";
 import { donemTutari } from "@/lib/abonelik-tutari";
 import { musteriMi } from "@/lib/kurum-turu";
 import { syncArvolabLicense } from "@/lib/arvolab";
+import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,10 +54,20 @@ type Lisans = {
   current_period_end: string | null; trial_ends_at: string | null;
 };
 
+// Koşma kaydı lib/cron-kaydi ile; yetkisiz istek kaydedilmez. Gövde
+// Response değil CronKosusu döndürüyor: dört erken dönüşten birinde kaydı
+// atlamak işi "durmuş" gösterirdi, tip buna izin vermiyor.
 export async function GET(istek: Request) {
   if (!yetkili(istek)) return Response.json({ hata: "yetkisiz" }, { status: 401 });
+  return cronRotasi("/api/cron/abonelik-hatirlatma", kosu);
+}
+
+async function kosu(): Promise<CronKosusu> {
   const admin = createAdminClient();
-  if (!admin) return Response.json({ hata: "sunucu anahtarı yok" }, { status: 500 });
+  if (!admin) return {
+    yanit: Response.json({ hata: "sunucu anahtarı yok" }, { status: 500 }),
+    sonuc: "hata", ayrinti: { hata: "sunucu anahtarı yok" },
+  };
 
   /*
     ÖNCE süresi dolan aktif lisanslar "ödemesi gecikmiş" olur
@@ -81,8 +92,9 @@ export async function GET(istek: Request) {
       .in("license_status", ["trialing", "active", "past_due"]),
   ]);
   if (error || cekirdekHatasi) {
-    console.error("[abonelik] lisanslar okunamadı", (error ?? cekirdekHatasi)?.message);
-    return Response.json({ hata: "lisanslar" }, { status: 500 });
+    const mesaj = (error ?? cekirdekHatasi)?.message ?? "lisanslar okunamadı";
+    console.error("[abonelik] lisanslar okunamadı", mesaj);
+    return { yanit: Response.json({ hata: "lisanslar" }, { status: 500 }), sonuc: "hata", ayrinti: { hata: mesaj } };
   }
   type Cekirdek = {
     organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number | null;
@@ -105,13 +117,19 @@ export async function GET(istek: Request) {
     const kademe = abonelikKademesi(bitis, bugun);
     return kademe === null ? [] : [{ ...l, deneme, bitis, kademe }];
   });
-  if (!adaylar.length) return Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, yazilan: 0 });
+  /* Bugün bir kademeye düşen lisans yok: iş koştu, hatırlatacak bir şey
+     bulamadı — başarı. Gecikenlerin işaretlenmesi yine yapıldı. */
+  if (!adaylar.length) return {
+    yanit: Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, yazilan: 0 }),
+    sonuc: isaretHatasi ? "eksik" : "tamam",
+    ayrinti: { gecikmis: isaret.cekirdek.length + isaret.urun.length, aday: 0, yazilan: 0, ...(isaretHatasi ? { hata: isaretHatasi.message } : {}) },
+  };
 
   const { data: kurumlar, error: kurumHatasi } = await admin.from("organizations")
     .select("id,kind,grup_markasi").in("id", [...new Set(adaylar.map((a) => a.organization_id))]);
   if (kurumHatasi) {
     console.error("[abonelik] kurumlar okunamadı", kurumHatasi.message);
-    return Response.json({ hata: "kurumlar" }, { status: 500 });
+    return { yanit: Response.json({ hata: "kurumlar" }, { status: 500 }), sonuc: "hata", ayrinti: { hata: kurumHatasi.message } };
   }
   /* Arvo'nun kendisi ve grup markaları (lib/kurum-turu) ödeme yapmaz:
      hatırlatma yalnızca gerçek müşteriye. */
@@ -154,5 +172,16 @@ export async function GET(istek: Request) {
     else yazilan += alicilar.length;
   }
   if (hatalar.length) console.error("[abonelik] hatırlatma yazılamadı", hatalar);
-  return Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, aday: adaylar.length, yazilan, hata: hatalar.length }, { status: hatalar.length ? 500 : 200 });
+  /* Gecikenler işaretlenemediyse "eksik": hatırlatma yazıldı ama konsolun
+     "Ödemesi gecikmiş" sayısı bu tur güncellenmedi. */
+  const kismi = hatalar.length > 0 || Boolean(isaretHatasi);
+  return {
+    yanit: Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, aday: adaylar.length, yazilan, hata: hatalar.length }, { status: hatalar.length ? 500 : 200 }),
+    sonuc: kismi ? "eksik" : "tamam",
+    ayrinti: {
+      gecikmis: isaret.cekirdek.length + isaret.urun.length,
+      aday: adaylar.length, yazilan,
+      hata: [...(isaretHatasi ? ["gecikenler: " + isaretHatasi.message] : []), ...hatalar].slice(0, 5),
+    },
+  };
 }

@@ -78,3 +78,14 @@ export const KURULUM_TONU: Record<string, StgTone> = {
 /** Avatar baş harfleri; adı olmayan kurumda "?". */
 export const basHarfleri = (deger: string) =>
   deger.split(/\s+/).filter(Boolean).slice(0, 2).map((parca) => parca[0]?.toLocaleUpperCase("tr-TR")).join("") || "?";
+
+/*
+  Geçen süre, Sistem Sağlığı'nın "en son koşma" sütunu için. İki günden
+  sonra saat yerine gün: "63 sa önce" okunmuyor.
+*/
+export function gecenSure(dakika: number): string {
+  if (dakika < 1) return "az önce";
+  if (dakika < 60) return `${sayi(dakika)} dk önce`;
+  if (dakika < 48 * 60) return `${sayi(Math.floor(dakika / 60))} sa önce`;
+  return `${sayi(Math.floor(dakika / 1440))} gün önce`;
+}

@@ -124,6 +124,20 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   o süre boyunca hiçbir değişiklik canlıya çıkmadı. Denetime seçici
   parantez dengesi eklendi (`check-css-tokens.mjs`), ama o yalnızca bu
   hatayı tutuyor: toplu düzenlemenin karşılığı derleme almaktır.
+- **Zamanlanmış iş koştuğunu kaydeder; beklenen aralığı `vercel.json`
+  söyler.** Her cron rotası `cronRotasi` ile sarılır
+  (`lib/cron-kaydi.ts`): gövdesi `Response` değil `CronKosusu`
+  döndürdüğü için sonucunu söylemeyen bir erken dönüş derlemede hata
+  verir — altı çıkışı olan bir rotada bir kaydı atlamak işi "durmuş"
+  göstermenin en kolay yoluydu. Beklenen aralık yoruma ya da ikinci bir
+  listeye YAZILMAZ, `vercel.json`'dan türetilir (`lib/cron-isleri.ts`):
+  posta eşitlemesinin rotasındaki yorum "on dakikada bir" diyordu,
+  zamanlayıcı 13.10.2026'dan beri iki dakikada bir çağırıyor. Yeni bir
+  cron eklerken `lib/cron-isleri.ts`'teki tanıma "durursa ne olur"
+  cümlesini yazın; birim testi bunu ve zamanlamanın
+  ayrıştırılabildiğini sabitliyor. Gecikme SON BAŞARILI koşmaya göre
+  ölçülür — her tur düşen bir iş "son koşma"ya bakıldığında yeni koşmuş
+  görünür.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata
