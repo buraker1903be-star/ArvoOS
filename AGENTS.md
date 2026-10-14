@@ -114,6 +114,16 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   ekranda hiçbir şey yoktu. Bulanık bir kabuğun içine kaplama
   yazarken konumu açıkça kabuğa göre kurun (`position:absolute;
   top:100%`), ya da kaplamayı kabuğun DIŞINA taşıyın.
+- **CSS'i toplu düzenledikten sonra `npm run build` alın.** Denetimlerin
+  hiçbiri CSS'in AYRIŞTIRILABİLDİĞİNİ söylemiyor: `check:css` sınıfların
+  rotaya girip girmediğine ve token'lara bakıyor, PostCSS hoşgörülü
+  olduğu için bozuk bir seçiciyi sessizce okuyup geçiyor, derleme de
+  CI'da yapılmıyor. 14.10.2026'da ölü CSS temizleyen bir betik
+  `:is(...)` listesini virgülden bölerken parantezi hesaba katmadı,
+  `.panel-root :is(` öneki düştü ve üretim derlemesi dört saat düştü —
+  o süre boyunca hiçbir değişiklik canlıya çıkmadı. Denetime seçici
+  parantez dengesi eklendi (`check-css-tokens.mjs`), ama o yalnızca bu
+  hatayı tutuyor: toplu düzenlemenin karşılığı derleme almaktır.
 - **Müşteriye giden sayfalarda `ad-` öneki yasak.** Teklif ve sözleşme
   belgelerinin sınıfları `doc-` ile başlar. `ad-root`, `ad-sheet` gibi adlar
   reklam engelleyicilerin kozmetik filtresine takılıyor ve belge, hiçbir hata

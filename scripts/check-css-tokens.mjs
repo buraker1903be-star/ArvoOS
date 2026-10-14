@@ -142,6 +142,43 @@ for (const file of allCss) {
   }
 }
 
+/*
+  6) SEÇİCİ SÖZDİZİMİ: parantez ve köşeli parantez dengeli mi?
+
+  14.10.2026: ölü CSS temizleyen bir betik `:is(...)` listesini virgülden
+  bölerken parantezi hesaba katmadı ve geriye
+  ".panel-drawer-header,.panel-sheet,.panel-toast){…}" kaldı — önek ve
+  açılış parantezi düşmüş. ÜRETİM DERLEMESİ dört saat düştü ve o süre
+  boyunca hiçbir değişiklik canlıya çıkmadı.
+
+  Hiçbir denetim yakalamadı: bu dosya PostCSS kullanıyor ama PostCSS
+  hoşgörülü, seçiciyi ".a,.b)" diye okuyup geçiyor. Derlemedeki
+  Lightning CSS katı ve orada patlıyor; derleme de CI'da yapılmıyor
+  (AGENTS.md). Denge sayımı bu boşluğu kapatıyor.
+*/
+for (const file of allCss) {
+  const kok = postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
+  const dengeli = (metin) => {
+    let p = 0, k = 0;
+    for (const ch of metin) {
+      if (ch === "(") p++; else if (ch === ")") p--;
+      else if (ch === "[") k++; else if (ch === "]") k--;
+      if (p < 0 || k < 0) return false;
+    }
+    return p === 0 && k === 0;
+  };
+  kok.walkRules((kural) => {
+    if (!dengeli(kural.selector)) {
+      problems.push(`${file}:${kural.source?.start?.line ?? "?"} — seçicide parantez dengesiz: ${kural.selector.slice(0, 80)}`);
+    }
+  });
+  kok.walkAtRules((kural) => {
+    if (kural.params && !dengeli(kural.params)) {
+      problems.push(`${file}:${kural.source?.start?.line ?? "?"} — @${kural.name} koşulunda parantez dengesiz: ${kural.params.slice(0, 80)}`);
+    }
+  });
+}
+
 for (const [file, props] of paletteOffenders) {
   problems.push(
     `${file}: palet değişkeni tanımlıyor (${[...new Set(props)].join(", ")}). ` +
@@ -162,4 +199,4 @@ if (unique.length) {
   for (const p of unique) console.error("  • " + p);
   process.exit(1);
 }
-console.log(`✓ ${importOrder.length} dosya, ${vars.size} değişken — döngü yok, tanımsız yok, palet tek kaynakta, ${MIN_FONT_PX}px altı yazı yok.`);
+console.log(`✓ ${importOrder.length} dosya, ${vars.size} değişken — döngü yok, tanımsız yok, palet tek kaynakta, ${MIN_FONT_PX}px altı yazı yok, seçiciler dengeli.`);
