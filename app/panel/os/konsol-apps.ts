@@ -86,14 +86,12 @@ export function konsolUygulamalari(): OsUygulama[] {
     },
     {
       key: "abonelikler", label: "Abonelikler", href: "/panel/platform/billing", ikon: "repeat",
-      /* Sözleşme onayı bir aboneliği açar: abonelik işinin parçası. */
+      /* Sözleşme onayı bir aboneliği açar: abonelik işinin parçası.
+         ALT MENÜ YOK (14.10.2026, kurum sahibi: "bunlara gerek var mı"):
+         ödeme sorunları ve dönem sonu yaklaşanlar sayfanın kendi sekmeleri
+         (menüdeki #sorunlar bağlantıları sekmeyi açmıyordu bile); sözleşme
+         onayları sayfanın başlığında, bekleyen sayısıyla. */
       yollar: ["/panel/platform/billing", "/panel/platform/sozlesmeler"],
-      bolumler: [
-        { key: "abonelikler", href: "/panel/platform/billing", label: "Kurum abonelikleri" },
-        { key: "sorunlar", href: "/panel/platform/billing#sorunlar", label: "Ödeme sorunları" },
-        { key: "hatirlatmalar", href: "/panel/platform/billing#hatirlatmalar", label: "Dönem sonu yaklaşanlar" },
-        { key: "sozlesmeler", href: "/panel/platform/sozlesmeler", label: "Sözleşme onayları" },
-      ],
     },
     {
       key: "tahsilat", label: "Faturalama ve Tahsilat", href: "/panel/platform/tahsilat", ikon: "wallet",

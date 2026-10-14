@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getPanelContext } from "@/lib/panel-context";
 import { PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { productName } from "@/lib/products";
@@ -72,6 +73,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     { data: tahsilatOzeti, error: ozetHatasi },
     { data: sorunluBildirimler },
     odemeOlaylari,
+    { count: bekleyenSozlesme },
   ] = await Promise.all([
     supabase.from("organizations").select("id").eq("kind", "internal"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due", "suspended", "canceled"]),
@@ -88,6 +90,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       .order("created_at", { ascending: false }).limit(100),
     // PayTR'nin bildirip kayıt oluşturamadığı ödemeler (Ödeme Onayları'ndaki liste).
     getPaymentIncidents(),
+    /* Bekleyen sözleşme onayı (başlıktaki düğme). İstekler yalnızca sunucu
+       anahtarıyla okunuyor (sözleşme kuyruğundaki kural). */
+    (() => { const admin = createAdminClient(); return admin
+      ? admin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
+      : Promise.resolve({ count: 0 }); })(),
   ]);
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
   const ozet = (tahsilatOzeti ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
@@ -311,9 +318,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <h1>Abonelikler</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
-        {/* Tahsilat listesi kendi menüsünde (Faturalama ve Tahsilat, 14.10.2026). */}
-        <Link className="panel-secondary" href="/panel/platform/tahsilat">Tahsilatlar</Link>
+        {/* Sözleşme onayları menüden buraya (14.10.2026): imzalanan
+            sözleşme kuruma onaylanınca abonelik açılır. Ödeme onayları ve
+            tahsilatlar Faturalama ve Tahsilat menüsünde; burada tekrar etmiyor. */}
+        <Link className={bekleyenSozlesme ? "panel-primary" : "panel-secondary"} href="/panel/platform/sozlesmeler">
+          Sözleşme onayları{bekleyenSozlesme ? ` · ${bekleyenSozlesme} bekliyor` : ""}
+        </Link>
       </div>
     </header>
 
