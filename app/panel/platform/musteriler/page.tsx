@@ -122,9 +122,9 @@ function bireyselSatirlariKur(aboneler: Abone[], liste: (urun: string) => number
       ad: abone.full_name?.trim() || abone.email,
       /* Adı girilmemiş abonede ad zaten e-posta: alt satıra ikinci kez
          yazmak aynı adresi alt alta göstermek olurdu. */
-      alt: abone.full_name?.trim()
-        ? `${productName(abone.product as Parameters<typeof productName>[0])} · ${abone.email}`
-        : productName(abone.product as Parameters<typeof productName>[0]),
+      /* Ürün rozette yazıyor (14.10.2026); özette yalnızca adı girilmiş
+         abonenin e-postası kalıyor — ad zaten e-postaysa ikinci kez yazılmaz. */
+      alt: abone.full_name?.trim() ? abone.email : "",
       href: "/panel/platform/subscribers",
       durum: !acik ? "Erişim kapalı" : abone.status === "trialing" ? "Denemede" : "Ödüyor",
       ton: (!acik ? "danger" : abone.status === "trialing" ? "warning" : "success") as Satir["ton"],
@@ -199,10 +199,15 @@ export default async function MusterilerPage({ searchParams }: {
   for (const l of urunLisanslari) urunleriKurumun.set(l.organization_id, [...(urunleriKurumun.get(l.organization_id) ?? []), l]);
 
   const kurumsalSatirlar: Satir[] = kurumlar.map((kurum) => {
+    const ekler = (urunleriKurumun.get(kurum.id) ?? []).filter((l) => l.status !== "inactive");
+    /* Durum ÇEKİRDEK lisanstan, ama çekirdek kapalıyken açık bir ek ürün
+       varsa ondan: Deneme Salon'da ArvoOS iptal, Randevu ödeniyordu ve satır
+       "İptal" yazıyordu (14.10.2026). */
+    const acikEk = ekler.find((l) => ODEYEN.has(l.status)) ?? ekler.find((l) => ACIK.has(l.status));
+    const durumKodu = ACIK.has(kurum.license_status ?? "") || !acikEk ? kurum.license_status : acikEk.status;
     const durum = kurum.provisioning_state === "failed"
       ? { ad: "Kurulum hatası", ton: "danger" as const }
-      : KURUM_DURUMU[kurum.license_status ?? ""] ?? { ad: "Kurulum sürüyor", ton: "warning" as const };
-    const ekler = (urunleriKurumun.get(kurum.id) ?? []).filter((l) => l.status !== "inactive");
+      : KURUM_DURUMU[durumKodu ?? ""] ?? { ad: "Kurulum sürüyor", ton: "warning" as const };
     /* Kullandığı ürünler: çekirdek lisans (ArvoOS) + ek ürün lisansları,
        her biri kendi durum renginde; kapalı olanlar da görünür (soluk). */
     const urunler = [
@@ -360,7 +365,7 @@ export default async function MusterilerPage({ searchParams }: {
                 href={satir.href}
                 simge={satir.ad}
                 baslik={satir.ad}
-                alt={[satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt].join(" · ")}
+                alt={[satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt].filter(Boolean).join(" · ")}
                 etiketler={satir.urunler.map((u) => ({ etiket: u.etiket, ton: u.ton }))}
                 durum={{ etiket: satir.durum, ton: satir.ton }}
                 /* Aylık tutar bütün ödeyen ürünlerin toplamı; ödeyen ürünü
