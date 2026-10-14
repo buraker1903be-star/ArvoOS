@@ -492,6 +492,16 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       digerUygulamalar={[{ kod: "panel", ad: "Kiracı Paneli", href: `https://${DEFAULT_APP_HOST}/panel`, ayniSekme: false, marka: "arvoos" as const }]}
     />
     <OsUygulamaKabugu />
-    <OsKomutPaleti uygulamalar={konsolUygulamalariListesi} cikis={logout} />
+    {/* Ctrl+K kiracı adıyla da arıyor: konsolda en çok tekrarlanan
+        gezinme "şu kurumun dosyasını aç" ve menüde karşılığı yok. */}
+    <OsKomutPaleti
+      uygulamalar={konsolUygulamalariListesi}
+      cikis={logout}
+      kayitAramasi={{
+        etiket: (sorgu) => `“${sorgu}” için kiracı ara`,
+        ipucu: "Müşteriler",
+        adres: (sorgu) => `/panel/platform/musteriler?ara=${encodeURIComponent(sorgu)}`,
+      }}
+    />
   </main></div>;
 }

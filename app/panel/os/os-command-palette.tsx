@@ -26,7 +26,18 @@ type Oge = { id: string; grup: string; label: string; ipucu?: string; ikon: OsIk
   yetki kararı burada verilmiyor, gizlenen bir şeyi göstermemek için
   aynı listeden besleniyor.
 */
-export function OsKomutPaleti({ uygulamalar, cikis }: { uygulamalar: OsUygulama[]; cikis: () => Promise<void> }) {
+export function OsKomutPaleti({ uygulamalar, cikis, kayitAramasi }: {
+  uygulamalar: OsUygulama[];
+  cikis: () => Promise<void>;
+  /*
+    Yazılan metni bir KAYIT listesinde aratan kısayol. Panelde bu müşteri
+    sorgulama penceresi (CRM yetkisine bağlı); kurucu konsolunda kiracı
+    listesi. Verilmezse kutu yalnızca ekran ve komut önerir — konsolda
+    14.10.2026'ya kadar öyleydi ve kiracı adı yazan kurucu hiçbir sonuç
+    görmüyordu.
+  */
+  kayitAramasi?: { etiket: (sorgu: string) => string; ipucu: string; adres: (sorgu: string) => string };
+}) {
   const router = useRouter();
   const pencere = useRef<HTMLDialogElement>(null);
   const kutu = useRef<HTMLInputElement>(null);
@@ -91,9 +102,14 @@ export function OsKomutPaleti({ uygulamalar, cikis }: { uygulamalar: OsUygulama[
   /* Müşteri araması CRM'i görene, en az 2 harf yazılınca. Sonuçlar
      "Müşteri sorgula" penceresinde: yetki ve geçmiş orada. */
   const crmVar = uygulamalar.some((u) => u.key === "crm");
-  const sonuc: Oge[] = crmVar && sorgu.trim().length >= 2
-    ? [...eslesen, { id: "musteri", grup: "Kayıtlar", label: `“${sorgu.trim()}” için müşteri ve talep geçmişini ara`, ipucu: "CRM", ikon: "crm", tur: "musteri", sorgu: sorgu.trim() }]
-    : eslesen;
+  const yazilan = sorgu.trim();
+  const sonuc: Oge[] = yazilan.length < 2
+    ? eslesen
+    : crmVar
+      ? [...eslesen, { id: "musteri", grup: "Kayıtlar", label: `“${yazilan}” için müşteri ve talep geçmişini ara`, ipucu: "CRM", ikon: "crm", tur: "musteri", sorgu: yazilan }]
+      : kayitAramasi
+        ? [...eslesen, { id: "kayit", grup: "Kayıtlar", label: kayitAramasi.etiket(yazilan), ipucu: kayitAramasi.ipucu, ikon: "crm", tur: "git", href: kayitAramasi.adres(yazilan) }]
+        : eslesen;
   const etkin = Math.min(secili, Math.max(sonuc.length - 1, 0));
 
   const klavye = (olay: React.KeyboardEvent) => {

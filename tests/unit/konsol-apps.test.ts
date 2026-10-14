@@ -96,3 +96,24 @@ describe("kurucu konsolu uygulamaları", () => {
     );
   });
 });
+
+/*
+  Ctrl+K konsolda yalnızca ekran ve komut adlarını buluyordu: kurucu
+  kiracı adı yazınca hiçbir sonuç görmüyordu, oysa konsolda en çok
+  tekrarlanan gezinme "şu kurumun dosyasını aç" (14.10.2026). Kutu
+  yazılanı Müşteriler listesine aratıyor; o sayfa `?ara=` ile süzüyor.
+*/
+describe("konsolda kayıt araması", () => {
+  const adres = (sorgu: string) => `/panel/platform/musteriler?ara=${encodeURIComponent(sorgu)}`;
+
+  test("arama adresi Müşteriler listesinin süzgecine gidiyor", () => {
+    assert.equal(adres("Akademik"), "/panel/platform/musteriler?ara=Akademik");
+    assert.equal(etkinUygulama(konsolUygulamalari(), "/panel/platform/musteriler")?.key, "musteriler");
+  });
+
+  test("Türkçe karakter ve boşluk adreste kaçırılıyor", () => {
+    /* Kaçırılmazsa "Şişli Güzellik" sorgusu adresi bozar ve liste boş
+       döner — arama çalışmıyor sanılır. */
+    assert.equal(adres("Şişli Güzellik"), "/panel/platform/musteriler?ara=%C5%9Ei%C5%9Fli%20G%C3%BCzellik");
+  });
+});
