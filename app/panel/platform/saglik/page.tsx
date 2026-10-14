@@ -9,6 +9,7 @@ import { randevuKopyalari, getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
+import { musteriMi } from "@/lib/kurum-turu";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
 import { PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
@@ -60,7 +61,7 @@ function cronHataMetni(ayrinti: unknown): string | null {
 }
 
 type Kiraci = {
-  id: string; name: string; display_name: string | null; kind: string | null;
+  id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null;
   provisioning_state: string; license_status: string | null; plan_code: string | null;
   user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
 };
@@ -72,7 +73,7 @@ export default async function SistemSagligiPage() {
 
   const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }, { data: cronSatirlari, error: cronHatasi }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
+      .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status"),
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
@@ -128,7 +129,27 @@ export default async function SistemSagligiPage() {
     bir sapma ama kurucunun parasını değil müşterinin hakkını
     ilgilendiriyor ve lisans ekranında zaten görünüyor.
   */
+  /*
+    SAPMA YALNIZCA GERÇEK MÜŞTERİDE ANLAMLI (lib/kurum-turu).
+
+    Kartın gerekçesi "ücretli bir pakette sessiz sapma, satılmamış
+    koltuğu bedava vermek demek". Grup markası ücret ödemiyor ve müşteri
+    gelirine karışmıyor; limitleri de bilerek geniş — ArvoCulture'a
+    paketin üç kullanıcısı yerine 250 tanımlı ve bu bir kaçak değil,
+    verilmiş bir karar. Her gün "açık sorun" diye sayılması kartın
+    okunmamasına, dolayısıyla gerçek bir sapmanın da görülmemesine yol
+    açardı.
+
+    Öteki kartlar grup markalarını SAYMAYA devam ediyor: kotada, bayat
+    kopyada ve kurulumda soru "para" değil "çalışıyor mu" — grup markası
+    da panelde çalışıyor ve kotası dolarsa kullanıcısı engellenir.
+
+    Ekran eskiden ham `kind !== 'internal'` testiyle yalnızca Arvo'nun
+    kendisini eliyordu; sınıflandırma 14.10.2026'da tek yere alınmıştı
+    ama bu sayfa dışarıda kalmıştı.
+  */
   const limitSapanlar = musteriler
+    .filter(musteriMi)
     .map((k) => ({
       kiraci: k,
       /* AI kredisi KIYASLANMIYOR: kiracı görünümünde o sütun yok ve
@@ -141,10 +162,10 @@ export default async function SistemSagligiPage() {
     }))
     .filter((x) => x.sapmalar.length > 0);
 
-  const musteriMi = new Set(musteriler.map((k) => k.id));
+  const olculenKiracilar = new Set(musteriler.map((k) => k.id));
   const bayatKopyalar = eskiKopyalar(
     ((urunSatirlari ?? []) as { organization_id: string; product: string; status: string }[])
-      .filter((s) => musteriMi.has(s.organization_id)),
+      .filter((s) => olculenKiracilar.has(s.organization_id)),
     { arvolab: labKopya, arc: arcKopya, randevu: rdvKopya },
   );
 
