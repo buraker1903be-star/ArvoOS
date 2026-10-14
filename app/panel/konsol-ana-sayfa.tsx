@@ -8,6 +8,7 @@ import { arcKopyalari, getArcBridgeHealth } from "@/lib/arc-bridge";
 import { randevuKopyalari, getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
+import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
@@ -169,7 +170,17 @@ export async function KonsolAnaSayfa() {
     user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
   })[];
   const kurumlar = kiracilar as Kurum[];
-  const musteriler = kurumlar.filter((kurum) => kurum.kind !== "internal");
+  /*
+    KİRACI (Arvo'nun kendisi hariç) ile MÜŞTERİ (grup markaları da hariç)
+    ayrı: ortak kural lib/kurum-turu'nda. Ana ekranın "Müşteri kurum"
+    sayısı 14.10.2026'ya kadar kiracıları sayıyordu ve grup markaları da
+    müşteri görünüyordu — aynı soruya Müşteriler ekranı 2, ana ekran 4
+    diyordu. Gelir hesabı zaten doğru kuralı kullanıyordu, yalnızca
+    başlıktaki sayı ayrışmıştı.
+  */
+  const kiracilarListesi = kurumlar.filter((kurum) => kurum.kind !== "internal");
+  const musteriler = kurumlar.filter(musteriMi);
+  const grupMarkalari = kurumlar.filter((kurum) => kurumTuru(kurum) === "grup");
   const kurumAdi = new Map(kurumlar.map((kurum) => [kurum.id, kurum.display_name || kurum.name]));
 
   const aktifUye = new Map(kiracilar.map((satir) => [satir.id, Number(satir.aktif_uye)]));
@@ -194,8 +205,11 @@ export async function KonsolAnaSayfa() {
   })]));
 
   const kullanimda = musteriler.filter((kurum) => kurum.provisioning_state === "active").length;
-  const kurulumBekleyen = musteriler.filter((kurum) => PENDING_STATES.has(kurum.provisioning_state)).length;
-  const dikkatGerektiren = musteriler.filter((kurum) =>
+  /* Operasyonel sayımlar BÜTÜN kiracılar üzerinden: bozuk kurulan ya da
+     kotasını aşan bir grup markası da kurucunun işidir, müşteri
+     olmaması onu ilgisiz yapmıyor. */
+  const kurulumBekleyen = kiracilarListesi.filter((kurum) => PENDING_STATES.has(kurum.provisioning_state)).length;
+  const dikkatGerektiren = kiracilarListesi.filter((kurum) =>
     kurum.provisioning_state === "failed" || kota.get(kurum.id)?.durum === "asildi").length;
 
   /*
@@ -206,13 +220,13 @@ export async function KonsolAnaSayfa() {
   */
   /* Gelire yalnızca gerçek müşteri girer: grup markalarının (AkademikMerkez,
      ArvoCulture) ücreti grup içi değer, müşteri geliri değil (lib/kurum-turu). */
-  const kiraciMi = new Set(musteriler.map((kurum) => kurum.id));
-  const musteriMi = new Set(musteriler.filter((kurum) => !kurum.grup_markasi).map((kurum) => kurum.id));
+  const kiraciMi = new Set(kiracilarListesi.map((kurum) => kurum.id));
+  const musteriKimlikleri = new Set(musteriler.map((kurum) => kurum.id));
   const urunler = (urunSatirlari ?? []) as UrunLisansi[];
   const aylikGelir =
-    cekirdek.filter((satir) => musteriMi.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.license_status))
+    cekirdek.filter((satir) => musteriKimlikleri.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.license_status))
       .reduce((toplam, satir) => toplam + Number(satir.monthly_fee ?? 0), 0)
-    + urunler.filter((satir) => musteriMi.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.status))
+    + urunler.filter((satir) => musteriKimlikleri.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.status))
       .reduce((toplam, satir) => toplam + Number(satir.monthly_fee ?? 0), 0);
 
   const hatirlatmalar = hatirlatmalariHesapla(urunler as RenewalLicense[], kurumlar as RenewalOrganization[]);
@@ -304,7 +318,17 @@ export async function KonsolAnaSayfa() {
   const grafikOzeti = [
     { ad: "Beklenen aylık", deger: para(aylikGelir), href: "/panel/platform/billing" },
     /* "3 / 4": kaçının kullanımda olduğu bilgisi sayı kartından buraya taşındı. */
-    { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, href: "/panel/platform/musteriler" },
+    {
+      ad: "Müşteri kurum",
+      deger: `${kullanimda} / ${musteriler.length}`,
+      href: "/panel/platform/musteriler?tur=kurumsal",
+    },
+    /* Grup markaları ayrı sayılıyor: müşteri değiller ama kiracılar ve
+       kurucunun gözünden kaybolmamalı (Müşteriler ekranı da ayrı
+       gösteriyor). */
+    ...(grupMarkalari.length
+      ? [{ ad: "Grup markası", deger: String(grupMarkalari.length), href: "/panel/platform/musteriler" }]
+      : []),
     { ad: "Onay bekleyen", deger: String(onayBekleyen), ton: onayBekleyen ? "danger" : undefined, href: "/panel/platform/payments" },
     { ad: "Dikkat gerektiren", deger: String(dikkatGerektiren), ton: dikkatGerektiren ? "danger" : undefined, href: "/panel/platform/musteriler" },
   ];
