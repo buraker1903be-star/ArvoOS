@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { productName } from "@/lib/products";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
-import { PAKET_ADI, para, tarih, tarihSaat } from "../../bicim";
+import { ODEME_DURUMU, PAKET_ADI, para, tarih, tarihSaat } from "../../bicim";
 import { KararFormu } from "../../payments/karar-formu";
 import { reviewBankTransferPayment } from "../../payments/actions";
 
@@ -13,12 +13,6 @@ import { reviewBankTransferPayment } from "../../payments/actions";
   (LisansBolumu, KiraciUyeleri, KiraciDosyasi) olduğu gibi kullanıyor.
 */
 
-export const ODEME_DURUMU: Record<string, { ad: string; ton: string }> = {
-  pending: { ad: "Onay bekliyor", ton: "warning" },
-  approved: { ad: "Onaylandı", ton: "success" },
-  rejected: { ad: "Reddedildi", ton: "danger" },
-  canceled: { ad: "İptal", ton: "neutral" },
-};
 const ODEME_YOLU: Record<string, string> = { bank_transfer: "Havale", paytr: "Kart (PayTR)", garanti: "Kart (Garanti)" };
 
 export type Odeme = {

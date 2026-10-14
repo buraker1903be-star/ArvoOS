@@ -4,15 +4,17 @@ import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { PAKET_ADI, para, tarihSaat } from "../bicim";
+import { ODEME_DURUMU, PAKET_ADI, para, tarihSaat } from "../bicim";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 // plt-quote, plt-receipt, plt-mono, kiraci-baglanti hâlâ buradan.
 import "../platform.css";
 
-const statusLabels: Record<string, string> = { pending: "İnceleme bekliyor", approved: "Onaylandı", rejected: "Reddedildi" };
-const statusTones: Record<string, string> = { pending: "warning", approved: "success", rejected: "danger" };
+/* Durum etiketleri ORTAK (bicim.ts ODEME_DURUMU): burada ayrı bir harita
+   vardı ve kısıtın izin verdiği dördüncü değeri ('canceled') tanımıyordu,
+   müşteri detayındaki ikizi tanıyordu. Aynı kavramın iki kopyası, biri
+   eksik. */
 
 /*
   14.10.2026: konsol panelin diliyle (konsol-ui.tsx). Eskiden ayarlar
@@ -207,7 +209,7 @@ export default async function PaymentApprovalsPage() {
                 baslik={`${kurumAdi} · ${tutar}`}
                 aciklama={`${organization?.slug ?? "kurum"} · tutarın hesaba geçtiğini doğrulayın; onay lisansı açar ve dönemi uzatır.`}
                 sag={<>
-                  <span className="status-pill" data-tone="warning">{statusLabels.pending}</span>
+                  <span className="status-pill" data-tone={ODEME_DURUMU.pending.ton}>{ODEME_DURUMU.pending.ad}</span>
                   {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir:
                       lisansı ne durumda, kaç kullanıcısı var. */}
                   <Link className="kiraci-baglanti" href={`/panel/platform/musteriler/${payment.organization_id}`}>Müşteri →</Link>
@@ -258,8 +260,7 @@ export default async function PaymentApprovalsPage() {
             <KListe>
               {sonuclananlar.map((payment) => {
                 const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
-                const tone = statusTones[payment.status] ?? "neutral";
-                const etiket = statusLabels[payment.status] ?? payment.status;
+                const { ad: etiket, ton: tone } = ODEME_DURUMU[payment.status] ?? { ad: payment.status, ton: "neutral" as const };
                 const href = `/panel/platform/musteriler/${payment.organization_id}`;
                 const yol = payment.payment_method === "paytr" ? "Kartla" : "Havale";
                 const tutar = para(Number(payment.amount), payment.currency);

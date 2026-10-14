@@ -52,6 +52,23 @@ export const kullanimTonu = (oran: number): StgTone =>
   oran >= 100 ? "danger" : oran >= 85 ? "warning" : "success";
 
 /** Lisans ve abonelik durumlarının tonu (etiketler lib/products.ts'te). */
+/*
+  HAVALE BİLDİRİMİNİN DURUMU — TEK KAYNAK (15.10.2026).
+
+  Harita iki kez yazılıydı ve biri EKSİKTİ: müşteri detayının Ödemeler
+  penceresi dört durumu da tanıyordu, Ödeme Onayları ekranı üçünü
+  (pending/approved/rejected). Sütunun kısıtı dördüncüye de izin veriyor
+  ('canceled') ve o ekran onu `?? payment.status` ile ham İngilizce
+  yazardı — bugün o değeri yazan bir kod yok ama kısıt varsa bir gün
+  olur ve o gün kimse bu satırı hatırlamaz.
+*/
+export const ODEME_DURUMU: Record<string, { ad: string; ton: StgTone }> = {
+  pending: { ad: "Onay bekliyor", ton: "warning" },
+  approved: { ad: "Onaylandı", ton: "success" },
+  rejected: { ad: "Reddedildi", ton: "danger" },
+  canceled: { ad: "İptal", ton: "neutral" },
+};
+
 export const LISANS_TONU: Record<string, StgTone> = {
   trialing: "info", active: "success", past_due: "warning",
   suspended: "danger", canceled: "danger", inactive: "neutral",
