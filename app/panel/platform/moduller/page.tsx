@@ -5,6 +5,7 @@ import { PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { KBos, KKart, KListe, KOge } from "../konsol-ui";
 import { LISANS_TONU } from "../bicim";
 import { Matris } from "./matris";
+import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import "../platform.css";
 
 /*
@@ -55,11 +56,24 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
   ]);
   if (error) throw new Error("Kurum listesi okunamadı.");
 
-  // Kendi markalarımız listede kalıyor ama sayımdan düşüyor: kaç MÜŞTERİ
-  // kurumun o modülü kullandığı sorusunun yanıtı kendimizle şişmemeli.
+  /*
+    SAYIM KİRACI SAYIMI, MÜŞTERİ SAYIMI DEĞİL (14.10.2026).
+
+    Buradaki yorum "kaç MÜŞTERİ kurumun o modülü kullandığı" diyordu ama
+    süzgeç yalnızca Arvo'nun kendi kurumunu eliyordu: grup markaları
+    (AkademikMerkez, ArvoCulture) müşteri sayılıyordu. Sağdaki kart bu
+    yüzden "Müşteri kurum 4" derken konsol ana sayfası aynı anda
+    "Müşteri kurum 2" diyordu — iki ekran aynı soruya farklı cevap
+    veriyordu.
+
+    Doğru olan SAYIM: modül matrisi operasyonel bir ekran ve grup
+    markaları da ürünü kullanıyor, kapalı modülleri de bir anlam taşıyor.
+    Yanlış olan ADLANDIRMAYDI. Payda artık "kiracı" (şeridin alt satırı
+    zaten öyle diyordu) ve sağdaki kart üç türü ayrı gösteriyor
+    (lib/kurum-turu).
+  */
   const satirlar = (kurumlar ?? []) as Kurum[];
-  const musteriMi = (kurum: Kurum) => kurum.kind !== "internal";
-  const musteriler = satirlar.filter(musteriMi);
+  const kiracilar = satirlar.filter((kurum) => kurumTuru(kurum) !== "arvo");
 
   const urunById = new Map(
     ((urunLisanslari ?? []) as UrunLisansi[]).map((row) => [`${row.organization_id}:${row.product}`, row]),
@@ -77,10 +91,10 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
 
   const sayim = PRODUCTS.map((urun) => ({
     ...urun,
-    acik: musteriler.filter((kurum) => acikMi(durumAl(kurum, urun.code))).length,
+    acik: kiracilar.filter((kurum) => acikMi(durumAl(kurum, urun.code))).length,
     bagimsiz: urun.code === "arvoos"
       ? 0
-      : musteriler.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
+      : kiracilar.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
   }));
 
   return <main className="plt talep cari ekip liste-sayfa">
@@ -113,7 +127,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         {sayim.map((urun) => (
           <div key={urun.code}>
             <dt>{urun.name}</dt>
-            <dd className={urun.acik ? "cari-arti" : undefined}>{urun.acik} / {musteriler.length}</dd>
+            <dd className={urun.acik ? "cari-arti" : undefined}>{urun.acik} / {kiracilar.length}</dd>
             <small>{urun.bagimsiz
               ? `${urun.bagimsiz} kiracı bağımsız modda`
               : urun.acik ? "Tümü köprü üzerinden" : "Kullanan kiracı yok"}</small>
@@ -131,7 +145,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         <header className="k-kart-bas">
           <div>
             <h2>Kiracı × modül</h2>
-            <p>Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır.</p>
+            <p>Sayımda Arvo&apos;nun kendi kurumu yok; grup markaları sayılıyor, çünkü onlar da ürünü kullanıyor. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır.</p>
           </div>
           <div className="k-kart-sag"><span className="status-pill">{satirlar.length} kurum</span></div>
         </header>
@@ -184,10 +198,14 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         sorgu yok.
       */}
       <div className="liste-sag">
-        <KKart baslik="Kurumlar" aciklama="Sayımda kendi markalarımız yok">
+        {/* Üç tür ayrı: "Müşteri kurum" rakamı konsolun her yerinde aynı
+            şeyi saymalı (lib/kurum-turu). Burada grup markaları müşteriye
+            katılıyordu ve ana sayfayla çelişiyordu. */}
+        <KKart baslik="Kurumlar" aciklama="Modül sayımı Arvo'nun kendi kurumu dışındaki her kiracıyı kapsıyor">
           <KListe>
-            <KOge baslik="Müşteri kurum" deger={String(musteriler.length)} />
-            <KOge baslik="Kendi markamız" alt="tabloda, sayımda yok" deger={String(satirlar.length - musteriler.length)} />
+            <KOge baslik="Müşteri kurum" deger={String(satirlar.filter(musteriMi).length)} />
+            <KOge baslik="Grup markası" alt="sayımda var, müşteri geliri değil" deger={String(satirlar.filter((k) => kurumTuru(k) === "grup").length)} />
+            <KOge baslik="Arvo" alt="tabloda, sayımda yok" deger={String(satirlar.filter((k) => kurumTuru(k) === "arvo").length)} />
             <KOge baslik="Bağımsız modda" alt="köprüsüz ürün lisansı" deger={String(sayim.reduce((t, u) => t + u.bagimsiz, 0))} />
           </KListe>
         </KKart>
