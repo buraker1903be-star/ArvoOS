@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
+import { musteriMi } from "@/lib/kurum-turu";
 import { KBos, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import "../platform.css";
@@ -59,20 +60,21 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     supabase.from("subscriber_payments").select("id,amount,currency,paid_at").order("paid_at", { ascending: false, nullsFirst: false }).limit(LISTE),
     // Onay bekleyen havaleler: hepsi (bugünün iş kuyruğu, küçük).
     supabase.from("organization_payment_requests").select("id,amount,currency").eq("status", "pending"),
-    supabase.from("organizations").select("id,name,display_name,kind"),
+    supabase.from("organizations").select("id,name,display_name,kind,grup_markasi"),
     getPaymentIncidents(),
   ]);
   const hata = ozetHatasi ?? kurumHatasi ?? aboneHatasi ?? bekleyenHatasi;
   if (hata) throw new Error("Tahsilat okunamadı: " + hata.message);
 
   const ozet = (ozetVerisi ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
-  const kurumBilgisi = new Map(((kurumlar ?? []) as { id: string; name: string; display_name: string | null; kind: string | null }[]).map((k) => [k.id, k]));
+  const kurumBilgisi = new Map(((kurumlar ?? []) as { id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null }[]).map((k) => [k.id, k]));
   const birimKarisik = (ozet.birimler ?? []).length > 1;
 
   /* Kendi kurumlarımızın ödemesi gelir değil (özet işleviyle aynı kural). */
   const tahsilatlar: Tahsilat[] = [
     ...((kurumOdemeleri ?? []) as { id: string; organization_id: string; amount: number; currency: string; payment_method: string | null; reviewed_at: string | null }[])
-      .filter((o) => kurumBilgisi.get(o.organization_id)?.kind !== "internal")
+      // Arvo'nun kendisi ve grup markaları gelir değil (özet işleviyle aynı kural).
+      .filter((o) => musteriMi(kurumBilgisi.get(o.organization_id)))
       .map((o) => {
         const k = kurumBilgisi.get(o.organization_id);
         return {

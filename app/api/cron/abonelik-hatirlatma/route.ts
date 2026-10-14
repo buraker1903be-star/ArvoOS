@@ -5,6 +5,7 @@ import { productName } from "@/lib/products";
 import { abonelikAnahtari, abonelikBildirimi, abonelikKademesi } from "@/lib/abonelik-bildirimi";
 import { yetkisiOlanlar } from "@/lib/kisi-yetkileri";
 import { donemTutari } from "@/lib/abonelik-tutari";
+import { musteriMi } from "@/lib/kurum-turu";
 import { syncArvolabLicense } from "@/lib/arvolab";
 
 export const runtime = "nodejs";
@@ -107,12 +108,14 @@ export async function GET(istek: Request) {
   if (!adaylar.length) return Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, yazilan: 0 });
 
   const { data: kurumlar, error: kurumHatasi } = await admin.from("organizations")
-    .select("id,kind").in("id", [...new Set(adaylar.map((a) => a.organization_id))]);
+    .select("id,kind,grup_markasi").in("id", [...new Set(adaylar.map((a) => a.organization_id))]);
   if (kurumHatasi) {
     console.error("[abonelik] kurumlar okunamadı", kurumHatasi.message);
     return Response.json({ hata: "kurumlar" }, { status: 500 });
   }
-  const ic = new Set((kurumlar ?? []).filter((k) => k.kind === "internal").map((k) => k.id as string));
+  /* Arvo'nun kendisi ve grup markaları (lib/kurum-turu) ödeme yapmaz:
+     hatırlatma yalnızca gerçek müşteriye. */
+  const ic = new Set((kurumlar ?? []).filter((k) => !musteriMi(k)).map((k) => k.id as string));
 
   let yazilan = 0;
   const hatalar: string[] = [];

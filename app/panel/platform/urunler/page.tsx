@@ -35,7 +35,7 @@ const ODEYEN = new Set(["active", "past_due"]);
 
 type Kiraci = {
   id: string; kind: string | null; license_status: string | null; plan_code: string | null;
-  monthly_fee: number | null; aktif_uye: number;
+  monthly_fee: number | null; aktif_uye: number; grup_markasi?: boolean | null;
 };
 
 export default async function UrunlerPage({ searchParams }: {
@@ -49,7 +49,7 @@ export default async function UrunlerPage({ searchParams }: {
   if (bolum === "fiyat") redirect("/panel/platform/fiyatlar");
 
   const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, arvolab, arc, randevu] = await Promise.all([
-    supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye"),
+    supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye,grup_markasi"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
     supabase.from("product_subscribers").select("product,status"),
     getArvolabBridgeHealth(),
@@ -58,6 +58,9 @@ export default async function UrunlerPage({ searchParams }: {
   ]);
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
+  /* Grup markaları ürünü kullanıyor (müşteri ve kullanıcı sayısında var)
+     ama ücretleri müşteri geliri değil, grup içi değer (lib/kurum-turu). */
+  const grupMarkasi = new Set(kiracilar.filter((k) => k.grup_markasi).map((k) => k.id));
   const musteriMi = new Set(kiracilar.map((k) => k.id));
   const uyeSayisi = new Map(kiracilar.map((k) => [k.id, Number(k.aktif_uye)]));
   const urunler = ((urunLisanslari ?? []) as { organization_id: string; product: string; status: string; monthly_fee: number | null }[])
@@ -79,16 +82,19 @@ export default async function UrunlerPage({ searchParams }: {
     const odeyen = cekirdek
       ? kiracilar.filter((k) => ODEYEN.has(k.license_status ?? ""))
       : urunler.filter((s) => s.product === urun.code && ODEYEN.has(s.status));
-    const gelir = cekirdek
-      ? odeyen.reduce((t, k) => t + Number((k as Kiraci).monthly_fee ?? 0), 0)
-      : odeyen.reduce((t, s) => t + Number((s as { monthly_fee: number | null }).monthly_fee ?? 0), 0);
+    const kurumu = (satir: Kiraci | { organization_id: string }) => ("organization_id" in satir ? satir.organization_id : satir.id);
+    const ucreti = (satir: Kiraci | { monthly_fee: number | null }) => Number(satir.monthly_fee ?? 0);
+    const gelir = (odeyen as (Kiraci | { organization_id: string; monthly_fee: number | null })[])
+      .filter((s) => !grupMarkasi.has(kurumu(s))).reduce((t, s) => t + ucreti(s), 0);
+    const grupDegeri = (odeyen as (Kiraci | { organization_id: string; monthly_fee: number | null })[])
+      .filter((s) => grupMarkasi.has(kurumu(s))).reduce((t, s) => t + ucreti(s), 0);
     /* Kullanıcı sayısı KURUMUN aktif üyesi: ürün başına ayrı bir üyelik
        kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. */
     const kullanici = cekirdek
       ? kurumSatirlari.reduce((t, k) => t + (uyeSayisi.get((k as Kiraci).id) ?? 0), 0)
       : kurumSatirlari.reduce((t, s) => t + (uyeSayisi.get((s as { organization_id: string }).organization_id) ?? 0), 0);
     const bireysel = aboneler.filter((a) => a.product === urun.code && ACIK_LISANS.has(a.status)).length;
-    return { ...urun, kurum: kurumSatirlari.length, odeyen: odeyen.length, gelir, kullanici, bireysel, saglik: kopru[urun.code] };
+    return { ...urun, kurum: kurumSatirlari.length, odeyen: odeyen.length, gelir, grupDegeri, kullanici, bireysel, saglik: kopru[urun.code] };
   });
 
   const toplamGelir = satirlar.reduce((t, s) => t + s.gelir, 0);
@@ -174,7 +180,7 @@ export default async function UrunlerPage({ searchParams }: {
                 ].filter(Boolean).join(" · ")}
                 durum={durum}
                 deger={urun.gelir ? para(urun.gelir) : "—"}
-                degerAlt="aylık"
+                degerAlt={urun.grupDegeri ? `aylık · grup içi ${para(urun.grupDegeri)}` : "aylık"}
               />
             );
           })}

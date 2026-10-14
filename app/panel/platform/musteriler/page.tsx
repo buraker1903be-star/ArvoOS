@@ -51,6 +51,7 @@ type Kurum = {
   user_limit: number | null;
   aktif_uye: number;
   contact_phone: string | null;
+  grup_markasi?: boolean | null;
 };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 
@@ -67,7 +68,7 @@ type Abone = {
 
 type Satir = {
   anahtar: string;
-  tur: "kurumsal" | "bireysel";
+  tur: "kurumsal" | "bireysel" | "grup";
   ad: string;
   alt: string;
   href: string;
@@ -154,7 +155,7 @@ export default async function MusterilerPage({ searchParams }: {
   const { tur, ara, urun, sira } = await searchParams;
   const secilenUrun = PRODUCTS.some((p) => p.code === urun) ? urun! : null;
   const secilenSira = SIRALAR.some((x) => x.kod === sira) ? sira! : "ad";
-  const secilenTur = tur === "kurumsal" || tur === "bireysel" ? tur : null;
+  const secilenTur = tur === "kurumsal" || tur === "bireysel" || tur === "grup" ? tur : null;
   const aranan = (ara ?? "").trim().slice(0, 80);
 
   /*
@@ -164,7 +165,7 @@ export default async function MusterilerPage({ searchParams }: {
   const LISTE_SINIRI = 1000;
   const [{ data: kurumSatirlari }, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, { data: kayitTarihleri }, { data: planSatirlari }, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone")
+      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
       .order("name"),
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,created_at", { count: "exact" })
@@ -227,7 +228,10 @@ export default async function MusterilerPage({ searchParams }: {
     ].filter((t): t is string => Boolean(t)).sort();
     return {
       anahtar: `k-${kurum.id}`,
-      tur: "kurumsal",
+      /* GRUP MARKASI (14.10.2026): AkademikMerkez ve ArvoCulture ArvoOS ile
+         aynı şirketin markaları. Listede ayrı türde: ücretleri ArvoOS'un
+         gruba yarattığı değeri gösteriyor, müşteri geliri değil. */
+      tur: kurum.grup_markasi ? "grup" : "kurumsal",
       ad: kurum.display_name || kurum.name,
       alt: [
         kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : null,
@@ -248,6 +252,9 @@ export default async function MusterilerPage({ searchParams }: {
 
   const bireyselSatirlar = bireyselSatirlariKur(aboneler, bireyselFiyat);
 
+  const grupSatirlar = kurumsalSatirlar.filter((satir) => satir.tur === "grup");
+  const musteriKurumlari = kurumsalSatirlar.filter((satir) => satir.tur === "kurumsal");
+  const grupDegeri = grupSatirlar.reduce((toplam, satir) => toplam + satir.ucret, 0);
   const tumSatirlar = [...kurumsalSatirlar, ...bireyselSatirlar];
   const desen = aranan ? sadelestir(aranan) : "";
   const liste = tumSatirlar
@@ -262,12 +269,13 @@ export default async function MusterilerPage({ searchParams }: {
   /* Sağ karttaki istatistikler: süzgeçten BAĞIMSIZ, her zaman bütün
      müşterileri anlatır. Süzgeçle birlikte değişseydi "kaç müşterim var"
      sorusunun yanıtı seçili sekmeye göre değişirdi. */
-  const kurumsalKullanimda = kurumsalSatirlar.filter((satir) => satir.durum === "Kullanımda").length;
+  const kurumsalKullanimda = musteriKurumlari.filter((satir) => satir.durum === "Kullanımda").length;
   const kurumsalSorunlu = kurumsalSatirlar.filter((satir) => satir.ton === "danger").length;
   const bireyselOdeyen = bireyselSatirlar.filter((satir) => satir.durum === "Ödüyor").length;
   const bireyselDeneme = bireyselSatirlar.filter((satir) => satir.durum === "Denemede").length;
   const bireyselKapali = bireyselSatirlar.filter((satir) => satir.durum === "Erişim kapalı").length;
-  const kurumsalGelir = kurumsalSatirlar.reduce((toplam, satir) => toplam + satir.ucret, 0);
+  // Müşteri geliri yalnızca gerçek müşterilerden; grup markası ayrı (grupDegeri).
+  const kurumsalGelir = musteriKurumlari.reduce((toplam, satir) => toplam + satir.ucret, 0);
 
   const adres = (yeni: { tur?: string | null; ara?: string | null; urun?: string | null; sira?: string | null }) => {
     const p = new URLSearchParams();
@@ -303,7 +311,7 @@ export default async function MusterilerPage({ searchParams }: {
         </div>
         <div className={secilenTur === "kurumsal" ? "is-active" : undefined}>
           <dt>Kurumsal</dt>
-          <dd><Link href={adres({ tur: "kurumsal" })} aria-current={secilenTur === "kurumsal" ? "page" : undefined}>{sayi(kurumsalSatirlar.length)}</Link></dd>
+          <dd><Link href={adres({ tur: "kurumsal" })} aria-current={secilenTur === "kurumsal" ? "page" : undefined}>{sayi(musteriKurumlari.length)}</Link></dd>
           <small>{sayi(kurumsalKullanimda)} kullanımda</small>
         </div>
         <div className={secilenTur === "bireysel" ? "is-active" : undefined}>
@@ -323,8 +331,9 @@ export default async function MusterilerPage({ searchParams }: {
       <section className="panel-card talep-bilgi" aria-label="Müşteri listesi">
         <div className="ekip-suzgec talep-suzgec">
           <Link href={adres({ tur: null })} className={!secilenTur ? "is-active" : undefined}>Tümü <small>{sayi(tumSatirlar.length)}</small></Link>
-          <Link href={adres({ tur: "kurumsal" })} className={secilenTur === "kurumsal" ? "is-active" : undefined}>Kurumsal <small>{sayi(kurumsalSatirlar.length)}</small></Link>
+          <Link href={adres({ tur: "kurumsal" })} className={secilenTur === "kurumsal" ? "is-active" : undefined}>Kurumsal <small>{sayi(musteriKurumlari.length)}</small></Link>
           <Link href={adres({ tur: "bireysel" })} className={secilenTur === "bireysel" ? "is-active" : undefined}>Bireysel <small>{sayi(bireyselSatirlar.length)}</small></Link>
+          {grupSatirlar.length ? <Link href={adres({ tur: "grup" })} className={secilenTur === "grup" ? "is-active" : undefined}>Grup markaları <small>{sayi(grupSatirlar.length)}</small></Link> : null}
           <form action="/panel/platform/musteriler" className="talep-ara" role="search">
             {secilenTur ? <input type="hidden" name="tur" value={secilenTur} /> : null}
             {secilenUrun ? <input type="hidden" name="urun" value={secilenUrun} /> : null}
@@ -365,7 +374,7 @@ export default async function MusterilerPage({ searchParams }: {
                 href={satir.href}
                 simge={satir.ad}
                 baslik={satir.ad}
-                alt={[satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt].filter(Boolean).join(" · ")}
+                alt={[satir.tur === "kurumsal" ? "Kurumsal" : satir.tur === "grup" ? "Grup markası" : "Bireysel", satir.alt].filter(Boolean).join(" · ")}
                 etiketler={satir.urunler.map((u) => ({ etiket: u.etiket, ton: u.ton }))}
                 durum={{ etiket: satir.durum, ton: satir.ton }}
                 /* Aylık tutar bütün ödeyen ürünlerin toplamı; ödeyen ürünü
@@ -392,6 +401,18 @@ export default async function MusterilerPage({ searchParams }: {
           şeritte olmayanlar, iOS listesiyle: beklenen aylık gelir ve
           kurumsal/bireysel durum dağılımı. */}
       <div className="liste-sag">
+        {grupSatirlar.length ? (
+          <KKart baslik="Grup içi değer" aciklama="ArvoOS'un grup markalarına sağladığı, liste fiyatıyla">
+            <KListe>
+              {grupSatirlar.map((satir) => (
+                <KOge key={satir.anahtar} href={satir.href} simge={satir.ad} baslik={satir.ad}
+                  deger={satir.ucret ? para(satir.ucret) : <span className="k-ios-eksik">Ücret yok</span>}
+                  degerAlt={satir.ucret ? "aylık" : "girilmedi"} />
+              ))}
+              <KOge baslik="Toplam" deger={para(grupDegeri)} degerAlt="aylık" />
+            </KListe>
+          </KKart>
+        ) : null}
         <KKart baslik="Kurumsal" aciklama="Süzgeçten bağımsız, bütün kiracılar">
           <KListe>
             <KOge baslik="Beklenen aylık" deger={para(kurumsalGelir)} degerAlt="ödeyenler" />

@@ -65,7 +65,7 @@ function selamlama() {
 const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrganization[]) =>
   renewalReminders(lisanslar, kurumlar, Date.now());
 
-type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null };
+type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null; grup_markasi?: boolean | null };
 type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };
@@ -96,7 +96,7 @@ export async function KonsolAnaSayfa() {
       veriyor, sayım yan sorguda.
     */
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye")
+      .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,monthly_fee,user_limit,storage_limit_mb,aktif_uye,grup_markasi")
       .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -202,7 +202,10 @@ export async function KonsolAnaSayfa() {
     elle lisans verilmiş kurumlar hiç sayılmıyordu. Denemedekiler dışarıda:
     henüz ödemiyorlar, beklenen gelire katmak raporu şişirir.
   */
-  const musteriMi = new Set(musteriler.map((kurum) => kurum.id));
+  /* Gelire yalnızca gerçek müşteri girer: grup markalarının (AkademikMerkez,
+     ArvoCulture) ücreti grup içi değer, müşteri geliri değil (lib/kurum-turu). */
+  const kiraciMi = new Set(musteriler.map((kurum) => kurum.id));
+  const musteriMi = new Set(musteriler.filter((kurum) => !kurum.grup_markasi).map((kurum) => kurum.id));
   const urunler = (urunSatirlari ?? []) as UrunLisansi[];
   const aylikGelir =
     cekirdek.filter((satir) => musteriMi.has(satir.organization_id) && ODEYEN_DURUMLAR.has(satir.license_status))
@@ -257,7 +260,8 @@ export async function KonsolAnaSayfa() {
     açılışta listeye düşerdi.
   */
   const bayatKopyalar = eskiKopyalar(
-    urunler.filter((satir) => musteriMi.has(satir.organization_id)),
+    // Grup markaları da gerçek kiracı: kopyaları denetimde kalıyor (yalnızca Arvo'nun kendisi dışarıda).
+    urunler.filter((satir) => kiraciMi.has(satir.organization_id)),
     { arvolab: labKopya, arc: arcKopya, randevu: rdvKopya },
   );
 

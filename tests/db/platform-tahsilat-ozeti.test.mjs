@@ -35,6 +35,8 @@ const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migr
 const MIGRATIONLAR = [
   "20261012172749_platform_tahsilat_ozeti.sql",
   "20261014062145_tahsilat_cift_sayim.sql",
+  // Grup markası tahsilata girmez (işlevi yeniden yazıyor, SONDA).
+  "20261014094146_grup_markasi.sql",
 ];
 
 const ARVO = "00000000-0000-4000-8000-00000000b1a1";
@@ -185,5 +187,21 @@ test("anon işlevi çağıramıyor", async () => {
   await islem(db, async () => {
     await rol(db, "anon");
     await reddedilir(db, `select public.platform_tahsilat_ozeti()`, [], /permission denied/i);
+  });
+});
+
+test("grup markasının ödemesi müşteri tahsilatına girmiyor", async () => {
+  await islem(db, async () => {
+    await rol(db, "postgres");
+    const GRUP = "00000000-0000-4000-8000-00000000b1a9";
+    await db.query(`insert into public.organizations (id,name,slug,status,plan_code,kind,grup_markasi) values ($1,'Grup Markası','grup-markasi','active','professional','customer',true)`, [GRUP]);
+    await rol(db, "authenticated", KURUCU);
+    const once = await ozet();
+    await rol(db, "postgres");
+    await db.query(`insert into public.organization_payment_requests (organization_id,plan_code,amount,currency,status,submitted_by,reviewed_at,product,payment_method,reference_no)
+      values ($1,'professional',777000,'TRY','approved',$2, now(),'arvoos','paytr','PAYTR-G')`, [GRUP, KURUCU]);
+    await rol(db, "authenticated", KURUCU);
+    const sonra = await ozet();
+    assert.equal(Number(sonra.toplam), Number(once.toplam), "grup markasının ödemesi sayılmamalı");
   });
 });

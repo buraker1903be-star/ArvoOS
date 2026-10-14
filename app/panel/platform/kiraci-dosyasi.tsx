@@ -35,7 +35,7 @@ type CheckState = "done" | "todo" | "bad" | "unknown";
 
 export type DosyaKurumu = {
   id: string; name: string; display_name: string | null; slug: string; status: string; plan_code: string; sector: string;
-  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string; contact_phone: string | null;
+  custom_domain: string | null; custom_domain_status: string | null; provisioning_state: string; logo_url: string | null; kind: string; contact_phone: string | null; grup_markasi?: boolean | null;
 };
 export type DosyaDaveti = { organization_id: string; email: string; status: string; sent_at: string | null; accepted_at: string | null; error_message: string | null };
 export type DosyaUyeligi = { organization_id: string; user_id: string; role: string; is_active: boolean };
@@ -407,7 +407,11 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
           <label className="wide"><span>Yasal unvan<b className="req" aria-hidden="true">*</b></span><input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
           <label className="wide"><span>Tabela unvanı <small className="plt-optional">boşsa yasal unvan</small></span><input name="display_name" defaultValue={selected.display_name ?? ""} maxLength={80} placeholder="Örn. AkademikMerkez" /></label>
           <label><span>Sektör<b className="req" aria-hidden="true">*</b></span><input name="sector" defaultValue={selected.sector ?? "general"} minLength={2} maxLength={80} required /></label>
-          <label>Kurum türü<select name="kind" defaultValue={selected.kind ?? "customer"}><option value="customer">Müşteri</option><option value="internal">Kendi markamız</option></select></label>
+          {/* "Grup markası" ayrı bir tür değil, müşteri kurumunun raporlama işareti
+              (organizations.grup_markasi): kind='internal' WhatsApp kutusunu,
+              sözleşme→abonelik isteğini ve belge yolunu değiştiriyor; grup
+              markası ise sıradan bir kiracı gibi çalışıp yalnızca gelirden ayrılıyor. */}
+          <label>Kurum türü<select name="kind" defaultValue={selected.kind === "internal" ? "internal" : selected.grup_markasi ? "grup" : "customer"}><option value="customer">Müşteri</option><option value="grup">Grup markası</option><option value="internal">Arvo (kendisi)</option></select></label>
           <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
           <label><span>İletişim telefonu <small className="plt-optional">ödeme hatırlatması buraya gider</small></span><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
           <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>

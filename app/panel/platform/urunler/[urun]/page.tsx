@@ -49,7 +49,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
 
   const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: urunSatirlari, error: urunHatasi }, { data: aboneSatirlari }, fiyatlar, kopru] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,aktif_uye"),
+      .select("id,name,display_name,kind,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,aktif_uye,grup_markasi"),
     cekirdek
       ? Promise.resolve({ data: [], error: null })
       : supabase.from("organization_product_licenses")
@@ -70,6 +70,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   type Kiraci = {
     id: string; name: string; display_name: string | null; kind: string | null; license_status: string | null;
     plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null; aktif_uye: number;
+    grup_markasi?: boolean | null;
   };
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
   const kiraciHaritasi = new Map(kiracilar.map((k) => [k.id, k]));
@@ -92,7 +93,10 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
 
   const acik = satirlar.filter((s) => ACIK.has(s.durum));
   const odeyen = satirlar.filter((s) => ODEYEN.has(s.durum));
-  const gelir = odeyen.reduce((t, s) => t + Number(s.ucret ?? 0), 0);
+  /* Grup markasının ücreti müşteri geliri değil, grup içi değer (lib/kurum-turu). */
+  const grupKurumu = new Set(kiracilar.filter((k) => k.grup_markasi).map((k) => k.id));
+  const gelir = odeyen.filter((s) => !grupKurumu.has(s.id)).reduce((t, s) => t + Number(s.ucret ?? 0), 0);
+  const grupDegeri = odeyen.filter((s) => grupKurumu.has(s.id)).reduce((t, s) => t + Number(s.ucret ?? 0), 0);
   const aboneler = (aboneSatirlari ?? []) as { status: string }[];
   const acikAbone = aboneler.filter((a) => ACIK.has(a.status)).length;
   const basamaklar = planlar(urun as PricedProduct);
@@ -119,7 +123,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       <dl>
         <div><dt>Müşteri</dt><dd>{sayi(acik.length)}</dd><small>lisansı açık kurum (deneme dahil)</small></div>
         <div><dt>Ödeyen</dt><dd>{sayi(odeyen.length)}</dd><small>{satirlar.length - acik.length ? `${sayi(satirlar.length - acik.length)} askıda/iptal/kapalı` : "kapalı lisans yok"}</small></div>
-        <div><dt>Beklenen aylık</dt><dd className="cari-arti">{para(gelir)}</dd><small>ödeyenlerin aylık ücreti</small></div>
+        <div><dt>Beklenen aylık</dt><dd className="cari-arti">{para(gelir)}</dd><small>{grupDegeri ? `+ ${para(grupDegeri)} grup içi değer` : "ödeyen müşterilerin ücreti"}</small></div>
         <div>
           <dt>Sistem</dt>
           <dd className={kopru.ok ? undefined : "talep-uyari"}>{kopru.ok ? "Ayakta" : "Sorunlu"}</dd>
@@ -154,7 +158,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
                   href={kiraciAdresi(s.id)}
                   simge={s.ad}
                   baslik={s.ad}
-                  alt={[s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, `${sayi(s.kullanici)} kullanıcı`, donem].filter(Boolean).join(" · ")}
+                  alt={[grupKurumu.has(s.id) ? "Grup markası" : null, s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, `${sayi(s.kullanici)} kullanıcı`, donem].filter(Boolean).join(" · ")}
                   durum={{ etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" }}
                   /* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */
                   deger={s.ucret ? para(Number(s.ucret)) : <span className="k-ios-eksik">Ücret yok</span>}

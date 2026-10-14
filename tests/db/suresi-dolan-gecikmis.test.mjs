@@ -18,6 +18,8 @@ import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = [
   "20261014071519_suresi_dolan_gecikmise.sql",
+  // Grup markası otomatik "gecikmiş" olmaz (işlevi yeniden yazıyor, SONDA).
+  "20261014094146_grup_markasi.sql",
 ];
 
 const BITMIS = "00000000-0000-4000-8000-00000000e101";
@@ -88,4 +90,16 @@ test("kiracı ve anon çağıramaz", async () =>
     await reddedilir(db, `select public.platform_gecikenleri_isaretle()`, [], /permission denied/);
     await rol(db, "anon");
     await reddedilir(db, `select public.platform_gecikenleri_isaretle()`, [], /permission denied/);
+  }));
+
+test("grup markasının süresi geçmiş lisansı gecikmiş olmuyor", async () =>
+  islem(db, async () => {
+    await rol(db, "postgres");
+    const GRUP = "00000000-0000-4000-8000-00000000e109";
+    await db.query(`insert into public.organizations (id,name,slug,status,plan_code,kind,grup_markasi) values ($1,'Grup','grup','active','starter','customer',true)`, [GRUP]);
+    await db.query(`update public.organization_licenses set license_status = 'active', current_period_end = now() - interval '3 days' where organization_id = $1`, [GRUP]);
+    await rol(db, "service_role");
+    await db.query(`select public.platform_gecikenleri_isaretle()`);
+    await rol(db, "postgres");
+    assert.equal(await durum(GRUP), "active");
   }));

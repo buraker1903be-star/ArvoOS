@@ -42,6 +42,8 @@ type AbonelikSatiri = {
   monthlyFee: number | null;
   donemSonu: string | null;
   denemeSonu: string | null;
+  /** Grup markası (lib/kurum-turu): listede görünür, müşteri gelirine girmez. */
+  grup: boolean;
 };
 
 const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
@@ -73,7 +75,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   ] = await Promise.all([
     supabase.from("organizations").select("id").eq("kind", "internal"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due", "suspended", "canceled"]),
-    supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
+    supabase.from("organizations").select("id,name,display_name,contact_phone,kind,grup_markasi"),
     // ArvoOS çekirdek lisansının aylık ücreti; ek ürünler ayrı tabloda.
     supabase.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at"),
     /* Tahsilat listesi Faturalama ve Tahsilat'a taşındı (14.10.2026);
@@ -107,8 +109,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const internal = new Set((internalOrganizations ?? []).map((row) => row.id as string));
   const isCustomer = (row: { organization_id: string }) => !internal.has(row.organization_id);
 
-  const kurumlar = (organizationRows ?? []) as { id: string; name: string; display_name: string | null }[];
+  const kurumlar = (organizationRows ?? []) as { id: string; name: string; display_name: string | null; grup_markasi?: boolean | null }[];
   const orgAdi = new Map(kurumlar.map((row) => [row.id, row.display_name || row.name]));
+  /* Grup markaları (AkademikMerkez, ArvoCulture) listede kalıyor — ücretleri
+     ArvoOS'un gruba yarattığı değeri gösteriyor — ama müşteri gelirine
+     (beklenen aylık) girmiyor; ayrıca "grup içi değer" olarak yazılıyor. */
+  const grupMarkasi = new Set(kurumlar.filter((row) => row.grup_markasi).map((row) => row.id));
 
   const cekirdek = (coreLicenses ?? []) as { organization_id: string; license_status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[];
   const ekUrunler = (productLicenses ?? []) as unknown as { organization_id: string; product: string; status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[];
@@ -130,6 +136,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         monthlyFee: satir.monthly_fee,
         donemSonu: satir.current_period_end,
         denemeSonu: satir.trial_ends_at,
+        grup: grupMarkasi.has(satir.organization_id),
       })),
     ...ekUrunler
       .filter(isCustomer)
@@ -143,6 +150,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         monthlyFee: satir.monthly_fee,
         donemSonu: satir.current_period_end,
         denemeSonu: satir.trial_ends_at,
+        grup: grupMarkasi.has(satir.organization_id),
       })),
   ].sort((a, b) => a.organizationName.localeCompare(b.organizationName, "tr") || a.urunAdi.localeCompare(b.urunAdi, "tr"));
 
@@ -156,9 +164,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     raporu şişirir. Potansiyel olarak ayrıca gösteriliyor.
   */
   const topla = (satirlar: AbonelikSatiri[]) => satirlar.reduce((sum, satir) => sum + Number(satir.monthlyFee ?? 0), 0);
-  const odeyenler = abonelikler.filter((satir) => satir.durum === "active" || satir.durum === "past_due");
-  const denemedekiler = abonelikler.filter((satir) => satir.durum === "trialing");
+  const odeyenlerTumu = abonelikler.filter((satir) => satir.durum === "active" || satir.durum === "past_due");
+  const odeyenler = odeyenlerTumu.filter((satir) => !satir.grup);
+  const denemedekiler = abonelikler.filter((satir) => satir.durum === "trialing" && !satir.grup);
   const mrr = topla(odeyenler);
+  const grupDegeri = topla(odeyenlerTumu.filter((satir) => satir.grup));
   const denemeGeliri = topla(denemedekiler);
   const pastDue = abonelikler.filter((satir) => satir.durum === "past_due").length;
   const ucretsiz = abonelikler.filter((satir) => !satir.monthlyFee).length;
@@ -208,6 +218,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         organizationId: satir.organizationId,
         ad: satir.organizationName,
         aylikToplam: 0,
+        grup: satir.grup,
         aylikToplamAdi: "",
         kalemler: [],
         odeyen: 0,
@@ -320,7 +331,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <div>
           <dt>Beklenen aylık</dt>
           <dd>{para(mrr, currency)}</dd>
-          <small>{denemeGeliri ? `${para(denemeGeliri, currency)} denemede` : ucretsiz ? `${ucretsiz} abonelikte ücret girilmedi` : "Denemede gelir yok"}</small>
+          <small>{grupDegeri ? `+ ${para(grupDegeri, currency)} grup içi değer` : denemeGeliri ? `${para(denemeGeliri, currency)} denemede` : ucretsiz ? `${ucretsiz} abonelikte ücret girilmedi` : "Denemede gelir yok"}</small>
         </div>
         {/* Toplam BÜTÜN kayıtlardan; başlıkta bu ay, notta tüm zaman. Eskiden
             son 50 kaydın toplamı "tahsil edildi" diye yazılıyordu. */}

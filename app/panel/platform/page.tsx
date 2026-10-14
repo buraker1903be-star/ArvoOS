@@ -53,7 +53,7 @@ type KiraciSatiri = DosyaKurumu & {
 /* Sütunlar sayılı: `*` yan sorguları boşuna işletir (AGENTS.md). */
 const KIRACI_SUTUNLARI = [
   "id", "name", "display_name", "slug", "status", "plan_code", "sector", "kind",
-  "custom_domain", "custom_domain_status", "provisioning_state", "logo_url", "contact_phone",
+  "custom_domain", "custom_domain_status", "provisioning_state", "logo_url", "contact_phone", "grup_markasi",
   "user_limit", "storage_limit_mb", "monthly_fee", "current_period_end", "license_status", "trial_ends_at",
   "aktif_uye", "davet_eposta", "davet_durumu", "davet_gonderildi", "davet_kabul", "davet_hatasi",
 ].join(",");

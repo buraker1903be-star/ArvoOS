@@ -18,7 +18,7 @@ export type RenewalLicense = {
   trial_ends_at: string | null;
 };
 
-export type RenewalOrganization = { id: string; name: string; display_name: string | null; contact_phone: string | null; kind?: string | null };
+export type RenewalOrganization = { id: string; name: string; display_name: string | null; contact_phone: string | null; kind?: string | null; grup_markasi?: boolean | null };
 
 export type RenewalReminder = {
   organizationId: string;
@@ -73,7 +73,8 @@ export function renewalReminders(licenses: RenewalLicense[], organizations: Rene
   return licenses
     .flatMap((license): RenewalReminder[] => {
       const organization = byId.get(license.organization_id);
-      if (!organization || organization.kind === "internal") return [];
+      // Arvo'nun kendisi ve grup markaları ödeme yapmaz (lib/kurum-turu).
+      if (!organization || organization.kind === "internal" || organization.grup_markasi) return [];
       const trial = license.status === "trialing";
       const endsAt = trial ? license.trial_ends_at : ["active", "past_due"].includes(license.status) ? license.current_period_end : null;
       if (!endsAt) return [];

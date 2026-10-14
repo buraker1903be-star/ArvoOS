@@ -103,9 +103,13 @@ async function updateOrganizationSettings__impl(formData: FormData) {
     karışmasın diye. Erişimi ya da faturalamayı etkilemez, yalnızca Platform
     ekranlarındaki etiket ve sayaçlar için.
   */
-  const kind = formData.get("kind") === "internal" ? "internal" : "customer";
+  const kindGirdisi = String(formData.get("kind") ?? "");
+  const kind = kindGirdisi === "internal" ? "internal" : "customer";
+  /* Grup markası (AkademikMerkez, ArvoCulture): müşteri gibi çalışır, ücreti
+     müşteri gelirine değil "grup içi değer"e yazılır (lib/kurum-turu). */
+  const grupMarkasi = kindGirdisi === "grup";
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
-  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, contact_phone: contactPhone || null, updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, grup_markasi: grupMarkasi, contact_phone: contactPhone || null, updated_at: new Date().toISOString() };
 
   if (customDomain !== (current?.custom_domain ?? null)) {
     const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");

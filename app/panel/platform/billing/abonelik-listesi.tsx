@@ -64,6 +64,8 @@ export type AbonelikGrubu = {
   geciken: number;
   /** Askıya alınmış ya da iptal edilmiş abonelikler (toplama girmez). */
   kapali: number;
+  /** Grup markası: tutarı müşteri geliri değil, grup içi değer. */
+  grup?: boolean;
 };
 
 /** Çip satırında aboneliklerin yanında duran bölüm (Ödeme sorunları, Dönem sonu). */
@@ -166,13 +168,13 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
                 href={lisans}
                 simge={grup.ad}
                 baslik={grup.ad}
-                alt={[...urunler, ucretsiz ? `${ucretsiz} üründe ücret girilmedi` : null].filter(Boolean).join(" · ")}
+                alt={[grup.grup ? "Grup markası" : null, ...urunler, ucretsiz ? `${ucretsiz} üründe ücret girilmedi` : null].filter(Boolean).join(" · ")}
                 durum={ana ? { etiket: ana.durumAdi, ton: ana.tone } : null}
                 /* Aylık toplam kurum satırında: "bu kurum bize ne ödüyor"
                    sorusunun yanıtı satırları gözle toplamak olmamalı.
                    Denemedekiler toplama girmiyor — henüz ödemiyorlar. */
                 deger={grup.aylikToplamAdi}
-                degerAlt={grup.aylikToplam ? "aylık toplam" : "tahsil edilen yok"}
+                degerAlt={grup.aylikToplam ? (grup.grup ? "grup içi değer" : "aylık toplam") : "tahsil edilen yok"}
               />
             );
           })}
