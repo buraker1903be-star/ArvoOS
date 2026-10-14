@@ -1,7 +1,21 @@
 {
   "tables": {
-    "oturum_kayitlari": ["id", "user_id", "login_at", "logout_at", "organization_id"],
-    "personel": ["id", "user_id", "full_name", "organization_id"]
+    "oturum_kayitlari": [
+      "id",
+      "user_id",
+      "login_at",
+      "logout_at",
+      "organization_id",
+      "sonuc"
+    ],
+    "personel": [
+      "id",
+      "user_id",
+      "full_name",
+      "organization_id"
+    ]
   },
-  "functions": ["var_olan_fonksiyon"]
+  "functions": [
+    "var_olan_fonksiyon"
+  ]
 }

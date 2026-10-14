@@ -479,7 +479,10 @@ export async function KonsolAnaSayfa() {
               */
               alt={[actionLabels[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
                 .filter(Boolean).join(" · ")}
-              sag={kayit.result === "error" ? <span className="status-pill" data-tone="danger">hata</span> : null}
+              /* 'failed', 'error' değil: sütunun kısıtı 'error'a izin vermiyor
+                 ve rozet bu yüzden hiç çizilmiyordu (sağlık kartında da
+                 aynı hata vardı). */
+              sag={kayit.result === "failed" ? <span className="status-pill" data-tone="danger">hata</span> : null}
               zaman={tarihSaat(kayit.created_at)}
             />
           ))}

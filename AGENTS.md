@@ -363,7 +363,17 @@ canlıda düştü).
 
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
-karşılaştırılır. Denetim KATALOG GECİKMESİNİ hatadan ayırır
+karşılaştırılır. **Sütun doğru ama DEĞER imkânsız** olabiliyor: kısıtı
+`check (x = any (array[…]))` ile sabitlenmiş bir sütunu listede olmayan
+bir değerle süzmek hata vermez, sessizce sıfır satır döndürür. Konsolun
+"Kurulum hataları" kartı `result = 'error'` arıyordu; kısıt yalnızca
+`started/success/failed`'e izin veriyor, yani kart hiçbir koşulda
+dolamazdı (14.10.2026). Denetim izinli değerleri dökümden okuyup
+`.eq/.neq/.in` süzgeçlerini karşılaştırıyor. **Zincirdeki yorumlar
+boşaltılıyor:** zincir ilk noktalı virgülde kesiliyor ve bu deponun
+üslubu sorgu zincirinin ortasına uzun gerekçe yazmak — gerekçedeki bir
+noktalı virgül, select'ten sonraki bütün süzgeçleri denetimin görüş
+alanından çıkarıyordu. Denetim KATALOG GECİKMESİNİ hatadan ayırır
 (14.10.2026): adı yerel bir migration yaratıyorsa uyarı yazılır ve çıkış
 kodu 0 kalır (kod kataloğun ilerisinde, olağan akış); hiçbir migration
 yaratmıyorsa hata verir. Eşleşme tabloya bağlıdır ve migration

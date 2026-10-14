@@ -107,7 +107,15 @@ export default async function SistemSagligiPage() {
      satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
   const { data: kurulumKayitlari } = admin
     ? await admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at")
-        .eq("result", "error").order("created_at", { ascending: false }).limit(10)
+        /*
+          DEĞER 'failed', 'error' DEĞİL (14.10.2026). Sütunun kısıtı
+          ('started','success','failed') 'error'a hiç izin vermiyor:
+          sorgu hata vermiyor, sessizce SIFIR satır dönüyordu ve kart
+          "Kurulum hatası yok" demeyi hiçbir koşulda bırakamıyordu.
+          Yanlış sütun adı üretimde hata verir ve bir yerde yakalanır,
+          yanlış DEĞER hiç iz bırakmaz — bu yüzden daha sinsi.
+        */
+        .eq("result", "failed").order("created_at", { ascending: false }).limit(10)
     : { data: null };
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]);

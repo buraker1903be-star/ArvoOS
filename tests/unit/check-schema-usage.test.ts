@@ -57,6 +57,31 @@ test("SARMALANMIŞ SORGU doğru tabloda aranıyor (eskiden yanlış alarmdı)", 
   assert.doesNotMatch(sonuc.cikti, /sarmalanmis-sorgu\.ts/);
 });
 
+/*
+  SÜTUN DOĞRU AMA DEĞER İMKÂNSIZ. Yanlış sütun adı üretimde hata veriyor
+  ve bir yerde yakalanıyor; yanlış DEĞER hiç iz bırakmıyor — sorgu
+  çalışıyor, sessizce sıfır satır dönüyor, ekran "sorun yok" diyor.
+  Konsolun "Kurulum hataları" kartı 14.10.2026'ya kadar result = 'error'
+  arıyordu; sütunun kısıtı o değere hiç izin vermiyor, yani kart hiçbir
+  koşulda dolamazdı.
+*/
+test("İMKÂNSIZ DEĞERLE süzen sorgu bildiriliyor", () => {
+  assert.match(sonuc.cikti, /imkansiz-deger\.ts:4\s+oturum_kayitlari\.sonuc değeri "hata" imkânsız/);
+  // İzinli küme de yazılıyor: kurucu doğrusunu aramak zorunda kalmasın.
+  assert.match(sonuc.cikti, /izinli: basarili, basarisiz/);
+});
+
+/*
+  ZİNCİRİN ORTASINDAKİ YORUM. Zincir ilk noktalı virgülde kesiliyor ve bu
+  deponun üslubu sorgu zincirinin ortasına uzun Türkçe gerekçe yazmak:
+  gerekçede noktalı virgül geçtiği anda select'ten sonraki bütün süzgeçler
+  denetimin görüş alanından çıkıyordu. Sessiz bir kör nokta — denetim
+  yeşil kalıyordu.
+*/
+test("noktalı virgüllü YORUM zinciri kesmiyor", () => {
+  assert.match(sonuc.cikti, /yorumlu-zincir\.ts:5\s+oturum_kayitlari\.yok_boyle_sutun yok/);
+});
+
 test("doğru yazılmış dosya hiç bildirilmiyor", () => {
   // Yanlış alarm, kaçırılan hata kadar zararlı: denetime güven kalmaz.
   assert.doesNotMatch(sonuc.cikti, /temiz\.ts/);
@@ -79,11 +104,12 @@ test("denetimin en başından beri yakaladıkları hâlâ yakalanıyor", () => {
   assert.match(sonuc.cikti, /klasik\.ts:6\s+fonksiyon yok: olmayan_fonksiyon\(\)/);
 });
 
-test("örnek ağaçta yalnızca beklenen sekiz sorun var", () => {
+test("örnek ağaçta yalnızca beklenen on sorun var", () => {
   /* Sayı sabit: yeni bir yanlış alarm sınıfı eklenirse burada görünür.
      Altıydı; sabit sütun listesi örneği (sabit-liste.ts) iki gerçek
-     sorun daha ekliyor. */
-  assert.match(sonuc.cikti, /✗ Şema sözleşmesi: 8 sorun/);
+     sorun ekledi, 14.10.2026'da imkânsız değer ve yorumlu zincir
+     örnekleri iki tane daha. */
+  assert.match(sonuc.cikti, /✗ Şema sözleşmesi: 10 sorun/);
 });
 
 test("SABİT sütun listesi denetleniyor (eskiden kör noktaydı)", () => {

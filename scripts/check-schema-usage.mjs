@@ -219,7 +219,32 @@ export function sabitSutunListeleri(kaynak) {
   return liste;
 }
 
-export function dosyaSorunlari(kaynak, { tables, functions, etiket = "" }) {
+/*
+  YORUMLAR BOŞLUKLA DOLDURULUYOR (14.10.2026).
+
+  Zincir, ilk noktalı virgülde kesiliyor (KESME_RE). Bu deponun üslubu
+  sorgu zincirinin ORTASINA uzun Türkçe gerekçe yazmak ve o gerekçede
+  noktalı virgül geçtiği anda zincirin geri kalanı — select'ten sonraki
+  bütün süzgeçler — denetimin görüş alanından çıkıyordu. Sessiz bir
+  kör nokta: denetim yeşil kalıyor ve yanlış sütun adı yakalanmıyor.
+  Sistem Sağlığı'nın kurulum sorgusunda tam bu oldu.
+
+  Silmek yerine BOŞLUKLA dolduruluyor: uzunluk ve satır sonları aynı
+  kalıyor, böylece bildirilen satır numaraları ve bütün konum hesapları
+  doğru kalıyor.
+
+  Satır yorumu yalnızca satır başında sayılıyor: "https://…" içindeki
+  çift eğik çizgi yorum değil, ve onu boşaltmak bir değeri yarım
+  bırakıp denetimi başka türlü kör ederdi.
+*/
+function yorumlariBosalt(kaynak) {
+  return kaynak
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/^([ \t]*)\/\/[^\n]*/gm, (m, bosluk) => bosluk + " ".repeat(m.length - bosluk.length));
+}
+
+export function dosyaSorunlari(ham, { tables, functions, degerler, etiket = "" }) {
+  const kaynak = yorumlariBosalt(ham);
   const sorunlar = [];
   const sabitler = sabitSutunListeleri(kaynak);
   const satir = (index) => `${etiket}${etiket ? ":" : ""}${kaynak.slice(0, index).split("\n").length}`;
@@ -261,6 +286,37 @@ export function dosyaSorunlari(kaynak, { tables, functions, etiket = "" }) {
     for (const f of chain.matchAll(FILTER_RE)) {
       if (!cols.has(f[1])) sorunlar.push(`${satir(sahip.index)}  ${sahip.tablo}.${f[1]} yok (filtre/sıralama)`);
     }
+    /*
+      SÜTUN DOĞRU AMA DEĞER İMKÂNSIZ (14.10.2026).
+
+      Yanlış sütun adı üretimde hata veriyor ve bir yerde yakalanıyor;
+      yanlış DEĞER hiç iz bırakmıyor: sorgu çalışıyor, sessizce sıfır
+      satır dönüyor ve ekran "sorun yok" diyor. Sistem Sağlığı'nın
+      "Kurulum hataları" kartı tam bu yüzden hiçbir koşulda dolamıyordu:
+      result sütununun kısıtı ('started','success','failed') 'error'a
+      izin vermiyor, kart ise onu arıyordu.
+
+      Yalnızca CHECK kısıtıyla değer kümesi SABİTLENMİŞ sütunlar
+      denetleniyor; ötekilerde "imkânsız değer" diye bir şey yok.
+    */
+    if (degerler) {
+      const izinli = (sutun) => degerler.get(`${sahip.tablo}.${sutun}`);
+      for (const e of chain.matchAll(/\.(?:eq|neq)\(\s*"([a-z_0-9]+)"\s*,\s*"([^"]*)"\s*\)/g)) {
+        const set = izinli(e[1]);
+        if (set && !set.has(e[2])) {
+          sorunlar.push(`${satir(sahip.index)}  ${sahip.tablo}.${e[1]} değeri "${e[2]}" imkânsız; izinli: ${[...set].join(", ")}`);
+        }
+      }
+      for (const e of chain.matchAll(/\.in\(\s*"([a-z_0-9]+)"\s*,\s*\[([^\]]*)\]\s*\)/g)) {
+        const set = izinli(e[1]);
+        if (!set) continue;
+        for (const d of e[2].matchAll(/"([^"]*)"/g)) {
+          if (!set.has(d[1])) {
+            sorunlar.push(`${satir(sahip.index)}  ${sahip.tablo}.${e[1]} değeri "${d[1]}" imkânsız; izinli: ${[...set].join(", ")}`);
+          }
+        }
+      }
+    }
     const write = chain.match(/^\s*\.(insert|update|upsert)\(\s*\{([^{}]*)\}/);
     if (write) {
       for (const k of write[2].matchAll(/(?:^|,)\s*([a-z_0-9]+)\s*(?=:|,|$)/g)) {
@@ -292,11 +348,33 @@ function walk(dir) {
 }
 
 // --- CLI. Argümanlar yalnızca denetimin kendi testi için; normalde yok. ---
+/*
+  CHECK kısıtının izin verdiği değerler, canlı şema dökümünden.
+
+  Katalog yalnızca ADLARI taşıyor (tablo, sütun, fonksiyon); değer kümesi
+  dökümde duruyor ve oradan okumak kataloğun biçimini değiştirmeyi
+  gerektirmiyor. Döküm yoksa bu denetim sessizce atlanıyor: ad denetimi
+  dökümsüz de çalışmalı.
+*/
+function izinliDegerleriOku(semaYolu) {
+  if (!fs.existsSync(semaYolu)) return null;
+  const sema = fs.readFileSync(semaYolu, "utf8");
+  const harita = new Map();
+  const desen = /alter table public\.([a-z_0-9]+) add constraint [a-z_0-9]+ CHECK \(\(([a-z_0-9]+) = ANY \(ARRAY\[([^\]]+)\]\)\)\)/g;
+  for (const m of sema.matchAll(desen)) {
+    const degerler = [...m[3].matchAll(/'([^']*)'::text/g)].map((d) => d[1]);
+    if (degerler.length) harita.set(`${m[1]}.${m[2]}`, new Set(degerler));
+  }
+  return harita.size ? harita : null;
+}
+
 const [kaynakArg, katalogArg] = process.argv.slice(2);
 const catalogPath = katalogArg ? path.resolve(katalogArg) : path.join(root, "supabase", "schema", "katalog.json");
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 const tables = new Map(Object.entries(catalog.tables).map(([t, cols]) => [t, new Set(cols)]));
 const functions = new Set(catalog.functions);
+// Döküm katalogla aynı klasörde duruyor.
+const degerler = izinliDegerleriOku(path.join(path.dirname(catalogPath), "canli-sema.sql"));
 
 /*
   SUPABASE FONKSİYONLARI DA TARANIYOR (11.10.2026).
@@ -320,7 +398,7 @@ for (const dir of SOURCE_DIRS) {
     // kendi tabloları bu şemada aranıp 4 sahte sorun çıkıyordu (CI'da yeşil).
     const rel = path.relative(root, file).replaceAll(path.sep, "/");
     if (OTHER_DATABASE_FILES.has(rel)) continue;
-    problems.push(...dosyaSorunlari(fs.readFileSync(file, "utf8"), { tables, functions, etiket: rel }));
+    problems.push(...dosyaSorunlari(fs.readFileSync(file, "utf8"), { tables, functions, degerler, etiket: rel }));
   }
 }
 
@@ -392,6 +470,8 @@ function sutunYaratiliyorMu(tablo, sutun) {
 function sorunHedefi(sorun) {
   const nesne = sorun.match(/(?:tablo yok: ([a-z0-9_]+))|(?:fonksiyon yok: ([a-z0-9_]+))/i);
   if (nesne) return { nesne: nesne[1] ?? nesne[2] };
+  const deger = sorun.match(/\s([a-z0-9_]+)\.([a-z0-9_]+) değeri "([^"]*)" imkânsız/i);
+  if (deger) return { tablo: deger[1], sutun: deger[2], deger: deger[3] };
   const sutun = sorun.match(/\s([a-z0-9_]+)\.([a-z0-9_]+) yok/i);
   return sutun ? { tablo: sutun[1], sutun: sutun[2] } : {};
 }
@@ -399,6 +479,22 @@ function sorunHedefi(sorun) {
 const bekleyenMi = (sorun) => {
   const hedef = sorunHedefi(sorun);
   if (hedef.nesne) return nesneYaratiliyorMu(hedef.nesne);
+  /*
+    Değer kümesini genişleten bir migration varsa kod kataloğun
+    ilerisinde: yeni durumu kullanan kod, döküm yenilenmeden önce
+    birleşebiliyor.
+
+    Eşleşme TABLOYA VE SÜTUNA BAĞLI. Yalnızca değeri aramak çok gevşekti:
+    bu deponun migration'larında 'hata' gibi sıradan bir sözcük başka bir
+    tablonun kısıtında da geçiyor ve gerçek bir hatayı "bekleyen" diye
+    örtüyordu — örnek ağaçta tam bu oldu. Denetimi susturan gevşek bir
+    eşleşme, denetlediği hatadan farksızdır.
+  */
+  if (hedef.deger) {
+    const tablo = kacis(hedef.tablo), sutun = kacis(hedef.sutun), deger = hedef.deger.toLowerCase();
+    return migrationIfadeleri.some((ifade) =>
+      ifade.includes(tablo) && ifade.includes(sutun) && ifade.includes(`'${deger}'`));
+  }
   if (hedef.tablo && hedef.sutun) return sutunYaratiliyorMu(hedef.tablo, hedef.sutun);
   return false;
 };
