@@ -1,0 +1,380 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
+import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
+import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
+import { arvolabYansimasi } from "@/lib/arvolab";
+import { arcUrunKopyasi } from "@/lib/arc-bridge";
+import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
+import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
+import { KKart, KNot } from "../konsol-ui";
+import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
+import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
+import { UrunKartlari } from "./urun-kartlari";
+// Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
+// şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
+import "../platform.css";
+
+type LicenseRow = {
+  organization_id: string;
+  plan_code: string;
+  license_status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  user_limit: number;
+  storage_limit_mb: number;
+  ai_credit_limit: number;
+  monthly_fee: number | null;
+  /** Ek koltuğun aylık bedeli (kuruş) ve dahil limitin üstüne açılabilen koltuk sayısı. */
+  extra_user_fee: number | null;
+  extra_user_cap: number | null;
+  suspended_at: string | null;
+  suspension_reason: string | null;
+};
+
+type ProductLicenseRow = {
+  limits?: Record<string, unknown> | null;
+  product: string;
+  status: string;
+  plan_code: string | null;
+  monthly_fee: number | null;
+  current_period_end: string | null;
+  suspension_reason: string | null;
+};
+
+/**
+ * Tek bir kotanın ölçeri: etiket, oran ve çubuk.
+ *
+ * Üç limit daha önce tek satırlık bir şeritte yalnızca sayı olarak
+ * duruyordu ("180 / 200") ve doluluğu gözün hesaplaması gerekiyordu.
+ */
+function Olcum({ etiket, kullanilan, limit, oran }: { etiket: string; kullanilan: string; limit: string; oran: number }) {
+  return (
+    <div className="plt-olcum">
+      <div className="plt-olcum-bas">
+        <b>{etiket}</b>
+        <span>{kullanilan} / {limit} · %{oran}</span>
+      </div>
+      {/* Sıfır kullanımda bile ince bir iz kalıyor: bomboş bir çubuk,
+          ölçerin çizilmediği izlenimi veriyordu. */}
+      <span className="plt-meter is-wide" data-tone={kullanimTonu(oran)}><i style={{ width: `${Math.max(oran, 2)}%` }} /></span>
+    </div>
+  );
+}
+
+/*
+  LİSANS VE KOTA BÖLÜMÜ (14.10.2026). Sayfanın gövdesi buraya taşındı ki
+  müşteri detayının "Lisanslar" penceresi AYNI bileşeni kullansın: kota
+  ölçerleri, dört ürün kartı ve düzenleme pencereleri iki yerde ayrı ayrı
+  yazılsaydı biri düzeltilip öteki unutulurdu. Kurucu doğrulamasını
+  çağıran sayfa yapar.
+*/
+export async function LisansBolumu({ supabase, organizationId, label }: { supabase: SupabaseClient; organizationId: string; label: string }) {
+  const adminClient = createAdminClient();
+  const selected = { id: organizationId };
+  const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
+    supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
+    supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
+    supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
+  ]);
+  if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
+  const license = licenseData as LicenseRow | null;
+  if (!license) throw new Error("Kurum lisansı bulunamadı. Migration ve lisans backfill işlemini kontrol edin.");
+
+  const productLicenses = new Map(((productLicenseData ?? []) as ProductLicenseRow[]).map((row) => [row.product, row]));
+  /*
+    Depolama kullanımı: limit tek başına bir şey anlatmıyor. Bu sayfada
+    "512000 MB" yazıyordu ve karşılığı yoktu; artık kullanımıyla birlikte.
+  */
+  const { data: depolamalar } = adminClient ? await adminClient.rpc("arvo_storage_usage") : { data: [] };
+  const depolamaMb = Math.ceil(
+    Number(((depolamalar ?? []) as { organization_id: string; bytes: number }[])
+      .find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
+  );
+
+  /*
+    Ürün kullanımı: kota alanlarının yanında "şu an ne kadar" yazabilmek
+    için. Limit tek başına bir şey anlatmıyor.
+  */
+  const kullanim = await urunKullanimi(selected.id);
+
+  /*
+    ArvoLab'daki kopyanın KENDİSİ okunuyor — köprünün sağlığı değil.
+    bridge_health "son çağrı başarılı" derken kopya günlerce eski
+    kalabiliyor: yansıtma yalnızca kaydederken çalışıyor.
+    AkademikMerkez'de tam bu oldu (22.09.2026).
+  */
+  const [arvolabKopyasi, arcKopyasi, randevuKopyasi] = await Promise.all([
+    arvolabYansimasi(selected.id),
+    arcUrunKopyasi(selected.id),
+    randevuUrunKopyasi(selected.id),
+  ]);
+
+  /*
+    Üç ürünün kopyası üç ayrı biçimde duruyor, o yüzden karşılaştırılacak
+    alanlar burada kuruluyor; kural tek yerde (lib/yansima-durumu.ts).
+
+    ArvoLab kendi organizations satırında durum + AI hakkı tutuyor.
+    ArvoARC ve Randevu ise ArvoOS'un lisans satırının aynen kopyasını; orada
+    durum ve dönem sonu karşılaştırılıyor. updated_at KARŞILAŞTIRILMIYOR:
+    hedef veritabanında onu now() yapan bir tetikleyici varsa uyarı
+    sürekli yanardı ve sürekli yanan uyarı, olmayan uyarıdır.
+  */
+  const cekirdekHak = license.ai_credit_limit ?? null;
+  const krediMetni = (deger: number | null) =>
+    deger === null ? "bildirilmemiş" : `${sayi(deger)} kredi`;
+
+  function urunYansimasi(kod: string): YansimaKopyasi | null {
+    const konsolDurum = productLicenses.get(kod)?.status ?? "inactive";
+    if (kod === "arvolab") {
+      if (!arvolabKopyasi) return null;
+      return {
+        damga: arvolabKopyasi.syncedAt,
+        alanlar: [
+          { etiket: "durum", kopya: arvolabKopyasi.status, konsol: konsolDurum },
+          {
+            etiket: "AI hakkı",
+            kopya: krediMetni(arvolabKopyasi.aiCreditLimit),
+            konsol: krediMetni(cekirdekHak),
+          },
+        ],
+      };
+    }
+    const kopya = kod === "arc" ? arcKopyasi : kod === "randevu" ? randevuKopyasi : null;
+    if (!kopya) return null;
+    const konsolDonem = productLicenses.get(kod)?.current_period_end ?? null;
+    return {
+      damga: kopya.updatedAt,
+      alanlar: [
+        { etiket: "durum", kopya: kopya.status, konsol: konsolDurum },
+        { etiket: "dönem sonu", kopya: yansimaGunu(kopya.periodEnd), konsol: yansimaGunu(konsolDonem) },
+      ],
+    };
+  }
+  const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
+    ADDON_PRODUCTS.map((urun) => [
+      urun.code,
+      urunKotalari(urun.code, productLicenses.get(urun.code)?.limits, ({ arvolab: kullanim.arvolab, randevu: kullanim.randevu } as Record<string, Record<string, number | null> | null>)[urun.code]),
+    ]),
+  );
+
+  /*
+    AI kredisi artık ÖLÇÜLÜYOR: ArvoLab'ın tükettiği karakter kuruma göre
+    toplanıp krediye çevriliyor (1 kredi = 1.000 karakter). Eskiden bu kutu
+    her kiracıda "0 kredi · %0 dolu" diyordu çünkü hiçbir kod
+    ai_credits_used sütununu artırmıyordu.
+
+    Ölçüm ALINAMAZSA null kalıyor ve ekran yine "Ölçülmüyor" diyor —
+    köprü koptuğunda "0 kredi" yazmak, hiç kullanmamış kiracıyla ölçümü
+    kopmuş kiracıyı aynı gösterirdi.
+  */
+  const aiKredi = kullanim.arvolab?.aylik_kredi ?? null;
+  const aiOlculdu = aiKredi !== null;
+  const aiPercent = aiOlculdu ? yuzde(aiKredi, license.ai_credit_limit) : 0;
+
+  const users = activeUsers ?? 0;
+  const userPercent = yuzde(users, license.user_limit);
+  const storagePercent = yuzde(depolamaMb, license.storage_limit_mb);
+  const durumTonu = LISANS_TONU[license.license_status] ?? "neutral";
+  const durumAdi = productLicenseLabels[license.license_status] ?? license.license_status;
+  // Açık abonelik = ücret tahsil edilen ya da denemede olan ürün.
+  const cekirdekAcik = ["active", "trialing", "past_due"].includes(license.license_status);
+  const acikUrunler = ADDON_PRODUCTS.filter((urun) => ["active", "trialing", "past_due"].includes(productLicenses.get(urun.code)?.status ?? "inactive"));
+
+
+  return <>
+
+    {/*
+      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "kota aşımı yok"
+      demek, satırın hiç olmamasından daha çok şey söyler.
+
+      Çapraz kota listesi burada değil: aynı uyarı kiracı listesinin
+      rozetinde duruyor (limiti aşan kırmızı, yaklaşan sarı). Aynı bilgiyi
+      iki yerde göstermek, birini güncelleyip diğerini unutmak demek.
+    */}
+    {/*
+      13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
+      kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
+      geldiği panel ekranları şerit kullanıyor ve iki dil arasında geçiş
+      sayıları her seferinde yeniden aramak demekti.
+    */}
+    <nav className="kayit-serit talep-serit" aria-label={`${label} lisans özeti`}>
+      <dl>
+        <div>
+          <dt>Lisans</dt>
+          <dd>{durumAdi}</dd>
+          <small>{license.license_status === "trialing"
+            ? `Deneme bitişi ${tarih(license.trial_ends_at)}`
+            : license.current_period_end ? `Dönem sonu ${tarih(license.current_period_end)}` : "Dönem sonu girilmedi"}</small>
+        </div>
+        <div>
+          <dt>Kullanıcı</dt>
+          <dd className={userPercent > 100 ? "talep-uyari" : undefined}>{users} / {sayi(license.user_limit)}</dd>
+          <small>%{userPercent} dolu</small>
+        </div>
+        <div>
+          <dt>Depolama</dt>
+          <dd className={storagePercent > 100 ? "talep-uyari" : undefined}>{depolama(depolamaMb)}</dd>
+          <small>Limit {depolama(license.storage_limit_mb)} · %{storagePercent} dolu</small>
+        </div>
+        <div>
+          <dt>AI kredisi</dt>
+          <dd>{aiOlculdu ? `${sayi(aiKredi)} / ${sayi(license.ai_credit_limit)}` : "Ölçülemedi"}</dd>
+          <small>{aiOlculdu
+            ? `Bu ay · %${aiPercent} dolu`
+            : "ArvoLab'a ulaşılamadı; tanımlı hak " + sayi(license.ai_credit_limit)}</small>
+        </div>
+      </dl>
+    </nav>
+
+    {/*
+      14.10.2026: panelin sade kartı (KKart). Eskiden ayarlar ekranının
+      kartlarıydı (StgSection: renkli simge kutusu, büyük harfli üst başlık);
+      konsol panelden ayrı bir ürün gibi görünüyordu. Sayfa bir liste değil,
+      iki kart alt alta; sarmalayıcı düz blok, kartlar arası boşluğu
+      .k-kart+.k-kart veriyor.
+    */}
+    <div>
+      <KKart
+        id="kullanim" baslik="Şu anki kullanım"
+        aciklama="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
+        sag={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
+      >
+        <div className="plt-olcumler">
+          <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
+          <Olcum etiket="Depolama" kullanilan={depolama(depolamaMb)} limit={depolama(license.storage_limit_mb)} oran={storagePercent} />
+          {/* Ölçüm alınamadıysa çubuk hiç çizilmiyor: %0'lık bir çubuk
+              "kullanmamış" der, oysa söyleyebileceğimiz tek şey
+              "bilmiyoruz". */}
+          {aiOlculdu ? (
+            <Olcum etiket="AI kredisi (bu ay)" kullanilan={sayi(aiKredi)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
+          ) : null}
+        </div>
+        <KNot ton={aiOlculdu ? "bilgi" : "uyari"}>
+          {aiOlculdu
+            ? `1 kredi = ${sayi(KREDI_KARAKTERI)} karakter (istem + yanıt). Reddedilen yanıtlar sayılmaz — kullanıcıya gösterilmeyen bir şeyin parası alınmıyor. Sayaç her ay başında sıfırlanır.`
+            : "AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil."}
+          {kullanim.arvolab?.aylik_calisma != null ? ` Bu ay ${sayi(kullanim.arvolab.aylik_calisma)} asistan çalışması.` : ""}
+        </KNot>
+        {license.suspension_reason ? <KNot ton="tehlike">{license.suspension_reason}</KNot> : null}
+      </KKart>
+
+      {/*
+        Dört ürün, tek satırda dört kart. Eskiden ArvoOS çekirdek lisansı
+        tam genişlikte dev bir form, diğer üçü altında ayrı bir bölümdü —
+        oysa dördü de ayrı ürün. "Bu kiracı hangi ürünleri alıyor" sorusu
+        iki ayrı yere bakmayı gerektiriyordu.
+
+        Kartlar özet; düzenleme tıklayınca açılan pencerede. Dört formu
+        aynı anda dar sütunlarda tutmak hepsini okunmaz yapardı.
+      */}
+      <KKart
+        id="urunler" baslik={`${label} abonelikleri`}
+        aciklama="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
+        sag={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
+          {acikUrunler.length + (cekirdekAcik ? 1 : 0)} / {ADDON_PRODUCTS.length + 1} açık
+        </span>}
+      >
+        <UrunKartlari
+          organizationId={selected.id}
+          kurumAdi={label}
+          cekirdegiKaydet={updateOrganizationLicense}
+          urunuKaydet={updateProductLicense}
+          urunuYansit={urunuYenidenYansit}
+          kartlar={[
+            {
+              tur: "cekirdek" as const,
+              kod: "arvoos",
+              ad: "ArvoOS",
+              aciklama: "Çekirdek panel: CRM, operasyon, finans, İK",
+              durumAdi,
+              tone: durumTonu,
+              acik: cekirdekAcik,
+              ozet: [
+                { etiket: "Paket", deger: PAKET_ADI[license.plan_code] ?? license.plan_code },
+                { etiket: "Aylık ücret", deger: license.monthly_fee ? `${para(Number(license.monthly_fee))} / ay` : "girilmedi" },
+                { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
+                { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
+                /* Ek koltuk kurucunun en çok merak ettiği satır: kurum dahil
+                   limiti aşmışsa faturaya eklenen tutar budur. */
+                {
+                  etiket: "Ek kullanıcı",
+                  deger: Math.max(0, users - license.user_limit) > 0
+                    ? `${sayi(Math.max(0, users - license.user_limit))} × ${para(Number(license.extra_user_fee ?? 0))} / ay`
+                    : `yok · tavan ${sayi(Number(license.extra_user_cap ?? 0))}`,
+                },
+              ],
+              aktifUye: users,
+              kullanilanMb: depolamaMb,
+              aiKullanilan: aiKredi,
+              baslangic: {
+                planCode: license.plan_code,
+                licenseStatus: license.license_status,
+                trialEndsAt: tarihDegeri(license.trial_ends_at),
+                currentPeriodEnd: tarihDegeri(license.current_period_end),
+                userLimit: String(license.user_limit),
+                storageLimitMb: String(license.storage_limit_mb),
+                aiCreditLimit: String(license.ai_credit_limit),
+                monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
+                extraUserFee: license.extra_user_fee ? String(Number(license.extra_user_fee) / 100) : "",
+                extraUserCap: String(Number(license.extra_user_cap ?? 0)),
+                suspensionReason: license.suspension_reason ?? "",
+              },
+            },
+            ...ADDON_PRODUCTS.map((product) => {
+              const row = productLicenses.get(product.code);
+              const status = row?.status ?? "inactive";
+              const kotalar = (URUN_KOTALARI[product.code] ?? []).map((alan) => {
+                const olcum = kotaSatirlari[product.code]?.find((satir) => satir.alan.anahtar === alan.anahtar);
+                return {
+                  anahtar: alan.anahtar,
+                  etiket: alan.etiket,
+                  birim: alan.birim,
+                  donemsel: Boolean(alan.donemsel),
+                  limit: olcum?.limit != null ? String(olcum.limit) : "",
+                  kullanilan: olcum?.kullanilan ?? null,
+                  asildi: Boolean(olcum?.asildi),
+                };
+              });
+              /* Kota özeti yalnızca limiti GİRİLMİŞ alanlardan; "boşsa
+                 sınırsız" olan bir alanı kartta yazmak, kota varmış gibi
+                 okunurdu. */
+              const kotaOzeti = kotalar.filter((alan) => alan.limit)
+                .map((alan) => `${sayi(Number(alan.limit))} ${alan.birim}`).join(" · ");
+              return {
+                tur: "ek" as const,
+                kod: product.code,
+                /*
+                  Karşılaştırma yalnızca ArvoLab için yapılabiliyor: ArvoARC ve
+                  Randevu ayrı köprüler ve kopyalarını okuyan bir yol henüz
+                  yok. Onlarda yansima null geçiyor, metin de eskisi gibi
+                  genel kalıyor — uydurma bir "güncel" yazmaktansa.
+                */
+                yansima: yansimaDurumu(urunYansimasi(product.code), product.name),
+                ad: product.name,
+                aciklama: product.description,
+                durumAdi: productLicenseLabels[status] ?? status,
+                tone: LISANS_TONU[status] ?? "neutral",
+                acik: ["active", "trialing", "past_due"].includes(status),
+                ozet: [
+                  { etiket: "Paket", deger: row?.plan_code ? (PAKET_ADI[row.plan_code] ?? row.plan_code) : "belirtilmedi" },
+                  { etiket: "Aylık ücret", deger: row?.monthly_fee ? `${para(Number(row.monthly_fee))} / ay` : "girilmedi" },
+                  { etiket: "Dönem sonu", deger: tarih(row?.current_period_end ?? null) },
+                  { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "kota yok") },
+                ],
+                kotalar,
+                baslangic: {
+                  status,
+                  planCode: row?.plan_code ?? "",
+                  monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
+                  currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
+                  suspensionReason: row?.suspension_reason ?? "",
+                },
+              };
+            }),
+          ]}
+        />
+      </KKart>
+    </div>
+  </>;
+}

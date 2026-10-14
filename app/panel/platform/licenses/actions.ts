@@ -92,6 +92,8 @@ async function updateOrganizationLicense__impl(formData: FormData) {
 
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+  // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
 }
 
 // ArvoLab / ArvoARC aboneliği: ArvoOS'un kendi lisansından ayrı, ürün başına ücret
@@ -174,6 +176,8 @@ async function updateProductLicense__impl(formData: FormData) {
   }
 
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+  // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   revalidatePath("/panel/billing");
 }
 
@@ -217,6 +221,8 @@ async function urunuYenidenYansit__impl(formData: FormData) {
   }
 
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+  // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
 }
 
 /*

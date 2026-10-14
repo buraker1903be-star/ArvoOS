@@ -57,6 +57,7 @@ async function reviewBankTransferPayment__impl(formData: FormData) {
   revalidatePath("/panel", "layout");
   revalidatePath("/panel/platform/payments");
   revalidatePath("/panel/platform/licenses");
+  revalidatePath("/panel/platform/musteriler", "layout");
   revalidatePath("/panel/platform/billing");
 }
 

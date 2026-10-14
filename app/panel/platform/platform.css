@@ -819,6 +819,11 @@ dialog.plt-pencere {
 @media (max-width: 900px) {
   dialog.plt-pencere { width: calc(100vw - 24px); max-height: calc(100dvh - 32px) }
 }
+/* Geniş pencere: müşteri detayının bölümleri (lisans kartları, ödeme
+   kararları) 560 piksele sığmıyor; telefonda yukarıdaki kural geçerli. */
+@media (min-width: 901px) {
+  dialog.plt-pencere.is-genis { width: min(1040px, calc(100vw - 48px)) }
+}
 .plt-pencere::backdrop { background: rgb(9 20 34 / 45%) }
 .plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; max-height: calc(100vh - 64px); overflow: auto }
 .plt-pencere-bas { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
@@ -1082,3 +1087,14 @@ dialog.plt-pencere {
 /* Fiyat yayım önizlemesi (urunler, 14.10.2026): onay kutusu ve toplu yayım düğmesi. */
 .plt-fiyat-yayim{display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-3)}
 .plt-fiyat-onay{display:flex;align-items:center;gap:var(--sp-2);color:var(--ink);font-size:var(--fs-sm)}
+
+/* ---------- Müşteri detayı: pencere düğmeleri (14.10.2026) ---------- */
+/* Altı düğme başlığın sağında tek sıra; sığmazsa alt satıra sarar,
+   telefonda yatay kaydırmaya düşmesin. Açık pencerenin düğmesi dolu. */
+.musteri-pencereleri { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px }
+.musteri-pencereleri .panel-secondary { display: inline-flex; align-items: center; gap: 6px }
+.musteri-pencereleri .panel-secondary[aria-current="page"] { border-color: var(--primary); background: var(--primary); color: var(--surface) }
+.musteri-rozet { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: var(--surface); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center }
+@media (max-width: 760px) {
+  .musteri-pencereleri { justify-content: flex-start }
+}
