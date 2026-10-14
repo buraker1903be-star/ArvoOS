@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
+import { KListe, KOge } from "../konsol-ui";
 
 /*
   Dört ürün, tek satırda dört kart.
@@ -84,32 +85,37 @@ export function UrunKartlari({
 
   return (
     <>
-      <div className="plt-urun-izgara">
-        {kartlar.map((kart) => (
-          <button
-            key={kart.kod}
-            type="button"
-            className="plt-urun-karti"
-            data-kapali={!kart.acik}
-            onClick={() => setAcik(kart.kod)}
-          >
-            <span className="plt-urun-bas">
-              <b>{kart.ad}</b>
-              <span className="status-pill" data-tone={kart.tone}>{kart.durumAdi}</span>
-            </span>
-            <small className="plt-urun-aciklama">{kart.aciklama}</small>
-            <dl className="plt-urun-ozet">
-              {kart.ozet.map((satir) => (
-                <div key={satir.etiket}>
-                  <dt>{satir.etiket}</dt>
-                  <dd>{satir.deger}</dd>
-                </div>
-              ))}
-            </dl>
-            <span className="plt-urun-duzenle">Düzenle →</span>
-          </button>
-        ))}
-      </div>
+      {/*
+        KOMPAKT LİSTE (14.10.2026). Dört ürün dört kartlık bir ızgaraydı:
+        her kartta açıklama cümlesi ve beş satırlık özet, pencerede ekranın
+        yarısı. Artık tek satır — ürün, özet (paket · dönem · kota), durum,
+        aylık ücret ve Düzenle. Özetin içeriği aynı; yalnızca dizilişi.
+      */}
+      <KListe>
+        {kartlar.map((kart) => {
+          const ucret = kart.ozet.find((satir) => satir.etiket === "Aylık ücret")?.deger ?? "";
+          const ozet = kart.ozet
+            .filter((satir) => satir.etiket !== "Aylık ücret")
+            .map((satir) => `${satir.etiket} ${satir.deger}`)
+            .join(" · ");
+          return (
+            <KOge
+              key={kart.kod}
+              simge={kart.ad}
+              baslik={kart.ad}
+              alt={ozet}
+              durum={{ etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" }}
+              deger={ucret && ucret !== "girilmedi" ? ucret.replace(" / ay", "") : <span className="k-ios-eksik">Ücret yok</span>}
+              degerAlt={ucret && ucret !== "girilmedi" ? "aylık" : undefined}
+              sonu={(
+                <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
+                  Düzenle
+                </button>
+              )}
+            />
+          );
+        })}
+      </KListe>
 
       <dialog
         ref={pencere}

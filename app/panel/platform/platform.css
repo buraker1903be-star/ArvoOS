@@ -1098,3 +1098,4 @@ dialog.plt-pencere {
 @media (max-width: 760px) {
   .musteri-pencereleri { justify-content: flex-start }
 }
+.musteri-yukleniyor { min-height: 160px; display: grid; place-items: center; margin: 0 }

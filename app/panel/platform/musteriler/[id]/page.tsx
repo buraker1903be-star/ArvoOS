@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -130,7 +131,6 @@ export default async function MusteriDetayi({ params, searchParams }: {
       : { ad: "Erişim kapalı", ton: "danger" };
 
   const adres = `/panel/platform/musteriler/${id}`;
-  const pencereIcerigi = pencere ? await pencereyiKur(pencere) : null;
 
   async function pencereyiKur(kod: PencereKodu) {
     if (kod === "lisanslar") return <LisansBolumu supabase={supabase} organizationId={id} label={ad} />;
@@ -237,9 +237,17 @@ export default async function MusteriDetayi({ params, searchParams }: {
       </div>
     </div>
 
-    {pencere && pencereIcerigi ? (
+    {/*
+      Pencere HEMEN açılıyor, içeriği akarak geliyor (Suspense). Eskiden
+      sayfa pencerenin verisini bekleyip öyle çiziliyordu: Lisanslar
+      ArvoLab, ARC ve Randevu'ya gittiği için düğmeye basınca bir saniye
+      hiçbir şey olmuyordu — "çalışmıyor mu" dedirten bekleyiş.
+    */}
+    {pencere ? (
       <MusteriPenceresi key={pencere} ust={ad} baslik={PENCERELER.find((p) => p.kod === pencere)!.ad} kapatAdresi={adres}>
-        {pencereIcerigi}
+        <Suspense fallback={<p className="panel-muted musteri-yukleniyor">Yükleniyor…</p>}>
+          {pencereyiKur(pencere)}
+        </Suspense>
       </MusteriPenceresi>
     ) : null}
   </main>;

@@ -2,13 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
-import { KREDI_KARAKTERI, urunKullanimi } from "@/lib/urun-kullanimi";
+import { urunKullanimi } from "@/lib/urun-kullanimi";
 import { arvolabYansimasi } from "@/lib/arvolab";
 import { arcUrunKopyasi } from "@/lib/arc-bridge";
 import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { KKart, KNot } from "../konsol-ui";
-import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
+import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { UrunKartlari } from "./urun-kartlari";
 // Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
@@ -42,73 +42,58 @@ type ProductLicenseRow = {
   suspension_reason: string | null;
 };
 
-/**
- * Tek bir kotanın ölçeri: etiket, oran ve çubuk.
- *
- * Üç limit daha önce tek satırlık bir şeritte yalnızca sayı olarak
- * duruyordu ("180 / 200") ve doluluğu gözün hesaplaması gerekiyordu.
- */
-function Olcum({ etiket, kullanilan, limit, oran }: { etiket: string; kullanilan: string; limit: string; oran: number }) {
-  return (
-    <div className="plt-olcum">
-      <div className="plt-olcum-bas">
-        <b>{etiket}</b>
-        <span>{kullanilan} / {limit} · %{oran}</span>
-      </div>
-      {/* Sıfır kullanımda bile ince bir iz kalıyor: bomboş bir çubuk,
-          ölçerin çizilmediği izlenimi veriyordu. */}
-      <span className="plt-meter is-wide" data-tone={kullanimTonu(oran)}><i style={{ width: `${Math.max(oran, 2)}%` }} /></span>
-    </div>
-  );
-}
 
 /*
   LİSANS VE KOTA BÖLÜMÜ (14.10.2026). Sayfanın gövdesi buraya taşındı ki
   müşteri detayının "Lisanslar" penceresi AYNI bileşeni kullansın: kota
-  ölçerleri, dört ürün kartı ve düzenleme pencereleri iki yerde ayrı ayrı
+  şeridi, ürün listesi ve düzenleme pencereleri iki yerde ayrı ayrı
   yazılsaydı biri düzeltilip öteki unutulurdu. Kurucu doğrulamasını
   çağıran sayfa yapar.
 */
 export async function LisansBolumu({ supabase, organizationId, label }: { supabase: SupabaseClient; organizationId: string; label: string }) {
   const adminClient = createAdminClient();
   const selected = { id: organizationId };
-  const [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }] = await Promise.all([
-    supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
-    supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
-    supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
+  /*
+    HEPSİ TEK TURDA (14.10.2026). Okumalar sırayla bekleniyordu: önce
+    lisans, sonra bütün kurumların depolaması, sonra iki ayrı veritabanından
+    ürün kullanımı, sonra üç ürünün kopyası. Birbirine bağlı değiller;
+    pencere açılırken bir saniyenin büyük kısmı sıra beklemekti.
+
+    Depolama, kullanım ve kopyalar ArvoLab/ARC/Randevu'ya gidiyor; ölçüm
+    yardımcıları ulaşamayınca null döndürüyor, fırlatmıyor — biri yavaşsa
+    ötekileri bekletmiyor ama sayfa yine de en yavaşını bekliyor.
+  */
+  const [
+    [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }],
+    { data: depolamalar },
+    kullanim,
+    [arvolabKopyasi, arcKopyasi, randevuKopyasi],
+  ] = await Promise.all([
+    Promise.all([
+      supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
+      supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
+      supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
+    ]),
+    /* Depolama kullanımı: limit tek başına bir şey anlatmıyor ("512000 MB"). */
+    adminClient ? adminClient.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
+    /* Ürün kullanımı: kota alanlarının yanında "şu an ne kadar". */
+    urunKullanimi(selected.id),
+    /* ArvoLab'daki kopyanın KENDİSİ — köprünün sağlığı değil: bridge_health
+       "son çağrı başarılı" derken kopya günlerce eski kalabiliyor
+       (AkademikMerkez, 22.09.2026). */
+    Promise.all([arvolabYansimasi(selected.id), arcUrunKopyasi(selected.id), randevuUrunKopyasi(selected.id)]),
   ]);
   if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
   const license = licenseData as LicenseRow | null;
   if (!license) throw new Error("Kurum lisansı bulunamadı. Migration ve lisans backfill işlemini kontrol edin.");
 
   const productLicenses = new Map(((productLicenseData ?? []) as ProductLicenseRow[]).map((row) => [row.product, row]));
-  /*
-    Depolama kullanımı: limit tek başına bir şey anlatmıyor. Bu sayfada
-    "512000 MB" yazıyordu ve karşılığı yoktu; artık kullanımıyla birlikte.
-  */
-  const { data: depolamalar } = adminClient ? await adminClient.rpc("arvo_storage_usage") : { data: [] };
   const depolamaMb = Math.ceil(
     Number(((depolamalar ?? []) as { organization_id: string; bytes: number }[])
       .find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
   );
 
-  /*
-    Ürün kullanımı: kota alanlarının yanında "şu an ne kadar" yazabilmek
-    için. Limit tek başına bir şey anlatmıyor.
-  */
-  const kullanim = await urunKullanimi(selected.id);
 
-  /*
-    ArvoLab'daki kopyanın KENDİSİ okunuyor — köprünün sağlığı değil.
-    bridge_health "son çağrı başarılı" derken kopya günlerce eski
-    kalabiliyor: yansıtma yalnızca kaydederken çalışıyor.
-    AkademikMerkez'de tam bu oldu (22.09.2026).
-  */
-  const [arvolabKopyasi, arcKopyasi, randevuKopyasi] = await Promise.all([
-    arvolabYansimasi(selected.id),
-    arcUrunKopyasi(selected.id),
-    randevuUrunKopyasi(selected.id),
-  ]);
 
   /*
     Üç ürünün kopyası üç ayrı biçimde duruyor, o yüzden karşılaştırılacak
@@ -235,29 +220,16 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
       .k-kart+.k-kart veriyor.
     */}
     <div>
-      <KKart
-        id="kullanim" baslik="Şu anki kullanım"
-        aciklama="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
-        sag={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
-      >
-        <div className="plt-olcumler">
-          <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
-          <Olcum etiket="Depolama" kullanilan={depolama(depolamaMb)} limit={depolama(license.storage_limit_mb)} oran={storagePercent} />
-          {/* Ölçüm alınamadıysa çubuk hiç çizilmiyor: %0'lık bir çubuk
-              "kullanmamış" der, oysa söyleyebileceğimiz tek şey
-              "bilmiyoruz". */}
-          {aiOlculdu ? (
-            <Olcum etiket="AI kredisi (bu ay)" kullanilan={sayi(aiKredi)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
-          ) : null}
-        </div>
-        <KNot ton={aiOlculdu ? "bilgi" : "uyari"}>
-          {aiOlculdu
-            ? `1 kredi = ${sayi(KREDI_KARAKTERI)} karakter (istem + yanıt). Reddedilen yanıtlar sayılmaz — kullanıcıya gösterilmeyen bir şeyin parası alınmıyor. Sayaç her ay başında sıfırlanır.`
-            : "AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil."}
-          {kullanim.arvolab?.aylik_calisma != null ? ` Bu ay ${sayi(kullanim.arvolab.aylik_calisma)} asistan çalışması.` : ""}
-        </KNot>
-        {license.suspension_reason ? <KNot ton="tehlike">{license.suspension_reason}</KNot> : null}
-      </KKart>
+      {/*
+        KOMPAKT (14.10.2026, "Lisanslar daha kompakt olsun"). Burada bir
+        "Şu anki kullanım" kartı vardı: üç ölçer çubuğu ve uzun bir
+        açıklama — ama kullanıcı, depolama ve AI kredisi sayılarını ve
+        doluluk yüzdelerini üstteki şerit ZATEN yazıyor. Aynı üç sayı ekranda
+        iki kez duruyordu. Kalan yalnızca uyarılar: ölçülemeyen AI tüketimi
+        ve askı nedeni.
+      */}
+      {!aiOlculdu ? <KNot ton="uyari">AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil.</KNot> : null}
+      {license.suspension_reason ? <KNot ton="tehlike">{license.suspension_reason}</KNot> : null}
 
       {/*
         Dört ürün, tek satırda dört kart. Eskiden ArvoOS çekirdek lisansı
@@ -269,8 +241,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
         aynı anda dar sütunlarda tutmak hepsini okunmaz yapardı.
       */}
       <KKart
-        id="urunler" baslik={`${label} abonelikleri`}
-        aciklama="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
+        id="urunler" baslik="Ürünler"
         sag={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
           {acikUrunler.length + (cekirdekAcik ? 1 : 0)} / {ADDON_PRODUCTS.length + 1} açık
         </span>}
