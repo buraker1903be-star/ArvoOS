@@ -26,3 +26,16 @@ export const PAKET_SECENEKLERI = (["starter", "professional", "enterprise"] as c
 
 /** Kodun ekrandaki adı; bilinmeyen kod olduğu gibi yazılır. */
 export const paketAdi = (kod: string | null | undefined) => (kod ? PAKET_ADLARI[kod] ?? kod : "");
+
+/*
+  ÖZEL ALAN ADI YALNIZCA ÖZEL KURUM PAKETİNDE (14.10.2026, kurum sahibinin
+  kararı: "kendi özel alan adları var, bu da özel kurum niteliğinde").
+  Eskiden hiçbir pakete bağlı değildi; kurum ayarlarından her pakete alan
+  adı girilebiliyordu. Kural dört yazma yolunda da aynı (konsolun kurum
+  ayarları, yeni müşteri sihirbazı, lisans formunda paket değişikliği,
+  kurumun kendi Ayarlar'ı); KALDIRMAK her pakette serbest — aksi hâlde
+  paketi düşen kurum alan adından kurtulamazdı.
+*/
+export const OZEL_ALAN_ADI_PAKETI = "enterprise";
+export const ozelAlanAdiAcikMi = (planCode: string | null | undefined) => planCode === OZEL_ALAN_ADI_PAKETI;
+export const OZEL_ALAN_ADI_UYARISI = "Özel alan adı yalnızca Özel kurum paketinde kullanılabilir.";

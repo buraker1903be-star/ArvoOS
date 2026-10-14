@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
@@ -370,7 +371,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <li>
             <b>1. Adresi yazın</b>
             <span>Panel için ayrı bir alt alan adı seçin — web sitenizin adresi değil.</span>
-            {canManage ? (
+            {/* Özel alan adı yalnızca Özel kurum paketinde (lib/paket-adlari);
+                bağlı bir alan adı varsa kaldırılabilsin diye form o zaman açık. */}
+            {canManage && !ozelAlanAdiAcikMi(organization.plan_code) && !domainInfo?.custom_domain ? (
+              <p className="stg-muted"><StgIcon name="lock" size={16} />{OZEL_ALAN_ADI_UYARISI} Paketinizi yükseltmek için Arvo ile iletişime geçin.</p>
+            ) : canManage ? (
               <form className="panel-form kayit-formu" action={updateCustomDomain}>
                 <AlanAdiFormu baslangic={domainInfo?.custom_domain ?? ""} canManage={canManage} />
                 <div className="wide panel-form-actions kayit-formu-eylem"><p>Kaydettikten sonra DNS kaydını ekleyin (2. adım).</p><button className="panel-primary" type="submit">Kaydet ve bağla</button></div>

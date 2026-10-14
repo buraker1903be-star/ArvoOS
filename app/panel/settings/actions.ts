@@ -1,6 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
+import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 
 import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
@@ -137,12 +138,14 @@ function cleanDomain(value: string) {
 }
 
 async function updateCustomDomain__impl(formData: FormData) {
-  const { supabase, membership, yetkiler } = await getPanelContext();
+  const { supabase, membership, yetkiler, organization } = await getPanelContext();
   assertYetki(yetkiler, "settings.kurum.yonet");
 
   const { connectDomainToVercel, disconnectDomainFromVercel, isPlatformDomain } = await import("@/lib/vercel-domains");
   const domain = cleanDomain(String(formData.get("custom_domain") ?? ""));
   if (domain && isPlatformDomain(domain)) throw new Error("Bu alan adı platforma ait; kendi alan adınızı girin (örn. panel.firma.com).");
+  /* Kaldırmak her pakette serbest; bağlamak yalnızca Özel kurum'da (lib/paket-adlari). */
+  if (domain && !ozelAlanAdiAcikMi(organization.plan_code)) throw new Error(`${OZEL_ALAN_ADI_UYARISI} Paketinizi yükseltmek için Arvo ile iletişime geçin.`);
 
   const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", membership.organization_id).maybeSingle();
   const previous: string | null = current?.custom_domain ?? null;

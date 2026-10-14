@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PAKET_ADLARI, PAKET_SECENEKLERI, paketAdi } from "../../lib/paket-adlari.ts";
+import { PAKET_ADLARI, PAKET_SECENEKLERI, paketAdi, ozelAlanAdiAcikMi } from "../../lib/paket-adlari.ts";
 import { YAYIN_KODU } from "../../lib/paket-ucreti.ts";
 import { PLANS } from "../../lib/site/pricing.ts";
 
@@ -18,4 +18,10 @@ test("paket adları: eşleme ve seçenekler", () => {
   assert.equal(paketAdi("bilinmeyen"), "bilinmeyen");
   assert.equal(paketAdi(null), "");
   assert.deepEqual(PAKET_SECENEKLERI.map((p) => p.kod), ["starter", "professional", "enterprise"]);
+});
+
+test("özel alan adı yalnızca Özel kurum paketinde", () => {
+  assert.equal(ozelAlanAdiAcikMi("enterprise"), true);
+  for (const kod of ["starter", "professional", "", null, undefined]) assert.equal(ozelAlanAdiAcikMi(kod), false, String(kod));
+  assert.equal(PAKET_ADLARI.enterprise, "Özel kurum");
 });

@@ -1,6 +1,7 @@
 "use server";
 
 import { runPanelAction } from "@/lib/panel-action";
+import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -61,6 +62,7 @@ async function createCustomerOrganization__impl(formData: FormData) {
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
+  if (customDomain && !ozelAlanAdiAcikMi(planCode)) throw new Error(OZEL_ALAN_ADI_UYARISI);
   if (ownerName.length < 2 || ownerName.length > 120) throw new Error("Owner adı 2–120 karakter olmalı.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) throw new Error("Geçerli bir owner e-posta adresi girin.");
 
@@ -97,6 +99,11 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   if (displayName && (displayName.length < 2 || displayName.length > 80)) throw new Error("Tabela unvanı 2–80 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
   if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
+  /* Paket Özel kurum değilse alan adı olamaz: hem yeni girilen hem de
+     paketi düşürülen kurumun mevcut alan adı (önce kaldırılmalı). */
+  if (customDomain && !ozelAlanAdiAcikMi(planCode)) {
+    throw new Error(`${OZEL_ALAN_ADI_UYARISI} Paketi değiştirmek için önce alan adını kaldırın.`);
+  }
 
   /*
     Kurum türü: kendi markalarımız müşteri sayımlarına ve gelir toplamına

@@ -11,6 +11,7 @@ import { syncRandevuTenants } from "@/lib/randevu-bridge";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenants } from "@/lib/arc-bridge";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
+import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 const productStatuses = new Set(["inactive", ...licenseStatuses]);
@@ -59,6 +60,13 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   if (!organizationId) throw new Error("Kurum seçilmedi.");
   if (!planCodes.has(planCode)) throw new Error("Geçerli bir paket seçin.");
   if (!licenseStatuses.has(licenseStatus)) throw new Error("Geçerli bir lisans durumu seçin.");
+
+  /* Özel alan adı olan kurum Özel kurum paketinden düşürülemez (lib/paket-adlari). */
+  if (!ozelAlanAdiAcikMi(planCode)) {
+    const { data: kurum, error: kurumHatasi } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
+    if (kurumHatasi) throw new Error(`Kurum okunamadı: ${kurumHatasi.message}`);
+    if (kurum?.custom_domain) throw new Error(`${OZEL_ALAN_ADI_UYARISI} Bu kurumun alan adı (${kurum.custom_domain}) var; paketi değiştirmek için önce Kurum Ayarları'ndan kaldırın.`);
+  }
 
   const { data: userData } = await supabase.auth.getUser();
   const now = new Date().toISOString();

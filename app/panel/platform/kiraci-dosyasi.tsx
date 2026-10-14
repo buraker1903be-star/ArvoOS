@@ -368,7 +368,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
           <label>Kurum türü<select name="kind" defaultValue={selected.kind === "internal" ? "internal" : selected.grup_markasi ? "grup" : "customer"}><option value="customer">Müşteri</option><option value="grup">Grup markası</option><option value="internal">Arvo (kendisi)</option></select></label>
           <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
           <label><span>İletişim telefonu <small className="plt-optional">ödeme hatırlatması buraya gider</small></span><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
-          <label className="wide">Özel alan adı<input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
+          <label className="wide"><span>Özel alan adı <small className="plt-optional">yalnızca Özel kurum paketinde</small></span><input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
           <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
         </form>
       </section>
