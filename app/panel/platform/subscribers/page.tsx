@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
@@ -66,6 +67,46 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   if (kurumdakiHatasi) throw new Error(`Kuruma geçen aboneler okunamadı: ${kurumdakiHatasi.message}`);
   const kurumAdi = new Map(((kurumSatirlari ?? []) as { id: string; name: string; display_name: string | null }[]).map((k) => [k.id, k.display_name || k.name]));
   const kurumdakiler = (kurumdakiSatirlar ?? []) as { id: string; product: string; email: string; full_name: string | null; kurum_id: string; kuruma_gecti_at: string | null }[];
+
+  /*
+    ADI OLMAYAN KAYDA KURUMUN PERSONEL ADI (14.10.2026).
+
+    Buradaki ad product_subscribers.full_name'den geliyor ve kurum
+    anlaşmasıyla gelen kişide çoğu zaman BOŞ: satır bir e-postadan
+    açılmış, kişi adını hiç girmemiş. Sonuç, aynı kişinin Kullanıcılar
+    ekranında "Berkcan Ağca", burada yalnızca e-posta olarak görünmesiydi
+    — iki konsol ekranı aynı insana farklı davranıyordu.
+
+    Yedek, kurumun kendi personel kaydı: hr_employees'te e-posta ve ad
+    birlikte duruyor ve kiracının paneli de selamlamada onu kullanıyor.
+    Eşleşme KURUMLA BİRLİKTE aranıyor; aynı e-posta başka bir kurumda
+    varsa onun adı buraya yazılmamalı.
+
+    SUNUCU ANAHTARIYLA okunuyor: personel kaydı RLS ile yalnızca kurum
+    ÜYELERİNE açık ve kurucu her kiracının üyesi değil. Oturum
+    istemcisiyle okusaydık ad bazı kiracılarda çıkar, bazılarında
+    çıkmazdı — sessiz ve açıklanamaz bir fark (aynı gerekçe
+    platform/kiraci-uyeleri-oku.ts'te yazılı). Anahtar yoksa ad yedeği
+    hiç denenmiyor ve eskisi gibi e-posta yazılıyor.
+
+    Ad bulunamazsa eskisi gibi e-posta yazılıyor: uydurma bir ad,
+    adsızlıktan kötüdür.
+  */
+  const adsizlar = kurumdakiler.filter((k) => !k.full_name);
+  const admin = createAdminClient();
+  const { data: personelAdlari } = adsizlar.length && admin
+    ? await admin.from("hr_employees").select("organization_id,email,full_name")
+        .in("organization_id", [...new Set(adsizlar.map((k) => k.kurum_id))])
+        .in("email", [...new Set(adsizlar.map((k) => k.email))])
+    : { data: null };
+  const personelAdi = new Map(
+    ((personelAdlari ?? []) as { organization_id: string; email: string; full_name: string | null }[])
+      .filter((p) => p.full_name)
+      .map((p) => [`${p.organization_id}:${p.email.toLowerCase()}`, p.full_name as string]),
+  );
+  /** Kaydın adı; yoksa kurumun personel kaydındaki ad, o da yoksa e-posta. */
+  const kisiAdi = (kisi: { full_name: string | null; email: string; kurum_id: string }) =>
+    kisi.full_name || personelAdi.get(`${kisi.kurum_id}:${kisi.email.toLowerCase()}`) || kisi.email;
   const lisansliKurumlar = new Map<string, { id: string; ad: string }[]>();
   for (const satir of (urunLisansSatirlari ?? []) as { organization_id: string; product: string }[]) {
     const ad = kurumAdi.get(satir.organization_id);
@@ -206,14 +247,14 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
               {kurumdakiler.map((kisi) => (
                 <KOge
                   key={kisi.id}
-                  simge={kisi.full_name || kisi.email}
-                  baslik={kisi.full_name || kisi.email}
-                  alt={[kurumAdi.get(kisi.kurum_id) ?? "Kurum", productName(kisi.product), kisi.full_name ? kisi.email : null].filter(Boolean).join(" · ")}
+                  simge={kisiAdi(kisi)}
+                  baslik={kisiAdi(kisi)}
+                  alt={[kurumAdi.get(kisi.kurum_id) ?? "Kurum", productName(kisi.product), kisiAdi(kisi) === kisi.email ? null : kisi.email].filter(Boolean).join(" · ")}
                   sonu={(
                     <form action={setSubscriberOrganization}>
                       <input type="hidden" name="subscriber_id" value={kisi.id} />
                       <input type="hidden" name="kurum_id" value="" />
-                      <button type="submit" className="panel-secondary" aria-label={`${kisi.full_name || kisi.email} bireysel aboneliğe geri al`}>Bireysele al</button>
+                      <button type="submit" className="panel-secondary" aria-label={`${kisiAdi(kisi)} bireysel aboneliğe geri al`}>Bireysele al</button>
                     </form>
                   )}
                 />
