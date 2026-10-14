@@ -21,7 +21,6 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 /* Kurucu konsolunun selamlama altı özeti ("Bugün 1 kiracı dikkat
    istiyor"). GenelBakis başlığın altına metin almıyor; cümle kartların
    üstünde ayrı bir satır olarak duruyor (13.10.2026). */
-.dash-ozet-cumle{margin:-4px 0 0;max-width:620px;color:var(--muted);font-size:15px;line-height:1.5}
 
 /* ---------- Widget'lar ---------- */
 /* 2026-10: köşedeki dekoratif daire kaldırıldı (sade dil; koyu temada gri leke gibi duruyordu). */

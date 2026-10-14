@@ -76,10 +76,23 @@ function selamlama() {
   const now = new Date();
   const saat = Number(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" }).format(now));
   const selam = saat < 5 ? "İyi geceler" : saat < 12 ? "Günaydın" : saat < 18 ? "İyi günler" : saat < 23 ? "İyi akşamlar" : "İyi geceler";
-  const tarih = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" }).format(now);
-  return { selam, tarih };
+  return { selam };
 }
 
+/*
+  BAŞLIĞIN ÜSTÜNDEKİ TARİH VE ALTINDAKİ ÖZET CÜMLESİ KALDIRILDI
+  (14.10.2026, kurum sahibinin isteği).
+
+  Tarih üst çubukta zaten yazıyor (os-status saati), yani masaüstünde
+  aynı bilgi iki yerdeydi. Özet cümlesi de ("Bugün 2 kurulum bekliyor…")
+  hemen altındaki "Bugün neye bakmalı?" kartının söylediğini tekrar
+  ediyordu; kart sayıları satır satır veriyor, cümle onları virgülle
+  birleştiriyordu.
+
+  NOT: üst çubuğun saati 900px altında gizleniyor (.os-clock), yani
+  telefonda tarih artık hiçbir yerde yazmıyor. Bilerek böyle; geri
+  istenirse etiketi yalnızca dar ekranda göstermek yeterli.
+*/
 // Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
 const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrganization[]) =>
   renewalReminders(lisanslar, kurumlar, Date.now());
@@ -270,22 +283,10 @@ export async function KonsolAnaSayfa() {
     tahsilatKayitlari.map((satir) => satir.tutar),
   );
 
-  const { selam, tarih } = selamlama();
+  const { selam } = selamlama();
   const ad = formatPersonName(
     (profil?.full_name as string | null | undefined) || (personel?.full_name as string | null | undefined),
   ).split(" ")[0];
-
-  /* Özet cümle: sıfırsa hiç yazılmıyor. "0 kurulum bekliyor" demek,
-     kurucuyu olmayan bir işe bakmaya çağırır. */
-  const parcalar = [
-    kurulumBekleyen ? `${kurulumBekleyen} kurulum bekliyor` : null,
-    onayBekleyen ? `${onayBekleyen} onay bekliyor` : null,
-    hatirlatmalar.length ? `${hatirlatmalar.length} aboneliğin dönemi doluyor` : null,
-    dikkatGerektiren ? `${dikkatGerektiren} kiracı dikkat istiyor` : null,
-  ].filter(Boolean);
-  const ozet = parcalar.length
-    ? `Bugün ${parcalar.join(", ")}.`
-    : "Bekleyen bir iş yok; platform kendi kendine dönüyor.";
 
   /*
     Kopyası konsoldan farklı erişim veren kiracılar. Yalnızca MÜŞTERİ
@@ -403,9 +404,7 @@ export async function KonsolAnaSayfa() {
   const hatadaKalanlar = new Set(kurumlar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
 
   return (
-    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} ust={tarih.toLocaleUpperCase("tr-TR")}>
-      <p className="dash-ozet-cumle">{ozet}</p>
-
+    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`}>
       {/* Köprüler sessizce kopuyor: hata yalnızca karşı taraftaki günlükte
           kalıyor ve kurucu aylar sonra fark ediyordu. Konsolun ilk ekranı
           bunu söylemeli. GenelBakis'in kendi `uyari` satırı "veri
