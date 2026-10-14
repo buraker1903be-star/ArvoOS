@@ -93,6 +93,67 @@ function fiyatYuzeyleriniTazele() {
   revalidatePath("/en/pricing");
 }
 
+/*
+  KODDAKİ DEĞERLERİ TASLAĞA ALIR (14.10.2026).
+
+  Liste ilk kurulduğunda hiçbir tutar yayımlı değil ve site koddaki
+  yedek değerlerle çalışıyor. Rakamlar doğru ama liste konsolun
+  sahipliğinde DEĞİL: bir fiyatı değiştirmek hâlâ dağıtım gerektiriyor,
+  oysa bu ekranın bütün amacı bunu kaldırmak. Sahiplenmek için her
+  basamağın bir kez yayımlanması gerekiyor, yayımlamak içinse taslak.
+
+  On altı tutarı ekrana elle girmek, üretim fiyatlarında yazım hatası
+  riskini boşuna almak demekti. Bu işlem TUTAR UYDURMUYOR: her kodun
+  bugün GEÇERLİ olan değerini (lib/site/pricing) taslağa koyuyor, yani
+  yayımlandığında sitedeki hiçbir rakam değişmiyor.
+
+  YAYIMLAMIYOR. Taslak kalıyor; kurucu önizlemede önce→sonra listesini
+  görüp kendisi yayımlıyor. Denetim (lib/fiyat-dogrulama) o adımda yine
+  çalışıyor.
+
+  DOKUNMADIKLARI: yayımlanmış bir basamak (üstüne yazmak, yayımdaki
+  tutarı sessizce değiştirmek olurdu) ve bekleyen bir taslağı olan
+  basamak (kurucunun hazırladığı zammı ezerdi).
+*/
+async function koddakiDegerleriTaslagaAl__impl() {
+  const { supabase, isPlatformOwner } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const { data, error } = await supabase.from("platform_fiyat_listesi").select("kod,yayimlandi_at,taslak_bekliyor");
+  if (error) throw new Error("Fiyat listesi okunamadı: " + error.message);
+  const mevcut = new Map(((data ?? []) as { kod: string; yayimlandi_at: string | null; taslak_bekliyor: boolean | null }[])
+    .map((satir) => [satir.kod, satir]));
+
+  const { data: userData } = await supabase.auth.getUser();
+  const simdi = new Date().toISOString();
+  const alinacaklar = [
+    ...PLANS.map((plan) => ({ kod: plan.code, kurus: plan.aylikKurus })),
+    ...ADD_ONS.map((kalem) => ({ kod: kalem.code, kurus: kalem.aylikKurus })),
+  ].filter(({ kod }) => {
+    const satir = mevcut.get(kod);
+    return !satir?.yayimlandi_at && !satir?.taslak_bekliyor;
+  });
+
+  if (!alinacaklar.length) throw new Error("Taslağa alınacak basamak yok: hepsi ya yayımlı ya da taslağı bekliyor.");
+
+  const { error: yazmaHatasi } = await supabase.from("platform_fiyat_listesi").upsert(
+    alinacaklar.map(({ kod, kurus }) => ({
+      kod,
+      tur: TUR.get(kod) ?? "plan",
+      /* null = "Teklif": bu basamağın liste fiyatı yok ve olmayacak. */
+      taslak_kurus: kurus,
+      taslak_bekliyor: true,
+      updated_by: userData.user?.id ?? null,
+      updated_at: simdi,
+    })),
+    { onConflict: "kod" },
+  );
+  if (yazmaHatasi) throw new Error("Taslaklar kaydedilemedi: " + yazmaHatasi.message);
+
+  revalidatePath("/panel/platform/fiyatlar");
+  revalidatePath("/panel/platform/urunler");
+}
+
 async function fiyatlariYayimla__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
@@ -157,6 +218,9 @@ async function yayindanKaldir__impl(formData: FormData) {
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function taslagiKaydet(...args: Parameters<typeof taslagiKaydet__impl>) {
   return runPanelAction(() => taslagiKaydet__impl(...args), "Taslak kaydedildi");
+}
+export async function koddakiDegerleriTaslagaAl() {
+  return runPanelAction(() => koddakiDegerleriTaslagaAl__impl(), "Koddaki değerler taslağa alındı; önizlemeden yayımlayın");
 }
 export async function fiyatlariYayimla(...args: Parameters<typeof fiyatlariYayimla__impl>) {
   return runPanelAction(() => fiyatlariYayimla__impl(...args), "Fiyatlar yayımlandı");

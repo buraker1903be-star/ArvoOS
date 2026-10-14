@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
 import { fiyatlariBirlestir } from "@/lib/site/fiyat-kaynagi";
-import { fiyatlariYayimla, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
+import { fiyatlariYayimla, koddakiDegerleriTaslagaAl, taslagiGeriAl, taslagiKaydet, yayindanKaldir } from "../urunler/actions";
 import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
@@ -346,6 +346,28 @@ export default async function FiyatlarPage({ searchParams }: {
               <KOge baslik="Yayım bekleyen" alt="taslak"
                 durum={bekleyenTaslak ? { etiket: "Önizlemede", ton: "warning" } : null} deger={sayi(bekleyenTaslak)} />
             </KListe>
+            {/*
+              LİSTEYİ SAHİPLENME ADIMI (14.10.2026). Hiçbir tutar yayımlı
+              değilken site koddaki yedek değerlerle çalışıyor: rakamlar
+              doğru ama bir fiyatı değiştirmek hâlâ dağıtım istiyor, oysa
+              bu ekranın amacı bunu kaldırmak. On altı tutarı elle girmek
+              üretim fiyatlarında boşuna yazım hatası riski olurdu;
+              işlem her kodun BUGÜN GEÇERLİ değerini taslağa alıyor,
+              yayımlandığında sitede hiçbir rakam değişmiyor.
+
+              Yalnızca gerçekten gerektiğinde görünüyor: yayımlı tutar
+              da bekleyen taslak da yoksa.
+            */}
+            {!yayimliSayisi && !bekleyenTaslak ? (
+              <form action={koddakiDegerleriTaslagaAl}>
+                <KNot ton="uyari">
+                  Hiçbir tutar konsoldan yayımlı değil: site koddaki yedek değerleri okuyor ve fiyat değişikliği dağıtım
+                  gerektiriyor. Koddaki değerleri taslağa alıp yayımlarsanız liste bu ekranın sahipliğine geçer —
+                  sitedeki rakamlar aynı kalır.
+                </KNot>
+                <button type="submit" className="panel-secondary">Koddaki değerleri taslağa al</button>
+              </form>
+            ) : null}
             <KNot>
               Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). KDV hariç. Ücretler
               sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur.
