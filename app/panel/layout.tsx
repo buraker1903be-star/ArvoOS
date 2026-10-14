@@ -460,19 +460,33 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     anahtarıyla okunabiliyor (sozlesmeler sayfasındaki kuralın aynısı);
     anahtar yoksa rozet çizilmiyor, "0 sözleşme bekliyor" denmiyor.
   */
-  const konsolAdmin = createAdminClient();
-  const [bekleyenOdemeSayisi, bekleyenSozlesmeSayisi] = await Promise.all([
-    supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    konsolAdmin
-      ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
-      : Promise.resolve({ count: null, error: null }),
-  ]);
-  const konsolUygulamalariListesi = konsolUygulamalari({
-    /* Okuma düşerse rozet çizilmiyor: yanlış bir sayı göstermektense
-       hiç göstermemek doğru (konsol-oku'daki kuralın aynısı). */
-    odeme: bekleyenOdemeSayisi.error ? 0 : bekleyenOdemeSayisi.count ?? 0,
-    sozlesme: bekleyenSozlesmeSayisi.error ? 0 : bekleyenSozlesmeSayisi.count ?? 0,
-  });
+  /*
+    Dock rozetleri: onay bekleyen dekont ve sözleşme. İki `head` sayımı —
+    satır çekilmiyor, yalnızca sayı.
+
+    TAMAMI TRY İÇİNDE (14.10.2026). İlk sürümde değildi ve konsolun
+    BÜTÜN ekranları 500 verdi: layout her sayfayı sarıyor, orada atılan
+    bir hata tek bir rozet için konsolu tamamen kapatıyor. Sayaç
+    süslemedir; okunamadığında rozet çizilmez, konsol açılmaya devam
+    eder. Sebep günlüğe yazılır.
+  */
+  let bekleyenOdeme = 0;
+  let bekleyenSozlesme = 0;
+  try {
+    const konsolAdmin = createAdminClient();
+    const [odemeSonucu, sozlesmeSonucu] = await Promise.all([
+      supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      konsolAdmin
+        ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
+        : Promise.resolve({ count: 0, error: null }),
+    ]);
+    bekleyenOdeme = odemeSonucu.error ? 0 : odemeSonucu.count ?? 0;
+    bekleyenSozlesme = sozlesmeSonucu.error ? 0 : sozlesmeSonucu.count ?? 0;
+  } catch (hata) {
+    console.error("[konsol] dock rozetleri okunamadı", hata instanceof Error ? hata.message : hata);
+  }
+  const konsolUygulamalariListesi = konsolUygulamalari({ odeme: bekleyenOdeme, sozlesme: bekleyenSozlesme });
+
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
   return <div className="panel-root os-root os-konsol"><main className="panel-frame os-frame">
