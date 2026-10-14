@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { zorunlu } from "../konsol-oku";
-import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
+import { PRODUCTS } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
 // Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
 import { paketAdi } from "@/lib/paket-adlari";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
@@ -40,7 +39,6 @@ export type KiraciDosyasiVerisi = {
 };
 
 export async function kiraciDosyasiVerisi(supabase: SupabaseClient, id: string): Promise<KiraciDosyasiVerisi | null> {
-  const admin = createAdminClient();
   const [{ data: satir, error }, { data: plans }, { data: uyelikler }, { data: depolamalar }] = await Promise.all([
     supabase.from("platform_kiraci_liste").select(KIRACI_SUTUNLARI).eq("id", id).maybeSingle(),
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),

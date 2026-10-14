@@ -111,7 +111,6 @@ export default async function UrunlerPage({ searchParams }: {
   const toplamKurum = kiracilar.filter((k) => ACIK_LISANS.has(k.license_status ?? "")).length;
   const kopukKopru = satirlar.filter((s) => !s.saglik.ok).length;
 
-  const adres = (kod: string) => `/panel/platform/urunler?bolum=${kod}`;
 
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
