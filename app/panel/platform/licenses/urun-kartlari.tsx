@@ -105,7 +105,8 @@ export function UrunKartlari({
               baslik={kart.ad}
               alt={ozet}
               durum={{ etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" }}
-              deger={ucret && ucret !== "girilmedi" ? ucret.replace(" / ay", "") : <span className="k-ios-eksik">Ücret yok</span>}
+              /* Kapalı üründe ücret beklenmiyor: uyarı rengi yalnızca açık üründe. */
+              deger={ucret && ucret !== "girilmedi" ? ucret.replace(" / ay", "") : kart.acik ? <span className="k-ios-eksik">Ücret yok</span> : "—"}
               degerAlt={ucret && ucret !== "girilmedi" ? "aylık" : undefined}
               sonu={(
                 <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
