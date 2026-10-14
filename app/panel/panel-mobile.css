@@ -135,5 +135,5 @@ html:has(.panel-drawer-root.open,.panel-sheet-root.open,.msg-drawer-root.is-open
 /* Şeffaflığı azaltmayı seçen kullanıcıda (ve bulanıklığı çizemeyen
    cihazda) çubuklar düz zemin; bulanıklık GPU'yu yormasın. */
 @media (prefers-reduced-transparency:reduce){
-  .panel-drawer-header,.panel-sheet,.panel-toast){background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .panel-root :is(.panel-drawer-header,.panel-sheet,.panel-toast){background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
