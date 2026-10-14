@@ -164,10 +164,14 @@ export default async function SistemSagligiPage() {
     .filter(musteriMi)
     .map((k) => ({
       kiraci: k,
-      /* AI kredisi KIYASLANMIYOR: kiracı görünümünde o sütun yok ve
-         limiti hiçbir kod uygulamıyor (ai_credits_used hiç yazılmıyor,
-         AGENTS.md). Uygulanmayan bir limitin sapmasını "sorun" diye
-         saymak, listeyi okunmaz eden gürültü olurdu. */
+      /* AI kredisi KIYASLANMIYOR: kiracı görünümünde o sütun yok.
+         Burada eskiden "limiti hiçbir kod uygulamıyor" yazıyordu ve bu
+         YANLIŞTI (14.10.2026'da düzeltildi): limiti ArvoLab kendi kredi
+         kapısında uyguluyor — %80'de uyarıyor, hak bitince asistanı
+         durduruyor. Körelmiş olan yalnızca ArvoOS'taki ai_credits_used
+         sütunu; tüketim ArvoLab'dan canlı okunuyor (lib/urun-kullanimi).
+         Kıyaslanmamasının sebebi sütunun görünümde olmaması; limit
+         sapması sayfanın okuduğu veriden hesaplanamıyor. */
       sapmalar: fazlaVerilen(limitSapmalari(k.plan_code, {
         userLimit: k.user_limit, storageLimitMb: k.storage_limit_mb, aiCreditLimit: null,
       })),

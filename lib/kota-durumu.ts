@@ -22,12 +22,19 @@ export type KotaOlcumu = {
 };
 
 /*
-  AI kredisi burada YOK. `organization_licenses.ai_credits_used` sütununu
-  hiçbir kod artırmıyor — ArvoLab asistanı kendi veritabanında çalışıyor ve
-  tüketimi ArvoOS'a yazmıyor. Ölçümü olmayan bir kotayı hesaba katmak,
-  kurucuya her kiracı için "%0 dolu" demek olurdu; ölçülmeyen bir şeyi
-  ölçülmüş gibi göstermek, hiç göstermemekten kötü. ArvoLab tüketimi
-  yazmaya başladığında buraya geri gelir.
+  AI kredisi burada YOK — ama "ölçülmüyor" diye değil.
+
+  `organization_licenses.ai_credits_used` sütununu hiçbir kod artırmıyor
+  (körelmiş; check:rakamlar onu tuzak olarak gözetiyor). Tüketim ArvoLab'ın
+  kendi veritabanında duruyor ve oradan CANLI okunuyor
+  (lib/urun-kullanimi → aylik_kredi); limiti de ArvoLab kendi kredi
+  kapısında uyguluyor.
+
+  Bu modül saf ve eşzamanlı: girdisi tek bir kiracının sayıları. AI
+  kredisini katmak, her çağıranın ayrı bir veritabanından ağ üzerinden
+  ölçüm çekmesini gerektirirdi — kota kartı o ölçüm koptuğunda "%0 dolu"
+  demeye başlardı. Kredi durumu bu yüzden lisans ekranında kendi
+  kutusunda, ölçüm alınamazsa "Ölçülemedi" diyerek gösteriliyor.
 */
 export type KotaDurumu = {
   organizationId: string;

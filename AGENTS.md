@@ -345,7 +345,7 @@ sınıra ulaşılana kadar hiçbir belirti vermiyor. İkincisi adı doğru gelen
 ama başka bir şey tutan tablodan okumak: `billing_invoices` kiracının
 KENDİ müşterilerine kestiği faturalar, `billing_subscriptions` ne abonelik
 kütüğü ne ayrı bir tahsilat kanalı — her kurum ödemesinin aktivasyon ikizi
-(onaylı ödeme isteğiyle toplanınca her ödeme iki kez sayılıyordu), `ai_credits_used` hiç yazılmıyor. Bilerek
+(onaylı ödeme isteğiyle toplanınca her ödeme iki kez sayılıyordu), `ai_credits_used` hiç yazılmıyor — körelmiş bir sütun, oradan okunan her sayı sıfır çıkar. Bu, AI kredisinin ölçülmediği ya da uygulanmadığı anlamına GELMEZ: tüketim ArvoLab'dan canlı okunuyor (`lib/urun-kullanimi`) ve limiti ArvoLab kendi kredi kapısında uyguluyor. Buradaki not 14.10.2026'ya kadar yanlış okunup "limit uygulanmıyor" sanıldı. Bilerek
 kullanıyorsanız satırın üstündeki yorum bloğuna `tuzak-tamam: <sebep>`
 yazın — sebebi yazmak, denetimi susturmanın bedeli. Yeni bir tuzak
 öğrenildiğinde betikteki listeye eklenir.
