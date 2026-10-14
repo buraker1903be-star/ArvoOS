@@ -82,6 +82,11 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
 .k-ios-govde{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .k-ios-baslik{overflow:hidden;color:var(--ink);font-size:14.5px;font-weight:var(--fw-semibold);letter-spacing:-.01em;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
 .k-ios-alt{overflow:hidden;color:var(--muted);font-size:12.5px;font-weight:400;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+/* Özetteki e-posta/telefon bağlantısı: genel ".panel-card a" kuralı (800,
+   vurgu rengi) onu kalın ve renkli yapıyordu; satırın asıl bilgisi
+   değil, özetin parçası (14.10.2026). */
+.os-root .panel-card .k-ios-alt a{color:inherit;font-weight:inherit;text-decoration:none}
+.os-root .panel-card .k-ios-alt a:hover{color:var(--primary);text-decoration:underline}
 
 /* Durum: kenarlıksız, renkli nokta + metin (iOS'un sade rozeti). */
 .k-ios-durum{--k-ton:var(--dim);flex:none;display:inline-flex;align-items:center;gap:6px;min-width:96px;color:var(--ink-soft);font-size:12.5px;font-weight:var(--fw-medium);white-space:nowrap}

@@ -70,54 +70,92 @@ const davetleriIsaretle = (davetler: Davet[]) => {
   }));
 };
 
-/** Kişi × kapsam: aynı kişinin aynı kurumdaki beş ürünü tek satır. */
+/*
+  KİŞİ BAŞINA TEK SATIR (14.10.2026, "tablo çok kötü gözüküyor"). Eskiden
+  satır kişi × kurumdu: üç kurumda olan kurucu üç ayrı satırda, sağda üç
+  ayrı ham rol koduyla ("owner", "system_admin") görünüyordu. Şimdi kişi
+  bir kez; kurumları satırın altında rozet (kurum · ürünler), erişimi açık
+  olan kurum yeşil, kapalı olan soluk. Sağda kişinin EN YETKİLİ rolü
+  Türkçe adıyla ve kaç kurumda olduğu.
+
+  Kişi e-postaya göre birleşiyor: ArvoLab'ın kullanıcı kimliği ArvoOS'unkiyle
+  aynı değil (lib/member-directory'deki kuralın aynısı).
+*/
+type Uyelik = { kapsam: string; urunler: string[]; rol: string | null; acik: boolean; sebep: string | null; bireysel: boolean };
 type Kisi = {
   anahtar: string;
   ad: string;
   email: string | null;
   telefon: string | null;
   unvan: string | null;
-  kapsam: string;
-  rol: string | null;
-  urunler: string[];
+  uyelikler: Uyelik[];
+  /** Bir kurumda bile girebiliyorsa AKTİF; pasif = hiçbir yere giremiyor. */
   acik: boolean;
   sebep: string | null;
   bireysel: boolean;
 };
 
+/* Rol kodlarının okunur adı. ArvoOS rolleri ve ArvoLab rolleri tek
+   listede; listede olmayan kod okunur hâle getirilip yazılıyor. Sıra
+   "en yetkili" seçimi için: baştaki daha yetkili. */
+const ROLLER: [string, string][] = [
+  ["founder", "Kurucu"], ["owner", "Kurum sahibi"], ["system_admin", "Sistem yöneticisi"],
+  ["admin", "Yönetici"], ["academic_manager", "Akademik yönetici"], ["manager", "Müdür"],
+  ["controller", "Kontrolör"], ["expert", "Uzman"], ["operasyoncu", "Operasyon"],
+  ["employee", "Personel"], ["staff", "Personel"], ["member", "Üye"], ["client", "Üye / öğrenci"],
+];
+const ROL_ADI = new Map(ROLLER);
+const rolSirasi = (rol: string | null) => {
+  const i = ROLLER.findIndex(([kod]) => kod === rol);
+  return i < 0 ? ROLLER.length : i;
+};
+const rolAdi = (rol: string | null) =>
+  rol ? ROL_ADI.get(rol) ?? rol.replace(/_/g, " ").replace(/^./, (h) => h.toLocaleUpperCase("tr-TR")) : "—";
+
 function kisilereTopla(satirlar: DirectoryRow[]): Kisi[] {
   const harita = new Map<string, Kisi>();
   for (const satir of satirlar) {
-    const kimlik = satir.email?.toLocaleLowerCase("tr-TR") ?? `uid:${satir.userId}`;
-    const anahtar = `${satir.scope}:${kimlik}`;
-    const onceki = harita.get(anahtar);
+    const anahtar = satir.email?.toLocaleLowerCase("tr-TR") ?? `uid:${satir.userId}`;
     const urun = productName(satir.product as Parameters<typeof productName>[0]);
-    if (onceki) {
-      if (!onceki.urunler.includes(urun)) onceki.urunler.push(urun);
-      /* Bir üründe bile girebiliyorsa kişi AKTİF: "hiçbir yere giremiyor"
-         demek için bütün ürünlerin kapalı olması gerekiyor. */
-      if (satir.access) { onceki.acik = true; onceki.sebep = null; }
-      else if (!onceki.acik) onceki.sebep = pasiflikSebebi(satir);
-      onceki.telefon ??= satir.phone;
-      onceki.unvan ??= satir.title;
-      continue;
+    let kisi = harita.get(anahtar);
+    if (!kisi) {
+      kisi = {
+        anahtar,
+        ad: formatPersonName(satir.name) || satir.email || "Adsız kullanıcı",
+        email: satir.email, telefon: satir.phone, unvan: satir.title,
+        uyelikler: [], acik: false, sebep: null, bireysel: false,
+      };
+      harita.set(anahtar, kisi);
     }
-    harita.set(anahtar, {
-      anahtar,
-      ad: formatPersonName(satir.name) || satir.email || "Adsız kullanıcı",
-      email: satir.email,
-      telefon: satir.phone,
-      unvan: satir.title,
-      kapsam: satir.scope,
-      rol: satir.role,
-      urunler: [urun],
-      acik: satir.access,
-      sebep: satir.access ? null : pasiflikSebebi(satir),
-      bireysel: satir.individual,
-    });
+    // Adı olan kayıt adsız olanı ezer (ArvoLab satırında ad boş olabiliyor).
+    if (kisi.ad === kisi.email && satir.name) kisi.ad = formatPersonName(satir.name) || kisi.ad;
+    kisi.telefon ??= satir.phone;
+    kisi.unvan ??= satir.title;
+
+    const kapsam = satir.individual ? "Bireysel" : satir.scope;
+    let uyelik = kisi.uyelikler.find((u) => u.kapsam === kapsam);
+    if (!uyelik) {
+      uyelik = { kapsam, urunler: [], rol: satir.role, acik: false, sebep: null, bireysel: satir.individual };
+      kisi.uyelikler.push(uyelik);
+    }
+    if (!uyelik.urunler.includes(urun)) uyelik.urunler.push(urun);
+    if (rolSirasi(satir.role) < rolSirasi(uyelik.rol)) uyelik.rol = satir.role;
+    /* Bir üründe bile girebiliyorsa o kurumda açık. */
+    if (satir.access) { uyelik.acik = true; uyelik.sebep = null; }
+    else if (!uyelik.acik) uyelik.sebep = pasiflikSebebi(satir);
+  }
+  for (const kisi of harita.values()) {
+    kisi.acik = kisi.uyelikler.some((u) => u.acik);
+    kisi.sebep = kisi.acik ? null : kisi.uyelikler.find((u) => u.sebep)?.sebep ?? "Erişim kapalı";
+    kisi.bireysel = kisi.uyelikler.every((u) => u.bireysel);
+    kisi.uyelikler.sort((a, b) => Number(b.acik) - Number(a.acik) || a.kapsam.localeCompare(b.kapsam, "tr-TR"));
   }
   return [...harita.values()].sort((a, b) => a.ad.localeCompare(b.ad, "tr-TR"));
 }
+
+/** Kişinin en yetkili rolü (kurumları arasında). */
+const enYetkiliRol = (kisi: Kisi) =>
+  kisi.uyelikler.map((u) => u.rol).sort((a, b) => rolSirasi(a) - rolSirasi(b))[0] ?? null;
 
 export default async function KullanicilarPage({ searchParams }: {
   searchParams: Promise<{ evre?: string; ara?: string }>;
@@ -153,7 +191,7 @@ export default async function KullanicilarPage({ searchParams }: {
 
   const desen = aranan.toLocaleLowerCase("tr-TR");
   const suz = (liste: Kisi[]) => desen
-    ? liste.filter((k) => `${k.ad} ${k.email ?? ""} ${k.telefon ?? ""} ${k.kapsam}`.toLocaleLowerCase("tr-TR").includes(desen))
+    ? liste.filter((k) => `${k.ad} ${k.email ?? ""} ${k.telefon ?? ""} ${k.uyelikler.map((u) => u.kapsam).join(" ")}`.toLocaleLowerCase("tr-TR").includes(desen))
     : liste;
 
   const gosterilen = secili === "aktif" ? suz(aktifler) : secili === "pasif" ? suz(pasifler) : [];
@@ -169,7 +207,7 @@ export default async function KullanicilarPage({ searchParams }: {
     return [...sayac.entries()].sort((a, b) => b[1] - a[1]).map(([ad, adet]) => ({ ad, adet }));
   };
   const sebepDagilimi = dagilim(pasifler.map((k) => k.sebep ?? "Erişim kapalı"));
-  const urunDagilimi = dagilim(aktifler.flatMap((k) => k.urunler));
+  const urunDagilimi = dagilim(aktifler.flatMap((k) => [...new Set(k.uyelikler.filter((u) => u.acik).flatMap((u) => u.urunler))]));
   const suresiGecenDavet = davetler.filter((d) => d.suresiGecti).length;
 
   return <main className="plt talep cari ekip liste-sayfa">
@@ -250,7 +288,7 @@ export default async function KullanicilarPage({ searchParams }: {
                       key={davet.id}
                       href={kurumAdresi}
                       baslik={davet.email}
-                      alt={[kurumAdi, davet.role, `davet ${tarihSaat(davet.sent_at ?? davet.created_at)}`].filter(Boolean).join(" · ")}
+                      alt={[kurumAdi, davet.role ? rolAdi(davet.role) : null, `davet ${tarihSaat(davet.sent_at ?? davet.created_at)}`].filter(Boolean).join(" · ")}
                       durum={durum}
                       deger={tarih(davet.expires_at)}
                       degerAlt="son geçerlilik"
@@ -269,10 +307,9 @@ export default async function KullanicilarPage({ searchParams }: {
              sebebi. E-posta ve telefon yine tıklanır bağlantı. */
           <KListe>
             {gosterilen.map((kisi) => {
+              const kurumSayisi = kisi.uyelikler.filter((u) => !u.bireysel).length;
               const parcalar: ReactNode[] = [
-                kisi.bireysel ? "Bireysel" : kisi.kapsam,
-                kisi.urunler.join(", "),
-                kisi.email ? <a href={`mailto:${kisi.email}`}>{kisi.email}</a> : null,
+                kisi.email && kisi.email !== kisi.ad ? <a href={`mailto:${kisi.email}`}>{kisi.email}</a> : null,
                 /* Telefon yalnızca ArvoOS profilinde var; ArvoLab ayrı
                    veritabanında ve orada tutulmuyor. */
                 kisi.telefon ? <a href={`tel:${kisi.telefon}`}>{kisi.telefon}</a> : null,
@@ -283,9 +320,14 @@ export default async function KullanicilarPage({ searchParams }: {
                   key={kisi.anahtar}
                   simge={kisi.ad}
                   baslik={kisi.ad}
-                  alt={parcalar.map((parca, i) => <Fragment key={i}>{i ? " · " : null}{parca}</Fragment>)}
+                  alt={parcalar.length ? parcalar.map((parca, i) => <Fragment key={i}>{i ? " · " : null}{parca}</Fragment>) : undefined}
+                  etiketler={kisi.uyelikler.map((u) => ({
+                    etiket: `${u.kapsam} · ${u.urunler.join(", ")}`,
+                    ton: u.acik ? "success" : "neutral",
+                  }))}
                   durum={secili === "pasif" ? { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" } : null}
-                  deger={secili === "pasif" ? undefined : kisi.rol ?? "—"}
+                  deger={secili === "pasif" ? undefined : rolAdi(enYetkiliRol(kisi))}
+                  degerAlt={secili === "pasif" ? undefined : kurumSayisi > 1 ? `${kurumSayisi} kurumda` : kisi.bireysel ? "bireysel" : undefined}
                 />
               );
             })}

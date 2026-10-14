@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 import { arvolabClient } from "@/lib/arvolab";
 
 // Üç ürünün tüm üyelerini tek listede toplar (Platform → Üyeler).
@@ -104,9 +105,9 @@ export async function getMemberDirectory(): Promise<Directory> {
       */
       admin.from("organization_memberships").select("user_id,organization_id,role,is_active"),
       admin.from("organization_licenses").select("organization_id,license_status,current_period_end"),
-      admin.from("organization_product_licenses").select("organization_id,product,status,current_period_end"),
+      admin.from("organization_product_licenses").select("organization_id,product,status,current_period_end,trial_ends_at"),
       admin.from("organization_modules").select("organization_id,module_code,is_enabled").eq("module_code", "commerce"),
-      admin.from("product_subscribers").select("product,external_user_id,email,full_name,status,trial_ends_at,current_period_end"),
+      admin.from("product_subscribers").select("product,external_user_id,email,full_name,status,trial_ends_at,current_period_end,kurum_id"),
       emailMap(admin),
       /*
         Adın ASIL kaynağı profiles: kişi adını panelden buraya yazıyor ve
@@ -237,6 +238,15 @@ export async function getMemberDirectory(): Promise<Directory> {
           access = licenseOpen(organization.license_status, organization.current_period_end);
           status = organization.license_status ?? "lisans yok";
           periodEnd = organization.current_period_end;
+        } else if (subscriber?.kurum_id) {
+          /* Kuruma geçmiş abone (14.10.2026, product_subscribers.kurum_id):
+             erişimi kurumun ArvoLab lisansından — köprüdeki kuralın aynısı
+             (lib/kurum-lisansi-erisim). Eskiden burada hâlâ "Bireysel"
+             görünüyordu. */
+          const kurumLisansi = productLicense.get(`${subscriber.kurum_id}:arvolab`) ?? null;
+          access = kurumLisansiAcik(kurumLisansi);
+          status = kurumLisansi?.status ?? "lisans yok";
+          periodEnd = kurumLisansi?.current_period_end ?? null;
         } else if (subscriber) {
           periodEnd = subscriber.current_period_end;
           access = subscriber.status === "trialing"
@@ -257,9 +267,9 @@ export async function getMemberDirectory(): Promise<Directory> {
           phone: null,
           title: null,
           email: user?.email ?? null,
-          scope: organization ? organization.name : "Bireysel",
+          scope: organization ? organization.name : subscriber?.kurum_id ? orgName.get(subscriber.kurum_id) ?? "Kurum" : "Bireysel",
           role: profile.role,
-          individual: !organization,
+          individual: !organization && !subscriber?.kurum_id,
           access,
           status,
           periodEnd,
@@ -273,6 +283,26 @@ export async function getMemberDirectory(): Promise<Directory> {
       const seen = new Set((labProfiles ?? []).map((profile) => profile.id));
       for (const subscriber of subscribers ?? []) {
         if (subscriber.product !== "arvolab" || seen.has(subscriber.external_user_id)) continue;
+        const kurumLisansi = subscriber.kurum_id ? productLicense.get(`${subscriber.kurum_id}:arvolab`) ?? null : null;
+        if (subscriber.kurum_id) {
+          rows.push({
+            product: "arvolab",
+            userId: subscriber.external_user_id,
+            name: subscriber.full_name,
+            phone: null,
+            title: null,
+            email: subscriber.email,
+            scope: orgName.get(subscriber.kurum_id) ?? "Kurum",
+            role: null,
+            individual: false,
+            access: kurumLisansiAcik(kurumLisansi),
+            status: kurumLisansi?.status ?? "lisans yok",
+            periodEnd: kurumLisansi?.current_period_end ?? null,
+            organizationId: null,
+            membershipActive: null,
+          });
+          continue;
+        }
         rows.push({
           product: "arvolab",
           userId: subscriber.external_user_id,
