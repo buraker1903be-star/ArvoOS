@@ -81,7 +81,6 @@ export default async function MembersPage() {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜYELER</small>
         <h1>Tüm Üyeler</h1>
-        <p>ArvoOS, ArvoLab ve ArvoARC&apos;ı kullanan herkesin tek listesi; kurum üyeleri ve bireysel aboneler birlikte.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel aboneler</Link>

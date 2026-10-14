@@ -178,7 +178,6 @@ export default async function KullanicilarPage({ searchParams }: {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · KULLANICILAR</small>
         <h1>Kullanıcılar</h1>
-        <p>Üç ürünü kullanan herkes tek yerde: giriş yapabilenler, erişimi kapananlar ve davet edilip hiç gelmeyenler.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/musteriler">Müşteriler</Link>
@@ -269,7 +268,7 @@ export default async function KullanicilarPage({ searchParams }: {
           <KTablo kolonlar={[{ ad: "Kişi" }, { ad: "İletişim" }, { ad: "Kurum" }, { ad: "Ürün" }, { ad: secili === "pasif" ? "Sebep" : "Rol" }]}>
             {gosterilen.map((kisi) => (
               <tr key={kisi.anahtar}>
-                <KBaslik etiket="Kişi" baslik={kisi.ad} alt={kisi.unvan} />
+                <KBaslik avatar etiket="Kişi" baslik={kisi.ad} alt={kisi.unvan} />
                 <td data-label="İletişim">
                   {kisi.email ? <a href={`mailto:${kisi.email}`}>{kisi.email}</a> : "—"}
                   {/* Telefon yalnızca ArvoOS profilinde var; ArvoLab ayrı

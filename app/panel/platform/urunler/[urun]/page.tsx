@@ -109,7 +109,6 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
         <h1>{urunTanimi.name}</h1>
-        <p>{urunTanimi.description}</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/urunler">← Dört ürün</Link>
@@ -145,7 +144,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
               const donem = s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? tarih(s.donemSonu) : "—";
               return (
                 <tr key={s.id}>
-                  <KBaslik etiket="Kurum" href={kiraciAdresi(s.id)} baslik={s.ad} />
+                  <KBaslik avatar etiket="Kurum" href={kiraciAdresi(s.id)} baslik={s.ad} />
                   <KDurum etiket={durum.etiket} ton={durum.ton} />
                   <td data-label="Paket">{s.paket ? PAKET_ADI[s.paket] ?? s.paket : "—"}</td>
                   {/* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */}

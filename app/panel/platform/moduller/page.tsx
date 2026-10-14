@@ -89,7 +89,6 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
       <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜN VE ERİŞİM</small>
         <h1>Modül matrisi</h1>
-        <p>Hangi modül hangi kiracıda açık. Değişiklik kiracı dosyasında yapılır; bu ekran okunur.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform">Kiracılar</Link>

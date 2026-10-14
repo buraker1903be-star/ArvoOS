@@ -208,7 +208,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
 
   return <main className="plt talep cari">
     <header className="talep-bas">
-      <div className="talep-bas-metin"><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
+      <div className="talep-bas-metin"><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1></div>
       <div className="talep-bas-eylem">
         <KiraciSecici
           secili={selected.id}

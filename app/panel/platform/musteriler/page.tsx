@@ -191,7 +191,6 @@ export default async function MusterilerPage({ searchParams }: {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · MÜŞTERİLER</small>
         <h1>Müşteriler</h1>
-        <p>Kurumsal kiracılar ve bireysel aboneler tek listede. Satıra tıklayınca kaydın kendi ekranı açılır.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform">Kiracı kurulumu</Link>
@@ -245,7 +244,7 @@ export default async function MusterilerPage({ searchParams }: {
           <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Tür" }, { ad: "Durum" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "" }]}>
             {liste.map((satir) => (
               <tr key={satir.anahtar}>
-                <KBaslik etiket="Müşteri" href={satir.href} baslik={satir.ad} alt={satir.alt} />
+                <KBaslik avatar etiket="Müşteri" href={satir.href} baslik={satir.ad} alt={satir.alt} />
                 <td data-label="Tür">{satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel"}</td>
                 <KDurum etiket={satir.durum} ton={satir.ton} />
                 {/* Bireysel abonenin ücreti ürün planında, kişide değil:

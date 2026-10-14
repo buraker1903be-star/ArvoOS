@@ -46,7 +46,19 @@ type Kayit = { anahtar: string; zaman: string; tur: string; ton: Ton; ne: string
 
 const var_ = (ad: string) => Boolean(process.env[ad]);
 
-export default async function SistemAyarlariPage() {
+/*
+  TEK EKRAN (14.10.2026, "kompakt, sade, premium"): dört bölüm alt alta
+  2.600 piksel tutuyordu. Artık özet şeridindeki dört sayı aynı zamanda
+  sekme (?bolum=); her seferinde tek bölüm açık, sayfa İşler gibi tek ekran.
+*/
+const BOLUMLER = ["yetkiler", "entegrasyonlar", "guvenlik", "kayitlar"] as const;
+type Bolum = (typeof BOLUMLER)[number];
+
+export default async function SistemAyarlariPage({ searchParams }: { searchParams: Promise<{ bolum?: string }> }) {
+  const { bolum: istenen } = await searchParams;
+  const bolum: Bolum = (BOLUMLER as readonly string[]).includes(istenen ?? "") ? (istenen as Bolum) : "entegrasyonlar";
+  const sekme = (kod: Bolum) => ({ className: bolum === kod ? "is-active" : undefined });
+  const sekmeBag = (kod: Bolum) => ({ href: `/panel/platform/ayarlar?bolum=${kod}`, "aria-current": bolum === kod ? ("page" as const) : undefined });
   const { supabase, isPlatformOwner, organization } = await getPanelContext();
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
@@ -167,7 +179,6 @@ export default async function SistemAyarlariPage() {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · SİSTEM AYARLARI</small>
         <h1>Sistem Ayarları</h1>
-        <p>Konsola kimin girebildiği, entegrasyonların durumu, sunucu sırları ve kurucu işlemlerinin kaydı.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/saglik">Sistem sağlığı</Link>
@@ -176,24 +187,25 @@ export default async function SistemAyarlariPage() {
 
     <nav className="kayit-serit talep-serit" aria-label="Sistem özeti">
       <dl>
-        <div><dt>Kurucu</dt><dd><a href="#yetkiler">{kurucular.length}</a></dd><small>konsola girebilen kişi</small></div>
-        <div>
+        <div {...sekme("yetkiler")}><dt>Kurucu</dt><dd><Link {...sekmeBag("yetkiler")}>{kurucular.length}</Link></dd><small>konsola girebilen kişi</small></div>
+        <div {...sekme("entegrasyonlar")}>
           <dt>Entegrasyon</dt>
-          <dd><a href="#entegrasyonlar">{entegrasyonlar.filter((e) => e.durum === "bagli").length} / {entegrasyonlar.length}</a></dd>
+          <dd><Link {...sekmeBag("entegrasyonlar")}>{entegrasyonlar.filter((e) => e.durum === "bagli").length} / {entegrasyonlar.length}</Link></dd>
           <small>{eksikEntegrasyon ? `${eksikEntegrasyon} eksik ayar` : "bağlı olanlar çalışıyor"}</small>
         </div>
-        <div>
+        <div {...sekme("guvenlik")}>
           <dt>Sunucu sırları</dt>
-          <dd className={eksikSir ? "talep-uyari" : undefined}><a href="#guvenlik">{sirlar.filter((s) => s.var).length} / {sirlar.length}</a></dd>
+          <dd className={eksikSir ? "talep-uyari" : undefined}><Link {...sekmeBag("guvenlik")}>{sirlar.filter((s) => s.var).length} / {sirlar.length}</Link></dd>
           <small>{eksikSir ? "eksik sır var" : "hepsi tanımlı"}</small>
         </div>
-        <div><dt>İşlem kaydı</dt><dd><a href="#kayitlar">{kayitlar.length}</a></dd><small>son kurucu işlemleri</small></div>
+        <div {...sekme("kayitlar")}><dt>İşlem kaydı</dt><dd><Link {...sekmeBag("kayitlar")}>{kayitlar.length}</Link></dd><small>son kurucu işlemleri</small></div>
       </dl>
     </nav>
 
     {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
         dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez.
         Satırların açılacak bir ekranı yok; ok sütunu bu yüzden konmadı. */}
+    {bolum === "yetkiler" ? (
     <KKart id="yetkiler" baslik="Konsola kim girebiliyor"
       aciklama="Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Hem sunucu işlemleri hem veritabanı politikaları aynı kuralı uyguluyor.">
       <KTablo kolonlar={[{ ad: "Kişi" }, { ad: "ArvoOS kurumundaki rolü" }, { ad: "Konsol" }]}>
@@ -203,7 +215,7 @@ export default async function SistemAyarlariPage() {
           const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
           return (
             <tr key={u.user_id}>
-              <KBaslik etiket="Kişi" baslik={ad} />
+              <KBaslik avatar etiket="Kişi" baslik={ad} />
               <td data-label="ArvoOS kurumundaki rolü">{rol}</td>
               <KDurum baslik="Konsol" etiket={konsol.etiket} ton={konsol.ton} />
               <MobilSatir baslik={ad} durum={konsol} alt={[rol]} />
@@ -213,7 +225,9 @@ export default async function SistemAyarlariPage() {
       </KTablo>
       <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
     </KKart>
+    ) : null}
 
+    {bolum === "entegrasyonlar" ? (
     <KKart id="entegrasyonlar" baslik="Bağlantıların durumu"
       aciklama="Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez.">
       <KTablo kolonlar={[{ ad: "Entegrasyon" }, { ad: "Durum" }, { ad: "Ayrıntı" }]}>
@@ -227,7 +241,9 @@ export default async function SistemAyarlariPage() {
         ))}
       </KTablo>
     </KKart>
+    ) : null}
 
+    {bolum === "guvenlik" ? (
     <KKart id="guvenlik" baslik="Sunucu sırları ve yetki"
       aciklama="Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor.">
       <KTablo kolonlar={[{ ad: "Sır" }, { ad: "Durum" }, { ad: "Ne için" }]}>
@@ -245,7 +261,9 @@ export default async function SistemAyarlariPage() {
         fiyat geçmişi ve ödeme kararları ayrıca veritabanı politikalarıyla korunuyor.
       </KNot>
     </KKart>
+    ) : null}
 
+    {bolum === "kayitlar" ? (
     <KKart id="kayitlar" baslik="Kurucu işlemleri"
       aciklama="Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt.">
       {!admin ? (
@@ -275,5 +293,6 @@ export default async function SistemAyarlariPage() {
         </>
       )}
     </KKart>
+    ) : null}
   </main>;
 }

@@ -75,7 +75,7 @@ export function KiraciUyeleri({
         const sonSahip = uye.role === "owner" && uye.active && aktifSahipSayisi < 2;
         return (
           <tr key={uye.userId}>
-            <KBaslik etiket="Üye" baslik={uye.name ?? uye.email ?? "Adı kayıtlı değil"} alt={uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role} />
+            <KBaslik avatar etiket="Üye" baslik={uye.name ?? uye.email ?? "Adı kayıtlı değil"} alt={uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role} />
             <td data-label="Rol">{ROL_ADI[uye.role] ?? uye.role}</td>
             <KDurum etiket={uye.active ? "Erişim açık" : "Erişim kapalı"} ton={uye.active ? "success" : "neutral"} />
             <td data-label="Erişim">

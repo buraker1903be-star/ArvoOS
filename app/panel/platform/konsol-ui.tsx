@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { MobilSatir, type MobilIsaret } from "../crm/table-cells";
 import { SatirTiklama } from "../crm/satir-tiklama";
+import { initials } from "@/lib/table-format";
 // Panelin liste ve kart düzeni: sayfa kullandığı sınıfın CSS'ini kendi import eder (AGENTS.md).
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
@@ -38,7 +39,10 @@ export function KKart({ id, baslik, aciklama, sag, children, sinif }: {
       <header className="k-kart-bas">
         <div>
           <h2>{baslik}</h2>
-          {aciklama ? <p>{aciklama}</p> : null}
+          {/* KOMPAKT (14.10.2026): açıklama tek satır, sığmazsa üç nokta ve
+              tamamı fareyle üstüne gelince. Eskiden paragraf olarak açılıyor,
+              konsol sayfaları İşler'in iki-üç katı metinle uzuyordu. */}
+          {aciklama ? <p title={typeof aciklama === "string" ? aciklama : undefined}>{aciklama}</p> : null}
         </div>
         {sag ? <div className="k-kart-sag">{sag}</div> : null}
       </header>
@@ -65,14 +69,24 @@ export function KTablo({ kolonlar, children }: { kolonlar: KKolon[]; children: R
   );
 }
 
-/** İlk hücre: başlık (bağlantıysa satırın tamamı tıklanır) ve altında kısa bilgi. */
-export function KBaslik({ href, baslik, alt, etiket = "Kayıt" }: { href?: string | null; baslik: string; alt?: ReactNode; etiket?: string }) {
+/**
+ * İlk hücre: başlık (bağlantıysa satırın tamamı tıklanır) ve altında kısa
+ * bilgi. avatar: kurum ya da kişi satırında baş harf kutusu — İşler
+ * listesindeki sorumlu avatarının karşılığı; satırı gözle bulmayı
+ * kolaylaştırıyor.
+ */
+export function KBaslik({ href, baslik, alt, etiket = "Kayıt", avatar }: { href?: string | null; baslik: string; alt?: ReactNode; etiket?: string; avatar?: boolean }) {
+  const metin = <>
+    <span className="crm-table-title" title={baslik}>{baslik}</span>
+    {alt ? <span className="crm-table-sub">{alt}</span> : null}
+  </>;
   return (
-    <td data-label={etiket}>
-      {href
-        ? <Link className="crm-row-link" href={href}><span className="crm-table-title" title={baslik}>{baslik}</span></Link>
-        : <span className="crm-table-title" title={baslik}>{baslik}</span>}
-      {alt ? <span className="crm-table-sub">{alt}</span> : null}
+    <td data-label={etiket} className={avatar ? "k-kimlik" : undefined}>
+      {avatar ? <i className="k-avatar" aria-hidden="true">{initials(baslik)}</i> : null}
+      {avatar
+        ? <span className="k-kimlik-metin">{href ? <Link className="crm-row-link" href={href}>{metin}</Link> : metin}</span>
+        : href ? <Link className="crm-row-link" href={href}><span className="crm-table-title" title={baslik}>{baslik}</span></Link> : <span className="crm-table-title" title={baslik}>{baslik}</span>}
+      {!avatar && alt ? <span className="crm-table-sub">{alt}</span> : null}
     </td>
   );
 }

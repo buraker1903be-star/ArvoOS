@@ -117,7 +117,6 @@ export default async function SozlesmelerPage() {
       <div className="talep-bas-metin">
         <small className="panel-kicker">TİCARİ</small>
         <h1>Onay bekleyen sözleşmeler</h1>
-        <p>İmzalanan sözleşmeler buraya düşer. İmza modülleri açmaz; tahsilatı doğruladıktan sonra onaylayın.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
@@ -178,7 +177,7 @@ export default async function SozlesmelerPage() {
             const tutar = satir.amount ? para(Number(satir.amount), satir.currency) : "—";
             return (
               <tr key={satir.id}>
-                <KBaslik etiket="Müşteri" baslik={satir.customer_name ?? "Müşteri"} alt={satir.contract_no ?? "—"} />
+                <KBaslik avatar etiket="Müşteri" baslik={satir.customer_name ?? "Müşteri"} alt={satir.contract_no ?? "—"} />
                 <KDurum baslik="Karar" etiket={karar} ton={onay ? "success" : "danger"} />
                 <td data-label="Tarih" className="crm-col-date">{tarih(satir.reviewed_at)}</td>
                 <td data-label="Tutar" className="crm-col-amount">{tutar}</td>

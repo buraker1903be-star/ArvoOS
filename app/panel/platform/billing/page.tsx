@@ -300,7 +300,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ABONELİKLER</small>
         <h1>Abonelikler</h1>
-        <p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
@@ -369,7 +368,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sorun" }, { ad: "Ayrıntı" }, { ad: "Nereden" }, { ad: "" }]}>
                 {sorunlar.map((x) => (
                   <tr key={x.anahtar}>
-                    <KBaslik etiket="Kurum" href={x.baglanti} baslik={x.kim} />
+                    <KBaslik avatar etiket="Kurum" href={x.baglanti} baslik={x.kim} />
                     <KDurum baslik="Sorun" etiket={x.sorun} ton={x.ton} />
                     <td data-label="Ayrıntı">{x.ayrinti}</td>
                     <td data-label="Nereden" className="k-sessiz">{x.baglantiAdi}</td>
@@ -389,7 +388,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   const ucret = r.fee ? `${para(r.fee, "TRY")} / ay` : "aylık ücret girilmedi";
                   return (
                     <tr key={`${r.organizationId}-${r.product}`}>
-                      <KBaslik etiket="Kurum" baslik={r.organizationName} alt={r.productName} />
+                      <KBaslik avatar etiket="Kurum" baslik={r.organizationName} alt={r.productName} />
                       <KDurum baslik="Kalan" etiket={kalan} ton={ton} />
                       <td data-label="Bitiş" className="crm-col-date">{tarih(r.endsAt)}</td>
                       <td data-label="Aylık" className={`crm-col-amount${r.fee ? "" : " talep-uyari"}`}>{ucret}</td>

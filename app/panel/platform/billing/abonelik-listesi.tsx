@@ -148,7 +148,7 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
             ];
             return [
               <tr key={grup.organizationId}>
-                <KBaslik etiket="Kurum" href={lisans} baslik={grup.ad} alt={ozet.filter(Boolean).join(" · ")} />
+                <KBaslik avatar etiket="Kurum" href={lisans} baslik={grup.ad} alt={ozet.filter(Boolean).join(" · ")} />
                 <td data-label="Paket" />
                 {/* Aylık toplam kurum satırında: "bu kurum bize ne ödüyor"
                     sorusunun yanıtı satırları gözle toplamak olmamalı.

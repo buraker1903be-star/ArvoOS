@@ -297,7 +297,7 @@ export function UyeListesi({ satirlar, ust }: { satirlar: DirectoryRow[]; ust?: 
               const rolAdi = kisi.rol ? ROL_ADI[kisi.rol] ?? kisi.rol : "—";
               return (
                 <tr key={kisi.anahtar}>
-                  <KBaslik etiket="Kişi" baslik={kisi.ad} alt={kisi.eposta && kisi.eposta !== kisi.ad ? kisi.eposta : null} />
+                  <KBaslik avatar etiket="Kişi" baslik={kisi.ad} alt={kisi.eposta && kisi.eposta !== kisi.ad ? kisi.eposta : null} />
                   <td data-label="Rol">{rolAdi}</td>
                   <td data-label="Ürünler">
                     {/* Ürün etiketi kendi erişimini gösteriyor: kişinin

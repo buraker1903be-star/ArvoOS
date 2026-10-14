@@ -112,7 +112,6 @@ export default async function SistemSagligiPage() {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · SİSTEM SAĞLIĞI</small>
         <h1>Sistem Sağlığı</h1>
-        <p>Platformun &quot;bir şey mi bozuldu&quot; ekranı: köprüler, ürün kopyaları, kotalar, kurulum ve ödeme hataları tek yerde.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform">Kurulumlar</Link>
@@ -175,7 +174,7 @@ export default async function SistemSagligiPage() {
             const ad = kurumAdi.get(kayit.organizationId) ?? kayit.organizationId;
             return (
               <tr key={`${kayit.organizationId}-${kayit.product}`}>
-                <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
                 <td data-label="Ürün">{kayit.product}</td>
                 <KDurum baslik="Üründe" etiket={kayit.kopyaDurumu} ton="danger" />
                 <td data-label="Konsolda">{kayit.konsolDurumu}</td>
@@ -199,7 +198,7 @@ export default async function SistemSagligiPage() {
             const depolama = `${sayi(kota.depolama.kullanilan)} / ${sayi(kota.depolama.limit)} MB · %${kota.depolama.oran}`;
             return (
               <tr key={kota.organizationId}>
-                <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
                 <td data-label="Kullanıcı" className="k-sayi">{kullanici}</td>
                 <td data-label="Depolama" className="k-sayi">{depolama}</td>
                 <KDurum etiket={durum.etiket} ton={durum.ton} />
@@ -220,7 +219,7 @@ export default async function SistemSagligiPage() {
               const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
               return (
                 <tr key={kayit.id}>
-                  <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                  <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
                   <td data-label="Adım">{kayit.action}</td>
                   <td data-label="Durum">{kayit.state ?? "—"}</td>
                   <td data-label="Zaman" className="crm-col-date">{tarihSaat(kayit.created_at)}</td>
@@ -242,7 +241,7 @@ export default async function SistemSagligiPage() {
             const tutar = olay.paymentAmount !== null ? para(olay.paymentAmount) : "—";
             return (
               <tr key={olay.id}>
-                <KBaslik etiket="Kurum" baslik={olay.organizationName ?? "—"} />
+                <KBaslik avatar etiket="Kurum" baslik={olay.organizationName ?? "—"} />
                 <KDurum baslik="Sebep" etiket={sebep} ton="danger" ek={incidentNotes[olay.result] ? <span className="crm-table-sub">{incidentNotes[olay.result]}</span> : null} />
                 <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
                 <td data-label="PayTR no" className="crm-table-mono">{olay.merchantOid}</td>

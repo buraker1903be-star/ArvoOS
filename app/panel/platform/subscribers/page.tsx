@@ -84,7 +84,6 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small>
         <h1>Bireysel Aboneler</h1>
-        <p>Kuruma bağlı olmayan kullanıcıların aboneliği, ürün fiyatı ve deneme süresi.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/members">Tüm üyeler</Link>

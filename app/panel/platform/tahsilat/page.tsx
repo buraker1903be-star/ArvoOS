@@ -100,7 +100,6 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
         <h1>Faturalama ve Tahsilat</h1>
-        <p>Platformun aldığı ödemeler, onay bekleyen havaleler, işlenemeyen kart ödemeleri ve faturalar.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
@@ -150,7 +149,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
           <KTablo kolonlar={[{ ad: "Kim" }, { ad: "Kanal" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "" }]}>
             {gorunen.map((t) => (
               <tr key={t.anahtar}>
-                <KBaslik etiket="Kim" href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"} baslik={t.kim} />
+                <KBaslik avatar etiket="Kim" href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"} baslik={t.kim} />
                 <td data-label="Kanal">{t.kanal}</td>
                 <td data-label="Tarih" className="crm-col-date">{tarih(t.tarih)}</td>
                 <td data-label="Tutar" className="crm-col-amount">{para(t.amount, t.currency)}</td>

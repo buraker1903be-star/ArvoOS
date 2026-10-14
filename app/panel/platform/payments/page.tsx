@@ -92,7 +92,6 @@ export default async function PaymentApprovalsPage() {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
         <h1>Ödeme Onayları</h1>
-        <p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/billing">Abonelikler</Link>
@@ -156,7 +155,7 @@ export default async function PaymentApprovalsPage() {
                 const sebep = incidentLabels[incident.result] ?? incident.result;
                 return (
                   <tr key={incident.id}>
-                    <KBaslik etiket="Kurum" href={href} baslik={incident.organizationName ?? "—"} alt={incidentNotes[incident.result] ?? undefined} />
+                    <KBaslik avatar etiket="Kurum" href={href} baslik={incident.organizationName ?? "—"} alt={incidentNotes[incident.result] ?? undefined} />
                     <KDurum baslik="Sebep" etiket={sebep} ton="danger" />
                     <td data-label="Tutar" className="crm-col-amount">{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</td>
                     <td data-label="PayTR no" className="plt-mono">{incident.merchantOid}</td>
@@ -269,7 +268,7 @@ export default async function PaymentApprovalsPage() {
                 const kararTarihi = tarihSaat(payment.reviewed_at ?? payment.created_at);
                 return (
                   <tr key={payment.id}>
-                    <KBaslik etiket="Kurum" href={href} baslik={organization?.name ?? "Kurum"} alt={`${productName(payment.product ?? "arvoos")} · ${yol}`} />
+                    <KBaslik avatar etiket="Kurum" href={href} baslik={organization?.name ?? "Kurum"} alt={`${productName(payment.product ?? "arvoos")} · ${yol}`} />
                     <KDurum etiket={etiket} ton={tone} />
                     <td data-label="Karar" className="crm-col-date">{kararTarihi}</td>
                     <td data-label="Tutar" className="crm-col-amount">{tutar}</td>

@@ -111,7 +111,7 @@ export function Matris({ urunler, satirlar, durum }: {
             const kiraci = `/panel/platform?organization=${satir.id}`;
             return (
               <tr key={satir.id}>
-                <KBaslik etiket="Kiracı" href={kiraci} baslik={satir.ad} alt={satir.kendiMarkamiz ? "kendi markamız" : undefined} />
+                <KBaslik avatar etiket="Kiracı" href={kiraci} baslik={satir.ad} alt={satir.kendiMarkamiz ? "kendi markamız" : undefined} />
                 {urunler.map((urun) => {
                   const hucre = satir.hucreler[urun.code];
                   if (!hucre) return <td key={urun.code} data-label={urun.name}>—</td>;

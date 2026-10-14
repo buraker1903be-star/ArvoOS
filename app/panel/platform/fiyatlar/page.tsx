@@ -122,13 +122,17 @@ type Kiraci = {
 };
 
 export default async function FiyatlarPage({ searchParams }: {
-  searchParams: Promise<{ bolum?: string }>;
+  searchParams: Promise<{ bolum?: string; urun?: string }>;
 }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
 
-  const { bolum } = await searchParams;
+  const { bolum, urun } = await searchParams;
   const secili = bolum === "paket" ? "paket" : bolum === "gecmis" ? "gecmis" : "liste";
+  /* Fiyat listesinde tek ürün açık (?urun=): dört ürün ve ek hizmetler alt
+     alta 2.200 piksel tutuyordu (14.10.2026, "kompakt, sade, premium"). */
+  const LISTE_URUNLERI = ["arvoos", "arc", "randevu", "arvolab", "ek"] as const;
+  const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "arvoos";
 
   const [{ data: kiraciSatirlari }, { data: fiyatSatirlari }] = await Promise.all([
     supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye"),
@@ -202,12 +206,11 @@ export default async function FiyatlarPage({ searchParams }: {
     panel-card + .plt-table + .plt-banner'dı. Bölümler (?bolum=) hâlâ
     üstteki şeritten seçiliyor; her bölüm alt alta KKart.
   */
-  return <main className="plt talep cari">
+  return <main className={`plt talep cari${secili === "liste" ? " ekip liste-sayfa" : ""}`}>
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜCRET VE PAKETLER</small>
         <h1>Ücret ve Paketler</h1>
-        <p>Dört ürünün liste fiyatları, ek hizmetler, paket limitleri ve fiyat geçmişi. Site ve ürünler fiyatı buradan okur.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/urunler">Ürünler</Link>
@@ -237,73 +240,22 @@ export default async function FiyatlarPage({ searchParams }: {
     </nav>
 
     {secili === "liste" ? (
-      <div>
-        {degisiklikler.length ? (
-          /*
-            Yayım formu kartın başlık satırında: panel tablosunun alt kenar
-            boşluğu eksi (kartın kenarına yaslanıyor, konsol-ui.css); altına
-            konan form onun üstüne biniyordu. Notlar tablonun ardında
-            (.k-tablo + .k-not boşluğu konsol-ui.css'te).
-          */
-          <KKart
-            baslik={`Yayım önizlemesi · ${sayi(degisiklikler.length)} değişiklik`}
-            aciklama={<>
-              Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
-              (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
-              geçerli olur. Liste tek seferde, birlikte yayımlanır.
-            </>}
-            sag={(
-              <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
-                {denetim.uyarilar.length ? (
-                  <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
-                ) : null}
-                <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
-                  {sayi(degisiklikler.length)} değişikliği yayımla
-                </button>
-              </form>
-            )}
-          >
-            <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Şu an", sinif: "crm-col-amount" }, { ad: "Yayımlanınca", sinif: "crm-col-amount" }, { ad: "Değişim" }]}>
-              {degisiklikler.map((d) => (
-                <tr key={d.kod}>
-                  <KBaslik etiket="Basamak" baslik={basamakAdi(d.kod)} alt={<span className="plt-mono">{d.kod}</span>} />
-                  <td data-label="Şu an" className="crm-col-amount">{tutarYazi(d.eski)}</td>
-                  <td data-label="Yayımlanınca" className="crm-col-amount"><b>{tutarYazi(d.yeni)}</b></td>
-                  <td data-label="Değişim" className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
-                    {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
-                  </td>
-                </tr>
-              ))}
-            </KTablo>
-            {denetim.hatalar.length ? (
-              <KNot ton="tehlike">
-                  <b>Bu liste yayımlanamaz.</b>
-                  {denetim.hatalar.map((h) => <Fragment key={h}><br />{h}</Fragment>)}
-                </KNot>
-            ) : null}
-            {denetim.uyarilar.length ? (
-              <KNot ton="uyari">
-                <b>Yayımlamadan önce kontrol edin.</b>
-                {denetim.uyarilar.map((u) => <Fragment key={u}><br />{u}</Fragment>)}
-              </KNot>
-            ) : null}
-            {etkilenenKiraci ? (
-              <KNot>
-                Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
-                dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
-              </KNot>
-            ) : null}
-          </KKart>
-        ) : null}
-
-        <KKart
-          baslik="Fiyatlandırma"
-          aciklama={<>
-            Sitedeki ücretler sayfası, JSON-LD ve sözleşme metinleri bu rakamları kullanıyor.
-            Yıllık seçenekte {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava).
-            Tutarlar KDV hariçtir.
-          </>}
-        >
+      <div className="talep-izgara personel-iki ekip-izgara">
+        <section className="panel-card talep-bilgi" aria-label="Fiyat listesi">
+          <div className="ekip-suzgec talep-suzgec">
+            {LISTE_URUNLERI.map((kod) => {
+              const bekleyen = kod === "ek"
+                ? degisiklikler.filter((d) => d.urun === "ek").length
+                : degisiklikler.filter((d) => d.urun === kod).length;
+              return (
+                <Link key={kod} href={`/panel/platform/fiyatlar?urun=${kod}`} className={seciliUrun === kod ? "is-active" : undefined}
+                  aria-current={seciliUrun === kod ? "page" : undefined}>
+                  {kod === "ek" ? "Ek hizmetler" : urunAdi(kod as Parameters<typeof urunAdi>[0])}
+                  {bekleyen ? <small className="talep-uyari">{bekleyen} taslak</small> : null}
+                </Link>
+              );
+            })}
+          </div>
           {/*
             KOD VARSAYILAN, KONSOL ÜSTÜNE YAZAR (14.10.2026). Basamağın
             kendisi — adı, birimi, hangi üründe olduğu — lib/site/pricing'te
@@ -311,35 +263,89 @@ export default async function FiyatlarPage({ searchParams }: {
             okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
             listesinde boş hücre, yanlış rakamdan da kötüdür.
           */}
-          <KNot>
-            <b>Taslak ve yayın ayrı.</b>{" "}
-            Kaydettiğin tutar hiçbir yerde görünmez; bekleyen taslaklar yukarıdaki önizlemede birlikte
-            yayımlanır. &quot;Geri al&quot; taslağı bırakır, &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
-          </KNot>
-        </KKart>
-
-        {/* Ürün başına bir kart: dört tablo tek kartta alt alta, ürün adı
-            ara başlık olarak kayboluyordu. */}
-        {["arvoos", "arc", "randevu", "arvolab"].map((urun) => (
-          <KKart key={urun} id={`fiyat-${urun}`} baslik={urunAdi(urun as Parameters<typeof urunAdi>[0])}>
-            <KTablo kolonlar={FIYAT_KOLONLARI}>
-              {planlar(urun as Parameters<typeof planlar>[0]).map((plan) => (
-                <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
-                  birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
-                  cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
-              ))}
-            </KTablo>
-          </KKart>
-        ))}
-
-        <KKart baslik="Ek hizmetler" aciklama="Pakete dahil olmayan, ayrıca ücretlendirilen kalemler.">
           <KTablo kolonlar={FIYAT_KOLONLARI}>
-            {ADD_ONS.map((kalem) => (
-              <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
-                birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
-            ))}
+            {seciliUrun === "ek"
+              ? ADD_ONS.map((kalem) => (
+                  <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
+                    birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
+                ))
+              : planlar(seciliUrun as Parameters<typeof planlar>[0]).map((plan) => (
+                  <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
+                    birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
+                    cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
+                ))}
           </KTablo>
-        </KKart>
+        </section>
+
+        <div className="liste-sag">
+          {degisiklikler.length ? (
+            /*
+              Yayım formu kartın başlık satırında: panel tablosunun alt kenar
+              boşluğu eksi (kartın kenarına yaslanıyor, konsol-ui.css); altına
+              konan form onun üstüne biniyordu. Notlar tablonun ardında
+              (.k-tablo + .k-not boşluğu konsol-ui.css'te).
+            */
+            <KKart
+              baslik={`Yayım önizlemesi · ${sayi(degisiklikler.length)} değişiklik`}
+              aciklama={<>
+                Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
+                (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
+                geçerli olur. Liste tek seferde, birlikte yayımlanır.
+              </>}
+              sag={(
+                <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
+                  {denetim.uyarilar.length ? (
+                    <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
+                  ) : null}
+                  <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
+                    {sayi(degisiklikler.length)} değişikliği yayımla
+                  </button>
+                </form>
+              )}
+            >
+              <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Şu an", sinif: "crm-col-amount" }, { ad: "Yayımlanınca", sinif: "crm-col-amount" }, { ad: "Değişim" }]}>
+                {degisiklikler.map((d) => (
+                  <tr key={d.kod}>
+                    <KBaslik etiket="Basamak" baslik={basamakAdi(d.kod)} alt={<span className="plt-mono">{d.kod}</span>} />
+                    <td data-label="Şu an" className="crm-col-amount">{tutarYazi(d.eski)}</td>
+                    <td data-label="Yayımlanınca" className="crm-col-amount"><b>{tutarYazi(d.yeni)}</b></td>
+                    <td data-label="Değişim" className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
+                      {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
+                    </td>
+                  </tr>
+                ))}
+              </KTablo>
+              {denetim.hatalar.length ? (
+                <KNot ton="tehlike">
+                    <b>Bu liste yayımlanamaz.</b>
+                    {denetim.hatalar.map((h) => <Fragment key={h}><br />{h}</Fragment>)}
+                  </KNot>
+              ) : null}
+              {denetim.uyarilar.length ? (
+                <KNot ton="uyari">
+                  <b>Yayımlamadan önce kontrol edin.</b>
+                  {denetim.uyarilar.map((u) => <Fragment key={u}><br />{u}</Fragment>)}
+                </KNot>
+              ) : null}
+              {etkilenenKiraci ? (
+                <KNot>
+                  Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
+                  dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
+                </KNot>
+              ) : null}
+            </KKart>
+          ) : null}
+          <KKart baslik="Yayın" aciklama="Taslak hiçbir yerde görünmez; bekleyenler önizlemede birlikte yayımlanır.">
+            <dl className="istat-kutular">
+              <div><dt>Konsoldan yayımlı</dt><dd>{sayi(yayimliSayisi)}</dd><small>kalanı koddaki değer</small></div>
+              <div><dt>Yayım bekleyen</dt><dd className={bekleyenTaslak ? "talep-uyari" : undefined}>{sayi(bekleyenTaslak)}</dd><small>taslak</small></div>
+            </dl>
+            <KNot>
+              Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). KDV hariç. Ücretler
+              sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur.
+            </KNot>
+          </KKart>
+        </div>
       </div>
     ) : null}
 

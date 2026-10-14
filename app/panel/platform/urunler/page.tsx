@@ -103,7 +103,6 @@ export default async function UrunlerPage({ searchParams }: {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
         <h1>Ürünler</h1>
-        <p>Dört ürünün müşteri sayısı, kullanıcısı, geliri ve köprü durumu. Ürün adından ürünün kendi sayfasına geçilir.</p>
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>

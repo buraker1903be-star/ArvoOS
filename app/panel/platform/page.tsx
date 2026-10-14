@@ -250,7 +250,6 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       <div className="talep-bas-metin">
         <small className="panel-kicker">{selected ? "KİRACI DOSYASI" : "YALNIZCA ARVOOS KURUCU ERİŞİMİ"}</small>
         <h1>{selected ? label : "Kiracılar"}</h1>
-        <p>{selected ? "Paket, modüller, üyeler ve kurulum durumu tek dosyada." : "Müşteri kurumlarını kurun, sahiplerini panele alın, paket ve modüllerini yönetin."}</p>
       </div>
       <div className="talep-bas-eylem">
         {selected
@@ -417,7 +416,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                 const davetAdi = itemInvite ? DAVET_DURUM_ADLARI[itemInvite.status] ?? itemInvite.status : null;
                 return (
                   <tr key={item.id}>
-                    <KBaslik etiket="Kurum" href={href} baslik={ad} alt={<>
+                    <KBaslik avatar etiket="Kurum" href={href} baslik={ad} alt={<>
                       {item.slug}
                       {item.kind === "internal" ? " · kendi markamız" : ""}
                       {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}

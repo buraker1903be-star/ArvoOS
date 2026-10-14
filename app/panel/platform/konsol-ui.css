@@ -13,7 +13,9 @@
 
 .k-kart-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-3)}
 .k-kart-bas h2{margin:0;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
-.k-kart-bas p{margin:2px 0 0;color:var(--muted);font-size:var(--fs-sm);line-height:1.45}
+/* Açıklama TEK SATIR (kompakt): sığmazsa üç nokta, tamamı title'da. */
+.k-kart-bas>div{min-width:0}
+.k-kart-bas p{margin:2px 0 0;max-width:72ch;overflow:hidden;color:var(--muted);font-size:var(--fs-micro);line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
 .k-kart-sag{flex:none;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
 
 /* Kartın son öğesi tabloysa kartın alt kenarına yaslanır (panel listesi gibi). */
@@ -22,11 +24,12 @@
 
 .k-bos{padding:var(--sp-6) var(--sp-4)}
 
-/* Sade not: renkli şerit yerine tek satır, anlam renkte. */
-.k-not{margin:var(--sp-3) 0 0;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.5}
-.k-not[data-ton="uyari"]{background:var(--warning-soft);color:var(--ink)}
-.k-not[data-ton="tehlike"]{background:var(--danger-soft);color:var(--ink)}
-.k-not[data-ton="basari"]{background:var(--success-soft);color:var(--ink)}
+/* Sade not. Bilgi notu kutusuz, küçük ve soluk (sayfa metni kalabalık
+   değil); uyarı ve tehlike solda ince renk çizgisiyle, kutu yine sade. */
+.k-not{margin:var(--sp-2) 0 0;padding:0;color:var(--muted);font-size:var(--fs-micro);line-height:1.5}
+.k-not:is([data-ton="uyari"],[data-ton="tehlike"],[data-ton="basari"]){padding:var(--sp-2) var(--sp-3);border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink-soft);box-shadow:inset 3px 0 0 var(--warning)}
+.k-not[data-ton="tehlike"]{box-shadow:inset 3px 0 0 var(--danger)}
+.k-not[data-ton="basari"]{box-shadow:inset 3px 0 0 var(--success)}
 
 /* Kart içi sayı ve kısa metin sütunları sağa değil, panel gibi sola. */
 .os-root .k-tablo .crm-data-table td.k-sayi{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -37,3 +40,13 @@
   .os-root .k-kart>.k-tablo:last-child{margin-bottom:calc(var(--sp-4) * -1)}
   .k-kart-bas{flex-wrap:wrap}
 }
+
+/* Kimlik hücresi: baş harf avatarı + başlık/alt bilgi (İşler'deki sorumlu
+   avatarının karşılığı). Satıra tıklama bağlantısı metnin üstünde. */
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik{white-space:nowrap}
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik>.k-avatar{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:var(--sp-3);border-radius:9px;background:var(--primary-soft);color:var(--primary-strong);font-size:11px;font-style:normal;font-weight:var(--fw-semibold);letter-spacing:.02em;vertical-align:middle}
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik>.k-kimlik-metin{display:inline-flex;flex-direction:column;vertical-align:middle;max-width:calc(100% - 44px)}
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik .crm-row-link{margin:0;padding:0;border-radius:0}
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik .crm-row-link:hover{background:transparent}
+.os-root .talep-tablo .crm-data-table tbody td.k-kimlik .crm-table-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+

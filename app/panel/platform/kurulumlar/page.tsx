@@ -123,7 +123,6 @@ export default async function KurulumlarPage({ searchParams }: {
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · KURULUMLAR</small>
         <h1>Kurulumlar</h1>
-        <p>Müşteri kurulumunun üç aşaması: yeni kayıt, süren kurulum, tamamlanan ve ücretlendirilen kiracı.</p>
       </div>
       <div className="talep-bas-eylem">
         <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
@@ -170,7 +169,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   {bekleyenIstekler.map((istek) => (
                     <tr key={istek.id}>
                       {/* Satır sözleşme kuyruğuna gider (eskiden ayrı bir "Sözleşmeyi aç" düğmesiydi). */}
-                      <KBaslik etiket="Müşteri" href="/panel/platform/sozlesmeler" baslik={istek.customer_name ?? "—"} alt={<span className="plt-mono">{istek.contract_no ?? "—"}</span>} />
+                      <KBaslik avatar etiket="Müşteri" href="/panel/platform/sozlesmeler" baslik={istek.customer_name ?? "—"} alt={<span className="plt-mono">{istek.contract_no ?? "—"}</span>} />
                       <td data-label="Tutar" className="crm-col-amount">{istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : "—"}</td>
                       <td data-label="Geliş" className="crm-col-date">{tarihSaat(istek.created_at)}</td>
                       <KSatirSonu mobil={{
@@ -198,7 +197,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
                   return (
                     <tr key={kiraci.id}>
-                      <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={ad} alt={kiraci.slug} />
+                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={ad} alt={kiraci.slug} />
                       <KDurum baslik="Aşama" etiket={asamaAdi} ton={ton} />
                       <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
                       <td data-label="Telefon">{kiraci.contact_phone ?? "—"}</td>
@@ -232,7 +231,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
                   return (
                     <tr key={kiraci.id}>
-                      <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
+                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
                       <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
                       <td data-label="Aylık ücret">
                         {sapma.durum === "girilmedi" ? (
