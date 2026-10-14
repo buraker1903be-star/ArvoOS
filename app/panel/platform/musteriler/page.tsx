@@ -75,7 +75,7 @@ type Abone = {
 
 type Satir = {
   anahtar: string;
-  tur: "kurumsal" | "bireysel" | "grup";
+  tur: "kurumsal" | "bireysel" | "grup" | "arvo";
   ad: string;
   alt: string;
   href: string;
@@ -102,6 +102,14 @@ const KURUM_DURUMU: Record<string, { ad: string; ton: Satir["ton"] }> = {
 };
 
 const ODEYEN = new Set(["active", "past_due"]);
+
+/* Tür adı tek yerde: satırda, çipte ve şeritte aynı kelime geçsin. */
+const TUR_ADI: Record<"kurumsal" | "bireysel" | "grup" | "arvo", string> = {
+  kurumsal: "Kurumsal",
+  bireysel: "Bireysel",
+  grup: "Grup markası",
+  arvo: "Arvo",
+};
 
 /* Deneme ya da aktif dönem sürüyorsa erişim açık (köprüdeki kuralın
    aynısı; abonelik ekranındaki hasAccess ile birebir). */
@@ -162,7 +170,7 @@ export default async function MusterilerPage({ searchParams }: {
   const { tur, ara, urun, sira } = await searchParams;
   const secilenUrun = PRODUCTS.some((p) => p.code === urun) ? urun! : null;
   const secilenSira = SIRALAR.some((x) => x.kod === sira) ? sira! : "ad";
-  const secilenTur = tur === "kurumsal" || tur === "bireysel" || tur === "grup" ? tur : null;
+  const secilenTur = tur === "kurumsal" || tur === "bireysel" || tur === "grup" || tur === "arvo" ? tur : null;
   const aranan = (ara ?? "").trim().slice(0, 80);
 
   /*
@@ -256,7 +264,12 @@ export default async function MusterilerPage({ searchParams }: {
       /* GRUP MARKASI (14.10.2026): AkademikMerkez ve ArvoCulture ArvoOS ile
          aynı şirketin markaları. Listede ayrı türde: ücretleri ArvoOS'un
          gruba yarattığı değeri gösteriyor, müşteri geliri değil. */
-      tur: kurumTuru(kurum) === "musteri" ? "kurumsal" : "grup",
+      /* ÜÇ TÜR AYRI (14.10.2026): lib/kurum-turu zaten arvo / grup /
+         musteri diye ayırıyor; ekranın ikisini birleştirmesi kuralı
+         suluyordu ve ana ekran "Grup markası 2" derken burası 3
+         diyordu. Arvo'nun kendi kaydı listede kalıyor, yalnızca kendi
+         kutusunda sayılıyor. */
+      tur: kurumTuru(kurum) === "musteri" ? "kurumsal" : kurumTuru(kurum) === "grup" ? "grup" : "arvo",
       ad: kurum.display_name || kurum.name,
       alt: [
         kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : null,
@@ -279,8 +292,12 @@ export default async function MusterilerPage({ searchParams }: {
   const bireyselSatirlar = bireyselSatirlariKur(aboneler, bireyselFiyat);
 
   const grupSatirlar = kurumsalSatirlar.filter((satir) => satir.tur === "grup");
+  const arvoSatirlar = kurumsalSatirlar.filter((satir) => satir.tur === "arvo");
   const musteriKurumlari = kurumsalSatirlar.filter((satir) => satir.tur === "kurumsal");
-  const grupDegeri = grupSatirlar.reduce((toplam, satir) => toplam + satir.ucret, 0);
+  /* Grup içi değer Arvo'nun kendi kaydını da kapsıyor: ikisi de müşteri
+     geliri değil (lib/kurum-turu), ikisi de grubun kendi içinde dönen
+     tutar. */
+  const grupDegeri = [...grupSatirlar, ...arvoSatirlar].reduce((toplam, satir) => toplam + satir.ucret, 0);
   const tumSatirlar = [...kurumsalSatirlar, ...bireyselSatirlar];
   const desen = aranan ? sadelestir(aranan) : "";
   const liste = tumSatirlar
@@ -341,7 +358,11 @@ export default async function MusterilerPage({ searchParams }: {
     <nav className="kayit-serit talep-serit" aria-label="Müşteri özeti">
       <dl>
         <div className={!secilenTur ? "is-active" : undefined}>
-          <dt>Tüm müşteri</dt>
+          {/* "Tüm KAYIT", "tüm müşteri" değil: listede grup markaları ve
+              Arvo'nun kendi kaydı da var, onlar müşteri değil
+              (lib/kurum-turu). Aynı kelimenin iki kümeyi göstermesi,
+              kurucunun aynı soruya iki yanıt alması demekti. */}
+          <dt>Tüm kayıt</dt>
           <dd><Link href={adres({ tur: null })} aria-current={!secilenTur ? "page" : undefined}>{sayi(tumSatirlar.length)}</Link></dd>
         </div>
         <div className={secilenTur === "kurumsal" ? "is-active" : undefined}>
@@ -369,6 +390,9 @@ export default async function MusterilerPage({ searchParams }: {
           <Link href={adres({ tur: "kurumsal" })} className={secilenTur === "kurumsal" ? "is-active" : undefined}>Kurumsal <small>{sayi(musteriKurumlari.length)}</small></Link>
           <Link href={adres({ tur: "bireysel" })} className={secilenTur === "bireysel" ? "is-active" : undefined}>Bireysel <small>{sayi(bireyselSatirlar.length)}</small></Link>
           {grupSatirlar.length ? <Link href={adres({ tur: "grup" })} className={secilenTur === "grup" ? "is-active" : undefined}>Grup markaları <small>{sayi(grupSatirlar.length)}</small></Link> : null}
+          {/* Arvo'nun kendi kaydı ayrı çipte: grup markası değil, kuralın
+              üçüncü türü (lib/kurum-turu). */}
+          {arvoSatirlar.length ? <Link href={adres({ tur: "arvo" })} className={secilenTur === "arvo" ? "is-active" : undefined}>Arvo <small>{sayi(arvoSatirlar.length)}</small></Link> : null}
           <form action="/panel/platform/musteriler" className="talep-ara" role="search">
             {secilenTur ? <input type="hidden" name="tur" value={secilenTur} /> : null}
             {secilenUrun ? <input type="hidden" name="urun" value={secilenUrun} /> : null}
@@ -409,7 +433,7 @@ export default async function MusterilerPage({ searchParams }: {
                 href={satir.href}
                 simge={satir.ad}
                 baslik={satir.ad}
-                alt={[satir.tur === "kurumsal" ? "Kurumsal" : satir.tur === "grup" ? "Grup markası" : "Bireysel", satir.alt].filter(Boolean).join(" · ")}
+                alt={[TUR_ADI[satir.tur], satir.alt].filter(Boolean).join(" · ")}
                 etiketler={satir.urunler.map((u) => ({ etiket: u.etiket, ton: u.ton }))}
                 durum={{ etiket: satir.durum, ton: satir.ton }}
                 /* Aylık tutar bütün ödeyen ürünlerin toplamı; ödeyen ürünü
