@@ -163,6 +163,12 @@ export default async function SistemSagligiPage() {
      Hata kartın kendisinde yazılı; sayım da yapılmıyor. */
   const cronDurum = cronHatasi ? [] : cronTablosu((cronSatirlari ?? []) as unknown as CronKaydi[]);
   const cronSorun = cronSorunlari(cronDurum);
+  /* KAYDI OLMAYAN İŞ "ZAMANINDA KOŞUYOR" DEĞİL. Şerit sorunsuz iş sayısını
+     yazıyordu ve kayıt tutmanın ilk gününde "5 / 5 · hepsi zamanında
+     koşuyor" diyordu — oysa beşinin hiçbiri henüz koşmamıştı. Pay yalnızca
+     KAYDI OLAN ve sorunsuz işler; bekleyenler alt satırda sayılıyor. */
+  const cronBekleyen = cronDurum.filter((d) => d.durum === "hic").length;
+  const cronSaglikli = cronDurum.length - cronBekleyen - cronSorun.length;
 
   const kurulumHatalari = (kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[];
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
@@ -196,10 +202,13 @@ export default async function SistemSagligiPage() {
         </div>
         <div>
           <dt>Zamanlanmış iş</dt>
-          <dd className={cronSorun.length ? "talep-uyari" : cronHatasi ? "talep-uyari" : "cari-arti"}>
-            {cronHatasi ? "—" : <>{sayi(cronDurum.length - cronSorun.length)} / {sayi(cronDurum.length)}</>}
+          <dd className={cronSorun.length || cronHatasi ? "talep-uyari" : cronBekleyen ? undefined : "cari-arti"}>
+            {cronHatasi ? "—" : <>{sayi(cronSaglikli)} / {sayi(cronDurum.length)}</>}
           </dd>
-          <small>{cronHatasi ? "Kayıtlar okunamadı" : cronSorun.length ? `${sayi(cronSorun.length)} iş gecikti ya da düştü` : "Hepsi zamanında koşuyor"}</small>
+          <small>{cronHatasi ? "Kayıtlar okunamadı"
+            : cronSorun.length ? `${sayi(cronSorun.length)} iş gecikti ya da düştü`
+            : cronBekleyen ? `${sayi(cronBekleyen)} işin ilk kaydı bekleniyor`
+            : "Hepsi zamanında koşuyor"}</small>
         </div>
         <div>
           <dt>Kota</dt>
