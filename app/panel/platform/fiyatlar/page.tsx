@@ -165,7 +165,13 @@ export default async function FiyatlarPage({ searchParams }: {
   const paketiniBul = new Map(Object.entries(YAYIN_KODU).map(([paket, kod]) => [kod, paket]));
   const etkilenenKiraci = degisiklikler.reduce((toplam, d) => {
     const paket = paketiniBul.get(d.kod);
-    if (!paket || d.eski === null) return toplam;
+    /* TUTARI DEĞİŞMEYEN BASAMAK KİMSEYİ ETKİLEMEZ (14.10.2026). Sayım
+       yalnızca eski tutara bakıyordu: listeyi ilk kez sahiplenirken
+       (koddaki değerler olduğu gibi taslağa alınıp yayımlanırken) hiçbir
+       tutar değişmediği hâlde önizleme "2 kiracının ücreti… listeden
+       farklı görünür" diyordu. Yanlış alarm, kurucuyu yayımdan önce
+       gereksiz yere duraklatır. */
+    if (!paket || d.eski === null || d.yeni === d.eski) return toplam;
     return toplam + kiracilar.filter((k) => k.plan_code === paket && Number(k.monthly_fee ?? 0) === d.eski).length;
   }, 0);
 
