@@ -322,7 +322,8 @@ export default async function KullanicilarPage({ searchParams }: {
                   baslik={kisi.ad}
                   alt={parcalar.length ? parcalar.map((parca, i) => <Fragment key={i}>{i ? " · " : null}{parca}</Fragment>) : undefined}
                   etiketler={kisi.uyelikler.map((u) => ({
-                    etiket: `${u.kapsam} · ${u.urunler.join(", ")}`,
+                    /* Kurum adı ürün adıyla aynıysa (ArvoOS kurumu · ArvoOS) tekrar yazılmaz. */
+                    etiket: u.urunler.every((urun) => urun === u.kapsam) ? u.kapsam : `${u.kapsam} · ${u.urunler.join(", ")}`,
                     ton: u.acik ? "success" : "neutral",
                   }))}
                   durum={secili === "pasif" ? { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" } : null}
