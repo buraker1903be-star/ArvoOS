@@ -46,7 +46,7 @@ const actionLabels: Record<string, string> = { provision_organization: "Kurulum"
    şey anlatmıyor; okunur karşılıkları burada. Listede karşılığı olmayan
    kod yine de basılır ama artık eksik olanı görünce buraya eklemek
    yeterli. */
-const ETKINLIK_ADI: Record<string, string> = {
+export const ETKINLIK_ADI: Record<string, string> = {
   create: "Oluşturuldu", update: "Güncellendi", status: "Durum değişti",
   send: "Müşteriye gönderildi", delete: "Silindi", sign: "İmzalandı",
   archive: "Arşivlendi", restore: "Geri alındı", accept: "Kabul edildi",
@@ -54,7 +54,7 @@ const ETKINLIK_ADI: Record<string, string> = {
   invite: "Davet edildi", activate: "Erişim açıldı", deactivate: "Erişim kapatıldı",
   login: "Giriş yapıldı", payment: "Ödeme bildirildi",
 };
-const VARLIK_ADI: Record<string, string> = {
+export const VARLIK_ADI: Record<string, string> = {
   crm_opportunity: "Talep", crm_proposal: "Teklif", crm_contract: "Sözleşme",
   organization_membership: "Üye erişimi", organization: "Kurum",
   payment_notification: "Ödeme bildirimi", operation_workflow: "İş akışı",

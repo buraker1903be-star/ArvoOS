@@ -158,7 +158,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
           {gorunen.map((t) => (
             <KOge
               key={t.anahtar}
-              href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"}
+              href={t.organizationId ? `/panel/platform/musteriler/${t.organizationId}` : "/panel/platform/subscribers"}
               simge={t.kim}
               baslik={t.kim}
               alt={`${t.kanal} · ${tarih(t.tarih)}`}

@@ -152,7 +152,7 @@ export default async function PaymentApprovalsPage() {
                 PayTR numarası ve tarih tek satırlık özette. */}
             <KListe>
               {incidents.map((incident) => {
-                const href = incident.organizationId ? `/panel/platform?organization=${incident.organizationId}` : null;
+                const href = incident.organizationId ? `/panel/platform/musteriler/${incident.organizationId}` : null;
                 const sebep = incidentLabels[incident.result] ?? incident.result;
                 return (
                   <KOge
@@ -210,7 +210,7 @@ export default async function PaymentApprovalsPage() {
                   <span className="status-pill" data-tone="warning">{statusLabels.pending}</span>
                   {/* Dekontu incelerken kiracının tamamına bakmak gerekebilir:
                       lisansı ne durumda, kaç kullanıcısı var. */}
-                  <Link className="kiraci-baglanti" href={`/panel/platform?organization=${payment.organization_id}`}>Kiracı →</Link>
+                  <Link className="kiraci-baglanti" href={`/panel/platform/musteriler/${payment.organization_id}`}>Müşteri →</Link>
                 </>}
               >
                 <dl className="talep-liste talep-liste--iki">
@@ -260,7 +260,7 @@ export default async function PaymentApprovalsPage() {
                 const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
                 const tone = statusTones[payment.status] ?? "neutral";
                 const etiket = statusLabels[payment.status] ?? payment.status;
-                const href = `/panel/platform?organization=${payment.organization_id}`;
+                const href = `/panel/platform/musteriler/${payment.organization_id}`;
                 const yol = payment.payment_method === "paytr" ? "Kartla" : "Havale";
                 const tutar = para(Number(payment.amount), payment.currency);
                 const kararTarihi = tarihSaat(payment.reviewed_at ?? payment.created_at);

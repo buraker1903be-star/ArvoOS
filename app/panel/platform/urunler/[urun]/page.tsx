@@ -105,7 +105,8 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   const durumSayilari = [...new Set(satirlar.map((s) => s.durum))]
     .map((d) => ({ ad: productLicenseLabels[d] ?? d, adet: satirlar.filter((s) => s.durum === d).length }))
     .sort((a, b) => b.adet - a.adet);
-  const kiraciAdresi = (id: string) => `/panel/platform?organization=${id}`;
+  // Ticari bağlam: satır müşteri detayına (14.10.2026); teknik ayarlar oradan.
+  const kiraciAdresi = (id: string) => `/panel/platform/musteriler/${id}`;
 
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">

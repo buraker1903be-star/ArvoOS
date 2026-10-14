@@ -98,6 +98,12 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
 .k-ios-deger b{color:var(--ink);font-size:14px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap}
 .k-ios-deger small{color:var(--muted);font-size:11.5px;white-space:nowrap}
 .k-ios-deger .k-ios-eksik{color:var(--warning);font-weight:var(--fw-medium)}
+/* Değer metin de olabilir (müşteri detayında e-posta, unvan): uzunsa
+   başlığı ezmesin, kendi içinde kısalsın. Bağlantı panel rengiyle. */
+.k-ios-deger{max-width:62%}
+.k-ios-deger b{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.k-ios-deger a{color:var(--primary);font-weight:var(--fw-medium);text-decoration:none}
+.k-ios-deger a:hover{text-decoration:underline}
 /* Özetin altındaki küçük rozetler (ürünler): sade, durum renginde. */
 .k-ios-etiketler{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
 .k-ios-etiket{--k-on:var(--surface-2);--k-yazi:var(--ink-soft);padding:1px 7px;border-radius:var(--r-pill);background:var(--k-on);color:var(--k-yazi);font-size:11px;font-weight:var(--fw-medium);line-height:1.6;white-space:nowrap}

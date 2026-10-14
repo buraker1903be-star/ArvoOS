@@ -23,7 +23,7 @@ import "../platform.css";
   Düzen de panelin liste sayfalarıyla aynı: SOLDA liste, SAĞDA
   özet kartları (eskiden istatistik kartı; şeridi tekrar ediyordu).
 
-  Sayfa OKUNUR. Kurumsal satır kiracı dosyasına, bireysel satır abonelik
+  Sayfa OKUNUR. Kurumsal satır müşteri detayına (musteriler/[id]), bireysel satır abonelik
   ekranına götürür; düzenleme oralarda yapılır. Aynı işi iki yerde
   yapılabilir kılmak, birinin kuralı atlaması demek.
 
@@ -241,7 +241,8 @@ export default async function MusterilerPage({ searchParams }: {
         kurum.contact_phone,
         kayitTarihi.get(kurum.id) ? `kayıt ${tarih(kayitTarihi.get(kurum.id) ?? null)}` : null,
       ].filter(Boolean).join(" · "),
-      href: `/panel/platform?organization=${kurum.id}`,
+      // Müşteri detayı (14.10.2026); teknik ayarlar oradan "Kurum ayarları" ile.
+      href: `/panel/platform/musteriler/${kurum.id}`,
       durum: durum.ad,
       ton: durum.ton,
       ucret,
