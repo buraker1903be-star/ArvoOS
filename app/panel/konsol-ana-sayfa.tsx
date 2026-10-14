@@ -10,10 +10,11 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu } from "@/lib/kota-durumu";
 import { kurumTuru, musteriMi } from "@/lib/kurum-turu";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
+import { konsolUygulamalari } from "./os/konsol-apps";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { StgIcon } from "./settings/settings-ui";
-import { para, tarihSaat } from "./platform/bicim";
+import { KURULUM_ADI, para, tarihSaat } from "./platform/bicim";
 import "./dashboard.css";
 
 /*
@@ -45,6 +46,22 @@ import "./dashboard.css";
 */
 
 const TZ = "Europe/Istanbul";
+/*
+  Bölüm açıklamaları. Dock girdisinin kendisinde değil burada: dock hem
+  panelde hem konsolda çizilen bir kabuk bileşeni ve oraya yalnızca ana
+  sayfanın kullandığı bir metin eklemek, kabuğu ekranın ihtiyacına göre
+  büyütmek olurdu.
+*/
+const BOLUM_NOTU: Record<string, string> = {
+  urunler: "Dört ürünün performansı, kullanıcıları ve kiracıları",
+  musteriler: "Kurumsal, bireysel, grup markaları ve Arvo",
+  kurulumlar: "Yeni, devam eden ve tamamlanan kurulumlar",
+  fiyatlar: "Aylık ve yıllık ücretler; sitedeki rakamlar bu listeden",
+  abonelikler: "Gelir, dönem sonu ve sözleşme onayları",
+  tahsilat: "Tahsilatlar, ödeme onayları ve faturalar",
+  ayarlar: "Kurucu yetkileri, entegrasyonlar ve sistem sağlığı",
+};
+
 const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 const ODEYEN_DURUMLAR = new Set(["active", "past_due"]);
 
@@ -359,14 +376,27 @@ export async function KonsolAnaSayfa() {
         : kota.get(kurum.id)?.kullanici.asildi ? "Kullanıcı limiti aşıldı" : "Depolama limiti aşıldı",
     }));
 
-  const bolumler = [
-    { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform/musteriler" },
-    { etiket: "Müşteriler", not: "Paket, limit ve deneme süresi müşterinin Lisanslar penceresinde", href: "/panel/platform/musteriler" },
-    { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing" },
-    { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller" },
-    { etiket: "Kullanıcılar", not: "Dört ürünün kullanıcıları tek listede", href: "/panel/platform/kullanicilar" },
-    { etiket: "Bireysel aboneler", not: "Kuruma bağlı olmayan kullanıcılar", href: "/panel/platform/subscribers" },
-  ];
+  /*
+    BÖLÜMLER DOCK'TAN TÜRETİLİYOR (14.10.2026). Liste elle yazılıydı ve
+    üç ayrı şekilde yanlıştı:
+
+      - Kart "Konsolun tamamı" diyordu ama sekiz iş alanının ALTISINI
+        gösteriyordu: Kurulum, Ücret ve Paketler, Faturalama ve Tahsilat
+        ve Sistem Sağlığı hiç yoktu — dördü de liste yazıldıktan sonra
+        eklendi ve kimse buraya dönmedi.
+      - "Tüm kiracılar" ve "Müşteriler" iki ayrı satırdı ama aynı adrese
+        gidiyordu: eski /panel/platform kaldırılıp Müşteriler'e
+        yönlendirilince ikisi tek yer oldu.
+      - İki satırın adresi aynı olduğu için React anahtarı da
+        (key={bolum.href}) yineleniyordu.
+
+    Artık dock'a eklenen her iş alanı burada kendiliğinden çıkıyor;
+    açıklaması yoksa yalnızca adı yazılır. Eksik bir açıklama göze
+    batar, eksik bir BÖLÜM batmıyordu.
+  */
+  const bolumler = konsolUygulamalari()
+    .filter((uygulama) => uygulama.key !== "home")
+    .map((uygulama) => ({ etiket: uygulama.label, not: BOLUM_NOTU[uygulama.key] ?? "", href: uygulama.href }));
 
   const kurulumlar = (kurulumKayitlari ?? []) as KurulumKaydi[];
 
@@ -438,7 +468,17 @@ export async function KonsolAnaSayfa() {
               key={kayit.id}
               href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
               baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
-              alt={actionLabels[kayit.action] ?? kayit.action}
+              /*
+                AŞAMA DA YAZILIYOR (14.10.2026). state sütunu okunuyordu
+                ama hiç gösterilmiyordu: aynı eylemin iki aşaması
+                (oluşturuluyor → davet gönderiliyor) ekranda BİRBİRİNİN
+                AYNISI iki satır olarak çıkıyordu. Kurucunun indiği
+                sayfada altı satırlık listenin ikisi çift kayıt gibi
+                görünüyor ve yer kaplıyordu; oysa veri doğruydu,
+                gösterilmeyen şey ayırt ediciydi.
+              */
+              alt={[actionLabels[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
+                .filter(Boolean).join(" · ")}
               sag={kayit.result === "error" ? <span className="status-pill" data-tone="danger">hata</span> : null}
               zaman={tarihSaat(kayit.created_at)}
             />
