@@ -133,13 +133,17 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     */}
     <section className="panel-card talep-bilgi" aria-label="Tahsilat listesi">
       <div className="ekip-suzgec talep-suzgec">
-        {KANALLAR.map((k) => (
-          <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
-            className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
-            {k.ad}
-            {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
-          </Link>
-        ))}
+        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+            masaüstünde sarmalayıcı display:contents ile görünmez. */}
+        <div className="suzgec-ray">
+          {KANALLAR.map((k) => (
+            <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
+              className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
+              {k.ad}
+              {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
+            </Link>
+          ))}
+        </div>
       </div>
 
       {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}

@@ -113,6 +113,9 @@ export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
           ?durum= adresinde, Abonelikler listesindeki gibi: bağlantı
           paylaşılabiliyor, sayfa yenilenince süzgeç kaybolmuyor. */}
       <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
+        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+            masaüstünde sarmalayıcı display:contents ile görünmez. */}
+        <div className="suzgec-ray">
         {SUZGECLER.map((secim) => (
           <Link
             key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
@@ -121,6 +124,7 @@ export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
             {secim.ad} <small>{aboneler.filter((abone) => suzgeceUyar(abone, secim.kod)).length}</small>
           </Link>
         ))}
+        </div>
         <div className="talep-ara" role="search">
           <input
             type="search" value={arama} placeholder="Ad, e-posta ya da ürün ara" aria-label="Abone ara"

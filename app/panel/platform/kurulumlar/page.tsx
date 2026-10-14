@@ -169,11 +169,15 @@ export default async function KurulumlarPage({ searchParams }: {
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label={ASAMALAR.find((a) => a.kod === secili)?.ad ?? "Kurulumlar"}>
         <div className="ekip-suzgec talep-suzgec">
-          {ASAMALAR.map((a) => (
-            <Link key={a.kod} href={adres(a.kod)} className={secili === a.kod ? "is-active" : undefined} aria-current={secili === a.kod ? "page" : undefined}>
-              {a.ad} <small>{sayi(sayim[a.kod])}</small>
-            </Link>
-          ))}
+          {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+              masaüstünde sarmalayıcı display:contents ile görünmez. */}
+          <div className="suzgec-ray">
+            {ASAMALAR.map((a) => (
+              <Link key={a.kod} href={adres(a.kod)} className={secili === a.kod ? "is-active" : undefined} aria-current={secili === a.kod ? "page" : undefined}>
+                {a.ad} <small>{sayi(sayim[a.kod])}</small>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/*

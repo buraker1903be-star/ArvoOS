@@ -125,6 +125,9 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
   return (
     <>
       <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
+        {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+            masaüstünde sarmalayıcı display:contents ile görünmez. */}
+        <div className="suzgec-ray">
         {SUZGECLER.map((secim) => {
           const aktif = abonelikGorunumu && suzgec === secim.kod;
           return (
@@ -140,6 +143,7 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
             {b.ad} <small className={b.uyari ? "talep-uyari" : undefined}>{b.adet}</small>
           </Link>
         ))}
+        </div>
         {abonelikGorunumu ? (
           <div className="talep-ara" role="search">
             <input type="search" value={arama} placeholder="Kiracı ya da ürün ara" aria-label="Kiracı ya da ürün ara" onChange={(olay) => setArama(olay.target.value)} />

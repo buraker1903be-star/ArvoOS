@@ -265,11 +265,15 @@ export default async function KullanicilarPage({ searchParams }: {
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label={EVRELER.find((e) => e.kod === secili)!.ad}>
         <div className="ekip-suzgec talep-suzgec">
-          {EVRELER.map((e) => (
-            <Link key={e.kod} href={adres(e.kod)} className={secili === e.kod ? "is-active" : undefined} aria-current={secili === e.kod ? "page" : undefined}>
-              {e.ad} <small>{sayi(sayim[e.kod])}</small>
-            </Link>
-          ))}
+          {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+              masaüstünde sarmalayıcı display:contents ile görünmez. */}
+          <div className="suzgec-ray">
+            {EVRELER.map((e) => (
+              <Link key={e.kod} href={adres(e.kod)} className={secili === e.kod ? "is-active" : undefined} aria-current={secili === e.kod ? "page" : undefined}>
+                {e.ad} <small>{sayi(sayim[e.kod])}</small>
+              </Link>
+            ))}
+          </div>
           {secili !== "davet" ? (
             <form action="/panel/platform/kullanicilar" className="talep-ara" role="search">
               <input type="hidden" name="evre" value={secili} />

@@ -245,6 +245,9 @@ export default async function FiyatlarPage({ searchParams }: {
       <div className="talep-izgara personel-iki ekip-izgara">
         <section className="panel-card talep-bilgi" aria-label="Fiyat listesi">
           <div className="ekip-suzgec talep-suzgec">
+            {/* Çipler rayda (konsol-ui.css): telefonda tek sıra kaydırılır,
+                masaüstünde sarmalayıcı display:contents ile görünmez. */}
+            <div className="suzgec-ray">
             {LISTE_URUNLERI.map((kod) => {
               const bekleyen = kod === "ek"
                 ? degisiklikler.filter((d) => d.urun === "ek").length
@@ -257,6 +260,7 @@ export default async function FiyatlarPage({ searchParams }: {
                 </Link>
               );
             })}
+            </div>
           </div>
           {/*
             KOD VARSAYILAN, KONSOL ÜSTÜNE YAZAR (14.10.2026). Basamağın
