@@ -7,7 +7,7 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
-import { KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
+import { PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
 import { denemeyiAyarla, listeFiyatiniUygula } from "./actions";
 import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
@@ -200,13 +200,13 @@ export default async function KurulumlarPage({ searchParams }: {
                     <tr key={kiraci.id}>
                       <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={ad} alt={kiraci.slug} />
                       <KDurum baslik="Aşama" etiket={asamaAdi} ton={ton} />
-                      <td data-label="Paket">{kiraci.plan_code ?? "—"}</td>
+                      <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
                       <td data-label="Telefon">{kiraci.contact_phone ?? "—"}</td>
                       <KSatirSonu mobil={{
                         href: `/panel/platform?organization=${kiraci.id}`,
                         baslik: ad,
                         durum: { etiket: asamaAdi, ton },
-                        alt: [kiraci.plan_code, kiraci.contact_phone],
+                        alt: [kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.contact_phone],
                       }} />
                     </tr>
                   );
@@ -220,7 +220,7 @@ export default async function KurulumlarPage({ searchParams }: {
           <>
             <KNot>
               Çalışır durumdaki kiracılar. Deneme süresi ve aylık ücret burada tanımlanır; ücret, paketin
-              <Link href="/panel/platform/moduller"> Ürünler</Link> tarafında yayımlanmış liste fiyatından gelir.
+              <Link href="/panel/platform/fiyatlar"> Ücret ve Paketler</Link>&apos;de yayımlanmış liste fiyatından gelir.
             </KNot>
             {tamamlananlar.length ? (
               /* Bu tabloda telefon satırı (MobilSatir) YOK: ücret ve deneme
@@ -233,7 +233,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   return (
                     <tr key={kiraci.id}>
                       <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
-                      <td data-label="Paket">{kiraci.plan_code ?? "—"}</td>
+                      <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
                       <td data-label="Aylık ücret">
                         {sapma.durum === "girilmedi" ? (
                           <form action={listeFiyatiniUygula} className="plt-deneme">
