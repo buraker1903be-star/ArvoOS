@@ -530,11 +530,7 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
     <OsKomutPaleti
       uygulamalar={konsolUygulamalariListesi}
       cikis={logout}
-      kayitAramasi={{
-        etiket: (sorgu) => `“${sorgu}” için kiracı ara`,
-        ipucu: "Müşteriler",
-        adres: (sorgu) => `/panel/platform/musteriler?ara=${encodeURIComponent(sorgu)}`,
-      }}
+      kayitAramasi={{ etiket: "için kiracı ara", ipucu: "Müşteriler", adresOneki: "/panel/platform/musteriler?ara=" }}
     />
   </main></div>;
 }

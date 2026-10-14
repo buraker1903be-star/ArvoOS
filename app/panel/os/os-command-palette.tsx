@@ -36,7 +36,14 @@ export function OsKomutPaleti({ uygulamalar, cikis, kayitAramasi }: {
     14.10.2026'ya kadar öyleydi ve kiracı adı yazan kurucu hiçbir sonuç
     görmüyordu.
   */
-  kayitAramasi?: { etiket: (sorgu: string) => string; ipucu: string; adres: (sorgu: string) => string };
+  /*
+    DÜZ METİN, FONKSİYON DEĞİL. Layout bir SUNUCU bileşeni, bu kutu
+    istemci bileşeni: araya fonksiyon geçirilemiyor, React onu
+    serileştiremiyor ve render'da patlıyor. 14.10.2026'da tam bu oldu ve
+    palet layout'ta olduğu için konsolun BÜTÜN ekranları 500 verdi.
+    Etiketin ve adresin yazılan metinle birleşmesi burada yapılıyor.
+  */
+  kayitAramasi?: { etiket: string; ipucu: string; adresOneki: string };
 }) {
   const router = useRouter();
   const pencere = useRef<HTMLDialogElement>(null);
@@ -108,7 +115,14 @@ export function OsKomutPaleti({ uygulamalar, cikis, kayitAramasi }: {
     : crmVar
       ? [...eslesen, { id: "musteri", grup: "Kayıtlar", label: `“${yazilan}” için müşteri ve talep geçmişini ara`, ipucu: "CRM", ikon: "crm", tur: "musteri", sorgu: yazilan }]
       : kayitAramasi
-        ? [...eslesen, { id: "kayit", grup: "Kayıtlar", label: kayitAramasi.etiket(yazilan), ipucu: kayitAramasi.ipucu, ikon: "crm", tur: "git", href: kayitAramasi.adres(yazilan) }]
+        ? [...eslesen, {
+            id: "kayit", grup: "Kayıtlar", ikon: "crm", tur: "git",
+            label: `“${yazilan}” ${kayitAramasi.etiket}`,
+            ipucu: kayitAramasi.ipucu,
+            /* Türkçe karakter ve boşluk kaçırılmazsa adres bozulur ve
+               liste boş döner; arama çalışmıyor sanılır. */
+            href: `${kayitAramasi.adresOneki}${encodeURIComponent(yazilan)}`,
+          }]
         : eslesen;
   const etkin = Math.min(secili, Math.max(sonuc.length - 1, 0));
 
