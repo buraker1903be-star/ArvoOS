@@ -371,6 +371,10 @@ export async function describeNotifications(
       */
       case "cron_gecikti":
       case "kopru_koptu":
+      /* Ödenen AI kredisi ArvoLab'a yüklenemedi: müşteri parasını ödediği
+         hâlde asistanda durduruluyor. Para kaybolmuyor ama müşteri
+         ödediğini alamıyor — aynı gün bakılması gereken bir şey. */
+      case "kredi_yuklenmedi":
         return {
           ...base,
           label: "Sistem",

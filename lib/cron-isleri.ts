@@ -60,6 +60,10 @@ const TANIM: Record<string, { ad: string; aciklama: string }> = {
     ad: "İş adımı terminleri",
     aciklama: "Durursa yaklaşan ve geçen adım terminleri bildirilmez.",
   },
+  "/api/cron/arvolab-kredi": {
+    ad: "AI kredisi yüklemesi",
+    aciklama: "Durursa ödenen kredi ArvoLab'a yüklenmeden kalır; müşteri ödediği hâlde asistanda durdurulur.",
+  },
   "/api/cron/abonelik-hatirlatma": {
     ad: "Abonelik hatırlatması",
     aciklama: "Durursa dönemi dolan kiracıya hatırlatma gitmez ve gecikenler işaretlenmez.",

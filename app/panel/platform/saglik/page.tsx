@@ -10,6 +10,7 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
 import { musteriMi } from "@/lib/kurum-turu";
+import { bekleyenKrediler } from "@/lib/ai-kredi-yukleme";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { cronAralikMetni, cronDurumlari, cronSorunlari, type CronKaydi, type CronDurumu } from "@/lib/cron-isleri";
 import { PAKET_ADI, gecenSure, para, sayi, tarihSaat } from "../bicim";
@@ -90,6 +91,17 @@ export default async function SistemSagligiPage() {
     randevuKopyalari(),
     getPaymentIncidents(),
   ]);
+
+  /*
+    ÖDENMİŞ AMA YÜKLENEMEMİŞ AI KREDİSİ (lib/ai-kredi-yukleme). Kurtarma
+    işi on dakikada bir deniyor; burada görünen satır, denemenin hâlâ
+    başarısız olduğu anlamına geliyor. Okuma düşerse LİSTE DEĞİL HATA
+    tutuluyor: "bekleyen kredi yok" ile "bakamadım" aynı şey değil.
+  */
+  const krediSonucu = admin
+    ? await bekleyenKrediler(admin).then((veri) => ({ veri, hata: null as string | null }))
+      .catch((hata: unknown) => ({ veri: [], hata: hata instanceof Error ? hata.message : String(hata) }))
+    : { veri: [], hata: null };
 
   /* Kurulum günlüğü yalnızca sunucu anahtarıyla okunuyor; anahtar yoksa
      satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
@@ -192,7 +204,7 @@ export default async function SistemSagligiPage() {
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
-  const toplamSorun = cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
+  const toplamSorun = krediSonucu.veri.length + cronSorun.length + kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
 
   return <main className="plt talep cari">
     <header className="talep-bas">
@@ -380,6 +392,24 @@ export default async function SistemSagligiPage() {
           </KListe>
         ) : <KBos baslik="Kurulum hatası yok" aciklama="Hatayla sonuçlanan kurulum kaydı yok." />
       ) : <KBos baslik="Kurulum günlüğü okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil." />}
+    </KKart>
+
+    <KKart baslik="Yüklenemeyen AI kredisi"
+      aciklama="Müşteri krediyi ödedi ama ArvoLab'a yüklenemedi: ödediği hâlde asistanda durdurulur. On dakikada bir yeniden deneniyor.">
+      {krediSonucu.hata ? (
+        <KNot ton="tehlike">Kredi siparişleri okunamadı ({krediSonucu.hata}) — &quot;bekleyen yok&quot; demek değil.</KNot>
+      ) : krediSonucu.veri.length ? (
+        <KListe>
+          {krediSonucu.veri.map((kayit) => (
+            <KOge key={kayit.siparisId} simge={kurumAdi.get(kayit.organizationId) ?? kayit.organizationId}
+              href={`/panel/platform/musteriler/${kayit.organizationId}?pencere=odemeler`}
+              baslik={kurumAdi.get(kayit.organizationId) ?? kayit.organizationId}
+              alt={`Ödeme ${tarihSaat(kayit.odendiAt)} · ${kayit.merchantOid}`}
+              durum={{ etiket: "Yüklenemedi", ton: "danger" }}
+              deger={`${sayi(kayit.kredi)} kredi`} degerAlt="ödendi" />
+          ))}
+        </KListe>
+      ) : <KBos baslik="Bekleyen kredi yok" aciklama="Ödenen her AI kredisi ArvoLab'a yüklendi." />}
     </KKart>
 
     <KKart baslik="İşlenemeyen ödemeler"
