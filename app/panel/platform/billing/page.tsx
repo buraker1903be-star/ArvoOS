@@ -279,7 +279,7 @@ export default async function BillingPage() {
   return <main className="stg plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · FİNANS</small>
+        <small className="panel-kicker">PLATFORM · ABONELİKLER</small>
         <h1>Abonelikler</h1>
         <p>Kurum aboneliklerini, ödeme durumlarını ve tahsilatları tek yerden izleyin.</p>
       </div>

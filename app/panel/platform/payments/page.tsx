@@ -78,7 +78,7 @@ export default async function PaymentApprovalsPage() {
   return <main className="stg plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · FİNANS</small>
+        <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
         <h1>Ödeme Onayları</h1>
         <p>Havale/EFT dekontlarını inceleyin; onaylanan ödemede lisans ve abonelik otomatik etkinleşir.</p>
       </div>
