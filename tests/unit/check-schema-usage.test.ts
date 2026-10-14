@@ -106,3 +106,32 @@ test("çözülemeyen sabit biçimi YANLIŞ ALARM üretmiyor", () => {
   assert.doesNotMatch(sonuc.cikti, /KOSULLU/);
   assert.doesNotMatch(sonuc.cikti, /personel\.id yok/);
 });
+
+/*
+  KATALOG GECİKMESİ İLE YAZIM HATASI AYRILIYOR (14.10.2026).
+
+  Denetim iki ayrı şeyi aynı sesle söylüyordu: yanlış yazılmış bir sütun
+  adı ve henüz kataloğa girmemiş YENİ bir sütun. İkincisi normal iş
+  akışı (migration canlıya uygulanıyor, anlık görüntü sonra yenileniyor)
+  ama arada CI kırmızı kalıyor ve her commit aynı yirmi küsur satırı
+  yazıyordu. O gürültünün bedeli gerçek bir hatanın gözden kaçması.
+
+  Ayrımın güvenilir olması şart: gevşek bir eşleşme yazım hatasını
+  "gecikme" diye örterse denetim kör kalır — denetlediği hatadan
+  farksız olur.
+*/
+test("gecikme ile hata ayrımı: fixture'daki personel.unvan hâlâ HATA", () => {
+  /*
+    "unvan" ve "personel" kelimeleri migration'ların Türkçe
+    gerekçelerinde geçiyor. Yorum metnini tanım saymak bu sütunu
+    "katalog gecikmesi" diye örtüyordu; yorumlar artık ayıklanıyor.
+  */
+  assert.match(sonuc.cikti, /personel\.unvan yok \(select\)/);
+  assert.doesNotMatch(sonuc.cikti, /Katalog .*personel\.unvan/);
+});
+
+test("gecikmede çıkış kodu 0, gerçek hatada 1", () => {
+  /* Fixture ağacında gerçek hatalar var: çıkış kodu 1 kalmalı, yoksa
+     CI yeşil geçer ve denetim hiçbir şey korumuyor olur. */
+  assert.equal(sonuc.cikis, 1);
+});

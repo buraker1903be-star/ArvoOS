@@ -339,7 +339,12 @@ canlıda düştü).
 
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
-karşılaştırılır. Supabase istemcisi tipsiz olduğu için yanlış sütun adı
+karşılaştırılır. Denetim KATALOG GECİKMESİNİ hatadan ayırır
+(14.10.2026): adı yerel bir migration yaratıyorsa uyarı yazılır ve çıkış
+kodu 0 kalır (kod kataloğun ilerisinde, olağan akış); hiçbir migration
+yaratmıyorsa hata verir. Eşleşme tabloya bağlıdır ve migration
+YORUMLARI ayıklanır — gevşek bir eşleşme yazım hatasını "gecikme" diye
+örterse denetim denetlediği hatadan farksız olur. Supabase istemcisi tipsiz olduğu için yanlış sütun adı
 derlemede görünmez; üretimde sorgu hata verir ve çoğu yerde hata yakalanıp
 boş veri gösterilir (Platform → Ödemeler bu yüzden iki gün "sorun yok"
 gösterdi). Yeni sütun/fonksiyon kullanan kodu, migration canlıya uygulanıp
