@@ -807,13 +807,37 @@ dialog.plt-pencere {
   inset: 0;
   margin: auto;
   width: min(560px, calc(100vw - 32px));
-  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
   padding: 0; border: 1px solid var(--line); border-radius: 20px;
   background: var(--surface); color: var(--ink);
   box-shadow: 0 24px 60px rgb(0 0 0 / 22%);
+  overflow: hidden;
 }
+/* display yalnızca AÇIK pencereye yazılır: tarayıcının kendi
+   `dialog:not([open]){display:none}` kuralı yazar kuralından zayıf, yani
+   seçiciye [open] koymayan bir `display:flex` kapalı pencereyi her sayfada
+   açık gösterirdi. */
+dialog.plt-pencere[open] { display: flex; flex-direction: column }
 @media (max-width: 900px) {
   dialog.plt-pencere { width: calc(100vw - 24px); max-height: calc(100dvh - 32px) }
+}
+/*
+  TELEFONDA ALTTAN AÇILAN YAPRAK (15.10.2026). Pencere ortada duran,
+  dört kenarından 12 piksel boşluk bırakan bir kutuydu: 812 piksellik
+  ekranda zaten 750 kaplıyordu, yani boşluklar yer kazandırmıyor
+  yalnızca "masaüstü penceresi küçültülmüş" görüntüsü veriyordu.
+  Alta yaslanıp tam genişliğe çıkınca hem içerik 24 piksel genişliyor
+  hem de telefonun kendi yaprak (sheet) alışkanlığına uyuyor.
+*/
+@media (max-width: 760px) {
+  dialog.plt-pencere {
+    inset: auto 0 0;
+    margin: 0;
+    width: 100vw;
+    max-height: 92dvh;
+    border-width: 1px 0 0;
+    border-radius: 18px 18px 0 0;
+  }
 }
 /* Geniş pencere: müşteri detayının bölümleri (lisans kartları, ödeme
    kararları) 560 piksele sığmıyor; telefonda yukarıdaki kural geçerli. */
@@ -821,7 +845,17 @@ dialog.plt-pencere {
   dialog.plt-pencere.is-genis { width: min(1040px, calc(100vw - 48px)) }
 }
 .plt-pencere::backdrop { background: rgb(9 20 34 / 45%) }
-.plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; max-height: calc(100vh - 64px); overflow: auto }
+/*
+  Kaydıran kutu GÖVDE, sınırı PENCERE koyuyor (15.10.2026). Gövdenin kendi
+  `max-height: calc(100vh - 64px)` satırı vardı, pencereninki ise
+  `100dvh` ile ölçülüyordu. Masaüstünde ikisi eşit olduğu için fark
+  görünmüyordu; telefonda tarayıcının adres çubuğu açıkken dvh vh'den
+  KÜÇÜK oluyor, yani gövde penceresinden uzun kalıyor: gövde kendi
+  içinde kaydırmıyor (sınırına değmemiş), pencere de taşan kısmı
+  kırpıyor. Uzun pencerelerin (Lisanslar, Kurum Ayarları) altı gerçek
+  telefonda erişilemiyordu ve emülasyonda hiç görünmüyordu.
+*/
+.plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; flex: 1; min-height: 0; overflow: auto }
 /* Izgaranın sütunu pencereyle sınırlı (14.10.2026). Varsayılan "auto"
    sütun, içindeki en uzun TEK SATIRLIK metin kadar genişliyordu: müşteri
    detayının Lisanslar penceresinde ArvoOS satırının özeti (paket · dönem ·
@@ -839,6 +873,21 @@ dialog.plt-pencere {
   font-size: 18px; line-height: 1; cursor: pointer;
 }
 .plt-pencere-kapat:hover { border-color: var(--danger); color: var(--danger) }
+/*
+  Telefonda başlık yapışkan: yaprak 92dvh boyunda ve içinde dört ürün,
+  formlar, tablolar var. Başlık akıp gidince kapatma düğmesi de gidiyordu
+  — kullanıcı pencereyi kapatmak için ta başa kaydırmak zorundaydı.
+*/
+@media (max-width: 760px) {
+  .plt-pencere-govde { padding: var(--sp-4) var(--sp-4) calc(var(--sp-5) + env(safe-area-inset-bottom)) }
+  .plt-pencere-bas {
+    position: sticky; top: 0; z-index: 2;
+    margin: calc(var(--sp-4) * -1) calc(var(--sp-4) * -1) 0;
+    padding: var(--sp-4) var(--sp-4) var(--sp-3);
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--surface);
+  }
+}
 /* Pencere zaten kaydırılabilir; formun kendi şeridi yapışkan kalmasın,
    iki ayrı kaydırma alanı üst üste binip düğmeleri gizliyordu. */
 .plt-pencere .plt-kaydet-serit { position: static }
@@ -1098,7 +1147,22 @@ dialog.plt-pencere {
 .musteri-pencereleri .panel-secondary { display: inline-flex; align-items: center; gap: 6px }
 .musteri-pencereleri .panel-secondary[aria-current="page"] { border-color: var(--primary); background: var(--primary); color: var(--surface) }
 .musteri-rozet { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--warning); color: var(--surface); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center }
+/*
+  Telefonda pencere sekmeleri tek sıra, yatay kaydırmalı (15.10.2026).
+  Dört sekme 375 piksellik ekranda 454 piksel tutuyordu: "Kurum Ayarları"
+  tek başına ikinci sıraya düşüyor, başlık 94 piksele çıkıyordu. Sarmak
+  yerine kaydırınca dördüncü sekme kenardan görünerek devamı olduğunu
+  söylüyor — konsolun süzgeç rayıyla aynı davranış.
+*/
 @media (max-width: 760px) {
-  .musteri-pencereleri { justify-content: flex-start }
+  .musteri-pencereleri {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .musteri-pencereleri::-webkit-scrollbar { display: none }
+  .musteri-pencereleri > * { flex: 0 0 auto }
 }
 .musteri-yukleniyor { min-height: 160px; display: grid; place-items: center; margin: 0 }
