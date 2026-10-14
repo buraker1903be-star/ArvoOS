@@ -10,6 +10,7 @@ import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
 import { KURULUM_ADI, para, tarihSaat } from "../bicim";
+import { roleNames } from "../../hr/role-names";
 import "../../settings/settings.css";
 import "../platform.css";
 import "../../crm/crm.css";
@@ -60,6 +61,10 @@ export default async function SistemAyarlariPage() {
   if (uyelikSonucu.error) throw new Error("Konsol üyeleri okunamadı: " + uyelikSonucu.error.message);
   const uyeler = (uyelikSonucu.data ?? []) as { user_id: string; role: string; is_active: boolean }[];
   const kurucular = uyeler.filter((u) => u.role === "owner" && u.is_active).map((u) => u.user_id);
+  /* Profil adı boş olabiliyor (davetle gelen hesap); kurumun personel
+     kaydındaki ad yedek. */
+  const { data: calisanlar } = await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organization.id).not("user_id", "is", null);
+  const calisanAdi = new Map(((calisanlar ?? []) as { user_id: string; full_name: string }[]).map((c) => [c.user_id, c.full_name]));
 
   /* İşlem kayıtları: her kaynaktan son otuz, birleşik akışta son altmış.
      Kurulum günlüğü ve üye erişimi yalnızca sunucu anahtarıyla okunuyor;
@@ -67,9 +72,10 @@ export default async function SistemAyarlariPage() {
   const SON = 30;
   const [kurulum, erisim, fiyat, odeme, sozlesme] = admin ? await Promise.all([
     admin.from("provisioning_audit_logs").select("id,organization_id,actor_user_id,action,state,result,created_at").order("created_at", { ascending: false }).limit(SON),
-    kurucular.length
-      ? admin.from("activity_logs").select("id,organization_id,actor_user_id,action,entity_type,metadata,created_at").in("actor_user_id", kurucular).order("created_at", { ascending: false }).limit(SON)
-      : Promise.resolve({ data: [], error: null }),
+    /* Yalnızca KONSOLUN yazdığı kayıtlar (metadata.by = founder_console).
+       Kurucunun kiracı panelindeki günlük işleri (adım atama vb.) de
+       activity_logs'a düşüyor; onlar konsol işlemi değil. */
+    admin.from("activity_logs").select("id,organization_id,actor_user_id,action,entity_type,metadata,created_at").eq("metadata->>by", "founder_console").order("created_at", { ascending: false }).limit(SON),
     admin.from("platform_fiyat_gecmisi").select("id,kod,islem,yeni_kurus,kim,zaman").order("id", { ascending: false }).limit(SON),
     admin.from("organization_payment_requests").select("id,organization_id,status,amount,currency,payment_method,reviewed_by,reviewed_at").not("reviewed_by", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
     admin.from("platform_subscription_requests").select("id,customer_name,contract_no,status,reviewed_by,reviewed_at").not("reviewed_at", "is", null).order("reviewed_at", { ascending: false }).limit(SON),
@@ -101,9 +107,9 @@ export default async function SistemAyarlariPage() {
       ne: `${s.organization_id ? kurumAdi.get(s.organization_id) ?? "Kurum" : "Kurum"} · ${s.action} · ${KURULUM_ADI[s.state] ?? s.state}${s.result === "failed" ? " · HATA" : ""}`,
       kim: kim(s.actor_user_id),
     })),
-    ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; created_at: string }[]).map((s) => ({
+    ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; metadata: { is_active?: boolean } | null; created_at: string }[]).map((s) => ({
       anahtar: `erisim-${s.id}`, zaman: s.created_at, tur: "Üye erişimi", ton: "info" as StgTone,
-      ne: `${kurumAdi.get(s.organization_id) ?? "Kurum"} · ${s.action}`, kim: kim(s.actor_user_id),
+      ne: `${kurumAdi.get(s.organization_id) ?? "Kurum"} · ${s.entity_type === "organization_membership" ? `üye erişimi ${(s as { metadata?: { is_active?: boolean } }).metadata?.is_active ? "açıldı" : "kapatıldı"}` : s.action}`, kim: kim(s.actor_user_id),
     })),
     ...((fiyat?.data ?? []) as { id: number; kod: string; islem: string; yeni_kurus: number | null; kim: string | null; zaman: string }[]).map((s) => ({
       anahtar: `fiyat-${s.id}`, zaman: s.zaman, tur: "Fiyat", ton: (s.islem === "yayim" ? "success" : "neutral") as StgTone,
@@ -190,8 +196,8 @@ export default async function SistemAyarlariPage() {
           <tbody>
             {uyeler.filter((u) => u.is_active).map((u) => (
               <tr key={u.user_id}>
-                <td>{kisiAdi.get(u.user_id) ?? "—"}</td>
-                <td>{u.role === "owner" ? "Kurum Sahibi" : u.role}</td>
+                <td>{kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—"}</td>
+                <td>{roleNames[u.role] ?? u.role}</td>
                 <td><span className="status-pill" data-tone={u.role === "owner" ? "success" : "neutral"}>{u.role === "owner" ? "Tam yetki" : "Giremez"}</span></td>
               </tr>
             ))}
