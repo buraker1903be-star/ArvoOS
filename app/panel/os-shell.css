@@ -319,7 +319,22 @@ a.os-ws-item:focus-visible{outline:none;box-shadow:var(--shadow-glow)}
   demekti (08.10.2026, iş maliyetleri ekranı: açıklama satırı özet
   şeridinin altında kaldı).
 */
-.os-root main.liste-sayfa>:not(.talep-izgara){flex:0 0 auto}
+.os-root main.liste-sayfa>:not(.talep-izgara):not(.talep-bilgi){flex:0 0 auto}
+/*
+  TEK SÜTUNLU LİSTE SAYFASI (15.10.2026). Kurallar yalnızca ızgaranın
+  içindeki karta yazılıydı; sağdaki istatistik sütunu kaldırılan sayfada
+  (Faturalama ve Tahsilat) liste kartı main'in DOĞRUDAN çocuğu oldu ve
+  `:not(.talep-izgara)` yüzünden flex:0 0 auto alıp esnemeyi bıraktı.
+  Sonuç, sayfa ekran yüksekliğine sabitken kartın içerik boyunda
+  büyümesi: liste uzayınca alt satırlar ekranın altına taşıyor ve sayfa
+  da kaymadığı için onlara ERİŞİLEMİYOR — bu dosyanın yukarıdaki yorumu
+  tam olarak bu hatayı anlatıyor, kural bir yerde eksik kalmış.
+  Tahsilat bugün boş olduğu için görünmüyordu.
+*/
+.os-root main.liste-sayfa>.talep-bilgi{
+  display:flex;flex-direction:column;flex:1 1 auto;
+  min-height:0;max-height:none;overflow:hidden;
+}
 .os-root main.liste-sayfa>.talep-izgara{flex:1 1 auto;min-height:0;align-items:stretch;grid-template-rows:minmax(0,1fr)}
 .os-root main.liste-sayfa>.talep-izgara>.talep-bilgi{
   display:flex;flex-direction:column;align-self:stretch;

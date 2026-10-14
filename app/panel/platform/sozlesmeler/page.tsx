@@ -124,7 +124,7 @@ export default async function SozlesmelerPage() {
   return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">TİCARİ</small>
+        <small className="panel-kicker">PLATFORM · SÖZLEŞME ONAYLARI</small>
         <h1>Onay bekleyen sözleşmeler</h1>
       </div>
       <div className="talep-bas-eylem">

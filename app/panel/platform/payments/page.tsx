@@ -91,7 +91,7 @@ export default async function PaymentApprovalsPage() {
   return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
+        <small className="panel-kicker">PLATFORM · ÖDEME ONAYLARI</small>
         <h1>Ödeme Onayları</h1>
       </div>
       <div className="talep-bas-eylem">

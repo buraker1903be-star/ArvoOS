@@ -141,7 +141,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small>
+        <small className="panel-kicker">PLATFORM · BİREYSEL ABONELER</small>
         <h1>Bireysel Aboneler</h1>
       </div>
       <div className="talep-bas-eylem">

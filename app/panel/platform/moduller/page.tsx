@@ -103,7 +103,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">ÜRÜN VE ERİŞİM</small>
+        <small className="panel-kicker">PLATFORM · MODÜL MATRİSİ</small>
         <h1>Modül matrisi</h1>
       </div>
       <div className="talep-bas-eylem">

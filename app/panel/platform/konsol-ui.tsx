@@ -51,6 +51,19 @@ export function KKart({ id, baslik, aciklama, sag, children, sinif }: {
   );
 }
 
+/*
+  BAŞLIK ÜSTÜ ETİKET: "PLATFORM · <SAYFA ADI>" (15.10.2026).
+
+  Dokuz sayfa bu kalıptaydı, dördü değildi: "TİCARİ" (sözleşme
+  onayları), "ÜRÜN VE ERİŞİM" (modül matrisi), "PLATFORM · TİCARİ
+  ÇEKİRDEK" (bireysel aboneler) ve Ödeme Onayları'nın Tahsilat'la AYNI
+  etiketi. Etiket her sayfanın ilk satırı: farklı olduğunda kurucu bir
+  anlığına nerede olduğunu kaybediyor ve iki ayrı sayfa aynı etiketi
+  taşıdığında hangisinde olduğunu hiç anlamıyor.
+
+  Etiket sayfanın KENDİ adıdır, bulunduğu iş alanının değil — iş alanı
+  zaten dock'ta işaretli ve üst çubukta yazıyor.
+*/
 export type KKolon = { ad: string; sinif?: string };
 
 /**
