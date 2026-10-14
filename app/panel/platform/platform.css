@@ -826,6 +826,13 @@ dialog.plt-pencere {
 }
 .plt-pencere::backdrop { background: rgb(9 20 34 / 45%) }
 .plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; max-height: calc(100vh - 64px); overflow: auto }
+/* Izgaranın sütunu pencereyle sınırlı (14.10.2026). Varsayılan "auto"
+   sütun, içindeki en uzun TEK SATIRLIK metin kadar genişliyordu: müşteri
+   detayının Lisanslar penceresinde ArvoOS satırının özeti (paket · dönem ·
+   kapasite · ek kullanıcı) pencereyi sağa taşırıp yatay kaydırma
+   çıkarıyordu. Sütun daralınca özet "…" ile kısalıyor. */
+.plt-pencere-govde { grid-template-columns: minmax(0, 1fr); overflow-x: hidden }
+.plt-pencere-govde > * { min-width: 0 }
 .plt-pencere-bas { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
 .plt-pencere-bas small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase }
 .plt-pencere-bas h2 { margin: 3px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -.01em }
