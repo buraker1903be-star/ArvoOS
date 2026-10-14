@@ -45,6 +45,7 @@ type Kiraci = {
   license_status: string | null; plan_code: string | null;
   monthly_fee: number | null; trial_ends_at: string | null;
   current_period_end: string | null; aktif_uye: number;
+  davet_eposta: string | null; davet_durumu: string | null; davet_gonderildi: string | null; davet_hatasi: string | null;
 };
 
 const ASAMALAR = [
@@ -65,7 +66,7 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const [{ data: kiraciSatirlari }, { data: planSatirlari }, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye")
+      .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi")
       .order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
     // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).
@@ -160,55 +161,77 @@ export default async function KurulumlarPage({ searchParams }: {
           ))}
         </div>
 
+        {/*
+          ÜÇ SEKME AYNI DİL (14.10.2026, "diğerlerini de yap"). Yeni ve
+          devam eden sekmelerinin üstünde uzun birer açıklama kutusu vardı
+          (biri artık olmayan "kiracı dosyası"na yönlendiriyordu) ve satırlar
+          az şey söylüyordu. Açıklama boş listenin kısa cümlesine indi;
+          satır asıl soruyu yanıtlıyor: yeni istekte "kim, hangi sözleşme,
+          ne tutar"; süren kurulumda "davet kime, ne zaman gitti, nerede
+          takıldı".
+        */}
         {secili === "yeni" ? (
-          <>
-            <KNot>
-              Kurulum iki yoldan başlar: kiracı panelinde imzalanıp onaylanan bir sözleşme, ya da yukarıdaki
-              &quot;Yeni müşteri&quot; akışıyla elle giriş. Aşağıdakiler imzalanmış ama kurumu henüz açılmamış isteklerdir: önce kurumu açın, sonra sözleşmeyi o kuruma onaylayın.
-            </KNot>
-            {admin ? (
-              bekleyenIstekler.length ? (
-                <KListe>
-                  {bekleyenIstekler.map((istek) => (
-                    /* Satır sözleşme kuyruğuna gider (eskiden ayrı bir "Sözleşmeyi aç" düğmesiydi). */
-                    <KOge
-                      key={istek.id}
-                      href="/panel/platform/sozlesmeler"
-                      simge={istek.customer_name ?? "—"}
-                      baslik={istek.customer_name ?? "—"}
-                      alt={<><span className="plt-mono">{istek.contract_no ?? "—"}</span> · {tarihSaat(istek.created_at)}</>}
-                      deger={istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : <span className="k-ios-eksik">Tutar yok</span>}
-                    />
-                  ))}
-                </KListe>
-              ) : <KBos baslik="Kurumu açılmayı bekleyen istek yok" aciklama="Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz." />
-            ) : <KNot ton="uyari">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</KNot>}
-          </>
+          admin ? (
+            bekleyenIstekler.length ? (
+              <KListe>
+                {bekleyenIstekler.map((istek) => (
+                  /* Satır sözleşme kuyruğuna gider: önce kurum açılır
+                     (başlıktaki "Yeni müşteri"), sonra istek o kuruma onaylanır. */
+                  <KOge
+                    key={istek.id}
+                    href="/panel/platform/sozlesmeler"
+                    simge={istek.customer_name ?? "—"}
+                    baslik={istek.customer_name ?? "Adsız müşteri"}
+                    alt={<>Sözleşme <span className="plt-mono">{istek.contract_no ?? "—"}</span> · imza {tarihSaat(istek.created_at)}</>}
+                    durum={{ etiket: "Kurum açılmadı", ton: "warning" }}
+                    deger={istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : <span className="k-ios-eksik">Tutar yok</span>}
+                    degerAlt={istek.amount !== null ? "sözleşme tutarı" : undefined}
+                  />
+                ))}
+              </KListe>
+            ) : (
+              <KBos
+                baslik="Bekleyen yeni kurulum yok"
+                aciklama="İmzalanan sözleşmeler kurumu açılana kadar burada bekler. Elle eklemek için başlıktaki Yeni müşteri."
+              />
+            )
+          ) : <KNot ton="uyari">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</KNot>
         ) : null}
 
         {secili === "devam" ? (
-          <>
-            <KNot>Kurulumu başlamış, henüz bitmemiş kiracılar. Hatalı kalanlar da burada: sebebi kiracı dosyasında yazıyor.</KNot>
-            {bekleyenler.length ? (
-              <KListe>
-                {bekleyenler.map((kiraci) => {
-                  const ad = kiraci.display_name || kiraci.name;
-                  const asamaAdi = KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state;
-                  const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
-                  return (
-                    <KOge
-                      key={kiraci.id}
-                      href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`}
-                      simge={ad}
-                      baslik={ad}
-                      alt={[kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.contact_phone, kiraci.slug].filter(Boolean).join(" · ")}
-                      durum={{ etiket: asamaAdi, ton }}
-                    />
-                  );
-                })}
-              </KListe>
-            ) : <KBos baslik="Süren kurulum yok" aciklama="Açılan her kurum çalışır durumda." />}
-          </>
+          bekleyenler.length ? (
+            <KListe>
+              {bekleyenler.map((kiraci) => {
+                const ad = kiraci.display_name || kiraci.name;
+                const asamaAdi = KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state;
+                const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
+                /* Takıldığı yer: hata varsa hatanın kendisi, yoksa davetin kime ve ne zaman gittiği. */
+                const davet = kiraci.davet_hatasi
+                  ? `davet gönderilemedi: ${kiraci.davet_hatasi}`
+                  : kiraci.davet_eposta
+                    ? `davet ${kiraci.davet_eposta}${kiraci.davet_gonderildi ? ` · ${tarihSaat(kiraci.davet_gonderildi)}` : " · gönderilmedi"}`
+                    : "sahip daveti yok";
+                return (
+                  <KOge
+                    key={kiraci.id}
+                    /* Kurulum adımları ve sahibe giriş bağlantısı müşteri detayının Kurum Ayarları penceresinde. */
+                    href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`}
+                    simge={ad}
+                    baslik={ad}
+                    alt={[kiraci.plan_code ? `${PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code} paket` : null, davet].filter(Boolean).join(" · ")}
+                    durum={{ etiket: asamaAdi, ton }}
+                    deger={sayi(Number(kiraci.aktif_uye))}
+                    degerAlt="kullanıcı"
+                  />
+                );
+              })}
+            </KListe>
+          ) : (
+            <KBos
+              baslik="Süren kurulum yok"
+              aciklama="Açılan her kurum çalışır durumda. Davet bekleyen ya da hata veren kurulum olursa burada görünür."
+            />
+          )
         ) : null}
 
         {secili === "tamam" ? (
