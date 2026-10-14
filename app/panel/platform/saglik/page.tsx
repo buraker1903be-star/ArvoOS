@@ -211,7 +211,24 @@ export default async function SistemSagligiPage() {
   const cronBekleyen = cronDurum.filter((d) => d.durum === "hic").length;
   const cronSaglikli = cronDurum.length - cronBekleyen - cronSorun.length;
 
-  const kurulumHatalari = (kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[];
+  /*
+    YALNIZCA HÂLÂ HATADA OLAN KURULUMLAR (14.10.2026).
+
+    Sorgu 'error' arıyordu ve sütunun kısıtı o değere izin vermediği için
+    kart hiçbir koşulda dolamıyordu. Değer 'failed'e çevrilince dört
+    gerçek hata ortaya çıktı — ama dördü de Ağustos/Eylül'dendi ve o
+    kiracılar bugün KULLANIMDA: kurulum sonradan tamamlanmış. Çözülmüş
+    hatayı "açık sorun" diye saymak şeridi kalıcı olarak 2'den 6'ya
+    çıkarıyordu ve sürekli dolu bir liste okunmaz olur — bu ekranın
+    varlık sebebine aykırı.
+
+    Ayıraç kiracının BUGÜNKÜ durumu: kurulum günlüğü geçmişi anlatır,
+    sağlık ekranı bugünü. Geçmiş kayıtlar konsol ana sayfasının "Son
+    kurulum hareketleri" listesinde duruyor.
+  */
+  const hatadaKalanlar = new Set(kiracilar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
+  const kurulumHatalari = ((kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[])
+    .filter((kayit) => hatadaKalanlar.has(kayit.organization_id));
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
@@ -384,7 +401,7 @@ export default async function SistemSagligiPage() {
       ) : <KBos baslik="Limitler paketleriyle uyumlu" aciklama="Hiçbir kiracıya paketinin üstünde hak tanımlanmamış." />}
     </KKart>
 
-    <KKart baslik="Kurulum hataları">
+    <KKart baslik="Kurulum hataları" aciklama="Kurulumu hatada kalmış kiracılar. Sonradan tamamlanan eski hatalar burada sayılmıyor: çözülmüş bir hatayı açık sorun göstermek listeyi kalıcı olarak dolu tutardı.">
       {admin ? (
         kurulumHatalari.length ? (
           <KListe>
