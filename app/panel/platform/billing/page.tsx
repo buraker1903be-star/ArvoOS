@@ -48,16 +48,6 @@ type AbonelikSatiri = {
   denemeSonu: string | null;
 };
 
-type Tahsilat = {
-  anahtar: string;
-  organizationId: string | null;
-  kim: string;
-  kanal: string;
-  amount: number;
-  currency: string;
-  tarih: string | null;
-};
-
 const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
 const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", suspended: "danger", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
 
@@ -74,8 +64,6 @@ export default async function BillingPage() {
     { data: productLicenses },
     { data: organizationRows },
     { data: coreLicenses },
-    { data: havaleler },
-    { data: aboneOdemeleri },
     { data: tahsilatOzeti, error: ozetHatasi },
     { data: sorunluBildirimler },
     odemeOlaylari,
@@ -85,38 +73,8 @@ export default async function BillingPage() {
     supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
     // ArvoOS çekirdek lisansının aylık ücreti; ek ürünler ayrı tabloda.
     supabase.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at"),
-    /*
-      Platformun TAHSİL ETTİĞİ para. Eskiden burada billing_invoices
-      okunuyordu — o tablo KİRACININ KENDİ MÜŞTERİLERİNE kestiği faturalar
-      (Finans modülü oraya yazıyor). Konsol, AkademikMerkez'in
-      müşterilerinden tahsil ettiğini Arvo'nun geliri gibi topluyordu.
-
-      İKİ KAYNAK (14.10.2026): onaylı kurum ödeme istekleri — havale VE
-      PayTR, kanalı payment_method söylüyor — ve bireysel abone ödemeleri.
-      billing_subscriptions eskiden "kart kanalı" diye üçüncü kaynak olarak
-      okunuyordu; oysa satırını yalnızca aktivasyon yazıyor ve her kurum
-      ödemesinin (havale dahil) ikizi. Liste her ödemeyi iki kez gösteriyor,
-      toplam iki kez sayıyordu (20261014062145).
-    */
-    /*
-      LİSTE KISA, TOPLAM KESİN (12.10.2026).
-
-      Eskiden her kanalda `.limit(50)` vardı ve "Tahsil edildi" son 50
-      kaydın toplamıydı; düzeltme olarak sınır kaldırılıp BÜTÜN kayıtlar
-      okunmaya başlandı. Doğru ama aynı hatanın daha büyük eşikli hâli:
-      satır tavanına çarpıldığı gün toplam yine sessizce eksilirdi, hem
-      de gelir ekranında. Artık toplam, sayı, bu ay ve para birimleri
-      platform_tahsilat_ozeti'nden; buradaki üç sorgu yalnızca
-      GÖSTERİLEN son yirmi satır için.
-
-      Her kanaldan yirmi satır almak yeterli: üçü de tarihe göre
-      azalan sıradaysa, birleşik listenin ilk yirmisi ancak bu
-      kümelerden gelebilir.
-    */
-    supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product,payment_method")
-      .eq("status", "approved").order("reviewed_at", { ascending: false, nullsFirst: false }).limit(LISTE),
-    supabase.from("subscriber_payments").select("id,amount,currency,paid_at")
-      .order("paid_at", { ascending: false, nullsFirst: false }).limit(LISTE),
+    /* Tahsilat listesi Faturalama ve Tahsilat'a taşındı (14.10.2026);
+       burada yalnızca şeridin "bu ay tahsil edilen" sayısı için özet. */
     supabase.rpc("platform_tahsilat_ozeti"),
     /* Ödeme sorunları: bekleyen havale bildirimleri (hepsi) ve son 30
        günde reddedilenler. Sınırsız değil ama küçük: bekleyen iş kuyruğu. */
@@ -202,31 +160,6 @@ export default async function BillingPage() {
   const pastDue = abonelikler.filter((satir) => satir.durum === "past_due").length;
   const ucretsiz = abonelikler.filter((satir) => !satir.monthlyFee).length;
 
-  /* İki kaynak tek listede; kurum ödemesinin kanalı (havale / PayTR)
-     ödeme isteğinin payment_method'undan. */
-  const tahsilatlar: Tahsilat[] = [
-    ...((havaleler ?? []) as { id: string; amount: number; currency: string; reviewed_at: string | null; organization_id: string; payment_method: string | null }[])
-      .filter(isCustomer)
-      .map((row) => ({
-        anahtar: `havale-${row.id}`,
-        organizationId: row.organization_id,
-        kim: orgAdi.get(row.organization_id) ?? "Kurum",
-        kanal: row.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT",
-        amount: Number(row.amount),
-        currency: row.currency,
-        tarih: row.reviewed_at,
-      })),
-    ...((aboneOdemeleri ?? []) as { id: string; amount: number; currency: string; paid_at: string | null }[])
-      .map((row) => ({
-        anahtar: `abone-${row.id}`,
-        organizationId: null,
-        kim: "Bireysel abone",
-        kanal: "Kart",
-        amount: Number(row.amount),
-        currency: row.currency,
-        tarih: row.paid_at,
-      })),
-  ].sort((a, b) => (b.tarih ?? "").localeCompare(a.tarih ?? ""));
 
   /*
     Toplam artık BÜTÜN kayıtlardan. Eskiden her sorguda .limit(50) vardı ve
@@ -254,7 +187,6 @@ export default async function BillingPage() {
   const currency = birimler.size === 1 ? [...birimler][0] : "TRY";
   const birimKarisik = birimler.size > 1;
 
-  const sonTahsilatlar = tahsilatlar.slice(0, 20);
 
   /*
     Abonelikler kiracı bazında gruplanıyor. Düz listede aynı kurumun üç
@@ -376,7 +308,7 @@ export default async function BillingPage() {
             son 50 kaydın toplamı "tahsil edildi" diye yazılıyordu. */}
         <div>
           <dt>Bu ay tahsil edilen</dt>
-          <dd className="cari-arti">{para(buAyTahsilat, currency)}</dd>
+          <dd className="cari-arti"><Link href="/panel/platform/tahsilat">{para(buAyTahsilat, currency)}</Link></dd>
           <small>Tüm zamanlar {para(toplamTahsilat, currency)} · {tahsilatAdedi} ödeme</small>
         </div>
         <div>
@@ -480,38 +412,13 @@ export default async function BillingPage() {
         ) : <div className="stg-empty"><StgIcon name="box" size={22} /><p>Aktif, denemede ya da ödemesi gecikmiş abonelik yok.</p></div>}
       </StgSection>
 
-      {/*
-        Burada "Son faturalar" diye KİRACININ KENDİ MÜŞTERİLERİNE kestiği
-        faturalar listeleniyordu (billing_invoices; Finans modülü oraya
-        yazıyor). Konsol, AkademikMerkez'in müşterilerinden tahsil ettiğini
-        Arvo'nun geliri gibi gösteriyordu — hem yanlış hem de kiracının işi.
-
-        Yerine platformun kendi tahsilatı: onaylı kurum ödemeleri (havale ve
-        PayTR) ve bireysel abone ödemeleri.
-      */}
+      {/* Tahsilat listesi kendi menüsünde (Faturalama ve Tahsilat, 14.10.2026). */}
       <StgSection
         id="tahsilat" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler"
-        description="Havale/EFT onayları, kart ödemeleri ve bireysel abone ödemeleri. Liste son 20 kayıt; yukarıdaki toplamlar tüm kayıtlardan."
-        aside={<span className="status-pill">{tahsilatAdedi} kayıt</span>}
+        description="Havale, kart ve bireysel abone ödemelerinin listesi ve faturalar Faturalama ve Tahsilat menüsünde."
+        aside={<Link className="kiraci-baglanti" href="/panel/platform/tahsilat">Tahsilatlara git →</Link>}
       >
-        {sonTahsilatlar.length ? (
-          <div className="stg-list">
-            {sonTahsilatlar.map((row) => (
-              <div key={row.anahtar} className="plt-row">
-                <span className="stg-row-main">
-                  <span className="stg-row-icon" data-tone="success"><StgIcon name="wallet" size={16} /></span>
-                  <span>
-                    <b>{para(row.amount, row.currency)}</b>
-                    <small>{row.kim} · {row.kanal} · {tarih(row.tarih)}</small>
-                  </span>
-                </span>
-                {row.organizationId ? (
-                  <Link className="kiraci-baglanti" href={`/panel/platform?organization=${row.organizationId}`}>Kiracı →</Link>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Henüz tahsilat kaydı yok. Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır.</p></div>}
+        <p className="stg-muted">Tüm zamanlar {para(toplamTahsilat, currency)} · {tahsilatAdedi} ödeme.</p>
       </StgSection>
     </div>
   </main>;

@@ -161,7 +161,7 @@ export default async function SubscribersPage() {
                 {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
                   <p className="wide panel-muted">
                     Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
-                    {" "}Değiştirmek için <Link href="/panel/platform/urunler?bolum=fiyat">Ürünler → Fiyatlandırma</Link>.
+                    {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>.
                   </p>
                 ) : (
                   <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>

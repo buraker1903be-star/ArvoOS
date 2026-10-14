@@ -3,6 +3,7 @@
 import { useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -61,22 +62,14 @@ const DURUMLAR = [
 ] as const;
 
 /*
-  Paket varsayılanları veritabanındaki private.default_license_limits ile
-  aynı (20260802173500_organization_licenses.sql). Burada yalnızca "uygula"
-  kısayolu için duruyor: kurucu paketi değiştirince limitleri elle yazmak
-  zorunda kalmasın. Kaydedilen değer her zaman formdaki değer — varsayılan
-  kendiliğinden uygulanmıyor, çünkü çoğu kiracının pazarlıkla değişmiş
-  limitleri var ve paket değiştirmek onları sessizce silerdi.
+  Paket varsayılanları lib/paket-limitleri'nde (veritabanının
+  private.default_license_limits ile eşitliği testle sabit). Burada
+  yalnızca "uygula" kısayolu için kullanılıyor: kurucu paketi değiştirince
+  limitleri elle yazmak zorunda kalmasın. Kaydedilen değer her zaman
+  formdaki değer — varsayılan kendiliğinden uygulanmıyor, çünkü çoğu
+  kiracının pazarlıkla değişmiş limitleri var ve paket değiştirmek onları
+  sessizce silerdi.
 */
-const PAKET_VARSAYILANI: Record<string, { userLimit: number; storageLimitMb: number; aiCreditLimit: number }> = {
-  /* 13.10.2026: dahil kullanıcı sayıları fiyat listesiyle eşitlendi
-     (Başlangıç 3, Kurumsal 15 — bkz. 20261013191844). Burası 5 ve 25'te
-     kalmıştı; kurucu "varsayılanı uygula" dediğinde kiracıya ödemediği
-     koltuk veriyordu. */
-  starter: { userLimit: 3, storageLimitMb: 5120, aiCreditLimit: 500 },
-  professional: { userLimit: 15, storageLimitMb: 51200, aiCreditLimit: 2500 },
-  enterprise: { userLimit: 250, storageLimitMb: 512000, aiCreditLimit: 10000 },
-};
 
 const sayiBicimi = new Intl.NumberFormat("tr-TR");
 const paraBicimi = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });

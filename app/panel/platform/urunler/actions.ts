@@ -79,12 +79,14 @@ async function taslagiKaydet__impl(formData: FormData) {
   if (error) throw new Error("Taslak kaydedilemedi: " + error.message);
 
   revalidatePath("/panel/platform/urunler");
+  revalidatePath("/panel/platform/fiyatlar");
 }
 
 /* Fiyatı okuyan yüzeyler: yayımlanan fiyat oralarda hemen görünmeli.
    llms-full.txt'nin CDN önbelleği on dakika (rotada yazılı). */
 function fiyatYuzeyleriniTazele() {
   revalidatePath("/panel/platform/urunler");
+  revalidatePath("/panel/platform/fiyatlar");
   revalidatePath("/panel/platform/kurulumlar");
   revalidatePath("/panel/platform/subscribers");
   revalidatePath("/ucretler");
@@ -129,6 +131,7 @@ async function taslagiGeriAl__impl(formData: FormData) {
     .eq("kod", kod);
   if (error) throw new Error("Taslak geri alınamadı: " + error.message);
   revalidatePath("/panel/platform/urunler");
+  revalidatePath("/panel/platform/fiyatlar");
 }
 
 async function yayindanKaldir__impl(formData: FormData) {

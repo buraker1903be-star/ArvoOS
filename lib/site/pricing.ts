@@ -102,7 +102,7 @@ export type Plan = {
   yazıyor.
 
   TUTAR KONSOLDAN DA DEĞİŞİR (14.10.2026): buradaki rakamlar varsayılan;
-  Kurucu Konsolu → Ürünler → Fiyatlandırma'da yayımlanan tutar üstüne
+  Kurucu Konsolu → Ücret ve Paketler'de yayımlanan tutar üstüne
   yazar (lib/site/fiyat-kaynagi). Basamak eklemek, adı ve birimi hâlâ
   burada.
 

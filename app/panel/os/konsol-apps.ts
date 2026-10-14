@@ -17,30 +17,57 @@
 import type { OsUygulama } from "./os-apps";
 
 /*
-  ALTI UYGULAMA (14.10.2026, kurum sahibinin tarifi): Ana Sayfa,
-  Kurulumlar, Kullanıcılar, Ürünler, Finans, Sistem Sağlığı.
+  SEKİZ ANA MENÜ (14.10.2026, Kurucu Yönetim Konsolu tarifi): Genel
+  Bakış, Ürünler, Müşteriler, Kurulum Yönetimi, Ücret ve Paketler,
+  Abonelikler, Faturalama ve Tahsilat, Sistem Ayarları.
 
-  Önceki iki deneme yanlış eksendeydi. İlki konsolun dokuz EKRANINI
-  dokuz dock girdisi yaptı: dock bir başlatıcıya dönüştü, "nereye
-  bakacağım" sorusu kolaylaşmadı. İkincisi ekranları yakınlıklarına
-  göre topladı ama gruplar hâlâ ekran adlarıydı (Müşteriler, Finans,
-  Lisans). Bu liste İŞİN eksenine göre: kurucunun soruları "kurulum
-  tamam mı", "kim kullanıyor", "ürünlerde ne var", "para nerede",
-  "bir şey mi bozuldu".
+  Bir gün önce dock altı uygulamaya indirilmişti (Ana Sayfa, Kurulumlar,
+  Kullanıcılar, Ürünler, Finans, Sistem Sağlığı); kurum sahibi konsolun
+  iskeletini sekiz ana menüyle tarif etti ve dock'ta sekizini istedi.
+  Değişenler: Kullanıcılar Müşteriler'in, Sistem Sağlığı Sistem
+  Ayarları'nın altına indi; Finans "Abonelikler" ve "Faturalama ve
+  Tahsilat" olarak ikiye ayrıldı; fiyatlandırma Ürünler'in sekmesi
+  olmaktan çıkıp kendi menüsü oldu ("en önemli konu").
 
-  Ayrıntı İKİNCİ KATTA (bolumler): dock simgesinin üstüne gelince
-  bölümler açılıyor — panelde CRM ve Finans nasıl çalışıyorsa öyle.
+  İlk denemenin hatası (konsolun dokuz EKRANI dokuz dock girdisi) burada
+  yok: girdiler ekran değil iş alanı; ayrıntı hâlâ İKİNCİ KATTA
+  (bolumler), panelde CRM ve Finans nasıl çalışıyorsa öyle.
 
   Yol öneklerinde sıralama ÖNEMLİ DEĞİL, uzunluk önemli: etkinUygulama
-  en uzun eşleşeni seçiyor. "/panel/platform" Müşteriler uygulamasına
-  bağlı ama "/panel/platform/licenses" daha uzun olduğu için lisans
-  sayfasında Lisans uygulaması etkin sayılıyor.
+  en uzun eşleşeni seçiyor. "/panel/platform" Kurulum Yönetimi'ne bağlı
+  ama "/panel/platform/musteriler" daha uzun olduğu için orada Müşteriler
+  etkin sayılıyor.
 */
 export function konsolUygulamalari(): OsUygulama[] {
   return [
-    { key: "home", label: "Ana Sayfa", href: "/panel", ikon: "home", yollar: [] },
+    { key: "home", label: "Genel Bakış", href: "/panel", ikon: "home", yollar: [] },
     {
-      key: "kurulumlar", label: "Kurulumlar", href: "/panel/platform/kurulumlar", ikon: "building",
+      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "apps",
+      /* Bireysel abone planı (deneme süresi) ürünün kendi ayarı. */
+      yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/subscribers"],
+      bolumler: [
+        { key: "performans", href: "/panel/platform/urunler", label: "Dört ürün" },
+        { key: "arvoos", href: "/panel/platform/urunler/arvoos", label: "ArvoOS" },
+        { key: "arc", href: "/panel/platform/urunler/arc", label: "ArvoARC" },
+        { key: "randevu", href: "/panel/platform/urunler/randevu", label: "Arvo Randevu" },
+        { key: "arvolab", href: "/panel/platform/urunler/arvolab", label: "ArvoLab" },
+        { key: "matris", href: "/panel/platform/moduller", label: "Modül matrisi" },
+        { key: "planlar", href: "/panel/platform/subscribers", label: "Bireysel abone planları" },
+      ],
+    },
+    {
+      key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "crm",
+      yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar", "/panel/platform/members"],
+      bolumler: [
+        { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
+        { key: "aktif", href: "/panel/platform/kullanicilar?evre=aktif", label: "Aktif kullanıcılar" },
+        { key: "pasif", href: "/panel/platform/kullanicilar?evre=pasif", label: "Pasif kullanıcılar" },
+        { key: "davet", href: "/panel/platform/kullanicilar?evre=davet", label: "Davet bekleyenler" },
+        { key: "uyeler", href: "/panel/platform/members", label: "Kurum bazında üyeler" },
+      ],
+    },
+    {
+      key: "kurulumlar", label: "Kurulum Yönetimi", href: "/panel/platform/kurulumlar", ikon: "building",
       /* Kiracı dosyası (/panel/platform) ayrı bir uygulama değil, kurulumun
          ayrıntısı; lisans ve kota da kurumun kurulumunun parçası. */
       yollar: ["/panel/platform/kurulumlar", "/panel/platform", "/panel/platform/licenses"],
@@ -53,37 +80,44 @@ export function konsolUygulamalari(): OsUygulama[] {
       ],
     },
     {
-      key: "kullanicilar", label: "Kullanıcılar", href: "/panel/platform/kullanicilar", ikon: "crm",
-      yollar: ["/panel/platform/kullanicilar", "/panel/platform/members", "/panel/platform/musteriler"],
+      key: "fiyatlar", label: "Ücret ve Paketler", href: "/panel/platform/fiyatlar", ikon: "tag",
+      yollar: ["/panel/platform/fiyatlar"],
       bolumler: [
-        { key: "aktif", href: "/panel/platform/kullanicilar?evre=aktif", label: "Aktif kullanıcılar" },
-        { key: "pasif", href: "/panel/platform/kullanicilar?evre=pasif", label: "Pasif kullanıcılar" },
-        { key: "davet", href: "/panel/platform/kullanicilar?evre=davet", label: "Davet bekleyenler" },
-        { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
-        { key: "uyeler", href: "/panel/platform/members", label: "Kurum bazında üyeler" },
+        { key: "liste", href: "/panel/platform/fiyatlar", label: "Fiyat listesi" },
+        { key: "paketler", href: "/panel/platform/fiyatlar?bolum=paket", label: "Paket limitleri" },
+        { key: "gecmis", href: "/panel/platform/fiyatlar?bolum=gecmis", label: "Fiyat geçmişi" },
       ],
     },
     {
-      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "apps",
-      /* Ürün planı ve fiyatı ürün yapılandırmasıdır, finans değil:
-         fiyatı belirlemek ürünün kendi ayarı, tahsilat Finans'ın. */
-      yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/subscribers"],
+      key: "abonelikler", label: "Abonelikler", href: "/panel/platform/billing", ikon: "repeat",
+      /* Sözleşme onayı bir aboneliği açar: abonelik işinin parçası. */
+      yollar: ["/panel/platform/billing", "/panel/platform/sozlesmeler"],
       bolumler: [
-        { key: "performans", href: "/panel/platform/urunler", label: "Ürünler" },
-        { key: "fiyat", href: "/panel/platform/urunler?bolum=fiyat", label: "Fiyatlandırma" },
-        { key: "matris", href: "/panel/platform/moduller", label: "Modül matrisi" },
-        { key: "planlar", href: "/panel/platform/subscribers", label: "Bireysel abone planları" },
-      ],
-    },
-    {
-      key: "finans", label: "Finans", href: "/panel/platform/billing", ikon: "finance",
-      yollar: ["/panel/platform/billing", "/panel/platform/payments", "/panel/platform/sozlesmeler"],
-      bolumler: [
-        { key: "abonelikler", href: "/panel/platform/billing", label: "Abonelikler" },
-        { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
+        { key: "abonelikler", href: "/panel/platform/billing", label: "Kurum abonelikleri" },
+        { key: "sorunlar", href: "/panel/platform/billing#sorunlar", label: "Ödeme sorunları" },
+        { key: "hatirlatmalar", href: "/panel/platform/billing#hatirlatmalar", label: "Dönem sonu yaklaşanlar" },
         { key: "sozlesmeler", href: "/panel/platform/sozlesmeler", label: "Sözleşme onayları" },
       ],
     },
-    { key: "saglik", label: "Sistem Sağlığı", href: "/panel/platform/saglik", ikon: "pulse", yollar: ["/panel/platform/saglik"] },
+    {
+      key: "tahsilat", label: "Faturalama ve Tahsilat", href: "/panel/platform/tahsilat", ikon: "wallet",
+      yollar: ["/panel/platform/tahsilat", "/panel/platform/payments"],
+      bolumler: [
+        { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },
+        { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
+        { key: "faturalar", href: "/panel/platform/tahsilat#faturalar", label: "Faturalar" },
+      ],
+    },
+    {
+      key: "ayarlar", label: "Sistem Ayarları", href: "/panel/platform/ayarlar", ikon: "settings",
+      yollar: ["/panel/platform/ayarlar", "/panel/platform/saglik"],
+      bolumler: [
+        { key: "yetkiler", href: "/panel/platform/ayarlar#yetkiler", label: "Kurucu yetkileri" },
+        { key: "entegrasyonlar", href: "/panel/platform/ayarlar#entegrasyonlar", label: "Entegrasyonlar" },
+        { key: "guvenlik", href: "/panel/platform/ayarlar#guvenlik", label: "Güvenlik" },
+        { key: "kayitlar", href: "/panel/platform/ayarlar#kayitlar", label: "İşlem kayıtları" },
+        { key: "saglik", href: "/panel/platform/saglik", label: "Sistem sağlığı" },
+      ],
+    },
   ];
 }

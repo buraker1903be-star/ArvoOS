@@ -32,19 +32,25 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/platform/"), "kurulumlar");
     assert.equal(etkin("/panel/platform/licenses"), "kurulumlar");
 
-    assert.equal(etkin("/panel/platform/kullanicilar"), "kullanicilar");
-    assert.equal(etkin("/panel/platform/members"), "kullanicilar");
-    assert.equal(etkin("/panel/platform/musteriler"), "kullanicilar");
+    assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
+    assert.equal(etkin("/panel/platform/kullanicilar"), "musteriler");
+    assert.equal(etkin("/panel/platform/members"), "musteriler");
 
     assert.equal(etkin("/panel/platform/urunler"), "urunler");
+    assert.equal(etkin("/panel/platform/urunler/arc"), "urunler");
     assert.equal(etkin("/panel/platform/moduller"), "urunler");
     assert.equal(etkin("/panel/platform/subscribers"), "urunler");
 
-    assert.equal(etkin("/panel/platform/billing"), "finans");
-    assert.equal(etkin("/panel/platform/payments"), "finans");
-    assert.equal(etkin("/panel/platform/sozlesmeler"), "finans");
+    assert.equal(etkin("/panel/platform/fiyatlar"), "fiyatlar");
 
-    assert.equal(etkin("/panel/platform/saglik"), "saglik");
+    assert.equal(etkin("/panel/platform/billing"), "abonelikler");
+    assert.equal(etkin("/panel/platform/sozlesmeler"), "abonelikler");
+
+    assert.equal(etkin("/panel/platform/tahsilat"), "tahsilat");
+    assert.equal(etkin("/panel/platform/payments"), "tahsilat");
+
+    assert.equal(etkin("/panel/platform/ayarlar"), "ayarlar");
+    assert.equal(etkin("/panel/platform/saglik"), "ayarlar");
   });
 
   test("her bölüm gerçek bir adrese gidiyor ve uygulamasının yolunda", () => {
@@ -52,7 +58,8 @@ describe("kurucu konsolu uygulamaları", () => {
        geçildiğinde dock başka bir uygulamayı vurgular. */
     for (const uygulama of uygulamalar) {
       for (const bolum of uygulama.bolumler ?? []) {
-        const yol = bolum.href.split("?")[0];
+        // Sorgu ve çapa (#bölüm) yolun parçası değil; dock yalnızca yola bakıyor.
+        const yol = bolum.href.split(/[?#]/)[0];
         assert.ok(yol.startsWith("/panel"), `${uygulama.key}/${bolum.key}: panel dışı adres`);
         const sahip = etkinUygulama(uygulamalar, yol)?.key;
         assert.ok(
@@ -80,14 +87,15 @@ describe("kurucu konsolu uygulamaları", () => {
     }
   });
 
-  test("dock kurum sahibinin tarif ettiği altı uygulama", () => {
+  test("dock kurum sahibinin tarif ettiği sekiz ana menü", () => {
     /* İlk sürümde konsolun dokuz ekranı dokuz dock girdisiydi ve dock
-       bir başlatıcıya dönüşmüştü. Liste artık işin ekseninde; yeni bir
-       ekran eklenince dock'a girdi eklemek yerine ilgili uygulamanın
-       bölümlerine inmeli. Sayı büyümeye başlarsa bu test söyler. */
+       bir başlatıcıya dönüşmüştü. Girdiler EKRAN değil iş alanı
+       (14.10.2026, sekiz ana menü); yeni bir ekran eklenince dock'a
+       girdi eklemek yerine ilgili menünün bölümlerine inmeli. Sayı
+       büyümeye başlarsa bu test söyler. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Ana Sayfa", "Kurulumlar", "Kullanıcılar", "Ürünler", "Finans", "Sistem Sağlığı"],
+      ["Genel Bakış", "Ürünler", "Müşteriler", "Kurulum Yönetimi", "Ücret ve Paketler", "Abonelikler", "Faturalama ve Tahsilat", "Sistem Ayarları"],
     );
   });
 });
