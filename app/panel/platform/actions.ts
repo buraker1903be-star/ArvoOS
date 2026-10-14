@@ -90,7 +90,6 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const displayName = String(formData.get("display_name") ?? "").trim();
   const sector = String(formData.get("sector") ?? "").trim();
-  const planCode = String(formData.get("plan_code") ?? "").trim();
   const customDomain = cleanDomain(String(formData.get("custom_domain") ?? ""));
   // Kurumun kendi Ayarlar'ından da girilir; ArvoOS'a girmeyen (Randevu salonu gibi)
   // kurumlar için kurucu buradan girer. Ödeme hatırlatmaları bu numaraya gider.
@@ -98,12 +97,6 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   if (name.length < 2 || name.length > 160) throw new Error("Kurum adı 2–160 karakter olmalı.");
   if (displayName && (displayName.length < 2 || displayName.length > 80)) throw new Error("Tabela unvanı 2–80 karakter olmalı.");
   if (sector.length < 2 || sector.length > 80) throw new Error("Sektör alanı 2–80 karakter olmalı.");
-  if (!plans.has(planCode)) throw new Error("Geçerli bir paket seçin.");
-  /* Paket Özel kurum değilse alan adı olamaz: hem yeni girilen hem de
-     paketi düşürülen kurumun mevcut alan adı (önce kaldırılmalı). */
-  if (customDomain && !ozelAlanAdiAcikMi(planCode)) {
-    throw new Error(`${OZEL_ALAN_ADI_UYARISI} Paketi değiştirmek için önce alan adını kaldırın.`);
-  }
 
   /*
     Kurum türü: kendi markalarımız müşteri sayımlarına ve gelir toplamına
@@ -115,8 +108,33 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   /* Grup markası (AkademikMerkez, ArvoCulture): müşteri gibi çalışır, ücreti
      müşteri gelirine değil "grup içi değer"e yazılır (lib/kurum-turu). */
   const grupMarkasi = kindGirdisi === "grup";
-  const { data: current } = await supabase.from("organizations").select("custom_domain").eq("id", organizationId).maybeSingle();
-  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, plan_code: planCode, custom_domain: customDomain, kind, grup_markasi: grupMarkasi, contact_phone: contactPhone || null, updated_at: new Date().toISOString() };
+  /*
+    PAKET ARTIK FORMDAN GELMİYOR, VERİTABANINDAN OKUNUYOR (14.10.2026).
+
+    Paket seçimi bu formdan kalktı (yalnızca etiketi değiştiriyordu,
+    kiraci-dosyasi.tsx'te gerekçe) ama özel alan adı kuralı hâlâ pakete
+    bakıyor. Form değerini kullanmaya devam etseydik alan boş gelir,
+    doğrulama her kayıtta "Geçerli bir paket seçin." diye düşerdi.
+
+    Kaynak LİSANS KAYDI: paketin, limitlerin ve ücretin yaşadığı yer
+    orası. organizations.plan_code yalnızca yedek — lisans satırı henüz
+    yoksa (kurum yeni açılmışsa) o okunuyor.
+  */
+  const [{ data: current }, { data: lisans }] = await Promise.all([
+    supabase.from("organizations").select("custom_domain,plan_code").eq("id", organizationId).maybeSingle(),
+    supabase.from("organization_licenses").select("plan_code").eq("organization_id", organizationId).maybeSingle(),
+  ]);
+  const planCode = (lisans?.plan_code as string | null) ?? (current?.plan_code as string | null) ?? "";
+  /* Paket Özel kurum değilse alan adı olamaz: hem yeni girilen hem de
+     paketi düşürülen kurumun mevcut alan adı (önce kaldırılmalı). */
+  if (customDomain && !ozelAlanAdiAcikMi(planCode)) {
+    throw new Error(`${OZEL_ALAN_ADI_UYARISI} Paket Lisanslar penceresinden değiştirilir.`);
+  }
+  /* plan_code BİLEREK YOK: paket, limit ve ücretiyle birlikte Lisanslar
+     penceresinde değişiyor ve o form iki sütunu da (organizations ve
+     organization_licenses) yazıyor. Buradan yazmak yalnızca etiketi
+     değiştirip lisansla çelişiyordu (kiraci-dosyasi.tsx'te gerekçe). */
+  const updates: Record<string, unknown> = { name, display_name: displayName || null, sector, custom_domain: customDomain, kind, grup_markasi: grupMarkasi, contact_phone: contactPhone || null, updated_at: new Date().toISOString() };
 
   if (customDomain !== (current?.custom_domain ?? null)) {
     const { connectDomainToVercel, disconnectDomainFromVercel } = await import("@/lib/vercel-domains");

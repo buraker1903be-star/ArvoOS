@@ -366,7 +366,22 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
               sözleşme→abonelik isteğini ve belge yolunu değiştiriyor; grup
               markası ise sıradan bir kiracı gibi çalışıp yalnızca gelirden ayrılıyor. */}
           <label>Kurum türü<select name="kind" defaultValue={selected.kind === "internal" ? "internal" : selected.grup_markasi ? "grup" : "customer"}><option value="customer">Müşteri</option><option value="grup">Grup markası</option><option value="internal">Arvo (kendisi)</option></select></label>
-          <label>Paket<select name="plan_code" defaultValue={selected.plan_code}>{planList.map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}</select></label>
+          {/*
+            PAKET BURADAN DEĞİŞMİYOR (14.10.2026).
+
+            Bu seçim yalnızca organizations.plan_code'u yazıyordu; limit,
+            ücret, dönem ve kota ise organization_licenses'ta duruyor ve
+            ona dokunmuyordu. Yani paketi buradan değiştiren kurucu bir
+            ETİKET değiştiriyor, kiracının hakkını değil — üstelik
+            Lisanslar penceresi eski paketi yazmaya devam ettiği için aynı
+            kiracı iki ekranda iki farklı pakette görünüyordu (Deneme
+            Salon'da "Başlangıç" ve "Özel kurum").
+
+            Paket, limitleri ve ücretiyle birlikte Lisanslar penceresinde
+            değişiyor; o form iki sütunu da yazıyor. Kurum oluşturulurken
+            paket yine seçiliyor (yeni müşteri sihirbazı): orada lisans
+            satırını tetikleyici o koddan yaratıyor.
+          */}
           <label><span>İletişim telefonu <small className="plt-optional">ödeme hatırlatması buraya gider</small></span><input name="contact_phone" type="tel" defaultValue={selected.contact_phone ?? ""} maxLength={20} placeholder="05XX XXX XX XX" /></label>
           <label className="wide"><span>Özel alan adı <small className="plt-optional">yalnızca Özel kurum paketinde</small></span><input name="custom_domain" defaultValue={selected.custom_domain ?? ""} placeholder="panel.firma.com" /></label>
           <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary" type="submit">Ayarları kaydet</button></div>
