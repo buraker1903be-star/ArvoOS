@@ -288,6 +288,28 @@
   .os-root .panel-content .kayit-serit dt{white-space:nowrap}
   .os-root .panel-content .kayit-serit dd{white-space:nowrap}
 
+  /*
+    KONSOLDA ŞERİT SARILIR, YANA KAYMAZ.
+
+    Panelin liste şeritleri kısa süzgeç etiketleri taşıyor ve tek satırda
+    yana kaymak dikey yer kazandırıyor. Kurucu konsolunun şeritleri ise
+    sayının altında bir not satırı da taşıyor ("2 kullanımda", "Kurulum
+    hatası ya da kapalı erişim"); maddeler iki üç kat geniş oluyor ve
+    dördüncüsü telefonda kırpılıyordu — üstelik kaydırma çubuğu gizli
+    olduğu için devamı olduğu hiç belli olmuyordu. Kırpılan da genellikle
+    "Dikkat gerektiren" oluyordu, yani en çok görülmesi gereken sayı
+    (14.10.2026).
+
+    Bedeli bir satır yükseklik; karşılığı dört sayının da görünmesi.
+  */
+  .os-konsol .panel-content .kayit-serit>dl{
+    flex-wrap:wrap;overflow-x:visible;gap:var(--sp-2) 0;padding:0;
+  }
+  .os-konsol .panel-content .kayit-serit>dl>div{min-width:calc(50% - 1px)}
+  .os-konsol .panel-content .kayit-serit>dl>div:nth-child(odd){padding-left:0;border-left:0}
+  /* Not satırı sarabilir: kırpmak yerine iki satıra insin. */
+  .os-konsol .panel-content .kayit-serit small{white-space:normal}
+
   .os-root .panel-content .talep-ara:has(>select){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-2);width:100%}
   .os-root .panel-content .talep-ara:has(>select)>*{min-width:0;width:100%;margin:0}
   .os-root .panel-content .talep-ara:has(>select)>:nth-child(odd):last-child{grid-column:1/-1}
