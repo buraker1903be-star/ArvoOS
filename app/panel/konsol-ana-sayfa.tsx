@@ -130,16 +130,16 @@ export async function KonsolAnaSayfa() {
     tam olarak böyle yanlış çıkmıştı. Zaman penceresi hem sınırlı hem
     eksiksiz: pencerenin içindeki her kayıt geliyor.
 
-    Üç kanal Abonelikler sayfasındakiyle aynı: onaylanan havale, kartla
-    ödenen kurum aboneliği ve bireysel abone ödemesi.
+    İki kaynak, Finans sayfasındakiyle aynı: onaylı kurum ödeme istekleri
+    (havale VE PayTR) ve bireysel abone ödemeleri. billing_subscriptions
+    eskiden "kart kanalı" diye üçüncü kaynak olarak ekleniyordu; oysa her
+    kurum ödemesinin aktivasyon ikizi — grafik her ödemeyi iki kez
+    çiziyordu (14.10.2026, 20261014062145).
   */
   const seriBasi = seriBaslangici();
-  const [{ data: havaleler }, { data: kartOdemeleri }, { data: bireyselOdemeler }] = await Promise.all([
+  const [{ data: havaleler }, { data: bireyselOdemeler }] = await Promise.all([
     supabase.from("organization_payment_requests").select("amount,reviewed_at")
       .eq("status", "approved").gte("reviewed_at", seriBasi),
-    // tuzak-tamam: burada ABONELİK değil TAHSİLAT olarak okunuyor; bu tablo
-    // yalnızca arvo_record_paytr_payment tarafından yazılan kart ödeme günlüğü.
-    supabase.from("billing_subscriptions").select("unit_amount,created_at").gte("created_at", seriBasi),
     supabase.from("subscriber_payments").select("amount,paid_at").gte("paid_at", seriBasi),
   ]);
 
@@ -224,8 +224,6 @@ export async function KonsolAnaSayfa() {
   const tahsilatKayitlari = [
     ...((havaleler ?? []) as { amount: number | null; reviewed_at: string | null }[])
       .map((satir) => ({ tarih: satir.reviewed_at, tutar: Number(satir.amount ?? 0) })),
-    ...((kartOdemeleri ?? []) as { unit_amount: number | null; created_at: string | null }[])
-      .map((satir) => ({ tarih: satir.created_at, tutar: Number(satir.unit_amount ?? 0) })),
     ...((bireyselOdemeler ?? []) as { amount: number | null; paid_at: string | null }[])
       .map((satir) => ({ tarih: satir.paid_at, tutar: Number(satir.amount ?? 0) })),
   ].filter((satir) => satir.tarih);

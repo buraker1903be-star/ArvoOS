@@ -73,7 +73,6 @@ export default async function BillingPage() {
     { data: organizationRows },
     { data: coreLicenses },
     { data: havaleler },
-    { data: kartOdemeleri },
     { data: aboneOdemeleri },
     { data: tahsilatOzeti, error: ozetHatasi },
   ] = await Promise.all([
@@ -88,9 +87,12 @@ export default async function BillingPage() {
       (Finans modülü oraya yazıyor). Konsol, AkademikMerkez'in
       müşterilerinden tahsil ettiğini Arvo'nun geliri gibi topluyordu.
 
-      Üç kanal var ve üçü de sayılıyor. Kart ödemeleri eskiden hiç
-      sayılmıyordu: "Tahsil edildi" yalnızca havale ve bireysel aboneyi
-      topluyor, PayTR'den gelen kurum ödemelerini atlıyordu.
+      İKİ KAYNAK (14.10.2026): onaylı kurum ödeme istekleri — havale VE
+      PayTR, kanalı payment_method söylüyor — ve bireysel abone ödemeleri.
+      billing_subscriptions eskiden "kart kanalı" diye üçüncü kaynak olarak
+      okunuyordu; oysa satırını yalnızca aktivasyon yazıyor ve her kurum
+      ödemesinin (havale dahil) ikizi. Liste her ödemeyi iki kez gösteriyor,
+      toplam iki kez sayıyordu (20261014062145).
     */
     /*
       LİSTE KISA, TOPLAM KESİN (12.10.2026).
@@ -107,12 +109,8 @@ export default async function BillingPage() {
       azalan sıradaysa, birleşik listenin ilk yirmisi ancak bu
       kümelerden gelebilir.
     */
-    supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product")
+    supabase.from("organization_payment_requests").select("id,amount,currency,reviewed_at,organization_id,product,payment_method")
       .eq("status", "approved").order("reviewed_at", { ascending: false, nullsFirst: false }).limit(LISTE),
-    // tuzak-tamam: burada ABONELİK değil TAHSİLAT olarak okunuyor; bu tablo
-    // yalnızca arvo_record_paytr_payment tarafından yazılan kart ödeme günlüğü.
-    supabase.from("billing_subscriptions").select("id,organization_id,product,unit_amount,currency,created_at,provider")
-      .order("created_at", { ascending: false }).limit(LISTE),
     supabase.from("subscriber_payments").select("id,amount,currency,paid_at")
       .order("paid_at", { ascending: false, nullsFirst: false }).limit(LISTE),
     supabase.rpc("platform_tahsilat_ozeti"),
@@ -183,31 +181,19 @@ export default async function BillingPage() {
   const pastDue = abonelikler.filter((satir) => satir.durum === "past_due").length;
   const ucretsiz = abonelikler.filter((satir) => !satir.monthlyFee).length;
 
-  /* Üç kanal tek listede. Kart ödemeleri billing_subscriptions'tan geliyor:
-     o tablo bir abonelik kütüğü değil, yalnızca bu RPC'nin yazdığı ödeme
-     günlüğü — tahsilat olarak doğru, abonelik olarak değil. */
+  /* İki kaynak tek listede; kurum ödemesinin kanalı (havale / PayTR)
+     ödeme isteğinin payment_method'undan. */
   const tahsilatlar: Tahsilat[] = [
-    ...((havaleler ?? []) as { id: string; amount: number; currency: string; reviewed_at: string | null; organization_id: string }[])
+    ...((havaleler ?? []) as { id: string; amount: number; currency: string; reviewed_at: string | null; organization_id: string; payment_method: string | null }[])
       .filter(isCustomer)
       .map((row) => ({
         anahtar: `havale-${row.id}`,
         organizationId: row.organization_id,
         kim: orgAdi.get(row.organization_id) ?? "Kurum",
-        kanal: "Havale/EFT",
+        kanal: row.payment_method === "paytr" ? "Kart (PayTR)" : "Havale/EFT",
         amount: Number(row.amount),
         currency: row.currency,
         tarih: row.reviewed_at,
-      })),
-    ...((kartOdemeleri ?? []) as { id: string; organization_id: string; unit_amount: number; currency: string; created_at: string; provider: string }[])
-      .filter(isCustomer)
-      .map((row) => ({
-        anahtar: `kart-${row.id}`,
-        organizationId: row.organization_id,
-        kim: orgAdi.get(row.organization_id) ?? "Kurum",
-        kanal: row.provider === "paytr" ? "Kart (PayTR)" : `Kart (${row.provider})`,
-        amount: Number(row.unit_amount),
-        currency: row.currency,
-        tarih: row.created_at,
       })),
     ...((aboneOdemeleri ?? []) as { id: string; amount: number; currency: string; paid_at: string | null }[])
       .map((row) => ({
@@ -413,8 +399,8 @@ export default async function BillingPage() {
         yazıyor). Konsol, AkademikMerkez'in müşterilerinden tahsil ettiğini
         Arvo'nun geliri gibi gösteriyordu — hem yanlış hem de kiracının işi.
 
-        Yerine platformun kendi tahsilatı: havale onayları, kart ödemeleri
-        ve bireysel abone ödemeleri. Kart kanalı eskiden hiç görünmüyordu.
+        Yerine platformun kendi tahsilatı: onaylı kurum ödemeleri (havale ve
+        PayTR) ve bireysel abone ödemeleri.
       */}
       <StgSection
         id="tahsilat" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler"

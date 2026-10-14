@@ -319,8 +319,9 @@ sorgudan `.reduce()` ile toplam almak — 22.09.2026'da konsolun üç
 sayfasında ayrı ayrı çıktı ("Tahsil edildi" son 50 kaydın toplamıydı) ve
 sınıra ulaşılana kadar hiçbir belirti vermiyor. İkincisi adı doğru gelen
 ama başka bir şey tutan tablodan okumak: `billing_invoices` kiracının
-KENDİ müşterilerine kestiği faturalar, `billing_subscriptions` bir abonelik
-kütüğü değil ödeme günlüğü, `ai_credits_used` hiç yazılmıyor. Bilerek
+KENDİ müşterilerine kestiği faturalar, `billing_subscriptions` ne abonelik
+kütüğü ne ayrı bir tahsilat kanalı — her kurum ödemesinin aktivasyon ikizi
+(onaylı ödeme isteğiyle toplanınca her ödeme iki kez sayılıyordu), `ai_credits_used` hiç yazılmıyor. Bilerek
 kullanıyorsanız satırın üstündeki yorum bloğuna `tuzak-tamam: <sebep>`
 yazın — sebebi yazmak, denetimi susturmanın bedeli. Yeni bir tuzak
 öğrenildiğinde betikteki listeye eklenir.

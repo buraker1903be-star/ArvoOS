@@ -36,7 +36,7 @@ import "../../crm/kayit-detay/kayit-detay.css";
 const BEKLEYEN = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
 type Kiraci = {
-  id: string; name: string; display_name: string | null; kind: string | null;
+  id: string; name: string; slug: string; display_name: string | null; kind: string | null;
   provisioning_state: string; contact_phone: string | null;
   license_status: string | null; plan_code: string | null;
   monthly_fee: number | null; trial_ends_at: string | null;
@@ -61,35 +61,40 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const [{ data: kiraciSatirlari }, { data: planSatirlari }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye")
+      .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye")
       .order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
   ]);
 
   /*
-    Panelden onaylanmış istekler yalnızca sunucu anahtarıyla okunuyor
-    (sözleşme kuyruğundaki kuralın aynısı). Anahtar yoksa bölüm "istek
-    yok" demiyor, okunamadığını yazıyor.
+    YENİ KURULUM = KİRACISI OLMAYAN BEKLEYEN İSTEK (14.10.2026). Eskiden
+    burada ONAYLANMIŞ ama kurumu açılmamış istekler aranıyordu; oysa
+    onay (sozlesmeler/actions.ts) hedef kiracı seçilmeden yapılamıyor —
+    sekme her zaman boştu. Yeni müşterinin isteği onaydan ÖNCE burada:
+    önce kurum açılır, sonra sözleşme kuyruğunda o kuruma onaylanır.
+
+    İstekler yalnızca sunucu anahtarıyla okunuyor (sözleşme kuyruğundaki
+    kuralın aynısı). Anahtar yoksa bölüm "istek yok" demiyor, okunamadığını
+    yazıyor.
   */
   const { data: istekSatirlari } = admin
     ? await admin.from("platform_subscription_requests")
         .select("id,contract_no,customer_name,amount,currency,status,created_at,target_organization_id")
-        .eq("status", "approved").order("created_at", { ascending: false }).limit(20)
+        .eq("status", "pending").is("target_organization_id", null)
+        .order("created_at", { ascending: false }).limit(20)
     : { data: null };
 
-  const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
+  const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
+  const kiracilar = tumKiracilar.filter((k) => k.kind !== "internal");
   const planList = ((planSatirlari ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: String(p.name) }));
 
   const bekleyenler = kiracilar.filter((k) => BEKLEYEN.has(k.provisioning_state) || k.provisioning_state === "failed");
   const tamamlananlar = kiracilar.filter((k) => k.provisioning_state === "active");
-  const onaylanmisIstekler = (istekSatirlari ?? []) as {
+  const bekleyenIstekler = (istekSatirlari ?? []) as {
     id: string; contract_no: string | null; customer_name: string | null;
     amount: number | null; currency: string | null; created_at: string;
     target_organization_id: string | null;
   }[];
-  /* Kurumu zaten açılmış istek "yeni kurulum" değil: listede iki kez
-     görünmesin diye eleniyor. */
-  const bekleyenIstekler = onaylanmisIstekler.filter((istek) => !istek.target_organization_id);
 
   /* Ücreti girilmemiş ya da listeden sapan tamamlanan kurulumlar: üçüncü
      aşamanın asıl işi bu. */
@@ -108,7 +113,7 @@ export default async function KurulumlarPage({ searchParams }: {
       </div>
       <div className="talep-bas-eylem">
         <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
-          <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={kiracilar.map((k) => k.id)} />
+          <NewOrganizationWizard action={createCustomerOrganization} plans={planList} existingSlugs={tumKiracilar.map((k) => k.slug)} />
         </PanelDrawer>
       </div>
     </header>
@@ -134,12 +139,12 @@ export default async function KurulumlarPage({ searchParams }: {
         <h2>Yeni kurulum</h2>
         <p className="panel-muted">
           Kurulum iki yoldan başlar: kiracı panelinde imzalanıp onaylanan bir sözleşme, ya da yukarıdaki
-          &quot;Yeni müşteri&quot; akışıyla elle giriş. Aşağıdakiler onaylanmış ama kurumu henüz açılmamış isteklerdir.
+          &quot;Yeni müşteri&quot; akışıyla elle giriş. Aşağıdakiler imzalanmış ama kurumu henüz açılmamış isteklerdir: önce kurumu açın, sonra sözleşmeyi o kuruma onaylayın.
         </p>
         {admin ? (
           bekleyenIstekler.length ? (
             <table className="plt-table">
-              <thead><tr><th>Müşteri</th><th>Sözleşme</th><th>Tutar</th><th>Onay</th><th /></tr></thead>
+              <thead><tr><th>Müşteri</th><th>Sözleşme</th><th>Tutar</th><th>Geliş</th><th /></tr></thead>
               <tbody>
                 {bekleyenIstekler.map((istek) => (
                   <tr key={istek.id}>
@@ -152,8 +157,8 @@ export default async function KurulumlarPage({ searchParams }: {
                 ))}
               </tbody>
             </table>
-          ) : <p className="panel-muted">Kurumu açılmayı bekleyen onaylı istek yok. Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz.</p>
-        ) : <p className="panel-muted">Sunucu anahtarı tanımlı olmadığı için onaylı istekler okunamıyor — &quot;istek yok&quot; demek değil.</p>}
+          ) : <p className="panel-muted">Kurumu açılmayı bekleyen istek yok. Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz.</p>
+        ) : <p className="panel-muted">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</p>}
       </section>
     ) : null}
 

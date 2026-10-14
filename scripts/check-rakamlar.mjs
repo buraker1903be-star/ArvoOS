@@ -70,7 +70,7 @@ const TUZAKLAR = [
   {
     ad: "billing_subscriptions",
     kapsam: KONSOL,
-    sebep: "abonelik kütüğü değil ÖDEME GÜNLÜĞÜ: arvo_record_paytr_payment her ödemede yeni satır atıyor ve status'ü hep 'active' yazıyor. Abonelik sayısı için organization_licenses + organization_product_licenses",
+    sebep: "abonelik kütüğü de değil ayrı bir tahsilat kanalı da değil: aktivasyon işlevlerinin HER kurum ödemesi (PayTR ve havale) için yazdığı İKİZ satır, status hep 'active'. Tahsilat için onaylı organization_payment_requests (toplarsanız her ödeme iki kez sayılır, 14.10.2026); abonelik için organization_licenses + organization_product_licenses",
   },
   {
     ad: "ai_credits_used",
