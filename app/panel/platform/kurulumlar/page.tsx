@@ -13,6 +13,7 @@ import { createCustomerOrganization } from "../actions";
 import { LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
 import { productLicenseLabels } from "@/lib/products";
 import { listeFiyatiniUygula } from "./actions";
+import { kurumTuru } from "@/lib/kurum-turu";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 // Sihirbaz (.plw) ve sözleşme no (.plt-mono) burada.
 import "../platform.css";
@@ -100,7 +101,13 @@ export default async function KurulumlarPage({ searchParams }: {
     : { data: null };
 
   const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
-  const kiracilar = tumKiracilar.filter((k) => k.kind !== "internal");
+  /*
+    Yalnızca ARVO'NUN KENDİ KURUMU eleniyor; grup markaları listede
+    kalıyor — onlar da kuruluyor ve kurulumları hata verebiliyor.
+    Buradaki soru "ödüyor mu" değil "çalışıyor mu" (lib/kurum-turu);
+    gelir kartlarında grup markası ayrılır, kurulumda ayrılmaz.
+  */
+  const kiracilar = tumKiracilar.filter((k) => kurumTuru(k) !== "arvo");
   const planList = ((planSatirlari ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: paketAdi(String(p.code)) || String(p.name) }));
 
   const bekleyenler = kiracilar.filter((k) => BEKLEYEN.has(k.provisioning_state) || k.provisioning_state === "failed");
@@ -302,7 +309,11 @@ export default async function KurulumlarPage({ searchParams }: {
           "Tamamlananlar" grubu şeritteki sayıların AYNISIYDI. Kalan tek
           yeni bilgi süren kurulumların aşama dağılımı; o da iOS listesi. */}
       <div className="liste-sag">
-        <KKart baslik="Süren kurulumun aşaması" aciklama="Kendi markalarımız hariç; yeni istekler en yeni 20 kayıttan">
+        {/* Açıklama 14.10.2026'ya kadar "Kendi markalarımız hariç" diyordu ve
+            YANLIŞTI: süzgeç yalnızca Arvo'nun kendi kurumunu eliyor, grup
+            markaları (ArvoCulture, AkademikMerkez) listede — oysa kurum
+            sahibinin tanımında "kendi markamız" tam olarak onlar. */}
+        <KKart baslik="Süren kurulumun aşaması" aciklama="Arvo'nun kendi kurumu hariç; yeni istekler en yeni 20 kayıttan">
           {asamaDagilimi.length ? (
             <KListe>
               {asamaDagilimi.map((d) => (
