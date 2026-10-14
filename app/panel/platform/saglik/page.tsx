@@ -42,8 +42,8 @@ const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
   Şimdiki zaman MODÜL KAPSAMINDA okunuyor: `new Date()` render gövdesinde
   react-hooks saflık kuralını bozuyor (bu dosyada bir kez yaşandı).
 */
-function cronTablosu(satirlar: CronKaydi[]) {
-  return cronDurumlari(satirlar, new Date());
+function cronTablosu(satirlar: CronKaydi[], baslangic: Date | null) {
+  return cronDurumlari(satirlar, new Date(), baslangic);
 }
 
 const CRON_DURUM: Record<CronDurumu["durum"], { etiket: string; ton: string }> = {
@@ -72,7 +72,7 @@ export default async function SistemSagligiPage() {
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
 
-  const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }, { data: cronSatirlari, error: cronHatasi }] = await Promise.all([
+  const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }, { data: cronSatirlari, error: cronHatasi }, { data: cronIlk }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
@@ -80,6 +80,9 @@ export default async function SistemSagligiPage() {
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
     depolamaKullanimi().then((data) => ({ data: data as { organization_id: string; bytes: number }[], error: null })),
     supabase.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti"),
+    /* Kayıt tutmanın başlangıcı: hiç koşmamış bir işin "henüz" mü yoksa
+       zamanlayıcıya hiç kaydolmamış mı olduğunu bu ayırıyor. */
+    supabase.from("platform_cron_kayitlari").select("basladi_at").order("basladi_at", { ascending: true }).limit(1),
   ]);
 
   const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari] = await Promise.all([
@@ -202,7 +205,8 @@ export default async function SistemSagligiPage() {
   /* OKUNAMAYAN KAYNAK "SORUN YOK" DEĞİL: kayıtlar okunamazsa her iş
      "henüz kaydı yok" görünürdü ve bu nötr durum sessizce yeşil sayılırdı.
      Hata kartın kendisinde yazılı; sayım da yapılmıyor. */
-  const cronDurum = cronHatasi ? [] : cronTablosu((cronSatirlari ?? []) as unknown as CronKaydi[]);
+  const cronBaslangici = ((cronIlk ?? []) as { basladi_at: string }[])[0]?.basladi_at ?? null;
+  const cronDurum = cronHatasi ? [] : cronTablosu((cronSatirlari ?? []) as unknown as CronKaydi[], cronBaslangici ? new Date(cronBaslangici) : null);
   const cronSorun = cronSorunlari(cronDurum);
   /* KAYDI OLMAYAN İŞ "ZAMANINDA KOŞUYOR" DEĞİL. Şerit sorunsuz iş sayısını
      yazıyordu ve kayıt tutmanın ilk gününde "5 / 5 · hepsi zamanında

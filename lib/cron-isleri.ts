@@ -146,12 +146,39 @@ export type CronDurumu = CronIsi & {
   sağlık ekranının ilk günden yanlış alarm vermesi, sonraki gerçek
   alarmın da okunmamasına yol açar. "Henüz kaydı yok" nötr durumdur.
 */
-export function cronDurumlari(kayitlar: CronKaydi[], simdi: Date): CronDurumu[] {
+export function cronDurumlari(kayitlar: CronKaydi[], simdi: Date, kayitBaslangici?: Date | null): CronDurumu[] {
   const haritada = new Map(kayitlar.map((k) => [k.is_adi, k]));
+  /* Kayıt tutma ne zamandır sürüyor? Sistemin EN ESKİ koşma kaydı bunun
+     alt sınırı. (Budama 14 günde bir sildiği için daha eskisi bilinmiyor;
+     alt sınır olması yeterli.) */
+  const kayitYasiDk = kayitBaslangici
+    ? Math.floor((simdi.getTime() - kayitBaslangici.getTime()) / 60000)
+    : null;
   return cronIsleri().map((is) => {
     const kayit = haritada.get(is.yol);
     if (!kayit) {
-      return { ...is, durum: "hic" as const, sonCalisma: null, sonBasarili: null, sonSonuc: null, sureMs: null, gecikmeDk: null, ayrinti: null };
+      /*
+        HİÇ KOŞMAMIŞ İŞ SONSUZA KADAR NÖTR KALMAMALI.
+
+        Kaydı olmayan iş "gecikti" sayılmıyor, çünkü kayıt tutma yeni
+        başladığında bütün işler kayıtsız olur ve ekran ilk gününde beş
+        kırmızı satırla karşılar. Ama bu kuralın kendi kör noktası var:
+        zamanlayıcıya hiç KAYDOLMAMIŞ bir iş de sonsuza kadar nötr
+        kalıyordu — 14.10.2026'da ArvoLab eşitlemesinin yolu değişti,
+        Vercel yeni yolu çağırmadı ve ekran saatlerce "henüz kaydı yok"
+        demeye devam etti.
+
+        Ayıraç sistemin KENDİ GEÇMİŞİ: kayıt tutma bu işin gecikme
+        eşiğinden daha uzun süredir sürüyorsa ve bu iş hâlâ hiç
+        koşmadıysa, o bir "henüz" değil bir arıza. Dışarıdan bir
+        kurulum zamanı bilgisine gerek yok.
+      */
+      const hicKosmadi = is.aralikDk !== null && kayitYasiDk !== null && kayitYasiDk > gecikmeEsigiDk(is.aralikDk);
+      return {
+        ...is, durum: hicKosmadi ? ("gecikti" as const) : ("hic" as const),
+        sonCalisma: null, sonBasarili: null, sonSonuc: null, sureMs: null,
+        gecikmeDk: hicKosmadi ? kayitYasiDk : null, ayrinti: null,
+      };
     }
     const sonCalisma = new Date(kayit.son_calisma);
     const sonBasarili = kayit.son_basarili ? new Date(kayit.son_basarili) : null;
@@ -197,7 +224,13 @@ export function cronUyarisi(durum: CronDurumu): { baslik: string; metin: string 
       ? `${durum.aciklama} Beklenen: ${cronAralikMetni(durum.aralikDk)}. ` +
         (durum.sonBasarili
           ? `En son başarılı koşma ${sure(basariliDk)} önce.`
-          : "Hiç başarılı koşması yok.")
+          /* Hiç koşmamış: sorun işin kendisinde değil, zamanlayıcının onu
+             çağırmamasında olabilir — yolu değişen bir cron'un yeniden
+             kaydedilmediği bir kez yaşandı. Kurucu nereye bakacağını
+             bilsin. */
+          : durum.sonCalisma
+            ? "Hiç başarılı koşması yok."
+            : "Zamanlayıcı bu işi hiç çağırmadı: Vercel'de cron kaydının durduğunu doğrulayın.")
       : `${durum.aciklama} Son koşma hata verdi.`,
   };
 }

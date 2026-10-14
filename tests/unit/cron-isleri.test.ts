@@ -165,3 +165,46 @@ test("yeni koşması düşen iş için başlık 'düştü'", () => {
   assert.equal(uyari.baslik, "ArvoARC köprüsü düştü");
   assert.match(uyari.metin, /Son koşma hata verdi/);
 });
+
+/*
+  ZAMANLAYICIYA HİÇ KAYDOLMAMIŞ İŞ. "Kaydı yok" kuralının kendi kör
+  noktası: kayıt tutma yeni başladığında bütün işler kayıtsız olur ve
+  nötr sayılmaları doğrudur — ama hiç çağrılmayan bir iş de sonsuza
+  kadar nötr kalıyordu. Ayıraç sistemin kendi geçmişi.
+*/
+test("kayıt tutma eskiyse, hiç koşmamış iş gecikmiş sayılır", () => {
+  const posta = "/api/cron/posta-esitleme";
+  const baslangic = (dk: number) => new Date(SIMDI.getTime() - dk * 60000);
+
+  // Kayıt tutma 3 dakikadır sürüyor: 2 dakikalık işin eşiği 7 dk, henüz erken.
+  const taze = cronDurumlari([], SIMDI, baslangic(3)).find((d) => d.yol === posta)!;
+  assert.equal(taze.durum, "hic");
+
+  // 90 dakikadır kayıt tutuluyor ama bu iş hiç koşmamış: arıza.
+  const eski = cronDurumlari([], SIMDI, baslangic(90)).find((d) => d.yol === posta)!;
+  assert.equal(eski.durum, "gecikti");
+  assert.equal(eski.gecikmeDk, 90);
+  assert.equal(eski.sonCalisma, null);
+});
+
+test("günlük iş, kayıt tutma 25 saati geçene kadar nötr kalır", () => {
+  const gunluk = "/api/cron/abonelik-hatirlatma";
+  const bul = (dk: number) => cronDurumlari([], SIMDI, new Date(SIMDI.getTime() - dk * 60000))
+    .find((d) => d.yol === gunluk)!.durum;
+  assert.equal(bul(20 * 60), "hic");
+  assert.equal(bul(26 * 60), "gecikti");
+});
+
+test("kayıt başlangıcı bilinmiyorsa eski davranış: hepsi nötr", () => {
+  assert.ok(cronDurumlari([], SIMDI).every((d) => d.durum === "hic"));
+  assert.ok(cronDurumlari([], SIMDI, null).every((d) => d.durum === "hic"));
+});
+
+test("hiç çağrılmamış iş için uyarı zamanlayıcıyı işaret ediyor", () => {
+  const posta = "/api/cron/posta-esitleme";
+  const d = cronDurumlari([], SIMDI, new Date(SIMDI.getTime() - 120 * 60000)).find((x) => x.yol === posta)!;
+  const uyari = cronUyarisi(d);
+  assert.match(uyari.metin, /Zamanlayıcı bu işi hiç çağırmadı/);
+  // "Hiç başarılı koşması yok" başka bir durum: iş koşuyor ama düşüyor.
+  assert.doesNotMatch(uyari.metin, /Hiç başarılı koşması yok/);
+});

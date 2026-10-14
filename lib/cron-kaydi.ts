@@ -83,14 +83,18 @@ type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
   görünüm taze satırı görüyor, düşen iş kendi arızasını da söylüyor.
 */
 async function nobet(admin: Admin) {
-  const { data, error } = await admin
-    .from("platform_cron_durumu")
-    .select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti");
+  const [{ data, error }, { data: ilk }] = await Promise.all([
+    admin.from("platform_cron_durumu").select("is_adi,son_calisma,son_basarili,sonuc,sure_ms,ayrinti"),
+    /* Kayıt tutmanın ne zamandır sürdüğü: hiç koşmamış bir işin "henüz"
+       mü yoksa arıza mı olduğunu bu ayırıyor (lib/cron-isleri). */
+    admin.from("platform_cron_kayitlari").select("basladi_at").order("basladi_at", { ascending: true }).limit(1),
+  ]);
   if (error) {
     console.error("[cron] nöbet okunamadı", error.message);
     return;
   }
-  const sorunlar = cronSorunlari(cronDurumlari((data ?? []) as unknown as CronKaydi[], new Date()));
+  const baslangic = (ilk ?? [])[0]?.basladi_at ? new Date((ilk as { basladi_at: string }[])[0].basladi_at) : null;
+  const sorunlar = cronSorunlari(cronDurumlari((data ?? []) as unknown as CronKaydi[], new Date(), baslangic));
   if (!sorunlar.length) return;
 
   const gun = todayInIstanbul();

@@ -38,6 +38,10 @@ import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+/* Koşma kaydı gövdenin SONUNDA yazılıyor: süre dolarsa hiçbir iz kalmaz
+   ve ekranda "henüz kaydı yok" diye görünür. Bu rota ayrı bir Supabase
+   projesine (ArvoLab) iki tur atıyor; varsayılan süre dar kalabilir. */
+export const maxDuration = 60;
 
 function yetkili(istek: Request) {
   const sir = process.env.CRON_SECRET;
