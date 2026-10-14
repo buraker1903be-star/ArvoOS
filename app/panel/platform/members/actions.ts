@@ -93,7 +93,7 @@ async function uyeErisimiDegistir__impl(formData: FormData) {
   // Kayıt yazılamazsa işlem yine de olmuştur; kullanıcıyı yanıltmayalım.
   if (kayitHatasi) console.error("[konsol] üye erişimi kaydı yazılamadı", kayitHatasi.message);
 
-  revalidatePath("/panel/platform/members");
+  revalidatePath("/panel/platform/kullanicilar");
   // Müşteri detayının Kullanıcılar penceresi aynı listeyi gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
   await flashSuccess(aciliyorMu ? "Erişim açıldı" : "Erişim kapatıldı");

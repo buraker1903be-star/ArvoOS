@@ -340,7 +340,7 @@ export async function KonsolAnaSayfa() {
     { etiket: "Lisans ve kota", not: "Paket, limit ve deneme süresi", href: "/panel/platform/licenses" },
     { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing" },
     { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller" },
-    { etiket: "Tüm üyeler", not: "Üç ürünün kullanıcıları tek listede", href: "/panel/platform/members" },
+    { etiket: "Kullanıcılar", not: "Dört ürünün kullanıcıları tek listede", href: "/panel/platform/kullanicilar" },
     { etiket: "Bireysel aboneler", not: "Kuruma bağlı olmayan kullanıcılar", href: "/panel/platform/subscribers" },
   ];
 

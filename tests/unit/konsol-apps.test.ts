@@ -33,7 +33,6 @@ describe("kurucu konsolu uygulamaları", () => {
 
     assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
     assert.equal(etkin("/panel/platform/kullanicilar"), "musteriler");
-    assert.equal(etkin("/panel/platform/members"), "musteriler");
 
     assert.equal(etkin("/panel/platform/urunler"), "urunler");
     assert.equal(etkin("/panel/platform/urunler/arc"), "urunler");

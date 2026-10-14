@@ -104,7 +104,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
         <h1>Bireysel Aboneler</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform/members">Tüm üyeler</Link>
+        <Link className="panel-secondary" href="/panel/platform/kullanicilar">Kullanıcılar</Link>
       </div>
     </header>
 

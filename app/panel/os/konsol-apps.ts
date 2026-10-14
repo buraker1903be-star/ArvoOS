@@ -58,13 +58,12 @@ export function konsolUygulamalari(): OsUygulama[] {
     },
     {
       key: "musteriler", label: "Müşteriler", href: "/panel/platform/musteriler", ikon: "crm",
-      yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar", "/panel/platform/members"],
+      yollar: ["/panel/platform/musteriler", "/panel/platform/kullanicilar"],
       bolumler: [
         { key: "musteriler", href: "/panel/platform/musteriler", label: "Müşteriler" },
         /* Tek "Kullanıcılar" (14.10.2026): aktif, pasif ve davet bekleyenler
            ayrı üç menü öğesiydi; sayfanın kendi sekmeleri zaten bunlar. */
         { key: "kullanicilar", href: "/panel/platform/kullanicilar", label: "Kullanıcılar" },
-        { key: "uyeler", href: "/panel/platform/members", label: "Kurum bazında üyeler" },
       ],
     },
     {
