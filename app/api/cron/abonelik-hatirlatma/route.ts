@@ -4,6 +4,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { productName } from "@/lib/products";
 import { abonelikAnahtari, abonelikBildirimi, abonelikKademesi } from "@/lib/abonelik-bildirimi";
 import { yetkisiOlanlar } from "@/lib/kisi-yetkileri";
+import { ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,13 @@ export const dynamic = "force-dynamic";
   Kapsam: ödemesi ArvoOS panelinden yapılan lisanslar. ArvoRandevu salonu
   ödemesini kendi uygulamasında yapıyor, ArvoOS paneli ona bir şey
   söyleyemez; Arvo'nun kendi kurumları (kind = internal) ödeme yapmaz.
+
+  ARVOOS ÇEKİRDEK LİSANSI DA (14.10.2026). Eskiden yalnızca ek ürünlerin
+  lisansları (organization_product_licenses) okunuyordu; ArvoOS'un kendi
+  lisansı organization_licenses'ta ve oraya hiç bakılmıyordu — panelin
+  asıl aboneliği hatırlatmasız bitiyordu. Ücret, ödeme bağlantısının
+  hesapladığıyla aynı: paket + dahil sayıyı aşan kullanıcılar
+  (lib/license-checkout).
 
   Tekrar koşarsa aynı dönem ve kademe için ikinci bildirim yazılmaz
   (metadata.anahtar).
@@ -49,16 +57,33 @@ export async function GET(istek: Request) {
   if (!admin) return Response.json({ hata: "sunucu anahtarı yok" }, { status: 500 });
 
   const bugun = todayInIstanbul();
-  const { data: lisanslar, error } = await admin.from("organization_product_licenses")
-    .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
-    .in("status", ["trialing", "active", "past_due"]).neq("product", "randevu");
-  if (error) {
-    console.error("[abonelik] lisanslar okunamadı", error.message);
+  const [{ data: lisanslar, error }, { data: cekirdekler, error: cekirdekHatasi }] = await Promise.all([
+    admin.from("organization_product_licenses")
+      .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
+      .in("status", ["trialing", "active", "past_due"]).neq("product", "randevu"),
+    admin.from("organization_licenses")
+      .select("organization_id,license_status,monthly_fee,user_limit,extra_user_fee,current_period_end,trial_ends_at")
+      .in("license_status", ["trialing", "active", "past_due"]),
+  ]);
+  if (error || cekirdekHatasi) {
+    console.error("[abonelik] lisanslar okunamadı", (error ?? cekirdekHatasi)?.message);
     return Response.json({ hata: "lisanslar" }, { status: 500 });
   }
+  type Cekirdek = {
+    organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number | null;
+    extra_user_fee: number | null; current_period_end: string | null; trial_ends_at: string | null;
+  };
+  const cekirdekSatirlari = (cekirdekler ?? []) as Cekirdek[];
+  const tumLisanslar: (Lisans & { cekirdek?: Cekirdek })[] = [
+    ...((lisanslar ?? []) as Lisans[]),
+    ...cekirdekSatirlari.map((c) => ({
+      organization_id: c.organization_id, product: "arvoos", status: c.license_status, monthly_fee: c.monthly_fee,
+      current_period_end: c.current_period_end, trial_ends_at: c.trial_ends_at, cekirdek: c,
+    })),
+  ];
 
   // Yalnızca bugün bir kademeye düşenler.
-  const adaylar = ((lisanslar ?? []) as Lisans[]).flatMap((l) => {
+  const adaylar = tumLisanslar.flatMap((l) => {
     const deneme = l.status === "trialing";
     const bitis = deneme ? l.trial_ends_at : l.current_period_end;
     if (!bitis) return [];
@@ -88,7 +113,16 @@ export async function GET(istek: Request) {
 
     const alicilar = [...await yetkisiOlanlar(admin, a.organization_id, "finance.lisans.yonet")];
     if (!alicilar.length) continue;
-    const metin = abonelikBildirimi({ urunAdi: productName(a.product), deneme: a.deneme, bitis: a.bitis, kademe: a.kademe, aylikUcret: a.monthly_fee ? Number(a.monthly_fee) : null });
+    let aylikUcret = a.monthly_fee ? Number(a.monthly_fee) : null;
+    if (a.cekirdek && aylikUcret) {
+      // Ödeme bağlantısıyla aynı tutar: paket + dahil sayıyı aşan etkin kullanıcılar.
+      const { count, error: sayimHatasi } = await admin.from("organization_memberships")
+        .select("user_id", { count: "exact", head: true }).eq("organization_id", a.organization_id).eq("is_active", true);
+      // Sayılamazsa tutar yazılmıyor: eksik tutar, hiç yazmamaktan kötü.
+      aylikUcret = sayimHatasi ? null
+        : aylikUcret + ekKullaniciUcretiKurus(count ?? 0, a.cekirdek.user_limit, a.cekirdek.extra_user_fee ?? 0);
+    }
+    const metin = abonelikBildirimi({ urunAdi: productName(a.product), deneme: a.deneme, bitis: a.bitis, kademe: a.kademe, aylikUcret });
     const { error: yazmaHatasi } = await admin.from("notifications").insert(alicilar.map((kullanici) => ({
       organization_id: a.organization_id,
       user_id: kullanici,

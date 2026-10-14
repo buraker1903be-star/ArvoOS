@@ -118,7 +118,14 @@ export default async function BillingPage() {
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
   const ozet = (tahsilatOzeti ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
   // Otomatik çekim yok: dönem sonu yaklaşanlar burada, kurucu WhatsApp'tan hatırlatır.
-  const reminders = remindersNow((productLicenses ?? []) as RenewalLicense[], (organizationRows ?? []) as RenewalOrganization[]);
+  /* ArvoOS çekirdek lisansı da listede (14.10.2026): eskiden yalnızca ek
+     ürünler okunuyordu, panelin asıl aboneliği hatırlatma listesine hiç
+     düşmüyordu. Ücret burada paket ücreti; ek kullanıcı bedeli ödeme
+     bağlantısı açılırken eklenir. */
+  const cekirdekHatirlatmalari: RenewalLicense[] = ((coreLicenses ?? []) as { organization_id: string; license_status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[])
+    .filter((l) => ["active", "trialing", "past_due"].includes(l.license_status))
+    .map((l) => ({ organization_id: l.organization_id, product: "arvoos", status: l.license_status, monthly_fee: l.monthly_fee, current_period_end: l.current_period_end, trial_ends_at: l.trial_ends_at }));
+  const reminders = remindersNow([...((productLicenses ?? []) as RenewalLicense[]), ...cekirdekHatirlatmalari], (organizationRows ?? []) as RenewalOrganization[]);
 
   /*
     Kendi markalarımız gelir toplamına girmez: aynı tüzel kişiliğin kendi
