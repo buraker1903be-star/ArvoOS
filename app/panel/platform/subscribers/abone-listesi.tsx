@@ -71,9 +71,12 @@ const suzgeceUyar = (abone: Abone, suzgec: string) => {
   return true;
 };
 
-export function AboneListesi({ aboneler, kaydet, durum }: {
+export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
   aboneler: Abone[];
   kaydet: (formData: FormData) => void;
+  /** Kurum lisansına taşıma (kurum_id); kurumlar ürün koduna göre, lisansı olanlar. */
+  tasi: (formData: FormData) => void;
+  kurumlar: Record<string, { id: string; ad: string }[]>;
   /** ?durum= — geçersizse "hepsi". */
   durum?: string;
 }) {
@@ -196,10 +199,42 @@ export function AboneListesi({ aboneler, kaydet, durum }: {
                 sıfırdan kurulsun. Aynı form yeniden kullanılırsa önceki
                 abonenin girilmiş değerleri ekranda kalıyordu. */}
             <AboneFormu key={secili.id} abone={secili} kaydet={kaydet} onBitti={() => setAcik(null)} />
+            <KurumaTasi key={`k-${secili.id}`} abone={secili} tasi={tasi} kurumlar={kurumlar[secili.urun] ?? []} onBitti={() => setAcik(null)} />
           </div>
         ) : null}
       </dialog>
     </>
+  );
+}
+
+/*
+  Kurum anlaşması yapıldığında personelin bireysel aboneliği kurum
+  lisansına taşınır (14.10.2026): kişi bireysel listeden çıkar, erişimi
+  kurumun lisansıyla açılıp kapanır. Yalnızca o ürünün lisansı olan
+  kurumlar seçilebilir; lisanssız kuruma taşımak erişimi hemen kapatırdı.
+*/
+function KurumaTasi({ abone, tasi, kurumlar, onBitti }: {
+  abone: Abone; tasi: (formData: FormData) => void; kurumlar: { id: string; ad: string }[]; onBitti: () => void;
+}) {
+  const [kurum, setKurum] = useState("");
+  if (!kurumlar.length) {
+    return <p className="panel-muted">{abone.urunAdi} lisansı olan bir kurum yok; kurum lisansına taşımak için önce kuruma ürünü açın.</p>;
+  }
+  return (
+    <form className="panel-form kayit-formu" action={(veri) => { tasi(veri); onBitti(); }}>
+      <input type="hidden" name="subscriber_id" value={abone.id} />
+      <label className="wide">
+        <span>Kurum lisansına taşı <small className="plt-optional">kurum anlaşmasıyla gelen personel</small></span>
+        <select name="kurum_id" value={kurum} onChange={(o) => setKurum(o.target.value)} required>
+          <option value="">Kurum seçin</option>
+          {kurumlar.map((k) => <option key={k.id} value={k.id}>{k.ad}</option>)}
+        </select>
+        <small className="kota-olcum">Bireysel listeden çıkar; erişimi kurumun {abone.urunAdi} lisansıyla açılıp kapanır. Ödeme geçmişi silinmez.</small>
+      </label>
+      <div className="wide plt-urun-kaydet" data-kirli={Boolean(kurum)}>
+        <button type="submit" className="panel-primary" disabled={!kurum}>Kuruma taşı</button>
+      </div>
+    </form>
   );
 }
 

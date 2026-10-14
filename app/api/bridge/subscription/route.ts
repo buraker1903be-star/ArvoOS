@@ -8,6 +8,7 @@ import { PLATFORM_HOST } from "@/lib/public-host";
 import { isSubscriberProduct, productName } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
+import { kurumLisansiAcik } from "@/lib/kurum-lisansi-erisim";
 
 // Ürünler için abonelik köprüsü (ArvoLab, ileride ArvoARC).
 //
@@ -41,6 +42,8 @@ type SubscriberRow = {
   trial_ends_at: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
+  /** Kuruma geçmiş abone: erişim kurumun lisansından (lib/kurum-lisansi-erisim). */
+  kurum_id: string | null;
 };
 
 /** Erişim kuralı tek yerde: deneme ya da aktif dönem sürüyorsa açık. */
@@ -92,7 +95,7 @@ export async function POST(request: Request) {
     ? (listeFiyati && listeFiyati > 0 ? listeFiyati : null)
     : plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) : null;
 
-  const columns = "id,status,trial_ends_at,current_period_start,current_period_end";
+  const columns = "id,status,trial_ends_at,current_period_start,current_period_end,kurum_id";
   let { data: subscriber } = await admin.from("product_subscribers").select(columns)
     .eq("product", product).eq("external_user_id", userId).maybeSingle();
 
@@ -157,6 +160,35 @@ export async function POST(request: Request) {
       return json(500, { error: "close_failed" });
     }
     return json(200, { closed: true });
+  }
+
+  /*
+    Kuruma geçmiş abone (14.10.2026): kişi kurum anlaşmasıyla gelen
+    lisansı kullanıyor. Erişim kurumun bu üründeki lisansıyla açılıp
+    kapanıyor; kendi aboneliğinin dönem sonu artık bir şey ifade etmiyor
+    ve ödeme planı gösterilmiyor (monthlyFee null → ArvoLab plan
+    sunmuyor). Kendi adına ödeme bağlantısı da üretilmez: kurum zaten
+    ödüyor, kişinin ikinci kez ödemesi çift tahsilat olurdu.
+  */
+  if (subscriber.kurum_id) {
+    if (action === "checkout") return json(409, { error: "organization_license" });
+    const { data: lisans, error: lisansHatasi } = await admin.from("organization_product_licenses")
+      .select("status,trial_ends_at,current_period_end")
+      .eq("organization_id", subscriber.kurum_id).eq("product", product).maybeSingle();
+    /* Okunamayan lisans "lisans yok" demek değil: 5xx dönüyoruz, ArvoLab
+       bunu geçici arıza sayıp kimseyi engellemiyor (lib/access.ts). */
+    if (lisansHatasi) {
+      console.error("[bridge] kurum lisansı okunamadı", product, lisansHatasi.message);
+      return json(503, { error: "unavailable" });
+    }
+    return json(200, {
+      status: lisans?.status ?? "inactive",
+      access: kurumLisansiAcik(lisans),
+      trialEndsAt: lisans?.status === "trialing" ? lisans.trial_ends_at : null,
+      currentPeriodEnd: lisans?.current_period_end ?? null,
+      monthlyFee: null,
+      organization: true,
+    });
   }
 
   if (action === "ensure") return json(200, state(subscriber, monthlyFee));

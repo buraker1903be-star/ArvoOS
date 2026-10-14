@@ -71,6 +71,57 @@ async function updateSubscriber__impl(formData: FormData) {
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
+/*
+  Bireysel aboneyi kurum lisansına taşır ya da geri alır (14.10.2026).
+
+  Kurumla anlaşma yapılınca personelin önceden açtığı bireysel abonelik
+  bireysel sayılmaya devam ediyordu. Satır silinmiyor (ödeme geçmişi ona
+  bağlı); kurum_id yazılıyor ve köprü erişimi kurumun lisansından veriyor
+  (app/api/bridge/subscription).
+
+  Kurumun o ürün için lisans satırı yoksa taşıma reddedilir: kişinin
+  erişimi taşındığı anda kapanırdı.
+*/
+async function setSubscriberOrganization__impl(formData: FormData) {
+  const { supabase, isPlatformOwner } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const subscriberId = String(formData.get("subscriber_id") ?? "").trim();
+  const kurumId = String(formData.get("kurum_id") ?? "").trim();
+  if (!subscriberId) throw new Error("Abone seçilmedi.");
+
+  const { data: abone, error: aboneHatasi } = await supabase.from("product_subscribers")
+    .select("id,product").eq("id", subscriberId).maybeSingle();
+  if (aboneHatasi) throw new Error(`Abone okunamadı: ${aboneHatasi.message}`);
+  if (!abone) throw new Error("Abone bulunamadı.");
+
+  if (kurumId) {
+    const { data: lisans, error: lisansHatasi } = await supabase.from("organization_product_licenses")
+      .select("status").eq("organization_id", kurumId).eq("product", abone.product).maybeSingle();
+    if (lisansHatasi) throw new Error(`Kurum lisansı okunamadı: ${lisansHatasi.message}`);
+    if (!lisans) throw new Error(`Kurumun ${productName(abone.product)} lisansı yok; önce kuruma ürünü açın.`);
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("product_subscribers").update({
+    kurum_id: kurumId || null,
+    kuruma_gecti_at: kurumId ? now : null,
+    updated_by: userData.user?.id ?? null,
+    updated_at: now,
+  }).eq("id", subscriberId);
+  if (error) throw new Error(`Abone güncellenemedi: ${error.message}`);
+
+  revalidatePath("/panel/platform/subscribers");
+  revalidatePath("/panel/platform/musteriler");
+}
+
+export async function setSubscriberOrganization(...args: Parameters<typeof setSubscriberOrganization__impl>) {
+  const [veri] = args;
+  return runPanelAction(() => setSubscriberOrganization__impl(...args),
+    veri.get("kurum_id") ? "Abone kurum lisansına taşındı" : "Abone yeniden bireysel abone");
+}
+
 export async function updateProductPlan(...args: Parameters<typeof updateProductPlan__impl>) {
   return runPanelAction(() => updateProductPlan__impl(...args), "Plan kaydedildi");
 }

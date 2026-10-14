@@ -51,7 +51,8 @@ export default async function UrunlerPage({ searchParams }: {
   const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, arvolab, arc, randevu] = await Promise.all([
     supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye,grup_markasi"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
-    supabase.from("product_subscribers").select("product,status"),
+    // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
+    supabase.from("product_subscribers").select("product,status").is("kurum_id", null),
     getArvolabBridgeHealth(),
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),

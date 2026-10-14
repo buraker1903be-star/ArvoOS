@@ -167,8 +167,10 @@ export default async function MusterilerPage({ searchParams }: {
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
       .order("name"),
+    // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,created_at", { count: "exact" })
+      .is("kurum_id", null)
       .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
     // Ek ürün lisansları: kiracı başına birkaç satır, bilerek sınırsız (rozet ve aylık toplam).
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),

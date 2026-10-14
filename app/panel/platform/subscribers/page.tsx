@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { KKart, KNot } from "../konsol-ui";
+import { KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
-import { updateProductPlan, updateSubscriber } from "./actions";
+import { setSubscriberOrganization, updateProductPlan, updateSubscriber } from "./actions";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { AboneListesi } from "./abone-listesi";
@@ -46,14 +46,33 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
     durumda bunu yazıyoruz.
   */
   const LISTE_SINIRI = 1000;
-  const [{ data: planData }, { data: subscriberData, count, error }, fiyatlar] = await Promise.all([
+  const [{ data: planData }, { data: subscriberData, count, error }, fiyatlar, { data: kurumdakiSatirlar, error: kurumdakiHatasi }, { data: kurumSatirlari }, { data: urunLisansSatirlari }] = await Promise.all([
     supabase.from("product_plans").select("product,individual_monthly_fee,trial_days"),
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,suspension_reason,created_at", { count: "exact" })
+      // Kuruma geçmiş abone bireysel sayılmaz (sağdaki "Kurum lisansında" kartı).
+      .is("kurum_id", null)
       .order("created_at", { ascending: false }).limit(LISTE_SINIRI),
     yayimlananFiyatlar(),
+    /* Kurum lisansına geçenler: kurum anlaşmasıyla gelen kişi sayısı kadar,
+       bilerek sınırsız (toplam ya da gelir hesaplanmıyor, yalnızca liste). */
+    supabase.from("product_subscribers").select("id,product,email,full_name,kurum_id,kuruma_gecti_at")
+      .not("kurum_id", "is", null).order("kuruma_gecti_at", { ascending: false }),
+    supabase.from("organizations").select("id,name,display_name").order("name"),
+    // Taşıma seçeneği: yalnızca o ürünün lisansı olan kurumlar.
+    supabase.from("organization_product_licenses").select("organization_id,product"),
   ]);
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
+  if (kurumdakiHatasi) throw new Error(`Kuruma geçen aboneler okunamadı: ${kurumdakiHatasi.message}`);
+  const kurumAdi = new Map(((kurumSatirlari ?? []) as { id: string; name: string; display_name: string | null }[]).map((k) => [k.id, k.display_name || k.name]));
+  const kurumdakiler = (kurumdakiSatirlar ?? []) as { id: string; product: string; email: string; full_name: string | null; kurum_id: string; kuruma_gecti_at: string | null }[];
+  const lisansliKurumlar = new Map<string, { id: string; ad: string }[]>();
+  for (const satir of (urunLisansSatirlari ?? []) as { organization_id: string; product: string }[]) {
+    const ad = kurumAdi.get(satir.organization_id);
+    if (!ad) continue;
+    lisansliKurumlar.set(satir.product, [...(lisansliKurumlar.get(satir.product) ?? []), { id: satir.organization_id, ad }]);
+  }
+  for (const liste of lisansliKurumlar.values()) liste.sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
 
   /* Listede karşılığı olan ürünün (ArvoLab → Araştırmacı) ücreti
      yayımlanmış fiyat listesinden; köprü de oradan tahsil ediyor. */
@@ -136,6 +155,8 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
         ) : null}
         <AboneListesi
           kaydet={updateSubscriber}
+          tasi={setSubscriberOrganization}
+          kurumlar={Object.fromEntries(lisansliKurumlar)}
           durum={durum}
           aboneler={subscribers.map((subscriber) => {
             const open = hasAccess(subscriber);
@@ -177,6 +198,30 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
           (StgSection kartları). Liste sayfasında asıl alanı abone listesi
           alıyor; iki kısa form dar yan sütuna sığıyor.
         */}
+        {/* Kurum anlaşmasıyla gelen kişiler (14.10.2026): bireysel listede
+            ve sayılarda yoklar; erişimleri kurumun lisansıyla açılıp kapanıyor. */}
+        {kurumdakiler.length ? (
+          <KKart baslik="Kurum lisansında" aciklama="Bireysel değil; erişim kurumun lisansından" sag={<span className="status-pill" data-tone="info">{kurumdakiler.length}</span>}>
+            <KListe>
+              {kurumdakiler.map((kisi) => (
+                <KOge
+                  key={kisi.id}
+                  simge={kisi.full_name || kisi.email}
+                  baslik={kisi.full_name || kisi.email}
+                  alt={[kurumAdi.get(kisi.kurum_id) ?? "Kurum", productName(kisi.product), kisi.full_name ? kisi.email : null].filter(Boolean).join(" · ")}
+                  sonu={(
+                    <form action={setSubscriberOrganization}>
+                      <input type="hidden" name="subscriber_id" value={kisi.id} />
+                      <input type="hidden" name="kurum_id" value="" />
+                      <button type="submit" className="panel-secondary" aria-label={`${kisi.full_name || kisi.email} bireysel aboneliğe geri al`}>Bireysele al</button>
+                    </form>
+                  )}
+                />
+              ))}
+            </KListe>
+          </KKart>
+        ) : null}
+
         <KKart
           id="planlar"
           baslik="Bireysel planlar"

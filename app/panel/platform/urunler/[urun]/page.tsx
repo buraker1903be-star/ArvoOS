@@ -55,7 +55,7 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       : supabase.from("organization_product_licenses")
           .select("organization_id,status,plan_code,monthly_fee,current_period_end,trial_ends_at").eq("product", urun),
     bireyselVar
-      ? supabase.from("product_subscribers").select("status").eq("product", urun)
+      ? supabase.from("product_subscribers").select("status").eq("product", urun).is("kurum_id", null)
       : Promise.resolve({ data: [] }),
     yayimlananFiyatlar(),
     urun === "arc" ? getArcBridgeHealth().then((h) => ({ ok: h.ok, not: h.ok ? "Köprü sağlıklı" : h.missing.length ? `Eksik ayar: ${h.missing.join(", ")}` : "Köprü yanıt vermiyor" }))
