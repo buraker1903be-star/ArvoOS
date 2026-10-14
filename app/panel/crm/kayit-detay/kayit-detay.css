@@ -219,6 +219,22 @@
   .cari-hareket-metin b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .cari-hareketler .status-pill{min-width:0}
   .kayit-serit{gap:var(--sp-3)}
+  /*
+    ŞERİT TELEFONDA EŞİT İKİ SÜTUN (15.10.2026).
+
+    Şerit flex ve kutular İÇERİK genişliğindeydi: dar ekranda "Tüm kayıt"
+    ile "Kurumsal" 174px olup yan yana geliyor, etiketi uzun olan
+    ("Dikkat gerektiren", 220px) eşleşemeyip tek başına kalıyordu.
+    Sonuç 2 + 1 + 1 tırtıklı bir dizilim ve her sayfada farklı bir kırılma
+    noktası — telefonda bakınca bozuk görünüyor.
+
+    Izgara, kutuların genişliğini etiketten bağımsız kılıyor: sayı ne
+    olursa olsun hizalı iki sütun. Tek kalan son kutu satırın tamamına
+    yayılıyor (beş kutulu Sistem Sağlığı şeridi böyle).
+  */
+  .kayit-serit dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3) var(--sp-5)}
+  .kayit-serit dl>div{min-width:0}
+  .kayit-serit dl>div:last-child:nth-child(odd){grid-column:1/-1}
 }
 
 /* Personel detayı */

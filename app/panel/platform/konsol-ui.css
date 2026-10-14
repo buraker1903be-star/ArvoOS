@@ -142,3 +142,34 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
    bir ayraçla iki grup. */
 .os-root .ekip-suzgec.k-ikinci-suzgec{margin-top:calc(var(--sp-2) * -1);padding-top:0;border-top:0}
 .k-suzgec-ayrac{flex:none;align-self:center;width:1px;height:18px;margin:0 var(--sp-1);background:var(--line)}
+
+/*
+  TELEFONDA SÜZGEÇ RAYI (15.10.2026).
+
+  Konsolun liste sayfalarında süzgeç çipleri sarmalanıyordu: 375 piksel
+  ekranda Müşteriler'in iki süzgeç bloğu 246 piksel yer kaplıyor,
+  başlık ve şeritle birlikte 812 pikselin 720'si ilk müşteri satırından
+  ÖNCE tükeniyordu — telefonda listeyi açınca liste görünmüyordu.
+
+  Çipler artık tek sıra, yatay kaydırılabilir bir ray (telefon
+  uygulamalarının alışılmış kalıbı). Kaydırma çubuğu gizli; dokunmatikte
+  zaten parmakla kaydırılıyor, farede ray görünmüyor çünkü bu kural
+  yalnızca dar ekranda.
+
+  ARAMA KUTUSU RAYIN İÇİNDE DEĞİL. Masaüstünde çiplerle aynı satırda
+  duruyor ve orası doğru; bu yüzden çipler `display:contents` olan bir
+  sarmalayıcıya alındı: geniş ekranda sarmalayıcı yokmuş gibi davranıyor
+  (çipler doğrudan flex çocuğu kalıyor), dar ekranda ray oluyor ve form
+  kendi satırına iniyor.
+*/
+@media (max-width:760px){
+  .os-root main.plt .suzgec-ray{
+    display:flex;flex:1 1 100%;min-width:0;gap:inherit;
+    flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  }
+  .os-root main.plt .suzgec-ray::-webkit-scrollbar{display:none}
+  .os-root main.plt .suzgec-ray>*{flex:0 0 auto}
+  .os-root main.plt .ekip-suzgec>.talep-ara{flex:1 1 100%;min-width:0}
+}
+/* Geniş ekranda sarmalayıcı yokmuş gibi: çipler doğrudan flex çocuğu. */
+.suzgec-ray{display:contents}

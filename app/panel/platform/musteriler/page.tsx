@@ -386,6 +386,9 @@ export default async function MusterilerPage({ searchParams }: {
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Müşteri listesi">
         <div className="ekip-suzgec talep-suzgec">
+          {/* Çipler rayda: telefonda tek sıra kaydırılabilir, masaüstünde
+              sarmalayıcı display:contents olduğu için hiç yokmuş gibi. */}
+          <div className="suzgec-ray">
           <Link href={adres({ tur: null })} className={!secilenTur ? "is-active" : undefined}>Tümü <small>{sayi(tumSatirlar.length)}</small></Link>
           <Link href={adres({ tur: "kurumsal" })} className={secilenTur === "kurumsal" ? "is-active" : undefined}>Kurumsal <small>{sayi(musteriKurumlari.length)}</small></Link>
           <Link href={adres({ tur: "bireysel" })} className={secilenTur === "bireysel" ? "is-active" : undefined}>Bireysel <small>{sayi(bireyselSatirlar.length)}</small></Link>
@@ -393,6 +396,7 @@ export default async function MusterilerPage({ searchParams }: {
           {/* Arvo'nun kendi kaydı ayrı çipte: grup markası değil, kuralın
               üçüncü türü (lib/kurum-turu). */}
           {arvoSatirlar.length ? <Link href={adres({ tur: "arvo" })} className={secilenTur === "arvo" ? "is-active" : undefined}>Arvo <small>{sayi(arvoSatirlar.length)}</small></Link> : null}
+          </div>
           <form action="/panel/platform/musteriler" className="talep-ara" role="search">
             {secilenTur ? <input type="hidden" name="tur" value={secilenTur} /> : null}
             {secilenUrun ? <input type="hidden" name="urun" value={secilenUrun} /> : null}
@@ -402,6 +406,7 @@ export default async function MusterilerPage({ searchParams }: {
         </div>
         {/* İkinci satır: ürüne göre süz ve sırala (seçimler adreste). */}
         <div className="ekip-suzgec talep-suzgec k-ikinci-suzgec">
+          <div className="suzgec-ray">
           <Link href={adres({ urun: null })} className={!secilenUrun ? "is-active" : undefined}>Bütün ürünler</Link>
           {PRODUCTS.map((p) => (
             <Link key={p.code} href={adres({ urun: p.code })} className={secilenUrun === p.code ? "is-active" : undefined}>
@@ -412,6 +417,7 @@ export default async function MusterilerPage({ searchParams }: {
           {SIRALAR.map((x) => (
             <Link key={x.kod} href={adres({ sira: x.kod })} className={secilenSira === x.kod ? "is-active" : undefined} aria-current={secilenSira === x.kod ? "true" : undefined}>{x.ad}</Link>
           ))}
+          </div>
         </div>
 
         {eksikKapsam ? (
