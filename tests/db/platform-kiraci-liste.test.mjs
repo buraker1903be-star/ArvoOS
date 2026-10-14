@@ -21,9 +21,6 @@ import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = [
-  /* Görünümün paketi lisanstan okuması henüz dökümde değil; migration
-     canlıya uygulanıp anlık görüntü yenilenince bu satır düşer. */
-  "20261014205949_kiraci_listesi_lisans_paketi.sql",
   /* Üyelik okuma politikası (yönetici kendi kurumunu görsün) henüz
      dökümde değil; görünümün kapsam senaryosu ona dayanıyor. */
   "20261011224845_uyelik_guncelleme_politikasi.sql",
