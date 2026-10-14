@@ -22,6 +22,7 @@
 import { createAdminClient } from "./supabase/admin";
 import { cronDurumlari, cronSorunlari, cronUyarisi, type CronKaydi, type CronSonucu } from "./cron-isleri";
 import { todayInIstanbul } from "./istanbul-date";
+import { kurucuyaBildir } from "./kurucu-bildirimi";
 
 export type CronKosusu = {
   yanit: Response;
@@ -74,7 +75,9 @@ type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
   GÜNDE EN FAZLA BİR BİLDİRİM (iş başına). Posta eşitlemesi iki dakikada
   bir koşuyor: anahtarsız bir uyarı aynı arızayı günde 720 kez
   bildirirdi ve zil okunmaz olurdu. Gün anahtarı Türkiye gününe göre
-  (AGENTS.md).
+  (AGENTS.md); sorun sürüyorsa ertesi gün yeniden bildiriliyor. Tekrar
+  engelinin kendisi lib/kurucu-bildirimi'nde — ikinci bir üretici
+  eklenirken o kuralı yeniden kurmak unutulmasın diye.
 
   Kendi sonucunu da bildiriyor: koşu kaydı az önce yazıldığı için
   görünüm taze satırı görüyor, düşen iş kendi arızasını da söylüyor.
@@ -92,26 +95,15 @@ async function nobet(admin: Admin) {
 
   const gun = todayInIstanbul();
   for (const durum of sorunlar) {
-    const anahtar = `cron:${durum.yol}:${durum.durum}:${gun}`;
-    const { data: onceki, error: oncekiHatasi } = await admin.from("notifications")
-      .select("id").eq("audience", "founder").eq("category", "cron_gecikti")
-      .eq("metadata->>anahtar", anahtar).limit(1);
-    /* Önceki okunamazsa bu iş bu tur atlanıyor: aynı arızayı iki kez
-       bildirmek, bir kez bildirmemekten kötü (zil okunmaz olur). */
-    if (oncekiHatasi || onceki?.length) continue;
-
     const { baslik, metin } = cronUyarisi(durum);
-    const { error: yazmaHatasi } = await admin.from("notifications").insert({
-      organization_id: null,
-      user_id: null,
-      audience: "founder",
-      category: "cron_gecikti",
-      title: baslik,
-      message: metin,
-      action_url: "/panel/platform/saglik",
-      metadata: { anahtar, yol: durum.yol, durum: durum.durum, aralik_dk: durum.aralikDk },
+    await kurucuyaBildir(admin, {
+      kategori: "cron_gecikti",
+      anahtar: `cron:${durum.yol}:${durum.durum}:${gun}`,
+      baslik,
+      metin,
+      adres: "/panel/platform/saglik",
+      ek: { yol: durum.yol, durum: durum.durum, aralik_dk: durum.aralikDk },
     });
-    if (yazmaHatasi) console.error("[cron] uyarı yazılamadı", durum.yol, yazmaHatasi.message);
   }
 }
 

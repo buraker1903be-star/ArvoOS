@@ -123,6 +123,39 @@ test("gün anahtarı süzgeci satırı buluyor; başka günün anahtarı bulmuyo
   });
 });
 
+/*
+  İKİ ÜRETİCİ, AYRI ANAHTAR UZAYI. Tekrar engeli kategoriyle BİRLİKTE
+  süzüyor (lib/kurucu-bildirimi): ArvoLab köprüsü uyarısı, aynı günün
+  cron uyarısını bastırmamalı.
+*/
+test("ayrı kategorilerin tekrar engeli birbirini bastırmıyor", async () => {
+  await rol(db, "postgres");
+  await db.exec(`
+    insert into public.notifications (organization_id, user_id, audience, category, title, message, action_url, metadata)
+    values (
+      null, null, 'founder', 'kopru_koptu',
+      'ArvoLab köprüsü yanıt vermiyor',
+      'ArvoLab ArvoOS''a ulaşamıyor: kurum, lisans ve personel kopyası güncellenmiyor.',
+      '/panel/platform/saglik',
+      '{"anahtar":"kopru:arvolab:2026-10-14","urun":"arvolab"}'::jsonb
+    );
+  `);
+  await islem(db, async () => {
+    await rol(db, "authenticated", KURUCU);
+    const say = async (kategori, anahtar) => (await db.query(
+      `select id from public.notifications
+        where audience = 'founder' and category = $1 and metadata->>'anahtar' = $2 limit 1`,
+      [kategori, anahtar],
+    )).rows.length;
+    assert.equal(await say("cron_gecikti", ANAHTAR), 1);
+    assert.equal(await say("kopru_koptu", "kopru:arvolab:2026-10-14"), 1);
+    // Kategori süzgeci olmasaydı ikisi birbirini bulurdu.
+    assert.equal(await say("cron_gecikti", "kopru:arvolab:2026-10-14"), 0);
+    const { rows } = await db.query(`select id from public.notifications where audience = 'founder'`);
+    assert.equal(rows.length, 2, "kurucu iki uyarıyı da görüyor");
+  });
+});
+
 test("tanınmayan audience reddediliyor", async () => {
   await islem(db, async () => {
     await rol(db, "postgres");

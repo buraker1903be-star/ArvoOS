@@ -362,13 +362,15 @@ export async function describeNotifications(
         };
       }
       /*
-        Zamanlanmış iş gecikti ya da düştü (lib/cron-kaydi nöbeti). Kurucu
-        bildirim kanalının ilk üreticisi: zil, canlı akış ve liste ekranı
+        Zamanlanmış iş gecikti/düştü (lib/cron-kaydi nöbeti) ya da ArvoLab
+        köprüsü koptu (günlük denetim). Kurucu bildirim kanalının ilk
+        üreticileri: zil, canlı akış ve liste ekranı
         hazırdı ama hiçbir yer satır yazmıyordu. Varsayılan dal da bu satırı
         okunur gösteriyordu ama "Bildirim · nötr" diye; duran bir eşitleme
         işi kurucunun aynı gün bakması gereken bir şey.
       */
       case "cron_gecikti":
+      case "kopru_koptu":
         return {
           ...base,
           label: "Sistem",

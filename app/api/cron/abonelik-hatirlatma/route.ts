@@ -6,7 +6,8 @@ import { abonelikAnahtari, abonelikBildirimi, abonelikKademesi } from "@/lib/abo
 import { yetkisiOlanlar } from "@/lib/kisi-yetkileri";
 import { donemTutari } from "@/lib/abonelik-tutari";
 import { musteriMi } from "@/lib/kurum-turu";
-import { syncArvolabLicense } from "@/lib/arvolab";
+import { getArvolabBridgeHealth, syncArvolabLicense } from "@/lib/arvolab";
+import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 
 export const runtime = "nodejs";
@@ -62,6 +63,43 @@ export async function GET(istek: Request) {
   return cronRotasi("/api/cron/abonelik-hatirlatma", kosu);
 }
 
+/*
+  ARVOLAB KÖPRÜSÜ GÜNDE BİR DENETLENİYOR.
+
+  ArvoARC ve Randevu'nun eşitleme cron'u var: köprüleri koptuğunda o iş
+  hata veriyor ve koşma nöbeti (lib/cron-kaydi) kurucuya bildiriyor.
+  ArvoLab'ın eşitleme cron'u YOK — köprüsünün durumu yalnızca Sistem
+  Sağlığı ekranı açıldığında okunuyordu ve o ekranın kendi yorumu
+  "kurucu aylar sonra fark ediyordu" diyor.
+
+  Koşul sağlık ekranının "Yanıt vermiyor" dediğinin aynısı: son hata son
+  başarıdan yeni (lib/arvolab getArvolabBridgeHealth). BAYATLIK
+  denetlenmiyor — last_ok_at'i ArvoLab yazıyor ve nabızla mı kullanıcı
+  etkinliğiyle mi yazdığı bu depodan görünmüyor; sessiz bir günü "köprü
+  öldü" diye bildirmek yanlış alarm olurdu.
+
+  Fırlatmıyor: köprü okunamadıysa hatırlatma işi devam ediyor.
+*/
+async function arvolabKoprusunuDenetle(admin: ReturnType<typeof createAdminClient>, gun: string) {
+  if (!admin) return;
+  try {
+    const saglik = await getArvolabBridgeHealth();
+    if (!saglik?.broken) return;
+    await kurucuyaBildir(admin, {
+      kategori: "kopru_koptu",
+      anahtar: `kopru:arvolab:${gun}`,
+      baslik: "ArvoLab köprüsü yanıt vermiyor",
+      metin: saglik.permanent
+        ? "Anahtar eksik ya da iki tarafta farklı: ArvoLab'ın kurum, lisans ve personel kopyası güncellenmiyor."
+        : "ArvoLab ArvoOS'a ulaşamıyor: kurum, lisans ve personel kopyası güncellenmiyor.",
+      adres: "/panel/platform/saglik",
+      ek: { urun: "arvolab", kalici: saglik.permanent, son_hata: saglik.lastError },
+    });
+  } catch (hata) {
+    console.error("[abonelik] ArvoLab köprüsü denetlenemedi", hata instanceof Error ? hata.message : hata);
+  }
+}
+
 async function kosu(): Promise<CronKosusu> {
   const admin = createAdminClient();
   if (!admin) return {
@@ -83,6 +121,8 @@ async function kosu(): Promise<CronKosusu> {
   for (const satir of isaret.urun.filter((u) => u.product === "arvolab")) await syncArvolabLicense(satir.organization_id);
 
   const bugun = todayInIstanbul();
+  await arvolabKoprusunuDenetle(admin, bugun);
+
   const [{ data: lisanslar, error }, { data: cekirdekler, error: cekirdekHatasi }] = await Promise.all([
     admin.from("organization_product_licenses")
       .select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at")
