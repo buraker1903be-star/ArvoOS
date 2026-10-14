@@ -2,7 +2,8 @@
 // Sayfalar yalnızca bu yardımcıları çağırır; SEO/GEO ajanı içeriği
 // zenginleştirebilir ama İMZALARI DEĞİŞTİRMEZ.
 import { COMPANY, PRODUCT_APPS, ROUTES, SITE_ORIGIN, absoluteUrl, LOCALE_TAGS, resolvePath, type Locale } from "./routes";
-import { KDV_HARIC, PARA_BIRIMI, PRICED_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi, yillikKurus } from "./pricing";
+import { KDV_HARIC, PARA_BIRIMI, PRICED_PRODUCTS, YILLIK_ODENEN_AY, ldFiyat, planlar, urunAdi, urunAdresi } from "./pricing";
+import { planTutari, planYillikTutari, type Fiyatlar } from "./fiyat-kaynagi";
 
 type Json = Record<string, unknown>;
 
@@ -164,21 +165,25 @@ export function webPageLd(p: { name: string; description: string; path: string; 
   verilir; applicationCategory gibi alanlar ürün sayfasında kalır, iki yerde
   farklı değer yazmak birleştirmeyi bozar.
 */
-export function pricingLd(locale: Locale): Json[] {
+export function pricingLd(locale: Locale, fiyatlar?: Fiyatlar): Json[] {
   const sayfa = absoluteUrl(ROUTES.pricing[locale]);
   return PRICED_PRODUCTS.map((product) => {
     const { href, external } = urunAdresi(product, locale);
     const url = external ? href : absoluteUrl(href);
     const teklifler = planlar(product).flatMap((plan) => {
-      const yillik = yillikKurus(plan);
-      if (plan.aylikKurus === null || yillik === null) return [];
+      /* Tutar konsoldan yayımlanmış olabilir; yoksa koddaki değer
+         (lib/site/fiyat-kaynagi). JSON-LD ile ekrandaki rakam aynı
+         kaynaktan gelmezse arama motoruna yanlış fiyat gider. */
+      const aylik = planTutari(plan, fiyatlar);
+      const yillik = planYillikTutari(plan, fiyatlar);
+      if (aylik === null || yillik === null) return [];
       const ortak = { priceCurrency: PARA_BIRIMI, valueAddedTaxIncluded: !KDV_HARIC };
       return [{
         "@type": "Offer",
         sku: plan.code,
         name: `${urunAdi(product)} ${plan.ad[locale]}`,
         url: sayfa,
-        price: ldFiyat(plan.aylikKurus),
+        price: ldFiyat(aylik),
         availability: "https://schema.org/InStock",
         ...ortak,
         // Koltuk başı basamaklarda fiyatın neyin başına olduğu yazılmalı;
@@ -186,7 +191,7 @@ export function pricingLd(locale: Locale): Json[] {
         ...(plan.kisiBasi ? { referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitText: "user" } } : {}),
         ...(plan.enAzKullanici ? { eligibleQuantity: { "@type": "QuantitativeValue", minValue: plan.enAzKullanici, unitText: "user" } } : {}),
         priceSpecification: [
-          { "@type": "UnitPriceSpecification", price: ldFiyat(plan.aylikKurus), ...ortak, billingDuration: 1, billingIncrement: 1, unitCode: "MON" },
+          { "@type": "UnitPriceSpecification", price: ldFiyat(aylik), ...ortak, billingDuration: 1, billingIncrement: 1, unitCode: "MON" },
           // Yıllık bedel 10 aylık: billingDuration 12 ay, tutar dönem başında tek seferde.
           { "@type": "UnitPriceSpecification", price: ldFiyat(yillik), ...ortak, billingDuration: 12, billingIncrement: YILLIK_ODENEN_AY, unitCode: "MON" },
         ],

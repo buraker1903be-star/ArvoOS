@@ -1,8 +1,14 @@
-// Ücretler sayfası (TR + EN aynı görünümü kullanır). Tutarlar yalnızca
-// lib/site/pricing.ts'ten; metin _content/pricing(-en).ts'ten gelir.
+// Ücretler sayfası (TR + EN aynı görünümü kullanır). Metin
+// _content/pricing(-en).ts'ten gelir.
+//
+// TUTAR İKİ KATMANLI (14.10.2026): basamağın kendisi ve varsayılan tutarı
+// lib/site/pricing.ts'te, kurucunun konsoldan yayımladığı tutar
+// veritabanında. `fiyatlar` verilmezse koddaki değer geçerli — veritabanı
+// okunamadığında sayfa fiyatsız kalmıyor.
 import Link from "next/link";
 import { ROUTES, type Locale } from "@/lib/site/routes";
-import { PLANS, ADD_ONS, tutarYaz, yillikKurus, urunAdi, urunAdresi } from "@/lib/site/pricing";
+import { PLANS, tutarYaz, urunAdi, urunAdresi } from "@/lib/site/pricing";
+import { ekKalemTutari, planTutari, planYillikTutari, type Fiyatlar } from "@/lib/site/fiyat-kaynagi";
 import { JsonLd, breadcrumbLd, faqLd, pricingLd, webPageLd } from "@/lib/site/structured-data";
 import type { PricingContent } from "../_content/types";
 import { Check } from "../_components/marks";
@@ -10,7 +16,6 @@ import { PriceCycle } from "../_components/price-cycle";
 import { Actions, CtaBand, Faq, PageHero, SectionHead } from "../_components/ui";
 
 const planByCode = new Map(PLANS.map((p) => [p.code, p]));
-const addOnByCode = new Map(ADD_ONS.map((a) => [a.code, a]));
 
 /** Tutar + birim. Teklif usulü basamakta rakam yerine "Teklif" yazılır. */
 function Fiyat({ kurus, suffix, locale }: { kurus: number; suffix: string; locale: Locale }) {
@@ -22,7 +27,12 @@ function Fiyat({ kurus, suffix, locale }: { kurus: number; suffix: string; local
   );
 }
 
-export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }) {
+export function PricingView({ locale, c, fiyatlar }: {
+  locale: Locale;
+  c: PricingContent;
+  /** Konsoldan yayımlanmış tutarlar; verilmezse koddaki değerler geçerli. */
+  fiyatlar?: Fiyatlar;
+}) {
   const tr = locale === "tr";
   const path = ROUTES.pricing[locale];
   const crumbs = [
@@ -67,7 +77,8 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
                       {group.cards.map((card, i) => {
                         const plan = planByCode.get(card.code);
                         if (!plan) return null;
-                        const yillik = yillikKurus(plan);
+                        const aylik = planTutari(plan, fiyatlar);
+                        const yillik = planYillikTutari(plan, fiyatlar);
                         return (
                           <article
                             key={card.code}
@@ -77,11 +88,11 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
                             style={{ ["--i" as string]: i % 3 }}
                           >
                             <h4>{plan.ad[locale]}</h4>
-                            {plan.aylikKurus === null || yillik === null ? (
+                            {aylik === null || yillik === null ? (
                               <p className="price"><span className="price-quote">{c.cycle.quote}</span></p>
                             ) : (
                               <p className="price">
-                                <span className="price-m"><Fiyat kurus={plan.aylikKurus} suffix={plan.kisiBasi ? c.cycle.perMonthUser : c.cycle.perMonth} locale={locale} /></span>
+                                <span className="price-m"><Fiyat kurus={aylik} suffix={plan.kisiBasi ? c.cycle.perMonthUser : c.cycle.perMonth} locale={locale} /></span>
                                 <span className="price-y"><Fiyat kurus={yillik} suffix={plan.kisiBasi ? c.cycle.perYearUser : c.cycle.perYear} locale={locale} /></span>
                               </p>
                             )}
@@ -104,13 +115,13 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
             {/* Kart yerine satır: dört ek kalem, dört kutu kadar yer kaplamasın. */}
             <dl className="addon-list" data-reveal>
               {c.addOns.items.map((item) => {
-                const addOn = addOnByCode.get(item.code);
+                const ekTutar = ekKalemTutari(item.code, fiyatlar);
                 return (
                   <div className="addon-row" key={item.code}>
                     <dt>{item.name}</dt>
                     <dd className="addon-price">
-                      {addOn?.aylikKurus
-                        ? <><b>{tutarYaz(addOn.aylikKurus, locale)} TL</b><small>{c.cycle.perMonth}</small></>
+                      {ekTutar
+                        ? <><b>{tutarYaz(ekTutar, locale)} TL</b><small>{c.cycle.perMonth}</small></>
                         : <span className="price-quote">{c.addOns.quote}</span>}
                     </dd>
                     <dd className="addon-text">{item.text}</dd>
@@ -145,7 +156,7 @@ export function PricingView({ locale, c }: { locale: Locale; c: PricingContent }
         webPageLd({ name: c.meta.title, description: c.meta.description, path, locale }),
         breadcrumbLd(crumbs.map((x) => ({ name: x.name, path: x.href }))),
         faqLd(c.faq.items),
-        ...pricingLd(locale),
+        ...pricingLd(locale, fiyatlar),
       ]} />
     </>
   );

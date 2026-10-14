@@ -16,7 +16,7 @@
   Saf değil (veritabanına dokunuyor); kuralın saf kısmı `fiyatlariBirlestir`
   ve birim testi tests/unit/fiyat-kaynagi.test.ts.
 */
-import { ADD_ONS, PLANS } from "./pricing";
+import { ADD_ONS, PLANS, YILLIK_ODENEN_AY, type Plan } from "./pricing";
 
 export type FiyatSatiri = { kod: string; aylikKurus: number | null };
 
@@ -40,3 +40,27 @@ export function fiyatlariBirlestir(yayimlanan: FiyatSatiri[]): Map<string, numbe
 /** Çözülmüş tutarı okur; kod bilinmiyorsa null. */
 export const cozulmusTutar = (fiyatlar: Map<string, number | null>, kod: string): number | null =>
   fiyatlar.get(kod) ?? null;
+
+/** Çözülmüş fiyat tablosu; anahtar plan ya da ek kalem kodu. */
+export type Fiyatlar = Map<string, number | null>;
+
+/**
+ * Basamağın geçerli aylık tutarı.
+ *
+ * Tablo verilmezse koddaki değer kullanılıyor: ücretler sayfası
+ * veritabanına ulaşamadığında da fiyat gösteriyor.
+ */
+export const planTutari = (plan: Plan, fiyatlar?: Fiyatlar): number | null =>
+  fiyatlar?.has(plan.code) ? fiyatlar.get(plan.code) ?? null : plan.aylikKurus;
+
+/** Yıllık bedel: aylığın tam katı, bölme ve yuvarlama yok. */
+export const planYillikTutari = (plan: Plan, fiyatlar?: Fiyatlar): number | null => {
+  const aylik = planTutari(plan, fiyatlar);
+  return aylik === null ? null : aylik * YILLIK_ODENEN_AY;
+};
+
+/** Ek kalemin geçerli aylık tutarı. */
+export const ekKalemTutari = (kod: string, fiyatlar?: Fiyatlar): number | null => {
+  if (fiyatlar?.has(kod)) return fiyatlar.get(kod) ?? null;
+  return ADD_ONS.find((kalem) => kalem.code === kod)?.aylikKurus ?? null;
+};
