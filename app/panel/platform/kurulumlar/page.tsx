@@ -42,7 +42,7 @@ const ACIK_LISANS = new Set(["active", "trialing", "past_due"]);
 const BEKLEYEN = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
 type Kiraci = {
-  id: string; name: string; slug: string; display_name: string | null; kind: string | null;
+  id: string; name: string; slug: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null;
   provisioning_state: string; contact_phone: string | null;
   license_status: string | null; plan_code: string | null;
   monthly_fee: number | null; trial_ends_at: string | null;
@@ -68,7 +68,7 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const [kiraciSonucu, planSonucu, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi")
+      .select("id,name,slug,display_name,kind,grup_markasi,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi")
       .order("name"),
     supabase.from("plans").select("code,name").eq("is_active", true).order("code"),
     // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).

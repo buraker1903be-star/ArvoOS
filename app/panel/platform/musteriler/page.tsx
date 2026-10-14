@@ -58,7 +58,7 @@ type Kurum = {
   user_limit: number | null;
   aktif_uye: number;
   contact_phone: string | null;
-  grup_markasi?: boolean | null;
+  grup_markasi: boolean | null;
 };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 

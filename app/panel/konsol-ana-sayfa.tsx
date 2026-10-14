@@ -84,7 +84,7 @@ function selamlama() {
 const hatirlatmalariHesapla = (lisanslar: RenewalLicense[], kurumlar: RenewalOrganization[]) =>
   renewalReminders(lisanslar, kurumlar, Date.now());
 
-type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null; grup_markasi?: boolean | null };
+type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; provisioning_state: string; contact_phone: string | null; grup_markasi: boolean | null };
 type CekirdekLisans = { organization_id: string; license_status: string; monthly_fee: number | null; user_limit: number; storage_limit_mb: number };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
 type KurulumKaydi = { id: number | string; organization_id: string; action: string; result: string | null; state: string | null; created_at: string };

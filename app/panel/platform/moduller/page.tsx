@@ -40,7 +40,10 @@ const KISA_ADI: Record<string, string> = {
   suspended: "Askıda", canceled: "İptal", inactive: "Kapalı",
 };
 
-type Kurum = { id: string; name: string; display_name: string | null; kind: string | null };
+/* grup_markasi ZORUNLU: kurumTuru onu isteğe bağlı alıyor ve seçilmediğinde
+   grup markasını sessizce "müşteri" sayıyor — kart 14.10.2026'da tam bu
+   yüzden "Grup markası 0" dedi (sorgu sütunu hiç istemiyordu). */
+type Kurum = { id: string; name: string; display_name: string | null; kind: string | null; grup_markasi: boolean | null };
 type UrunLisansi = { organization_id: string; product: string; status: string; integrated: boolean | null };
 type CekirdekLisans = { organization_id: string; license_status: string };
 
@@ -50,7 +53,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
   const { suzgec } = await searchParams;
 
   const [{ data: kurumlar, error }, { data: urunLisanslari }, { data: cekirdek }] = await Promise.all([
-    supabase.from("organizations").select("id,name,display_name,kind").order("name"),
+    supabase.from("organizations").select("id,name,display_name,kind,grup_markasi").order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,integrated"),
     supabase.from("organization_licenses").select("organization_id,license_status"),
   ]);

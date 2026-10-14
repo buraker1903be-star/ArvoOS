@@ -17,12 +17,24 @@
 */
 export type KurumTuru = "arvo" | "grup" | "musteri";
 
-export function kurumTuru(kurum: { kind?: string | null; grup_markasi?: boolean | null } | null | undefined): KurumTuru {
+/*
+  İKİ ALAN DA ZORUNLU (14.10.2026).
+
+  Eskiden ikisi de isteğe bağlıydı ve bu, sütunu SEÇMEYİ unutan çağıranı
+  sessizce yanıltıyordu: grup_markasi gelmeyince grup markası "müşteri"
+  sayılıyor, ekran da emin emin yanlış söylüyordu. Modül matrisi tam
+  böyle "Grup markası 0" dedi — sorgusu o sütunu hiç istemiyordu.
+
+  Zorunlu olunca TypeScript çağıranı durduruyor: kendi tipine alanı
+  eklemek zorunda, o da sorguya eklemeyi hatırlatıyor. Sütunun varlığını
+  zaten npm run check:schema denetliyor.
+*/
+export function kurumTuru(kurum: { kind: string | null; grup_markasi: boolean | null } | null | undefined): KurumTuru {
   if (kurum?.kind === "internal") return "arvo";
   if (kurum?.grup_markasi) return "grup";
   return "musteri";
 }
 
 /** Gelir, tahsilat ve hatırlatma hesabına giren gerçek müşteri mi? */
-export const musteriMi = (kurum: { kind?: string | null; grup_markasi?: boolean | null } | null | undefined) =>
+export const musteriMi = (kurum: { kind: string | null; grup_markasi: boolean | null } | null | undefined) =>
   kurumTuru(kurum) === "musteri";
