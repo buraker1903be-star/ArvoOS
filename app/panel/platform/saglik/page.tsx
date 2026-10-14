@@ -8,8 +8,9 @@ import { arcKopyalari, getArcBridgeHealth } from "@/lib/arc-bridge";
 import { randevuKopyalari, getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
+import { fazlaVerilen, limitSapmalari } from "@/lib/paket-limitleri";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { para, sayi, tarihSaat } from "../bicim";
+import { PAKET_ADI, para, sayi, tarihSaat } from "../bicim";
 import { KBos, KKart, KListe, KOge } from "../konsol-ui";
 import "../platform.css";
 
@@ -36,7 +37,7 @@ const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
 type Kiraci = {
   id: string; name: string; display_name: string | null; kind: string | null;
-  provisioning_state: string; license_status: string | null;
+  provisioning_state: string; license_status: string | null; plan_code: string | null;
   user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
 };
 
@@ -47,7 +48,7 @@ export default async function SistemSagligiPage() {
 
   const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
-      .select("id,name,display_name,kind,provisioning_state,license_status,user_limit,storage_limit_mb,aktif_uye")
+      .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status"),
     /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
@@ -90,6 +91,31 @@ export default async function SistemSagligiPage() {
       })),
   ).filter((k) => k.durum !== "normal");
 
+  /*
+    PAKETİYLE UYUŞMAYAN LİSANSLAR. Sapma bugüne kadar yalnızca lisans
+    formunda, SEÇİLİ kiracı için görünüyordu: "hangi kiracı paketinden
+    fazlasını alıyor" sorusunu yanıtlamak için kiracıları tek tek açmak
+    gerekiyordu. Kotada aynı boşluk vardı ve kapatılmıştı; bu onun
+    kardeşi — orada hakkından fazlasını KULLANIYOR, burada hakkından
+    fazlası TANIMLANMIŞ.
+
+    Yalnızca FAZLA verilenler listeleniyor: eksik tanımlanmış limit de
+    bir sapma ama kurucunun parasını değil müşterinin hakkını
+    ilgilendiriyor ve lisans ekranında zaten görünüyor.
+  */
+  const limitSapanlar = musteriler
+    .map((k) => ({
+      kiraci: k,
+      /* AI kredisi KIYASLANMIYOR: kiracı görünümünde o sütun yok ve
+         limiti hiçbir kod uygulamıyor (ai_credits_used hiç yazılmıyor,
+         AGENTS.md). Uygulanmayan bir limitin sapmasını "sorun" diye
+         saymak, listeyi okunmaz eden gürültü olurdu. */
+      sapmalar: fazlaVerilen(limitSapmalari(k.plan_code, {
+        userLimit: k.user_limit, storageLimitMb: k.storage_limit_mb, aiCreditLimit: null,
+      })),
+    }))
+    .filter((x) => x.sapmalar.length > 0);
+
   const musteriMi = new Set(musteriler.map((k) => k.id));
   const bayatKopyalar = eskiKopyalar(
     ((urunSatirlari ?? []) as { organization_id: string; product: string; status: string }[])
@@ -106,7 +132,9 @@ export default async function SistemSagligiPage() {
   const kurulumHatalari = (kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[];
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
-  const toplamSorun = kopukKopru + bayatKopyalar.length + kotalar.length + kurulumHatalari.length + odemeOlaylari.length;
+  /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
+     bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
+  const toplamSorun = kopukKopru + bayatKopyalar.length + kotalar.length + limitSapanlar.length + kurulumHatalari.length + odemeOlaylari.length;
 
   return <main className="plt talep cari">
     <header className="talep-bas">
@@ -211,6 +239,29 @@ export default async function SistemSagligiPage() {
           })}
         </KListe>
       ) : <KBos baslik="Kota sorunu yok" aciklama="Limitine yaklaşan kiracı yok." />}
+    </KKart>
+
+    <KKart baslik="Paketiyle uyuşmayan limitler"
+      aciklama="Paketinin varsayılanından FAZLA hak tanımlanmış kiracılar. Sapma hata değil — pazarlıkla genişletilmiş limitler var — ama ücretli bir pakette sessiz sapma, satılmamış koltuğu bedava vermek demek.">
+      {limitSapanlar.length ? (
+        <KListe>
+          {limitSapanlar.map(({ kiraci, sapmalar }) => {
+            const ad = kiraci.display_name || kiraci.name;
+            return (
+              <KOge
+                key={kiraci.id}
+                href={`/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`}
+                simge={ad}
+                baslik={ad}
+                alt={sapmalar.map((x) => `${x.alan}: paket ${sayi(x.paket)} · kiracı ${sayi(x.kiraci)}`).join(" · ")}
+                durum={{ etiket: PAKET_ADI[kiraci.plan_code ?? ""] ?? kiraci.plan_code ?? "paket yok", ton: "warning" }}
+                deger={`+${sayi(sapmalar.length)}`}
+                degerAlt="alan"
+              />
+            );
+          })}
+        </KListe>
+      ) : <KBos baslik="Limitler paketleriyle uyumlu" aciklama="Hiçbir kiracıya paketinin üstünde hak tanımlanmamış." />}
     </KKart>
 
     <KKart baslik="Kurulum hataları">
