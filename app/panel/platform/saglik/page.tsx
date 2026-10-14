@@ -211,7 +211,13 @@ export default async function SistemSagligiPage() {
   /* KAYDI OLMAYAN İŞ "ZAMANINDA KOŞUYOR" DEĞİL. Şerit sorunsuz iş sayısını
      yazıyordu ve kayıt tutmanın ilk gününde "5 / 5 · hepsi zamanında
      koşuyor" diyordu — oysa beşinin hiçbiri henüz koşmamıştı. Pay yalnızca
-     KAYDI OLAN ve sorunsuz işler; bekleyenler alt satırda sayılıyor. */
+     KAYDI OLAN ve sorunsuz işler; bekleyenler alt satırda sayılıyor.
+
+     tuzak-tamam: cronDurum sınırlı bir sorgudan GELMİYOR. Kaynağı
+     platform_cron_durumu (iş başına tek satır, limitsiz) ve uzunluğu
+     vercel.json'daki cron sayısı kadar — cronDurumlari o listeyi
+     dolaşıyor, satırları değil. Aynı Promise.all'daki .limit(1), kayıt
+     tutmanın başlangıcını bulan AYRI sorguya ait (cronIlk). */
   const cronBekleyen = cronDurum.filter((d) => d.durum === "hic").length;
   const cronSaglikli = cronDurum.length - cronBekleyen - cronSorun.length;
 
