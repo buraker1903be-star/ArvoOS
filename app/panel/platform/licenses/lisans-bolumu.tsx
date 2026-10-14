@@ -9,7 +9,7 @@ import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
-import { cekirdekErisimi, updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
+import { cekirdekErisimi, urunErisimi, updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { UrunKartlari } from "./urun-kartlari";
 // Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
 // şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
@@ -253,6 +253,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
           urunuKaydet={updateProductLicense}
           urunuYansit={urunuYenidenYansit}
           erisimiDegistir={cekirdekErisimi}
+          urunErisiminiDegistir={urunErisimi}
           kartlar={[
             {
               tur: "cekirdek" as const,
@@ -316,6 +317,9 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 .map((alan) => `${sayi(Number(alan.limit))} ${alan.birim}`).join(" · ");
               return {
                 tur: "ek" as const,
+                /* İptal edilmiş ürün de ürün tarafında kapalı (ArvoLab yalnızca açık
+                   durumları içeri alıyor); anahtar onu açık göstermesin. */
+                erisimAcik: status === "inactive" ? null : ["active", "trialing", "past_due"].includes(status),
                 kod: product.code,
                 /*
                   Karşılaştırma yalnızca ArvoLab için yapılabiliyor: ArvoARC ve
