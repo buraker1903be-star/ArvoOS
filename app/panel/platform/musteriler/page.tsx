@@ -9,6 +9,7 @@ import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { createCustomerOrganization } from "../actions";
 import { NewOrganizationWizard } from "../new-organization-wizard";
+import { kurumTuru } from "@/lib/kurum-turu";
 import "../platform.css";
 // Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
 // tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
@@ -198,7 +199,12 @@ export default async function MusterilerPage({ searchParams }: {
 
   /* Kendi markalarımız müşteri değil: aynı tüzel kişiliğin kendi kendine
      ödemesi geliri şişirir. Listede de sayımda da yoklar. */
-  const kurumlar = ((kurumSatirlari ?? []) as unknown as Kurum[]).filter((kurum) => kurum.kind !== "internal");
+  /* ARVOOS DA LİSTEDE (14.10.2026, kurum sahibi: "ne kadar bizim markamız
+     da olsa müşteri kaydı olarak olmalı"). Eskiden kendi kurumumuz listeden
+     süzülüyordu. Artık grup markalarıyla aynı türde: kaydı, ürünleri ve
+     ücreti görünür, ücreti müşteri gelirine değil "grup içi değer"e yazılır
+     (lib/kurum-turu: "arvo" ve "grup" müşteri değil). */
+  const kurumlar = (kurumSatirlari ?? []) as unknown as Kurum[];
   const aboneler = (aboneSatirlari ?? []) as Abone[];
   const toplamAbone = aboneSayisi ?? aboneler.length;
   const eksikKapsam = toplamAbone > aboneler.length;
@@ -238,7 +244,7 @@ export default async function MusterilerPage({ searchParams }: {
       /* GRUP MARKASI (14.10.2026): AkademikMerkez ve ArvoCulture ArvoOS ile
          aynı şirketin markaları. Listede ayrı türde: ücretleri ArvoOS'un
          gruba yarattığı değeri gösteriyor, müşteri geliri değil. */
-      tur: kurum.grup_markasi ? "grup" : "kurumsal",
+      tur: kurumTuru(kurum) === "musteri" ? "kurumsal" : "grup",
       ad: kurum.display_name || kurum.name,
       alt: [
         kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : null,
