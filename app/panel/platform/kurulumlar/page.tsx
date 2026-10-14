@@ -36,6 +36,7 @@ import "../platform.css";
   çoğu kiracının pazarlıkla değişmiş tutarı var — yalnızca gösteriliyor.
 */
 
+const ACIK_LISANS = new Set(["active", "trialing", "past_due"]);
 const BEKLEYEN = new Set(["creating", "inviting_owner", "waiting_owner"]);
 
 type Kiraci = {
@@ -244,7 +245,8 @@ export default async function KurulumlarPage({ searchParams }: {
                         : kiraci.current_period_end ? `dönem sonu ${tarih(kiraci.current_period_end)}` : null,
                     ].filter(Boolean).join(" · ")}
                     durum={{ etiket: productLicenseLabels[lisans] ?? lisans, ton: LISANS_TONU[lisans] ?? "neutral" }}
-                    deger={sapma.durum === "girilmedi" ? <span className="k-ios-eksik">Ücret yok</span> : para(sapma.mevcut ?? 0)}
+                    /* Kapalı (iptal / askıda) lisansta ücret beklenmiyor: "₺0,00" yerine —. */
+                    deger={!ACIK_LISANS.has(lisans) && !sapma.mevcut ? "—" : sapma.durum === "girilmedi" ? <span className="k-ios-eksik">Ücret yok</span> : para(sapma.mevcut ?? 0)}
                     /* Sapma hata değil: çoğu kiracının pazarlıkla değişmiş tutarı var. */
                     degerAlt={sapma.durum === "teklif" ? "teklif usulü" : sapma.durum === "farkli" ? `liste ${para(sapma.liste ?? 0)}` : sapma.durum === "liste" ? "liste fiyatı" : undefined}
                     sonu={sapma.durum === "girilmedi" && sapma.liste !== null ? (
