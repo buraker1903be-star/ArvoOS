@@ -55,7 +55,7 @@ function yetkili(istek: Request) {
 // Koşma kaydı lib/cron-kaydi ile; yetkisiz istek kaydedilmez.
 export async function GET(istek: Request) {
   if (!yetkili(istek)) return new Response("Yetkisiz", { status: 401 });
-  return cronRotasi("/api/cron/arvolab-kredi", kosu);
+  return cronRotasi("/api/cron/arvolab-sync", kosu);
 }
 
 async function kosu(): Promise<CronKosusu> {

@@ -311,8 +311,10 @@ export default async function SistemSagligiPage() {
                   : sorunlu ? (hata ?? is.aciklama) : is.aciklama}
                 etiketler={[{ etiket: cronAralikMetni(is.aralikDk), ton: is.aralikDk === null ? "warning" : "neutral" }]}
                 durum={CRON_DURUM[is.durum]}
-                deger={is.gecikmeDk === null ? "—" : gecenSure(is.gecikmeDk)}
-                degerAlt="en son koşma" />
+                /* Hiç koşmamış işte "1 sa önce · en son koşma" yazmak yanlış:
+                   o süre kayıt tutmanın yaşı, işin koşma zamanı değil. */
+                deger={is.sonCalisma ? gecenSure(is.gecikmeDk ?? 0) : "—"}
+                degerAlt={is.sonCalisma ? "en son koşma" : is.durum === "gecikti" ? "hiç koşmadı" : "kayıt bekleniyor"} />
             );
           })}
         </KListe>
