@@ -38,7 +38,17 @@ import type { OsUygulama } from "./os-apps";
   ama "/panel/platform/musteriler" daha uzun olduğu için orada Müşteriler
   etkin sayılıyor.
 */
-export function konsolUygulamalari(): OsUygulama[] {
+/**
+ * @param bekleyen Onay bekleyen iş sayıları; dock rozetine düşüyor.
+ *
+ * 14.10.2026: kiracı dekont gönderdiğinde ya da sözleşme imzalandığında
+ * kurucuya hiçbir yerden haber gitmiyordu — bekleyen işi görmenin tek
+ * yolu ilgili ekranı açmaktı. Dock rozeti panelde zaten vardı (posta,
+ * mesajlar), konsolda kullanılmıyordu. Sayı sıfırsa rozet çizilmiyor.
+ */
+export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: number }): OsUygulama[] {
+  const odeme = Math.max(0, Math.round(bekleyen?.odeme ?? 0));
+  const sozlesme = Math.max(0, Math.round(bekleyen?.sozlesme ?? 0));
   return [
     { key: "home", label: "Genel Bakış", href: "/panel", ikon: "home", yollar: [] },
     {
@@ -86,6 +96,9 @@ export function konsolUygulamalari(): OsUygulama[] {
     },
     {
       key: "abonelikler", label: "Abonelikler", href: "/panel/platform/billing", ikon: "repeat",
+      /* Sözleşme onayı Abonelikler'in başlığından açılıyor; rozet de
+         orada duruyor ki kurucu kuyruğu dock'tan görsün. */
+      ...(sozlesme ? { rozet: sozlesme } : {}),
       /* Sözleşme onayı bir aboneliği açar: abonelik işinin parçası.
          ALT MENÜ YOK (14.10.2026, kurum sahibi: "bunlara gerek var mı"):
          ödeme sorunları ve dönem sonu yaklaşanlar sayfanın kendi sekmeleri
@@ -95,6 +108,7 @@ export function konsolUygulamalari(): OsUygulama[] {
     },
     {
       key: "tahsilat", label: "Faturalama ve Tahsilat", href: "/panel/platform/tahsilat", ikon: "wallet",
+      ...(odeme ? { rozet: odeme } : {}),
       yollar: ["/panel/platform/tahsilat", "/panel/platform/payments"],
       bolumler: [
         { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { tenantTheme } from "@/lib/tenant-theme";
 import { getLoginBrand } from "@/lib/login-branding";
 import { logout } from "./actions";
@@ -453,7 +454,25 @@ export default async function PanelLayout({ children }: Readonly<{ children: Rea
       - bölüm şeridi: konsol uygulamalarının alt bölümü yok.
     Kalanlar panelle birebir aynı bileşen.
   */
-  const konsolUygulamalariListesi = konsolUygulamalari();
+  /*
+    Dock rozetleri: onay bekleyen dekont ve sözleşme. İki `head` sayımı —
+    satır çekilmiyor, yalnızca sayı. Sözleşme kuyruğu yalnızca sunucu
+    anahtarıyla okunabiliyor (sozlesmeler sayfasındaki kuralın aynısı);
+    anahtar yoksa rozet çizilmiyor, "0 sözleşme bekliyor" denmiyor.
+  */
+  const konsolAdmin = createAdminClient();
+  const [bekleyenOdemeSayisi, bekleyenSozlesmeSayisi] = await Promise.all([
+    supabase.from("organization_payment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    konsolAdmin
+      ? konsolAdmin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending")
+      : Promise.resolve({ count: null, error: null }),
+  ]);
+  const konsolUygulamalariListesi = konsolUygulamalari({
+    /* Okuma düşerse rozet çizilmiyor: yanlış bir sayı göstermektense
+       hiç göstermemek doğru (konsol-oku'daki kuralın aynısı). */
+    odeme: bekleyenOdemeSayisi.error ? 0 : bekleyenOdemeSayisi.count ?? 0,
+    sozlesme: bekleyenSozlesmeSayisi.error ? 0 : bekleyenSozlesmeSayisi.count ?? 0,
+  });
   const konsolAdim = formatPersonName((ownEmployee as { full_name?: string | null } | null)?.full_name) || roleName;
 
   return <div className="panel-root os-root os-konsol"><main className="panel-frame os-frame">

@@ -117,3 +117,35 @@ describe("konsolda kayıt araması", () => {
     assert.equal(adres("Şişli Güzellik"), "/panel/platform/musteriler?ara=%C5%9Ei%C5%9Fli%20G%C3%BCzellik");
   });
 });
+
+/*
+  Kiracı dekont gönderdiğinde ya da sözleşme imzalandığında kurucuya
+  hiçbir yerden haber gitmiyordu: bekleyen işi görmenin tek yolu ilgili
+  ekranı açmaktı. Dock rozeti panelde zaten vardı (posta, mesajlar),
+  konsolda kullanılmıyordu (14.10.2026).
+*/
+describe("konsol dock rozetleri", () => {
+  const rozet = (bekleyen?: { odeme?: number; sozlesme?: number }) =>
+    Object.fromEntries(konsolUygulamalari(bekleyen).filter((u) => u.rozet).map((u) => [u.key, u.rozet]));
+
+  test("bekleyen iş yoksa rozet çizilmiyor", () => {
+    assert.deepEqual(rozet(), {});
+    assert.deepEqual(rozet({ odeme: 0, sozlesme: 0 }), {});
+  });
+
+  test("dekont kuyruğu Faturalama'da, sözleşme kuyruğu Abonelikler'de", () => {
+    assert.deepEqual(rozet({ odeme: 3, sozlesme: 2 }), { abonelikler: 2, tahsilat: 3 });
+  });
+
+  test("yalnızca biri doluysa yalnızca o rozetleniyor", () => {
+    assert.deepEqual(rozet({ odeme: 1 }), { tahsilat: 1 });
+    assert.deepEqual(rozet({ sozlesme: 4 }), { abonelikler: 4 });
+  });
+
+  test("eksi ve küsuratlı sayı rozete sızmıyor", () => {
+    /* Okuma düşerse çağıran 0 geçiyor; yine de uydurma bir değer
+       gelirse rozet negatif ya da "2,4" yazmamalı. */
+    assert.deepEqual(rozet({ odeme: -5 }), {});
+    assert.deepEqual(rozet({ odeme: 2.6 }), { tahsilat: 3 });
+  });
+});
