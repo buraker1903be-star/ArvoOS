@@ -65,8 +65,20 @@ export const BEKLEYEN_MIGRATIONLAR = [
   // görüntüde. Dolu bırakmak migration'ı iki kez uygulamak demek.
 ];
 
-/** Yetki satırları (grant/revoke), dosyadaki özgün sırasıyla. */
-const yetkiSatirlari = (sql) => sql.match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
+/*
+  Yetki satırları (grant/revoke), dosyadaki özgün sırasıyla.
+
+  YORUMLAR ÖNCE AYIKLANIYOR. Eskiden ham metinde aranıyordu ve bir
+  migration yorumunun "revoke satırıdır)." diye başlayan satırı yetki
+  satırı sanılıyordu: yakalama bir sonraki noktalı virgüle kadar sürüyor,
+  ortaya SQL olmayan bir parça çıkıyor ve bütün dosya "syntax error at or
+  near )" ile düşüyordu (14.10.2026, cron kayıtları). Gürültülü düştüğü
+  için fark edildi; yakalanan parça geçerli SQL'e benzeseydi sessizce
+  başka bir şey çalıştırırdı. Aynı sınıf hata şema denetiminde de vardı
+  (scripts/check-schema-usage.mjs yorumları ayıklıyor).
+*/
+const yorumsuz = (sql) => sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+const yetkiSatirlari = (sql) => yorumsuz(sql).match(/^\s*(?:grant|revoke)\s[^;]*;/gim) ?? [];
 
 /**
  * Bir migration'ın YALNIZCA yetki satırlarını uygular.

@@ -1589,6 +1589,23 @@
       "sort_order",
       "updated_at"
     ],
+    "platform_cron_durumu": [
+      "ayrinti",
+      "is_adi",
+      "son_basarili",
+      "son_calisma",
+      "sonuc",
+      "sure_ms"
+    ],
+    "platform_cron_kayitlari": [
+      "ayrinti",
+      "basladi_at",
+      "bitti_at",
+      "id",
+      "is_adi",
+      "sonuc",
+      "sure_ms"
+    ],
     "platform_fiyat_gecmisi": [
       "id",
       "islem",
@@ -2016,6 +2033,7 @@
     "operasyon_is_istatistikleri",
     "operasyon_is_serit",
     "operasyon_is_suz",
+    "platform_cron_kaydet",
     "platform_fiyatlari_yayimla",
     "platform_gecikenleri_isaretle",
     "platform_tahsilat_ozeti",

@@ -19,16 +19,19 @@
 */
 import { before, test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
-import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
+import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.mjs";
 
-const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-/* Tablo, işlev ve görünüm henüz dökümde değil: migration canlıya
-   uygulandıktan sonra anlık görüntü yenilenince bu satır düşer. */
-const MIGRATIONLAR = [
-  "20261014173724_cron_kayitlari.sql",
-];
+/*
+  Tablo, işlev ve görünüm artık DÖKÜMDE (14.10.2026'da uygulandı), ama
+  döküm TABLO ve GÖRÜNÜM yetkilerini taşımıyor ve düzenek Supabase
+  varsayılanını taklit edip her ikisini de anon'a açıyor (AGENTS.md).
+  Dosyayı listeden tamamen çıkarmak, aşağıdaki "anon okuyamıyor"
+  senaryosunu hiçbir şey ölçmeyen ama yeşil kalan bir teste çevirirdi:
+  o satırları ayakta tutan tek şey migration'ın kendi revoke/grant
+  satırları. Bu yüzden yalnızca yetki satırları tekrarlanıyor.
+  govde-tamam: DDL dökümden, yetkiler dosyadan.
+*/
+const YALNIZCA_YETKI = ["20261014173724_cron_kayitlari.sql"];
 
 const ARVO = "00000000-0000-4000-8000-00000000c0a1";
 const KIRACI = "00000000-0000-4000-8000-00000000c0a2";
@@ -42,7 +45,7 @@ let db;
 
 before(async () => {
   db = await veritabani();
-  for (const ad of MIGRATIONLAR) await db.exec(fs.readFileSync(migration(ad), "utf8"));
+  await migrationYetkileri(db, YALNIZCA_YETKI);
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id, email) values
