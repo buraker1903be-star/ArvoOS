@@ -142,7 +142,7 @@ export default async function CrmOverviewPage() {
     <GenelBakis
       gizliBaslik="CRM genel bakış"
     >
-      <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" />
+      <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={seri} adet="talep" bos="Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir." />
 
       <ListeIzgarasi etiket="Satış işleri">
         <ListeKarti baslik="Yeni talepler" alt={unassignedCount ? `${unassignedCount} talep temsilci bekliyor` : "Teklif öncesi aşamadaki talepler"} bos="Yeni talep yok. Girilen talepler burada belirir." href="/panel/crm" hrefEtiket="Tüm talepler" sayi={sayi(ozet.yeni_talep)}>

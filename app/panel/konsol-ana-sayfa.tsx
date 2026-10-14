@@ -424,6 +424,7 @@ export async function KonsolAnaSayfa() {
         adet="tahsilat"
         href="/panel/platform/billing"
         ozet={grafikOzeti}
+        bos="Son 14 günde tahsilat yok. İlk ödeme alındığında günlük dağılım burada çizilir."
       />
 
       <ListeIzgarasi etiket="Konsol">

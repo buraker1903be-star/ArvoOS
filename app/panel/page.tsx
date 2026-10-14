@@ -255,7 +255,7 @@ export default async function PanelPage() {
         </section>
       ) : null}
 
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" /> : null}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" bos="Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir." /> : null}
 
       <ListeIzgarasi>
         {canSeeOperations ? (

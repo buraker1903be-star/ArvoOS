@@ -45,6 +45,15 @@ html[data-theme="dark"] .dash [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .dash-stat{text-align:right}
 .dash-stat strong{display:block;color:var(--ink);font-size:28px;font-weight:700;line-height:1;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
 .dash-stat span{display:inline-block;margin-top:6px;color:var(--tone-fg);font-size:12.5px;font-weight:600}
+/*
+  Çubukların yerine geçen boş durum (15.10.2026). Izgara 190 piksel;
+  burası onun beşte biri kadar: blok küçülüyor ama kart kaybolmuyor,
+  tahsilat başladığında grafik aynı yere geri geliyor.
+*/
+.dash-seri-bos{
+  display:flex;align-items:center;min-height:44px;margin:0;padding:var(--sp-3) 0 0;
+  color:var(--muted);font-size:var(--fs-sm);line-height:1.5;
+}
 .dash-bars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));align-items:end;gap:8px;height:190px;padding-top:6px}
 .dash-bar{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;min-width:0}
 .dash-bar-fill{width:100%;max-width:30px;height:var(--h,4%);min-height:4px;border-radius:8px 8px 5px 5px;background:linear-gradient(180deg,color-mix(in srgb,var(--brand-400) 70%,var(--surface)),var(--brand-500));transform-origin:bottom;animation:dash-grow .8s var(--dash-ease) both}

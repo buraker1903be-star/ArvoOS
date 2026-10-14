@@ -61,7 +61,7 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
 /** Grafik başlığındaki küçük özet (Finans genel bakış: bu ay tahsilat, tahsil oranı…). */
 export type SeriOzeti = { ad: string; deger: string; ton?: string; href?: string };
 
-export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet }: {
+export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, href, ozet, bos }: {
   baslik: string;
   alt: string;
   seri: GunlukSeri;
@@ -73,7 +73,23 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
   /* Başlığın ortasında birkaç rakam: ayrı bir satır yerine buraya, ki
      genel bakış ekrana sığmaya devam etsin. */
   ozet?: SeriOzeti[];
+  /*
+    Pencerede HİÇ kayıt yoksa çubukların yerine yazılan cümle
+    (15.10.2026). On dört çubuğun hepsi sıfırken ızgara 190 piksel yer
+    kaplayıp gri kütüklerden başka bir şey göstermiyordu — genel bakışın
+    EN GENİŞ bloğu, hiçbir şey söylemeden. Sıfır bir cevaptır ama
+    cevabın boyutu söylediği şey kadar olmalı.
+
+    Başlık, özet rakamları ve toplam DURUYOR: onlar boşken de bilgi
+    taşıyor. Değişen yalnızca çubuk ızgarası.
+
+    Cümle çağırandan geliyor: "tahsilat yok" ile "talep yok" farklı
+    şeyler ve ikisinin de ne zaman dolacağı farklı. Verilmezse eski
+    davranış sürüyor.
+  */
+  bos?: string;
 }) {
+  const bosSeri = Boolean(bos) && seri.total === 0 && seri.days.every((gun) => !gun.count);
   const icerik = (
     <>
       <header className="dash-card-head">
@@ -98,6 +114,7 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
           ) : seri.total ? <span data-tone="neutral">önceki dönemde kayıt yok</span> : null}
         </div>
       </header>
+      {bosSeri ? <p className="dash-seri-bos">{bos}</p> : (
       <div className="dash-bars" role="img" aria-label={`${alt}: toplam ${birim(seri.total)} ${adet}`}>
         {seri.days.map((gun) => (
           <div className={`dash-bar${gun.isToday ? " is-today" : ""}${gun.count ? "" : " is-empty"}`} key={gun.key} title={`${gun.title}: ${birim(gun.count)} ${adet}`}>
@@ -107,6 +124,7 @@ export function SeriKarti({ baslik, alt, seri, birim = (n) => String(n), adet, h
           </div>
         ))}
       </div>
+      )}
     </>
   );
   return (
