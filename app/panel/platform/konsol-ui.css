@@ -1,0 +1,39 @@
+/* ============================================================
+   KONSOL = PANEL (konsol-ui.tsx). Panelin liste kartı ve tablosu
+   (.talep-tablo .crm-data-table, kayit-detay.css) olduğu gibi
+   kullanılıyor; burada yalnızca kartın başlık satırı ve konsolun
+   tek başına duran (ızgara dışındaki) kartlarının iç boşluğu var.
+   Renkler yalnızca panel-tokens.css'ten.
+   ============================================================ */
+
+/* Izgaranın dışındaki kart da panel kartı kadar iç boşluk alır: tablo
+   kenara yaslanmak için bu boşluğun eksisini kullanıyor (.talep-tablo). */
+.os-root .k-kart{padding:var(--sp-5);min-width:0}
+.os-root .k-kart+.k-kart{margin-top:var(--sp-4)}
+
+.k-kart-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+.k-kart-bas h2{margin:0;color:var(--ink);font-size:var(--fs-md);font-weight:var(--fw-semibold)}
+.k-kart-bas p{margin:2px 0 0;color:var(--muted);font-size:var(--fs-sm);line-height:1.45}
+.k-kart-sag{flex:none;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+
+/* Kartın son öğesi tabloysa kartın alt kenarına yaslanır (panel listesi gibi). */
+.os-root .k-kart>.k-tablo:last-child{margin-bottom:calc(var(--sp-5) * -1)}
+.os-root .k-kart>.k-tablo+.k-not{margin-top:var(--sp-5)}
+
+.k-bos{padding:var(--sp-6) var(--sp-4)}
+
+/* Sade not: renkli şerit yerine tek satır, anlam renkte. */
+.k-not{margin:var(--sp-3) 0 0;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.5}
+.k-not[data-ton="uyari"]{background:var(--warning-soft);color:var(--ink)}
+.k-not[data-ton="tehlike"]{background:var(--danger-soft);color:var(--ink)}
+.k-not[data-ton="basari"]{background:var(--success-soft);color:var(--ink)}
+
+/* Kart içi sayı ve kısa metin sütunları sağa değil, panel gibi sola. */
+.os-root .k-tablo .crm-data-table td.k-sayi{font-variant-numeric:tabular-nums;white-space:nowrap}
+.os-root .k-tablo .crm-data-table td.k-sessiz{color:var(--muted);font-size:var(--fs-micro)}
+
+@media (max-width:760px){
+  .os-root .k-kart{padding:var(--sp-4)}
+  .os-root .k-kart>.k-tablo:last-child{margin-bottom:calc(var(--sp-4) * -1)}
+  .k-kart-bas{flex-wrap:wrap}
+}

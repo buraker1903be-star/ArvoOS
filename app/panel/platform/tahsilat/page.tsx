@@ -2,12 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
-import { StgIcon, StgSection } from "../../settings/settings-ui";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KBaslik, KBos, KNot, KSatirSonu, KTablo } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
-import "../../settings/settings.css";
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   FATURALAMA VE TAHSİLAT (14.10.2026, Kurucu Konsolu'nun ana menüsü).
@@ -34,9 +32,19 @@ const LISTE = 50;
 
 type Tahsilat = { anahtar: string; organizationId: string | null; kim: string; kanal: string; amount: number; currency: string; tarih: string | null };
 
-export default async function TahsilatPage() {
+const KANALLAR = [
+  { kod: "", ad: "Tümü" },
+  { kod: "havale", ad: "Havale" },
+  { kod: "kart", ad: "Kart" },
+  { kod: "bireysel", ad: "Bireysel" },
+  { kod: "fatura", ad: "Faturalar" },
+] as const;
+
+export default async function TahsilatPage({ searchParams }: { searchParams: Promise<{ kanal?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  const { kanal } = await searchParams;
+  const secili = KANALLAR.some((k) => k.kod === kanal) ? kanal! : "";
 
   const [
     { data: ozetVerisi, error: ozetHatasi },
@@ -76,12 +84,18 @@ export default async function TahsilatPage() {
     ...((aboneOdemeleri ?? []) as { id: string; amount: number; currency: string; paid_at: string | null }[])
       .map((o) => ({ anahtar: `abone-${o.id}`, organizationId: null, kim: "Bireysel abone", kanal: "Kart", amount: Number(o.amount), currency: o.currency, tarih: o.paid_at })),
   ].sort((a, b) => (b.tarih ?? "").localeCompare(a.tarih ?? "")).slice(0, LISTE);
+  /* Kanal süzgeci gösterilen listede (son elli). Toplamlar süzgeçten
+     bağımsız, bütün kayıtlardan (özet işlevi). */
+  const kanalinda = (t: Tahsilat) =>
+    secili === "havale" ? t.kanal === "Havale/EFT" : secili === "kart" ? t.kanal === "Kart (PayTR)" : secili === "bireysel" ? t.organizationId === null : true;
+  const gorunen = tahsilatlar.filter(kanalinda);
+  const kanalSayisi = (ad: string) => tahsilatlar.filter((t) => t.kanal === ad).length;
 
   const bekleyenSatirlar = (bekleyenler ?? []) as { amount: number; currency: string }[];
   // tuzak-tamam: sınırsız sorgu (bekleyen havalelerin hepsi), toplam doğru.
   const bekleyenTutar = bekleyenSatirlar.reduce((t, b) => t + Number(b.amount), 0);
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · FATURALAMA VE TAHSİLAT</small>
@@ -111,50 +125,68 @@ export default async function TahsilatPage() {
       </dl>
     </nav>
 
-    {birimKarisik ? (
-      <p className="stg-muted"><StgIcon name="shield" size={16} />Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</p>
-    ) : null}
-
-    <StgSection
-      id="tahsilatlar" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler"
-      description={`Onaylı havale ve kart ödemeleri ile bireysel abone ödemeleri. Liste son ${LISTE} kayıt; üstteki toplamlar bütün kayıtlardan.`}
-      aside={<span className="status-pill">{sayi(Number(ozet.adet ?? 0))} kayıt</span>}
-    >
-      {tahsilatlar.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead><tr><th>Tarih</th><th>Kim</th><th>Kanal</th><th>Tutar</th><th /></tr></thead>
-            <tbody>
-              {tahsilatlar.map((t) => (
-                <tr key={t.anahtar}>
-                  <td>{tarih(t.tarih)}</td>
-                  <td>{t.kim}</td>
-                  <td>{t.kanal}</td>
-                  <td>{para(t.amount, t.currency)}</td>
-                  <td>{t.organizationId ? <Link className="kiraci-baglanti" href={`/panel/platform?organization=${t.organizationId}`}>Kiracı →</Link> : null}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Tahsilat listesi">
+        <div className="ekip-suzgec talep-suzgec">
+          {KANALLAR.map((k) => (
+            <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
+              className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
+              {k.ad}
+              {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
+            </Link>
+          ))}
         </div>
-      ) : <div className="stg-empty"><StgIcon name="wallet" size={22} /><p>Henüz tahsilat kaydı yok. Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır.</p></div>}
-    </StgSection>
 
-    <StgSection
-      id="faturalar" wide icon="doc" tone="warning" kicker="FATURALAR" title="Platform faturası henüz kesilmiyor"
-      description="Arvo'nun kiracılara kestiği fatura bugün sistemde yok; e-fatura / e-arşiv entegrasyonu bağlı değil."
-    >
-      <div className="plt-banner" data-tone="warning">
-        <span className="plt-banner-icon">!</span>
-        <span>
-          <b>Faturalar elle kesiliyor</b>
-          <p>
-            Onaylanan her ödeme lisansı açıyor ama Arvo adına fatura oluşturmuyor. Paraşüt entegrasyonu planlandı:
-            onaylı ödemeden fatura kaydı, vergi numarasına göre e-fatura ya da e-arşiv, sonucu bu listede. Bağlanana kadar
-            bu bölüm bir fatura listesi değil; tahsilat kayıtları yukarıda.
-          </p>
-        </span>
-      </div>
-    </StgSection>
+        {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
+
+        {secili === "fatura" ? (
+          /* Platform faturası bugün yok: çalışmayan özellik çalışıyormuş
+             gibi gösterilmiyor (dosya başındaki açıklama). */
+          <KBos
+            baslik="Platform faturası henüz kesilmiyor"
+            aciklama="Onaylanan her ödeme lisansı açıyor ama Arvo adına fatura oluşturmuyor; faturalar elle kesiliyor. Paraşüt entegrasyonu (e-fatura / e-arşiv) bağlanınca kesilen faturalar burada listelenecek."
+          />
+        ) : gorunen.length ? (
+          <KTablo kolonlar={[{ ad: "Kim" }, { ad: "Kanal" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "" }]}>
+            {gorunen.map((t) => (
+              <tr key={t.anahtar}>
+                <KBaslik etiket="Kim" href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"} baslik={t.kim} />
+                <td data-label="Kanal">{t.kanal}</td>
+                <td data-label="Tarih" className="crm-col-date">{tarih(t.tarih)}</td>
+                <td data-label="Tutar" className="crm-col-amount">{para(t.amount, t.currency)}</td>
+                <KSatirSonu mobil={{
+                  href: t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers",
+                  baslik: t.kim,
+                  durum: { etiket: para(t.amount, t.currency), ton: "success" },
+                  alt: [t.kanal, tarih(t.tarih)],
+                }} />
+              </tr>
+            ))}
+          </KTablo>
+        ) : (
+          <KBos baslik={secili ? "Bu kanalda tahsilat yok" : "Henüz tahsilat yok"} aciklama="Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır." />
+        )}
+      </section>
+
+      <IstatistikKarti
+        kapsam={`toplamlar bütün kayıtlardan; kanal dağılımı listedeki son ${LISTE} ödemeden`}
+        kutular={[
+          { ad: "Bu ay", deger: para(Number(ozet.bu_ay ?? 0)), alt: "tahsil edilen", ton: "arti" },
+          { ad: "Tüm zamanlar", deger: para(Number(ozet.toplam ?? 0)), alt: `${sayi(Number(ozet.adet ?? 0))} ödeme` },
+          { ad: "Onay bekleyen", deger: sayi(bekleyenSatirlar.length), alt: bekleyenSatirlar.length ? para(bekleyenTutar) : "dekont yok", ton: bekleyenSatirlar.length ? "uyari" : undefined },
+          { ad: "Platform faturası", deger: "Yok", alt: "Paraşüt bağlı değil", ton: "uyari" },
+        ]}
+        gruplar={[
+          {
+            baslik: "Kanallar (son ödemeler)",
+            satirlar: [
+              { ad: "Havale/EFT", adet: kanalSayisi("Havale/EFT") },
+              { ad: "Kart (PayTR)", adet: kanalSayisi("Kart (PayTR)") },
+              { ad: "Bireysel abone", adet: tahsilatlar.filter((t) => !t.organizationId).length },
+            ],
+          },
+        ]}
+      />
+    </div>
   </main>;
 }

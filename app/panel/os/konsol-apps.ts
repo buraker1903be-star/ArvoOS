@@ -105,7 +105,7 @@ export function konsolUygulamalari(): OsUygulama[] {
       bolumler: [
         { key: "tahsilatlar", href: "/panel/platform/tahsilat", label: "Tahsilatlar" },
         { key: "odemeler", href: "/panel/platform/payments", label: "Ödeme onayları" },
-        { key: "faturalar", href: "/panel/platform/tahsilat#faturalar", label: "Faturalar" },
+        { key: "faturalar", href: "/panel/platform/tahsilat?kanal=fatura", label: "Faturalar" },
       ],
     },
     {
