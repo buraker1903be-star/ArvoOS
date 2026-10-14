@@ -7,6 +7,7 @@ import { StgIcon, StgSection, StgValueRow, type StgTone } from "../../settings/s
 import { PAKET_ADI, para, tarihSaat } from "../bicim";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
+import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 import "../../settings/settings.css";
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
@@ -56,6 +57,8 @@ export default async function PaymentApprovalsPage() {
   }));
 
   const sonuclananlar = (gecmis ?? []) as typeof incelenecekler;
+  /* Beklenen tutar ve paket farkı (14.10.2026): onay işlemiyle aynı hesap. */
+  const denetimler = await havaleDenetimleri(supabase, incelenecekler as unknown as HavaleBildirimi[]);
   const tumBildirimler = (onayliTutarlar ?? []) as { amount: number; currency: string; status: string }[];
 
   const pendingTotal = incelenecekler.reduce((sum, payment) => sum + Number(payment.amount), 0);
@@ -193,6 +196,7 @@ export default async function PaymentApprovalsPage() {
                 <dl className="stg-list">
                   <StgValueRow label="Ürün" value={productName(payment.product ?? "arvoos")} />
                   <StgValueRow label="Paket" value={PAKET_ADI[payment.plan_code] ?? payment.plan_code} />
+                  <StgValueRow label="Beklenen" value={(() => { const b = denetimler.get(payment.id)?.beklenen; return b ? para(b, payment.currency) : "ücret girilmemiş"; })()} />
                   <StgValueRow label="Ödeme yolu" value={payment.payment_method === "paytr" ? "Kartla (PayTR)" : "Havale / EFT"} />
                   <StgValueRow label="Banka" value={account?.bank_name ?? null} />
                   <StgValueRow label="Referans" value={payment.reference_no ?? null} mono />
@@ -204,7 +208,13 @@ export default async function PaymentApprovalsPage() {
                   : payment.receiptUrl
                   ? <a className="panel-secondary plt-receipt" href={payment.receiptUrl} target="_blank" rel="noreferrer"><StgIcon name="doc" size={16} />Dekontu görüntüle</a>
                   : <p className="stg-muted"><StgIcon name="lock" size={16} />Dekont eklenmemiş: müşteri bildirimi dekontsuz gönderdi.</p>}
-                <KararFormu paymentId={payment.id} kurumAdi={kurumAdi} tutar={tutar} kaydet={reviewBankTransferPayment} />
+                {denetimler.get(payment.id)?.farklar.length ? (
+                  <div className="plt-banner" data-tone="warning">
+                    <span className="plt-banner-icon">!</span>
+                    <span><b>Beklenenle uyuşmuyor</b>{denetimler.get(payment.id)!.farklar.map((f) => <p key={f}>{f}</p>)}</span>
+                  </div>
+                ) : null}
+                <KararFormu paymentId={payment.id} kurumAdi={kurumAdi} tutar={tutar} farklar={denetimler.get(payment.id)?.farklar ?? []} kaydet={reviewBankTransferPayment} />
               </StgSection>
             );
           })}

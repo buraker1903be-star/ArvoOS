@@ -14,6 +14,7 @@ import "../platform.css";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import { abonelikHatirlatmasiGonder } from "../actions";
+import { getPaymentIncidents } from "@/lib/payment-incidents";
 import { renewalReminders, REMINDER_WINDOW_DAYS, type RenewalLicense, type RenewalOrganization } from "@/lib/renewal-reminders";
 
 /*
@@ -57,10 +58,11 @@ type Tahsilat = {
   tarih: string | null;
 };
 
-const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
-const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
+const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
+const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", suspended: "danger", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
 
 // Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
+const gunOnce = (gun: number) => new Date(Date.now() - gun * 86_400_000).toISOString();
 const remindersNow = (licenses: RenewalLicense[], organizations: RenewalOrganization[]) => renewalReminders(licenses, organizations, Date.now());
 
 export default async function BillingPage() {
@@ -75,9 +77,11 @@ export default async function BillingPage() {
     { data: havaleler },
     { data: aboneOdemeleri },
     { data: tahsilatOzeti, error: ozetHatasi },
+    { data: sorunluBildirimler },
+    odemeOlaylari,
   ] = await Promise.all([
     supabase.from("organizations").select("id").eq("kind", "internal"),
-    supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due"]),
+    supabase.from("organization_product_licenses").select("organization_id,product,status,plan_code,monthly_fee,current_period_end,trial_ends_at").in("status", ["active", "trialing", "past_due", "suspended", "canceled"]),
     supabase.from("organizations").select("id,name,display_name,contact_phone,kind"),
     // ArvoOS çekirdek lisansının aylık ücreti; ek ürünler ayrı tabloda.
     supabase.from("organization_licenses").select("organization_id,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at"),
@@ -114,6 +118,13 @@ export default async function BillingPage() {
     supabase.from("subscriber_payments").select("id,amount,currency,paid_at")
       .order("paid_at", { ascending: false, nullsFirst: false }).limit(LISTE),
     supabase.rpc("platform_tahsilat_ozeti"),
+    /* Ödeme sorunları: bekleyen havale bildirimleri (hepsi) ve son 30
+       günde reddedilenler. Sınırsız değil ama küçük: bekleyen iş kuyruğu. */
+    supabase.from("organization_payment_requests").select("id,organization_id,product,amount,currency,status,created_at,reviewed_at,review_note")
+      .or(`status.eq.pending,and(status.eq.rejected,reviewed_at.gte.${gunOnce(30)})`)
+      .order("created_at", { ascending: false }).limit(100),
+    // PayTR'nin bildirip kayıt oluşturamadığı ödemeler (Ödeme Onayları'ndaki liste).
+    getPaymentIncidents(),
   ]);
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
   const ozet = (tahsilatOzeti ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
@@ -141,7 +152,10 @@ export default async function BillingPage() {
   const cekirdek = (coreLicenses ?? []) as { organization_id: string; license_status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[];
   const ekUrunler = (productLicenses ?? []) as unknown as { organization_id: string; product: string; status: string; plan_code: string | null; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null }[];
 
-  const ABONE_DURUMLARI = new Set(["active", "trialing", "past_due"]);
+  /* Askıdaki ve iptal edilen abonelikler de listede (14.10.2026): eskiden
+     yalnızca açık olanlar okunuyordu, "kim ayrıldı, kim askıda" sorusunun
+     yanıtı hiçbir ekranda yoktu. Gelir toplamına girmezler. */
+  const ABONE_DURUMLARI = new Set(["active", "trialing", "past_due", "suspended", "canceled"]);
   const abonelikler: AbonelikSatiri[] = [
     ...cekirdek
       .filter((satir) => isCustomer(satir) && ABONE_DURUMLARI.has(satir.license_status))
@@ -264,10 +278,12 @@ export default async function BillingPage() {
         odeyen: 0,
         denemede: 0,
         geciken: 0,
+        kapali: 0,
       };
       grupHarita.set(satir.organizationId, grup);
     }
-    if (satir.durum === "trialing") grup.denemede += 1;
+    if (satir.durum === "suspended" || satir.durum === "canceled") grup.kapali += 1;
+    else if (satir.durum === "trialing") grup.denemede += 1;
     else if (satir.durum === "past_due") { grup.geciken += 1; grup.aylikToplam += Number(satir.monthlyFee ?? 0); }
     else { grup.odeyen += 1; grup.aylikToplam += Number(satir.monthlyFee ?? 0); }
 
@@ -285,6 +301,45 @@ export default async function BillingPage() {
       donemNotu: satir.durum === "trialing" ? "Deneme bitişi" : "Dönem sonu",
     });
   }
+  /*
+    ÖDEME SORUNLARI (14.10.2026): kurucunun bugün peşine düşeceği iş tek
+    listede. Eskiden gecikmiş sayısı şeritte, bekleyen dekontlar Ödeme
+    Onayları'nda, işlenemeyen PayTR bildirimleri Sistem Sağlığı'ndaydı ve
+    denemesi bitip ödemeye geçmeyen kiracı hiçbir yerde görünmüyordu.
+
+    "Denemesi bitti" yalnızca GÖSTERİLİYOR, durum değiştirilmiyor:
+    ArvoARC, ArvoLab ve Randevu deneme bitişine değil dönem sonuna bakıyor;
+    durumu 'past_due'ya çekmek bugün açık olan denemeleri kapatırdı.
+  */
+  const simdiAn = Date.parse(gunOnce(0));
+  type Sorun = { anahtar: string; kim: string; organizationId: string | null; sorun: string; ayrinti: string; ton: StgTone; baglanti: string; baglantiAdi: string };
+  const sorunlar: Sorun[] = [
+    ...abonelikler.filter((s) => s.durum === "past_due").map((s) => ({
+      anahtar: `gecikmis-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
+      sorun: "Ödemesi gecikmiş", ayrinti: `${s.urunAdi} · dönem sonu ${tarih(s.donemSonu)}`, ton: "warning" as StgTone,
+      baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
+    })),
+    ...abonelikler.filter((s) => s.durum === "trialing" && s.denemeSonu && Date.parse(s.denemeSonu) < simdiAn).map((s) => ({
+      anahtar: `deneme-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
+      sorun: "Denemesi bitti, ödeme yok", ayrinti: `${s.urunAdi} · deneme ${tarih(s.denemeSonu)} tarihinde bitti`, ton: "warning" as StgTone,
+      baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
+    })),
+    ...((sorunluBildirimler ?? []) as { id: string; organization_id: string; product: string | null; amount: number; currency: string; status: string; created_at: string; review_note: string | null }[])
+      .filter(isCustomer)
+      .map((b) => ({
+        anahtar: `bildirim-${b.id}`, kim: orgAdi.get(b.organization_id) ?? "Kurum", organizationId: b.organization_id,
+        sorun: b.status === "pending" ? "Havale onay bekliyor" : "Havale reddedildi",
+        ayrinti: `${productName(b.product ?? "arvoos")} · ${para(Number(b.amount), b.currency)} · ${tarih(b.created_at)}${b.status === "rejected" && b.review_note ? ` · ${b.review_note}` : ""}`,
+        ton: (b.status === "pending" ? "info" : "danger") as StgTone,
+        baglanti: "/panel/platform/payments", baglantiAdi: "Ödeme onayları →",
+      })),
+    ...odemeOlaylari.map((olay) => ({
+      anahtar: `paytr-${olay.id}`, kim: olay.organizationName ?? "Bilinmeyen kurum", organizationId: olay.organizationId,
+      sorun: "PayTR ödemesi işlenemedi", ayrinti: `${olay.paymentAmount !== null ? para(olay.paymentAmount) : "tutar yok"} · ${olay.merchantOid}`, ton: "danger" as StgTone,
+      baglanti: "/panel/platform/payments#karsiliksiz", baglantiAdi: "Ayrıntı →",
+    })),
+  ];
+
   const abonelikGruplari = [...grupHarita.values()]
     .map((grup) => ({ ...grup, aylikToplamAdi: grup.aylikToplam ? para(grup.aylikToplam, currency) : "—" }))
     .sort((a, b) => b.aylikToplam - a.aylikToplam || a.ad.localeCompare(b.ad, "tr"));
@@ -327,7 +382,7 @@ export default async function BillingPage() {
         <div>
           <dt>Aktif abonelik</dt>
           <dd>{odeyenler.length}</dd>
-          <small>{denemedekiler.length ? `${denemedekiler.length} deneme sürüyor` : `${abonelikler.length} abonelik kaydı`}</small>
+          <small>{denemedekiler.length ? `${denemedekiler.length} deneme sürüyor` : `${odeyenler.length + denemedekiler.length} açık abonelik`}</small>
         </div>
         <div>
           <dt>Ödemesi gecikmiş</dt>
@@ -342,6 +397,31 @@ export default async function BillingPage() {
     {birimKarisik ? (
       <p className="stg-muted"><StgIcon name="shield" size={16} />Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</p>
     ) : null}
+
+    {/* Ödeme sorunları: bugün peşine düşülecek işler tek listede. */}
+    <StgSection
+      id="sorunlar" wide icon="shield" tone={sorunlar.some((x) => x.ton === "danger") ? "danger" : sorunlar.length ? "warning" : "success"}
+      kicker="ÖDEME SORUNLARI" title={sorunlar.length ? `${sorunlar.length} konu bekliyor` : "Ödeme sorunu yok"}
+      description="Gecikmiş abonelikler, denemesi bitip ödemeye geçmeyenler, onay bekleyen ya da son 30 günde reddedilen havaleler ve PayTR'nin bildirip işlenemeyen ödemeler."
+    >
+      {sorunlar.length ? (
+        <div className="plt-table-scroll">
+          <table className="plt-table">
+            <thead><tr><th>Kurum</th><th>Sorun</th><th>Ayrıntı</th><th /></tr></thead>
+            <tbody>
+              {sorunlar.map((x) => (
+                <tr key={x.anahtar}>
+                  <td>{x.kim}</td>
+                  <td><span className="status-pill" data-tone={x.ton}>{x.sorun}</span></td>
+                  <td>{x.ayrinti}</td>
+                  <td><Link className="kiraci-baglanti" href={x.baglanti}>{x.baglantiAdi}</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <div className="stg-empty"><StgIcon name="check" size={22} /><p>Gecikmiş abonelik, bekleyen havale ya da işlenemeyen ödeme yok.</p></div>}
+    </StgSection>
 
     <div className="stg-grid">
       <StgSection

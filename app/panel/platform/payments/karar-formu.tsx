@@ -25,11 +25,14 @@ export function KararFormu({
   paymentId,
   kurumAdi,
   tutar,
+  farklar = [],
   kaydet,
 }: {
   paymentId: string;
   kurumAdi: string;
   tutar: string;
+  /** Beklenen tutar/paket ile farklar (lib/beklenen-odeme); boşsa uyumlu. */
+  farklar?: string[];
   kaydet: (formData: FormData) => void;
 }) {
   const [not, setNot] = useState("");
@@ -41,18 +44,22 @@ export function KararFormu({
     işlemesinden önce çalışabilir ve sunucuya boş karar giderdi.
   */
   const kararAlani = useRef<HTMLInputElement>(null);
+  // Fark varsa onay teyidi bu alanla sunucuya gidiyor (actions.ts istiyor).
+  const farkAlani = useRef<HTMLInputElement>(null);
 
   const gonder = (secim: "approved" | "rejected") => {
     if (secim === "rejected" && !not.trim()) {
       window.alert("Ret sebebini yazın. Not müşteriye gösteriliyor; sebepsiz bir ret, müşteriye neyin eksik olduğunu söylemiyor.");
       return;
     }
+    const farkUyarisi = secim === "approved" && farklar.length ? `\n\nDİKKAT — beklenenle uyuşmuyor:\n• ${farklar.join("\n• ")}` : "";
     if (!window.confirm(secim === "approved"
-      ? `${kurumAdi} için ${tutar} tutarındaki ödeme onaylansın mı?\n\nOnay lisansı açar ve dönemi uzatır. Tutarın hesaba geçtiğini doğruladığınızdan emin olun.`
+      ? `${kurumAdi} için ${tutar} tutarındaki ödeme onaylansın mı?\n\nOnay lisansı açar ve dönemi uzatır. Tutarın hesaba geçtiğini doğruladığınızdan emin olun.${farkUyarisi}`
       : `${kurumAdi} için ${tutar} tutarındaki bildirim reddedilsin mi?\n\nMüşteri notunuzu görecek.`)) return;
 
     if (!kararAlani.current || !form.current) return;
     kararAlani.current.value = secim;
+    if (farkAlani.current) farkAlani.current.value = secim === "approved" && farklar.length ? "evet" : "";
     form.current.requestSubmit();
   };
 
@@ -60,6 +67,7 @@ export function KararFormu({
     <form className="panel-form kayit-formu" action={kaydet} ref={form}>
       <input type="hidden" name="payment_id" value={paymentId} />
       <input type="hidden" name="decision" ref={kararAlani} defaultValue="" />
+      <input type="hidden" name="fark_onayi" ref={farkAlani} defaultValue="" />
       <label className="wide">
         İnceleme notu
         <textarea

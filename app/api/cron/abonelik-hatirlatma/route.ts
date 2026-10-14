@@ -4,7 +4,8 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { productName } from "@/lib/products";
 import { abonelikAnahtari, abonelikBildirimi, abonelikKademesi } from "@/lib/abonelik-bildirimi";
 import { yetkisiOlanlar } from "@/lib/kisi-yetkileri";
-import { ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
+import { donemTutari } from "@/lib/abonelik-tutari";
+import { syncArvolabLicense } from "@/lib/arvolab";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,19 @@ export async function GET(istek: Request) {
   const admin = createAdminClient();
   if (!admin) return Response.json({ hata: "sunucu anahtarı yok" }, { status: 500 });
 
+  /*
+    ÖNCE süresi dolan aktif lisanslar "ödemesi gecikmiş" olur
+    (20261014071519; kapsam ve gerekçe migration'da: erişim değişmez,
+    denemelere dokunulmaz). Hatırlatma aynı turda yeni durumu okusun.
+    İşlev yoksa (migration uygulanmadıysa) hatırlatma yine çalışır.
+    ArvoLab'ın eşitleme cron'u yok; değişen ArvoLab lisansı hemen itiliyor
+    (ARC ve Randevu on dakikalık eşitlemede yakalanıyor).
+  */
+  const { data: isaretlenen, error: isaretHatasi } = await admin.rpc("platform_gecikenleri_isaretle");
+  if (isaretHatasi) console.error("[abonelik] gecikenler işaretlenemedi", isaretHatasi.message);
+  const isaret = (isaretlenen ?? { cekirdek: [], urun: [] }) as { cekirdek: string[]; urun: { organization_id: string; product: string }[] };
+  for (const satir of isaret.urun.filter((u) => u.product === "arvolab")) await syncArvolabLicense(satir.organization_id);
+
   const bugun = todayInIstanbul();
   const [{ data: lisanslar, error }, { data: cekirdekler, error: cekirdekHatasi }] = await Promise.all([
     admin.from("organization_product_licenses")
@@ -90,7 +104,7 @@ export async function GET(istek: Request) {
     const kademe = abonelikKademesi(bitis, bugun);
     return kademe === null ? [] : [{ ...l, deneme, bitis, kademe }];
   });
-  if (!adaylar.length) return Response.json({ bugun, yazilan: 0 });
+  if (!adaylar.length) return Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, yazilan: 0 });
 
   const { data: kurumlar, error: kurumHatasi } = await admin.from("organizations")
     .select("id,kind").in("id", [...new Set(adaylar.map((a) => a.organization_id))]);
@@ -120,7 +134,7 @@ export async function GET(istek: Request) {
         .select("user_id", { count: "exact", head: true }).eq("organization_id", a.organization_id).eq("is_active", true);
       // Sayılamazsa tutar yazılmıyor: eksik tutar, hiç yazmamaktan kötü.
       aylikUcret = sayimHatasi ? null
-        : aylikUcret + ekKullaniciUcretiKurus(count ?? 0, a.cekirdek.user_limit, a.cekirdek.extra_user_fee ?? 0);
+        : donemTutari({ urun: "arvoos", aylikUcret, aktifKullanici: count ?? 0, kullaniciLimiti: a.cekirdek.user_limit, ekKullaniciUcreti: a.cekirdek.extra_user_fee ?? 0 }).tutar;
     }
     const metin = abonelikBildirimi({ urunAdi: productName(a.product), deneme: a.deneme, bitis: a.bitis, kademe: a.kademe, aylikUcret });
     const { error: yazmaHatasi } = await admin.from("notifications").insert(alicilar.map((kullanici) => ({
@@ -137,5 +151,5 @@ export async function GET(istek: Request) {
     else yazilan += alicilar.length;
   }
   if (hatalar.length) console.error("[abonelik] hatırlatma yazılamadı", hatalar);
-  return Response.json({ bugun, aday: adaylar.length, yazilan, hata: hatalar.length }, { status: hatalar.length ? 500 : 200 });
+  return Response.json({ bugun, gecikmis: isaret.cekirdek.length + isaret.urun.length, aday: adaylar.length, yazilan, hata: hatalar.length }, { status: hatalar.length ? 500 : 200 });
 }

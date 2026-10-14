@@ -40,6 +40,8 @@ export type AbonelikGrubu = {
   odeyen: number;
   denemede: number;
   geciken: number;
+  /** Askıya alınmış ya da iptal edilmiş abonelikler (toplama girmez). */
+  kapali: number;
 };
 
 const SUZGECLER = [
@@ -48,6 +50,7 @@ const SUZGECLER = [
   { kod: "deneme", ad: "Denemede" },
   { kod: "geciken", ad: "Ödemesi gecikmiş" },
   { kod: "ucretsiz", ad: "Ücreti girilmemiş" },
+  { kod: "kapali", ad: "Askıda / iptal" },
 ] as const;
 
 /** Türkçe duyarsız arama: "İş" ile "is" eşleşsin. */
@@ -67,6 +70,7 @@ export function AbonelikListesi({ gruplar }: { gruplar: AbonelikGrubu[] }) {
       if (suzgec === "deneme" && !grup.denemede) return false;
       if (suzgec === "geciken" && !grup.geciken) return false;
       if (suzgec === "ucretsiz" && !grup.kalemler.some((kalem) => !kalem.ucret)) return false;
+      if (suzgec === "kapali" && !grup.kapali) return false;
       if (!anahtar) return true;
       return sadelestir(`${grup.ad} ${grup.kalemler.map((kalem) => kalem.urunAdi).join(" ")}`).includes(anahtar);
     });
@@ -102,6 +106,7 @@ export function AbonelikListesi({ gruplar }: { gruplar: AbonelikGrubu[] }) {
                     {grup.kalemler.length} abonelik
                     {grup.denemede ? ` · ${grup.denemede} denemede` : ""}
                     {grup.geciken ? ` · ${grup.geciken} gecikmiş` : ""}
+                    {grup.kapali ? ` · ${grup.kapali} askıda/iptal` : ""}
                   </small>
                 </span>
                 {/* Aylık toplam başlıkta: "bu kurum bize ne ödüyor"

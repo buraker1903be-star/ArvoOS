@@ -7,6 +7,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { syncRandevuTenantQuietly } from "@/lib/randevu-bridge";
+import { havaleDenetimleri } from "@/lib/beklenen-odeme";
 
 async function reviewBankTransferPayment__impl(formData: FormData) {
   const { supabase, isPlatformOwner } = await getPanelContext();
@@ -18,6 +19,23 @@ async function reviewBankTransferPayment__impl(formData: FormData) {
 
   if (!paymentId) throw new Error("Ödeme kaydı seçilmedi.");
   if (!new Set(["approved", "rejected"]).has(decision)) throw new Error("Geçersiz karar.");
+
+  /*
+    TUTAR DENETİMİ (14.10.2026). Onay lisansı BİLDİRİLEN paketle bir ay
+    uzatıyor; eskiden bildirilen tutar ve paket hiçbir şeyle
+    karşılaştırılmıyordu. Fark varsa kurucu ekranda görüp açıkça teyit
+    etmeden onay geçmiyor (ekrandaki karar formu teyidi bu alanla
+    gönderiyor). Ret için denetim yok.
+  */
+  if (decision === "approved") {
+    const { data: bildirim, error: bildirimHatasi } = await supabase.from("organization_payment_requests")
+      .select("id,organization_id,product,plan_code,amount").eq("id", paymentId).maybeSingle();
+    if (bildirimHatasi || !bildirim) throw new Error("Ödeme bildirimi okunamadı" + (bildirimHatasi ? `: ${bildirimHatasi.message}` : "."));
+    const denetim = (await havaleDenetimleri(supabase, [bildirim])).get(bildirim.id);
+    if (denetim?.farklar.length && formData.get("fark_onayi") !== "evet") {
+      throw new Error("Bildirim beklenenle uyuşmuyor: " + denetim.farklar.join(" ") + " Farkı görerek onaylamak için ekrandaki teyidi kullanın.");
+    }
+  }
 
   const { error } = await supabase.rpc("review_bank_transfer_payment", {
     p_payment_id: paymentId,

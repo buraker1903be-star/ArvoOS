@@ -6,7 +6,7 @@ import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId,
 import { getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PLATFORM_HOST } from "@/lib/public-host";
 import { productName, type ProductCode } from "@/lib/products";
-import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
+import { donemTutari } from "@/lib/abonelik-tutari";
 
 // Kurum lisansının kartla (PayTR Link) ödeme bağlantısı. İki yerden çağrılır:
 // ArvoOS Ödemeler sayfası (app/panel/billing/paytr-actions.ts) ve Randevu
@@ -60,10 +60,12 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
       admin.from("organization_memberships").select("user_id", { count: "exact", head: true })
         .eq("organization_id", organizationId).eq("is_active", true),
     ]);
-    const paket = Number(license?.monthly_fee ?? 0);
-    const ekKoltuk = ekKullaniciSayisi(aktifKullanici ?? 0, license?.user_limit ?? null);
-    const ekUcret = ekKullaniciUcretiKurus(aktifKullanici ?? 0, license?.user_limit ?? null, license?.extra_user_fee ?? 0);
-    fee = paket + ekUcret;
+    // Hesap lib/abonelik-tutari'nda: hatırlatma ve havale onayı aynı tutarı görsün.
+    const { tutar, ekKoltuk } = donemTutari({
+      urun: "arvoos", aylikUcret: license?.monthly_fee, aktifKullanici: aktifKullanici ?? 0,
+      kullaniciLimiti: license?.user_limit ?? null, ekKullaniciUcreti: license?.extra_user_fee ?? 0,
+    });
+    fee = tutar;
     if (ekKoltuk > 0) ekNot = ` + ${ekKoltuk} ek kullanıcı`;
     planCode = license?.plan_code ?? planCode;
   } else {
