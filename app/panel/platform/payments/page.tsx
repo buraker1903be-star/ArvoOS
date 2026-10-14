@@ -3,8 +3,7 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBaslik, KBos, KDurum, KKart, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { PAKET_ADI, para, tarihSaat } from "../bicim";
 import { reviewBankTransferPayment } from "./actions";
 import { KararFormu } from "./karar-formu";
@@ -23,7 +22,7 @@ const statusTones: Record<string, string> = { pending: "warning", approved: "suc
   Sayfa .liste-sayfa DEĞİL: o düzen yüksekliği ekrana sabitleyip yalnızca
   tablonun kaydığını varsayıyor; burada asıl içerik karar formlu kartlar
   ve onlar tablonun içine sığmıyor. Izgara aynı (sol içerik, sağda
-  istatistik kartı), sayfa kendi boyunda kayıyor.
+  küçük dağılım kartı), sayfa kendi boyunda kayıyor.
 */
 
 export default async function PaymentApprovalsPage() {
@@ -149,28 +148,25 @@ export default async function PaymentApprovalsPage() {
             aciklama="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın."
             sag={<span className="status-pill" data-tone="danger">Müdahale bekliyor</span>}
           >
-            <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sebep" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "PayTR no" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "" }]}>
+            {/* iOS listesi (14.10.2026): sebep ve tutar sağda, açıklama,
+                PayTR numarası ve tarih tek satırlık özette. */}
+            <KListe>
               {incidents.map((incident) => {
                 const href = incident.organizationId ? `/panel/platform?organization=${incident.organizationId}` : null;
                 const sebep = incidentLabels[incident.result] ?? incident.result;
                 return (
-                  <tr key={incident.id}>
-                    <KBaslik avatar etiket="Kurum" href={href} baslik={incident.organizationName ?? "—"} alt={incidentNotes[incident.result] ?? undefined} />
-                    <KDurum baslik="Sebep" etiket={sebep} ton="danger" />
-                    <td data-label="Tutar" className="crm-col-amount">{incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}</td>
-                    <td data-label="PayTR no" className="plt-mono">{incident.merchantOid}</td>
-                    <td data-label="Tarih" className="crm-col-date">{tarihSaat(incident.createdAt)}</td>
-                    <KSatirSonu mobil={{
-                      href,
-                      baslik: incident.organizationName ?? "Kurum bilinmiyor",
-                      durum: { etiket: sebep, ton: "danger" },
-                      alt: [incident.paymentAmount !== null ? para(incident.paymentAmount) : null, tarihSaat(incident.createdAt)],
-                      isaretler: [{ metin: incident.merchantOid, ton: "sessiz" }],
-                    }} />
-                  </tr>
+                  <KOge
+                    key={incident.id}
+                    href={href}
+                    simge={incident.organizationName ?? "Kurum bilinmiyor"}
+                    baslik={incident.organizationName ?? "Kurum bilinmiyor"}
+                    alt={[incidentNotes[incident.result], incident.merchantOid, tarihSaat(incident.createdAt)].filter(Boolean).join(" · ")}
+                    durum={{ etiket: sebep, ton: "danger" }}
+                    deger={incident.paymentAmount !== null ? para(incident.paymentAmount) : "—"}
+                  />
                 );
               })}
-            </KTablo>
+            </KListe>
           </KKart>
         ) : null}
 
@@ -257,7 +253,9 @@ export default async function PaymentApprovalsPage() {
             aciklama="Son 30 karar. Dekontun kendisine kiracı dosyasından ulaşılır."
             sag={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
           >
-            <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Durum" }, { ad: "Karar", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "Not" }, { ad: "" }]}>
+            {/* iOS listesi (14.10.2026): ürün, ödeme yolu, karar tarihi ve
+                not özette; sağda durum ve tutar. */}
+            <KListe>
               {sonuclananlar.map((payment) => {
                 const organization = Array.isArray(payment.organizations) ? payment.organizations[0] : payment.organizations;
                 const tone = statusTones[payment.status] ?? "neutral";
@@ -267,53 +265,35 @@ export default async function PaymentApprovalsPage() {
                 const tutar = para(Number(payment.amount), payment.currency);
                 const kararTarihi = tarihSaat(payment.reviewed_at ?? payment.created_at);
                 return (
-                  <tr key={payment.id}>
-                    <KBaslik avatar etiket="Kurum" href={href} baslik={organization?.name ?? "Kurum"} alt={`${productName(payment.product ?? "arvoos")} · ${yol}`} />
-                    <KDurum etiket={etiket} ton={tone} />
-                    <td data-label="Karar" className="crm-col-date">{kararTarihi}</td>
-                    <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
-                    <td data-label="Not" className="k-sessiz">{payment.review_note ?? "—"}</td>
-                    <KSatirSonu mobil={{
-                      href,
-                      baslik: organization?.name ?? "Kurum",
-                      durum: { etiket, ton: tone },
-                      alt: [tutar, yol, kararTarihi],
-                      isaretler: [payment.review_note ? { metin: payment.review_note, ton: "sessiz" } : null],
-                    }} />
-                  </tr>
+                  <KOge
+                    key={payment.id}
+                    href={href}
+                    simge={organization?.name ?? "Kurum"}
+                    baslik={organization?.name ?? "Kurum"}
+                    alt={[productName(payment.product ?? "arvoos"), yol, kararTarihi, payment.review_note].filter(Boolean).join(" · ")}
+                    durum={{ etiket, ton: tone }}
+                    deger={tutar}
+                  />
                 );
               })}
-            </KTablo>
+            </KListe>
           </KKart>
         ) : null}
       </div>
 
-      <IstatistikKarti
-        kapsam="tutarlar ve sayılar bütün bildirimlerden; ödeme yolu son 30 karardan"
-        kutular={[
-          { ad: "İnceleme bekliyor", deger: String(incelenecekler.length), alt: incelenecekler.length ? para(pendingTotal, currency) : "dekont yok", ton: incelenecekler.length ? "uyari" : undefined },
-          { ad: "Onaylanan", deger: para(approvedTotal, currency), alt: `${onaylilar.length} bildirim`, ton: "arti" },
-          { ad: "Reddedilen", deger: String(rejected), alt: "tüm zamanlar" },
-          { ad: "Karşılıksız", deger: String(incidents.length), alt: incidents.length ? "PayTR ödedi, kayıt yok" : "yok", ton: incidents.length ? "uyari" : undefined },
-        ]}
-        gruplar={[
-          {
-            baslik: "Bildirim durumu",
-            satirlar: [
-              { ad: "Onaylandı", adet: onaylilar.length },
-              { ad: "Reddedildi", adet: rejected },
-              { ad: "İnceleme bekliyor", adet: incelenecekler.length },
-            ],
-          },
-          {
-            baslik: "Ödeme yolu (son 30 karar)",
-            satirlar: [
-              { ad: "Havale / EFT", adet: sonuclananlar.length - gecmisKartla },
-              { ad: "Kartla (PayTR)", adet: gecmisKartla },
-            ],
-          },
-        ]}
-      />
+      {/*
+        Sağ sütun (14.10.2026, iOS listesi): dört kutu ve "Bildirim durumu"
+        şeritteki sayıların aynısıydı; kalan yalnızca başka yerde olmayan
+        ödeme yolu dağılımı.
+      */}
+      <div className="liste-sag">
+        <KKart baslik="Ödeme yolu" aciklama="Son 30 karar">
+          <KListe>
+            <KOge baslik="Havale / EFT" deger={String(sonuclananlar.length - gecmisKartla)} />
+            <KOge baslik="Kartla (PayTR)" deger={String(gecmisKartla)} />
+          </KListe>
+        </KKart>
+      </div>
     </div>
   </main>;
 }

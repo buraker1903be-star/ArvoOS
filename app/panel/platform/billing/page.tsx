@@ -4,9 +4,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { productName } from "@/lib/products";
 import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { MobilSatir } from "../../crm/table-cells";
-import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
 import "../../crm/crm.css";
@@ -365,104 +363,102 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             {/* Ödeme sorunları: bugün peşine düşülecek işler tek listede. */}
             <KNot>Gecikmiş abonelikler, denemesi bitip ödemeye geçmeyenler, onay bekleyen ya da son 30 günde reddedilen havaleler ve PayTR&apos;nin bildirip işlenemeyen ödemeler.</KNot>
             {sorunlar.length ? (
-              <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sorun" }, { ad: "Ayrıntı" }, { ad: "Nereden" }, { ad: "" }]}>
+              /* iOS listesi: satır, sorunun çözüleceği ekrana gidiyor
+                 (lisans ya da Ödeme onayları); "Nereden" sütunu o yüzden
+                 özetin sonunda. */
+              <KListe>
                 {sorunlar.map((x) => (
-                  <tr key={x.anahtar}>
-                    <KBaslik avatar etiket="Kurum" href={x.baglanti} baslik={x.kim} />
-                    <KDurum baslik="Sorun" etiket={x.sorun} ton={x.ton} />
-                    <td data-label="Ayrıntı">{x.ayrinti}</td>
-                    <td data-label="Nereden" className="k-sessiz">{x.baglantiAdi}</td>
-                    <KSatirSonu mobil={{ href: x.baglanti, baslik: x.kim, durum: { etiket: x.sorun, ton: x.ton }, alt: [x.ayrinti] }} />
-                  </tr>
+                  <KOge
+                    key={x.anahtar}
+                    href={x.baglanti}
+                    simge={x.kim}
+                    baslik={x.kim}
+                    alt={`${x.ayrinti} · ${x.baglantiAdi.replace(" →", "")}`}
+                    durum={{ etiket: x.sorun, ton: x.ton }}
+                  />
                 ))}
-              </KTablo>
+              </KListe>
             ) : <KBos baslik="Ödeme sorunu yok" aciklama="Gecikmiş abonelik, bekleyen havale ya da işlenemeyen ödeme yok." />}
           </> : bolum === "hatirlatma" ? <>
             {/* Otomatik çekim yok: kurucu buradan WhatsApp'la hatırlatır. */}
             <KNot>ArvoOS, ArvoARC, ArvoLab ve Randevu aboneliklerinden {REMINDER_WINDOW_DAYS} gün içinde bitenler ve süresi geçenler. WhatsApp düğmesi kurumun iletişim numarasına ödeme bağlantılı hazır mesajı gönderir.</KNot>
             {reminders.length ? (
-              <KTablo kolonlar={[{ ad: "Kurum / ürün" }, { ad: "Kalan" }, { ad: "Bitiş", sinif: "crm-col-date" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "" }]}>
+              <KListe>
                 {reminders.map((r) => {
                   const kalan = r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`;
                   const ton = r.daysLeft < 0 ? "danger" : r.daysLeft <= 1 ? "warning" : "info";
-                  const ucret = r.fee ? `${para(r.fee, "TRY")} / ay` : "aylık ücret girilmedi";
                   return (
-                    <tr key={`${r.organizationId}-${r.product}`}>
-                      <KBaslik avatar etiket="Kurum" baslik={r.organizationName} alt={r.productName} />
-                      <KDurum baslik="Kalan" etiket={kalan} ton={ton} />
-                      <td data-label="Bitiş" className="crm-col-date">{tarih(r.endsAt)}</td>
-                      <td data-label="Aylık" className={`crm-col-amount${r.fee ? "" : " talep-uyari"}`}>{ucret}</td>
-                      {/*
+                    <KOge
+                      key={`${r.organizationId}-${r.product}`}
+                      simge={r.organizationName}
+                      baslik={r.organizationName}
+                      alt={`${r.productName} · bitiş ${tarih(r.endsAt)}`}
+                      durum={{ etiket: kalan, ton }}
+                      /* Ücreti girilmemiş abonelik ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */
+                      deger={r.fee ? para(r.fee, "TRY") : <span className="k-ios-eksik">Ücret yok</span>}
+                      degerAlt={r.fee ? "aylık" : "girilmedi"}
+                      /*
                         Eskiden bu bir wa.me bağlantısıydı: kurucu WhatsApp Web'e
                         düşüyor, mesajı elle gönderiyordu ve gönderilip
                         gönderilmediğinin kaydı kalmıyordu — "bu kuruma hatırlattık
                         mı" sorusunun yanıtı kimsede yoktu. Artık kapıdan gidiyor
                         ve kurumun sohbetine yazılıyor.
 
-                        Düğme eylem hücresinde (crm-table-actions): telefonda
-                        satırın tek görünümünün yanında kalan hücre bu.
-                      */}
-                      <td className="crm-table-actions">
-                        {r.phone ? (
-                          <form action={abonelikHatirlatmasiGonder}>
-                            <input type="hidden" name="organization_id" value={r.organizationId} />
-                            <input type="hidden" name="product" value={r.product} />
-                            <input type="hidden" name="tur" value={r.trial ? "trial" : "renewal"} />
-                            <input type="hidden" name="phone" value={r.phone} />
-                            <input type="hidden" name="message" value={r.message} />
-                            <input type="hidden" name="abone" value={r.organizationName} />
-                            <input type="hidden" name="urun" value={r.productName} />
-                            <input type="hidden" name="tarih" value={r.endsAtLabel} />
-                            <input type="hidden" name="ucret" value={r.feeLabel ?? ""} />
-                            <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
-                          </form>
-                        ) : (
-                          <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
-                        )}
-                      </td>
-                      <MobilSatir
-                        baslik={`${r.organizationName} · ${r.productName}`}
-                        durum={{ etiket: kalan, ton }}
-                        alt={[tarih(r.endsAt), ucret]}
-                      />
-                    </tr>
+                        Düğme satırın sonunda (sonu): satırın kendi işi bu, o
+                        yüzden satır bir bağlantı değil.
+                      */
+                      sonu={r.phone ? (
+                        <form action={abonelikHatirlatmasiGonder}>
+                          <input type="hidden" name="organization_id" value={r.organizationId} />
+                          <input type="hidden" name="product" value={r.product} />
+                          <input type="hidden" name="tur" value={r.trial ? "trial" : "renewal"} />
+                          <input type="hidden" name="phone" value={r.phone} />
+                          <input type="hidden" name="message" value={r.message} />
+                          <input type="hidden" name="abone" value={r.organizationName} />
+                          <input type="hidden" name="urun" value={r.productName} />
+                          <input type="hidden" name="tarih" value={r.endsAtLabel} />
+                          <input type="hidden" name="ucret" value={r.feeLabel ?? ""} />
+                          <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
+                        </form>
+                      ) : (
+                        <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
+                      )}
+                    />
                   );
                 })}
-              </KTablo>
+              </KListe>
             ) : <KBos baslik="Yaklaşan dönem sonu yok" aciklama={`Önümüzdeki ${REMINDER_WINDOW_DAYS} gün içinde biten ya da süresi geçmiş abonelik yok.`} />}
           </> : null}
         </AbonelikListesi>
       </section>
 
-      <IstatistikKarti
-        kapsam="bütün lisans kayıtlarından; süzgeçten bağımsız"
-        kutular={[
-          { ad: "Denemede gelir", deger: para(denemeGeliri, currency), alt: `${sayi(denemedekiler.length)} deneme` },
-          { ad: "Ücreti girilmemiş", deger: sayi(ucretsiz), alt: "abonelik", ton: ucretsiz ? "uyari" : undefined },
-          { ad: "Ödeme sorunu", deger: sayi(sorunlar.length), alt: sorunlar.length ? "peşine düşülecek" : "yok", ton: sorunlar.length ? "uyari" : undefined },
-          { ad: "Dönem sonu", deger: sayi(reminders.length), alt: `${REMINDER_WINDOW_DAYS} gün içinde` },
-        ]}
-        gruplar={[
-          {
-            baslik: "Durumlar",
-            satirlar: [
+      {/*
+        iOS LİSTESİ (14.10.2026): sağdaki dört kutu (denemede gelir, ücreti
+        girilmemiş, ödeme sorunu, dönem sonu) şeritte ve çip satırında zaten
+        yazan sayılardı; "En çok ödeyen kurumlar" da gelire göre sıralı
+        listenin ilk beş satırıydı. Kalanlar yalnızca başka yerde olmayan
+        dağılımlar — bütün lisans kayıtlarından, süzgeçten bağımsız.
+      */}
+      <div className="liste-sag">
+        <KKart baslik="Durumlar">
+          <KListe>
+            {[
               { ad: "Aktif", adet: durumSayisi("active") },
               { ad: "Deneme", adet: durumSayisi("trialing") },
               { ad: "Ödeme gecikmiş", adet: durumSayisi("past_due") },
               { ad: "Askıda", adet: durumSayisi("suspended") },
               { ad: "İptal", adet: durumSayisi("canceled") },
-            ],
-          },
-          {
-            baslik: "Ürünler",
-            satirlar: [...urunSayilari.entries()].sort((a, b) => b[1] - a[1]).map(([ad, adet]) => ({ ad, adet })),
-          },
-          {
-            baslik: "En çok ödeyen kurumlar",
-            satirlar: abonelikGruplari.filter((g) => g.aylikToplam).slice(0, 5).map((g) => ({ ad: g.ad, adet: g.aylikToplam, etiket: g.aylikToplamAdi })),
-          },
-        ]}
-      />
+            ].map((d) => <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />)}
+          </KListe>
+        </KKart>
+        {urunSayilari.size ? (
+          <KKart baslik="Ürünler">
+            <KListe>
+              {[...urunSayilari.entries()].sort((a, b) => b[1] - a[1]).map(([ad, adet]) => <KOge key={ad} baslik={ad} deger={sayi(adet)} />)}
+            </KListe>
+          </KKart>
+        ) : null}
+      </div>
     </div>
   </main>;
 }

@@ -112,6 +112,12 @@ export function ModulMatrisi({
     tek kompakt satır (MobilSatir) KULLANILMIYOR: o görünüm öbür hücreleri
     gizliyor ve anahtarlar telefonda erişilemez kalırdı; tablo telefonda
     etiketli hücrelere açılıyor.
+
+    Konsolun öbür listeleri iOS satırına geçti (KListe/KOge, 14.10.2026);
+    bu tablo BİLEREK kalıyor: satır başına iki anahtar (erişim, köprü)
+    ayrı sütunlarda alt alta hizalı okunuyor, KOge'nin tek "sonu"
+    yuvasına iki anahtar etiketsiz sığınca hangisinin hangisi olduğu
+    belirsizleşiyor.
   */
   return (
     <KTablo kolonlar={[{ ad: "Modül" }, { ad: "Durum" }, { ad: "Erişim" }, { ad: "Köprü" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }]}>

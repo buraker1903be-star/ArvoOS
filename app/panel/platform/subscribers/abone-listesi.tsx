@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KBos, KDurum, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KListe, KOge } from "../konsol-ui";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 // Düzenleme penceresi (.plt-pencere) ve gizli düğme (.plt-gizli) konsolun stilinde.
@@ -127,40 +127,42 @@ export function AboneListesi({ aboneler, kaydet, durum }: {
       </div>
 
       {listelenen.length ? (
-        <KTablo kolonlar={[{ ad: "Abone" }, { ad: "Ürün" }, { ad: "Durum" }, { ad: "Deneme / dönem", sinif: "crm-col-date" }, { ad: "" }]}>
+        /*
+          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): abone tek satır —
+          kişi simgesi, ad, altında ürün · e-posta; sağda durum ve deneme
+          bitişi / dönem sonu. Eskiden beş sütunlu tabloydu (KTablo).
+        */
+        <KListe>
           {listelenen.map((abone) => {
             const durumu = { etiket: abone.erisimAcik ? abone.durumAdi : "Erişim kapalı", ton: abone.tone };
-            const tarihEtiketi = abone.durum === "trialing" ? "Deneme bitişi" : "Dönem sonu";
+            const tarihEtiketi = abone.durum === "trialing" ? "deneme bitişi" : "dönem sonu";
             const tarihAdi = abone.durum === "trialing" ? abone.denemeSonuAdi : abone.donemSonuAdi;
             return (
-              <tr key={abone.id}>
-                {/* Gidilecek sayfa yok, düzenleme pencerede: satıra tıklama
-                    .satir-ac düğmesine basıyor (crm/satir-tiklama.tsx).
-                    Düğme klavye ve ekran okuyucu için yerinde duruyor. */}
-                <td data-label="Abone">
-                  <span className="crm-table-title" title={abone.ad || abone.eposta}>{abone.ad || abone.eposta}</span>
-                  {/* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi
-                      birbirinden ayırmanın başka yolu yok. */}
-                  <span className="crm-table-sub">{abone.ad ? abone.eposta : abone.urunAdi}</span>
-                  <button type="button" className="satir-ac plt-gizli" onClick={() => setAcik(abone.id)}>
-                    {abone.ad || abone.eposta} aboneliğini düzenle
+              <KOge
+                key={abone.id}
+                simge={abone.ad || abone.eposta}
+                baslik={abone.ad || abone.eposta}
+                /* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi
+                   birbirinden ayırmanın başka yolu yok. */
+                alt={[abone.urunAdi, abone.ad ? abone.eposta : null].filter(Boolean).join(" · ")}
+                durum={durumu}
+                deger={tarihAdi}
+                degerAlt={tarihEtiketi}
+                /* Gidilecek sayfa yok, düzenleme pencerede. Eskiden satıra
+                   tıklama gizli .satir-ac düğmesine basıyordu (SatirTiklama,
+                   KTablo'nun içindeydi); iOS listesinde o dinleyici yok, düğme
+                   satırın sonunda görünür duruyor — klavye ve ekran okuyucu
+                   da onu kullanıyor. */
+                sonu={(
+                  <button type="button" className="satir-ac panel-secondary" onClick={() => setAcik(abone.id)}
+                    aria-label={`${abone.ad || abone.eposta} aboneliğini düzenle`}>
+                    Düzenle
                   </button>
-                </td>
-                <td data-label="Ürün">{abone.urunAdi}</td>
-                <KDurum etiket={durumu.etiket} ton={durumu.ton} />
-                <td data-label={tarihEtiketi} className="crm-col-date">
-                  {tarihAdi}
-                  <span className="crm-table-sub">{tarihEtiketi}</span>
-                </td>
-                <KSatirSonu mobil={{
-                  baslik: abone.ad || abone.eposta,
-                  durum: durumu,
-                  alt: [abone.urunAdi, abone.ad ? abone.eposta : null, `${tarihEtiketi} ${tarihAdi}`],
-                }} />
-              </tr>
+                )}
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       ) : (
         <KBos
           baslik={arama || suzgec !== "hepsi" ? "Eşleşen abone yok" : "Henüz bireysel abone yok"}

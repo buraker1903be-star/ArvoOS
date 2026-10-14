@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -6,8 +7,7 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { IstatistikKarti } from "../crm/istatistik-karti";
-import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "./konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "./konsol-ui";
 import { KURULUM_ADI, KURULUM_TONU, depolama, para, tarihSaat } from "./bicim";
 import { DAVET_DURUM_ADLARI } from "../hr/davet-durumu";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -400,11 +400,15 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               (crm/satir-tiklama.tsx). Klavye, orta tık ve "yeni sekmede
               aç" o bağlantı üzerinden çalışıyor; konsol bu yüzden panelin
               tablosuna dönebildi.
+
+              iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): sekiz sütunlu
+              tablo yerine tek satır. Solda simge ve ad; altında tek satır
+              paket · depolama · son davet · çalışma alanı; sağda kurulum
+              durumu ve aylık ücret, ücretin altında kullanıcı kotası.
+              Satır gerçek bir <a> (KOge), kaplama ya da tıklama dinleyicisi
+              yok. Kota aşımı ve gönderilemeyen davet yine uyarı renginde.
             */
-            <KTablo kolonlar={[
-              { ad: "Kurum" }, { ad: "Paket" }, { ad: "Durum" }, { ad: "Kullanıcı" }, { ad: "Depolama" },
-              { ad: "Aylık ücret", sinif: "crm-col-amount" }, { ad: "Son davet" }, { ad: "" },
-            ]}>
+            <KListe>
               {listelenen.map((item) => {
                 const kota = kotaById.get(item.id) ?? null;
                 const lisans = lisansById.get(item.id) ?? null;
@@ -414,58 +418,41 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                 const durumAdi = KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state;
                 const durumTonu = KURULUM_TONU[item.provisioning_state] ?? "neutral";
                 const davetAdi = itemInvite ? DAVET_DURUM_ADLARI[itemInvite.status] ?? itemInvite.status : null;
+                /* Satırın tek satırlık özeti; parçalar " · " ile. Kota
+                   aşımı uyarı renginde: "dikkat gerektiren" uyarısı ayrı
+                   bir menü öğesi değil, satırın kendisi söylüyor. Son
+                   davet: kurulum bekleyen kiracıda kurucunun ilk sorusu
+                   "davet gitti mi, kabul edildi mi"; hata varsa uyarı
+                   renginde — sebebi dosyada yazılı. */
+                const davetTarihi = itemInvite?.accepted_at ? tarihSaat(itemInvite.accepted_at)
+                  : itemInvite?.sent_at ? tarihSaat(itemInvite.sent_at) : null;
+                const ozet: ReactNode[] = [
+                  planNames.get(item.plan_code) ?? item.plan_code,
+                  kota ? <span className={kota.depolama.asildi ? "talep-uyari" : undefined}>{depolama(kota.depolama.kullanilan)} / {depolama(kota.depolama.limit)}</span> : null,
+                  itemInvite ? <span className={itemInvite.status === "failed" ? "talep-uyari" : undefined}>Davet: {davetAdi}{davetTarihi ? ` ${davetTarihi}` : ""}</span> : null,
+                  item.provisioning_state === "waiting_owner" && itemInvite?.email ? itemInvite.email : null,
+                  item.kind === "internal" ? "kendi markamız" : null,
+                  item.slug,
+                ].filter(Boolean);
                 return (
-                  <tr key={item.id}>
-                    <KBaslik avatar etiket="Kurum" href={href} baslik={ad} alt={<>
-                      {item.slug}
-                      {item.kind === "internal" ? " · kendi markamız" : ""}
-                      {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
-                    </>} />
-                    <td data-label="Paket">{planNames.get(item.plan_code) ?? item.plan_code}</td>
-                    <KDurum etiket={durumAdi} ton={durumTonu} />
-
-                    {/* Kota hücreleri aşımda uyarı renginde: "dikkat
-                        gerektiren" uyarısı ayrı bir menü öğesi değil,
-                        satırın kendisi söylüyor. */}
-                    <td data-label="Kullanıcı" className={`k-sayi${kota?.kullanici.asildi ? " talep-uyari" : ""}`}>
-                      {kota ? `${kota.kullanici.kullanilan} / ${kota.kullanici.limit}` : "—"}
-                    </td>
-                    <td data-label="Depolama" className={`k-sayi${kota?.depolama.asildi ? " talep-uyari" : ""}`}>
-                      {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
-                    </td>
-                    <td data-label="Aylık ücret" className="crm-col-amount">{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</td>
-
-                    {/* Son davet: kurulum bekleyen kiracıda kurucunun
-                        ilk sorusu "davet gitti mi, kabul edildi mi".
-                        Hata varsa uyarı renginde — sebebi dosyada yazılı. */}
-                    <td data-label="Son davet">
-                      {itemInvite
-                        ? <>
-                            <span className={itemInvite.status === "failed" ? "talep-uyari" : undefined}>{davetAdi}</span>
-                            <span className="crm-table-sub">
-                              {itemInvite.accepted_at ? tarihSaat(itemInvite.accepted_at)
-                                : itemInvite.sent_at ? tarihSaat(itemInvite.sent_at) : "—"}
-                            </span>
-                          </>
-                        : "—"}
-                    </td>
-
-                    <KSatirSonu mobil={{
-                      href,
-                      baslik: ad,
-                      durum: { etiket: durumAdi, ton: durumTonu },
-                      alt: [planNames.get(item.plan_code) ?? item.plan_code, lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : null],
-                      isaretler: [
-                        kota ? { metin: `${kota.kullanici.kullanilan}/${kota.kullanici.limit} kullanıcı`, ton: kota.kullanici.asildi ? "tehlike" : undefined } : null,
-                        kota?.depolama.asildi ? { metin: "Depolama aşıldı", ton: "tehlike" } : null,
-                        itemInvite?.status === "failed" ? { metin: "Davet gönderilemedi", ton: "tehlike" } : null,
-                        item.kind === "internal" ? { metin: "Kendi markamız", ton: "sessiz" } : null,
-                      ],
-                    }} />
-                  </tr>
+                  <KOge
+                    key={item.id}
+                    href={href}
+                    simge={ad}
+                    baslik={ad}
+                    alt={ozet.map((parca, sira) => <Fragment key={sira}>{sira ? " · " : ""}{parca}</Fragment>)}
+                    durum={{ etiket: durumAdi, ton: durumTonu }}
+                    /* Ücreti girilmemiş müşteri lisansı ₺0 yazmıyor: eksik
+                       kayıt, ücretsiz değil. Kendi markamızda ücret beklenmiyor. */
+                    deger={lisans?.monthly_fee ? para(Number(lisans.monthly_fee))
+                      : item.kind === "internal" ? "—" : <span className="k-ios-eksik">Ücret yok</span>}
+                    degerAlt={kota
+                      ? <span className={kota.kullanici.asildi ? "talep-uyari" : undefined}>{kota.kullanici.kullanilan} / {kota.kullanici.limit} kullanıcı</span>
+                      : undefined}
+                  />
                 );
               })}
-            </KTablo>
+            </KListe>
           ) : (
             <KBos baslik={
               filtre === "kurulum" ? "Kurulum bekleyen kurum yok."
@@ -477,20 +464,27 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         </section>
 
         {/* Kart süzgeçten bağımsız: "kaç müşterim var" sorusunun yanıtı
-            seçili çipe göre değişmesin. Sayılar şeritle aynı hesaptan. */}
-        <IstatistikKarti
-          kapsam="müşteri kurumları; kendi markalarımız hariç"
-          kutular={[
-            { ad: "Müşteri kurum", deger: String(customers.length), alt: `${organizations.length - customers.length} kendi markamız` },
-            { ad: "Kullanımda", deger: String(activeCount), alt: "kurulumu tamam", ton: "arti" },
-            { ad: "Kurulum bekliyor", deger: String(pendingCount), alt: pendingCount ? "sahip ya da davet bekleniyor" : "bekleyen yok", ton: pendingCount ? "uyari" : undefined },
-            { ad: "Dikkat gerektiren", deger: String(issueCount), alt: "hata, askı ya da kota aşımı", ton: issueCount ? "uyari" : undefined },
-          ]}
-          gruplar={[
-            { baslik: "Kurulum durumu", satirlar: kurulumDagilimi },
-            { baslik: "Paketler", satirlar: paketDagilimi },
-          ]}
-        />
+            seçili çipe göre değişmesin. Sayılar şeritle aynı hesaptan.
+
+            SAĞ SÜTUN SADE (14.10.2026, "iOS gibi"): İstatistik kartının
+            dört kutusu şeritteki dört sayının AYNISIYDI. Kalanlar yalnızca
+            şeritte olmayan iki dağılım, iOS listesi olarak. */}
+        <div className="liste-sag">
+          <KKart baslik="Kurulum durumu" aciklama="Müşteri kurumları; kendi markalarımız hariç">
+            <KListe>
+              {kurulumDagilimi.map((d) => (
+                <KOge key={d.ad} baslik={d.ad} deger={String(d.adet)} />
+              ))}
+            </KListe>
+          </KKart>
+          <KKart baslik="Paketler">
+            <KListe>
+              {paketDagilimi.map((d) => (
+                <KOge key={d.ad} baslik={d.ad} deger={String(d.adet)} />
+              ))}
+            </KListe>
+          </KKart>
+        </div>
       </div>
     )}
   </main>;

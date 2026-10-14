@@ -5,8 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
 import { para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
-import { MobilSatir } from "../../crm/table-cells";
-import { KBaslik, KBos, KDurum, KKart, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KOge } from "../konsol-ui";
 // İstek kartlarının düzeni (.istek-listesi, .istek-karti) platform.css'te.
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
@@ -168,29 +167,25 @@ export default async function SozlesmelerPage() {
         aciklama="Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder."
         sag={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
       >
-        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor,
-            telefonda yalnızca kompakt satır. */}
-        <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Karar" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "Not" }]}>
+        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor.
+            iOS listesi (14.10.2026): beş sütunlu tablo yerine tek satır —
+            sözleşme no, karar tarihi ve not özette; sağda karar ve tutar. */}
+        <KListe>
           {sonuclananlar.map((satir) => {
             const onay = satir.status === "approved";
             const karar = onay ? "Onaylandı" : "Reddedildi";
-            const tutar = satir.amount ? para(Number(satir.amount), satir.currency) : "—";
             return (
-              <tr key={satir.id}>
-                <KBaslik avatar etiket="Müşteri" baslik={satir.customer_name ?? "Müşteri"} alt={satir.contract_no ?? "—"} />
-                <KDurum baslik="Karar" etiket={karar} ton={onay ? "success" : "danger"} />
-                <td data-label="Tarih" className="crm-col-date">{tarih(satir.reviewed_at)}</td>
-                <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
-                <td data-label="Not" className="k-sessiz">{satir.review_note ?? "—"}</td>
-                <MobilSatir
-                  baslik={`${satir.customer_name ?? "Müşteri"} · ${satir.contract_no ?? "—"}`}
-                  durum={{ etiket: karar, ton: onay ? "success" : "danger" }}
-                  alt={[tarih(satir.reviewed_at), satir.amount ? tutar : null, satir.review_note]}
-                />
-              </tr>
+              <KOge
+                key={satir.id}
+                simge={satir.customer_name ?? "Müşteri"}
+                baslik={satir.customer_name ?? "Müşteri"}
+                alt={[satir.contract_no ?? "—", tarih(satir.reviewed_at), satir.review_note].filter(Boolean).join(" · ")}
+                durum={{ etiket: karar, ton: onay ? "success" : "danger" }}
+                deger={satir.amount ? para(Number(satir.amount), satir.currency) : "—"}
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       </KKart>
     ) : null}
   </main>;

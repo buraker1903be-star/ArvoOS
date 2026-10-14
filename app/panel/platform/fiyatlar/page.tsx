@@ -9,7 +9,7 @@ import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
 import { YAYIN_KODU } from "@/lib/paket-ucreti";
-import { KBaslik, KBos, KKart, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import "../platform.css";
 
 /*
@@ -59,32 +59,34 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
   const konsoldan = Boolean(kayit?.yayimlandi_at);
   const taslak = kayit?.taslak_kurus ?? null;
   const bekliyor = Boolean(kayit?.taslak_bekliyor);
-  /* Telefonda tek kompakt satır (MobilSatir) yok: o görünüm öbür hücreleri
-     gizliyor, taslak formu telefonda erişilemez kalırdı. Satır telefonda
-     etiketli hücrelere açılıyor (td data-label). */
+  /*
+    iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): basamak tek satır —
+    adı, altında birim · kod · kaynağı; sağda yayındaki aylık ve yıllık
+    karşılığı, en sağda taslak kutusu ve düğmeler (sonu: satır bağlantı
+    değil, kendi işini yapıyor). Eskiden beş sütunlu tablo satırıydı
+    (KTablo); "yayım bekliyor" taslak hücresinin altında ayrı satırdı,
+    şimdi durum noktası. Telefonda MobilSatir'e hiç düşülmüyordu (taslak
+    formu gizlenirdi); bu satırda gizlenen bir şey yok.
+  */
   return (
-    <tr>
-      <KBaslik etiket="Basamak" baslik={ad} alt={<>{birim} · <span className="plt-mono">{kod}</span></>} />
-      <td data-label="Yayındaki aylık" className="crm-col-amount">
-        {cozulmus === null ? "Teklif" : para(cozulmus)}
-        <span className="crm-table-sub">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</span>
-      </td>
-      {/* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada tire. */}
-      <td data-label="Yıllık" className="crm-col-amount">{yillik ? (cozulmus === null ? "Teklif" : para(cozulmus * YILLIK_ODENEN_AY)) : "—"}</td>
-      <td data-label="Taslak">
-        <form action={taslagiKaydet} className="plt-fiyat-form">
-          <input type="hidden" name="kod" value={kod} />
-          <input type="text" name="tutar" inputMode="decimal"
-            defaultValue={taslak === null ? "" : String(taslak / 100)}
-            placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
-          <button className="panel-secondary" type="submit">Kaydet</button>
-        </form>
-        {bekliyor ? <span className="crm-table-sub talep-uyari">yayım bekliyor: {taslak === null ? "Teklif" : para(taslak)}</span> : null}
-      </td>
-      <td data-label="İşlem" className="crm-table-actions">
-        {/* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
-            (14.10.2026): liste ya tamamen eski ya tamamen yeni. */}
+    <KOge
+      baslik={ad}
+      alt={<>{birim} · <span className="plt-mono">{kod}</span> · {konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</>}
+      durum={bekliyor ? { etiket: `Yayım bekliyor: ${taslak === null ? "Teklif" : para(taslak)}`, ton: "warning" } : null}
+      deger={cozulmus === null ? "Teklif" : para(cozulmus)}
+      /* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada yıllık yok. */
+      degerAlt={yillik ? (cozulmus === null ? "yıllık teklif" : `${para(cozulmus * YILLIK_ODENEN_AY)} / yıl`) : "aylık"}
+      sonu={(
+        /* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
+           (14.10.2026): liste ya tamamen eski ya tamamen yeni. */
         <div className="plt-fiyat-eylem">
+          <form action={taslagiKaydet} className="plt-fiyat-form">
+            <input type="hidden" name="kod" value={kod} />
+            <input type="text" name="tutar" inputMode="decimal"
+              defaultValue={taslak === null ? "" : String(taslak / 100)}
+              placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
+            <button className="panel-secondary" type="submit">Kaydet</button>
+          </form>
           {bekliyor ? (
             <form action={taslagiGeriAl}>
               <input type="hidden" name="kod" value={kod} />
@@ -98,16 +100,10 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
             </form>
           ) : null}
         </div>
-      </td>
-    </tr>
+      )}
+    />
   );
 }
-
-/** Fiyat tablolarının ortak sütunları (dört ürün ve ek hizmetler). */
-const FIYAT_KOLONLARI = [
-  { ad: "Basamak" }, { ad: "Yayındaki aylık", sinif: "crm-col-amount" }, { ad: "Yıllık", sinif: "crm-col-amount" },
-  { ad: "Taslak" }, { ad: "" },
-];
 
 const GECMIS_ISLEMI: Record<string, string> = {
   taslak: "Taslak",
@@ -263,7 +259,7 @@ export default async function FiyatlarPage({ searchParams }: {
             okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
             listesinde boş hücre, yanlış rakamdan da kötüdür.
           */}
-          <KTablo kolonlar={FIYAT_KOLONLARI}>
+          <KListe>
             {seciliUrun === "ek"
               ? ADD_ONS.map((kalem) => (
                   <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
@@ -274,7 +270,7 @@ export default async function FiyatlarPage({ searchParams }: {
                     birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
                     cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
                 ))}
-          </KTablo>
+          </KListe>
         </section>
 
         <div className="liste-sag">
@@ -303,18 +299,25 @@ export default async function FiyatlarPage({ searchParams }: {
                 </form>
               )}
             >
-              <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Şu an", sinif: "crm-col-amount" }, { ad: "Yayımlanınca", sinif: "crm-col-amount" }, { ad: "Değişim" }]}>
-                {degisiklikler.map((d) => (
-                  <tr key={d.kod}>
-                    <KBaslik etiket="Basamak" baslik={basamakAdi(d.kod)} alt={<span className="plt-mono">{d.kod}</span>} />
-                    <td data-label="Şu an" className="crm-col-amount">{tutarYazi(d.eski)}</td>
-                    <td data-label="Yayımlanınca" className="crm-col-amount"><b>{tutarYazi(d.yeni)}</b></td>
-                    <td data-label="Değişim" className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
-                      {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
-                    </td>
-                  </tr>
-                ))}
-              </KTablo>
+              {/* iOS satırı (14.10.2026): sağda yeni tutar, altında önceki ve
+                  yüzde. Eskiden dört sütunlu tabloydu; dar yan sütunda
+                  "Şu an / Yayımlanınca" başlıkları satırın kendisinden uzundu.
+                  %50 ve üstü değişim yine uyarı renginde. */}
+              <KListe>
+                {degisiklikler.map((d) => {
+                  const degisim = d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`;
+                  const buyuk = d.yuzde !== null && Math.abs(d.yuzde) >= 50;
+                  return (
+                    <KOge
+                      key={d.kod}
+                      baslik={basamakAdi(d.kod)}
+                      alt={<span className="plt-mono">{d.kod}</span>}
+                      deger={tutarYazi(d.yeni)}
+                      degerAlt={<>önce {tutarYazi(d.eski)} · <span className={buyuk ? "talep-uyari" : undefined}>{degisim}</span></>}
+                    />
+                  );
+                })}
+              </KListe>
               {denetim.hatalar.length ? (
                 <KNot ton="tehlike">
                     <b>Bu liste yayımlanamaz.</b>
@@ -336,10 +339,13 @@ export default async function FiyatlarPage({ searchParams }: {
             </KKart>
           ) : null}
           <KKart baslik="Yayın" aciklama="Taslak hiçbir yerde görünmez; bekleyenler önizlemede birlikte yayımlanır.">
-            <dl className="istat-kutular">
-              <div><dt>Konsoldan yayımlı</dt><dd>{sayi(yayimliSayisi)}</dd><small>kalanı koddaki değer</small></div>
-              <div><dt>Yayım bekleyen</dt><dd className={bekleyenTaslak ? "talep-uyari" : undefined}>{sayi(bekleyenTaslak)}</dd><small>taslak</small></div>
-            </dl>
+            {/* 14.10.2026: iki sayı kutusu (istat-kutular) yerine iki iOS
+                satırı; şerit bu ikisinden yalnızca birini yazıyor. */}
+            <KListe>
+              <KOge baslik="Konsoldan yayımlı" alt="kalanı koddaki değer" deger={sayi(yayimliSayisi)} />
+              <KOge baslik="Yayım bekleyen" alt="taslak"
+                durum={bekleyenTaslak ? { etiket: "Önizlemede", ton: "warning" } : null} deger={sayi(bekleyenTaslak)} />
+            </KListe>
             <KNot>
               Yıllıkta {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava). KDV hariç. Ücretler
               sayfası, JSON-LD, llms-full.txt, kurulum ve ArvoLab bireysel aboneliği bu listeyi okur.
@@ -358,22 +364,20 @@ export default async function FiyatlarPage({ searchParams }: {
           varsayılanı değiştirmek bugün bir migration gerektiriyor — konsoldan düzenleme henüz yok.
         </>}
       >
-        <KTablo kolonlar={[{ ad: "Paket" }, { ad: "Dahil kullanıcı" }, { ad: "Depolama" }, { ad: "Yapay zekâ kredisi" }, { ad: "Bugün bu pakette" }, { ad: "" }]}>
+        {/* iOS satırı (14.10.2026): limitler altta tek satırda, sağda bugün
+            o paketteki kiracı sayısı. Eskiden altı sütunlu tabloydu. */}
+        <KListe>
           {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
-            <tr key={paket}>
-              <KBaslik etiket="Paket" baslik={PAKET_ADI[paket] ?? paket} alt={<span className="plt-mono">{paket}</span>} />
-              <td data-label="Dahil kullanıcı" className="k-sayi">{sayi(limit.userLimit)}</td>
-              <td data-label="Depolama" className="k-sayi">{depolama(limit.storageLimitMb)}</td>
-              <td data-label="Yapay zekâ kredisi" className="k-sayi">{sayi(limit.aiCreditLimit)}</td>
-              <td data-label="Bugün bu pakette" className="k-sayi">{sayi(paketKiracisi(paket))} kiracı</td>
-              <KSatirSonu mobil={{
-                baslik: PAKET_ADI[paket] ?? paket,
-                alt: [`${sayi(limit.userLimit)} kullanıcı`, depolama(limit.storageLimitMb), `${sayi(limit.aiCreditLimit)} kredi`],
-                isaretler: [{ metin: `${sayi(paketKiracisi(paket))} kiracı`, ton: "sessiz" }],
-              }} />
-            </tr>
+            <KOge
+              key={paket}
+              simge={PAKET_ADI[paket] ?? paket}
+              baslik={PAKET_ADI[paket] ?? paket}
+              alt={`${sayi(limit.userLimit)} dahil kullanıcı · ${depolama(limit.storageLimitMb)} · ${sayi(limit.aiCreditLimit)} yapay zekâ kredisi`}
+              deger={`${sayi(paketKiracisi(paket))} kiracı`}
+              degerAlt="bugün bu pakette"
+            />
           ))}
-        </KTablo>
+        </KListe>
         <KNot>
           ArvoARC, Randevu ve ArvoLab&apos;in limitleri kiracının ürün lisansında (limits) duruyor ve bugün yalnızca
           gösteriliyor, uygulanmıyor.
@@ -386,7 +390,9 @@ export default async function FiyatlarPage({ searchParams }: {
         {gecmisHatasi ? (
           <KNot ton="tehlike">Geçmiş okunamadı ({gecmisHatasi.message}) — kayıt yok demek değil.</KNot>
         ) : gecmis.length ? (
-          <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "İşlem" }, { ad: "Önce → sonra" }, { ad: "Kim" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "" }]}>
+          /* iOS satırı (14.10.2026): basamak, altında kim · ne zaman; sağda
+             işlem ve yeni tutar, altında önceki. Eskiden altı sütunlu tablo. */
+          <KListe>
             {gecmis.map((g) => {
               /* Yayımda önceki satır yoksa koddaki değer geçerliydi. */
               const once = g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus);
@@ -394,21 +400,17 @@ export default async function FiyatlarPage({ searchParams }: {
               const kim = g.kim ? kimAdi.get(g.kim) ?? "—" : "—";
               const islem = GECMIS_ISLEMI[g.islem] ?? g.islem;
               return (
-                <tr key={g.id}>
-                  <KBaslik etiket="Basamak" baslik={basamakAdi(g.kod)} alt={<span className="plt-mono">{g.kod}</span>} />
-                  <td data-label="İşlem">{islem}</td>
-                  <td data-label="Önce → sonra">{once}{" → "}{sonra}</td>
-                  <td data-label="Kim">{kim}</td>
-                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(g.zaman)}</td>
-                  <KSatirSonu mobil={{
-                    baslik: basamakAdi(g.kod),
-                    durum: { etiket: islem, ton: g.islem === "yayim" ? "success" : "neutral" },
-                    alt: [`${once} → ${sonra}`, kim !== "—" ? kim : null, tarihSaat(g.zaman)],
-                  }} />
-                </tr>
+                <KOge
+                  key={g.id}
+                  baslik={basamakAdi(g.kod)}
+                  alt={<><span className="plt-mono">{g.kod}</span>{kim !== "—" ? ` · ${kim}` : ""} · {tarihSaat(g.zaman)}</>}
+                  durum={{ etiket: islem, ton: g.islem === "yayim" ? "success" : "neutral" }}
+                  deger={sonra}
+                  degerAlt={`önce ${once}`}
+                />
               );
             })}
-          </KTablo>
+          </KListe>
         ) : <KBos baslik="Henüz fiyat değişikliği yok" />}
       </KKart>
     ) : null}

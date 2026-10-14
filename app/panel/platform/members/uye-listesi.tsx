@@ -2,8 +2,7 @@
 
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import type { DirectoryRow, MemberProduct } from "@/lib/member-directory";
-import { MobilSatir } from "../../crm/table-cells";
-import { KBaslik, KBos, KTablo } from "../konsol-ui";
+import { KBos, KListe, KOge } from "../konsol-ui";
 import { uyeErisimiDegistir } from "./actions";
 
 /*
@@ -263,88 +262,85 @@ export function UyeListesi({ satirlar, ust }: { satirlar: DirectoryRow[]; ust?: 
       {ust}
 
       {gruplar.length ? (
-        /* Kurum başlığı tablonun içinde bir satır: satıra tıklamak grubu
-           açıp kapatıyor (SatirTiklama, button.satir-ac). Kişi satırının
-           açılacak bir ekranı yok; ok sütunu bu yüzden konmadı. Erişim
-           anahtarı eylem hücresinde, telefonda da satırın sağında kalıyor. */
-        <KTablo kolonlar={[{ ad: "Kurum / kişi" }, { ad: "Rol" }, { ad: "Ürünler" }, { ad: "Erişim" }]}>
+        /* iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"). Eskiden dört
+           sütunlu tabloydu (Kurum / kişi, Rol, Ürünler, Erişim); kurum
+           başlığı tablonun içinde colSpan'li bir satırdı ve satıra
+           tıklamak grubu açıyordu (SatirTiklama, button.satir-ac).
+
+           Şimdi kurum bir başlık satırı: simge, ad, altında kapalı erişim
+           özeti, sağda kişi sayısı ve aç/kapa düğmesi. Altında kişi
+           satırları: rol · e-posta · ürünler tek satırda, sağ uçta erişim
+           anahtarı. Kişi satırının açılacak bir ekranı yok; ok bu yüzden
+           yok. */
+        <KListe>
           {gruplar.flatMap((grup) => {
             // Arama yapılırken gruplar kendiliğinden açık.
             const acikMi = Boolean(aranan) || acilanlar.has(grup.anahtar);
-            const grupAlt = `${grup.kisiler.length} kişi${grup.acik < grup.kisiler.length ? ` · ${grup.kisiler.length - grup.acik} erişimi kapalı` : " · tümünün erişimi açık"}`;
+            const grupAlt = grup.acik < grup.kisiler.length ? `${grup.kisiler.length - grup.acik} erişimi kapalı` : "tümünün erişimi açık";
             const baslikSatiri = (
-              <tr key={grup.anahtar} className="plt-uye-grup" data-acik={acikMi}>
-                <td data-label="Kurum" colSpan={4}>
+              <KOge
+                key={grup.anahtar}
+                simge={grup.ad}
+                baslik={grup.ad}
+                alt={grupAlt}
+                deger={grup.kisiler.length}
+                degerAlt="kişi"
+                sonu={
+                  /* Ok, grubun açık mı kapalı mı olduğunu söyleyen tek
+                     işaret: açıkken döner (platform.css'teki kuralın
+                     karşılığı; o kural tablo satırının data-acik'ine
+                     bakıyordu, iOS satırında o kap yok). */
                   <button
                     type="button"
-                    className="satir-ac plt-uye-grup-bas"
+                    className="plt-uye-grup-ok"
                     aria-expanded={acikMi}
+                    aria-label={`${grup.ad}: ${acikMi ? "kişileri gizle" : "kişileri göster"}`}
                     onClick={() => cevir(grup.anahtar)}
-                  >
-                    <span className="plt-uye-grup-ad">
-                      <span className="crm-table-title">{grup.ad}</span>
-                      <span className="crm-table-sub">{grupAlt}</span>
-                    </span>
-                    <span className="plt-uye-grup-ok" aria-hidden="true">›</span>
-                  </button>
-                </td>
-                <MobilSatir baslik={grup.ad} alt={[grupAlt]} />
-              </tr>
+                    style={{ border: 0, cursor: "pointer", ...(acikMi ? { transform: "rotate(90deg)", color: "var(--primary)" } : null) }}
+                  >›</button>
+                }
+              />
             );
             if (!acikMi) return [baslikSatiri];
             return [baslikSatiri, ...grup.kisiler.map((kisi) => {
               const islem = kisi.organizationId ? `${kisi.organizationId}:${kisi.userId}` : null;
               const rolAdi = kisi.rol ? ROL_ADI[kisi.rol] ?? kisi.rol : "—";
+              /* Ürün adının yanında kendi durumu: kişinin kurumdaki
+                 üyeliği açık olsa bile o ürünün lisansı kapalıysa ürüne
+                 giremiyor. (Eskiden renkli etiketti, kapalı olan soluk.) */
+              const urunler = kisi.urunler
+                .map((rozet) => `${URUN_ADI[rozet.product]}${rozet.access ? "" : ` (${DURUM_ADI[rozet.status] ?? rozet.status})`}`)
+                .join(", ");
               return (
-                <tr key={kisi.anahtar}>
-                  <KBaslik avatar etiket="Kişi" baslik={kisi.ad} alt={kisi.eposta && kisi.eposta !== kisi.ad ? kisi.eposta : null} />
-                  <td data-label="Rol">{rolAdi}</td>
-                  <td data-label="Ürünler">
-                    {/* Ürün etiketi kendi erişimini gösteriyor: kişinin
-                        kurumdaki üyeliği açık olsa bile o ürünün
-                        lisansı kapalıysa ürüne giremiyor. */}
-                    <span className="plt-uye-urunler">
-                      {kisi.urunler.map((rozet) => (
-                        <span
-                          key={rozet.product}
-                          className="plt-urun-etiketi"
-                          data-urun={rozet.product}
-                          data-kapali={!rozet.access}
-                          title={`${URUN_ADI[rozet.product]} · ${DURUM_ADI[rozet.status] ?? rozet.status}`}
-                        >{URUN_ADI[rozet.product]}</span>
-                      ))}
+                <KOge
+                  key={kisi.anahtar}
+                  simge={kisi.ad}
+                  baslik={kisi.ad}
+                  alt={[rolAdi !== "—" ? rolAdi : null, kisi.eposta && kisi.eposta !== kisi.ad ? kisi.eposta : null, urunler].filter(Boolean).join(" · ")}
+                  durum={kisi.erisimVar ? null : { etiket: "Erişim kapalı", ton: "danger" }}
+                  sonu={kisi.organizationId ? (
+                    <button
+                      type="button"
+                      className={kisi.membershipActive ? "plt-switch is-on" : "plt-switch is-off"}
+                      role="switch"
+                      aria-checked={Boolean(kisi.membershipActive)}
+                      aria-label={`${kisi.ad} · ${grup.ad} erişimi: ${kisi.membershipActive ? "kapat" : "aç"}`}
+                      disabled={islenen === islem}
+                      onClick={() => degistir(kisi, grup.ad)}
+                    ><i /></button>
+                  ) : (
+                    /* ArvoLab ayrı veritabanında, bireysel abone ise
+                       Bireysel Aboneler ekranından yönetiliyor. Boş
+                       bırakmak yerine nedenini yazıyoruz. */
+                    <span className="k-ios-alt">
+                      {kisi.individual ? "Bireysel abonelerden" : "ArvoLab'dan"}
                     </span>
-                  </td>
-                  <td data-label="Erişim" className="crm-table-actions">
-                    {kisi.organizationId ? (
-                      <button
-                        type="button"
-                        className={kisi.membershipActive ? "plt-switch is-on" : "plt-switch is-off"}
-                        role="switch"
-                        aria-checked={Boolean(kisi.membershipActive)}
-                        aria-label={`${kisi.ad} · ${grup.ad} erişimi: ${kisi.membershipActive ? "kapat" : "aç"}`}
-                        disabled={islenen === islem}
-                        onClick={() => degistir(kisi, grup.ad)}
-                      ><i /></button>
-                    ) : (
-                      /* ArvoLab ayrı veritabanında, bireysel abone ise
-                         Bireysel Aboneler ekranından yönetiliyor. Boş
-                         bırakmak yerine nedenini yazıyoruz. */
-                      <span className="crm-table-sub">
-                        {kisi.individual ? "Bireysel abonelerden" : "ArvoLab'dan"}
-                      </span>
-                    )}
-                  </td>
-                  <MobilSatir
-                    baslik={kisi.ad}
-                    durum={kisi.erisimVar ? { etiket: "Erişim açık", ton: "success" } : { etiket: "Erişim kapalı", ton: "danger" }}
-                    alt={[grup.ad, rolAdi !== "—" ? rolAdi : null, kisi.urunler.map((rozet) => URUN_ADI[rozet.product]).join(", ")]}
-                  />
-                </tr>
+                  )}
+                />
               );
             })];
           })}
-        </KTablo>
+        </KListe>
       ) : (
         <KBos baslik="Aramanıza uyan üye yok" />
       )}

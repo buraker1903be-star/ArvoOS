@@ -9,8 +9,7 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { para, sayi, tarihSaat } from "../bicim";
-import { MobilSatir } from "../../crm/table-cells";
-import { KBaslik, KBos, KDurum, KKart, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KOge } from "../konsol-ui";
 import "../platform.css";
 
 /*
@@ -144,22 +143,19 @@ export default async function SistemSagligiPage() {
     </nav>
 
     {/* Kiracıya bağlı satırlar kiracının ekranına gider (ok sütunu); köprü
-        ve ödeme bildirimi satırlarının açılacak bir ekranı yok. */}
+        ve ödeme bildirimi satırlarının açılacak bir ekranı yok.
+        iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): beş bölüm de sütun
+        başlıksız tek satır — kiracı simgesi, başlık, altında tek satır
+        özet, sağda durum ve değer. Eskiden üç-beş sütunlu tablolardı
+        (KTablo + MobilSatir), kurum adları ikiye kırılıyordu. */}
     <KKart baslik="Ürün köprüleri"
       aciklama="Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.">
-      <KTablo kolonlar={[{ ad: "Ürün" }, { ad: "Durum" }, { ad: "Not" }]}>
-        {kopruler.map((kopru) => {
-          const durum = { etiket: kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı", ton: kopru.bozuk ? "danger" : "success" };
-          return (
-            <tr key={kopru.ad}>
-              <KBaslik etiket="Ürün" baslik={kopru.ad} />
-              <KDurum etiket={durum.etiket} ton={durum.ton} />
-              <td data-label="Not">{kopru.not}</td>
-              <MobilSatir baslik={kopru.ad} durum={durum} alt={[kopru.not]} />
-            </tr>
-          );
-        })}
-      </KTablo>
+      <KListe>
+        {kopruler.map((kopru) => (
+          <KOge key={kopru.ad} baslik={kopru.ad} alt={kopru.not}
+            durum={{ etiket: kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı", ton: kopru.bozuk ? "danger" : "success" }} />
+        ))}
+      </KListe>
     </KKart>
 
     <KKart baslik="Ürün kopyaları"
@@ -168,66 +164,71 @@ export default async function SistemSagligiPage() {
         Düzeltme kiracının lisans ekranında: &quot;Ürüne yeniden yansıt&quot;.
       </>}>
       {bayatKopyalar.length ? (
-        <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Ürün" }, { ad: "Üründe" }, { ad: "Konsolda" }, { ad: "" }]}>
+        <KListe>
           {bayatKopyalar.map((kayit) => {
-            const href = `/panel/platform/licenses?organization=${kayit.organizationId}`;
             const ad = kurumAdi.get(kayit.organizationId) ?? kayit.organizationId;
             return (
-              <tr key={`${kayit.organizationId}-${kayit.product}`}>
-                <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
-                <td data-label="Ürün">{kayit.product}</td>
-                <KDurum baslik="Üründe" etiket={kayit.kopyaDurumu} ton="danger" />
-                <td data-label="Konsolda">{kayit.konsolDurumu}</td>
-                <KSatirSonu mobil={{ href, baslik: ad, durum: { etiket: kayit.kopyaDurumu, ton: "danger" }, alt: [kayit.product, `konsolda ${kayit.konsolDurumu}`] }} />
-              </tr>
+              <KOge
+                key={`${kayit.organizationId}-${kayit.product}`}
+                href={`/panel/platform/licenses?organization=${kayit.organizationId}`}
+                simge={ad}
+                baslik={ad}
+                alt={`${kayit.product} · konsolda ${kayit.konsolDurumu}`}
+                durum={{ etiket: `Üründe ${kayit.kopyaDurumu}`, ton: "danger" }}
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       ) : <KBos baslik="Bayat kopya yok" aciklama="Kopyası konsoldan farklı erişim veren kiracı yok." />}
     </KKart>
 
     <KKart baslik="Kota"
       aciklama="Limitini aşan ya da %85'ine gelen kiracılar. Ölçümler canlı: kullanıcı üyeliklerden, depolama dosya deposundan.">
       {kotalar.length ? (
-        <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Kullanıcı" }, { ad: "Depolama" }, { ad: "Durum" }, { ad: "" }]}>
+        <KListe>
           {kotalar.map((kota) => {
-            const href = `/panel/platform/licenses?organization=${kota.organizationId}`;
             const ad = kurumAdi.get(kota.organizationId) ?? kota.organizationId;
             const durum = { etiket: kota.durum === "asildi" ? "Aşıldı" : "Yaklaştı", ton: kota.durum === "asildi" ? "danger" : "warning" };
-            const kullanici = `${sayi(kota.kullanici.kullanilan)} / ${sayi(kota.kullanici.limit)} · %${kota.kullanici.oran}`;
+            const kullanici = `${sayi(kota.kullanici.kullanilan)} / ${sayi(kota.kullanici.limit)} kullanıcı · %${kota.kullanici.oran}`;
             const depolama = `${sayi(kota.depolama.kullanilan)} / ${sayi(kota.depolama.limit)} MB · %${kota.depolama.oran}`;
+            /* Sağdaki değer iki ölçüden dolu olanın oranı: satırı hangi
+               ölçünün limite taşıdığı bir bakışta görünsün. */
+            const enYuksek = Math.max(kota.kullanici.oran, kota.depolama.oran);
             return (
-              <tr key={kota.organizationId}>
-                <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
-                <td data-label="Kullanıcı" className="k-sayi">{kullanici}</td>
-                <td data-label="Depolama" className="k-sayi">{depolama}</td>
-                <KDurum etiket={durum.etiket} ton={durum.ton} />
-                <KSatirSonu mobil={{ href, baslik: ad, durum, alt: [`kullanıcı ${kullanici}`, depolama] }} />
-              </tr>
+              <KOge
+                key={kota.organizationId}
+                href={`/panel/platform/licenses?organization=${kota.organizationId}`}
+                simge={ad}
+                baslik={ad}
+                alt={`${kullanici} · ${depolama}`}
+                durum={durum}
+                deger={`%${enYuksek}`}
+                degerAlt={kota.kullanici.oran >= kota.depolama.oran ? "kullanıcı" : "depolama"}
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       ) : <KBos baslik="Kota sorunu yok" aciklama="Limitine yaklaşan kiracı yok." />}
     </KKart>
 
     <KKart baslik="Kurulum hataları">
       {admin ? (
         kurulumHatalari.length ? (
-          <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Adım" }, { ad: "Durum" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "" }]}>
+          <KListe>
             {kurulumHatalari.map((kayit) => {
-              const href = `/panel/platform?organization=${kayit.organization_id}`;
               const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
               return (
-                <tr key={kayit.id}>
-                  <KBaslik avatar etiket="Kiracı" href={href} baslik={ad} />
-                  <td data-label="Adım">{kayit.action}</td>
-                  <td data-label="Durum">{kayit.state ?? "—"}</td>
-                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(kayit.created_at)}</td>
-                  <KSatirSonu mobil={{ href, baslik: ad, alt: [kayit.action, kayit.state, tarihSaat(kayit.created_at)] }} />
-                </tr>
+                <KOge
+                  key={kayit.id}
+                  href={`/panel/platform?organization=${kayit.organization_id}`}
+                  simge={ad}
+                  baslik={ad}
+                  alt={[kayit.action, kayit.state].filter(Boolean).join(" · ")}
+                  deger={tarihSaat(kayit.created_at)}
+                />
               );
             })}
-          </KTablo>
+          </KListe>
         ) : <KBos baslik="Kurulum hatası yok" aciklama="Hatayla sonuçlanan kurulum kaydı yok." />
       ) : <KBos baslik="Kurulum günlüğü okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil." />}
     </KKart>
@@ -235,22 +236,25 @@ export default async function SistemSagligiPage() {
     <KKart baslik="İşlenemeyen ödemeler"
       aciklama="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.">
       {odemeOlaylari.length ? (
-        <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sebep" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "PayTR no" }, { ad: "Zaman", sinif: "crm-col-date" }]}>
+        <KListe>
           {odemeOlaylari.map((olay) => {
             const sebep = incidentLabels[olay.result] ?? olay.result;
-            const tutar = olay.paymentAmount !== null ? para(olay.paymentAmount) : "—";
+            const ad = olay.organizationName ?? "—";
+            /* Sebebin açıklaması (incidentNotes) eskiden rozetin altında ayrı
+               satırdı; tek satırlık özete PayTR numarası ve zamanla birlikte
+               giriyor — PayTR panelinde aranacak olan numara. */
             return (
-              <tr key={olay.id}>
-                <KBaslik avatar etiket="Kurum" baslik={olay.organizationName ?? "—"} />
-                <KDurum baslik="Sebep" etiket={sebep} ton="danger" ek={incidentNotes[olay.result] ? <span className="crm-table-sub">{incidentNotes[olay.result]}</span> : null} />
-                <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
-                <td data-label="PayTR no" className="crm-table-mono">{olay.merchantOid}</td>
-                <td data-label="Zaman" className="crm-col-date">{tarihSaat(olay.createdAt)}</td>
-                <MobilSatir baslik={olay.organizationName ?? "—"} durum={{ etiket: sebep, ton: "danger" }} alt={[tutar, olay.merchantOid, tarihSaat(olay.createdAt)]} />
-              </tr>
+              <KOge
+                key={olay.id}
+                simge={olay.organizationName}
+                baslik={ad}
+                alt={[olay.merchantOid, tarihSaat(olay.createdAt), incidentNotes[olay.result]].filter(Boolean).join(" · ")}
+                durum={{ etiket: sebep, ton: "danger" }}
+                deger={olay.paymentAmount !== null ? para(olay.paymentAmount) : "—"}
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       ) : <KBos baslik="İşlenemeyen ödeme yok" aciklama="İşlenemeyen ödeme bildirimi yok." />}
     </KKart>
   </main>;

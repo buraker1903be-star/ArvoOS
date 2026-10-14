@@ -8,8 +8,7 @@ import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
-import { MobilSatir } from "../../crm/table-cells";
-import { KBaslik, KBos, KDurum, KKart, KNot, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { KURULUM_ADI, para, tarihSaat } from "../bicim";
 import { roleNames } from "../../hr/role-names";
 import "../platform.css";
@@ -204,25 +203,21 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
 
     {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
         dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez.
-        Satırların açılacak bir ekranı yok; ok sütunu bu yüzden konmadı. */}
+        Satırların açılacak bir ekranı yok; ok bu yüzden yok (href verilmiyor).
+        iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): dört bölüm de sütun
+        başlıksız tek satır — başlık, altında tek satır özet, sağda durum.
+        Eskiden üç-dört sütunlu tablolardı (KTablo + MobilSatir). */}
     {bolum === "yetkiler" ? (
     <KKart id="yetkiler" baslik="Konsola kim girebiliyor"
       aciklama="Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Hem sunucu işlemleri hem veritabanı politikaları aynı kuralı uyguluyor.">
-      <KTablo kolonlar={[{ ad: "Kişi" }, { ad: "ArvoOS kurumundaki rolü" }, { ad: "Konsol" }]}>
+      <KListe>
         {uyeler.filter((u) => u.is_active).map((u) => {
           const ad = kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—";
           const rol = roleNames[u.role] ?? u.role;
           const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
-          return (
-            <tr key={u.user_id}>
-              <KBaslik avatar etiket="Kişi" baslik={ad} />
-              <td data-label="ArvoOS kurumundaki rolü">{rol}</td>
-              <KDurum baslik="Konsol" etiket={konsol.etiket} ton={konsol.ton} />
-              <MobilSatir baslik={ad} durum={konsol} alt={[rol]} />
-            </tr>
-          );
+          return <KOge key={u.user_id} simge={ad} baslik={ad} alt={rol} durum={konsol} />;
         })}
-      </KTablo>
+      </KListe>
       <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
     </KKart>
     ) : null}
@@ -230,32 +225,22 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
     {bolum === "entegrasyonlar" ? (
     <KKart id="entegrasyonlar" baslik="Bağlantıların durumu"
       aciklama="Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez.">
-      <KTablo kolonlar={[{ ad: "Entegrasyon" }, { ad: "Durum" }, { ad: "Ayrıntı" }]}>
+      <KListe>
         {entegrasyonlar.map((e) => (
-          <tr key={e.ad}>
-            <KBaslik etiket="Entegrasyon" baslik={e.ad} />
-            <KDurum etiket={DURUM_ADI[e.durum]} ton={DURUM_TONU[e.durum]} />
-            <td data-label="Ayrıntı">{e.not}</td>
-            <MobilSatir baslik={e.ad} durum={{ etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] }} alt={[e.not]} />
-          </tr>
+          <KOge key={e.ad} baslik={e.ad} alt={e.not} durum={{ etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] }} />
         ))}
-      </KTablo>
+      </KListe>
     </KKart>
     ) : null}
 
     {bolum === "guvenlik" ? (
     <KKart id="guvenlik" baslik="Sunucu sırları ve yetki"
       aciklama="Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor.">
-      <KTablo kolonlar={[{ ad: "Sır" }, { ad: "Durum" }, { ad: "Ne için" }]}>
+      <KListe>
         {sirlar.map((s) => (
-          <tr key={s.ad}>
-            <KBaslik etiket="Sır" baslik={s.ad} />
-            <KDurum etiket={s.var ? "Tanımlı" : "Eksik"} ton={s.var ? "success" : "danger"} />
-            <td data-label="Ne için">{s.not}</td>
-            <MobilSatir baslik={s.ad} durum={{ etiket: s.var ? "Tanımlı" : "Eksik", ton: s.var ? "success" : "danger" }} alt={[s.not]} />
-          </tr>
+          <KOge key={s.ad} baslik={s.ad} alt={s.not} durum={{ etiket: s.var ? "Tanımlı" : "Eksik", ton: s.var ? "success" : "danger" }} />
         ))}
-      </KTablo>
+      </KListe>
       <KNot ton={eksikSir ? "uyari" : "bilgi"}>
         Konsolun her sayfası ve her işlemi kurucu yetkisini sunucuda yeniden doğruluyor; fiyat listesi,
         fiyat geçmişi ve ödeme kararları ayrıca veritabanı politikalarıyla korunuyor.
@@ -272,19 +257,17 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
         <>
           {okumaHatalari.length ? <KNot ton="tehlike">Bazı kayıtlar okunamadı: {okumaHatalari.join(" · ")}</KNot> : null}
           {kayitlar.length ? (
-            <KTablo kolonlar={[{ ad: "İşlem" }, { ad: "Tür" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "Kim" }]}>
+            <KListe>
+              {/* İlk sütun eskiden zamandı; panel listelerinde ilk hücre
+                  kaydın kendisi. Artık tek satır: işlem, altında kim; sağda
+                  türün tonlu rozeti (hata kırmızı, onay yeşil) ve zaman —
+                  tür rozette olduğu için alt satırda tekrar edilmiyor.
+                  Eskiden dört sütunlu tabloydu. */}
               {kayitlar.map((k) => (
-                <tr key={k.anahtar}>
-                  {/* İlk sütun eskiden zamandı; panel listelerinde ilk hücre
-                      kaydın kendisi, zaman tarih sütununda. */}
-                  <KBaslik etiket="İşlem" baslik={k.ne} />
-                  <KDurum baslik="Tür" etiket={k.tur} ton={k.ton} />
-                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(k.zaman)}</td>
-                  <td data-label="Kim">{k.kim ?? "Sistem"}</td>
-                  <MobilSatir baslik={k.ne} durum={{ etiket: k.tur, ton: k.ton }} alt={[tarihSaat(k.zaman), k.kim ?? "Sistem"]} />
-                </tr>
+                <KOge key={k.anahtar} baslik={k.ne} alt={k.kim ?? "Sistem"}
+                  durum={{ etiket: k.tur, ton: k.ton }} deger={tarihSaat(k.zaman)} />
               ))}
-            </KTablo>
+            </KListe>
           ) : <KBos baslik="Henüz kurucu işlemi kaydı yok" />}
           <KNot>
             Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen

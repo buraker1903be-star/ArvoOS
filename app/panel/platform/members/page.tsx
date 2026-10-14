@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getMemberDirectory, type MemberProduct } from "@/lib/member-directory";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { UyeListesi } from "./uye-listesi";
-import { KBos, KNot } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+import { sayi } from "../bicim";
 import "../platform.css";
 // Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
 // tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
@@ -115,21 +115,18 @@ export default async function MembersPage() {
         </section>
       )}
 
-      <IstatistikKarti
-        kapsam={`süzgeçten bağımsız, bütün üyeler${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}
-        kutular={[
-          { ad: "Kişi", deger: String(people.size), alt: `${uyelikler.size} kurum üyeliği` },
-          { ad: "Erişimi açık", deger: String(acikSayisi), alt: "en az bir ürün", ton: "arti" },
-          { ad: "Bireysel", deger: String(individuals.size), alt: "kuruma bağlı değil" },
-          { ad: "Erişimi kapalı", deger: String(blocked), alt: blocked ? "üyelik kapalı" : "yok", ton: blocked ? "uyari" : undefined },
-        ]}
-        gruplar={[
-          {
-            baslik: "Ürün kayıtları",
-            satirlar: (Object.keys(URUN_ADI) as MemberProduct[]).map((urun) => ({ ad: URUN_ADI[urun], adet: urunSayisi(urun) })),
-          },
-        ]}
-      />
+      {/* 14.10.2026: İstatistik kartının dört kutusu (kişi, açık,
+          bireysel, kapalı) şeritteki sayıların AYNISIYDI. Yerine yalnızca
+          şeritte olmayan ürün kaydı dağılımı, iOS listesiyle. */}
+      <div className="liste-sag">
+        <KKart baslik="Ürün kayıtları" aciklama={`Süzgeçten bağımsız, bütün üyeler${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}>
+          <KListe>
+            {(Object.keys(URUN_ADI) as MemberProduct[]).map((urun) => (
+              <KOge key={urun} baslik={URUN_ADI[urun]} deger={sayi(urunSayisi(urun))} />
+            ))}
+          </KListe>
+        </KKart>
+      </div>
     </div>
   </main>;
 }

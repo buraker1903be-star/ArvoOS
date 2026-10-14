@@ -6,8 +6,7 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBaslik, KDurum, KSatirSonu, KTablo } from "../konsol-ui";
+import { KKart, KListe, KOge } from "../konsol-ui";
 import { para, sayi } from "../bicim";
 import "../platform.css";
 
@@ -148,47 +147,61 @@ export default async function UrunlerPage({ searchParams }: {
             </p>
           </div>
         </header>
-        <KTablo kolonlar={[{ ad: "Ürün" }, { ad: "Müşteri" }, { ad: "Ödeyen" }, { ad: "Kullanıcı" }, { ad: "Bireysel abone" }, { ad: "Aylık gelir", sinif: "crm-col-amount" }, { ad: "Sistem" }, { ad: "" }]}>
+        {/*
+          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"; urunler/[urun] ile
+          aynı dil): ürün başına tek satır — simge, ad, altında müşteri ·
+          ödeyen · kullanıcı · bireysel abone; sağda köprü durumu ve aylık
+          gelir. Eskiden sekiz sütunlu tabloydu (KTablo); sütun başlıkları
+          sayılardan uzundu ve satır ikiye kırılıyordu.
+        */}
+        <KListe>
           {satirlar.map((urun) => {
             // Randevu'nun bireysel aboneliği yok: salon kurumdur.
             const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun.code);
             const href = `/panel/platform/urunler/${urun.code}`;
             const durum = { etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" };
             return (
-              <tr key={urun.code}>
-                <KBaslik etiket="Ürün" href={href} baslik={urun.name} alt={urun.description} />
-                <td data-label="Müşteri" className="k-sayi">{sayi(urun.kurum)}</td>
-                <td data-label="Ödeyen" className="k-sayi">{sayi(urun.odeyen)}</td>
-                <td data-label="Kullanıcı" className="k-sayi">{sayi(urun.kullanici)}</td>
-                <td data-label="Bireysel abone" className="k-sayi">{bireyselVar ? sayi(urun.bireysel) : "—"}</td>
-                <td data-label="Aylık gelir" className="crm-col-amount">{urun.gelir ? para(urun.gelir) : "—"}</td>
-                <KDurum baslik="Sistem" etiket={durum.etiket} ton={durum.ton} ek={<span className="crm-table-sub">{urun.saglik.not}</span>} />
-                <KSatirSonu mobil={{
-                  href,
-                  baslik: urun.name,
-                  durum,
-                  alt: [`${sayi(urun.kurum)} müşteri`, `${sayi(urun.kullanici)} kullanıcı`, urun.gelir ? para(urun.gelir) : null],
-                }} />
-              </tr>
+              <KOge
+                key={urun.code}
+                href={href}
+                simge={urun.name}
+                baslik={urun.name}
+                alt={[
+                  `${sayi(urun.kurum)} müşteri`,
+                  `${sayi(urun.odeyen)} ödeyen`,
+                  `${sayi(urun.kullanici)} kullanıcı`,
+                  bireyselVar ? `${sayi(urun.bireysel)} bireysel abone` : null,
+                ].filter(Boolean).join(" · ")}
+                durum={durum}
+                deger={urun.gelir ? para(urun.gelir) : "—"}
+                degerAlt="aylık"
+              />
             );
           })}
-        </KTablo>
+        </KListe>
       </section>
 
-      {/* Sağdaki kart yalnızca tablo için zaten hesaplanan sayılardan: yeni sorgu yok. */}
-      <IstatistikKarti
-        kapsam="lisansı açık kurumlar; kendi markalarımız hariç"
-        kutular={[
-          { ad: "Beklenen aylık", deger: para(toplamGelir), alt: "dört ürünün toplamı", ton: "arti" },
-          { ad: "Lisanslı kurum", deger: sayi(toplamKurum), alt: "çekirdek lisansı açık" },
-          { ad: "Köprü", deger: kopukKopru ? sayi(kopukKopru) : "Ayakta", alt: kopukKopru ? "yanıt vermiyor" : "hepsi sağlıklı", ton: kopukKopru ? "uyari" : undefined },
-          { ad: "Fiyat listesi", deger: sayi(PLANS.length + ADD_ONS.length), alt: "basamak ve eklenti" },
-        ]}
-        gruplar={[
-          { baslik: "Müşteri (kurum)", satirlar: satirlar.map((u) => ({ ad: u.name, adet: u.kurum })) },
-          { baslik: "Aylık gelir", satirlar: satirlar.map((u) => ({ ad: u.name, adet: u.gelir, etiket: u.gelir ? para(u.gelir) : "—" })) },
-        ]}
-      />
+      {/*
+        Sağ sütun (14.10.2026): eskiden İstatistikler kartıydı; dört kutusu
+        şeritteki sayıların AYNISI, iki dağılımı (müşteri, aylık gelir)
+        listedeki satırların aynısıydı. Yerine yalnızca başka yerde
+        yazmayan bilgi: her ürünün köprüsünün ne dediği. Yine listede
+        zaten hesaplanan değerlerden: yeni sorgu yok.
+      */}
+      <div className="liste-sag">
+        <KKart baslik="Köprüler" sag={<Link className="panel-secondary" href="/panel/platform/saglik">Sağlık</Link>}>
+          <KListe>
+            {satirlar.map((urun) => (
+              <KOge
+                key={urun.code}
+                baslik={urun.name}
+                alt={urun.saglik.not}
+                durum={{ etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" }}
+              />
+            ))}
+          </KListe>
+        </KKart>
+      </div>
     </div>
   </main>;
 }

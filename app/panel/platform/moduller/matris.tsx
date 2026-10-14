@@ -106,6 +106,11 @@ export function Matris({ urunler, satirlar, durum }: {
       </div>
 
       {gorunen.length ? (
+        /* Konsolun öbür listeleri iOS satırına geçti (KListe/KOge,
+           14.10.2026); bu matris BİLEREK tablo kalıyor. Satır başına dört
+           ürün hücresi var ve soru sütun boyunca okunuyor ("kimin
+           Randevu'su yeşil değil"): tek satırlık özete sıkıştırınca o
+           dikey tarama kayboluyor. */
         <KTablo kolonlar={[{ ad: "Kiracı" }, ...urunler.map((urun) => ({ ad: urun.name })), { ad: "" }]}>
           {gorunen.map((satir) => {
             const kiraci = `/panel/platform?organization=${satir.id}`;

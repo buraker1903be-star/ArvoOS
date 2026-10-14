@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import "../platform.css";
 // Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
@@ -20,7 +19,7 @@ import "../platform.css";
   kalıbın aynısı).
 
   Düzen de panelin liste sayfalarıyla aynı: SOLDA liste, SAĞDA
-  istatistik kartı.
+  özet kartları (eskiden istatistik kartı; şeridi tekrar ediyordu).
 
   Sayfa OKUNUR. Kurumsal satır kiracı dosyasına, bireysel satır abonelik
   ekranına götürür; düzenleme oralarda yapılır. Aynı işi iki yerde
@@ -240,25 +239,28 @@ export default async function MusterilerPage({ searchParams }: {
           </KNot>
         ) : null}
 
+        {/*
+          iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): sütun başlığı yok;
+          solda simge, ad ve altında tür · özet, sağda durum ve aylık
+          ücret. Eskiden beş sütunlu tabloydu (Müşteri, Tür, Durum, Aylık).
+        */}
         {liste.length ? (
-          <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Tür" }, { ad: "Durum" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "" }]}>
+          <KListe>
             {liste.map((satir) => (
-              <tr key={satir.anahtar}>
-                <KBaslik avatar etiket="Müşteri" href={satir.href} baslik={satir.ad} alt={satir.alt} />
-                <td data-label="Tür">{satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel"}</td>
-                <KDurum etiket={satir.durum} ton={satir.ton} />
-                {/* Bireysel abonenin ücreti ürün planında, kişide değil:
-                    kişi başına bir tutar yazmak yanlış olurdu. */}
-                <td data-label="Aylık" className="crm-col-amount">{satir.ucret ? para(satir.ucret) : "—"}</td>
-                <KSatirSonu mobil={{
-                  href: satir.href,
-                  baslik: satir.ad,
-                  durum: { etiket: satir.durum, ton: satir.ton },
-                  alt: [satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt, satir.ucret ? para(satir.ucret) : null],
-                }} />
-              </tr>
+              <KOge
+                key={satir.anahtar}
+                href={satir.href}
+                simge={satir.ad}
+                baslik={satir.ad}
+                alt={[satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt].join(" · ")}
+                durum={{ etiket: satir.durum, ton: satir.ton }}
+                /* Bireysel abonenin ücreti ürün planında, kişide değil:
+                   kişi başına bir tutar yazmak yanlış olurdu. */
+                deger={satir.ucret ? para(satir.ucret) : "—"}
+                degerAlt={satir.ucret ? "aylık" : undefined}
+              />
             ))}
-          </KTablo>
+          </KListe>
         ) : (
           <KBos baslik={aranan ? `“${aranan}” ile eşleşen müşteri yok` : "Bu süzgeçte müşteri yok"} />
         )}
@@ -269,33 +271,32 @@ export default async function MusterilerPage({ searchParams }: {
           abonelik ekranında ürün ürün hesaplanıyor. İki yerde ayrı
           hesaplamak, birinin sapması demek. Eskiden kartın altında
           "Abonelik ayarları" bağlantısı vardı; o ekran başlıktaki
-          Abonelikler düğmesinden açılıyor. */}
-      <IstatistikKarti
-        kapsam={`süzgeçten bağımsız, bütün müşteriler${eksikKapsam ? ` (bireysel: en yeni ${sayi(aboneler.length)} kayıt)` : ""} · son kayıt ${tarih(bireyselSatirlar[0]?.olusma ?? null)}`}
-        kutular={[
-          { ad: "Kurumsal kiracı", deger: sayi(kurumsalSatirlar.length), alt: `${sayi(kurumsalKullanimda)} kullanımda`, ton: "arti" },
-          { ad: "Beklenen aylık", deger: para(kurumsalGelir), alt: "kurumsal" },
-          { ad: "Bireysel abone", deger: sayi(bireyselSatirlar.length), alt: `${sayi(bireyselOdeyen)} ödüyor`, ton: "arti" },
-          { ad: "Dikkat", deger: sayi(kurumsalSorunlu + bireyselKapali), alt: "hata, askı ya da kapalı erişim", ton: kurumsalSorunlu + bireyselKapali ? "uyari" : undefined },
-        ]}
-        gruplar={[
-          {
-            baslik: "Kurumsal",
-            satirlar: [
-              { ad: "Kullanımda", adet: kurumsalKullanimda },
-              { ad: "Kurulum hatası ya da askıda", adet: kurumsalSorunlu },
-            ],
-          },
-          {
-            baslik: "Bireysel",
-            satirlar: [
-              { ad: "Ödüyor", adet: bireyselOdeyen },
-              { ad: "Denemede", adet: bireyselDeneme },
-              { ad: "Erişimi kapalı", adet: bireyselKapali },
-            ],
-          },
-        ]}
-      />
+          Abonelikler düğmesinden açılıyor.
+
+          14.10.2026: İstatistik kartının dört kutusundan üçü (kurumsal,
+          bireysel, dikkat) şeritteki sayıların AYNISIYDI. Yerine yalnızca
+          şeritte olmayanlar, iOS listesiyle: beklenen aylık gelir ve
+          kurumsal/bireysel durum dağılımı. */}
+      <div className="liste-sag">
+        <KKart baslik="Kurumsal" aciklama="Süzgeçten bağımsız, bütün kiracılar">
+          <KListe>
+            <KOge baslik="Beklenen aylık" deger={para(kurumsalGelir)} degerAlt="ödeyenler" />
+            <KOge baslik="Kullanımda" deger={sayi(kurumsalKullanimda)} />
+            <KOge baslik="Kurulum hatası ya da askıda" deger={sayi(kurumsalSorunlu)} />
+          </KListe>
+        </KKart>
+
+        <KKart
+          baslik="Bireysel"
+          aciklama={`${eksikKapsam ? `En yeni ${sayi(aboneler.length)} kayıt · ` : ""}son kayıt ${tarih(bireyselSatirlar[0]?.olusma ?? null)}`}
+        >
+          <KListe>
+            <KOge baslik="Ödüyor" deger={sayi(bireyselOdeyen)} />
+            <KOge baslik="Denemede" deger={sayi(bireyselDeneme)} />
+            <KOge baslik="Erişimi kapalı" deger={sayi(bireyselKapali)} />
+          </KListe>
+        </KKart>
+      </div>
     </div>
   </main>;
 }

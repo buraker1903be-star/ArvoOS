@@ -9,8 +9,7 @@ import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
 import { PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
 import { denemeyiAyarla, listeFiyatiniUygula } from "./actions";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBaslik, KBos, KKart, KListe, KNot, KOge, KTablo } from "../konsol-ui";
 // Sihirbaz (.plw), deneme formu (.plt-deneme) ve sözleşme no (.plt-mono) burada.
 import "../platform.css";
 
@@ -165,22 +164,19 @@ export default async function KurulumlarPage({ searchParams }: {
             </KNot>
             {admin ? (
               bekleyenIstekler.length ? (
-                <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "Geliş", sinif: "crm-col-date" }, { ad: "" }]}>
+                <KListe>
                   {bekleyenIstekler.map((istek) => (
-                    <tr key={istek.id}>
-                      {/* Satır sözleşme kuyruğuna gider (eskiden ayrı bir "Sözleşmeyi aç" düğmesiydi). */}
-                      <KBaslik avatar etiket="Müşteri" href="/panel/platform/sozlesmeler" baslik={istek.customer_name ?? "—"} alt={<span className="plt-mono">{istek.contract_no ?? "—"}</span>} />
-                      <td data-label="Tutar" className="crm-col-amount">{istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : "—"}</td>
-                      <td data-label="Geliş" className="crm-col-date">{tarihSaat(istek.created_at)}</td>
-                      <KSatirSonu mobil={{
-                        href: "/panel/platform/sozlesmeler",
-                        baslik: istek.customer_name ?? "—",
-                        durum: istek.amount !== null ? { etiket: para(Number(istek.amount), istek.currency ?? "TRY"), ton: "neutral" } : null,
-                        alt: [istek.contract_no, tarihSaat(istek.created_at)],
-                      }} />
-                    </tr>
+                    /* Satır sözleşme kuyruğuna gider (eskiden ayrı bir "Sözleşmeyi aç" düğmesiydi). */
+                    <KOge
+                      key={istek.id}
+                      href="/panel/platform/sozlesmeler"
+                      simge={istek.customer_name ?? "—"}
+                      baslik={istek.customer_name ?? "—"}
+                      alt={<><span className="plt-mono">{istek.contract_no ?? "—"}</span> · {tarihSaat(istek.created_at)}</>}
+                      deger={istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : <span className="k-ios-eksik">Tutar yok</span>}
+                    />
                   ))}
-                </KTablo>
+                </KListe>
               ) : <KBos baslik="Kurumu açılmayı bekleyen istek yok" aciklama="Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz." />
             ) : <KNot ton="uyari">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</KNot>}
           </>
@@ -190,27 +186,23 @@ export default async function KurulumlarPage({ searchParams }: {
           <>
             <KNot>Kurulumu başlamış, henüz bitmemiş kiracılar. Hatalı kalanlar da burada: sebebi kiracı dosyasında yazıyor.</KNot>
             {bekleyenler.length ? (
-              <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Aşama" }, { ad: "Paket" }, { ad: "Telefon" }, { ad: "" }]}>
+              <KListe>
                 {bekleyenler.map((kiraci) => {
                   const ad = kiraci.display_name || kiraci.name;
                   const asamaAdi = KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state;
                   const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
                   return (
-                    <tr key={kiraci.id}>
-                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={ad} alt={kiraci.slug} />
-                      <KDurum baslik="Aşama" etiket={asamaAdi} ton={ton} />
-                      <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
-                      <td data-label="Telefon">{kiraci.contact_phone ?? "—"}</td>
-                      <KSatirSonu mobil={{
-                        href: `/panel/platform?organization=${kiraci.id}`,
-                        baslik: ad,
-                        durum: { etiket: asamaAdi, ton },
-                        alt: [kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.contact_phone],
-                      }} />
-                    </tr>
+                    <KOge
+                      key={kiraci.id}
+                      href={`/panel/platform?organization=${kiraci.id}`}
+                      simge={ad}
+                      baslik={ad}
+                      alt={[kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.contact_phone, kiraci.slug].filter(Boolean).join(" · ")}
+                      durum={{ etiket: asamaAdi, ton }}
+                    />
                   );
                 })}
-              </KTablo>
+              </KListe>
             ) : <KBos baslik="Süren kurulum yok" aciklama="Açılan her kurum çalışır durumda." />}
           </>
         ) : null}
@@ -225,7 +217,14 @@ export default async function KurulumlarPage({ searchParams }: {
               /* Bu tabloda telefon satırı (MobilSatir) YOK: ücret ve deneme
                  formları hücrelerin içinde ve tek kompakt satır öteki
                  hücreleri gizliyor — telefonda formlar kaybolurdu. Hücreler
-                 panelin genel kuralıyla "etiket değer" olarak diziliyor. */
+                 panelin genel kuralıyla "etiket değer" olarak diziliyor.
+
+                 iOS listesine (KOge) BİLEREK geçmedi (14.10.2026): satırda
+                 iki ayrı form var (liste fiyatını uygula + deneme günü
+                 kutusu ve düğmesi). İkisi KOge'nin sağ ucuna (sonu)
+                 sığmıyor, telefonda başlığı tamamen eziyordu; sonu
+                 verilince satır kiracı dosyasına bağlantı da olmaktan
+                 çıkıyordu. Öteki iki aşama iOS listesinde. */
               <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Paket" }, { ad: "Aylık ücret" }, { ad: "Deneme" }, { ad: "Dönem sonu", sinif: "crm-col-date" }]}>
                 {tamamlananlar.map((kiraci) => {
                   const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
@@ -273,26 +272,23 @@ export default async function KurulumlarPage({ searchParams }: {
       </section>
 
       {/* Sayılar yukarıda zaten hesaplananlar; yalnızca "yeni" istekler en
-          yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor. */}
-      <IstatistikKarti
-        kapsam="kendi markalarımız hariç; yeni istekler en yeni 20 kayıttan"
-        kutular={[
-          { ad: "Yeni kurulum", deger: admin ? sayi(sayim.yeni) : "—", alt: admin ? "kurumu açılmayı bekleyen" : "okunamadı", ton: sayim.yeni ? "uyari" : undefined },
-          { ad: "Süren kurulum", deger: sayi(sayim.devam), alt: "başladı, bitmedi", ton: sayim.devam ? "uyari" : undefined },
-          { ad: "Tamamlanan", deger: sayi(sayim.tamam), alt: "çalışıyor", ton: "arti" },
-          { ad: "Ücreti girilmemiş", deger: sayi(ucretsiz), alt: denemede ? `${sayi(denemede)} kiracı denemede` : "denemede kiracı yok", ton: ucretsiz ? "uyari" : undefined },
-        ]}
-        gruplar={[
-          { baslik: "Süren kurulumun aşaması", satirlar: asamaDagilimi },
-          {
-            baslik: "Tamamlananlar",
-            satirlar: [
-              { ad: "Denemede", adet: denemede },
-              { ad: "Ücreti girilmemiş", adet: ucretsiz },
-            ],
-          },
-        ]}
-      />
+          yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor.
+
+          SAĞ SÜTUN SADE (14.10.2026, "iOS gibi"): İstatistik kartının
+          dört kutusu (yeni, süren, tamamlanan, ücreti girilmemiş) ve
+          "Tamamlananlar" grubu şeritteki sayıların AYNISIYDI. Kalan tek
+          yeni bilgi süren kurulumların aşama dağılımı; o da iOS listesi. */}
+      <div className="liste-sag">
+        <KKart baslik="Süren kurulumun aşaması" aciklama="Kendi markalarımız hariç; yeni istekler en yeni 20 kayıttan">
+          {asamaDagilimi.length ? (
+            <KListe>
+              {asamaDagilimi.map((d) => (
+                <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />
+              ))}
+            </KListe>
+          ) : <KNot>Süren kurulum yok.</KNot>}
+        </KKart>
+      </div>
     </div>
   </main>;
 }

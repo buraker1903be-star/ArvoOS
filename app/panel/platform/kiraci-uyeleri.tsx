@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { uyeErisimiDegistir } from "./members/actions";
-import { KBaslik, KBos, KDurum, KTablo } from "./konsol-ui";
+import { KBos, KListe, KOge } from "./konsol-ui";
 
 /*
   Seçili kiracının üyeleri, kiracı dosyasının içinde.
@@ -67,19 +67,26 @@ export function KiraciUyeleri({
 
   /* Panel tablosu (14.10.2026). Eskiden kendi satır listesiydi
      (.plt-uyeler) ve pasif üye yalnızca soluk görünüyordu; artık durumu
-     panelin rozetiyle yazıyor. Telefon satırı (MobilSatir) yok: anahtar
-     hücrede ve tek kompakt satır onu gizlerdi. */
+     panelin rozetiyle yazıyor.
+
+     iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): dört sütunlu tablo
+     yerine tek satır — simge, ad, altında rol · e-posta, sağda erişim
+     durumu ve satırın sonunda anahtar (KOge sonu). Eskiden telefonda
+     tek kompakt satır anahtarı gizleyeceği için tablo "etiket değer"
+     diziliyordu; artık anahtar satırın kendi parçası. */
   return (
-    <KTablo kolonlar={[{ ad: "Üye" }, { ad: "Rol" }, { ad: "Durum" }, { ad: "Erişim" }]}>
+    <KListe>
       {uyeler.map((uye) => {
         const sonSahip = uye.role === "owner" && uye.active && aktifSahipSayisi < 2;
+        const baslik = uye.name ?? uye.email ?? "Adı kayıtlı değil";
         return (
-          <tr key={uye.userId}>
-            <KBaslik avatar etiket="Üye" baslik={uye.name ?? uye.email ?? "Adı kayıtlı değil"} alt={uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role} />
-            <td data-label="Rol">{ROL_ADI[uye.role] ?? uye.role}</td>
-            <KDurum etiket={uye.active ? "Erişim açık" : "Erişim kapalı"} ton={uye.active ? "success" : "neutral"} />
-            <td data-label="Erişim">
-              {sonSahip ? (
+          <KOge
+            key={uye.userId}
+            simge={baslik}
+            baslik={baslik}
+            alt={[ROL_ADI[uye.role] ?? uye.role, uye.name && uye.email ? uye.email : null].filter(Boolean).join(" · ")}
+            durum={{ etiket: uye.active ? "Erişim açık" : "Erişim kapalı", ton: uye.active ? "success" : "neutral" }}
+            sonu={sonSahip ? (
                 /* Yapılamayacak iş için anahtar gösterip hata vermektense
                    nedenini baştan söylüyoruz. */
                 <span className="crm-table-sub">son sahip</span>
@@ -94,10 +101,9 @@ export function KiraciUyeleri({
                   onClick={() => degistir(uye)}
                 ><i /></button>
               )}
-            </td>
-          </tr>
+          />
         );
       })}
-    </KTablo>
+    </KListe>
   );
 }

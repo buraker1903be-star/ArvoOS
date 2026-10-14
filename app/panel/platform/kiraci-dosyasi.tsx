@@ -10,7 +10,7 @@ import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
 import { urunKullanimi } from "@/lib/urun-kullanimi";
 import type { KotaDurumu } from "@/lib/kota-durumu";
-import { KBaslik, KBos, KDurum, KKart, KNot, KTablo } from "./konsol-ui";
+import { KBos, KKart, KListe, KNot, KOge } from "./konsol-ui";
 import { KURULUM_ADI, KURULUM_TONU, LISANS_TONU, basHarfleri, depolama, para, tarih, tarihSaat } from "./bicim";
 import { toggleOrganizationModule, updateOrganizationSettings } from "./actions";
 import { OwnerAccessLink } from "./owner-access-link";
@@ -450,38 +450,49 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
         sorusunun parçası. Eskiden yan yana dar sütunlardı ve etkinlik
         listesi kendi içinde kayıyordu; artık panel tablosu, altı satır
         sayfayı uzatmıyor.
+
+        iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): bu dosyanın dört
+        tablosu (panel modülleri, son etkinlik, kurulum adımları, kurulum
+        kayıtları) sütun başlıksız tek satırlara döndü. Eskiden Durum ve
+        Tarih başlıkları iki-üç sütunluk listede yer kaplıyordu; şimdi durum
+        sağda noktalı rozet, tarih değer sütununda. Modül anahtarı satırın
+        sonunda (KOge sonu), satır bağlantı değil.
       */}
       <KKart baslik="Panel modülleri" sag={<span className="status-pill" data-tone="gold">{enabledCount}/{moduleRows.length}</span>}>
         {moduleRows.length ? (
-          <KTablo kolonlar={[{ ad: "Modül" }, { ad: "Durum" }, { ad: "Erişim" }]}>
+          <KListe>
             {moduleRows.map((module) => (
-              <tr key={module.code}>
-                <KBaslik etiket="Modül" baslik={module.name} alt={module.description} />
-                <KDurum etiket={module.enabled ? "Açık" : "Kapalı"} ton={module.enabled ? "success" : "neutral"} />
-                <td data-label="Erişim">
+              <KOge
+                key={module.code}
+                baslik={module.name}
+                alt={module.description}
+                durum={{ etiket: module.enabled ? "Açık" : "Kapalı", ton: module.enabled ? "success" : "neutral" }}
+                sonu={
                   <form action={toggleOrganizationModule}>
                     <input type="hidden" name="organization_id" value={targetId} />
                     <input type="hidden" name="module_code" value={module.code} />
                     <input type="hidden" name="is_enabled" value={String(!module.enabled)} />
                     <button type="submit" className={module.enabled ? "plt-switch is-on" : "plt-switch is-off"} role="switch" aria-checked={module.enabled} aria-label={`${module.name}: ${module.enabled ? "kapat" : "aç"}`}><i /></button>
                   </form>
-                </td>
-              </tr>
+                }
+              />
             ))}
-          </KTablo>
+          </KListe>
         ) : <KBos baslik="Bu kurum için modül kaydı yok." />}
       </KKart>
 
       <KKart baslik="Son etkinlik" aciklama="Kiracının panelindeki son altı işlem.">
         {etkinlikSatirlari.length ? (
-          <KTablo kolonlar={[{ ad: "İşlem" }, { ad: "Tarih", sinif: "crm-col-date" }]}>
+          <KListe>
             {etkinlikSatirlari.map((satir, sira) => (
-              <tr key={`${satir.created_at}-${sira}`}>
-                <KBaslik etiket="İşlem" baslik={ETKINLIK_ADI[satir.action] ?? satir.action} alt={VARLIK_ADI[satir.entity_type] ?? satir.entity_type} />
-                <td data-label="Tarih" className="crm-col-date">{tarihSaat(satir.created_at)}</td>
-              </tr>
+              <KOge
+                key={`${satir.created_at}-${sira}`}
+                baslik={ETKINLIK_ADI[satir.action] ?? satir.action}
+                alt={VARLIK_ADI[satir.entity_type] ?? satir.entity_type}
+                deger={tarihSaat(satir.created_at)}
+              />
             ))}
-          </KTablo>
+          </KListe>
         ) : <KBos baslik="Bu kiracının panelinde henüz bir işlem yapılmamış." />}
       </KKart>
 
@@ -504,14 +515,16 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             </span>
             <span className="plt-progress" aria-label={`Kurulum ilerlemesi yüzde ${progress}`}><i style={{ width: `${progress}%` }} /><b>{doneCount}/{required.length}</b></span>
           </summary>
-          <KTablo kolonlar={[{ ad: "Adım" }, { ad: "Durum" }]}>
+          <KListe>
             {checks.map((check) => (
-              <tr key={check.key}>
-                <KBaslik etiket="Adım" baslik={check.title} alt={check.optional ? `İsteğe bağlı · ${check.note}` : check.note} />
-                <KDurum etiket={CHECK_DURUMU[check.state].etiket} ton={CHECK_DURUMU[check.state].ton} />
-              </tr>
+              <KOge
+                key={check.key}
+                baslik={check.title}
+                alt={check.optional ? `İsteğe bağlı · ${check.note}` : check.note}
+                durum={CHECK_DURUMU[check.state]}
+              />
             ))}
-          </KTablo>
+          </KListe>
           {invitation ? (
             <div className="talep-gecmis">
               <h3>Sahibe giriş bağlantısı</h3>
@@ -533,19 +546,20 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             <span className="plt-kurulum-ad"><b>Kurulum kayıtları</b><small>{auditRows.length} kayıt</small></span>
           </summary>
           {auditRows.length ? (
-            <KTablo kolonlar={[{ ad: "İşlem" }, { ad: "Sonuç" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Süre" }]}>
+            <KListe>
               {auditRows.map((entry) => {
                 const hatali = entry.result === "failed" || entry.state === "failed";
                 return (
-                  <tr key={entry.id}>
-                    <KBaslik etiket="İşlem" baslik={`${actionLabels[entry.action] ?? entry.action} · ${KURULUM_ADI[entry.state] ?? entry.state}`} />
-                    <KDurum baslik="Sonuç" etiket={entry.result || "—"} ton={hatali ? "danger" : "neutral"} />
-                    <td data-label="Tarih" className="crm-col-date">{tarihSaat(entry.created_at)}</td>
-                    <td data-label="Süre" className="k-sayi">{entry.duration_ms != null ? `${entry.duration_ms} ms` : "—"}</td>
-                  </tr>
+                  <KOge
+                    key={entry.id}
+                    baslik={`${actionLabels[entry.action] ?? entry.action} · ${KURULUM_ADI[entry.state] ?? entry.state}`}
+                    alt={entry.duration_ms != null ? `${entry.duration_ms} ms` : undefined}
+                    durum={{ etiket: entry.result || "—", ton: hatali ? "danger" : "neutral" }}
+                    deger={tarihSaat(entry.created_at)}
+                  />
                 );
               })}
-            </KTablo>
+            </KListe>
           ) : <KBos baslik="Bu kurum için henüz kurulum kaydı yok." />}
         </details>
       ) : null}

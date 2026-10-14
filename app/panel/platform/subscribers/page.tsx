@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { updateProductPlan, updateSubscriber } from "./actions";
@@ -162,28 +161,14 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
       </section>
 
       <div className="liste-sag">
-        {/* Şeritteki sayıların aynısı; kapsam yazısı listenin kesitini söylüyor. */}
-        <IstatistikKarti
-          kapsam={eksikKapsam ? `en yeni ${subscribers.length} kayıttan (toplam ${toplamKayit})` : "bütün kayıtlardan"}
-          kutular={[
-            { ad: "Ödeyen", deger: String(paying.length), alt: monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "aylık gelir yok", ton: "arti" },
-            { ad: "Denemede", deger: String(trialing.length), alt: "henüz ödeme yok" },
-            { ad: "Erişimi kapalı", deger: String(kapali), alt: "süresi geçmiş ya da askıda", ton: kapali ? "uyari" : undefined },
-            { ad: "Toplam kayıt", deger: String(toplamKayit) },
-          ]}
-          gruplar={[
-            /* Ürün başına dağılım bilerek yok: liste sınırlı (LISTE_SINIRI)
-               ve listeden sayılan ürün adedi sınıra varınca sessizce eksilir. */
-            {
-              baslik: "Erişim",
-              satirlar: [
-                { ad: "Ödeyen", adet: paying.length },
-                { ad: "Denemede", adet: trialing.length },
-                { ad: "Erişimi kapalı", adet: kapali },
-              ],
-            },
-          ]}
-        />
+        {/*
+          14.10.2026: İstatistikler kartı kalktı. Dört kutusu ve "Erişim"
+          dağılımı şeritteki sayıların AYNISIYDI (ödeyen, denemede,
+          erişimi kapalı, toplam); kesit uyarısı şeritte ve listenin
+          üstünde yazıyor. Ürün başına dağılım bilerek yok: liste sınırlı
+          (LISTE_SINIRI) ve listeden sayılan ürün adedi sınıra varınca
+          sessizce eksilir.
+        */}
 
         {/*
           Plan formları yan sütunda alt alta (14.10.2026). Önce tek sütunda

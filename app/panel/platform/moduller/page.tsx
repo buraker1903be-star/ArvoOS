@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBos } from "../konsol-ui";
+import { KBos, KKart, KListe, KOge } from "../konsol-ui";
 import { LISANS_TONU } from "../bicim";
 import { Matris } from "./matris";
 import "../platform.css";
@@ -176,20 +175,23 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         ) : <KBos baslik="Henüz kurum yok" aciklama="İlk müşteri kurulduğunda matris burada dolar." />}
       </section>
 
-      {/* Şeritteki sayıların aynısı (sayim), yeni sorgu yok. */}
-      <IstatistikKarti
-        kapsam="müşteri kurumlar; kendi markalarımız hariç"
-        kutular={[
-          { ad: "Müşteri kurum", deger: String(musteriler.length) },
-          { ad: "Kendi markamız", deger: String(satirlar.length - musteriler.length), alt: "tabloda, sayımda yok" },
-          { ad: "Bağımsız modda", deger: String(sayim.reduce((t, u) => t + u.bagimsiz, 0)), alt: "ürün lisansı" },
-          { ad: "Ürün", deger: String(sayim.length) },
-        ]}
-        gruplar={[
-          { baslik: "Modülü açık kurum", satirlar: sayim.map((u) => ({ ad: u.name, adet: u.acik, etiket: `${u.acik} / ${musteriler.length}` })) },
-          { baslik: "Bağımsız modda", satirlar: sayim.filter((u) => u.code !== "arvoos").map((u) => ({ ad: u.name, adet: u.bagimsiz })) },
-        ]}
-      />
+      {/*
+        Sağ sütun (14.10.2026, iOS listesi): eskiden İstatistikler kartıydı;
+        "Modülü açık kurum" ve ürün başına "Bağımsız modda" dağılımları
+        şeritteki sayıların AYNISIYDI, "Ürün" kutusu her zaman 4 yazıyordu.
+        Yerine yalnızca şeritte olmayanlar: kurumların müşteri / kendi
+        markamız ayrımı ve toplam bağımsız lisans. Yine sayim'dan, yeni
+        sorgu yok.
+      */}
+      <div className="liste-sag">
+        <KKart baslik="Kurumlar" aciklama="Sayımda kendi markalarımız yok">
+          <KListe>
+            <KOge baslik="Müşteri kurum" deger={String(musteriler.length)} />
+            <KOge baslik="Kendi markamız" alt="tabloda, sayımda yok" deger={String(satirlar.length - musteriler.length)} />
+            <KOge baslik="Bağımsız modda" alt="köprüsüz ürün lisansı" deger={String(sayim.reduce((t, u) => t + u.bagimsiz, 0))} />
+          </KListe>
+        </KKart>
+      </div>
     </div>
   </main>;
 }

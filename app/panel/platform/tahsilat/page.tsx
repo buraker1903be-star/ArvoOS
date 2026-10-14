@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { getPaymentIncidents } from "@/lib/payment-incidents";
-import { IstatistikKarti } from "../../crm/istatistik-karti";
-import { KBaslik, KBos, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+import { KBos, KListe, KNot, KOge } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
 import "../platform.css";
 
@@ -124,68 +123,50 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
       </dl>
     </nav>
 
-    <div className="talep-izgara personel-iki ekip-izgara">
-      <section className="panel-card talep-bilgi" aria-label="Tahsilat listesi">
-        <div className="ekip-suzgec talep-suzgec">
-          {KANALLAR.map((k) => (
-            <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
-              className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
-              {k.ad}
-              {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
-            </Link>
+    {/*
+      Sağdaki istatistik kartı kalktı (14.10.2026, iOS listesi): dört
+      kutusu şeritteki sayıların aynısıydı, kanal dağılımı çiplerin
+      yanında yazıyor, "platform faturası yok" da Faturalar sekmesinde.
+      Liste kartı tek başına, liste sayfası düzeninde.
+    */}
+    <section className="panel-card talep-bilgi" aria-label="Tahsilat listesi">
+      <div className="ekip-suzgec talep-suzgec">
+        {KANALLAR.map((k) => (
+          <Link key={k.kod} href={k.kod ? `/panel/platform/tahsilat?kanal=${k.kod}` : "/panel/platform/tahsilat"}
+            className={secili === k.kod ? "is-active" : undefined} aria-current={secili === k.kod ? "page" : undefined}>
+            {k.ad}
+            {k.kod === "havale" ? <small>{kanalSayisi("Havale/EFT")}</small> : k.kod === "kart" ? <small>{kanalSayisi("Kart (PayTR)")}</small> : k.kod === "bireysel" ? <small>{tahsilatlar.filter((t) => !t.organizationId).length}</small> : null}
+          </Link>
+        ))}
+      </div>
+
+      {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
+
+      {secili === "fatura" ? (
+        /* Platform faturası bugün yok: çalışmayan özellik çalışıyormuş
+           gibi gösterilmiyor (dosya başındaki açıklama). */
+        <KBos
+          baslik="Platform faturası henüz kesilmiyor"
+          aciklama="Onaylanan her ödeme lisansı açıyor ama Arvo adına fatura oluşturmuyor; faturalar elle kesiliyor. Paraşüt entegrasyonu (e-fatura / e-arşiv) bağlanınca kesilen faturalar burada listelenecek."
+        />
+      ) : gorunen.length ? (
+        /* iOS listesi (14.10.2026): kim, kanal ve tarih tek satırda;
+           sağda tutar. Eskiden dört sütunlu tabloydu. */
+        <KListe>
+          {gorunen.map((t) => (
+            <KOge
+              key={t.anahtar}
+              href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"}
+              simge={t.kim}
+              baslik={t.kim}
+              alt={`${t.kanal} · ${tarih(t.tarih)}`}
+              deger={para(t.amount, t.currency)}
+            />
           ))}
-        </div>
-
-        {birimKarisik ? <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar TRY varsayımıyla yazıldı ve güvenilir değil.</KNot> : null}
-
-        {secili === "fatura" ? (
-          /* Platform faturası bugün yok: çalışmayan özellik çalışıyormuş
-             gibi gösterilmiyor (dosya başındaki açıklama). */
-          <KBos
-            baslik="Platform faturası henüz kesilmiyor"
-            aciklama="Onaylanan her ödeme lisansı açıyor ama Arvo adına fatura oluşturmuyor; faturalar elle kesiliyor. Paraşüt entegrasyonu (e-fatura / e-arşiv) bağlanınca kesilen faturalar burada listelenecek."
-          />
-        ) : gorunen.length ? (
-          <KTablo kolonlar={[{ ad: "Kim" }, { ad: "Kanal" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "" }]}>
-            {gorunen.map((t) => (
-              <tr key={t.anahtar}>
-                <KBaslik avatar etiket="Kim" href={t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers"} baslik={t.kim} />
-                <td data-label="Kanal">{t.kanal}</td>
-                <td data-label="Tarih" className="crm-col-date">{tarih(t.tarih)}</td>
-                <td data-label="Tutar" className="crm-col-amount">{para(t.amount, t.currency)}</td>
-                <KSatirSonu mobil={{
-                  href: t.organizationId ? `/panel/platform?organization=${t.organizationId}` : "/panel/platform/subscribers",
-                  baslik: t.kim,
-                  durum: { etiket: para(t.amount, t.currency), ton: "success" },
-                  alt: [t.kanal, tarih(t.tarih)],
-                }} />
-              </tr>
-            ))}
-          </KTablo>
-        ) : (
-          <KBos baslik={secili ? "Bu kanalda tahsilat yok" : "Henüz tahsilat yok"} aciklama="Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır." />
-        )}
-      </section>
-
-      <IstatistikKarti
-        kapsam={`toplamlar bütün kayıtlardan; kanal dağılımı listedeki son ${LISTE} ödemeden`}
-        kutular={[
-          { ad: "Bu ay", deger: para(Number(ozet.bu_ay ?? 0)), alt: "tahsil edilen", ton: "arti" },
-          { ad: "Tüm zamanlar", deger: para(Number(ozet.toplam ?? 0)), alt: `${sayi(Number(ozet.adet ?? 0))} ödeme` },
-          { ad: "Onay bekleyen", deger: sayi(bekleyenSatirlar.length), alt: bekleyenSatirlar.length ? para(bekleyenTutar) : "dekont yok", ton: bekleyenSatirlar.length ? "uyari" : undefined },
-          { ad: "Platform faturası", deger: "Yok", alt: "Paraşüt bağlı değil", ton: "uyari" },
-        ]}
-        gruplar={[
-          {
-            baslik: "Kanallar (son ödemeler)",
-            satirlar: [
-              { ad: "Havale/EFT", adet: kanalSayisi("Havale/EFT") },
-              { ad: "Kart (PayTR)", adet: kanalSayisi("Kart (PayTR)") },
-              { ad: "Bireysel abone", adet: tahsilatlar.filter((t) => !t.organizationId).length },
-            ],
-          },
-        ]}
-      />
-    </div>
+        </KListe>
+      ) : (
+        <KBos baslik={secili ? "Bu kanalda tahsilat yok" : "Henüz tahsilat yok"} aciklama="Havale onayları, kart ödemeleri ve bireysel abonelikler burada toplanır." />
+      )}
+    </section>
   </main>;
 }
