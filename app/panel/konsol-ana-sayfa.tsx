@@ -399,6 +399,8 @@ export async function KonsolAnaSayfa() {
     .map((uygulama) => ({ etiket: uygulama.label, not: BOLUM_NOTU[uygulama.key] ?? "", href: uygulama.href }));
 
   const kurulumlar = (kurulumKayitlari ?? []) as KurulumKaydi[];
+  /* Hangi kiracının kurulumu HÂLÂ hatada: rozetin tonu buna bakıyor. */
+  const hatadaKalanlar = new Set(kurumlar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
 
   return (
     <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} ust={tarih.toLocaleUpperCase("tr-TR")}>
@@ -479,10 +481,24 @@ export async function KonsolAnaSayfa() {
               */
               alt={[actionLabels[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
                 .filter(Boolean).join(" · ")}
-              /* 'failed', 'error' değil: sütunun kısıtı 'error'a izin vermiyor
-                 ve rozet bu yüzden hiç çizilmiyordu (sağlık kartında da
-                 aynı hata vardı). */
-              sag={kayit.result === "failed" ? <span className="status-pill" data-tone="danger">hata</span> : null}
+              /*
+                'failed', 'error' değil: sütunun kısıtı 'error'a izin
+                vermiyor ve rozet bu yüzden hiç çizilmiyordu.
+
+                TON KİRACININ BUGÜNKÜ DURUMUNA GÖRE. Rozet çizilmeye
+                başlayınca ana sayfa her gün iki kırmızı "hata" gösterdi;
+                ikisi de Eylül'den ve o kiracılar bugün çalışıyor —
+                kurulum sonradan tamamlanmış. Kırmızı "şimdi bak" demek
+                ve her gün yanan bir kırmızı, gerçekten yandığı gün de
+                okunmaz. Kayıt duruyor (günlük geçmişi anlatır), yalnızca
+                aciliyet iddiası kalkıyor: kiracı hâlâ hatadaysa kırmızı,
+                değilse nötr. Sağlık ekranı aynı ayrımı yapıyor.
+              */
+              sag={kayit.result === "failed" ? (
+                <span className="status-pill" data-tone={hatadaKalanlar.has(kayit.organization_id) ? "danger" : "neutral"}>
+                  {hatadaKalanlar.has(kayit.organization_id) ? "hata" : "hata · çözüldü"}
+                </span>
+              ) : null}
               zaman={tarihSaat(kayit.created_at)}
             />
           ))}
