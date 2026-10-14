@@ -72,6 +72,10 @@
 .plt-switch:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
 /* Telefonda panel her düğmeye en az 44px yükseklik veriyor; anahtar ölçüsü korunur */
 .panel-root .stg.plt .plt-switch{width:46px;min-width:46px;height:28px;min-height:28px;padding:0}
+/* Aynı ölçü konsolun her yerinde (14.10.2026): yalnızca .stg.plt altındaydı;
+   müşteri detayının Lisanslar penceresindeki erişim anahtarı panelin
+   44 px dokunma kuralıyla uzayıp yumurtaya dönüyordu. */
+.os-root button.plt-switch{width:46px;min-width:46px;height:28px;min-height:28px;padding:0}
 
 /* ---------- Alt sayfalar: kullanım çubuğu, satırlar, alıntılar ---------- */
 .plt-meter{position:relative;display:block;width:100%;height:6px;margin-top:6px;border-radius:var(--r-pill);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-soft);overflow:hidden}
