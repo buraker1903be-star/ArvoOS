@@ -2,23 +2,32 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 import { bekleyenKredileriYukle } from "@/lib/ai-kredi-yukleme";
+import { arvolabLisanslariniEsitle } from "@/lib/arvolab";
 import { kurucuyaBildir } from "@/lib/kurucu-bildirimi";
 
 /*
-  ÖDENMİŞ AMA YÜKLENEMEMİŞ AI KREDİSİNİ YÜKLER (14.10.2026).
+  ARVOLAB EŞİTLEMESİ (14.10.2026): lisans kopyasını düzeltir, ödenmiş
+  AI kredisini yükler.
 
-  Ödeme anında ArvoLab'a ulaşılamazsa kredi yüklenemiyor ve sipariş
-  satırı loaded_at'siz kalıyor (lib/ai-kredi-yukleme'de tam gerekçe).
+  ArvoARC ve Randevu'nun on dakikalık eşitleme cron'u var; ArvoLab'ın
+  YOKTU ve bu, depoda üç ayrı yerde "ArvoLab'ın eşitleme cron'u yok" diye
+  telafi edilen bir eksikti. Sapmış bir lisans kopyası, biri kiracının
+  ekranını açıp elle "yeniden yansıt" diyene kadar duruyordu.
+
+  İKİNCİ İŞ — KREDİ: ödeme anında ArvoLab'a ulaşılamazsa kredi
+  yüklenemiyor ve sipariş satırı loaded_at'siz kalıyor
+  (lib/ai-kredi-yukleme'de tam gerekçe).
   Müşteri parasını ödemiş olduğu hâlde asistanda "krediniz bitti"
   duvarına çarpıyordu ve bunu kimse görmüyordu.
 
   NEDEN AYRI BİR CRON, NEDEN GÜNLÜK İŞİN İÇİNDE DEĞİL: müşteri O AN
   engelleniyor. Günlük hatırlatmaya eklemek kurtarmayı yirmi dört saate
   kadar geciktirirdi; on dakika, ArvoLab'ın kısa bir kesintisinden sonra
-  kimsenin fark etmeyeceği kadar kısa. Ayrı bir yol olması aynı zamanda
-  işin kendi sağlığının izlenmesini sağlıyor: vercel.json'a girdiği anda
-  Sistem Sağlığı'nın "Zamanlanmış işler" kartında kendi satırı oluyor ve
-  durursa koşma nöbeti haber veriyor (lib/cron-isleri).
+  kimsenin fark etmeyeceği kadar kısa — ve öteki iki ürünün eşitlemesiyle
+  aynı aralık. Ayrı bir yol olması aynı zamanda işin kendi sağlığının
+  izlenmesini sağlıyor: vercel.json'a girdiği anda Sistem Sağlığı'nın
+  "Zamanlanmış işler" kartında kendi satırı oluyor ve durursa koşma
+  nöbeti haber veriyor (lib/cron-isleri).
 
   YÜKLEME TEKİLLEŞTİRİLMİŞ: ArvoLab aynı ödeme kimliğiyle ikinci kez
   kredi eklemiyor, bu yüzden her on dakikada bir denemek güvenli.
@@ -52,6 +61,12 @@ async function kosu(): Promise<CronKosusu> {
     sonuc: "hata", ayrinti: { hata: "sunucu anahtarı yok" },
   };
 
+  /* LİSANS ÖNCE: kredi ArvoLab'daki kurum kaydına yazılıyor ve eşitleme
+     o kaydı tazeliyor. Sırayı ters kurmak, kurumu henüz yansıtılmamış bir
+     kiracının kredisini yüklemeye çalışmak olurdu. */
+  const esitleme = await arvolabLisanslariniEsitle();
+  if (esitleme.hatalar.length) console.error("[arvolab] lisans eşitlemesi eksik", esitleme.hatalar);
+
   const sonuc = await bekleyenKredileriYukle(admin);
 
   /*
@@ -78,9 +93,13 @@ async function kosu(): Promise<CronKosusu> {
 
   /* Kalan varsa "eksik": iş koştu ama yapacağını yapamadı. Sağlık kartı
      da bunu gösteriyor; ikisi aynı şeyi söylemeli. */
+  const govde = {
+    lisans: { sapan: esitleme.sapan, duzeltilen: esitleme.duzeltilen, okunamadi: esitleme.okunamadi },
+    kredi: { denenen: sonuc.denenen, yuklenen: sonuc.yuklenen, kalan: sonuc.kalanlar.length },
+  };
   return {
-    yanit: Response.json(sonuc, { headers: { "Cache-Control": "no-store" } }),
-    sonuc: sonuc.kalanlar.length ? "eksik" : "tamam",
-    ayrinti: { denenen: sonuc.denenen, yuklenen: sonuc.yuklenen, kalan: sonuc.kalanlar.length },
+    yanit: Response.json(govde, { headers: { "Cache-Control": "no-store" } }),
+    sonuc: sonuc.kalanlar.length || esitleme.durum === "kismi" ? "eksik" : "tamam",
+    ayrinti: { ...govde, hata: esitleme.hatalar.slice(0, 5) },
   };
 }

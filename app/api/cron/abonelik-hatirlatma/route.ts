@@ -66,11 +66,13 @@ export async function GET(istek: Request) {
 /*
   ARVOLAB KÖPRÜSÜ GÜNDE BİR DENETLENİYOR.
 
-  ArvoARC ve Randevu'nun eşitleme cron'u var: köprüleri koptuğunda o iş
-  hata veriyor ve koşma nöbeti (lib/cron-kaydi) kurucuya bildiriyor.
-  ArvoLab'ın eşitleme cron'u YOK — köprüsünün durumu yalnızca Sistem
-  Sağlığı ekranı açıldığında okunuyordu ve o ekranın kendi yorumu
-  "kurucu aylar sonra fark ediyordu" diyor.
+  Üç ürünün de eşitleme cron'u var ve köprüleri koptuğunda o iş hata
+  veriyor; koşma nöbeti (lib/cron-kaydi) kurucuya bildiriyor. Ama
+  eşitleme yalnızca SAPMIŞ kopyayı düzeltiyor: ArvoLab'ın köprüsü
+  yapılandırma hatasıyla kapalıysa (anahtar eksik ya da iki tarafta
+  farklı) sapma hiç görülemiyor, çünkü kopyalar okunamıyor. O durumu
+  yalnızca Sistem Sağlığı ekranı açıldığında fark ediliyordu ve ekranın
+  kendi yorumu "kurucu aylar sonra fark ediyordu" diyor.
 
   Koşul sağlık ekranının "Yanıt vermiyor" dediğinin aynısı: son hata son
   başarıdan yeni (lib/arvolab getArvolabBridgeHealth). BAYATLIK
@@ -112,8 +114,8 @@ async function kosu(): Promise<CronKosusu> {
     (20261014071519; kapsam ve gerekçe migration'da: erişim değişmez,
     denemelere dokunulmaz). Hatırlatma aynı turda yeni durumu okusun.
     İşlev yoksa (migration uygulanmadıysa) hatırlatma yine çalışır.
-    ArvoLab'ın eşitleme cron'u yok; değişen ArvoLab lisansı hemen itiliyor
-    (ARC ve Randevu on dakikalık eşitlemede yakalanıyor).
+    Değişen ArvoLab lisansı hemen itiliyor; üç ürün de on dakikalık
+    eşitlemede ayrıca yakalanıyor (ArvoLab'ınki 14.10.2026'da eklendi).
   */
   const { data: isaretlenen, error: isaretHatasi } = await admin.rpc("platform_gecikenleri_isaretle");
   if (isaretHatasi) console.error("[abonelik] gecikenler işaretlenemedi", isaretHatasi.message);

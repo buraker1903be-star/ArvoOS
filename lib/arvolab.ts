@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arvolabGirisAdresi } from "@/lib/arvolab-giris";
+import { eskiKopyalar, type KonsolUrunu } from "@/lib/kopya-denetimi";
 
 // ArvoLab köprüsü.
 //
@@ -419,4 +420,60 @@ export async function arvolabKopyalari(): Promise<Map<string, ArvolabYansimasi> 
     status: satir.license_status ?? "inactive",
     aiCreditLimit: satir.ai_credit_limit === null ? null : Number(satir.ai_credit_limit),
   }]));
+}
+
+/*
+  ARVOLAB LİSANSLARININ TAM EŞİTLEMESİ (14.10.2026).
+
+  ArvoARC ve Randevu'nun on dakikalık eşitleme cron'u, anında aktarımın
+  kaçırdığı her değişikliği yakalıyor. ArvoLab'ın böyle bir cron'u YOKTU
+  ve bu, bu depoda üç ayrı yerde "ArvoLab'ın eşitleme cron'u yok" diye
+  TELAFİ EDİLEN bir eksikti — bilinçli bir karar değil. Sonuç: ArvoLab
+  kopyası konsoldan ayrıştığında (ödeme anında köprü kapalıysa, anında
+  aktarım düştüyse) sapma, biri kiracının lisans ekranını açıp "Ürüne
+  yeniden yansıt" diyene kadar duruyordu. AkademikMerkez'de altı gün
+  sürdü ve müşteri şikâyet etti.
+
+  YALNIZCA SAPANLAR İTİLİYOR, hepsi değil: karşılaştırma lib/kopya-denetimi'nin
+  saf kuralıyla ve yalnızca ERİŞİMİ belirleyen durum üzerinden yapılıyor.
+  Her turda bütün kiracıları yeniden yazmak, hiçbir şey değişmediği hâlde
+  ArvoLab'a sürekli yük bindirirdi.
+
+  Yön her zaman ArvoOS → ArvoLab: lisansın doğrusu konsolda. İtilen şey
+  kurucunun elle yaptığı işlemin aynısı.
+
+  KOPYALAR OKUNAMAZSA İŞ BAŞARILI SAYILIYOR. "Okunamadı" bir sapma değil,
+  bilgisizlik; üstelik köprünün kapalı olduğunu Sistem Sağlığı'nın "Ürün
+  köprüleri" kartı ve köprü bildirimi zaten söylüyor. Aynı arızayı ikinci
+  bir kanaldan bağırmak, ikisinin de okunmamasına yol açar.
+*/
+export async function arvolabLisanslariniEsitle(): Promise<{
+  durum: "tamam" | "kismi"; okunamadi: boolean; sapan: number; duzeltilen: number; hatalar: string[];
+}> {
+  const bos = { okunamadi: false, sapan: 0, duzeltilen: 0, hatalar: [] as string[] };
+  const admin = createAdminClient();
+  if (!admin) return { ...bos, durum: "tamam", okunamadi: true };
+
+  const kopyalar = await arvolabKopyalari();
+  if (!kopyalar) return { ...bos, durum: "tamam", okunamadi: true };
+
+  const { data, error } = await admin.from("organization_product_licenses")
+    .select("organization_id,product,status").eq("product", "arvolab");
+  if (error) {
+    console.error("[arvolab] konsol lisansları okunamadı", error.message);
+    return { ...bos, durum: "kismi", hatalar: ["Konsol lisansları okunamadı: " + error.message] };
+  }
+
+  const sapanlar = eskiKopyalar((data ?? []) as KonsolUrunu[], { arvolab: kopyalar });
+  const hatalar: string[] = [];
+  let duzeltilen = 0;
+  for (const sapma of sapanlar) {
+    const sonuc = await syncArvolabLicense(sapma.organizationId);
+    if (sonuc === "synced") duzeltilen += 1;
+    else hatalar.push(`${sapma.organizationId}: ${sonuc}`);
+  }
+  return {
+    durum: hatalar.length ? "kismi" : "tamam",
+    okunamadi: false, sapan: sapanlar.length, duzeltilen, hatalar,
+  };
 }

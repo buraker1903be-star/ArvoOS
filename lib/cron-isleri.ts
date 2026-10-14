@@ -2,8 +2,7 @@
   ZAMANLANMIŞ İŞLERİN SAĞLIĞI (14.10.2026) — saf kural.
 
   Ekosistemi bir dizi zamanlanmış iş taşıyor: ortak posta kutularının
-  eşitlemesi, ArvoARC ve Arvo Randevu köprülerinin tam eşitlemesi, ödenmiş
-  AI kredisinin yüklenmesi, iş adımı terminleri ve abonelik hatırlatması.
+  eşitlemesi, ArvoARC, Arvo Randevu ve ArvoLab köprülerinin tam eşitlemesi, iş adımı terminleri ve abonelik hatırlatması.
   Listeyi ve aralıkları vercel.json söylüyor — SAYIYI BURAYA YAZMIYORUZ:
   elle tutulan bir sayı, cron eklendiği gün sessizce yanlışa dönüyor (bu
   dosyanın ve sağlık kartının metni 14.10.2026'da tam bu yüzden "beş"
@@ -63,9 +62,9 @@ const TANIM: Record<string, { ad: string; aciklama: string }> = {
     ad: "İş adımı terminleri",
     aciklama: "Durursa yaklaşan ve geçen adım terminleri bildirilmez.",
   },
-  "/api/cron/arvolab-kredi": {
-    ad: "AI kredisi yüklemesi",
-    aciklama: "Durursa ödenen kredi ArvoLab'a yüklenmeden kalır; müşteri ödediği hâlde asistanda durdurulur.",
+  "/api/cron/arvolab-sync": {
+    ad: "ArvoLab eşitlemesi",
+    aciklama: "Durursa ArvoLab'ın lisans kopyası sapmış kalır ve ödenen kredi yüklenmez; müşteri ödediği hâlde asistanda durdurulur.",
   },
   "/api/cron/abonelik-hatirlatma": {
     ad: "Abonelik hatırlatması",

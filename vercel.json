@@ -25,7 +25,7 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/arvolab-kredi",
+      "path": "/api/cron/arvolab-sync",
       "schedule": "*/10 * * * *"
     }
   ]
