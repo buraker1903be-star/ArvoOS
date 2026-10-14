@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { productName } from "@/lib/products";
 import { PLANS } from "@/lib/site/pricing";
 import { planTutari, type Fiyatlar } from "@/lib/site/fiyat-kaynagi";
-import { paketListeFiyatiKurus } from "@/lib/paket-ucreti";
+import { YAYIN_KODU, paketListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { havaleDenetimleri, type HavaleBildirimi } from "@/lib/beklenen-odeme";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { PAKET_ADI, para, tarih, tarihSaat } from "../../bicim";
@@ -52,10 +52,16 @@ export function GuncelFiyat({ urunler, fiyatlar, grup }: { urunler: UrunSatiri[]
     const plan = PLANS.find((p) => p.code === u.planCode);
     return plan ? planTutari(plan, fiyatlar) : null;
   };
+  /*
+    Basamak adı SİTEDEKİ addan: veritabanı kodu (enterprise) konsolda
+    "Kurumsal" yazıyor ama sitede "Özel kurum" (teklif usulü) — liste
+    fiyatıyla yan yana iki ayrı ad okumak kafa karıştırıyordu.
+  */
+  const yayinKodu = (u: UrunSatiri) => (u.kod === "arvoos" ? YAYIN_KODU[u.planCode ?? ""] : u.planCode) ?? null;
   const basamakAdi = (u: UrunSatiri) => {
-    if (u.kod === "arvoos") return u.planCode ? `${PAKET_ADI[u.planCode] ?? u.planCode} paket` : "Paket yok";
-    const plan = PLANS.find((p) => p.code === u.planCode);
-    return plan ? `${plan.ad.tr} basamağı` : u.planCode ? u.planCode : "Basamak seçilmedi";
+    const plan = PLANS.find((p) => p.code === yayinKodu(u));
+    if (plan) return `${plan.ad.tr} basamağı`;
+    return u.planCode ? `${PAKET_ADI[u.planCode] ?? u.planCode} paket (listede karşılığı yok)` : "Basamak seçilmedi";
   };
   const kullandigi = urunler.filter((u) => u.status !== "inactive");
 
@@ -90,7 +96,7 @@ export function GuncelFiyat({ urunler, fiyatlar, grup }: { urunler: UrunSatiri[]
       <KListe>
         {kullandigi.flatMap((u) => PLANS.filter((p) => p.product === u.kod).map((p) => {
           const tutar = planTutari(p, fiyatlar);
-          const secili = u.kod === "arvoos" ? `arvoos-${({ starter: "baslangic", professional: "kurumsal", enterprise: "ozel" } as Record<string, string>)[u.planCode ?? ""]}` === p.code : u.planCode === p.code;
+          const secili = yayinKodu(u) === p.code;
           return (
             <KOge
               key={p.code}
