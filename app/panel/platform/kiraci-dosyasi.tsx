@@ -63,7 +63,7 @@ export const VARLIK_ADI: Record<string, string> = {
 };
 
 
-export async function KiraciDosyasi({ supabase, selected, invitation, planList, tumUyelikler, seciliKota, seciliLisans }: {
+export async function KiraciDosyasi({ supabase, selected, invitation, planList, tumUyelikler, seciliKota, seciliLisans, pencerede = false }: {
   supabase: SupabaseClient;
   selected: DosyaKurumu;
   invitation: DosyaDaveti | null;
@@ -71,6 +71,13 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
   tumUyelikler: DosyaUyeligi[];
   seciliKota: KotaDurumu | null;
   seciliLisans: { license_status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null } | null;
+  /*
+    Müşteri detayının "Kurum Ayarları" penceresinde (14.10.2026: kiracı
+    dosyası sayfası kaldırıldı, müşteri detayına taşındı). Orada özet
+    şeridi, üyeler ve son etkinlik ZATEN var (sayfanın şeridi, Kullanıcılar
+    penceresi, Son etkinlik kartı); burada tekrar çizilmiyor.
+  */
+  pencerede?: boolean;
 }) {
   const targetId = selected.id;
   const admin = createAdminClient();
@@ -249,7 +256,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
       satır, çoğu "Belirtilmedi", ekranın üçte biri. Değer boşsa olgu
       yazılıyor ama soluk — yer kaplamadan.
     */}
-    <nav className="kayit-serit talep-serit" aria-label="Kiracı özeti">
+    {pencerede ? null : <nav className="kayit-serit talep-serit" aria-label="Kiracı özeti">
       <dl>
         <div><dt>Lisans</dt><dd><span className="status-pill" data-tone={lisansTonu}>{lisansAdi}</span></dd></div>
         <div>
@@ -291,7 +298,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
           <dd className={progress === 100 ? "cari-arti" : "talep-uyari"}>{progress === 100 ? `Tamamlandı · ${doneCount}/${required.length}` : `${doneCount}/${required.length} adım`}</dd>
         </div>
       </dl>
-    </nav>
+    </nav>}
 
     {wa?.last_error ? <KNot ton="uyari">WhatsApp: {wa.last_error}</KNot> : null}
     {seciliKota?.durum === "asildi" ? (
@@ -308,8 +315,8 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
       şey bu form ve sayfanın en altındaydı: her seferinde altı bölüm
       kaydırmak gerekiyordu.
     */}
-    <div className="talep-izgara personel-iki">
-      <section className="panel-card talep-musteri" aria-label="Kiracı">
+    <div className={pencerede ? undefined : "talep-izgara personel-iki"}>
+      {pencerede ? null : <section className="panel-card talep-musteri" aria-label="Kiracı">
         <div className="talep-musteri-kimlik">
           <span className="talep-avatar" aria-hidden="true">{basHarfleri(ad)}</span>
           <div>
@@ -324,7 +331,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             durur ve biri sapar. */}
         <div className="talep-iletisim">
           <a className="panel-primary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Kiracının paneline git</a>
-          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>
+          {pencerede ? null : <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>}
         </div>
         <dl className="talep-liste">
           <div><dt>Çalışma alanı</dt><dd className="plt-mono">{selected.slug}</dd></div>
@@ -339,10 +346,15 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             </dd>
           </div>
         </dl>
-      </section>
+      </section>}
 
       <section className="panel-card talep-bilgi" aria-labelledby="ayarlar-title">
-        <div className="cari-baslik"><h2 id="ayarlar-title">Kurum ayarları</h2><small>kurum çekirdeği</small></div>
+        <div className="cari-baslik">
+          <h2 id="ayarlar-title">Kurum ayarları</h2>
+          {pencerede
+            ? <small><span className="plt-mono">{selected.slug}</span> · <a href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Kiracının paneli ↗</a></small>
+            : <small>kurum çekirdeği</small>}
+        </div>
         <form className="panel-form kayit-formu" action={updateOrganizationSettings}>
           <input type="hidden" name="organization_id" value={targetId} />
           <label className="wide"><span>Yasal unvan<b className="req" aria-hidden="true">*</b></span><input name="name" defaultValue={selected.name} minLength={2} maxLength={160} required /></label>
@@ -364,7 +376,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
     {/* Kartlar tek blok içinde alt alta: KKart kendi aralığını veriyor,
         sayfanın (main.talep) aralığı üstüne binmesin. */}
     <div>
-      <KKart
+      {pencerede ? null : <KKart
         baslik="Üyeler"
         aciklama="Kurumun panel hesapları; erişim buradan açılıp kapatılır."
         sag={<>
@@ -375,7 +387,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
         </>}
       >
         <KiraciUyeleri organizationId={targetId} kurumAdi={ad} uyeler={kiraciUyeleri} />
-      </KKart>
+      </KKart>}
 
       {/*
         Modüller yatay: dört ürün yan yana kart hâlinde. Satır satır
@@ -383,12 +395,14 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
         üç kısa bilgi taşıyordu; dört satır boşuna dört ekran yüksekliği
         demekti.
       */}
-      <KKart
-        baslik="Modüller"
-        aciklama="Erişim kiracının ürüne girip giremediğini, köprü ArvoOS ile otomatik veri akışını yönetir. İkisi ayrı: ödemesini yapmış bir kiracı bağımsız çalışmayı seçebilir."
+      {pencerede && !modulSatirlari.some((satir) => !satir.cekirdek && ["active", "trialing", "past_due"].includes(satir.status)) ? null : <KKart
+        baslik={pencerede ? "Ürün köprüleri" : "Modüller"}
+        aciklama={pencerede
+          ? "ArvoOS ile otomatik veri akışı. Erişim ve ücret Lisanslar penceresinde."
+          : "Erişim kiracının ürüne girip giremediğini, köprü ArvoOS ile otomatik veri akışını yönetir. İkisi ayrı: ödemesini yapmış bir kiracı bağımsız çalışmayı seçebilir."}
       >
-        <ModulMatrisi organizationId={targetId} kurumAdi={ad} satirlar={modulSatirlari} />
-      </KKart>
+        <ModulMatrisi organizationId={targetId} kurumAdi={ad} satirlar={modulSatirlari} yalnizKopru={pencerede} />
+      </KKart>}
 
       {/*
         Panel modülleri ve son etkinlik. İkisi de "kiracı ne kullanıyor"
@@ -426,7 +440,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
         ) : <KBos baslik="Bu kurum için modül kaydı yok." />}
       </KKart>
 
-      <KKart baslik="Son etkinlik" aciklama="Kiracının panelindeki son altı işlem.">
+      {pencerede ? null : <KKart baslik="Son etkinlik" aciklama="Kiracının panelindeki son altı işlem.">
         {etkinlikSatirlari.length ? (
           <KListe>
             {etkinlikSatirlari.map((satir, sira) => (
@@ -439,7 +453,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             ))}
           </KListe>
         ) : <KBos baslik="Bu kiracının panelinde henüz bir işlem yapılmamış." />}
-      </KKart>
+      </KKart>}
 
       {/*
         Kurulum ayrıntısı kapalı geliyor. Dokuz maddelik liste her açılışta

@@ -6,6 +6,9 @@ import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../bicim";
+import { PanelDrawer } from "../../components/panel-drawer";
+import { createCustomerOrganization } from "../actions";
+import { NewOrganizationWizard } from "../new-organization-wizard";
 import "../platform.css";
 // Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
 // tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
@@ -163,7 +166,7 @@ export default async function MusterilerPage({ searchParams }: {
     kapsamadığında ekranda yazıyor (eksikKapsam), sessiz bir eksilme yok.
   */
   const LISTE_SINIRI = 1000;
-  const [{ data: kurumSatirlari }, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, { data: kayitTarihleri }, { data: planSatirlari }, fiyatlar] = await Promise.all([
+  const [{ data: kurumSatirlari }, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, { data: kayitTarihleri }, { data: planSatirlari }, fiyatlar, { data: paketler }] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
       .order("name"),
@@ -175,10 +178,12 @@ export default async function MusterilerPage({ searchParams }: {
     // Ek ürün lisansları: kiracı başına birkaç satır, bilerek sınırsız (rozet ve aylık toplam).
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee,current_period_end,trial_ends_at"),
     // Kayıt tarihi görünümde yok; kiracı sayısı kadar küçük bir okuma.
-    supabase.from("organizations").select("id,created_at"),
+    supabase.from("organizations").select("id,created_at,slug"),
     // ArvoARC'ın bireysel fiyatı listede değil, ürün planında.
     supabase.from("product_plans").select("product,individual_monthly_fee"),
     yayimlananFiyatlar(),
+    // Yeni müşteri sihirbazının paket seçimi (eskiden kiracı sayfasındaydı).
+    supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
   ]);
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
   // Rozet ve toplam bu okumaya dayanıyor: okunamaması "ürünü yok" demek değil.
@@ -301,7 +306,16 @@ export default async function MusterilerPage({ searchParams }: {
         <h1>Müşteriler</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform">Kiracı kurulumu</Link>
+        {/* Yeni müşteri kurulumu (14.10.2026): kiracı sayfası kaldırıldı,
+            sihirbaz buraya taşındı. Çalışma alanı adı bütün kurumlar
+            arasında benzersiz olmalı; Arvo'nun kendi kurumları dahil. */}
+        <PanelDrawer triggerLabel="+ Yeni müşteri" triggerClassName="panel-secondary" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
+          <NewOrganizationWizard
+            action={createCustomerOrganization}
+            plans={((paketler ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: String(p.name) }))}
+            existingSlugs={((kayitTarihleri ?? []) as { slug: string }[]).map((k) => k.slug)}
+          />
+        </PanelDrawer>
         <Link className="panel-primary" href="/panel/platform/billing">Abonelikler</Link>
       </div>
     </header>

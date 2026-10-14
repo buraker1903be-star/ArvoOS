@@ -80,7 +80,7 @@ async function createCustomerOrganization__impl(formData: FormData) {
   }
 
   revalidatePath("/panel", "layout");
-  redirect(`/panel/platform?organization=${data.organization_id}&provisioned=1`);
+  redirect(`/panel/platform/musteriler/${data.organization_id}?pencere=ayarlar&provisioned=1`);
 }
 
 async function updateOrganizationSettings__impl(formData: FormData) {
@@ -128,7 +128,7 @@ async function updateOrganizationSettings__impl(formData: FormData) {
   const { error } = await supabase.from("organizations").update(updates).eq("id", organizationId);
   if (error) throw new Error("Kurum ayarları kaydedilemedi.");
   revalidatePath("/panel", "layout");
-  revalidatePath(`/panel/platform?organization=${organizationId}`);
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
 }
 
 async function toggleOrganizationModule__impl(formData: FormData) {
@@ -140,7 +140,7 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   if (error) throw new Error("Modül durumu değiştirilemedi.");
   if (moduleCode === "commerce") await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel", "layout");
-  revalidatePath(`/panel/platform?organization=${organizationId}`);
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
 }
 
 /**
@@ -208,7 +208,7 @@ export async function createOwnerAccessLink(_previous: OwnerLinkState, formData:
     result: "success",
     details: { type, owner_email: invitation.email },
   });
-  revalidatePath("/panel/platform");
+  revalidatePath("/panel/platform/musteriler", "layout");
 
   const link = `${origin}/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=${type}&next=${encodeURIComponent("/panel")}`;
   return {

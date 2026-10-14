@@ -71,12 +71,11 @@ export function konsolUygulamalari(): OsUygulama[] {
       key: "kurulumlar", label: "Kurulum Yönetimi", href: "/panel/platform/kurulumlar", ikon: "building",
       /* Kiracı dosyası (/panel/platform) ayrı bir uygulama değil, kurulumun
          ayrıntısı; lisans ve kota da kurumun kurulumunun parçası. */
-      yollar: ["/panel/platform/kurulumlar", "/panel/platform", "/panel/platform/licenses"],
+      yollar: ["/panel/platform/kurulumlar", "/panel/platform/licenses"],
       bolumler: [
         { key: "yeni", href: "/panel/platform/kurulumlar?asama=yeni", label: "Yeni kurulum" },
         { key: "devam", href: "/panel/platform/kurulumlar?asama=devam", label: "Kurulumu devam edenler" },
         { key: "tamam", href: "/panel/platform/kurulumlar?asama=tamam", label: "Tamamlananlar" },
-        { key: "kiracilar", href: "/panel/platform", label: "Kiracı dosyaları" },
         { key: "lisans", href: "/panel/platform/licenses", label: "Lisans ve kota" },
       ],
     },

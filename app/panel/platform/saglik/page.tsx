@@ -113,7 +113,7 @@ export default async function SistemSagligiPage() {
         <h1>Sistem Sağlığı</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform">Kurulumlar</Link>
+        <Link className="panel-secondary" href="/panel/platform/kurulumlar">Kurulumlar</Link>
       </div>
     </header>
 
@@ -220,7 +220,7 @@ export default async function SistemSagligiPage() {
               return (
                 <KOge
                   key={kayit.id}
-                  href={`/panel/platform?organization=${kayit.organization_id}`}
+                  href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
                   simge={ad}
                   baslik={ad}
                   alt={[kayit.action, kayit.state].filter(Boolean).join(" · ")}

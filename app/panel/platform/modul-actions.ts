@@ -6,6 +6,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAddonProduct, productName } from "@/lib/products";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
+import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 
 /*
   Modül matrisinin iki anahtarı.
@@ -70,9 +71,15 @@ async function modulErisimiDegistir__impl(formData: FormData) {
     .eq("product", product);
   if (error) throw new Error(`Erişim güncellenemedi: ${error.message}`);
 
-  // Lisans değişikliği ürün tarafına yansımalı; ArvoARC kopyayı köprüden okuyor.
-  await syncArcTenantQuietly(organizationId);
-  revalidatePath("/panel/platform");
+  /*
+    Lisans değişikliği ürün tarafına yansımalı. Eskiden yalnızca ArvoARC'a
+    yansıtılıyordu (sessizce): ArvoLab'ı ya da Randevu'yu buradan
+    dondurmak konsolda "Askıda" yazıp ürünün içinde hiçbir şeyi
+    değiştirmiyordu. Artık lisans formuyla aynı yol ve hata görünür.
+  */
+  await urunLisansiniYansit(organizationId, product);
+  revalidatePath("/panel/platform/musteriler", "layout");
+  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   await flashSuccess(
     durum === "suspended"
       ? `${productName(product)} donduruldu`
@@ -104,7 +111,7 @@ async function modulKoprusuDegistir__impl(formData: FormData) {
     izlemek demekti.
   */
   await syncArcTenantQuietly(organizationId);
-  revalidatePath("/panel/platform");
+  revalidatePath("/panel/platform/musteriler", "layout");
   await flashSuccess(
     entegre
       ? `${productName(product)} ArvoOS ile entegre çalışacak`

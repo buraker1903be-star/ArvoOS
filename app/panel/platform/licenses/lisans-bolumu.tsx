@@ -9,7 +9,8 @@ import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
-import { cekirdekErisimi, urunErisimi, updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
+import { modulErisimiDegistir } from "../modul-actions";
+import { cekirdekErisimi, updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { UrunKartlari } from "./urun-kartlari";
 // Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
 // şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
@@ -253,7 +254,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
           urunuKaydet={updateProductLicense}
           urunuYansit={urunuYenidenYansit}
           erisimiDegistir={cekirdekErisimi}
-          urunErisiminiDegistir={urunErisimi}
+          urunErisiminiDegistir={modulErisimiDegistir}
           kartlar={[
             {
               tur: "cekirdek" as const,

@@ -194,7 +194,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   return (
                     <KOge
                       key={kiraci.id}
-                      href={`/panel/platform?organization=${kiraci.id}`}
+                      href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`}
                       simge={ad}
                       baslik={ad}
                       alt={[kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : null, kiraci.contact_phone, kiraci.slug].filter(Boolean).join(" · ")}
@@ -230,7 +230,7 @@ export default async function KurulumlarPage({ searchParams }: {
                   const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
                   return (
                     <tr key={kiraci.id}>
-                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
+                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
                       <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
                       <td data-label="Aylık ücret">
                         {sapma.durum === "girilmedi" ? (

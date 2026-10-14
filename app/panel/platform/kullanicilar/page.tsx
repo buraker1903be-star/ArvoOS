@@ -239,7 +239,7 @@ export default async function KullanicilarPage({ searchParams }: {
                 {davetler.map((davet) => {
                   const { suresiGecti } = davet;
                   const kurumAdi = kurumAdlari.get(davet.organization_id) ?? "Kurum";
-                  const kurumAdresi = `/panel/platform?organization=${davet.organization_id}`;
+                  const kurumAdresi = `/panel/platform/musteriler/${davet.organization_id}?pencere=ayarlar`;
                   const durum = {
                     etiket: suresiGecti ? "Süresi geçti" : davet.status === "failed" ? "Gönderilemedi" : "Bekliyor",
                     ton: suresiGecti ? "danger" : davet.status === "failed" ? "danger" : "warning",

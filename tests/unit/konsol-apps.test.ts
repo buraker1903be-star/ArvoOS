@@ -26,11 +26,10 @@ describe("kurucu konsolu uygulamaları", () => {
        UZUN eşleşeni seçtiği için alt sayfalar kendi uygulamasını
        buluyor; bu test onu sabitliyor. */
     assert.equal(etkin("/panel/platform/kurulumlar"), "kurulumlar");
-    assert.equal(etkin("/panel/platform"), "kurulumlar");
-    /* Kiracı dosyası ayrı bir yol değil, bu sayfanın sorgusu
-       (?organization=…); dock yalnızca YOLA bakıyor. */
-    assert.equal(etkin("/panel/platform/"), "kurulumlar");
+    /* Kiracı dosyaları kaldırıldı (14.10.2026): /panel/platform yalnızca
+       Müşteriler'e yönlendiriyor; dosya müşteri detayının penceresi. */
     assert.equal(etkin("/panel/platform/licenses"), "kurulumlar");
+    assert.equal(etkin("/panel/platform/musteriler/8f0e1c2a-0000-4000-8000-000000000000"), "musteriler");
 
     assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
     assert.equal(etkin("/panel/platform/kullanicilar"), "musteriler");

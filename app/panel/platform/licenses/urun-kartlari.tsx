@@ -73,7 +73,7 @@ export function UrunKartlari({
   kartlar: UrunKarti[];
   /** ArvoOS erişimini kapat / aç (licenses/actions cekirdekErisimi). */
   erisimiDegistir: (formData: FormData) => Promise<unknown> | void;
-  /** Ek ürün erişimini kapat / aç (licenses/actions urunErisimi). */
+  /** Ek ürün erişimini kapat / aç (modul-actions modulErisimiDegistir). */
   urunErisiminiDegistir: (formData: FormData) => Promise<unknown> | void;
   cekirdegiKaydet: (formData: FormData) => void;
   urunuKaydet: (formData: FormData) => void;
@@ -84,20 +84,35 @@ export function UrunKartlari({
 
   /* Kapatma geri alınabilir ama müşteriyi anında dışarıda bırakıyor:
      yanlış satıra dokunmaya karşı onay soruluyor (üye erişimindeki gibi). */
+  /*
+    Kapatırken SEBEP soruluyor (modül matrisindeki kuralın aynısı):
+    sebepsiz bir dondurmayı üç ay sonra kimse açıklayamıyor; müşteri
+    arayınca "neden kapalı" sorusunun yanıtı kayıtta olmalı. Hazır metin
+    en sık sebep; kurucu değiştirebilir.
+  */
   const erisimDegistir = (kart: UrunKarti, acilacak: boolean) => {
     const cekirdek = kart.tur === "cekirdek";
-    if (!window.confirm(acilacak
-      ? `${kurumAdi} için ${kart.ad} erişimi açılsın mı?`
-      : cekirdek
-        ? `${kurumAdi} için ArvoOS erişimi kapatılsın mı? Kurumdaki herkes paneli kullanamaz; yalnızca sahip ödeme ekranına ulaşır. Verileri silinmez.`
-        : `${kurumAdi} için ${kart.ad} erişimi kapatılsın mı? Kurumun kullanıcıları ${kart.ad}'a giremez. Verileri silinmez.`)) return;
+    let sebep = "";
+    if (acilacak) {
+      if (!window.confirm(`${kurumAdi} için ${kart.ad} erişimi açılsın mı?`)) return;
+    } else {
+      sebep = window.prompt(cekirdek
+        ? `${kurumAdi} için ArvoOS erişimi kapatılacak: kurumdaki herkes paneli kullanamaz, yalnızca sahip ödeme ekranına ulaşır. Verileri silinmez.\n\nSebep (kayda geçer, kilit ekranında görünür):`
+        : `${kurumAdi} için ${kart.ad} erişimi kapatılacak: kurumun kullanıcıları ${kart.ad}'a giremez. Verileri silinmez.\n\nSebep (kayda geçer):`,
+      "Abonelik ödemesi alınamadı.") ?? "";
+      if (!sebep.trim()) return;
+    }
     basla(async () => {
       const veri = new FormData();
       veri.set("organization_id", organizationId);
-      veri.set("ac", acilacak ? "true" : "false");
-      if (cekirdek) await erisimiDegistir(veri);
-      else {
+      if (cekirdek) {
+        veri.set("ac", acilacak ? "true" : "false");
+        veri.set("reason", sebep);
+        await erisimiDegistir(veri);
+      } else {
         veri.set("product", kart.kod);
+        veri.set("status", acilacak ? "active" : "suspended");
+        veri.set("reason", sebep);
         await urunErisiminiDegistir(veri);
       }
     });

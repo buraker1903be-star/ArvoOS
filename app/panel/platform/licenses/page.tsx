@@ -52,7 +52,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             kendi: kurum.kind === "internal",
           }))}
         />
-        <Link className="panel-secondary" href={`/panel/platform?organization=${selected.id}`}>Kiracı dosyasına dön</Link>
+        <Link className="panel-secondary" href={`/panel/platform/musteriler/${selected.id}`}>Müşteriye dön</Link>
       </div>
     </header>
 

@@ -432,7 +432,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                           <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
                         </form>
                       ) : (
-                        <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
+                        <Link className="panel-secondary" href={`/panel/platform/musteriler/${r.organizationId}?pencere=ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
                       )}
                     />
                   );

@@ -90,7 +90,7 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
         <h1>Modül matrisi</h1>
       </div>
       <div className="talep-bas-eylem">
-        <Link className="panel-secondary" href="/panel/platform">Kiracılar</Link>
+        <Link className="panel-secondary" href="/panel/platform/musteriler">Müşteriler</Link>
       </div>
     </header>
 

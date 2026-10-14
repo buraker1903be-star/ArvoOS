@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { modulErisimiDegistir, modulKoprusuDegistir } from "./modul-actions";
-import { KBaslik, KDurum, KTablo } from "./konsol-ui";
+import { KBaslik, KDurum, KListe, KOge, KTablo } from "./konsol-ui";
 // Anahtar (.plt-switch) ve bağlantı (.modul-baglanti) konsolun stilinde.
 import "./platform.css";
 
@@ -60,10 +60,18 @@ export function ModulMatrisi({
   organizationId,
   kurumAdi,
   satirlar,
+  yalnizKopru = false,
 }: {
   organizationId: string;
   kurumAdi: string;
   satirlar: ModulSatiri[];
+  /*
+    Müşteri detayının Kurum Ayarları penceresinde (14.10.2026): erişim
+    anahtarı ve ücret orada Lisanslar penceresinde; aynı anahtarı iki
+    pencerede göstermek "hangisi geçerli" sorusunu doğuruyordu. Yalnızca
+    açık ek ürünlerin köprüsü kalıyor.
+  */
+  yalnizKopru?: boolean;
 }) {
   const [calisiyor, basla] = useTransition();
 
@@ -119,6 +127,32 @@ export function ModulMatrisi({
     yuvasına iki anahtar etiketsiz sığınca hangisinin hangisi olduğu
     belirsizleşiyor.
   */
+  if (yalnizKopru) {
+    const acikEkler = satirlar.filter((satir) => !satir.cekirdek && ["active", "trialing", "past_due"].includes(satir.status));
+    return (
+      <KListe>
+        {acikEkler.map((satir) => (
+          <KOge
+            key={satir.product}
+            baslik={satir.name}
+            alt={satir.integrated ? "Entegre: sözleşme onayında otomatik kayıt" : "Bağımsız: otomatik veri akışı yok"}
+            sonu={(
+              <button
+                type="button"
+                className={satir.integrated ? "plt-switch is-on" : "plt-switch"}
+                role="switch"
+                aria-checked={Boolean(satir.integrated)}
+                aria-label={`${satir.name} köprüsü: ${satir.integrated ? "bağımsıza al" : "entegre et"}`}
+                disabled={calisiyor}
+                onClick={() => kopru(satir)}
+              ><i /></button>
+            )}
+          />
+        ))}
+      </KListe>
+    );
+  }
+
   return (
     <KTablo kolonlar={[{ ad: "Modül" }, { ad: "Durum" }, { ad: "Erişim" }, { ad: "Köprü" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }]}>
       {satirlar.map((satir) => {

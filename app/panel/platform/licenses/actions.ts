@@ -9,6 +9,7 @@ import { URUN_KOTALARI } from "@/lib/urun-kotasi";
 import { syncRandevuTenants } from "@/lib/randevu-bridge";
 import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenants } from "@/lib/arc-bridge";
+import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 const productStatuses = new Set(["inactive", ...licenseStatuses]);
@@ -159,36 +160,6 @@ async function updateProductLicense__impl(formData: FormData) {
   revalidatePath("/panel/billing");
 }
 
-/*
-  Ürün lisansını ürünün kendi veritabanına yansıtır. Lisans formu ve
-  erişim anahtarı (urunErisimi) AYNI yolu kullanıyor: ikisi ayrı yazılsaydı
-  birinin hata mesajı ötekinden sapardı. Yansıtma başarısız olursa lisans
-  kaydı yine de geçerli; hata kurucuya gösterilir.
-*/
-async function urunLisansiniYansit(organizationId: string, product: string) {
-  // ArvoLab ayrı veritabanında: durumu oraya yansıt.
-  if (product === "arvolab") {
-    const synced = await syncArvolabLicense(organizationId);
-    if (synced === "failed") throw new Error("Lisans kaydedildi ancak ArvoLab'a yansıtılamadı. Bağlantı ayarlarını kontrol edip tekrar kaydedin.");
-  }
-  // ArvoARC kendi veritabanına taşındığında kademe oradan okunuyor (lib/arc-bridge.ts).
-  // Kurucu ekranında hata görünsün: sessiz kalınca köprünün hiç çalışmadığı
-  // (ör. ortam değişkeni girilip yeniden dağıtılmadığı) anlaşılmıyordu.
-  if (product === "arc") {
-    const arc = await syncArcTenants(organizationId);
-    if (arc.status === "failed" || arc.errors.length)
-      throw new Error(`Lisans kaydedildi ancak ArvoARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
-  }
-  // Randevu da kendi veritabanında (lib/randevu-bridge.ts); salonun online
-  // sayfası ve paneli lisansı oradan okuyor.
-  if (product === "randevu") {
-    const randevu = await syncRandevuTenants(organizationId);
-    if (randevu.status === "not_configured")
-      throw new Error("Lisans kaydedildi ancak Randevu köprüsü kapalı (RANDEVU_SUPABASE_URL / RANDEVU_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın, sonra tekrar kaydedin.");
-    if (randevu.status === "failed" || randevu.errors.length)
-      throw new Error(`Lisans kaydedildi ancak Randevu'ya yansıtılamadı: ${randevu.errors[0] ?? "bilinmeyen hata"}. Bağlantı ayarlarını kontrol edip tekrar kaydedin.`);
-  }
-}
 
 /*
   Köprüyü yeniden yansıtma.
@@ -277,7 +248,10 @@ async function cekirdekErisimi__impl(formData: FormData) {
 
   const organizationId = String(formData.get("organization_id") ?? "").trim();
   const ac = String(formData.get("ac") ?? "") === "true";
+  // Sebep kilit ekranında kuruma gösteriliyor ve kayda geçiyor.
+  const sebep = String(formData.get("reason") ?? "").trim().slice(0, 300);
   if (!organizationId) throw new Error("Kurum seçilmedi.");
+  if (!ac && !sebep) throw new Error("Kapatma sebebi zorunlu. Müşteri sorduğunda yanıtın kayıtta olması gerekiyor.");
 
   const { data: kurum, error: kurumHatasi } = await supabase.from("organizations")
     .select("slug,provisioning_state").eq("id", organizationId).maybeSingle();
@@ -290,7 +264,7 @@ async function cekirdekErisimi__impl(formData: FormData) {
   const { data: guncellenen, error } = await supabase.from("organization_licenses").update({
     license_status: ac ? "active" : "suspended",
     suspended_at: ac ? null : now,
-    suspension_reason: ac ? null : "Abonelik ödemesi alınamadığı için erişim kapatıldı.",
+    suspension_reason: ac ? null : sebep,
     updated_by: userId,
     updated_at: now,
   }).eq("organization_id", organizationId).select("organization_id");
@@ -315,49 +289,4 @@ export async function cekirdekErisimi(...args: Parameters<typeof cekirdekErisimi
   const [veri] = args;
   return runPanelAction(() => cekirdekErisimi__impl(...args),
     String(veri.get("ac") ?? "") === "true" ? "ArvoOS erişimi açıldı" : "ArvoOS erişimi kapatıldı");
-}
-
-/*
-  EK ÜRÜN ERİŞİMİNİ KAPAT / AÇ (14.10.2026: "ArvoLab içinde anahtar yok").
-  ArvoOS anahtarının (cekirdekErisimi) ek ürün karşılığı: ürün lisansı
-  'suspended' olur ve ürünün kendi veritabanına yansıtılır — ArvoLab kurum
-  üyelerini, ARC ve Randevu kiracıyı lisans durumundan kapatıyor. Açınca
-  'active'. Ücret, dönem ve kota değişmez.
-
-  Kullanmadığı ürün (lisans satırı yok ya da 'inactive') açılıp kapanmaz:
-  anahtar onu "satın almış" gibi gösterirdi; ürün açmak lisans formunda.
-*/
-async function urunErisimi__impl(formData: FormData) {
-  const { supabase, isPlatformOwner, userId } = await getPanelContext();
-  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
-
-  const organizationId = String(formData.get("organization_id") ?? "").trim();
-  const product = String(formData.get("product") ?? "").trim();
-  const ac = String(formData.get("ac") ?? "") === "true";
-  if (!organizationId) throw new Error("Kurum seçilmedi.");
-  if (!isAddonProduct(product)) throw new Error("Geçerli bir ürün seçin.");
-
-  const now = new Date().toISOString();
-  const { data: guncellenen, error } = await supabase.from("organization_product_licenses").update({
-    status: ac ? "active" : "suspended",
-    suspended_at: ac ? null : now,
-    suspension_reason: ac ? null : "Abonelik ödemesi alınamadığı için erişim kapatıldı.",
-    updated_by: userId,
-    updated_at: now,
-  }).eq("organization_id", organizationId).eq("product", product).neq("status", "inactive").select("product");
-  if (error) throw new Error(`${productName(product)} erişimi değiştirilemedi: ${error.message}`);
-  if (!guncellenen?.length) throw new Error(`Kurum ${productName(product)} kullanmıyor; önce lisans formundan ürünü açın.`);
-
-  await urunLisansiniYansit(organizationId, product);
-
-  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
-  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
-  revalidatePath("/panel/billing");
-}
-
-export async function urunErisimi(...args: Parameters<typeof urunErisimi__impl>) {
-  const [veri] = args;
-  const urun = productName(String(veri.get("product") ?? ""));
-  return runPanelAction(() => urunErisimi__impl(...args),
-    String(veri.get("ac") ?? "") === "true" ? `${urun} erişimi açıldı` : `${urun} erişimi kapatıldı`);
 }

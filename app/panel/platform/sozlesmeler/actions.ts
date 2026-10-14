@@ -137,7 +137,7 @@ async function abonelikIsteginiOnayla__impl(formData: FormData) {
   await syncArcTenantQuietly(hedefKurum);
 
   revalidatePath("/panel/platform/sozlesmeler");
-  revalidatePath("/panel/platform");
+  revalidatePath("/panel/platform/musteriler", "layout");
   await flashSuccess(`${moduller.length} modül açıldı · ${istek.contract_no ?? "sözleşme"}`);
 }
 

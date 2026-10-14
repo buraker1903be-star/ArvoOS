@@ -113,7 +113,7 @@ export function Matris({ urunler, satirlar, durum }: {
            dikey tarama kayboluyor. */
         <KTablo kolonlar={[{ ad: "Kiracı" }, ...urunler.map((urun) => ({ ad: urun.name })), { ad: "" }]}>
           {gorunen.map((satir) => {
-            const kiraci = `/panel/platform?organization=${satir.id}`;
+            const kiraci = `/panel/platform/musteriler/${satir.id}?pencere=ayarlar`;
             return (
               <tr key={satir.id}>
                 <KBaslik avatar etiket="Kiracı" href={kiraci} baslik={satir.ad} alt={satir.kendiMarkamiz ? "kendi markamız" : undefined} />

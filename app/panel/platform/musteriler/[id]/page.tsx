@@ -11,6 +11,8 @@ import { ETKINLIK_ADI, VARLIK_ADI } from "../../kiraci-dosyasi";
 import { KiraciUyeleri } from "../../kiraci-uyeleri";
 import { kiraciUyeleriniOku } from "../../kiraci-uyeleri-oku";
 import { LisansBolumu } from "../../licenses/lisans-bolumu";
+import { KiraciDosyasi } from "../../kiraci-dosyasi";
+import { kiraciDosyasiVerisi } from "../../kiraci-dosyasi-verisi";
 import { CariHesap, Faturalar, GuncelFiyat, OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { MusteriPenceresi } from "./pencere";
 import "../../platform.css";
@@ -52,6 +54,9 @@ const PENCERELER = [
   { kod: "odemeler", ad: "Ödemeler" },
   { kod: "faturalar", ad: "Faturalar" },
   { kod: "kullanicilar", ad: "Kullanıcılar" },
+  /* Kiracı dosyası (14.10.2026): ayrı sayfası kaldırıldı; kurum ayarları
+     formu, modüller, kurulum adımları ve sahibe giriş bağlantısı burada. */
+  { kod: "ayarlar", ad: "Kurum Ayarları" },
 ] as const;
 type PencereKodu = (typeof PENCERELER)[number]["kod"];
 
@@ -67,11 +72,11 @@ const ODEME_SECIMI = "id,organization_id,amount,currency,status,product,plan_cod
 
 export default async function MusteriDetayi({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ pencere?: string }>;
+  searchParams: Promise<{ pencere?: string; provisioned?: string }>;
 }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
-  const [{ id }, { pencere: pencereParametresi }] = await Promise.all([params, searchParams]);
+  const [{ id }, { pencere: pencereParametresi, provisioned }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const pencere = PENCERELER.find((p) => p.kod === pencereParametresi)?.kod ?? null;
 
@@ -138,6 +143,10 @@ export default async function MusteriDetayi({ params, searchParams }: {
     if (kod === "cari") return <CariHesap urunler={urunler} odemeler={odemeler} grup={grup} />;
     if (kod === "odemeler") return <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} />;
     if (kod === "faturalar") return <Faturalar />;
+    if (kod === "ayarlar") {
+      const veri = await kiraciDosyasiVerisi(supabase, id);
+      return veri ? <KiraciDosyasi supabase={supabase} {...veri} pencerede /> : <KBos baslik="Kurum bulunamadı" />;
+    }
     const { data: uyelikler } = await (admin ?? supabase).from("organization_memberships")
       .select("organization_id,user_id,role,is_active").eq("organization_id", id);
     const uyeler = await kiraciUyeleriniOku(supabase, admin, id, (uyelikler ?? []) as { organization_id: string; user_id: string; role: string; is_active: boolean }[]);
@@ -188,6 +197,9 @@ export default async function MusteriDetayi({ params, searchParams }: {
       </dl>
     </nav>
 
+    {provisioned === "1" ? (
+      <KNot ton="basari"><b>{ad} kuruldu.</b> Davet {kurum.davet_eposta ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse Kurum Ayarları&apos;ndan giriş bağlantısı oluşturup WhatsApp&apos;tan gönderin.</KNot>
+    ) : null}
     {grup ? <KNot>Grup markası: ücretleri müşteri gelirine ve tahsilata girmez, konsolda &quot;grup içi değer&quot; olarak toplanır.</KNot> : null}
     {bekleyen.length ? (
       <KNot ton="uyari">{bekleyen.length} ödeme bildirimi onay bekliyor. <Link href={`${adres}?pencere=odemeler`} scroll={false}>Ödemeler&apos;de incele →</Link></KNot>
@@ -216,7 +228,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
       </section>
 
       <div className="liste-sag">
-        <KKart baslik="İletişim" sag={<Link className="panel-secondary" href={`/panel/platform?organization=${id}`}>Kurum ayarları</Link>}>
+        <KKart baslik="İletişim" sag={<Link className="panel-secondary" href={`${adres}?pencere=ayarlar`} scroll={false}>Düzenle</Link>}>
           <KListe>
             <KOge baslik="Yasal unvan" deger={kurum.name} />
             <KOge baslik="Yetkili e-posta" deger={kurum.davet_eposta ? <a href={`mailto:${kurum.davet_eposta}`}>{kurum.davet_eposta}</a> : <span className="k-ios-eksik">Yok</span>} />

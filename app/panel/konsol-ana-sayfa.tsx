@@ -302,19 +302,19 @@ export async function KonsolAnaSayfa() {
   const grafikOzeti = [
     { ad: "Beklenen aylık", deger: para(aylikGelir), href: "/panel/platform/billing" },
     /* "3 / 4": kaçının kullanımda olduğu bilgisi sayı kartından buraya taşındı. */
-    { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, href: "/panel/platform" },
+    { ad: "Müşteri kurum", deger: `${kullanimda} / ${musteriler.length}`, href: "/panel/platform/musteriler" },
     { ad: "Onay bekleyen", deger: String(onayBekleyen), ton: onayBekleyen ? "danger" : undefined, href: "/panel/platform/payments" },
-    { ad: "Dikkat gerektiren", deger: String(dikkatGerektiren), ton: dikkatGerektiren ? "danger" : undefined, href: "/panel/platform?filtre=dikkat" },
+    { ad: "Dikkat gerektiren", deger: String(dikkatGerektiren), ton: dikkatGerektiren ? "danger" : undefined, href: "/panel/platform/musteriler" },
   ];
 
   const odak = ([
-    { etiket: "Kurulum bekleyen kiracı", sayi: kurulumBekleyen, href: "/panel/platform?filtre=kurulum", tone: "info" },
+    { etiket: "Kurulum bekleyen kiracı", sayi: kurulumBekleyen, href: "/panel/platform/kurulumlar?asama=devam", tone: "info" },
     sozlesmeSayisi === null
       ? null
       : { etiket: "Onay bekleyen sözleşme", sayi: sozlesmeSayisi, href: "/panel/platform/sozlesmeler", tone: "gold" },
     { etiket: "İncelenecek ödeme bildirimi", sayi: odemeSayisi, href: "/panel/platform/payments", tone: "gold" },
     { etiket: `Dönemi ${REMINDER_WINDOW_DAYS} gün içinde dolan abonelik`, sayi: hatirlatmalar.length, href: "/panel/platform/billing", tone: "danger" },
-    { etiket: "Kota aşımı ya da kurulum hatası", sayi: dikkatGerektiren, href: "/panel/platform?filtre=dikkat", tone: "danger" },
+    { etiket: "Kota aşımı ya da kurulum hatası", sayi: dikkatGerektiren, href: "/panel/platform/musteriler", tone: "danger" },
   ] as ({ etiket: string; sayi: number; href: string; tone: Tone } | null)[]).filter(Boolean) as { etiket: string; sayi: number; href: string; tone: Tone }[];
 
   /*
@@ -334,7 +334,7 @@ export async function KonsolAnaSayfa() {
     }));
 
   const bolumler = [
-    { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform" },
+    { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform/musteriler" },
     { etiket: "Lisans ve kota", not: "Paket, limit ve deneme süresi", href: "/panel/platform/licenses" },
     { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing" },
     { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller" },
@@ -373,7 +373,7 @@ export async function KonsolAnaSayfa() {
         <ListeKarti
           baslik="Bugün neye bakmalı?" alt="Bekleyen işler"
           bos="Bekleyen iş yok." sayi={odak.length}
-          href="/panel/platform" hrefEtiket="Kiracılar"
+          href="/panel/platform/musteriler" hrefEtiket="Müşteriler"
         >
           {odak.map((satir) => (
             <ListeSatiri
@@ -388,12 +388,12 @@ export async function KonsolAnaSayfa() {
         <ListeKarti
           baslik="Dikkat gerektiren" alt="Kurulum hatası ya da kota aşımı"
           bos="Her kiracı yolunda." sayi={dikkatliler.length}
-          href="/panel/platform?filtre=dikkat" hrefEtiket="Tümü"
+          href="/panel/platform/musteriler" hrefEtiket="Tümü"
         >
           {dikkatliler.map((kurum) => (
             <ListeSatiri
               key={kurum.id}
-              href={`/panel/platform?organization=${kurum.id}`}
+              href={`/panel/platform/musteriler/${kurum.id}`}
               baslik={kurum.ad}
               sag={<span className="status-pill" data-tone="danger">{kurum.sebep}</span>}
             />
@@ -410,7 +410,7 @@ export async function KonsolAnaSayfa() {
           {kurulumlar.map((kayit) => (
             <ListeSatiri
               key={kayit.id}
-              href={`/panel/platform?organization=${kayit.organization_id}`}
+              href={`/panel/platform/musteriler/${kayit.organization_id}?pencere=ayarlar`}
               baslik={kurumAdi.get(kayit.organization_id) ?? "Kurum"}
               alt={actionLabels[kayit.action] ?? kayit.action}
               sag={kayit.result === "error" ? <span className="status-pill" data-tone="danger">hata</span> : null}
