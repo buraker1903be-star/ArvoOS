@@ -152,7 +152,7 @@ export function AbonelikListesi({ gruplar, durum, bolum, bolumler, children }: {
       ) : gorunen.length ? (
         <KListe>
           {gorunen.map((grup) => {
-            const lisans = `/panel/platform/licenses?organization=${grup.organizationId}`;
+            const lisans = `/panel/platform/musteriler/${grup.organizationId}?pencere=lisanslar`;
             /* Kurumun durumu, ürünlerinden en çok dikkat isteyeninki:
                gecikmiş ödeme aktif aboneliği, aktif olan denemeyi örter.
                Ondan farklı durumdaki ürün özette parantezle yazılıyor. */

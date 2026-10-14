@@ -18,7 +18,7 @@ import type { OsUygulama } from "./os-apps";
 
 /*
   SEKİZ ANA MENÜ (14.10.2026, Kurucu Yönetim Konsolu tarifi): Genel
-  Bakış, Ürünler, Müşteriler, Kurulum Yönetimi, Ücret ve Paketler,
+  Bakış, Ürünler, Müşteriler, Kurulum, Ücret ve Paketler,
   Abonelikler, Faturalama ve Tahsilat, Sistem Ayarları.
 
   Bir gün önce dock altı uygulamaya indirilmişti (Ana Sayfa, Kurulumlar,
@@ -67,16 +67,13 @@ export function konsolUygulamalari(): OsUygulama[] {
       ],
     },
     {
-      key: "kurulumlar", label: "Kurulum Yönetimi", href: "/panel/platform/kurulumlar", ikon: "building",
-      /* Kiracı dosyası (/panel/platform) ayrı bir uygulama değil, kurulumun
-         ayrıntısı; lisans ve kota da kurumun kurulumunun parçası. */
-      yollar: ["/panel/platform/kurulumlar", "/panel/platform/licenses"],
-      bolumler: [
-        { key: "yeni", href: "/panel/platform/kurulumlar?asama=yeni", label: "Yeni kurulum" },
-        { key: "devam", href: "/panel/platform/kurulumlar?asama=devam", label: "Kurulumu devam edenler" },
-        { key: "tamam", href: "/panel/platform/kurulumlar?asama=tamam", label: "Tamamlananlar" },
-        { key: "lisans", href: "/panel/platform/licenses", label: "Lisans ve kota" },
-      ],
+      key: "kurulumlar", label: "Kurulum", href: "/panel/platform/kurulumlar", ikon: "building",
+      /* TEK SAYFA (14.10.2026, kurum sahibi: "Kurulum diye sayfa içinde
+         birleştirelim"). Yeni / devam eden / tamamlanan aşamaları ayrı menü
+         öğeleriydi; sayfanın kendi sekmeleri zaten bunlar. "Lisans ve kota"
+         kaldırıldı: müşteri detayının Lisanslar penceresi aynı ekran
+         (/panel/platform/licenses oraya yönleniyor). */
+      yollar: ["/panel/platform/kurulumlar"],
     },
     {
       key: "fiyatlar", label: "Ücret ve Paketler", href: "/panel/platform/fiyatlar", ikon: "tag",

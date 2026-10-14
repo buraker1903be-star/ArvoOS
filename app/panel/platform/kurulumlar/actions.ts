@@ -45,7 +45,7 @@ async function listeFiyatiniUygula__impl(formData: FormData) {
   if (error) throw new Error("Ücret yazılamadı: " + error.message);
 
   revalidatePath("/panel/platform/kurulumlar");
-  revalidatePath("/panel/platform/licenses");
+  revalidatePath("/panel/platform/musteriler", "layout");
 }
 
 async function denemeyiAyarla__impl(formData: FormData) {
@@ -75,7 +75,7 @@ async function denemeyiAyarla__impl(formData: FormData) {
   if (error) throw new Error("Deneme süresi yazılamadı: " + error.message);
 
   revalidatePath("/panel/platform/kurulumlar");
-  revalidatePath("/panel/platform/licenses");
+  revalidatePath("/panel/platform/musteriler", "layout");
 }
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).

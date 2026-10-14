@@ -172,7 +172,7 @@ export default async function SistemSagligiPage() {
             return (
               <KOge
                 key={`${kayit.organizationId}-${kayit.product}`}
-                href={`/panel/platform/licenses?organization=${kayit.organizationId}`}
+                href={`/panel/platform/musteriler/${kayit.organizationId}?pencere=lisanslar`}
                 simge={ad}
                 baslik={ad}
                 alt={`${kayit.product} · konsolda ${kayit.konsolDurumu}`}
@@ -199,7 +199,7 @@ export default async function SistemSagligiPage() {
             return (
               <KOge
                 key={kota.organizationId}
-                href={`/panel/platform/licenses?organization=${kota.organizationId}`}
+                href={`/panel/platform/musteriler/${kota.organizationId}?pencere=lisanslar`}
                 simge={ad}
                 baslik={ad}
                 alt={`${kullanici} · ${depolama}`}

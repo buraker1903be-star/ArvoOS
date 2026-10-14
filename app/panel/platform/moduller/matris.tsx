@@ -126,7 +126,7 @@ export function Matris({ urunler, satirlar, durum }: {
                           sorunu gören kurucu adresi elle kuruyordu. */}
                       <Link
                         className="plt-matris-hucre"
-                        href={`/panel/platform/licenses?organization=${satir.id}`}
+                        href={`/panel/platform/musteriler/${satir.id}?pencere=lisanslar`}
                         title={`${satir.ad} · ${urun.name}: ${hucre.durumAdi}${hucre.bagimsiz ? " · bağımsız" : ""}`}
                       >
                         <span className="status-pill" data-tone={hucre.tone}>{hucre.kisaAd}</span>

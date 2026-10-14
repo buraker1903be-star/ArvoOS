@@ -332,7 +332,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
             durur ve biri sapar. */}
         <div className="talep-iletisim">
           <a className="panel-primary" href={`https://app.arvo-os.com/panel?organization=${targetId}`} target="_blank" rel="noreferrer">Kiracının paneline git</a>
-          {pencerede ? null : <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Paket ve limit</Link>}
+          {pencerede ? null : <Link className="panel-secondary" href={`/panel/platform/musteriler/${targetId}?pencere=lisanslar`}>Paket ve limit</Link>}
         </div>
         <dl className="talep-liste">
           <div><dt>Çalışma alanı</dt><dd className="plt-mono">{selected.slug}</dd></div>
@@ -384,7 +384,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
           <span className="status-pill" data-tone={seciliKota?.kullanici.asildi ? "danger" : "neutral"}>
             {seciliKota ? `${seciliKota.kullanici.kullanilan}/${seciliKota.kullanici.limit}` : kiraciUyeleri.length}
           </span>
-          <Link className="panel-secondary" href={`/panel/platform/licenses?organization=${targetId}`}>Limit</Link>
+          <Link className="panel-secondary" href={`/panel/platform/musteriler/${targetId}?pencere=lisanslar`}>Limit</Link>
         </>}
       >
         <KiraciUyeleri organizationId={targetId} kurumAdi={ad} uyeler={kiraciUyeleri} />

@@ -337,7 +337,7 @@ export async function KonsolAnaSayfa() {
 
   const bolumler = [
     { etiket: "Tüm kiracılar", not: `${kurumlar.length} kurum kaydı`, href: "/panel/platform/musteriler" },
-    { etiket: "Lisans ve kota", not: "Paket, limit ve deneme süresi", href: "/panel/platform/licenses" },
+    { etiket: "Müşteriler", not: "Paket, limit ve deneme süresi müşterinin Lisanslar penceresinde", href: "/panel/platform/musteriler" },
     { etiket: "Abonelikler", not: "Gelir, tahsilat ve hatırlatmalar", href: "/panel/platform/billing" },
     { etiket: "Modül matrisi", not: "Hangi modül hangi kiracıda açık", href: "/panel/platform/moduller" },
     { etiket: "Kullanıcılar", not: "Dört ürünün kullanıcıları tek listede", href: "/panel/platform/kullanicilar" },

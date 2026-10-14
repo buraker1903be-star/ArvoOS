@@ -263,12 +263,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     ...abonelikler.filter((s) => s.durum === "past_due").map((s) => ({
       anahtar: `gecikmis-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
       sorun: "Ödemesi gecikmiş", ayrinti: `${s.urunAdi} · dönem sonu ${tarih(s.donemSonu)}`, ton: "warning" as Ton,
-      baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
+      baglanti: `/panel/platform/musteriler/${s.organizationId}?pencere=lisanslar`, baglantiAdi: "Lisans →",
     })),
     ...abonelikler.filter((s) => s.durum === "trialing" && s.denemeSonu && Date.parse(s.denemeSonu) < simdiAn).map((s) => ({
       anahtar: `deneme-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
       sorun: "Denemesi bitti, ödeme yok", ayrinti: `${s.urunAdi} · deneme ${tarih(s.denemeSonu)} tarihinde bitti`, ton: "warning" as Ton,
-      baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
+      baglanti: `/panel/platform/musteriler/${s.organizationId}?pencere=lisanslar`, baglantiAdi: "Lisans →",
     })),
     ...((sorunluBildirimler ?? []) as { id: string; organization_id: string; product: string | null; amount: number; currency: string; status: string; created_at: string; review_note: string | null }[])
       .filter(isCustomer)

@@ -28,7 +28,6 @@ describe("kurucu konsolu uygulamaları", () => {
     assert.equal(etkin("/panel/platform/kurulumlar"), "kurulumlar");
     /* Kiracı dosyaları kaldırıldı (14.10.2026): /panel/platform yalnızca
        Müşteriler'e yönlendiriyor; dosya müşteri detayının penceresi. */
-    assert.equal(etkin("/panel/platform/licenses"), "kurulumlar");
     assert.equal(etkin("/panel/platform/musteriler/8f0e1c2a-0000-4000-8000-000000000000"), "musteriler");
 
     assert.equal(etkin("/panel/platform/musteriler"), "musteriler");
@@ -93,7 +92,7 @@ describe("kurucu konsolu uygulamaları", () => {
        büyümeye başlarsa bu test söyler. */
     assert.deepEqual(
       uygulamalar.filter((u) => !u.yalnizBaslatici).map((u) => u.label),
-      ["Genel Bakış", "Ürünler", "Müşteriler", "Kurulum Yönetimi", "Ücret ve Paketler", "Abonelikler", "Faturalama ve Tahsilat", "Sistem Ayarları"],
+      ["Genel Bakış", "Ürünler", "Müşteriler", "Kurulum", "Ücret ve Paketler", "Abonelikler", "Faturalama ve Tahsilat", "Sistem Ayarları"],
     );
   });
 });

@@ -165,7 +165,7 @@ export function ModulMatrisi({
               {satir.cekirdek ? (
                 /* Çekirdek lisans ayrı tabloda ve dondurulduğunda kurumun
                    tamamı kapanıyor; o karar lisans ekranında veriliyor. */
-                <Link className="modul-baglanti" href={`/panel/platform/licenses?organization=${organizationId}`}>Lisans ekranı →</Link>
+                <Link className="modul-baglanti" href={`/panel/platform/musteriler/${organizationId}?pencere=lisanslar`}>Lisans ekranı →</Link>
               ) : (
                 <button
                   type="button"
