@@ -155,12 +155,14 @@ export function KListe({ children }: { children: ReactNode }) {
   return <div className="talep-tablo k-ios-kap"><ul className="k-ios">{children}</ul></div>;
 }
 
-export function KOge({ href, simge, baslik, alt, durum, deger, degerAlt, sonu }: {
+export function KOge({ href, simge, baslik, alt, etiketler, durum, deger, degerAlt, sonu }: {
   href?: string | null;
   /** Verilirse solda baş harf simgesi (kurum ya da kişi adı). */
   simge?: string | null;
   baslik: string;
   alt?: ReactNode;
+  /** Özetin altında küçük rozetler (ör. kullanılan ürünler, durum renginde). */
+  etiketler?: { etiket: string; ton?: KDurumTonu | string }[];
   durum?: { etiket: string; ton: KDurumTonu | string } | null;
   deger?: ReactNode;
   degerAlt?: ReactNode;
@@ -172,6 +174,11 @@ export function KOge({ href, simge, baslik, alt, durum, deger, degerAlt, sonu }:
     <span className="k-ios-govde">
       <span className="k-ios-baslik" title={baslik}>{baslik}</span>
       {alt ? <span className="k-ios-alt">{alt}</span> : null}
+      {etiketler?.length ? (
+        <span className="k-ios-etiketler">
+          {etiketler.map((e) => <span key={e.etiket} className="k-ios-etiket" data-ton={e.ton}>{e.etiket}</span>)}
+        </span>
+      ) : null}
     </span>
     {durum ? <span className="k-ios-durum" data-ton={durum.ton}>{durum.etiket}</span> : null}
     {deger !== undefined && deger !== null ? (
