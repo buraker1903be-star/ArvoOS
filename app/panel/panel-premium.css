@@ -14,42 +14,15 @@
 }
 
 /* Shell */
-.panel-sidebar{
-  width:264px;
-  padding:20px 14px 14px;
-  background:
-    radial-gradient(120% 48% at 0% 0%,color-mix(in srgb,var(--accent-bright) 15%,transparent),transparent 60%),
-    linear-gradient(180deg,var(--sidebar-from) 0%,var(--brand-900) 58%,var(--sidebar-to) 100%);
-  border-right:1px solid color-mix(in srgb,var(--accent-bright) 20%,transparent);
-  box-shadow:8px 0 32px rgba(6,25,48,.09);
-}
-.panel-workspace{margin-left:264px;min-height:100dvh;background:transparent}
-.panel-brand{padding:4px 9px 18px;gap:11px}
-.panel-brand>i,.panel-brand>img{width:42px;height:42px;border-radius:13px;box-shadow:0 10px 28px rgba(0,0,0,.24)}
-.panel-brand b{font-size:19px;letter-spacing:-.025em}
-.panel-brand small{margin-top:3px;font-size:11px;color:var(--n-400)}
 .panel-org{margin-bottom:14px;padding:12px;border-radius:14px;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .panel-nav{gap:3px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
 .panel-nav a{min-height:45px;padding:8px 10px;border-radius:11px;font-size:13px;font-weight:650;color:var(--brand-200)}
 .panel-nav a i{width:29px;height:29px;border-radius:9px;background:rgba(255,255,255,.065)}
 .panel-nav a:hover{background:rgba(255,255,255,.085)}
 .panel-nav a[aria-current="page"],.panel-nav a.active{color:#fff;background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
-.panel-logout button{min-height:44px;border-radius:12px;font-size:13px}
 
-.panel-topbar{
-  min-height:72px;
-  padding:12px 28px;
-  background:color-mix(in srgb,var(--surface) 82%,transparent);
-  border-color:color-mix(in srgb,var(--line) 78%,transparent);
-  box-shadow:0 1px 0 rgba(255,255,255,.7),0 8px 28px rgba(18,38,62,.035);
-  backdrop-filter:blur(24px) saturate(180%);
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
-}
-.panel-breadcrumb small{font-size:12px;letter-spacing:.12em}
-.panel-breadcrumb b{margin-top:3px;font-size:16px}
 .panel-top-actions{gap:10px}
-.panel-quick-actions,.workspace-switcher summary,.panel-icon-button{border-color:var(--line);box-shadow:var(--shadow-sm)}
-.panel-quick-actions{border-radius:13px}
+.workspace-switcher summary,.panel-icon-button{border-color:var(--line);box-shadow:var(--shadow-sm)}
 .panel-quick-action{min-height:40px;padding-inline:12px;font-size:12px}
 .panel-quick-icon{width:23px;height:23px;border-radius:8px}
 .panel-user>span{width:40px;height:40px;border-radius:13px;box-shadow:inset 0 0 0 1px rgba(178,138,73,.22)}
@@ -134,9 +107,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 }
 
 @media(max-width:900px){
-  .panel-workspace{margin-left:0}
   .panel-content{padding:18px 12px max(112px,calc(92px + env(safe-area-inset-bottom)))}
-  .panel-topbar{min-height:64px;padding:max(10px,env(safe-area-inset-top)) 12px 10px 58px}
   .panel-pagehead{align-items:stretch;gap:12px;margin-bottom:15px}
   .panel-pagehead h1{font-size:28px}.panel-pagehead p{font-size:14px}
   .panel-card,.panel-module,.report-card,.notification-card{border-radius:16px}
@@ -169,7 +140,7 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 }
 
 @supports not (backdrop-filter:blur(1px)){
-  .panel-topbar,.panel-drawer-header{background:var(--surface)}
+  .panel-drawer-header{background:var(--surface)}
 }
 
 /* Phase 2 — navigation, messaging and interaction refinement */
@@ -212,16 +183,6 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .notification-card:before{content:"";position:absolute;inset:14px auto 14px 0;width:3px;border-radius:0 99px 99px 0;background:var(--primary);opacity:.75}
 
 @media(max-width:900px){
-  .mobile-drawer-trigger{border-radius:13px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 24px rgba(6,25,48,.13);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
-  .mobile-drawer{background:linear-gradient(180deg,var(--brand-700),var(--brand-900));box-shadow:-34px 0 80px rgba(0,0,0,.4)}
-  .mobile-drawer-backdrop{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-  .mobile-drawer-nav a,.mobile-drawer-nav>button{transition:background-color .14s ease,transform .14s ease}
-  .mobile-drawer-nav a:active,.mobile-drawer-nav>button:active{transform:scale(.98)}
-  .mobile-bottom-nav{min-height:68px;padding:6px 7px;border-radius:21px;background:color-mix(in srgb,var(--surface) 88%,transparent);box-shadow:0 16px 42px rgba(7,27,48,.2),inset 0 1px 0 rgba(255,255,255,.7);backdrop-filter:blur(24px) saturate(190%);-webkit-backdrop-filter:blur(24px) saturate(190%)}
-  .mobile-bottom-nav>a,.mobile-bottom-nav>button{min-height:54px;border-radius:15px;transition:transform .13s ease,background-color .13s ease,color .13s ease}
-  .mobile-bottom-nav>a:active,.mobile-bottom-nav>button:active{transform:scale(.94)}
-  .mobile-bottom-nav i{font-size:20px}.mobile-bottom-nav span{font-size:13px}
-  .mobile-bottom-nav .active{background:linear-gradient(180deg,var(--primary-soft),color-mix(in srgb,var(--primary-soft) 72%,var(--surface)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 13%,transparent)}
 }
 
 @media(max-width:680px){
@@ -581,13 +542,9 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-root ::selection{background:color-mix(in srgb,var(--primary) 26%,transparent)}
 
 /* --- Menü --- */
-.panel-brand>i{background:linear-gradient(150deg,var(--accent-bright),var(--primary));color:var(--brand-900);font-family:var(--font-display);font-size:22px;font-weight:700}
-.panel-brand b{font-family:var(--font-display);font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--n-0)}
-.panel-brand small{letter-spacing:.2em;color:color-mix(in srgb,var(--accent-bright) 72%,var(--n-400))}
 .panel-org{background:rgba(255,255,255,.04);border-color:color-mix(in srgb,var(--accent-bright) 16%,transparent)}
 /* Menü her iki temada da koyu: --info-soft koyu temada koyu laciverte
    döndüğü için "Güvenli oturum" yazısı kayboluyordu. */
-.panel-security b{color:var(--n-100)}
 /* Grup sayacı: panel-ux.css rengini gri-maviye çeviriyor, altın zeminde
    rakam kayboluyordu. */
 .panel-nav-group summary em{background:var(--accent-bright);color:var(--brand-900);border-radius:5px;padding:3px 7px;font-weight:800}
@@ -603,12 +560,10 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-nav-v2 .panel-nav-children a.active{color:var(--n-0);background:color-mix(in srgb,var(--accent-bright) 12%,transparent)}
 
 /* --- Üst çubuk --- */
-.panel-topbar{border-bottom:1px solid color-mix(in srgb,var(--primary) 18%,var(--line))}
-.panel-breadcrumb b{font-family:var(--font-display);font-size:17px;font-weight:650;letter-spacing:-.01em}
 .panel-user>span{background:linear-gradient(150deg,var(--primary-soft),color-mix(in srgb,var(--primary) 35%,transparent));color:var(--primary-strong)}
 
 /* --- Başlıklar: tek yazı tipi (SF Pro / Inter), iOS büyük başlık ölçüsü --- */
-.panel-kicker,.panel-breadcrumb small{color:var(--accent);font-weight:700;letter-spacing:.2em}
+.panel-kicker{color:var(--accent);font-weight:700;letter-spacing:.2em}
 .panel-pagehead h1{font-family:var(--font-display);font-weight:700;font-size:clamp(28px,2.3vw,34px);line-height:1.12;letter-spacing:-.025em;color:var(--ink)}
 .panel-card h2,.panel-module h2,.section-heading h2,.panel-drawer-header h2,.messages-drawer-head h2,.panel-sheet header h2,.crm-revision-history header h2{
   font-family:var(--font-display);font-weight:650;font-size:20px;line-height:1.25;letter-spacing:-.015em
@@ -649,6 +604,6 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
 .panel-table th,.crm-data-table thead th,.ops-table th{letter-spacing:.12em}
 
 /* --- Koyu tema: vurgu parlak altın, başlıklar fildişi --- */
-html[data-theme="dark"] .panel-kicker,html[data-theme="dark"] .panel-breadcrumb small{color:var(--accent-bright)}
+html[data-theme="dark"] .panel-kicker{color:var(--accent-bright)}
 html[data-theme="dark"] .panel-user>span{background:color-mix(in srgb,var(--accent-bright) 18%,transparent);color:var(--accent-bright)}
 html[data-theme="dark"] .panel-secondary{color:var(--ink)}

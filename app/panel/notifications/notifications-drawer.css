@@ -82,7 +82,7 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
    yeniden çizilir ve bu sınıfla bir kez zıplar; çevresinde halka yayılır. */
 .ntd-badge-pop{animation:ntd-badge-pop .62s cubic-bezier(.34,1.56,.64,1) both}
 .ntd-badge-pop::after{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;animation:ntd-badge-ring .9s ease-out both}
-.mobile-unread-badge.ntd-badge-pop{position:relative}
+.ntd-badge-pop{position:relative}
 @keyframes ntd-badge-pop{0%{transform:scale(.35);opacity:0}45%{transform:scale(1.28);opacity:1}72%{transform:scale(.92)}100%{transform:scale(1)}}
 @keyframes ntd-badge-ring{from{box-shadow:0 0 0 0 color-mix(in srgb,var(--danger) 55%,transparent)}to{box-shadow:0 0 0 9px color-mix(in srgb,var(--danger) 0%,transparent)}}
 

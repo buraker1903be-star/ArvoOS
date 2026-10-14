@@ -57,16 +57,16 @@ html[data-theme="dark"] .os-root .panel-secondary{border-color:var(--line);color
 
 /* ---------- Tablolar ----------
    On kadar tablo ailesi vardı (crm-data-table, fin-table, hr-table,
-   plt-table, rpt-table…); başlık satırı büyük harf, 11px ve geniş
+   rpt-table…); başlık satırı büyük harf, 11px ve geniş
    aralıklıydı. Tek görünüm: sakin başlık, yumuşak çizgi, satır üzerine
    gelince hafif zemin. Yerleşim (sütunlar, mobil kart düzeni) modülde kalır. */
-.os-root :is(.crm-data-table,.fin-table,.hr-table,.plt-table,.panel-table,.ops-table) :is(thead th,th[scope="col"]){
+.os-root :is(.crm-data-table,.fin-table,.hr-table,.panel-table,.ops-table) :is(thead th,th[scope="col"]){
   color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium);letter-spacing:0;text-transform:none;background:var(--surface-2)
 }
-.os-root :is(.crm-data-table,.fin-table,.hr-table,.plt-table,.panel-table,.ops-table) td{font-size:var(--fs-base);color:var(--ink)}
-.os-root :is(.crm-data-table,.fin-table,.hr-table,.plt-table,.panel-table,.ops-table) tbody tr{border-color:var(--line-soft)}
+.os-root :is(.crm-data-table,.fin-table,.hr-table,.panel-table,.ops-table) td{font-size:var(--fs-base);color:var(--ink)}
+.os-root :is(.crm-data-table,.fin-table,.hr-table,.panel-table,.ops-table) tbody tr{border-color:var(--line-soft)}
 @media(hover:hover){
-  .os-root :is(.crm-data-table,.fin-table,.hr-table,.plt-table,.panel-table,.ops-table) tbody tr:hover>td{background:var(--surface-2)}
+  .os-root :is(.crm-data-table,.fin-table,.hr-table,.panel-table,.ops-table) tbody tr:hover>td{background:var(--surface-2)}
 }
 
 /* ---------- Durum rozetleri ----------

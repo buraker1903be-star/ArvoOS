@@ -44,7 +44,6 @@
 
 /* ---------- Buzlu cam üst bar ---------- */
 @media(min-width:901px){
-  .panel-root .panel-topbar{background:var(--glass-bg);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
 }
 
 /* ---------- Yükleme kapsülü (eski tam ekran pencerenin yerine) ---------- */
@@ -97,11 +96,11 @@
 }
 
 /* ---------- Dokunma hissi: yaylı basma ---------- */
-.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-quick-action,.panel-icon-button,.module-tabs a,.mobile-bottom-nav a){
+.panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-quick-action,.panel-icon-button,.module-tabs a){
   transition:transform .34s var(--ease-spring),box-shadow .25s ease,background-color .2s ease,border-color .2s ease,color .2s ease
 }
 .panel-root :is(.panel-primary,.panel-secondary,.panel-danger,.panel-quick-action,.panel-icon-button):active{transform:scale(.965);transition-duration:.08s}
-.panel-root :is(.module-tabs a,.mobile-bottom-nav a):active{transform:scale(.95);transition-duration:.08s}
+.panel-root .module-tabs a:active{transform:scale(.95);transition-duration:.08s}
 .panel-root .crm-data-table tbody tr:active{background:color-mix(in srgb,var(--primary-soft) 60%,var(--surface))}
 
 /* Özet kartları: fareyle hafif yükselme */
@@ -160,7 +159,6 @@
 .panel-root .panel-agreement-banner b{white-space:nowrap}
 
 /* ---------- Mobil alt menü okunmamış rozeti (işaretlemede vardı, stili yoktu) ---------- */
-.panel-root .mobile-bottom-nav>:is(a,button){position:relative}
 .panel-root .mobile-bottom-badge{position:absolute;top:2px;left:calc(50% + 5px);min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger);box-shadow:0 0 0 2px var(--surface);color:var(--n-0);font-size:11px;font-style:normal;font-weight:700;line-height:18px;text-align:center}
 
 /* ---------- İnce kaydırma çubukları ---------- */
@@ -172,26 +170,11 @@
    Daraltılmışken yalnızca simgeler kalır (adlar fareyle üzerine gelince
    ipucunda); genişlik iOS sayfa eğrisiyle değişir. 900px altında mevcut
    tablet/mobil düzen geçerli, düğme gizli. */
-.panel-root .panel-sidebar-toggle{
-  display:flex;align-items:center;gap:10px;width:100%;min-height:40px;margin:0 0 6px;padding:8px 10px;
-  border:1px solid rgba(255,255,255,.08);border-radius:12px;background:transparent;
-  color:var(--n-400);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;
-  transition:background-color .2s ease,color .2s ease,transform .34s var(--ease-spring)
-}
-.panel-root .panel-sidebar-toggle:hover{background:rgba(255,255,255,.06);color:var(--n-0)}
-.panel-root .panel-sidebar-toggle:active{transform:scale(.96)}
-.panel-root .panel-sidebar-toggle>i{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--accent-bright);font-size:15px;font-style:normal;line-height:1}
-@media(max-width:900px){.panel-root .panel-sidebar-toggle{display:none}}
 @media(min-width:901px){
-  .panel-root .panel-sidebar{transition:width .5s var(--ease-sheet),padding .5s var(--ease-sheet)}
-  .panel-root .panel-workspace{transition:margin-left .5s var(--ease-sheet)}
-  .panel-root.is-nav-collapsed .panel-sidebar{width:84px;padding-inline:12px}
-  .panel-root.is-nav-collapsed .panel-workspace{margin-left:84px}
-  .panel-root.is-nav-collapsed :is(.panel-brand>span,.panel-org,.panel-nav-title,.panel-nav em,.panel-nav-group-link b,.panel-nav-children,.panel-security>span){display:none}
+  .panel-org,.panel-nav-title,.panel-nav em,.panel-nav-group-link b,.panel-nav-children{display:none}
   /* Adlar görsel olarak gizli ama ekran okuyucuda kalır */
-  .panel-root.is-nav-collapsed :is(.panel-nav a,.panel-nav summary,.panel-sidebar-toggle,.panel-logout button)>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-  .panel-root.is-nav-collapsed :is(.panel-nav a,.panel-nav summary,.panel-brand,.panel-security,.panel-sidebar-toggle){justify-content:center;padding-inline:0}
-  .panel-root.is-nav-collapsed .panel-logout button{text-align:center;padding-inline:0}
+  .panel-nav summary{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .panel-nav summary{justify-content:center;padding-inline:0}
 }
 
 /* ---------- Hareketi azaltma: gecikmeler de kalksın ---------- */

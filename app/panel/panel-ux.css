@@ -4,9 +4,6 @@
    ============================================================ */
 
 .panel-frame{grid-template-columns:264px minmax(0,1fr)}
-.panel-brand{padding:2px 8px 20px}
-.panel-brand>i{width:38px;height:38px;border-radius:10px}
-.panel-brand b{font-size:19px}
 
 .panel-nav-v2{gap:7px;overflow:visible}
 .panel-nav-v2 a,.panel-nav-v2 summary{transform:none!important}
@@ -40,14 +37,7 @@
 .panel-nav-group-link.owner-link{margin-top:8px;border:1px solid rgba(143,179,106,.2)}
 .panel-nav-group-link.owner-link b{margin-left:auto;padding:3px 5px;border-radius:4px;background:var(--primary);color:var(--primary-on);font-size:11px;letter-spacing:.08em}
 
-.panel-sidebar-footer{padding-top:12px}
-.panel-security{padding:9px 10px}
-.panel-logout button{border-radius:8px}
-
 /* ---------- Topbar refinements ---------- */
-.panel-topbar{min-height:72px;padding:12px 32px}
-.panel-breadcrumb small{font-size:11px}
-.panel-breadcrumb b{font-size:15px}
 .panel-icon-button{border-radius:9px}
 .panel-user>span{border-radius:9px}
 
@@ -119,18 +109,15 @@
   .panel-nav-home,.panel-nav-group-link,.panel-nav-group summary,.crm-nav-heading{justify-content:center;padding:8px}
   .panel-nav-group{position:relative}
   .panel-content{padding:24px 20px}
-  .panel-topbar{padding-inline:20px}
   .reconciliation-form{grid-template-columns:1fr 1fr}
   .settings-grid{grid-template-columns:1fr}
 }
 @media(max-width:620px){
-  .panel-sidebar{height:62px}
   .panel-nav-groups{flex-direction:row}
   .panel-nav-group{display:block}
   .panel-nav-group summary,.crm-nav-heading{min-width:46px}
   .panel-nav-home,.panel-nav-group-link{min-width:46px}
   .panel-nav-children{display:none}
-  .panel-topbar{min-height:62px}
   .panel-content{padding:20px 14px 42px}
   .panel-pagehead{gap:14px}
   .panel-page-actions{overflow:auto}
@@ -170,7 +157,7 @@
   DOM'da duruyor, ekran okuyucu "7" diyor; görsel olarak kırpılıyor.
 
   900px altında bu rozet hiç çizilmiyor: orada masaüstü şeridi tamamen
-  kapalı (mobile-drawer.css) ve iş mobil çekmecedeki .mobile-unread-badge'de.
+  kapalı; mobil çekmece 14.10.2026'da kaldırıldı (dock geldi).
 
   Renk marka vurgusu DEĞİL, mobil çekmecedeki okunmamış rozetiyle aynı
   kırmızı: ikisi aynı bilgiyi gösteriyor, ayrı renk "bunlar farklı şeyler"
@@ -184,11 +171,4 @@
   font-size:11px;font-weight:800;font-style:normal;line-height:1.5;text-align:center;
 }
 @media(min-width:901px){
-  .panel-root.is-nav-collapsed .panel-nav-group-link .panel-nav-rozet{
-    display:block;position:absolute;top:7px;right:9px;margin:0;
-    width:10px;height:10px;min-width:0;padding:0;
-    overflow:hidden;text-indent:-999px;
-    /* Halka: nokta ikonun köşesine binince kenarı zeminden ayrılsın. */
-    box-shadow:0 0 0 2px var(--brand-900);
-  }
 }
