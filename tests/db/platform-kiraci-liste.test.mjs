@@ -21,6 +21,9 @@ import { islem, migrationYetkileri, reddedilir, rol, veritabani } from "./ortam.
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
 const MIGRATIONLAR = [
+  /* Görünümün paketi lisanstan okuması henüz dökümde değil; migration
+     canlıya uygulanıp anlık görüntü yenilenince bu satır düşer. */
+  "20261014205949_kiraci_listesi_lisans_paketi.sql",
   /* Üyelik okuma politikası (yönetici kendi kurumunu görsün) henüz
      dökümde değil; görünümün kapsam senaryosu ona dayanıyor. */
   "20261011224845_uyelik_guncelleme_politikasi.sql",
@@ -140,5 +143,47 @@ test("anon görünüme erişemiyor", async () => {
   await islem(db, async () => {
     await rol(db, "anon");
     await reddedilir(db, `select * from public.platform_kiraci_liste`, [], /permission denied/i);
+  });
+});
+
+/*
+  PAKET LİSANSTAN OKUNUYOR.
+
+  Paket iki sütunda duruyor (organizations.plan_code ve
+  organization_licenses.plan_code) ve ayrışabiliyordu. Görünüm kurumunkini
+  veriyordu; lisans penceresi lisansınkini okuyordu. Görünür etiketten
+  daha kötüsü sayıya girmesiydi: Sistem Sağlığı'nın "paketiyle uyuşmayan
+  limitler" kartı LİSANSIN limitlerini KURUMUN paketinin varsayılanıyla
+  kıyaslayıp olmayan bir sapma uyduruyordu (14.10.2026, Deneme Salon).
+
+  Yetkili olan lisans: limit, ücret, dönem ve durum onunla aynı satırda.
+*/
+test("görünümün paketi LİSANSTAN geliyor, kurum kaydından değil", async () => {
+  await rol(db, "postgres");
+  await db.exec(`
+    update public.organizations set plan_code = 'professional' where id = '${KIRACI}';
+    update public.organization_licenses set plan_code = 'enterprise' where organization_id = '${KIRACI}';
+  `);
+  await islem(db, async () => {
+    await rol(db, "authenticated", KURUCU);
+    const { rows } = await db.query(`select plan_code from public.platform_kiraci_liste where id = $1`, [KIRACI]);
+    assert.equal(rows[0].plan_code, "enterprise", "ayrışmada lisansın paketi geçerli");
+  });
+  // Kurum kaydı bilerek değişmiyor: görünüm onu artık okumuyor.
+  const { rows: ham } = await db.query(`select plan_code from public.organizations where id = $1`, [KIRACI]);
+  assert.equal(ham[0].plan_code, "professional");
+});
+
+test("lisansı olmayan kurumda kurumun paketi okunuyor", async () => {
+  await rol(db, "postgres");
+  await db.exec(`
+    delete from public.organization_licenses where organization_id = '${OTEKI}';
+    update public.organizations set plan_code = 'starter' where id = '${OTEKI}';
+  `);
+  await islem(db, async () => {
+    await rol(db, "authenticated", KURUCU);
+    const { rows } = await db.query(`select plan_code, license_status from public.platform_kiraci_liste where id = $1`, [OTEKI]);
+    assert.equal(rows[0].license_status, null, "lisans satırı yok");
+    assert.equal(rows[0].plan_code, "starter", "coalesce kurumun koduna düşüyor");
   });
 });
