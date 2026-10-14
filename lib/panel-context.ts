@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hostFromHeaders, isManagementHost } from "@/lib/site/host-rules";
 import { createClient } from "@/lib/supabase/server";
+import { erisimKapaliMi } from "@/lib/erisim-kapisi";
 import { etkinYetkiler, gizliModulleriHesapla, type ModulKurali, type YetkiKurali } from "@/lib/yetkiler";
 
 export type PanelModule = { code: string; name: string; description: string };
@@ -43,7 +44,10 @@ export type PanelWorkspace = {
   organization: PanelOrganization;
 };
 
-export const getPanelContext = cache(async () => {
+/** Erişimi kapalı kurumun gideceği ekran (lib/panel-context, runPanelAction). */
+export const ERISIM_KAPALI_ADRESI = "/panel/erisim-kapali";
+
+const panelBaglaminiKur = cache(async () => {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
   const userId = auth?.claims?.sub;
@@ -146,7 +150,7 @@ export const getPanelContext = cache(async () => {
         supabase.from("member_capability_permissions").select("capability_key,allowed")
           .eq("organization_id", membership.organization_id).eq("user_id", userId),
       ]);
-  const [{ data: moduleRows, error: moduleError }, yetkiSonuclari] = await Promise.all([
+  const [{ data: moduleRows, error: moduleError }, yetkiSonuclari, { data: lisansSatiri, error: lisansHatasi }] = await Promise.all([
     hazir
       ? Promise.resolve({ data: hazir.moduller, error: null })
       : supabase.from("organization_modules")
@@ -154,8 +158,34 @@ export const getPanelContext = cache(async () => {
           .eq("organization_id", membership.organization_id)
           .eq("is_enabled", true),
     yetkiSorgulari,
+    /* Lisans durumu erişim kapısı için (aşağıda); modüllerle aynı turda,
+       panel isteğine ayrı bir gidiş-dönüş eklemiyor. */
+    supabase.from("organization_licenses").select("license_status,suspension_reason")
+      .eq("organization_id", membership.organization_id).maybeSingle(),
   ]);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");
+
+  /*
+    ERİŞİM KAPISI (14.10.2026, kurum sahibinin isteği: "müşteri ödeme
+    yapmaz ise hemen kapatabilelim"). Eskiden ArvoOS çekirdek lisansını
+    "Askıda" yapmak yalnızca konsoldaki etiketi değiştiriyordu: kurum
+    panele girmeye ve çalışmaya devam ediyordu — panelde lisans durumuna
+    bakan hiçbir yer yoktu.
+
+    Yalnızca 'suspended' kapatıyor: kurucunun bilerek verdiği karar.
+    'past_due' (dönemi geçmiş) konsolda açık sayılıyor ve 'canceled'
+    çekirdeği kapalı ama ek ürünü (Randevu) ödenen kurumlar var — ikisini
+    de kapatmak, kararı verilmemiş bir kilit olurdu. Arvo'nun kendi
+    kurumu hiçbir koşulda kilitlenmez (konsol oradan çalışıyor).
+
+    Okunamayan lisans KİLİTLEMEZ: geçici bir veritabanı hatası bütün
+    müşterileri dışarıda bırakmamalı (ArvoLab'daki ilkenin aynısı). Bu bir
+    silme engeli değil, ticari bir kilit; hata günlüğe yazılıyor.
+  */
+  if (lisansHatasi) console.error("[panel] lisans durumu okunamadı; erişim kapısı açık geçildi", lisansHatasi.message);
+  const lisans = lisansSatiri as { license_status: string | null; suspension_reason: string | null } | null;
+  const erisimKapali = erisimKapaliMi(organization.slug, lisans?.license_status);
+  const kapanmaNedeni = erisimKapali ? lisans?.suspension_reason ?? null : null;
 
   const modules = (moduleRows ?? []).map((row) => {
     const relation = row.arvo_modules as { name?: string; description?: string; sort_order?: number } | { name?: string; description?: string; sort_order?: number }[] | null;
@@ -219,5 +249,25 @@ export const getPanelContext = cache(async () => {
   /** Tek yetenek sorusu. Sayfalarda `izin("crm.teklif.sil")` biçiminde okunur. */
   const izin = (key: string) => yetkiler.has(key);
 
-  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, yetkiler, izin };
+  return { supabase, userId, membership, organization, modules, isPlatformOwner, workspaces, hiddenModuleKeys, yetkiler, izin, erisimKapali, kapanmaNedeni };
+});
+
+/**
+ * Erişimi kapalı kurumda da çalışan bağlam. YALNIZCA kilitliyken de
+ * açık kalması gereken yerler kullanır: panelin yerleşimi (çalışma alanı
+ * değiştirici ve çıkış görünsün), kilit ekranı ve abonelik/ödeme ekranı
+ * — kurum sahibi ödeyip erişimini geri açtırabilmeli.
+ */
+export const getPanelContextErisimdenBagimsiz = panelBaglaminiKur;
+
+/**
+ * Panelin bağlamı. Kurumun erişimi kapalıysa (çekirdek lisans askıda)
+ * kilit ekranına yönlendirir: sayfa da sunucu işlemi de buradan geçtiği
+ * için kapı tek yerde — yüz kırk dosyaya ayrı ayrı kontrol eklemek, birini
+ * unutmak demekti.
+ */
+export const getPanelContext = cache(async () => {
+  const baglam = await panelBaglaminiKur();
+  if (baglam.erisimKapali) redirect(ERISIM_KAPALI_ADRESI);
+  return baglam;
 });

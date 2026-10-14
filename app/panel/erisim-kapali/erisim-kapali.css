@@ -1,0 +1,9 @@
+/* Erişim kapalı ekranı: tek kart, ortada. Panelin kart ve düğme dilini
+   (panel-card, panel-primary) kullanıyor; burada yalnızca yerleşim var. */
+.erisim-kapali { display: grid; place-items: center; min-height: min(70vh, 560px); padding: 24px 16px }
+.erisim-kapali-kart { display: grid; justify-items: center; gap: 10px; max-width: 480px; padding: 32px 28px; text-align: center }
+.erisim-kapali-kart h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em }
+.erisim-kapali-kart p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55 }
+.erisim-kapali-simge { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--warning-soft); color: var(--warning) }
+.erisim-kapali-eylem { margin-top: 6px }
+.erisim-kapali-not { font-size: 13px }

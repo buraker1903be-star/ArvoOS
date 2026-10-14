@@ -243,3 +243,67 @@ export async function updateProductLicense(...args: Parameters<typeof updateProd
 export async function urunuYenidenYansit(...args: Parameters<typeof urunuYenidenYansit__impl>) {
   return runPanelAction(() => urunuYenidenYansit__impl(...args), "Ürün veritabanına yeniden yansıtıldı");
 }
+
+/*
+  ArvoOS ERİŞİMİNİ KAPAT / AÇ (14.10.2026, kurum sahibinin isteği:
+  "müşteri ödeme yapmaz ise hemen kapatabilelim").
+
+  Tam lisans formundan geçmeden tek dokunuşla: kapatınca çekirdek lisans
+  'suspended' olur ve panel kurumun bütün sayfa ve işlemlerini kilit
+  ekranına yönlendirir (lib/panel-context getPanelContext). Kurum sahibi
+  oradan ödeme ekranına ulaşabiliyor; ödeme onaylanınca lisans yeniden
+  'active' olur (payments/actions), erişim kendiliğinden açılır.
+
+  Açınca 'active': kapatmadan önce 'past_due' idiyse de active'e döner;
+  dönem sonu geçmişse sabah işi onu yine 'past_due' yapar (açık kalır).
+  Ücret, dönem ve kota değişmez — yalnızca erişim.
+
+  Lisans formundaki gibi kurumun durumu da eşleniyor (organizations.status,
+  provisioning_state). Eskiden formdan yeniden açılan kurumda
+  provisioning_state 'suspended' kalıyordu; burada açarken geri alınıyor.
+*/
+async function cekirdekErisimi__impl(formData: FormData) {
+  const { supabase, isPlatformOwner, userId } = await getPanelContext();
+  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
+
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
+  const ac = String(formData.get("ac") ?? "") === "true";
+  if (!organizationId) throw new Error("Kurum seçilmedi.");
+
+  const { data: kurum, error: kurumHatasi } = await supabase.from("organizations")
+    .select("slug,provisioning_state").eq("id", organizationId).maybeSingle();
+  if (kurumHatasi) throw new Error(`Kurum okunamadı: ${kurumHatasi.message}`);
+  if (!kurum) throw new Error("Kurum bulunamadı.");
+  // Konsol bu kurumdan çalışıyor; kapatmak kurucuyu dışarıda bırakırdı.
+  if (kurum.slug === "arvo-os") throw new Error("Arvo'nun kendi kurumunun erişimi kapatılamaz.");
+
+  const now = new Date().toISOString();
+  const { data: guncellenen, error } = await supabase.from("organization_licenses").update({
+    license_status: ac ? "active" : "suspended",
+    suspended_at: ac ? null : now,
+    suspension_reason: ac ? null : "Abonelik ödemesi alınamadığı için erişim kapatıldı.",
+    updated_by: userId,
+    updated_at: now,
+  }).eq("organization_id", organizationId).select("organization_id");
+  if (error) throw new Error(`Erişim değiştirilemedi: ${error.message}`);
+  if (!guncellenen?.length) throw new Error("Kurumun ArvoOS lisansı bulunamadı.");
+
+  const { error: kurumGuncelleme } = await supabase.from("organizations").update({
+    status: ac ? "active" : "suspended",
+    ...(ac
+      ? (kurum.provisioning_state === "suspended" ? { provisioning_state: "active" } : {})
+      : { provisioning_state: "suspended" }),
+    updated_at: now,
+  }).eq("id", organizationId);
+  if (kurumGuncelleme) throw new Error(`Kurum durumu güncellenemedi: ${kurumGuncelleme.message}`);
+
+  revalidatePath("/panel", "layout");
+  revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
+  revalidatePath(`/panel/platform/musteriler/${organizationId}`);
+}
+
+export async function cekirdekErisimi(...args: Parameters<typeof cekirdekErisimi__impl>) {
+  const [veri] = args;
+  return runPanelAction(() => cekirdekErisimi__impl(...args),
+    String(veri.get("ac") ?? "") === "true" ? "ArvoOS erişimi açıldı" : "ArvoOS erişimi kapatıldı");
+}

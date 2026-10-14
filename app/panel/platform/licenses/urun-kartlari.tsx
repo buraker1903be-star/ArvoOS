@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
 import { KListe, KOge } from "../konsol-ui";
@@ -40,6 +40,8 @@ type OrtakKart = {
 export type UrunKarti =
   | (OrtakKart & {
       tur: "cekirdek";
+      /** Kurumun panel erişimi açık mı (lisans 'suspended' değil). */
+      erisimAcik: boolean;
       baslangic: LisansDegerleri;
       aktifUye: number;
       kullanilanMb: number;
@@ -59,15 +61,33 @@ export function UrunKartlari({
   cekirdegiKaydet,
   urunuKaydet,
   urunuYansit,
+  erisimiDegistir,
 }: {
   organizationId: string;
   kurumAdi: string;
   kartlar: UrunKarti[];
+  /** ArvoOS erişimini kapat / aç (licenses/actions cekirdekErisimi). */
+  erisimiDegistir: (formData: FormData) => Promise<unknown> | void;
   cekirdegiKaydet: (formData: FormData) => void;
   urunuKaydet: (formData: FormData) => void;
   urunuYansit: (formData: FormData) => void;
 }) {
   const [acik, setAcik] = useState<string | null>(null);
+  const [calisiyor, basla] = useTransition();
+
+  /* Kapatma geri alınabilir ama müşteriyi anında dışarıda bırakıyor:
+     yanlış satıra dokunmaya karşı onay soruluyor (üye erişimindeki gibi). */
+  const erisimDegistir = (acilacak: boolean) => {
+    if (!window.confirm(acilacak
+      ? `${kurumAdi} için ArvoOS erişimi açılsın mı?`
+      : `${kurumAdi} için ArvoOS erişimi kapatılsın mı? Kurumdaki herkes paneli kullanamaz; yalnızca sahip ödeme ekranına ulaşır. Verileri silinmez.`)) return;
+    basla(async () => {
+      const veri = new FormData();
+      veri.set("organization_id", organizationId);
+      veri.set("ac", acilacak ? "true" : "false");
+      await erisimiDegistir(veri);
+    });
+  };
   const pencere = useRef<HTMLDialogElement>(null);
 
   /*
@@ -108,11 +128,26 @@ export function UrunKartlari({
               /* Kapalı üründe ücret beklenmiyor: uyarı rengi yalnızca açık üründe. */
               deger={ucret && ucret !== "girilmedi" ? ucret.replace(" / ay", "") : kart.acik ? <span className="k-ios-eksik">Ücret yok</span> : "—"}
               degerAlt={ucret && ucret !== "girilmedi" ? "aylık" : undefined}
-              sonu={(
+              sonu={<>
+                {/* ArvoOS ERİŞİM ANAHTARI (14.10.2026): ödeme yapmayan kurumu
+                    tek dokunuşla kapatmak için. Yalnızca çekirdekte; ek
+                    ürünlerin durumu düzenleme penceresinden. */}
+                {kart.tur === "cekirdek" ? (
+                  <button
+                    type="button"
+                    className={kart.erisimAcik ? "plt-switch is-on" : "plt-switch is-off"}
+                    role="switch"
+                    aria-checked={kart.erisimAcik}
+                    aria-label={`${kurumAdi} ArvoOS erişimi: ${kart.erisimAcik ? "kapat" : "aç"}`}
+                    title={kart.erisimAcik ? "Erişimi kapat" : "Erişimi aç"}
+                    disabled={calisiyor}
+                    onClick={() => erisimDegistir(!kart.erisimAcik)}
+                  ><i /></button>
+                ) : null}
                 <button type="button" className="panel-secondary" onClick={() => setAcik(kart.kod)} aria-label={`${kart.ad} aboneliğini düzenle`}>
                   Düzenle
                 </button>
-              )}
+              </>}
             />
           );
         })}

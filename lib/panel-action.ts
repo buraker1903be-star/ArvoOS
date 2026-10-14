@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { ERISIM_KAPALI_ADRESI } from "@/lib/panel-context";
 
 // Panel işlemlerinin sonucunu kullanıcıya ulaştırır.
 //
@@ -59,7 +60,10 @@ export async function runPanelAction<T>(action: () => Promise<T>, successMessage
   } catch (error) {
     if (isControlFlowSignal(error)) {
       // İşlem başarıyla bitip başka sayfaya yönlendiriyorsa da başarıdır
-      if (successMessage && isRedirectSignal(error)) await flashSuccess(successMessage);
+      /* Kilit ekranına yönlendirme başarı DEĞİL: erişimi kapalı kurumda
+         işlem hiç yapılmadı (lib/panel-context getPanelContext). */
+      const kilit = String((error as { digest?: unknown }).digest ?? "").includes(ERISIM_KAPALI_ADRESI);
+      if (successMessage && isRedirectSignal(error) && !kilit) await flashSuccess(successMessage);
       throw error;
     }
     console.error("[panel-action]", error);

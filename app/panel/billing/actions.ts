@@ -4,7 +4,7 @@ import { runPanelAction } from "@/lib/panel-action";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getPanelContext } from "@/lib/panel-context";
+import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { PRODUCTS } from "@/lib/products";

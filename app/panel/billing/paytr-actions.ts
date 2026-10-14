@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { runPanelAction } from "@/lib/panel-action";
-import { getPanelContext } from "@/lib/panel-context";
+import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createLicenseCheckout } from "@/lib/license-checkout";
 import { createAiKrediCheckout } from "@/lib/ai-kredi-checkout";

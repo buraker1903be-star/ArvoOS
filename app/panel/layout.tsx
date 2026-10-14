@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { getPanelContext } from "@/lib/panel-context";
+import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { tenantTheme } from "@/lib/tenant-theme";
 import { getLoginBrand } from "@/lib/login-branding";
 import { logout } from "./actions";

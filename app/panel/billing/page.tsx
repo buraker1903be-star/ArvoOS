@@ -1,4 +1,4 @@
-import { getPanelContext } from "@/lib/panel-context";
+import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
