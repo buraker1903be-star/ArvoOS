@@ -45,14 +45,15 @@ export function konsolUygulamalari(): OsUygulama[] {
       key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "apps",
       /* Bireysel abone planı (deneme süresi) ürünün kendi ayarı. */
       yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/subscribers"],
+      /* Yalnızca dört ürün (14.10.2026, kurum sahibinin isteği): yedi
+         bölüm alt çubukta kalabalıktı. Dört ürünün özeti dock simgesinin
+         kendisi (/panel/platform/urunler); modül matrisi ve bireysel abone
+         planlarına o sayfanın ve ürün sayfalarının bağlantılarından gidiliyor. */
       bolumler: [
-        { key: "performans", href: "/panel/platform/urunler", label: "Dört ürün" },
         { key: "arvoos", href: "/panel/platform/urunler/arvoos", label: "ArvoOS" },
         { key: "arc", href: "/panel/platform/urunler/arc", label: "ArvoARC" },
-        { key: "randevu", href: "/panel/platform/urunler/randevu", label: "Arvo Randevu" },
         { key: "arvolab", href: "/panel/platform/urunler/arvolab", label: "ArvoLab" },
-        { key: "matris", href: "/panel/platform/moduller", label: "Modül matrisi" },
-        { key: "planlar", href: "/panel/platform/subscribers", label: "Bireysel abone planları" },
+        { key: "randevu", href: "/panel/platform/urunler/randevu", label: "Arvo Randevu" },
       ],
     },
     {

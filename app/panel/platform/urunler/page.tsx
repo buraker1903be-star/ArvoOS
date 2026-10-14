@@ -107,6 +107,7 @@ export default async function UrunlerPage({ searchParams }: {
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>
         <Link className="panel-secondary" href="/panel/platform/moduller">Modül matrisi</Link>
+        <Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel abone planları</Link>
         <Link className="panel-secondary" href="/panel/platform/saglik">Sistem sağlığı</Link>
       </div>
     </header>
