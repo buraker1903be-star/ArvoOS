@@ -419,7 +419,7 @@ export default async function SistemSagligiPage() {
               );
             })}
           </KListe>
-        ) : <KBos baslik="Kurulum hatası yok" aciklama="Hatayla sonuçlanan kurulum kaydı yok." />
+        ) : <KBos baslik="Kurulum hatası yok" aciklama="Kurulumu hatada kalmış kiracı yok. Sonradan tamamlanan eski hatalar ana sayfadaki kurulum hareketlerinde." />
       ) : <KBos baslik="Kurulum günlüğü okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil." />}
     </KKart>
 
