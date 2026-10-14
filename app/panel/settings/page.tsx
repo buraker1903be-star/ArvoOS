@@ -110,7 +110,27 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const domainInfo=orgRow;
   const domainStatus=domainInfo?.custom_domain_status ?? "pending";
   const dnsRecords = (domainInfo?.custom_domain_verification ?? []) as { type: string; name: string; value: string }[];
+  /*
+    KURUM DURUMU TÜRKÇE (15.10.2026).
+
+    Aktif olmayan kurumda ham veritabanı değeri yazdırılıyordu
+    ("suspended") — müşterinin gördüğü ekranda İngilizce bir kod.
+    Sütunun CHECK kısıtı yok; konsol yalnızca "active" ve "suspended"
+    yazıyor (lisans işlemi), ama tanımadığımız bir değer gelirse onu
+    gizlemek yerine olduğu gibi yazmak daha dürüst: uydurma bir etiket,
+    bilinmeyen bir koddan kötüdür.
+
+    ALT ETİKET "Kurum erişimi" DEĞİL. Erişimi kapatan şey bu sütun değil
+    lisans durumu (lib/erisim-kapisi) ve erişim kapalıysa bu sayfa zaten
+    açılmıyor — yani etiket hem yanlış kaynağı gösteriyor hem de her
+    zaman "açık" diyecek bir şeyi anlatıyordu. Sütun aboneliğin kurum
+    kaydındaki yansıması; etiket de onu söylüyor.
+  */
+  const KURUM_DURUMU: Record<string, string> = {
+    active: "Aktif", trial: "Deneme", suspended: "Askıda", canceled: "İptal",
+  };
   const isActive = organization.status === "active";
+  const durumAdi = KURUM_DURUMU[organization.status] ?? organization.status;
 
   /*
     ENTEGRASYONLAR: SOLDA LİSTE, SAĞDA FORM (kurum sahibinin kararı,
@@ -218,7 +238,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </div>
             <div data-tone={isActive ? "success" : "danger"}>
               <dt>Kurum durumu</dt>
-              <dd>{isActive ? "Aktif" : organization.status}<small>Kurum erişimi</small></dd>
+              <dd>{durumAdi}<small>Abonelik kaydı</small></dd>
             </div>
           </dl>
         </nav>
