@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+// Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
+import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ucretSapmasi } from "@/lib/paket-ucreti";
@@ -88,7 +90,7 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
   const kiracilar = tumKiracilar.filter((k) => k.kind !== "internal");
-  const planList = ((planSatirlari ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: String(p.name) }));
+  const planList = ((planSatirlari ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: paketAdi(String(p.code)) || String(p.name) }));
 
   const bekleyenler = kiracilar.filter((k) => BEKLEYEN.has(k.provisioning_state) || k.provisioning_state === "failed");
   const tamamlananlar = kiracilar.filter((k) => k.provisioning_state === "active");

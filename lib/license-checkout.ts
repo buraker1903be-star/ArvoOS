@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { paketAdi } from "@/lib/paket-adlari";
 import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId, type PaytrCredentials } from "@/lib/paytr";
@@ -28,7 +29,6 @@ export class CheckoutError extends Error {
   }
 }
 
-const planNames: Record<string, string> = { starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal" };
 const UNAVAILABLE = "Kartla ödeme şu an kullanılamıyor. Havale ile ödeyebilirsiniz.";
 
 export async function createLicenseCheckout(admin: Admin, input: { organizationId: string; product: ProductCode; actorId: string }): Promise<{ url: string }> {
@@ -108,7 +108,7 @@ export async function createLicenseCheckout(admin: Admin, input: { organizationI
   let link: { id: string; url: string };
   try {
     link = await createPaytrInstallmentLink(credentials, {
-      name: `${productName(product)} · ${brand} · ${planNames[planCode] ?? planCode} aylık lisans${ekNot}`,
+      name: `${productName(product)} · ${brand} · ${paketAdi(planCode)} aylık lisans${ekNot}`,
       amountKurus: fee,
       expiry,
       callbackUrl: `https://${PLATFORM_HOST}/api/paytr/callback`,

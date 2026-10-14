@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 
@@ -43,12 +44,8 @@ const DURUMLAR = [
   { kod: "canceled", ad: "İptal" },
 ] as const;
 
-const PAKETLER = [
-  { kod: "", ad: "Belirtilmedi" },
-  { kod: "starter", ad: "Başlangıç" },
-  { kod: "professional", ad: "Profesyonel" },
-  { kod: "enterprise", ad: "Kurumsal" },
-] as const;
+// Paket adları tek kaynaktan, sitedeki adla aynı (lib/paket-adlari).
+const PAKETLER = [{ kod: "", ad: "Belirtilmedi" }, ...PAKET_SECENEKLERI];
 
 const sayiBicimi = new Intl.NumberFormat("tr-TR");
 const paraBicimi = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });

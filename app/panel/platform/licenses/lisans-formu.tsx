@@ -4,6 +4,7 @@ import { useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
+import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -47,11 +48,8 @@ export type LisansDegerleri = {
   suspensionReason: string;
 };
 
-const PAKETLER = [
-  { kod: "starter", ad: "Başlangıç" },
-  { kod: "professional", ad: "Profesyonel" },
-  { kod: "enterprise", ad: "Kurumsal" },
-] as const;
+// Paket adları tek kaynaktan, sitedeki adla aynı (lib/paket-adlari).
+const PAKETLER = PAKET_SECENEKLERI;
 
 const DURUMLAR = [
   { kod: "trialing", ad: "Deneme" },

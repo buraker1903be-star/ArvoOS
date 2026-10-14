@@ -1,4 +1,5 @@
 import type { StgTone } from "../settings/settings-ui";
+import { PAKET_ADLARI } from "@/lib/paket-adlari";
 
 /*
   Platform ekranlarının ortak biçimleyicileri.
@@ -57,9 +58,7 @@ export const LISANS_TONU: Record<string, StgTone> = {
 };
 
 /** Paket kodları ekranda görünmemeli. */
-export const PAKET_ADI: Record<string, string> = {
-  starter: "Başlangıç", professional: "Profesyonel", enterprise: "Kurumsal",
-};
+export const PAKET_ADI: Record<string, string> = PAKET_ADLARI;
 
 /** Kurulum durumları. Liste tablosu ve kiracı dosyası aynı adı yazmalı. */
 export const KURULUM_ADI: Record<string, string> = {

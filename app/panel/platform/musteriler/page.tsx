@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+// Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
+import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
@@ -318,7 +320,7 @@ export default async function MusterilerPage({ searchParams }: {
         <PanelDrawer triggerLabel="+ Yeni müşteri" triggerClassName="panel-secondary" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
           <NewOrganizationWizard
             action={createCustomerOrganization}
-            plans={((paketler ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: String(p.name) }))}
+            plans={((paketler ?? []) as { code: string; name: string }[]).map((p) => ({ code: String(p.code), name: paketAdi(String(p.code)) || String(p.name) }))}
             existingSlugs={((kayitTarihleri ?? []) as { slug: string }[]).map((k) => k.slug)}
           />
         </PanelDrawer>

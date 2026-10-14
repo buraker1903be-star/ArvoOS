@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+// Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
+import { paketAdi } from "@/lib/paket-adlari";
 import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { kotaDurumu, type KotaDurumu } from "@/lib/kota-durumu";
 import type { DosyaDaveti, DosyaKurumu, DosyaUyeligi } from "./kiraci-dosyasi";
@@ -89,7 +91,7 @@ export async function kiraciDosyasiVerisi(supabase: SupabaseClient, id: string):
   return {
     selected: kiraci,
     invitation,
-    planList: (plans ?? []).map((plan) => ({ code: String(plan.code), name: String(plan.name) })),
+    planList: (plans ?? []).map((plan) => ({ code: String(plan.code), name: paketAdi(String(plan.code)) || String(plan.name) })),
     tumUyelikler: (uyelikler ?? []) as DosyaUyeligi[],
     seciliKota,
     seciliLisans,

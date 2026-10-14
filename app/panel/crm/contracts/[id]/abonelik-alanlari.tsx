@@ -1,4 +1,5 @@
 import { PRODUCTS } from "@/lib/products";
+import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 import { kurusuTlYaz, niyetiCoz } from "@/lib/abonelik-niyeti";
 
 /*
@@ -43,9 +44,8 @@ export function AbonelikAlanlari({ niyet }: { niyet: unknown }) {
                 Paket
                 <select name={`paket_${urun.code}`} defaultValue={modul?.plan_code ?? ""}>
                   <option value="">Belirtilmedi</option>
-                  <option value="starter">Başlangıç</option>
-                  <option value="professional">Profesyonel</option>
-                  <option value="enterprise">Kurumsal</option>
+                  {/* Paket adları tek kaynaktan, sitedeki adla aynı (lib/paket-adlari). */}
+                  {PAKET_SECENEKLERI.map((p) => <option key={p.kod} value={p.kod}>{p.ad}</option>)}
                 </select>
               </label>
               <label>
