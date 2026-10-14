@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { zorunlu } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
 import { para, tarih } from "../bicim";
@@ -62,12 +63,21 @@ export default async function SozlesmelerPage() {
     hesaplanıyordu.
   */
   const SECIM = "id,contract_id,contract_no,customer_name,amount,currency,created_at,status,requested,target_organization_id,review_note,reviewed_at";
-  const [{ data: bekleyenSatirlar }, { data: gecmisSatirlar }, { data: sayimlar }, { data: kurumSatirlari }] = await Promise.all([
+  const [bekleyenSonucu, gecmisSonucu, sayimSonucu, kurumSonucu] = await Promise.all([
     admin.from("platform_subscription_requests").select(SECIM).eq("status", "pending").order("created_at", { ascending: false }),
     admin.from("platform_subscription_requests").select(SECIM).neq("status", "pending").order("reviewed_at", { ascending: false }).limit(20),
     admin.from("platform_subscription_requests").select("status"),
     admin.from("organizations").select("id,name,display_name,kind").order("name"),
   ]);
+  /*
+    Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
+    ile boş diziye düşüyordu ve ekran "kayıt yok" diyordu — "iş yok" ile
+    "okuyamadım" aynı şey değil (konsol-oku.ts).
+  */
+  const bekleyenSatirlar = zorunlu(bekleyenSonucu, "Onay bekleyen sözleşmeler");
+  const gecmisSatirlar = zorunlu(gecmisSonucu, "Sonuçlanan sözleşmeler");
+  const sayimlar = zorunlu(sayimSonucu, "Sözleşme sayımı");
+  const kurumSatirlari = zorunlu(kurumSonucu, "Kurumlar");
 
   const kurumlar: Kurum[] = ((kurumSatirlari ?? []) as { id: string; name: string; display_name: string | null; kind: string | null }[])
     // Kendi kurumumuza abonelik açılmaz; kendimize satmıyoruz.

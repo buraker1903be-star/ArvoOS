@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { zorunlu } from "../konsol-oku";
 import { PRODUCTS, SUBSCRIBER_PRODUCTS } from "@/lib/products";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
@@ -48,7 +49,7 @@ export default async function UrunlerPage({ searchParams }: {
   // Fiyatlandırma kendi sayfasına taşındı; eski bağlantılar kırılmasın.
   if (bolum === "fiyat") redirect("/panel/platform/fiyatlar");
 
-  const [{ data: kiraciSatirlari }, { data: urunLisanslari }, { data: aboneSatirlari }, arvolab, arc, randevu] = await Promise.all([
+  const [kiraciSonucu, urunLisansSonucu, aboneSonucu, arvolab, arc, randevu] = await Promise.all([
     supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye,grup_markasi"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,monthly_fee"),
     // Kuruma geçmiş abone (kurum_id) bireysel değil: kurum lisansını kullanıyor.
@@ -57,6 +58,14 @@ export default async function UrunlerPage({ searchParams }: {
     getArcBridgeHealth(),
     getRandevuBridgeHealth(),
   ]);
+  /*
+    Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
+    ile boş diziye düşüyordu ve ekran "kayıt yok" diyordu — "iş yok" ile
+    "okuyamadım" aynı şey değil (konsol-oku.ts).
+  */
+  const kiraciSatirlari = zorunlu(kiraciSonucu, "Kiracılar");
+  const urunLisanslari = zorunlu(urunLisansSonucu, "Ürün lisansları");
+  const aboneSatirlari = zorunlu(aboneSonucu, "Bireysel aboneler");
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
   /* Grup markaları ürünü kullanıyor (müşteri ve kullanıcı sayısında var)

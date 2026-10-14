@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 // Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
 import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
+import { zorunlu } from "../konsol-oku";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
@@ -169,7 +170,7 @@ export default async function MusterilerPage({ searchParams }: {
     kapsamadığında ekranda yazıyor (eksikKapsam), sessiz bir eksilme yok.
   */
   const LISTE_SINIRI = 1000;
-  const [{ data: kurumSatirlari }, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, { data: kayitTarihleri }, { data: planSatirlari }, fiyatlar, { data: paketler }] = await Promise.all([
+  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
       .order("name"),
@@ -188,6 +189,15 @@ export default async function MusterilerPage({ searchParams }: {
     // Yeni müşteri sihirbazının paket seçimi (eskiden kiracı sayfasındaydı).
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
   ]);
+  /*
+    Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
+    ile boş diziye düşüyordu ve ekran "kayıt yok" diyordu — "iş yok" ile
+    "okuyamadım" aynı şey değil (konsol-oku.ts).
+  */
+  const kurumSatirlari = zorunlu(kurumSonucu, "Kiracılar");
+  const kayitTarihleri = zorunlu(kayitSonucu, "Kayıt tarihleri");
+  const planSatirlari = zorunlu(planSonucu, "Paketler");
+  const paketler = zorunlu(paketSonucu, "Paket limitleri");
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
   // Rozet ve toplam bu okumaya dayanıyor: okunamaması "ürünü yok" demek değil.
   if (urunHatasi) throw new Error(`Ürün lisansları okunamadı: ${urunHatasi.message}`);

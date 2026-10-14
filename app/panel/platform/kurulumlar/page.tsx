@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 // Paket adı tek kaynaktan, sitedeki adla aynı (plans.name eski adı taşıyabilir).
 import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
+import { zorunlu } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ucretSapmasi } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
@@ -64,7 +65,7 @@ export default async function KurulumlarPage({ searchParams }: {
   const { asama } = await searchParams;
   const secili = ASAMALAR.some((a) => a.kod === asama) ? asama! : "devam";
 
-  const [{ data: kiraciSatirlari }, { data: planSatirlari }, fiyatlar] = await Promise.all([
+  const [kiraciSonucu, planSonucu, fiyatlar] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,slug,display_name,kind,provisioning_state,contact_phone,license_status,plan_code,monthly_fee,trial_ends_at,current_period_end,aktif_uye,davet_eposta,davet_durumu,davet_gonderildi,davet_hatasi")
       .order("name"),
@@ -72,6 +73,13 @@ export default async function KurulumlarPage({ searchParams }: {
     // Liste fiyatı konsolda yayımlanan tablodan (sitedekiyle aynı).
     yayimlananFiyatlar(),
   ]);
+  /*
+    Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
+    ile boş diziye düşüyordu ve ekran "kayıt yok" diyordu — "iş yok" ile
+    "okuyamadım" aynı şey değil (konsol-oku.ts).
+  */
+  const kiraciSatirlari = zorunlu(kiraciSonucu, "Kiracılar");
+  const planSatirlari = zorunlu(planSonucu, "Paketler");
 
   /*
     YENİ KURULUM = KİRACISI OLMAYAN BEKLEYEN İSTEK (14.10.2026). Eskiden

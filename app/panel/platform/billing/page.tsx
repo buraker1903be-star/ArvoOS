@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPanelContext } from "@/lib/panel-context";
+import { zorunlu } from "../konsol-oku";
 import { PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { productName } from "@/lib/products";
 import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
@@ -66,12 +67,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const bolum = BOLUMLER.find((b) => b === istenenBolum) ?? "";
 
   const [
-    { data: internalOrganizations },
-    { data: productLicenses },
-    { data: organizationRows },
-    { data: coreLicenses },
+    icKurumSonucu,
+    urunLisansSonucu,
+    kurumSonucu,
+    cekirdekSonucu,
     { data: tahsilatOzeti, error: ozetHatasi },
-    { data: sorunluBildirimler },
+    sorunluSonucu,
     odemeOlaylari,
     { count: bekleyenSozlesme },
   ] = await Promise.all([
@@ -97,6 +98,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       : Promise.resolve({ count: 0 }); })(),
   ]);
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
+  /*
+    Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
+    ile boş diziye düşüyordu ve ekran "abonelik yok" diyordu — "iş yok"
+    ile "okuyamadım" aynı şey değil ve kurucu birincisine bakıp geçer
+    (konsol-oku.ts).
+  */
+  const internalOrganizations = zorunlu(icKurumSonucu, "Kurum listesi");
+  const productLicenses = zorunlu(urunLisansSonucu, "Ürün lisansları");
+  const organizationRows = zorunlu(kurumSonucu, "Kurumlar");
+  const coreLicenses = zorunlu(cekirdekSonucu, "Çekirdek lisanslar");
+  const sorunluBildirimler = zorunlu(sorunluSonucu, "Ödeme sorunları");
   const ozet = (tahsilatOzeti ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };
   // Otomatik çekim yok: dönem sonu yaklaşanlar burada, kurucu WhatsApp'tan hatırlatır.
   /* ArvoOS çekirdek lisansı da listede (14.10.2026): eskiden yalnızca ek

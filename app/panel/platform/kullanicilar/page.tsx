@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { ikincil } from "../konsol-oku";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMemberDirectory, type DirectoryRow } from "@/lib/member-directory";
 import { productName } from "@/lib/products";
@@ -201,7 +202,13 @@ export default async function KullanicilarPage({ searchParams }: {
   const kisiler = kisilereTopla(rows);
   const aktifler = kisiler.filter((k) => k.acik);
   const pasifler = kisiler.filter((k) => !k.acik);
-  const davetler = davetleriIsaretle((davetSonucu.data ?? []) as Davet[]);
+  /*
+    Sorgu DÜŞERSE de "davet yok" denmiyor. Anahtar yokluğu zaten
+    ayrılmıştı ama hata hâlâ boş listeye düşüyordu: ikisi de aynı
+    sessizliği üretiyor (konsol-oku.ts → ikincil).
+  */
+  const davetOkumasi = ikincil(davetSonucu as { data: Davet[] | null; error: { message: string } | null }, "Davetler");
+  const davetler = davetleriIsaretle(davetOkumasi.veri ?? []);
 
   const kurumAdlari = new Map(rows.filter((r) => r.organizationId).map((r) => [r.organizationId!, r.scope]));
 
@@ -284,7 +291,9 @@ export default async function KullanicilarPage({ searchParams }: {
 
         {secili === "davet" ? (
           admin ? (
-            davetler.length ? (
+            davetOkumasi.okunamadi ? (
+              <KBos baslik="Davetler okunamadı" aciklama="Sorgu yanıt vermedi; “bekleyen davet yok” demek değil. Sayfayı yenileyin." />
+            ) : davetler.length ? (
               /* iOS LİSTESİ (14.10.2026): eskiden yedi sütunlu tabloydu
                  (E-posta, Kurum, Rol, Durum, Davet, Geçerlilik). Şimdi
                  kurum · rol · davet tarihi tek satırda; sağda durum ve son
