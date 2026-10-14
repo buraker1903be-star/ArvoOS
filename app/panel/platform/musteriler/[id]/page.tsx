@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
 import { ETKINLIK_ADI, VARLIK_ADI } from "../../kiraci-dosyasi";
@@ -13,7 +12,7 @@ import { kiraciUyeleriniOku } from "../../kiraci-uyeleri-oku";
 import { LisansBolumu } from "../../licenses/lisans-bolumu";
 import { KiraciDosyasi } from "../../kiraci-dosyasi";
 import { kiraciDosyasiVerisi } from "../../kiraci-dosyasi-verisi";
-import { CariHesap, Faturalar, GuncelFiyat, OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
+import { OdemeBolumu, type Odeme, type UrunSatiri } from "./bolumler";
 import { MusteriPenceresi } from "./pencere";
 import "../../platform.css";
 
@@ -47,18 +46,23 @@ import "../../platform.css";
 const ACIK = new Set(["active", "trialing", "past_due"]);
 const ODEYEN = new Set(["active", "past_due"]);
 
+/*
+  DÖRT PENCERE (14.10.2026, "pencereleri birleştir, daha hızlı olsun").
+  Yediydi: Güncel Fiyat Lisanslar'a katıldı (liste fiyatı ürün satırında),
+  Cari Hesap ve Faturalar Ödemeler'e (aynı ödemeleri iki pencere ayrı
+  listeliyordu). Eski adresler (?pencere=fiyat / cari / faturalar)
+  ESKI_PENCERE ile yeni karşılığına açılıyor.
+*/
 const PENCERELER = [
   { kod: "lisanslar", ad: "Lisanslar" },
-  { kod: "fiyat", ad: "Güncel Fiyat" },
-  { kod: "cari", ad: "Cari Hesap" },
   { kod: "odemeler", ad: "Ödemeler" },
-  { kod: "faturalar", ad: "Faturalar" },
   { kod: "kullanicilar", ad: "Kullanıcılar" },
   /* Kiracı dosyası (14.10.2026): ayrı sayfası kaldırıldı; kurum ayarları
      formu, modüller, kurulum adımları ve sahibe giriş bağlantısı burada. */
   { kod: "ayarlar", ad: "Kurum Ayarları" },
 ] as const;
 type PencereKodu = (typeof PENCERELER)[number]["kod"];
+const ESKI_PENCERE: Record<string, PencereKodu> = { fiyat: "lisanslar", cari: "odemeler", faturalar: "odemeler" };
 
 type Kurum = {
   id: string; name: string; display_name: string | null; slug: string; kind: string | null; plan_code: string | null;
@@ -78,7 +82,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
   if (!isPlatformOwner) notFound();
   const [{ id }, { pencere: pencereParametresi, provisioned }] = await Promise.all([params, searchParams]);
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const pencere = PENCERELER.find((p) => p.kod === pencereParametresi)?.kod ?? null;
+  const pencere = PENCERELER.find((p) => p.kod === pencereParametresi)?.kod ?? ESKI_PENCERE[pencereParametresi ?? ""] ?? null;
 
   const admin = createAdminClient();
   /*
@@ -139,10 +143,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
 
   async function pencereyiKur(kod: PencereKodu) {
     if (kod === "lisanslar") return <LisansBolumu supabase={supabase} organizationId={id} label={ad} />;
-    if (kod === "fiyat") return <GuncelFiyat urunler={urunler} fiyatlar={await yayimlananFiyatlar()} grup={grup} />;
-    if (kod === "cari") return <CariHesap urunler={urunler} odemeler={odemeler} grup={grup} />;
-    if (kod === "odemeler") return <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} />;
-    if (kod === "faturalar") return <Faturalar />;
+    if (kod === "odemeler") return <OdemeBolumu supabase={supabase} odemeler={odemeler} kurumAdi={ad} urunler={urunler} grup={grup} />;
     if (kod === "ayarlar") {
       const veri = await kiraciDosyasiVerisi(supabase, id);
       return veri ? <KiraciDosyasi supabase={supabase} {...veri} pencerede /> : <KBos baslik="Kurum bulunamadı" />;

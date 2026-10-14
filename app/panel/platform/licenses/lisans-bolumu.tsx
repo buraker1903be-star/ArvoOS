@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { URUN_KOTALARI, urunKotalari } from "@/lib/urun-kotasi";
-import { urunKullanimi } from "@/lib/urun-kullanimi";
-import { arvolabYansimasi } from "@/lib/arvolab";
-import { arcUrunKopyasi } from "@/lib/arc-bridge";
-import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
+import { depolamaKullanimi, lisansOlcumleri } from "@/lib/lisans-olcumleri";
+import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
+import { PLANS } from "@/lib/site/pricing";
+import { planTutari } from "@/lib/site/fiyat-kaynagi";
+import { paketListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
 import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
@@ -52,7 +52,6 @@ type ProductLicenseRow = {
   çağıran sayfa yapar.
 */
 export async function LisansBolumu({ supabase, organizationId, label }: { supabase: SupabaseClient; organizationId: string; label: string }) {
-  const adminClient = createAdminClient();
   const selected = { id: organizationId };
   /*
     HEPSİ TEK TURDA (14.10.2026). Okumalar sırayla bekleniyordu: önce
@@ -66,23 +65,25 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
   */
   const [
     [{ data: licenseData, error: licenseError }, { count: activeUsers }, { data: productLicenseData }],
-    { data: depolamalar },
-    kullanim,
-    [arvolabKopyasi, arcKopyasi, randevuKopyasi],
+    depolamalar,
+    { kullanim, arvolabKopyasi, arcKopyasi, randevuKopyasi },
+    fiyatlar,
   ] = await Promise.all([
     Promise.all([
       supabase.from("organization_licenses").select("*").eq("organization_id", selected.id).maybeSingle(),
       supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", selected.id).eq("is_active", true),
       supabase.from("organization_product_licenses").select("product,status,plan_code,monthly_fee,current_period_end,suspension_reason,limits").eq("organization_id", selected.id),
     ]),
-    /* Depolama kullanımı: limit tek başına bir şey anlatmıyor ("512000 MB"). */
-    adminClient ? adminClient.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
-    /* Ürün kullanımı: kota alanlarının yanında "şu an ne kadar". */
-    urunKullanimi(selected.id),
-    /* ArvoLab'daki kopyanın KENDİSİ — köprünün sağlığı değil: bridge_health
-       "son çağrı başarılı" derken kopya günlerce eski kalabiliyor
-       (AkademikMerkez, 22.09.2026). */
-    Promise.all([arvolabYansimasi(selected.id), arcUrunKopyasi(selected.id), randevuUrunKopyasi(selected.id)]),
+    /* Depolama kullanımı: limit tek başına bir şey anlatmıyor ("512000 MB").
+       5 dk önbellekte (lib/lisans-olcumleri). */
+    depolamaKullanimi(),
+    /* Ürün kullanımı ve ArvoLab/ARC/Randevu'daki kopyanın KENDİSİ — köprünün
+       sağlığı değil: bridge_health "son çağrı başarılı" derken kopya
+       günlerce eski kalabiliyor (AkademikMerkez, 22.09.2026). 60 sn
+       önbellekte; lisans kaydı kurumun etiketini düşürüyor. */
+    lisansOlcumleri(selected.id),
+    /* Liste fiyatı satırda (14.10.2026: "Güncel Fiyat" penceresi buraya katıldı). */
+    yayimlananFiyatlar(),
   ]);
   if (licenseError) throw new Error(`Lisans okunamadı: ${licenseError.message}`);
   const license = licenseData as LicenseRow | null;
@@ -90,8 +91,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
 
   const productLicenses = new Map(((productLicenseData ?? []) as ProductLicenseRow[]).map((row) => [row.product, row]));
   const depolamaMb = Math.ceil(
-    Number(((depolamalar ?? []) as { organization_id: string; bytes: number }[])
-      .find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
+    Number(depolamalar.find((row) => row.organization_id === selected.id)?.bytes ?? 0) / (1024 * 1024),
   );
 
 
@@ -137,6 +137,11 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
       ],
     };
   }
+  /* Liste fiyatının metni: teklif usulü basamağa rakam uydurulmaz. */
+  const listeMetni = (kurus: number | null) => (kurus === null ? "teklif" : para(kurus));
+  /* Ek ürünün basamağı listede yalnızca yayımlanmış koduyla (arc-buyume
+     gibi) bulunuyor; eski paket kodlu satırda (enterprise) liste yok. */
+  const listedeki = (kod: string | null | undefined) => PLANS.find((plan) => plan.code === kod);
   const kotaSatirlari: Record<string, ReturnType<typeof urunKotalari>> = Object.fromEntries(
     ADDON_PRODUCTS.map((urun) => [
       urun.code,
@@ -268,6 +273,9 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
               ozet: [
                 { etiket: "Paket", deger: PAKET_ADI[license.plan_code] ?? license.plan_code },
                 { etiket: "Aylık ücret", deger: license.monthly_fee ? `${para(Number(license.monthly_fee))} / ay` : "girilmedi" },
+                /* Ödediğinin yanında yayımlanmış liste fiyatı: sapma hata değil
+                   (pazarlık), ama görünür olmalı (lib/paket-ucreti ucretSapmasi). */
+                { etiket: "Liste", deger: listeMetni(paketListeFiyatiKurus(license.plan_code, fiyatlar)) },
                 { etiket: "Dönem sonu", deger: tarih(license.current_period_end) },
                 { etiket: "Kapasite", deger: `${sayi(license.user_limit)} kullanıcı · ${depolama(license.storage_limit_mb)}` },
                 /* Ek koltuk kurucunun en çok merak ettiği satır: kurum dahil
@@ -337,6 +345,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 ozet: [
                   { etiket: "Paket", deger: row?.plan_code ? (PAKET_ADI[row.plan_code] ?? row.plan_code) : "belirtilmedi" },
                   { etiket: "Aylık ücret", deger: row?.monthly_fee ? `${para(Number(row.monthly_fee))} / ay` : "girilmedi" },
+                  ...(listedeki(row?.plan_code) ? [{ etiket: "Liste", deger: listeMetni(planTutari(listedeki(row?.plan_code)!, fiyatlar)) }] : []),
                   { etiket: "Dönem sonu", deger: tarih(row?.current_period_end ?? null) },
                   { etiket: "Kota", deger: kotaOzeti || (kotalar.length ? "sınırsız" : "yok") },
                 ],

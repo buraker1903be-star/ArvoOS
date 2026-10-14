@@ -2,7 +2,8 @@
 
 import { runPanelAction } from "@/lib/panel-action";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { lisansOlcumEtiketi } from "@/lib/lisans-olcumleri";
 import { getPanelContext } from "@/lib/panel-context";
 import { isAddonProduct, productName, type ProductCode } from "@/lib/products";
 import { URUN_KOTALARI } from "@/lib/urun-kotasi";
@@ -95,6 +96,8 @@ async function updateOrganizationLicense__impl(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
+  // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
 }
 
 // ArvoLab / ArvoARC aboneliği: ArvoOS'un kendi lisansından ayrı, ürün başına ücret
@@ -157,6 +160,8 @@ async function updateProductLicense__impl(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
+  // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
   revalidatePath("/panel/billing");
 }
 
@@ -203,6 +208,8 @@ async function urunuYenidenYansit__impl(formData: FormData) {
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
+  // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
 }
 
 /*
@@ -283,6 +290,8 @@ async function cekirdekErisimi__impl(formData: FormData) {
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
+  // Kopya ve kullanım önbelleği: kayıttan hemen sonra doğru görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
 }
 
 export async function cekirdekErisimi(...args: Parameters<typeof cekirdekErisimi__impl>) {

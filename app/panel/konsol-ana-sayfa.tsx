@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPersonName } from "@/lib/format-name";
 import { arvolabKopyalari, getArvolabBridgeHealth } from "@/lib/arvolab";
@@ -107,7 +108,8 @@ export async function KonsolAnaSayfa() {
     supabase.from("hr_employees").select("full_name").eq("user_id", userId).limit(1).maybeSingle(),
     /* Depolama storage.objects'ten geliyor; o tablo PostgREST'e açık değil
        ve olmamalı. Fonksiyon yalnızca kurum başına TOPLAM döndürüyor. */
-    admin ? admin.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
+    /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
+    depolamaKullanimi().then((data) => ({ data })),
   ]);
 
   /* Sözleşme kuyruğu ve kurulum günlüğü yalnızca sunucu anahtarıyla

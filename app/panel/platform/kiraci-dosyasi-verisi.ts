@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { kotaDurumu, type KotaDurumu } from "@/lib/kota-durumu";
 import type { DosyaDaveti, DosyaKurumu, DosyaUyeligi } from "./kiraci-dosyasi";
 
@@ -45,7 +46,8 @@ export async function kiraciDosyasiVerisi(supabase: SupabaseClient, id: string):
     /* Depolama storage.objects'ten; o tablo PostgREST'e kapalı, işlev
        yalnızca kurum başına TOPLAM döndürüyor ve yalnızca service_role
        çağırabiliyor. */
-    admin ? admin.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
+    /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
+    depolamaKullanimi().then((data) => ({ data })),
   ]);
   if (error) throw new Error(`Kiracı okunamadı: ${error.message}`);
   if (!satir) return null;

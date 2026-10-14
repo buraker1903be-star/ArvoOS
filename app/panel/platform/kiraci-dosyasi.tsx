@@ -9,7 +9,7 @@ import { kiraciUyeleriniOku } from "./kiraci-uyeleri-oku";
 import { ModulMatrisi, type ModulSatiri } from "./modul-matrisi";
 import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
 import { kotaOzetiYaz, urunKotalari } from "@/lib/urun-kotasi";
-import { urunKullanimi } from "@/lib/urun-kullanimi";
+import { lisansOlcumleri } from "@/lib/lisans-olcumleri";
 import type { KotaDurumu } from "@/lib/kota-durumu";
 import { KBos, KKart, KListe, KNot, KOge } from "./konsol-ui";
 import { KURULUM_ADI, KURULUM_TONU, LISANS_TONU, basHarfleri, depolama, para, tarih, tarihSaat } from "./bicim";
@@ -82,7 +82,21 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
   const targetId = selected.id;
   const admin = createAdminClient();
 
-  const [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, onboardingResult, opportunityResult] = await Promise.all([
+  /*
+    TEK TUR (14.10.2026). Okumalar dört ayrı Promise.all'da sırayla
+    bekleniyordu (çekirdek → üyeler → ürünler → ödeme/kanal/etkinlik);
+    hiçbiri ötekine bağlı değil. Müşteri detayının penceresinde
+    (pencerede) gösterilmeyenler hiç okunmuyor: üye listesi (her üye için
+    ayrı e-posta sorgusu), ödemeler ve etkinlik — onlar detay sayfasında
+    ve Kullanıcılar penceresinde. Pencere 1,2 sn'de açılıyordu.
+  */
+  const bos = Promise.resolve({ data: [] as unknown[] });
+  const [
+    [{ count: memberCount }, { data: moduleData }, { data: auditData }, legalResult, onboardingResult, opportunityResult],
+    kiraciUyeleri,
+    [{ data: urunLisanslari }, { kullanim }],
+    [{ data: odemeler }, { data: whatsappHesabi }, { data: etkinlikler }],
+  ] = await Promise.all([Promise.all([
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true }).eq("organization_id", targetId).eq("is_active", true),
     supabase.from("organization_modules").select("module_code,is_enabled,arvo_modules(name,description,sort_order)").eq("organization_id", targetId),
     supabase.from("provisioning_audit_logs").select("id,action,state,result,duration_ms,created_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(8),
@@ -91,32 +105,37 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
     admin ? admin.from("organization_onboarding").select("completed_at").eq("organization_id", targetId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     // Talepler de yalnızca kurum üyelerine açık; sayı sunucu anahtarıyla okunur.
     admin ? admin.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", targetId) : Promise.resolve({ count: null, error: null }),
-  ]);
+  ]),
+  /* Üyeler: ad profiles'tan, e-posta yönetim API'sinden (kiraci-uyeleri-oku). */
+  pencerede ? Promise.resolve([]) : kiraciUyeleriniOku(supabase, admin, targetId, tumUyelikler),
   /*
-    Seçili kiracının üyeleri. Ad profiles'tan okunuyor: e-posta auth.users'ta
-    ve yönetim API'siyle sayfa sayfa çekiliyor — tek kurum için o maliyete
-    girmeye değmez, ad zaten ayırt etmeye yetiyor.
+    Modül matrisi: ArvoOS çekirdeği organization_licenses'ta, diğer üç ürün
+    organization_product_licenses'ta. Ürün kullanımı yalnızca SEÇİLİ kiracı
+    için ve 60 sn önbellekte (lib/lisans-olcumleri): iki ayrı veritabanına
+    (ArvoLab, Randevu) gidiyor.
   */
-  const kiraciUyeleri = await kiraciUyeleriniOku(supabase, admin, targetId, tumUyelikler);
+  Promise.all([
+    supabase.from("organization_product_licenses").select("product,status,monthly_fee,integrated,limits").eq("organization_id", targetId),
+    lisansOlcumleri(targetId),
+  ]),
+  /*
+    Ödeme, kanal ve son etkinlik. Ödeme ve etkinlik yalnızca kurum
+    üyelerine açık (RLS); kurucu sunucu anahtarıyla okuyor.
+  */
+  Promise.all([
+    admin && !pencerede
+      ? admin.from("organization_payment_requests").select("id,amount,currency,status,created_at,reviewed_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(20)
+      : bos,
+    admin
+      ? admin.from("whatsapp_accounts").select("status,display_phone,verified_name,last_error").eq("organization_id", targetId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin && !pencerede
+      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
+      : bos,
+  ]),
+  ]);
 
 
-  /*
-    Modül matrisi: ArvoOS çekirdeği organization_licenses'ta, diğer üç
-    ürün organization_product_licenses'ta. İki tablodan tek liste
-    kuruluyor; kurucu için ikisi aynı soruya cevap veriyor.
-  */
-  const [{ data: urunLisanslari }, kullanim] = await Promise.all([
-    supabase
-      .from("organization_product_licenses")
-      .select("product,status,monthly_fee,integrated,limits")
-      .eq("organization_id", targetId),
-    /*
-      Ürün kullanımı yalnızca SEÇİLİ kiracı için ölçülüyor: iki ayrı
-      veritabanına gidiyor (ArvoLab, Randevu) ve tüm kiracılar için
-      yapmak liste ekranını her açılışta yavaşlatırdı.
-    */
-    urunKullanimi(targetId),
-  ]);
   const urunById = new Map(
     ((urunLisanslari ?? []) as { product: string; status: string; monthly_fee: number | null; integrated: boolean | null; limits: Record<string, unknown> | null }[])
       .map((row) => [row.product, row]),
@@ -154,25 +173,6 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
     }),
   ];
 
-  /*
-    Kiracı dosyasının kalan parçaları: ödeme, kanallar, son etkinlik.
-    Hepsi seçili kuruma daraltılmış; dördü tek turda okunuyor.
-
-    Ödeme ve etkinlik kayıtları yalnızca kurum üyelerine açık (RLS);
-    kurucu bunları sunucu anahtarıyla okuyor — konsolun işi zaten başka
-    kurumların verisine bakmak.
-  */
-  const [{ data: odemeler }, { data: whatsappHesabi }, { data: etkinlikler }] = await Promise.all([
-    admin
-      ? admin.from("organization_payment_requests").select("id,amount,currency,status,created_at,reviewed_at").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(20)
-      : Promise.resolve({ data: [] }),
-    admin
-      ? admin.from("whatsapp_accounts").select("status,display_phone,verified_name,last_error").eq("organization_id", targetId).maybeSingle()
-      : Promise.resolve({ data: null }),
-    admin
-      ? admin.from("activity_logs").select("action,entity_type,created_at,metadata").eq("organization_id", targetId).order("created_at", { ascending: false }).limit(6)
-      : Promise.resolve({ data: [] }),
-  ]);
   const odemeSatirlari = (odemeler ?? []) as { amount: number; status: string; created_at: string; reviewed_at: string | null }[];
   const bekleyenOdeme = odemeSatirlari.filter((satir) => satir.status === "pending");
   const sonTahsilat = odemeSatirlari.find((satir) => satir.status === "approved") ?? null;
@@ -185,6 +185,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
     const fallback = panelModules[row.module_code];
     return { code: row.module_code, name: fallback?.name ?? relation?.name ?? row.module_code, description: fallback?.description ?? relation?.description ?? "", icon: fallback?.icon ?? row.module_code.slice(0, 2).toUpperCase(), enabled: row.is_enabled, order: relation?.sort_order ?? 0 };
   }).sort((a, b) => a.order - b.order);
+  // tuzak-tamam: moduleRows organization_modules'tan SINIRSIZ okunuyor; aynı Promise.all'daki .limit() denetim kayıtları ve etkinlik sorgularına ait.
   const enabledCount = moduleRows.filter((module) => module.enabled).length;
   const legal = legalDetailsFrom(legalResult.error ? null : (legalResult.data as Record<string, unknown> | null));
   const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;

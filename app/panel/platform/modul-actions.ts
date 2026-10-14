@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { lisansOlcumEtiketi } from "@/lib/lisans-olcumleri";
 import { flashSuccess, runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -79,6 +80,8 @@ async function modulErisimiDegistir__impl(formData: FormData) {
   */
   await urunLisansiniYansit(organizationId, product);
   revalidatePath("/panel/platform/musteriler", "layout");
+  // Kopya önbelleği (lib/lisans-olcumleri): değişiklik hemen görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   await flashSuccess(
     durum === "suspended"
@@ -112,6 +115,8 @@ async function modulKoprusuDegistir__impl(formData: FormData) {
   */
   await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel/platform/musteriler", "layout");
+  // Kopya önbelleği (lib/lisans-olcumleri): değişiklik hemen görünmeli.
+  updateTag(lisansOlcumEtiketi(organizationId));
   await flashSuccess(
     entegre
       ? `${productName(product)} ArvoOS ile entegre çalışacak`

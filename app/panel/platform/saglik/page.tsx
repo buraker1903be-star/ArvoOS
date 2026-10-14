@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { depolamaKullanimi } from "@/lib/lisans-olcumleri";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arvolabKopyalari, getArvolabBridgeHealth } from "@/lib/arvolab";
@@ -49,7 +50,8 @@ export default async function SistemSagligiPage() {
       .select("id,name,display_name,kind,provisioning_state,license_status,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status"),
-    admin ? admin.rpc("arvo_storage_usage") : Promise.resolve({ data: [] }),
+    /* Depolama toplamı 5 dk önbellekte (lib/lisans-olcumleri): storage.objects'i taramak her sayfa açılışında tekrar ediliyordu. */
+    depolamaKullanimi().then((data) => ({ data })),
   ]);
 
   const [arvolab, arc, randevu, labKopya, arcKopya, rdvKopya, odemeOlaylari] = await Promise.all([
