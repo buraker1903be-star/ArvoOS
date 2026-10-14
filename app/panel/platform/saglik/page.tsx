@@ -267,7 +267,7 @@ export default async function SistemSagligiPage() {
         gelmiyor" diyor, köprü işi durduğunda "ürün kopyası bayat"
         görünüyor; sebep burada yazılı. */}
     <KKart baslik="Zamanlanmış işler"
-      aciklama="Beş iş ekosistemi taşıyor ve hiçbiri koştuğunu kaydetmiyordu: biri sessizce dursa belirti kullanıcıda çıkıyordu.">
+      aciklama="Ekosistemi taşıyan işlerin hiçbiri koştuğunu kaydetmiyordu: biri sessizce dursa belirti kullanıcıda çıkıyordu. Sayı ve aralık vercel.json'dan.">
       {cronHatasi ? (
         <KNot ton="tehlike">Koşma kayıtları okunamadı ({cronHatasi.message}) — &quot;sorun yok&quot; demek değil.</KNot>
       ) : (

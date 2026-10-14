@@ -1,10 +1,13 @@
 /*
   ZAMANLANMIŞ İŞLERİN SAĞLIĞI (14.10.2026) — saf kural.
 
-  Ekosistemi beş zamanlanmış iş taşıyor: ortak posta kutularının
-  eşitlemesi (iki dakikada bir), ArvoARC ve Arvo Randevu köprülerinin tam
-  eşitlemesi (on dakikada), iş adımı terminleri ve abonelik hatırlatması
-  (her sabah). Hiçbiri KOŞTUĞUNU kaydetmiyordu: biri sessizce dursa —
+  Ekosistemi bir dizi zamanlanmış iş taşıyor: ortak posta kutularının
+  eşitlemesi, ArvoARC ve Arvo Randevu köprülerinin tam eşitlemesi, ödenmiş
+  AI kredisinin yüklenmesi, iş adımı terminleri ve abonelik hatırlatması.
+  Listeyi ve aralıkları vercel.json söylüyor — SAYIYI BURAYA YAZMIYORUZ:
+  elle tutulan bir sayı, cron eklendiği gün sessizce yanlışa dönüyor (bu
+  dosyanın ve sağlık kartının metni 14.10.2026'da tam bu yüzden "beş"
+  derken altı iş vardı). Hiçbiri KOŞTUĞUNU kaydetmiyordu: biri sessizce dursa —
   anahtar değişti, dağıtım rotayı kırdı, zamanlayıcı girdisi silindi —
   kurucuya hiçbir yerden haber gitmiyor. Belirti kullanıcıda çıkıyor
   ("postalar gelmiyor"), üstelik ne zaman durduğu da bilinmiyor.
