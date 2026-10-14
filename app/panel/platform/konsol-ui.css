@@ -50,3 +50,53 @@
 .os-root .talep-tablo .crm-data-table tbody td.k-kimlik .crm-row-link:hover{background:transparent}
 .os-root .talep-tablo .crm-data-table tbody td.k-kimlik .crm-table-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+
+/* ============================================================
+   iOS LİSTESİ (KListe / KOge)
+   ============================================================ */
+.os-root .talep-tablo.k-ios-kap{overflow-x:hidden}
+.k-ios{margin:0;padding:0;list-style:none}
+.k-ios-ic{position:relative;display:flex;align-items:center;gap:var(--sp-3);min-height:60px;padding:10px var(--sp-5);color:inherit;text-decoration:none;transition:background-color .15s ease}
+a.k-ios-ic:hover{background:var(--surface-2)}
+a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:inset 3px 0 0 var(--primary)}
+/* Ayraç metnin başından: iOS'taki gibi simgenin altından geçmiyor. */
+.k-ios-oge+.k-ios-oge>.k-ios-ic::before{content:"";position:absolute;top:0;right:0;left:var(--sp-5);height:1px;background:var(--line-soft)}
+.k-ios-oge+.k-ios-oge>.k-ios-ic:has(>.k-ios-simge)::before{left:calc(var(--sp-5) + 36px + var(--sp-3))}
+
+.k-ios-simge{
+  --k-on:var(--primary-soft);--k-yazi:var(--primary-strong);
+  flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;
+  background:var(--k-on);color:var(--k-yazi);font-size:12px;font-weight:var(--fw-semibold);letter-spacing:.03em
+}
+.k-ios-simge[data-renk="1"]{--k-on:var(--info-soft);--k-yazi:var(--info)}
+.k-ios-simge[data-renk="2"]{--k-on:var(--success-soft);--k-yazi:var(--success)}
+.k-ios-simge[data-renk="3"]{--k-on:var(--warning-soft);--k-yazi:var(--warning)}
+.k-ios-simge[data-renk="4"]{--k-on:var(--surface-2);--k-yazi:var(--ink-soft)}
+.k-ios-simge[data-renk="5"]{--k-on:color-mix(in srgb,var(--info) 10%,var(--surface));--k-yazi:var(--primary)}
+
+.k-ios-govde{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.k-ios-baslik{overflow:hidden;color:var(--ink);font-size:14.5px;font-weight:var(--fw-semibold);letter-spacing:-.01em;line-height:1.3;text-overflow:ellipsis;white-space:nowrap}
+.k-ios-alt{overflow:hidden;color:var(--muted);font-size:12.5px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
+
+/* Durum: kenarlıksız, renkli nokta + metin (iOS'un sade rozeti). */
+.k-ios-durum{--k-ton:var(--dim);flex:none;display:inline-flex;align-items:center;gap:6px;min-width:96px;color:var(--ink-soft);font-size:12.5px;font-weight:var(--fw-medium);white-space:nowrap}
+.k-ios-durum::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--k-ton)}
+.k-ios-durum[data-ton="success"]{--k-ton:var(--success)}
+.k-ios-durum[data-ton="warning"]{--k-ton:var(--warning)}
+.k-ios-durum[data-ton="danger"]{--k-ton:var(--danger);color:var(--danger)}
+.k-ios-durum[data-ton="info"]{--k-ton:var(--info)}
+
+.k-ios-deger{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:96px;text-align:right}
+.k-ios-deger b{color:var(--ink);font-size:14px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-ios-deger small{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.k-ios-deger .k-ios-eksik{color:var(--warning);font-weight:var(--fw-medium)}
+.k-ios-ok{flex:none;color:var(--dim)}
+
+@media (max-width:760px){
+  .k-ios-ic{padding:10px var(--sp-4)}
+  .k-ios-oge+.k-ios-oge>.k-ios-ic::before{left:var(--sp-4)}
+  .k-ios-oge+.k-ios-oge>.k-ios-ic:has(>.k-ios-simge)::before{left:calc(var(--sp-4) + 36px + var(--sp-3))}
+  /* Telefonda durum yalnızca nokta: metin değerin altında yer kaplamasın. */
+  .k-ios-durum{min-width:0;font-size:0;gap:0}
+  .k-ios-deger{min-width:0}
+}

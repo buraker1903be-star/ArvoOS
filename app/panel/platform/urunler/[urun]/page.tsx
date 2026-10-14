@@ -8,8 +8,7 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { planlar, type PricedProduct } from "@/lib/site/pricing";
 import { planTutari, planYillikTutari } from "@/lib/site/fiyat-kaynagi";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
-import { IstatistikKarti } from "../../../crm/istatistik-karti";
-import { KBaslik, KBos, KDurum, KKart, KSatirSonu, KTablo } from "../../konsol-ui";
+import { KBos, KKart, KListe, KOge } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
 import "../../platform.css";
 
@@ -129,91 +128,79 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       </dl>
     </nav>
 
+    {/*
+      iOS LİSTESİ (14.10.2026, "iOS gibi olmalı"): kiracılar sütun
+      başlıksız tek satırlarda — simge, ad, altında paket · kullanıcı ·
+      dönem; sağda durum ve aylık ücret. Eskiden yedi sütunlu tabloydu,
+      kurum adları ikiye kırılıyordu. Sağ sütundaki dört sayı şeritteki
+      sayıların AYNISIYDI; yerine yalnızca şeritte olmayanlar: lisans
+      dağılımı, fiyat basamakları, bireysel aboneler.
+    */}
     <div className="talep-izgara personel-iki ekip-izgara">
       <section className="panel-card talep-bilgi" aria-label="Kiracılar">
         <header className="k-kart-bas">
           <div>
             <h2>Kiracılar</h2>
-            <p>{sayi(satirlar.length)} lisans · ödeyenler önce, sonra ücrete göre.</p>
+            <p>{sayi(satirlar.length)} lisans · ödeyenler önce</p>
           </div>
         </header>
         {satirlar.length ? (
-          <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Durum" }, { ad: "Paket" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }, { ad: "Dönem / deneme", sinif: "crm-col-date" }, { ad: "Kullanıcı" }, { ad: "" }]}>
+          <KListe>
             {satirlar.map((s) => {
-              const durum = { etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" };
-              const donem = s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? tarih(s.donemSonu) : "—";
+              const donem = s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? `dönem ${tarih(s.donemSonu)}` : null;
               return (
-                <tr key={s.id}>
-                  <KBaslik avatar etiket="Kurum" href={kiraciAdresi(s.id)} baslik={s.ad} />
-                  <KDurum etiket={durum.etiket} ton={durum.ton} />
-                  <td data-label="Paket">{s.paket ? PAKET_ADI[s.paket] ?? s.paket : "—"}</td>
-                  {/* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */}
-                  <td data-label="Aylık ücret" className="crm-col-amount">{s.ucret ? para(Number(s.ucret)) : <span className="talep-uyari">girilmedi</span>}</td>
-                  <td data-label="Dönem / deneme" className="crm-col-date">{donem}</td>
-                  <td data-label="Kullanıcı" className="k-sayi">{sayi(s.kullanici)}</td>
-                  <KSatirSonu mobil={{
-                    href: kiraciAdresi(s.id),
-                    baslik: s.ad,
-                    durum,
-                    alt: [s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, s.ucret ? para(Number(s.ucret)) : null, donem !== "—" ? donem : null],
-                    isaretler: [s.ucret ? null : { metin: "ücret girilmedi", ton: "uyari" }],
-                  }} />
-                </tr>
+                <KOge
+                  key={s.id}
+                  href={kiraciAdresi(s.id)}
+                  simge={s.ad}
+                  baslik={s.ad}
+                  alt={[s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, `${sayi(s.kullanici)} kullanıcı`, donem].filter(Boolean).join(" · ")}
+                  durum={{ etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" }}
+                  /* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */
+                  deger={s.ucret ? para(Number(s.ucret)) : <span className="k-ios-eksik">Ücret yok</span>}
+                  degerAlt={s.ucret ? "aylık" : "girilmedi"}
+                />
               );
             })}
-          </KTablo>
+          </KListe>
         ) : <KBos baslik="Lisanslı kiracı yok" aciklama="Bu ürünün lisanslı kiracısı yok." />}
       </section>
 
-      {/* Sağ sütun panelin ekip ekranındaki gibi (.liste-sag): istatistik, altında
-         fiyat basamakları ve bireysel aboneler. Liste sayfası sabit yükseklikte;
-         ızgaranın altına kart eklemek listeyi sıkıştırırdı. */}
       <div className="liste-sag">
-        {/* Sağdaki kart yalnızca yukarıda hesaplanan sayılardan: yeni sorgu yok. */}
-        <IstatistikKarti
-          kapsam="kendi kurumlarımız hariç bütün lisanslar"
-          kutular={[
-            { ad: "Müşteri", deger: sayi(acik.length), alt: "lisansı açık (deneme dahil)" },
-            { ad: "Ödeyen", deger: sayi(odeyen.length), alt: `${sayi(satirlar.length - acik.length)} kapalı` },
-            { ad: "Beklenen aylık", deger: para(gelir), alt: "ödeyenlerin ücreti", ton: "arti" },
-            { ad: "Sistem", deger: kopru.ok ? "Ayakta" : "Sorunlu", alt: kopru.not, ton: kopru.ok ? undefined : "uyari" },
-          ]}
-          gruplar={[
-            { baslik: "Lisans durumu", satirlar: durumSayilari },
-            ...(bireyselVar ? [{
-              baslik: "Bireysel aboneler",
-              satirlar: [{ ad: "Açık abonelik", adet: acikAbone }, { ad: "Kapalı", adet: aboneler.length - acikAbone }],
-            }] : []),
-          ]}
-        />
-        <KKart
-          baslik="Fiyat basamakları"
-          aciklama="Sitede ve kurulumda geçerli (yayımlanmış) tutarlar. KDV hariç; yıllıkta 10 ay bedeliyle 12 ay."
-          sag={<Link className="panel-secondary" href="/panel/platform/fiyatlar">Düzenle</Link>}
-        >
-          <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "Yıllık", sinif: "crm-col-amount" }, { ad: "" }]}>
+        <KKart baslik="Lisans durumu">
+          <KListe>
+            {durumSayilari.map((d) => (
+              <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />
+            ))}
+          </KListe>
+        </KKart>
+
+        <KKart baslik="Fiyat basamakları" aciklama="Yayımlanmış tutarlar, KDV hariç"
+          sag={<Link className="panel-secondary" href="/panel/platform/fiyatlar">Düzenle</Link>}>
+          <KListe>
             {basamaklar.map((plan) => {
               const aylik = planTutari(plan, fiyatlar);
               const yillik = planYillikTutari(plan, fiyatlar);
-              const birim = plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına";
               return (
-                <tr key={plan.code}>
-                  <KBaslik etiket="Basamak" baslik={plan.ad.tr} alt={<>{birim} · <span className="plt-mono">{plan.code}</span></>} />
-                  <td data-label="Aylık" className="crm-col-amount">{aylik === null ? "Teklif" : para(aylik)}</td>
-                  <td data-label="Yıllık" className="crm-col-amount">{yillik === null ? "Teklif" : para(yillik)}</td>
-                  <KSatirSonu mobil={{ baslik: plan.ad.tr, alt: [aylik === null ? "Teklif" : `${para(aylik)} / ay`, birim] }} />
-                </tr>
+                <KOge
+                  key={plan.code}
+                  baslik={plan.ad.tr}
+                  alt={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
+                  deger={aylik === null ? "Teklif" : para(aylik)}
+                  degerAlt={yillik === null ? undefined : `${para(yillik)} / yıl`}
+                />
               );
             })}
-          </KTablo>
+          </KListe>
         </KKart>
 
         {bireyselVar ? (
-          <KKart
-            baslik="Bireysel aboneler"
-            aciklama={`Kurumu olmadan ürünü kişisel olarak kullananlar: ${sayi(acikAbone)} açık abonelik, toplam ${sayi(aboneler.length)} kayıt.`}
-            sag={<Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel abone planları</Link>}
-          />
+          <KKart baslik="Bireysel aboneler" sag={<Link className="panel-secondary" href="/panel/platform/subscribers">Planlar</Link>}>
+            <KListe>
+              <KOge baslik="Açık abonelik" deger={sayi(acikAbone)} />
+              <KOge baslik="Kapalı" deger={sayi(aboneler.length - acikAbone)} />
+            </KListe>
+          </KKart>
         ) : null}
       </div>
     </div>

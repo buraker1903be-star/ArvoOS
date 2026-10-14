@@ -121,3 +121,67 @@ export function KBos({ baslik, aciklama, eylem }: { baslik: string; aciklama?: s
 export function KNot({ ton = "bilgi", children }: { ton?: "bilgi" | "uyari" | "tehlike" | "basari"; children: ReactNode }) {
   return <p className="k-not" data-ton={ton}>{children}</p>;
 }
+
+/*
+  iOS LİSTESİ (14.10.2026, kurum sahibinin tarifi: "iOS gibi olmalı").
+
+  Çok sütunlu tablo konsolda dengesiz duruyordu: sütun başlıkları,
+  ikiye kırılan kurum adları, satırın ortasında boşluklar. iOS'un liste
+  dili tek satırda okunur: solda renkli simge, ortada başlık ve altında
+  tek satır özet, sağda değer ve durum, en sağda ok. Sütun başlığı yok;
+  ayraç metnin başından başlıyor.
+
+  Kap .talep-tablo: liste sayfasında (liste-sayfa) kaydırma alanı o,
+  kartın kenarına yaslanma da onun eksi kenar boşluğundan.
+*/
+export type KDurumTonu = "success" | "warning" | "danger" | "info" | "neutral";
+
+/** İki harflik baş harf: çok sözcükte ilk ve son sözcüğün, tek sözcükte ilk iki harf. */
+function basHarf(ad: string) {
+  const parcalar = ad.trim().split(/\s+/).filter(Boolean);
+  if (!parcalar.length) return "—";
+  const harfler = parcalar.length > 1 ? parcalar[0][0] + parcalar[parcalar.length - 1][0] : parcalar[0].slice(0, 2);
+  return harfler.toLocaleUpperCase("tr-TR");
+}
+
+/** Ada göre sabit renk: aynı kurum her ekranda aynı renkte. */
+function renkSirasi(ad: string) {
+  let toplam = 0;
+  for (const harf of ad) toplam = (toplam * 31 + harf.charCodeAt(0)) >>> 0;
+  return toplam % 6;
+}
+
+export function KListe({ children }: { children: ReactNode }) {
+  return <div className="talep-tablo k-ios-kap"><ul className="k-ios">{children}</ul></div>;
+}
+
+export function KOge({ href, simge, baslik, alt, durum, deger, degerAlt, sonu }: {
+  href?: string | null;
+  /** Verilirse solda baş harf simgesi (kurum ya da kişi adı). */
+  simge?: string | null;
+  baslik: string;
+  alt?: ReactNode;
+  durum?: { etiket: string; ton: KDurumTonu | string } | null;
+  deger?: ReactNode;
+  degerAlt?: ReactNode;
+  /** Sağ uçta ok yerine düğme / form (satırın kendi işi). */
+  sonu?: ReactNode;
+}) {
+  const ic = <>
+    {simge ? <span className="k-ios-simge" data-renk={renkSirasi(simge)} aria-hidden="true">{basHarf(simge)}</span> : null}
+    <span className="k-ios-govde">
+      <span className="k-ios-baslik" title={baslik}>{baslik}</span>
+      {alt ? <span className="k-ios-alt">{alt}</span> : null}
+    </span>
+    {durum ? <span className="k-ios-durum" data-ton={durum.ton}>{durum.etiket}</span> : null}
+    {deger !== undefined && deger !== null ? (
+      <span className="k-ios-deger"><b>{deger}</b>{degerAlt ? <small>{degerAlt}</small> : null}</span>
+    ) : null}
+    {sonu ?? (href ? <svg className="k-ios-ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg> : null)}
+  </>;
+  return (
+    <li className="k-ios-oge">
+      {href && !sonu ? <Link className="k-ios-ic" href={href}>{ic}</Link> : <div className="k-ios-ic">{ic}</div>}
+    </li>
+  );
+}
