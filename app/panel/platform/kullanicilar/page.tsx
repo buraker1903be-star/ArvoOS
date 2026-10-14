@@ -8,6 +8,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { Fragment, type ReactNode } from "react";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
 import { sayi, tarih, tarihSaat } from "../bicim";
+import { roleNames } from "../../hr/role-names";
 import "../platform.css";
 
 /*
@@ -81,7 +82,8 @@ const davetleriIsaretle = (davetler: Davet[]) => {
   Kişi e-postaya göre birleşiyor: ArvoLab'ın kullanıcı kimliği ArvoOS'unkiyle
   aynı değil (lib/member-directory'deki kuralın aynısı).
 */
-type Uyelik = { kapsam: string; urunler: string[]; rol: string | null; acik: boolean; sebep: string | null; bireysel: boolean };
+/** rol: kurumdaki ArvoOS rolü; yoksa (yalnızca ArvoLab'daysa) ArvoLab rolü — rolUrunu hangisi olduğunu söyler. */
+type Uyelik = { kapsam: string; urunler: string[]; rol: string | null; rolUrunu: string | null; acik: boolean; sebep: string | null; bireysel: boolean };
 type Kisi = {
   anahtar: string;
   ad: string;
@@ -95,22 +97,29 @@ type Kisi = {
   bireysel: boolean;
 };
 
-/* Rol kodlarının okunur adı. ArvoOS rolleri ve ArvoLab rolleri tek
-   listede; listede olmayan kod okunur hâle getirilip yazılıyor. Sıra
-   "en yetkili" seçimi için: baştaki daha yetkili. */
-const ROLLER: [string, string][] = [
-  ["founder", "Kurucu"], ["owner", "Kurum sahibi"], ["system_admin", "Sistem yöneticisi"],
-  ["admin", "Yönetici"], ["academic_manager", "Akademik yönetici"], ["manager", "Müdür"],
-  ["controller", "Kontrolör"], ["expert", "Uzman"], ["operasyoncu", "Operasyon"],
-  ["employee", "Personel"], ["staff", "Personel"], ["member", "Üye"], ["client", "Üye / öğrenci"],
-];
-const ROL_ADI = new Map(ROLLER);
-const rolSirasi = (rol: string | null) => {
-  const i = ROLLER.findIndex(([kod]) => kod === rol);
-  return i < 0 ? ROLLER.length : i;
+/*
+  ROL = KURUMDAKİ ArvoOS ROLÜ, panelin kendi adıyla (app/panel/hr/role-names).
+  İlk sürümde (14.10.2026) "en yetkili rol" ArvoOS ve ArvoLab rolleri
+  arasından seçiliyordu: ArvoLab'da teknik olarak "system_admin" olan
+  Gizem Atar, panelde Operasyon Personeli iken "Sistem yöneticisi"
+  görünüyordu (kurum sahibi düzeltti). İki ürünün rolleri aynı şeyi
+  anlatmıyor; kişinin kurumdaki görevi ArvoOS rolü. ArvoLab rolü yalnızca
+  kişinin hiç ArvoOS üyeliği yoksa yazılıyor, kendi adlarıyla.
+*/
+const ARVOOS_ROL_SIRASI = ["owner", "admin", "manager", "operasyoncu", "member"];
+const ARVOLAB_ROL_ADI: Record<string, string> = {
+  founder: "Kurucu", system_admin: "Sistem yöneticisi", academic_manager: "Akademik yönetici",
+  controller: "Kontrolör", expert: "Uzman", client: "Üye / öğrenci",
 };
-const rolAdi = (rol: string | null) =>
-  rol ? ROL_ADI.get(rol) ?? rol.replace(/_/g, " ").replace(/^./, (h) => h.toLocaleUpperCase("tr-TR")) : "—";
+const rolAdi = (rol: string | null, urun: string | null) => {
+  if (!rol) return "—";
+  const ad = urun === "arvoos" ? roleNames[rol] : ARVOLAB_ROL_ADI[rol];
+  return ad ?? rol.replace(/_/g, " ").replace(/^./, (h) => h.toLocaleUpperCase("tr-TR"));
+};
+const arvoosSirasi = (rol: string | null) => {
+  const i = ARVOOS_ROL_SIRASI.indexOf(rol ?? "");
+  return i < 0 ? ARVOOS_ROL_SIRASI.length : i;
+};
 
 function kisilereTopla(satirlar: DirectoryRow[]): Kisi[] {
   const harita = new Map<string, Kisi>();
@@ -135,11 +144,15 @@ function kisilereTopla(satirlar: DirectoryRow[]): Kisi[] {
     const kapsam = satir.individual ? "Bireysel" : satir.scope;
     let uyelik = kisi.uyelikler.find((u) => u.kapsam === kapsam);
     if (!uyelik) {
-      uyelik = { kapsam, urunler: [], rol: satir.role, acik: false, sebep: null, bireysel: satir.individual };
+      uyelik = { kapsam, urunler: [], rol: null, rolUrunu: null, acik: false, sebep: null, bireysel: satir.individual };
       kisi.uyelikler.push(uyelik);
     }
     if (!uyelik.urunler.includes(urun)) uyelik.urunler.push(urun);
-    if (rolSirasi(satir.role) < rolSirasi(uyelik.rol)) uyelik.rol = satir.role;
+    /* ArvoOS rolü her zaman kazanır; öteki ürünün rolü yalnızca boşluğu doldurur. */
+    if (satir.role && (satir.product === "arvoos" || (uyelik.rolUrunu !== "arvoos" && !uyelik.rol))) {
+      uyelik.rol = satir.role;
+      uyelik.rolUrunu = satir.product;
+    }
     /* Bir üründe bile girebiliyorsa o kurumda açık. */
     if (satir.access) { uyelik.acik = true; uyelik.sebep = null; }
     else if (!uyelik.acik) uyelik.sebep = pasiflikSebebi(satir);
@@ -153,9 +166,12 @@ function kisilereTopla(satirlar: DirectoryRow[]): Kisi[] {
   return [...harita.values()].sort((a, b) => a.ad.localeCompare(b.ad, "tr-TR"));
 }
 
-/** Kişinin en yetkili rolü (kurumları arasında). */
-const enYetkiliRol = (kisi: Kisi) =>
-  kisi.uyelikler.map((u) => u.rol).sort((a, b) => rolSirasi(a) - rolSirasi(b))[0] ?? null;
+/** Kişinin rolü: ArvoOS üyeliği varsa kurumları arasındaki en yetkili ArvoOS rolü, yoksa ilk ürün rolü. */
+const kisininRolu = (kisi: Kisi) => {
+  const arvoos = kisi.uyelikler.filter((u) => u.rolUrunu === "arvoos").sort((a, b) => arvoosSirasi(a.rol) - arvoosSirasi(b.rol))[0];
+  const secilen = arvoos ?? kisi.uyelikler.find((u) => u.rol) ?? null;
+  return rolAdi(secilen?.rol ?? null, secilen?.rolUrunu ?? null);
+};
 
 export default async function KullanicilarPage({ searchParams }: {
   searchParams: Promise<{ evre?: string; ara?: string }>;
@@ -288,7 +304,7 @@ export default async function KullanicilarPage({ searchParams }: {
                       key={davet.id}
                       href={kurumAdresi}
                       baslik={davet.email}
-                      alt={[kurumAdi, davet.role ? rolAdi(davet.role) : null, `davet ${tarihSaat(davet.sent_at ?? davet.created_at)}`].filter(Boolean).join(" · ")}
+                      alt={[kurumAdi, davet.role ? rolAdi(davet.role, "arvoos") : null, `davet ${tarihSaat(davet.sent_at ?? davet.created_at)}`].filter(Boolean).join(" · ")}
                       durum={durum}
                       deger={tarih(davet.expires_at)}
                       degerAlt="son geçerlilik"
@@ -327,7 +343,7 @@ export default async function KullanicilarPage({ searchParams }: {
                     ton: u.acik ? "success" : "neutral",
                   }))}
                   durum={secili === "pasif" ? { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" } : null}
-                  deger={secili === "pasif" ? undefined : rolAdi(enYetkiliRol(kisi))}
+                  deger={secili === "pasif" ? undefined : kisininRolu(kisi)}
                   degerAlt={secili === "pasif" ? undefined : kurumSayisi > 1 ? `${kurumSayisi} kurumda` : kisi.bireysel ? "bireysel" : undefined}
                 />
               );
