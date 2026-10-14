@@ -58,6 +58,10 @@
 /* .panel-card :is(ul,ol) listelere sol boşluk veriyor; burada kenara yaslı. */
 .os-root .panel-card .k-ios{margin:0;padding:0;list-style:none}
 .k-ios-ic{position:relative;display:flex;align-items:center;gap:var(--sp-3);min-height:60px;padding:10px var(--sp-5);color:inherit;font-weight:400;text-decoration:none;transition:background-color .15s ease}
+/* Bağlantı satırı ince yazıyla: genel ".panel-card a" kuralı (800) tek
+   sınıflı .k-ios-ic kuralından sonra yüklendiğinde satırın bütün yazısı —
+   alt satır, "aylık", "yenileme" dahil — kalın çıkıyordu (14.10.2026). */
+.os-root .panel-card a.k-ios-ic{font-weight:400}
 a.k-ios-ic:hover{background:var(--surface-2)}
 a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:inset 3px 0 0 var(--primary)}
 /* Ayraç metnin başından: iOS'taki gibi simgenin altından geçmiyor. */
@@ -87,7 +91,10 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
 .k-ios-durum[data-ton="danger"]{--k-ton:var(--danger);color:var(--danger)}
 .k-ios-durum[data-ton="info"]{--k-ton:var(--info)}
 
-.k-ios-deger{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:96px;text-align:right}
+/* Değer sütunu sabit genişlikte: "yenileme 16.08.2027" gibi uzun bir alt
+   yazı sütunu genişletince durum rozeti o satırda sola kayıyor, sütunlar
+   satırdan satıra hizasız görünüyordu. */
+.k-ios-deger{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:136px;text-align:right}
 .k-ios-deger b{color:var(--ink);font-size:14px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap}
 .k-ios-deger small{color:var(--muted);font-size:11.5px;white-space:nowrap}
 .k-ios-deger .k-ios-eksik{color:var(--warning);font-weight:var(--fw-medium)}
