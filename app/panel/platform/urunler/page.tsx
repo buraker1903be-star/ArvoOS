@@ -26,9 +26,16 @@ import "../platform.css";
   modül matrisi hangi modülün hangi kiracıda açık olduğunu gösteriyordu
   ama "ArvoLab kaç kişiye satıldı" sorusunun yanıtı yoktu.
 
-  ArvoOS'un müşterisi = çekirdek lisansı ödeyen kurum; ötekilerinki
+  ArvoOS'un kiracısı = çekirdek lisansı açık kurum; ötekilerinki
   organization_product_licenses satırı. İkisini aynı sütunda saymak
-  için kural tek: lisansı AÇIK olan kurum müşteridir.
+  için kural tek: lisansı AÇIK olan kurum o ürünün kiracısıdır.
+
+  SÜTUNUN ADI "KİRACI", "MÜŞTERİ" DEĞİL (14.10.2026). Grup markaları
+  ürünü gerçekten kullanıyor, dolayısıyla bu sayıya girmeleri doğru —
+  ama "müşteri" sözcüğü konsolun geri kalanında onları DIŞARIDA bırakan
+  bir küme anlatıyor (lib/kurum-turu). Aynı kelimenin iki ekranda iki
+  kümeyi göstermesi, ana ekranda 2 yazarken burada 3 yazmasıydı. Sayı
+  değişmedi, kelime kümesine uyduruldu.
 */
 
 const ACIK_LISANS = new Set(["active", "trialing", "past_due"]);
@@ -157,7 +164,9 @@ export default async function UrunlerPage({ searchParams }: {
           <div>
             <h2>Ürün performansı</h2>
             <p>
-              Müşteri = lisansı açık kurum (deneme dahil). Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
+              Kiracı = lisansı açık kurum (deneme dahil), grup markaları dahil — onlar da ürünü kullanıyor.
+              Gelire ise yalnızca gerçek müşteriler giriyor, grup markalarının ücreti ayrıca &quot;grup içi değer&quot;
+              olarak yazılıyor. Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
               üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Kendi markalarımız sayımda yok.
             </p>
           </div>
@@ -182,7 +191,7 @@ export default async function UrunlerPage({ searchParams }: {
                 simge={urun.name}
                 baslik={urun.name}
                 alt={[
-                  `${sayi(urun.kurum)} müşteri`,
+                  `${sayi(urun.kurum)} kiracı`,
                   `${sayi(urun.odeyen)} ödeyen`,
                   `${sayi(urun.kullanici)} kullanıcı`,
                   bireyselVar ? `${sayi(urun.bireysel)} bireysel abone` : null,

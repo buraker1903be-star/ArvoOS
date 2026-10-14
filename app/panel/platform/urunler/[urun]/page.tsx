@@ -122,7 +122,10 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
 
     <nav className="kayit-serit talep-serit" aria-label={`${urunTanimi.name} özeti`}>
       <dl>
-        <div><dt>Müşteri</dt><dd>{sayi(acik.length)}</dd><small>lisansı açık kurum (deneme dahil)</small></div>
+        {/* "Kiracı", "müşteri" değil: grup markaları da bu sayıda (ürünü
+            kullanıyorlar), oysa konsolun geri kalanında "müşteri" onları
+            dışarıda bırakıyor (lib/kurum-turu). */}
+        <div><dt>Kiracı</dt><dd>{sayi(acik.length)}</dd><small>lisansı açık kurum (deneme dahil)</small></div>
         <div><dt>Ödeyen</dt><dd>{sayi(odeyen.length)}</dd><small>{satirlar.length - acik.length ? `${sayi(satirlar.length - acik.length)} askıda/iptal/kapalı` : "kapalı lisans yok"}</small></div>
         <div><dt>Beklenen aylık</dt><dd className="cari-arti">{para(gelir)}</dd><small>{grupDegeri ? `+ ${para(grupDegeri)} grup içi değer` : "ödeyen müşterilerin ücreti"}</small></div>
         <div>
