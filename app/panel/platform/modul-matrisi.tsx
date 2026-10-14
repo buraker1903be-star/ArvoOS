@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { modulErisimiDegistir, modulKoprusuDegistir } from "./modul-actions";
+import { KBaslik, KDurum, KTablo } from "./konsol-ui";
+// Anahtar (.plt-switch) ve bağlantı (.modul-baglanti) konsolun stilinde.
+import "./platform.css";
 
 /*
   Modül kartları: dört ürün yan yana, kart başına iki anahtar.
@@ -103,73 +106,62 @@ export function ModulMatrisi({
     });
   };
 
+  /*
+    14.10.2026: kart ızgarası (.plt-modul-kart) yerine panelin tablosu
+    (konsol-ui): ürün başına bir satır, anahtarlar hücrede. Telefonda
+    tek kompakt satır (MobilSatir) KULLANILMIYOR: o görünüm öbür hücreleri
+    gizliyor ve anahtarlar telefonda erişilemez kalırdı; tablo telefonda
+    etiketli hücrelere açılıyor.
+  */
   return (
-    <div className="plt-modul-izgara">
+    <KTablo kolonlar={[{ ad: "Modül" }, { ad: "Durum" }, { ad: "Erişim" }, { ad: "Köprü" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }]}>
       {satirlar.map((satir) => {
         const acik = ["active", "trialing", "past_due"].includes(satir.status);
         return (
-          <article key={satir.product} className="plt-modul-kart" data-kapali={!acik}>
-            <header>
-              <span>
-                <b>{satir.name}</b>
-                <small>{satir.cekirdek ? "çekirdek" : satir.product}</small>
-              </span>
-              <span className="status-pill" data-tone={DURUM_TONU[satir.status] ?? "neutral"}>
-                {DURUM_ADI[satir.status] ?? satir.status}
-              </span>
-            </header>
-
-            <dl className="plt-modul-anahtarlar">
-              <div>
-                <dt>Erişim</dt>
-                <dd>
-                  {satir.cekirdek ? (
-                    /* Çekirdek lisans ayrı tabloda ve dondurulduğunda kurumun
-                       tamamı kapanıyor; o karar lisans ekranında veriliyor. */
-                    <Link className="modul-baglanti" href={`/panel/platform/licenses?organization=${organizationId}`}>Lisans ekranı →</Link>
-                  ) : (
-                    <button
-                      type="button"
-                      className={acik ? "plt-switch is-on" : "plt-switch is-off"}
-                      role="switch"
-                      aria-checked={acik}
-                      aria-label={`${satir.name} erişimi: ${acik ? "kapat" : "aç"}`}
-                      disabled={calisiyor}
-                      onClick={() => erisim(satir, !acik)}
-                    ><i /></button>
-                  )}
-                </dd>
-              </div>
-
-              {/* Köprü yalnızca erişim açıkken anlamlı: kapalı bir kapının
-                  kilidini göstermenin anlamı yok. */}
-              {satir.cekirdek ? null : (
-                <div>
-                  <dt>Köprü</dt>
-                  <dd>
-                    {acik ? (
-                      <button
-                        type="button"
-                        className={satir.integrated ? "plt-switch is-on" : "plt-switch"}
-                        role="switch"
-                        aria-checked={Boolean(satir.integrated)}
-                        aria-label={`${satir.name} köprüsü: ${satir.integrated ? "bağımsıza al" : "entegre et"}`}
-                        disabled={calisiyor}
-                        onClick={() => kopru(satir)}
-                      ><i /></button>
-                    ) : <span className="modul-bos">—</span>}
-                  </dd>
-                </div>
+          <tr key={satir.product} className={acik ? undefined : "is-pasif"}>
+            <KBaslik etiket="Modül" baslik={satir.name} alt={satir.cekirdek ? "çekirdek" : satir.product} />
+            <KDurum etiket={DURUM_ADI[satir.status] ?? satir.status} ton={DURUM_TONU[satir.status] ?? "neutral"} />
+            <td data-label="Erişim">
+              {satir.cekirdek ? (
+                /* Çekirdek lisans ayrı tabloda ve dondurulduğunda kurumun
+                   tamamı kapanıyor; o karar lisans ekranında veriliyor. */
+                <Link className="modul-baglanti" href={`/panel/platform/licenses?organization=${organizationId}`}>Lisans ekranı →</Link>
+              ) : (
+                <button
+                  type="button"
+                  className={acik ? "plt-switch is-on" : "plt-switch is-off"}
+                  role="switch"
+                  aria-checked={acik}
+                  aria-label={`${satir.name} erişimi: ${acik ? "kapat" : "aç"}`}
+                  disabled={calisiyor}
+                  onClick={() => erisim(satir, !acik)}
+                ><i /></button>
               )}
-            </dl>
+            </td>
 
-            <footer>
-              <b>{satir.monthlyFee ? `${tl(Number(satir.monthlyFee))} / ay` : "ücret girilmedi"}</b>
-              {satir.kotaOzeti ? <small>{satir.kotaOzeti}</small> : null}
-            </footer>
-          </article>
+            {/* Köprü yalnızca erişim açıkken anlamlı: kapalı bir kapının
+                kilidini göstermenin anlamı yok. */}
+            <td data-label="Köprü">
+              {satir.cekirdek ? <span className="modul-bos">—</span> : acik ? (
+                <button
+                  type="button"
+                  className={satir.integrated ? "plt-switch is-on" : "plt-switch"}
+                  role="switch"
+                  aria-checked={Boolean(satir.integrated)}
+                  aria-label={`${satir.name} köprüsü: ${satir.integrated ? "bağımsıza al" : "entegre et"}`}
+                  disabled={calisiyor}
+                  onClick={() => kopru(satir)}
+                ><i /></button>
+              ) : <span className="modul-bos">—</span>}
+            </td>
+
+            <td data-label="Aylık ücret" className="crm-col-amount">
+              {satir.monthlyFee ? `${tl(Number(satir.monthlyFee))} / ay` : <span className="talep-uyari">ücret girilmedi</span>}
+              {satir.kotaOzeti ? <span className="crm-table-sub">{satir.kotaOzeti}</span> : null}
+            </td>
+          </tr>
         );
       })}
-    </div>
+    </KTablo>
   );
 }

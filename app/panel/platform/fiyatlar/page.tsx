@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PLANS, YILLIK_BEDAVA_AY, YILLIK_ODENEN_AY, ADD_ONS, planlar, urunAdi } from "@/lib/site/pricing";
@@ -8,10 +9,8 @@ import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_ADI, depolama, para, sayi, tarihSaat } from "../bicim";
 import { bekleyenDegisiklikler, fiyatDenetimi, fiyatKaydi, yayimSonrasi, type FiyatKaydi } from "@/lib/fiyat-dogrulama";
 import { YAYIN_KODU } from "@/lib/paket-ucreti";
-import "../../settings/settings.css";
+import { KBaslik, KBos, KKart, KNot, KSatirSonu, KTablo } from "../konsol-ui";
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   ÜCRET VE PAKETLER (14.10.2026, Kurucu Konsolu'nun "en önemli konusu").
@@ -60,19 +59,19 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
   const konsoldan = Boolean(kayit?.yayimlandi_at);
   const taslak = kayit?.taslak_kurus ?? null;
   const bekliyor = Boolean(kayit?.taslak_bekliyor);
+  /* Telefonda tek kompakt satır (MobilSatir) yok: o görünüm öbür hücreleri
+     gizliyor, taslak formu telefonda erişilemez kalırdı. Satır telefonda
+     etiketli hücrelere açılıyor (td data-label). */
   return (
     <tr>
-      <td>
-        {ad}
-        <small className="plt-substatus">{birim} · <span className="plt-mono">{kod}</span></small>
-      </td>
-      <td>
+      <KBaslik etiket="Basamak" baslik={ad} alt={<>{birim} · <span className="plt-mono">{kod}</span></>} />
+      <td data-label="Yayındaki aylık" className="crm-col-amount">
         {cozulmus === null ? "Teklif" : para(cozulmus)}
-        <small className="plt-substatus">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</small>
+        <span className="crm-table-sub">{konsoldan ? "konsoldan yayımlı" : "koddaki değer"}</span>
       </td>
       {/* Yıllıkta 10 ay bedeli ödeniyor; ek kalemler aylık, orada tire. */}
-      <td>{yillik ? (cozulmus === null ? "Teklif" : para(cozulmus * YILLIK_ODENEN_AY)) : "—"}</td>
-      <td>
+      <td data-label="Yıllık" className="crm-col-amount">{yillik ? (cozulmus === null ? "Teklif" : para(cozulmus * YILLIK_ODENEN_AY)) : "—"}</td>
+      <td data-label="Taslak">
         <form action={taslagiKaydet} className="plt-fiyat-form">
           <input type="hidden" name="kod" value={kod} />
           <input type="text" name="tutar" inputMode="decimal"
@@ -80,9 +79,9 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
             placeholder="boş = teklif" aria-label={`${ad} taslak tutar`} />
           <button className="panel-secondary" type="submit">Kaydet</button>
         </form>
-        {bekliyor ? <small className="plt-substatus talep-uyari">yayım bekliyor: {taslak === null ? "Teklif" : para(taslak)}</small> : null}
+        {bekliyor ? <span className="crm-table-sub talep-uyari">yayım bekliyor: {taslak === null ? "Teklif" : para(taslak)}</span> : null}
       </td>
-      <td>
+      <td data-label="İşlem" className="crm-table-actions">
         {/* Yayım satır başına değil, yukarıdaki önizlemeden TOPLU
             (14.10.2026): liste ya tamamen eski ya tamamen yeni. */}
         <div className="plt-fiyat-eylem">
@@ -103,6 +102,12 @@ function FiyatSatiri({ kod, ad, birim, cozulmus, kayit, yillik }: {
     </tr>
   );
 }
+
+/** Fiyat tablolarının ortak sütunları (dört ürün ve ek hizmetler). */
+const FIYAT_KOLONLARI = [
+  { ad: "Basamak" }, { ad: "Yayındaki aylık", sinif: "crm-col-amount" }, { ad: "Yıllık", sinif: "crm-col-amount" },
+  { ad: "Taslak" }, { ad: "" },
+];
 
 const GECMIS_ISLEMI: Record<string, string> = {
   taslak: "Taslak",
@@ -192,7 +197,12 @@ export default async function FiyatlarPage({ searchParams }: {
      yazıldığını değil, bugün o pakette kaç kiracı olduğunu söylüyor. */
   const paketKiracisi = (paket: string) => kiracilar.filter((k) => k.plan_code === paket).length;
 
-  return <main className="stg plt talep cari">
+  /*
+    14.10.2026: panelin kart ve tablo dili (konsol-ui). Eskiden düz
+    panel-card + .plt-table + .plt-banner'dı. Bölümler (?bolum=) hâlâ
+    üstteki şeritten seçiliyor; her bölüm alt alta KKart.
+  */
+  return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜCRET VE PAKETLER</small>
@@ -227,68 +237,73 @@ export default async function FiyatlarPage({ searchParams }: {
     </nav>
 
     {secili === "liste" ? (
-      <>
+      <div>
         {degisiklikler.length ? (
-          <section className="panel-card" aria-label="Yayım önizlemesi">
-            <h2>Yayım önizlemesi <small className="plt-substatus">{sayi(degisiklikler.length)} değişiklik</small></h2>
-            <p className="panel-muted">
+          /*
+            Yayım formu kartın başlık satırında: panel tablosunun alt kenar
+            boşluğu eksi (kartın kenarına yaslanıyor, konsol-ui.css); altına
+            konan form onun üstüne biniyordu. Notlar tablonun ardında
+            (.k-tablo + .k-not boşluğu konsol-ui.css'te).
+          */
+          <KKart
+            baslik={`Yayım önizlemesi · ${sayi(degisiklikler.length)} değişiklik`}
+            aciklama={<>
               Yayımlanınca ücretler sayfasında (TR ve EN), arama motorlarına giden fiyat bilgisinde (JSON-LD), llms-full.txt&apos;de
               (en geç on dakika içinde), kurulumun &quot;liste fiyatını uygula&quot; tutarında ve ArvoLab bireysel aboneliğinde
               geçerli olur. Liste tek seferde, birlikte yayımlanır.
-            </p>
-            <div className="plt-table-scroll">
-              <table className="plt-table">
-                <thead><tr><th>Basamak</th><th>Şu an</th><th>Yayımlanınca</th><th>Değişim</th></tr></thead>
-                <tbody>
-                  {degisiklikler.map((d) => (
-                    <tr key={d.kod}>
-                      <td>{basamakAdi(d.kod)}<small className="plt-substatus plt-mono">{d.kod}</small></td>
-                      <td>{tutarYazi(d.eski)}</td>
-                      <td><b>{tutarYazi(d.yeni)}</b></td>
-                      <td className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
-                        {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {etkilenenKiraci ? (
-              <p className="panel-muted">
-                Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
-                dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
-              </p>
-            ) : null}
+            </>}
+            sag={(
+              <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
+                {denetim.uyarilar.length ? (
+                  <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
+                ) : null}
+                <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
+                  {sayi(degisiklikler.length)} değişikliği yayımla
+                </button>
+              </form>
+            )}
+          >
+            <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Şu an", sinif: "crm-col-amount" }, { ad: "Yayımlanınca", sinif: "crm-col-amount" }, { ad: "Değişim" }]}>
+              {degisiklikler.map((d) => (
+                <tr key={d.kod}>
+                  <KBaslik etiket="Basamak" baslik={basamakAdi(d.kod)} alt={<span className="plt-mono">{d.kod}</span>} />
+                  <td data-label="Şu an" className="crm-col-amount">{tutarYazi(d.eski)}</td>
+                  <td data-label="Yayımlanınca" className="crm-col-amount"><b>{tutarYazi(d.yeni)}</b></td>
+                  <td data-label="Değişim" className={d.yuzde !== null && Math.abs(d.yuzde) >= 50 ? "talep-uyari" : undefined}>
+                    {d.yuzde === null ? "—" : `%${d.yuzde > 0 ? "+" : ""}${d.yuzde.toLocaleString("tr-TR")}`}
+                  </td>
+                </tr>
+              ))}
+            </KTablo>
             {denetim.hatalar.length ? (
-              <div className="plt-banner" data-tone="danger" role="alert">
-                <span className="plt-banner-icon">!</span>
-                <span><b>Bu liste yayımlanamaz</b>{denetim.hatalar.map((h) => <p key={h}>{h}</p>)}</span>
-              </div>
+              <KNot ton="tehlike">
+                  <b>Bu liste yayımlanamaz.</b>
+                  {denetim.hatalar.map((h) => <Fragment key={h}><br />{h}</Fragment>)}
+                </KNot>
             ) : null}
             {denetim.uyarilar.length ? (
-              <div className="plt-banner" data-tone="warning">
-                <span className="plt-banner-icon">!</span>
-                <span><b>Yayımlamadan önce kontrol edin</b>{denetim.uyarilar.map((u) => <p key={u}>{u}</p>)}</span>
-              </div>
+              <KNot ton="uyari">
+                <b>Yayımlamadan önce kontrol edin.</b>
+                {denetim.uyarilar.map((u) => <Fragment key={u}><br />{u}</Fragment>)}
+              </KNot>
             ) : null}
-            <form action={fiyatlariYayimla} className="plt-fiyat-yayim">
-              {denetim.uyarilar.length ? (
-                <label className="plt-fiyat-onay"><input type="checkbox" name="onay" value="evet" required /> Uyarıları okudum, bu tutarlar doğru.</label>
-              ) : null}
-              <button className="panel-primary" type="submit" disabled={denetim.hatalar.length > 0}>
-                {sayi(degisiklikler.length)} değişikliği yayımla
-              </button>
-            </form>
-          </section>
+            {etkilenenKiraci ? (
+              <KNot>
+                Liste fiyatından ödeyen {sayi(etkilenenKiraci)} ArvoOS kiracısının ücreti kendiliğinden değişmez (yürürlükteki
+                dönem korunur); yayımdan sonra Kurulumlar&apos;da &quot;listeden farklı&quot; görünürler.
+              </KNot>
+            ) : null}
+          </KKart>
         ) : null}
 
-        <section className="panel-card" aria-label="Yayımlanmış fiyat listesi">
-          <h2>Fiyatlandırma</h2>
-          <p className="panel-muted">
+        <KKart
+          baslik="Fiyatlandırma"
+          aciklama={<>
             Sitedeki ücretler sayfası, JSON-LD ve sözleşme metinleri bu rakamları kullanıyor.
             Yıllık seçenekte {sayi(YILLIK_ODENEN_AY)} ay bedeliyle 12 ay ({sayi(YILLIK_BEDAVA_AY)} ay bedava).
             Tutarlar KDV hariçtir.
-          </p>
+          </>}
+        >
           {/*
             KOD VARSAYILAN, KONSOL ÜSTÜNE YAZAR (14.10.2026). Basamağın
             kendisi — adı, birimi, hangi üründe olduğu — lib/site/pricing'te
@@ -296,113 +311,100 @@ export default async function FiyatlarPage({ searchParams }: {
             okunamazsa site fiyatsız kalmıyor: yayımlanmış bir fiyat
             listesinde boş hücre, yanlış rakamdan da kötüdür.
           */}
-          <p className="plt-banner" data-tone="info">
-            <span className="plt-banner-icon">i</span>
-            <span>
-              <b>Taslak ve yayın ayrı</b>
-              Kaydettiğin tutar hiçbir yerde görünmez; bekleyen taslaklar yukarıdaki önizlemede birlikte
-              yayımlanır. &quot;Geri al&quot; taslağı bırakır, &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
-            </span>
-          </p>
-          {["arvoos", "arc", "randevu", "arvolab"].map((urun) => (
-            <div key={urun}>
-              <h3>{urunAdi(urun as Parameters<typeof urunAdi>[0])}</h3>
-              <div className="plt-table-scroll">
-                <table className="plt-table">
-                  <thead><tr><th>Basamak</th><th>Yayındaki aylık</th><th>Yıllık</th><th>Taslak</th><th /></tr></thead>
-                  <tbody>
-                    {planlar(urun as Parameters<typeof planlar>[0]).map((plan) => (
-                      <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
-                        birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
-                        cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </section>
+          <KNot>
+            <b>Taslak ve yayın ayrı.</b>{" "}
+            Kaydettiğin tutar hiçbir yerde görünmez; bekleyen taslaklar yukarıdaki önizlemede birlikte
+            yayımlanır. &quot;Geri al&quot; taslağı bırakır, &quot;Koda dön&quot; basamağı koddaki değerine çevirir.
+          </KNot>
+        </KKart>
 
-        <section className="panel-card" aria-label="Ek hizmetler">
-          <h2>Ek hizmetler</h2>
-          <p className="panel-muted">Pakete dahil olmayan, ayrıca ücretlendirilen kalemler.</p>
-          <div className="plt-table-scroll">
-            <table className="plt-table">
-              <thead><tr><th>Kalem</th><th>Yayındaki aylık</th><th>Yıllık</th><th>Taslak</th><th /></tr></thead>
-              <tbody>
-                {ADD_ONS.map((kalem) => (
-                  <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
-                    birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {/* Ürün başına bir kart: dört tablo tek kartta alt alta, ürün adı
+            ara başlık olarak kayboluyordu. */}
+        {["arvoos", "arc", "randevu", "arvolab"].map((urun) => (
+          <KKart key={urun} id={`fiyat-${urun}`} baslik={urunAdi(urun as Parameters<typeof urunAdi>[0])}>
+            <KTablo kolonlar={FIYAT_KOLONLARI}>
+              {planlar(urun as Parameters<typeof planlar>[0]).map((plan) => (
+                <FiyatSatiri key={plan.code} kod={plan.code} ad={plan.ad.tr}
+                  birim={plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"}
+                  cozulmus={cozulmus.get(plan.code) ?? null} kayit={kayitlar.get(plan.code)} yillik />
+              ))}
+            </KTablo>
+          </KKart>
+        ))}
 
-      </>
+        <KKart baslik="Ek hizmetler" aciklama="Pakete dahil olmayan, ayrıca ücretlendirilen kalemler.">
+          <KTablo kolonlar={FIYAT_KOLONLARI}>
+            {ADD_ONS.map((kalem) => (
+              <FiyatSatiri key={kalem.code} kod={kalem.code} ad={EK_KALEM_ADI[kalem.code] ?? kalem.code}
+                birim="ek kalem" cozulmus={cozulmus.get(kalem.code) ?? null} kayit={kayitlar.get(kalem.code)} />
+            ))}
+          </KTablo>
+        </KKart>
+      </div>
     ) : null}
 
     {secili === "paket" ? (
-      <section className="panel-card" aria-label="Paket limitleri">
-        <h2>ArvoOS paket limitleri</h2>
-        <p className="panel-muted">
+      <KKart
+        baslik="ArvoOS paket limitleri"
+        aciklama={<>
           Yeni kiracının lisansına yazılan varsayılanlar. Dahil kullanıcıyı aşan her etkin kullanıcı için ek kullanıcı
           bedeli ödeme bağlantısına eklenir. Kiracıya özel (pazarlıkla değişmiş) limit Lisans ve kota ekranından değişir;
           varsayılanı değiştirmek bugün bir migration gerektiriyor — konsoldan düzenleme henüz yok.
-        </p>
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead><tr><th>Paket</th><th>Dahil kullanıcı</th><th>Depolama</th><th>Yapay zekâ kredisi</th><th>Bugün bu pakette</th></tr></thead>
-            <tbody>
-              {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
-                <tr key={paket}>
-                  <td>{PAKET_ADI[paket] ?? paket}<small className="plt-substatus plt-mono">{paket}</small></td>
-                  <td>{sayi(limit.userLimit)}</td>
-                  <td>{depolama(limit.storageLimitMb)}</td>
-                  <td>{sayi(limit.aiCreditLimit)}</td>
-                  <td>{sayi(paketKiracisi(paket))} kiracı</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="panel-muted">
+        </>}
+      >
+        <KTablo kolonlar={[{ ad: "Paket" }, { ad: "Dahil kullanıcı" }, { ad: "Depolama" }, { ad: "Yapay zekâ kredisi" }, { ad: "Bugün bu pakette" }, { ad: "" }]}>
+          {Object.entries(PAKET_VARSAYILANI).map(([paket, limit]) => (
+            <tr key={paket}>
+              <KBaslik etiket="Paket" baslik={PAKET_ADI[paket] ?? paket} alt={<span className="plt-mono">{paket}</span>} />
+              <td data-label="Dahil kullanıcı" className="k-sayi">{sayi(limit.userLimit)}</td>
+              <td data-label="Depolama" className="k-sayi">{depolama(limit.storageLimitMb)}</td>
+              <td data-label="Yapay zekâ kredisi" className="k-sayi">{sayi(limit.aiCreditLimit)}</td>
+              <td data-label="Bugün bu pakette" className="k-sayi">{sayi(paketKiracisi(paket))} kiracı</td>
+              <KSatirSonu mobil={{
+                baslik: PAKET_ADI[paket] ?? paket,
+                alt: [`${sayi(limit.userLimit)} kullanıcı`, depolama(limit.storageLimitMb), `${sayi(limit.aiCreditLimit)} kredi`],
+                isaretler: [{ metin: `${sayi(paketKiracisi(paket))} kiracı`, ton: "sessiz" }],
+              }} />
+            </tr>
+          ))}
+        </KTablo>
+        <KNot>
           ArvoARC, Randevu ve ArvoLab&apos;in limitleri kiracının ürün lisansında (limits) duruyor ve bugün yalnızca
           gösteriliyor, uygulanmıyor.
-        </p>
-      </section>
+        </KNot>
+      </KKart>
     ) : null}
 
     {secili === "gecmis" ? (
-        <section className="panel-card" aria-label="Fiyat geçmişi">
-          <h2>Fiyat geçmişi</h2>
-          <p className="panel-muted">Her taslak, yayım, geri alma ve koda dönüş; kim, ne zaman, neyden neye. Son otuz kayıt.</p>
-          {gecmisHatasi ? (
-            <p className="panel-muted">Geçmiş okunamadı ({gecmisHatasi.message}) — kayıt yok demek değil.</p>
-          ) : gecmis.length ? (
-            <div className="plt-table-scroll">
-              <table className="plt-table">
-                <thead><tr><th>Zaman</th><th>Basamak</th><th>İşlem</th><th>Önce → sonra</th><th>Kim</th></tr></thead>
-                <tbody>
-                  {gecmis.map((g) => (
-                    <tr key={g.id}>
-                      <td>{tarihSaat(g.zaman)}</td>
-                      <td>{basamakAdi(g.kod)}</td>
-                      <td>{GECMIS_ISLEMI[g.islem] ?? g.islem}</td>
-                      <td>
-                        {/* Yayımda önceki satır yoksa koddaki değer geçerliydi. */}
-                        {g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus)}
-                        {" → "}
-                        {g.islem === "koda_donus" ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.yeni_kurus)}
-                      </td>
-                      <td>{g.kim ? kimAdi.get(g.kim) ?? "—" : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <p className="panel-muted">Henüz fiyat değişikliği yok.</p>}
-        </section>
+      <KKart baslik="Fiyat geçmişi" aciklama="Her taslak, yayım, geri alma ve koda dönüş; kim, ne zaman, neyden neye. Son otuz kayıt.">
+        {gecmisHatasi ? (
+          <KNot ton="tehlike">Geçmiş okunamadı ({gecmisHatasi.message}) — kayıt yok demek değil.</KNot>
+        ) : gecmis.length ? (
+          <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "İşlem" }, { ad: "Önce → sonra" }, { ad: "Kim" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "" }]}>
+            {gecmis.map((g) => {
+              /* Yayımda önceki satır yoksa koddaki değer geçerliydi. */
+              const once = g.islem === "yayim" && !g.onceki_yayimli ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.onceki_kurus);
+              const sonra = g.islem === "koda_donus" ? `${tutarYazi(koddakiTutar(g.kod))} (kod)` : tutarYazi(g.yeni_kurus);
+              const kim = g.kim ? kimAdi.get(g.kim) ?? "—" : "—";
+              const islem = GECMIS_ISLEMI[g.islem] ?? g.islem;
+              return (
+                <tr key={g.id}>
+                  <KBaslik etiket="Basamak" baslik={basamakAdi(g.kod)} alt={<span className="plt-mono">{g.kod}</span>} />
+                  <td data-label="İşlem">{islem}</td>
+                  <td data-label="Önce → sonra">{once}{" → "}{sonra}</td>
+                  <td data-label="Kim">{kim}</td>
+                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(g.zaman)}</td>
+                  <KSatirSonu mobil={{
+                    baslik: basamakAdi(g.kod),
+                    durum: { etiket: islem, ton: g.islem === "yayim" ? "success" : "neutral" },
+                    alt: [`${once} → ${sonra}`, kim !== "—" ? kim : null, tarihSaat(g.zaman)],
+                  }} />
+                </tr>
+              );
+            })}
+          </KTablo>
+        ) : <KBos baslik="Henüz fiyat değişikliği yok" />}
+      </KKart>
     ) : null}
   </main>;
 }

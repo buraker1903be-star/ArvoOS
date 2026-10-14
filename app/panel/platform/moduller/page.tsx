@@ -2,14 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PRODUCTS, productLicenseLabels } from "@/lib/products";
-import { StgIcon, StgSection } from "../../settings/settings-ui";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KBos } from "../konsol-ui";
 import { LISANS_TONU } from "../bicim";
 import { Matris } from "./matris";
-import "../../settings/settings.css";
 import "../platform.css";
-// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   Çapraz modül matrisi: hangi modül hangi kiracıda açık.
@@ -47,9 +44,10 @@ type Kurum = { id: string; name: string; display_name: string | null; kind: stri
 type UrunLisansi = { organization_id: string; product: string; status: string; integrated: boolean | null };
 type CekirdekLisans = { organization_id: string; license_status: string };
 
-export default async function ModulMatrisiSayfasi() {
+export default async function ModulMatrisiSayfasi({ searchParams }: { searchParams: Promise<{ suzgec?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  const { suzgec } = await searchParams;
 
   const [{ data: kurumlar, error }, { data: urunLisanslari }, { data: cekirdek }] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,kind").order("name"),
@@ -86,7 +84,7 @@ export default async function ModulMatrisiSayfasi() {
       : musteriler.filter((kurum) => urunById.get(`${kurum.id}:${urun.code}`)?.integrated === false).length,
   }));
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">ÜRÜN VE ERİŞİM</small>
@@ -126,48 +124,73 @@ export default async function ModulMatrisiSayfasi() {
       </dl>
     </nav>
 
-    <StgSection
-      id="matris" wide icon="grid" tone="info" kicker="ÇAPRAZ GÖRÜNÜM" title="Kiracı × modül"
-      description="Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır."
-      aside={<span className="status-pill">{satirlar.length} kurum</span>}
-    >
-      {satirlar.length ? (
-        <>
-          <Matris
-            urunler={PRODUCTS.map((urun) => ({ code: urun.code, name: urun.name }))}
-            satirlar={satirlar.map((kurum) => ({
-              id: kurum.id,
-              ad: kurum.display_name || kurum.name,
-              kendiMarkamiz: !musteriMi(kurum),
-              hucreler: Object.fromEntries(PRODUCTS.map((urun) => {
-                const durum = durumAl(kurum, urun.code);
-                const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
-                return [urun.code, {
-                  durum,
-                  durumAdi: DURUM_ADI[durum] ?? durum,
-                  kisaAd: KISA_ADI[durum] ?? DURUM_ADI[durum] ?? durum,
-                  tone: LISANS_TONU[durum] ?? "neutral",
-                  acik: acikMi(durum),
-                  bagimsiz: Boolean(lisans && acikMi(durum) && lisans.integrated === false),
-                }];
-              })),
-            }))}
-          />
-          {/*
-            Kısaltılmış etiketlerin karşılığı: hücrede "Gecikmiş" yazıyor,
-            kurucunun bunun "Ödeme gecikmiş" olduğunu tahmin etmesi
-            gerekmemeli. Tek satır, tablonun hemen altında.
-          */}
-          <p className="plt-matris-lejant">
-            {Object.entries(KISA_ADI).map(([durum, kisa]) => (
-              <span key={durum}>
-                <span className="status-pill" data-tone={LISANS_TONU[durum] ?? "neutral"}>{kisa}</span>
-                {DURUM_ADI[durum] ?? durum}
-              </span>
-            ))}
-          </p>
-        </>
-      ) : <div className="stg-empty"><StgIcon name="grid" size={22} /><p>Henüz kurum yok. İlk müşteri kurulduğunda matris burada dolar.</p></div>}
-    </StgSection>
+    {/*
+      14.10.2026: panelin liste düzeni. Matris solda liste kartında, sağda
+      istatistik. Eskiden tek bir StgSection kartıydı ("ÇAPRAZ GÖRÜNÜM").
+    */}
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section id="matris" className="panel-card talep-bilgi" aria-label="Kiracı × modül">
+        <header className="k-kart-bas">
+          <div>
+            <h2>Kiracı × modül</h2>
+            <p>Sayımda kendi markalarımız yok; tabloda görünüyorlar. Bağımsız mod yalnızca açık modüllerde yazılır — kapalı bir modülün köprü modu bir şey anlatmaz. Hücreye tıklayınca o kiracının lisans ekranı açılır.</p>
+          </div>
+          <div className="k-kart-sag"><span className="status-pill">{satirlar.length} kurum</span></div>
+        </header>
+        {satirlar.length ? (
+          <>
+            <Matris
+              durum={suzgec}
+              urunler={PRODUCTS.map((urun) => ({ code: urun.code, name: urun.name }))}
+              satirlar={satirlar.map((kurum) => ({
+                id: kurum.id,
+                ad: kurum.display_name || kurum.name,
+                kendiMarkamiz: !musteriMi(kurum),
+                hucreler: Object.fromEntries(PRODUCTS.map((urun) => {
+                  const durum = durumAl(kurum, urun.code);
+                  const lisans = urun.code === "arvoos" ? null : urunById.get(`${kurum.id}:${urun.code}`);
+                  return [urun.code, {
+                    durum,
+                    durumAdi: DURUM_ADI[durum] ?? durum,
+                    kisaAd: KISA_ADI[durum] ?? DURUM_ADI[durum] ?? durum,
+                    tone: LISANS_TONU[durum] ?? "neutral",
+                    acik: acikMi(durum),
+                    bagimsiz: Boolean(lisans && acikMi(durum) && lisans.integrated === false),
+                  }];
+                })),
+              }))}
+            />
+            {/*
+              Kısaltılmış etiketlerin karşılığı: hücrede "Gecikmiş" yazıyor,
+              kurucunun bunun "Ödeme gecikmiş" olduğunu tahmin etmesi
+              gerekmemeli. Tek satır, tablonun hemen altında.
+            */}
+            <p className="plt-matris-lejant">
+              {Object.entries(KISA_ADI).map(([durum, kisa]) => (
+                <span key={durum}>
+                  <span className="status-pill" data-tone={LISANS_TONU[durum] ?? "neutral"}>{kisa}</span>
+                  {DURUM_ADI[durum] ?? durum}
+                </span>
+              ))}
+            </p>
+          </>
+        ) : <KBos baslik="Henüz kurum yok" aciklama="İlk müşteri kurulduğunda matris burada dolar." />}
+      </section>
+
+      {/* Şeritteki sayıların aynısı (sayim), yeni sorgu yok. */}
+      <IstatistikKarti
+        kapsam="müşteri kurumlar; kendi markalarımız hariç"
+        kutular={[
+          { ad: "Müşteri kurum", deger: String(musteriler.length) },
+          { ad: "Kendi markamız", deger: String(satirlar.length - musteriler.length), alt: "tabloda, sayımda yok" },
+          { ad: "Bağımsız modda", deger: String(sayim.reduce((t, u) => t + u.bagimsiz, 0)), alt: "ürün lisansı" },
+          { ad: "Ürün", deger: String(sayim.length) },
+        ]}
+        gruplar={[
+          { baslik: "Modülü açık kurum", satirlar: sayim.map((u) => ({ ad: u.name, adet: u.acik, etiket: `${u.acik} / ${musteriler.length}` })) },
+          { baslik: "Bağımsız modda", satirlar: sayim.filter((u) => u.code !== "arvoos").map((u) => ({ ad: u.name, adet: u.bagimsiz })) },
+        ]}
+      />
+    </div>
   </main>;
 }

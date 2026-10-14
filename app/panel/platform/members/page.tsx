@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { getMemberDirectory } from "@/lib/member-directory";
+import { getMemberDirectory, type MemberProduct } from "@/lib/member-directory";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
 import { UyeListesi } from "./uye-listesi";
-import { StgIcon } from "../../settings/settings-ui";
-import "../../settings/settings.css";
+import { KBos, KNot } from "../konsol-ui";
 import "../platform.css";
-// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
+// Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
+// tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
+
+const URUN_ADI: Record<MemberProduct, string> = {
+  arvoos: "ArvoOS", arvolab: "ArvoLab", arc: "ArvoARC", randevu: "Randevu",
+};
 
 export default async function MembersPage() {
   const { isPlatformOwner } = await getPanelContext();
@@ -40,8 +43,40 @@ export default async function MembersPage() {
   }
   const acikSayisi = [...uyelikler.values()].filter(Boolean).length;
   const blocked = uyelikler.size - acikSayisi;
+  /* Sağ kartın ürün dağılımı zaten okunmuş satırlardan sayılıyor: ürün
+     kaydı başına bir, yeni sorgu yok. */
+  const urunSayisi = (urun: MemberProduct) => rows.filter((row) => row.product === urun).length;
 
-  return <main className="stg plt talep cari">
+  /*
+    Eksik veriyle dolu bir liste, dolu bir liste gibi görünür. Uyarı
+    listenin ÜSTÜNDE duruyor; altta soluk bir kutuydu ve kimse okumuyordu.
+    (14.10.2026: sayfanın üstündeki renkli şeritten listenin kendi
+    kartına, okunduğu yere taşındı.)
+
+    Kullanıcı listesi auth yönetim API'sinden sayfa sayfa çekiliyor ve
+    sınırı 10 × 1000. Sınıra dayanıldığında kalan kişilerin e-postası
+    eksik kalıyor, satırlar "Adı kayıtlı değil" diye çiziliyor ve "Kişi"
+    sayacı e-postasızları ayrı kişi sayıp şişiyordu — hiçbir yerde
+    görünmeden. Eksik olduğunu bilmediğimiz liste, dolu bir liste gibi
+    görünür.
+  */
+  const uyarilar = <>
+    {!arvolabReachable ? (
+      <KNot ton="uyari">
+        <b>ArvoLab veritabanına ulaşılamadı.</b> Aşağıdaki listede ArvoLab üyeleri eksik; sayılar da eksik olanı göstermiyor. Vercel&apos;de ArvoLab bağlantı ayarlarını kontrol edin.
+      </KNot>
+    ) : null}
+    {!kullanicilarTam ? (
+      <KNot ton="uyari">
+        <b>Kullanıcı listesi eksiksiz alınamadı.</b> Ad ve e-posta bilgileri bir kısım kişide boş olabilir; &quot;Kişi&quot; sayısı da olduğundan yüksek çıkar. Betikteki sayfa sınırının artırılması gerekiyor (lib/member-directory.ts).
+      </KNot>
+    ) : null}
+    <KNot>
+      Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve ArvoARC&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
+    </KNot>
+  </>;
+
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜYELER</small>
@@ -53,43 +88,6 @@ export default async function MembersPage() {
       </div>
     </header>
 
-    {/*
-      Eksik veriyle dolu bir liste, dolu bir liste gibi görünür. Uyarı
-      listenin ÜSTÜNDE ve konsolun öbür uyarılarıyla aynı dilde duruyor;
-      altta soluk bir kutuydu ve kimse okumuyordu.
-    */}
-    {!arvolabReachable ? (
-      <div className="plt-banner" data-tone="warning" role="alert">
-        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
-        <div>
-          <b>ArvoLab veritabanına ulaşılamadı</b>
-          <p>Aşağıdaki listede ArvoLab üyeleri eksik; sayılar da eksik olanı göstermiyor. Vercel&apos;de ArvoLab bağlantı ayarlarını kontrol edin.</p>
-        </div>
-      </div>
-    ) : null}
-
-    {/*
-      Kullanıcı listesi auth yönetim API'sinden sayfa sayfa çekiliyor ve
-      sınırı 10 × 1000. Sınıra dayanıldığında kalan kişilerin e-postası
-      eksik kalıyor, satırlar "Adı kayıtlı değil" diye çiziliyor ve "Kişi"
-      sayacı e-postasızları ayrı kişi sayıp şişiyordu — hiçbir yerde
-      görünmeden. Eksik olduğunu bilmediğimiz liste, dolu bir liste gibi
-      görünür.
-    */}
-    {!kullanicilarTam ? (
-      <div className="plt-banner" data-tone="warning" role="alert">
-        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
-        <div>
-          <b>Kullanıcı listesi eksiksiz alınamadı</b>
-          <p>Ad ve e-posta bilgileri bir kısım kişide boş olabilir; &quot;Kişi&quot; sayısı da olduğundan yüksek çıkar. Betikteki sayfa sınırının artırılması gerekiyor (lib/member-directory.ts).</p>
-        </div>
-      </div>
-    ) : null}
-
-    {/*
-      Dördü de her zaman çiziliyor. Sıfır da bir cevaptır: "erişimi kapalı
-      kimse yok" demek, satırın hiç olmamasından daha çok şey söyler.
-    */}
     {/*
       13.10.2026: StgWidget kutuları yerine panelin özet şeridi. Konsol
       kendi tasarım dilini kullanıyordu; aynı kurucunun gün içinde gidip
@@ -108,15 +106,31 @@ export default async function MembersPage() {
       </dl>
     </nav>
 
-    {rows.length ? (
-      <UyeListesi satirlar={rows} />
-    ) : (
-      <div className="stg-empty"><StgIcon name="users" size={22} /><p>Henüz üye yok. Bir kuruma sahip daveti gönderildiğinde ya da bir ürüne ilk giriş yapıldığında burada görünür.</p></div>
-    )}
+    <div className="talep-izgara personel-iki ekip-izgara">
+      {rows.length ? (
+        <UyeListesi satirlar={rows} ust={uyarilar} />
+      ) : (
+        <section className="panel-card talep-bilgi" aria-label="Üyeler">
+          {uyarilar}
+          <KBos baslik="Henüz üye yok" aciklama="Bir kuruma sahip daveti gönderildiğinde ya da bir ürüne ilk giriş yapıldığında burada görünür." />
+        </section>
+      )}
 
-    <p className="stg-muted">
-      <StgIcon name="users" size={16} />
-      Liste kiracı bazında: her kurum bir grup, her kişi grupta tek satır. Erişim anahtarı kişinin O KURUMDAKİ üyeliğini açıp kapatır; kurumun bütün ürünlerini birden etkiler. Aynı e-posta ArvoOS ve ArvoARC&apos;ta ortak hesaptır, ArvoLab ayrı veritabanında kendi hesabını kullanır.
-    </p>
+      <IstatistikKarti
+        kapsam={`süzgeçten bağımsız, bütün üyeler${!arvolabReachable || !kullanicilarTam ? " · liste eksik olabilir" : ""}`}
+        kutular={[
+          { ad: "Kişi", deger: String(people.size), alt: `${uyelikler.size} kurum üyeliği` },
+          { ad: "Erişimi açık", deger: String(acikSayisi), alt: "en az bir ürün", ton: "arti" },
+          { ad: "Bireysel", deger: String(individuals.size), alt: "kuruma bağlı değil" },
+          { ad: "Erişimi kapalı", deger: String(blocked), alt: blocked ? "üyelik kapalı" : "yok", ton: blocked ? "uyari" : undefined },
+        ]}
+        gruplar={[
+          {
+            baslik: "Ürün kayıtları",
+            satirlar: (Object.keys(URUN_ADI) as MemberProduct[]).map((urun) => ({ ad: URUN_ADI[urun], adet: urunSayisi(urun) })),
+          },
+        ]}
+      />
+    </div>
   </main>;
 }

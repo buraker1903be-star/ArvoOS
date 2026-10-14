@@ -9,10 +9,9 @@ import { eskiKopyalar } from "@/lib/kopya-denetimi";
 import { kotaDurumu, kotayaGoreSirala } from "@/lib/kota-durumu";
 import { getPaymentIncidents, incidentLabels, incidentNotes } from "@/lib/payment-incidents";
 import { para, sayi, tarihSaat } from "../bicim";
-import "../../settings/settings.css";
+import { MobilSatir } from "../../crm/table-cells";
+import { KBaslik, KBos, KDurum, KKart, KSatirSonu, KTablo } from "../konsol-ui";
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   SİSTEM SAĞLIĞI (14.10.2026).
@@ -108,7 +107,7 @@ export default async function SistemSagligiPage() {
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   const toplamSorun = kopukKopru + bayatKopyalar.length + kotalar.length + kurulumHatalari.length + odemeOlaylari.length;
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · SİSTEM SAĞLIĞI</small>
@@ -145,109 +144,115 @@ export default async function SistemSagligiPage() {
       </dl>
     </nav>
 
-    <section className="panel-card" aria-label="Ürün köprüleri">
-      <h2>Ürün köprüleri</h2>
-      <p className="panel-muted">Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.</p>
-      <table className="plt-table">
-        <thead><tr><th>Ürün</th><th>Durum</th><th>Not</th></tr></thead>
-        <tbody>
-          {kopruler.map((kopru) => (
+    {/* Kiracıya bağlı satırlar kiracının ekranına gider (ok sütunu); köprü
+        ve ödeme bildirimi satırlarının açılacak bir ekranı yok. */}
+    <KKart baslik="Ürün köprüleri"
+      aciklama="Köprü koptuğunda hata yalnızca karşı taraftaki günlükte kalıyor; kurucu aylar sonra fark ediyordu.">
+      <KTablo kolonlar={[{ ad: "Ürün" }, { ad: "Durum" }, { ad: "Not" }]}>
+        {kopruler.map((kopru) => {
+          const durum = { etiket: kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı", ton: kopru.bozuk ? "danger" : "success" };
+          return (
             <tr key={kopru.ad}>
-              <td>{kopru.ad}</td>
-              <td><span className="status-pill" data-tone={kopru.bozuk ? "danger" : "success"}>{kopru.bozuk ? "Yanıt vermiyor" : "Sağlıklı"}</span></td>
-              <td>{kopru.not}</td>
+              <KBaslik etiket="Ürün" baslik={kopru.ad} />
+              <KDurum etiket={durum.etiket} ton={durum.ton} />
+              <td data-label="Not">{kopru.not}</td>
+              <MobilSatir baslik={kopru.ad} durum={durum} alt={[kopru.not]} />
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+          );
+        })}
+      </KTablo>
+    </KKart>
 
-    <section className="panel-card" aria-label="Bayat ürün kopyaları">
-      <h2>Ürün kopyaları</h2>
-      <p className="panel-muted">
+    <KKart baslik="Ürün kopyaları"
+      aciklama={<>
         Köprü sağlıklıyken de kopya bayatlayabiliyor: AkademikMerkez&apos;de altı gün eski kaldı ve hiçbir ekran göstermiyordu.
         Düzeltme kiracının lisans ekranında: &quot;Ürüne yeniden yansıt&quot;.
-      </p>
+      </>}>
       {bayatKopyalar.length ? (
-        <table className="plt-table">
-          <thead><tr><th>Kiracı</th><th>Ürün</th><th>Üründe</th><th>Konsolda</th></tr></thead>
-          <tbody>
-            {bayatKopyalar.map((kayit) => (
+        <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Ürün" }, { ad: "Üründe" }, { ad: "Konsolda" }, { ad: "" }]}>
+          {bayatKopyalar.map((kayit) => {
+            const href = `/panel/platform/licenses?organization=${kayit.organizationId}`;
+            const ad = kurumAdi.get(kayit.organizationId) ?? kayit.organizationId;
+            return (
               <tr key={`${kayit.organizationId}-${kayit.product}`}>
-                <td><Link href={`/panel/platform/licenses?organization=${kayit.organizationId}`}>{kurumAdi.get(kayit.organizationId) ?? kayit.organizationId}</Link></td>
-                <td>{kayit.product}</td>
-                <td><span className="status-pill" data-tone="danger">{kayit.kopyaDurumu}</span></td>
-                <td>{kayit.konsolDurumu}</td>
+                <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                <td data-label="Ürün">{kayit.product}</td>
+                <KDurum baslik="Üründe" etiket={kayit.kopyaDurumu} ton="danger" />
+                <td data-label="Konsolda">{kayit.konsolDurumu}</td>
+                <KSatirSonu mobil={{ href, baslik: ad, durum: { etiket: kayit.kopyaDurumu, ton: "danger" }, alt: [kayit.product, `konsolda ${kayit.konsolDurumu}`] }} />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : <p className="panel-muted">Kopyası konsoldan farklı erişim veren kiracı yok.</p>}
-    </section>
+            );
+          })}
+        </KTablo>
+      ) : <KBos baslik="Bayat kopya yok" aciklama="Kopyası konsoldan farklı erişim veren kiracı yok." />}
+    </KKart>
 
-    <section className="panel-card" aria-label="Kota durumu">
-      <h2>Kota</h2>
-      <p className="panel-muted">Limitini aşan ya da %85&apos;ine gelen kiracılar. Ölçümler canlı: kullanıcı üyeliklerden, depolama dosya deposundan.</p>
+    <KKart baslik="Kota"
+      aciklama="Limitini aşan ya da %85'ine gelen kiracılar. Ölçümler canlı: kullanıcı üyeliklerden, depolama dosya deposundan.">
       {kotalar.length ? (
-        <table className="plt-table">
-          <thead><tr><th>Kiracı</th><th>Kullanıcı</th><th>Depolama</th><th>Durum</th></tr></thead>
-          <tbody>
-            {kotalar.map((kota) => (
+        <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Kullanıcı" }, { ad: "Depolama" }, { ad: "Durum" }, { ad: "" }]}>
+          {kotalar.map((kota) => {
+            const href = `/panel/platform/licenses?organization=${kota.organizationId}`;
+            const ad = kurumAdi.get(kota.organizationId) ?? kota.organizationId;
+            const durum = { etiket: kota.durum === "asildi" ? "Aşıldı" : "Yaklaştı", ton: kota.durum === "asildi" ? "danger" : "warning" };
+            const kullanici = `${sayi(kota.kullanici.kullanilan)} / ${sayi(kota.kullanici.limit)} · %${kota.kullanici.oran}`;
+            const depolama = `${sayi(kota.depolama.kullanilan)} / ${sayi(kota.depolama.limit)} MB · %${kota.depolama.oran}`;
+            return (
               <tr key={kota.organizationId}>
-                <td><Link href={`/panel/platform/licenses?organization=${kota.organizationId}`}>{kurumAdi.get(kota.organizationId) ?? kota.organizationId}</Link></td>
-                <td>{sayi(kota.kullanici.kullanilan)} / {sayi(kota.kullanici.limit)} · %{kota.kullanici.oran}</td>
-                <td>{sayi(kota.depolama.kullanilan)} / {sayi(kota.depolama.limit)} MB · %{kota.depolama.oran}</td>
-                <td><span className="status-pill" data-tone={kota.durum === "asildi" ? "danger" : "warning"}>{kota.durum === "asildi" ? "Aşıldı" : "Yaklaştı"}</span></td>
+                <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                <td data-label="Kullanıcı" className="k-sayi">{kullanici}</td>
+                <td data-label="Depolama" className="k-sayi">{depolama}</td>
+                <KDurum etiket={durum.etiket} ton={durum.ton} />
+                <KSatirSonu mobil={{ href, baslik: ad, durum, alt: [`kullanıcı ${kullanici}`, depolama] }} />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : <p className="panel-muted">Limitine yaklaşan kiracı yok.</p>}
-    </section>
+            );
+          })}
+        </KTablo>
+      ) : <KBos baslik="Kota sorunu yok" aciklama="Limitine yaklaşan kiracı yok." />}
+    </KKart>
 
-    <section className="panel-card" aria-label="Kurulum hataları">
-      <h2>Kurulum hataları</h2>
+    <KKart baslik="Kurulum hataları">
       {admin ? (
         kurulumHatalari.length ? (
-          <table className="plt-table">
-            <thead><tr><th>Kiracı</th><th>Adım</th><th>Durum</th><th>Zaman</th></tr></thead>
-            <tbody>
-              {kurulumHatalari.map((kayit) => (
+          <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Adım" }, { ad: "Durum" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "" }]}>
+            {kurulumHatalari.map((kayit) => {
+              const href = `/panel/platform?organization=${kayit.organization_id}`;
+              const ad = kurumAdi.get(kayit.organization_id) ?? "Kurum";
+              return (
                 <tr key={kayit.id}>
-                  <td><Link href={`/panel/platform?organization=${kayit.organization_id}`}>{kurumAdi.get(kayit.organization_id) ?? "Kurum"}</Link></td>
-                  <td>{kayit.action}</td>
-                  <td>{kayit.state ?? "—"}</td>
-                  <td>{tarihSaat(kayit.created_at)}</td>
+                  <KBaslik etiket="Kiracı" href={href} baslik={ad} />
+                  <td data-label="Adım">{kayit.action}</td>
+                  <td data-label="Durum">{kayit.state ?? "—"}</td>
+                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(kayit.created_at)}</td>
+                  <KSatirSonu mobil={{ href, baslik: ad, alt: [kayit.action, kayit.state, tarihSaat(kayit.created_at)] }} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="panel-muted">Hatayla sonuçlanan kurulum kaydı yok.</p>
-      ) : <p className="panel-muted">Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — &quot;hata yok&quot; demek değil.</p>}
-    </section>
+              );
+            })}
+          </KTablo>
+        ) : <KBos baslik="Kurulum hatası yok" aciklama="Hatayla sonuçlanan kurulum kaydı yok." />
+      ) : <KBos baslik="Kurulum günlüğü okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kurulum günlüğü okunamıyor — “hata yok” demek değil." />}
+    </KKart>
 
-    <section className="panel-card" aria-label="Karşılıksız ödeme bildirimleri">
-      <h2>İşlenemeyen ödemeler</h2>
-      <p className="panel-muted">PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.</p>
+    <KKart baslik="İşlenemeyen ödemeler"
+      aciklama="PayTR ödeme bildirdi ama kayıt oluşmadı: lisans açılmadı ya da tahsilat cariye yazılmadı. Para tahsil edilmiş olabilir; her birini PayTR panelinden doğrulayın.">
       {odemeOlaylari.length ? (
-        <table className="plt-table">
-          <thead><tr><th>Kurum</th><th>Sebep</th><th>Tutar</th><th>PayTR no</th><th>Zaman</th></tr></thead>
-          <tbody>
-            {odemeOlaylari.map((olay) => (
+        <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sebep" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "PayTR no" }, { ad: "Zaman", sinif: "crm-col-date" }]}>
+          {odemeOlaylari.map((olay) => {
+            const sebep = incidentLabels[olay.result] ?? olay.result;
+            const tutar = olay.paymentAmount !== null ? para(olay.paymentAmount) : "—";
+            return (
               <tr key={olay.id}>
-                <td>{olay.organizationName ?? "—"}</td>
-                <td>
-                  <span className="status-pill" data-tone="danger">{incidentLabels[olay.result] ?? olay.result}</span>
-                  <small className="plt-substatus">{incidentNotes[olay.result] ?? ""}</small>
-                </td>
-                <td>{olay.paymentAmount !== null ? para(olay.paymentAmount) : "—"}</td>
-                <td className="plt-mono">{olay.merchantOid}</td>
-                <td>{tarihSaat(olay.createdAt)}</td>
+                <KBaslik etiket="Kurum" baslik={olay.organizationName ?? "—"} />
+                <KDurum baslik="Sebep" etiket={sebep} ton="danger" ek={incidentNotes[olay.result] ? <span className="crm-table-sub">{incidentNotes[olay.result]}</span> : null} />
+                <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
+                <td data-label="PayTR no" className="crm-table-mono">{olay.merchantOid}</td>
+                <td data-label="Zaman" className="crm-col-date">{tarihSaat(olay.createdAt)}</td>
+                <MobilSatir baslik={olay.organizationName ?? "—"} durum={{ etiket: sebep, ton: "danger" }} alt={[tutar, olay.merchantOid, tarihSaat(olay.createdAt)]} />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : <p className="panel-muted">İşlenemeyen ödeme bildirimi yok.</p>}
-    </section>
+            );
+          })}
+        </KTablo>
+      ) : <KBos baslik="İşlenemeyen ödeme yok" aciklama="İşlenemeyen ödeme bildirimi yok." />}
+    </KKart>
   </main>;
 }

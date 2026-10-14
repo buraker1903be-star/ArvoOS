@@ -8,13 +8,11 @@ import { pushYapilandi } from "@/lib/anlik-bildirim-gonder";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
-import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
+import { MobilSatir } from "../../crm/table-cells";
+import { KBaslik, KBos, KDurum, KKart, KNot, KTablo } from "../konsol-ui";
 import { KURULUM_ADI, para, tarihSaat } from "../bicim";
 import { roleNames } from "../../hr/role-names";
-import "../../settings/settings.css";
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   SİSTEM AYARLARI (14.10.2026, Kurucu Konsolu'nun ana menüsü).
@@ -41,8 +39,10 @@ import "../../crm/kayit-detay/kayit-detay.css";
   alt bölümü; ayrıntı orada.
 */
 
+/* Durum rozetinin tonları (panelin status-pill data-tone değerleri). */
+type Ton = "success" | "warning" | "danger" | "info" | "neutral";
 type Entegrasyon = { ad: string; durum: "bagli" | "eksik" | "yok"; not: string };
-type Kayit = { anahtar: string; zaman: string; tur: string; ton: StgTone; ne: string; kim: string | null };
+type Kayit = { anahtar: string; zaman: string; tur: string; ton: Ton; ne: string; kim: string | null };
 
 const var_ = (ad: string) => Boolean(process.env[ad]);
 
@@ -103,26 +103,26 @@ export default async function SistemAyarlariPage() {
 
   const kayitlar: Kayit[] = [
     ...((kurulum?.data ?? []) as { id: string; organization_id: string | null; actor_user_id: string | null; action: string; state: string; result: string; created_at: string }[]).map((s) => ({
-      anahtar: `kurulum-${s.id}`, zaman: s.created_at, tur: "Kurulum", ton: (s.result === "failed" ? "danger" : s.result === "success" ? "success" : "info") as StgTone,
+      anahtar: `kurulum-${s.id}`, zaman: s.created_at, tur: "Kurulum", ton: (s.result === "failed" ? "danger" : s.result === "success" ? "success" : "info") as Ton,
       ne: `${s.organization_id ? kurumAdi.get(s.organization_id) ?? "Kurum" : "Kurum"} · ${s.action} · ${KURULUM_ADI[s.state] ?? s.state}${s.result === "failed" ? " · HATA" : ""}`,
       kim: kim(s.actor_user_id),
     })),
     ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; metadata: { is_active?: boolean } | null; created_at: string }[]).map((s) => ({
-      anahtar: `erisim-${s.id}`, zaman: s.created_at, tur: "Üye erişimi", ton: "info" as StgTone,
+      anahtar: `erisim-${s.id}`, zaman: s.created_at, tur: "Üye erişimi", ton: "info" as Ton,
       ne: `${kurumAdi.get(s.organization_id) ?? "Kurum"} · ${s.entity_type === "organization_membership" ? `üye erişimi ${(s as { metadata?: { is_active?: boolean } }).metadata?.is_active ? "açıldı" : "kapatıldı"}` : s.action}`, kim: kim(s.actor_user_id),
     })),
     ...((fiyat?.data ?? []) as { id: number; kod: string; islem: string; yeni_kurus: number | null; kim: string | null; zaman: string }[]).map((s) => ({
-      anahtar: `fiyat-${s.id}`, zaman: s.zaman, tur: "Fiyat", ton: (s.islem === "yayim" ? "success" : "neutral") as StgTone,
+      anahtar: `fiyat-${s.id}`, zaman: s.zaman, tur: "Fiyat", ton: (s.islem === "yayim" ? "success" : "neutral") as Ton,
       ne: `${s.kod} · ${({ taslak: "taslak", taslak_iptal: "taslak geri alındı", yayim: "yayımlandı", koda_donus: "koda döndü" } as Record<string, string>)[s.islem] ?? s.islem}${s.yeni_kurus !== null && s.islem !== "koda_donus" ? ` · ${para(Number(s.yeni_kurus))}` : ""}`,
       kim: kim(s.kim),
     })),
     ...((odeme?.data ?? []) as { id: string; organization_id: string; status: string; amount: number; currency: string; reviewed_by: string | null; reviewed_at: string | null }[]).map((s) => ({
-      anahtar: `odeme-${s.id}`, zaman: s.reviewed_at ?? "", tur: "Ödeme kararı", ton: (s.status === "approved" ? "success" : "danger") as StgTone,
+      anahtar: `odeme-${s.id}`, zaman: s.reviewed_at ?? "", tur: "Ödeme kararı", ton: (s.status === "approved" ? "success" : "danger") as Ton,
       ne: `${kurumAdi.get(s.organization_id) ?? "Kurum"} · ${para(Number(s.amount), s.currency)} · ${s.status === "approved" ? "onaylandı" : "reddedildi"}`,
       kim: kim(s.reviewed_by),
     })),
     ...((sozlesme?.data ?? []) as { id: string; customer_name: string | null; contract_no: string | null; status: string; reviewed_by: string | null; reviewed_at: string | null }[]).map((s) => ({
-      anahtar: `sozlesme-${s.id}`, zaman: s.reviewed_at ?? "", tur: "Sözleşme onayı", ton: (s.status === "approved" ? "success" : "danger") as StgTone,
+      anahtar: `sozlesme-${s.id}`, zaman: s.reviewed_at ?? "", tur: "Sözleşme onayı", ton: (s.status === "approved" ? "success" : "danger") as Ton,
       ne: `${s.customer_name ?? "Müşteri"} · ${s.contract_no ?? ""} · ${s.status === "approved" ? "onaylandı" : "reddedildi"}`,
       kim: kim(s.reviewed_by),
     })),
@@ -148,7 +148,7 @@ export default async function SistemAyarlariPage() {
     { ad: "E-fatura / e-arşiv (Paraşüt)", durum: "yok", not: "Bağlı değil; planlandı. Platform faturası bugün kesilmiyor" },
   ];
   const DURUM_ADI = { bagli: "Bağlı", eksik: "Eksik", yok: "Yok" } as const;
-  const DURUM_TONU: Record<Entegrasyon["durum"], StgTone> = { bagli: "success", eksik: "warning", yok: "neutral" };
+  const DURUM_TONU: Record<Entegrasyon["durum"], Ton> = { bagli: "success", eksik: "warning", yok: "neutral" };
 
   const sirlar = [
     { ad: "Supabase sunucu anahtarı", var: sunucuAnahtari, not: "Konsolun kiracılar arası okuması, köprüler ve zamanlanmış işler bunu kullanır" },
@@ -159,7 +159,10 @@ export default async function SistemAyarlariPage() {
     { ad: "Randevu köprüsü sırrı", var: var_("RANDEVU_BRIDGE_SECRET"), not: "Randevu'nun ArvoOS'a çağrıları" },
   ];
 
-  return <main className="stg plt talep cari">
+  const eksikEntegrasyon = entegrasyonlar.filter((e) => e.durum === "eksik").length;
+  const eksikSir = sirlar.filter((s) => !s.var).length;
+
+  return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · SİSTEM AYARLARI</small>
@@ -177,106 +180,100 @@ export default async function SistemAyarlariPage() {
         <div>
           <dt>Entegrasyon</dt>
           <dd><a href="#entegrasyonlar">{entegrasyonlar.filter((e) => e.durum === "bagli").length} / {entegrasyonlar.length}</a></dd>
-          <small>{entegrasyonlar.filter((e) => e.durum === "eksik").length ? `${entegrasyonlar.filter((e) => e.durum === "eksik").length} eksik ayar` : "bağlı olanlar çalışıyor"}</small>
+          <small>{eksikEntegrasyon ? `${eksikEntegrasyon} eksik ayar` : "bağlı olanlar çalışıyor"}</small>
         </div>
         <div>
           <dt>Sunucu sırları</dt>
-          <dd className={sirlar.some((s) => !s.var) ? "talep-uyari" : undefined}><a href="#guvenlik">{sirlar.filter((s) => s.var).length} / {sirlar.length}</a></dd>
-          <small>{sirlar.some((s) => !s.var) ? "eksik sır var" : "hepsi tanımlı"}</small>
+          <dd className={eksikSir ? "talep-uyari" : undefined}><a href="#guvenlik">{sirlar.filter((s) => s.var).length} / {sirlar.length}</a></dd>
+          <small>{eksikSir ? "eksik sır var" : "hepsi tanımlı"}</small>
         </div>
         <div><dt>İşlem kaydı</dt><dd><a href="#kayitlar">{kayitlar.length}</a></dd><small>son kurucu işlemleri</small></div>
       </dl>
     </nav>
 
-    <StgSection id="yetkiler" wide icon="shield" tone="info" kicker="KURUCU YETKİLERİ" title="Konsola kim girebiliyor"
-      description="Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Hem sunucu işlemleri hem veritabanı politikaları aynı kuralı uyguluyor.">
-      <div className="plt-table-scroll">
-        <table className="plt-table">
-          <thead><tr><th>Kişi</th><th>ArvoOS kurumundaki rolü</th><th>Konsol</th></tr></thead>
-          <tbody>
-            {uyeler.filter((u) => u.is_active).map((u) => (
-              <tr key={u.user_id}>
-                <td>{kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—"}</td>
-                <td>{roleNames[u.role] ?? u.role}</td>
-                <td><span className="status-pill" data-tone={u.role === "owner" ? "success" : "neutral"}>{u.role === "owner" ? "Tam yetki" : "Giremez"}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="stg-muted"><StgIcon name="lock" size={16} />Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</p>
-    </StgSection>
+    {/* Bölüm kimlikleri (#yetkiler, #entegrasyonlar, #guvenlik, #kayitlar)
+        dock'taki ve şeritteki bağlantıların hedefi: değiştirilmez.
+        Satırların açılacak bir ekranı yok; ok sütunu bu yüzden konmadı. */}
+    <KKart id="yetkiler" baslik="Konsola kim girebiliyor"
+      aciklama="Kural tek: ArvoOS kurumunun etkin Kurum Sahibi. Hem sunucu işlemleri hem veritabanı politikaları aynı kuralı uyguluyor.">
+      <KTablo kolonlar={[{ ad: "Kişi" }, { ad: "ArvoOS kurumundaki rolü" }, { ad: "Konsol" }]}>
+        {uyeler.filter((u) => u.is_active).map((u) => {
+          const ad = kisiAdi.get(u.user_id) ?? calisanAdi.get(u.user_id) ?? "—";
+          const rol = roleNames[u.role] ?? u.role;
+          const konsol = { etiket: u.role === "owner" ? "Tam yetki" : "Giremez", ton: u.role === "owner" ? "success" : "neutral" };
+          return (
+            <tr key={u.user_id}>
+              <KBaslik etiket="Kişi" baslik={ad} />
+              <td data-label="ArvoOS kurumundaki rolü">{rol}</td>
+              <KDurum baslik="Konsol" etiket={konsol.etiket} ton={konsol.ton} />
+              <MobilSatir baslik={ad} durum={konsol} alt={[rol]} />
+            </tr>
+          );
+        })}
+      </KTablo>
+      <KNot>Kademeli kurucu rolü (yalnızca finans, yalnızca kurulum gibi) henüz yok; konsola giren herkes tam yetkili.</KNot>
+    </KKart>
 
-    <StgSection id="entegrasyonlar" wide icon="box" tone="neutral" kicker="ENTEGRASYONLAR" title="Bağlantıların durumu"
-      description="Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez.">
-      <div className="plt-table-scroll">
-        <table className="plt-table">
-          <thead><tr><th>Entegrasyon</th><th>Durum</th><th>Ayrıntı</th></tr></thead>
-          <tbody>
-            {entegrasyonlar.map((e) => (
-              <tr key={e.ad}>
-                <td>{e.ad}</td>
-                <td><span className="status-pill" data-tone={DURUM_TONU[e.durum]}>{DURUM_ADI[e.durum]}</span></td>
-                <td>{e.not}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </StgSection>
+    <KKart id="entegrasyonlar" baslik="Bağlantıların durumu"
+      aciklama="Ortam değişkenlerinin ve kayıtlı bağlantıların gerçek durumu; sırların değeri gösterilmez.">
+      <KTablo kolonlar={[{ ad: "Entegrasyon" }, { ad: "Durum" }, { ad: "Ayrıntı" }]}>
+        {entegrasyonlar.map((e) => (
+          <tr key={e.ad}>
+            <KBaslik etiket="Entegrasyon" baslik={e.ad} />
+            <KDurum etiket={DURUM_ADI[e.durum]} ton={DURUM_TONU[e.durum]} />
+            <td data-label="Ayrıntı">{e.not}</td>
+            <MobilSatir baslik={e.ad} durum={{ etiket: DURUM_ADI[e.durum], ton: DURUM_TONU[e.durum] }} alt={[e.not]} />
+          </tr>
+        ))}
+      </KTablo>
+    </KKart>
 
-    <StgSection id="guvenlik" wide icon="lock" tone={sirlar.some((s) => !s.var) ? "warning" : "success"} kicker="GÜVENLİK" title="Sunucu sırları ve yetki"
-      description="Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor.">
-      <div className="plt-table-scroll">
-        <table className="plt-table">
-          <thead><tr><th>Sır</th><th>Durum</th><th>Ne için</th></tr></thead>
-          <tbody>
-            {sirlar.map((s) => (
-              <tr key={s.ad}>
-                <td>{s.ad}</td>
-                <td><span className="status-pill" data-tone={s.var ? "success" : "danger"}>{s.var ? "Tanımlı" : "Eksik"}</span></td>
-                <td>{s.not}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="stg-muted">
-        <StgIcon name="shield" size={16} />Konsolun her sayfası ve her işlemi kurucu yetkisini sunucuda yeniden doğruluyor; fiyat listesi,
+    <KKart id="guvenlik" baslik="Sunucu sırları ve yetki"
+      aciklama="Sırlar yalnızca sunucuda; burada yalnızca tanımlı olup olmadıkları yazıyor.">
+      <KTablo kolonlar={[{ ad: "Sır" }, { ad: "Durum" }, { ad: "Ne için" }]}>
+        {sirlar.map((s) => (
+          <tr key={s.ad}>
+            <KBaslik etiket="Sır" baslik={s.ad} />
+            <KDurum etiket={s.var ? "Tanımlı" : "Eksik"} ton={s.var ? "success" : "danger"} />
+            <td data-label="Ne için">{s.not}</td>
+            <MobilSatir baslik={s.ad} durum={{ etiket: s.var ? "Tanımlı" : "Eksik", ton: s.var ? "success" : "danger" }} alt={[s.not]} />
+          </tr>
+        ))}
+      </KTablo>
+      <KNot ton={eksikSir ? "uyari" : "bilgi"}>
+        Konsolun her sayfası ve her işlemi kurucu yetkisini sunucuda yeniden doğruluyor; fiyat listesi,
         fiyat geçmişi ve ödeme kararları ayrıca veritabanı politikalarıyla korunuyor.
-      </p>
-    </StgSection>
+      </KNot>
+    </KKart>
 
-    <StgSection id="kayitlar" wide icon="folder" tone="neutral" kicker="İŞLEM KAYITLARI" title="Kurucu işlemleri"
-      description="Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt.">
+    <KKart id="kayitlar" baslik="Kurucu işlemleri"
+      aciklama="Kurulum adımları, ödeme ve sözleşme kararları, fiyat değişiklikleri ve üye erişimi; en yeni altmış kayıt.">
       {!admin ? (
-        <p className="stg-muted">Sunucu anahtarı tanımlı olmadığı için kayıtlar okunamıyor — kayıt yok demek değil.</p>
+        <KBos baslik="Kayıtlar okunamıyor" aciklama="Sunucu anahtarı tanımlı olmadığı için kayıtlar okunamıyor — kayıt yok demek değil." />
       ) : (
         <>
-          {okumaHatalari.length ? <p className="stg-muted">Bazı kayıtlar okunamadı: {okumaHatalari.join(" · ")}</p> : null}
+          {okumaHatalari.length ? <KNot ton="tehlike">Bazı kayıtlar okunamadı: {okumaHatalari.join(" · ")}</KNot> : null}
           {kayitlar.length ? (
-            <div className="plt-table-scroll">
-              <table className="plt-table">
-                <thead><tr><th>Zaman</th><th>Tür</th><th>İşlem</th><th>Kim</th></tr></thead>
-                <tbody>
-                  {kayitlar.map((k) => (
-                    <tr key={k.anahtar}>
-                      <td>{tarihSaat(k.zaman)}</td>
-                      <td><span className="status-pill" data-tone={k.ton}>{k.tur}</span></td>
-                      <td>{k.ne}</td>
-                      <td>{k.kim ?? "Sistem"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <p className="stg-muted">Henüz kurucu işlemi kaydı yok.</p>}
-          <p className="stg-muted">
-            <StgIcon name="doc" size={16} />Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
+            <KTablo kolonlar={[{ ad: "İşlem" }, { ad: "Tür" }, { ad: "Zaman", sinif: "crm-col-date" }, { ad: "Kim" }]}>
+              {kayitlar.map((k) => (
+                <tr key={k.anahtar}>
+                  {/* İlk sütun eskiden zamandı; panel listelerinde ilk hücre
+                      kaydın kendisi, zaman tarih sütununda. */}
+                  <KBaslik etiket="İşlem" baslik={k.ne} />
+                  <KDurum baslik="Tür" etiket={k.tur} ton={k.ton} />
+                  <td data-label="Zaman" className="crm-col-date">{tarihSaat(k.zaman)}</td>
+                  <td data-label="Kim">{k.kim ?? "Sistem"}</td>
+                  <MobilSatir baslik={k.ne} durum={{ etiket: k.tur, ton: k.ton }} alt={[tarihSaat(k.zaman), k.kim ?? "Sistem"]} />
+                </tr>
+              ))}
+            </KTablo>
+          ) : <KBos baslik="Henüz kurucu işlemi kaydı yok" />}
+          <KNot>
+            Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
             tutuluyor); genel işlem günlüğü sonraki adım.
-          </p>
+          </KNot>
         </>
       )}
-    </StgSection>
+    </KKart>
   </main>;
 }

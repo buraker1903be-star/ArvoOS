@@ -9,10 +9,10 @@ import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
 import { KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
 import { denemeyiAyarla, listeFiyatiniUygula } from "./actions";
-import "../../settings/settings.css";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
+// Sihirbaz (.plw), deneme formu (.plt-deneme) ve sözleşme no (.plt-mono) burada.
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   KURULUMLAR (14.10.2026, kurum sahibinin tarifi).
@@ -107,7 +107,18 @@ export default async function KurulumlarPage({ searchParams }: {
   const adres = (kod: string) => `/panel/platform/kurulumlar?asama=${kod}`;
   const sayim: Record<string, number> = { yeni: bekleyenIstekler.length, devam: bekleyenler.length, tamam: tamamlananlar.length };
 
-  return <main className="stg plt talep cari">
+  /* Süren kurulumların aşama dağılımı: yukarıdaki sınırsız kiracı
+     listesinden (istatistik kartı için; yeni bir okuma yok). */
+  const asamaDagilimi = [...new Set(bekleyenler.map((k) => k.provisioning_state))]
+    .map((durum) => ({ ad: KURULUM_ADI[durum] ?? durum, adet: bekleyenler.filter((k) => k.provisioning_state === durum).length }));
+
+  /*
+    PANEL LİSTESİ GİBİ (14.10.2026). Üç aşama ayrı ayrı panel-card'lardı
+    ve kendi .plt-table stilleri vardı; artık panelin liste düzeni: solda
+    liste kartı (aşama çipleri + o aşamanın tablosu), sağda istatistik.
+    Aşama hâlâ ?asama= ile seçiliyor; şerit ve çipler aynı adrese gidiyor.
+  */
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · KURULUMLAR</small>
@@ -137,102 +148,112 @@ export default async function KurulumlarPage({ searchParams }: {
       </dl>
     </nav>
 
-    {secili === "yeni" ? (
-      <section className="panel-card" aria-label="Yeni kurulum">
-        <h2>Yeni kurulum</h2>
-        <p className="panel-muted">
-          Kurulum iki yoldan başlar: kiracı panelinde imzalanıp onaylanan bir sözleşme, ya da yukarıdaki
-          &quot;Yeni müşteri&quot; akışıyla elle giriş. Aşağıdakiler imzalanmış ama kurumu henüz açılmamış isteklerdir: önce kurumu açın, sonra sözleşmeyi o kuruma onaylayın.
-        </p>
-        {admin ? (
-          bekleyenIstekler.length ? (
-            <table className="plt-table">
-              <thead><tr><th>Müşteri</th><th>Sözleşme</th><th>Tutar</th><th>Geliş</th><th /></tr></thead>
-              <tbody>
-                {bekleyenIstekler.map((istek) => (
-                  <tr key={istek.id}>
-                    <td>{istek.customer_name ?? "—"}</td>
-                    <td className="plt-mono">{istek.contract_no ?? "—"}</td>
-                    <td>{istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : "—"}</td>
-                    <td>{tarihSaat(istek.created_at)}</td>
-                    <td><Link className="panel-secondary" href="/panel/platform/sozlesmeler">Sözleşmeyi aç</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : <p className="panel-muted">Kurumu açılmayı bekleyen istek yok. Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz.</p>
-        ) : <p className="panel-muted">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</p>}
-      </section>
-    ) : null}
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section className="panel-card talep-bilgi" aria-label={ASAMALAR.find((a) => a.kod === secili)?.ad ?? "Kurulumlar"}>
+        <div className="ekip-suzgec talep-suzgec">
+          {ASAMALAR.map((a) => (
+            <Link key={a.kod} href={adres(a.kod)} className={secili === a.kod ? "is-active" : undefined} aria-current={secili === a.kod ? "page" : undefined}>
+              {a.ad} <small>{sayi(sayim[a.kod])}</small>
+            </Link>
+          ))}
+        </div>
 
-    {secili === "devam" ? (
-      <section className="panel-card" aria-label="Kurulumu devam edenler">
-        <h2>Kurulumu devam edenler</h2>
-        <p className="panel-muted">Kurulumu başlamış, henüz bitmemiş kiracılar. Hatalı kalanlar da burada: sebebi kiracı dosyasında yazıyor.</p>
-        {bekleyenler.length ? (
-          <table className="plt-table">
-            <thead><tr><th>Kiracı</th><th>Aşama</th><th>Paket</th><th>Telefon</th><th /></tr></thead>
-            <tbody>
-              {bekleyenler.map((kiraci) => (
-                <tr key={kiraci.id}>
-                  <td><Link href={`/panel/platform?organization=${kiraci.id}`}>{kiraci.display_name || kiraci.name}</Link></td>
-                  <td>
-                    <span className="status-pill" data-tone={KURULUM_TONU[kiraci.provisioning_state] ?? "neutral"}>
-                      {KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state}
-                    </span>
-                  </td>
-                  <td>{kiraci.plan_code ?? "—"}</td>
-                  <td>{kiraci.contact_phone ?? "—"}</td>
-                  <td><Link className="panel-secondary" href={`/panel/platform?organization=${kiraci.id}`}>Dosyayı aç</Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="panel-muted">Süren kurulum yok; açılan her kurum çalışır durumda.</p>}
-      </section>
-    ) : null}
+        {secili === "yeni" ? (
+          <>
+            <KNot>
+              Kurulum iki yoldan başlar: kiracı panelinde imzalanıp onaylanan bir sözleşme, ya da yukarıdaki
+              &quot;Yeni müşteri&quot; akışıyla elle giriş. Aşağıdakiler imzalanmış ama kurumu henüz açılmamış isteklerdir: önce kurumu açın, sonra sözleşmeyi o kuruma onaylayın.
+            </KNot>
+            {admin ? (
+              bekleyenIstekler.length ? (
+                <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "Geliş", sinif: "crm-col-date" }, { ad: "" }]}>
+                  {bekleyenIstekler.map((istek) => (
+                    <tr key={istek.id}>
+                      {/* Satır sözleşme kuyruğuna gider (eskiden ayrı bir "Sözleşmeyi aç" düğmesiydi). */}
+                      <KBaslik etiket="Müşteri" href="/panel/platform/sozlesmeler" baslik={istek.customer_name ?? "—"} alt={<span className="plt-mono">{istek.contract_no ?? "—"}</span>} />
+                      <td data-label="Tutar" className="crm-col-amount">{istek.amount !== null ? para(Number(istek.amount), istek.currency ?? "TRY") : "—"}</td>
+                      <td data-label="Geliş" className="crm-col-date">{tarihSaat(istek.created_at)}</td>
+                      <KSatirSonu mobil={{
+                        href: "/panel/platform/sozlesmeler",
+                        baslik: istek.customer_name ?? "—",
+                        durum: istek.amount !== null ? { etiket: para(Number(istek.amount), istek.currency ?? "TRY"), ton: "neutral" } : null,
+                        alt: [istek.contract_no, tarihSaat(istek.created_at)],
+                      }} />
+                    </tr>
+                  ))}
+                </KTablo>
+              ) : <KBos baslik="Kurumu açılmayı bekleyen istek yok" aciklama="Yeni bir müşteriyi yukarıdaki akışla ekleyebilirsiniz." />
+            ) : <KNot ton="uyari">Sunucu anahtarı tanımlı olmadığı için istekler okunamıyor — &quot;istek yok&quot; demek değil.</KNot>}
+          </>
+        ) : null}
 
-    {secili === "tamam" ? (
-      <section className="panel-card" aria-label="Tamamlanan kurulumlar">
-        <h2>Tamamlanan kurulumlar</h2>
-        <p className="panel-muted">
-          Çalışır durumdaki kiracılar. Deneme süresi ve aylık ücret burada tanımlanır; ücret, paketin
-          <Link href="/panel/platform/moduller"> Ürünler</Link> tarafında yayımlanmış liste fiyatından gelir.
-        </p>
-        {tamamlananlar.length ? (
-          <div className="plt-table-scroll">
-            <table className="plt-table">
-              <thead><tr><th>Kiracı</th><th>Paket</th><th>Aylık ücret</th><th>Deneme</th><th>Dönem sonu</th></tr></thead>
-              <tbody>
+        {secili === "devam" ? (
+          <>
+            <KNot>Kurulumu başlamış, henüz bitmemiş kiracılar. Hatalı kalanlar da burada: sebebi kiracı dosyasında yazıyor.</KNot>
+            {bekleyenler.length ? (
+              <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Aşama" }, { ad: "Paket" }, { ad: "Telefon" }, { ad: "" }]}>
+                {bekleyenler.map((kiraci) => {
+                  const ad = kiraci.display_name || kiraci.name;
+                  const asamaAdi = KURULUM_ADI[kiraci.provisioning_state] ?? kiraci.provisioning_state;
+                  const ton = KURULUM_TONU[kiraci.provisioning_state] ?? "neutral";
+                  return (
+                    <tr key={kiraci.id}>
+                      <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={ad} alt={kiraci.slug} />
+                      <KDurum baslik="Aşama" etiket={asamaAdi} ton={ton} />
+                      <td data-label="Paket">{kiraci.plan_code ?? "—"}</td>
+                      <td data-label="Telefon">{kiraci.contact_phone ?? "—"}</td>
+                      <KSatirSonu mobil={{
+                        href: `/panel/platform?organization=${kiraci.id}`,
+                        baslik: ad,
+                        durum: { etiket: asamaAdi, ton },
+                        alt: [kiraci.plan_code, kiraci.contact_phone],
+                      }} />
+                    </tr>
+                  );
+                })}
+              </KTablo>
+            ) : <KBos baslik="Süren kurulum yok" aciklama="Açılan her kurum çalışır durumda." />}
+          </>
+        ) : null}
+
+        {secili === "tamam" ? (
+          <>
+            <KNot>
+              Çalışır durumdaki kiracılar. Deneme süresi ve aylık ücret burada tanımlanır; ücret, paketin
+              <Link href="/panel/platform/moduller"> Ürünler</Link> tarafında yayımlanmış liste fiyatından gelir.
+            </KNot>
+            {tamamlananlar.length ? (
+              /* Bu tabloda telefon satırı (MobilSatir) YOK: ücret ve deneme
+                 formları hücrelerin içinde ve tek kompakt satır öteki
+                 hücreleri gizliyor — telefonda formlar kaybolurdu. Hücreler
+                 panelin genel kuralıyla "etiket değer" olarak diziliyor. */
+              <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Paket" }, { ad: "Aylık ücret" }, { ad: "Deneme" }, { ad: "Dönem sonu", sinif: "crm-col-date" }]}>
                 {tamamlananlar.map((kiraci) => {
                   const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
                   return (
                     <tr key={kiraci.id}>
-                      <td>
-                        <Link href={`/panel/platform?organization=${kiraci.id}`}>{kiraci.display_name || kiraci.name}</Link>
-                        <small className="plt-substatus">{sayi(Number(kiraci.aktif_uye))} kullanıcı</small>
-                      </td>
-                      <td>{kiraci.plan_code ?? "—"}</td>
-                      <td>
+                      <KBaslik etiket="Kiracı" href={`/panel/platform?organization=${kiraci.id}`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
+                      <td data-label="Paket">{kiraci.plan_code ?? "—"}</td>
+                      <td data-label="Aylık ücret">
                         {sapma.durum === "girilmedi" ? (
-                          <form action={listeFiyatiniUygula}>
+                          <form action={listeFiyatiniUygula} className="plt-deneme">
                             <input type="hidden" name="organization_id" value={kiraci.id} />
                             <span className="status-pill" data-tone="warning">girilmedi</span>
                             {sapma.liste !== null
                               ? <button className="panel-secondary" type="submit">Liste fiyatını uygula · {para(sapma.liste)}</button>
-                              : <small className="plt-substatus">Teklif usulü paket; tutarı lisans ekranından girin.</small>}
+                              : <span className="crm-table-sub">Teklif usulü paket; tutarı lisans ekranından girin.</span>}
                           </form>
                         ) : (
                           <>
                             {para(sapma.mevcut ?? 0)}
                             {/* Sapma hata değil: çoğu kiracının pazarlıkla
                                 değişmiş tutarı var. Yalnızca yazıyoruz. */}
-                            {sapma.durum === "farkli" ? <small className="plt-substatus">liste {para(sapma.liste ?? 0)}</small> : null}
-                            {sapma.durum === "teklif" ? <small className="plt-substatus">teklif usulü</small> : null}
+                            {sapma.durum === "farkli" ? <span className="crm-table-sub">liste {para(sapma.liste ?? 0)}</span> : null}
+                            {sapma.durum === "teklif" ? <span className="crm-table-sub">teklif usulü</span> : null}
                           </>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Deneme">
                         <form action={denemeyiAyarla} className="plt-deneme">
                           <input type="hidden" name="organization_id" value={kiraci.id} />
                           {kiraci.license_status === "trialing"
@@ -242,15 +263,37 @@ export default async function KurulumlarPage({ searchParams }: {
                           <button className="panel-secondary" type="submit">Uygula</button>
                         </form>
                       </td>
-                      <td>{tarih(kiraci.current_period_end)}</td>
+                      <td data-label="Dönem sonu" className="crm-col-date">{tarih(kiraci.current_period_end)}</td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        ) : <p className="panel-muted">Tamamlanmış kurulum yok.</p>}
+              </KTablo>
+            ) : <KBos baslik="Tamamlanmış kurulum yok" />}
+          </>
+        ) : null}
       </section>
-    ) : null}
+
+      {/* Sayılar yukarıda zaten hesaplananlar; yalnızca "yeni" istekler en
+          yeni yirmiyle sınırlı okunuyor ve kart bunu söylüyor. */}
+      <IstatistikKarti
+        kapsam="kendi markalarımız hariç; yeni istekler en yeni 20 kayıttan"
+        kutular={[
+          { ad: "Yeni kurulum", deger: admin ? sayi(sayim.yeni) : "—", alt: admin ? "kurumu açılmayı bekleyen" : "okunamadı", ton: sayim.yeni ? "uyari" : undefined },
+          { ad: "Süren kurulum", deger: sayi(sayim.devam), alt: "başladı, bitmedi", ton: sayim.devam ? "uyari" : undefined },
+          { ad: "Tamamlanan", deger: sayi(sayim.tamam), alt: "çalışıyor", ton: "arti" },
+          { ad: "Ücreti girilmemiş", deger: sayi(ucretsiz), alt: denemede ? `${sayi(denemede)} kiracı denemede` : "denemede kiracı yok", ton: ucretsiz ? "uyari" : undefined },
+        ]}
+        gruplar={[
+          { baslik: "Süren kurulumun aşaması", satirlar: asamaDagilimi },
+          {
+            baslik: "Tamamlananlar",
+            satirlar: [
+              { ad: "Denemede", adet: denemede },
+              { ad: "Ücreti girilmemiş", adet: ucretsiz },
+            ],
+          },
+        ]}
+      />
+    </div>
   </main>;
 }

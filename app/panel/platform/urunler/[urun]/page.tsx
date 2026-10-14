@@ -8,11 +8,10 @@ import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { planlar, type PricedProduct } from "@/lib/site/pricing";
 import { planTutari, planYillikTutari } from "@/lib/site/fiyat-kaynagi";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
+import { IstatistikKarti } from "../../../crm/istatistik-karti";
+import { KBaslik, KBos, KDurum, KKart, KSatirSonu, KTablo } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
-import "../../../settings/settings.css";
 import "../../platform.css";
-import "../../../crm/crm.css";
-import "../../../crm/kayit-detay/kayit-detay.css";
 
 /*
   TEK ÜRÜNÜN SAYFASI (14.10.2026, Kurucu Konsolu → Ürünler).
@@ -99,7 +98,13 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
   const acikAbone = aboneler.filter((a) => ACIK.has(a.status)).length;
   const basamaklar = planlar(urun as PricedProduct);
 
-  return <main className="stg plt talep cari">
+  /* Sağdaki kartın dağılımı tablodaki satırlardan (sınırsız sorgu, eksilmez). */
+  const durumSayilari = [...new Set(satirlar.map((s) => s.durum))]
+    .map((d) => ({ ad: productLicenseLabels[d] ?? d, adet: satirlar.filter((s) => s.durum === d).length }))
+    .sort((a, b) => b.adet - a.adet);
+  const kiraciAdresi = (id: string) => `/panel/platform?organization=${id}`;
+
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
@@ -125,62 +130,93 @@ export default async function UrunPage({ params }: { params: Promise<{ urun: str
       </dl>
     </nav>
 
-    <section className="panel-card" aria-label="Kiracılar">
-      <h2>Kiracılar <small className="plt-substatus">{sayi(satirlar.length)} lisans</small></h2>
-      {satirlar.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead><tr><th>Kurum</th><th>Durum</th><th>Paket</th><th>Aylık ücret</th><th>Dönem / deneme</th><th>Kullanıcı</th><th /></tr></thead>
-            <tbody>
-              {satirlar.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.ad}</td>
-                  <td><span className="status-pill" data-tone={LISANS_TONU[s.durum] ?? "neutral"}>{productLicenseLabels[s.durum] ?? s.durum}</span></td>
-                  <td>{s.paket ? PAKET_ADI[s.paket] ?? s.paket : "—"}</td>
-                  {/* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */}
-                  <td>{s.ucret ? para(Number(s.ucret)) : <span className="talep-uyari">girilmedi</span>}</td>
-                  <td>{s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? tarih(s.donemSonu) : "—"}</td>
-                  <td>{sayi(s.kullanici)}</td>
-                  <td><Link className="kiraci-baglanti" href={`/panel/platform?organization=${s.id}`}>Kiracı →</Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="panel-muted">Bu ürünün lisanslı kiracısı yok.</p>}
-    </section>
-
-    <section className="panel-card" aria-label="Fiyat basamakları">
-      <h2>Fiyat basamakları</h2>
-      <p className="panel-muted">Sitede ve kurulumda geçerli (yayımlanmış) tutarlar. KDV hariç; yıllıkta 10 ay bedeliyle 12 ay.</p>
-      <div className="plt-table-scroll">
-        <table className="plt-table">
-          <thead><tr><th>Basamak</th><th>Aylık</th><th>Yıllık</th></tr></thead>
-          <tbody>
-            {basamaklar.map((plan) => {
-              const aylik = planTutari(plan, fiyatlar);
-              const yillik = planYillikTutari(plan, fiyatlar);
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Kiracılar">
+        <header className="k-kart-bas">
+          <div>
+            <h2>Kiracılar</h2>
+            <p>{sayi(satirlar.length)} lisans · ödeyenler önce, sonra ücrete göre.</p>
+          </div>
+        </header>
+        {satirlar.length ? (
+          <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Durum" }, { ad: "Paket" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }, { ad: "Dönem / deneme", sinif: "crm-col-date" }, { ad: "Kullanıcı" }, { ad: "" }]}>
+            {satirlar.map((s) => {
+              const durum = { etiket: productLicenseLabels[s.durum] ?? s.durum, ton: LISANS_TONU[s.durum] ?? "neutral" };
+              const donem = s.durum === "trialing" ? `deneme ${tarih(s.denemeSonu)}` : s.donemSonu ? tarih(s.donemSonu) : "—";
               return (
-                <tr key={plan.code}>
-                  <td>{plan.ad.tr}<small className="plt-substatus">{plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına"} · <span className="plt-mono">{plan.code}</span></small></td>
-                  <td>{aylik === null ? "Teklif" : para(aylik)}</td>
-                  <td>{yillik === null ? "Teklif" : para(yillik)}</td>
+                <tr key={s.id}>
+                  <KBaslik etiket="Kurum" href={kiraciAdresi(s.id)} baslik={s.ad} />
+                  <KDurum etiket={durum.etiket} ton={durum.ton} />
+                  <td data-label="Paket">{s.paket ? PAKET_ADI[s.paket] ?? s.paket : "—"}</td>
+                  {/* Ücreti girilmemiş lisans ₺0 yazmıyor: eksik kayıt, ücretsiz değil. */}
+                  <td data-label="Aylık ücret" className="crm-col-amount">{s.ucret ? para(Number(s.ucret)) : <span className="talep-uyari">girilmedi</span>}</td>
+                  <td data-label="Dönem / deneme" className="crm-col-date">{donem}</td>
+                  <td data-label="Kullanıcı" className="k-sayi">{sayi(s.kullanici)}</td>
+                  <KSatirSonu mobil={{
+                    href: kiraciAdresi(s.id),
+                    baslik: s.ad,
+                    durum,
+                    alt: [s.paket ? PAKET_ADI[s.paket] ?? s.paket : null, s.ucret ? para(Number(s.ucret)) : null, donem !== "—" ? donem : null],
+                    isaretler: [s.ucret ? null : { metin: "ücret girilmedi", ton: "uyari" }],
+                  }} />
                 </tr>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    {bireyselVar ? (
-      <section className="panel-card" aria-label="Bireysel aboneler">
-        <h2>Bireysel aboneler</h2>
-        <p className="panel-muted">
-          Kurumu olmadan ürünü kişisel olarak kullananlar: {sayi(acikAbone)} açık abonelik, toplam {sayi(aboneler.length)} kayıt.
-          {" "}<Link href="/panel/platform/subscribers">Bireysel abone planları →</Link>
-        </p>
+          </KTablo>
+        ) : <KBos baslik="Lisanslı kiracı yok" aciklama="Bu ürünün lisanslı kiracısı yok." />}
       </section>
-    ) : null}
+
+      {/* Sağ sütun panelin ekip ekranındaki gibi (.liste-sag): istatistik, altında
+         fiyat basamakları ve bireysel aboneler. Liste sayfası sabit yükseklikte;
+         ızgaranın altına kart eklemek listeyi sıkıştırırdı. */}
+      <div className="liste-sag">
+        {/* Sağdaki kart yalnızca yukarıda hesaplanan sayılardan: yeni sorgu yok. */}
+        <IstatistikKarti
+          kapsam="kendi kurumlarımız hariç bütün lisanslar"
+          kutular={[
+            { ad: "Müşteri", deger: sayi(acik.length), alt: "lisansı açık (deneme dahil)" },
+            { ad: "Ödeyen", deger: sayi(odeyen.length), alt: `${sayi(satirlar.length - acik.length)} kapalı` },
+            { ad: "Beklenen aylık", deger: para(gelir), alt: "ödeyenlerin ücreti", ton: "arti" },
+            { ad: "Sistem", deger: kopru.ok ? "Ayakta" : "Sorunlu", alt: kopru.not, ton: kopru.ok ? undefined : "uyari" },
+          ]}
+          gruplar={[
+            { baslik: "Lisans durumu", satirlar: durumSayilari },
+            ...(bireyselVar ? [{
+              baslik: "Bireysel aboneler",
+              satirlar: [{ ad: "Açık abonelik", adet: acikAbone }, { ad: "Kapalı", adet: aboneler.length - acikAbone }],
+            }] : []),
+          ]}
+        />
+        <KKart
+          baslik="Fiyat basamakları"
+          aciklama="Sitede ve kurulumda geçerli (yayımlanmış) tutarlar. KDV hariç; yıllıkta 10 ay bedeliyle 12 ay."
+          sag={<Link className="panel-secondary" href="/panel/platform/fiyatlar">Düzenle</Link>}
+        >
+          <KTablo kolonlar={[{ ad: "Basamak" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "Yıllık", sinif: "crm-col-amount" }, { ad: "" }]}>
+            {basamaklar.map((plan) => {
+              const aylik = planTutari(plan, fiyatlar);
+              const yillik = planYillikTutari(plan, fiyatlar);
+              const birim = plan.kisiBasi ? `kullanıcı başına${plan.enAzKullanici ? ` · en az ${plan.enAzKullanici}` : ""}` : "kurum başına";
+              return (
+                <tr key={plan.code}>
+                  <KBaslik etiket="Basamak" baslik={plan.ad.tr} alt={<>{birim} · <span className="plt-mono">{plan.code}</span></>} />
+                  <td data-label="Aylık" className="crm-col-amount">{aylik === null ? "Teklif" : para(aylik)}</td>
+                  <td data-label="Yıllık" className="crm-col-amount">{yillik === null ? "Teklif" : para(yillik)}</td>
+                  <KSatirSonu mobil={{ baslik: plan.ad.tr, alt: [aylik === null ? "Teklif" : `${para(aylik)} / ay`, birim] }} />
+                </tr>
+              );
+            })}
+          </KTablo>
+        </KKart>
+
+        {bireyselVar ? (
+          <KKart
+            baslik="Bireysel aboneler"
+            aciklama={`Kurumu olmadan ürünü kişisel olarak kullananlar: ${sayi(acikAbone)} açık abonelik, toplam ${sayi(aboneler.length)} kayıt.`}
+            sag={<Link className="panel-secondary" href="/panel/platform/subscribers">Bireysel abone planları</Link>}
+          />
+        ) : null}
+      </div>
+    </div>
   </main>;
 }

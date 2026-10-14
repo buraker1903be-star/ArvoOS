@@ -6,11 +6,10 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { ADD_ONS, PLANS } from "@/lib/site/pricing";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KBaslik, KDurum, KSatirSonu, KTablo } from "../konsol-ui";
 import { para, sayi } from "../bicim";
-import "../../settings/settings.css";
 import "../platform.css";
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 /*
   ÜRÜNLER (14.10.2026, kurum sahibinin tarifi).
@@ -99,7 +98,7 @@ export default async function UrunlerPage({ searchParams }: {
 
   const adres = (kod: string) => `/panel/platform/urunler?bolum=${kod}`;
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ÜRÜNLER</small>
@@ -138,37 +137,58 @@ export default async function UrunlerPage({ searchParams }: {
       </dl>
     </nav>
 
-    <section className="panel-card" aria-label="Ürün performansı">
-        <h2>Ürün performansı</h2>
-        <p className="panel-muted">
-          Müşteri = lisansı açık kurum (deneme dahil). Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
-          üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Kendi markalarımız sayımda yok.
-        </p>
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead><tr><th>Ürün</th><th>Müşteri</th><th>Ödeyen</th><th>Kullanıcı</th><th>Bireysel abone</th><th>Aylık gelir</th><th>Sistem</th></tr></thead>
-            <tbody>
-              {satirlar.map((urun) => (
-                <tr key={urun.code}>
-                  <td>
-                    <Link href={`/panel/platform/urunler/${urun.code}`}>{urun.name}</Link>
-                    <small className="plt-substatus">{urun.description}</small>
-                  </td>
-                  <td>{sayi(urun.kurum)}</td>
-                  <td>{sayi(urun.odeyen)}</td>
-                  <td>{sayi(urun.kullanici)}</td>
-                  {/* Randevu'nun bireysel aboneliği yok: salon kurumdur. */}
-                  <td>{SUBSCRIBER_PRODUCTS.some((p) => p.code === urun.code) ? sayi(urun.bireysel) : "—"}</td>
-                  <td>{urun.gelir ? para(urun.gelir) : "—"}</td>
-                  <td>
-                    <span className="status-pill" data-tone={urun.saglik.ok ? "success" : "danger"}>{urun.saglik.ok ? "Ayakta" : "Sorunlu"}</span>
-                    <small className="plt-substatus">{urun.saglik.not}</small>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Ürün performansı">
+        <header className="k-kart-bas">
+          <div>
+            <h2>Ürün performansı</h2>
+            <p>
+              Müşteri = lisansı açık kurum (deneme dahil). Kullanıcı sayısı kurumun aktif üyesidir: ürün başına ayrı bir
+              üyelik kaydı yok, kurumun ekibi ürünü birlikte kullanıyor. Kendi markalarımız sayımda yok.
+            </p>
+          </div>
+        </header>
+        <KTablo kolonlar={[{ ad: "Ürün" }, { ad: "Müşteri" }, { ad: "Ödeyen" }, { ad: "Kullanıcı" }, { ad: "Bireysel abone" }, { ad: "Aylık gelir", sinif: "crm-col-amount" }, { ad: "Sistem" }, { ad: "" }]}>
+          {satirlar.map((urun) => {
+            // Randevu'nun bireysel aboneliği yok: salon kurumdur.
+            const bireyselVar = SUBSCRIBER_PRODUCTS.some((p) => p.code === urun.code);
+            const href = `/panel/platform/urunler/${urun.code}`;
+            const durum = { etiket: urun.saglik.ok ? "Ayakta" : "Sorunlu", ton: urun.saglik.ok ? "success" : "danger" };
+            return (
+              <tr key={urun.code}>
+                <KBaslik etiket="Ürün" href={href} baslik={urun.name} alt={urun.description} />
+                <td data-label="Müşteri" className="k-sayi">{sayi(urun.kurum)}</td>
+                <td data-label="Ödeyen" className="k-sayi">{sayi(urun.odeyen)}</td>
+                <td data-label="Kullanıcı" className="k-sayi">{sayi(urun.kullanici)}</td>
+                <td data-label="Bireysel abone" className="k-sayi">{bireyselVar ? sayi(urun.bireysel) : "—"}</td>
+                <td data-label="Aylık gelir" className="crm-col-amount">{urun.gelir ? para(urun.gelir) : "—"}</td>
+                <KDurum baslik="Sistem" etiket={durum.etiket} ton={durum.ton} ek={<span className="crm-table-sub">{urun.saglik.not}</span>} />
+                <KSatirSonu mobil={{
+                  href,
+                  baslik: urun.name,
+                  durum,
+                  alt: [`${sayi(urun.kurum)} müşteri`, `${sayi(urun.kullanici)} kullanıcı`, urun.gelir ? para(urun.gelir) : null],
+                }} />
+              </tr>
+            );
+          })}
+        </KTablo>
       </section>
+
+      {/* Sağdaki kart yalnızca tablo için zaten hesaplanan sayılardan: yeni sorgu yok. */}
+      <IstatistikKarti
+        kapsam="lisansı açık kurumlar; kendi markalarımız hariç"
+        kutular={[
+          { ad: "Beklenen aylık", deger: para(toplamGelir), alt: "dört ürünün toplamı", ton: "arti" },
+          { ad: "Lisanslı kurum", deger: sayi(toplamKurum), alt: "çekirdek lisansı açık" },
+          { ad: "Köprü", deger: kopukKopru ? sayi(kopukKopru) : "Ayakta", alt: kopukKopru ? "yanıt vermiyor" : "hepsi sağlıklı", ton: kopukKopru ? "uyari" : undefined },
+          { ad: "Fiyat listesi", deger: sayi(PLANS.length + ADD_ONS.length), alt: "basamak ve eklenti" },
+        ]}
+        gruplar={[
+          { baslik: "Müşteri (kurum)", satirlar: satirlar.map((u) => ({ ad: u.name, adet: u.kurum })) },
+          { baslik: "Aylık gelir", satirlar: satirlar.map((u) => ({ ad: u.name, adet: u.gelir, etiket: u.gelir ? para(u.gelir) : "—" })) },
+        ]}
+      />
+    </div>
   </main>;
 }

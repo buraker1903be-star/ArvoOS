@@ -1,8 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { KBos, KDurum, KSatirSonu, KTablo } from "../konsol-ui";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+// Düzenleme penceresi (.plt-pencere) ve gizli düğme (.plt-gizli) konsolun stilinde.
+import "../platform.css";
+
+const ADRES = "/panel/platform/subscribers";
 
 /*
   Bireysel abone listesi.
@@ -57,18 +63,29 @@ const sadelestir = (value: string) =>
     .replace(/ı/g, "i").replace(/ş/g, "s").replace(/ğ/g, "g")
     .replace(/ü/g, "u").replace(/ö/g, "o").replace(/ç/g, "c").trim();
 
-export function AboneListesi({ aboneler, kaydet }: { aboneler: Abone[]; kaydet: (formData: FormData) => void }) {
+/** Süzgeç kuralı tek yerde: hem liste hem çipteki sayı buradan. */
+const suzgeceUyar = (abone: Abone, suzgec: string) => {
+  if (suzgec === "odeyen" && !(abone.erisimAcik && abone.durum === "active")) return false;
+  if (suzgec === "deneme" && !(abone.erisimAcik && abone.durum === "trialing")) return false;
+  if (suzgec === "kapali" && abone.erisimAcik) return false;
+  return true;
+};
+
+export function AboneListesi({ aboneler, kaydet, durum }: {
+  aboneler: Abone[];
+  kaydet: (formData: FormData) => void;
+  /** ?durum= — geçersizse "hepsi". */
+  durum?: string;
+}) {
   const [arama, setArama] = useState("");
-  const [suzgec, setSuzgec] = useState<string>("hepsi");
+  const suzgec = SUZGECLER.some((secim) => secim.kod === durum) ? durum! : "hepsi";
   const [acik, setAcik] = useState<string | null>(null);
   const pencere = useRef<HTMLDialogElement>(null);
 
   const listelenen = useMemo(() => {
     const anahtar = sadelestir(arama);
     return aboneler.filter((abone) => {
-      if (suzgec === "odeyen" && !(abone.erisimAcik && abone.durum === "active")) return false;
-      if (suzgec === "deneme" && !(abone.erisimAcik && abone.durum === "trialing")) return false;
-      if (suzgec === "kapali" && abone.erisimAcik) return false;
+      if (!suzgeceUyar(abone, suzgec)) return false;
       if (!anahtar) return true;
       return sadelestir(`${abone.ad ?? ""} ${abone.eposta} ${abone.urunAdi}`).includes(anahtar);
     });
@@ -87,49 +104,68 @@ export function AboneListesi({ aboneler, kaydet }: { aboneler: Abone[]; kaydet: 
 
   return (
     <>
-      <div className="plt-abone-arac">
-        <label className="plt-abone-arama">
-          <span className="plt-gizli">Abone ara</span>
+      {/* 14.10.2026: panelin süzgeç satırı ve tablosu (konsol-ui). Eskiden
+          konsolun kendi düğme dizisi (.plt-hizli) ve satır listesi
+          (.plt-abone-satir) vardı ve süzgeç yalnızca bellekteydi. Artık
+          ?durum= adresinde, Abonelikler listesindeki gibi: bağlantı
+          paylaşılabiliyor, sayfa yenilenince süzgeç kaybolmuyor. */}
+      <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
+        {SUZGECLER.map((secim) => (
+          <Link
+            key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?durum=${secim.kod}`}
+            className={suzgec === secim.kod ? "is-active" : undefined} aria-current={suzgec === secim.kod ? "page" : undefined}
+          >
+            {secim.ad} <small>{aboneler.filter((abone) => suzgeceUyar(abone, secim.kod)).length}</small>
+          </Link>
+        ))}
+        <div className="talep-ara" role="search">
           <input
-            type="search" value={arama} placeholder="Ad, e-posta ya da ürün ara"
+            type="search" value={arama} placeholder="Ad, e-posta ya da ürün ara" aria-label="Abone ara"
             onChange={(olay) => setArama(olay.target.value)}
           />
-        </label>
-        <div className="plt-hizli" role="group" aria-label="Süzgeç">
-          {SUZGECLER.map((secim) => (
-            <button
-              key={secim.kod} type="button" data-secili={suzgec === secim.kod}
-              onClick={() => setSuzgec(secim.kod)}
-            >{secim.ad}</button>
-          ))}
         </div>
       </div>
 
       {listelenen.length ? (
-        <div className="plt-abone-liste">
-          {listelenen.map((abone) => (
-            <button key={abone.id} type="button" className="plt-abone-satir" onClick={() => setAcik(abone.id)}>
-              <span className="plt-abone-kim">
-                <b>{abone.ad || abone.eposta}</b>
-                {/* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi
-                    birbirinden ayırmanın başka yolu yok. */}
-                <small>{abone.ad ? abone.eposta : abone.urunAdi}</small>
-              </span>
-              <span data-etiket="Ürün">{abone.urunAdi}</span>
-              <span data-etiket="Durum">
-                <span className="status-pill" data-tone={abone.tone}>{abone.erisimAcik ? abone.durumAdi : "Erişim kapalı"}</span>
-              </span>
-              <span data-etiket={abone.durum === "trialing" ? "Deneme bitişi" : "Dönem sonu"}>
-                {abone.durum === "trialing" ? abone.denemeSonuAdi : abone.donemSonuAdi}
-              </span>
-              <span className="plt-abone-uc" aria-hidden="true">›</span>
-            </button>
-          ))}
-        </div>
+        <KTablo kolonlar={[{ ad: "Abone" }, { ad: "Ürün" }, { ad: "Durum" }, { ad: "Deneme / dönem", sinif: "crm-col-date" }, { ad: "" }]}>
+          {listelenen.map((abone) => {
+            const durumu = { etiket: abone.erisimAcik ? abone.durumAdi : "Erişim kapalı", ton: abone.tone };
+            const tarihEtiketi = abone.durum === "trialing" ? "Deneme bitişi" : "Dönem sonu";
+            const tarihAdi = abone.durum === "trialing" ? abone.denemeSonuAdi : abone.donemSonuAdi;
+            return (
+              <tr key={abone.id}>
+                {/* Gidilecek sayfa yok, düzenleme pencerede: satıra tıklama
+                    .satir-ac düğmesine basıyor (crm/satir-tiklama.tsx).
+                    Düğme klavye ve ekran okuyucu için yerinde duruyor. */}
+                <td data-label="Abone">
+                  <span className="crm-table-title" title={abone.ad || abone.eposta}>{abone.ad || abone.eposta}</span>
+                  {/* E-posta her zaman yazılıyor: adı girilmemiş üç aboneyi
+                      birbirinden ayırmanın başka yolu yok. */}
+                  <span className="crm-table-sub">{abone.ad ? abone.eposta : abone.urunAdi}</span>
+                  <button type="button" className="satir-ac plt-gizli" onClick={() => setAcik(abone.id)}>
+                    {abone.ad || abone.eposta} aboneliğini düzenle
+                  </button>
+                </td>
+                <td data-label="Ürün">{abone.urunAdi}</td>
+                <KDurum etiket={durumu.etiket} ton={durumu.ton} />
+                <td data-label={tarihEtiketi} className="crm-col-date">
+                  {tarihAdi}
+                  <span className="crm-table-sub">{tarihEtiketi}</span>
+                </td>
+                <KSatirSonu mobil={{
+                  baslik: abone.ad || abone.eposta,
+                  durum: durumu,
+                  alt: [abone.urunAdi, abone.ad ? abone.eposta : null, `${tarihEtiketi} ${tarihAdi}`],
+                }} />
+              </tr>
+            );
+          })}
+        </KTablo>
       ) : (
-        <p className="plt-substatus">
-          {arama || suzgec !== "hepsi" ? "Bu süzgeçle eşleşen abone yok." : "Henüz bireysel abone yok."}
-        </p>
+        <KBos
+          baslik={arama || suzgec !== "hepsi" ? "Eşleşen abone yok" : "Henüz bireysel abone yok"}
+          aciklama={arama || suzgec !== "hepsi" ? "Bu süzgeçle ya da aramayla eşleşen abone yok." : undefined}
+        />
       )}
 
       <dialog

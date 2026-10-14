@@ -2,17 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { SUBSCRIBER_PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
-import { StgIcon, StgSection } from "../../settings/settings-ui";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, para, tarih, tarihDegeri } from "../bicim";
 import { updateProductPlan, updateSubscriber } from "./actions";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { AboneListesi } from "./abone-listesi";
-import "../../settings/settings.css";
 import "../platform.css";
-// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 
@@ -37,9 +34,10 @@ function hasAccess(subscriber: SubscriberRow) {
   return false;
 }
 
-export default async function SubscribersPage() {
+export default async function SubscribersPage({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  const { durum } = await searchParams;
 
   /*
     Sayım sorgudan geliyor (count: exact), listenin uzunluğundan değil.
@@ -81,7 +79,7 @@ export default async function SubscribersPage() {
   // Ücreti girilmemiş ürün kimseden para tahsil edemez; kurucunun görmesi gereken ilk şey bu.
   const ucretsizUrunler = SUBSCRIBER_PRODUCTS.filter((product) => !plans.get(product.code)?.individual_monthly_fee);
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · TİCARİ ÇEKİRDEK</small>
@@ -94,13 +92,10 @@ export default async function SubscribersPage() {
     </header>
 
     {ucretsizUrunler.length ? (
-      <div className="plt-banner" data-tone="warning" role="status">
-        <span className="plt-banner-icon"><StgIcon name="wallet" size={18} /></span>
-        <div>
-          <b>{ucretsizUrunler.map((product) => product.name).join(", ")} için bireysel ücret girilmemiş</b>
-          <p>Ücret girilmeden kimse ödeme yapamaz: denemesi biten kullanıcının önüne çıkacak bir tutar yok, abonelik sessizce kapanır.</p>
-        </div>
-      </div>
+      <KNot ton="uyari">
+        <b>{ucretsizUrunler.map((product) => product.name).join(", ")} için bireysel ücret girilmemiş.</b>
+        {" "}Ücret girilmeden kimse ödeme yapamaz: denemesi biten kullanıcının önüne çıkacak bir tutar yok, abonelik sessizce kapanır.
+      </KNot>
     ) : null}
 
     {/*
@@ -126,92 +121,120 @@ export default async function SubscribersPage() {
     </nav>
 
     {/*
-      Plan kartları yan yana. Tek sütunda tam genişlik kaplıyorlardı: iki
-      kısa formu alt alta okumak için ekran boyu kaydırmak gerekiyordu ve
-      ürün sayısı arttıkça sayfa uzayacaktı. Izgara, sığdığı kadar kartı
-      yan yana diziyor.
-    */}
-    <section className="stg-card is-wide" aria-labelledby="planlar-title">
-      <header className="stg-card-head">
-        <span className="stg-card-icon" data-tone="gold"><StgIcon name="wallet" size={20} /></span>
-        <div className="stg-card-title">
-          <small>FİYATLANDIRMA</small>
-          <h2 id="planlar-title">Bireysel planlar</h2>
-          <p>Fiyat herkese aynı uygulanır. Ücret girilmezse kişi ödeme yapamaz; deneme süresi 0 girilirse kayıt olan kişi doğrudan kapalı başlar.</p>
-        </div>
-        <div className="stg-card-aside">
-          <span className="status-pill" data-tone={ucretsizUrunler.length ? "warning" : "success"}>
-            {SUBSCRIBER_PRODUCTS.length - ucretsizUrunler.length} / {SUBSCRIBER_PRODUCTS.length} fiyatlı
-          </span>
-        </div>
-      </header>
-      <div className="plan-izgara">
-        {SUBSCRIBER_PRODUCTS.map((product) => {
-          const plan = plans.get(product.code);
-          const tone = plan?.individual_monthly_fee ? "success" : "warning";
-          return (
-            <StgSection
-              key={product.code} id={`plan-${product.code}`} icon="box" tone={tone}
-              kicker={product.name.toLocaleUpperCase("tr-TR")} title={`${product.name} bireysel planı`}
-              description={product.description}
-              aside={<span className="status-pill" data-tone={tone}>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "Ücret yok"}</span>}
-            >
-              <form className="panel-form kayit-formu" action={updateProductPlan}>
-                <input type="hidden" name="product" value={product.code} />
-                {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
-                  <p className="wide panel-muted">
-                    Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
-                    {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>.
-                  </p>
-                ) : (
-                  <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
-                )}
-                <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
-                <div className="wide panel-form-actions kayit-formu-eylem"><p>{bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
-              </form>
-            </StgSection>
-          );
-        })}
-      </div>
-    </section>
+      14.10.2026: panelin liste düzeni. Aboneler solda liste kartında,
+      sağda istatistik ve bireysel plan formları (.liste-sag). Eskiden
+      planlar sayfanın üstünde StgSection kartlarından bir ızgaraydı ve
+      abone listesi onun altında ikinci bir StgSection'dı.
 
-    {/*
-      Aboneler artık satır listesi. Eskiden her abone, içinde açık bir
+      Aboneler satır listesi. Eskiden her abone, içinde açık bir
       düzenleme formu olan tam boy bir karttı ve iki yüz taneye kadar
       çiziliyordu: tek bir aboneyi bulmanın yolu tarayıcının sayfa içi
       aramasıydı, ekranda hiçbir süzgeç yoktu.
     */}
-    <StgSection
-      id="aboneler" wide icon="users" tone="info" kicker="ABONELER" title="Bireysel aboneler"
-      description="Satıra tıklayarak durumu, dönemi ve askıyı düzenleyin."
-      aside={<span className="status-pill">{toplamKayit} kayıt</span>}
-    >
-      {eksikKapsam ? (
-        <p className="stg-muted"><StgIcon name="shield" size={16} />Toplam {toplamKayit} abone var; bu listede en yeni {subscribers.length} tanesi işleniyor. Üstteki sayılar da bu kesiti kapsıyor.</p>
-      ) : null}
-      <AboneListesi
-        kaydet={updateSubscriber}
-        aboneler={subscribers.map((subscriber) => {
-          const open = hasAccess(subscriber);
-          return {
-            id: subscriber.id,
-            urun: subscriber.product,
-            urunAdi: productName(subscriber.product),
-            ad: subscriber.full_name,
-            eposta: subscriber.email,
-            durum: subscriber.status,
-            durumAdi: productLicenseLabels[subscriber.status] ?? subscriber.status,
-            tone: open ? LISANS_TONU[subscriber.status] ?? "neutral" : "danger",
-            erisimAcik: open,
-            denemeSonu: tarihDegeri(subscriber.trial_ends_at),
-            donemSonu: tarihDegeri(subscriber.current_period_end),
-            denemeSonuAdi: tarih(subscriber.trial_ends_at),
-            donemSonuAdi: tarih(subscriber.current_period_end),
-            askiNedeni: subscriber.suspension_reason ?? "",
-            kayit: tarih(subscriber.created_at),
-          };
-        })}
-      />
-    </StgSection>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section id="aboneler" className="panel-card talep-bilgi" aria-label="Bireysel aboneler">
+        {eksikKapsam ? (
+          <KNot ton="uyari">Toplam {toplamKayit} abone var; bu listede en yeni {subscribers.length} tanesi işleniyor. Üstteki sayılar da bu kesiti kapsıyor.</KNot>
+        ) : null}
+        <AboneListesi
+          kaydet={updateSubscriber}
+          durum={durum}
+          aboneler={subscribers.map((subscriber) => {
+            const open = hasAccess(subscriber);
+            return {
+              id: subscriber.id,
+              urun: subscriber.product,
+              urunAdi: productName(subscriber.product),
+              ad: subscriber.full_name,
+              eposta: subscriber.email,
+              durum: subscriber.status,
+              durumAdi: productLicenseLabels[subscriber.status] ?? subscriber.status,
+              tone: open ? LISANS_TONU[subscriber.status] ?? "neutral" : "danger",
+              erisimAcik: open,
+              denemeSonu: tarihDegeri(subscriber.trial_ends_at),
+              donemSonu: tarihDegeri(subscriber.current_period_end),
+              denemeSonuAdi: tarih(subscriber.trial_ends_at),
+              donemSonuAdi: tarih(subscriber.current_period_end),
+              askiNedeni: subscriber.suspension_reason ?? "",
+              kayit: tarih(subscriber.created_at),
+            };
+          })}
+        />
+      </section>
+
+      <div className="liste-sag">
+        {/* Şeritteki sayıların aynısı; kapsam yazısı listenin kesitini söylüyor. */}
+        <IstatistikKarti
+          kapsam={eksikKapsam ? `en yeni ${subscribers.length} kayıttan (toplam ${toplamKayit})` : "bütün kayıtlardan"}
+          kutular={[
+            { ad: "Ödeyen", deger: String(paying.length), alt: monthlyRevenue ? `${para(monthlyRevenue)} / ay` : "aylık gelir yok", ton: "arti" },
+            { ad: "Denemede", deger: String(trialing.length), alt: "henüz ödeme yok" },
+            { ad: "Erişimi kapalı", deger: String(kapali), alt: "süresi geçmiş ya da askıda", ton: kapali ? "uyari" : undefined },
+            { ad: "Toplam kayıt", deger: String(toplamKayit) },
+          ]}
+          gruplar={[
+            /* Ürün başına dağılım bilerek yok: liste sınırlı (LISTE_SINIRI)
+               ve listeden sayılan ürün adedi sınıra varınca sessizce eksilir. */
+            {
+              baslik: "Erişim",
+              satirlar: [
+                { ad: "Ödeyen", adet: paying.length },
+                { ad: "Denemede", adet: trialing.length },
+                { ad: "Erişimi kapalı", adet: kapali },
+              ],
+            },
+          ]}
+        />
+
+        {/*
+          Plan formları yan sütunda alt alta (14.10.2026). Önce tek sütunda
+          tam genişlikteydiler: iki kısa formu alt alta okumak için ekran
+          boyu kaydırmak gerekiyordu; sonra yan yana bir ızgara oldular
+          (StgSection kartları). Liste sayfasında asıl alanı abone listesi
+          alıyor; iki kısa form dar yan sütuna sığıyor.
+        */}
+        <KKart
+          id="planlar"
+          baslik="Bireysel planlar"
+          aciklama="Fiyat herkese aynı uygulanır. Ücret girilmezse kişi ödeme yapamaz; deneme süresi 0 girilirse kayıt olan kişi doğrudan kapalı başlar."
+          sag={(
+            <span className="status-pill" data-tone={ucretsizUrunler.length ? "warning" : "success"}>
+              {SUBSCRIBER_PRODUCTS.length - ucretsizUrunler.length} / {SUBSCRIBER_PRODUCTS.length} fiyatlı
+            </span>
+          )}
+        >
+          {SUBSCRIBER_PRODUCTS.map((product) => {
+            const plan = plans.get(product.code);
+            const tone = plan?.individual_monthly_fee ? "success" : "warning";
+            return (
+              <section key={product.code} id={`plan-${product.code}`} className="talep-not" aria-label={`${product.name} bireysel planı`}>
+                <header className="k-kart-bas">
+                  <div>
+                    <h3>{product.name} bireysel planı</h3>
+                    <p>{product.description}</p>
+                  </div>
+                  <div className="k-kart-sag">
+                    <span className="status-pill" data-tone={tone}>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "Ücret yok"}</span>
+                  </div>
+                </header>
+                <form className="panel-form kayit-formu" action={updateProductPlan}>
+                  <input type="hidden" name="product" value={product.code} />
+                  {bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? (
+                    <p className="wide panel-muted">
+                      Ücret fiyat listesinden: <b>{plan?.individual_monthly_fee ? `${para(Number(plan.individual_monthly_fee))} / ay` : "teklif usulü (kartla satılmaz)"}</b>.
+                      {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>.
+                    </p>
+                  ) : (
+                    <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
+                  )}
+                  <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
+                  <div className="wide panel-form-actions kayit-formu-eylem"><p>{bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
+                </form>
+              </section>
+            );
+          })}
+        </KKart>
+      </div>
+    </div>
   </main>;
 }

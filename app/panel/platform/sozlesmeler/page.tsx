@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { productName } from "@/lib/products";
-import { StgIcon, StgSection } from "../../settings/settings-ui";
 import { para, tarih } from "../bicim";
 import { IstekKarti, type BekleyenIstek, type Kurum } from "./istek-karti";
-import "../../settings/settings.css";
+import { MobilSatir } from "../../crm/table-cells";
+import { KBaslik, KBos, KDurum, KKart, KTablo } from "../konsol-ui";
+// İstek kartlarının düzeni (.istek-listesi, .istek-karti) platform.css'te.
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
 import "../../crm/crm.css";
@@ -111,7 +112,7 @@ export default async function SozlesmelerPage() {
     };
   };
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">TİCARİ</small>
@@ -145,42 +146,53 @@ export default async function SozlesmelerPage() {
       </dl>
     </nav>
 
+    {/*
+      GÖRÜNÜŞ (14.10.2026, "bizim ArvoOS panel gibi olmalı"): ayarlar
+      ekranının kartı (StgSection) ve simgeli satır listesi yerine panelin
+      kartı ve tablosu. Bekleyen istekler kendi kartlarında kalıyor:
+      her birinde kiracı seçimi ve ret sebebi olan bir karar formu var,
+      tablo satırına sığmıyor.
+    */}
     {bekleyenler.length ? (
       <div className="istek-listesi">
         {bekleyenler.map((satir) => <IstekKarti key={satir.id} istek={bekleyen(satir)} kurumlar={kurumlar} />)}
       </div>
     ) : (
-      <div className="stg-empty">
-        <StgIcon name="check" size={22} />
-        <p>Onay bekleyen sözleşme yok. ArvoOS kurumunda bir sözleşme imzalandığında burada görünür.</p>
-      </div>
+      <KKart baslik="Onay kuyruğu">
+        <KBos baslik="Onay bekleyen sözleşme yok" aciklama="ArvoOS kurumunda bir sözleşme imzalandığında burada görünür." />
+      </KKart>
     )}
 
     {sonuclananlar.length ? (
-      <StgSection
-        id="gecmis" wide icon="folder" tone="neutral" kicker="GEÇMİŞ" title="Sonuçlanan istekler"
-        description="Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder."
-        aside={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
+      <KKart
+        id="gecmis" baslik="Sonuçlanan istekler"
+        aciklama="Son 20 karar. Kararlar geri alınamaz: onay modülleri açar, ret imzalı bir sözleşmeyi reddeder."
+        sag={<span className="status-pill">{sonuclananlar.length} kayıt</span>}
       >
-        <div className="stg-list">
-          {sonuclananlar.map((satir) => (
-            <div key={satir.id} className="plt-row">
-              <span className="stg-row-main">
-                <span className="stg-row-icon" data-tone={satir.status === "approved" ? "success" : "danger"}>
-                  <StgIcon name={satir.status === "approved" ? "check" : "lock"} size={16} />
-                </span>
-                <span>
-                  <b>{satir.customer_name ?? "Müşteri"} · {satir.contract_no ?? "—"}</b>
-                  <small>
-                    {satir.status === "approved" ? "Onaylandı" : "Reddedildi"} · {tarih(satir.reviewed_at)}
-                    {satir.review_note ? ` · ${satir.review_note}` : ""}
-                  </small>
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </StgSection>
+        {/* Satırın gidecek bir sayfası yok: ok (chevron) çizilmiyor,
+            telefonda yalnızca kompakt satır. */}
+        <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Karar" }, { ad: "Tarih", sinif: "crm-col-date" }, { ad: "Tutar", sinif: "crm-col-amount" }, { ad: "Not" }]}>
+          {sonuclananlar.map((satir) => {
+            const onay = satir.status === "approved";
+            const karar = onay ? "Onaylandı" : "Reddedildi";
+            const tutar = satir.amount ? para(Number(satir.amount), satir.currency) : "—";
+            return (
+              <tr key={satir.id}>
+                <KBaslik etiket="Müşteri" baslik={satir.customer_name ?? "Müşteri"} alt={satir.contract_no ?? "—"} />
+                <KDurum baslik="Karar" etiket={karar} ton={onay ? "success" : "danger"} />
+                <td data-label="Tarih" className="crm-col-date">{tarih(satir.reviewed_at)}</td>
+                <td data-label="Tutar" className="crm-col-amount">{tutar}</td>
+                <td data-label="Not" className="k-sessiz">{satir.review_note ?? "—"}</td>
+                <MobilSatir
+                  baslik={`${satir.customer_name ?? "Müşteri"} · ${satir.contract_no ?? "—"}`}
+                  durum={{ etiket: karar, ton: onay ? "success" : "danger" }}
+                  alt={[tarih(satir.reviewed_at), satir.amount ? tutar : null, satir.review_note]}
+                />
+              </tr>
+            );
+          })}
+        </KTablo>
+      </KKart>
     ) : null}
   </main>;
 }

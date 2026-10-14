@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
-import { StgIcon, StgSection, type StgTone } from "../../settings/settings-ui";
-import { PAKET_ADI, para, tarih } from "../bicim";
+import { PAKET_ADI, para, sayi, tarih } from "../bicim";
 import { productName } from "@/lib/products";
 import { AbonelikListesi, type AbonelikGrubu } from "./abonelik-listesi";
-/* Gösterilen liste: kanal başına bu kadar satır okunuyor, toplam
-   veritabanından geliyor. */
-const LISTE = 20;
-import "../../settings/settings.css";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { MobilSatir } from "../../crm/table-cells";
+import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
 import "../platform.css";
 // Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
 import "../../crm/crm.css";
@@ -49,15 +47,22 @@ type AbonelikSatiri = {
 };
 
 const statusLabels: Record<string, string> = { active: "Aktif", trialing: "Deneme", past_due: "Ödeme gecikmiş", suspended: "Askıda", canceled: "İptal", incomplete: "Tamamlanmadı", paid: "Ödendi", open: "Açık", draft: "Taslak", void: "Geçersiz" };
-const statusTones: Record<string, StgTone> = { active: "success", trialing: "info", past_due: "warning", suspended: "danger", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
+/* Durum rozetinin tonları (status-pill data-tone). Eskiden ayarlar
+   ekranının StgTone tipiydi; konsol o kart dilinden çıkınca yerel tip. */
+type Ton = "success" | "info" | "warning" | "danger" | "neutral";
+const statusTones: Record<string, Ton> = { active: "success", trialing: "info", past_due: "warning", suspended: "danger", canceled: "danger", incomplete: "warning", paid: "success", open: "warning", draft: "neutral", void: "neutral" };
 
 // Şimdiki zaman bileşen dışında okunur (react-hooks/purity).
 const gunOnce = (gun: number) => new Date(Date.now() - gun * 86_400_000).toISOString();
 const remindersNow = (licenses: RenewalLicense[], organizations: RenewalOrganization[]) => renewalReminders(licenses, organizations, Date.now());
 
-export default async function BillingPage() {
+const BOLUMLER = ["sorunlar", "hatirlatma"] as const;
+
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ durum?: string; bolum?: string }> }) {
   const { supabase, isPlatformOwner } = await getPanelContext();
   if (!isPlatformOwner) notFound();
+  const { durum, bolum: istenenBolum } = await searchParams;
+  const bolum = BOLUMLER.find((b) => b === istenenBolum) ?? "";
 
   const [
     { data: internalOrganizations },
@@ -244,16 +249,16 @@ export default async function BillingPage() {
     durumu 'past_due'ya çekmek bugün açık olan denemeleri kapatırdı.
   */
   const simdiAn = Date.parse(gunOnce(0));
-  type Sorun = { anahtar: string; kim: string; organizationId: string | null; sorun: string; ayrinti: string; ton: StgTone; baglanti: string; baglantiAdi: string };
+  type Sorun = { anahtar: string; kim: string; organizationId: string | null; sorun: string; ayrinti: string; ton: Ton; baglanti: string; baglantiAdi: string };
   const sorunlar: Sorun[] = [
     ...abonelikler.filter((s) => s.durum === "past_due").map((s) => ({
       anahtar: `gecikmis-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
-      sorun: "Ödemesi gecikmiş", ayrinti: `${s.urunAdi} · dönem sonu ${tarih(s.donemSonu)}`, ton: "warning" as StgTone,
+      sorun: "Ödemesi gecikmiş", ayrinti: `${s.urunAdi} · dönem sonu ${tarih(s.donemSonu)}`, ton: "warning" as Ton,
       baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
     })),
     ...abonelikler.filter((s) => s.durum === "trialing" && s.denemeSonu && Date.parse(s.denemeSonu) < simdiAn).map((s) => ({
       anahtar: `deneme-${s.organizationId}-${s.urun}`, kim: s.organizationName, organizationId: s.organizationId,
-      sorun: "Denemesi bitti, ödeme yok", ayrinti: `${s.urunAdi} · deneme ${tarih(s.denemeSonu)} tarihinde bitti`, ton: "warning" as StgTone,
+      sorun: "Denemesi bitti, ödeme yok", ayrinti: `${s.urunAdi} · deneme ${tarih(s.denemeSonu)} tarihinde bitti`, ton: "warning" as Ton,
       baglanti: `/panel/platform/licenses?organization=${s.organizationId}`, baglantiAdi: "Lisans →",
     })),
     ...((sorunluBildirimler ?? []) as { id: string; organization_id: string; product: string | null; amount: number; currency: string; status: string; created_at: string; review_note: string | null }[])
@@ -262,12 +267,12 @@ export default async function BillingPage() {
         anahtar: `bildirim-${b.id}`, kim: orgAdi.get(b.organization_id) ?? "Kurum", organizationId: b.organization_id,
         sorun: b.status === "pending" ? "Havale onay bekliyor" : "Havale reddedildi",
         ayrinti: `${productName(b.product ?? "arvoos")} · ${para(Number(b.amount), b.currency)} · ${tarih(b.created_at)}${b.status === "rejected" && b.review_note ? ` · ${b.review_note}` : ""}`,
-        ton: (b.status === "pending" ? "info" : "danger") as StgTone,
+        ton: (b.status === "pending" ? "info" : "danger") as Ton,
         baglanti: "/panel/platform/payments", baglantiAdi: "Ödeme onayları →",
       })),
     ...odemeOlaylari.map((olay) => ({
       anahtar: `paytr-${olay.id}`, kim: olay.organizationName ?? "Bilinmeyen kurum", organizationId: olay.organizationId,
-      sorun: "PayTR ödemesi işlenemedi", ayrinti: `${olay.paymentAmount !== null ? para(olay.paymentAmount) : "tutar yok"} · ${olay.merchantOid}`, ton: "danger" as StgTone,
+      sorun: "PayTR ödemesi işlenemedi", ayrinti: `${olay.paymentAmount !== null ? para(olay.paymentAmount) : "tutar yok"} · ${olay.merchantOid}`, ton: "danger" as Ton,
       baglanti: "/panel/platform/payments#karsiliksiz", baglantiAdi: "Ayrıntı →",
     })),
   ];
@@ -276,7 +281,21 @@ export default async function BillingPage() {
     .map((grup) => ({ ...grup, aylikToplamAdi: grup.aylikToplam ? para(grup.aylikToplam, currency) : "—" }))
     .sort((a, b) => b.aylikToplam - a.aylikToplam || a.ad.localeCompare(b.ad, "tr"));
 
-  return <main className="stg plt talep cari">
+  /* Sağdaki istatistik kartının dağılımları: hepsi yukarıdaki sınırsız
+     lisans okumasından (abonelikler), süzgeçten bağımsız. */
+  const durumSayisi = (kod: string) => abonelikler.filter((s) => s.durum === kod).length;
+  const urunSayilari = new Map<string, number>();
+  for (const s of abonelikler) urunSayilari.set(s.urunAdi, (urunSayilari.get(s.urunAdi) ?? 0) + 1);
+
+  /*
+    GÖRÜNÜŞ (14.10.2026, "bizim ArvoOS panel gibi olmalı"): ayarlar
+    ekranının kartları (StgSection) ve konsolun kendi tablosu (.plt-table)
+    yerine panelin liste sayfası: solda liste kartı, sağda istatistik.
+    Ödeme sorunları ve dönem sonu hatırlatmaları kartın çip satırında
+    birer bölüm (?bolum=); eskiden üç ayrı kart alt alta diziliyordu ve
+    abonelik listesi sayfanın dibinde kalıyordu.
+  */
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · ABONELİKLER</small>
@@ -285,6 +304,8 @@ export default async function BillingPage() {
       </div>
       <div className="talep-bas-eylem">
         <Link className="panel-secondary" href="/panel/platform/payments">Ödeme onayları</Link>
+        {/* Tahsilat listesi kendi menüsünde (Faturalama ve Tahsilat, 14.10.2026). */}
+        <Link className="panel-secondary" href="/panel/platform/tahsilat">Tahsilatlar</Link>
       </div>
     </header>
 
@@ -316,9 +337,9 @@ export default async function BillingPage() {
           <dd>{odeyenler.length}</dd>
           <small>{denemedekiler.length ? `${denemedekiler.length} deneme sürüyor` : `${odeyenler.length + denemedekiler.length} açık abonelik`}</small>
         </div>
-        <div>
+        <div className={!bolum && durum === "geciken" ? "is-active" : undefined}>
           <dt>Ödemesi gecikmiş</dt>
-          <dd className={pastDue ? "talep-uyari" : undefined}>{pastDue}</dd>
+          <dd className={pastDue ? "talep-uyari" : undefined}><Link href="/panel/platform/billing?durum=geciken">{pastDue}</Link></dd>
           <small>{pastDue ? "Hatırlatma gönderin" : "Gecikmiş abonelik yok"}</small>
         </div>
       </dl>
@@ -327,99 +348,122 @@ export default async function BillingPage() {
     {/* Farklı para birimleri toplanamaz; toplamı doğru sanmaktansa
         güvenilmez olduğunu söylüyoruz. */}
     {birimKarisik ? (
-      <p className="stg-muted"><StgIcon name="shield" size={16} />Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</p>
+      <KNot ton="uyari">Kayıtlarda birden çok para birimi var; toplamlar {currency} varsayımıyla yazıldı ve güvenilir değil.</KNot>
     ) : null}
 
-    {/* Ödeme sorunları: bugün peşine düşülecek işler tek listede. */}
-    <StgSection
-      id="sorunlar" wide icon="shield" tone={sorunlar.some((x) => x.ton === "danger") ? "danger" : sorunlar.length ? "warning" : "success"}
-      kicker="ÖDEME SORUNLARI" title={sorunlar.length ? `${sorunlar.length} konu bekliyor` : "Ödeme sorunu yok"}
-      description="Gecikmiş abonelikler, denemesi bitip ödemeye geçmeyenler, onay bekleyen ya da son 30 günde reddedilen havaleler ve PayTR'nin bildirip işlenemeyen ödemeler."
-    >
-      {sorunlar.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table">
-            <thead><tr><th>Kurum</th><th>Sorun</th><th>Ayrıntı</th><th /></tr></thead>
-            <tbody>
-              {sorunlar.map((x) => (
-                <tr key={x.anahtar}>
-                  <td>{x.kim}</td>
-                  <td><span className="status-pill" data-tone={x.ton}>{x.sorun}</span></td>
-                  <td>{x.ayrinti}</td>
-                  <td><Link className="kiraci-baglanti" href={x.baglanti}>{x.baglantiAdi}</Link></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <div className="stg-empty"><StgIcon name="check" size={22} /><p>Gecikmiş abonelik, bekleyen havale ya da işlenemeyen ödeme yok.</p></div>}
-    </StgSection>
+    <div className="talep-izgara personel-iki ekip-izgara">
+      <section className="panel-card talep-bilgi" aria-label="Abonelik listesi">
+        <AbonelikListesi
+          gruplar={abonelikGruplari}
+          durum={durum}
+          bolum={bolum}
+          bolumler={[
+            { kod: "sorunlar", ad: "Ödeme sorunları", adet: sorunlar.length, uyari: sorunlar.length > 0 },
+            { kod: "hatirlatma", ad: "Dönem sonu yaklaşanlar", adet: reminders.length, uyari: reminders.some((r) => r.daysLeft < 0) },
+          ]}
+        >
+          {bolum === "sorunlar" ? <>
+            {/* Ödeme sorunları: bugün peşine düşülecek işler tek listede. */}
+            <KNot>Gecikmiş abonelikler, denemesi bitip ödemeye geçmeyenler, onay bekleyen ya da son 30 günde reddedilen havaleler ve PayTR&apos;nin bildirip işlenemeyen ödemeler.</KNot>
+            {sorunlar.length ? (
+              <KTablo kolonlar={[{ ad: "Kurum" }, { ad: "Sorun" }, { ad: "Ayrıntı" }, { ad: "Nereden" }, { ad: "" }]}>
+                {sorunlar.map((x) => (
+                  <tr key={x.anahtar}>
+                    <KBaslik etiket="Kurum" href={x.baglanti} baslik={x.kim} />
+                    <KDurum baslik="Sorun" etiket={x.sorun} ton={x.ton} />
+                    <td data-label="Ayrıntı">{x.ayrinti}</td>
+                    <td data-label="Nereden" className="k-sessiz">{x.baglantiAdi}</td>
+                    <KSatirSonu mobil={{ href: x.baglanti, baslik: x.kim, durum: { etiket: x.sorun, ton: x.ton }, alt: [x.ayrinti] }} />
+                  </tr>
+                ))}
+              </KTablo>
+            ) : <KBos baslik="Ödeme sorunu yok" aciklama="Gecikmiş abonelik, bekleyen havale ya da işlenemeyen ödeme yok." />}
+          </> : bolum === "hatirlatma" ? <>
+            {/* Otomatik çekim yok: kurucu buradan WhatsApp'la hatırlatır. */}
+            <KNot>ArvoOS, ArvoARC, ArvoLab ve Randevu aboneliklerinden {REMINDER_WINDOW_DAYS} gün içinde bitenler ve süresi geçenler. WhatsApp düğmesi kurumun iletişim numarasına ödeme bağlantılı hazır mesajı gönderir.</KNot>
+            {reminders.length ? (
+              <KTablo kolonlar={[{ ad: "Kurum / ürün" }, { ad: "Kalan" }, { ad: "Bitiş", sinif: "crm-col-date" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "" }]}>
+                {reminders.map((r) => {
+                  const kalan = r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`;
+                  const ton = r.daysLeft < 0 ? "danger" : r.daysLeft <= 1 ? "warning" : "info";
+                  const ucret = r.fee ? `${para(r.fee, "TRY")} / ay` : "aylık ücret girilmedi";
+                  return (
+                    <tr key={`${r.organizationId}-${r.product}`}>
+                      <KBaslik etiket="Kurum" baslik={r.organizationName} alt={r.productName} />
+                      <KDurum baslik="Kalan" etiket={kalan} ton={ton} />
+                      <td data-label="Bitiş" className="crm-col-date">{tarih(r.endsAt)}</td>
+                      <td data-label="Aylık" className={`crm-col-amount${r.fee ? "" : " talep-uyari"}`}>{ucret}</td>
+                      {/*
+                        Eskiden bu bir wa.me bağlantısıydı: kurucu WhatsApp Web'e
+                        düşüyor, mesajı elle gönderiyordu ve gönderilip
+                        gönderilmediğinin kaydı kalmıyordu — "bu kuruma hatırlattık
+                        mı" sorusunun yanıtı kimsede yoktu. Artık kapıdan gidiyor
+                        ve kurumun sohbetine yazılıyor.
 
-    <div className="stg-grid">
-      <StgSection
-        id="hatirlatmalar" wide icon="wallet" tone={reminders.some((r) => r.daysLeft < 0) ? "danger" : reminders.length ? "warning" : "neutral"}
-        kicker="ÖDEME HATIRLATMALARI" title="Dönem sonu yaklaşanlar"
-        description={`ArvoOS, ArvoARC, ArvoLab ve Randevu aboneliklerinden ${REMINDER_WINDOW_DAYS} gün içinde bitenler ve süresi geçenler. WhatsApp düğmesi kurumun iletişim numarasına ödeme bağlantılı hazır mesajı açar.`}
-        aside={<span className="status-pill" data-tone={reminders.length ? "warning" : "neutral"}>{reminders.length} kurum</span>}
-      >
-        {reminders.length ? (
-          <div className="stg-list">
-            {reminders.map((r) => (
-              <div key={`${r.organizationId}-${r.product}`} className="plt-row">
-                <span className="stg-row-main">
-                  <span className="stg-row-icon" data-tone={r.daysLeft < 0 ? "danger" : r.daysLeft <= 1 ? "warning" : "gold"}><StgIcon name="wallet" size={16} /></span>
-                  <span>
-                    <b>{r.organizationName} · {r.productName}</b>
-                    <small>{r.daysLeft < 0 ? `${-r.daysLeft} gün önce bitti` : r.daysLeft === 0 ? "Bugün bitiyor" : `${r.daysLeft} gün kaldı`} · {tarih(r.endsAt)}{r.fee ? ` · ${para(r.fee, "TRY")} / ay` : " · aylık ücret girilmedi"}</small>
-                  </span>
-                </span>
-                {/*
-                  Eskiden bu bir wa.me bağlantısıydı: kurucu WhatsApp Web'e
-                  düşüyor, mesajı elle gönderiyordu ve gönderilip
-                  gönderilmediğinin kaydı kalmıyordu — "bu kuruma hatırlattık
-                  mı" sorusunun yanıtı kimsede yoktu. Artık kapıdan gidiyor
-                  ve kurumun sohbetine yazılıyor.
-                */}
-                {r.phone ? (
-                  <form action={abonelikHatirlatmasiGonder}>
-                    <input type="hidden" name="organization_id" value={r.organizationId} />
-                    <input type="hidden" name="product" value={r.product} />
-                    <input type="hidden" name="tur" value={r.trial ? "trial" : "renewal"} />
-                    <input type="hidden" name="phone" value={r.phone} />
-                    <input type="hidden" name="message" value={r.message} />
-                    <input type="hidden" name="abone" value={r.organizationName} />
-                    <input type="hidden" name="urun" value={r.productName} />
-                    <input type="hidden" name="tarih" value={r.endsAtLabel} />
-                    <input type="hidden" name="ucret" value={r.feeLabel ?? ""} />
-                    <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
-                  </form>
-                ) : (
-                  <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : <div className="stg-empty"><StgIcon name="check" size={22} /><p>Önümüzdeki {REMINDER_WINDOW_DAYS} gün içinde biten ya da süresi geçmiş abonelik yok.</p></div>}
-      </StgSection>
+                        Düğme eylem hücresinde (crm-table-actions): telefonda
+                        satırın tek görünümünün yanında kalan hücre bu.
+                      */}
+                      <td className="crm-table-actions">
+                        {r.phone ? (
+                          <form action={abonelikHatirlatmasiGonder}>
+                            <input type="hidden" name="organization_id" value={r.organizationId} />
+                            <input type="hidden" name="product" value={r.product} />
+                            <input type="hidden" name="tur" value={r.trial ? "trial" : "renewal"} />
+                            <input type="hidden" name="phone" value={r.phone} />
+                            <input type="hidden" name="message" value={r.message} />
+                            <input type="hidden" name="abone" value={r.organizationName} />
+                            <input type="hidden" name="urun" value={r.productName} />
+                            <input type="hidden" name="tarih" value={r.endsAtLabel} />
+                            <input type="hidden" name="ucret" value={r.feeLabel ?? ""} />
+                            <button className="panel-secondary" type="submit" title={r.message}>WhatsApp ile hatırlat</button>
+                          </form>
+                        ) : (
+                          <Link className="panel-secondary" href={`/panel/platform?organization=${r.organizationId}#ayarlar`} title="Kurum ayarlarında iletişim telefonu yok ya da cep numarası değil">Telefon ekle</Link>
+                        )}
+                      </td>
+                      <MobilSatir
+                        baslik={`${r.organizationName} · ${r.productName}`}
+                        durum={{ etiket: kalan, ton }}
+                        alt={[tarih(r.endsAt), ucret]}
+                      />
+                    </tr>
+                  );
+                })}
+              </KTablo>
+            ) : <KBos baslik="Yaklaşan dönem sonu yok" aciklama={`Önümüzdeki ${REMINDER_WINDOW_DAYS} gün içinde biten ya da süresi geçmiş abonelik yok.`} />}
+          </> : null}
+        </AbonelikListesi>
+      </section>
 
-      <StgSection
-        id="abonelikler" wide icon="box" tone="gold" kicker="ABONELİKLER" title="Kurum abonelikleri"
-        description="Kiracı bazında gruplu; başlıkta o kurumun aylık toplamı. Kaynak lisans kayıtları, yani ödemesi henüz gelmemiş ya da elle açılmış abonelikler de burada."
-        aside={<span className="status-pill">{abonelikler.length} abonelik</span>}
-      >
-        {abonelikGruplari.length ? (
-          <AbonelikListesi gruplar={abonelikGruplari} />
-        ) : <div className="stg-empty"><StgIcon name="box" size={22} /><p>Aktif, denemede ya da ödemesi gecikmiş abonelik yok.</p></div>}
-      </StgSection>
-
-      {/* Tahsilat listesi kendi menüsünde (Faturalama ve Tahsilat, 14.10.2026). */}
-      <StgSection
-        id="tahsilat" wide icon="wallet" tone="success" kicker="TAHSİLAT" title="Platformun aldığı ödemeler"
-        description="Havale, kart ve bireysel abone ödemelerinin listesi ve faturalar Faturalama ve Tahsilat menüsünde."
-        aside={<Link className="kiraci-baglanti" href="/panel/platform/tahsilat">Tahsilatlara git →</Link>}
-      >
-        <p className="stg-muted">Tüm zamanlar {para(toplamTahsilat, currency)} · {tahsilatAdedi} ödeme.</p>
-      </StgSection>
+      <IstatistikKarti
+        kapsam="bütün lisans kayıtlarından; süzgeçten bağımsız"
+        kutular={[
+          { ad: "Denemede gelir", deger: para(denemeGeliri, currency), alt: `${sayi(denemedekiler.length)} deneme` },
+          { ad: "Ücreti girilmemiş", deger: sayi(ucretsiz), alt: "abonelik", ton: ucretsiz ? "uyari" : undefined },
+          { ad: "Ödeme sorunu", deger: sayi(sorunlar.length), alt: sorunlar.length ? "peşine düşülecek" : "yok", ton: sorunlar.length ? "uyari" : undefined },
+          { ad: "Dönem sonu", deger: sayi(reminders.length), alt: `${REMINDER_WINDOW_DAYS} gün içinde` },
+        ]}
+        gruplar={[
+          {
+            baslik: "Durumlar",
+            satirlar: [
+              { ad: "Aktif", adet: durumSayisi("active") },
+              { ad: "Deneme", adet: durumSayisi("trialing") },
+              { ad: "Ödeme gecikmiş", adet: durumSayisi("past_due") },
+              { ad: "Askıda", adet: durumSayisi("suspended") },
+              { ad: "İptal", adet: durumSayisi("canceled") },
+            ],
+          },
+          {
+            baslik: "Ürünler",
+            satirlar: [...urunSayilari.entries()].sort((a, b) => b[1] - a[1]).map(([ad, adet]) => ({ ad, adet })),
+          },
+          {
+            baslik: "En çok ödeyen kurumlar",
+            satirlar: abonelikGruplari.filter((g) => g.aylikToplam).slice(0, 5).map((g) => ({ ad: g.ad, adet: g.aylikToplam, etiket: g.aylikToplamAdi })),
+          },
+        ]}
+      />
     </div>
   </main>;
 }

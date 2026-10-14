@@ -9,16 +9,14 @@ import { arvolabYansimasi } from "@/lib/arvolab";
 import { arcUrunKopyasi } from "@/lib/arc-bridge";
 import { randevuUrunKopyasi } from "@/lib/randevu-bridge";
 import { yansimaDurumu, yansimaGunu, type YansimaKopyasi } from "@/lib/yansima-durumu";
-import { StgIcon, StgSection } from "../../settings/settings-ui";
+import { KKart, KNot } from "../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, depolama, kullanimTonu, para, sayi, tarih, tarihDegeri, yuzde } from "../bicim";
 import { updateOrganizationLicense, updateProductLicense, urunuYenidenYansit } from "./actions";
 import { KiraciSecici } from "./kiraci-secici";
 import { UrunKartlari } from "./urun-kartlari";
-import "../../settings/settings.css";
+// Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
+// şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
 import "../platform.css";
-// Panelin başlık ve özet şeridi kalıbı (talep-bas, kayit-serit).
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
 
 type OrganizationRow = { id: string; name: string; display_name: string | null; slug: string; plan_code: string; status: string; kind: string | null };
 type LicenseRow = {
@@ -208,7 +206,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
   const cekirdekAcik = ["active", "trialing", "past_due"].includes(license.license_status);
   const acikUrunler = ADDON_PRODUCTS.filter((urun) => ["active", "trialing", "past_due"].includes(productLicenses.get(urun.code)?.status ?? "inactive"));
 
-  return <main className="stg plt talep cari">
+  return <main className="plt talep cari">
     <header className="talep-bas">
       <div className="talep-bas-metin"><small className="panel-kicker">KİRACI · {label}</small><h1>Lisans ve kota</h1><p>Paket, kullanım limitleri, deneme süresi ve erişim durumu.</p></div>
       <div className="talep-bas-eylem">
@@ -267,11 +265,18 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
       </dl>
     </nav>
 
-    <div className="stg-grid">
-      <StgSection
-        id="kullanim" wide icon="chart" tone="info" kicker="KOTA" title="Şu anki kullanım"
-        description="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
-        aside={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
+    {/*
+      14.10.2026: panelin sade kartı (KKart). Eskiden ayarlar ekranının
+      kartlarıydı (StgSection: renkli simge kutusu, büyük harfli üst başlık);
+      konsol panelden ayrı bir ürün gibi görünüyordu. Sayfa bir liste değil,
+      iki kart alt alta; sarmalayıcı düz blok, kartlar arası boşluğu
+      .k-kart+.k-kart veriyor.
+    */}
+    <div>
+      <KKart
+        id="kullanim" baslik="Şu anki kullanım"
+        aciklama="Ölçümler canlı: kullanıcı sayısı üyeliklerden, depolama dosya deposundan, AI kredisi ArvoLab'ın bu ayki tüketiminden geliyor."
+        sag={<span className="status-pill" data-tone={kullanimTonu(Math.max(userPercent, storagePercent, aiPercent))}>En dolu kota %{Math.max(userPercent, storagePercent, aiPercent)}</span>}
       >
         <div className="plt-olcumler">
           <Olcum etiket="Kullanıcı" kullanilan={sayi(users)} limit={sayi(license.user_limit)} oran={userPercent} />
@@ -283,15 +288,14 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             <Olcum etiket="AI kredisi (bu ay)" kullanilan={sayi(aiKredi)} limit={sayi(license.ai_credit_limit)} oran={aiPercent} />
           ) : null}
         </div>
-        <p className="stg-muted">
-          <StgIcon name="chart" size={16} />
+        <KNot ton={aiOlculdu ? "bilgi" : "uyari"}>
           {aiOlculdu
             ? `1 kredi = ${sayi(KREDI_KARAKTERI)} karakter (istem + yanıt). Reddedilen yanıtlar sayılmaz — kullanıcıya gösterilmeyen bir şeyin parası alınmıyor. Sayaç her ay başında sıfırlanır.`
             : "AI tüketimi okunamadı: ArvoLab veritabanına ulaşılamıyor. Sayı bilinmiyor, sıfır değil."}
           {kullanim.arvolab?.aylik_calisma != null ? ` Bu ay ${sayi(kullanim.arvolab.aylik_calisma)} asistan çalışması.` : ""}
-        </p>
-        {license.suspension_reason ? <p className="stg-muted"><StgIcon name="lock" size={16} />{license.suspension_reason}</p> : null}
-      </StgSection>
+        </KNot>
+        {license.suspension_reason ? <KNot ton="tehlike">{license.suspension_reason}</KNot> : null}
+      </KKart>
 
       {/*
         Dört ürün, tek satırda dört kart. Eskiden ArvoOS çekirdek lisansı
@@ -302,10 +306,10 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
         Kartlar özet; düzenleme tıklayınca açılan pencerede. Dört formu
         aynı anda dar sütunlarda tutmak hepsini okunmaz yapardı.
       */}
-      <StgSection
-        id="urunler" wide icon="grid" tone="gold" kicker="ÜRÜNLER" title={`${label} abonelikleri`}
-        description="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
-        aside={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
+      <KKart
+        id="urunler" baslik={`${label} abonelikleri`}
+        aciklama="Dördü ayrı ürün: her birinin kendi durumu, ücreti ve kotası var. Düzenlemek için karta tıklayın."
+        sag={<span className="status-pill" data-tone={acikUrunler.length ? "success" : "neutral"}>
           {acikUrunler.length + (cekirdekAcik ? 1 : 0)} / {ADDON_PRODUCTS.length + 1} açık
         </span>}
       >
@@ -408,7 +412,7 @@ export default async function LicenseManagementPage({ searchParams }: { searchPa
             }),
           ]}
         />
-      </StgSection>
+      </KKart>
     </div>
   </main>;
 }

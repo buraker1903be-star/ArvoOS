@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import type { DirectoryRow, MemberProduct } from "@/lib/member-directory";
-import { basHarfleri } from "../bicim";
+import { MobilSatir } from "../../crm/table-cells";
+import { KBaslik, KBos, KTablo } from "../konsol-ui";
 import { uyeErisimiDegistir } from "./actions";
 
 /*
@@ -71,7 +72,8 @@ type Kisi = {
 };
 type Grup = { anahtar: string; ad: string; bireysel: boolean; kisiler: Kisi[]; acik: number };
 
-export function UyeListesi({ satirlar }: { satirlar: DirectoryRow[] }) {
+/** ust: listenin üstünde, kartın içinde duran notlar (eksik veri uyarıları). */
+export function UyeListesi({ satirlar, ust }: { satirlar: DirectoryRow[]; ust?: ReactNode }) {
   const [arama, setArama] = useState("");
   const [urun, setUrun] = useState<MemberProduct | "hepsi">("hepsi");
   const [erisim, setErisim] = useState<Suzgec>("hepsi");
@@ -219,110 +221,132 @@ export function UyeListesi({ satirlar }: { satirlar: DirectoryRow[] }) {
     return yeni;
   });
 
+  /* Erişim süzgeci panelin süzgeç çipleriyle çiziliyor. Çipler sayfa
+     değiştirmiyor (süzme tarayıcıda, eskiden de bir açılır listeydi);
+     panel stili yalnızca <a>'ya tanımlı olduğu için adresi olmayan <a>
+     düğme rolüyle kullanılıyor. */
+  const ERISIM_CIPLERI: { kod: Suzgec; ad: string }[] = [
+    { kod: "hepsi", ad: "Tümü" },
+    { kod: "acik", ad: "Erişimi açık" },
+    { kod: "kapali", ad: "Erişimi kapalı" },
+  ];
+
   return (
-    <section className="panel-card plt-uyeler-karti" aria-label="Üyeler">
-      <div className="plt-uye-arac">
-        <label className="plt-abone-arama">
-          <span className="plt-gizli">Üyelerde ara</span>
+    <section className="panel-card talep-bilgi" aria-label="Üyeler">
+      <div className="ekip-suzgec talep-suzgec">
+        {ERISIM_CIPLERI.map((cip) => (
+          <a
+            key={cip.kod}
+            role="button"
+            tabIndex={0}
+            aria-pressed={erisim === cip.kod}
+            className={erisim === cip.kod ? "is-active" : undefined}
+            onClick={() => setErisim(cip.kod)}
+            onKeyDown={(olay) => { if (olay.key === "Enter" || olay.key === " ") { olay.preventDefault(); setErisim(cip.kod); } }}
+          >{cip.ad}</a>
+        ))}
+        <span className="talep-suzgec-etiket">{gruplar.length} kurum · {kisiSayisi} kişi</span>
+        <div className="talep-ara talep-ara--secimli" role="search">
           <input
-            type="search" value={arama} placeholder="Ad, e-posta ya da kurum ara"
+            type="search" value={arama} placeholder="Ad, e-posta ya da kurum ara" aria-label="Üyelerde ara"
             onChange={(olay) => setArama(olay.target.value)}
           />
-        </label>
-        <select value={urun} onChange={(olay) => setUrun(olay.target.value as MemberProduct | "hepsi")} aria-label="Ürün">
-          <option value="hepsi">Tüm ürünler</option>
-          {(Object.keys(URUN_ADI) as MemberProduct[]).map((kod) => (
-            <option key={kod} value={kod}>{URUN_ADI[kod]}</option>
-          ))}
-        </select>
-        <select value={erisim} onChange={(olay) => setErisim(olay.target.value as Suzgec)} aria-label="Erişim">
-          <option value="hepsi">Tüm erişimler</option>
-          <option value="acik">Erişimi açık</option>
-          <option value="kapali">Erişimi kapalı</option>
-        </select>
-        <span className="plt-uye-sayi">{gruplar.length} kurum · {kisiSayisi} kişi</span>
+          <select className="talep-temsilci-sec" value={urun} onChange={(olay) => setUrun(olay.target.value as MemberProduct | "hepsi")} aria-label="Ürün">
+            <option value="hepsi">Tüm ürünler</option>
+            {(Object.keys(URUN_ADI) as MemberProduct[]).map((kod) => (
+              <option key={kod} value={kod}>{URUN_ADI[kod]}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
+      {ust}
+
       {gruplar.length ? (
-        <div className="plt-uye-gruplar">
-          {gruplar.map((grup) => {
+        /* Kurum başlığı tablonun içinde bir satır: satıra tıklamak grubu
+           açıp kapatıyor (SatirTiklama, button.satir-ac). Kişi satırının
+           açılacak bir ekranı yok; ok sütunu bu yüzden konmadı. Erişim
+           anahtarı eylem hücresinde, telefonda da satırın sağında kalıyor. */
+        <KTablo kolonlar={[{ ad: "Kurum / kişi" }, { ad: "Rol" }, { ad: "Ürünler" }, { ad: "Erişim" }]}>
+          {gruplar.flatMap((grup) => {
             // Arama yapılırken gruplar kendiliğinden açık.
             const acikMi = Boolean(aranan) || acilanlar.has(grup.anahtar);
-            return (
-              <div key={grup.anahtar} className="plt-uye-grup" data-acik={acikMi}>
-                <button
-                  type="button"
-                  className="plt-uye-grup-bas"
-                  aria-expanded={acikMi}
-                  onClick={() => cevir(grup.anahtar)}
-                >
-                  <span className="plt-kiraci-avatar plt-uye-avatar" aria-hidden="true">{basHarfleri(grup.ad)}</span>
-                  <span className="plt-uye-grup-ad">
-                    <b>{grup.ad}</b>
-                    <small>
-                      {grup.kisiler.length} kişi
-                      {grup.acik < grup.kisiler.length ? ` · ${grup.kisiler.length - grup.acik} erişimi kapalı` : " · tümünün erişimi açık"}
-                    </small>
-                  </span>
-                  <span className="plt-uye-grup-ok" aria-hidden="true">›</span>
-                </button>
-
-                {acikMi ? (
-                  <div className="plt-uye-liste">
-                    {grup.kisiler.map((kisi) => {
-                      const islem = kisi.organizationId ? `${kisi.organizationId}:${kisi.userId}` : null;
-                      return (
-                        <div key={kisi.anahtar} className="plt-uye-satir">
-                          <span className="plt-uye-ad">
-                            <b>{kisi.ad}</b>
-                            {kisi.eposta && kisi.eposta !== kisi.ad ? <small>{kisi.eposta}</small> : null}
-                          </span>
-                          <span data-etiket="Rol" className="plt-uye-rolu">{kisi.rol ? ROL_ADI[kisi.rol] ?? kisi.rol : "—"}</span>
-                          <span data-etiket="Ürünler" className="plt-uye-urunler">
-                            {/* Ürün etiketi kendi erişimini gösteriyor: kişinin
-                                kurumdaki üyeliği açık olsa bile o ürünün
-                                lisansı kapalıysa ürüne giremiyor. */}
-                            {kisi.urunler.map((rozet) => (
-                              <span
-                                key={rozet.product}
-                                className="plt-urun-etiketi"
-                                data-urun={rozet.product}
-                                data-kapali={!rozet.access}
-                                title={`${URUN_ADI[rozet.product]} · ${DURUM_ADI[rozet.status] ?? rozet.status}`}
-                              >{URUN_ADI[rozet.product]}</span>
-                            ))}
-                          </span>
-                          <span data-etiket="Erişim" className="plt-uye-erisim">
-                            {kisi.organizationId ? (
-                              <button
-                                type="button"
-                                className={kisi.membershipActive ? "plt-switch is-on" : "plt-switch is-off"}
-                                role="switch"
-                                aria-checked={Boolean(kisi.membershipActive)}
-                                aria-label={`${kisi.ad} · ${grup.ad} erişimi: ${kisi.membershipActive ? "kapat" : "aç"}`}
-                                disabled={islenen === islem}
-                                onClick={() => degistir(kisi, grup.ad)}
-                              ><i /></button>
-                            ) : (
-                              /* ArvoLab ayrı veritabanında, bireysel abone ise
-                                 Bireysel Aboneler ekranından yönetiliyor. Boş
-                                 bırakmak yerine nedenini yazıyoruz. */
-                              <small className="plt-substatus">
-                                {kisi.individual ? "Bireysel abonelerden" : "ArvoLab'dan"}
-                              </small>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
+            const grupAlt = `${grup.kisiler.length} kişi${grup.acik < grup.kisiler.length ? ` · ${grup.kisiler.length - grup.acik} erişimi kapalı` : " · tümünün erişimi açık"}`;
+            const baslikSatiri = (
+              <tr key={grup.anahtar} className="plt-uye-grup" data-acik={acikMi}>
+                <td data-label="Kurum" colSpan={4}>
+                  <button
+                    type="button"
+                    className="satir-ac plt-uye-grup-bas"
+                    aria-expanded={acikMi}
+                    onClick={() => cevir(grup.anahtar)}
+                  >
+                    <span className="plt-uye-grup-ad">
+                      <span className="crm-table-title">{grup.ad}</span>
+                      <span className="crm-table-sub">{grupAlt}</span>
+                    </span>
+                    <span className="plt-uye-grup-ok" aria-hidden="true">›</span>
+                  </button>
+                </td>
+                <MobilSatir baslik={grup.ad} alt={[grupAlt]} />
+              </tr>
             );
+            if (!acikMi) return [baslikSatiri];
+            return [baslikSatiri, ...grup.kisiler.map((kisi) => {
+              const islem = kisi.organizationId ? `${kisi.organizationId}:${kisi.userId}` : null;
+              const rolAdi = kisi.rol ? ROL_ADI[kisi.rol] ?? kisi.rol : "—";
+              return (
+                <tr key={kisi.anahtar}>
+                  <KBaslik etiket="Kişi" baslik={kisi.ad} alt={kisi.eposta && kisi.eposta !== kisi.ad ? kisi.eposta : null} />
+                  <td data-label="Rol">{rolAdi}</td>
+                  <td data-label="Ürünler">
+                    {/* Ürün etiketi kendi erişimini gösteriyor: kişinin
+                        kurumdaki üyeliği açık olsa bile o ürünün
+                        lisansı kapalıysa ürüne giremiyor. */}
+                    <span className="plt-uye-urunler">
+                      {kisi.urunler.map((rozet) => (
+                        <span
+                          key={rozet.product}
+                          className="plt-urun-etiketi"
+                          data-urun={rozet.product}
+                          data-kapali={!rozet.access}
+                          title={`${URUN_ADI[rozet.product]} · ${DURUM_ADI[rozet.status] ?? rozet.status}`}
+                        >{URUN_ADI[rozet.product]}</span>
+                      ))}
+                    </span>
+                  </td>
+                  <td data-label="Erişim" className="crm-table-actions">
+                    {kisi.organizationId ? (
+                      <button
+                        type="button"
+                        className={kisi.membershipActive ? "plt-switch is-on" : "plt-switch is-off"}
+                        role="switch"
+                        aria-checked={Boolean(kisi.membershipActive)}
+                        aria-label={`${kisi.ad} · ${grup.ad} erişimi: ${kisi.membershipActive ? "kapat" : "aç"}`}
+                        disabled={islenen === islem}
+                        onClick={() => degistir(kisi, grup.ad)}
+                      ><i /></button>
+                    ) : (
+                      /* ArvoLab ayrı veritabanında, bireysel abone ise
+                         Bireysel Aboneler ekranından yönetiliyor. Boş
+                         bırakmak yerine nedenini yazıyoruz. */
+                      <span className="crm-table-sub">
+                        {kisi.individual ? "Bireysel abonelerden" : "ArvoLab'dan"}
+                      </span>
+                    )}
+                  </td>
+                  <MobilSatir
+                    baslik={kisi.ad}
+                    durum={kisi.erisimVar ? { etiket: "Erişim açık", ton: "success" } : { etiket: "Erişim kapalı", ton: "danger" }}
+                    alt={[grup.ad, rolAdi !== "—" ? rolAdi : null, kisi.urunler.map((rozet) => URUN_ADI[rozet.product]).join(", ")]}
+                  />
+                </tr>
+              );
+            })];
           })}
-        </div>
+        </KTablo>
       ) : (
-        <p className="plt-substatus plt-uye-bos">Aramanıza uyan üye yok.</p>
+        <KBos baslik="Aramanıza uyan üye yok" />
       )}
     </section>
   );

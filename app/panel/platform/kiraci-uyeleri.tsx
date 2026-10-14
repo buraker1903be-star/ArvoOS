@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { uyeErisimiDegistir } from "./members/actions";
+import { KBaslik, KBos, KDurum, KTablo } from "./konsol-ui";
 
 /*
   Seçili kiracının üyeleri, kiracı dosyasının içinde.
@@ -62,37 +63,41 @@ export function KiraciUyeleri({
     });
   };
 
-  if (!uyeler.length) return <p className="plt-substatus">Bu kurumda üye yok.</p>;
+  if (!uyeler.length) return <KBos baslik="Bu kurumda üye yok." />;
 
+  /* Panel tablosu (14.10.2026). Eskiden kendi satır listesiydi
+     (.plt-uyeler) ve pasif üye yalnızca soluk görünüyordu; artık durumu
+     panelin rozetiyle yazıyor. Telefon satırı (MobilSatir) yok: anahtar
+     hücrede ve tek kompakt satır onu gizlerdi. */
   return (
-    <ul className="plt-uyeler">
+    <KTablo kolonlar={[{ ad: "Üye" }, { ad: "Rol" }, { ad: "Durum" }, { ad: "Erişim" }]}>
       {uyeler.map((uye) => {
         const sonSahip = uye.role === "owner" && uye.active && aktifSahipSayisi < 2;
         return (
-          <li key={uye.userId} data-pasif={!uye.active}>
-            <span className="plt-uye-kim">
-              <b>{uye.name ?? uye.email ?? "Adı kayıtlı değil"}</b>
-              <small>{uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role}</small>
-            </span>
-            <span className="plt-uye-rol">{ROL_ADI[uye.role] ?? uye.role}</span>
-            {sonSahip ? (
-              /* Yapılamayacak iş için anahtar gösterip hata vermektense
-                 nedenini baştan söylüyoruz. */
-              <small className="plt-substatus">son sahip</small>
-            ) : (
-              <button
-                type="button"
-                className={uye.active ? "plt-switch is-on" : "plt-switch is-off"}
-                role="switch"
-                aria-checked={uye.active}
-                aria-label={`${uye.name ?? uye.email ?? "Üye"} erişimi: ${uye.active ? "kapat" : "aç"}`}
-                disabled={calisiyor}
-                onClick={() => degistir(uye)}
-              ><i /></button>
-            )}
-          </li>
+          <tr key={uye.userId}>
+            <KBaslik etiket="Üye" baslik={uye.name ?? uye.email ?? "Adı kayıtlı değil"} alt={uye.name && uye.email ? uye.email : ROL_ADI[uye.role] ?? uye.role} />
+            <td data-label="Rol">{ROL_ADI[uye.role] ?? uye.role}</td>
+            <KDurum etiket={uye.active ? "Erişim açık" : "Erişim kapalı"} ton={uye.active ? "success" : "neutral"} />
+            <td data-label="Erişim">
+              {sonSahip ? (
+                /* Yapılamayacak iş için anahtar gösterip hata vermektense
+                   nedenini baştan söylüyoruz. */
+                <span className="crm-table-sub">son sahip</span>
+              ) : (
+                <button
+                  type="button"
+                  className={uye.active ? "plt-switch is-on" : "plt-switch is-off"}
+                  role="switch"
+                  aria-checked={uye.active}
+                  aria-label={`${uye.name ?? uye.email ?? "Üye"} erişimi: ${uye.active ? "kapat" : "aç"}`}
+                  disabled={calisiyor}
+                  onClick={() => degistir(uye)}
+                ><i /></button>
+              )}
+            </td>
+          </tr>
         );
       })}
-    </ul>
+    </KTablo>
   );
 }

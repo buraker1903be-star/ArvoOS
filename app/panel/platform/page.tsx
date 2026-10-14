@@ -6,16 +6,16 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { kotaDurumu } from "@/lib/kota-durumu";
-import { StgIcon } from "../settings/settings-ui";
-import { KURULUM_ADI, KURULUM_TONU, basHarfleri, depolama, para, tarihSaat } from "./bicim";
+import { IstatistikKarti } from "../crm/istatistik-karti";
+import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "./konsol-ui";
+import { KURULUM_ADI, KURULUM_TONU, depolama, para, tarihSaat } from "./bicim";
 import { DAVET_DURUM_ADLARI } from "../hr/davet-durumu";
 import { PanelDrawer } from "../components/panel-drawer";
 import { createCustomerOrganization } from "./actions";
 import { NewOrganizationWizard } from "./new-organization-wizard";
 import { KiraciDosyasi, type DosyaDaveti, type DosyaKurumu, type DosyaUyeligi } from "./kiraci-dosyasi";
-import "../crm/crm.css";
-import "../crm/kayit-detay/kayit-detay.css";
-import "../settings/settings.css";
+// Panel listesi ve kayıt detayının CSS'i konsol-ui'den geliyor; burada
+// sihirbaz (.plw) ve kiracı dosyasının kalan plt-* sınıfları.
 import "./platform.css";
 
 /*
@@ -230,7 +230,22 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const invitation = selected ? latestInvitation.get(selected.id) ?? null : null;
   const label = selected ? selected.display_name || selected.name : null;
 
-  return <main className="stg plt talep cari">
+  /* İstatistik kartının dağılımları: yukarıdaki sınırsız kiracı
+     listesinden, yalnızca müşteri kurumları (sayaçlarla aynı kural). */
+  const kurulumDagilimi = [...new Set(customers.map((item) => item.provisioning_state))]
+    .map((durum) => ({ ad: KURULUM_ADI[durum] ?? durum, adet: customers.filter((item) => item.provisioning_state === durum).length }))
+    .sort((a, b) => b.adet - a.adet);
+  const paketDagilimi = [...new Set(customers.map((item) => item.plan_code))]
+    .map((kod) => ({ ad: planNames.get(kod) ?? kod, adet: customers.filter((item) => item.plan_code === kod).length }))
+    .sort((a, b) => b.adet - a.adet);
+
+  /*
+    PANEL GİBİ (14.10.2026). Liste panelin liste düzeninde (solda liste
+    kartı, sağda istatistik), dosya panelin kayıt detayı düzeninde.
+    Dosyada .stg kalıyor: erişim anahtarlarının (.plt-switch) panel düğme
+    boyutundan korunması platform.css'te .stg.plt kapsamında.
+  */
+  return <main className={selected ? "stg plt talep cari" : "plt talep cari ekip liste-sayfa"}>
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">{selected ? "KİRACI DOSYASI" : "YALNIZCA ARVOOS KURUCU ERİŞİMİ"}</small>
@@ -248,58 +263,41 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       </div>
     </header>
 
+    {/* Köprü uyarıları renkli şerit (.plt-banner) yerine panelin sade notu. */}
     {bridge?.broken ? (
-      <div className="plt-banner" data-tone="danger" role="alert">
-        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
-        <div>
-          <b>ArvoLab köprüsü yanıt vermiyor{bridge.permanent ? " · yapılandırma hatası" : ""}</b>
-          <p>
-            {bridge.permanent
-              ? "Anahtar eksik ya da iki tarafta farklı. ArvoLab abonelik durumunu soramıyor ve kimseyi engellemediği için bireysel kullanıcılar şu an ücretsiz kullanıyor. Vercel'de PRODUCT_BRIDGE_SECRET'in iki projede de aynı olduğunu kontrol edin."
-              : "ArvoLab, ArvoOS'a ulaşamıyor. Kullanıcılar engellenmiyor; sorun sürerse bireysel abonelikler denetlenemez."}
-            {bridge.lastErrorAt ? ` Son hata: ${tarihSaat(bridge.lastErrorAt)}.` : ""}
-            {bridge.lastOkAt ? ` Son başarılı bağlantı: ${tarihSaat(bridge.lastOkAt)}.` : " Hiç başarılı bağlantı kaydı yok."}
-          </p>
-        </div>
-      </div>
+      <KNot ton="tehlike">
+        <b>ArvoLab köprüsü yanıt vermiyor{bridge.permanent ? " · yapılandırma hatası" : ""}.</b>{" "}
+        {bridge.permanent
+          ? "Anahtar eksik ya da iki tarafta farklı. ArvoLab abonelik durumunu soramıyor ve kimseyi engellemediği için bireysel kullanıcılar şu an ücretsiz kullanıyor. Vercel'de PRODUCT_BRIDGE_SECRET'in iki projede de aynı olduğunu kontrol edin."
+          : "ArvoLab, ArvoOS'a ulaşamıyor. Kullanıcılar engellenmiyor; sorun sürerse bireysel abonelikler denetlenemez."}
+        {bridge.lastErrorAt ? ` Son hata: ${tarihSaat(bridge.lastErrorAt)}.` : ""}
+        {bridge.lastOkAt ? ` Son başarılı bağlantı: ${tarihSaat(bridge.lastOkAt)}.` : " Hiç başarılı bağlantı kaydı yok."}
+      </KNot>
     ) : null}
 
     {!arcBridge.ok ? (
-      <div className="plt-banner" data-tone={arcBridge.error ? "danger" : undefined} role="status">
-        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
-        <div>
-          <b>{arcBridge.error ? "ArvoARC köprüsü bağlanamıyor" : "ArvoARC köprüsü kapalı"}</b>
-          <p>
-            {arcBridge.error
-              ? `ArvoARC veritabanına bağlanılamadı: ${arcBridge.error}. Anahtarın yeni ArvoARC projesinin secret anahtarı olduğunu kontrol edin.`
-              : `Bu dağıtımda tanımlı olmayan değişkenler: ${arcBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın.`}
-          </p>
-        </div>
-      </div>
+      <KNot ton={arcBridge.error ? "tehlike" : "uyari"}>
+        <b>{arcBridge.error ? "ArvoARC köprüsü bağlanamıyor." : "ArvoARC köprüsü kapalı."}</b>{" "}
+        {arcBridge.error
+          ? `ArvoARC veritabanına bağlanılamadı: ${arcBridge.error}. Anahtarın yeni ArvoARC projesinin secret anahtarı olduğunu kontrol edin.`
+          : `Bu dağıtımda tanımlı olmayan değişkenler: ${arcBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın.`}
+      </KNot>
     ) : null}
 
     {!randevuBridge.ok ? (
-      <div className="plt-banner" data-tone={randevuBridge.error ? "danger" : undefined} role="status">
-        <span className="plt-banner-icon"><StgIcon name="shield" size={18} /></span>
-        <div>
-          <b>{randevuBridge.error ? "Randevu köprüsü bağlanamıyor" : "Randevu köprüsü kapalı"}</b>
-          <p>
-            {randevuBridge.error
-              ? `Randevu veritabanına bağlanılamadı: ${randevuBridge.error}. Anahtarın ArvoRandevu projesinin secret anahtarı olduğunu kontrol edin.`
-              : `Bu dağıtımda tanımlı olmayan değişkenler: ${randevuBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın. Tanımlanana kadar salon lisansları Randevu'ya yansımaz.`}
-          </p>
-        </div>
-      </div>
+      <KNot ton={randevuBridge.error ? "tehlike" : "uyari"}>
+        <b>{randevuBridge.error ? "Randevu köprüsü bağlanamıyor." : "Randevu köprüsü kapalı."}</b>{" "}
+        {randevuBridge.error
+          ? `Randevu veritabanına bağlanılamadı: ${randevuBridge.error}. Anahtarın ArvoRandevu projesinin secret anahtarı olduğunu kontrol edin.`
+          : `Bu dağıtımda tanımlı olmayan değişkenler: ${randevuBridge.missing.join(", ")}. Vercel'de ArvoOS projesine Production ortamı için ekleyip yeniden dağıtın. Tanımlanana kadar salon lisansları Randevu'ya yansımaz.`}
+      </KNot>
     ) : null}
 
     {params.provisioned === "1" ? (
-      <div className="plt-banner" role="status">
-        <span className="plt-banner-icon"><StgIcon name="check" size={18} /></span>
-        <div>
-          <b>{selected ? label : "Kurum"} kuruldu</b>
-          <p>Davet {invitation?.email ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse “Kurulum durumu” bölümünden giriş bağlantısı oluşturup WhatsApp’tan gönderin.</p>
-        </div>
-      </div>
+      <KNot ton="basari">
+        <b>{selected ? label : "Kurum"} kuruldu.</b>{" "}
+        Davet {invitation?.email ?? "sahibin e-posta adresine"} gönderildi. E-posta gelmezse “Kurulum durumu” bölümünden giriş bağlantısı oluşturup WhatsApp’tan gönderin.
+      </KNot>
     ) : null}
 
     {/*
@@ -361,39 +359,33 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
         seciliLisans={lisansById.get(selected.id) ?? null}
       />
     ) : (
-      <>
-        {/*
-          Süzgeç menüden de geliyor (Kurulum bekleyenler) ama tek giriş
-          yolu olmamalı: kurucu tabloya bakarken aradığını buradan
-          daraltıyor. "Dikkat gerektirenler" ayrı bir menü öğesiydi;
-          listenin kendi süzgeci olunca menüde ikinci bir yol tutmanın
-          karşılığı kalmadı.
-        */}
-        <section className="panel-card plt-suzgec">
-          <form action="/panel/platform" className="plt-suzgec-form">
-            <label>
-              <span>Kurum ara</span>
-              <input name="ara" defaultValue={ara} placeholder="Ad ya da çalışma alanı" />
-            </label>
-            <label>
-              <span>Görünüm</span>
-              <select name="filtre" defaultValue={filtre ?? ""}>
-                <option value="">Tüm kurumlar</option>
-                <option value="kurulum">Kurulum bekleyenler</option>
-                <option value="dikkat">Dikkat gerektirenler</option>
-              </select>
-            </label>
-            <div>
-              <button className="panel-primary" type="submit">Filtrele</button>
-              {filtre || ara ? <Link className="panel-secondary" href="/panel/platform">Temizle</Link> : null}
-            </div>
-          </form>
-        </section>
+      <div className="talep-izgara personel-iki ekip-izgara">
+        <section className="panel-card talep-bilgi" aria-label="Kiracılar">
+          {/*
+            Süzgeç menüden de geliyor (Kurulum bekleyenler) ama tek giriş
+            yolu olmamalı: kurucu tabloya bakarken aradığını buradan
+            daraltıyor. "Dikkat gerektirenler" ayrı bir menü öğesiydi;
+            listenin kendi süzgeci olunca menüde ikinci bir yol tutmanın
+            karşılığı kalmadı.
 
-        {listelenen.length ? (
-          <section className="panel-card plt-kiracilar" aria-label="Kiracılar">
-            {/*
-              TABLO DEĞİL, IZGARA LİSTE.
+            Görünüm seçimi (filtre) eskiden bir açılır listeydi ve
+            "Filtrele" düğmesiyle gönderiliyordu; artık panel listelerindeki
+            gibi çip. Arama kutusu aynı ara/filtre parametrelerini yolluyor.
+          */}
+          <div className="ekip-suzgec talep-suzgec">
+            <Link href={adres({ filtre: "" })} className={!filtre ? "is-active" : undefined} aria-current={!filtre ? "page" : undefined}>Tüm kurumlar <small>{organizations.length}</small></Link>
+            <Link href={adres({ filtre: "kurulum" })} className={filtre === "kurulum" ? "is-active" : undefined} aria-current={filtre === "kurulum" ? "page" : undefined}>Kurulum bekleyenler <small>{pendingCount}</small></Link>
+            <Link href={adres({ filtre: "dikkat" })} className={filtre === "dikkat" ? "is-active" : undefined} aria-current={filtre === "dikkat" ? "page" : undefined}>Dikkat gerektirenler <small>{issueCount}</small></Link>
+            <form action="/panel/platform" className="talep-ara" role="search">
+              {filtre ? <input type="hidden" name="filtre" value={filtre} /> : null}
+              <input type="search" name="ara" defaultValue={ara} placeholder="Ad ya da çalışma alanı" aria-label="Kurum ara" />
+            </form>
+          </div>
+
+          {listelenen.length ? (
+            /*
+              TABLO DEĞİL, IZGARA LİSTE (eski not; 14.10.2026'dan beri yine
+              tablo — aşağıya bakın).
 
               Satırın tamamını tıklanabilir yapmak için <tr> üzerine
               position:relative + ::after kaplaması konmuştu. Bu, birleşik
@@ -403,98 +395,104 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               SON satırın kaplaması bütün listeyi örtüyordu. Hangi kuruma
               tıklanırsa tıklansın en alttaki kurum açılıyordu.
 
-              Satırın kendisi artık bir <a>: kaplama yok, hile yok. Klavye,
-              orta tık ve "yeni sekmede aç" doğal olarak çalışıyor.
-              Hizalama ızgaradan geliyor; başlık satırı aynı şablonu
-              kullandığı için sütunlar tabloyla aynı şekilde hizalı.
-            */}
-            <div className="plt-kiraci-baslik" aria-hidden="true">
-              <span>Kurum</span>
-              <span>Paket</span>
-              <span>Durum</span>
-              <span>Kullanıcı</span>
-              <span>Depolama</span>
-              <span>Aylık ücret</span>
-              <span>Son davet</span>
-              <span />
-            </div>
-
-            <div className="plt-kiraci-liste">
+              Satırın kendisi bir <a> yapılmıştı. Panel tablosu (KTablo)
+              artık kaplama kullanmıyor: tabloya tek bir tıklama dinleyicisi
+              bağlı ve satırın ilk hücresindeki gerçek bağlantıya gidiyor
+              (crm/satir-tiklama.tsx). Klavye, orta tık ve "yeni sekmede
+              aç" o bağlantı üzerinden çalışıyor; konsol bu yüzden panelin
+              tablosuna dönebildi.
+            */
+            <KTablo kolonlar={[
+              { ad: "Kurum" }, { ad: "Paket" }, { ad: "Durum" }, { ad: "Kullanıcı" }, { ad: "Depolama" },
+              { ad: "Aylık ücret", sinif: "crm-col-amount" }, { ad: "Son davet" }, { ad: "" },
+            ]}>
               {listelenen.map((item) => {
                 const kota = kotaById.get(item.id) ?? null;
                 const lisans = lisansById.get(item.id) ?? null;
                 const ad = item.display_name || item.name;
                 const itemInvite = latestInvitation.get(item.id);
+                const href = `/panel/platform?organization=${item.id}`;
+                const durumAdi = KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state;
+                const durumTonu = KURULUM_TONU[item.provisioning_state] ?? "neutral";
+                const davetAdi = itemInvite ? DAVET_DURUM_ADLARI[itemInvite.status] ?? itemInvite.status : null;
                 return (
-                  <Link
-                    key={item.id}
-                    className="plt-kiraci-satir"
-                    href={`/panel/platform?organization=${item.id}`}
-                  >
-                    <span className="plt-kiraci-kim">
-                      <span className="plt-kiraci-avatar" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>{basHarfleri(ad)}</span>
-                      <span>
-                        <b>{ad}</b>
-                        <small className="plt-substatus">
-                          {item.slug}
-                          {item.kind === "internal" ? " · kendi markamız" : ""}
-                          {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
-                        </small>
-                      </span>
-                    </span>
+                  <tr key={item.id}>
+                    <KBaslik etiket="Kurum" href={href} baslik={ad} alt={<>
+                      {item.slug}
+                      {item.kind === "internal" ? " · kendi markamız" : ""}
+                      {item.provisioning_state === "waiting_owner" && itemInvite?.email ? ` · ${itemInvite.email}` : ""}
+                    </>} />
+                    <td data-label="Paket">{planNames.get(item.plan_code) ?? item.plan_code}</td>
+                    <KDurum etiket={durumAdi} ton={durumTonu} />
 
-                    <span data-etiket="Paket">{planNames.get(item.plan_code) ?? item.plan_code}</span>
-
-                    <span data-etiket="Durum">
-                      <span className="status-pill" data-tone={KURULUM_TONU[item.provisioning_state] ?? "neutral"}>
-                        {KURULUM_ADI[item.provisioning_state] ?? item.provisioning_state}
-                      </span>
-                    </span>
-
-                    {/* Kota hücreleri aşımda kırmızı: "dikkat gerektiren"
-                        uyarısı ayrı bir menü öğesi değil, satırın kendisi
-                        söylüyor. */}
-                    <span data-etiket="Kullanıcı" data-tone={kota?.kullanici.asildi ? "danger" : undefined}>
+                    {/* Kota hücreleri aşımda uyarı renginde: "dikkat
+                        gerektiren" uyarısı ayrı bir menü öğesi değil,
+                        satırın kendisi söylüyor. */}
+                    <td data-label="Kullanıcı" className={`k-sayi${kota?.kullanici.asildi ? " talep-uyari" : ""}`}>
                       {kota ? `${kota.kullanici.kullanilan} / ${kota.kullanici.limit}` : "—"}
-                    </span>
-                    <span data-etiket="Depolama" data-tone={kota?.depolama.asildi ? "danger" : undefined}>
+                    </td>
+                    <td data-label="Depolama" className={`k-sayi${kota?.depolama.asildi ? " talep-uyari" : ""}`}>
                       {kota ? `${depolama(kota.depolama.kullanilan)} / ${depolama(kota.depolama.limit)}` : "—"}
-                    </span>
-                    <span data-etiket="Aylık ücret">{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</span>
+                    </td>
+                    <td data-label="Aylık ücret" className="crm-col-amount">{lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : "—"}</td>
 
                     {/* Son davet: kurulum bekleyen kiracıda kurucunun
                         ilk sorusu "davet gitti mi, kabul edildi mi".
-                        Hata varsa kırmızı — sebebi dosyada yazılı. */}
-                    <span data-etiket="Son davet" data-tone={itemInvite?.status === "failed" ? "danger" : undefined}>
+                        Hata varsa uyarı renginde — sebebi dosyada yazılı. */}
+                    <td data-label="Son davet">
                       {itemInvite
                         ? <>
-                            <b>{DAVET_DURUM_ADLARI[itemInvite.status] ?? itemInvite.status}</b>
-                            <small className="plt-substatus">
+                            <span className={itemInvite.status === "failed" ? "talep-uyari" : undefined}>{davetAdi}</span>
+                            <span className="crm-table-sub">
                               {itemInvite.accepted_at ? tarihSaat(itemInvite.accepted_at)
                                 : itemInvite.sent_at ? tarihSaat(itemInvite.sent_at) : "—"}
-                            </small>
+                            </span>
                           </>
                         : "—"}
-                    </span>
+                    </td>
 
-                    <span className="plt-kiracilar-uc" aria-hidden="true">›</span>
-                  </Link>
+                    <KSatirSonu mobil={{
+                      href,
+                      baslik: ad,
+                      durum: { etiket: durumAdi, ton: durumTonu },
+                      alt: [planNames.get(item.plan_code) ?? item.plan_code, lisans?.monthly_fee ? para(Number(lisans.monthly_fee)) : null],
+                      isaretler: [
+                        kota ? { metin: `${kota.kullanici.kullanilan}/${kota.kullanici.limit} kullanıcı`, ton: kota.kullanici.asildi ? "tehlike" : undefined } : null,
+                        kota?.depolama.asildi ? { metin: "Depolama aşıldı", ton: "tehlike" } : null,
+                        itemInvite?.status === "failed" ? { metin: "Davet gönderilemedi", ton: "tehlike" } : null,
+                        item.kind === "internal" ? { metin: "Kendi markamız", ton: "sessiz" } : null,
+                      ],
+                    }} />
+                  </tr>
                 );
               })}
-            </div>
-          </section>
-        ) : (
-          <div className="stg-empty">
-            <StgIcon name="building" size={22} />
-            <p>
-              {filtre === "kurulum" ? "Kurulum bekleyen kurum yok."
+            </KTablo>
+          ) : (
+            <KBos baslik={
+              filtre === "kurulum" ? "Kurulum bekleyen kurum yok."
                 : filtre === "dikkat" ? "Dikkat gerektiren kurum yok; kotalar ve kurulumlar yolunda."
                 : ara ? `“${ara}” ile eşleşen kurum yok.`
-                : "Henüz kurum yok. “+ Yeni müşteri” ile ilk kurumu kurun."}
-            </p>
-          </div>
-        )}
-      </>
+                : "Henüz kurum yok. “+ Yeni müşteri” ile ilk kurumu kurun."
+            } />
+          )}
+        </section>
+
+        {/* Kart süzgeçten bağımsız: "kaç müşterim var" sorusunun yanıtı
+            seçili çipe göre değişmesin. Sayılar şeritle aynı hesaptan. */}
+        <IstatistikKarti
+          kapsam="müşteri kurumları; kendi markalarımız hariç"
+          kutular={[
+            { ad: "Müşteri kurum", deger: String(customers.length), alt: `${organizations.length - customers.length} kendi markamız` },
+            { ad: "Kullanımda", deger: String(activeCount), alt: "kurulumu tamam", ton: "arti" },
+            { ad: "Kurulum bekliyor", deger: String(pendingCount), alt: pendingCount ? "sahip ya da davet bekleniyor" : "bekleyen yok", ton: pendingCount ? "uyari" : undefined },
+            { ad: "Dikkat gerektiren", deger: String(issueCount), alt: "hata, askı ya da kota aşımı", ton: issueCount ? "uyari" : undefined },
+          ]}
+          gruplar={[
+            { baslik: "Kurulum durumu", satirlar: kurulumDagilimi },
+            { baslik: "Paketler", satirlar: paketDagilimi },
+          ]}
+        />
+      </div>
     )}
   </main>;
 }

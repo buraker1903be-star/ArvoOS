@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { productName } from "@/lib/products";
+import { IstatistikKarti } from "../../crm/istatistik-karti";
+import { KBaslik, KBos, KDurum, KNot, KSatirSonu, KTablo } from "../konsol-ui";
 import { para, sayi, tarih } from "../bicim";
-import "../../settings/settings.css";
 import "../platform.css";
-// Panelin liste sayfası kalıbı: talep-bas, kayit-serit, talep-izgara.
-import "../../crm/crm.css";
-import "../../crm/kayit-detay/kayit-detay.css";
+// Panelin liste sayfası kalıbı (talep-bas, kayit-serit, talep-izgara) ve
+// tablosunun CSS'i konsol-ui.tsx'in import ettiği dosyalardan geliyor.
 
 /*
   MÜŞTERİLER (14.10.2026).
@@ -186,7 +186,7 @@ export default async function MusterilerPage({ searchParams }: {
     return q ? `/panel/platform/musteriler?${q}` : "/panel/platform/musteriler";
   };
 
-  return <main className="stg plt talep cari ekip liste-sayfa">
+  return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
         <small className="panel-kicker">PLATFORM · MÜŞTERİLER</small>
@@ -236,65 +236,67 @@ export default async function MusterilerPage({ searchParams }: {
         </div>
 
         {eksikKapsam ? (
-          <p className="panel-muted">
+          <KNot ton="uyari">
             Bireysel abonelerin en yeni {sayi(aboneler.length)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Aradığınızı bulamazsanız arama kutusunu kullanın.
-          </p>
+          </KNot>
         ) : null}
 
         {liste.length ? (
-          <div className="plt-table-scroll">
-            <table className="plt-table">
-              <thead><tr><th>Müşteri</th><th>Tür</th><th>Durum</th><th>Aylık</th></tr></thead>
-              <tbody>
-                {liste.map((satir) => (
-                  <tr key={satir.anahtar}>
-                    <td>
-                      <Link href={satir.href}>{satir.ad}</Link>
-                      <small className="plt-substatus">{satir.alt}</small>
-                    </td>
-                    <td>{satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel"}</td>
-                    <td><span className="status-pill" data-tone={satir.ton}>{satir.durum}</span></td>
-                    {/* Bireysel abonenin ücreti ürün planında, kişide değil:
-                        kişi başına bir tutar yazmak yanlış olurdu. */}
-                    <td>{satir.ucret ? para(satir.ucret) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <KTablo kolonlar={[{ ad: "Müşteri" }, { ad: "Tür" }, { ad: "Durum" }, { ad: "Aylık", sinif: "crm-col-amount" }, { ad: "" }]}>
+            {liste.map((satir) => (
+              <tr key={satir.anahtar}>
+                <KBaslik etiket="Müşteri" href={satir.href} baslik={satir.ad} alt={satir.alt} />
+                <td data-label="Tür">{satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel"}</td>
+                <KDurum etiket={satir.durum} ton={satir.ton} />
+                {/* Bireysel abonenin ücreti ürün planında, kişide değil:
+                    kişi başına bir tutar yazmak yanlış olurdu. */}
+                <td data-label="Aylık" className="crm-col-amount">{satir.ucret ? para(satir.ucret) : "—"}</td>
+                <KSatirSonu mobil={{
+                  href: satir.href,
+                  baslik: satir.ad,
+                  durum: { etiket: satir.durum, ton: satir.ton },
+                  alt: [satir.tur === "kurumsal" ? "Kurumsal" : "Bireysel", satir.alt, satir.ucret ? para(satir.ucret) : null],
+                }} />
+              </tr>
+            ))}
+          </KTablo>
         ) : (
-          <p className="panel-muted">
-            {aranan ? `“${aranan}” ile eşleşen müşteri yok.` : "Bu süzgeçte müşteri yok."}
-          </p>
+          <KBos baslik={aranan ? `“${aranan}” ile eşleşen müşteri yok` : "Bu süzgeçte müşteri yok"} />
         )}
       </section>
 
-      <aside className="panel-card" aria-label="Müşteri istatistikleri">
-        <h2>İstatistikler</h2>
-        <p className="panel-muted">Süzgeçten bağımsız: her zaman bütün müşterileri anlatır.</p>
-
-        <dl className="billing-summary">
-          <div><dt>Kurumsal kiracı</dt><dd>{sayi(kurumsalSatirlar.length)}</dd></div>
-          <div><dt>Kullanımda</dt><dd className="cari-arti">{sayi(kurumsalKullanimda)}</dd></div>
-          <div><dt>Kurulum hatası ya da askıda</dt><dd className={kurumsalSorunlu ? "talep-uyari" : undefined}>{sayi(kurumsalSorunlu)}</dd></div>
-          <div><dt>Kurumsal beklenen aylık</dt><dd>{para(kurumsalGelir)}</dd></div>
-        </dl>
-
-        <dl className="billing-summary">
-          <div><dt>Bireysel abone</dt><dd>{sayi(bireyselSatirlar.length)}</dd></div>
-          <div><dt>Ödüyor</dt><dd className="cari-arti">{sayi(bireyselOdeyen)}</dd></div>
-          <div><dt>Denemede</dt><dd>{sayi(bireyselDeneme)}</dd></div>
-          <div><dt>Erişimi kapalı</dt><dd className={bireyselKapali ? "talep-uyari" : undefined}>{sayi(bireyselKapali)}</dd></div>
-        </dl>
-
-        {/* Bireysel gelir burada YOK: tutar ürün planında duruyor ve
-            abonelik ekranında ürün ürün hesaplanıyor. İki yerde ayrı
-            hesaplamak, birinin sapması demek. */}
-        <p className="panel-muted">
-          Bireysel aylık gelir ve ürün fiyatları <Link href="/panel/platform/subscribers">Abonelik ayarları</Link> ekranında.
-          Son kayıt {tarih(bireyselSatirlar[0]?.olusma ?? null)}.
-        </p>
-      </aside>
+      {/* Sağ kart süzgeçten bağımsız: her zaman bütün müşterileri anlatır.
+          Bireysel gelir burada YOK: tutar ürün planında duruyor ve
+          abonelik ekranında ürün ürün hesaplanıyor. İki yerde ayrı
+          hesaplamak, birinin sapması demek. Eskiden kartın altında
+          "Abonelik ayarları" bağlantısı vardı; o ekran başlıktaki
+          Abonelikler düğmesinden açılıyor. */}
+      <IstatistikKarti
+        kapsam={`süzgeçten bağımsız, bütün müşteriler${eksikKapsam ? ` (bireysel: en yeni ${sayi(aboneler.length)} kayıt)` : ""} · son kayıt ${tarih(bireyselSatirlar[0]?.olusma ?? null)}`}
+        kutular={[
+          { ad: "Kurumsal kiracı", deger: sayi(kurumsalSatirlar.length), alt: `${sayi(kurumsalKullanimda)} kullanımda`, ton: "arti" },
+          { ad: "Beklenen aylık", deger: para(kurumsalGelir), alt: "kurumsal" },
+          { ad: "Bireysel abone", deger: sayi(bireyselSatirlar.length), alt: `${sayi(bireyselOdeyen)} ödüyor`, ton: "arti" },
+          { ad: "Dikkat", deger: sayi(kurumsalSorunlu + bireyselKapali), alt: "hata, askı ya da kapalı erişim", ton: kurumsalSorunlu + bireyselKapali ? "uyari" : undefined },
+        ]}
+        gruplar={[
+          {
+            baslik: "Kurumsal",
+            satirlar: [
+              { ad: "Kullanımda", adet: kurumsalKullanimda },
+              { ad: "Kurulum hatası ya da askıda", adet: kurumsalSorunlu },
+            ],
+          },
+          {
+            baslik: "Bireysel",
+            satirlar: [
+              { ad: "Ödüyor", adet: bireyselOdeyen },
+              { ad: "Denemede", adet: bireyselDeneme },
+              { ad: "Erişimi kapalı", adet: bireyselKapali },
+            ],
+          },
+        ]}
+      />
     </div>
   </main>;
 }

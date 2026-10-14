@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { KBaslik, KBos, KSatirSonu, KTablo } from "../konsol-ui";
+// Hücre bağlantısı (.plt-matris-hucre) ve "yalnızca müşteriler" kutusu konsolun stilinde.
+import "../platform.css";
+
+const ADRES = "/panel/platform/moduller";
 
 /*
   Kiracı × modül matrisi.
@@ -46,88 +51,103 @@ const SUZGECLER = [
   { kod: "bagimsiz", ad: "Bağımsız çalışanlar" },
 ] as const;
 
-export function Matris({ urunler, satirlar }: { urunler: MatrisUrunu[]; satirlar: MatrisSatiri[] }) {
+/** Süzgeç kuralı tek yerde: hem tablo hem çipteki sayı buradan. */
+const suzgeceUyar = (satir: MatrisSatiri, urunler: MatrisUrunu[], suzgec: Suzgec) => {
+  const hucreler = urunler.map((urun) => satir.hucreler[urun.code]).filter(Boolean);
+  if (suzgec === "kapali" && hucreler.every((hucre) => hucre.acik)) return false;
+  if (suzgec === "bagimsiz" && !hucreler.some((hucre) => hucre.bagimsiz)) return false;
+  return true;
+};
+
+export function Matris({ urunler, satirlar, durum }: {
+  urunler: MatrisUrunu[];
+  satirlar: MatrisSatiri[];
+  /** ?suzgec= — geçersizse "hepsi". */
+  durum?: string;
+}) {
   const [arama, setArama] = useState("");
-  const [suzgec, setSuzgec] = useState<Suzgec>("hepsi");
+  /* 14.10.2026: süzgeç adreste (?suzgec=), panelin çip satırı bağlantı.
+     Eskiden yalnızca bellekteydi; sayfa yenilenince kayboluyordu. */
+  const suzgec: Suzgec = SUZGECLER.some((secim) => secim.kod === durum) ? (durum as Suzgec) : "hepsi";
   const [yalnizMusteri, setYalnizMusteri] = useState(false);
 
   const gorunen = useMemo(() => {
     const anahtar = sadelestir(arama);
     return satirlar.filter((satir) => {
       if (yalnizMusteri && satir.kendiMarkamiz) return false;
-      const hucreler = urunler.map((urun) => satir.hucreler[urun.code]).filter(Boolean);
-      if (suzgec === "kapali" && hucreler.every((hucre) => hucre.acik)) return false;
-      if (suzgec === "bagimsiz" && !hucreler.some((hucre) => hucre.bagimsiz)) return false;
+      if (!suzgeceUyar(satir, urunler, suzgec)) return false;
       if (!anahtar) return true;
       return sadelestir(satir.ad).includes(anahtar);
     });
   }, [satirlar, urunler, arama, suzgec, yalnizMusteri]);
 
   return (
-    <div className="plt-matris">
-      <div className="plt-uye-arac">
-        <label className="plt-abone-arama">
-          <span className="plt-gizli">Kiracı ara</span>
-          <input type="search" value={arama} placeholder="Kiracı ara" onChange={(olay) => setArama(olay.target.value)} />
-        </label>
-        <div className="plt-hizli" role="group" aria-label="Süzgeç">
-          {SUZGECLER.map((secim) => (
-            <button key={secim.kod} type="button" data-secili={suzgec === secim.kod} onClick={() => setSuzgec(secim.kod)}>
-              {secim.ad}
-            </button>
-          ))}
-        </div>
+    /* Parça (fragment), sarmalayıcı yok: liste sayfasında kaydırma kartın
+       doğrudan çocuğu olan tabloda (.talep-bilgi > .talep-tablo). */
+    <>
+      <div className="ekip-suzgec talep-suzgec" role="group" aria-label="Süzgeç">
+        {SUZGECLER.map((secim) => (
+          <Link
+            key={secim.kod} href={secim.kod === "hepsi" ? ADRES : `${ADRES}?suzgec=${secim.kod}`}
+            className={suzgec === secim.kod ? "is-active" : undefined} aria-current={suzgec === secim.kod ? "page" : undefined}
+          >
+            {secim.ad} <small>{satirlar.filter((satir) => (!yalnizMusteri || !satir.kendiMarkamiz) && suzgeceUyar(satir, urunler, secim.kod)).length}</small>
+          </Link>
+        ))}
         {/* Kendi markalarımız sayımda zaten yok; tabloda gizlemek ayrı bir
             tercih, çünkü bazen tam da onlara bakmak gerekiyor. */}
         <label className="plt-matris-onay">
           <input type="checkbox" checked={yalnizMusteri} onChange={(olay) => setYalnizMusteri(olay.target.checked)} />
           <span>Yalnızca müşteriler</span>
         </label>
-        <span className="plt-uye-sayi">{gorunen.length} kurum</span>
+        <div className="talep-ara" role="search">
+          <input type="search" value={arama} placeholder="Kiracı ara" aria-label="Kiracı ara" onChange={(olay) => setArama(olay.target.value)} />
+        </div>
       </div>
 
       {gorunen.length ? (
-        <div className="plt-table-scroll">
-          <table className="plt-table modul-capraz">
-            <thead>
-              <tr>
-                <th>Kiracı</th>
-                {urunler.map((urun) => <th key={urun.code}>{urun.name}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {gorunen.map((satir) => (
-                <tr key={satir.id}>
-                  <td>
-                    <Link className="modul-baglanti" href={`/panel/platform?organization=${satir.id}`}>{satir.ad}</Link>
-                    {satir.kendiMarkamiz ? <small className="plt-substatus">kendi markamız</small> : null}
-                  </td>
-                  {urunler.map((urun) => {
+        <KTablo kolonlar={[{ ad: "Kiracı" }, ...urunler.map((urun) => ({ ad: urun.name })), { ad: "" }]}>
+          {gorunen.map((satir) => {
+            const kiraci = `/panel/platform?organization=${satir.id}`;
+            return (
+              <tr key={satir.id}>
+                <KBaslik etiket="Kiracı" href={kiraci} baslik={satir.ad} alt={satir.kendiMarkamiz ? "kendi markamız" : undefined} />
+                {urunler.map((urun) => {
+                  const hucre = satir.hucreler[urun.code];
+                  if (!hucre) return <td key={urun.code} data-label={urun.name}>—</td>;
+                  return (
+                    <td key={urun.code} data-label={urun.name}>
+                      {/* Hücre, o kiracının lisans ekranına götürüyor:
+                          sorunu gören kurucu adresi elle kuruyordu. */}
+                      <Link
+                        className="plt-matris-hucre"
+                        href={`/panel/platform/licenses?organization=${satir.id}`}
+                        title={`${satir.ad} · ${urun.name}: ${hucre.durumAdi}${hucre.bagimsiz ? " · bağımsız" : ""}`}
+                      >
+                        <span className="status-pill" data-tone={hucre.tone}>{hucre.kisaAd}</span>
+                        {hucre.bagimsiz ? <span className="crm-table-sub">bağımsız</span> : null}
+                      </Link>
+                    </td>
+                  );
+                })}
+                <KSatirSonu mobil={{
+                  href: kiraci,
+                  baslik: satir.ad,
+                  alt: [satir.kendiMarkamiz ? "kendi markamız" : null],
+                  /* Telefonda dört hücre tek satırda işaret olarak: soru yine
+                     "hangisi yeşil değil". */
+                  isaretler: urunler.map((urun) => {
                     const hucre = satir.hucreler[urun.code];
-                    if (!hucre) return <td key={urun.code}>—</td>;
-                    return (
-                      <td key={urun.code}>
-                        {/* Hücre, o kiracının lisans ekranına götürüyor:
-                            sorunu gören kurucu adresi elle kuruyordu. */}
-                        <Link
-                          className="plt-matris-hucre"
-                          href={`/panel/platform/licenses?organization=${satir.id}`}
-                          title={`${satir.ad} · ${urun.name}: ${hucre.durumAdi}${hucre.bagimsiz ? " · bağımsız" : ""}`}
-                        >
-                          <span className="status-pill" data-tone={hucre.tone}>{hucre.kisaAd}</span>
-                          {hucre.bagimsiz ? <small className="plt-substatus">bağımsız</small> : null}
-                        </Link>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    return hucre ? { metin: `${urun.name}: ${hucre.kisaAd}${hucre.bagimsiz ? " · bağımsız" : ""}`, ton: hucre.acik ? "basari" as const : "uyari" as const } : null;
+                  }),
+                }} />
+              </tr>
+            );
+          })}
+        </KTablo>
       ) : (
-        <p className="plt-substatus plt-uye-bos">Bu süzgeçle eşleşen kurum yok.</p>
+        <KBos baslik="Eşleşen kurum yok" aciklama="Bu süzgeçle ya da aramayla eşleşen kurum yok." />
       )}
-    </div>
+    </>
   );
 }
