@@ -9,10 +9,11 @@ import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { NewOrganizationWizard } from "../new-organization-wizard";
 import { createCustomerOrganization } from "../actions";
-import { PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
-import { denemeyiAyarla, listeFiyatiniUygula } from "./actions";
-import { KBaslik, KBos, KKart, KListe, KNot, KOge, KTablo } from "../konsol-ui";
-// Sihirbaz (.plw), deneme formu (.plt-deneme) ve sözleşme no (.plt-mono) burada.
+import { LISANS_TONU, PAKET_ADI, KURULUM_ADI, KURULUM_TONU, para, sayi, tarih, tarihSaat } from "../bicim";
+import { productLicenseLabels } from "@/lib/products";
+import { listeFiyatiniUygula } from "./actions";
+import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
+// Sihirbaz (.plw) ve sözleşme no (.plt-mono) burada.
 import "../platform.css";
 
 /*
@@ -122,8 +123,8 @@ export default async function KurulumlarPage({ searchParams }: {
   return <main className="plt talep cari ekip liste-sayfa">
     <header className="talep-bas">
       <div className="talep-bas-metin">
-        <small className="panel-kicker">PLATFORM · KURULUMLAR</small>
-        <h1>Kurulumlar</h1>
+        <small className="panel-kicker">PLATFORM · KURULUM</small>
+        <h1>Kurulum</h1>
       </div>
       <div className="talep-bas-eylem">
         <PanelDrawer triggerLabel="+ Yeni müşteri" kicker="YENİ MÜŞTERİ" title="Yeni müşteri kurulumu" description="Dört adımda kurum, paket ve sahip hesabı hazırlanır; davet otomatik gönderilir.">
@@ -210,66 +211,53 @@ export default async function KurulumlarPage({ searchParams }: {
         ) : null}
 
         {secili === "tamam" ? (
-          <>
-            <KNot>
-              Çalışır durumdaki kiracılar. Deneme süresi ve aylık ücret burada tanımlanır; ücret, paketin
-              <Link href="/panel/platform/fiyatlar"> Ücret ve Paketler</Link>&apos;de yayımlanmış liste fiyatından gelir.
-            </KNot>
-            {tamamlananlar.length ? (
-              /* Bu tabloda telefon satırı (MobilSatir) YOK: ücret ve deneme
-                 formları hücrelerin içinde ve tek kompakt satır öteki
-                 hücreleri gizliyor — telefonda formlar kaybolurdu. Hücreler
-                 panelin genel kuralıyla "etiket değer" olarak diziliyor.
+          tamamlananlar.length ? (
+            /*
+              iOS LİSTESİ (14.10.2026, "panel kalitesinde değil"). Burası
+              beş sütunlu bir tabloydu ve her satırda deneme günü kutusuyla
+              "Uygula" düğmesi duruyordu: dört satırda dört form, ekranın
+              yarısı. Deneme süresi müşteri detayının Lisanslar penceresinde
+              (lisans formundaki deneme bitişi) — aynı işi iki yerde tutmak,
+              birinin kuralı atlaması demekti. Satır artık o pencereye gidiyor.
 
-                 iOS listesine (KOge) BİLEREK geçmedi (14.10.2026): satırda
-                 iki ayrı form var (liste fiyatını uygula + deneme günü
-                 kutusu ve düğmesi). İkisi KOge'nin sağ ucuna (sonu)
-                 sığmıyor, telefonda başlığı tamamen eziyordu; sonu
-                 verilince satır kiracı dosyasına bağlantı da olmaktan
-                 çıkıyordu. Öteki iki aşama iOS listesinde. */
-              <KTablo kolonlar={[{ ad: "Kiracı" }, { ad: "Paket" }, { ad: "Aylık ücret" }, { ad: "Deneme" }, { ad: "Dönem sonu", sinif: "crm-col-date" }]}>
-                {tamamlananlar.map((kiraci) => {
-                  const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
-                  return (
-                    <tr key={kiraci.id}>
-                      <KBaslik avatar etiket="Kiracı" href={`/panel/platform/musteriler/${kiraci.id}?pencere=ayarlar`} baslik={kiraci.display_name || kiraci.name} alt={`${sayi(Number(kiraci.aktif_uye))} kullanıcı`} />
-                      <td data-label="Paket">{kiraci.plan_code ? PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code : "—"}</td>
-                      <td data-label="Aylık ücret">
-                        {sapma.durum === "girilmedi" ? (
-                          <form action={listeFiyatiniUygula} className="plt-deneme">
-                            <input type="hidden" name="organization_id" value={kiraci.id} />
-                            <span className="status-pill" data-tone="warning">girilmedi</span>
-                            {sapma.liste !== null
-                              ? <button className="panel-secondary" type="submit">Liste fiyatını uygula · {para(sapma.liste)}</button>
-                              : <span className="crm-table-sub">Teklif usulü paket; tutarı lisans ekranından girin.</span>}
-                          </form>
-                        ) : (
-                          <>
-                            {para(sapma.mevcut ?? 0)}
-                            {/* Sapma hata değil: çoğu kiracının pazarlıkla
-                                değişmiş tutarı var. Yalnızca yazıyoruz. */}
-                            {sapma.durum === "farkli" ? <span className="crm-table-sub">liste {para(sapma.liste ?? 0)}</span> : null}
-                            {sapma.durum === "teklif" ? <span className="crm-table-sub">teklif usulü</span> : null}
-                          </>
-                        )}
-                      </td>
-                      <td data-label="Deneme">
-                        <form action={denemeyiAyarla} className="plt-deneme">
-                          <input type="hidden" name="organization_id" value={kiraci.id} />
-                          {kiraci.license_status === "trialing"
-                            ? <span className="status-pill" data-tone="warning">{tarih(kiraci.trial_ends_at)}&apos;e kadar</span>
-                            : <span className="status-pill" data-tone="neutral">yok</span>}
-                          <input type="number" name="gun" min={0} max={365} defaultValue={kiraci.license_status === "trialing" ? 0 : 14} aria-label="Deneme günü" />
-                          <button className="panel-secondary" type="submit">Uygula</button>
-                        </form>
-                      </td>
-                      <td data-label="Dönem sonu" className="crm-col-date">{tarih(kiraci.current_period_end)}</td>
-                    </tr>
-                  );
-                })}
-              </KTablo>
-            ) : <KBos baslik="Tamamlanmış kurulum yok" />}
-          </>
+              Tek kısayol kalıyor: ücreti GİRİLMEMİŞ kiracıda "liste fiyatını
+              uygula" (yayımlanmış liste, lib/paket-ucreti). O satır form
+              taşıdığı için bağlantı değil; öteki satırlar bağlantı.
+            */
+            <KListe>
+              {tamamlananlar.map((kiraci) => {
+                const ad = kiraci.display_name || kiraci.name;
+                const sapma = ucretSapmasi(kiraci.plan_code, kiraci.monthly_fee, fiyatlar);
+                const denemede = kiraci.license_status === "trialing";
+                const lisans = kiraci.license_status ?? "inactive";
+                return (
+                  <KOge
+                    key={kiraci.id}
+                    href={`/panel/platform/musteriler/${kiraci.id}?pencere=lisanslar`}
+                    simge={ad}
+                    baslik={ad}
+                    alt={[
+                      kiraci.plan_code ? `${PAKET_ADI[kiraci.plan_code] ?? kiraci.plan_code} paket` : null,
+                      `${sayi(Number(kiraci.aktif_uye))} kullanıcı`,
+                      denemede
+                        ? `deneme ${tarih(kiraci.trial_ends_at)}'e kadar`
+                        : kiraci.current_period_end ? `dönem sonu ${tarih(kiraci.current_period_end)}` : null,
+                    ].filter(Boolean).join(" · ")}
+                    durum={{ etiket: productLicenseLabels[lisans] ?? lisans, ton: LISANS_TONU[lisans] ?? "neutral" }}
+                    deger={sapma.durum === "girilmedi" ? <span className="k-ios-eksik">Ücret yok</span> : para(sapma.mevcut ?? 0)}
+                    /* Sapma hata değil: çoğu kiracının pazarlıkla değişmiş tutarı var. */
+                    degerAlt={sapma.durum === "teklif" ? "teklif usulü" : sapma.durum === "farkli" ? `liste ${para(sapma.liste ?? 0)}` : sapma.durum === "liste" ? "liste fiyatı" : undefined}
+                    sonu={sapma.durum === "girilmedi" && sapma.liste !== null ? (
+                      <form action={listeFiyatiniUygula}>
+                        <input type="hidden" name="organization_id" value={kiraci.id} />
+                        <button className="panel-secondary" type="submit">Liste fiyatı · {para(sapma.liste)}</button>
+                      </form>
+                    ) : undefined}
+                  />
+                );
+              })}
+            </KListe>
+          ) : <KBos baslik="Tamamlanmış kurulum yok" />
         ) : null}
       </section>
 

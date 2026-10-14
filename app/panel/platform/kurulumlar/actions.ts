@@ -48,40 +48,14 @@ async function listeFiyatiniUygula__impl(formData: FormData) {
   revalidatePath("/panel/platform/musteriler", "layout");
 }
 
-async function denemeyiAyarla__impl(formData: FormData) {
-  const { supabase, isPlatformOwner } = await getPanelContext();
-  if (!isPlatformOwner) throw new Error("Bu işlem için kurucu yetkisi gerekiyor.");
-
-  const organizationId = String(formData.get("organization_id") ?? "").trim();
-  if (!organizationId) throw new Error("Kurum seçilmedi.");
-  const gun = Number(String(formData.get("gun") ?? "").trim());
-  if (!Number.isSafeInteger(gun) || gun < 0 || gun > 365) throw new Error("Deneme süresi 0 ile 365 gün arasında olmalı.");
-
-  const { data: userData } = await supabase.auth.getUser();
-  /*
-    0 gün = denemeyi bitir. Tarihi geçmişe yazmak yerine alanı
-    boşaltıyoruz; "denemesi dün bitti" ile "denemesi hiç olmadı" ayrı
-    şeyler ve lisans durumu ikisini farklı okuyor.
-  */
-  const bitis = gun > 0 ? new Date(Date.now() + gun * 24 * 60 * 60 * 1000).toISOString() : null;
-  const { error } = await supabase.from("organization_licenses")
-    .update({
-      trial_ends_at: bitis,
-      license_status: gun > 0 ? "trialing" : "active",
-      updated_by: userData.user?.id ?? null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("organization_id", organizationId);
-  if (error) throw new Error("Deneme süresi yazılamadı: " + error.message);
-
-  revalidatePath("/panel/platform/kurulumlar");
-  revalidatePath("/panel/platform/musteriler", "layout");
-}
+/*
+  "Deneme günü uygula" kısayolu kaldırıldı (14.10.2026): Kurulum listesinin
+  her satırında bir formdu; deneme süresi müşteri detayının Lisanslar
+  penceresindeki lisans formunda (deneme bitişi) duruyor. Kullanılmayan bir
+  sunucu işlemi açık bırakılmadı.
+*/
 
 // Hata mesajlarını kullanıcıya ulaştıran sarmalayıcılar (lib/panel-action.ts).
 export async function listeFiyatiniUygula(...args: Parameters<typeof listeFiyatiniUygula__impl>) {
   return runPanelAction(() => listeFiyatiniUygula__impl(...args), "Liste fiyatı uygulandı");
-}
-export async function denemeyiAyarla(...args: Parameters<typeof denemeyiAyarla__impl>) {
-  return runPanelAction(() => denemeyiAyarla__impl(...args), "Deneme süresi güncellendi");
 }
