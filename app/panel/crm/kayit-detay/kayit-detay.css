@@ -232,7 +232,11 @@
     olursa olsun hizalı iki sütun. Tek kalan son kutu satırın tamamına
     yayılıyor (beş kutulu Sistem Sağlığı şeridi böyle).
   */
-  .kayit-serit dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3) var(--sp-5)}
+  /* Liste tam genişliğe yayılıyor: dl bir flex öğesi ve içerik boyunda
+     kalınca ızgara da onun içine sıkışıyordu — Kullanıcılar'da şerit 351
+     piksel genişken kutular 216 pikseli paylaşıyor, sayfadan sayfaya
+     farklı genişlikte görünüyordu. */
+  .kayit-serit dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3) var(--sp-5);flex:1 1 100%}
   .kayit-serit dl>div{min-width:0}
   .kayit-serit dl>div:last-child:nth-child(odd){grid-column:1/-1}
 }
