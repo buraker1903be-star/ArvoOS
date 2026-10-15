@@ -14,7 +14,7 @@
 
 /* Aşama çizgisi */
 .talep-asama{list-style:none;margin:0;padding:var(--sp-3) var(--sp-4);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
-.talep-asama li{position:relative;display:flex;align-items:center;gap:var(--sp-2);color:var(--dim);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
+.talep-asama li{position:relative;display:flex;align-items:center;gap:var(--sp-2);color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .talep-asama li::after{content:"";flex:1;height:2px;margin:0 var(--sp-2);border-radius:2px;background:var(--line)}
 .talep-asama li:last-child::after{display:none}
 .talep-asama i{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--n-300);background:var(--surface)}
@@ -41,13 +41,13 @@
 .talep-liste>div{display:flex;justify-content:space-between;gap:var(--sp-3);padding:var(--sp-2) 0;border-top:1px solid var(--line-soft)}
 .talep-liste dt{color:var(--muted);font-size:var(--fs-sm)}
 .talep-liste dd{margin:0;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--ink);overflow-wrap:anywhere}
-.talep-liste em{font-style:normal;color:var(--dim);font-weight:400}
+.talep-liste em{font-style:normal;color:var(--muted);font-weight:400}
 .talep-liste--iki{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--sp-6);margin-top:var(--sp-3)}
 .talep-liste--iki>div{flex-direction:column;gap:2px}
 .talep-liste--iki dd{text-align:left}
 .talep-not{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
 .talep-not p{margin:0;color:var(--ink);font-size:var(--fs-base);line-height:var(--lh-base);white-space:pre-line}
-.talep-bos{color:var(--dim) !important}
+.talep-bos{color:var(--muted) !important}
 
 /* Akış: sekmeler + panel. İçteki bileşenlerin kendi kart çerçevesi
    kaldırılır: zaten bir kartın içindeler. */
@@ -108,7 +108,7 @@
 .os-root .ic-akis .crm-internal-comment-composer textarea{display:block;width:100%;min-height:72px;margin:0;padding:var(--sp-3);border:0 !important;border-radius:var(--r-md) var(--r-md) 0 0;background:transparent;box-shadow:none !important;resize:none;font-size:var(--fs-base);line-height:var(--lh-base)}
 /* Dar ekranda da tek satır: eski mobil kural (request-page.css) düğmeyi tam genişliğe yayıyordu. */
 .os-root .ic-akis .crm-internal-comment-composer>div{display:flex;align-items:center;justify-content:space-between;flex-direction:row;gap:var(--sp-2);padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft);background:transparent}
-.os-root .ic-akis .crm-internal-comment-composer small{color:var(--dim);font-size:var(--fs-micro)}
+.os-root .ic-akis .crm-internal-comment-composer small{color:var(--muted);font-size:var(--fs-micro)}
 .os-root .ic-akis .crm-internal-comment-composer .panel-primary{width:auto;flex:none;min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
 .os-root .ic-akis .crm-internal-comment-list{display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-4)}
 .os-root .ic-akis .crm-internal-comment-list>article{display:grid;grid-template-columns:32px minmax(0,1fr);gap:var(--sp-3);padding:0;border:0;background:transparent}
@@ -127,7 +127,7 @@
 .posta-akis-metin b{font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .posta-akis-metin small{font-size:var(--fs-micro);color:var(--muted)}
 .posta-akis-liste li.is-unread .posta-akis-metin b{font-weight:var(--fw-bold)}
-.posta-akis-zaman{flex:none;font-size:var(--fs-micro);color:var(--dim)}
+.posta-akis-zaman{flex:none;font-size:var(--fs-micro);color:var(--muted)}
 
 /* ---------- İnce kaydırma çubuğu ----------
    Uzun metinde gri ve kalın çubuk her zaman görünüyordu; artık ince ve
@@ -170,7 +170,7 @@
 .os-root .sozlesme-mesaj .contract-reply:focus-within{border-color:var(--primary);box-shadow:var(--shadow-glow)}
 .os-root .sozlesme-mesaj .contract-reply textarea{min-height:64px;border:0 !important;border-radius:var(--r-md) var(--r-md) 0 0;box-shadow:none !important;resize:none;font-size:var(--fs-base);color:var(--ink)}
 .os-root .sozlesme-mesaj .contract-reply>div{flex-wrap:nowrap;padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);border-top:1px solid var(--line-soft)}
-.os-root .sozlesme-mesaj .contract-reply small{color:var(--dim);font-size:var(--fs-micro)}
+.os-root .sozlesme-mesaj .contract-reply small{color:var(--muted);font-size:var(--fs-micro)}
 .os-root .sozlesme-mesaj .contract-reply .panel-primary{width:auto;flex:none;min-height:32px;padding:0 var(--sp-3);font-size:var(--fs-sm)}
 .os-root .talep-bilgi .plan-addenda li{border-color:var(--line);border-radius:var(--r-md)}
 .os-root .talep-bilgi .plan-timeline li{font-size:var(--fs-sm)}
@@ -521,7 +521,7 @@
 .os-root .talep-izgara>.talep-bilgi:has(.talep-tablo){scroll-padding-top:var(--sp-5)}
 
 /* Cari hesaplar tablosu: sıfır tutar soluk, satırda küçük "Tahsilat". */
-.os-root .talep-tablo .crm-data-table td.cari-sifir{color:var(--dim);font-weight:400}
+.os-root .talep-tablo .crm-data-table td.cari-sifir{color:var(--muted);font-weight:400}
 .os-root .talep-tablo .crm-data-table td.crm-col-amount small{display:block;margin-top:2px;font-weight:400}
 .os-root .talep-tablo td.cari-satir-eylem{white-space:nowrap;text-align:right}
 .os-root .talep-tablo td.cari-satir-eylem .crm-row-chevron{display:inline-block;width:auto;margin-left:var(--sp-2);vertical-align:middle}
@@ -549,7 +549,7 @@
 .sozlesme-odeme-ozet b{color:var(--ink);font-weight:var(--fw-semibold)}
 .sozlesme-odeme-ozet>i{flex:1 1 100%;display:block;height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .sozlesme-odeme-ozet>i>b{display:block;height:100%;border-radius:inherit;background:var(--success)}
-.opd-zaman{margin:var(--sp-3) 0 0;color:var(--dim);font-size:var(--fs-micro)}
+.opd-zaman{margin:var(--sp-3) 0 0;color:var(--muted);font-size:var(--fs-micro)}
 .os-root .cari-oran{min-width:140px}
 /* Cari detayı: başlık + bakiye şeridi detaylardaki aşama çizgisinden uzun; sütunlar dock'un üstünde bitsin. */
 .os-root .cari:not(.ekip) .talep-izgara>:is(.talep-bilgi,.talep-musteri,.cari-sag){max-height:calc(100dvh - 350px)}
@@ -617,7 +617,7 @@
 
 /* İŞ MALİYETLERİ LİSTESİ (finance/page.tsx): sorumlular iki satır, kâr oranı çubuğu renkli. */
 .os-root .talep-tablo .crm-data-table .maliyet-sorumlu{display:block;white-space:nowrap}
-.maliyet-sorumlu b{margin-right:var(--sp-1);color:var(--dim);font-weight:var(--fw-medium)}
+.maliyet-sorumlu b{margin-right:var(--sp-1);color:var(--muted);font-weight:var(--fw-medium)}
 .maliyet-oran[data-ton="warning"] .cari-oran-cubuk i{background:var(--warning)}
 .maliyet-oran[data-ton="danger"] .cari-oran-cubuk i{background:var(--danger)}
 .maliyet-oran[data-ton="danger"] small{color:var(--danger)}
@@ -653,7 +653,7 @@
   font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .os-root .liste-sayfalar a{padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--primary);text-decoration:none}
 .os-root .liste-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
-.os-root .liste-sayfalar span{padding:5px 12px;color:var(--dim)}
+.os-root .liste-sayfalar span{padding:5px 12px;color:var(--muted)}
 .os-root .liste-sayfalar b{color:var(--muted);font-weight:var(--fw-medium);font-variant-numeric:tabular-nums}
 
 /* Belge merkezi tablosu: ilk sütun (belge no + konu) en geniş olanı
@@ -709,7 +709,7 @@
 .os-root .kayit-zaman li[data-durum="danger"] i{background:var(--danger-soft);color:var(--danger)}
 .os-root .kayit-zaman h3{margin:0;font-size:var(--fs-md);font-weight:var(--fw-semibold);color:var(--ink)}
 .os-root .kayit-zaman p{margin:4px 0 0;color:var(--muted);font-size:var(--fs-sm)}
-.os-root .kayit-zaman small{display:block;margin-top:4px;color:var(--dim);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
+.os-root .kayit-zaman small{display:block;margin-top:4px;color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums}
 
 
 /*

@@ -141,7 +141,7 @@ a.fin-entity:hover b{color:var(--accent)}
 .fin-neg{color:var(--danger)!important}
 .fin-warn{color:color-mix(in srgb,var(--warning) 82%,var(--ink))!important}
 .fin-muted{color:var(--muted)!important}
-.panel-root .fin .fin-table td.is-zero{color:var(--dim);font-weight:500}
+.panel-root .fin .fin-table td.is-zero{color:var(--muted);font-weight:500}
 .fin-balance{display:inline-flex;flex-direction:column;align-items:flex-end;gap:5px}
 .fin-balance strong{color:var(--ink);font-size:15px;font-weight:700}
 

@@ -46,7 +46,7 @@
   /* Etiket, değerin önünde küçük ve sessiz ("Teslim 28.10.2026"); kendini
      anlatan değerlerde (hizmet, temsilci, numara…) hiç yok. */
   .os-root .panel-content .talep-tablo .crm-data-table tbody td::before{
-    content:attr(data-label) " ";flex:none;margin:0;color:var(--dim);font-size:inherit;font-weight:400;letter-spacing:0;text-transform:none;
+    content:attr(data-label) " ";flex:none;margin:0;color:var(--muted);font-size:inherit;font-weight:400;letter-spacing:0;text-transform:none;
   }
   .os-root .panel-content .talep-tablo .crm-data-table tbody td:is(
     [data-label="No"],[data-label="Teklif No"],[data-label="Sözleşme No"],[data-label="Hizmet türü"],[data-label="Temsilci"],
@@ -79,7 +79,7 @@
 
   /* Numara, ilk hücredeki bağlantı: masaüstündeki negatif boşluklar kalkıyor. */
   .os-root .panel-content .talep-tablo .crm-data-table tbody td:first-child .crm-row-link{display:inline;margin:0;padding:0;background:none}
-  .os-root .panel-content .talep-tablo .crm-data-table tbody td.crm-table-mono{color:var(--dim);font-size:12px;font-weight:500}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.crm-table-mono{color:var(--muted);font-size:12px;font-weight:500}
 
   /* Temsilci: baş harf yuvarlağı küçük. */
   .os-root .panel-content .talep-tablo .crm-rep{display:inline-flex;gap:5px;font-size:12.5px;color:var(--ink-soft)}

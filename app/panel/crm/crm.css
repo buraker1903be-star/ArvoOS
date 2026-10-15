@@ -25,22 +25,22 @@
 .crm-column>header div{display:flex;align-items:center;gap:8px}
 .crm-column>header small{font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted)}
 .crm-column>header strong{display:grid;place-items:center;width:24px;height:24px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:12px;color:var(--ink)}
-.crm-column>header span{font-size:11px;color:var(--dim)}
+.crm-column>header span{font-size:11px;color:var(--muted)}
 .crm-cards{display:flex;flex-direction:column;gap:12px}
 .crm-card{padding:15px;border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:var(--shadow-sm)}
 .crm-card-top{display:flex;justify-content:space-between;gap:8px}
 .crm-card-top small{color:var(--primary);font-size:11px;font-weight:800}
-.crm-card-top span{font-size:11px;color:var(--dim)}
+.crm-card-top span{font-size:11px;color:var(--muted)}
 .crm-card h3{margin:10px 0 4px;font-size:14px;color:var(--ink)}
 .crm-card p{margin:0 0 12px;font-size:12px;color:var(--muted)}
 .crm-card>strong{display:block;margin-bottom:6px;font-size:15px;color:var(--ink)}
-.crm-card>small{display:block;margin-bottom:12px;color:var(--dim);font-size:11px}
+.crm-card>small{display:block;margin-bottom:12px;color:var(--muted);font-size:11px}
 .crm-card form{display:flex;flex-direction:column;gap:9px;margin-top:14px;padding-top:12px;border-top:1px solid var(--ux-line)}
 .crm-card form label{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:11px;font-weight:800}
 .crm-card select,.crm-card input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:11px var(--font-body)}
 .crm-card button{min-height:34px;padding:8px;border:0;border-radius:8px;background:var(--brand-700);color:#fff;font:800 11px var(--font-body);cursor:pointer;transition:filter .18s ease}
 .crm-card button:hover{filter:brightness(1.1)}
-.crm-empty{padding:20px 10px;text-align:center;color:var(--dim);font-size:11px}
+.crm-empty{padding:20px 10px;text-align:center;color:var(--muted);font-size:11px}
 .crm-lost>small{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--danger)}
 .crm-lost p{margin:10px 0 0;font-size:12px;color:var(--muted)}
 
@@ -131,7 +131,7 @@
 .ops-archive summary::-webkit-details-marker{display:none}
 .ops-archive summary span{font:700 13px var(--font-heading);color:var(--ink)}
 .ops-archive summary em{padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);font-size:12px;font-style:normal;font-weight:800}
-.ops-archive summary small{margin-left:auto;color:var(--dim);font-size:11px}
+.ops-archive summary small{margin-left:auto;color:var(--muted);font-size:11px}
 .ops-archive[open] summary{border-bottom:1px solid var(--line)}
 .ops-archive-list{display:flex;flex-direction:column}
 .ops-archive-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-top:1px solid var(--line-soft);text-decoration:none;transition:.18s ease}
@@ -182,7 +182,7 @@
   text-underline-offset: 3px;
 }
 .crm-last-contact-none {
-  color: var(--dim);
+  color: var(--muted);
   font-size: 13px;
 }
 

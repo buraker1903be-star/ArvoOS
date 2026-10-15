@@ -119,7 +119,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
   transition:border-color .18s ease,box-shadow .18s ease
 }
 .panel-root .hr-form :is(input,select):focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
-.panel-root .hr-form input::placeholder{color:var(--dim)}
+.panel-root .hr-form input::placeholder{color:var(--muted)}
 .panel-root .hr-form-section{margin:8px 0 -4px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
 .panel-root .hr-form-section:first-child{margin-top:0}
 /* Onay kutusu kartı ortak kayıt formunda da (personel düzenleme). */
@@ -274,7 +274,7 @@ html[data-theme="dark"] .hr-page [data-tone="brand"]{--tone-fg:var(--brand-200)}
 .hr-act-sayfalar{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;font-size:12px;font-weight:700}
 .hr-act-sayfalar a{padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--primary);text-decoration:none}
 .hr-act-sayfalar a:hover{border-color:var(--primary);background:var(--surface-2)}
-.hr-act-sayfalar span{padding:5px 12px;color:var(--dim);opacity:.55}
+.hr-act-sayfalar span{padding:5px 12px;color:var(--muted);opacity:.55}
 .hr-act-sayfalar b{color:var(--muted)}
 .personel-hareket-gun h3{display:flex;align-items:baseline;gap:var(--sp-2);margin:var(--sp-3) 0 var(--sp-1);font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--ink)}
 .personel-hareket-gun h3 small{color:var(--muted);font-weight:var(--fw-medium)}

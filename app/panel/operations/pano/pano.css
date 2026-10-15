@@ -38,7 +38,7 @@
 .ops-pano-kolon[data-tur="sablon_disi"]{border-style:dashed}
 .ops-pano-kolon[data-tur="sablon_disi"] header b{color:var(--warning)}
 .ops-pano-kartlar{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-2);scrollbar-width:thin}
-.ops-pano-bos-not{margin:0;padding:var(--sp-4) var(--sp-2);color:var(--dim);font-size:var(--fs-micro);text-align:center}
+.ops-pano-bos-not{margin:0;padding:var(--sp-4) var(--sp-2);color:var(--muted);font-size:var(--fs-micro);text-align:center}
 
 /* BOŞ KOLON: dar şerit, aşama adı dikey; sürüklerken açılır. */
 .ops-pano-kolon[data-bos="1"]{flex-basis:48px;background:transparent;border-style:dashed}
@@ -88,7 +88,7 @@
 .ops-pano-termin[data-tone="success"]{background:var(--success-soft);color:var(--success)}
 .ops-pano-tarih-gir{border:1px dashed var(--n-300);background:transparent;color:var(--muted);font-family:inherit;cursor:pointer}
 .ops-pano-tarih-gir:hover{border-color:var(--primary);color:var(--primary)}
-.ops-pano-bekleme{background:var(--surface-2);color:var(--dim)}
+.ops-pano-bekleme{background:var(--surface-2);color:var(--muted)}
 .ops-pano-bekleme[data-uzun="1"]{background:var(--warning-soft);color:var(--warning)}
 
 /* Alt satır: sorumlu ve aşama sayısı solda, küçük düğmeler sağda. */
@@ -154,7 +154,7 @@
 .ops-pano-adim-sag em[data-tone="danger"]{color:var(--danger)}
 .ops-pano-adim-dugme{height:28px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer;white-space:nowrap}
 .ops-pano-adim-dugme:hover{border-color:var(--primary);color:var(--primary)}
-.ops-pano-adim-yok{justify-content:center;color:var(--dim);font-size:var(--fs-micro)}
+.ops-pano-adim-yok{justify-content:center;color:var(--muted);font-size:var(--fs-micro)}
 
 /* Dar ekran: sayfa yüksekliği serbest, kolonlar dar. */
 @media (max-width:900px){

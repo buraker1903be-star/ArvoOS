@@ -34,7 +34,7 @@
 .panel-root .crm-lookup-field-icon{flex:none;display:grid;place-items:center;color:var(--muted)}
 .panel-root .crm-lookup-field-icon svg{width:20px;height:20px}
 .panel-root .crm-lookup-field input{flex:1;min-width:0;height:100%;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--ink);font:inherit;font-size:18px;font-weight:650;letter-spacing:-.005em;outline:none;-webkit-appearance:none;appearance:none}
-.panel-root .crm-lookup-field input::placeholder{color:var(--dim);font-weight:500}
+.panel-root .crm-lookup-field input::placeholder{color:var(--muted);font-weight:500}
 .panel-root .crm-lookup-field input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
 .panel-root .crm-lookup-clear{flex:none;display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--muted);font:inherit;font-size:20px;line-height:1;cursor:pointer}
 .panel-root .crm-lookup-clear:hover{background:var(--surface-2);color:var(--ink)}

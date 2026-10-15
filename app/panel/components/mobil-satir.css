@@ -58,7 +58,7 @@
      alt satır bir noktayla başlıyordu — aralık yeterli. */
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;margin-top:5px;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>span{white-space:nowrap}
-  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="sessiz"]{color:var(--dim)}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="sessiz"]{color:var(--muted)}
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="guclu"]{color:var(--ink);font-weight:600}
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="bilgi"]{color:var(--ink-soft)}
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-isaretler>[data-ton="uyari"]{color:var(--warning);font-weight:600}

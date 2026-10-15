@@ -42,15 +42,15 @@
 .tk-gun em[data-tur="asama"]{background:var(--surface-2);color:var(--ink-soft)}
 .tk-gun em[data-tone="warning"]{background:var(--warning-soft);color:var(--warning)}
 .tk-gun em[data-tone="danger"]{background:var(--danger-soft);color:var(--danger)}
-.tk-gun em[data-tone="done"]{background:var(--surface-2);color:var(--dim);text-decoration:line-through}
-.tk-gun small{color:var(--dim);font-size:var(--fs-micro)}
+.tk-gun em[data-tone="done"]{background:var(--surface-2);color:var(--muted);text-decoration:line-through}
+.tk-gun small{color:var(--muted);font-size:var(--fs-micro)}
 
 /* Gün paneli: seçili gün ve önümüzdeki günler; kendi içinde kayar. */
 .tk-panel{display:flex;flex-direction:column;overflow:auto;scrollbar-width:thin}
 .tk-gun-bolum+.tk-gun-bolum{margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--line-soft)}
 .tk-gun-bolum h3{display:flex;align-items:center;gap:var(--sp-2);margin:0 0 var(--sp-2);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold);text-transform:capitalize}
 .tk-gun-bolum h3.tk-alt{margin-top:var(--sp-3);color:var(--muted);font-weight:var(--fw-medium)}
-.tk-bos{margin:0;color:var(--dim);font-size:var(--fs-sm)}
+.tk-bos{margin:0;color:var(--muted);font-size:var(--fs-sm)}
 .tk-liste{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
 .tk-liste li+li{border-top:1px solid var(--line-soft)}
 .tk-satir{display:flex;align-items:flex-start;gap:var(--sp-3);padding:var(--sp-2);border-radius:var(--r-sm)}
@@ -65,7 +65,7 @@
 .tk-govde small{color:var(--muted);font-size:var(--fs-micro)}
 .tk-govde .tk-not{color:var(--ink-soft);font-style:italic}
 .tk-satir.is-done .tk-govde b{color:var(--muted)}
-.tk-satir.is-cancelled .tk-govde b{color:var(--dim);text-decoration:line-through}
+.tk-satir.is-cancelled .tk-govde b{color:var(--muted);text-decoration:line-through}
 .tk-eylem{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
 .tk-eylem form{margin:0}
 .tk-eylem button{height:26px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer}

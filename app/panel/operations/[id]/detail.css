@@ -51,7 +51,7 @@ html[data-theme="dark"] :is(.opd,.panel-modal) [data-tone="brand"]{--tone-fg:var
 .opd-widget>span{color:var(--muted);font-size:13px}
 .opd-widget[data-tone="danger"]>span,.opd-widget[data-tone="warning"]>span{color:var(--tone-fg);font-weight:600}
 .opd-muted{color:var(--muted)!important}
-.opd-note{margin-top:4px;font-size:12.5px!important;color:var(--dim)!important;font-weight:400!important}
+.opd-note{margin-top:4px;font-size:12.5px!important;color:var(--muted)!important;font-weight:400!important}
 .opd-bar{height:6px;margin:6px 0 2px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .opd-bar i{display:block;width:var(--p,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--success) 70%,var(--n-0)),var(--success));transform-origin:left;animation:opd-fill .9s var(--opd-ease) both}
 @keyframes opd-fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
@@ -306,7 +306,7 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-activity span{min-width:0;display:flex;flex-direction:column;gap:1px}
 .opd-activity b{font-size:13.5px;font-weight:650}
 .opd-activity small{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
-.opd-activity time{color:var(--dim);font-size:12px}
+.opd-activity time{color:var(--muted);font-size:12px}
 
 @media(max-width:1180px){
   .opd-widgets{grid-template-columns:repeat(2,minmax(0,1fr))}

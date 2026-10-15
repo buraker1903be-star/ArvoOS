@@ -1031,7 +1031,7 @@ html[data-theme="dark"] .crm-internal-comments {
 /* "düzenlendi" etiketi — notun sonunda, araya girmeyecek kadar soluk */
 .crm-internal-comment-edited {
   margin-left: 8px;
-  color: var(--dim);
+  color: var(--muted);
   font-size: 12px;
   font-style: normal;
 }
@@ -1122,7 +1122,7 @@ html[data-theme="dark"] .crm-internal-comments {
 }
 .crm-record-history-meta time {
   margin-left: auto;
-  color: var(--dim);
+  color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -1150,7 +1150,7 @@ html[data-theme="dark"] .crm-internal-comments {
   font-weight: 750;
 }
 .crm-record-history-changes .from {
-  color: var(--dim);
+  color: var(--muted);
   text-decoration: line-through;
   overflow-wrap: anywhere;
 }

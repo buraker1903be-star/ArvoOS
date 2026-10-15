@@ -15,7 +15,7 @@
 .slg-group>span{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:var(--accent-soft);color:var(--primary);font-size:11px;font-weight:800;letter-spacing:.04em}
 .slg-group strong{display:block;color:var(--ink);font-size:14px;font-weight:800}
 .slg-group small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:500}
-.slg-optional{margin-left:6px;color:var(--dim);font-size:11px;font-style:normal;font-weight:600}
+.slg-optional{margin-left:6px;color:var(--muted);font-size:11px;font-style:normal;font-weight:600}
 .slg-hint,.slg-ok,.slg-error{display:block;margin-top:6px;font-size:12px;font-weight:600;line-height:1.4}
 .slg-hint{color:var(--muted)}
 .slg-ok{color:var(--success)}

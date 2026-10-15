@@ -58,7 +58,7 @@
 /* ---------- New customer setup wizard ---------- */
 .wizard{display:flex;flex-direction:column;gap:22px}
 .wizard-steps{display:flex;list-style:none;margin:0;padding:0;gap:6px;counter-reset:none}
-.wizard-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--dim);font-size:12px;font-weight:800;white-space:nowrap;transition:.18s ease}
+.wizard-steps li{flex:1;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:800;white-space:nowrap;transition:.18s ease}
 .wizard-steps li span{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:50%;background:var(--line);color:var(--muted);font-size:12px}
 .wizard-steps li.active{background:var(--primary-soft);color:var(--primary)}
 .wizard-steps li.active span{background:var(--primary);color:var(--primary-on)}
@@ -164,7 +164,7 @@
 .domain-dns-table{width:100%;border-collapse:collapse;margin-bottom:10px}
 .domain-dns-table th,.domain-dns-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:12px;color:var(--ink)}
 .domain-dns-table th{color:var(--muted);font-size:11px;font-weight:800}
-.domain-dns-block>p{margin:8px 0;color:var(--dim);font-size:11px;line-height:1.5}
+.domain-dns-block>p{margin:8px 0;color:var(--muted);font-size:11px;line-height:1.5}
 
 /* ---------- Global panel loading skeleton (instant feedback while a page's data loads) ---------- */
 .panel-skeleton{display:flex;flex-direction:column;gap:20px}

@@ -25,7 +25,7 @@
 /* :not zinciri: özgüllük eski form kurallarının (crm.css, request-page.css) üstünde kalsın. */
 .panel-root .kayit-formu > label > textarea:not([hidden]):not([readonly]){min-height:96px;padding:10px 12px;line-height:1.45;resize:vertical}
 .panel-root .kayit-formu > label > :is(input,select,textarea):focus{outline:none;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
-.panel-root .kayit-formu > label > :is(input,textarea)::placeholder{color:var(--dim);font-weight:400}
+.panel-root .kayit-formu > label > :is(input,textarea)::placeholder{color:var(--muted);font-weight:400}
 /* Seçim kutuları tek tip ok: tarayıcının kendi oku Windows'ta gri bir kutuyla çiziliyordu. */
 /* Özgüllük bilerek yukarıdaki alan kuralıyla eşit (:is ile); sonra geldiği için sağ dolgu kazanır. */
 .panel-root .kayit-formu > label > :is(select:not([multiple]):not([size])){

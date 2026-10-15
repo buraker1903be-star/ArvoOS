@@ -64,7 +64,7 @@
 .stg-list>*+*{border-top:1px solid var(--line-soft)}
 .stg-list dt{flex:none;color:var(--muted);font-size:13px}
 .stg-list dd{min-width:0;margin:0;color:var(--ink);font-size:14px;font-weight:600;text-align:right;overflow-wrap:anywhere}
-.stg-list dd.is-empty{color:var(--dim);font-weight:500}
+.stg-list dd.is-empty{color:var(--muted);font-weight:500}
 .stg-list dd.is-mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;letter-spacing:.02em}
 .stg-link-row{color:var(--ink);text-decoration:none;transition:background-color .15s ease}
 .stg-link-row:hover{background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface-2))}
@@ -214,7 +214,7 @@
   .stg-list>div:has(.stg-ucdurum) dd{text-align:left}
   .stg-ucdurum{width:100%}
 }
-.stg-kilit{display:inline-grid;place-items:center;width:30px;height:28px;border:1px dashed var(--line);border-radius:9px;color:var(--dim)}
+.stg-kilit{display:inline-grid;place-items:center;width:30px;height:28px;border:1px dashed var(--line);border-radius:9px;color:var(--muted)}
 /* Google'a kaydedilecek adres: birebir kopyalanacağı için tek aralıklı. */
 .stg-paytr-note b.is-mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
 
@@ -338,4 +338,4 @@
 .domain-yardim>summary{cursor:pointer;color:var(--muted);font-size:var(--fs-sm)}
 .domain-yardim ul{margin:var(--sp-2) 0 0;padding-left:1.1rem;color:var(--muted);font-size:var(--fs-sm);line-height:1.6}
 .domain-yardim li+li{margin-top:4px}
-.domain-son-kontrol{color:var(--dim);font-size:var(--fs-micro)}
+.domain-son-kontrol{color:var(--muted);font-size:var(--fs-micro)}
