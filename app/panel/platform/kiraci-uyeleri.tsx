@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { uyeErisimiDegistir } from "./members/actions";
 import { KBos, KListe, KOge } from "./konsol-ui";
+import { OnayPenceresi, type OnayIstegi } from "./onay-penceresi";
 
 /*
   Seçili kiracının üyeleri, kiracı dosyasının içinde.
@@ -47,21 +48,37 @@ export function KiraciUyeleri({
   // Son aktif sahibin erişimi kapatılamaz; anahtar yerine sebebini yazıyoruz.
   const aktifSahipSayisi = uyeler.filter((uye) => uye.role === "owner" && uye.active).length;
 
+  /* Onay panelin kendi penceresinde (onay-penceresi): tarayıcının confirm
+     kutusu susturulabiliyor ve susturulunca anahtara basmak sessizce
+     hiçbir şey yapmıyordu. Gerekçe o dosyanın başında. */
+  const [onay, setOnay] = useState<{ istek: OnayIstegi; uygula: () => void } | null>(null);
+
   const degistir = (uye: KiraciUyesi) => {
     const ad = uye.name || uye.email || "bu kullanıcı";
     const acilacak = !uye.active;
-    if (!window.confirm(acilacak
-      ? `${ad} için ${kurumAdi} erişimi açılsın mı?`
-      : `${ad} için ${kurumAdi} erişimi kapatılsın mı? Kişi kurumun paneline giremez.`)) return;
-
-    basla(async () => {
-      const veri = new FormData();
-      veri.set("organization_id", organizationId);
-      veri.set("user_id", uye.userId);
-      veri.set("acik", acilacak ? "1" : "0");
-      await uyeErisimiDegistir(veri);
+    setOnay({
+      istek: acilacak
+        ? { ust: kurumAdi, baslik: `${ad} için erişim açılsın mı?`, metin: `Kişi ${kurumAdi} paneline yeniden girebilir.`, onayEtiketi: "Aç" }
+        : { ust: kurumAdi, baslik: `${ad} için erişim kapatılsın mı?`, metin: `Kişi ${kurumAdi} paneline giremez. Kaydı silinmez, erişim istendiğinde yeniden açılır.`, onayEtiketi: "Kapat", tehlike: true },
+      uygula: () => basla(async () => {
+        const veri = new FormData();
+        veri.set("organization_id", organizationId);
+        veri.set("user_id", uye.userId);
+        veri.set("acik", acilacak ? "1" : "0");
+        await uyeErisimiDegistir(veri);
+        setOnay(null);
+      }),
     });
   };
+
+  const pencere = (
+    <OnayPenceresi
+      istek={onay?.istek ?? null}
+      calisiyor={calisiyor}
+      onIptal={() => { if (!calisiyor) setOnay(null); }}
+      onOnay={() => onay?.uygula()}
+    />
+  );
 
   if (!uyeler.length) return <KBos baslik="Bu kurumda üye yok" aciklama="Davet kabul edildiğinde kurumun kullanıcıları burada listelenir." />;
 
@@ -75,6 +92,7 @@ export function KiraciUyeleri({
      tek kompakt satır anahtarı gizleyeceği için tablo "etiket değer"
      diziliyordu; artık anahtar satırın kendi parçası. */
   return (
+    <>
     <KListe>
       {uyeler.map((uye) => {
         const sonSahip = uye.role === "owner" && uye.active && aktifSahipSayisi < 2;
@@ -105,5 +123,7 @@ export function KiraciUyeleri({
         );
       })}
     </KListe>
+    {pencere}
+    </>
   );
 }

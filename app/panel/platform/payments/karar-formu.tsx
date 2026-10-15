@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
 
 /*
   Dekont kararı: onayla ya da reddet.
@@ -47,20 +48,45 @@ export function KararFormu({
   // Fark varsa onay teyidi bu alanla sunucuya gidiyor (actions.ts istiyor).
   const farkAlani = useRef<HTMLInputElement>(null);
 
-  const gonder = (secim: "approved" | "rejected") => {
-    if (secim === "rejected" && !not.trim()) {
-      window.alert("Ret sebebini yazın. Not müşteriye gösteriliyor; sebepsiz bir ret, müşteriye neyin eksik olduğunu söylemiyor.");
-      return;
-    }
-    const farkUyarisi = secim === "approved" && farklar.length ? `\n\nDİKKAT — beklenenle uyuşmuyor:\n• ${farklar.join("\n• ")}` : "";
-    if (!window.confirm(secim === "approved"
-      ? `${kurumAdi} için ${tutar} tutarındaki ödeme onaylansın mı?\n\nOnay lisansı açar ve dönemi uzatır. Tutarın hesaba geçtiğini doğruladığınızdan emin olun.${farkUyarisi}`
-      : `${kurumAdi} için ${tutar} tutarındaki bildirim reddedilsin mi?\n\nMüşteri notunuzu görecek.`)) return;
+  /* Onay ve eksik-not uyarısı panelin kendisinde (../onay-penceresi):
+     tarayıcının confirm/alert kutuları susturulabiliyor ve susturulunca
+     para kararı veren düğmeler sessizce hiçbir şey yapmıyordu. Gerekçe o
+     dosyanın başında. */
+  const [onay, setOnay] = useState<{ istek: OnayIstegi; uygula: () => void } | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
 
+  const uygula = (secim: "approved" | "rejected") => {
     if (!kararAlani.current || !form.current) return;
     kararAlani.current.value = secim;
     if (farkAlani.current) farkAlani.current.value = secim === "approved" && farklar.length ? "evet" : "";
+    setOnay(null);
     form.current.requestSubmit();
+  };
+
+  const gonder = (secim: "approved" | "rejected") => {
+    if (secim === "rejected" && !not.trim()) {
+      setHata("Ret sebebini yazın. Not müşteriye gösteriliyor; sebepsiz bir ret, müşteriye neyin eksik olduğunu söylemiyor.");
+      return;
+    }
+    setHata(null);
+    setOnay({
+      istek: secim === "approved"
+        ? {
+            ust: kurumAdi,
+            baslik: `${tutar} tutarındaki ödeme onaylansın mı?`,
+            metin: "Onay lisansı açar ve dönemi uzatır. Tutarın hesaba geçtiğini doğruladığınızdan emin olun.",
+            uyarilar: farklar.length ? farklar : undefined,
+            onayEtiketi: "Onayla",
+          }
+        : {
+            ust: kurumAdi,
+            baslik: `${tutar} tutarındaki bildirim reddedilsin mi?`,
+            metin: "Müşteri notunuzu görecek.",
+            onayEtiketi: "Reddet",
+            tehlike: true,
+          },
+      uygula: () => uygula(secim),
+    });
   };
 
   return (
@@ -76,6 +102,7 @@ export function KararFormu({
           onChange={(olay) => setNot(olay.target.value)}
         />
       </label>
+      {hata ? <p className="wide panel-error" role="alert">{hata}</p> : null}
       <div className="wide panel-form-actions kayit-formu-eylem">
         <p>Not müşteriye gösterilir; ret için zorunlu.</p>
         <span className="kayit-formu-dugmeler">
@@ -83,6 +110,11 @@ export function KararFormu({
         <button className="panel-primary" type="button" onClick={() => gonder("approved")}>Ödemeyi onayla</button>
         </span>
       </div>
+      <OnayPenceresi
+        istek={onay?.istek ?? null}
+        onIptal={() => setOnay(null)}
+        onOnay={() => onay?.uygula()}
+      />
     </form>
   );
 }

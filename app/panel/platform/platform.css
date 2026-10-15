@@ -1206,3 +1206,9 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
   .plt-onay-eylem { flex-direction: column-reverse }
   .plt-onay-eylem > button { width: 100% }
 }
+/* Onaydan önce göze çarpması gereken maddeler (ör. beklenenle uyuşmayan tutar). */
+.plt-onay-uyari {
+  display: grid; gap: 4px; margin: 0; padding: 10px 12px 10px 28px;
+  border-radius: var(--r-md); background: var(--warning-soft, var(--surface-2));
+  color: var(--warning, var(--ink)); font-size: 13px; line-height: 1.45;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 // Pencere ve onay biçimleri konsolun stilinde (AGENTS.md: bileşen kendi CSS'ini import eder).
 import "./platform.css";
 
@@ -32,7 +32,9 @@ export type OnayIstegi = {
   ust?: string;
   baslik: string;
   /** Ne olacağını anlatan cümle(ler). */
-  metin: string;
+  metin: ReactNode;
+  /** Onaydan önce göze çarpması gereken maddeler (ör. beklenenle uyuşmayan tutar). */
+  uyarilar?: string[];
   onayEtiketi: string;
   /** Onay düğmesi kırmızı (geri alınabilir ama müşteriyi anında etkiler). */
   tehlike?: boolean;
@@ -107,6 +109,12 @@ function OnayGovdesi({ istek, calisiyor, onIptal, onOnay }: {
       </header>
 
       <p className="plt-onay-metin">{istek.metin}</p>
+
+      {istek.uyarilar?.length ? (
+        <ul className="plt-onay-uyari">
+          {istek.uyarilar.map((satir) => <li key={satir}>{satir}</li>)}
+        </ul>
+      ) : null}
 
       {istek.sebep ? (
         <label className="plt-onay-sebep">

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { para } from "../bicim";
 import { abonelikIsteginiOnayla, abonelikIsteginiReddet } from "./actions";
+import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
 
 /*
   Bekleyen abonelik isteği kartı.
@@ -43,36 +44,65 @@ export function IstekKarti({ istek, kurumlar }: { istek: BekleyenIstek; kurumlar
   const [not, setNot] = useState("");
   const [calisiyor, basla] = useTransition();
 
+  /* Onay panelin kendi penceresinde (../onay-penceresi): tarayıcının
+     confirm/alert kutuları susturulabiliyor ve susturulunca düğmeler
+     sessizce hiçbir şey yapmıyordu. Gerekçe o dosyanın başında.
+     Ret sebebinin eksikliği de artık alert değil, formun kendi hatası. */
+  const [onay, setOnay] = useState<{ istek: OnayIstegi; uygula: () => void } | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+
+  const pencere = (
+    <OnayPenceresi
+      istek={onay?.istek ?? null}
+      calisiyor={calisiyor}
+      onIptal={() => { if (!calisiyor) setOnay(null); }}
+      onOnay={() => onay?.uygula()}
+    />
+  );
+
   const onayla = () => {
     if (!kurumId) return;
+    setHata(null);
     const ad = kurumlar.find((k) => k.id === kurumId)?.ad ?? "seçilen kiracı";
-    if (!window.confirm(
-      `${ad} için ${istek.moduller.length} modül açılsın mı?\n\n` +
-      istek.moduller.map((m) => `· ${m.name}${m.integrated ? "" : " (bağımsız)"}`).join("\n") +
-      "\n\nTahsilatı doğruladığınızdan emin olun.",
-    )) return;
-
-    basla(async () => {
-      const veri = new FormData();
-      veri.set("request_id", istek.id);
-      veri.set("target_organization_id", kurumId);
-      veri.set("review_note", not);
-      await abonelikIsteginiOnayla(veri);
+    setOnay({
+      istek: {
+        ust: ad,
+        baslik: `${istek.moduller.length} modül açılsın mı?`,
+        metin: "Tahsilatı doğruladığınızdan emin olun; onay modülleri hemen açar.",
+        uyarilar: istek.moduller.map((m) => `${m.name}${m.integrated ? "" : " (bağımsız)"}`),
+        onayEtiketi: "Modülleri aç",
+      },
+      uygula: () => basla(async () => {
+        const veri = new FormData();
+        veri.set("request_id", istek.id);
+        veri.set("target_organization_id", kurumId);
+        veri.set("review_note", not);
+        await abonelikIsteginiOnayla(veri);
+        setOnay(null);
+      }),
     });
   };
 
   const reddet = () => {
     if (!not.trim()) {
-      window.alert("Ret sebebini yazın. İmzalı bir sözleşmeyi neden açmadığımız kayıtta olmalı.");
+      setHata("Ret sebebini yazın. İmzalı bir sözleşmeyi neden açmadığımız kayıtta olmalı.");
       return;
     }
-    if (!window.confirm("İstek reddedilsin mi? Sözleşme imzalı kalır, yalnızca modüller açılmaz.")) return;
-
-    basla(async () => {
-      const veri = new FormData();
-      veri.set("request_id", istek.id);
-      veri.set("review_note", not);
-      await abonelikIsteginiReddet(veri);
+    setHata(null);
+    setOnay({
+      istek: {
+        baslik: "İstek reddedilsin mi?",
+        metin: "Sözleşme imzalı kalır, yalnızca modüller açılmaz. Notunuz kayda geçer.",
+        onayEtiketi: "Reddet",
+        tehlike: true,
+      },
+      uygula: () => basla(async () => {
+        const veri = new FormData();
+        veri.set("request_id", istek.id);
+        veri.set("review_note", not);
+        await abonelikIsteginiReddet(veri);
+        setOnay(null);
+      }),
     });
   };
 
@@ -133,6 +163,8 @@ export function IstekKarti({ istek, kurumlar }: { istek: BekleyenIstek; kurumlar
         </label>
       </div>
 
+      {hata ? <p className="panel-error" role="alert">{hata}</p> : null}
+
       <div className="istek-islemler">
         <button type="button" className="panel-secondary" disabled={calisiyor} onClick={reddet}>Reddet</button>
         <button
@@ -144,6 +176,7 @@ export function IstekKarti({ istek, kurumlar }: { istek: BekleyenIstek; kurumlar
           {calisiyor ? "İşleniyor…" : "Onayla ve modülleri aç"}
         </button>
       </div>
+      {pencere}
     </section>
   );
 }
