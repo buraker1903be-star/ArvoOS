@@ -206,6 +206,55 @@ export default async function PanelPage() {
   const setupDone = requiredSteps.filter((step) => step.done).length;
   const showSetup = requiredSteps.length > 0 && setupDone < requiredSteps.length;
 
+  /*
+    GÜN BİR (15.10.2026). Kurum daha hiç çalışmaya başlamamışken ana
+    ekranın TAMAMI "yok" diyor: altı sıfır kutusu, boş grafik, dört boş
+    liste. Ekranda tek anlamlı şey kurulum adımları, ama telefonda
+    "Bugün" paneli en üstte olduğu için onlar altı sıfırın ALTINDA
+    kalıyordu — masaüstünde (panel gizli) zaten üstteydi, yani rehber
+    tam da kurum sahibinin oturduğu cihazda gürültünün arkasındaydı.
+    İlk kayıt girilir girilmez olağan sıraya dönüyor.
+  */
+  const hicKayitYok = !isler.length && !asamalar.length && !mesajlar.length && !postalar.length
+    && !trend.total && !trend.previous && (talepToplami ?? 0) === 0;
+  const kurulumOnce = showSetup && hicKayitYok;
+
+  const kurulumKarti = showSetup ? (
+    <section className="dash-card dash-setup" aria-label="Kurulum">
+      <header className="dash-card-head">
+        <div>
+          <h2>Kurulumu tamamlayın</h2>
+          <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {requiredSteps.length - setupDone} adım kaldı.</p>
+        </div>
+        <div className="dash-setup-progress" aria-label={`${requiredSteps.length} adımdan ${setupDone} tamamlandı`}>
+          <b>{setupDone}/{requiredSteps.length}</b>
+          <span><i style={{ "--w": `${Math.round((setupDone / requiredSteps.length) * 100)}%` } as CSSProperties} /></span>
+        </div>
+      </header>
+      <ol className="dash-setup-list">
+        {setupSteps.map((step, index) => {
+          const content = (
+            <>
+              <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : index + 1}</span>
+              <span className="dash-setup-text">
+                <b>{step.title}</b>
+                <small>{step.optional ? "İsteğe bağlı · " : ""}{step.note}</small>
+                {step.done ? <span className="dash-setup-state">Tamamlandı</span> : <span className="dash-setup-go">Tamamla <Chevron /></span>}
+              </span>
+            </>
+          );
+          return (
+            <li key={step.key}>
+              {step.done
+                ? <div className="dash-setup-step is-done">{content}</div>
+                : <Link className="dash-setup-step" href={step.href}>{content}</Link>}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  ) : null;
+
   const { greeting, date } = greetingLine();
   const firstName = formatPersonName(me?.full_name).split(" ")[0];
 
@@ -215,51 +264,20 @@ export default async function PanelPage() {
       baslik={<>{greeting}{firstName ? `, ${firstName}` : ""}</>}
       uyari={failedQueries.map(([label]) => label)}
     >
+      {/* Kurulum kartı gün bir'de "Bugün" panelinin ÜSTÜNDE (yukarıdaki not). */}
+      {kurulumOnce ? kurulumKarti : null}
       {/* Telefonda "Bugün": hızlı işlemler, yönetici kutuları, adımlarım (masaüstünde gizli). */}
       <BugunPaneli supabase={supabase} orgId={organizationId} userId={userId} izin={izin}
         crmGorur={canSeeCrm && modulAcik("crm")} operasyonGorur={canSeeOperations}
-        finansGorur={canSee("finance") && modulAcik("finance") && izin("finance.gor")} />
-      {showSetup ? (
-        <section className="dash-card dash-setup" aria-label="Kurulum">
-          <header className="dash-card-head">
-            <div>
-              <h2>Kurulumu tamamlayın</h2>
-              <p>Teklif, sözleşme ve müşteri takip ekranınızın eksiksiz görünmesi için {requiredSteps.length - setupDone} adım kaldı.</p>
-            </div>
-            <div className="dash-setup-progress" aria-label={`${requiredSteps.length} adımdan ${setupDone} tamamlandı`}>
-              <b>{setupDone}/{requiredSteps.length}</b>
-              <span><i style={{ "--w": `${Math.round((setupDone / requiredSteps.length) * 100)}%` } as CSSProperties} /></span>
-            </div>
-          </header>
-          <ol className="dash-setup-list">
-            {setupSteps.map((step, index) => {
-              const content = (
-                <>
-                  <span className="dash-setup-dot" aria-hidden="true">{step.done ? <Icon name="check" size={14} /> : index + 1}</span>
-                  <span className="dash-setup-text">
-                    <b>{step.title}</b>
-                    <small>{step.optional ? "İsteğe bağlı · " : ""}{step.note}</small>
-                    {step.done ? <span className="dash-setup-state">Tamamlandı</span> : <span className="dash-setup-go">Tamamla <Chevron /></span>}
-                  </span>
-                </>
-              );
-              return (
-                <li key={step.key}>
-                  {step.done
-                    ? <div className="dash-setup-step is-done">{content}</div>
-                    : <Link className="dash-setup-step" href={step.href}>{content}</Link>}
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      ) : null}
+        finansGorur={canSee("finance") && modulAcik("finance") && izin("finance.gor")}
+        yeniKurum={hicKayitYok} />
+      {kurulumOnce ? null : kurulumKarti}
 
-      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" bos="Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir." /> : null}
+      {canSeeCrm ? <SeriKarti baslik="Yeni talepler" alt="Son 14 gün" seri={trend} adet="talep" bos={hicKayitYok ? "İlk talebinizi girdiğinizde günlük dağılım burada çizilir." : "Son 14 günde yeni talep yok. Talep girildiğinde günlük dağılım burada çizilir."} /> : null}
 
       <ListeIzgarasi>
         {canSeeOperations ? (
-          <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos="Açık operasyon yok." href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
+          <ListeKarti baslik="Operasyon" alt={`Termini en yakın ${LISTE} iş`} bos={hicKayitYok ? "Sözleşme imzalanınca iş burada açılır; termini en yakın olan en üstte durur." : "Açık operasyon yok."} href="/panel/operations/isler" hrefEtiket="Tüm işler" sayi={isler.length}>
             {isler.map((is) => {
               const rozet = dueBadge(is.due_date, today, is.status);
               return (
@@ -278,7 +296,7 @@ export default async function PanelPage() {
         ) : null}
 
         {canSeeOperations ? (
-          <ListeKarti baslik="Yaklaşan aşama tarihleri" alt={`Yaklaşan ${LISTE} aşama`} bos="Tarihi girilmiş açık aşama yok." href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}>
+          <ListeKarti baslik="Yaklaşan aşama tarihleri" alt={`Yaklaşan ${LISTE} aşama`} bos={hicKayitYok ? "İşin adımlarına tarih girdikçe yaklaşanlar burada sıralanır." : "Tarihi girilmiş açık aşama yok."} href="/panel/operations/takvim" hrefEtiket="Takvimde gör" sayi={asamalar.length}>
             {asamalar.map((asama) => {
               // Gecikme yalnızca rozetle (kırmızı) gösterilir; satır zemini diğer kartlarla aynı.
               const rozet = dueBadge(asama.due_date, today);
@@ -298,7 +316,7 @@ export default async function PanelPage() {
         ) : null}
 
         {canSeeOperations ? (
-          <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos="Müşterilerden mesaj yok." href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
+          <ListeKarti baslik="Müşteri mesajları" alt={`Gelen müşteri mesajları, son ${LISTE}`} bos={hicKayitYok ? "Müşteriniz iş portalından yazdığında mesajı burada görürsünüz." : "Müşterilerden mesaj yok."} href="/panel/operations/isler" hrefEtiket="İşlere git" sayi={mesajlar.length}>
             {mesajlar.map((mesaj) => (
               /* Operasyon genel bakışıyla aynı: iş detayı mesaj penceresi açık gelir. */
               <ListeSatiri

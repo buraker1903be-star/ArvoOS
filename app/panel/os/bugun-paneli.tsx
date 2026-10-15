@@ -74,7 +74,7 @@ async function adimlarim(supabase: SupabaseClient, orgId: string, benId: string)
   return { adimlar: hepsi, hata: false };
 }
 
-export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, operasyonGorur, finansGorur }: {
+export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, operasyonGorur, finansGorur, yeniKurum = false }: {
   supabase: SupabaseClient;
   orgId: string;
   userId: string;
@@ -82,6 +82,8 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
   crmGorur: boolean;
   operasyonGorur: boolean;
   finansGorur: boolean;
+  /** Ana ekran kurumda hiç kayıt bulamadıysa: altı sıfır kutusu gösterilmez. */
+  yeniKurum?: boolean;
 }) {
   const bugun = todayInIstanbul();
   const yonetici = operasyonGorur && (izin("operations.ekip.gor") || izin("operations.gorev.ata"));
@@ -150,13 +152,13 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
   const para = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(kurus / 100);
 
   const kutular = [
-    gecikenIs !== null ? { ad: "Termini geçen iş", deger: String(gecikenIs), href: "/panel/operations/isler?termin=geciken", ton: gecikenIs ? "uyari" : "" } : null,
-    atanmamisIs !== null ? { ad: "Atanmamış iş", deger: String(atanmamisIs), href: "/panel/operations/isler?sorumlu=atanmamis", ton: atanmamisIs ? "uyari" : "" } : null,
-    imzaBekleyen !== null ? { ad: "İmza bekleyen", deger: String(imzaBekleyen), href: "/panel/crm/contracts?status=sent", ton: "" } : null,
-    bugunTalep !== null ? { ad: "Bugün gelen talep", deger: String(bugunTalep), href: "/panel/crm", ton: bugunTalep ? "arti" : "" } : null,
-    okunmamisMesaj !== null ? { ad: "Yanıt bekleyen mesaj", deger: String(okunmamisMesaj), href: yonetici ? "/panel/operations/isler?mesaj=yeni" : `/panel/operations/isler?mesaj=yeni&sorumlu=${benId}`, ton: okunmamisMesaj ? "uyari" : "" } : null,
-    tahsilat !== null ? { ad: "Bugün tahsilat", deger: para(tahsilat), href: "/panel/finance", ton: tahsilat ? "arti" : "" } : null,
-  ].filter((k): k is { ad: string; deger: string; href: string; ton: string } => k !== null);
+    gecikenIs !== null ? { ad: "Termini geçen iş", deger: String(gecikenIs), sayi: gecikenIs, href: "/panel/operations/isler?termin=geciken", ton: gecikenIs ? "uyari" : "" } : null,
+    atanmamisIs !== null ? { ad: "Atanmamış iş", deger: String(atanmamisIs), sayi: atanmamisIs, href: "/panel/operations/isler?sorumlu=atanmamis", ton: atanmamisIs ? "uyari" : "" } : null,
+    imzaBekleyen !== null ? { ad: "İmza bekleyen", deger: String(imzaBekleyen), sayi: imzaBekleyen, href: "/panel/crm/contracts?status=sent", ton: "" } : null,
+    bugunTalep !== null ? { ad: "Bugün gelen talep", deger: String(bugunTalep), sayi: bugunTalep, href: "/panel/crm", ton: bugunTalep ? "arti" : "" } : null,
+    okunmamisMesaj !== null ? { ad: "Yanıt bekleyen mesaj", deger: String(okunmamisMesaj), sayi: okunmamisMesaj, href: yonetici ? "/panel/operations/isler?mesaj=yeni" : `/panel/operations/isler?mesaj=yeni&sorumlu=${benId}`, ton: okunmamisMesaj ? "uyari" : "" } : null,
+    tahsilat !== null ? { ad: "Bugün tahsilat", deger: para(tahsilat), sayi: tahsilat, href: "/panel/finance", ton: tahsilat ? "arti" : "" } : null,
+  ].filter((k): k is { ad: string; deger: string; sayi: number; href: string; ton: string } => k !== null);
 
   const kisayollar = [
     crmGorur ? { ad: "Yeni talep", href: "/panel/crm?yeni=talep", birincil: true } : null,
@@ -164,6 +166,16 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
     operasyonGorur ? { ad: "Pano", href: "/panel/operations/pano", birincil: false } : null,
     crmGorur ? { ad: "Talepler", href: "/panel/crm", birincil: false } : null,
   ].filter((k): k is { ad: string; href: string; birincil: boolean } => k !== null);
+
+  /*
+    GÜN BİR: kurumda hiç kayıt yokken bu kutuların altısı da sıfır
+    gösteriyor ve kurulum rehberini ekranın aşağısına itiyor. "0 geciken
+    iş" çalışan bir kurumda güven veren bir bilgi, gün bir'de gürültü.
+    Ölçüt ana ekranın bulgusu AMA kutuların kendi sayıları da sıfır
+    olmalı: ana ekran CRM'i göremiyorsa sayıları eksik biliyor olabilir
+    ve dolu bir kutuyu gizlemek, sıfır göstermekten kötüdür.
+  */
+  const kutulariGoster = kutular.length > 0 && !(yeniKurum && kutular.every((k) => k.sayi === 0));
 
   if (!kutular.length && !kisayollar.length && !adimlar.length) return null;
 
@@ -177,7 +189,7 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
         </nav>
       ) : null}
 
-      {kutular.length ? (
+      {kutulariGoster ? (
         <div className="bugun-kutular">
           {kutular.map((k) => (
             <Link key={k.ad} href={k.href} className="bugun-kutu" data-ton={k.ton || undefined}>
