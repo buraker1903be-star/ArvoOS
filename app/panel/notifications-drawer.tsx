@@ -179,6 +179,34 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
     if (!open) return;
     const root = document.documentElement;
     root.classList.add("notifications-drawer-open");
+    /*
+      ODAK ÇEKMECEDE KALIR (15.10.2026).
+
+      Çekmece açılışta kapat düğmesine odaklanıyor, Esc ile kapanıyor ve
+      kapanınca odağı geldiği yere veriyordu — ama TUZAK yoktu: dokuz kez
+      Tab'layınca odak arkadaki sayfaya düşüyordu (ölçüldü, üst çubuktaki
+      tema düğmesine). Çekmece o sırada ekranı kaplıyor, yani klavye
+      kullanıcısı görmediği kontrollerin üzerinde geziniyor ve bastığında
+      arkada bir şey oluyor. role="dialog" aria-modal="true" bunu tek
+      başına engellemiyor; aria okuyucuya söyler, odağı tutmaz.
+
+      Kabuğun kalanı inert yapılıyor. Dışarı tıklayıp kapatma bundan
+      etkilenmiyor: kapatan yüzey (.ntd-backdrop) çekmecenin KENDİ
+      kökünün içinde.
+
+      Yalnızca bizim eklediğimiz inert geri alınıyor — başka bir sebeple
+      zaten inert olan bir öğeyi açmak, kapanışta sessizce yeni bir kapı
+      açmak olurdu.
+    */
+    /* Portal hedefi aşağıda tanımlı; burada aynı kök doğrudan bulunuyor. */
+    const kabuk = document.querySelector(".panel-root");
+    const disaridakiler = kabuk
+      ? [...kabuk.children].filter(
+          (el): el is HTMLElement =>
+            el instanceof HTMLElement && !el.classList.contains("ntd-root") && !el.hasAttribute("inert"),
+        )
+      : [];
+    for (const el of disaridakiler) el.setAttribute("inert", "");
     const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -187,6 +215,7 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("keydown", onKey);
+      for (const el of disaridakiler) el.removeAttribute("inert");
       root.classList.remove("notifications-drawer-open");
       const back = returnFocusRef.current;
       if (back && back.isConnected && back.offsetParent !== null) back.focus({ preventScroll: true });
