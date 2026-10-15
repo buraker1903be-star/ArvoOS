@@ -188,10 +188,17 @@ a.dash-setup-step:active{transform:scale(.985)}
   neye bakmalı?" gibi zamansız kartlar tek satırda kalsın diye.
   Bedeli, rozetli satırların bir satır uzaması: bir durum taşıyan satır
   gerçekten daha fazla şey anlatıyor.
+
+  KURAL KONSOLA BAĞLI (.os-konsol). Satır bileşeni ortak: aynı rozet
+  yuvasını finans genel bakışı TUTARLA dolduruyor ("+₺1.500", "3 gün
+  gecikti"), operasyon ve CRM ise sorumluyla. Orada rozet satırın en
+  önemli değeri; onu alt satıra atmak kartın anlamını değiştirirdi.
+  Konsolda ise rozet bir DURUM etiketi ("hata · çözüldü") ve ad —
+  kiracının kim olduğu — ondan önce gelir.
 */
-.dash-col-row:has(> .status-pill):has(> .dash-col-time){flex-wrap:wrap}
-.dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-main{flex:1 1 100%}
-.dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-time{margin-top:0;margin-left:auto;align-self:center}
+.os-konsol .dash-col-row:has(> .status-pill):has(> .dash-col-time){flex-wrap:wrap}
+.os-konsol .dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-main{flex:1 1 100%}
+.os-konsol .dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-time{margin-top:0;margin-left:auto;align-self:center}
 /* Okunmamış mesaj ve posta: kalın ad + kurum renginde nokta */
 .dash-col-list li.is-unread .dash-col-main b{font-weight:var(--fw-bold)}
 .dash-col-list li.is-unread .dash-col-main b::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--primary);vertical-align:1px}
