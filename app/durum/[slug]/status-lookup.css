@@ -288,6 +288,10 @@ html[data-theme="dark"] .trk-primary{background:linear-gradient(180deg,var(--trk
 .is-current .trk-phase-dot{border-color:var(--tone);box-shadow:0 0 0 5px var(--tone-soft)}
 .is-current .trk-phase-dot::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--tone);animation:trk-breathe 2.2s ease-in-out infinite}
 .trk-phase-name{max-width:100%;overflow-wrap:anywhere}
+/* "Şu an · 2 / 5 aşama": şerit dar ekranda kaydığı ve kayanların
+   sonuncusu tam göründüğü için eksiksizmiş gibi duruyor; sayı şeritten
+   bağımsız olarak kaç aşama olduğunu söylüyor (status-view'daki not). */
+.trk-asama-sayisi{color:var(--trk-muted);font-weight:600}
 
 /* --- Görev yelpazesi ---
    Kurumun çizimi: halkanın yanından oklarla açılan üç satır. Oklar

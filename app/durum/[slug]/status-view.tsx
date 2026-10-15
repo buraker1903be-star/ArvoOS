@@ -105,6 +105,35 @@ export function currentPhaseLabel(progress: number, status: StatusInfo, asamalar
   return current >= 0 ? `${PHASES[current]} aşaması` : "Teslime hazır";
 }
 
+/*
+  AŞAMA KAÇTA KAÇ (15.10.2026).
+
+  Aşama şeridi (.trk-phases) dar ekranda yatay kayıyor: 375 pikselde beş
+  aşamanın ancak üçü sığıyor ve sığanların sonuncusu TAM görünüyor, yani
+  şerit eksiksizmiş gibi duruyor. Deneme dosyasında ölçüldü — müşteri
+  "Sözleşme · Planlama · Çalışma" görüyor, "Kontrol" ve "Teslim"i hiç
+  görmüyor ve dosyanın üç aşaması olduğunu sanıyor. Kaydırma gölgesi
+  denendi; kartın koyu zemininde okunmuyor ve şeridi kaydırmayan
+  kullanıcıya hâlâ bir şey söylemiyor.
+
+  Sayıyı yazmak şeritten bağımsız çalışıyor: "Şu an · 2 / 5 aşama".
+  Kurumun kendi aşamaları açıksa (tracking_show_phases) onların sayısı
+  kullanılıyor, yoksa standart beş aşama.
+*/
+export function asamaKonumu(
+  progress: number,
+  status: StatusInfo,
+  asamalar?: TakipAsamalari | null,
+): { sira: number; toplam: number } | null {
+  if (status.tone === "done" || status.tone === "cancelled") return null;
+  if (asamalar?.asamalar.length) {
+    const sira = asamalar.asamalar.findIndex((a) => a.durum === "current");
+    return sira < 0 ? null : { sira: sira + 1, toplam: asamalar.asamalar.length };
+  }
+  const { current } = phaseProgress(progress, status.tone);
+  return current < 0 ? null : { sira: current + 1, toplam: PHASES.length };
+}
+
 export function StatusPill({ status }: { status: StatusInfo }) {
   return (
     <span className="trk-pill" data-tone={status.tone}>
@@ -276,6 +305,7 @@ export function ProgressOverview({
     (varsayılan; kurumların çoğu) eski metin bloğu duruyor — yelpazeyi
     koşulsuz basmak o kurumların ekranını boşaltırdı.
   */
+  const konum = asamaKonumu(progress, status, asamalar);
   if (gorevAkisi(asamalar?.gorevler)) {
     return (
       <div className="trk-progress-summary has-yelpaze">
@@ -288,7 +318,10 @@ export function ProgressOverview({
     <div className="trk-progress-summary">
       <ProgressRing value={progress} tone={status.tone} size={size} />
       <div className="trk-progress-text">
-        <span className="trk-overline">Şu an</span>
+        <span className="trk-overline">
+          Şu an
+          {konum ? <> · <span className="trk-asama-sayisi">{konum.sira} / {konum.toplam} aşama</span></> : null}
+        </span>
         <strong className="trk-phase-now">{currentPhaseLabel(progress, status)}</strong>
         {status.note ? <p className="trk-status-note">{status.note}</p> : null}
       </div>
