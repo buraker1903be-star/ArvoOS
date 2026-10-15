@@ -11,6 +11,29 @@
 .talep-bas-metin{min-width:0}
 .talep-bas h1{margin:2px 0 0;font-size:clamp(20px,1.8vw,var(--fs-xl));font-weight:var(--fw-semibold);line-height:var(--lh-tight);letter-spacing:-.015em;color:var(--ink)}
 .talep-bas-eylem{display:flex;align-items:center;gap:var(--sp-2)}
+/*
+  BAŞLIK DÜĞMELERİ TELEFONDA SARAR (15.10.2026, kurum sahibi:
+  "mobilde butonların bu şekilde gözükmesi hoş değil").
+
+  Sıra sarmıyordu (nowrap) ve sayfa da yatay kaymıyor: Ürünler
+  sayfasında dört düğme 614 piksel tutuyor, ekran 375. Son düğme
+  ("Sistem sağlığı") 626'da bitiyordu, yani KIRPILMIŞ değil —
+  telefondan hiçbir şekilde erişilemiyordu. Rapor sayfası aynı sorunu
+  daha önce kendi içinde çözmüş (reporting.css); kural asıl buraya
+  aitmiş.
+
+  Düğmeler de biraz küçüldü (dolgu 16 → 12, yazı 14 → 13,5): dördü iki
+  satıra sığıyor ve başlık bölgesi hafifliyor. Yükseklik 44'te kalıyor,
+  dokunma hedefi küçülmüyor.
+
+  Müşteri detayının pencere sekmeleri dışarıda: orada kayan ray kuralı
+  var (platform.css) ve dördüncü sekme kenardan görünerek devamı
+  olduğunu söylüyor.
+*/
+@media (max-width:760px){
+  .os-root main.plt .talep-bas-eylem:not(.musteri-pencereleri){flex-wrap:wrap}
+  .os-root main.plt .talep-bas-eylem:not(.musteri-pencereleri)>:is(a,button){padding:0 var(--sp-3);font-size:13.5px}
+}
 
 /* Aşama çizgisi */
 .talep-asama{list-style:none;margin:0;padding:var(--sp-3) var(--sp-4);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface)}
