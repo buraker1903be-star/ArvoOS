@@ -187,6 +187,22 @@ export function ListeSatiri({ href, baslik, baslikIpucu, alt, onizleme, sag, zam
         </span>
         {sag}
         {zaman ? <small className="dash-col-time">{zaman}</small> : null}
+        {/*
+          SAĞI BOŞ KALAN SATIRA OK (15.10.2026, kurum sahibinin isteği).
+
+          Pano satırlarının hepsi bağlantı ama hiçbiri bunu göstermiyordu.
+          Rozeti ya da zamanı olan satırda sağ uç zaten dolu ve bakış
+          oraya gidiyor; sağı boş kalan satır ise düz metin gibi duruyor
+          ve dokunulabilir olduğunu söylemiyordu. Konsolun liste satırı
+          (konsol-ui, k-ios) aynı kuralı kullanıyor: bağlantı var ve sağda
+          özel bir içerik yoksa ok çizilir.
+
+          Bugün bu yalnızca ana sayfadaki "Bölümler" kartına denk geliyor
+          — ürünün tamamında sağı boş olan tek satır tipi o. Kural satır
+          bileşeninde olduğu için sonra eklenen her gezinti satırı da
+          kendiliğinden aynı işareti alır.
+        */}
+        {!sag && !zaman ? <Chevron /> : null}
       </Link>
     </li>
   );
