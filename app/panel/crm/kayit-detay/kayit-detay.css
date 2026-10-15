@@ -312,6 +312,30 @@
 .talep-serit dd a{color:inherit;text-decoration:none}
 .talep-serit dd a:hover{color:var(--primary)}
 .talep-serit dl>div.is-active dd a{color:var(--primary);text-decoration:underline;text-underline-offset:4px}
+
+/*
+  ŞERİDİN SAYISI SÜZGEÇ; DOKUNMA ALANI DA ÖYLE OLSUN (15.10.2026).
+
+  Liste sayfalarının birincil süzgeci bu şerit: "Kurumsal" bölümünün
+  sayısına basınca liste süzülüyor. Ama tıklanabilen yalnızca SAYIYDI —
+  ölçülen hedef 10×19 piksel, hem masaüstünde hem telefonda. Üstündeki
+  etiket, yani kullanıcının nişan aldığı yer, ölüydü; imleç de ancak
+  rakamın üstünde değiştiği için bölümün bir süzgeç olduğu
+  anlaşılmıyordu. Bölümün kendisi zaten 62-78 piksel yüksekliğinde,
+  bağlantıyı ona yaydık: ölçüler değişmedi, hedef 10×19'dan en az
+  50×62'ye çıktı. Üstüne gelince de artık bütün bölüm tepki veriyor.
+
+  Kaplama yalnızca bölümün TEK bağlantısı olduğunda açılıyor (:has
+  koruması): etiketinde ya da alt yazısında ayrı bir bağlantı olan bir
+  bölümde kaplama onu yutardı.
+
+  Odak halkası bölüme taşınıyor; yoksa klavyeyle gezen kişi kocaman bir
+  hedefin içinde rakamı çevreleyen minik bir halka görürdü.
+*/
+.kayit-serit dl>div:has(>dd>a):not(:has(dt a)):not(:has(small a)){position:relative}
+.kayit-serit dl>div>dd>a::after{content:"";position:absolute;inset:0;border-radius:var(--r-md)}
+.kayit-serit dl>div:has(>dd>a:focus-visible){border-radius:var(--r-md);box-shadow:var(--shadow-glow)}
+.kayit-serit dl>div>dd>a:focus-visible{outline:none}
 .talep-suzgec{align-items:center}
 .talep-suzgec-etiket{display:inline-flex;align-items:center;min-height:32px;padding:0 var(--sp-3);border-radius:999px;background:var(--primary-soft);color:var(--primary-strong);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .talep-ara{margin-left:auto;flex:0 1 280px;min-width:180px}
