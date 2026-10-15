@@ -9,6 +9,7 @@ import { relativeTime } from "../crm/last-contact";
 import { activeStatuses, addDaysKey, adimIlerlemesi, dueBadge, surenStatuses, todayIstanbul, workflowStatusNames } from "./ops-shared";
 import "../crm/crm.css";
 import "./operations.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 // Operasyon genel bakış: operasyoncunun günlük ekranı. Ana ekranla aynı
 // şablon (os/genel-bakis.tsx, 2026-10): son 14 günde tamamlanan aşamalar
@@ -69,7 +70,7 @@ export default async function OperationsOverviewPage({ searchParams }: { searchP
   if (legacy.size) redirect(`${ISLER}?${legacy.toString()}`);
 
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
   const organizationId = membership.organization_id;
   const today = todayIstanbul();
   const weekEnd = addDaysKey(today, 7);

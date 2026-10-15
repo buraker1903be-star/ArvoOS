@@ -5,6 +5,7 @@ import { istanbulDateTime } from "@/lib/istanbul-date";
 import "../../../crm.css";
 import "../../../kayit-detay/kayit-detay.css";
 import "../../../../settings/settings.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   TEKLİF REVİZYONLARI (10.10.2026): panelin kayıt detayı kalıbında.
@@ -62,7 +63,7 @@ const DURUM: Record<string, { ad: string; ton: string }> = {
 export default async function TeklifRevizyonlari({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((modul) => modul.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
 
   const { data: secilenVeri, error: secilenHata } = await supabase
     .from("crm_proposals")

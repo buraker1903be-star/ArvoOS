@@ -21,6 +21,7 @@ import "../../crm/crm.css";
 import "../operations.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   İŞLER LİSTESİ (2026-10): talepler, teklifler ve sözleşmelerle aynı
@@ -61,7 +62,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const onlyUnread = mesaj === "yeni";
   const selectedOwner = (sorumlu ?? "").trim().slice(0, 80);
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
 
   /*
     LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026) — teklif ve sözleşme

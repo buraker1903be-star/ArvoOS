@@ -8,6 +8,7 @@ import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { AyGezinme, GunBolumu, TakvimIzgarasi, ayAnahtari, ayBasi, gunAnahtari, gunTarihi, type TakvimMaddesi } from "../../crm/takvim-izgara";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../crm/takvim.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   İŞ TAKVİMİ: işlerin terminleri ve aşamaların teslim tarihleri.
@@ -43,7 +44,7 @@ type Madde = {
 export default async function OperationsCalendarPage({ searchParams }: { searchParams: Promise<{ ay?: string; tarih?: string; sorumlu?: string }> }) {
   const params = await searchParams;
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
 
   const bugun = todayIstanbul();
   const ay = ayBasi(params.ay, bugun);

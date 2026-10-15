@@ -17,6 +17,7 @@ import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
 import "./sablon.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   Kurumun iş adımı şablonu.
@@ -45,7 +46,7 @@ const BOS_SATIR = 3;
 export default async function StepTemplatePage({ searchParams }: { searchParams: Promise<{ tur?: string }> }) {
   const { tur: istenenTur } = await searchParams;
   const { supabase, membership, modules, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
   const canManage = izin("operations.sablon.yonet");
 
   const { data: turData, error: turHatasi } = await supabase

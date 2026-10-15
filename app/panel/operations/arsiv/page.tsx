@@ -12,6 +12,7 @@ import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   OPERASYON ARŞİVİ (10.10.2026): panelin liste kalıbında. Tamamlanıp
@@ -51,7 +52,7 @@ export default async function OperasyonArsivi({ searchParams }: {
   const sayfaNo = sayfaNumarasi(sayfa);
 
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
-  if (!modules.some((modul) => modul.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
   const organizationId = membership.organization_id;
 
   /*

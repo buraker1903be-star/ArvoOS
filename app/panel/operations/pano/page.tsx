@@ -14,6 +14,7 @@ import { PanoTahtasi } from "./pano-tahtasi";
 import { OtomatikSecim } from "../../crm/otomatik-secim";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "./pano.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   PANO — kolonlar ADIM ŞABLONUNDAKİ aşamalar, kart İŞ.
@@ -73,7 +74,7 @@ export default async function OperationsPanoPage({
   const aranan = (arama ?? "").trim().toLocaleLowerCase("tr-TR");
   const yalnizOkunmamis = mesaj === "yeni";
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
 
   // hata-tamam: dördü de GÖSTERİM eşlemesi (sorumlu adı, şablon ve tür
   // adları, kendi personel kaydım); düşerlerse ad yerine "—" çıkar,

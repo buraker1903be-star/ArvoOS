@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { getPanelContext } from "@/lib/panel-context";
 import { canSeeFinanceReports } from "../finance-navigation";
+import { modulGerek, yetkiGerek } from "@/lib/modul-kapisi";
 import { PrintReportButton } from "./print-report-button";
 import { monthStartKey, todayInIstanbul, istanbulMidnight } from "@/lib/istanbul-date";
 // Sayfa başlığı (talep-bas) öteki panel sayfalarıyla aynı düzen.
@@ -228,7 +229,11 @@ export default async function ReportingPage({ searchParams }: { searchParams: Pr
   const { supabase, membership, modules, yetkiler } = await getPanelContext();
   // Finans kapısı (sahip/yönetici) layout'ta; burada Raporlar modülü ve rol yetkisi
   const access = { modules, yetkiler };
-  if (!canSeeFinanceReports(access)) throw new Error("Raporlar modülüne erişiminiz yok.");
+  /* Kapı iki parçalı: Raporlama modülü kurumda açık mı, rolde rapor
+     yetkisi var mı. Ekran hangisinin eksik olduğunu yazsın diye ayrı
+     soruluyor — "modül kapalı" ile "yetkin yok" farklı iki cevap. */
+  modulGerek(modules, "reporting");
+  yetkiGerek(canSeeFinanceReports(access), "reporting");
   const { startKey, endKey, key } = resolveRange(params.aralik, params.baslangic, params.bitis);
   const inRange = (value: string | null) => { if (!value) return false; const gun = gunAnahtari(value); return gun >= startKey && gun <= endKey; };
   const [sonYil, sonAy] = endKey.split("-").map(Number);

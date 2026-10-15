@@ -4,6 +4,7 @@ import { createSupportTicket, replySupportTicket, updateSupportTicketStatus } fr
 import "./support.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 type Message = { id:string; body:string; is_staff:boolean; created_at:string };
 type Ticket = { id:string; subject:string; category:string; priority:string; status:string; last_message_at:string; organizations:{name?:string}|{name?:string}[]|null; support_messages:Message[] };
@@ -20,7 +21,7 @@ const categoryNames:Record<string,string>={general:"Genel",technical:"Teknik",bi
 
 export default async function SupportPage(){
   const { supabase,membership,isPlatformOwner,modules }=await getPanelContext();
-  if(!modules.some((m)=>m.code==="support")) throw new Error("Destek modülüne erişiminiz yok.");
+  modulGerek(modules, "support");
   let query=supabase.from("support_tickets").select("id,subject,category,priority,status,last_message_at,organizations(name),support_messages(id,body,is_staff,created_at)").order("last_message_at",{ascending:false});
   if(!isPlatformOwner) query=query.eq("organization_id",membership.organization_id);
   const {data,error}=await query;

@@ -43,6 +43,7 @@ import "../../crm.css";
 import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
+import { modulGerek } from "@/lib/modul-kapisi";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 import { PortalZiyareti } from "../../portal-ziyareti";
 import { liraYazisi } from "@/lib/turkish-amount";
@@ -79,7 +80,7 @@ const TAKSIT_ADLARI: Record<TaksitDurumu, string> = { odendi: "Ödendi", kismi: 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
   const { supabase, membership, modules, organization, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
   const { data, error } = await supabase
     .from("crm_contracts")
     .select("id,contract_no,title,scope,amount,currency,payment_plan,payment_plan_type,start_date,due_date,status,created_at,sent_at,first_viewed_at,last_viewed_at,view_count,share_token,signed_name,signed_at,workflow_id,tracking_code,customer_address,customer_tax_number,customer_tax_office,subscription_intent,opportunity_id,payment_schedule,payment_plan_id,party_id,crm_proposals(id,proposal_no,status,archive_reason,payment_schedule),crm_opportunities!inner(id,customer_name,contact_email,contact_phone,title,assigned_employee_id,request_details)")

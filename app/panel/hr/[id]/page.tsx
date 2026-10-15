@@ -35,6 +35,7 @@ import { PostaAkisi, WhatsappAkisi, musteriPostalari, musteriWhatsapp } from "..
 import "../hr.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../components/kayit-formu.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   PERSONEL DETAYI (2026-10): talep, teklif, sözleşme, iş ve cari
@@ -107,7 +108,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
   const { id } = await params;
   const arama = await searchParams;
   const { supabase, membership, userId, modules, organization, izin, isPlatformOwner } = await getPanelContext();
-  if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
+  modulGerek(modules, "hr");
   const canManageTeam = izin("hr.ekip.yonet");
   const crmVar = modules.some((module) => module.code === "crm");
   const opsVar = modules.some((module) => module.code === "operations");

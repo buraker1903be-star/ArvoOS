@@ -21,6 +21,7 @@ import "./crm.css";
 import "./request-page.css";
 import "./kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "./satir-tiklama";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
@@ -129,8 +130,7 @@ export default async function RequestsPage({
   const selectedRepresentative = clean(temsilci);
   const { supabase, membership, modules, izin } = await getPanelContext();
   const canAssign = izin("crm.kayit.ata");
-  if (!modules.some((m) => m.code === "crm"))
-    throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
   /*
     LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026). Dört büyük listenin
     sonuncusu; talep tablosu en çok büyüyeni, her gelen istek bir

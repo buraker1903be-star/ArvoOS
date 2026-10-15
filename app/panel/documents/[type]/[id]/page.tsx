@@ -9,6 +9,7 @@ import { SOZLESME_GRUP_ADLARI, sozlesmeGrubu, type SozlesmeGrubu } from "@/lib/s
 import { cariTaksitSonuclari, taksitDurumu } from "../../../crm/contracts/taksit-durumu";
 import "../../../crm/crm.css";
 import "../../../crm/kayit-detay/kayit-detay.css";
+import { modulGerekKosullu } from "@/lib/modul-kapisi";
 
 /*
   BELGE YAŞAM DÖNGÜSÜ (10.10.2026): panelin kayıt detayı kalıbında.
@@ -65,9 +66,8 @@ export default async function BelgeYasamDongusu({ params }: { params: Promise<{ 
   const sozlesmeMi = type === "contract";
 
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((modul) => ["documents", "crm"].includes(modul.code))) {
-    throw new Error("Belge yaşam döngüsüne erişiminiz yok.");
-  }
+  /* Belge merkezi iki modülden birine bağlı; ekranda "Belgeler" yazsın. */
+  modulGerekKosullu(modules.some((m) => ["documents", "crm"].includes(m.code)), "documents");
   const org = membership.organization_id;
 
   const { data: kok, error: kokHatasi } = await supabase.from(sozlesmeMi ? "crm_contracts" : "crm_proposals")

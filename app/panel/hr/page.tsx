@@ -20,6 +20,7 @@ import { SatirTiklama } from "@/app/panel/crm/satir-tiklama";
 import { ledgerTotals } from "@/lib/commission-ledger";
 import { primVerisi } from "./prim-verisi";
 import { DAVET_DURUM_ADLARI, davetleriAyir, OKUNAN_DAVET_DURUMLARI } from "./davet-durumu";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   EKİP LİSTESİ (2026-10): talepler, teklifler, sözleşmeler, işler ve
@@ -73,7 +74,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const aranan = arama.trim().toLocaleLowerCase("tr-TR");
   const { supabase, membership, modules, organization, izin, isPlatformOwner } = await getPanelContext();
   const organizationName = organization.display_name || organization.name;
-  if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
+  modulGerek(modules, "hr");
   const canManageTeam = izin("hr.ekip.yonet");
   const primGorur = isPlatformOwner || izin("hr.prim.gor");
   const gizlilikGorur = izin("hr.gizlilik.gor");

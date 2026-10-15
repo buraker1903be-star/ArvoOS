@@ -12,6 +12,7 @@ import { simdi } from "../os/genel-bakis";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import "../crm/crm.css";
 import "../crm/kayit-detay/kayit-detay.css";
+import { modulGerekKosullu } from "@/lib/modul-kapisi";
 
 /*
   BELGE MERKEZİ (10.10.2026): panelin liste kalıbında. Üstte başlık,
@@ -96,9 +97,8 @@ export default async function BelgelerSayfasi({ searchParams }: {
   const sayfaNo = sayfaNumarasi(params.sayfa);
 
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((modul) => ["documents", "crm"].includes(modul.code))) {
-    throw new Error("Belge Merkezi'ne erişiminiz yok.");
-  }
+  /* Belge merkezi iki modülden birine bağlı; ekranda "Belgeler" yazsın. */
+  modulGerekKosullu(modules.some((m) => ["documents", "crm"].includes(m.code)), "documents");
   const org = membership.organization_id;
 
   /* Süzgeç tek yerden: liste ve rozet sayıları aynı kümeyi görmeli. */

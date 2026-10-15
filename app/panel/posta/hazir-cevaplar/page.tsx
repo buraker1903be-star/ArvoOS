@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { yetkiGerek } from "@/lib/modul-kapisi";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { YER_TUTUCULAR } from "@/lib/posta-sablon";
 import { istanbulTarihSaat } from "../bicim";
@@ -26,7 +27,7 @@ type Sablon = { id: string; ad: string; govde: string; olusturan: string | null;
 
 export default async function HazirCevaplar() {
   const { supabase, membership, izin } = await getPanelContext();
-  if (!izin("posta.gor")) throw new Error("Posta modülüne erişiminiz yok.");
+  yetkiGerek(izin("posta.gor"), "posta");
   const duzenleyebilir = izin("posta.yonet");
 
   const { data, error } = await supabase

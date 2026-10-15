@@ -5,6 +5,7 @@ import { gunlukSeriDilimler } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, simdi, yeniMi } from "../../os/genel-bakis";
 import { daysSince, relativeTime, waitingLabel } from "../last-contact";
 import "../crm.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   CRM genel bakış: satışçının günlük ekranı. Ana ekranla aynı şablon
@@ -56,7 +57,7 @@ const daysUntil = (dateKey: string, today: string) => Math.round((Date.parse(dat
 
 export default async function CrmOverviewPage() {
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
   const organizationId = membership.organization_id;
   const bugun = bugununAnahtari();
 

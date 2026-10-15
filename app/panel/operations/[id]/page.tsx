@@ -41,6 +41,7 @@ import "./detail.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../../components/kayit-formu.css";
 import { PortalZiyareti } from "../../crm/portal-ziyareti";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 type Step = { id: string; title: string; is_completed: boolean; sort_order: number; completed_at: string | null; completed_by: string | null; due_date: string | null; status: StepStatus; assigned_employee_id: string | null; phase_title: string | null };
 type Workflow = { id: string; step_template_set: string | null; waiting_party: string; waiting_note: string | null; waiting_since: string | null; revision_days: number | null; delivered_at: string | null; revision_until: string | null; title: string; assigned_employee_id: string | null; customer_name: string | null; description: string | null; status: string; priority: string; start_date: string | null; due_date: string | null; created_at: string; updated_at: string; archived_at: string | null; archived_by: string | null; operation_steps: Step[] };
@@ -82,7 +83,7 @@ export default async function OperationDetailPage({
   const { id } = await params;
   const { sekme: istenenSekme, pencere: istenenPencere } = await searchParams;
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
   const organizationId = membership.organization_id;
   /*
     SIRALI ADIMLAR AZALTILDI (13.10.2026, hızlandırma). Sayfa veritabanına

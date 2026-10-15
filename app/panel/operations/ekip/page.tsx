@@ -10,6 +10,7 @@ import { IstatistikKarti } from "../../crm/istatistik-karti";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   EKİP YÜKÜ — operasyon müdürünün "kimde ne var" ekranı.
@@ -66,7 +67,7 @@ const sorumluAdresi = (satir: Satir, ek: Record<string, string> = {}) => {
 
 export default async function EkipYukuPage() {
   const { supabase, membership, modules, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
+  modulGerek(modules, "operations");
   if (!izin("operations.ekip.gor")) throw new Error("Ekip yükünü görme yetkiniz yok.");
 
   const [{ data, error }, { data: personelDepartmani, error: departmanHatasi }] = await Promise.all([

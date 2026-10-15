@@ -31,6 +31,7 @@ import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   TALEP DETAYI (2026-10): üç sütun.
@@ -86,8 +87,7 @@ export default async function RequestDetailPage({
   const { id } = await params;
   const context = await getPanelContext();
   const { supabase, membership, modules, izin } = context;
-  if (!modules.some((m) => m.code === "crm"))
-    throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
   const [{ data, error }, { data: employees, error: employeeError }, { data: turData }] =
     await Promise.all([
       supabase

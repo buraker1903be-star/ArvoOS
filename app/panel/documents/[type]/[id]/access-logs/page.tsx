@@ -8,6 +8,7 @@ import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { IstatistikKarti } from "../../../../crm/istatistik-karti";
 import "../../../../crm/crm.css";
 import "../../../../crm/kayit-detay/kayit-detay.css";
+import { modulGerekKosullu } from "@/lib/modul-kapisi";
 
 /*
   BELGE ERİŞİM GEÇMİŞİ (10.10.2026): panelin liste kalıbında; kütük
@@ -78,9 +79,8 @@ export default async function BelgeErisimGecmisi({ params, searchParams }: {
   const sozlesmeMi = type === "contract";
 
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((modul) => ["documents", "crm"].includes(modul.code))) {
-    throw new Error("Belge erişim geçmişine erişiminiz yok.");
-  }
+  /* Belge merkezi iki modülden birine bağlı; ekranda "Belgeler" yazsın. */
+  modulGerekKosullu(modules.some((m) => ["documents", "crm"].includes(m.code)), "documents");
   const org = membership.organization_id;
 
   const noSutunu = sozlesmeMi ? "contract_no" : "proposal_no";

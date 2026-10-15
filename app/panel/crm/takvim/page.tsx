@@ -10,6 +10,7 @@ import { OtomatikSecim } from "../otomatik-secim";
 import { AyGezinme, GunBolumu, TakvimIzgarasi, ayAnahtari, ayBasi, gunAnahtari, gunTarihi, type TakvimMaddesi } from "../takvim-izgara";
 import "../kayit-detay/kayit-detay.css";
 import "../takvim.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   SATIŞ TAKVİMİ (2026-10, panel kalitesi). Başlık ve araç satırı diğer
@@ -79,7 +80,7 @@ function RandevuSatiri({ randevu, temsilci }: { randevu: Appointment; temsilci?:
 export default async function CrmCalendarPage({ searchParams }: { searchParams: Promise<{ view?: string; ay?: string; tarih?: string; calisan?: string }> }) {
   const params = await searchParams;
   const { supabase, membership, userId, modules, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
   const isManager = izin("crm.takvim.tum");
 
   // Bugün Türkiye takvimiyle: sunucu UTC'de, gece 00–03 arası bir önceki günü verirdi.

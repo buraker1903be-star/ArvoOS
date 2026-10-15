@@ -5,6 +5,7 @@ import { davetleriAyir, OKUNAN_DAVET_DURUMLARI } from "../davet-durumu";
 import { relativeTime } from "../../crm/last-contact";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "../../os/genel-bakis";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 // İK genel bakış: ekip durumunun özeti. Ana ekranla aynı şablon
 // (os/genel-bakis.tsx, 2026-10): son 14 günde panele giren kişi grafiği ve
@@ -42,7 +43,7 @@ function clock() {
 
 export default async function HrOverviewPage() {
   const { supabase, membership, modules, isPlatformOwner, yetkiler, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "hr")) throw new Error("İnsan Kaynakları modülüne erişiminiz yok.");
+  modulGerek(modules, "hr");
   const organizationId = membership.organization_id;
   const access = { yetkiler, isPlatformOwner };
   const canManageTeam = izin("hr.ekip.yonet");

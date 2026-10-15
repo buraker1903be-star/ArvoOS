@@ -40,6 +40,7 @@ import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 import { liraYazisi } from "@/lib/turkish-amount";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   TEKLİF DETAYI (2026-10): talep detayıyla aynı üç sütun.
@@ -70,8 +71,7 @@ const KDV_ADI: Record<string, string> = { excluded: "KDV hariç", included: "KDV
 export default async function ProposalDetailPage({ params }: Props) {
   const { id } = await params;
   const { supabase, membership, modules, organization, izin } = await getPanelContext();
-  if (!modules.some((module) => module.code === "crm"))
-    throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
 
   const [{ data, error }, { data: sozlesmeData }] = await Promise.all([
     supabase

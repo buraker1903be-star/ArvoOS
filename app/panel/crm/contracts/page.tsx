@@ -25,6 +25,7 @@ import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "../satir-tiklama";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   SÖZLEŞMELER LİSTESİ (2026-10): teklifler listesiyle aynı kalıp. Üstte
@@ -94,8 +95,7 @@ export default async function ContractsPage({ searchParams }: Props) {
   const docNo = p.doc_no ?? "";
   const customerName = p.customer_name ?? "";
   const { supabase, membership, organization, modules } = await getPanelContext();
-  if (!modules.some((m) => m.code === "crm"))
-    throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
 
   /*
     LİSTE SUNUCUDA SÜZÜLÜYOR (11.10.2026) — teklif listesiyle aynı

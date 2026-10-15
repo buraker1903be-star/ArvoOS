@@ -4,6 +4,7 @@ import { akademikMerkezTemplate, arvoOSGeneralTemplate } from "@/lib/contract-te
 import { LEGAL_TEXT_VERSION } from "@/app/_components/legal/format";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
+import { modulGerek } from "@/lib/modul-kapisi";
 
 /*
   SÖZLEŞME ŞABLONLARI (10.10.2026): panelin kayıt detayı kalıbında.
@@ -23,7 +24,7 @@ import "../kayit-detay/kayit-detay.css";
 
 export default async function SozlesmeSablonlari() {
   const { supabase, membership, modules } = await getPanelContext();
-  if (!modules.some((modul) => modul.code === "crm")) throw new Error("CRM modülüne erişiminiz yok.");
+  modulGerek(modules, "crm");
 
   const sablonlar = [arvoOSGeneralTemplate, akademikMerkezTemplate];
 
