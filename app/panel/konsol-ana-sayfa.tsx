@@ -14,7 +14,7 @@ import { konsolUygulamalari } from "./os/konsol-apps";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { StgIcon } from "./settings/settings-ui";
-import { KURULUM_ADI, para } from "./platform/bicim";
+import { KURULUM_ADI, KURULUM_ISLEMI, para } from "./platform/bicim";
 import { relativeTime } from "./crm/last-contact";
 import "./dashboard.css";
 
@@ -67,11 +67,6 @@ const PENDING_STATES = new Set(["creating", "inviting_owner", "waiting_owner"]);
 const ODEYEN_DURUMLAR = new Set(["active", "past_due"]);
 
 type Tone = "info" | "gold" | "success" | "danger" | "brand" | "neutral";
-
-const actionLabels: Record<string, string> = {
-  provision_organization: "Kurum kurulumu",
-  owner_access_link: "Giriş bağlantısı",
-};
 
 function selamlama() {
   const now = new Date();
@@ -494,7 +489,7 @@ export async function KonsolAnaSayfa() {
                 görünüyor ve yer kaplıyordu; oysa veri doğruydu,
                 gösterilmeyen şey ayırt ediciydi.
               */
-              alt={[actionLabels[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
+              alt={[KURULUM_ISLEMI[kayit.action] ?? kayit.action, kayit.state ? KURULUM_ADI[kayit.state] ?? kayit.state : null]
                 .filter(Boolean).join(" · ")}
               /*
                 'failed', 'error' değil: sütunun kısıtı 'error'a izin

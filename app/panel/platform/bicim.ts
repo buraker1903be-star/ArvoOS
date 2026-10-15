@@ -87,6 +87,32 @@ export const KURULUM_ADI: Record<string, string> = {
   archived: "Arşivlendi",
   failed: "Kurulum hatası",
 };
+/*
+  KURULUM KAYDININ İŞLEMİ (15.10.2026).
+
+  Konsolun ana sayfası bu kodları `actionLabels` adlı iki girişlik yerel
+  bir haritadan geçiriyordu; Sistem Ayarları'ndaki işlem kaydı ise hiç
+  geçirmiyor, kodu olduğu gibi basıyordu. Sonuç: kurucu ekranda
+  "owner_accepted · Kullanımda" görüyordu — ötekiler Türkçeyken.
+
+  Üç değer var ve üçü AYRI yerden yazılıyor; haritayı eksik bırakmamak
+  için kaynakları burada yazılı:
+   - provision_organization → kenar fonksiyonu
+     (supabase/functions/provision-organization)
+   - owner_access_link      → konsolun sunucu işlemi
+     (app/panel/platform/actions.ts)
+   - owner_accepted         → veritabanı tetikleyicisi
+     (migration 20260802170500)
+
+  Yeni bir işlem eklenirse buraya da eklenir; birim testi üçünü
+  sabitliyor.
+*/
+export const KURULUM_ISLEMI: Record<string, string> = {
+  provision_organization: "Kurum kurulumu",
+  owner_access_link: "Giriş bağlantısı",
+  owner_accepted: "Davet kabulü",
+};
+
 export const KURULUM_TONU: Record<string, StgTone> = {
   creating: "info", inviting_owner: "info", waiting_owner: "warning",
   active: "success", suspended: "danger", archived: "neutral", failed: "danger",

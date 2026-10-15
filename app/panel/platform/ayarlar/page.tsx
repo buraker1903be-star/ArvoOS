@@ -9,7 +9,7 @@ import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
 import { KBos, KKart, KListe, KNot, KOge } from "../konsol-ui";
-import { KURULUM_ADI, para, tarihSaat } from "../bicim";
+import { KURULUM_ADI, KURULUM_ISLEMI, para, tarihSaat } from "../bicim";
 import { roleNames } from "../../hr/role-names";
 import "../platform.css";
 
@@ -115,7 +115,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const kayitlar: Kayit[] = [
     ...((kurulum?.data ?? []) as { id: string; organization_id: string | null; actor_user_id: string | null; action: string; state: string; result: string; created_at: string }[]).map((s) => ({
       anahtar: `kurulum-${s.id}`, zaman: s.created_at, tur: "Kurulum", ton: (s.result === "failed" ? "danger" : s.result === "success" ? "success" : "info") as Ton,
-      ne: `${s.organization_id ? kurumAdi.get(s.organization_id) ?? "Kurum" : "Kurum"} · ${s.action} · ${KURULUM_ADI[s.state] ?? s.state}${s.result === "failed" ? " · HATA" : ""}`,
+      ne: `${s.organization_id ? kurumAdi.get(s.organization_id) ?? "Kurum" : "Kurum"} · ${KURULUM_ISLEMI[s.action] ?? s.action} · ${KURULUM_ADI[s.state] ?? s.state}${s.result === "failed" ? " · HATA" : ""}`,
       kim: kim(s.actor_user_id),
     })),
     ...((erisim?.data ?? []) as { id: number; organization_id: string; actor_user_id: string | null; action: string; entity_type: string; metadata: { is_active?: boolean } | null; created_at: string }[]).map((s) => ({
