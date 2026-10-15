@@ -39,9 +39,12 @@ export function KKart({ id, baslik, aciklama, sag, children, sinif }: {
       <header className="k-kart-bas">
         <div>
           <h2>{baslik}</h2>
-          {/* KOMPAKT (14.10.2026): açıklama tek satır, sığmazsa üç nokta ve
-              tamamı fareyle üstüne gelince. Eskiden paragraf olarak açılıyor,
-              konsol sayfaları İşler'in iki-üç katı metinle uzuyordu. */}
+          {/* KOMPAKT (14.10.2026): açıklama en çok İKİ satır (15.10'da
+              birden ikiye çıktı, gerekçesi konsol-ui.css'te), sığmazsa üç
+              nokta. title hâlâ duruyor: iki satıra da sığmayan uzun
+              açıklamanın tamamı farede görünsün. Eskiden paragraf olarak
+              açılıyor, konsol sayfaları İşler'in iki-üç katı metinle
+              uzuyordu. */}
           {aciklama ? <p title={typeof aciklama === "string" ? aciklama : undefined}>{aciklama}</p> : null}
         </div>
         {sag ? <div className="k-kart-sag">{sag}</div> : null}
