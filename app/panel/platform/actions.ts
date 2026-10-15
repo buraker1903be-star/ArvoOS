@@ -185,16 +185,24 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   if (katalogHatasi) throw new Error("Modül kataloğu okunamadı: " + katalogHatasi.message);
   if (!katalog) throw new Error("Geçersiz modül.");
   /*
-    UPSERT: satır kuruluşta yazılıyor ama sonradan eklenen bir modülün
-    satırı eski kurumlarda yok; update o durumda sıfır satır eder ve
-    hata vermez. Sonuç `select` ile doğrulanıyor.
+    UPDATE — upsert DEĞİL. Bir ara upsert yazıldı ve geri alındı: kurucunun
+    bu tabloda INSERT politikası yok, upsert ise satır var olsa bile
+    INSERT ... ON CONFLICT gönderiyor ve RLS "new row violates row-level
+    security policy" ile reddediyor. Satırlar zaten kuruluşta yazılıyor
+    (provision_customer_organization).
+
+    Ama SATIR SAYISI doğrulanıyor: satırı olmayan bir modülde update
+    sessizce sıfır satır eder, Supabase hata döndürmez ve ekran "oldu"
+    derdi. Yazmanın sıfır satır etmesi "oldu" demek değil.
   */
   const { data: yazilan, error } = await supabase
     .from("organization_modules")
-    .upsert({ organization_id: organizationId, module_code: moduleCode, is_enabled: isEnabled }, { onConflict: "organization_id,module_code" })
+    .update({ is_enabled: isEnabled })
+    .eq("organization_id", organizationId)
+    .eq("module_code", moduleCode)
     .select("module_code");
   if (error) throw new Error("Modül durumu değiştirilemedi: " + error.message);
-  if (!yazilan?.length) throw new Error("Modül durumu yazılamadı: kayıt güncellenmedi.");
+  if (!yazilan?.length) throw new Error("Modül kaydı bulunamadı; kurumun bu modül satırı yok.");
   if (moduleCode === "commerce") await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
