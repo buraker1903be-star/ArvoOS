@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { zorunlu } from "../konsol-oku";
-import { PRODUCTS, SUBSCRIBER_PRODUCTS } from "@/lib/products";
+import { PRODUCTS, SUBSCRIBER_PRODUCTS, urunSimgesi } from "@/lib/products";
 import { getArvolabBridgeHealth } from "@/lib/arvolab";
 import { getArcBridgeHealth } from "@/lib/arc-bridge";
 import { getRandevuBridgeHealth } from "@/lib/randevu-bridge";
@@ -188,7 +188,7 @@ export default async function UrunlerPage({ searchParams }: {
               <KOge
                 key={urun.code}
                 href={href}
-                simge={urun.name}
+                simge={urunSimgesi(urun.code) ?? urun.name}
                 baslik={urun.name}
                 alt={[
                   `${sayi(urun.kurum)} kiracı`,

@@ -5,7 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { kurumTuru } from "@/lib/kurum-turu";
 import { zorunlu } from "../../konsol-oku";
-import { ADDON_PRODUCTS, productLicenseLabels } from "@/lib/products";
+import { ADDON_PRODUCTS, productLicenseLabels, urunSimgesi } from "@/lib/products";
 import { KBos, KKart, KListe, KNot, KOge } from "../../konsol-ui";
 import { LISANS_TONU, PAKET_ADI, para, sayi, tarih } from "../../bicim";
 import { ETKINLIK_ADI, VARLIK_ADI } from "../../kiraci-dosyasi";
@@ -233,7 +233,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
               <KOge
                 key={u.kod}
                 href={`${adres}?pencere=lisanslar`}
-                simge={u.ad}
+                simge={urunSimgesi(u.kod) ?? u.ad}
                 baslik={u.ad}
                 alt={u.status === "inactive" ? "Kullanmıyor" : tarihi ? `${u.status === "trialing" ? "deneme bitişi" : "dönem sonu"} ${tarih(tarihi)}` : "dönem girilmedi"}
                 durum={{ etiket: productLicenseLabels[u.status] ?? u.status, ton: acik ? LISANS_TONU[u.status] ?? "neutral" : "neutral" }}

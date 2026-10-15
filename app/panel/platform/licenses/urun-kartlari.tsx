@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
 import { KListe, KOge } from "../konsol-ui";
+import { urunSimgesi } from "@/lib/products";
 
 /*
   Dört ürün, tek satırda dört kart.
@@ -25,8 +26,6 @@ import { KListe, KOge } from "../konsol-ui";
 */
 
 type Ozet = { etiket: string; deger: string };
-
-const URUN_SIMGESI: Record<string, string> = { arvoos: "OS", arvolab: "LB", arc: "RC", randevu: "RD" };
 
 type OrtakKart = {
   kod: string;
@@ -152,7 +151,7 @@ export function UrunKartlari({
               key={kart.kod}
               /* Dört ürünün adı da "Arvo" ile başlıyor; baş harf simgesi
                  dördünde "AR" yazıyordu. Ürünün kısa kodu. */
-              simge={URUN_SIMGESI[kart.kod] ?? kart.ad}
+              simge={urunSimgesi(kart.kod) ?? kart.ad}
               baslik={kart.ad}
               alt={ozet}
               durum={{ etiket: kart.durumAdi, ton: kart.acik ? kart.tone : "neutral" }}
