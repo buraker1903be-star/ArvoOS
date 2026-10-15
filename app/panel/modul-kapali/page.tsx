@@ -27,8 +27,11 @@ export default async function ModulKapali({
   const { modul = "", sebep = "" } = await searchParams;
   const { organization, membership, modules } = await getPanelContext();
   const yonetici = membership.role === "owner" || membership.role === "admin";
-  const katalog = panelModules[modul];
-  const ad = katalog?.name ?? "Bu bölüm";
+  /* Modül kataloğunda (panel-context) karşılığı olmayan iki bölüm:
+     mesajlaşma ayrı bir modül kodu taşıyor, posta ise bir yetenek
+     anahtarıyla açılıyor. Adsız kalmasınlar. */
+  const EK_ADLAR: Record<string, string> = { messages: "Mesajlaşma", posta: "Posta" };
+  const ad = panelModules[modul]?.name ?? EK_ADLAR[modul] ?? "Bu bölüm";
   const yetkiSorunu = sebep === "yetki";
 
   return (
