@@ -377,7 +377,7 @@ export default async function KullanicilarPage({ searchParams }: {
             <KListe>
               {sebepDagilimi.map((d) => <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />)}
             </KListe>
-          ) : <KNot>Pasif kullanıcı yok.</KNot>}
+          ) : <KBos baslik="Pasif kullanıcı yok" aciklama="Erişimi kapatılan kullanıcı olduğunda sebepleri burada dağılır." />}
         </KKart>
 
         <KKart baslik="Aktiflerin ürünleri">
@@ -385,7 +385,7 @@ export default async function KullanicilarPage({ searchParams }: {
             <KListe>
               {urunDagilimi.map((d) => <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />)}
             </KListe>
-          ) : <KNot>Aktif kullanıcı yok.</KNot>}
+          ) : <KBos baslik="Aktif kullanıcı yok" aciklama="Kullanıcılar ürünlere göre burada dağılır." />}
         </KKart>
 
         <KKart baslik="Davetler" aciklama={admin ? "En yeni 100 kayıttan" : "Sunucu anahtarı yok, okunamıyor"}>

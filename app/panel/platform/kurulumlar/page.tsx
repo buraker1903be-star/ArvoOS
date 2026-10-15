@@ -324,7 +324,7 @@ export default async function KurulumlarPage({ searchParams }: {
                 <KOge key={d.ad} baslik={d.ad} deger={sayi(d.adet)} />
               ))}
             </KListe>
-          ) : <KNot>Süren kurulum yok.</KNot>}
+          ) : <KBos baslik="Aşama dağılımı yok" aciklama="Kurulumu süren kurum oldukça aşamaları burada dağılır." />}
         </KKart>
       </div>
     </div>
