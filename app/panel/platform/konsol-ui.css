@@ -103,6 +103,19 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
 .k-ios-deger b{color:var(--ink);font-size:14px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap}
 .k-ios-deger small{color:var(--muted);font-size:11.5px;white-space:nowrap}
 .k-ios-deger .k-ios-eksik{color:var(--warning);font-weight:var(--fw-medium)}
+/*
+  SAYI DEĞİL ETİKET OLAN DEĞER (15.10.2026, kurum sahibinin tespiti).
+
+  Değer yuvası satırın sayısı için kurulu: koyu ink, yarı kalın, tabular
+  rakam. Kullanıcılar listesinde oraya kişinin ROLÜ düşüyor ("Operasyon
+  Personeli") ve satırda yan yana iki kalın metin kalıyordu — hangisinin
+  ad olduğu bir an karışıyor.
+
+  Sönükleştirme çağrı yerinde işaretleniyor, yuvanın kendisinde değil:
+  aynı yuva Müşteriler'de tutarı, Fiyatlar'da ücreti taşıyor ve orada
+  kalın olması doğru.
+*/
+.k-ios-deger b .k-ios-sessiz{color:var(--ink-soft);font-weight:400}
 /* Değer metin de olabilir (müşteri detayında e-posta, unvan): uzunsa
    başlığı ezmesin, kendi içinde kısalsın. Bağlantı panel rengiyle. */
 .k-ios-deger{max-width:62%}

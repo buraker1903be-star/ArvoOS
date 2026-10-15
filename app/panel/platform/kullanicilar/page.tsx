@@ -356,7 +356,9 @@ export default async function KullanicilarPage({ searchParams }: {
                     ton: u.acik ? "success" : "neutral",
                   }))}
                   durum={secili === "pasif" ? { etiket: kisi.sebep ?? "Erişim kapalı", ton: "danger" } : null}
-                  deger={secili === "pasif" ? undefined : kisininRolu(kisi)}
+                  /* Rol bir etiket, satırın değeri değil: adla aynı
+                     ağırlıkta durmasın (konsol-ui.css, k-ios-sessiz). */
+                  deger={secili === "pasif" ? undefined : <span className="k-ios-sessiz">{kisininRolu(kisi)}</span>}
                   degerAlt={secili === "pasif" ? undefined : kurumSayisi > 1 ? `${kurumSayisi} kurumda` : kisi.bireysel ? "bireysel" : undefined}
                 />
               );
