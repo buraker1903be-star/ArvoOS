@@ -302,8 +302,25 @@
 
     Bedeli bir satır yükseklik; karşılığı dört sayının da görünmesi.
   */
+  /*
+    KENAR BOŞLUĞU GERİ (15.10.2026, kurum sahibi: "sayfaların başı
+    yakışmıyor").
+
+    Kayan şeritte yan boşluğu KARTIN değil, dl'nin dolgusu veriyor
+    (yukarıda: kart `padding:10px 0`, dl `padding:0 var(--sp-4)`) —
+    böylece kayan maddeler kenara kadar akarken ilk ve son madde yine
+    boşluklu duruyor. Sarmalı varyanta geçerken o dolgu sıfırlandı ve
+    kartın yan boşluğunu verecek başka bir kural olmadığı için yazı
+    kenar çizgisine 1 piksel kalıyordu: "Ürün" ve "4" çerçeveye
+    yapışıyor, sağ sütun ise ayıracın sağında 14 piksel nefes alıyordu.
+    İki yan artık eşit (ölçüldü: metin 13 → 29, sağ kenar 362 → 346;
+    kart kenarları 12 ve 363).
+
+    Satır arası da sp-2'den sp-3'e çıktı: her hücre üç satır taşıyor
+    (etiket, sayı, not) ve 8 pikselde iki sıra birbirine yapışıyordu.
+  */
   .os-konsol .panel-content .kayit-serit>dl{
-    flex-wrap:wrap;overflow-x:visible;gap:var(--sp-2) 0;padding:0;
+    flex-wrap:wrap;overflow-x:visible;gap:var(--sp-3) 0;padding:0 var(--sp-4);
   }
   .os-konsol .panel-content .kayit-serit>dl>div{min-width:calc(50% - 1px)}
   .os-konsol .panel-content .kayit-serit>dl>div:nth-child(odd){padding-left:0;border-left:0}
