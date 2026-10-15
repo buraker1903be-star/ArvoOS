@@ -5,6 +5,7 @@ import { runPanelAction } from "@/lib/panel-action";
 import { getPanelContext } from "@/lib/panel-context";
 import { isSubscriberProduct, productName } from "@/lib/products";
 import { BIREYSEL_PLAN_KODU } from "@/lib/paket-ucreti";
+import { kurusOku } from "@/lib/turkish-amount";
 
 // Bireysel abonelerin denetimi. Fiyat ve deneme süresi ürün geneli
 // (product_plans); askıya alma ve dönem tek tek abonede.
@@ -23,7 +24,7 @@ async function updateProductPlan__impl(formData: FormData) {
      artık okunmuyor. */
   const listeden = product in BIREYSEL_PLAN_KODU;
   const rawFee = listeden ? "" : String(formData.get("individual_monthly_fee") ?? "").trim();
-  const fee = rawFee ? Math.round(Number(rawFee) * 100) : null;
+  const fee = rawFee ? kurusOku(rawFee) : null;
   if (rawFee && (!Number.isSafeInteger(fee) || (fee ?? 0) <= 0)) throw new Error("Bireysel aylık ücret pozitif bir tutar olmalı.");
 
   const trialDays = Number.parseInt(String(formData.get("trial_days") ?? ""), 10);

@@ -21,6 +21,17 @@
 //   biriktirmeyi ve sınırlı liste üzerinde .filter(…).length saymayı da
 //   arıyor.
 //
+// KALIP 3 — Türkçe yazılmış tutarı ham Number() ile okumak.
+//   `Math.round(Number(formData.get("amount")) * 100)` yazan bir işlem,
+//   Türkçe'de doğal olan "5.000" (beş bin) yazımını BİNDE BİRE indiriyor:
+//   Number("5.000") = 5 → 500 kuruş → ₺5,00. 15.10.2026'da cari hesabın
+//   tahsilat kutusunda ölçüldü (Chrome, tr-TR, input type="number"):
+//   value "5.000", valueAsNumber 5, checkValidity() true — ekranda beş
+//   bin yazıyor, hiçbir uyarı çıkmıyor, para kütüğüne ₺5,00 giriyor.
+//   On üç yerde böyleydi; sözleşme ve teklif tutarları dahil. Doğrusu
+//   lib/turkish-amount.ts'teki kurusOku(); yüzde hesapları (bölmeden
+//   sonra gelen * 100) kuralın dışında.
+//
 // KALIP 2 — tuzak tablo.
 //   Adı doğru gelen ama başka bir şey tutan tablodan okumak:
 //   billing_invoices KİRACININ kendi müşterilerine kestiği faturalar,
@@ -416,6 +427,26 @@ for (const dizin of TARANAN) {
       }
     }
 
+    /*
+      --- KALIP 3: lira → kuruş çevirisi ham Number() ile.
+
+      Yalnızca `* 100` ÇAĞRININ DIŞINDA olanlar: yüzde hesapları
+      (`profit / Number(x) * 100`) de bu kalıba benziyor ama orada
+      bölme var ve tutar okunmuyor. İkisini ayıran şey Number'dan
+      hemen önceki bölme işareti.
+    */
+    for (const m of kaynak.matchAll(/Number\((?:[^()]|\([^()]*\))*\)\s*\*\s*100/g)) {
+      const onceki = kaynak.slice(Math.max(0, m.index - 4), m.index);
+      if (/\/\s*$/.test(onceki)) continue;
+      const no = satirNo(m.index);
+      if (kacisVar(no)) continue;
+      sorunlar.push(
+        `${goreli}:${no}  tutar ham Number() ile kuruşa çevriliyor.\n` +
+        "      Türkçe'de \"5.000\" beş bindir; Number onu 5 yapar ve kütüğe ₺5,00 girer.\n" +
+        "      lib/turkish-amount.ts → kurusOku() kullanın.",
+      );
+    }
+
     // --- KALIP 2
     for (const tuzak of TUZAKLAR) {
       if (!tuzak.kapsam(goreli)) continue;
@@ -437,5 +468,5 @@ if (sorunlar.length) {
 }
 console.log(
   `✓ Rakam denetimi: sınırlı sorgudan toplam/sayım yok (reduce, döngüde biriktirme, filter().length), ` +
-  `${TUZAKLAR.length} tuzak tablo/sütun gözetiliyor`,
+  `${TUZAKLAR.length} tuzak tablo/sütun gözetiliyor, tutarlar kurusOku() ile okunuyor`,
 );

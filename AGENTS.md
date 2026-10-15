@@ -40,8 +40,17 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   RLS'i de gevşetmek gerekiyorsa politikayı migration'la değiştirin.
 - **Kurum Sahibi (`owner`) hiçbir zaman kısıtlanamaz.** Kendi panelinden
   kilitlenip dışarıda kalmasını önlemek için.
-- **Para kuruş cinsinden tamsayıdır.** Kullanıcı girdisi için
-  `parseTurkishAmount` ("1.500" bin ayırıcılıdır, 1,5 değil). Bölüştürmede
+- **Para kuruş cinsinden tamsayıdır.** Form alanındaki tutar
+  `kurusOku` ile okunur (`lib/turkish-amount.ts`; altında
+  `parseTurkishAmount` var — "1.500" bin ayırıcılıdır, 1,5 değil).
+  `Math.round(Number(formData.get("amount")) * 100)` yazmak Türkçe'de
+  doğal olan yazımı BİNDE BİRE indiriyor ve bunu `input type="number"`
+  de engellemiyor: 15.10.2026'da cari hesabın tahsilat kutusunda ölçüldü
+  (Chrome, tr-TR) — kutuya 5.000 yazılınca value "5.000",
+  valueAsNumber 5, checkValidity() true, kütüğe ₺5,00. On üç yerde
+  böyleydi, sözleşme ve teklif tutarları dahil; `npm run check:rakamlar`
+  artık bu kalıbı da arıyor (yüzde hesapları, yani bölmeden sonra gelen
+  `* 100`, kuralın dışında). Bölüştürmede
   artan kuruş baştaki taksitlere eklenir; toplam her zaman birebir tutar.
 - **Tarih Türkiye saatiyle.** Sunucu UTC'de çalışıyor; gün anahtarı için
   `todayInIstanbul`, karşılaştırma için `istanbulMidnight`.
@@ -347,7 +356,7 @@ kuralı önce anlık görüntüye uygulayıp testleri çalıştırın.
 `npm run check:rakamlar` — hepsi CI'da
 (`.github/workflows/ci.yml`) çalışır. Derleme CI'da yapılmaz.
 
-**Rakam denetimi** (`npm run check:rakamlar`): ekrandaki sayıların iki
+**Rakam denetimi** (`npm run check:rakamlar`): ekrandaki sayıların üç
 bilinen yanlış kaynağını arar. Birincisi `.limit()` ile sınırlı bir
 sorgudan `.reduce()` ile toplam almak — 22.09.2026'da konsolun üç
 sayfasında ayrı ayrı çıktı ("Tahsil edildi" son 50 kaydın toplamıydı) ve

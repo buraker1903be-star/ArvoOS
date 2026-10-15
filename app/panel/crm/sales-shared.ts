@@ -10,6 +10,7 @@
 
 import { getPanelContext as getBasePanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
+import { kurusOku } from "@/lib/turkish-amount";
 
 // Teklif ve sözleşme işlemleri CRM modülüne bağlı; Yetkilendirme'den CRM'i
 // kapatılmış bir rol bu işlemleri arka planda da çağıramasın.
@@ -29,7 +30,7 @@ export const text = (formData: FormData, key: string, max = 4000) =>
     .trim()
     .slice(0, max);
 export const amount = (formData: FormData, key: string) =>
-  Math.round(Number(formData.get(key) ?? 0) * 100);
+  kurusOku(formData.get(key));
 
 /*
   Rol listeleri kaldırıldı; karar lib/yetkiler.ts'teki yetenek anahtarlarında

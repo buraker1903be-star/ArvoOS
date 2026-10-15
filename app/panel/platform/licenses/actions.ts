@@ -12,6 +12,7 @@ import { syncArvolabLicense } from "@/lib/arvolab";
 import { syncArcTenants } from "@/lib/arc-bridge";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
+import { kurusOku } from "@/lib/turkish-amount";
 
 const licenseStatuses = new Set(["trialing", "active", "past_due", "suspended", "canceled"]);
 const productStatuses = new Set(["inactive", ...licenseStatuses]);
@@ -33,7 +34,7 @@ function readNonNegativeInteger(formData: FormData, key: string) {
 function readOptionalMonthlyFee(formData: FormData, key = "monthly_fee") {
   const raw = String(formData.get(key) ?? "").trim();
   if (!raw) return null;
-  const value = Math.round(Number(raw) * 100);
+  const value = kurusOku(raw);
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error("Aylık ücret pozitif bir tutar olmalı.");
   return value;
 }

@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { assertModuleKeyAccess } from "@/lib/role-permissions";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { assertYetki } from "@/lib/yetkiler";
+import { kurusOku } from "@/lib/turkish-amount";
 
 async function bankingContext() {
   const context = await getPanelContext();
@@ -19,7 +20,7 @@ export async function createBankAccount(formData: FormData) {
   const bankName = String(formData.get("bank_name") ?? "").trim();
   const accountName = String(formData.get("account_name") ?? "").trim();
   const iban = String(formData.get("iban") ?? "").replace(/\s+/g, "").toUpperCase();
-  const openingBalance = Math.round(Number(formData.get("opening_balance") ?? 0) * 100);
+  const openingBalance = kurusOku(formData.get("opening_balance"));
   if (bankName.length < 2 || iban.length < 15) throw new Error("Banka adı ve geçerli IBAN zorunludur.");
   const { error } = await supabase.from("organization_bank_accounts").insert({
     organization_id: membership.organization_id, bank_name: bankName, account_name: accountName || null,
@@ -33,7 +34,7 @@ export async function createBankTransaction(formData: FormData) {
   const { supabase, membership, userId } = await bankingContext();
   const bankAccountId = String(formData.get("bank_account_id") ?? "");
   const direction = String(formData.get("direction") ?? "");
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const amount = kurusOku(formData.get("amount"));
   const description = String(formData.get("description") ?? "").trim();
   const referenceNo = String(formData.get("reference_no") ?? "").trim();
   const transactionDate = String(formData.get("transaction_date") ?? "") || todayInIstanbul();

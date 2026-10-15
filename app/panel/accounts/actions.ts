@@ -12,7 +12,7 @@ import { paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { paytrKimligi } from "@/lib/payments/kimlik";
 import { createPaytrInstallmentLink, deletePaytrLink, paytrExpiry, toCallbackId } from "@/lib/paytr";
 import { resolvePublicHost } from "@/lib/public-host";
-import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { kurusOku, parseTurkishAmount } from "@/lib/turkish-amount";
 import { ODEME_SABLONU, odemeBaglantisiMesaji, odemeTutari, paytrBaglantiParcasi } from "@/lib/odeme-baglantisi";
 import { organizationBrandName } from "@/lib/customer-message-templates";
 import { postaDurumu } from "@/lib/posta-hesabi";
@@ -113,7 +113,7 @@ function revalidateLedger() {
 
 async function createCollection__impl(formData: FormData) {
   const partyId = String(formData.get("party_id") ?? "").trim();
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const amount = kurusOku(formData.get("amount"));
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
     throw new Error("Geçerli bir tahsilat tutarı girin.");
   const { supabase, membership, userId, debit, credit, refunds } =
@@ -146,7 +146,7 @@ async function createCollection__impl(formData: FormData) {
 
 async function createRefund__impl(formData: FormData) {
   const partyId = String(formData.get("party_id") ?? "").trim();
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const amount = kurusOku(formData.get("amount"));
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
     throw new Error("Geçerli bir iade tutarı girin.");
   const { supabase, membership, userId, credit, refunds } =
@@ -178,7 +178,7 @@ async function createRefund__impl(formData: FormData) {
 async function createAdditionalService__impl(formData: FormData) {
   const { supabase, membership, userId } = await accountsContext();
   const partyId = String(formData.get("party_id") ?? "").trim();
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const amount = kurusOku(formData.get("amount"));
   const description = String(formData.get("description") ?? "").trim();
   if (!partyId || !Number.isFinite(amount) || amount <= 0)
     throw new Error("Geçerli bir ek hizmet tutarı girin.");
@@ -241,7 +241,7 @@ export async function createEntry(formData: FormData) {
   const { supabase, userId, membership } = await accountsContext();
   const partyId = String(formData.get("party_id") ?? "");
   const entryType = String(formData.get("entry_type") ?? "debit");
-  const amount = Math.round(Number(formData.get("amount") ?? 0) * 100);
+  const amount = kurusOku(formData.get("amount"));
   const description = String(formData.get("description") ?? "").trim();
   if (!["debit", "credit"].includes(entryType))
     throw new Error("Geçersiz hareket türü.");
