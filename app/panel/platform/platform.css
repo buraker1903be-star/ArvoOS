@@ -875,7 +875,27 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
   kırpıyor. Uzun pencerelerin (Lisanslar, Kurum Ayarları) altı gerçek
   telefonda erişilemiyordu ve emülasyonda hiç görünmüyordu.
 */
-.plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; flex: 1; min-height: 0; overflow: auto }
+/*
+  TABAN BOYU `auto`, `0` DEĞİL (15.10.2026 akşamı).
+
+  Bu satır sabahki gönderimde `flex: 1` yazıyordu; `flex: 1` =
+  `flex: 1 1 0%`. Pencerenin kendi yüksekliği AUTO (yalnızca max-height
+  var), yani kabın içerik boyu çocuğunun taban boyundan hesaplanıyor:
+  taban 0 olunca içerik hiç sayılmıyor, `min-height: 0` da otomatik
+  asgari boyu kaldırdığı için pencere gövdenin yalnızca DOLGUSU kadar
+  (20+22 = 42px) kalıyor. Başlık gövdenin içinde olduğu için pencerenin
+  `overflow: hidden` kuralı onu kırpıyor: ekranda kapatma düğmesiyle
+  birlikte ince bir şerit duruyor, "Lisanslar" yazısı alttan kesik.
+  Kurucu konsolunda bu hâlde görüldü.
+
+  Tarayıcılar burada aynı davranmıyor — esnek bir öğenin içerik katkısını
+  taban boyuna bakarak hesaplayan motorda pencere çöküyor, içerik boyunu
+  kullanan motorda çökmüyor; bu yüzden tarayıcı panelinde üretilemedi.
+  `1 1 auto` ikisinde de doğru: taban boyu içerik, yani pencere içeriği
+  kadar açılıyor, max-height'a dayanınca gövde kısılıp kendi içinde
+  kayıyor (sabahki düzeltmenin amacı buydu, o korunuyor).
+*/
+.plt-pencere-govde { display: grid; gap: 16px; padding: 20px 22px 22px; flex: 1 1 auto; min-height: 0; overflow: auto }
 /* Izgaranın sütunu pencereyle sınırlı (14.10.2026). Varsayılan "auto"
    sütun, içindeki en uzun TEK SATIRLIK metin kadar genişliyordu: müşteri
    detayının Lisanslar penceresinde ArvoOS satırının özeti (paket · dönem ·

@@ -45,7 +45,8 @@ dialog.onay-pencere[open] { display: flex; flex-direction: column }
   }
 }
 
-.onay-govde { display: grid; gap: var(--sp-4); padding: 20px 22px 22px; flex: 1; min-height: 0; overflow: auto }
+/* Taban boyu `auto`: gerekçe platform.css · .plt-pencere-govde. */
+.onay-govde { display: grid; gap: var(--sp-4); padding: 20px 22px 22px; flex: 1 1 auto; min-height: 0; overflow: auto }
 .onay-govde > * { min-width: 0 }
 .onay-bas { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3) }
 .onay-bas small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase }
