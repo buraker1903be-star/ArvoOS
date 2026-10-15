@@ -457,8 +457,14 @@ istemek: dönen akışta hatalar `digest` ile işaretli ve üçü ayırt
 edilebiliyor — `NEXT_HTTP_ERROR_FALLBACK;404` ile `NEXT_REDIRECT;…`
 KASITLI, sayısal bir digest ise gerçek çökme (o sayı sunucu
 günlüğündeki kaydın anahtarı). Rota listesi `app/` ağacından
-türetiliyor; dinamik segmentliler atlanıyor ve kaç tanesi atlandığı
-yazılıyor. Oturum çerezi ve gerçek veri gerektirdiği için CI'da
+türetiliyor. Dinamik rotaların örnek kimliği ELLE YAZILMIYOR: gezilen
+sayfaların gövdesinde geçen `/panel/<üst>/<uuid>` çiftleri bir havuza
+giriyor, durgun rotalar önce taranıp havuzu dolduruyor, sonra dinamikler
+oradan örnekleniyor. İki tur koşuyor, çünkü bazı bağlantılar başka bir
+dinamik sayfanın içinde (gizlilik sözleşmesine yalnızca personel
+detayından gidiliyor). Örneği bulunamayan rota temiz SAYILMAZ, adıyla
+"atlandı" diye yazılır — 16.10.2026'da 17 dinamik rotanın 13'ü
+çözüldü, kalan dördü sorgu değişkeniyle açılıyor. Oturum çerezi ve gerçek veri gerektirdiği için CI'da
 koşmuyor: dağıtımdan sonra elle çalıştırılır, çerez hangi ÇALIŞMA
 ALANININ taranacağını da belirler (kurumun paketine göre sonuç değişir;
 kapalı modül artık çökme değil yönlendirme üretir). Çerez eskiyip

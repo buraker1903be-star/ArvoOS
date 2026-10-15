@@ -24,6 +24,22 @@
  * günlüğündeki kaydın anahtarı. Betik o anahtarı yazıyor ki Vercel
  * günlüğünde aranabilsin.
  *
+ * DİNAMİK ROTALAR: örnek kimlik elle yazılmıyor, GEZİLEN SAYFALARDAN
+ * toplanıyor. Her yanıtın gövdesinde geçen /panel/<üst>/<uuid> çiftleri
+ * bir havuza giriyor; durgun rotalar önce taranıp havuzu dolduruyor,
+ * sonra dinamik rotalar oradan örneklenip isteniyor — çözülen her sayfa
+ * havuzu yine besliyor. Elle tutulan bir kimlik listesi, ilk silinen
+ * kayıtta bayatlıyor ve kapsamı sessizce daraltıyordu.
+ *
+ * İKİ TUR var, çünkü sıra alfabetik ve bazı bağlantılar başka bir
+ * DİNAMİK sayfanın içinde: gizlilik sözleşmesine yalnızca personel
+ * detayından gidiliyor, o da "confidentiality"den sonra taranıyor.
+ * Birinci turda bulunamayan rota, havuz büyüdükten sonra ikinci turda
+ * bulunuyor (16.10.2026'da ölçüldü: 17 rotanın 12'si birinci, 1'i
+ * ikinci turda). Kalanlar sorgu değişkeniyle açılıyor ya da kurumda
+ * örneği yok; adları "atlandı" diye yazılıyor — betik onları temiz
+ * SAYMIYOR.
+ *
  * NEDEN CI'DA DEĞİL: oturum çerezi ve gerçek veri istiyor. Dağıtımdan
  * sonra elle koşturulur; kurumun paketine göre sonuç değişir, çünkü
  * kapalı modül artık çökme değil yönlendirme üretiyor (lib/modul-kapisi).
@@ -33,15 +49,18 @@
  *   node scripts/duman-testi.mjs --cerez-dosyasi ~/arvo-cerez.txt
  *   node scripts/duman-testi.mjs --taban https://app.arvo-os.com --konsol https://yonetim.arvo-os.com
  *   node scripts/duman-testi.mjs --yalnizca /panel/finance
+ *   node scripts/duman-testi.mjs --yalnizca-durgun   (dinamik rotaları hiç deneme)
  *
  * Çerez tarayıcıdan alınır (Ağ sekmesinde bir isteğin `cookie` başlığı).
  * Hangi ÇALIŞMA ALANI taranacağını da o çerez söyler: başka bir kurumu
  * taramak için panelde çalışma alanını değiştirip çerezi yeniden alın.
  *
  * Rota listesi app/ ağacından türetiliyor: yeni bir sayfa açıldığında
- * elle eklemek gerekmesin. Dinamik segmentli yollar ([id]) atlanıyor —
- * gerçek bir kimlik olmadan çağrılamazlar; kaç tanesi atlandığı
- * yazılıyor ki "taradım" derken kapsam belli olsun.
+ * elle eklemek gerekmesin. Dinamik segmentli yollar ([id]) için örnek
+ * kimlik ÜST LİSTE SAYFASINDAN okunuyor — elle tutulan bir örnek
+ * dosyası ilk silinen kayıtta bayatlardı. Örneği bulunamayan rota
+ * atlanıyor ve adıyla yazılıyor; "taradım" derken neyin taranmadığı
+ * görünsün.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -90,7 +109,7 @@ function rotalar(kok = "app") {
 }
 
 const tumu = rotalar();
-const dinamik = tumu.filter((r) => r.includes("["));
+const dinamikler = tumu.filter((r) => r.includes("["));
 let taranacak = tumu.filter((r) => !r.includes("["));
 if (yalnizca) taranacak = taranacak.filter((r) => r.startsWith(yalnizca));
 
@@ -99,6 +118,76 @@ if (yalnizca) taranacak = taranacak.filter((r) => r.startsWith(yalnizca));
 const sunucu = (rota) => (rota.startsWith("/panel/platform") ? konsol : taban);
 
 const DIGEST = /"digest\\?":\\?"([^"\\]+)/g;
+
+/*
+  DİNAMİK ROTALARIN ÖRNEĞİ, LİSTEDEN BULUNUYOR.
+
+  /panel/crm/contracts/[id] gerçek bir kimlik olmadan çağrılamaz ve
+  kimlikler ortamdan ortama değişiyor; elle tutulan bir örnek dosyası
+  ise ilk silinen kayıtta bayatlar. Bunun yerine ÜST liste sayfası
+  çekiliyor ve içindeki ilk bağlantıdan kimlik alınıyor — kapsam
+  kendiliğinden güncel kalıyor.
+
+  Bulunamayan rota ATLANMIŞ sayılıyor ve adıyla yazılıyor: "taradım"
+  derken neyin taranmadığı görünsün. Sessizce "temiz" demek, olmayan
+  denetimden kötü.
+
+  Sabit değerli segmentler (belge türü gibi) burada; enum oldukları için
+  listeden keşfedilemiyorlar. Birden çok aday yazılabiliyor: hangisinin
+  havuzda karşılığı varsa o kullanılıyor (belge merkezinde kurumun
+  elinde yalnızca teklif ya da yalnızca sözleşme olabilir).
+*/
+const SABIT_SEGMENT = { "[type]": ["contract", "proposal"] };
+
+/*
+  KİMLİK HAVUZU. Tarama zaten onlarca sayfa çekiyor ve o sayfalarda
+  başka kayıtların bağlantıları geçiyor (cari ekranı sözleşmeye, ana
+  ekran işe bağlanıyor). Havuz bu yanıtlardan doluyor, yani liste
+  sayfasının VARSAYILAN SÜZGECİ boş olsa bile örnek bulunabiliyor:
+  deneme kurumunda sözleşme "Operasyonda" olduğu için aktif listede
+  görünmüyor ve yalnızca listeye bakan bir keşif onu bulamıyordu.
+*/
+const havuz = new Map();
+const KIMLIK = /(\/panel\/[a-z0-9/-]*?)\\?\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g;
+function havuzaTopla(govde) {
+  for (const eslesme of govde.matchAll(KIMLIK)) {
+    const ust = eslesme[1].replace(/\\/g, "");
+    if (!havuz.has(ust)) havuz.set(ust, eslesme[2]);
+  }
+}
+
+async function ornekYol(rota) {
+  /* Sabit segmentin birden çok adayı varsa her birini sırayla dene. */
+  for (const [desen, adaylar] of Object.entries(SABIT_SEGMENT)) {
+    if (!rota.includes(desen)) continue;
+    for (const aday of adaylar) {
+      const bulunan = await ornekYol(rota.split(desen).join(aday));
+      if (bulunan) return bulunan;
+    }
+    return null;
+  }
+  const parcalar = rota.split("/");
+  const sira = parcalar.findIndex((p) => p.startsWith("["));
+  if (sira < 0) return rota;
+  const ust = parcalar.slice(0, sira).join("/");
+  const kuyruk = parcalar.slice(sira + 1).join("/");
+  let kimlik = havuz.get(ust);
+  if (!kimlik) {
+    /* Havuzda yoksa üst liste sayfasını ayrıca çek. */
+    try {
+      const cevap = await fetch(sunucu(ust) + ust, { cache: "no-store", headers: { cookie: cerez } });
+      if (cevap.ok) {
+        havuzaTopla(await cevap.text());
+        kimlik = havuz.get(ust);
+      }
+    } catch { /* ağ hatası: rota atlanmış sayılır */ }
+  }
+  if (!kimlik) return null;
+  const bulunan = `${ust}/${kimlik}${kuyruk ? "/" + kuyruk : ""}`;
+  return bulunan.includes("[") ? null : bulunan;
+}
+
+const atlanan = [];
 
 async function dene(rota) {
   const adres = sunucu(rota) + rota;
@@ -109,6 +198,7 @@ async function dene(rota) {
       headers: { RSC: "1", cookie: cerez },
     });
     const govde = await cevap.text();
+    havuzaTopla(govde);
     const imzalar = [...govde.matchAll(DIGEST)].map((m) => m[1]);
     const cokme = imzalar.find((x) => /^\d+$/.test(x));
     if (cokme) return { rota, durum: "COKME", not: `hata kodu ${cokme}` };
@@ -125,7 +215,33 @@ async function dene(rota) {
 }
 
 const sonuclar = [];
+/* Önce durgun rotalar: yanıtları kimlik havuzunu dolduruyor. */
 for (const rota of taranacak) sonuclar.push(await dene(rota));
+
+/* Sonra dinamikler: örnek kimlik havuzdan, yoksa üst listeden. */
+if (!argv.includes("--yalnizca-durgun")) {
+  /*
+    İKİ TUR. Dinamik rotalar da havuzu besliyor ve sıra alfabetik:
+    gizlilik sözleşmesinin bağlantısı PERSONEL DETAYINDA geçiyor, o da
+    "confidentiality"den sonra taranıyor. Birinci turda örneği
+    bulunamayan rota, havuz büyüdükten sonra ikinci turda bulunabiliyor.
+  */
+  let bekleyen = dinamikler.filter((r) => !yalnizca || r.startsWith(yalnizca));
+  for (let tur = 0; tur < 2 && bekleyen.length; tur += 1) {
+    const kalan = [];
+    for (const rota of bekleyen) {
+      const ornek = await ornekYol(rota);
+      if (!ornek) { kalan.push(rota); continue; }
+      const sonuc = await dene(ornek);
+      sonuclar.push({ ...sonuc, rota: `${rota} → ${ornek.replace(/[0-9a-f-]{36}/g, "…")}` });
+      taranacak.push(ornek);
+    }
+    bekleyen = kalan;
+  }
+  atlanan.push(...bekleyen);
+} else {
+  atlanan.push(...dinamikler);
+}
 
 const cokmeler = sonuclar.filter((s) => s.durum === "COKME");
 const oturum = sonuclar.filter((s) => s.durum === "OTURUM");
@@ -142,7 +258,9 @@ console.log(
   + ` · ${sonuclar.length - cokmeler.length - oturum.length} sorunsuz`
   + ` · ${yonlendirmeler.length} yönlendirme`
   + ` · ${cokmeler.length} çökme`
-  + `\n${dinamik.length} dinamik rota atlandı (kimlik gerekiyor): ${dinamik.slice(0, 3).join(", ")}…`,
+  + (atlanan.length
+    ? `\n${atlanan.length} rota atlandı (örnek kayıt bulunamadı): ${atlanan.join(", ")}`
+    : `\n${dinamikler.length} dinamik rotanın örneği listelerden bulundu.`),
 );
 
 if (oturum.length) {
