@@ -166,6 +166,9 @@ html[data-theme="dark"] .os-launcher .marka-acik{display:none}
 html[data-theme="dark"] .os-launcher .marka-koyu{display:block}
 .os-icon-btn{display:grid;place-items:center;flex:none;width:40px;height:40px;border:0;border-radius:var(--r-md);background:transparent;color:var(--muted);cursor:pointer}
 .os-icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+/* Telefonda 44: tek kullanıldığı yer uygulama çekmecesinin kapatma
+   düğmesi ve orası alttan açılan bir yaprak — parmakla kapatılıyor. */
+@media (max-width:760px){.os-icon-btn{width:44px;height:44px}}
 
 /* Ctrl+K */
 .os-palette{width:min(640px,calc(100vw - 32px));margin-top:12vh;overflow:hidden}

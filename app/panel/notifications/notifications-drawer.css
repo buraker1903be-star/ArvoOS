@@ -177,7 +177,10 @@ html[data-theme="dark"] .ntd-chip.is-active{background:linear-gradient(180deg,va
   .ntd-chips::-webkit-scrollbar{display:none}
   .ntd-chips[data-fade-start]{--ntd-fade-s:36px}
   .ntd-chips[data-fade-end]{--ntd-fade-e:36px}
-  .ntd-chip{min-height:40px;font-size:14px;scroll-snap-align:start}
+  /* 44: bu bloğun kendi kuralı (ntd-icon-btn, ntd-link) ve konsolun
+     süzgeç çipleri telefonda bu boyda. Çipler burada yatay KAYAN bir
+     şeritte; kısa hedef kaydırmayla dokunmayı karıştırıyor. */
+  .ntd-chip{min-height:44px;font-size:14px;scroll-snap-align:start}
   .ntd-scroll{padding:0 6px 10px}
   .ntd-item{grid-template-columns:minmax(0,1fr) 44px}
   .ntd-main{min-height:64px;padding:14px 2px 14px 10px}
