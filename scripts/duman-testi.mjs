@@ -50,6 +50,7 @@
  *   node scripts/duman-testi.mjs --taban https://app.arvo-os.com --konsol https://yonetim.arvo-os.com
  *   node scripts/duman-testi.mjs --yalnizca /panel/finance
  *   node scripts/duman-testi.mjs --yalnizca-durgun   (dinamik rotaları hiç deneme)
+ *   node scripts/duman-testi.mjs --sekme-yok         (sorgu görünümlerini atla)
  *
  * Çerez tarayıcıdan alınır (Ağ sekmesinde bir isteğin `cookie` başlığı).
  * Hangi ÇALIŞMA ALANI taranacağını da o çerez söyler: başka bir kurumu
@@ -156,6 +157,46 @@ function havuzaTopla(govde) {
   }
 }
 
+/*
+  SORGU GÖRÜNÜMLERİ: SEKMEYİ DE TARA.
+
+  Betik bir süre yalnızca her sayfanın VARSAYILAN hâlini görüyordu, oysa
+  panelin yarısı sekmeyi sorgu değişkeniyle açıyor: Ayarlar'ın yedi
+  bölümü, sözleşme ve teklif listelerinin durum süzgeçleri, finansın
+  maliyet görünümü, takvimin ayları. "Kişi yetkileri" ekranı yalnızca
+  ?bolum=kisiler ile çiziliyor — yani kapsamın dışındaydı. Kaçırılan
+  sınıf tam da betiğin var olma sebebi: adrese doğrudan gidilen,
+  menüden görünmeyen sayfa.
+
+  Adresler elle yazılmıyor, ARAYÜZÜN KENDİ BAĞLANTILARINDAN toplanıyor
+  (16.10.2026'da deneme kurumunda 144 ayrı görünüm çıktı, hepsi temiz).
+  Satır bağlantıları (kimlik taşıyanlar) dışarıda: onları dinamik rota
+  turu zaten istiyor.
+
+  YOL BAŞINA TAVAN var: iki takvim gün/ay bağlantısıyla tek başına 74
+  adres üretiyor ve hepsi AYNI kodu çalıştırıyor. Tavan, taramayı
+  takvimin aylarını saymakla geçirmesini önlüyor.
+*/
+const SORGU_HAVUZU = new Map();
+/* `&` yükte `\u0026` olarak kaçıyor: ters eğik çizgiyi dışlayan bir
+   sınıf, iki süzgeçli bir bağlantıyı ilk parametrede kırpıyordu. */
+const SORGU = /\\?"(\/panel\/[a-z0-9/-]*\?(?:\\u0026|[^"\\])+)/g;
+const YOL_BASINA_TAVAN = 8;
+function sorguTopla(govde) {
+  for (const eslesme of govde.matchAll(SORGU)) {
+    const adres = eslesme[1].replace(/\\u0026/g, "&").replace(/&amp;/g, "&").split("#")[0];
+    if (/[0-9a-f]{8}-[0-9a-f]{4}/.test(adres)) continue;
+    const [yol, sorgu] = adres.split("?");
+    /* Aynı süzgecin farklı sırayla yazılmış ikizini iki kez istemeyelim. */
+    const anahtar = `${yol}?${[...new URLSearchParams(sorgu).entries()].map(([a, b]) => `${a}=${b}`).sort().join("&")}`;
+    if (SORGU_HAVUZU.has(anahtar)) continue;
+    let sayi = 0;
+    for (const v of SORGU_HAVUZU.values()) if (v.startsWith(`${yol}?`)) sayi += 1;
+    if (sayi >= YOL_BASINA_TAVAN) continue;
+    SORGU_HAVUZU.set(anahtar, adres);
+  }
+}
+
 async function ornekYol(rota) {
   /* Sabit segmentin birden çok adayı varsa her birini sırayla dene. */
   for (const [desen, adaylar] of Object.entries(SABIT_SEGMENT)) {
@@ -199,6 +240,7 @@ async function dene(rota) {
     });
     const govde = await cevap.text();
     havuzaTopla(govde);
+    sorguTopla(govde);
     const imzalar = [...govde.matchAll(DIGEST)].map((m) => m[1]);
     const cokme = imzalar.find((x) => /^\d+$/.test(x));
     if (cokme) return { rota, durum: "COKME", not: `hata kodu ${cokme}` };
@@ -243,6 +285,16 @@ if (!argv.includes("--yalnizca-durgun")) {
   atlanan.push(...dinamikler);
 }
 
+/* En son sorgu görünümleri: havuz artık bütün gezilen sayfalardan dolu. */
+let sorguSayisi = 0;
+if (!argv.includes("--sekme-yok")) {
+  for (const adres of SORGU_HAVUZU.values()) {
+    if (yalnizca && !adres.startsWith(yalnizca)) continue;
+    sorguSayisi += 1;
+    sonuclar.push(await dene(adres));
+  }
+}
+
 const cokmeler = sonuclar.filter((s) => s.durum === "COKME");
 const oturum = sonuclar.filter((s) => s.durum === "OTURUM");
 const yonlendirmeler = sonuclar.filter((s) => s.durum === "yonlendirme");
@@ -254,7 +306,7 @@ for (const s of sonuclar) {
 }
 
 console.log(
-  `\n${taranacak.length} rota tarandı`
+  `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü tarandı`
   + ` · ${sonuclar.length - cokmeler.length - oturum.length} sorunsuz`
   + ` · ${yonlendirmeler.length} yönlendirme`
   + ` · ${cokmeler.length} çökme`

@@ -6,7 +6,8 @@ import { deleteReadNotification, dismissReadNotifications, markAllNotificationsR
 import { describeNotifications, type DescribedNotification, type NotificationRow } from "./describe";
 import { basliklaraDagit, inNotificationFilter, kategoriParametresi, notificationFilters as filters, type BildirimOzeti, type BildirimOzetSatiri } from "./filters";
 import { countUnreadNotifications, loadNotifications } from "./load-notifications";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { NotificationIcon as Icon } from "./notification-icon";
 import { DuyuruMetni } from "./duyuru-metni";
 import { AnlikBildirimAyari } from "./anlik-bildirim-ayari";
@@ -67,7 +68,8 @@ function groupByDay(items: DescribedNotification[]) {
   okunmuş yapıyordu.
 */
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ kategori?: string; durum?: string; sayfa?: string }> }) {
-  const { kategori, durum, sayfa } = await searchParams;
+  const parametreler = await searchParams;
+  const { kategori, durum, sayfa } = parametreler;
   const sayfaNo = sayfaNumarasi(sayfa);
   const selectedFilter = filters.find((filter) => filter.key === kategori) ?? null;
   const yalnizOkunmamis = durum === "okunmamis";
@@ -114,6 +116,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
     notifications = suzulmus.slice(sayfaAraligi(sayfaNo)[0], sayfaAraligi(sayfaNo)[1] + 1);
   } else {
     // Sayfa boş "bildiriminiz yok" demesin: okunamayan liste hata olarak gösterilir.
+    /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+    if (aralikDisiMi(listeSonucu.error)) redirect(sayfasizAdres("/panel/notifications", parametreler));
     if (listeSonucu.error) throw new Error("Bildirimler okunamadı: " + listeSonucu.error.message);
     if (ozetSonucu.error) throw new Error("Bildirim sayıları okunamadı: " + ozetSonucu.error.message);
     notifications = await describeNotifications(supabase, organization.id, (listeSonucu.data ?? []) as unknown as NotificationRow[]);

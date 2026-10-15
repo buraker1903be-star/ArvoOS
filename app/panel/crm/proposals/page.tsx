@@ -17,7 +17,8 @@ import {
 } from "@/lib/customer-message-templates";
 import { TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { CustomerCell, DateCell, LastContactCell, MobilSatir, RepresentativeCell, ServiceCell, kisaTarih } from "../table-cells";
 import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara, tamPara } from "../istatistik-karti";
@@ -184,6 +185,8 @@ export default async function ProposalsPage({ searchParams }: Props) {
     supabase.rpc("crm_teklif_istatistikleri", { p_organization_id: membership.organization_id }),
     ...SERIT.map((grup) => sayim(grup)),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/crm/proposals", p));
   if (error) throw new Error("Teklifler okunamadı: " + error.message);
   if (employeeError) throw new Error("Satış temsilcileri okunamadı: " + employeeError.message);
   if (ozetHatasi) throw new Error("Teklif istatistikleri okunamadı: " + ozetHatasi.message);

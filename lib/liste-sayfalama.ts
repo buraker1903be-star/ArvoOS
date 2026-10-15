@@ -34,3 +34,42 @@ export function sonSayfaNo(toplam: number | null | undefined, satirSayisi: numbe
 export function sayfaAraligi(sayfaNo: number, boyut = SAYFA_BOYU): [number, number] {
   return [(sayfaNo - 1) * boyut, sayfaNo * boyut - 1];
 }
+
+/*
+  BOŞ SAYFA HATA DEĞİL.
+
+  PostgREST son satırın ötesine taşan bir aralığı REDDEDİYOR: 416 ve
+  `PGRST103` ("Requested range not satisfiable"). Sayfalar bunu gerçek
+  okuma hatası sayıp fırlatıyordu, yani kullanıcı "İŞLEM TAMAMLANAMADI ·
+  Bir sorun oluştu · Hata kodu: …" çökme ekranını görüyordu.
+
+  16.10.2026'da canlıda ölçüldü: sekiz listede `?sayfa=2` bu ekranı
+  veriyordu (talepler, teklifler, sözleşmeler, işler, arşiv, belgeler,
+  posta, bildirimler). Deneme kurumunda kayıtlar tek sayfaya sığdığı
+  için ikinci sayfa zaten aralık dışıydı — ama koşul kayıt sayısına
+  bağlı değil: elli bir kayıtlık bir listede ikinci sayfadayken bir
+  kayıt silinince, "Sonraki" ile gidilen sayfa yenilendiğinde, ya da
+  bayat bir yer imiyle aynı ekran çıkıyor.
+
+  HATA YUTULMUYOR: yalnızca bu TEK kod boş sayfa sayılıyor, geri kalan
+  her okuma hatası eskisi gibi fırlıyor (lib/panel-action ve
+  check:okunamayan kuralı yerinde kalsın).
+*/
+export function aralikDisiMi(hata: { code?: string | null } | null | undefined): boolean {
+  return hata?.code === "PGRST103";
+}
+
+/**
+ * ?sayfa düşürülmüş adres: var olmayan bir sayfa ilk sayfaya döner ve
+ * ÖTEKİ SÜZGEÇLER KORUNUR — süzgeci de sıfırlamak, kullanıcıyı aradığı
+ * listeden çıkarır.
+ */
+export function sayfasizAdres(yol: string, parametreler: Record<string, string | string[] | undefined>): string {
+  const sorgu = new URLSearchParams();
+  for (const [ad, deger] of Object.entries(parametreler)) {
+    if (ad === "sayfa" || deger === undefined) continue;
+    for (const tek of Array.isArray(deger) ? deger : [deger]) if (tek) sorgu.append(ad, tek);
+  }
+  const metin = sorgu.toString();
+  return metin ? `${yol}?${metin}` : yol;
+}

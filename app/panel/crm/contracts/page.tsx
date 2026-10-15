@@ -20,7 +20,8 @@ import { OtomatikSecim } from "../otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { simdi } from "../../os/genel-bakis";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
@@ -163,6 +164,8 @@ export default async function ContractsPage({ searchParams }: Props) {
     supabase.rpc("crm_sozlesme_istatistikleri", { p_organization_id: membership.organization_id }),
     ...SERIT.map((grup) => sayim(grup)),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/crm/contracts", p));
   if (error) throw new Error("Sözleşmeler okunamadı: " + error.message);
   if (employeeError) throw new Error("Temsilciler okunamadı: " + employeeError.message);
   if (ozetHatasi) throw new Error("Sözleşme istatistikleri okunamadı: " + ozetHatasi.message);

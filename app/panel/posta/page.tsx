@@ -6,6 +6,8 @@ import { postaDurumu } from "@/lib/posta-hesabi";
 import { htmlVarliklariniCoz, postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { postaGovdesindeAra } from "@/lib/posta-esitleme";
 import { imzaHtml } from "@/lib/posta-imza";
+import { redirect } from "next/navigation";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { istanbulTarihSaat } from "./bicim";
 import { SatirTiklama } from "../crm/satir-tiklama";
 import { konusmayiGeriAl, postaImzasi, taslakSil, topluGeriAl, topluOkundu } from "./actions";
@@ -65,10 +67,12 @@ const KUTULAR = [
   { anahtar: "giden", ad: "Gönderilenler", sutun: "giden_var" as const },
 ];
 
-/* Sayfa başına kayıt. Elli satır bir ekranı kaydırmadan taramaya yakın
-   ve toplu işlem sınırıyla (50) aynı: bir sayfanın tamamı tek seferde
-   işlenebiliyor. */
-const SAYFA_BOYU = 50;
+/* Sayfa boyu, aralık ve son sayfa hesabı ORTAK modülde
+   (lib/liste-sayfalama): posta boyu kendi sabitinde tutuyor ve aralığı
+   elle çarpıyordu. Kopya hesap, boy bir listede değişince ötekilerde
+   sessizce eski kalması demek — yardımcı tam bunun için var. Bir
+   sayfanın tamamı tek seferde toplu işlenebiliyor; boy büyürse o da
+   birlikte büyür. */
 
 const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
   acik: { ad: "Açık", ton: "warning" },
@@ -77,7 +81,8 @@ const DURUM_ETIKETI: Record<string, { ad: string; ton: string }> = {
 };
 
 export default async function PostaPage({ searchParams }: { searchParams: Promise<{ durum?: string; q?: string; kutu?: string; okunmamis?: string; sayfa?: string; etiket?: string; kapsam?: string; ilgilenen?: string }> }) {
-  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = await searchParams;
+  const parametreler = await searchParams;
+  const { durum: suzgec, q: aranan, kutu, okunmamis: yalnizOkunmamis, sayfa, etiket: secilenEtiket, kapsam, ilgilenen: ilgilenenSuzgeci } = parametreler;
   const { supabase, membership, userId, izin, organization } = await getPanelContext();
   /* Çöp kutusu kendi görünümü: silinen yazışma öteki kutuların
      hiçbirinde çıkmamalı, yalnızca burada. */
@@ -92,14 +97,14 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     Toplam AYRI sayılıyor (count: "exact"): sayfadaki satırları saymak
     sayfa boyunu toplam sanmak olurdu.
   */
-  const sayfaNo = Math.max(1, Number.parseInt(sayfa ?? "1", 10) || 1);
+  const sayfaNo = sayfaNumarasi(sayfa);
 
   let sorgu = supabase
     .from("mail_threads")
     .select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,ozet,mesaj_sayisi,okunmamis,durum,ilgilenen_user_id,opportunity_id,silindi_at,silen_user_id,etiketler,crm_opportunities(customer_name)", { count: "exact" })
     .eq("organization_id", membership.organization_id)
     .order(copGorunumu ? "silindi_at" : "son_mesaj_at", { ascending: false })
-    .range((sayfaNo - 1) * SAYFA_BOYU, sayfaNo * SAYFA_BOYU - 1);
+    .range(...sayfaAraligi(sayfaNo));
   sorgu = copGorunumu ? sorgu.not("silindi_at", "is", null) : sorgu.is("silindi_at", null);
   if (suzgec && DURUM_ETIKETI[suzgec]) sorgu = sorgu.eq("durum", suzgec);
   /* Okunmamışlar süzgeci: şeritteki sayı artık tıklanıyor. Rakamı
@@ -192,11 +197,11 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
   }
 
   const { data, error, count: suzgecSayisi } = await sorgu;
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/posta", parametreler));
   if (error) throw new Error("Konuşmalar okunamadı: " + error.message);
   const konusmalar = (data ?? []) as Konusma[];
-  const sonSayfa = typeof suzgecSayisi === "number"
-    ? Math.max(1, Math.ceil(suzgecSayisi / SAYFA_BOYU))
-    : konusmalar.length === SAYFA_BOYU ? sayfaNo + 1 : sayfaNo;
+  const sonSayfa = sonSayfaNo(suzgecSayisi, konusmalar.length, sayfaNo);
 
   // Ekip adları: "ilgilenen" ve "silen" sütunları kullanıcı kimliği tutuyor, ekranda ad gerekiyor.
   const ilgilenenler = [...new Set([

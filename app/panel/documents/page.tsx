@@ -5,7 +5,8 @@ import { OtomatikSecim } from "../crm/otomatik-secim";
 import { IstatistikKarti, degisimYazisi, kisaPara } from "../crm/istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { TEKLIF_GRUP_ADLARI, type TeklifGrubu } from "@/lib/teklif-grubu";
 import { SOZLESME_GRUP_ADLARI, type SozlesmeGrubu } from "@/lib/sozlesme-grubu";
 import { simdi } from "../os/genel-bakis";
@@ -143,6 +144,8 @@ export default async function BelgelerSayfasi({ searchParams }: {
     supabase.rpc(sozlesmeMi ? "crm_sozlesme_istatistikleri" : "crm_teklif_istatistikleri", { p_organization_id: org }),
     ...gruplar.map((grup) => suzulmus(true).eq(grupSutunu, grup)),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(listeHatasi)) redirect(sayfasizAdres("/panel/documents", params));
   if (listeHatasi) throw new Error("Belgeler okunamadı: " + listeHatasi.message);
   // Sayım hatası "0" değildir: rozetteki sayı yanlış olurdu.
   const sayimHatasi = teklifSayimHatasi ?? sozlesmeSayimHatasi ?? grupSayimlari.find((sonuc) => sonuc.error)?.error;

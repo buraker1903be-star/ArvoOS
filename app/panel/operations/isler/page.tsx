@@ -9,7 +9,8 @@ import { OtomatikSecim } from "../../crm/otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "../../crm/istatistik-karti";
 import { aylikDilimler, oran } from "@/lib/liste-istatistik";
 import { aramaDeseni } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { simdi } from "../../os/genel-bakis";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
@@ -54,7 +55,8 @@ type IsSatiri = {
 };
 
 export default async function OperationsJobsPage({ searchParams }: { searchParams: Promise<{ arama?: string; durum?: string; termin?: string; mesaj?: string; sorumlu?: string; sayfa?: string; sira?: string }> }) {
-  const { arama, durum, termin, mesaj, sorumlu, sayfa, sira } = await searchParams;
+  const parametreler = await searchParams;
+  const { arama, durum, termin, mesaj, sorumlu, sayfa, sira } = parametreler;
   // Termin sıralaması (?sira=termin): en yakın termin en üstte.
   const terminSirasi = sira === "termin";
   const selectedStatus = (statusFilters as readonly string[]).includes(durum ?? "") ? durum! : "";
@@ -127,6 +129,8 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     supabase.rpc("operasyon_is_istatistikleri", { p_organization_id: membership.organization_id }),
     supabase.rpc("operasyon_is_serit", { ...suzgecParametreleri, p_bugun: bugun }),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/operations/isler", parametreler));
   if (error) throw new Error("İş akışları okunamadı: " + error.message);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (ozetHatasi) throw new Error("İş istatistikleri okunamadı: " + ozetHatasi.message);

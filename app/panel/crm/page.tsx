@@ -6,7 +6,8 @@ import { OtomatikSecim } from "./otomatik-secim";
 import { IstatistikKarti, degisimYazisi } from "./istatistik-karti";
 import { oran } from "@/lib/liste-istatistik";
 import { aramaDeseni, telefonAnahtari } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import { formatPersonName } from "@/lib/format-name";
 import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../components/panel-drawer";
@@ -124,7 +125,8 @@ export default async function RequestsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { arama, durum, temsilci, sayfa } = await searchParams;
+  const parametreler = await searchParams;
+  const { arama, durum, temsilci, sayfa } = parametreler;
   const search = clean(arama).toLocaleLowerCase("tr-TR");
   const selected = clean(durum);
   const selectedRepresentative = clean(temsilci);
@@ -215,6 +217,8 @@ export default async function RequestsPage({
     }),
     supabase.rpc("crm_talep_serit", suzgecParametreleri),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/crm", parametreler));
   if (error) throw new Error("Talepler okunamadı: " + error.message);
   if (stageError)
     throw new Error("Talep ayarları okunamadı: " + stageError.message);

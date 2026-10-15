@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { MobilSatir } from "@/app/panel/crm/table-cells";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
 import { summarizeUserAgent } from "@/app/_components/legal/format";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
 import { IstatistikKarti } from "../../../../crm/istatistik-karti";
 import "../../../../crm/crm.css";
 import "../../../../crm/kayit-detay/kayit-detay.css";
@@ -74,7 +74,8 @@ export default async function BelgeErisimGecmisi({ params, searchParams }: {
   searchParams: Promise<{ tur?: string; sayfa?: string }>;
 }) {
   const { type, id } = await params;
-  const { tur: turSuzgeci, sayfa } = await searchParams;
+  const parametreler = await searchParams;
+  const { tur: turSuzgeci, sayfa } = parametreler;
   if (!["proposal", "contract"].includes(type)) notFound();
   const sozlesmeMi = type === "contract";
 
@@ -107,6 +108,8 @@ export default async function BelgeErisimGecmisi({ params, searchParams }: {
   if (secilenTur) liste = liste.eq("access_type", secilenTur);
 
   const [{ data, error, count: suzgecSayisi }, toplamSonucu, ...turSonuclari] = await Promise.all([liste, say(), ...TURLER.map((tur) => say(tur))]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres(`/panel/documents/${type}/${id}/access-logs`, parametreler));
   if (error) throw new Error(`Erişim kayıtları okunamadı: ${error.message}`);
   const sayimHatasi = toplamSonucu.error ?? turSonuclari.find((sonuc) => sonuc.error)?.error;
   if (sayimHatasi) throw new Error(`Erişim sayıları okunamadı: ${sayimHatasi.message}`);

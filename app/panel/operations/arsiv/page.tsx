@@ -8,7 +8,8 @@ import { SatirTiklama } from "../../crm/satir-tiklama";
 import { unarchiveWorkflow } from "../actions";
 import { OpsIcon, shortDate, todayIstanbul } from "../ops-shared";
 import { aramaDeseni } from "@/lib/liste-arama";
-import { sayfaAraligi, sayfaNumarasi, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { aralikDisiMi, sayfaAraligi, sayfaNumarasi, sayfasizAdres, sonSayfaNo } from "@/lib/liste-sayfalama";
+import { redirect } from "next/navigation";
 import "../../crm/crm.css";
 import "../../crm/kayit-detay/kayit-detay.css";
 import "../operations.css";
@@ -42,7 +43,8 @@ type ArsivIsi = {
 export default async function OperasyonArsivi({ searchParams }: {
   searchParams: Promise<{ arama?: string; sayfa?: string; donem?: string; kaynak?: string }>;
 }) {
-  const { arama, sayfa, donem, kaynak } = await searchParams;
+  const parametreler = await searchParams;
+  const { arama, sayfa, donem, kaynak } = parametreler;
   /* Arama deseni SÜZGECE GİRMEDEN temizleniyor: PostgREST'in `or`
      süzgeci virgülle ayrılmış bir metin, yani "Yılmaz, Ayşe" diye
      arayan kullanıcı sorguyu bozuyor ve sayfa hata veriyordu
@@ -109,6 +111,8 @@ export default async function OperasyonArsivi({ searchParams }: {
     // Pasif personel de dahil: arşivdeki eski işlerin sorumlusu ayrılmış olabilir
     supabase.from("hr_employees").select("id,full_name,user_id,employment_status").eq("organization_id", organizationId),
   ]);
+  /* Aralık dışı sayfa çökme değil: süzgeçler korunur, ilk sayfaya döner. */
+  if (aralikDisiMi(error)) redirect(sayfasizAdres("/panel/operations/arsiv", parametreler));
   if (error) throw new Error("Arşiv okunamadı: " + error.message);
   if (personelHatasi) throw new Error("Personeller okunamadı: " + personelHatasi.message);
 
