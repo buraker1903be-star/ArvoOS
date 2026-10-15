@@ -71,7 +71,7 @@ export default async function FinanceOverviewPage() {
     { data: contractData, error: contractError },
     { data: installmentData, error: installmentError },
     { data: creditData, error: creditError },
-    { data: costData },
+    { data: costData, error: costHatasi },
     { data: ozetVerisi, error: ozetHatasi },
   ] = await Promise.all([
     /* Cariler TOPLAMLARIYLA (cari_liste): her carinin bütün
@@ -93,7 +93,7 @@ export default async function FinanceOverviewPage() {
        sayısının katı, sonuç sözleşme başına tek satır. */
     maliyetGorur
       ? supabase.rpc("sozlesme_maliyet_toplamlari", { p_organization_id: organizationId, p_durumlar: [...IMZALI] })
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     // Aylık tahsilat toplamları (bu ayın tahsilatı buradan).
     supabase.rpc("cari_tahsilat_ozeti", { p_organization_id: organizationId }),
   ]);
@@ -102,6 +102,14 @@ export default async function FinanceOverviewPage() {
   if (installmentError) throw new Error("Ödeme taksitleri okunamadı: " + installmentError.message);
   if (creditError) throw new Error("Tahsilatlar okunamadı: " + creditError.message);
   if (ozetHatasi) throw new Error("Tahsilat özeti okunamadı: " + ozetHatasi.message);
+  /*
+    MALİYET OKUNAMAZSA KÂR ORANI ŞİŞER (15.10.2026). Bu okumanın hatası
+    alınmıyordu; düşerse maliyet eşlemesi boş kalıyor ve her sözleşme
+    kendi service_cost'una düşüyor — kalem kalem girilmiş maliyetler
+    sıfır sayılıyor, "ortalama kâr oranı" olduğundan YÜKSEK çıkıyor.
+    Sayfanın öteki beş okuması zaten hata veriyor; bu dışarıda kalmıştı.
+  */
+  if (costHatasi) throw new Error("İş maliyetleri okunamadı: " + costHatasi.message);
 
   const contracts = (contractData ?? []) as unknown as Contract[];
   const { accounts, totals } = buildAccountBalances((partyData ?? []) as unknown as Party[], contracts);

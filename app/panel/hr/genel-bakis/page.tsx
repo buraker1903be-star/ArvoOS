@@ -55,10 +55,10 @@ export default async function HrOverviewPage() {
   const [
     { data: employeeData, error: employeeError },
     { data: departmentData, error: departmentError },
-    { data: memberData },
-    { data: invitationData },
-    { data: presenceData },
-    { data: agreementData },
+    { data: memberData, error: uyelikHatasi },
+    { data: invitationData, error: davetHatasi },
+    { data: presenceData, error: varlikHatasi },
+    { data: agreementData, error: sozlesmeHatasi },
     { data: girisData, error: girisError },
   ] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,full_name,job_title,email,employment_status,can_receive_sales_requests").eq("organization_id", organizationId).order("full_name"),
@@ -73,6 +73,32 @@ export default async function HrOverviewPage() {
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (departmentError) throw new Error("Departmanlar okunamadı: " + departmentError.message);
+
+  /*
+    OKUNAMAYAN SORGU, EMİN EMİN YANLIŞ BİR EKRAN (15.10.2026). Bu dört
+    okumanın hatası alınmıyordu ve her biri ayrı yönde yanıltıyordu:
+     - Üyelikler düşerse "panele erişimi olan" listesi boşalır, herkes
+       erişimsiz görünür.
+     - Davetler düşerse bekleyen davet görünmez; yönetici zaten davet
+       ettiği kişiyi "davet edilmemiş" sanıp yeniden davet eder. Konsolun
+       kullanıcı ekranı bu tuzağı zaten yazıyor ("'bekleyen davet yok'
+       demek değil"), buradaki ikizi atlanmıştı.
+     - Varlık kaydı düşerse "şu an çevrimiçi kimse yok" denir.
+     - Gizlilik sözleşmeleri düşerse HERKES imzalamamış görünür — yanlış
+       alarm, yönetici olmayan bir işin peşine düşer.
+    Hiçbiri sayfayı çizmeyi engellemiyor, o yüzden fırlatmak yerine
+    başlığın altında adı yazılıyor (girişlerdeki kalıbın aynısı).
+  */
+  const okunamayan = ([
+    ["Panel erişimleri", uyelikHatasi],
+    ["Bekleyen davetler", davetHatasi],
+    ["Çevrimiçi bilgisi", varlikHatasi],
+    ["Gizlilik sözleşmeleri", sozlesmeHatasi],
+    ["Panel girişleri", girisError],
+  ] as [string, { message: string } | null][])
+    .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
+  if (okunamayan.length)
+    console.error("[ik] genel bakış sorguları okunamadı", okunamayan.map(([ad, h]) => `${ad}: ${h.message}`));
 
   const employees = (employeeData ?? []) as Employee[];
   const departments = (departmentData ?? []) as Department[];
@@ -151,7 +177,7 @@ export default async function HrOverviewPage() {
   return (
     <GenelBakis
       gizliBaslik="İnsan Kaynakları genel bakış"
-      uyari={girisError ? ["Panel girişleri"] : []}
+      uyari={okunamayan.map(([ad]) => ad)}
     >
       {canSeeActivity ? <SeriKarti baslik="Panele giren kişi" alt="Son 14 gün · günde farklı kişi" seri={seri} adet="kişi" /> : null}
 
