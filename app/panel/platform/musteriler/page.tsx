@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { zorunlu } from "../konsol-oku";
+import { aramaDeseni } from "@/lib/liste-arama";
 import { PRODUCTS } from "@/lib/products";
 import { bireyselListeFiyatiKurus } from "@/lib/paket-ucreti";
 import { yayimlananFiyatlar } from "@/lib/site/fiyat-oku";
@@ -186,7 +187,34 @@ export default async function MusterilerPage({ searchParams }: {
     kapsamadığında ekranda yazıyor (eksikKapsam), sessiz bir eksilme yok.
   */
   const LISTE_SINIRI = 1000;
-  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu] = await Promise.all([
+  /*
+    ARAMA SINIRIN ÖTESİNE DE BAKAR (15.10.2026).
+
+    Liste en yeni 1000 kaydı okuyor ve süzgeç bellekte, o 1000 satırın
+    üzerinde çalışıyordu: 1001. abone hiçbir şekilde bulunamıyordu ve
+    ekrandaki uyarı "arama kutusunu kullanın" diyerek olmayan bir çözüm
+    öneriyordu.
+
+    Süzgeci olduğu gibi sunucuya taşımak GERİLEME olurdu: bellekteki
+    eşleşme Türkçe duyarsız (sadelestir: "İş" ile "is") ve ürün ADIYLA
+    da arıyor; ilike ikisini de yapmıyor. O yüzden ikisi birleşiyor —
+    liste sorgusu aynı kalıyor, aramada İKİNCİ bir sorgu tabloyu
+    tarayıp eşleşenleri ekliyor. Yüklenen satırlar için bugünkü zengin
+    eşleşme aynen sürüyor, sınırın ötesindekiler artık erişilebilir:
+    hiçbir durumda bugünkünden kötü değil.
+
+    Kalan sınır: ikinci sorgu ilike kullandığı için sınırın ÖTESİNDEKİ
+    bir kaydı Türkçe katlamayla (ör. "İsmail" yazıp "ismail") bulmak
+    garanti değil. Bunu çözmek veritabanında normalleştirilmiş bir arama
+    sütunu ister (migration); abone sayısı 1000'i geçmeden gereksiz.
+  */
+  /* Terim lib/liste-arama'dan geçiyor: PostgREST'in `or` dilbilgisini
+     bozan karakterler (virgül, parantez, joker) orada ayıklanıyor ve
+     iki harften kısa terim null dönüyor — "a" bütün tabloyu getirirdi.
+     Aynı kural dört büyük listede de kullanılıyor; ikinci bir kopyası
+     yazılmadı. */
+  const sunucuDeseni = aranan ? aramaDeseni(aranan) : null;
+  const [kurumSonucu, { data: aboneSatirlari, count: aboneSayisi, error }, { data: urunSatirlari, error: urunHatasi }, kayitSonucu, planSonucu, fiyatlar, paketSonucu, aramaSonucu] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,provisioning_state,license_status,plan_code,monthly_fee,current_period_end,trial_ends_at,user_limit,aktif_uye,contact_phone,grup_markasi")
       .order("name"),
@@ -204,6 +232,14 @@ export default async function MusterilerPage({ searchParams }: {
     yayimlananFiyatlar(),
     // Yeni müşteri sihirbazının paket seçimi (eskiden kiracı sayfasındaydı).
     supabase.from("plans").select("code,name").eq("is_active", true).order("created_at"),
+    // Yalnızca arama yapılırken: sınırın ötesindeki eşleşmeler.
+    sunucuDeseni
+      ? supabase.from("product_subscribers")
+          .select("id,product,email,full_name,status,trial_ends_at,current_period_end,created_at")
+          .is("kurum_id", null)
+          .or(`email.ilike.%${sunucuDeseni}%,full_name.ilike.%${sunucuDeseni}%,product.ilike.%${sunucuDeseni}%`)
+          .limit(LISTE_SINIRI)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   /*
     Sayfanın ASIL verisi: okunamazsa sayfa hata veriyor. Eskiden `?? []`
@@ -233,9 +269,26 @@ export default async function MusterilerPage({ searchParams }: {
      ücreti görünür, ücreti müşteri gelirine değil "grup içi değer"e yazılır
      (lib/kurum-turu: "arvo" ve "grup" müşteri değil). */
   const kurumlar = (kurumSatirlari ?? []) as unknown as Kurum[];
-  const aboneler = (aboneSatirlari ?? []) as Abone[];
+  /*
+    İki okumanın birleşimi, id'ye göre tekilleştirilmiş: liste sorgusu
+    en yeni 1000 kaydı, arama sorgusu (varsa) eşleşenleri getiriyor.
+  */
+  /* Hata yutulmuyor: arama sorgusu düşerse kullanıcı eksik sonucu
+     "abone yok" sanardı (AGENTS.md — engelin sorgusu hata yutmaz). */
+  const aramaHatasi = (aramaSonucu as { error: { message?: string } | null }).error;
+  if (aramaHatasi) throw new Error(`Abone araması okunamadı: ${aramaHatasi.message ?? "bilinmeyen hata"}`);
+  const aramaSatirlari = ((aramaSonucu as { data: Abone[] | null }).data ?? []);
+  const aboneHaritasi = new Map<string, Abone>();
+  for (const satir of [...((aboneSatirlari ?? []) as Abone[]), ...aramaSatirlari]) aboneHaritasi.set(satir.id, satir);
+  const aboneler = [...aboneHaritasi.values()];
   const toplamAbone = aboneSayisi ?? aboneler.length;
-  const eksikKapsam = toplamAbone > aboneler.length;
+  /*
+    Liste TAVANA DEĞDİYSE eksik. Eskiden ölçüt "toplam > yüklenen"di;
+    arama ikinci sorguyu da getirdiğinden yüklenen sayı toplamdan küçük
+    olsa bile liste artık eksik olmayabiliyor. Doğru soru, liste
+    sorgusunun sınıra çarpıp çarpmadığı.
+  */
+  const eksikKapsam = ((aboneSatirlari ?? []) as Abone[]).length >= LISTE_SINIRI;
 
   const urunleriKurumun = new Map<string, UrunLisansi[]>();
   for (const l of urunLisanslari) urunleriKurumun.set(l.organization_id, [...(urunleriKurumun.get(l.organization_id) ?? []), l]);
@@ -441,7 +494,7 @@ export default async function MusterilerPage({ searchParams }: {
         </div>
 
         {/*
-          UYARI ÇALIŞMAYAN BİR ÇÖZÜM ÖNERİYORDU (15.10.2026). Cümlenin
+          UYARI ÖNCE ÇALIŞMAYAN BİR ÇÖZÜM ÖNERİYORDU (15.10.2026). Cümlenin
           sonu "Aradığınızı bulamazsanız arama kutusunu kullanın" idi.
           Oysa bu sayfanın araması SUNUCUDA DEĞİL: süzgeç, yukarıda
           okunan aynı 1000 satırın üzerinde bellekte çalışıyor
@@ -451,15 +504,13 @@ export default async function MusterilerPage({ searchParams }: {
           bellekte arıyor, yani konsolda kaçan aboneyi bulabilecek bir
           yer yok.
 
-          Sınırın kendisi bilerek: sessiz eksilme olmasın diye eksik
-          kapsam ekranda yazılıyor (AGENTS.md, rakam denetimi). Eksik
-          olan, aramanın da aynı sınır içinde kaldığını SÖYLEMEKTİ.
-          Gerçek çözüm aramayı sunucuya taşımak; o ayrı bir iş ve
-          kurucunun kararı.
+          Sonra asıl çözüm uygulandı: arama yapıldığında ikinci bir sorgu
+          tabloyu tarıyor (yukarıda, sunucuDeseni). Tavsiye artık doğru —
+          arama gerçekten listeyle sınırlı değil.
         */}
         {eksikKapsam ? (
           <KNot ton="uyari">
-            Bireysel abonelerin en yeni {sayi(aboneler.length)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Arama ve süzgeçler de bu {sayi(aboneler.length)} kayıt içinde çalışıyor; daha eski aboneler listeye girmiyor.
+            Bireysel abonelerin en yeni {sayi(LISTE_SINIRI)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Daha eski bir aboneyi görmek için arama kutusunu kullanın: arama listeyle sınırlı değil, bütün kayıtlara bakar.
           </KNot>
         ) : null}
 
