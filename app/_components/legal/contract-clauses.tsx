@@ -78,6 +78,29 @@ const H = (c: ReactNode): Block => ({ t: "h", c });
 
 /** Silinemeyen maddeler: sözleşmenin kurulması ve tüketici korumaları bunlara dayanıyor. */
 export const ZORUNLU_MADDELER = ["parties", "payment", "withdrawal", "evidence", "effect"] as const;
+/*
+  MADDEYE ATIF YAPAN MADDELER (hedef → atfeden).
+
+  Maddeler birbirine NUMARAYLA atıf yapıyor: numarayı `no(anahtar)`
+  veriyor ve o da `keys.indexOf(anahtar) + 1`. Anahtar listede yoksa
+  indexOf -1 döner, yani numara SIFIR çıkar. Kurum bir maddeyi
+  "Çıkar" ile kaldırdığında ona atıf yapan cümle müşteriye giden
+  sözleşmede şöyle yazılıyordu:
+
+    "Gizli Bilgi: 0. maddede tanımlanan bilgi ve belgeler."
+    "…değişikliklerin 0. madde uyarınca bildirileceğini kabul eder."
+
+  Zorunlu maddeler (parties, payment, withdrawal) zaten kaldırılamıyor;
+  tablo yalnızca KALDIRILABİLEN hedefleri tutuyor. Yeni bir atıf
+  eklendiğinde buraya da yazılır — tests/unit/madde-atiflari.test.ts
+  kaynaktaki `no("…")` çağrılarını tarayıp bunu sabitliyor.
+*/
+export const MADDE_ATIFLARI: Record<string, readonly string[]> = {
+  scope: ["definitions"],
+  confidentiality: ["definitions"],
+  notices: ["parties", "definitions"],
+  termination: ["payment"],
+};
 /** Yürürlük maddesi her zaman sonda (madde sayısını o söylüyor). */
 export const SON_MADDE = "effect";
 

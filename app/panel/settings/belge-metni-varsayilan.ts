@@ -1,4 +1,4 @@
-import { SOZLESME_BLOKLARI, SOZLESME_YER_TUTUCULARI, SON_MADDE, ZORUNLU_MADDELER, sozlesmeVarsayilanMetinleri, specialClausesFor } from "@/app/_components/legal/contract-clauses";
+import { MADDE_ATIFLARI, SOZLESME_BLOKLARI, SOZLESME_YER_TUTUCULARI, SON_MADDE, ZORUNLU_MADDELER, sozlesmeVarsayilanMetinleri, specialClausesFor } from "@/app/_components/legal/contract-clauses";
 import { TEKLIF_BLOKLARI, TEKLIF_VARSAYILAN, TEKLIF_VARSAYILAN_SIRA, TEKLIF_YER_TUTUCULARI, TEKLIF_ZORUNLU } from "@/app/_components/proposal-document";
 import { getContractTemplate } from "@/lib/contract-templates";
 import type { BelgeTuru } from "@/lib/belge-metni";
@@ -17,6 +17,8 @@ export function belgeVarsayilanlari(tur: BelgeTuru, kurumSlug: string | null | u
       maddeler,
       sira: maddeler.map((madde) => madde.anahtar),
       zorunlu: [...ZORUNLU_MADDELER] as string[],
+      /* Hedef → ona atıf yapan maddeler; atıf duruyorken hedef çıkarılamaz. */
+      atiflar: MADDE_ATIFLARI as Record<string, readonly string[]>,
       son: SON_MADDE as string | undefined,
       yerTutucular: SOZLESME_YER_TUTUCULARI.map((x) => x.ad),
       bloklar: SOZLESME_BLOKLARI.map((x) => x.ad),
@@ -27,6 +29,8 @@ export function belgeVarsayilanlari(tur: BelgeTuru, kurumSlug: string | null | u
     maddeler: TEKLIF_VARSAYILAN as VarsayilanMadde[],
     sira: [...TEKLIF_VARSAYILAN_SIRA] as string[],
     zorunlu: [...TEKLIF_ZORUNLU] as string[],
+    // Teklif maddeleri birbirine numarayla atıf yapmıyor.
+    atiflar: {} as Record<string, readonly string[]>,
     son: undefined as string | undefined,
     yerTutucular: TEKLIF_YER_TUTUCULARI.map((x) => x.ad),
     bloklar: TEKLIF_BLOKLARI.map((x) => x.ad),

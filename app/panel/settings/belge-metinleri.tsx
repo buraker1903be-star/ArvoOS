@@ -99,6 +99,11 @@ export async function BelgeMetinleri({ tur }: { tur: BelgeTuru }) {
           const madde = kurumun ?? arvo;
           if (!madde) return null;
           const zorunlu = varsayilan.zorunlu.includes(anahtar);
+          /* Bu maddeye BELGEDE duran başka maddeler numarayla atıf
+             yapıyorsa çıkarılamaz: atıf "0. madde" olurdu. Sunucu da
+             aynı kuralı uyguluyor (belge-metni-actions). */
+          const atfedenler = (varsayilan.atiflar[anahtar] ?? []).filter((kaynak) => sira.includes(kaynak));
+          const atifAdlari = atfedenler.map((kaynak) => kurum.maddeler?.[kaynak]?.baslik ?? varsayilanMadde(kaynak)?.baslik ?? kaynak);
           const sabit = anahtar === "giris" || anahtar === varsayilan.son;
           const ilk = i === (tur === "proposal" ? 1 : 0);
           const son = i === satirlar.length - 1 || satirlar[i + 1]?.anahtar === varsayilan.son;
@@ -120,7 +125,8 @@ export async function BelgeMetinleri({ tur }: { tur: BelgeTuru }) {
                 <MaddeFormu tur={tur} anahtar={anahtar} baslik={madde.baslik} metin={madde.metin} eylem={belgeMaddesiKaydet} dugme="Maddeyi kaydet" />
               </PanelDrawer>
               {arvo && kurumun ? <form action={belgeMaddesiSifirla}><input type="hidden" name="tur" value={tur} /><input type="hidden" name="anahtar" value={anahtar} /><button className="panel-secondary" type="submit">Arvo metnine dön</button></form> : null}
-              {!zorunlu && !sabit ? <form action={belgeMaddesiKaldir}><input type="hidden" name="tur" value={tur} /><input type="hidden" name="anahtar" value={anahtar} /><button className="panel-secondary bm-cikar" type="submit">{arvo ? "Çıkar" : "Sil"}</button></form> : null}
+              {!zorunlu && !sabit && !atifAdlari.length ? <form action={belgeMaddesiKaldir}><input type="hidden" name="tur" value={tur} /><input type="hidden" name="anahtar" value={anahtar} /><button className="panel-secondary bm-cikar" type="submit">{arvo ? "Çıkar" : "Sil"}</button></form> : null}
+              {!zorunlu && !sabit && atifAdlari.length ? <span className="bm-atif">{atifAdlari.join(", ")} maddesi bu maddeye numarayla atıf yapıyor; çıkarmak için önce o atıfı kaldırın.</span> : null}
             </div> : null}
           </li>;
         })}

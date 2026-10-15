@@ -35,7 +35,14 @@ async function baglam(formData: FormData) {
   if (error) throw new Error("Kurumun belge metni okunamadı: " + error.message);
   const varsayilan = belgeVarsayilanlari(tur, organization.slug);
   const kural: SiraKurali = { varsayilan: varsayilan.sira, zorunlu: varsayilan.zorunlu, son: varsayilan.son };
-  return { supabase, membership, userId, tur, kurum: kurumMetniCoz(data?.content), varsayilan, kural };
+  const kurum = kurumMetniCoz(data?.content);
+  /* Etkin sıra ve başlıklar: çıkarma engeli hangi maddelerin BELGEDE
+     durduğuna ve adlarına bakıyor (çıkarılmış bir madde atıf yapamaz). */
+  const etkinSirasi = etkinSira(varsayilan.sira, kurum, varsayilan.zorunlu, varsayilan.son);
+  const baslik = (a: string) =>
+    kurum.maddeler?.[a]?.baslik ?? varsayilan.maddeler.find((m) => m.anahtar === a)?.baslik ?? a;
+  return { supabase, membership, userId, tur, kurum, varsayilan, kural,
+    atiflar: varsayilan.atiflar, etkinSira: etkinSirasi, baslik };
 }
 
 async function kaydet(b: Awaited<ReturnType<typeof baglam>>, kurum: KurumMetni) {
@@ -80,9 +87,32 @@ async function belgeMaddesiSifirla__impl(formData: FormData) {
   await kaydet(b, maddeyiSifirla(b.kurum, String(formData.get("anahtar") ?? "")));
 }
 
+/*
+  ATIF DURUYORKEN MADDE ÇIKARILAMAZ.
+
+  Maddeler birbirine NUMARAYLA atıf yapıyor ve numara sıradaki yerinden
+  geliyor. Çıkarılan maddenin numarası sıfır oluyordu: kurum "Gizlilik"i
+  çıkarınca Tanımlar maddesi müşteriye giden sözleşmede "Gizli Bilgi:
+  0. maddede tanımlanan bilgi ve belgeler." diye yazıyordu. Dört madde
+  (kapsam, gizlilik, tebligat, fesih) hem çıkarılabiliyor hem atıf
+  alıyordu.
+
+  Engel bir çıkmaz değil, sıralama: kurum önce atfeden maddenin metnini
+  düzenleyip atıfı kaldırır (ya da o maddeyi de çıkarır), sonra hedefi
+  çıkarır. Mesaj hangi maddelerin atıf yaptığını yazıyor.
+*/
 async function belgeMaddesiKaldir__impl(formData: FormData) {
   const b = await baglam(formData);
-  await kaydet(b, maddeyiKaldir(b.kurum, String(formData.get("anahtar") ?? ""), b.kural));
+  const anahtar = String(formData.get("anahtar") ?? "");
+  const atfedenler = (b.atiflar[anahtar] ?? []).filter((kaynak) => b.etkinSira.includes(kaynak));
+  if (atfedenler.length) {
+    const adlar = atfedenler.map((kaynak) => b.baslik(kaynak)).join(", ");
+    throw new Error(
+      `Bu madde çıkarılamaz: ${adlar} maddesi ona numarayla atıf yapıyor ve atıf "0. madde" olarak yazılır. ` +
+      "Önce o maddenin metnindeki atıfı kaldırın.",
+    );
+  }
+  await kaydet(b, maddeyiKaldir(b.kurum, anahtar, b.kural));
 }
 
 async function belgeMaddesiGeriEkle__impl(formData: FormData) {
