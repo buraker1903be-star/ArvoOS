@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { notFound } from "next/navigation";
+import { modulGerekKosullu } from "@/lib/modul-kapisi";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
@@ -71,15 +72,22 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   /* ---- Çapa: müşterinin bir talebi ve/veya carisi ---- */
   let talep: Talep | null = null;
   if (talepId) {
-    if (!crmVar) throw new Error("CRM modülüne erişiminiz yok.");
-    const { data } = await supabase.from("crm_opportunities").select(TALEP_ALANLARI).eq("id", talepId).eq("organization_id", org).maybeSingle();
+    /* Kapalı modül çökme ekranı değil: fırlatmak "Bir sorun oluştu · Hata
+       kodu: …" veriyordu. Bu iki kapı, 28 SAYFAYI dönüştüren değişiklikte
+       ortak bir BİLEŞENDE durduğu için gözden kaçmıştı. */
+    modulGerekKosullu(crmVar, "crm");
+    const { data, error } = await supabase.from("crm_opportunities").select(TALEP_ALANLARI).eq("id", talepId).eq("organization_id", org).maybeSingle();
+    /* Okunamayan kayıt "kayıt yok" DEĞİL: hata yutulunca sayfa, var olan
+       bir müşteri için "bulunamadı" diyordu — emin emin yanlış. */
+    if (error) throw new Error("Müşteri talebi okunamadı: " + error.message);
     if (!data) notFound();
     talep = data as Talep;
   }
   let cariKaydi: Cari | null = null;
   if (cariId) {
-    if (!cariModulu) throw new Error("Cari hesap modülüne erişiminiz yok.");
-    const { data } = await supabase.from("account_parties").select("id,name,phone,email,tax_number,tax_office,address").eq("id", cariId).eq("organization_id", org).maybeSingle();
+    modulGerekKosullu(cariModulu, "accounts");
+    const { data, error } = await supabase.from("account_parties").select("id,name,phone,email,tax_number,tax_office,address").eq("id", cariId).eq("organization_id", org).maybeSingle();
+    if (error) throw new Error("Cari hesap okunamadı: " + error.message);
     if (!data) notFound();
     cariKaydi = data as Cari;
     /* Cariden açıldıysa CRM tarafı carinin en son sözleşmesinin talebinden:

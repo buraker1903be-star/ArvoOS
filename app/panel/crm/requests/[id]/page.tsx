@@ -113,7 +113,11 @@ export default async function RequestDetailPage({
         .order("sort_order")
         .order("code"),
     ]);
-  if (error || !data) notFound();
+  /* Hata 404'e çevriliyordu: okuma düşünce ekran "kayıt bulunamadı"
+     diyor, kullanıcı da kaydın silindiğini sanıyordu. Hatanın
+     okunamaması "kayıt yok" demek değil. */
+  if (error) throw new Error("Talep okunamadı: " + error.message);
+  if (!data) notFound();
   if (employeeError) throw new Error("Satış temsilcileri okunamadı.");
   const item = data as Opportunity;
   const d = item.request_details ?? {};

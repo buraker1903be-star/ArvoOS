@@ -102,7 +102,11 @@ export default async function OperationDetailPage({
     supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
     supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
   ]);
-  if (workflowError || !workflowData) notFound();
+  /* Hata 404'e çevriliyordu: okuma düşünce ekran "kayıt bulunamadı"
+     diyor, kullanıcı da kaydın silindiğini sanıyordu. Hatanın
+     okunamaması "kayıt yok" demek değil. */
+  if (workflowError) throw new Error("İş akışı okunamadı: " + workflowError.message);
+  if (!workflowData) notFound();
   const workflow = workflowData as Workflow;
   const steps = [...(workflow.operation_steps ?? [])].sort((a, b) => a.sort_order - b.sort_order);
   const completedCount = steps.filter((step) => step.is_completed).length;

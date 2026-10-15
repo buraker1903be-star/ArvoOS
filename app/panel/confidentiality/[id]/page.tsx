@@ -11,7 +11,11 @@ export default async function ConfidentialityAgreementPage({ params, searchParam
   const { id } = await params;
   const query = await searchParams;
   const { supabase, userId, membership, organization, izin } = await getPanelContext();
-  const { data } = await supabase.from("hr_confidentiality_agreements").select("id,organization_id,employee_id,agreement_no,content_snapshot,status,signer_name,signature_path,signed_at,created_at,hr_employees!inner(full_name,user_id,job_title)").eq("id",id).maybeSingle();
+  const { data, error } = await supabase.from("hr_confidentiality_agreements").select("id,organization_id,employee_id,agreement_no,content_snapshot,status,signer_name,signature_path,signed_at,created_at,hr_employees!inner(full_name,user_id,job_title)").eq("id",id).maybeSingle();
+  /* Hata yutuluyordu: okuma düşünce ekran "kayıt bulunamadı" diyordu ve
+     personel imzalayacağı sözleşmenin silindiğini sanıyordu. Hatanın
+     okunamaması "kayıt yok" demek değil. */
+  if (error) throw new Error("Gizlilik sözleşmesi okunamadı: " + error.message);
   if (!data) notFound();
   const agreement = data as unknown as Agreement;
   const employee = Array.isArray(agreement.hr_employees) ? agreement.hr_employees[0] : agreement.hr_employees;
