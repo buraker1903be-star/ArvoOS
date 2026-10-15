@@ -169,6 +169,29 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-col-main small{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dash-col-row .status-pill{flex:none}
 .dash-col-time{flex:none;align-self:flex-start;margin-top:2px;font-size:var(--fs-micro);color:var(--dim);white-space:nowrap}
+/*
+  ROZETİ OLAN SATIRDA AD KIRPILMAZ (15.10.2026).
+
+  Satır düz bir flex: ad esner (flex:1), durum rozeti ve zaman sabit.
+  Rozet 109, zaman 71 piksel tuttuğu için ada KALAN ne ise o düşüyordu
+  ve rozetli satırlarda ad kesiliyordu — rozeti olmayan aynı kiracının
+  satırında ad tam görünürken.
+
+  Masaüstünde daha kötüydü: konsolun ana sayfası orada dört sütuna
+  bölünüyor ve kart 296 piksele iniyor, yani TELEFONDAKİNDEN (325) dar.
+  Ada 58 piksel kalıyordu. Zamanı göreli yapmak telefonu kurtardı,
+  masaüstünü kurtarmadı; genişlik kazanmak bu sorunu çözmüyor çünkü
+  kiracı adı kullanıcı verisi ve uzunluğunun üst sınırı yok.
+
+  Çözüm ada TAM SATIR vermek: rozet ve zaman alt satıra iniyor, zaman
+  sağa yaslı. Yalnızca İKİSİ BİRDEN olan satırlarda (:has) — "Bugün
+  neye bakmalı?" gibi zamansız kartlar tek satırda kalsın diye.
+  Bedeli, rozetli satırların bir satır uzaması: bir durum taşıyan satır
+  gerçekten daha fazla şey anlatıyor.
+*/
+.dash-col-row:has(> .status-pill):has(> .dash-col-time){flex-wrap:wrap}
+.dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-main{flex:1 1 100%}
+.dash-col-row:has(> .status-pill):has(> .dash-col-time)>.dash-col-time{margin-top:0;margin-left:auto;align-self:center}
 /* Okunmamış mesaj ve posta: kalın ad + kurum renginde nokta */
 .dash-col-list li.is-unread .dash-col-main b{font-weight:var(--fw-bold)}
 .dash-col-list li.is-unread .dash-col-main b::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--primary);vertical-align:1px}
