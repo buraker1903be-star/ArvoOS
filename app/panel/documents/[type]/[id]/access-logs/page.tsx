@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { MobilSatir } from "@/app/panel/crm/table-cells";
 import { notFound, redirect } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -74,6 +75,9 @@ export default async function BelgeErisimGecmisi({ params, searchParams }: {
   searchParams: Promise<{ tur?: string; sayfa?: string }>;
 }) {
   const { type, id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   const parametreler = await searchParams;
   const { tur: turSuzgeci, sayfa } = parametreler;
   if (!["proposal", "contract"].includes(type)) notFound();

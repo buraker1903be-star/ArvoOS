@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { Suspense } from "react";
 import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
@@ -79,6 +80,9 @@ const TAKSIT_ADLARI: Record<TaksitDurumu, string> = { odendi: "Ödendi", kismi: 
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   const { supabase, membership, modules, organization, izin } = await getPanelContext();
   modulGerek(modules, "crm");
   const { data, error } = await supabase

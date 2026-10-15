@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -106,6 +107,9 @@ type Arama = { pencere?: string; prim?: string; prim_bas?: string; prim_bit?: st
 
 export default async function EmployeeDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Arama> }) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   const arama = await searchParams;
   const { supabase, membership, userId, modules, organization, izin, isPlatformOwner } = await getPanelContext();
   modulGerek(modules, "hr");

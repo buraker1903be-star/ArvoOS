@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { ContractDocument } from "@/app/_components/contract-document";
@@ -28,6 +29,9 @@ const SOZLESME_TONU: Record<SozlesmeGrubu, string> = { draft: "neutral", sent: "
 
 export default async function DocumentPreviewPage({ params }: { params: Promise<{ type: string; id: string }> }) {
   const { type, id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   if (!["proposal", "contract"].includes(type)) notFound();
   const document = await loadPanelDocument(type, id);
   if (!document) notFound();

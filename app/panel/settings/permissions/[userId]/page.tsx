@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { PERMISSION_ROLES } from "@/lib/role-permissions";
@@ -16,6 +17,9 @@ const ROL_ETIKETI = new Map(PERMISSION_ROLES.map((role) => [role.key as string, 
 */
 export default async function MemberPermissionsPage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId: hedef } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(hedef)) notFound();
   const { supabase, membership, userId, izin } = await getPanelContext();
 
   if (!izin("settings.yetki.yonet")) {

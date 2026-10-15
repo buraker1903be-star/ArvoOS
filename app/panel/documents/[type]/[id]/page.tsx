@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
@@ -62,6 +63,9 @@ type Sozlesme = {
 
 export default async function BelgeYasamDongusu({ params }: { params: Promise<{ type: string; id: string }> }) {
   const { type, id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   if (!["proposal", "contract"].includes(type)) notFound();
   const sozlesmeMi = type === "contract";
 

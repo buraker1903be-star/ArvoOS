@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { istanbulDateTime } from "@/lib/istanbul-date";
@@ -62,6 +63,9 @@ const DURUM: Record<string, { ad: string; ton: string }> = {
 
 export default async function TeklifRevizyonlari({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   const { supabase, membership, modules } = await getPanelContext();
   modulGerek(modules, "crm");
 

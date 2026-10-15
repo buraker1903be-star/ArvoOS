@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { ContractDocument } from "@/app/_components/contract-document";
 import { ProposalDocument } from "@/app/_components/proposal-document";
@@ -9,13 +10,18 @@ import { loadPanelDocument } from "../load";
 // yazdırmada panel çerçevesi tamamen gizlenir (document-styles.ts).
 export async function generateMetadata({ params }: { params: Promise<{ type: string; id: string }> }): Promise<Metadata> {
   const { type, id } = await params;
-  if (!["proposal", "contract"].includes(type)) return { title: "Belge" };
+  /* Başlık işlevi bozuk değerde fırlatmıyor, tıpkı bilinmeyen türde
+     olduğu gibi: sayfanın kendisi notFound() veriyor. */
+  if (!kimlikMi(id) || !["proposal", "contract"].includes(type)) return { title: "Belge" };
   const document = await loadPanelDocument(type, id);
   return { title: document ? pdfFileName(document.type === "contract" ? "Sozlesme" : "Teklif", document.number) : "Belge", robots: { index: false, follow: false } };
 }
 
 export default async function DocumentPdfPage({ params }: { params: Promise<{ type: string; id: string }> }) {
   const { type, id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur: Postgres uuid olmayan değeri
+     22P02 ile reddediyor ve sayfa onu çökme ekranına çeviriyordu. */
+  if (!kimlikMi(id)) notFound();
   if (!["proposal", "contract"].includes(type)) notFound();
   const document = await loadPanelDocument(type, id);
   if (!document) notFound();
