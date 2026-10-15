@@ -56,8 +56,8 @@ type Kurum = {
   current_period_end: string | null;
   trial_ends_at: string | null;
   user_limit: number | null;
-  aktif_uye: number;
   contact_phone: string | null;
+  aktif_uye: number;
   grup_markasi: boolean | null;
 };
 type UrunLisansi = { organization_id: string; product: string; status: string; monthly_fee: number | null; current_period_end: string | null; trial_ends_at: string | null };
@@ -78,6 +78,14 @@ type Satir = {
   tur: "kurumsal" | "bireysel" | "grup" | "arvo";
   ad: string;
   alt: string;
+  /*
+    GÖSTERİLEN METİN İLE ARANAN METİN AYRI (15.10.2026). Süzgeç
+    `satir.alt` üzerinde çalışıyor; özetten bir şey çıkarmak onu
+    aranamaz da yapıyordu. Telefon özetten kalktı ama arama kutusu
+    hâlâ "Ad, e-posta, telefon ya da ürün" diyor — ekranda
+    görünmeyen ama aranabilir kalması gereken ne varsa burada.
+  */
+  arama?: string;
   href: string;
   durum: string;
   ton: "success" | "warning" | "danger" | "neutral";
@@ -271,12 +279,24 @@ export default async function MusterilerPage({ searchParams }: {
          kutusunda sayılıyor. */
       tur: kurumTuru(kurum) === "musteri" ? "kurumsal" : kurumTuru(kurum) === "grup" ? "grup" : "arvo",
       ad: kurum.display_name || kurum.name,
+      /*
+        ÖZETTE İKİ ŞEY: PAKET VE KULLANICI (15.10.2026, kurum sahibinin
+        kararı). Telefon ve kayıt tarihi de buradaydı; dört bilgi tek
+        satıra sığmıyor ve telefonda satırın kuyruğu kesiliyordu.
+        İkisi de listede TARANAN bilgi değil: telefonu kesik hâliyle
+        arayamıyorsun, kayıt tarihi de müşteri detayında duruyor.
+
+        Veriden silinmediler ve ikisi de işlevini koruyor: telefon
+        `arama` alanına taşındı (bu sayfanın süzgeci BELLEKTE çalışıyor
+        ve metni satırın kendisinden okuyor, yani özetten çıkan şey
+        aranamaz da olurdu — arama kutusu hâlâ "telefon" diyor), kayıt
+        tarihi de "en yeni" sıralamasını besliyor (olusma).
+      */
       alt: [
         kurum.plan_code ? `${PAKET_ADI[kurum.plan_code] ?? kurum.plan_code} paket` : null,
         `${sayi(Number(kurum.aktif_uye))}${kurum.user_limit ? `/${sayi(Number(kurum.user_limit))}` : ""} kullanıcı`,
-        kurum.contact_phone,
-        kayitTarihi.get(kurum.id) ? `kayıt ${tarih(kayitTarihi.get(kurum.id) ?? null)}` : null,
       ].filter(Boolean).join(" · "),
+      arama: kurum.contact_phone ?? undefined,
       // Müşteri detayı (14.10.2026); teknik ayarlar oradan "Kurum ayarları" ile.
       href: `/panel/platform/musteriler/${kurum.id}`,
       durum: durum.ad,
@@ -303,7 +323,7 @@ export default async function MusterilerPage({ searchParams }: {
   const liste = tumSatirlar
     .filter((satir) => (secilenTur ? satir.tur === secilenTur : true))
     .filter((satir) => (secilenUrun ? satir.urunler.some((u) => u.kod === secilenUrun) : true))
-    .filter((satir) => (desen ? sadelestir(`${satir.ad} ${satir.alt} ${satir.urunler.map((u) => u.etiket).join(" ")}`).includes(desen) : true))
+    .filter((satir) => (desen ? sadelestir(`${satir.ad} ${satir.alt} ${satir.arama ?? ""} ${satir.urunler.map((u) => u.etiket).join(" ")}`).includes(desen) : true))
     .sort((a, b) => secilenSira === "gelir" ? b.ucret - a.ucret || a.ad.localeCompare(b.ad, "tr")
       : secilenSira === "yeni" ? (b.olusma ?? "").localeCompare(a.olusma ?? "")
       : a.ad.localeCompare(b.ad, "tr"));
