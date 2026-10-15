@@ -4,7 +4,7 @@ import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { waMeAdresi } from "@/lib/wa-me";
-import { belgeAliciTelefonu } from "../alici-telefonu";
+import { belgeAlicisi } from "../belge-alicisi";
 import { WhatsappGonderDugmesi } from "../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../share-send-link";
 import { daysSince, fetchLastContacts, waitingLabel } from "../last-contact";
@@ -53,7 +53,6 @@ type Props = {
     share?: string;
     doc_no?: string;
     customer_name?: string;
-    customer_email?: string;
     title?: string;
     amount?: string;
     currency?: string;
@@ -101,7 +100,6 @@ export default async function ProposalsPage({ searchParams }: Props) {
   const share = p.share ?? "";
   const docNo = p.doc_no ?? "";
   const customerName = p.customer_name ?? "";
-  const customerEmail = p.customer_email ?? "";
   const { supabase, membership, organization, modules } = await getPanelContext();
   if (!modules.some((m) => m.code === "crm"))
     throw new Error("CRM modülüne erişiminiz yok.");
@@ -212,7 +210,7 @@ export default async function ProposalsPage({ searchParams }: Props) {
       arvoKurumu: await arvoKurumuMu(supabase, membership.organization_id),
     });
     // Eski usul bağlantısının alıcısı; telefon URL'ye taşınmıyor (gerekçe: alici-telefonu.ts).
-    const aliciTelefonu = await belgeAliciTelefonu(supabase, membership.organization_id, "proposal", share);
+    const alici = await belgeAlicisi(supabase, membership.organization_id, "proposal", share);
     const publicHost = await resolvePublicHost(supabase, membership.organization_id);
     const shareUrl = `https://${publicHost}/teklif/${share}`;
     const messages = proposalMessages({
@@ -231,13 +229,13 @@ export default async function ProposalsPage({ searchParams }: Props) {
           <small title={shareUrl}>{shareUrl.replace(/^https:\/\//, "")}</small>
         </div>
         <div className="talep-iletisim">
-          <ShareSendLink kind="proposal" token={share} className="panel-primary" href={`mailto:${encodeURIComponent(customerEmail)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
+          <ShareSendLink kind="proposal" token={share} className="panel-primary" href={`mailto:${encodeURIComponent(alici.eposta ?? "")}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
             E-posta ile gönder
           </ShareSendLink>
           {gonderimYolu === "panel" ? (
             <WhatsappGonderDugmesi kind="proposal" token={share} musteriAdi={customerName} />
           ) : (
-            <ShareSendLink kind="proposal" token={share} className="panel-secondary" newTab href={waMeAdresi(aliciTelefonu, messages.whatsapp)}>
+            <ShareSendLink kind="proposal" token={share} className="panel-secondary" newTab href={waMeAdresi(alici.telefon, messages.whatsapp)}>
               WhatsApp ile gönder
             </ShareSendLink>
           )}
