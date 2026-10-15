@@ -7,6 +7,7 @@ import { addContractCostItem, deleteContractCostItem, updateContractCostItem } f
 import { initials } from "../finance-ui";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../../components/kayit-formu.css";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
   İŞ MALİYETİ DETAYI (2026-10): İş Maliyetleri listesinde satıra
@@ -58,7 +59,7 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
           <label>Kategori<select name="category"><option>Dış hizmet</option><option>Personel</option><option>Yazılım / Lisans</option><option>Belge / Resmî gider</option><option>Diğer</option></select></label>
           <label className="fin-span-2"><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" minLength={2} maxLength={300} required placeholder="Örn. çeviri hizmeti"/></label>
           <label>Hizmet sağlayıcı<input name="supplier" maxLength={180}/></label>
-          <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" /></label>
+          <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" /></label>
           <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={todayIso()} required/></label>
           <label>Durum<select name="status"><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
           <label>Belge / Referans<input name="reference_no" maxLength={120} placeholder="İsteğe bağlı" /></label>
@@ -104,7 +105,7 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                         <label><span>Kategori<b className="req" aria-hidden="true">*</b></span><input name="category" defaultValue={item.category} required/></label>
                         <label><span>Açıklama<b className="req" aria-hidden="true">*</b></span><input name="description" defaultValue={item.description} required/></label>
                         <label>Sağlayıcı<input name="supplier" defaultValue={item.supplier||""}/></label>
-                        <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" min="0.01" step="0.01" defaultValue={Number(item.amount)/100} required/></label>
+                        <label><span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(Number(item.amount))} required/></label>
                         <label><span>Tarih<b className="req" aria-hidden="true">*</b></span><input name="cost_date" type="date" defaultValue={item.cost_date} required/></label>
                         <label>Durum<select name="status" defaultValue={item.status}><option value="planned">Planlandı</option><option value="paid">Ödendi</option></select></label>
                         <label className="wide">Referans<input name="reference_no" defaultValue={item.reference_no||""}/></label>

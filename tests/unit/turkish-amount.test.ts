@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { kurusOku, parseTurkishAmount } from "@/lib/turkish-amount";
+import { kurusOku, liraYazisi, parseTurkishAmount } from "@/lib/turkish-amount";
 
 test("bin ayırıcılı tutar tam okunur", () => {
   // Gerileme: "1.500" eskiden virgül/nokta dönüşümü yüzünden 1,5 oluyordu.
@@ -49,4 +49,21 @@ test("form alanındaki tutar kuruşa çevrilir", () => {
 
   // Geçersiz metin NaN döner; çağıranlar Number.isFinite ile eliyor.
   assert.equal(Number.isNaN(kurusOku("elma")), true);
+});
+
+test("kutuya yazılan tutar Türkçe, gidip gelince değişmiyor", () => {
+  /*
+    Para kutuları metin (inputMode="decimal"); varsayılan değer de Türkçe
+    yazılmalı. Eskiden `(amount / 100).toFixed(2)` yazılıyordu: kutuda
+    "30000.00" görünüyordu — kullanıcının kendi yazımı değil.
+  */
+  assert.equal(liraYazisi(3_000_000), "30.000,00");
+  assert.equal(liraYazisi(500), "5,00");
+  assert.equal(liraYazisi(0), "0,00");
+  assert.equal(liraYazisi(123_456_789), "1.234.567,89");
+
+  // Kutuya yazılanı sunucu aynı tutar olarak geri okumalı.
+  for (const kurus of [500, 3_000_000, 123_456_789, 99, 100_050]) {
+    assert.equal(kurusOku(liraYazisi(kurus)), kurus, `${kurus} kuruş gidip gelince değişti`);
+  }
 });

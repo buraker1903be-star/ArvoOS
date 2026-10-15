@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { liraYazisi, parseTurkishAmount } from "@/lib/turkish-amount";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import "../components/kayit-formu.css";
 import "./prim-odeme-formu.css";
@@ -30,7 +30,6 @@ const onerilen = (is: FormIsi) => (is.acik > 0 ? is.acik : Math.max(0, is.acik +
 export type FormOdemesi = { id: string; amount: number; paidOn: string; method: string; note: string | null };
 
 const para = (kurus: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(kurus / 100);
-const liraYazisi = (kurus: number) => (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const kurusa = (yazi: string) => { const lira = parseTurkishAmount(yazi); return Number.isFinite(lira) ? Math.round(lira * 100) : NaN; };
 const req = <b className="req" aria-hidden="true">*</b>;
 

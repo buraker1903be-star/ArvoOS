@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { createContractDirectly } from "./contract-actions";
 import { createProposal } from "./proposal-actions";
 import type { CreateProposalState } from "./sales-shared";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
 import {
   applyDueDates,
   buildLabeledSchedule,
@@ -183,7 +184,7 @@ export function ProposalBuilderForm({
         <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" required defaultValue={scope} placeholder="Verilecek hizmetler ve teslimler" /></label>
 
         <p className="wide kayit-formu-bolum">Tutar ve ödeme</p>
-        <label><span>{belge} tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" min="0" step="0.01" required placeholder="0,00" onChange={(event) => setAmount(Number(event.target.value) || 0)} /></label>
+        <label><span>{belge} tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" onChange={(event) => setAmount(parseTurkishAmount(event.target.value) || 0)} /></label>
         <label>KDV durumu<select name="tax_status" value={tax} onChange={(event) => setTax(event.target.value as Tax)}><option value="excluded">KDV Hariç</option><option value="included">KDV Dahil</option><option value="exempt">KDV İstisna</option></select></label>
         <label className="wide">Ödeme planı<select value={plan} onChange={(event) => setPlan(event.target.value as PaymentPlanType)}><option value="cash">Peşin ödeme</option><option value="half">Ön ödeme (sözleşme onayında) + son ödeme (teslim öncesi)</option><option value="third">Ön ödeme + ara ödeme + son ödeme (teslim öncesi)</option><option value="custom">Özel ödeme planı (taksitli)</option></select></label>
 

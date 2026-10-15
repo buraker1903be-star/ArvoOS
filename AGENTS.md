@@ -50,7 +50,13 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   valueAsNumber 5, checkValidity() true, kütüğe ₺5,00. On üç yerde
   böyleydi, sözleşme ve teklif tutarları dahil; `npm run check:rakamlar`
   artık bu kalıbı da arıyor (yüzde hesapları, yani bölmeden sonra gelen
-  `* 100`, kuralın dışında). Bölüştürmede
+  `* 100`, kuralın dışında). **Para kutusu `type="number"` DEĞİL**, metin
+  + `inputMode="decimal"`: sayı kutusu iki ayırıcılı bir tutarı
+  ("1.234.567") geçerli saymıyor, kutuyu boşaltıyor ve kullanıcı doğru
+  yazdığı hâlde "bu alanı doldurun" uyarısı alıyor. Varsayılan değer
+  `liraYazisi()` ile Türkçe yazılır ("30.000,00"), kutunun altındaki
+  canlı önizleme de `parseTurkishAmount`'tan geçer — yoksa önizleme NaN
+  alıp "girilmemiş" der. Denetim bu kutuları da arıyor. Bölüştürmede
   artan kuruş baştaki taksitlere eklenir; toplam her zaman birebir tutar.
 - **Tarih Türkiye saatiyle.** Sunucu UTC'de çalışıyor; gün anahtarı için
   `todayInIstanbul`, karşılaştırma için `istanbulMidnight`.

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { tutarDegistir, yenidenBol, type PlanTaksidi } from "@/lib/taksit-plani";
 import { gecerliGun, gunFarki, gunKaydir } from "@/lib/taksit-vadesi";
-import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { liraYazisi, parseTurkishAmount } from "@/lib/turkish-amount";
 import "../components/kayit-formu.css";
 import "./taksit-formlari.css";
 
@@ -98,7 +98,7 @@ export function TaksitDuzenleFormu({ taksitId, plan, hedefNo, eylem }: {
 }) {
   const hedef = plan.find((t) => t.no === hedefNo);
   const [vade, setVade] = useState(hedef?.vade ?? "");
-  const [tutar, setTutar] = useState(hedef ? (hedef.tutar / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+  const [tutar, setTutar] = useState(hedef ? liraYazisi(hedef.tutar) : "");
   const [kaydir, setKaydir] = useState(false);
   const toplam = plan.reduce((t, s) => t + s.tutar, 0);
 

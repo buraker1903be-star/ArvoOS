@@ -17,6 +17,7 @@ import { type FinTone } from "../finance/finance-ui";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
 import "../components/kayit-formu.css";
 import { TaksitDuzenleFormu, TaksitPlaniFormu } from "./taksit-formlari";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
   CARİ HESAP İÇERİĞİ (2026-10): müşteri sayfasında ortada açılan pencere.
@@ -162,8 +163,6 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
   const hareketDuzeltir = isPlatformOwner || izin("finance.cari.yonet");
   // Taksit vadesi tahsilat girişiyle aynı yetki (finans kaydı yönetimi).
   const vadeDegistirir = modules.some((m) => m.code === "finance") && (isPlatformOwner || izin("finance.kayit.yonet"));
-  // Form alanı için Türkçe tutar ("22.500,00"); sunucu parseTurkishAmount ile okur.
-  const tutarYazisi = (kurus: number) => (kurus / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   /* Taksit seçeneği formu için plan başına özet: ödenen, kalan, açık taksit sayısı, ilk açık vade. */
   const planOzetleri = [...planlar.entries()].map(([planId, sozlesme]) => {
     const liste = dagitilmis.filter((t) => t.payment_plan_id === planId && t.durum !== "iptal");
@@ -210,7 +209,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
             <input type="hidden" name="party_id" value={partyId} />
             <label>
               <span>Tahsilat tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
-              <input name="amount" type="number" min="0.01" max={balance / 100} step="0.01" required placeholder="0,00" />
+              <input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" />
             </label>
             <label>
               Tarih
@@ -240,7 +239,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 <input type="hidden" name="party_id" value={partyId} />
                 <label>
                   <span>Hizmet tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
-                  <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0,00" />
+                  <input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" />
                 </label>
                 <label>
                   İşlem tarihi
@@ -268,7 +267,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                 <input type="hidden" name="party_id" value={partyId} />
                 <label>
                   <span>İade tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
-                  <input name="amount" type="number" min="0.01" max={refundable / 100} step="0.01" required placeholder="0,00" />
+                  <input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" />
                 </label>
                 <label>
                   Tarih
@@ -376,7 +375,7 @@ export async function CariHesapIcerigi({ partyId }: { partyId: string }) {
                             <input type="hidden" name="entry_id" value={e.id} />
                             <label>
                               <span>Tutar (₺)<b className="req" aria-hidden="true">*</b></span>
-                              <input name="amount" inputMode="decimal" required defaultValue={tutarYazisi(Number(e.amount))} />
+                              <input name="amount" inputMode="decimal" required defaultValue={liraYazisi(Number(e.amount))} />
                             </label>
                             <label>
                               <span>İşlem tarihi<b className="req" aria-hidden="true">*</b></span>

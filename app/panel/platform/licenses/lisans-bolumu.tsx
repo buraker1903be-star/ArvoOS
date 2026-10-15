@@ -16,6 +16,7 @@ import { UrunKartlari } from "./urun-kartlari";
 // Ölçer, ürün kartları ve düzenleme penceresi (plt-*) hâlâ buradan; başlık,
 // şerit ve kart düzeninin CSS'ini konsol-ui kendisi import ediyor.
 import "../platform.css";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
   Paketin varsayılanından sapan kapasite, değerin yanına kısa not.
@@ -325,8 +326,8 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 userLimit: String(license.user_limit),
                 storageLimitMb: String(license.storage_limit_mb),
                 aiCreditLimit: String(license.ai_credit_limit),
-                monthlyFee: license.monthly_fee ? String(Number(license.monthly_fee) / 100) : "",
-                extraUserFee: license.extra_user_fee ? String(Number(license.extra_user_fee) / 100) : "",
+                monthlyFee: license.monthly_fee ? liraYazisi(Number(license.monthly_fee)) : "",
+                extraUserFee: license.extra_user_fee ? liraYazisi(Number(license.extra_user_fee)) : "",
                 extraUserCap: String(Number(license.extra_user_cap ?? 0)),
                 suspensionReason: license.suspension_reason ?? "",
               },
@@ -380,7 +381,7 @@ export async function LisansBolumu({ supabase, organizationId, label }: { supaba
                 baslangic: {
                   status,
                   planCode: row?.plan_code ?? "",
-                  monthlyFee: row?.monthly_fee ? String(Number(row.monthly_fee) / 100) : "",
+                  monthlyFee: row?.monthly_fee ? liraYazisi(Number(row.monthly_fee)) : "",
                   currentPeriodEnd: tarihDegeri(row?.current_period_end ?? null),
                   suspensionReason: row?.suspension_reason ?? "",
                 },

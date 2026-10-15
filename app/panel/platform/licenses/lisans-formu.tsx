@@ -5,6 +5,7 @@ import { useState } from "react";
 import "../../components/kayit-formu.css";
 import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -113,8 +114,10 @@ export function LisansFormu({
 
   const mb = Number.parseInt(deger.storageLimitMb, 10);
   const kredi = Number.parseInt(deger.aiCreditLimit, 10);
-  const ucret = Number(deger.monthlyFee);
-  const ekUcret = Number(deger.extraUserFee);
+  /* Kutular Türkçe tutar taşıyor ("1.500,00"); altındaki önizleme de
+     aynı okumadan geçmeli, yoksa NaN kalıp "girilmemiş" diyor. */
+  const ucret = parseTurkishAmount(deger.monthlyFee);
+  const ekUcret = parseTurkishAmount(deger.extraUserFee);
   const tavan = Number.parseInt(deger.extraUserCap, 10);
   /* Şu an kaç koltuk ücretli: kurucu tavanı düşürürken kimseyi kilitlemesin. */
   const ekKoltuk = Math.max(0, aktifUye - (Number.parseInt(deger.userLimit, 10) || 0));
@@ -215,7 +218,7 @@ export function LisansFormu({
           <label>
             Aylık ücret (TL)
             <input
-              type="number" name="monthly_fee" min={1} step="0.01" value={deger.monthlyFee}
+              name="monthly_fee" inputMode="decimal" autoComplete="off" value={deger.monthlyFee}
               placeholder="Boşsa kartla ödeme kapalı" onChange={(o) => yaz("monthlyFee", o.target.value)}
             />
             <small className="plt-field-note">
@@ -233,7 +236,7 @@ export function LisansFormu({
           <label>
             Ek kullanıcı bedeli (TL / ay)
             <input
-              type="number" name="extra_user_fee" min={0} step="0.01" value={deger.extraUserFee}
+              name="extra_user_fee" inputMode="decimal" autoComplete="off" value={deger.extraUserFee}
               placeholder="Boşsa ek koltuk ücretsiz" onChange={(o) => yaz("extraUserFee", o.target.value)}
             />
             <small className="plt-field-note">

@@ -43,6 +43,7 @@ import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
 import { PortalZiyareti } from "../../portal-ziyareti";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
   SÖZLEŞME DETAYI (2026-10): talep ve teklif detayıyla aynı üç sütun.
@@ -242,7 +243,7 @@ export default async function ContractDetailPage({ params }: Props) {
                     <p className="wide kayit-formu-bolum">Sözleşme</p>
                     <label className="wide"><span>Sözleşme başlığı<b className="req" aria-hidden="true">*</b></span><input name="title" defaultValue={data.title} required maxLength={180} /></label>
                     <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
-                    <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={(data.amount / 100).toFixed(2)} required /></label>
+                    <label><span>Sözleşme tutarı (₺)<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(data.amount)} required /></label>
                     <label>Ödeme planı açıklaması<input name="payment_plan" defaultValue={data.payment_plan ?? ""} placeholder="Örn. Ön ödeme + son ödeme" /></label>
                     <label>Başlangıç tarihi<input name="start_date" type="date" defaultValue={data.start_date ?? ""} /></label>
                     <label>Teslim tarihi<input name="due_date" type="date" defaultValue={data.due_date ?? ""} /></label>

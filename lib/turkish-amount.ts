@@ -35,3 +35,22 @@ export function kurusOku(deger: FormDataEntryValue | null | undefined) {
   if (!metin) return 0;
   return Math.round(parseTurkishAmount(metin) * 100);
 }
+
+/*
+  KURUŞU FORM KUTUSUNA YAZILACAK TÜRKÇE TUTARA ÇEVİRİR: 3000000 → "30.000,00".
+
+  Para kutuları `type="number"` değil metin (inputMode="decimal"): sayı
+  kutusu Türkçe yazımı ya binde bire indiriyor ("5.000" → 5) ya da iki
+  ayırıcılı tutarı ("1.234.567") tamamen reddedip kutuyu boşaltıyordu.
+  Metin kutusunda varsayılan değerin de Türkçe olması gerekiyor — yoksa
+  kutuda "30000.00" yazıyor, kullanıcı onu düzeltmeden kaydedince
+  kurusOku nokta ondalığı okuyup doğru sonucu veriyor ama ekranda
+  gördüğü şey kendi yazımı değil.
+
+  Para birimi SİMGESİZ: değer doğrudan kutuya giriyor, kullanıcı üstüne
+  yazıyor. Gösterim (okunan tutar) için ekranların kendi `money()`
+  yardımcıları var.
+*/
+export function liraYazisi(kurus: number) {
+  return (Number(kurus) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

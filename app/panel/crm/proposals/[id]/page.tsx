@@ -37,6 +37,7 @@ import "../../kayit-detay/kayit-detay.css";
 import "../../../components/kayit-formu.css";
 import { kurumHizmetTurleri } from "@/lib/hizmet-turleri-oku";
 import { HizmetTuruOnerileri } from "../../hizmet-turu-onerileri";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 /*
   TEKLİF DETAYI (2026-10): talep detayıyla aynı üç sütun.
@@ -251,7 +252,7 @@ export default async function ProposalDetailPage({ params }: Props) {
                     <label className="wide"><span>Hizmet kapsamı<b className="req" aria-hidden="true">*</b></span><textarea name="scope" defaultValue={data.scope ?? ""} required placeholder="Verilecek hizmetler ve teslimler" /></label>
 
                     <p className="wide kayit-formu-bolum">Tutar ve geçerlilik</p>
-                    <label><span>{/* İstisnada KDV yok; eskiden "KDV hariç" yazıyordu. */ taxStatus === "included" ? "Tutar, KDV dahil (₺)" : taxStatus === "excluded" ? "Tutar, KDV hariç (₺)" : "Tutar (₺)"}<b className="req" aria-hidden="true">*</b></span><input name="amount" type="number" inputMode="decimal" step="0.01" min="0" defaultValue={(editableAmount / 100).toFixed(2)} required /></label>
+                    <label><span>{/* İstisnada KDV yok; eskiden "KDV hariç" yazıyordu. */ taxStatus === "included" ? "Tutar, KDV dahil (₺)" : taxStatus === "excluded" ? "Tutar, KDV hariç (₺)" : "Tutar (₺)"}<b className="req" aria-hidden="true">*</b></span><input name="amount" inputMode="decimal" autoComplete="off" defaultValue={liraYazisi(editableAmount)} required /></label>
                     {taxStatus ? (
                       <label>KDV durumu
                         <select name="tax_status" defaultValue={taxStatus}>

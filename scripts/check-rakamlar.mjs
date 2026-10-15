@@ -32,6 +32,12 @@
 //   lib/turkish-amount.ts'teki kurusOku(); yüzde hesapları (bölmeden
 //   sonra gelen * 100) kuralın dışında.
 //
+//   Kutunun KENDİSİ de sayı kutusu olmamalı. `type="number"` iki ayırıcılı
+//   bir tutarı ("1.234.567") geçerli sayı saymıyor: kutuyu boşaltıyor ve
+//   kullanıcı doğru yazdığı hâlde "bu alanı doldurun" uyarısı alıyor. Para
+//   kutuları metin + inputMode="decimal"; varsayılan değer liraYazisi()
+//   ile Türkçe yazılır.
+//
 // KALIP 2 — tuzak tablo.
 //   Adı doğru gelen ama başka bir şey tutan tablodan okumak:
 //   billing_invoices KİRACININ kendi müşterilerine kestiği faturalar,
@@ -444,6 +450,21 @@ for (const dizin of TARANAN) {
         `${goreli}:${no}  tutar ham Number() ile kuruşa çevriliyor.\n` +
         "      Türkçe'de \"5.000\" beş bindir; Number onu 5 yapar ve kütüğe ₺5,00 girer.\n" +
         "      lib/turkish-amount.ts → kurusOku() kullanın.",
+      );
+    }
+
+    /* --- KALIP 3'ün ikinci yarısı: para kutusu sayı kutusu olmamalı. */
+    for (const m of kaynak.matchAll(/<input\b[^>]*>/g)) {
+      const etiket = m[0];
+      if (!/type="number"/.test(etiket)) continue;
+      if (!/name="[^"]*(amount|tutar|fee|ucret|bedel|balance|price|fiyat)[^"]*"/i.test(etiket)) continue;
+      const no = satirNo(m.index);
+      if (kacisVar(no)) continue;
+      const ad = etiket.match(/name="([^"]*)"/)?.[1] ?? "?";
+      sorunlar.push(
+        `${goreli}:${no}  "${ad}" para kutusu type="number".\n` +
+        "      Türkçe yazımı bozuyor: \"5.000\" beş bin değil 5 olur, \"1.234.567\" ise kutuyu boşaltır.\n" +
+        "      inputMode=\"decimal\" metin kutusu kullanın; varsayılanı liraYazisi() ile yazın.",
       );
     }
 

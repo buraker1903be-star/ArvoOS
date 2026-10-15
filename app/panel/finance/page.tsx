@@ -241,7 +241,7 @@ function MusteriTablosu({ rows, paytrHazir }: { rows: MusteriSatiri[]; paytrHazi
                       <input type="hidden" name="party_id" value={a.id} />
                       <label>
                         <span>Tahsilat tutarı (₺)<b className="req" aria-hidden="true">*</b></span>
-                        <input name="amount" type="number" min="0.01" max={a.balance / 100} step="0.01" required placeholder="0,00" />
+                        <input name="amount" inputMode="decimal" autoComplete="off" required placeholder="0,00" />
                       </label>
                       <label>
                         Tarih

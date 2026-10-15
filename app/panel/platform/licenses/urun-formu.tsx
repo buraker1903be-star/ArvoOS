@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+import { parseTurkishAmount } from "@/lib/turkish-amount";
 
 /*
   Ek ürün aboneliği kartının formu (ArvoLab, ArvoARC, Randevu).
@@ -91,7 +92,8 @@ export function UrunFormu({
 
   const askida = deger.status === "suspended";
   const kapali = deger.status === "inactive";
-  const ucret = Number(deger.monthlyFee);
+  // Kutu Türkçe tutar taşıyor; önizleme de aynı okumadan geçiyor.
+  const ucret = parseTurkishAmount(deger.monthlyFee);
 
   const sifirla = () => {
     setDeger(baslangic);
@@ -121,7 +123,7 @@ export function UrunFormu({
       <label>
         Aylık ücret (TL)
         <input
-          name="monthly_fee" type="number" min={1} step="0.01" value={deger.monthlyFee}
+          name="monthly_fee" inputMode="decimal" autoComplete="off" value={deger.monthlyFee}
           placeholder="Boşsa kartla ödeme kapalı"
           onChange={(o) => setDeger({ ...deger, monthlyFee: o.target.value })}
         />

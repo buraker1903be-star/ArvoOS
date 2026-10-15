@@ -12,6 +12,7 @@ import { AboneListesi } from "./abone-listesi";
 import "../platform.css";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
+import { liraYazisi } from "@/lib/turkish-amount";
 
 type PlanRow = { product: string; individual_monthly_fee: number | null; trial_days: number };
 type SubscriberRow = {
@@ -301,7 +302,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
                       {" "}Değiştirmek için <Link href="/panel/platform/fiyatlar">Ücret ve Paketler</Link>.
                     </p>
                   ) : (
-                    <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" type="number" min={1} step="0.01" defaultValue={plan?.individual_monthly_fee ? Number(plan.individual_monthly_fee) / 100 : ""} placeholder="Boşsa ödeme kapalı" /></label>
+                    <label>Bireysel aylık ücret (TL)<input name="individual_monthly_fee" inputMode="decimal" autoComplete="off" defaultValue={plan?.individual_monthly_fee ? liraYazisi(Number(plan.individual_monthly_fee)) : ""} placeholder="Boşsa ödeme kapalı" /></label>
                   )}
                   <label><span>Deneme süresi (gün)<b className="req" aria-hidden="true">*</b></span><input name="trial_days" type="number" min={0} max={365} defaultValue={plan?.trial_days ?? 14} required /></label>
                   <div className="wide panel-form-actions kayit-formu-eylem"><p>{bireyselListeFiyatiKurus(product.code, fiyatlar) !== undefined ? "Burada yalnızca deneme süresi değişir." : "Ücret boşsa bu ürün kartla satılmaz."}</p><button className="panel-primary" type="submit">{product.name} planını kaydet</button></div>
