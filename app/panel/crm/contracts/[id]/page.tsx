@@ -206,15 +206,11 @@ export default async function ContractDetailPage({ params }: Props) {
   const trackingUrl = `https://${publicHost}/takip`;
   const takipMetni = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
   const imzayaGonder = (
-    <>
-      <form action={issueContractLink}>
-        <input type="hidden" name="contract_id" value={data.id} />
-        <input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`} />
-        <button className="panel-primary">İmzaya gönder</button>
-      </form>
-      {/* Eksik resmi bilgi belgede yer tutucuya düşüyor; gerekçe bileşende. */}
-      <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="sözleşme" /></Suspense>
-    </>
+    <form action={issueContractLink}>
+      <input type="hidden" name="contract_id" value={data.id} />
+      <input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`} />
+      <button className="panel-primary">İmzaya gönder</button>
+    </form>
   );
 
   const bilgiler: [string, React.ReactNode][] = [
@@ -402,6 +398,9 @@ export default async function ContractDetailPage({ params }: Props) {
             {shareUrl ? (
               <>
                 <p className="teklif-baglanti" title={shareUrl}>{shareUrl.replace(/^https:\/\//, "")}</p>
+                {/* Belge müşteriye bu karttan gidiyor; eksik resmi bilgi
+                    belgede yer tutucuya düşüyor (gerekçe bileşende). */}
+                <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="sözleşme" /></Suspense>
                 <div className="talep-iletisim">
                   {customer?.contact_email && messages ? (
                     <ShareSendLink kind="contract" token={data.share_token} className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>

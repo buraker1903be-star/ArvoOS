@@ -203,15 +203,11 @@ export default async function ProposalDetailPage({ params }: Props) {
     : kalan <= 3 ? { ton: "warning", ad: `${kalan} gün kaldı` }
     : { ton: "neutral", ad: `${kalan} gün kaldı` };
   const gonderBicimi = (sinif: string, etiket: string) => (
-    <>
-      <form action={issueProposalLink}>
-        <input type="hidden" name="proposal_id" value={data.id} />
-        <input type="hidden" name="redirect_to" value={`/panel/crm/proposals/${data.id}`} />
-        <button className={sinif}>{etiket}</button>
-      </form>
-      {/* Eksik resmi bilgi belgede yer tutucuya düşüyor; gerekçe bileşende. */}
-      <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="teklif" /></Suspense>
-    </>
+    <form action={issueProposalLink}>
+      <input type="hidden" name="proposal_id" value={data.id} />
+      <input type="hidden" name="redirect_to" value={`/panel/crm/proposals/${data.id}`} />
+      <button className={sinif}>{etiket}</button>
+    </form>
   );
   const sozlesmeyeDonustur = (sinif: string) => (
     <form action={fastTrackProposalToContract}>
@@ -396,6 +392,14 @@ export default async function ProposalDetailPage({ params }: Props) {
             {shareUrl ? (
               <>
                 <p className="teklif-baglanti" title={shareUrl}>{shareUrl.replace(/^https:\/\//, "")}</p>
+                {/*
+                  Uyarı GÖNDERME DÜĞMESİNİN yanında değil burada: teklif
+                  oluşturulurken paylaşım bağlantısı da üretiliyor, yani
+                  "Müşteriye gönder" düğmesi pratikte hiç çizilmiyor ve
+                  uyarı oraya konunca görünmüyordu. Belge müşteriye bu
+                  karttan gidiyor.
+                */}
+                <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="teklif" /></Suspense>
                 <div className="talep-iletisim">
                   {customer?.contact_email && messages ? (
                     <ShareSendLink kind="proposal" token={data.share_token} className="panel-secondary" href={`mailto:${encodeURIComponent(customer.contact_email)}?subject=${encodeURIComponent(messages.subject)}&body=${encodeURIComponent(messages.email)}`}>
