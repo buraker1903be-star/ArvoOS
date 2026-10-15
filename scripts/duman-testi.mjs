@@ -51,6 +51,7 @@
  *   node scripts/duman-testi.mjs --yalnizca /panel/finance
  *   node scripts/duman-testi.mjs --yalnizca-durgun   (dinamik rotaları hiç deneme)
  *   node scripts/duman-testi.mjs --sekme-yok         (sorgu görünümlerini atla)
+ *   node scripts/duman-testi.mjs --bayat-yok         (bayat adres sınamasını atla)
  *
  * Çerez tarayıcıdan alınır (Ağ sekmesinde bir isteğin `cookie` başlığı).
  * Hangi ÇALIŞMA ALANI taranacağını da o çerez söyler: başka bir kurumu
@@ -256,6 +257,7 @@ async function dene(rota) {
   }
 }
 
+const DURGUNLAR = [...taranacak];
 const sonuclar = [];
 /* Önce durgun rotalar: yanıtları kimlik havuzunu dolduruyor. */
 for (const rota of taranacak) sonuclar.push(await dene(rota));
@@ -295,6 +297,33 @@ if (!argv.includes("--sekme-yok")) {
   }
 }
 
+/*
+  BAYAT ADRES: bağlantılardan toplanan her adres GEÇERLİ.
+
+  Havuz yöntemi arayüzün bağladığı adresleri tarıyor, yani hiçbiri
+  bozuk olamaz. Oysa çökme ekranına düşüren adres tam olarak elle
+  yazılan, yer imine kaydedilmiş ya da artık var olmayan adrestir —
+  betiğin var olma sebebi de buydu (/panel/finance/raporlar menüde
+  gizliydi, adrese doğrudan gidilince çöküyordu).
+
+  16.10.2026'da bu sınama sekiz listede çökme buldu: `?sayfa=2` "Bir
+  sorun oluştu" veriyordu, çünkü PostgREST son satırın ötesindeki
+  aralığı reddediyor ve sayfa onu okuma hatası sayıp fırlatıyordu.
+  Sayfa numarası bu yüzden burada: tek bir değişkenle bütün listeler
+  sınanıyor ve doğru davranış (ilk sayfaya yönlendirme) çökmeden
+  AYIRT EDİLEBİLİYOR.
+*/
+const BAYAT = ["sayfa=99999"];
+let bayatSayisi = 0;
+if (!argv.includes("--bayat-yok")) {
+  for (const rota of DURGUNLAR) {
+    for (const sorgu of BAYAT) {
+      bayatSayisi += 1;
+      sonuclar.push(await dene(`${rota}?${sorgu}`));
+    }
+  }
+}
+
 const cokmeler = sonuclar.filter((s) => s.durum === "COKME");
 const oturum = sonuclar.filter((s) => s.durum === "OTURUM");
 const yonlendirmeler = sonuclar.filter((s) => s.durum === "yonlendirme");
@@ -306,7 +335,7 @@ for (const s of sonuclar) {
 }
 
 console.log(
-  `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü tarandı`
+  `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü + ${bayatSayisi} bayat adres tarandı`
   + ` · ${sonuclar.length - cokmeler.length - oturum.length} sorunsuz`
   + ` · ${yonlendirmeler.length} yönlendirme`
   + ` · ${cokmeler.length} çökme`

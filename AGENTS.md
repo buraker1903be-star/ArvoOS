@@ -464,7 +464,16 @@ oradan örnekleniyor. İki tur koşuyor, çünkü bazı bağlantılar başka bir
 dinamik sayfanın içinde (gizlilik sözleşmesine yalnızca personel
 detayından gidiliyor). Örneği bulunamayan rota temiz SAYILMAZ, adıyla
 "atlandı" diye yazılır — 16.10.2026'da 17 dinamik rotanın 13'ü
-çözüldü, kalan dördü sorgu değişkeniyle açılıyor. Oturum çerezi ve gerçek veri gerektirdiği için CI'da
+çözüldü, kalan dördü sorgu değişkeniyle açılıyor. **Sekmeler de
+taranıyor:** panelin yarısı sekmeyi sorgu değişkeniyle açıyor (Ayarlar'ın
+yedi bölümü, liste durum süzgeçleri, finansın maliyet görünümü) ve
+betik bir süre yalnızca VARSAYILAN hâli görüyordu — adresler arayüzün
+kendi bağlantılarından toplanıyor, yol başına bir tavanla (takvim tek
+başına 74 adres üretiyor ve hepsi aynı kodu çalıştırıyor). **Bir de
+bayat adres sınaması var:** toplanan her adres geçerli olduğu için
+elle yazılan/yer imine kaydedilen adresi kimse sınamıyordu; her liste
+`?sayfa=99999` ile de isteniyor. Bu sınama 16.10.2026'da sekiz listede
+çökme buldu (aralık dışı sayfa, `lib/liste-sayfalama` → `aralikDisiMi`). Oturum çerezi ve gerçek veri gerektirdiği için CI'da
 koşmuyor: dağıtımdan sonra elle çalıştırılır, çerez hangi ÇALIŞMA
 ALANININ taranacağını da belirler (kurumun paketine göre sonuç değişir;
 kapalı modül artık çökme değil yönlendirme üretir). Çerez eskiyip
