@@ -159,6 +159,22 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-col{gap:var(--sp-3)}
 .dash-col .dash-card-link{margin-top:auto}
 .dash-col .dash-empty{flex:1;display:grid;place-items:center;padding:var(--sp-6) var(--sp-2);text-align:center;font-size:var(--fs-sm)}
+/*
+  BOŞ CÜMLE TELEFONDA SOLA YASLI (15.10.2026).
+
+  Yukarıdaki ortalama masaüstü için doğru: orada kartlar dört sütun yan
+  yana ve ızgara hepsini eşit yüksekliğe çekiyor, boş kartın tek
+  cümlesini dikeyde ortalamak o boşluğu dengeliyor.
+
+  Telefonda kartlar alt alta ve içeriğe göre büyüyor; ortalanacak bir
+  boşluk yok, kural yalnızca üretiyor: tek bir cümle 68 piksellik bir
+  alanın ortasında yüzüyor ve konsolun geri kalanı sola yaslıyken
+  yabancı duruyordu. Sola yaslanınca cümle başlığın altına, kartın
+  parçası gibi oturuyor (kart 185 → 157 piksel).
+*/
+@media (max-width:760px){
+  .dash-col .dash-empty{flex:0 0 auto;display:block;padding:var(--sp-2) 0 var(--sp-3);text-align:start}
+}
 .dash-col-list{list-style:none;margin:0 calc(var(--sp-2) * -1);padding:0;display:flex;flex-direction:column}
 .dash-col-list li+li{border-top:1px solid var(--line-soft)}
 .dash-col-row{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:var(--sp-2);border-radius:var(--r-sm);color:var(--ink);text-decoration:none;transition:background-color var(--dur) var(--ease)}
