@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useOdakTuzagi } from "./odak-tuzagi";
 import "./panel-bottom-sheet.css";
 
 const subscribeNothing = () => () => undefined;
@@ -21,8 +22,12 @@ export function PanelBottomSheet({
 }) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const yaprakRef = useRef<HTMLElement>(null);
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
+  /* Klavye yapraktayken dışarı kaçmasın (components/odak-tuzagi). */
+  useOdakTuzagi(open, yaprakRef, "panel-sheet-root");
+
   useEffect(() => {
     if (!open) return;
     const close = (event: KeyboardEvent) =>
@@ -47,6 +52,8 @@ export function PanelBottomSheet({
         onClick={() => setOpen(false)}
       />
       <section
+        ref={yaprakRef}
+        tabIndex={-1}
         className="panel-sheet"
         role="dialog"
         aria-modal="true"

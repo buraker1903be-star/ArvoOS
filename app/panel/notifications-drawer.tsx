@@ -4,6 +4,7 @@ import { OsSimge } from "./os/os-icons";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useOdakTuzagi } from "./components/odak-tuzagi";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchNotificationFeed, markAllNotificationsReadFromDrawer, markNotificationReadFromDrawer } from "./notifications/actions";
 import { fullTime, groupFeedByDay, relativeTime, type NotificationFeedItem } from "./notifications/feed";
@@ -107,7 +108,6 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
   const requestRef = useRef(0);
   const loadedOnceRef = useRef(false);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
   const liveRef = useRef({ open, onPage });
 
   // Sayfa değişince çekmece kapanır (render sırasında durum ayarı)
@@ -159,8 +159,8 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
   });
 
   const show = useCallback(() => {
-    const active = document.activeElement;
-    if (active instanceof HTMLElement && !active.closest(".ntd")) returnFocusRef.current = active;
+    /* Odağı geri verme işi artık odak tuzağında (components/odak-tuzagi);
+       burada ayrıca defter tutulmuyor. */
     setMounted(true);
     setOpen(true);
     setNotice(null);
@@ -179,48 +179,20 @@ export function NotificationsDrawer({ unreadCount }: { unreadCount: number }) {
     if (!open) return;
     const root = document.documentElement;
     root.classList.add("notifications-drawer-open");
-    /*
-      ODAK ÇEKMECEDE KALIR (15.10.2026).
-
-      Çekmece açılışta kapat düğmesine odaklanıyor, Esc ile kapanıyor ve
-      kapanınca odağı geldiği yere veriyordu — ama TUZAK yoktu: dokuz kez
-      Tab'layınca odak arkadaki sayfaya düşüyordu (ölçüldü, üst çubuktaki
-      tema düğmesine). Çekmece o sırada ekranı kaplıyor, yani klavye
-      kullanıcısı görmediği kontrollerin üzerinde geziniyor ve bastığında
-      arkada bir şey oluyor. role="dialog" aria-modal="true" bunu tek
-      başına engellemiyor; aria okuyucuya söyler, odağı tutmaz.
-
-      Kabuğun kalanı inert yapılıyor. Dışarı tıklayıp kapatma bundan
-      etkilenmiyor: kapatan yüzey (.ntd-backdrop) çekmecenin KENDİ
-      kökünün içinde.
-
-      Yalnızca bizim eklediğimiz inert geri alınıyor — başka bir sebeple
-      zaten inert olan bir öğeyi açmak, kapanışta sessizce yeni bir kapı
-      açmak olurdu.
-    */
-    /* Portal hedefi aşağıda tanımlı; burada aynı kök doğrudan bulunuyor. */
-    const kabuk = document.querySelector(".panel-root");
-    const disaridakiler = kabuk
-      ? [...kabuk.children].filter(
-          (el): el is HTMLElement =>
-            el instanceof HTMLElement && !el.classList.contains("ntd-root") && !el.hasAttribute("inert"),
-        )
-      : [];
-    for (const el of disaridakiler) el.setAttribute("inert", "");
-    const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      window.cancelAnimationFrame(frame);
       window.removeEventListener("keydown", onKey);
-      for (const el of disaridakiler) el.removeAttribute("inert");
       root.classList.remove("notifications-drawer-open");
-      const back = returnFocusRef.current;
-      if (back && back.isConnected && back.offsetParent !== null) back.focus({ preventScroll: true });
     };
   }, [open]);
+
+  /* Odak çekmecedeyken dışarı kaçmasın (components/odak-tuzagi):
+     açılışta kapat düğmesine al, kabuğu inert yap, kapanışta geri ver.
+     Dördüncü kez kopyalamak yerine ortak kanca. */
+  useOdakTuzagi(open, closeRef, "ntd-root");
 
   const setRead = (ids: Set<string> | null, read: boolean) =>
     setFeed((prev) => ({ ...prev, items: prev.items.map((item) => (!ids || ids.has(item.id) ? { ...item, read } : item)) }));

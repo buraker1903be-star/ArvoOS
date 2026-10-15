@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useOdakTuzagi } from "./odak-tuzagi";
 import "./panel-drawer.css";
 
 type PanelDrawerProps = {
@@ -27,6 +28,7 @@ const subscribeNothing = () => () => undefined;
 export function PanelDrawer({ triggerLabel, title, description, kicker, triggerClassName = "panel-primary", genis = false, children }: PanelDrawerProps) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const pencereRef = useRef<HTMLElement>(null);
   const isClient = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const portalTarget = isClient ? (document.querySelector(".panel-root") ?? document.body) : null;
 
@@ -37,6 +39,9 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
     window.addEventListener("arvo:action-success", onSuccess);
     return () => window.removeEventListener("arvo:action-success", onSuccess);
   }, [open]);
+
+  /* Klavye penceredeyken dışarı kaçmasın (components/odak-tuzagi). */
+  useOdakTuzagi(open, pencereRef, "panel-drawer-root");
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +59,9 @@ export function PanelDrawer({ triggerLabel, title, description, kicker, triggerC
   const drawer = (
     <div className={open ? "panel-drawer-root open" : "panel-drawer-root"} aria-hidden={!open}>
       <button className="panel-drawer-backdrop" type="button" aria-label="Pencereyi kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
-      <aside className={genis ? "panel-drawer is-genis" : "panel-drawer"} role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>
+      {/* tabIndex -1: açılışta odak buraya alınır, ilk Tab pencerenin
+          kendi ilk alanına geçer. */}
+      <aside ref={pencereRef} tabIndex={-1} className={genis ? "panel-drawer is-genis" : "panel-drawer"} role="dialog" aria-modal="true" aria-labelledby={titleId} inert={!open}>
         <header className="panel-drawer-header">
           <div>{kicker ? <small className="panel-kicker">{kicker}</small> : null}<h2 id={titleId}>{title}</h2>{description ? <p>{description}</p> : null}</div>
           <button className="panel-drawer-close" type="button" aria-label="Kapat" onClick={() => setOpen(false)}>×</button>
