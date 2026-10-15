@@ -401,8 +401,26 @@ export async function updateContractPaymentPlan(
 }
 
 
+/*
+  GÖNDERME DE YETENEK ANAHTARINA BAĞLI (15.10.2026).
+
+  Kapı yalnızca RLS'teydi: sahip/yönetici/müdür her kaydı, fırsata
+  atanmış satış personeli kendi kaydını gönderebiliyordu. Yetenek
+  anahtarı hiçbir katmanda sorulmuyordu — ne sunucuda ne de düğmede.
+  Sonuç tutarsızdı: aynı kullanıcı sözleşmeyi İMZAYA GÖNDEREBİLİYOR
+  ama durumunu değiştiremiyordu (markContractStatus anahtarı istiyor).
+
+  Ayarlar → Yetkilendirme ekranı da aksini söylüyordu: anahtarların
+  açıklaması "Teklif oluşturur, revize eder, GÖNDERİR" ve "Sözleşme
+  hazırlar, İMZAYA GÖNDERİR, ek düzenler". Kurum anahtarı bir rolden
+  alınca gönderme durmuyordu, yani ayar sessizce etkisizdi.
+
+  Anahtar rlsBagli DEĞİL: panelden kısıtlamak serbest.
+*/
 async function issueContractLink__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.sozlesme.yonet"))
+    throw new Error("Sözleşmeyi imzaya gönderme yetkiniz yok. Ayarlar → Yetkilendirme'den \"Sözleşme yönetimi\" açılmalı.");
   const contractId = text(formData, "contract_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_contract_link", {
     target_contract_id: contractId,

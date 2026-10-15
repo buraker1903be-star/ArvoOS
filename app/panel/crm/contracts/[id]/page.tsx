@@ -195,6 +195,11 @@ export default async function ContractDetailPage({ params }: Props) {
     : null;
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
   const canDelete = izin("crm.sozlesme.sil");
+  /* Üçüncü katman: imzaya gönderme artık sunucuda da anahtara bağlı
+     (contract-actions · issueContractLink). Yetkisi olmayana düğme
+     gösterip sunucuda reddetmek, hatayı tıklamadan önce söylememek
+     demek. */
+  const imzayaGonderir = izin("crm.sozlesme.yonet");
   const { adim, kapanis } = sozlesmeAdimi({ status: data.status, view_count: data.view_count, workflow_id: data.workflow_id });
   const trackingUrl = `https://${publicHost}/takip`;
   const takipMetni = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
@@ -225,7 +230,7 @@ export default async function ContractDetailPage({ params }: Props) {
         <div className="talep-bas-eylem">
           {data.workflow_id ? (
             <Link className="panel-primary" href={`/panel/operations/${data.workflow_id}`}>İşe git</Link>
-          ) : !locked && !shareUrl ? imzayaGonder : null}
+          ) : !locked && !shareUrl && imzayaGonderir ? imzayaGonder : null}
           <details className="os-menu talep-menu">
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">

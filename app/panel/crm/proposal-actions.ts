@@ -278,8 +278,11 @@ export async function createProposalRevision(formData: FormData) {
 }
 
 
+/* Gerekçe sözleşmenin ikizinde (contract-actions · issueContractLink). */
 async function issueProposalLink__impl(formData: FormData) {
-  const { supabase, membership, userId } = await getPanelContext();
+  const { supabase, membership, userId, yetkiler } = await getPanelContext();
+  if (!yetkiler.has("crm.teklif.yonet"))
+    throw new Error("Teklifi müşteriye gönderme yetkiniz yok. Ayarlar → Yetkilendirme'den \"Teklif yönetimi\" açılmalı.");
   const proposalId = text(formData, "proposal_id", 80);
   const { data, error } = await supabase.rpc("issue_crm_proposal_link", {
     target_proposal_id: proposalId,

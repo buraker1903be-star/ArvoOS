@@ -159,6 +159,11 @@ export default async function ProposalDetailPage({ params }: Props) {
   const locked = ["accepted", "rejected", "archived"].includes(data.status);
   // Silme RLS politikası yalnızca owner/admin'e izin veriyor.
   const canDelete = izin("crm.teklif.sil");
+  /* Üçüncü katman: müşteriye gönderme ve sözleşmeye dönüştürme
+     sunucuda anahtara bağlı (proposal-actions). Yetkisi olmayana
+     düğme gösterip sunucuda reddetmek, hatayı tıklamadan önce
+     söylememek demek. */
+  const teklifYonetir = izin("crm.teklif.yonet");
   // Formdaki tutar, teklif oluşturulurken girildiği anlamda gösterilir:
   // KDV dahilse brüt, hariç/istisnaysa net. KDV durumu olmayan eski
   // kayıtlarda tutar olduğu gibi (brüt) düzenlenir.
@@ -228,7 +233,7 @@ export default async function ProposalDetailPage({ params }: Props) {
         <div className="talep-bas-eylem">
           {sozlesme ? (
             <Link className="panel-primary" href={`/panel/crm/contracts/${sozlesme.id}`}>Sözleşmeye git</Link>
-          ) : locked || data.superseded_by ? null : shareUrl ? (
+          ) : locked || data.superseded_by || !teklifYonetir ? null : shareUrl ? (
             sozlesmeyeDonustur("panel-primary")
           ) : (
             gonderBicimi("panel-primary", "Müşteriye gönder")
@@ -286,7 +291,7 @@ export default async function ProposalDetailPage({ params }: Props) {
               ) : null}
               {/* Gönderilmemiş teklifte asıl işlem "Müşteriye gönder";
                   müşteri sözlü onay verdiyse sözleşmeye buradan geçilir. */}
-              {!locked && !shareUrl && !sozlesme ? sozlesmeyeDonustur("os-menu-item") : null}
+              {!locked && !shareUrl && !sozlesme && teklifYonetir ? sozlesmeyeDonustur("os-menu-item") : null}
               <Link className="os-menu-item" href={`/panel/crm/requests/${data.opportunity_id}`}>Talebe git</Link>
               {data.revision_no > 0 || data.root_proposal_id ? (
                 <Link className="os-menu-item" href={`/panel/crm/proposals/${data.id}/revisions`}>Revizyon geçmişi</Link>
