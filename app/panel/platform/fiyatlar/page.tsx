@@ -443,7 +443,7 @@ export default async function FiyatlarPage({ searchParams }: {
               );
             })}
           </KListe>
-        ) : <KBos baslik="Henüz fiyat değişikliği yok" />}
+        ) : <KBos baslik="Henüz fiyat değişikliği yok" aciklama="Bir tutar yayımlandığında kimin, ne zaman, neyden neye değiştirdiği burada yazar." />}
       </KKart>
     ) : null}
   </main>;

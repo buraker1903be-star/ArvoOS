@@ -301,7 +301,7 @@ export default async function KurulumlarPage({ searchParams }: {
                 );
               })}
             </KListe>
-          ) : <KBos baslik="Tamamlanmış kurulum yok" />
+          ) : <KBos baslik="Tamamlanmış kurulum yok" aciklama="Kurulumu biten kurumlar burada listelenir." />
         ) : null}
       </section>
 

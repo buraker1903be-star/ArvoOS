@@ -268,7 +268,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
                   durum={{ etiket: k.tur, ton: k.ton }} deger={tarihSaat(k.zaman)} />
               ))}
             </KListe>
-          ) : <KBos baslik="Henüz kurucu işlemi kaydı yok" />}
+          ) : <KBos baslik="Henüz kurucu işlemi kaydı yok" aciklama="Konsoldan yapılan kurum, lisans ve ödeme işlemleri burada tarihiyle birikir." />}
           <KNot>
             Lisans, modül ve deneme düzenlemeleri bugün ayrı bir kayıt bırakmıyor (yalnızca son düzenleyen
             tutuluyor); genel işlem günlüğü sonraki adım.

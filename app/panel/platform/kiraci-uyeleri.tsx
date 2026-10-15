@@ -63,7 +63,7 @@ export function KiraciUyeleri({
     });
   };
 
-  if (!uyeler.length) return <KBos baslik="Bu kurumda üye yok." />;
+  if (!uyeler.length) return <KBos baslik="Bu kurumda üye yok" aciklama="Davet kabul edildiğinde kurumun kullanıcıları burada listelenir." />;
 
   /* Panel tablosu (14.10.2026). Eskiden kendi satır listesiydi
      (.plt-uyeler) ve pasif üye yalnızca soluk görünüyordu; artık durumu

@@ -453,7 +453,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
               />
             ))}
           </KListe>
-        ) : <KBos baslik="Bu kurum için modül kaydı yok." />}
+        ) : <KBos baslik="Modül kaydı yok" aciklama="Kurulum tamamlandığında kurumun modülleri burada açılıp kapatılır." />}
       </KKart>
 
       {pencerede ? null : <KKart baslik="Son etkinlik" aciklama="Kiracının panelindeki son altı işlem.">
@@ -468,7 +468,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
               />
             ))}
           </KListe>
-        ) : <KBos baslik="Bu kiracının panelinde henüz bir işlem yapılmamış." />}
+        ) : <KBos baslik="Panelde işlem yok" aciklama="Kurumun ekibi çalışmaya başlayınca son altı işlem burada görünür." />}
       </KKart>}
 
       {/*
@@ -535,7 +535,7 @@ export async function KiraciDosyasi({ supabase, selected, invitation, planList, 
                 );
               })}
             </KListe>
-          ) : <KBos baslik="Bu kurum için henüz kurulum kaydı yok." />}
+          ) : <KBos baslik="Kurulum kaydı yok" aciklama="Kurulum adımları koştukça her adım burada tarihiyle birikir." />}
         </details>
       ) : null}
     </div>

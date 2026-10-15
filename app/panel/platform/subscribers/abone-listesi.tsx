@@ -173,7 +173,7 @@ export function AboneListesi({ aboneler, kaydet, tasi, kurumlar, durum }: {
       ) : (
         <KBos
           baslik={arama || suzgec !== "hepsi" ? "Eşleşen abone yok" : "Henüz bireysel abone yok"}
-          aciklama={arama || suzgec !== "hepsi" ? "Bu süzgeçle ya da aramayla eşleşen abone yok." : undefined}
+          aciklama={arama || suzgec !== "hepsi" ? "Bu süzgeçle ya da aramayla eşleşen abone yok." : "Bir kişi ArvoLab ya da ArvoARC'a kendi adına abone olduğunda burada listelenir."}
         />
       )}
 

@@ -262,7 +262,7 @@ export default async function MusteriDetayi({ params, searchParams }: {
                 <KOge key={`${e.created_at}-${i}`} baslik={ETKINLIK_ADI[e.action] ?? e.action} alt={VARLIK_ADI[e.entity_type] ?? e.entity_type} deger={tarih(e.created_at)} />
               ))}
             </KListe>
-          ) : <KBos baslik="Etkinlik yok" />}
+          ) : <KBos baslik="Etkinlik yok" aciklama="Kurumun panelinde bir işlem yapıldığında son hareketler burada görünür." />}
         </KKart>
       </div>
     </div>
