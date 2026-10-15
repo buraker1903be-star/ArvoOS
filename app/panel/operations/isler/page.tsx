@@ -370,9 +370,22 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
             ) : null}
           </div>
         ) : (
+          /*
+            Üç ayrı hâl. Eskiden ikisi vardı ve kurumun HİÇ işi yokken de
+            "Aktif iş yok — tamamlanıp arşivlenen işler Arşiv'de" yazıyordu:
+            gün bir'deki kullanıcıyı da boş olan arşive yolluyordu, yani
+            var olmayan bir kayıt yığınını işaret ediyordu. Talepler ve
+            teklifler bu ayrımı zaten yapıyor.
+          */
           <div className="crm-empty-state talep-bos-kutu">
-            <h2>{hasFilter ? "Eşleşen iş yok" : "Aktif iş yok"}</h2>
-            <p>{hasFilter ? "Aramayı veya süzgeci değiştirip yeniden deneyin." : "Tamamlanıp arşivlenen işler Arşiv'de."}</p>
+            <h2>{hasFilter ? "Eşleşen iş yok" : sayiAl(ozet.toplam) === 0 ? "Henüz iş yok" : "Aktif iş yok"}</h2>
+            <p>
+              {hasFilter
+                ? "Aramayı veya süzgeci değiştirip yeniden deneyin."
+                : sayiAl(ozet.toplam) === 0
+                  ? "İş, imzalanan bir sözleşmeden kendiliğinden açılır; sözleşmesiz bir iş için yukarıdaki “Yeni iş”i kullanın. Açılan işin adımlarını, terminini ve sorumlusunu buradan izlersiniz."
+                  : "Tamamlanıp arşivlenen işler Arşiv'de."}
+            </p>
             <div className="crm-empty-actions">
               {hasFilter ? <Link className="panel-secondary" href="/panel/operations/isler">Süzgeci temizle</Link> : null}
             </div>
