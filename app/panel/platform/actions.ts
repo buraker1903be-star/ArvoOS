@@ -6,7 +6,7 @@ import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getPanelContext, panelModules } from "@/lib/panel-context";
+import { getPanelContext } from "@/lib/panel-context";
 import { syncArcTenantQuietly } from "@/lib/arc-bridge";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendThroughGateway } from "@/lib/whatsapp-gateway";
@@ -160,24 +160,34 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   const { supabase, organizationId } = await requireFounderTarget(formData);
   const moduleCode = String(formData.get("module_code") ?? "");
   const isEnabled = String(formData.get("is_enabled") ?? "") === "true";
-  if (!panelModules[moduleCode]) throw new Error("Geçersiz modül.");
   /*
-    UPSERT, UPDATE DEĞİL (15.10.2026).
+    GEÇERLİLİK KATALOĞA SORULUR, KODDAKİ MENÜ LİSTESİNE DEĞİL (15.10.2026).
 
-    Eskiden `update … where organization_id … and module_code …` yazıyordu
-    ve kaç satır etkilendiğine BAKMIYORDU. Kurumun o modül için satırı
-    yoksa güncelleme sıfır satır ediyor, Supabase hata döndürmüyor ve
-    ekran "oldu" diyor: anahtar kapalı kalıyor, kurucu tekrar tekrar
-    basıyor. Deneme kurumunda canlıda yaşandı — Cari Hesaplar anahtarı
-    üç kez açıldı, üçünde de kapalı kaldı; Finans ve İK ise açıldı
-    (onların satırı kuruluşta yazılmıştı).
+    Eskiden `panelModules[moduleCode]` bakılıyordu. O sabit PANELİN MENÜSÜ
+    için: hangi modülün kendi ekranı ve simgesi var (yedi tane). Konsolun
+    ayarlar penceresi ise listeyi VERİTABANINDAN çiziyor
+    (organization_modules ⋈ arvo_modules, on bir tane). İki ayrı kaynak,
+    iki ayrı cevap: kurucu "Cari Hesaplar", "Banka ve Mutabakat",
+    "ARVO ARC" ve "Kurum İçi Mesajlar" anahtarlarını görüyor ama
+    bastığında "Geçersiz modül." alıyordu — açılması hiçbir zaman mümkün
+    olmayan dört anahtar. Canlıda deneme kurumunda yakalandı ve zararı
+    somut: Finans sayfası `accounts` modülünü şart koşuyor, o da bu dört
+    anahtardan biri, dolayısıyla Finans hiçbir kurumda konsoldan
+    açılamıyordu.
 
-    Satır kuruluşta yazılıyor (provision_customer_organization,
-    arvo_modules'teki aktif modüller için) ama sonradan eklenen bir
-    modülün satırı eski kurumlarda yok. Doğru davranış satırı yazmak:
-    kurucunun niyeti "bu modül açık olsun", satırın yokluğu bir engel
-    değil. module_code'un arvo_modules'te karşılığı yoksa yabancı
-    anahtar zaten reddeder — sessizce değil, görünür biçimde.
+    Doğru kaynak katalog: ekranın listelediği şey neyse, yazmanın kabul
+    ettiği de o olmalı. Veritabanındaki yabancı anahtar
+    (organization_modules.module_code → arvo_modules.code) zaten son söz;
+    buradaki kontrol yalnızca anlaşılır bir hata mesajı için.
+  */
+  const { data: katalog, error: katalogHatasi } = await supabase
+    .from("arvo_modules").select("code").eq("code", moduleCode).maybeSingle();
+  if (katalogHatasi) throw new Error("Modül kataloğu okunamadı: " + katalogHatasi.message);
+  if (!katalog) throw new Error("Geçersiz modül.");
+  /*
+    UPSERT: satır kuruluşta yazılıyor ama sonradan eklenen bir modülün
+    satırı eski kurumlarda yok; update o durumda sıfır satır eder ve
+    hata vermez. Sonuç `select` ile doğrulanıyor.
   */
   const { data: yazilan, error } = await supabase
     .from("organization_modules")
