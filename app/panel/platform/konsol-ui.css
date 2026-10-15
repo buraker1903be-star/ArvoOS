@@ -119,6 +119,39 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
 .k-ios-ok{flex:none;color:var(--dim)}
 .k-ios-sonu{flex:none;display:inline-flex;align-items:center;gap:var(--sp-2)}
 
+/*
+  ÖZET TAM GENİŞLİKTE: SINIR 900, 760 DEĞİL (15.10.2026).
+
+  Kural önce telefon bloğuna yazılmıştı. 820 pikselde (iPad dikey)
+  ölçüldüğünde beş özetin beşi hâlâ kırpıktı ve metnin ancak %45'i
+  görünüyordu: o genişlikte liste iki sütuna bölünüyor, listeye 500
+  piksel kalıyor ve özete 128. Yani "telefon mu değil mi" yanlış ölçüt;
+  belirleyici olan SATIRIN kendi genişliği.
+
+  Doğrusu kapsayıcı sorgusu (@container) olurdu ama bu depoda hiç
+  kullanılmıyor ve masaüstündeki dar sütunlarda alt satırlı liste yok:
+  1280 ve 1600 pikselde kırpılma sıfır. Yeni bir mekanizma getirmek
+  yerine sınır, dosyanın kendi tablet eşiğine (900 — açılır pencere de
+  onu kullanıyor) çekildi.
+
+  Telefona özgü olanlar 760'ta kaldı: eksi kenar boşlukları, durumun
+  yalnızca noktaya inmesi, satır formunun en alta gitmesi.
+*/
+@media (max-width:900px){
+  .k-ios-ic{flex-wrap:wrap;row-gap:3px}
+  .k-ios-govde{display:contents}
+  .k-ios-baslik{flex:1 1 auto;min-width:0}
+  .k-ios-alt{
+    flex:1 1 100%;order:10;
+    padding-left:calc(36px + var(--sp-3));
+    white-space:normal;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .k-ios-etiketler{flex:1 1 100%;order:11;margin-top:0;padding-left:calc(36px + var(--sp-3))}
+  .k-ios-ic:not(:has(>.k-ios-simge))>.k-ios-alt,
+  .k-ios-ic:not(:has(>.k-ios-simge))>.k-ios-etiketler{padding-left:0}
+}
+
 @media (max-width:760px){
   /* Telefonda .talep-tablo eksi kenar boşluğunu bırakıyor; liste yine kartın
      kenarına yaslansın (liste kartı sp-5, tek başına kart sp-4 iç boşluklu). */
@@ -158,19 +191,8 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
     Paketler) 48 piksel girinti başlığı solda, özeti içeride bırakıyor
     ve ikisi hizasız görünüyordu — aynı koruma .k-ios-sonu'da da var.
   */
-  .k-ios-ic{flex-wrap:wrap;row-gap:3px}
-  .k-ios-govde{display:contents}
-  .k-ios-baslik{flex:1 1 auto;min-width:0}
-  .k-ios-alt{
-    flex:1 1 100%;order:10;
-    padding-left:calc(36px + var(--sp-3));
-    white-space:normal;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-  }
-  .k-ios-etiketler{flex:1 1 100%;order:11;margin-top:0;padding-left:calc(36px + var(--sp-3))}
-  .k-ios-ic:not(:has(>.k-ios-simge))>.k-ios-alt,
-  .k-ios-ic:not(:has(>.k-ios-simge))>.k-ios-etiketler{padding-left:0}
-  /* Satırın kendi formu en altta kalsın: özet ve çipler ondan önce. */
+  /* Satırın kendi formu en altta kalsın: özet ve çipler ondan önce.
+     Yalnızca telefonda: 760'ın üstünde form zaten satıra sığıyor. */
   .k-ios-sonu{order:12}
   .k-ios-oge+.k-ios-oge>.k-ios-ic::before{left:var(--sp-4)}
   .k-ios-oge+.k-ios-oge>.k-ios-ic:has(>.k-ios-simge)::before{left:calc(var(--sp-4) + 36px + var(--sp-3))}
