@@ -429,9 +429,23 @@ export async function KonsolAnaSayfa() {
       />
 
       <ListeIzgarasi etiket="Konsol">
+        {/*
+          ÖLÇÜLEN ŞEY SATIR SAYISI DEĞİL, İŞ SAYISI (15.10.2026).
+
+          Karta `sayi={odak.length}` veriliyordu: odak her zaman beş
+          satırlık sabit bir liste, yani sayı hiç sıfır olmuyor ve
+          "Bekleyen iş yok." mesajı yazılmış olduğu hâlde bir kez bile
+          görünmüyordu. Bekleyen hiçbir iş yokken kart beş tane "0"
+          sıralıyordu; kurucunun "yapacak bir şey var mı" sorusunu
+          yanıtlaması için beş satırı tek tek taraması gerekiyordu.
+
+          Doğru ölçü sayaçların TOPLAMI. Toplam sıfırsa kart tek bir
+          cümleye iniyor; biri bile sıfır değilse liste eskisi gibi,
+          çünkü o zaman hangi iş olduğu önemli.
+        */}
         <ListeKarti
           baslik="Bugün neye bakmalı?" alt="Bekleyen işler"
-          bos="Bekleyen iş yok." sayi={odak.length}
+          bos="Bekleyen iş yok." sayi={odak.reduce((toplam, satir) => toplam + satir.sayi, 0)}
           href="/panel/platform/musteriler" hrefEtiket="Müşteriler"
         >
           {odak.map((satir) => (
