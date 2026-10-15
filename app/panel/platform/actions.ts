@@ -161,8 +161,30 @@ async function toggleOrganizationModule__impl(formData: FormData) {
   const moduleCode = String(formData.get("module_code") ?? "");
   const isEnabled = String(formData.get("is_enabled") ?? "") === "true";
   if (!panelModules[moduleCode]) throw new Error("Geçersiz modül.");
-  const { error } = await supabase.from("organization_modules").update({ is_enabled: isEnabled }).eq("organization_id", organizationId).eq("module_code", moduleCode);
-  if (error) throw new Error("Modül durumu değiştirilemedi.");
+  /*
+    UPSERT, UPDATE DEĞİL (15.10.2026).
+
+    Eskiden `update … where organization_id … and module_code …` yazıyordu
+    ve kaç satır etkilendiğine BAKMIYORDU. Kurumun o modül için satırı
+    yoksa güncelleme sıfır satır ediyor, Supabase hata döndürmüyor ve
+    ekran "oldu" diyor: anahtar kapalı kalıyor, kurucu tekrar tekrar
+    basıyor. Deneme kurumunda canlıda yaşandı — Cari Hesaplar anahtarı
+    üç kez açıldı, üçünde de kapalı kaldı; Finans ve İK ise açıldı
+    (onların satırı kuruluşta yazılmıştı).
+
+    Satır kuruluşta yazılıyor (provision_customer_organization,
+    arvo_modules'teki aktif modüller için) ama sonradan eklenen bir
+    modülün satırı eski kurumlarda yok. Doğru davranış satırı yazmak:
+    kurucunun niyeti "bu modül açık olsun", satırın yokluğu bir engel
+    değil. module_code'un arvo_modules'te karşılığı yoksa yabancı
+    anahtar zaten reddeder — sessizce değil, görünür biçimde.
+  */
+  const { data: yazilan, error } = await supabase
+    .from("organization_modules")
+    .upsert({ organization_id: organizationId, module_code: moduleCode, is_enabled: isEnabled }, { onConflict: "organization_id,module_code" })
+    .select("module_code");
+  if (error) throw new Error("Modül durumu değiştirilemedi: " + error.message);
+  if (!yazilan?.length) throw new Error("Modül durumu yazılamadı: kayıt güncellenmedi.");
   if (moduleCode === "commerce") await syncArcTenantQuietly(organizationId);
   revalidatePath("/panel", "layout");
   revalidatePath(`/panel/platform/musteriler/${organizationId}`);
