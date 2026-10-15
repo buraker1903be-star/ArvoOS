@@ -244,7 +244,21 @@ a.k-ios-ic:focus-visible{outline:none;background:var(--surface-2);box-shadow:ins
     flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
   }
   .os-root main.plt .suzgec-ray::-webkit-scrollbar{display:none}
-  .os-root main.plt .suzgec-ray>*{flex:0 0 auto}
+  /*
+    ÇİP YÜKSEKLİĞİ 44 (15.10.2026). Süzgeç çipleri 32 pikseldi ve
+    konsolun telefondaki birincil süzme aracı onlar. Kısa hedef yatay
+    KAYAN bir rayda iki kat zor: parmak kaymayla dokunmayı karıştırıyor,
+    yanlış süzgeç açılıyor.
+
+    Görünmez bir katman yerine çipin kendisi büyüdü — hedef neyse
+    görünen de o olsun; sonradan bakan biri "neden burası tıklanıyor"
+    diye sormasın. Önce 40 denendi (rayın altındaki arama kutusuna 4
+    piksel kalıyor diye); oysa gerçek yükseklik değişince düzen kendisi
+    akıyor ve kutu aşağı iniyor, çakışma olmuyor. 44 hem kılavuzun
+    değeri hem de arama kutusunun yüksekliği: telefonda bütün
+    kontroller tek boya geliyor. Bedeli süzgeç satırı başına 12 piksel.
+  */
+  .os-root main.plt .suzgec-ray>*{flex:0 0 auto;min-height:44px}
   .os-root main.plt .ekip-suzgec>.talep-ara{flex:1 1 100%;min-width:0}
 }
 /* Geniş ekranda sarmalayıcı yokmuş gibi: çipler doğrudan flex çocuğu. */
