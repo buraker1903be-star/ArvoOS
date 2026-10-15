@@ -167,6 +167,27 @@
 .domain-dns-block>p{margin:8px 0;color:var(--muted);font-size:11px;line-height:1.5}
 
 /* ---------- Global panel loading skeleton (instant feedback while a page's data loads) ---------- */
+/*
+  PANEL HATA EKRANI (15.10.2026).
+
+  Kart satır içi stillerle kuruluyordu (maxWidth/margin/padding) ve
+  başlığı sınıfsız bir <h1>'di. Bu tasarım sisteminde başlıklar
+  varsayılan olarak sıfırlanmış — her bileşen kendi başlığını
+  biçimlendiriyor — dolayısıyla hata başlığı 14 piksel/400 ağırlıkta,
+  yani gövde yazısıyla AYNI çiziliyordu. Bir şeyin ters gittiğini
+  söyleyen ekranın en zayıf yazısı başlığıydı.
+
+  Boyut sayfa başlıklarıyla aynı (20px); telefonda kart kenar
+  boşlukları da daralıyor (32 piksel yan dolgu 351 piksellik kartta
+  fazla).
+*/
+.panel-hata{max-width:640px;margin:var(--sp-6) auto;padding:var(--sp-6)}
+.panel-hata h1{margin:var(--sp-2) 0 var(--sp-3);font-size:20px;font-weight:var(--fw-semibold);color:var(--ink)}
+.panel-hata pre{white-space:pre-wrap;font-size:var(--fs-sm)}
+@media (max-width:760px){
+  .panel-hata{margin:var(--sp-4) 0;padding:var(--sp-5) var(--sp-4)}
+}
+
 .panel-skeleton{display:flex;flex-direction:column;gap:20px}
 .skel{position:relative;overflow:hidden;border-radius:10px;background:var(--surface-2)}
 .skel:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb, var(--surface) 60%, transparent),transparent);animation:skelShimmer 1.4s ease-in-out infinite}
@@ -178,7 +199,26 @@
 .skel-card{height:96px;border-radius:14px}
 .skel-block{height:220px;border-radius:16px}
 @media(max-width:900px){.panel-skeleton-metrics{grid-template-columns:1fr 1fr}}
-@media(max-width:620px){.panel-skeleton-metrics{grid-template-columns:1fr}.skel-title{width:70%}.skel-sub{width:90%}}
+/*
+  İSKELET SAYFANIN ŞEKLİNİ TAKLİT ETSİN (15.10.2026).
+
+  620 altında ölçü kutuları tek sütuna iniyordu: dört tane 96 piksellik
+  blok alt alta, iskeletin tamamı 931 piksel — telefon ekranından uzun.
+  Oysa gerçek sayfada o bölge TEK bir şerit kartı ve iki sütunlu, 158
+  piksel. Yani yüklenirken uzun bir blok dizisi görünüp sayfa gelince
+  birden kısalıyordu; her gezinmede göz kayması.
+
+  İki sütun + 62 piksellik kutular şeridin kendisine benziyor (136'ya
+  karşı 158) ve iskeletin tamamı 579 piksele iniyor. Liste blokları da
+  220'den 150'ye: telefonda kartlar daha kısa.
+*/
+@media(max-width:620px){
+  .panel-skeleton-metrics{grid-template-columns:1fr 1fr}
+  .panel-skeleton-metrics .skel-card{height:62px}
+  .panel-skeleton .skel-block{height:150px}
+  .skel-title{width:70%}
+  .skel-sub{width:90%}
+}
 @media(prefers-reduced-motion:reduce){.skel:after{animation:none}}
 
 /* ---------- Satır içi silme onayı (tarayıcı confirm() yerine, daha güvenilir) ---------- */

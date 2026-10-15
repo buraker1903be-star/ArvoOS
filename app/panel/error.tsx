@@ -21,14 +21,16 @@ export default function PanelError({
   const detail = process.env.NODE_ENV !== "production" ? error.message : null;
 
   return (
-    <section className="panel-card" role="alert" style={{ maxWidth: 640, margin: "32px auto", padding: "28px 32px" }}>
+    <section className="panel-card panel-hata" role="alert">
       <small className="panel-kicker">İŞLEM TAMAMLANAMADI</small>
-      <h1 style={{ margin: "8px 0 10px" }}>Bir sorun oluştu</h1>
+      {/* Ölçü ve başlık biçimi panel-page-system.css'te (.panel-hata):
+          sınıfsız h1 bu sistemde gövde yazısı boyunda kalıyordu. */}
+      <h1>Bir sorun oluştu</h1>
       <p>
         Son işleminiz kaydedilmemiş olabilir. Bilgileri kontrol edip tekrar
         deneyin. Sorun devam ederse bu ekranın görüntüsünü yöneticinize iletin.
       </p>
-      {detail ? <pre style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>{detail}</pre> : null}
+      {detail ? <pre>{detail}</pre> : null}
       {error.digest ? <p><small>Hata kodu: {error.digest}</small></p> : null}
       <div className="panel-page-actions">
         <button className="panel-primary" type="button" onClick={() => reset()}>
