@@ -23,7 +23,32 @@
 
   /* 1. satır: başlık ve durum */
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-ust{display:flex;align-items:center;gap:10px;min-width:0}
-  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-baslik{flex:1;min-width:0;overflow:hidden;color:var(--ink);font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;text-decoration:none;text-overflow:ellipsis;white-space:nowrap}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-baslik{flex:1;min-width:0;color:var(--ink);font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;text-decoration:none}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-baslik-metin{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /*
+    SATIRIN TAMAMI DOKUNULABİLİR (15.10.2026).
+
+    Telefonda satır 100 piksele yakın bir kart gibi duruyor ama yalnızca
+    BAŞLIK bağlantıydı: ölçüldüğünde 104 piksellik satırın yalnızca
+    277×20'lik üst şeridi tıklanıyordu. Altındaki not ve durum
+    işaretlerine dokunmak hiçbir şey yapmıyordu — kart gibi görünen bir
+    şeyin ortasına basıp tepki alamamak, telefonda "bozuk" hissi veren
+    şeylerin başında geliyor. Konsolun iOS listesinde (k-ios) satırın
+    kendisi bağlantı; buradaki tablo satırında aynı sonucu bağlantının
+    yaydığı görünmez bir katman veriyor.
+
+    İki ayrıntı yoksa çalışmıyor, ikisi de denenerek bulundu:
+     - Başlıktaki overflow:hidden katmanı kırpıyordu → metin iç
+       kapsayıcıya alındı (table-cells.tsx).
+     - Bağlantı başka bir kuraldan position:relative alıyor ve katman
+       hücreye değil bağlantıya göre konumlanıyordu → position:static.
+
+    Düğmeler ayrı bir hücrede (crm-table-actions), katman onları
+    örtmüyor.
+  */
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir{position:relative}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir a.ms-baslik{position:static}
+  .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir a.ms-baslik::after{content:"";position:absolute;inset:0}
   .os-root .panel-content .talep-tablo .crm-data-table tbody td.mobil-satir .ms-ust .status-pill{flex:none;min-height:0;padding:2px 8px;font-size:11.5px;white-space:nowrap}
 
   /* 2. satır: kim — tek satır, taşarsa üç nokta */

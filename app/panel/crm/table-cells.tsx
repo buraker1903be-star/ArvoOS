@@ -134,7 +134,15 @@ export function MobilSatir({ href, baslik, durum, alt = [], isaretler = [] }: {
   return (
     <td className="mobil-satir">
       <div className="ms-ust">
-        {href ? <Link className="ms-baslik" href={href}>{baslik}</Link> : <span className="ms-baslik">{baslik}</span>}
+        {/*
+          Başlık metni İÇ bir kapsayıcıda: üç nokta kırpması onda, bağlantı
+          serbest kalıyor. Bağlantının kendisinde overflow:hidden olduğu
+          sürece satıra yayılan dokunma katmanı (mobil-satir.css) başlığın
+          kutusuna kırpılıyordu.
+        */}
+        {href
+          ? <Link className="ms-baslik" href={href}><span className="ms-baslik-metin">{baslik}</span></Link>
+          : <span className="ms-baslik"><span className="ms-baslik-metin">{baslik}</span></span>}
         {durum ? <span className="status-pill" data-tone={durum.ton}>{durum.etiket}</span> : null}
       </div>
       {altMetin ? <div className="ms-alt">{altMetin}</div> : null}
