@@ -212,6 +212,28 @@
   color:var(--muted);font-size:14px;line-height:1.55;text-align:center
 }
 .panel-root .crm-empty-state h2,.panel-root div.panel-empty h2{margin:0;font-family:var(--font-display);font-size:24px;font-weight:600;color:var(--ink)}
+/*
+  TELEFONDA BOŞ DURUM BAŞLIĞI SAYFA BAŞLIĞINI AŞMASIN (15.10.2026).
+
+  Yukarıdaki 24 piksel masaüstü için verilmiş bir karardı (12.09.2026,
+  sekiz ayrı boş-durum biçimini birleştiren düzen): geniş bir tablonun
+  ortasındaki boşlukta iri bir başlık doğru duruyor.
+
+  Telefonda ekranın hiyerarşisi tersine dönüyordu: sayfa başlığı 20,
+  kart başlığı 16, boş kutunun başlığı 24 piksel. Yani ekrandaki EN İRİ
+  yazı, "burada bir şey yok" cümlesiydi — üstelik dar kartta iki satıra
+  sarıyordu ("Onay bekleyen sözleşme yok", 60 piksel yükseklik).
+
+  18 piksel ikisinin arasına oturuyor: kartın mesajı olduğu belli,
+  sayfanın adını bastırmıyor. Kutunun 150 piksellik alt sınırı ve 32
+  piksellik dolgusu da telefonda yer kaplamaktan başka bir şey
+  yapmıyordu (kutu 175 → 122 piksel).
+*/
+@media (max-width:760px){
+  .panel-root .crm-empty-state h2,.panel-root div.panel-empty h2{font-size:18px}
+  .panel-root :is(.crm-empty,.crm-empty-state,.activity-empty,.hr-empty),
+  .panel-root :is(div,p,section).panel-empty{min-height:0;padding:var(--sp-6) var(--sp-5)}
+}
 /* Tablo hücresi olarak kullanılan boş durum: hücre görünümü bozulmasın */
 .panel-root td.panel-empty{display:table-cell;min-height:0;padding:40px 16px;border:0;border-radius:0;background:transparent;color:var(--muted);font-size:14px;text-align:center}
 
