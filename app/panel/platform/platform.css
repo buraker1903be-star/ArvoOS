@@ -1186,3 +1186,23 @@ dialog.plt-pencere[open] { display: flex; flex-direction: column }
   .musteri-pencereleri > * { flex: 0 0 auto }
 }
 .musteri-yukleniyor { min-height: 160px; display: grid; place-items: center; margin: 0 }
+
+/* ---------- Onay penceresi (konsolun ağır işlemleri; onay-penceresi.tsx) ---------- */
+.plt-onay::backdrop { background: rgba(5, 12, 26, .45) }
+.plt-onay .plt-pencere-govde { max-width: 460px }
+.plt-onay-metin { margin: 0; color: var(--ink-soft, var(--ink)); font-size: 14px; line-height: 1.55 }
+.plt-onay-sebep { display: grid; gap: 6px }
+.plt-onay-sebep > span { color: var(--muted); font-size: 12px; font-weight: 650 }
+.plt-onay-sebep textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface); color: var(--ink); font-size: 14px; line-height: 1.5; resize: vertical;
+}
+.plt-onay-sebep textarea:focus-visible { outline: none; border-color: var(--primary); box-shadow: var(--shadow-glow) }
+.plt-onay-sebep small { color: var(--muted); font-size: 11.5px; line-height: 1.4 }
+/* Onay sağda: panelin kayıt çubuklarıyla aynı sıra (vazgeç solda). */
+.plt-onay-eylem { display: flex; justify-content: flex-end; gap: var(--sp-2); flex-wrap: wrap }
+.plt-onay-eylem > button { min-height: 44px }
+@media (max-width: 420px) {
+  .plt-onay-eylem { flex-direction: column-reverse }
+  .plt-onay-eylem > button { width: 100% }
+}

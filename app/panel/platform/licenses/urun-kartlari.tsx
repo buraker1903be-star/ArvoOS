@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
 import { KListe, KOge } from "../konsol-ui";
+import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
 import { urunSimgesi } from "@/lib/products";
 
 /*
@@ -82,26 +83,21 @@ export function UrunKartlari({
   const [calisiyor, basla] = useTransition();
 
   /* Kapatma geri alınabilir ama müşteriyi anında dışarıda bırakıyor:
-     yanlış satıra dokunmaya karşı onay soruluyor (üye erişimindeki gibi). */
-  /*
-    Kapatırken SEBEP soruluyor (modül matrisindeki kuralın aynısı):
-    sebepsiz bir dondurmayı üç ay sonra kimse açıklayamıyor; müşteri
-    arayınca "neden kapalı" sorusunun yanıtı kayıtta olmalı. Hazır metin
-    en sık sebep; kurucu değiştirebilir.
-  */
+     yanlış satıra dokunmaya karşı onay soruluyor (üye erişimindeki gibi).
+
+     Onay panelin kendi penceresinde (../onay-penceresi): tarayıcının
+     confirm/prompt kutuları susturulabiliyor ve susturulduğunda anahtara
+     basmak sessizce hiçbir şey yapmıyordu. Gerekçe o dosyanın başında.
+
+     Kapatırken SEBEP soruluyor (modül matrisindeki kuralın aynısı):
+     sebepsiz bir dondurmayı üç ay sonra kimse açıklayamıyor; müşteri
+     arayınca "neden kapalı" sorusunun yanıtı kayıtta olmalı. Hazır metin
+     en sık sebep; kurucu değiştirebilir. */
+  const [onay, setOnay] = useState<{ istek: OnayIstegi; uygula: (sebep: string) => void } | null>(null);
+
   const erisimDegistir = (kart: UrunKarti, acilacak: boolean) => {
     const cekirdek = kart.tur === "cekirdek";
-    let sebep = "";
-    if (acilacak) {
-      if (!window.confirm(`${kurumAdi} için ${kart.ad} erişimi açılsın mı?`)) return;
-    } else {
-      sebep = window.prompt(cekirdek
-        ? `${kurumAdi} için ArvoOS erişimi kapatılacak: kurumdaki herkes paneli kullanamaz, yalnızca sahip ödeme ekranına ulaşır. Verileri silinmez.\n\nSebep (kayda geçer, kilit ekranında görünür):`
-        : `${kurumAdi} için ${kart.ad} erişimi kapatılacak: kurumun kullanıcıları ${kart.ad}'a giremez. Verileri silinmez.\n\nSebep (kayda geçer):`,
-      "Abonelik ödemesi alınamadı.") ?? "";
-      if (!sebep.trim()) return;
-    }
-    basla(async () => {
+    const uygula = (sebep: string) => basla(async () => {
       const veri = new FormData();
       veri.set("organization_id", organizationId);
       if (cekirdek) {
@@ -114,6 +110,36 @@ export function UrunKartlari({
         veri.set("reason", sebep);
         await urunErisiminiDegistir(veri);
       }
+      setOnay(null);
+    });
+
+    setOnay({
+      uygula,
+      istek: acilacak
+        ? {
+            ust: kurumAdi,
+            baslik: `${kart.ad} erişimi açılsın mı?`,
+            metin: cekirdek
+              ? `${kurumAdi} paneli yeniden kullanabilir.`
+              : `${kurumAdi} kullanıcıları ${kart.ad}'a yeniden girebilir.`,
+            onayEtiketi: "Aç",
+          }
+        : {
+            ust: kurumAdi,
+            baslik: `${kart.ad} erişimi kapatılsın mı?`,
+            metin: cekirdek
+              ? `${kurumAdi} içindeki herkes paneli kullanamaz; yalnızca kurum sahibi ödeme ekranına ulaşır. Verileri silinmez, erişim istendiğinde yeniden açılır.`
+              : `${kurumAdi} kullanıcıları ${kart.ad}'a giremez. Verileri silinmez, erişim istendiğinde yeniden açılır.`,
+            onayEtiketi: "Kapat",
+            tehlike: true,
+            sebep: {
+              etiket: "Kapatma sebebi",
+              varsayilan: "Abonelik ödemesi alınamadı.",
+              ipucu: cekirdek
+                ? "Kayda geçer ve kuruma kilit ekranında gösterilir."
+                : "Kayda geçer; müşteri sorduğunda yanıtın kayıtta olması gerekiyor.",
+            },
+          },
     });
   };
   const pencere = useRef<HTMLDialogElement>(null);
@@ -232,6 +258,13 @@ export function UrunKartlari({
           </div>
         ) : null}
       </dialog>
+
+      <OnayPenceresi
+        istek={onay?.istek ?? null}
+        calisiyor={calisiyor}
+        onIptal={() => { if (!calisiyor) setOnay(null); }}
+        onOnay={(sebep) => onay?.uygula(sebep)}
+      />
     </>
   );
 }

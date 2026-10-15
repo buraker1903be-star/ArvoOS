@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { modulErisimiDegistir, modulKoprusuDegistir } from "./modul-actions";
 import { KBaslik, KDurum, KListe, KOge, KTablo } from "./konsol-ui";
+import { OnayPenceresi, type OnayIstegi } from "./onay-penceresi";
 // Anahtar (.plt-switch) ve bağlantı (.modul-baglanti) konsolun stilinde.
 import "./platform.css";
 
@@ -74,43 +75,61 @@ export function ModulMatrisi({
   yalnizKopru?: boolean;
 }) {
   const [calisiyor, basla] = useTransition();
+  /*
+    Onay artık panelin kendi penceresinde (onay-penceresi.tsx): tarayıcı
+    kutuları susturulabiliyor ve susturulunca anahtara basmak sessizce
+    hiçbir şey yapmıyordu. Gerekçe o dosyanın başında.
+  */
+  const [onay, setOnay] = useState<{ istek: OnayIstegi; uygula: (sebep: string) => void } | null>(null);
 
-  const erisim = (satir: ModulSatiri, acilacak: boolean) => {
-    let sebep = "";
-    if (!acilacak) {
-      /*
-        Sebep burada isteniyor, sunucuda da zorunlu. Sebepsiz bir
-        dondurmayı üç ay sonra kimse açıklayamıyor; müşteri arayınca
-        "neden kapalı" sorusunun yanıtı kayıtta olmalı.
-      */
-      sebep = window.prompt(`${satir.name} neden donduruluyor?\n\n${kurumAdi} için bu sebep kayda geçer.`) ?? "";
-      if (!sebep.trim()) return;
-    } else if (!window.confirm(`${kurumAdi} için ${satir.name} açılsın mı?`)) {
-      return;
-    }
-
+  const gonder = (alanlar: Record<string, string>, eylem: (veri: FormData) => Promise<unknown> | void) =>
     basla(async () => {
       const veri = new FormData();
       veri.set("organization_id", organizationId);
-      veri.set("product", satir.product);
-      veri.set("status", acilacak ? "active" : "suspended");
-      veri.set("reason", sebep);
-      await modulErisimiDegistir(veri);
+      for (const [ad, deger] of Object.entries(alanlar)) veri.set(ad, deger);
+      await eylem(veri);
+      setOnay(null);
     });
-  };
+
+  const erisim = (satir: ModulSatiri, acilacak: boolean) => setOnay({
+    istek: acilacak
+      ? {
+          ust: kurumAdi,
+          baslik: `${satir.name} açılsın mı?`,
+          metin: `${kurumAdi} kullanıcıları ${satir.name}'a yeniden girebilir.`,
+          onayEtiketi: "Aç",
+        }
+      : {
+          ust: kurumAdi,
+          baslik: `${satir.name} dondurulsun mu?`,
+          metin: `${kurumAdi} kullanıcıları ${satir.name}'a giremez. Verileri silinmez, erişim istendiğinde yeniden açılır.`,
+          onayEtiketi: "Dondur",
+          tehlike: true,
+          /*
+            Sebep burada isteniyor, sunucuda da zorunlu. Sebepsiz bir
+            dondurmayı üç ay sonra kimse açıklayamıyor; müşteri arayınca
+            "neden kapalı" sorusunun yanıtı kayıtta olmalı.
+          */
+          sebep: { etiket: "Dondurma sebebi", ipucu: "Kayda geçer; müşteri sorduğunda yanıtın kayıtta olması gerekiyor." },
+        },
+    uygula: (sebep) => gonder(
+      { product: satir.product, status: acilacak ? "active" : "suspended", reason: sebep },
+      modulErisimiDegistir,
+    ),
+  });
 
   const kopru = (satir: ModulSatiri) => {
     const entegre = !satir.integrated;
-    if (!window.confirm(entegre
-      ? `${satir.name} ArvoOS ile entegre çalışsın mı? Sözleşme onaylandığında otomatik kayıt oluşur.`
-      : `${satir.name} bağımsız çalışsın mı? Kiracı ürünü kullanmaya devam eder, yalnızca otomatik veri akışı durur.`)) return;
-
-    basla(async () => {
-      const veri = new FormData();
-      veri.set("organization_id", organizationId);
-      veri.set("product", satir.product);
-      veri.set("integrated", entegre ? "1" : "0");
-      await modulKoprusuDegistir(veri);
+    setOnay({
+      istek: {
+        ust: kurumAdi,
+        baslik: entegre ? `${satir.name} entegre çalışsın mı?` : `${satir.name} bağımsız çalışsın mı?`,
+        metin: entegre
+          ? "Sözleşme onaylandığında ürün kaydı otomatik oluşur."
+          : "Kiracı ürünü kullanmaya devam eder, yalnızca otomatik veri akışı durur.",
+        onayEtiketi: entegre ? "Entegre et" : "Bağımsıza al",
+      },
+      uygula: () => gonder({ product: satir.product, integrated: entegre ? "1" : "0" }, modulKoprusuDegistir),
     });
   };
 
@@ -127,9 +146,21 @@ export function ModulMatrisi({
     yuvasına iki anahtar etiketsiz sığınca hangisinin hangisi olduğu
     belirsizleşiyor.
   */
+  /* Pencere iki dönüş yolunda da çizilmeli: yalnız-köprü listesi de
+     anahtarı olan bir görünüm. */
+  const pencere = (
+    <OnayPenceresi
+      istek={onay?.istek ?? null}
+      calisiyor={calisiyor}
+      onIptal={() => { if (!calisiyor) setOnay(null); }}
+      onOnay={(sebep) => onay?.uygula(sebep)}
+    />
+  );
+
   if (yalnizKopru) {
     const acikEkler = satirlar.filter((satir) => !satir.cekirdek && ["active", "trialing", "past_due"].includes(satir.status));
     return (
+      <>
       <KListe>
         {acikEkler.map((satir) => (
           <KOge
@@ -150,10 +181,13 @@ export function ModulMatrisi({
           />
         ))}
       </KListe>
+      {pencere}
+      </>
     );
   }
 
   return (
+    <>
     <KTablo kolonlar={[{ ad: "Modül" }, { ad: "Durum" }, { ad: "Erişim" }, { ad: "Köprü" }, { ad: "Aylık ücret", sinif: "crm-col-amount" }]}>
       {satirlar.map((satir) => {
         const acik = ["active", "trialing", "past_due"].includes(satir.status);
@@ -203,5 +237,7 @@ export function ModulMatrisi({
         );
       })}
     </KTablo>
+    {pencere}
+    </>
   );
 }
