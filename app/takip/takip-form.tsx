@@ -4,6 +4,7 @@ import { Fragment, startTransition, useActionState, useEffect, useLayoutEffect, 
 import { createPortal, useFormStatus } from "react-dom";
 import { lookupTracking, refreshCustomerFileMessages, refreshCustomerPortalFiles, respondToProposalFromTracking, sendCustomerFileMessage, type CustomerFileMessage, type CustomerMessageState, type ProposalDecisionState, type TakipState, type TrackingDocuments } from "./actions";
 import { LookupSubmitButton } from "../durum/[slug]/lookup-controls";
+import { TrkOnayKutusu } from "../durum/[slug]/onay-kutusu";
 import { CustomerFiles } from "../durum/[slug]/customer-files";
 import {
   describeStatus, FinanceSummary, formatDateTime, formatDay, formatTime,
@@ -202,6 +203,11 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
   const plan = row.workPlan;
   const today = todayIso();
   const [decisionState, decisionAction, decisionPending] = useActionState(respondToProposalFromTracking, initialDecisionState);
+  /* Teklifi reddetme onayı: kutu açılır, "Evet" aynı düğmeyi tıklar.
+     redOnaylandi, o ikinci tıklamada kutunun yeniden açılmasını önlüyor. */
+  const [redSoruluyor, setRedSoruluyor] = useState(false);
+  const redDugmesi = useRef<HTMLButtonElement>(null);
+  const redOnaylandi = useRef(false);
   const docs = decisionState.documents ?? row.documents;
   const offer = docs?.proposal ?? null;
   const showOffer = Boolean(offer && (offer.canAccept || decisionState.success));
@@ -286,20 +292,45 @@ function ResultScreen({ row, onStartOver }: { row: TrackingResult; onStartOver: 
                         {decisionPending ? "Kaydediliyor…" : "Teklifi kabul ediyorum"}
                       </button>
                       {offer.canReject ? (
+                        /*
+                          Onay artık sayfanın kendi kutusunda (onay-kutusu.tsx):
+                          window.confirm susturulduğunda false dönüyor ve buradaki
+                          preventDefault() düğmeyi tamamen öldürüyordu — kurumun
+                          müşterisi "reddediyorum"a basıp hiçbir şey olmadığını
+                          görüyordu. Gönderim yolu değişmedi: onaydan sonra AYNI
+                          düğme tıklanıyor, yani form, alan adı ve değer eskisiyle
+                          birebir aynı.
+                        */
                         <button
+                          ref={redDugmesi}
                           type="submit"
                           name="decision"
                           value="reject"
                           className="trk-offer-reject"
                           disabled={decisionPending}
                           onClick={(event) => {
-                            if (!window.confirm("Teklifi reddetmek istediğinize emin misiniz? Hazırlanan sözleşme iptal edilir.")) event.preventDefault();
+                            if (redOnaylandi.current) return;
+                            event.preventDefault();
+                            setRedSoruluyor(true);
                           }}
                         >
                           Teklifi reddediyorum
                         </button>
                       ) : null}
                     </form>
+                    <TrkOnayKutusu
+                      acik={redSoruluyor}
+                      baslik="Teklifi reddetmek istiyor musunuz?"
+                      metin="Hazırlanan sözleşme iptal edilir. Kararınızı değiştirirseniz sizinle ilgilenen ekibe yazabilirsiniz."
+                      onayEtiketi="Evet, reddediyorum"
+                      onIptal={() => setRedSoruluyor(false)}
+                      onOnay={() => {
+                        setRedSoruluyor(false);
+                        redOnaylandi.current = true;
+                        redDugmesi.current?.click();
+                        redOnaylandi.current = false;
+                      }}
+                    />
                     <p className="trk-sign-foot">Kararınız tarih-saat, IP adresi ve cihaz bilgisiyle kayıt altına alınır.</p>
                   </>
                 )}

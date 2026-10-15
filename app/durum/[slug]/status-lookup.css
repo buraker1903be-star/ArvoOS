@@ -594,3 +594,20 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
   :is(.status-lookup-shell,.status-lookup-results) *::before,
   :is(.status-lookup-shell,.status-lookup-results) *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
+
+/* ---------- Müşteriye görünen onay kutusu (onay-kutusu.tsx) ---------- */
+.trk-onay{
+  width:min(420px,calc(100vw - 32px));padding:0;border:1px solid var(--trk-line);border-radius:20px;
+  background:var(--trk-surface);color:var(--trk-ink);box-shadow:var(--trk-shadow-lg);
+  font-family:var(--trk-font);
+}
+.trk-onay::backdrop{background:rgba(11,27,46,.45)}
+.trk-onay-govde{display:grid;gap:12px;padding:22px}
+.trk-onay-govde h2{margin:0;font-size:18px;font-weight:650;letter-spacing:-.01em;color:var(--trk-ink)}
+.trk-onay-govde p{margin:0;color:var(--trk-muted);font-size:14.5px;line-height:1.55}
+.trk-onay-eylem{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.trk-onay-eylem button{min-height:48px;padding:0 14px;border-radius:14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.trk-onay-vazgec{border:1px solid var(--trk-line);background:var(--trk-surface-2);color:var(--trk-ink)}
+.trk-onay-evet{border:1px solid color-mix(in srgb,#b42318 40%,transparent);background:var(--trk-surface);color:#b42318}
+.trk-onay-eylem button:focus-visible{outline:3px solid var(--trk-focus);outline-offset:2px}
+@media (max-width:420px){.trk-onay-eylem{grid-template-columns:1fr}}
