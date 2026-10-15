@@ -44,9 +44,20 @@ export const clampPercent = (value: number) => Math.min(100, Math.max(0, Math.ro
 // yuvarlanmış çıkıyordu — müşteri tek sayfada aynı para için iki farklı rakam
 // görüyordu ve kalan bakiye 0,50 TL'ye kadar fazla yazılabiliyordu.
 const moneyFormat = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" });
-const dateTimeFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const dayFormat = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
-const timeFormat = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
+/*
+  MÜŞTERİ DE TÜRKİYE SAATİNİ GÖRÜR. Bu üç biçimlendirici müşterinin
+  TARAYICISINDA çalışıyor (takip ekranı istemci bileşeni), yani dilim
+  verilmeyince ziyaretçinin cihaz saatini yazıyordu. Aynı olay panelde
+  "18:12", yurt dışındaki bir müşterinin ekranında "17:12" görünüyor ve
+  hiçbir yerde hangi saat olduğu yazmıyor: operasyon personeliyle müşteri
+  aynı mesajı iki ayrı saatle konuşuyor. Sözleşme ve teklif belgeleri
+  (_components/legal/format.ts) ile panel zaten Türkiye saatine sabit;
+  müşteri ekranı tek istisnaydı.
+*/
+const TZ = "Europe/Istanbul";
+const dateTimeFormat = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const dayFormat = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, day: "numeric", month: "long", year: "numeric" });
+const timeFormat = new Intl.DateTimeFormat("tr-TR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
 
 export const money = (cents: number) => moneyFormat.format((cents ?? 0) / 100);
 export const formatDateTime = (value: string) => dateTimeFormat.format(new Date(value));

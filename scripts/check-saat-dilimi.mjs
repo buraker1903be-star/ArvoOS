@@ -65,7 +65,18 @@ for (const dosya of dosyalar) {
     if (acilis > kapanis) yorumda = true;
     else if (kapanis > acilis) yorumda = false;
     if (satirYorumda || /^\s*(\*|\/\/|\/\*)/.test(satir)) return;
-    if (!/new Date\([^)]*\)\s*\.toLocale(String|DateString|TimeString)\s*\(/.test(satir)) return;
+    /*
+      İKİ YAZILIŞ. `new Date(x).toLocaleString(...)` ve
+      `new Intl.DateTimeFormat(...)` aynı şeyi yapıyor; denetim ilkini
+      arıyordu ve ikincisi gözden kaçtı. Cari hesap ekranı dilimsiz bir
+      DateTimeFormat ile "Kayıt zamanı" ve sözleşmenin imza gününü
+      yazıyordu — gece 00:00–03:00 arasındaki her kayıt bir önceki güne
+      düşüyor, para kütüğünde ay sonunu ay başına taşıyacak kadar.
+      Formatlayıcı çağrıdan ayrı bir satırda kurulabildiği için KURULUŞ
+      yeri işaretleniyor: dilim oraya yazılır.
+    */
+    if (!/new Date\([^)]*\)\s*\.toLocale(String|DateString|TimeString)\s*\(/.test(satir)
+        && !/new Intl\.DateTimeFormat\s*\(/.test(satir)) return;
     cagri++;
     if (GUN_KURGUSU.test(satir)) return;
     /* Seçenekler birkaç satıra yayılmış olabiliyor; çağrının devamına da

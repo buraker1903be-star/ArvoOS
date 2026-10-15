@@ -34,8 +34,13 @@ import { TaksitDuzenleFormu, TaksitPlaniFormu } from "./taksit-formlari";
 
 const money = (n: number) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(n / 100);
+/* Dilim şart: bu yardımcıya gün sütunları (transaction_date, due_date) KADAR
+   an sütunları da geliyor — "Kayıt zamanı" (created_at) ve sözleşmenin imza
+   günü (signed_at). Dilimsizken sunucunun UTC'si yazılıyordu ve Türkiye'de
+   gece 00:00–03:00 arasında kaydedilen her hareket bir önceki güne düşüyordu;
+   para kütüğünde bu, ayın 1'indeki bir tahsilatı önceki aya yazmak demek. */
 const date = (v: string) =>
-  new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(v));
+  new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "long", year: "numeric" }).format(new Date(v));
 
 type Entry = {
   id: string;

@@ -409,8 +409,16 @@ gece 00:00–03:00 arasında olan her şey bir önceki güne düşüyor, yani
 Gösterim için `lib/istanbul-date.ts` içindeki `istanbulDateTime()`
 kullanılır; seçenek verilmezse yerel ayarın kendi biçimi korunur, o
 yardımcı yalnızca dilimi düzeltir. Denetim `new Date(...).toLocale*`
-çağrılarına bakar; saati sabitlenmiş kurgular (`T00:00:00`, `T12:00:00`)
-bir AN değil bir GÜN taşıdığı için muaftır. Hazır bir Date değişkeni
+VE `new Intl.DateTimeFormat(...)` çağrılarına bakar — ikisi aynı şeyi
+yapıyor ve denetim önce yalnızca ilkini arıyordu, ikincisi cari hesap
+ekranında gözden kaçtı ("Kayıt zamanı" ve sözleşmenin imza günü para
+kütüğünde bir önceki güne düşebiliyordu). Formatlayıcı çağrıdan ayrı bir
+satırda kurulabildiği için KURULUŞ yeri işaretlenir. Saati sabitlenmiş
+kurgular (`T00:00:00`, `T12:00:00`) bir AN değil bir GÜN taşıdığı için
+muaftır. Müşteri takip ekranı da Türkiye saatine sabittir: oradaki
+biçimlendiriciler ziyaretçinin TARAYICISINDA çalışıyor ve dilimsizken
+yurt dışındaki müşteri aynı mesajı personelden farklı bir saatle
+görüyordu. Hazır bir Date değişkeni
 üzerinden yapılan çağrılar taranmaz — değişkenin ne taşıdığı metinden
 okunamıyor. Bilerek dilimsizse: `// dilim-tamam: <sebep>`.
 
