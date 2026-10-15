@@ -277,14 +277,31 @@
    sayıları iki satır (138px), temsilci seçimi ile arama alt alta (96px).
    Özet tek satırda yana kayar; seçim(ler) ve arama yan yana. */
 @media (max-width:760px){
+  /*
+    ŞERİT SARIYOR, YANA KAYMIYOR (16.10.2026).
+
+    Buradaki kurallar tek SIRA bir yatay kaydırıcı varsayıyordu: her
+    kutuya sol ayraç, yalnızca BİRİNCİ kutuda ayraç yok. Oysa
+    kayit-detay.css aynı genişlikte şeridi iki sütunlu ızgaraya
+    çeviriyor (15.10) ve `display:grid` oradan geliyor. İki dosya aynı
+    şeride karşıt düzen yazınca ortaya şu çıkıyordu:
+
+      · sol sütunun İLK kutusu x=29'da, altındakiler x=44'te —
+        yani ikinci satırdan itibaren sola hizasız,
+      · satır başında, hiçbir şeyi ayırmayan dikey bir çizgi,
+      · sütunlar arasında boşluk sıfır (gap:0 buradan geliyordu).
+
+    Kurucu konsolunun şeridi aynı sorunu yaşayıp çözmüştü: ayracı
+    satır başına denk gelen kutulardan kaldırmak (nth-child(odd)).
+    Panel şeridi de artık o reçeteyi kullanıyor.
+  */
   .os-root .panel-content .kayit-serit{padding:10px 0;border-radius:var(--r-lg)}
   .os-root .panel-content .kayit-serit>dl{
-    flex-wrap:nowrap;gap:0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;
-    padding:0 var(--sp-4);scroll-padding:0 var(--sp-4);
+    flex-wrap:wrap;overflow-x:visible;gap:var(--sp-3) 0;
+    padding:0 var(--sp-4);
   }
-  .os-root .panel-content .kayit-serit>dl::-webkit-scrollbar{display:none}
   .os-root .panel-content .kayit-serit>dl>div{flex:none;padding:0 14px;border-left:1px solid var(--line-soft)}
-  .os-root .panel-content .kayit-serit>dl>div:first-child{padding-left:0;border-left:0}
+  .os-root .panel-content .kayit-serit>dl>div:nth-child(odd){padding-left:0;border-left:0}
   .os-root .panel-content .kayit-serit dt{white-space:nowrap}
   .os-root .panel-content .kayit-serit dd{white-space:nowrap}
 
