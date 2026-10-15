@@ -49,6 +49,18 @@ const EKRANLAR = [
   "app/panel/platform/payments/page.tsx",
   "app/panel/platform/subscribers/page.tsx",
   "app/panel/platform/ayarlar/page.tsx",
+  "app/panel/crm/page.tsx",
+  "app/panel/crm/contracts/page.tsx",
+  "app/panel/crm/proposals/page.tsx",
+  "app/panel/operations/isler/page.tsx",
+  "app/panel/operations/pano/page.tsx",
+  "app/panel/operations/ekip/page.tsx",
+  "app/panel/operations/arsiv/page.tsx",
+  "app/panel/finance/page.tsx",
+  "app/panel/finance/raporlar/page.tsx",
+  "app/panel/hr/page.tsx",
+  "app/panel/accounts/page.tsx",
+  "app/panel/posta/page.tsx",
 ];
 
 const MUAFIYET = /hata-tamam:/;

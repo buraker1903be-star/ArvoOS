@@ -119,10 +119,12 @@ export default async function OperasyonArsivi({ searchParams }: {
 
   // Arşivdeki işe müşteri yeniden yazmış olabilir: satırda kırmızı belirteç
   const idler = isler.map((is) => is.id);
-  const { data: okunmamisSatirlar } = idler.length
+  const { data: okunmamisSatirlar, error: okunmamisHatasi } = idler.length
     ? await supabase.from("customer_file_messages").select("workflow_id")
         .eq("organization_id", organizationId).eq("sender_type", "customer").is("read_at", null).in("workflow_id", idler)
-    : { data: [] as { workflow_id: string }[] };
+    : { data: [] as { workflow_id: string }[], error: null };
+  // Okunamazsa belirteç sessizce söner; "müşteri yazmamış" demek değil.
+  if (okunmamisHatasi) throw new Error("Okunmamış müşteri mesajları okunamadı: " + okunmamisHatasi.message);
   const okunmamis = new Map<string, number>();
   for (const satir of (okunmamisSatirlar ?? []) as { workflow_id: string | null }[]) {
     if (satir.workflow_id) okunmamis.set(satir.workflow_id, (okunmamis.get(satir.workflow_id) ?? 0) + 1);

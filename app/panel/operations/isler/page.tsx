@@ -157,7 +157,10 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const invoiceIds = [...new Set(workflows.filter((w) => w.status === "completed" && w.invoice_id).map((w) => w.invoice_id!))];
   const paidInvoiceIds = new Set<string>();
   if (invoiceIds.length) {
-    const { data: invoices } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
+    const { data: invoices, error: faturaHatasi } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
+    /* Okunamazsa ödenmiş fatura "ödenmemiş" sayılır ve tamamlanan iş
+       "arşive hazır" görünmez: operasyoncu arşivleyemediği işi bekler. */
+    if (faturaHatasi) throw new Error("Fatura durumları okunamadı: " + faturaHatasi.message);
     for (const invoice of invoices ?? []) if (invoice.status === "paid") paidInvoiceIds.add(invoice.id);
   }
   const readyForArchive = (workflow: IsSatiri) => {

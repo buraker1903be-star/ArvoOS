@@ -386,7 +386,11 @@ göründü. Denetim DAR tutuldu: depoda bu kalıptan seksen küsur yer var ve
 çoğu zararsız (ad eşlemesi düşerse ekranda "—" yazar), her yeri
 işaretleyen bir denetim herkesin susturmayı öğrendiği bir denetim olur.
 Bu yüzden yalnızca betiğin başındaki listede yazan **özet ekranları**
-taranıyor — orada ekrandaki her şey bir sonuç. Yeni bir özet ekranı
+taranıyor — orada ekrandaki her şey bir sonuç. Liste de 15.10'da
+konsolun on sekiz ekranından kiracı panelinin liste sayfalarını da
+kapsayacak biçimde otuza çıkarıldı (talepler, teklifler, sözleşmeler,
+işler, pano, arşiv, finans, İK, cari, posta): onların şerit sayıları da
+birer sonuç. Yeni bir özet ekranı
 açarken listeye ekleyin. Hata bilerek yutuluyorsa satırın üstüne gerekçe
 yazılır: `// hata-tamam: <sebep>`. Denetim yakalanan hatanın
 KULLANILDIĞINI da arıyor; alınıp bir kenara konan `error` gösteriştir.

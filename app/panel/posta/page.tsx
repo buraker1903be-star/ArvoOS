@@ -148,6 +148,8 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     açılması dört ayrı gidiş dönüş sürüyordu. Konuşma sorgusu bunlardan
     SONRA kalıyor: gövde aramasının sonucu süzgecine giriyor.
   */
+  // hata-tamam: etiketler yalnızca süzgeç çipleri; düşerse çipler çıkmaz,
+  // konuşma listesi ve sayıları etkilenmez.
   const [hesap, gmailSonucu, { data: etiketVerisi }, { data: taslakVerisi, error: taslakHatasi }] = await Promise.all([
     postaDurumu(membership.organization_id),
     govdedeAra ? postaGovdesindeAra(membership.organization_id, desen as string) : Promise.resolve(null),
@@ -201,6 +203,8 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
     ...konusmalar.map((satir) => satir.silen_user_id),
     ...taslaklar.map((satir) => satir.olusturan),
   ].filter(Boolean))] as string[];
+  // hata-tamam: yalnızca ilgilenen/silen kişinin ADI; düşerse ad yerine
+  // kimlik görünür, konuşmanın durumu değişmez.
   const { data: personeller } = ilgilenenler.length
     ? await supabase.from("hr_employees").select("user_id,full_name")
         .eq("organization_id", membership.organization_id).in("user_id", ilgilenenler)

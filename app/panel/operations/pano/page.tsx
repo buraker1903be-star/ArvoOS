@@ -75,6 +75,9 @@ export default async function OperationsPanoPage({
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
   if (!modules.some((module) => module.code === "operations")) throw new Error("Operasyon modülüne erişiminiz yok.");
 
+  // hata-tamam: dördü de GÖSTERİM eşlemesi (sorumlu adı, şablon ve tür
+  // adları, kendi personel kaydım); düşerlerse ad yerine "—" çıkar,
+  // panodaki kart sayıları ve kolonlar etkilenmez.
   const [{ data, error }, { data: employees }, { data: sablonSatirlari }, { data: turSatirlari }, { data: benimKaydim }] = await Promise.all([
     supabase
       .from("operation_workflows")
@@ -116,15 +119,18 @@ export default async function OperationsPanoPage({
     yazdığında burada da görünmeli. Sayım İşler'dekiyle aynı sorgu.
   */
   const panoIsIdleri = ((data ?? []) as { id: string }[]).map((satir) => satir.id);
-  const [{ data: okunmamisSatirlar }, { count: arsivSayisi }] = await Promise.all([
+  const [{ data: okunmamisSatirlar, error: okunmamisHatasi }, { count: arsivSayisi }] = await Promise.all([
     panoIsIdleri.length
       ? supabase.from("customer_file_messages").select("workflow_id")
           .eq("organization_id", membership.organization_id).eq("sender_type", "customer")
           .is("read_at", null).in("workflow_id", panoIsIdleri)
-      : Promise.resolve({ data: [] as { workflow_id: string | null }[] }),
+      : Promise.resolve({ data: [] as { workflow_id: string | null }[], error: null }),
     supabase.from("operation_workflows").select("id", { count: "exact", head: true })
       .eq("organization_id", membership.organization_id).eq("status", "archived"),
   ]);
+  /* Okunamazsa "yeni mesaj yok" denir: panonun kırmızı belirteci
+     operasyoncunun gün içinde baktığı tek uyarı, sessizce sönmesin. */
+  if (okunmamisHatasi) throw new Error("Okunmamış müşteri mesajları okunamadı: " + okunmamisHatasi.message);
   const okunmamis = new Map<string, number>();
   for (const satir of (okunmamisSatirlar ?? []) as { workflow_id: string | null }[]) {
     if (satir.workflow_id) okunmamis.set(satir.workflow_id, (okunmamis.get(satir.workflow_id) ?? 0) + 1);

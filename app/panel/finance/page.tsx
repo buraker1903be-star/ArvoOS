@@ -296,6 +296,9 @@ export default async function FinancePage({
     !modules.some((m) => m.code === "accounts")
   )
     throw new Error("Finans ve cari hesap modülü erişimi gerekli.");
+  // hata-tamam: employeeData ve workflowData yalnızca EŞLEME — sorumlu adı
+  // ve işin sorumlusu; düşerlerse ad yerine "—" çıkar, bakiye ve tahsilat
+  // sayıları etkilenmez.
   const [{ data, error }, { data: contractData, error: contractError }, {data:employeeData},{data:workflowData},{data:tahsilatOzetiVerisi,error:tahsilatOzetiHatasi}] =
     await Promise.all([
       /*

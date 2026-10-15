@@ -78,8 +78,8 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const primGorur = isPlatformOwner || izin("hr.prim.gor");
   const gizlilikGorur = izin("hr.gizlilik.gor");
   const hareketGorur = izin("hr.hareket.gor");
-  const bosVeri = Promise.resolve({ data: [] as never[] });
-  const [prim, { data: gizlilikVerisi }, { data: varlikVerisi }] = await Promise.all([
+  const bosVeri = Promise.resolve({ data: [] as never[], error: null });
+  const [prim, { data: gizlilikVerisi, error: gizlilikHatasi }, { data: varlikVerisi, error: varlikHatasi }] = await Promise.all([
     primGorur ? primVerisi(supabase, membership.organization_id) : Promise.resolve(null),
     gizlilikGorur ? supabase.from("hr_confidentiality_agreements").select("employee_id,status").eq("organization_id", membership.organization_id) : bosVeri,
     hareketGorur ? supabase.from("user_presence").select("user_id,last_seen_at").eq("organization_id", membership.organization_id) : bosVeri,
@@ -92,14 +92,23 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const sinir = cevrimiciSiniri();
   const cevrimici = new Set(((varlikVerisi ?? []) as { user_id: string; last_seen_at: string }[]).filter((v) => Date.parse(v.last_seen_at) >= sinir).map((v) => v.user_id));
 
-  const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData }, { data: invitationData }] = await Promise.all([
+  const [{ data: employeeData, error: employeeError }, { data: departmentData, error: departmentError }, { data: memberData, error: uyelikHatasi }, { data: invitationData, error: davetHatasi }] = await Promise.all([
     supabase.from("hr_employees").select("id,user_id,department_id,employee_no,full_name,job_title,email,phone,employment_type,employment_status,start_date,can_receive_sales_requests").eq("organization_id", membership.organization_id).order("full_name"),
     supabase.from("hr_departments").select("id,name,code,is_active").eq("organization_id", membership.organization_id).order("name"),
-    canManageTeam ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", membership.organization_id) : Promise.resolve({ data: [] as Member[] }),
-    canManageTeam ? supabase.from("organization_invitations").select("id,email,role,status,created_at,expires_at,error_message").eq("organization_id", membership.organization_id).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[] }),
+    canManageTeam ? supabase.from("organization_memberships").select("user_id,role,is_active").eq("organization_id", membership.organization_id) : Promise.resolve({ data: [] as Member[], error: null }),
+    canManageTeam ? supabase.from("organization_invitations").select("id,email,role,status,created_at,expires_at,error_message").eq("organization_id", membership.organization_id).in("status", [...OKUNAN_DAVET_DURUMLARI]) : Promise.resolve({ data: [] as Invitation[], error: null }),
   ]);
   if (employeeError) throw new Error("Personeller okunamadı: " + employeeError.message);
   if (departmentError) throw new Error("Departmanlar okunamadı: " + departmentError.message);
+  /*
+    Genel bakıştaki dört tuzağın aynısı, bu kez davetin VERİLDİĞİ ekranda:
+    davetler okunamazsa zaten davet edilmiş kişi "davet edilmemiş"
+    görünür ve yönetici ikinci daveti gönderir; üyelikler okunamazsa
+    herkes erişimsiz, gizlilik okunamazsa herkes imzalamamış sayılır.
+    Sayfanın kendi üslubu fırlatmak (personel ve departman böyle).
+  */
+  const yanOkuma = gizlilikHatasi ?? varlikHatasi ?? uyelikHatasi ?? davetHatasi;
+  if (yanOkuma) throw new Error("Ekip bilgileri okunamadı: " + yanOkuma.message);
 
   const employees = (employeeData ?? []) as Employee[];
   const departments = (departmentData ?? []) as Department[];

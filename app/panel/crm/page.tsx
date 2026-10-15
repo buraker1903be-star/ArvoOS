@@ -176,6 +176,8 @@ export default async function RequestsPage({
     { data, error, count: suzgecSayisi },
     { data: stages, error: stageError },
     { data: employeeData, error: employeeError },
+    // hata-tamam: süzgeç listesindeki hizmet türü ADLARI; düşerse süzgeç
+    // kısalır, talep sayıları ve liste etkilenmez.
     { data: turData },
     { data: ozetVerisi, error: ozetHatasi },
     { data: seritVerisi, error: seritHatasi },
