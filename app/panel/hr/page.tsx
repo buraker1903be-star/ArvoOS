@@ -123,6 +123,16 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   const activeCount = employees.filter((item) => item.employment_status === "active").length;
   const salesCount = employees.filter((item) => item.employment_status === "active" && item.can_receive_sales_requests).length;
   const accessCount = employees.filter((item) => item.user_id && memberMap.get(item.user_id)?.is_active).length;
+  /*
+    ÇEVRİMİÇİ SAYISI DA PERSONELİ SAYIYOR. Şeridin geri kalanı personel
+    kayıtlarını sayarken bu hücre kurumun BÜTÜN oturumlarını sayıyordu
+    (user_presence). Kurum sahibinin personel kaydı yoksa — ki yeni
+    kurulan bir kurumda yok, o satır ancak bu ekrandan elle açılıyor —
+    şerit "Panel erişimi 0 · Şu an çevrimiçi 1" diyordu: yan yana duran
+    ve birbirini yalanlayan iki sayı. Tablodaki çevrimiçi noktası zaten
+    personele bakıyor; şeritteki sayı artık onunla aynı kümeyi sayıyor.
+  */
+  const cevrimiciPersonel = employees.filter((item) => item.user_id && cevrimici.has(item.user_id)).length;
 
   const pasifMi = (item: Employee) => item.employment_status === "inactive" || item.employment_status === "terminated";
   const gorunen = employees.filter((item) =>
@@ -213,7 +223,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
         {canManageTeam ? <div><dt>Panel erişimi</dt><dd>{accessCount}</dd></div> : null}
         {canManageTeam ? <div><dt>Bekleyen davet</dt><dd className={invitations.length ? "talep-uyari" : undefined}>{invitations.length}</dd></div> : null}
         {canManageTeam && sorunluDavetler.length ? <div><dt>Sorunlu davet</dt><dd className="cari-eksi">{sorunluDavetler.length}</dd></div> : null}
-        {hareketGorur ? <div><dt>Şu an çevrimiçi</dt><dd className={cevrimici.size ? "cari-arti" : undefined}>{cevrimici.size}</dd></div> : null}
+        {hareketGorur ? <div><dt>Şu an çevrimiçi</dt><dd className={cevrimiciPersonel ? "cari-arti" : undefined}>{cevrimiciPersonel}</dd></div> : null}
         {prim ? <div><dt>Ödenecek prim</dt><dd>{money(employees.reduce((t, e) => t + Math.max(0, ledgerTotals(e.id, prim.accruals, prim.payments).balance), 0))}</dd></div> : null}
       </dl>
     </nav>
