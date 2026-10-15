@@ -69,6 +69,26 @@
 .plt-switch.is-off{background:var(--danger)}
 .plt-switch.is-on i{transform:translateX(18px)}
 .plt-switch:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus)}
+/*
+  PARMAKLA KULLANIMDA DOKUNMA HEDEFİ 44 PİKSEL (15.10.2026).
+
+  Anahtar 46×28 çiziliyor; görünüşü doğru (iOS anahtarı da bu oranda)
+  ama 28 piksel, parmak için kısa. Konsolda on iki tane var ve
+  yaptıkları iş hafif değil: kiracının modülünü açıp kapatıyor, ürün
+  köprüsünü bağımsıza alıyor. Yanlış dokunuş burada "yanlış tıkladım"
+  değil, müşterinin ekranından bir modülün kaybolması demek.
+
+  Görünüm BÜYÜMÜYOR: görünmez bir ::after katmanı düğmenin kendi
+  alanını 44 piksele çıkarıyor. Ölçüt genişlik değil işaretçi türü —
+  dar bir pencerede fareyle çalışan birine gerek yok, dokunmatik bir
+  ekranda geniş pencerede çalışana gerek var.
+
+  Satırlar en az 60 piksel yüksek (k-ios), yani 44 piksellik alanlar
+  komşu satırın anahtarıyla çakışmıyor.
+*/
+@media (pointer: coarse) {
+  .plt-switch::after{content:"";position:absolute;top:50%;left:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}
+}
 /* Telefonda panel her düğmeye en az 44px yükseklik veriyor; anahtar ölçüsü korunur */
 .panel-root .stg.plt .plt-switch{width:46px;min-width:46px;height:28px;min-height:28px;padding:0}
 /* Aynı ölçü konsolun her yerinde (14.10.2026): yalnızca .stg.plt altındaydı;

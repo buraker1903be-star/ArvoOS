@@ -243,7 +243,14 @@ export default async function PaymentApprovalsPage() {
               </KKart>
             );
           }) : (
-            <KKart baslik="Bekleyen dekont yok">
+            /*
+              KART BAŞLIĞI BÖLÜMÜN ADI, BOŞLUĞUN İLANI DEĞİL (15.10.2026).
+              Başlık "Bekleyen dekont yok" diyor, hemen içindeki kutu da
+              "İncelenecek dekont yok" — aynı cümle üst üste iki kez
+              yazılıyordu. Boşluğu kutu söyler; kartın işi nereye
+              baktığını söylemek.
+            */
+            <KKart baslik="Bekleyen dekontlar">
               <KBos baslik="İncelenecek dekont yok" aciklama="Kurumlar panelden havale bildirdiğinde burada görünür." />
             </KKart>
           )}
