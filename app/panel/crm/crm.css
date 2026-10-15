@@ -284,3 +284,10 @@
   font-size:11.5px;
   line-height:1.4;
 }
+
+/* Gönderme düğmesinin altındaki resmi bilgi uyarısı: engel değil, belgede
+   ne görüneceğini söyleyen bir not (crm/resmi-bilgi-uyarisi). Başlık
+   eyleminin içinde durduğu için dar ve sağa hizalı. */
+.panel-root .crm-resmi-uyari{flex-basis:100%;max-width:46ch;margin:6px 0 0;color:var(--warning);font-size:12px;line-height:1.5}
+.panel-root .crm-resmi-uyari b{font-weight:650}
+.panel-root .crm-resmi-uyari a{color:inherit;text-decoration:underline;text-underline-offset:2px}

@@ -71,3 +71,30 @@ export function validateLegalDetails(raw: LegalDetailsValues): LegalDetailsError
 }
 
 export const firstLegalError = (errors: LegalDetailsErrors) => LEGAL_FIELDS.map((field) => errors[field]).find(Boolean) ?? null;
+
+/*
+  BELGEDE GÖRÜNEN ZORUNLU ALANLAR.
+
+  Bu beş alan müşteriye giden teklif ve sözleşmede basılıyor: adres ve
+  il taraf kartında ve Ön Bilgilendirme Formu'nda, vergi dairesi ile
+  numara vergi satırında, IBAN da ödeme maddesinde. Boş bırakıldığında
+  belge hata vermiyor, YER TUTUCU yazıyor — imzalı bir sözleşmede
+  "Adres / Bilgi: Ticaret siciline kayıtlı merkez adresi" satırı böyle
+  oluşuyor (15.10.2026, deneme kurumunda görüldü).
+
+  Liste ana ekrandaki kurulum adımına gömülüydü; teklif/sözleşme
+  ekranındaki uyarı da aynı kuralı sorduğu için ortak yere alındı. İki
+  yerde ayrı yazılan bir ölçüt, bir süre sonra iki ayrı ölçüt olur.
+*/
+export const BELGEDE_ZORUNLU: { alan: LegalField; ad: string }[] = [
+  { alan: "legal_address", ad: "adres" },
+  { alan: "legal_city", ad: "il" },
+  { alan: "tax_office", ad: "vergi dairesi" },
+  { alan: "tax_number", ad: "vergi / TC kimlik numarası" },
+  { alan: "iban", ad: "IBAN" },
+];
+
+/** Belgede yer tutucuya düşecek alanlar; hepsi doluysa boş dizi. */
+export function eksikResmiAlanlar(values: LegalDetailsValues) {
+  return BELGEDE_ZORUNLU.filter(({ alan }) => !values[alan]);
+}

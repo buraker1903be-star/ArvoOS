@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
@@ -9,6 +10,7 @@ import { SOZLESME_ADIMLARI, sozlesmeAdimi } from "@/lib/sozlesme-asamalari";
 import { AbonelikAlanlari } from "./abonelik-alanlari";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
+import { ResmiBilgiUyarisi } from "../../resmi-bilgi-uyarisi";
 import { formatPhone } from "@/lib/format-phone";
 import { workflowStatusNames } from "../../../operations/ops-shared";
 import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
@@ -204,11 +206,15 @@ export default async function ContractDetailPage({ params }: Props) {
   const trackingUrl = `https://${publicHost}/takip`;
   const takipMetni = `Merhaba ${customer?.customer_name ?? ""},\n\n${brandName} üzerinden yürütülen dosyanızın güncel durumunu aşağıdaki bağlantıdan takip edebilirsiniz:\n\n${trackingUrl}\n\nTakip Kodunuz: ${data.tracking_code}\n\nBağlantıyı açtıktan sonra 6 haneli takip kodunuzu girerek dosyanızın mevcut durumunu görüntüleyebilirsiniz.\n\n${brandName}`;
   const imzayaGonder = (
-    <form action={issueContractLink}>
-      <input type="hidden" name="contract_id" value={data.id} />
-      <input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`} />
-      <button className="panel-primary">İmzaya gönder</button>
-    </form>
+    <>
+      <form action={issueContractLink}>
+        <input type="hidden" name="contract_id" value={data.id} />
+        <input type="hidden" name="redirect_to" value={`/panel/crm/contracts/${data.id}`} />
+        <button className="panel-primary">İmzaya gönder</button>
+      </form>
+      {/* Eksik resmi bilgi belgede yer tutucuya düşüyor; gerekçe bileşende. */}
+      <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="sözleşme" /></Suspense>
+    </>
   );
 
   const bilgiler: [string, React.ReactNode][] = [

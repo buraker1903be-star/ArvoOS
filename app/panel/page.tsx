@@ -13,7 +13,7 @@ import { activeStatuses, workflowStatusNames } from "./operations/ops-shared";
 import { relativeTime } from "./crm/last-contact";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
-import { legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
+import { BELGEDE_ZORUNLU, eksikResmiAlanlar, legalDetailsFrom, validateLegalDetails } from "./settings/legal-details";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { BugunPaneli } from "./os/bugun-paneli";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi, yeniMi } from "./os/genel-bakis";
@@ -189,15 +189,18 @@ export default async function PanelPage() {
   if (canSetup && setupOrganization) {
     const row = setupOrganization as Record<string, unknown> & { logo_url?: string | null; signature_stamp_url?: string | null };
     const legal = legalDetailsFrom(row);
-    const legalFilled = [legal.legal_address, legal.legal_city, legal.tax_office, legal.tax_number, legal.iban].filter(Boolean).length;
-    const legalComplete = legalFilled === 5 && !Object.keys(validateLegalDetails(legal)).length;
+    /* Ölçüt ortak: teklif/sözleşme ekranındaki uyarı da aynı listeyi
+       soruyor (settings/legal-details · BELGEDE_ZORUNLU). */
+    const eksikler = eksikResmiAlanlar(legal);
+    const legalFilled = BELGEDE_ZORUNLU.length - eksikler.length;
+    const legalComplete = !eksikler.length && !Object.keys(validateLegalDetails(legal)).length;
     const hasLogo = Boolean(row.logo_url);
     const hasSignature = Boolean(row.signature_stamp_url);
     const members = memberCount ?? 0;
     const talepVar = (talepToplami ?? 0) > 0;
     setupSteps.push(
       { key: "kurum", title: "Kurum ve marka", note: "Resmi ad, iletişim, logo ve marka rengi", href: "/panel/onboarding", done: Boolean((onboardingRow as { completed_at?: string | null } | null)?.completed_at) },
-      { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/5 zorunlu alan dolu`, href: "/panel/settings?bolum=resmi-bilgiler", done: legalComplete },
+      { key: "resmi", title: "Resmi bilgiler ve IBAN", note: legalComplete ? "Belgelere otomatik yazılıyor" : `${legalFilled}/${BELGEDE_ZORUNLU.length} zorunlu alan dolu`, href: "/panel/settings?bolum=resmi-bilgiler", done: legalComplete },
       { key: "kimlik", title: "Logo ve kaşe-imza", note: hasLogo && hasSignature ? "Belgelerde görünüyor" : hasLogo ? "Kaşe-imza görseli eksik" : hasSignature ? "Logo eksik" : "Logo ve kaşe-imza görseli eksik", href: "/panel/settings?bolum=kurumsal-kimlik", done: hasLogo && hasSignature },
       { key: "ekip", title: "Ekibinizi davet edin", note: members > 1 ? `${members} kişi panelde` : "Satış ve operasyon ekibinizi ekleyin", href: "/panel/hr", done: members > 1, optional: true },
     );

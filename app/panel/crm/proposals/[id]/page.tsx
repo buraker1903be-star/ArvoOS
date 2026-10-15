@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { statusTone } from "@/lib/status-tone";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
@@ -11,6 +12,7 @@ import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedu
 import { formatSubject } from "@/lib/table-format";
 import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
+import { ResmiBilgiUyarisi } from "../../resmi-bilgi-uyarisi";
 import { formatPhone } from "@/lib/format-phone";
 import { PROPOSAL_STATUS_LABELS as labels, contractStatusLabel } from "../../status-labels";
 import { resolvePublicHost } from "@/lib/public-host";
@@ -201,11 +203,15 @@ export default async function ProposalDetailPage({ params }: Props) {
     : kalan <= 3 ? { ton: "warning", ad: `${kalan} gün kaldı` }
     : { ton: "neutral", ad: `${kalan} gün kaldı` };
   const gonderBicimi = (sinif: string, etiket: string) => (
-    <form action={issueProposalLink}>
-      <input type="hidden" name="proposal_id" value={data.id} />
-      <input type="hidden" name="redirect_to" value={`/panel/crm/proposals/${data.id}`} />
-      <button className={sinif}>{etiket}</button>
-    </form>
+    <>
+      <form action={issueProposalLink}>
+        <input type="hidden" name="proposal_id" value={data.id} />
+        <input type="hidden" name="redirect_to" value={`/panel/crm/proposals/${data.id}`} />
+        <button className={sinif}>{etiket}</button>
+      </form>
+      {/* Eksik resmi bilgi belgede yer tutucuya düşüyor; gerekçe bileşende. */}
+      <Suspense fallback={null}><ResmiBilgiUyarisi organizationId={membership.organization_id} belge="teklif" /></Suspense>
+    </>
   );
   const sozlesmeyeDonustur = (sinif: string) => (
     <form action={fastTrackProposalToContract}>
