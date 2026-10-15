@@ -87,7 +87,9 @@
 .os-user-links a:hover,.os-user-logout button:hover{background:var(--surface-2)}
 .os-user-logout{padding-top:var(--sp-1);border-top:1px solid var(--line-soft)}
 .os-user-logout button{color:var(--danger)}
-.os-user-foot{margin:var(--sp-1) var(--sp-3) var(--sp-2);font-size:var(--fs-micro);color:var(--dim)}
+/* --muted: --dim metin olarak AA altında kalıyor (dashboard.css'teki
+   not). Burası hesap menüsünün alt satırı, yani okunması gereken metin. */
+.os-user-foot{margin:var(--sp-1) var(--sp-3) var(--sp-2);font-size:var(--fs-micro);color:var(--muted)}
 
 /* ---------- Çalışma alanı ---------- */
 .os-workspace{min-width:0}

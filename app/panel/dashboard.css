@@ -184,7 +184,18 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-col-main b{font-size:var(--fs-sm);font-weight:var(--fw-medium);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dash-col-main small{font-size:var(--fs-micro);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dash-col-row .status-pill{flex:none}
-.dash-col-time{flex:none;align-self:flex-start;margin-top:2px;font-size:var(--fs-micro);color:var(--dim);white-space:nowrap}
+/*
+  GÖRELİ ZAMAN --dim DEĞİL --muted (15.10.2026).
+
+  --dim bir METİN rengi olarak iki temada da AA'nın altında kalıyor:
+  koyu temada 3.39–3.88, açık temada 2.40–2.58 (eşik 4.5). Belirteç
+  panelde çoğunlukla SİMGE rengi olarak kullanılıyor (satır okları) ve
+  simgede eşik 3:1 — orada sorun yok, sorun onu yazıya vermekte.
+
+  Bu satır gerçek bir metin ("23 gün önce") ve ikincil metnin kendi
+  belirteci zaten var: --muted (koyu 7.03, açık 5.4).
+*/
+.dash-col-time{flex:none;align-self:flex-start;margin-top:2px;font-size:var(--fs-micro);color:var(--muted);white-space:nowrap}
 /*
   ROZETİ OLAN SATIRDA AD KIRPILMAZ (15.10.2026).
 
