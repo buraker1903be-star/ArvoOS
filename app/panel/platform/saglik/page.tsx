@@ -72,7 +72,13 @@ export default async function SistemSagligiPage() {
   if (!isPlatformOwner) notFound();
   const admin = createAdminClient();
 
-  const [{ data: kiraciSatirlari }, { data: urunSatirlari }, { data: depolamalar }, { data: cronSatirlari, error: cronHatasi }, { data: cronIlk }] = await Promise.all([
+  const [
+    { data: kiraciSatirlari, error: kiraciHatasi },
+    { data: urunSatirlari, error: urunHatasi },
+    { data: depolamalar },
+    { data: cronSatirlari, error: cronHatasi },
+    { data: cronIlk },
+  ] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
       .order("name"),
@@ -240,6 +246,26 @@ export default async function SistemSagligiPage() {
   const kurulumHatalari = ((kurulumKayitlari ?? []) as { id: string | number; organization_id: string; action: string; state: string | null; created_at: string }[])
     .filter((kayit) => hatadaKalanlar.has(kayit.organization_id));
   const kurulumBekleyen = musteriler.filter((k) => PENDING_STATES.has(k.provisioning_state)).length;
+  /*
+    OKUNAMAYAN SORGU "SORUN YOK" DEĞİLDİR (15.10.2026).
+
+    Supabase istemcisi hata fırlatmıyor, `error` alanına yazıyor. Bu iki
+    okumanın hatası alınmıyordu: düşerse `data` null kalıyor, kiracı
+    listesi boş sayılıyor ve ONA BAĞLI ÜÇ BÖLÜM birden sıfıra iniyor —
+    kota, limit sapması ve bayat kopya. Yani sorun olup olmadığını
+    söylemekle görevli ekran, tam da göremediği anda "Her şey yolunda"
+    diyordu. Sayfanın kendisi bu kuralı koşma kayıtlarında ve kredi
+    siparişlerinde zaten uyguluyordu ("'bekleyen yok' demek değil");
+    bu iki okuma dışarıda kalmıştı.
+  */
+  const okunamayan = ([
+    ["Kiracı listesi", kiraciHatasi],
+    ["Ürün lisansları", urunHatasi],
+  ] as [string, { message: string } | null][])
+    .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
+  if (okunamayan.length)
+    console.error("[konsol] sağlık sayfası sorguları okunamadı", okunamayan.map(([ad, h]) => `${ad}: ${h.message}`));
+
   const kopukKopru = kopruler.filter((k) => k.bozuk).length;
   /* Limit sapması da sayılıyor: şeritteki "açık sorun" ile aşağıdaki
      bölümlerin toplamı ayrışırsa rozet yanıltıcı olur. */
@@ -260,8 +286,13 @@ export default async function SistemSagligiPage() {
       <dl>
         <div>
           <dt>Açık sorun</dt>
-          <dd className={toplamSorun ? "talep-uyari" : "cari-arti"}>{sayi(toplamSorun)}</dd>
-          <small>{toplamSorun ? "Aşağıda bölüm bölüm" : "Her şey yolunda"}</small>
+          {/* Okuma düşmüşken "0" yazmak, göremediğini temiz göstermektir. */}
+          <dd className={okunamayan.length || toplamSorun ? "talep-uyari" : "cari-arti"}>
+            {okunamayan.length ? "—" : sayi(toplamSorun)}
+          </dd>
+          <small>{okunamayan.length ? "Bazı kayıtlar okunamadı"
+            : toplamSorun ? "Aşağıda bölüm bölüm"
+            : "Her şey yolunda"}</small>
         </div>
         <div>
           <dt>Köprü</dt>
@@ -280,8 +311,12 @@ export default async function SistemSagligiPage() {
         </div>
         <div>
           <dt>Kota</dt>
-          <dd className={kotalar.length ? "talep-uyari" : undefined}>{sayi(kotalar.length)}</dd>
-          <small>{kotalar.length ? "Limite yaklaşan ya da aşan kiracı" : "Kota sorunu yok"}</small>
+          <dd className={kiraciHatasi || kotalar.length ? "talep-uyari" : undefined}>
+            {kiraciHatasi ? "—" : sayi(kotalar.length)}
+          </dd>
+          <small>{kiraciHatasi ? "Kiracı listesi okunamadı"
+            : kotalar.length ? "Limite yaklaşan ya da aşan kiracı"
+            : "Kota sorunu yok"}</small>
         </div>
         <div>
           <dt>Kurulum</dt>
@@ -290,6 +325,22 @@ export default async function SistemSagligiPage() {
         </div>
       </dl>
     </nav>
+
+    {/* Okunamayan sorgu en üstte: aşağıdaki bölümlerin boş görünmesinin
+        sebebi burada yazılı olsun (yukarıdaki nota bakın). */}
+    {okunamayan.length ? (
+      <KKart baslik="Bazı kayıtlar okunamadı" aciklama="Aşağıdaki bölümler eksik olabilir; boş görünmeleri “sorun yok” demek değil.">
+        <KListe>
+          {okunamayan.map(([ad, hata]) => (
+            <KOge key={ad} baslik={ad} alt={hata.message} durum={{ etiket: "Okunamadı", ton: "danger" }} />
+          ))}
+        </KListe>
+        <KNot ton="tehlike">
+          Kiracı listesi okunamazsa kota, limit sapması ve bayat kopya bölümleri boş çıkar. Sayfayı yenileyin;
+          sürerse veritabanı erişimini denetleyin.
+        </KNot>
+      </KKart>
+    ) : null}
 
     {/* Kiracıya bağlı satırlar kiracının ekranına gider (ok sütunu); köprü
         ve ödeme bildirimi satırlarının açılacak bir ekranı yok.
