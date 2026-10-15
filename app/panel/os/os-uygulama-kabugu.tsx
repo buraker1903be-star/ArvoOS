@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /*
   UYGULAMA KABUĞU İSTEMCİSİ (13.10.2026). Panel telefonda uygulama gibi
@@ -30,6 +30,18 @@ const yazKapatildi = () => { try { localStorage.setItem(KAPATILDI, "1"); } catch
 
 export function OsUygulamaKabugu() {
   const [bekleyen, setBekleyen] = useState<ServiceWorker | null>(null);
+  /*
+    "YENİLE"YE BASILDI MI (15.10.2026)? Aşağıdaki controllerchange
+    dinleyicisi koşulsuzdu ve sayfayı yeniliyordu. Oysa o olay yalnızca
+    yeni sürüm devreye girince değil, arka plan bileşeni İLK KEZ sayfayı
+    devraldığında da geliyor (sw.js'teki clients.claim). Yani bir cihazda
+    panele ilk girişte — ya da tarayıcı site verisini temizledikten
+    sonra — sayfa kendiliğinden bir kez yenileniyordu. Canlıda ölçüldü:
+    kayıt silinip sayfaya GİDİLDİĞİNDE navigation.type "reload" çıkıyor.
+    Tam da bu bileşenin kaçınmak istediği şey: o anda form dolduran
+    personelin yazdığı gider.
+  */
+  const yenilemeIstendi = useRef(false);
   const [yukleme, setYukleme] = useState<YuklemeOlayi | null>(null);
   const [iosOnerisi, setIosOnerisi] = useState(false);
   const [gizli, setGizli] = useState(false);
@@ -74,9 +86,14 @@ export function OsUygulamaKabugu() {
       // Uygulama açık kaldıkça (saha telefonu günlerce kapanmıyor) arada yeni sürüme bak.
       zamanlayici = window.setInterval(() => kayit.update().catch(() => undefined), 30 * 60_000);
     }).catch(() => undefined);
-    // Yeni sürüm devreye girince sayfa bir kez yenilenir (Yenile'ye basıldıktan sonra).
+    // Yeni sürüm devreye girince sayfa bir kez yenilenir — YALNIZCA kullanıcı
+    // "Yenile"ye bastıysa (yukarıdaki not).
     let yenilendi = false;
-    const devreyeGirdi = () => { if (!yenilendi) { yenilendi = true; location.reload(); } };
+    const devreyeGirdi = () => {
+      if (!yenilemeIstendi.current || yenilendi) return;
+      yenilendi = true;
+      location.reload();
+    };
     navigator.serviceWorker.addEventListener("controllerchange", devreyeGirdi);
     return () => { iptal = true; window.clearInterval(zamanlayici); navigator.serviceWorker.removeEventListener("controllerchange", devreyeGirdi); };
   }, []);
@@ -100,7 +117,13 @@ export function OsUygulamaKabugu() {
     return (
       <div className="os-kabuk-bant" role="status">
         <span><b>Yeni sürüm hazır.</b> Yenileyince güncel hâli açılır.</span>
-        <button type="button" className="panel-primary" onClick={() => bekleyen.postMessage("yeni-surumu-uygula")}>Yenile</button>
+        <button
+          type="button"
+          className="panel-primary"
+          onClick={() => { yenilemeIstendi.current = true; bekleyen.postMessage("yeni-surumu-uygula"); }}
+        >
+          Yenile
+        </button>
       </div>
     );
   }
