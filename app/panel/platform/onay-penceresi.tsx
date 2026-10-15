@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 // Pencere ve onay biçimleri konsolun stilinde (AGENTS.md: bileşen kendi CSS'ini import eder).
 import "./platform.css";
 
@@ -41,8 +40,6 @@ export type OnayIstegi = {
   sebep?: { etiket: string; varsayilan?: string; ipucu?: string };
 };
 
-const hicbirSey = () => () => undefined;
-
 export function OnayPenceresi({ istek, calisiyor, onIptal, onOnay }: {
   istek: OnayIstegi | null;
   calisiyor?: boolean;
@@ -50,20 +47,6 @@ export function OnayPenceresi({ istek, calisiyor, onIptal, onOnay }: {
   onOnay: (sebep: string) => void;
 }) {
   const pencere = useRef<HTMLDialogElement>(null);
-  const istemci = useSyncExternalStore(hicbirSey, () => true, () => false);
-  /*
-    PENCERE PANELİN KÖKÜNE ÇİZİLİYOR, DURDUĞU YERE DEĞİL.
-
-    Onay penceresi çoğu zaman ZATEN AÇIK bir pencerenin (lisans, kurum
-    ayarları) içinden çağrılıyor. İç içe <dialog> yazınca React'in
-    onClose'u kendi ağacında yukarı taşınıyor — yerel `close` olayı
-    kabarmasa da — ve iç pencereyi kapatmak DIŞ pencereyi de kapatıyordu:
-    "Vazgeç"e basan kurucu kendini lisans penceresinden atılmış buluyordu
-    (canlıda ölçüldü, 15.10.2026). Portalla pencere React ağacında
-    kardeş oluyor, olay kimseye taşınmıyor. Aynı gerekçe
-    components/panel-drawer.tsx'te de yazılı.
-  */
-  const hedef = istemci ? (document.querySelector(".panel-root") ?? document.body) : null;
 
   /* showModal() elle: <dialog open> kipsiz açıyor, arka plan tıklanabilir
      kalıyor ve Esc çalışmıyor (lisans penceresindeki notun aynısı). */
@@ -83,9 +66,7 @@ export function OnayPenceresi({ istek, calisiyor, onIptal, onOnay }: {
     if (!istek && oge.open) oge.close();
   }, [istek]);
 
-  if (!hedef) return null;
-
-  return createPortal(
+  return (
     <dialog
       ref={pencere}
       className="plt-pencere plt-onay"
@@ -98,8 +79,7 @@ export function OnayPenceresi({ istek, calisiyor, onIptal, onOnay }: {
           ötekine taşınmasın. Efektle sıfırlamak aynı işi yapardı ama
           render'dan sonra ikinci bir çizim demek. */}
       {istek ? <OnayGovdesi key={istek.baslik} istek={istek} calisiyor={calisiyor} onIptal={onIptal} onOnay={onOnay} /> : null}
-    </dialog>,
-    hedef,
+    </dialog>
   );
 }
 

@@ -38,7 +38,17 @@ export function MusteriPenceresi({ ust, baslik, kapatAdresi, children }: {
       ref={pencere}
       className="plt-pencere is-genis"
       aria-label={baslik}
-      onClose={() => router.replace(kapatAdresi, { scroll: false })}
+      /*
+        KAPANMA OLAYI KENDİSİNDEN Mİ GELDİ (15.10.2026)? İçeride başka bir
+        <dialog> açılabiliyor (ürün penceresi, onay penceresi). Yerel
+        `close` olayı kabarmıyor ama React onu kendi ağacında yukarı
+        taşıyor: iç pencereyi kapatmak burayı da kapatıyor, kurucu
+        "Vazgeç"e basınca kendini müşteri sayfasına atılmış buluyordu
+        (canlıda ölçüldü). Portal da çözmüyor — React olayları DOM
+        ağacında değil kendi ağacında taşıyor. Bu yüzden olayın hedefi
+        soruluyor; iç pencerelere dokunmak gerekmiyor.
+      */
+      onClose={(olay) => { if (olay.target === pencere.current) router.replace(kapatAdresi, { scroll: false }); }}
       onClick={(olay) => { if (olay.target === pencere.current) pencere.current?.close(); }}
     >
       <div className="plt-pencere-govde">
