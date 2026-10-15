@@ -88,6 +88,26 @@ export const viewport: Viewport = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
+  /*
+    iOS'TA ANA EKRAN ADI MANIFEST'TEN GELMEZ (15.10.2026).
+
+    Kurucu konsolu ana ekrana eklenince kısayol "ArvoOS" adıyla
+    kuruluyordu — app.arvo-os.com'daki kiracı paneliyle birebir aynı.
+    Manifest'e ad yazmak Android'i düzeltir ama iOS Safari manifest'in
+    short_name'ini DEĞİL `apple-mobile-web-app-title` meta'sını okuyor.
+    O meta app/layout.tsx'te statik duruyor ve oraya host kontrolü
+    koymak kök düzeni dinamikleştirip pazarlama sitesinin 149 statik
+    sayfasını götürürdü. Burası zaten dinamik (oturum okuyor): ad
+    yalnızca konsolun kendi alan adında değişiyor.
+  */
+  if (isManagementHost(hostFromHeaders(await headers()))) {
+    return {
+      title: "ArvoOS | Yönetim Merkezi",
+      description: "ArvoOS güvenli kurum ve platform çalışma alanı",
+      applicationName: "Arvo Yönetim",
+      appleWebApp: { capable: true, statusBarStyle: "default", title: "Yönetim" },
+    };
+  }
   const marka = await getLoginBrand();
   if (!marka) {
     return { title: "ArvoOS | Yönetim Merkezi", description: "ArvoOS güvenli kurum ve platform çalışma alanı" };

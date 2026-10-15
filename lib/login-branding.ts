@@ -5,6 +5,7 @@ import { readableOn } from "@/lib/tenant-theme";
 import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 import { kisaOnbellek } from "@/lib/kisa-onbellek";
 import { supabaseAyarlari } from "@/lib/supabase/yapilandirma";
+import { isManagementHost } from "@/lib/site/host-rules";
 
 // Giriş, şifremi unuttum ve şifre oluşturma ekranları kurumun kendi alan
 // adında (ör. panel.kurum.com) açıldığında kurumun logosu ve rengiyle
@@ -23,6 +24,14 @@ export type LoginBrand = { id: string; name: string; logo_url: string | null; pr
 export const getLoginBrand = cache(async function getLoginBrand(): Promise<LoginBrand | null> {
   const host = (await headers()).get("host")?.split(":")[0] ?? "";
   if (!host || host === DEFAULT_APP_HOST) return null;
+  /*
+    Yönetim alan adı (yonetim.arvo-os.com) bir kuruma ait değil: marka
+    sorgusu her seferinde null dönen bir RPC demekti (15.10.2026). Ara
+    katman bu kaçışı zaten yazıyor ("alan adı çözümlemesi her istekte
+    boşuna bir RPC olurdu"); aynı gerekçe buraya da geçerli, üstelik
+    manifest ve panel düzeni de bu işlevden okuyor.
+  */
+  if (isManagementHost(host)) return null;
   /*
     Supabase ayarlı değilse marka OKUNMAZ, giriş ekranı düşmez
     (15.10.2026). createClient anahtarları `!` ile okuyor ve eksikse

@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { getLoginBrand } from "@/lib/login-branding";
+import { isManagementHost } from "@/lib/site/host-rules";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 // Ana ekrana eklenen panel: tarayıcı çubuğu olmadan (standalone) açılır.
@@ -21,13 +23,38 @@ import { kurumSimgeleri } from "@/lib/kurum-simgesi";
   sürümleri de listede kalıyor — tarayıcı uygun olanı seçsin, hiçbiri
   olmazsa boş simge kalmasın.
 */
+/*
+  KURUCU KONSOLU KENDİ ADIYLA KURULUR (15.10.2026).
+
+  Manifest kiracının kendi alan adında onun adını ve simgesini veriyor
+  (aşağıdaki not), ama yonetim.arvo-os.com bir kiracı alan adı değil:
+  getLoginBrand orada null dönüyor ve kısayol "ArvoOS" adıyla
+  kuruluyordu — app.arvo-os.com'daki kiracı paneliyle BİREBİR aynı ad ve
+  aynı simge. İkisini birden ana ekranına ekleyen (kurucunun kendisi)
+  hangisinin konsol olduğunu simgeden ayırt edemiyordu.
+
+  Kısayollar da yalnızca burada: konsolun üç sık işi (müşteriler, ödeme
+  onayları, sistem sağlığı) simgeye basılı tutunca çıkıyor. Kiracı
+  panelinde aynı yollar yok.
+*/
+const YONETIM_KISAYOLLARI = [
+  { name: "Müşteriler", short_name: "Müşteriler", url: "/panel/platform/musteriler" },
+  { name: "Ödeme onayları", short_name: "Ödemeler", url: "/panel/platform/payments" },
+  { name: "Sistem sağlığı", short_name: "Sağlık", url: "/panel/platform/saglik" },
+];
+
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const yonetim = isManagementHost((await headers()).get("host") ?? "");
+  // getLoginBrand yönetim alan adında zaten null dönüyor (lib/login-branding).
   const marka = await getLoginBrand();
   return {
     id: "/panel",
-    name: marka?.name ?? "ArvoOS",
-    short_name: marka?.name ?? "ArvoOS",
-    description: marka ? `${marka.name} mobil yönetim ve operasyon merkezi.` : "Kurumunuzun mobil yönetim ve operasyon merkezi.",
+    name: yonetim ? "Arvo Yönetim Merkezi" : marka?.name ?? "ArvoOS",
+    short_name: yonetim ? "Yönetim" : marka?.name ?? "ArvoOS",
+    description: yonetim
+      ? "Arvo kurucu konsolu: müşteriler, lisanslar, tahsilat ve sistem sağlığı."
+      : marka ? `${marka.name} mobil yönetim ve operasyon merkezi.` : "Kurumunuzun mobil yönetim ve operasyon merkezi.",
+    ...(yonetim ? { shortcuts: YONETIM_KISAYOLLARI } : {}),
     lang: "tr",
     dir: "ltr",
     start_url: "/panel",
