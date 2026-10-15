@@ -5,6 +5,7 @@ import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 /*
   Ek ürün aboneliği kartının formu (ArvoLab, ArvoARC, Randevu).
@@ -53,7 +54,9 @@ const paraBicimi = new Intl.NumberFormat("tr-TR", { style: "currency", currency:
 
 /** Tarihe ay ekler; <input type="date"> için ISO gün döner. */
 function ayEkle(temel: string, ay: number) {
-  const bugun = new Date();
+  /* Türkiye günü: sonuç bir <input type="date"> değeri ve toISOString
+     UTC'ye çevirdiği için gece 00:00–03:00 arasında bir gün geri çıkıyordu. */
+  const bugun = new Date(`${todayInIstanbul()}T00:00:00Z`);
   const baslangic = temel ? new Date(`${temel}T00:00:00`) : bugun;
   const hedef = Number.isNaN(baslangic.getTime()) ? bugun : baslangic;
   const yeni = new Date(hedef);

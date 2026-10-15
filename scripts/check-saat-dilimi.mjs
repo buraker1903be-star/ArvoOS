@@ -75,6 +75,29 @@ for (const dosya of dosyalar) {
       Formatlayıcı çağrıdan ayrı bir satırda kurulabildiği için KURULUŞ
       yeri işaretleniyor: dilim oraya yazılır.
     */
+    /*
+      ÜÇÜNCÜ YAZILIŞ: GÜN ANAHTARI. `new Date().toISOString().slice(0,10)`
+      saati UTC'ye çevirip gün alıyor, yani Türkiye'de gece 00:00–03:00
+      arasında DÜNÜ veriyor. 16.10.2026 gecesi ölçüldü: iş maliyeti
+      formunun tarih kutusu 15 Ekim ile açılıyordu — varsayılanı kabul
+      eden kullanıcı kalemi yanlış güne, ayın 1'inde önceki AYA
+      kaydediyordu. Doğrusu lib/istanbul-date · todayInIstanbul().
+
+      Yalnızca ARGÜMANSIZ `new Date()` aranıyor: bir gün anahtarından
+      türetilen hesaplar (`new Date(\`${gun}T00:00:00Z\`)`) zaten UTC'ye
+      sabitli ve doğru.
+    */
+    if (/new Date\(\)\s*\.toISOString\(\)\s*\.slice\(\s*0\s*,\s*10\s*\)/.test(satir)) {
+      let pencere = satir;
+      for (let u = sira - 1; u >= 0 && /^\s*\/\//.test(satirlar[u]); u--) pencere += "\n" + satirlar[u];
+      if (!MUAFIYET.test(pencere)) {
+        sorunlar.push(
+          `${dosya}:${sira + 1}  gün anahtarı UTC'den alınıyor — gece 00:00–03:00 arasında DÜNÜ verir.\n`
+          + "      lib/istanbul-date.ts → todayInIstanbul() kullanın ya da üstüne \"// dilim-tamam: <sebep>\" yazın.",
+        );
+      }
+      return;
+    }
     if (!/new Date\([^)]*\)\s*\.toLocale(String|DateString|TimeString)\s*\(/.test(satir)
         && !/new Intl\.DateTimeFormat\s*\(/.test(satir)) return;
     cagri++;
@@ -98,4 +121,4 @@ if (sorunlar.length) {
   console.error(`\n${sorunlar.length} yer. Gerekçe için scripts/check-saat-dilimi.mjs başındaki nota bakın.`);
   process.exit(1);
 }
-console.log(`✓ Saat dilimi denetimi: ${cagri} tarih biçimlendirmesi — dilimsiz an yok.`);
+console.log(`✓ Saat dilimi denetimi: ${cagri} tarih biçimlendirmesi — dilimsiz an ve UTC gün anahtarı yok.`);

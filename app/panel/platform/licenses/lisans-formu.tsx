@@ -6,6 +6,7 @@ import "../../components/kayit-formu.css";
 import { PAKET_VARSAYILANI } from "@/lib/paket-limitleri";
 import { PAKET_SECENEKLERI } from "@/lib/paket-adlari";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 
 /*
   ArvoOS çekirdek lisans formu.
@@ -80,7 +81,9 @@ const gb = (mb: number) =>
 
 /** Tarihe ay ekler; <input type="date"> için ISO gün döner. */
 function ayEkle(temel: string, ay: number) {
-  const bugun = new Date();
+  /* Türkiye günü: sonuç bir <input type="date"> değeri ve toISOString
+     UTC'ye çevirdiği için gece 00:00–03:00 arasında bir gün geri çıkıyordu. */
+  const bugun = new Date(`${todayInIstanbul()}T00:00:00Z`);
   const baslangic = temel ? new Date(`${temel}T00:00:00`) : bugun;
   const hedef = Number.isNaN(baslangic.getTime()) ? bugun : baslangic;
   const yeni = new Date(hedef);

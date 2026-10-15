@@ -1,5 +1,6 @@
 import { MobilSatir } from "../../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
@@ -23,8 +24,17 @@ import { liraYazisi } from "@/lib/turkish-amount";
 
 const money=(amount:number,currency="TRY")=>new Intl.NumberFormat("tr-TR",{style:"currency",currency}).format(amount/100);
 const date=(value:string)=>new Date(`${value}T00:00:00`).toLocaleDateString("tr-TR");
-// Zamana bağlı yardımcı (bileşen gövdesinde saat okunmaz)
-const todayIso=()=>new Date().toISOString().slice(0,10);
+/*
+  Zamana bağlı yardımcı (bileşen gövdesinde saat okunmaz).
+
+  TÜRKİYE GÜNÜ. Eskiden `new Date().toISOString().slice(0,10)` idi ve
+  sunucu UTC'de çalıştığı için gece 00:00–03:00 arasında DÜNÜ veriyordu:
+  16 Ekim saat 01:00'de açılan maliyet formu tarih kutusuna 15 Ekim
+  yazıyordu. Varsayılanı kabul eden kullanıcı kalemi yanlış güne, ayın
+  1'inde ise ÖNCEKİ AYA kaydediyordu — kârlılık raporu o aya göre
+  hesaplanıyor. Canlıda 16.10.2026 saat 00:3x'te ölçüldü.
+*/
+const todayIso=()=>todayInIstanbul();
 
 function PersonCard({label,name}:{label:string;name:string}){
   const empty=name==="Atanmamış";

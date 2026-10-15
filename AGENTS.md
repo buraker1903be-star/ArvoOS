@@ -435,7 +435,15 @@ biçimlendiriciler ziyaretçinin TARAYICISINDA çalışıyor ve dilimsizken
 yurt dışındaki müşteri aynı mesajı personelden farklı bir saatle
 görüyordu. Hazır bir Date değişkeni
 üzerinden yapılan çağrılar taranmaz — değişkenin ne taşıdığı metinden
-okunamıyor. Bilerek dilimsizse: `// dilim-tamam: <sebep>`.
+okunamıyor. **Gün anahtarı da aynı denetimde:** argümansız
+`new Date().toISOString().slice(0,10)` saati UTC'ye çevirip gün aldığı
+için gece 00:00–03:00 arasında DÜNÜ veriyor. 16.10.2026 gecesi canlıda
+ölçüldü — iş maliyeti formunun tarih kutusu 15 Ekim ile açılıyordu;
+varsayılanı kabul eden kullanıcı kalemi yanlış güne, ayın 1'inde önceki
+AYA kaydediyordu ve kârlılık raporu o aya göre hesaplanıyor. Doğrusu
+`todayInIstanbul()`. Bir gün anahtarından türetilen hesaplar
+(`new Date(\`${gun}T00:00:00Z\`)`) zaten UTC'ye sabitli, taranmıyor.
+Bilerek dilimsizse: `// dilim-tamam: <sebep>`.
 
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)

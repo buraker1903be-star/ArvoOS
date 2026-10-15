@@ -6,6 +6,7 @@ import { createContractDirectly } from "./contract-actions";
 import { createProposal } from "./proposal-actions";
 import type { CreateProposalState } from "./sales-shared";
 import { parseTurkishAmount } from "@/lib/turkish-amount";
+import { todayInIstanbul } from "@/lib/istanbul-date";
 import {
   applyDueDates,
   buildLabeledSchedule,
@@ -40,7 +41,9 @@ const money = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value / 100);
 
-const today = () => new Date().toISOString().slice(0, 10);
+/* Türkiye günü: toISOString UTC'ye çeviriyor ve gece 00:00–03:00
+   arasında dünü veriyordu, yani kutular geçmiş bir günü kabul ediyordu. */
+const today = () => todayInIstanbul();
 const shortDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("tr-TR");
 
 function SubmitButton({ customPlanValid, mode, blocked = false }: { customPlanValid: boolean; mode: "proposal" | "contract"; blocked?: boolean }) {

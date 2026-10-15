@@ -130,6 +130,8 @@ async function clientIpHash() {
     h.get("cf-connecting-ip") ||
     "unknown";
   // Günlük tuz: ham IP saklanmaz, özet ertesi gün başka bir değere döner.
+  // dilim-tamam: günlük TUZ; hangi saatte döndüğü önemli değil, yalnızca
+  // günde bir kez değişmesi gerekiyor. Gösterilen ya da kaydedilen bir gün değil.
   const day = new Date().toISOString().slice(0, 10);
   return createHash("sha256").update(`${ip}|${day}|${secret()}`).digest("hex");
 }
