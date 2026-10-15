@@ -395,6 +395,25 @@ açarken listeye ekleyin. Hata bilerek yutuluyorsa satırın üstüne gerekçe
 yazılır: `// hata-tamam: <sebep>`. Denetim yakalanan hatanın
 KULLANILDIĞINI da arıyor; alınıp bir kenara konan `error` gösteriştir.
 
+**Saat dilimi denetimi** (`npm run check:saat-dilimi`): sunucu UTC'de
+çalışıyor, kullanıcı Türkiye'de. `new Date(damga).toLocaleString("tr-TR")`
+dilim verilmeden çağrıldığında sunucunun yerel saatini yazıyor, yani
+**üç saat geriyi**. 15.10.2026'da iş detayında ölçüldü: aynı aşama
+tamamlama olayı "Son hareketler" listesinde 18:09, hemen altındaki
+"Alan değişiklikleri" listesinde 15:09 görünüyordu — aynı ekran, aynı
+olay, iki saat. Aynı kalıp kurum içi notlarda, teklif revizyonlarında,
+destek yazışmalarında, ödeme bildirimlerinde ve gizlilik sözleşmesinin
+imza saatinde de vardı. Yalnızca saat değil GÜN de kayıyor: Türkiye'de
+gece 00:00–03:00 arasında olan her şey bir önceki güne düşüyor, yani
+"müşteri teklifi en son ne zaman açtı" yanlış günü gösteriyordu.
+Gösterim için `lib/istanbul-date.ts` içindeki `istanbulDateTime()`
+kullanılır; seçenek verilmezse yerel ayarın kendi biçimi korunur, o
+yardımcı yalnızca dilimi düzeltir. Denetim `new Date(...).toLocale*`
+çağrılarına bakar; saati sabitlenmiş kurgular (`T00:00:00`, `T12:00:00`)
+bir AN değil bir GÜN taşıdığı için muaftır. Hazır bir Date değişkeni
+üzerinden yapılan çağrılar taranmaz — değişkenin ne taşıdığı metinden
+okunamıyor. Bilerek dilimsizse: `// dilim-tamam: <sebep>`.
+
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
 karşılaştırılır. **Sütun doğru ama DEĞER imkânsız** olabiliyor: kısıtı

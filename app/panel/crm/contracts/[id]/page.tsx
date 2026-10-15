@@ -11,7 +11,7 @@ import { WhatsappGonderDugmesi } from "../../whatsapp-gonder-dugmesi";
 import { ShareSendLink } from "../../share-send-link";
 import { formatPhone } from "@/lib/format-phone";
 import { workflowStatusNames } from "../../../operations/ops-shared";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
 import type { TaksitDurumu } from "@/lib/taksit-dagitimi";
 import { cariTaksitSonuclari, taksitDurumu as taksitDurumuCoz } from "../taksit-durumu";
 import { formatSubject } from "@/lib/table-format";
@@ -60,9 +60,13 @@ import { PortalZiyareti } from "../../portal-ziyareti";
 
 type Props = { params: Promise<{ id: string }> };
 const money = (value: number, currency: string) => new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
+// dilim-tamam: due_date bir GÜN (date sütunu), an değil — dilim eklense de aynı günü yazar.
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("tr-TR") : "—";
+/* Dilim şart: last_viewed_at ve created_at birer AN. Dilimsiz
+   biçimlendirilince sunucunun UTC'si yazılıyor ve Türkiye'de gece
+   00:00–03:00 arasında olan her şey bir önceki güne düşüyor. */
 const tarih = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : null;
+  value ? istanbulDateTime(value, { day: "numeric", month: "long", year: "numeric" }) : null;
 const dateTime = (value: string | null) => value ? new Date(value).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", dateStyle: "short", timeStyle: "short" }) : "—";
 // Ek protokol rozet tonu: bekleyen sarı, onaylı yeşil, değişiklik talebi turuncu, geri çekilen gri.
 const ADDENDUM_TONES: Record<string, string> = { sent: "pending", accepted: "accepted", rejected: "blocked", cancelled: "archived" };

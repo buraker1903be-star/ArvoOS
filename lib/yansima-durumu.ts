@@ -23,6 +23,8 @@
   (durum + kayıt zamanı). Kural tek, karşılaştırılan alanlar ürüne özgü.
 */
 
+import { istanbulDateTime } from "@/lib/istanbul-date";
+
 export type YansimaAlani = {
   etiket: string;
   /** Ürün veritabanındaki değer, gösterilecek biçimde. */
@@ -45,11 +47,9 @@ export type YansimaDurumu = {
 };
 
 export const yansimaGunu = (deger: string | null) =>
-  deger
-    ? new Date(deger).toLocaleString("tr-TR", {
-        day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-      })
-    : "—";
+  istanbulDateTime(deger, {
+    day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 
 /**
  * @param kopya   Ürün veritabanındaki kopya; okunamadıysa null.

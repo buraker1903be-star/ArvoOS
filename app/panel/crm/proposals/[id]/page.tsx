@@ -4,7 +4,7 @@ import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";
 import { waMeAdresi } from "@/lib/wa-me";
-import { todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulDateTime, todayInIstanbul } from "@/lib/istanbul-date";
 import { TEKLIF_ADIMLARI, teklifAdimi } from "@/lib/teklif-asamalari";
 import { TEKLIF_GRUP_ADLARI, teklifGrubu } from "@/lib/teklif-grubu";
 import { installmentLabel, normalizePaymentSchedule } from "@/lib/payment-schedule";
@@ -55,8 +55,11 @@ type Props = { params: Promise<{ id: string }> };
 
 const money = (value: number, currency: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency }).format(value / 100);
+/* Dilim şart: last_viewed_at ve created_at birer AN. Dilimsiz
+   biçimlendirilince sunucunun UTC'si yazılıyor ve Türkiye'de gece
+   00:00–03:00 arasında olan her şey bir önceki güne düşüyor. */
 const tarih = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : null;
+  value ? istanbulDateTime(value, { day: "numeric", month: "long", year: "numeric" }) : null;
 /** Geçerliliğe kalan gün (bugün = 0, geçmişse negatif); Türkiye takvimiyle. */
 const kalanGun = (valid: string, bugun: string) => Math.round((Date.parse(valid) - Date.parse(bugun)) / 86_400_000);
 const KDV_ADI: Record<string, string> = { excluded: "KDV hariç", included: "KDV dahil", exempt: "KDV istisna" };

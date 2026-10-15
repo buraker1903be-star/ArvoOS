@@ -1,4 +1,5 @@
 import { getPanelContext } from "@/lib/panel-context";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import { addInternalComment } from "./actions";
 import { InternalCommentItem } from "./internal-comment-item";
 
@@ -117,7 +118,7 @@ export async function InternalComments({
                   {employeeTitles.get(comment.created_by) ? <small>{employeeTitles.get(comment.created_by)}</small> : null}
                 </div>
                 <span>{contextNames[comment.context_type]}</span>
-                <time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}</time>
+                <time dateTime={comment.created_at}>{istanbulDateTime(comment.created_at, { dateStyle: "medium", timeStyle: "short" })}</time>
               </div>
               <InternalCommentItem
                 commentId={comment.id}

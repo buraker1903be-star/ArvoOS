@@ -52,3 +52,29 @@ export function istanbulTimestamp(dateKey: string, time: string) {
 export function istanbulTime(date: Date) {
   return new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
 }
+
+/*
+  BİR ANIN TÜRKİYE SAATİYLE GÖSTERİMİ.
+
+  `new Date(damga).toLocaleString("tr-TR", …)` dilim verilmeden
+  çağrıldığında sunucunun yerel saatini yazıyor; sunucu UTC'de çalıştığı
+  için (dosyanın başındaki not) ekranda üç saat geriye düşüyordu.
+
+  İş detayında ölçüldü (15.10.2026): aynı aşama tamamlama olayı
+  "Son hareketler" listesinde 18:09, hemen altındaki "Alan
+  değişiklikleri" listesinde 15:09 görünüyordu. Üstteki liste dilimi
+  veren formatlayıcıyı kullanıyor, alttaki vermeyeni.
+
+  Seçenekler verilmezse yerel ayarın kendi biçimi ("15.10.2026 18:09:33")
+  korunuyor: bu yardımcı yalnızca dilimi düzeltiyor, görünümü değil.
+*/
+export function istanbulDateTime(
+  deger: string | Date | null | undefined,
+  secenekler: Intl.DateTimeFormatOptions = {},
+  bos = "—",
+) {
+  if (!deger) return bos;
+  const an = deger instanceof Date ? deger : new Date(deger);
+  if (Number.isNaN(an.getTime())) return bos;
+  return an.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", ...secenekler });
+}

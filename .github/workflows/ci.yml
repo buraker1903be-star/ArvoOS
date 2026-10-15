@@ -74,3 +74,11 @@ jobs:
       # şişmiş tahsilat, şişmiş kâr oranı, "herkes sözleşme imzalamamış".
       - name: Okunamayan sorgu denetimi
         run: npm run check:okunamayan
+      # Dilimsiz tarih biçimlendirmesi (scripts/check-saat-dilimi.mjs):
+      # sunucu UTC'de çalışıyor, new Date(x).toLocaleString("tr-TR")
+      # dilim verilmezse ekranda üç saat geri çıkıyor. 15.10.2026'da iş
+      # detayında aynı olay üstteki listede 18:09, alttakinde 15:09
+      # görünüyordu; gece 00:00–03:00 arasındaki her şey ayrıca bir
+      # önceki güne düşüyor.
+      - name: Saat dilimi denetimi
+        run: npm run check:saat-dilimi

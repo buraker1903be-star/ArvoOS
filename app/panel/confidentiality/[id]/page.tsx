@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import { ConfidentialitySignatureForm } from "./signature-form";
 import "./style.css";
 
@@ -23,7 +24,7 @@ export default async function ConfidentialityAgreementPage({ params, searchParam
     const { data: signedFile } = await supabase.storage.from("hr-confidentiality-signatures").createSignedUrl(agreement.signature_path, 300);
     signatureUrl = signedFile?.signedUrl || null;
   }
-  const date = (value:string|null) => value ? new Date(value).toLocaleString("tr-TR") : "—";
+  const date = (value:string|null) => istanbulDateTime(value);
 
   return <div className="nda-page">
     <div className="panel-pagehead"><div><small className="panel-kicker">GİZLİ PERSONEL BELGESİ</small><h1>Gizlilik ve Sır Saklama Sözleşmesi</h1><p>{agreement.agreement_no} · {employee.full_name}</p></div>{isManager?<Link className="panel-secondary" href={`/panel/hr/${agreement.employee_id}`}>← Personele dön</Link>:null}</div>

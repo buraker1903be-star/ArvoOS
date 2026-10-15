@@ -1,5 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import type { FieldChange } from "@/lib/activity-log";
 
 /**
@@ -125,9 +126,38 @@ export async function RecordHistory({
     return null;
   }
 
-  const { data: rows } = await query
+  const { data: rows, error: okumaHatasi } = await query
     .order("created_at", { ascending: false })
     .limit(60);
+
+  /*
+    OKUNAMADI, "DEĞİŞİKLİK YOK" DEĞİL. Hata düşürülünce rows null
+    geliyor ve aşağıdaki boş durum basılıyordu: denetim listesi, kendi
+    sorgusu RLS'e takıldığında bile "bu kayıtta hiç değişiklik
+    yapılmadı" diyordu. Bir denetim izinin verebileceği en kötü cevap bu.
+  */
+  if (okumaHatasi) {
+    console.error("[kayit-gecmisi] olaylar okunamadı", {
+      organizationId: membership.organization_id,
+      opportunityId,
+      workflowId,
+      hata: okumaHatasi.message,
+    });
+    return (
+      <section className="panel-card crm-record-history">
+        {baslik ? (
+          <header>
+            <small className="panel-kicker">KAYIT GEÇMİŞİ</small>
+            <h2>Geçmiş okunamadı</h2>
+          </header>
+        ) : null}
+        <p className="panel-empty">
+          Kayıt geçmişi şu anda okunamıyor. Sayfayı yenileyin; sürerse
+          destek kaydı açın. Liste boş görünse de geçmiş silinmedi.
+        </p>
+      </section>
+    );
+  }
 
   const logs = (rows ?? []) as LogRow[];
   if (!logs.length) {
@@ -185,10 +215,7 @@ export async function RecordHistory({
                   {log.metadata?.step_title ? <b className="crm-record-history-step"> · {log.metadata.step_title}</b> : null}
                 </span>
                 <time dateTime={log.created_at}>
-                  {new Date(log.created_at).toLocaleString("tr-TR", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
+                  {istanbulDateTime(log.created_at, { dateStyle: "medium", timeStyle: "short" })}
                 </time>
               </div>
               {log.metadata?.note ? <p>{log.metadata.note}</p> : null}

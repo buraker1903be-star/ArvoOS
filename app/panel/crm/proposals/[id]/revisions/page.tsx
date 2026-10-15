@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import "../../../crm.css";
 import "../../../kayit-detay/kayit-detay.css";
 import "../../../../settings/settings.css";
@@ -45,7 +46,7 @@ type SecilenTeklif = {
 
 const para = (deger: number, birim: string) =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: birim || "TRY" }).format(Number(deger || 0) / 100);
-const tarihSaat = (deger: string) => new Date(deger).toLocaleString("tr-TR");
+const tarihSaat = (deger: string) => istanbulDateTime(deger);
 const gun = (deger: string | null) =>
   deger ? new Date(`${deger}T00:00:00`).toLocaleDateString("tr-TR") : "—";
 

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { istanbulMidnight, istanbulMonthStart, istanbulTime, istanbulTimestamp, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
+import { istanbulDateTime, istanbulMidnight, istanbulMonthStart, istanbulTime, istanbulTimestamp, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
+
+/*
+  SUNUCUNUN KOŞULU: Vercel UTC'de çalışıyor, geliştirme makinesi
+  Türkiye'de. Dilim sabitlenmezse bu dosyanın tamamı makinede yeşil,
+  canlıda yanlış olur: dilimsiz bir biçimlendirme Türkiye'deki makinede
+  zaten doğru saati yazar. Buradaki işlevlerin hepsi dilimi kendi
+  veriyor, yani UTC'ye almak başka bir testi bozmaz.
+*/
+process.env.TZ = "UTC";
 
 test("gece 00:00–03:00 arası tarih bir gün geri kaymaz", () => {
   // Gerileme: sunucu UTC'de çalıştığı için ayın 1'inde gece girilen tahsilat
@@ -63,4 +72,28 @@ test("randevu saati Türkiye saatiyle kaydedilir ve gösterilir", () => {
   assert.equal(istanbulTimestamp("2026-10-08", ""), null);
   assert.equal(istanbulTimestamp("08.10.2026", "14:00"), null);
   assert.equal(istanbulTimestamp("2026-13-40", "14:00"), null);
+});
+
+test("kayıt geçmişi damgası Türkiye saatiyle yazılır", () => {
+  /*
+    Gerileme: kayıt geçmişi damgayı dilimsiz biçimlendiriyordu ve sunucu
+    UTC'de çalıştığı için üç saat geri yazıyordu. İş detayında aynı aşama
+    tamamlama olayı üstteki listede 18:09, alttakinde 15:09 görünüyordu
+    (15.10.2026).
+  */
+  const an = "2026-10-15T15:09:00Z"; // = 15 Ekim 2026, 18:09 +03
+  assert.equal(istanbulDateTime(an, { dateStyle: "medium", timeStyle: "short" }), "15 Eki 2026 18:09");
+
+  // Gün de kayıyordu: Türkiye'de gece yarısından sonrası UTC'de bir önceki gün.
+  const geceYarisindanSonra = "2026-10-15T22:30:00Z"; // = 16 Ekim 2026, 01:30 +03
+  assert.equal(
+    istanbulDateTime(geceYarisindanSonra, { day: "numeric", month: "long", year: "numeric" }),
+    "16 Ekim 2026",
+  );
+
+  // Boş ve bozuk değerler ekrana çöp yazmaz.
+  assert.equal(istanbulDateTime(null), "—");
+  assert.equal(istanbulDateTime(""), "—");
+  assert.equal(istanbulDateTime("elma"), "—");
+  assert.equal(istanbulDateTime(null, {}, ""), "");
 });

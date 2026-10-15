@@ -4,6 +4,7 @@ import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
 import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import { submitBankTransferPayment } from "./actions";
 import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
 import "../team.css";
@@ -116,7 +117,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <dl className="billing-summary">
           <div><dt>Durum</dt><dd>{license?.license_status ?? "trialing"}</dd></div>
           <div><dt>Paket</dt><dd>{license?.plan_code ?? organization.plan_code}</dd></div>
-          <div><dt>Dönem sonu</dt><dd>{license?.current_period_end ? new Date(license.current_period_end).toLocaleDateString("tr-TR") : "—"}</dd></div>
+          <div><dt>Dönem sonu</dt><dd>{license?.current_period_end ? istanbulDateTime(license.current_period_end, { dateStyle: "short" }) : "—"}</dd></div>
           <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} dahil` : sayi(uyeSayisi)}</dd></div>
           {ekKoltuk > 0 ? (
             <div><dt>Ek kullanıcı</dt><dd>{sayi(ekKoltuk)} × {formatTry(Number(license?.extra_user_fee ?? 0))} = {formatTry(ekUcret)} / ay</dd></div>
@@ -140,7 +141,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </div>
         <dl className="billing-summary">
           <div><dt>Durum</dt><dd>{productLicenseLabels[product.status] ?? product.status}</dd></div>
-          <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? new Date(product.periodEnd).toLocaleDateString("tr-TR") : "—"}</dd></div>
+          <div><dt>Dönem sonu</dt><dd>{product.periodEnd ? istanbulDateTime(product.periodEnd, { dateStyle: "short" }) : "—"}</dd></div>
         </dl>
         {storeReady && product.fee > 0 ? (
           <form action={payLicenseWithCard} className="management-submit">
@@ -231,7 +232,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME GEÇMİŞİ</small><h2>Bildirimler</h2></div><span className="status-pill">{payments?.length ?? 0} kayıt</span></div>
       <div className="module-control-list">
-        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {payment.plan_code} · {formatTry(payment.amount)}</b><small>{new Date(payment.created_at).toLocaleString("tr-TR")}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill">{payment.status}</span></div>)}
+        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {payment.plan_code} · {formatTry(payment.amount)}</b><small>{istanbulDateTime(payment.created_at)}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill">{payment.status}</span></div>)}
         {!payments?.length ? <p className="panel-muted">Henüz ödeme bildirimi bulunmuyor.</p> : null}
       </div>
     </section>

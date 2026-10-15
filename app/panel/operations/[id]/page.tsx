@@ -265,21 +265,45 @@ export default async function OperationDetailPage({
       : Promise.resolve([]),
   ]);
   /* Dosyayı yükleyen ve görevi tamamlayan kişilerin adları tek sorguda
-     (görevi kimin tiklediği satırın altında yazıyor, 13.10.2026). */
+     (görevi kimin tiklediği satırın altında yazıyor, 13.10.2026).
+
+     İKİ KAYNAK: hr_employees VE profiles. Ad yalnızca personel
+     kaydından aranınca, personel kaydı olmayan herkes "Ekip üyesi"
+     oluyordu — kurum sahibi dahil. Yeni kurulan bir kurumda sahip
+     personel listesinde yok (hr_employees satırı ancak İK ekranından
+     elle açılıyor), yani işi fiilen yürüten kişinin adı hiçbir yerde
+     yazmıyordu. Aynı ekranın altındaki "Alan değişiklikleri" listesi
+     adı DOĞRU yazıyor, çünkü o profiles'a da bakıyor: tek bir aşama
+     tamamlama olayı üstte "Ekip üyesi", altta "Burak Erdoğan"
+     görünüyordu (15.10.2026, Arvo Deneme'de ölçüldü).
+
+     Sıra önemli: personel kaydındaki ad profiles'takini eziyor, kurumun
+     kendi kayıtlarındaki yazım esas (crm/record-history ile aynı kural). */
   const uploaderIds = [...new Set([
     ...[...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by),
     ...steps.map((step) => (step.is_completed ? step.completed_by : null)),
   ].filter((value): value is string => Boolean(value)))];
-  const [{ data: imzaliAdresler }, { data: uploaderData }] = await Promise.all([
+  const [{ data: imzaliAdresler }, { data: uploaderData }, { data: uploaderProfilleri }] = await Promise.all([
     ekipDosyaSatirlari.length
       ? supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
       : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
     uploaderIds.length
       ? supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
       : Promise.resolve({ data: [] }),
+    uploaderIds.length
+      ? supabase.from("profiles").select("id,full_name").in("id", uploaderIds)
+      : Promise.resolve({ data: [] }),
   ]);
   const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
-  const uploaderNames = new Map(((uploaderData ?? []) as { user_id: string; full_name: string }[]).map((row) => [row.user_id, formatPersonName(row.full_name)]));
+  const uploaderNames = new Map<string, string>();
+  for (const satir of (uploaderProfilleri ?? []) as { id: string; full_name: string | null }[]) {
+    const ad = formatPersonName(satir.full_name);
+    if (ad) uploaderNames.set(satir.id, ad);
+  }
+  for (const satir of (uploaderData ?? []) as { user_id: string; full_name: string | null }[]) {
+    const ad = formatPersonName(satir.full_name);
+    if (ad) uploaderNames.set(satir.user_id, ad);
+  }
   const downloadCounts = new Map<string, number>();
   for (const row of (portalDownloadsResult.data ?? []) as { file_id: string | null }[]) {
     if (row.file_id) downloadCounts.set(row.file_id, (downloadCounts.get(row.file_id) ?? 0) + 1);
