@@ -31,7 +31,16 @@ export const metadata: Metadata = {
   // Durum çubuğu "default": açık temada koyu yazı; "black-translucent"
   // yazıyı beyaza zorlayıp açık üst çubukta okunmaz yapıyordu.
   appleWebApp:{capable:true,statusBarStyle:"default",title:"ArvoOS"},
-  other:{"mobile-web-app-capable":"yes"},
+  /*
+    ESKİ iOS İÇİN `apple-` ÖNEKLİ SATIR (15.10.2026). Next,
+    appleWebApp.capable'dan yalnızca modern `mobile-web-app-capable`
+    meta'sını basıyor; Safari o adı ancak iOS 17.4'ten beri tanıyor.
+    Daha eski bir iPhone'da ana ekrana eklenen panel tarayıcı çubuğuyla
+    açılıyordu — kurulu uygulama hissi tam da orada kayboluyor. Eskiden
+    bu satır modern adı ikinci kez yazıyordu (Next zaten basıyor), yani
+    aynı meta iki kez çıkıyor ve eski iOS'u kurtaran ad hiç yazılmıyordu.
+  */
+  other:{"apple-mobile-web-app-capable":"yes"},
   formatDetection:{telephone:false}
 };
 export const viewport: Viewport = {
