@@ -75,7 +75,14 @@
 /* Akış: sekmeler + panel. İçteki bileşenlerin kendi kart çerçevesi
    kaldırılır: zaten bir kartın içindeler. */
 .os-root .talep-akis{padding:0 !important;overflow:hidden}
-.talep-akis-sekmeler{display:flex;gap:var(--sp-1);padding:0 var(--sp-3);border-bottom:1px solid var(--line)}
+/* SARMAK ZORUNLU. Şerit ne kayıyordu (overflow-x: visible) ne de
+   sarıyordu; kapsayıcı da taşanı kesiyor (.talep-akis overflow:hidden).
+   375 pikselde beş sekme 418 piksel istiyor: "Geçmiş" 361'de başlıyor,
+   yani yalnızca 14 pikseli görünüyor ve ona ulaşmanın HİÇBİR yolu yok —
+   kayıt geçmişi telefonda erişilemezdi (15.10.2026, iş detayında
+   ölçüldü). flex-wrap sığdığında hiçbir şeyi değiştirmiyor, bu yüzden
+   genişlik koşuluna bağlanmadı. */
+.talep-akis-sekmeler{display:flex;flex-wrap:wrap;gap:var(--sp-1);padding:0 var(--sp-3);border-bottom:1px solid var(--line)}
 .talep-akis-sekmeler button{min-height:44px;padding:0 var(--sp-3);border:0;background:transparent;color:var(--muted);font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}
 .talep-akis-sekmeler button:hover{color:var(--ink)}
 .talep-akis-sekmeler button.is-active{color:var(--ink);font-weight:var(--fw-semibold);box-shadow:inset 0 -2px 0 var(--primary)}
