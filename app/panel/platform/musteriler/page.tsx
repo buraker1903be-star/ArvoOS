@@ -440,9 +440,26 @@ export default async function MusterilerPage({ searchParams }: {
           </div>
         </div>
 
+        {/*
+          UYARI ÇALIŞMAYAN BİR ÇÖZÜM ÖNERİYORDU (15.10.2026). Cümlenin
+          sonu "Aradığınızı bulamazsanız arama kutusunu kullanın" idi.
+          Oysa bu sayfanın araması SUNUCUDA DEĞİL: süzgeç, yukarıda
+          okunan aynı 1000 satırın üzerinde bellekte çalışıyor
+          (tumSatirlar.filter). Yani listeye girmeyen 1001. abone
+          arandığında da bulunamıyor; tavsiye, mümkün olmayan bir şeyi
+          öneriyordu. Bireysel Aboneler ekranı da aynı sınırla ve yine
+          bellekte arıyor, yani konsolda kaçan aboneyi bulabilecek bir
+          yer yok.
+
+          Sınırın kendisi bilerek: sessiz eksilme olmasın diye eksik
+          kapsam ekranda yazılıyor (AGENTS.md, rakam denetimi). Eksik
+          olan, aramanın da aynı sınır içinde kaldığını SÖYLEMEKTİ.
+          Gerçek çözüm aramayı sunucuya taşımak; o ayrı bir iş ve
+          kurucunun kararı.
+        */}
         {eksikKapsam ? (
           <KNot ton="uyari">
-            Bireysel abonelerin en yeni {sayi(aboneler.length)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Aradığınızı bulamazsanız arama kutusunu kullanın.
+            Bireysel abonelerin en yeni {sayi(aboneler.length)} kaydı listeleniyor (toplam {sayi(toplamAbone)}). Arama ve süzgeçler de bu {sayi(aboneler.length)} kayıt içinde çalışıyor; daha eski aboneler listeye girmiyor.
           </KNot>
         ) : null}
 
