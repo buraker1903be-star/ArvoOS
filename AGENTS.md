@@ -58,6 +58,16 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   yol yetkiyi kendisi doğrulamalıdır.
 - **Sırlar `NEXT_PUBLIC_` ile başlamaz.** Eksik ortam değişkeni uygulamayı
   düşürmez, ilgili özelliği kapalı gösterir ve nedenini kullanıcıya yazar.
+  Supabase anahtarları bu kuralı 15.10.2026'ya kadar çiğniyordu: ara katman
+  onları `process.env.…!` ile okuyup `createServerClient`'a veriyor, eksik
+  olduklarında istemci fırlatıyor ve ara katman eşleştiği HER yolda 500
+  dönüyordu — pazarlama sayfaları, SEO dosyaları ve /login dahil. Tek bir
+  eksik değişken bütün siteyi kapatıyordu; üretimde değişkenler dolu olduğu
+  için yalnızca yeni bir makinede `npm run dev` çalıştırınca görünüyordu.
+  Anahtarın varlığı artık tek yerde sorulur (`lib/supabase/yapilandirma.ts`):
+  dört çağıran aynı cevabı almalı, yoksa biri "ayarlı" deyip istemci kurmaya
+  kalkarken öteki atlar. Oturum çözülemediğinde doğru davranış "oturum
+  yok"tur — korumalı yollar /login'e iner, geri kalan her şey açılır.
 - **WhatsApp'a doğrudan çağrı yapılmaz.** Dört ürün de kapıdan geçer
   (`app/api/bridge/whatsapp` → `lib/whatsapp-gateway.ts`): tek yerde erişim
   anahtarı, tek yerde mesaj kaydı, tek yerde hata haritası. Gönderen kararı
