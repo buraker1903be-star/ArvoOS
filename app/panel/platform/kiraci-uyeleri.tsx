@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { uyeErisimiDegistir } from "./members/actions";
 import { KBos, KListe, KOge } from "./konsol-ui";
-import { OnayPenceresi, type OnayIstegi } from "./onay-penceresi";
+import { OnayPenceresi, type OnayIstegi } from "../components/onay-penceresi";
 
 /*
   Seçili kiracının üyeleri, kiracı dosyasının içinde.

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { para } from "../bicim";
 import { abonelikIsteginiOnayla, abonelikIsteginiReddet } from "./actions";
-import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
+import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
 
 /*
   Bekleyen abonelik isteği kartı.

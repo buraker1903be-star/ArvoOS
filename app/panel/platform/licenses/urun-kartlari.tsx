@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LisansFormu, type LisansDegerleri } from "./lisans-formu";
 import { UrunFormu, type KotaAlani } from "./urun-formu";
 import { KListe, KOge } from "../konsol-ui";
-import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
+import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
 import { urunSimgesi } from "@/lib/products";
 
 /*

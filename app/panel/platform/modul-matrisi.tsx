@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { modulErisimiDegistir, modulKoprusuDegistir } from "./modul-actions";
 import { KBaslik, KDurum, KListe, KOge, KTablo } from "./konsol-ui";
-import { OnayPenceresi, type OnayIstegi } from "./onay-penceresi";
+import { OnayPenceresi, type OnayIstegi } from "../components/onay-penceresi";
 // Anahtar (.plt-switch) ve bağlantı (.modul-baglanti) konsolun stilinde.
 import "./platform.css";
 

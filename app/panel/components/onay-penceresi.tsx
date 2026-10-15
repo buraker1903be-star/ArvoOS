@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-// Pencere ve onay biçimleri konsolun stilinde (AGENTS.md: bileşen kendi CSS'ini import eder).
-import "./platform.css";
+// Bileşen kendi CSS'ini import eder (AGENTS.md); dosya kendi kendine yeter.
+import "./onay-penceresi.css";
 
 /*
-  KONSOL ONAY PENCERESİ (15.10.2026).
+  PANELİN ONAY PENCERESİ (15.10.2026; konsolda doğdu, 15.10'da paneldeki
+  her yere açıldı — kiracı panelindeki gönderim düğmeleri de bunu
+  kullanıyor).
 
-  Kurucunun en ağır iki işlemi — bir kurumun ArvoOS erişimini dondurmak ve
-  bir modülü kapatmak — window.confirm / window.prompt ile soruluyordu.
-  İki sorun vardı:
+  Ağır işlemler — bir kurumun ArvoOS erişimini dondurmak, bir modülü
+  kapatmak, dekont kararı, müşteriye mesaj göndermek — window.confirm /
+  window.prompt ile soruluyordu. İki sorun vardı:
 
   1. Tarayıcı bu kutuları SUSTURABİLİYOR. Arka arkaya birkaç kutu açan bir
      sayfada Chrome "bu sayfanın başka pencere açmasını engelle" kutusunu
@@ -23,7 +25,7 @@ import "./platform.css";
      ekranında gösterilen bir metin, onu tarayıcının tek satırlık gri
      kutusunda yazmak ciddi bir işe yakışmıyor.
 
-  Pencere panelin kendi penceresi (plt-pencere): telefonda alt sayfa
+  Pencere panelin kendi penceresi: telefonda alt sayfa
   olarak açılıyor, Esc ve arka plan tıklaması çalışıyor, sebep alanı
   boşken onay düğmesi kapalı.
 */
@@ -71,7 +73,7 @@ export function OnayPenceresi({ istek, calisiyor, onIptal, onOnay }: {
   return (
     <dialog
       ref={pencere}
-      className="plt-pencere plt-onay"
+      className="onay-pencere"
       aria-label={istek?.baslik ?? "Onay"}
       onClose={onIptal}
       onClick={(olay) => { if (olay.target === pencere.current) onIptal(); }}
@@ -97,27 +99,27 @@ function OnayGovdesi({ istek, calisiyor, onIptal, onOnay }: {
 
   return (
     <form
-      className="plt-pencere-govde"
+      className="onay-govde"
       onSubmit={(olay) => { olay.preventDefault(); if (hazir) onOnay(sebep.trim()); }}
     >
-      <header className="plt-pencere-bas">
+      <header className="onay-bas">
         <div>
           {istek.ust ? <small>{istek.ust}</small> : null}
           <h2>{istek.baslik}</h2>
         </div>
-        <button type="button" className="plt-pencere-kapat" aria-label="Kapat" onClick={onIptal}>×</button>
+        <button type="button" className="onay-kapat" aria-label="Kapat" onClick={onIptal}>×</button>
       </header>
 
-      <p className="plt-onay-metin">{istek.metin}</p>
+      <p className="onay-metin">{istek.metin}</p>
 
       {istek.uyarilar?.length ? (
-        <ul className="plt-onay-uyari">
+        <ul className="onay-uyari">
           {istek.uyarilar.map((satir) => <li key={satir}>{satir}</li>)}
         </ul>
       ) : null}
 
       {istek.sebep ? (
-        <label className="plt-onay-sebep">
+        <label className="onay-sebep">
           <span>{istek.sebep.etiket}</span>
           {/* Odak showModal'dan sonra elle veriliyor (yukarıdaki not). */}
           <textarea
@@ -132,7 +134,7 @@ function OnayGovdesi({ istek, calisiyor, onIptal, onOnay }: {
         </label>
       ) : null}
 
-      <div className="plt-onay-eylem">
+      <div className="onay-eylem">
         <button type="button" className="panel-secondary" onClick={onIptal}>Vazgeç</button>
         <button type="submit" className={istek.tehlike ? "panel-danger" : "panel-primary"} disabled={!hazir}>
           {calisiyor ? "Uygulanıyor…" : istek.onayEtiketi}

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 // Ortak kayıt formu düzeni (alan görünümü, zorunlu alan işareti).
 import "../../components/kayit-formu.css";
-import { OnayPenceresi, type OnayIstegi } from "../onay-penceresi";
+import { OnayPenceresi, type OnayIstegi } from "../../components/onay-penceresi";
 
 /*
   Dekont kararı: onayla ya da reddet.

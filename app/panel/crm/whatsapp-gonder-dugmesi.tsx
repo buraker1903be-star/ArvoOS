@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { belgeyiWhatsappGonder } from "./whatsapp-gonder";
+import { OnayPenceresi } from "../components/onay-penceresi";
 
 /*
   "WhatsApp ile gönder" düğmesi.
@@ -14,6 +15,11 @@ import { belgeyiWhatsappGonder } from "./whatsapp-gonder";
   Onay soruyoruz: eski akışta WhatsApp Web açılıyordu ve personel son bir
   kez kime yazdığını görüyordu. Tek tıkla giden bir mesajda o duraksama
   yok; yanlış müşteriye giden teklifi geri almanın yolu da yok.
+
+  Onay panelin kendi penceresinde (components/onay-penceresi): tarayıcı
+  confirm kutusunu susturabiliyor ve susturulunca düğme sessizce hiçbir
+  şey yapmıyordu — personel "gönder"e basıp mesajın gidip gitmediğini
+  bilemiyordu. Gerekçenin tamamı o dosyanın başında.
 */
 export function WhatsappGonderDugmesi({
   kind,
@@ -33,21 +39,35 @@ export function WhatsappGonderDugmesi({
   const belge = kind === "proposal" ? "Teklif" : "Sözleşme";
   const kime = musteriAdi?.trim() ? ` ${musteriAdi.trim()} adlı müşteriye` : " müşteriye";
 
+  const [soruluyor, setSoruluyor] = useState(false);
+
   return (
-    <button
-      type="button"
-      className={className}
-      disabled={gonderiliyor}
-      onClick={() => {
-        if (!window.confirm(`${belge}${kime} WhatsApp'tan gönderilsin mi?`)) return;
-        basla(async () => {
-          await belgeyiWhatsappGonder(kind, token);
-          // Belge taslaktan "gönderildi"ye geçtiyse ekran güncellensin.
-          router.refresh();
-        });
-      }}
-    >
-      {gonderiliyor ? "Gönderiliyor…" : "💬 WhatsApp ile gönder"}
-    </button>
+    <>
+      <button
+        type="button"
+        className={className}
+        disabled={gonderiliyor}
+        onClick={() => setSoruluyor(true)}
+      >
+        {gonderiliyor ? "Gönderiliyor…" : "💬 WhatsApp ile gönder"}
+      </button>
+      <OnayPenceresi
+        istek={soruluyor ? {
+          baslik: `${belge} WhatsApp'tan gönderilsin mi?`,
+          metin: `Mesaj${kime} kurumun numarasından gider ve geri alınamaz.`,
+          onayEtiketi: "Gönder",
+        } : null}
+        calisiyor={gonderiliyor}
+        onIptal={() => { if (!gonderiliyor) setSoruluyor(false); }}
+        onOnay={() => {
+          setSoruluyor(false);
+          basla(async () => {
+            await belgeyiWhatsappGonder(kind, token);
+            // Belge taslaktan "gönderildi"ye geçtiyse ekran güncellensin.
+            router.refresh();
+          });
+        }}
+      />
+    </>
   );
 }
