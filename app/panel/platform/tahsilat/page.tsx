@@ -51,7 +51,7 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     { data: kurumOdemeleri, error: kurumHatasi },
     { data: aboneOdemeleri, error: aboneHatasi },
     { data: bekleyenler, error: bekleyenHatasi },
-    { data: kurumlar },
+    { data: kurumlar, error: kurumlarHatasi },
     olaylar,
   ] = await Promise.all([
     supabase.rpc("platform_tahsilat_ozeti"),
@@ -63,7 +63,17 @@ export default async function TahsilatPage({ searchParams }: { searchParams: Pro
     supabase.from("organizations").select("id,name,display_name,kind,grup_markasi"),
     getPaymentIncidents(),
   ]);
-  const hata = ozetHatasi ?? kurumHatasi ?? aboneHatasi ?? bekleyenHatasi;
+  /*
+    KURUM LİSTESİ DE ZORUNLU (15.10.2026). Hatası alınmıyordu, oysa
+    ödemenin GELİR SAYILIP SAYILMAYACAĞINA o karar veriyor: liste
+    düşünce kurumBilgisi boş kalıyor, musteriMi(undefined) "müşteri"
+    döndürüyor (lib/kurum-turu: iki alan da yoksa varsayılan müşteri) ve
+    Arvo'nun kendi ödemeleriyle grup markalarının ödemeleri müşteri
+    gelirine karışıyor — sessizce ŞİŞMİŞ bir tahsilat. Eksik sütunun
+    aynı tuzağı kurum-turu.ts'te yazılı; bu onun okuma hatasıyla gelen
+    ikizi.
+  */
+  const hata = ozetHatasi ?? kurumHatasi ?? aboneHatasi ?? bekleyenHatasi ?? kurumlarHatasi;
   if (hata) throw new Error("Tahsilat okunamadı: " + hata.message);
 
   const ozet = (ozetVerisi ?? {}) as { adet?: number; toplam?: number; bu_ay?: number; birimler?: string[] };

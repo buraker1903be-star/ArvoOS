@@ -106,8 +106,8 @@ export async function KonsolAnaSayfa() {
   const admin = createAdminClient();
 
   const [
-    { data: kiraciSatirlari },
-    { data: urunSatirlari },
+    { data: kiraciSatirlari, error: kiraciHatasi },
+    { data: urunSatirlari, error: urunHatasi },
     bekleyenOdeme,
     { data: profil },
     { data: personel },
@@ -166,7 +166,7 @@ export async function KonsolAnaSayfa() {
     çiziyordu (14.10.2026, 20261014062145).
   */
   const seriBasi = seriBaslangici();
-  const [{ data: havaleler }, { data: bireyselOdemeler }] = await Promise.all([
+  const [{ data: havaleler, error: havaleHatasi }, { data: bireyselOdemeler, error: bireyselHatasi }] = await Promise.all([
     supabase.from("organization_payment_requests").select("amount,reviewed_at")
       .eq("status", "approved").gte("reviewed_at", seriBasi),
     supabase.from("subscriber_payments").select("amount,paid_at").gte("paid_at", seriBasi),
@@ -191,6 +191,27 @@ export async function KonsolAnaSayfa() {
      ayrılıyor. Lisans alanı boş olan kurum (tetikleyici lisansı
      açmamışsa) kota ve ödeyen hesabına girmiyor — eski davranış da
      böyleydi, çünkü o kurumun lisans SATIRI yoktu. */
+  /*
+    OKUNAMAYAN SORGU "SIFIR" DEĞİLDİR (15.10.2026).
+
+    Supabase istemcisi hata fırlatmıyor, `error` alanına yazıyor; bu dört
+    okumanın hatası alınmıyordu. Kiracı listesi düşerse kurucunun ANA
+    EKRANI "Müşteri kurum 0 / 0", "Beklenen aylık ₺0,00" ve "Grup markası
+    0" diyor; tahsilat serisi düşerse grafik "Son 14 günde tahsilat yok"
+    diyor. Hepsi emin emin yanlış. Kiracı panelinin ana ekranı bu kuralı
+    zaten uyguluyordu (app/panel/page.tsx, failedQueries → GenelBakis
+    uyarısı); konsolun ana ekranı dışarıda kalmıştı.
+  */
+  const okunamayan = ([
+    ["Kiracı listesi", kiraciHatasi],
+    ["Ürün lisansları", urunHatasi],
+    ["Kurum ödemeleri", havaleHatasi],
+    ["Bireysel abone ödemeleri", bireyselHatasi],
+  ] as [string, { message: string } | null][])
+    .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
+  if (okunamayan.length)
+    console.error("[konsol] ana ekran sorguları okunamadı", okunamayan.map(([ad, h]) => `${ad}: ${h.message}`));
+
   const kiracilar = (kiraciSatirlari ?? []) as unknown as (Kurum & {
     license_status: string | null; monthly_fee: number | null;
     user_limit: number | null; storage_limit_mb: number | null; aktif_uye: number;
@@ -400,7 +421,7 @@ export async function KonsolAnaSayfa() {
   const hatadaKalanlar = new Set(kurumlar.filter((k) => k.provisioning_state === "failed").map((k) => k.id));
 
   return (
-    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`}>
+    <GenelBakis baslik={`${selam}${ad ? `, ${ad}` : ""}`} uyari={okunamayan.map(([ad2]) => ad2)}>
       {/* Köprüler sessizce kopuyor: hata yalnızca karşı taraftaki günlükte
           kalıyor ve kurucu aylar sonra fark ediyordu. Konsolun ilk ekranı
           bunu söylemeli. GenelBakis'in kendi `uyari` satırı "veri
