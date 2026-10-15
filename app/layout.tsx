@@ -36,11 +36,17 @@ export const metadata: Metadata = {
     appleWebApp.capable'dan yalnızca modern `mobile-web-app-capable`
     meta'sını basıyor; Safari o adı ancak iOS 17.4'ten beri tanıyor.
     Daha eski bir iPhone'da ana ekrana eklenen panel tarayıcı çubuğuyla
-    açılıyordu — kurulu uygulama hissi tam da orada kayboluyor. Eskiden
-    bu satır modern adı ikinci kez yazıyordu (Next zaten basıyor), yani
-    aynı meta iki kez çıkıyor ve eski iOS'u kurtaran ad hiç yazılmıyordu.
+    açılıyordu — kurulu uygulama hissi tam da orada kayboluyor.
+
+    İKİSİ BİRDEN yazılıyor. Önce yalnızca `apple-` öneklisi yazıldı,
+    "modern adı Next zaten basıyor" diye; doğru değilmiş. Next onu
+    appleWebApp.capable'dan basıyor ama `(site)` düzeni pazarlama
+    sayfalarında appleWebApp'i kendi değerleriyle EZİYOR (sekme adı
+    orada "Arvo"), dolayısıyla modern adı o sayfalarda yalnızca bu
+    satır sağlıyordu ve bir süre hiç yazılmadı. Panel yollarında meta
+    iki kez çıkabilir; yinelenen meta zararsız, eksik olan değil.
   */
-  other:{"apple-mobile-web-app-capable":"yes"},
+  other:{"apple-mobile-web-app-capable":"yes","mobile-web-app-capable":"yes"},
   formatDetection:{telephone:false}
 };
 export const viewport: Viewport = {
