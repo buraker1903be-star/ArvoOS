@@ -218,3 +218,24 @@ a.dash-setup-step:active{transform:scale(.985)}
 .dash-ozet dd a:hover{color:var(--primary)}
 .dash-ozet>div[data-tone="warning"] dd{color:var(--warning)}
 @media (max-width:900px){.dash-ozet{order:3;flex-basis:100%;justify-content:flex-start;padding:var(--sp-2) 0 0}.dash-v2 .dash-chart .dash-card-head{flex-wrap:wrap}}
+/*
+  ÖZET SAYILARI TELEFONDA İKİ SÜTUNLU IZGARA (15.10.2026).
+
+  Sarmalayan bir esnek kutuydu ve her hücre kendi içeriği kadar
+  genişliyordu: 375 pikselde sütunlar 81 / 81 / 75 ve alt sırada
+  83 / 96 çıkıyor, yani iki sıra birbirini TUTMUYORDU (ikinci sıranın
+  ikinci sütunu üsttekinden 2 piksel kayıktı). Göze "bozuk" demiyor,
+  "özensiz" dedirtiyor.
+
+  Üç sütunlu ızgara denendi, sütunlar hizalandı ama 95 piksele düşen
+  hücrede "Dikkat gerektiren" iki satıra iniyor ve bu sefer DEĞERLER
+  hizasını kaybediyordu. İki sütunda her etiket tek satırda kalıyor,
+  değerler satır satır aynı hizada ve genişlik tam 145 piksel.
+
+  İki sütun ayrıca müşteri detayındaki şeritle (kayit-detay.css) aynı
+  karar: konsolun iki ayrı özet şeridi telefonda aynı ritmi tutuyor.
+  Bedeli 60 piksel yükseklik.
+*/
+@media (max-width:760px){
+  .dash-ozet{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3) var(--sp-5)}
+}

@@ -14,7 +14,8 @@ import { konsolUygulamalari } from "./os/konsol-apps";
 import { gunlukSeri } from "@/lib/gunluk-seri";
 import { GENEL_BAKIS_SATIR, GenelBakis, ListeIzgarasi, ListeKarti, ListeSatiri, SeriKarti, seriBaslangici, simdi } from "./os/genel-bakis";
 import { StgIcon } from "./settings/settings-ui";
-import { KURULUM_ADI, para, tarihSaat } from "./platform/bicim";
+import { KURULUM_ADI, para } from "./platform/bicim";
+import { relativeTime } from "./crm/last-contact";
 import "./dashboard.css";
 
 /*
@@ -499,7 +500,24 @@ export async function KonsolAnaSayfa() {
                   {hatadaKalanlar.has(kayit.organization_id) ? "hata" : "hata · çözüldü"}
                 </span>
               ) : null}
-              zaman={tarihSaat(kayit.created_at)}
+              /*
+                GÖRELİ ZAMAN, TAM TARİH DEĞİL (15.10.2026). Burası
+                ürünün tek istisnasıydı: öteki altı genel bakış
+                (panel ana sayfası, CRM, operasyon, finans) aynı satır
+                bileşenine göreli zaman veriyor, yalnızca konsol
+                "21 Eyl 2026 15:24" basıyordu.
+
+                Tutarsızlıktan öte bir zararı vardı. Satır düz bir
+                flex: ad esner, rozet ve zaman sabit. Tam tarih 101
+                piksel tuttuğu için DURUM ROZETİ OLAN satırlarda ada
+                yalnızca 83 piksel kalıyordu ve ad "PayTR İncel…" diye
+                kesiliyordu; rozeti olmayan AYNI kiracının satırında
+                ad 200 pikselle tam görünüyordu. Yani kırpılan hep en
+                önemli bilgiydi ve satırlar birbirini tutmuyordu.
+                Göreli zaman 71 piksel: ada 113 kalıyor, iki ad da
+                tam sığıyor (ölçüldü).
+              */
+              zaman={relativeTime(kayit.created_at)}
             />
           ))}
         </ListeKarti>
