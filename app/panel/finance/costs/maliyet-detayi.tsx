@@ -2,6 +2,7 @@ import { MobilSatir } from "../../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
 import { statusTone } from "@/lib/status-tone";
 import { PanelDrawer } from "../../components/panel-drawer";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { SatirTiklama } from "../../crm/satir-tiklama";
 import { addContractCostItem, deleteContractCostItem, updateContractCostItem } from "../actions";
 import { initials } from "../finance-ui";
@@ -112,10 +113,11 @@ export async function MaliyetDetayi({contractId}:{contractId:string}){
                         <div className="wide panel-form-actions kayit-formu-eylem"><p><b className="req" aria-hidden="true">*</b> işaretli alanlar zorunlu.</p><button className="panel-primary">Değişiklikleri kaydet</button></div>
                       </form>
                     </PanelDrawer>
+                    {/* Maliyet kalemi kârlılık hesabına giriyor; silme geri alınamaz. */}
                     <form action={deleteContractCostItem}>
                       <input type="hidden" name="item_id" value={item.id}/>
                       <input type="hidden" name="contract_id" value={contract.id}/>
-                      <button className="panel-danger">Sil</button>
+                      <ConfirmDeleteButton label="Sil" confirmMessage={`${item.description} kalemini silmek istediğinize emin misiniz?`} />
                     </form>
                   </td>
                   <MobilSatir

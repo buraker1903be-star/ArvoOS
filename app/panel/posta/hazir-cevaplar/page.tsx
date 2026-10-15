@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { YER_TUTUCULAR } from "@/lib/posta-sablon";
 import { istanbulTarihSaat } from "../bicim";
 import { sablonEkle, sablonGuncelle, sablonSil } from "../sablon-actions";
@@ -74,7 +75,7 @@ export default async function HazirCevaplar() {
                       <small>Güncellendi: {istanbulTarihSaat(sablon.updated_at)}</small>
                       <span>
                         <button className="panel-secondary" type="submit">Kaydet</button>
-                        <button className="panel-secondary posta-sil" type="submit" formAction={sablonSil} formNoValidate>Sil</button>
+                        <ConfirmDeleteButton label="Sil" confirmMessage={`"${sablon.ad}" hazır cevabını silmek istediğinize emin misiniz?`} formAction={sablonSil} formNoValidate />
                       </span>
                     </div>
                   </form>

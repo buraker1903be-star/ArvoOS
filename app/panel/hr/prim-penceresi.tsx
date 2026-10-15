@@ -5,6 +5,7 @@ import { employeeLedger, ledgerTotals } from "@/lib/commission-ledger";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { gunDonemde, PRIM_DONEMLERI, primDonemi, primDonemiYazisi } from "@/lib/prim-donemi";
 import { PanelDrawer } from "../components/panel-drawer";
+import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
 import { primOdemesiDuzenle, primOdemesiKaydet, primOdemesiSil } from "./prim-actions";
 import { baglanmamisKisim, beklenenPrimler, isKapandi, isPrimleri } from "@/lib/prim-is-dagilimi";
 import { PrimOdemeFormu, type FormIsi } from "./prim-odeme-formu";
@@ -151,9 +152,11 @@ export async function PrimPenceresi({ veri, employeeId, temelAdres, donemKodu, b
                             mevcut={Object.fromEntries(odemeDagilimi(h.id).filter((d) => d.contractId).map((d) => [d.contractId as string, d.amount]))} />
                         </PanelDrawer>
                       ) : null}
+                      {/* Prim ödemesi bir PARA kaydı: silinince personelin prim
+                          bakiyesi değişiyor ve geri gelmiyor. Onay soruluyor. */}
                       <form action={primOdemesiSil}>
                         <input type="hidden" name="id" value={h.id} />
-                        <button className="panel-secondary cari-taksit-btn" type="submit" title="Ödemeyi sil">Sil</button>
+                        <ConfirmDeleteButton label="Sil" confirmMessage="Bu prim ödemesini silmek istediğinize emin misiniz? Bakiye yeniden hesaplanır." />
                       </form>
                     </span>
                   ) : null}

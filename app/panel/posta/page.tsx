@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { getPanelContext } from "@/lib/panel-context";
+import { ConfirmDeleteButton } from "../accounts/confirm-delete-button";
 import { postaDurumu } from "@/lib/posta-hesabi";
 import { htmlVarliklariniCoz, postaAramaDeseni } from "@/lib/posta-ayristirma";
 import { postaGovdesindeAra } from "@/lib/posta-esitleme";
@@ -413,9 +414,10 @@ export default async function PostaPage({ searchParams }: { searchParams: Promis
                       </td>
                       <td data-label="Güncellendi" className="crm-table-mono">{istanbulTarihSaat(satir.updated_at)}</td>
                       <td className="crm-table-actions">
+                        {/* Yazılmış taslak: silinince geri gelmiyor. */}
                         <form action={taslakSil}>
                           <input type="hidden" name="taslak_id" value={satir.id} />
-                          <button className="panel-secondary posta-sil" type="submit">Sil</button>
+                          <ConfirmDeleteButton label="Sil" confirmMessage="Bu taslağı silmek istediğinize emin misiniz?" />
                         </form>
                       </td>
                       <MobilSatir

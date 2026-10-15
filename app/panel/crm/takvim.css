@@ -71,6 +71,12 @@
 .tk-eylem button{height:26px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--muted);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer}
 .tk-eylem button:hover{border-color:var(--primary);color:var(--primary)}
 .tk-eylem button.is-danger:hover{border-color:var(--danger);color:var(--danger)}
+/* Silme onayı satır içinde açılıyor (ConfirmDeleteButton): takvim
+   satırının kendi küçük düğme ölçüsüne uysun, sorusu da okunsun. */
+.tk-eylem .confirm-delete-inline{padding:4px 8px;gap:6px}
+.tk-eylem .confirm-delete-inline small{font-size:var(--fs-micro);line-height:1.4}
+.tk-eylem .confirm-delete-inline>span{display:flex;gap:var(--sp-1)}
+.tk-eylem .panel-danger{border-color:color-mix(in srgb,var(--danger) 45%,var(--line));color:var(--danger)}
 .tk-satir .status-pill{flex:none;position:relative;z-index:1}
 
 @media (max-width:1100px){

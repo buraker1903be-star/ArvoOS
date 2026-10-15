@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { statusTone } from "@/lib/status-tone";
 import { formatPhone } from "@/lib/format-phone";
 import { todayInIstanbul } from "@/lib/istanbul-date";
@@ -589,7 +590,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: { par
                         <span className="hr-doc-icon"><HrIcon name="doc" size={17} /></span>
                         <span className="cari-hareket-metin"><b>{doc.file_name}</b><small>{[fileSize(doc.file_size), shortDate(doc.created_at)].filter(Boolean).join(" · ")}</small></span>
                       </Link>
-                      <form action={deleteEmployeeDocument}><input type="hidden" name="document_id" value={doc.id} /><button className="panel-danger personel-sil" type="submit">Sil</button></form>
+                      {/* Özlük dosyası: silinen belge depodan da gidiyor, geri gelmiyor. */}
+                      <form action={deleteEmployeeDocument}><input type="hidden" name="document_id" value={doc.id} /><ConfirmDeleteButton label="Sil" confirmMessage={`${doc.file_name} dosyasını kalıcı olarak silmek istediğinize emin misiniz?`} /></form>
                     </li>
                   ))}
                 </ul>

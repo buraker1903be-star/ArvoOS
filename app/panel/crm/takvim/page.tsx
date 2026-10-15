@@ -5,6 +5,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { AppointmentForm } from "./appointment-form";
 import { updateAppointmentStatus, deleteAppointment } from "./actions";
+import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
 import { OtomatikSecim } from "../otomatik-secim";
 import { AyGezinme, GunBolumu, TakvimIzgarasi, ayAnahtari, ayBasi, gunAnahtari, gunTarihi, type TakvimMaddesi } from "../takvim-izgara";
 import "../kayit-detay/kayit-detay.css";
@@ -56,7 +57,17 @@ function RandevuSatiri({ randevu, temsilci }: { randevu: Appointment; temsilci?:
             {randevu.status === "planned" ? (
               <form action={updateAppointmentStatus}><input type="hidden" name="appointment_id" value={randevu.id} /><input type="hidden" name="status" value="cancelled" /><button type="submit">İptal</button></form>
             ) : null}
-            <form action={deleteAppointment}><input type="hidden" name="appointment_id" value={randevu.id} /><button className="is-danger" type="submit">Sil</button></form>
+            {/*
+              Silme ONAY İSTİYOR. Düğme "Tamamlandı" ve "İptal"in hemen
+              yanında duruyor ve tek tıkla, soru sormadan siliyordu;
+              randevu geri gelmiyor. Panelin geri kalanındaki silmeler
+              (sözleşme, teklif, cari hareketi, personel) zaten bu ortak
+              düğmeden geçiyor — takvim atlanmıştı.
+            */}
+            <form action={deleteAppointment}>
+              <input type="hidden" name="appointment_id" value={randevu.id} />
+              <ConfirmDeleteButton label="Sil" confirmMessage={`${randevu.title} randevusunu silmek istediğinize emin misiniz?`} />
+            </form>
           </span>
         </span>
         <span className="status-pill" data-tone={DURUM_TONU[randevu.status] ?? "neutral"}>{DURUM_ADLARI[randevu.status] ?? randevu.status}</span>
