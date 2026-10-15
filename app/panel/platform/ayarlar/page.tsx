@@ -74,6 +74,7 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   const kurucular = uyeler.filter((u) => u.role === "owner" && u.is_active).map((u) => u.user_id);
   /* Profil adı boş olabiliyor (davetle gelen hesap); kurumun personel
      kaydındaki ad yedek. */
+  // hata-tamam: kurucu adlarının eşlemesi; düşerse ad yerine e-posta/kimlik görünür, kurucu SAYISI üyelik sorgusundan geliyor
   const { data: calisanlar } = await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organization.id).not("user_id", "is", null);
   const calisanAdi = new Map(((calisanlar ?? []) as { user_id: string; full_name: string }[]).map((c) => [c.user_id, c.full_name]));
 
@@ -104,6 +105,8 @@ export default async function SistemAyarlariPage({ searchParams }: { searchParam
   for (const s of (odeme?.data ?? []) as { reviewed_by: string | null; organization_id: string }[]) { if (s.reviewed_by) kisiIdleri.add(s.reviewed_by); kurumIdleri.add(s.organization_id); }
   for (const s of (sozlesme?.data ?? []) as { reviewed_by: string | null }[]) if (s.reviewed_by) kisiIdleri.add(s.reviewed_by);
 
+  // hata-tamam: ikisi de yalnızca AD eşlemesi (işlem kaydında kim/hangi kurum);
+  // düşerse ad yerine kimlik görünür, işlem kaydının kendisi yerinde kalır.
   const [{ data: kisiler }, { data: kurumlar }] = await Promise.all([
     kisiIdleri.size ? (admin ?? supabase).from("profiles").select("id,full_name").in("id", [...kisiIdleri]) : Promise.resolve({ data: [] }),
     kurumIdleri.size ? supabase.from("organizations").select("id,name,display_name").in("id", [...kurumIdleri]) : Promise.resolve({ data: [] }),

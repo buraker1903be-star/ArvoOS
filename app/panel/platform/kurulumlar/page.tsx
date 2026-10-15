@@ -93,12 +93,12 @@ export default async function KurulumlarPage({ searchParams }: {
     kuralın aynısı). Anahtar yoksa bölüm "istek yok" demiyor, okunamadığını
     yazıyor.
   */
-  const { data: istekSatirlari } = admin
+  const { data: istekSatirlari, error: istekHatasi } = admin
     ? await admin.from("platform_subscription_requests")
         .select("id,contract_no,customer_name,amount,currency,status,created_at,target_organization_id")
         .eq("status", "pending").is("target_organization_id", null)
         .order("created_at", { ascending: false }).limit(20)
-    : { data: null };
+    : { data: null, error: null };
 
   const tumKiracilar = (kiraciSatirlari ?? []) as unknown as Kiraci[];
   /*
@@ -112,6 +112,10 @@ export default async function KurulumlarPage({ searchParams }: {
 
   const bekleyenler = kiracilar.filter((k) => BEKLEYEN.has(k.provisioning_state) || k.provisioning_state === "failed");
   const tamamlananlar = kiracilar.filter((k) => k.provisioning_state === "active");
+  /* İstekler okunamazsa "yeni istek yok" denirdi: imzalı bir sözleşmenin
+     modülleri açılmayı bekliyorken ekran temiz görünürdü. Anahtar yoksa
+     (admin null) hata da yok — o durumda bölüm zaten çizilmiyor. */
+  if (istekHatasi) throw new Error("Abonelik istekleri okunamadı: " + istekHatasi.message);
   const bekleyenIstekler = (istekSatirlari ?? []) as {
     id: string; contract_no: string | null; customer_name: string | null;
     amount: number | null; currency: string | null; created_at: string;

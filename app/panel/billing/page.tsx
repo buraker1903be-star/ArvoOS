@@ -24,7 +24,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const { supabase, organization, membership, izin } = await getPanelContext();
   const params = await searchParams;
 
-  const [{ data: bankAccounts }, { data: payments }, { data: license }, { data: productLicenses }, { count: aktifKullanici }] = await Promise.all([
+  const [
+    { data: bankAccounts, error: bankaHatasi },
+    { data: payments, error: odemeHatasi },
+    { data: license, error: lisansHatasi },
+    { data: productLicenses, error: urunHatasi },
+    { count: aktifKullanici },
+  ] = await Promise.all([
     supabase.from("platform_bank_accounts").select("id,bank_name,account_holder,iban,currency").eq("is_active", true).order("sort_order"),
     supabase.from("organization_payment_requests").select("id,plan_code,product,amount,currency,status,reference_no,review_note,created_at").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),
     supabase.from("organization_licenses").select("plan_code,license_status,current_period_end,monthly_fee,user_limit,extra_user_fee,extra_user_cap").eq("organization_id", organization.id).maybeSingle(),
@@ -32,6 +38,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     supabase.from("organization_memberships").select("user_id", { count: "exact", head: true })
       .eq("organization_id", organization.id).eq("is_active", true),
   ]);
+
+  /*
+    MÜŞTERİ BU EKRANDAN ÖDÜYOR; SESSİZ BOŞLUK BURADA PAHALI (15.10.2026).
+    Dördünün de hatası alınmıyordu. Lisans okunamazsa paket ve ek koltuk
+    ücreti kaybolur (ekKullaniciSayisi limit null gelince 0 döner), banka
+    hesapları okunamazsa müşteri parayı nereye yollayacağını göremez,
+    ödeme geçmişi okunamazsa "hiç ödeme yapmamışsınız" gibi görünür.
+    Hiçbiri sessizce boş kalmamalı.
+  */
+  const okumaHatasi = bankaHatasi ?? odemeHatasi ?? lisansHatasi ?? urunHatasi;
+  if (okumaHatasi) throw new Error("Abonelik bilgileri okunamadı: " + okumaHatasi.message);
 
   /*
     EK KULLANICI (13.10.2026). Dahil kullanıcı sayısını aşan her koltuk

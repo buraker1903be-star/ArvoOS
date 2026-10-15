@@ -109,8 +109,11 @@ export async function KonsolAnaSayfa() {
     { data: kiraciSatirlari, error: kiraciHatasi },
     { data: urunSatirlari, error: urunHatasi },
     bekleyenOdeme,
+    // hata-tamam: kurucunun kendi adı (selamlama); düşerse selam adsız kalır
     { data: profil },
+    // hata-tamam: kurucunun kendi personel kaydı, yine yalnızca ad için
     { data: personel },
+    // hata-tamam: depolamaKullanimi bir promise; düşerse Promise.all REDDEDİLİR ve sayfa hata ekranına gider, sessizce sıfır göstermez
     { data: depolamalar },
   ] = await Promise.all([
     /*
@@ -143,12 +146,12 @@ export async function KonsolAnaSayfa() {
      okunuyor (sozlesmeler sayfasındaki kuralın aynısı). Anahtar yoksa
      satır hiç çizilmiyor: "0 sözleşme bekliyor" yazmak, okunamayan bir
      kuyruğu boş göstermek olurdu. */
-  const [bekleyenSozlesme, { data: kurulumKayitlari }] = admin
+  const [bekleyenSozlesme, { data: kurulumKayitlari, error: kurulumHatasi }] = admin
     ? await Promise.all([
         admin.from("platform_subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at").order("created_at", { ascending: false }).limit(6),
       ])
-    : [{ count: null, error: null }, { data: [] }];
+    : [{ count: null, error: null }, { data: [], error: null }];
 
   /*
     GRAFİĞİN TAHSİLATLARI: üç kanal, PENCEREYLE sınırlı.
@@ -207,6 +210,7 @@ export async function KonsolAnaSayfa() {
     ["Ürün lisansları", urunHatasi],
     ["Kurum ödemeleri", havaleHatasi],
     ["Bireysel abone ödemeleri", bireyselHatasi],
+    ["Kurulum günlüğü", kurulumHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)

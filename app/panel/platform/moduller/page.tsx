@@ -52,12 +52,16 @@ export default async function ModulMatrisiSayfasi({ searchParams }: { searchPara
   if (!isPlatformOwner) notFound();
   const { suzgec } = await searchParams;
 
-  const [{ data: kurumlar, error }, { data: urunLisanslari }, { data: cekirdek }] = await Promise.all([
+  const [{ data: kurumlar, error }, { data: urunLisanslari, error: urunHatasi }, { data: cekirdek, error: cekirdekHatasi }] = await Promise.all([
     supabase.from("organizations").select("id,name,display_name,kind,grup_markasi").order("name"),
     supabase.from("organization_product_licenses").select("organization_id,product,status,integrated"),
     supabase.from("organization_licenses").select("organization_id,license_status"),
   ]);
   if (error) throw new Error("Kurum listesi okunamadı.");
+  /* Lisanslar okunamazsa matristeki her hücre "Kapalı" çıkar: kurucu
+     bütün kiracıların bütün modüllerini kapalı sanır. */
+  if (urunHatasi) throw new Error("Ürün lisansları okunamadı: " + urunHatasi.message);
+  if (cekirdekHatasi) throw new Error("ArvoOS lisansları okunamadı: " + cekirdekHatasi.message);
 
   /*
     SAYIM KİRACI SAYIMI, MÜŞTERİ SAYIMI DEĞİL (14.10.2026).

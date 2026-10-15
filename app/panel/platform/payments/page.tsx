@@ -45,12 +45,16 @@ export default async function PaymentApprovalsPage() {
     sessizce eksilmeye başlayacaktı. Liste kısa kalıyor, toplam kısalmıyor.
   */
   const SECIM = "id,organization_id,plan_code,product,amount,currency,status,payment_method,receipt_path,reference_no,customer_note,review_note,created_at,reviewed_at,organizations(name,slug),platform_bank_accounts(bank_name,iban)";
-  const [{ data: bekleyenler, error }, { data: gecmis }, { data: onayliTutarlar }] = await Promise.all([
+  const [{ data: bekleyenler, error }, { data: gecmis, error: gecmisHatasi }, { data: onayliTutarlar, error: tutarHatasi }] = await Promise.all([
     supabase.from("organization_payment_requests").select(SECIM).eq("status", "pending").order("created_at", { ascending: false }),
     supabase.from("organization_payment_requests").select(SECIM).neq("status", "pending").order("created_at", { ascending: false }).limit(30),
     supabase.from("organization_payment_requests").select("amount,currency,status"),
   ]);
   if (error) throw new Error(`Ödeme bildirimleri okunamadı: ${error.message}`);
+  /* Geçmiş ve onaylı tutarlar da para: düşerlerse ekran "hiç ödeme
+     yok" der ve kurucu aynı ödemeyi ikinci kez isteyebilir. */
+  if (gecmisHatasi) throw new Error(`Ödeme geçmişi okunamadı: ${gecmisHatasi.message}`);
+  if (tutarHatasi) throw new Error(`Onaylı tutarlar okunamadı: ${tutarHatasi.message}`);
 
   /*
     İmzalı dekont bağlantısı yalnızca BEKLEYENLER için üretiliyor. Eskiden
@@ -60,6 +64,7 @@ export default async function PaymentApprovalsPage() {
   */
   const incelenecekler = await Promise.all((bekleyenler ?? []).map(async (payment) => {
     // Kartla (PayTR) ödemede dekont yoktur.
+    // hata-tamam: dekont dosyasının imzalı bağlantısı; düşerse bağlantı çıkmaz, karar ekranı yerinde kalır
     const { data: signed } = payment.receipt_path
       ? await supabase.storage.from("payment-receipts").createSignedUrl(payment.receipt_path, 900)
       : { data: null };

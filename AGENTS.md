@@ -371,6 +371,26 @@ taklit edip her tabloya tam yetki veriyor, sütun düzeyinde yetki
 yalnızca canlıda var (10.10.2026'da görünürlük anahtarı bu yüzden
 canlıda düştü).
 
+**Okunamayan sorgu denetimi** (`npm run check:okunamayan`): Supabase
+istemcisi hata **fırlatmıyor**, `error` alanına yazıyor. `const { data } =
+await supabase…` yazan bir sayfa, sorgu düştüğünde `data` null alıyor ve
+onu "kayıt yok" diye çiziyor — yani yanlış değil, EMİN EMİN yanlış.
+15.10.2026'da beş özet ekranında on iki okuma böyleydi: Sistem Sağlığı
+"Açık sorun 0 · Her şey yolunda" dedi (kiracı listesi okunamadığı için
+kota, limit sapması ve bayat kopya bölümlerinin üçü birden boşalmıştı),
+konsolun ana ekranı "Müşteri kurum 0/0 · Beklenen aylık ₺0,00" dedi,
+Tahsilat rakamı ŞİŞTİ (`musteriMi(undefined)` "müşteri" döndüğü için
+Arvo'nun kendi ödemeleri gelire karıştı), finans genel bakışta kâr oranı
+yükseldi, İK genel bakışında herkes "gizlilik sözleşmesi imzalamamış"
+göründü. Denetim DAR tutuldu: depoda bu kalıptan seksen küsur yer var ve
+çoğu zararsız (ad eşlemesi düşerse ekranda "—" yazar), her yeri
+işaretleyen bir denetim herkesin susturmayı öğrendiği bir denetim olur.
+Bu yüzden yalnızca betiğin başındaki listede yazan **özet ekranları**
+taranıyor — orada ekrandaki her şey bir sonuç. Yeni bir özet ekranı
+açarken listeye ekleyin. Hata bilerek yutuluyorsa satırın üstüne gerekçe
+yazılır: `// hata-tamam: <sebep>`. Denetim yakalanan hatanın
+KULLANILDIĞINI da arıyor; alınıp bir kenara konan `error` gösteriştir.
+
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
 karşılaştırılır. **Sütun doğru ama DEĞER imkânsız** olabiliyor: kısıtı

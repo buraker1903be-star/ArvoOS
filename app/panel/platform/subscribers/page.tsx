@@ -47,7 +47,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
     durumda bunu yazıyoruz.
   */
   const LISTE_SINIRI = 1000;
-  const [{ data: planData }, { data: subscriberData, count, error }, fiyatlar, { data: kurumdakiSatirlar, error: kurumdakiHatasi }, { data: kurumSatirlari }, { data: urunLisansSatirlari }] = await Promise.all([
+  const [{ data: planData, error: planHatasi }, { data: subscriberData, count, error }, fiyatlar, { data: kurumdakiSatirlar, error: kurumdakiHatasi }, { data: kurumSatirlari, error: kurumHatasi }, { data: urunLisansSatirlari, error: urunLisansHatasi }] = await Promise.all([
     supabase.from("product_plans").select("product,individual_monthly_fee,trial_days"),
     supabase.from("product_subscribers")
       .select("id,product,email,full_name,status,trial_ends_at,current_period_end,suspension_reason,created_at", { count: "exact" })
@@ -65,6 +65,11 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   ]);
   if (error) throw new Error(`Bireysel aboneler okunamadı: ${error.message}`);
   if (kurumdakiHatasi) throw new Error(`Kuruma geçen aboneler okunamadı: ${kurumdakiHatasi.message}`);
+  /* Planlar, kurumlar ve ürün lisansları abonenin hangi pakette olduğunu
+     ve ücretini söylüyor: düşerlerse ekran aboneyi paketsiz/ücretsiz
+     gösterir. */
+  const yanHatasi = planHatasi ?? kurumHatasi ?? urunLisansHatasi;
+  if (yanHatasi) throw new Error(`Abonelik bilgileri okunamadı: ${yanHatasi.message}`);
   const kurumAdi = new Map(((kurumSatirlari ?? []) as { id: string; name: string; display_name: string | null }[]).map((k) => [k.id, k.display_name || k.name]));
   const kurumdakiler = (kurumdakiSatirlar ?? []) as { id: string; product: string; email: string; full_name: string | null; kurum_id: string; kuruma_gecti_at: string | null }[];
 
@@ -94,6 +99,7 @@ export default async function SubscribersPage({ searchParams }: { searchParams: 
   */
   const adsizlar = kurumdakiler.filter((k) => !k.full_name);
   const admin = createAdminClient();
+  // hata-tamam: abonenin adı; düşerse ad yerine e-posta gösterilir, sayılar etkilenmez
   const { data: personelAdlari } = adsizlar.length && admin
     ? await admin.from("hr_employees").select("organization_id,email,full_name")
         .in("organization_id", [...new Set(adsizlar.map((k) => k.kurum_id))])

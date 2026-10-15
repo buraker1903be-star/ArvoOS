@@ -105,6 +105,7 @@ export default async function PanelPage() {
     { data: asamaRows, error: asamaError },
     { data: mesajRows, error: mesajError },
     { data: postaRows, error: postaError },
+    // hata-tamam: yalnızca selamlamadaki ad; düşerse selam adsız kalır, hiçbir sayı etkilenmez
     { data: me },
     { data: onboardingRow, error: onboardingError },
     { data: setupOrganization, error: setupOrganizationError },

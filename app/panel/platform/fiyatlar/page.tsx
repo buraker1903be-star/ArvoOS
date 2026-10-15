@@ -130,13 +130,19 @@ export default async function FiyatlarPage({ searchParams }: {
   const LISTE_URUNLERI = ["arvoos", "arc", "randevu", "arvolab", "ek"] as const;
   const seciliUrun = (LISTE_URUNLERI as readonly string[]).includes(urun ?? "") ? urun! : "arvoos";
 
-  const [{ data: kiraciSatirlari }, { data: fiyatSatirlari }] = await Promise.all([
+  const [{ data: kiraciSatirlari, error: kiraciHatasi }, { data: fiyatSatirlari, error: fiyatHatasi }] = await Promise.all([
     supabase.from("platform_kiraci_liste").select("id,kind,license_status,plan_code,monthly_fee,aktif_uye"),
     /* Kurucu taslağı da görüyor (RLS: kurucu_fiyati_okur); site yalnızca
        yayımlanmış satırı okuyor. "*": taslak_bekliyor sütunu
        20261014064505 ile geldi; uygulanmadan önce de sayfa açılsın. */
     supabase.from("platform_fiyat_listesi").select("*"),
   ]);
+  /* Kiracı listesi düşerse "kaç kurum bu tutarı ödüyor" sayıları sıfıra
+     iner; fiyat listesi düşerse YAYIMLANMIŞ tutarlar görünmez ve ekran
+     koddaki varsayılanları yayımlıymış gibi gösterir. İkisi de sessiz
+     kalmamalı: bu sayfadan müşteriye giden fiyat yayımlanıyor. */
+  if (kiraciHatasi) throw new Error("Kiracı listesi okunamadı: " + kiraciHatasi.message);
+  if (fiyatHatasi) throw new Error("Fiyat listesi okunamadı: " + fiyatHatasi.message);
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]).filter((k) => k.kind !== "internal");
 
   /*
@@ -187,6 +193,7 @@ export default async function FiyatlarPage({ searchParams }: {
     yeni_kurus: number | null; kim: string | null; zaman: string;
   }[];
   const kimIdleri = [...new Set(gecmis.map((g) => g.kim).filter((k): k is string => Boolean(k)))];
+  // hata-tamam: değişikliği kimin yaptığının ADI; düşerse ad yerine "—" yazar, tutarlar etkilenmez
   const { data: kimSatirlari } = kimIdleri.length
     ? await supabase.from("profiles").select("id,full_name").in("id", kimIdleri)
     : { data: [] };

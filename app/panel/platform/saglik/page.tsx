@@ -75,9 +75,10 @@ export default async function SistemSagligiPage() {
   const [
     { data: kiraciSatirlari, error: kiraciHatasi },
     { data: urunSatirlari, error: urunHatasi },
+    // hata-tamam: depolamaKullanimi bir promise; düşerse Promise.all reddedilir ve sayfa hata ekranına gider
     { data: depolamalar },
     { data: cronSatirlari, error: cronHatasi },
-    { data: cronIlk },
+    { data: cronIlk, error: cronIlkHatasi },
   ] = await Promise.all([
     supabase.from("platform_kiraci_liste")
       .select("id,name,display_name,kind,grup_markasi,provisioning_state,license_status,plan_code,user_limit,storage_limit_mb,aktif_uye")
@@ -114,7 +115,7 @@ export default async function SistemSagligiPage() {
 
   /* Kurulum günlüğü yalnızca sunucu anahtarıyla okunuyor; anahtar yoksa
      satır hiç çizilmiyor ("0 hata" yazmak okunamayanı temiz göstermek). */
-  const { data: kurulumKayitlari } = admin
+  const { data: kurulumKayitlari, error: kurulumHatasi } = admin
     ? await admin.from("provisioning_audit_logs").select("id,organization_id,action,result,state,created_at")
         /*
           DEĞER 'failed', 'error' DEĞİL (14.10.2026). Sütunun kısıtı
@@ -125,7 +126,7 @@ export default async function SistemSagligiPage() {
           yanlış DEĞER hiç iz bırakmaz — bu yüzden daha sinsi.
         */
         .eq("result", "failed").order("created_at", { ascending: false }).limit(10)
-    : { data: null };
+    : { data: null, error: null };
 
   const kiracilar = ((kiraciSatirlari ?? []) as unknown as Kiraci[]);
   const musteriler = kiracilar.filter((kurum) => kurum.kind !== "internal");
@@ -261,6 +262,8 @@ export default async function SistemSagligiPage() {
   const okunamayan = ([
     ["Kiracı listesi", kiraciHatasi],
     ["Ürün lisansları", urunHatasi],
+    ["Koşma kayıtlarının başlangıcı", cronIlkHatasi],
+    ["Kurulum günlüğü", kurulumHatasi],
   ] as [string, { message: string } | null][])
     .filter((satir): satir is [string, { message: string }] => Boolean(satir[1]));
   if (okunamayan.length)

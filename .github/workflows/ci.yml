@@ -67,3 +67,10 @@ jobs:
       # çalışıyor, sayı yazılıyor, yalnızca yanlış oluyor.
       - name: Rakam denetimi
         run: npm run check:rakamlar
+      # Özet ekranlarında hatası alınmayan sorgu (scripts/check-okunamayan.mjs):
+      # Supabase hata FIRLATMIYOR, error alanına yazıyor; alınmazsa sayfa
+      # null veriyi "kayıt yok" diye çiziyor. 15.10.2026'da beş ekranda
+      # on iki okuma böyleydi — "Açık sorun 0", "Beklenen aylık ₺0,00",
+      # şişmiş tahsilat, şişmiş kâr oranı, "herkes sözleşme imzalamamış".
+      - name: Okunamayan sorgu denetimi
+        run: npm run check:okunamayan
