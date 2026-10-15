@@ -21,7 +21,36 @@
   Önbellek adı değişince eskiler silinir; bu dosyada bir şey değişirse
   SURUM artırılır.
 */
-const SURUM = "arvo-kabuk-3";
+/*
+  İKİ AYRI ÖNBELLEK VE BİR TAVAN (15.10.2026).
+
+  Hepsi tek önbellekteydi ve derleme dosyaları hiç temizlenmiyordu:
+  `/_next/static/...` yolları her derlemede yeni karma alıyor, önbellek
+  adı ise yalnızca BU DOSYA değişince değişiyor. Yani her dağıtımın
+  parçaları öncekilerin üstüne biniyordu. Ölçüldüğünde 1282 dosya /
+  57,6 MB vardı (573 CSS + 705 JS) ve büyümenin durduğu bir nokta yok —
+  günde birkaç dağıtım olan bir üründe bu, telefonda sınırsız şişen bir
+  klasör demek.
+
+  Asıl zarar yer kaplaması değil: tarayıcı alan baskısı altında bir
+  kaynağın deposunu TOPTAN boşaltıyor. Tek önbellekte çevrimdışı ekranı
+  da derleme çöpüyle aynı torbada olduğu için, önbelleğin biricik amacı
+  (bağlantı yokken beyaz ekran göstermemek) tam da en muhtemel anında
+  kayboluyordu.
+
+  Bu yüzden kabuk (çevrimdışı ekranı + simgeler) ayrı önbellekte ve
+  kendi başına birkaç yüz kilobayt: ona dokunulmuyor. Derleme dosyaları
+  kendi önbelleğinde ve TAVAN'ı aşınca en eskiden başlayarak atılıyor —
+  Cache.keys() eklenme sırasını koruyor, yani baştakiler en eski
+  dağıtımın artıkları. Atılan bir parça gerekirse ağdan yeniden iniyor;
+  bedeli bir istek, karşılığı sınırlı bir depo.
+*/
+const SURUM = "arvo-kabuk-4";
+const STATIK = "arvo-statik-4";
+const BIZIM = new Set([SURUM, STATIK]);
+/* Tek bir derlemenin parçaları birkaç düzine; 400 hem rahat bir pay
+   bırakıyor hem de şişmeyi birkaç dağıtımla sınırlıyor. */
+const TAVAN = 400;
 const CEVRIMDISI = "/cevrimdisi.html";
 const ONCEDEN = [CEVRIMDISI, "/icon-192.png", "/icon-512.png", "/favicon.svg"];
 
@@ -32,10 +61,18 @@ self.addEventListener("install", (olay) => {
 self.addEventListener("activate", (olay) => {
   olay.waitUntil((async () => {
     const adlar = await caches.keys();
-    await Promise.all(adlar.filter((ad) => ad !== SURUM).map((ad) => caches.delete(ad)));
+    await Promise.all(adlar.filter((ad) => !BIZIM.has(ad)).map((ad) => caches.delete(ad)));
     await self.clients.claim();
   })());
 });
+
+/* En eskiden başlayarak tavana indir. Silme, yeni kaydın ARDINDAN
+   yapılıyor: yanıtı döndürmeyi bekletmesin. */
+async function buda(onbellek) {
+  const kayitlar = await onbellek.keys();
+  if (kayitlar.length <= TAVAN) return;
+  await Promise.all(kayitlar.slice(0, kayitlar.length - TAVAN).map((istek) => onbellek.delete(istek)));
+}
 
 // Sayfadaki "Yenile" düğmesi: bekleyen yeni sürüm devreye girsin.
 self.addEventListener("message", (olay) => {
@@ -60,11 +97,17 @@ self.addEventListener("fetch", (olay) => {
   // Değişmez derleme dosyaları ve simgeler: önce önbellek.
   if (degismezMi(url)) {
     olay.respondWith((async () => {
-      const onbellek = await caches.open(SURUM);
+      // Kabuk önbelleği de sorulur: simgeler kurulumda oraya yazıldı.
+      const kabuk = await caches.match(istek, { cacheName: SURUM });
+      if (kabuk) return kabuk;
+      const onbellek = await caches.open(STATIK);
       const kayitli = await onbellek.match(istek);
       if (kayitli) return kayitli;
       const yanit = await fetch(istek);
-      if (yanit.ok && yanit.type === "basic") onbellek.put(istek, yanit.clone());
+      if (yanit.ok && yanit.type === "basic") {
+        await onbellek.put(istek, yanit.clone());
+        olay.waitUntil(buda(onbellek));
+      }
       return yanit;
     })());
   }
