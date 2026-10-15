@@ -2,7 +2,7 @@
 
 import { OsSimge } from "./os/os-icons";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { MessagesApp } from "./messages/messages-app";
@@ -17,6 +17,8 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
   const onPage = pathname.startsWith("/panel/messages");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const cekmeceRef = useRef<HTMLDivElement>(null);
+  const geriOdakRef = useRef<HTMLElement | null>(null);
   const fallback = useMemo(() => createInitialState(init), [init]);
   const s = useMessagesState(fallback);
   const unread = Object.values(s.unread).reduce((total, count) => total + (count || 0), 0);
@@ -37,13 +39,48 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
   useEffect(() => {
     document.documentElement.classList.toggle("messages-drawer-open", open);
     if (!open) return;
+    /*
+      KLAVYE PENCEREDE KALIR (15.10.2026).
+
+      Pencere açılınca odak YERİNDE kalıyordu: canlıda ölçüldüğünde
+      açılıştan sonra odak hâlâ arkadaki sayfadaydı ve üç Tab'da gizli
+      kabuğun düğmelerine geçiyordu. Yani klavyeyle mesaj penceresini
+      açan biri pencereye hiç giremiyor, göremediği kontrollerde
+      geziniyordu. role="dialog" aria-modal="true" bunu engellemiyor —
+      aria ekran okuyucuya durumu söyler, odağı tutmaz.
+
+      Üç parça birlikte gerekiyor: odağı içeri almak, kabuğu inert
+      yapmak, kapanışta odağı geldiği yere vermek. Biri eksik kalırsa
+      ötekiler yarım kalıyor (bildirim çekmecesinde ilk ikisi vardı,
+      tuzak yoktu).
+
+      Dışarı tıklayıp kapatma etkilenmiyor: kapatan yüzey
+      (.msg-drawer-backdrop) pencerenin kendi kökünün içinde. Yalnızca
+      burada eklenen inert geri alınıyor; başka bir sebeple zaten inert
+      olan bir öğeyi kapanışta açmak sessizce yeni bir kapı açardı.
+    */
+    const aktif = document.activeElement;
+    if (aktif instanceof HTMLElement && !aktif.closest(".msg-drawer-root")) geriOdakRef.current = aktif;
+    const kabuk = document.querySelector(".panel-root");
+    const disaridakiler = kabuk
+      ? [...kabuk.children].filter(
+          (el): el is HTMLElement =>
+            el instanceof HTMLElement && !el.classList.contains("msg-drawer-root") && !el.hasAttribute("inert"),
+        )
+      : [];
+    for (const el of disaridakiler) el.setAttribute("inert", "");
+    const kare = window.requestAnimationFrame(() => cekmeceRef.current?.focus({ preventScroll: true }));
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !document.querySelector(".msg-sheet, .msg-lightbox")) setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => {
+      window.cancelAnimationFrame(kare);
       window.removeEventListener("keydown", onKey);
+      for (const el of disaridakiler) el.removeAttribute("inert");
       document.documentElement.classList.remove("messages-drawer-open");
+      const geri = geriOdakRef.current;
+      if (geri && geri.isConnected && geri.offsetParent !== null) geri.focus({ preventScroll: true });
     };
   }, [open]);
 
@@ -90,7 +127,9 @@ export function MessagesDrawer({ init }: { init: MessagesInit }) {
         ? createPortal(
             <div className={`msg-drawer-root${open ? " is-open" : ""}`}>
               <button className="msg-drawer-backdrop" type="button" aria-label="Mesajları kapat" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)} />
-              <div id="messages-drawer" className="msg-drawer" role="dialog" aria-modal="true" aria-label="Mesajlar" inert={!open}>
+              {/* tabIndex -1: açılışta odak buraya alınıyor, ilk Tab
+                  pencerenin kendi ilk kontrolüne geçiyor. */}
+              <div ref={cekmeceRef} tabIndex={-1} id="messages-drawer" className="msg-drawer" role="dialog" aria-modal="true" aria-label="Mesajlar" inert={!open}>
                 <MessagesApp init={init} variant="drawer" active={open} onClose={() => setOpen(false)} />
               </div>
             </div>,
