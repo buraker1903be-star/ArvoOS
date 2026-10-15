@@ -1,0 +1,72 @@
+/*
+  BULUNAMAYAN SAYFA (15.10.2026). Bu ekrana kadar `notFound()` çağıran
+  39 dosyanın tamamı Next'in gömülü 404'üne düşüyordu: bomboş beyaz bir
+  sayfada İNGİLİZCE "404 — This page could not be found". En kötüsü
+  müşteriye giden yerdeydi: süresi dolmuş ya da yanlış bir sözleşme/teklif
+  bağlantısını açan kişi — kurumun kendi müşterisi — Türkçe tek kelime
+  görmüyordu.
+
+  Herkese açık sayfalar panel CSS'ini yüklemez; bu dosya kendi kendine
+  yeter. Palet status-lookup.css'teki gibi panel-tokens.css değerlerini
+  yansıtır, yalnızca bu ekranın ihtiyacı kadarı. Koyu tema iki biçimde
+  birden: sistem tercihi ve html[data-theme] (kök yerleşimdeki betik
+  temayı oraya yazıyor).
+*/
+.bul-shell{
+  --bul-bg:#f2f2f7; --bul-surface:#fff;
+  --bul-ink:#0b1b2e; --bul-muted:#6e6e73; --bul-line:#e3e3e8;
+  --bul-brand-500:#2c4368; --bul-brand-700:#13243f; --bul-gold:#b28a49;
+  --bul-shadow:0 10px 28px rgba(11,27,46,.08);
+  --bul-focus:rgba(178,138,73,.45);
+  display:flex;align-items:center;justify-content:center;
+  min-height:100dvh;padding:24px;
+  background:var(--bul-bg);color:var(--bul-ink);
+  font-family:var(--font-system,-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif);
+}
+@media (prefers-color-scheme:dark){
+  html:not([data-theme="light"]) .bul-shell{
+    --bul-bg:#050c1a; --bul-surface:#0e1726;
+    --bul-ink:#edf1f7; --bul-muted:#9aa6b8; --bul-line:#1e2a3d;
+    --bul-shadow:0 10px 28px rgba(0,0,0,.45);
+  }
+}
+html[data-theme="dark"] .bul-shell{
+  --bul-bg:#050c1a; --bul-surface:#0e1726;
+  --bul-ink:#edf1f7; --bul-muted:#9aa6b8; --bul-line:#1e2a3d;
+  --bul-shadow:0 10px 28px rgba(0,0,0,.45);
+}
+
+.bul-kart{
+  width:100%;max-width:460px;padding:32px 28px;
+  border:1px solid var(--bul-line);border-radius:20px;
+  background:var(--bul-surface);box-shadow:var(--bul-shadow);
+  text-align:center;
+}
+.bul-isaret{
+  display:block;width:38px;height:4px;margin:0 auto 18px;border-radius:2px;
+  background:linear-gradient(90deg,var(--bul-gold),color-mix(in srgb,var(--bul-gold) 25%,transparent));
+}
+.bul-ust{display:block;color:var(--bul-muted);font-size:12px;font-weight:650;letter-spacing:.08em;text-transform:uppercase}
+/* Başlık açıkça ölçülür: kök yerleşimde h1 için bir ölçü yok, tarayıcı
+   varsayılanı (32px/bold) bu kartta fazla iri kalıyordu. */
+.bul-kart h1{margin:10px 0 0;font-size:21px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+.bul-kart p{margin:10px 0 0;color:var(--bul-muted);font-size:14.5px;line-height:1.55}
+.bul-eylem{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;margin-top:22px;padding:0 20px;
+  border-radius:12px;background:linear-gradient(180deg,var(--bul-brand-500),var(--bul-brand-700));
+  color:#fff;font-size:14.5px;font-weight:600;
+}
+.bul-eylem:focus-visible{outline:3px solid var(--bul-focus);outline-offset:2px}
+@media (hover:hover) and (pointer:fine){.bul-eylem:hover{filter:brightness(1.12)}}
+@media (max-width:420px){
+  .bul-shell{padding:16px}
+  .bul-kart{padding:26px 20px;border-radius:18px}
+}
+
+/* Kök yerleşimin body'si beyaz (globals.css). Kabuk 100dvh kaplasa da
+   iOS'ta aşırı kaydırma zıplamasında altından beyaz görünüyor; zemini
+   body'ye de yazıyoruz (status-lookup.css aynısını yapıyor). */
+body:has(.bul-shell){background:#f2f2f7}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) body:has(.bul-shell){background:#050c1a}}
+html[data-theme="dark"] body:has(.bul-shell){background:#050c1a}

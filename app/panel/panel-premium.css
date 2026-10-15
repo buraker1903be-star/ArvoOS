@@ -238,10 +238,16 @@ html[data-theme="dark"] .panel-secondary{background:linear-gradient(180deg,var(-
   .panel-card h3,.panel-module h3{font-size:16px}
   .panel-card p,.panel-module p,.panel-card li{font-size:14px}
   .status-pill,.live-badge,.owner-badge{min-height:28px;align-items:center}
-  .panel-skeleton-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.skel-card{height:98px}.skel-block{height:180px}
 }
 
-@media(max-width:380px){.panel-skeleton-metrics{grid-template-columns:1fr}}
+/*
+  İSKELETİN TELEFON ÖLÇÜLERİ TEK YERDE (15.10.2026): panel-page-system.css.
+  Burada ikinci bir takım vardı ve 380 altında ölçü kutularını TEK sütuna
+  indiriyordu — 375 piksellik telefonlarda (iPhone SE/mini/8) dört kutu alt
+  alta, iskelet gerçek sayfadan uzun. Bu dosya sonra yüklendiği için
+  oradaki 620 kuralını eziyordu. Kutular 62 piksele indiği için iki sütun
+  320 pikselde bile rahat; kural kaldırıldı, ötekiler de ölü kopyaydı.
+*/
 
 /* Phase 4 — CRM lists aligned with the Finance profitability table */
 .crm-page-stack .crm-filter-card{

@@ -10,7 +10,11 @@ export async function generateMetadata({params}:{params:Promise<{token:string}>}
  const {token}=await params;
  const loaded=await loadPublicContract(token);
  const row=loaded?.row;
- if(!row)return {title:"Sözleşme",robots:{index:false,follow:false}};
+ // Anahtar çözülmediyse sayfa notFound() çağırıyor ve not-found.tsx
+ // çiziliyor; sekme adı da onunla aynı şeyi söylemeli. Eskiden
+ // "Sözleşme"/"Teklif" yazıyordu: ekranda "bağlantı geçersiz",
+ // sekmede var olan bir belge vaadi.
+ if(!row)return {title:"Bağlantı geçersiz",robots:{index:false,follow:false}};
  const origin=await requestOrigin();
  const organizationName=String(row.organization_name||"ArvoOS");
  const logo=row.organization_logo_url?new URL(String(row.organization_logo_url),origin).toString():new URL("/arvoos-logo.png",origin).toString();
