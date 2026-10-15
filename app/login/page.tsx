@@ -6,6 +6,19 @@ import "./login.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 
 /*
+  Giriş hatasının METNİ koda göre değişir. Eskiden `error` ne olursa olsun
+  "E-posta adresi veya parola hatalı" yazıyordu: boş form gönderen kullanıcı
+  da (error=missing) parolasının yanlış olduğunu sanıyordu. Yapılandırma
+  eksikliği eklenince bu büsbütün yanıltıcı olurdu — sorun kullanıcının
+  parolasında değil, sunucunun ayarında.
+*/
+const LOGIN_HATASI: Record<string, string> = {
+  missing: "E-posta adresi ve parola gerekli.",
+  invalid: "E-posta adresi veya parola hatalı.",
+  yapilandirma: "Giriş şu anda yapılandırılmamış: sunucuda Supabase bağlantı bilgileri tanımlı değil.",
+};
+
+/*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
   kurumun logosunu ve rengini zaten gösteriyordu ama sekmede hâlâ genel
   bir başlık vardı. Paylaşılan adreste genel başlık kalıyor.
@@ -63,7 +76,7 @@ export default async function LoginPage({
           <span>GÜVENLİ PANEL GİRİŞİ</span>
           <h2>Panele hoş geldiniz</h2>
           <p>Size tanımlanan kurumsal e-posta adresiyle giriş yapın.</p>
-          {error && <div className="login-error" role="alert">E-posta adresi veya parola hatalı.</div>}
+          {error && <div className="login-error" role="alert">{LOGIN_HATASI[error] ?? LOGIN_HATASI.invalid}</div>}
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" /></label>
           <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>
           <button type="submit">Giriş Yap <b>→</b></button>

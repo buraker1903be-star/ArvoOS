@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
 import { isManagementHost, isMarketingHost, konsolaTasinanYol, managementRedirectTarget, marketingRedirectTarget, normalizeHost } from "@/lib/site/host-rules";
 import { resolvePath } from "@/lib/site/routes";
+import { supabaseAyarlari } from "./yapilandirma";
 
 // arvo-os.com'da oturum/kurum sorgusu gerektirmeyen yollar: pazarlama
 // sayfaları (ROUTES) ve SEO dosyaları. Bunlar için Supabase'e gidilmez.
@@ -61,10 +62,22 @@ export async function updateSession(request: NextRequest) {
   });
   if (konsolAdresi) return NextResponse.redirect(konsolAdresi, 307);
 
+  /*
+    SUPABASE AYARLI DEĞİLSE ARA KATMAN DÜŞMEZ (15.10.2026). Gerekçe
+    lib/supabase/yapilandirma.ts içinde.
+
+    Oturum çözülemediğinde doğru davranış "oturum yok"tur — aşağıdaki
+    akışın kendisi bunu zaten doğru işliyor: korumalı yollar /login'e
+    iniyor, geri kalan her şey açılıyor. Bu yüzden karar mantığı
+    kopyalanmadı, yalnızca istemci ve onu kullanan iki çağrı koşullu
+    hale geldi.
+  */
+  const ayar = supabaseAyarlari();
+
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  const supabase = ayar ? createServerClient(
+    ayar.adres,
+    ayar.anahtar,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
@@ -77,9 +90,9 @@ export async function updateSession(request: NextRequest) {
         },
       },
     },
-  );
+  ) : null;
 
-  const { data } = await supabase.auth.getClaims();
+  const data = supabase ? (await supabase.auth.getClaims()).data : null;
   const pathname = request.nextUrl.pathname;
   const host = request.headers.get("host")?.split(":")[0] ?? "";
   const isAppHost = host === DEFAULT_APP_HOST;
@@ -95,7 +108,7 @@ export async function updateSession(request: NextRequest) {
   */
   const yonetimHostu = isManagementHost(host);
   let customDomainOrgId: string | null = null;
-  if (!isAppHost && !yonetimHostu && host) {
+  if (supabase && !isAppHost && !yonetimHostu && host) {
     // 60 sn önbellekli (lib/alan-adi-kurumu): her istekte ayrı RPC gidiyordu.
     customDomainOrgId = await alanAdiKurumu(supabase, host);
   }

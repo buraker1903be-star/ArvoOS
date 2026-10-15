@@ -38,6 +38,9 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 /dist/
 /.wrangler/
+# vinext yerel geliştirmede indirdiği yazı tiplerini buraya yazıyor
+# (npm run dev); üretilen dosya, depoya girmez.
+/.vinext/
 /.sites-runtime/
 /outputs/
 /work/

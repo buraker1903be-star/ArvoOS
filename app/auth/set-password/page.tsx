@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { supabaseAyarlari } from "@/lib/supabase/yapilandirma";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { setInitialPassword } from "./actions";
 import "../../login/login.css";
@@ -39,14 +40,20 @@ export default async function SetPasswordPage({
 
   // Davet ya da şifre bağlantısı açıldıysa oturum vardır. Yoksa bağlantının
   // süresi dolmuş veya kullanılmıştır; form doldurtmadan baştan söylenir.
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getClaims();
+  /*
+    Supabase ayarlı değilse oturum SORULAMAZ; sayfa "bağlantı geçersiz"
+    hâliyle ayakta kalır (15.10.2026). Bu ekran /panel altında değil, davet
+    postasındaki bağlantıdan açılıyor — yani ara katmanın /login'e indirdiği
+    yollardan biri değil, kendi başına ayakta kalması gerekiyor.
+  */
+  const supabase = supabaseAyarlari() ? await createClient() : null;
+  const auth = supabase ? (await supabase.auth.getClaims()).data : null;
   const signedIn = Boolean(auth?.claims?.sub);
   const email = typeof auth?.claims?.email === "string" ? auth.claims.email : null;
 
   // Katılınan kurum: davet edilen kişi hangi ekibe girdiğini görsün.
   let organization: { name: string; logo_url: string | null; color: string | null } | null = null;
-  if (signedIn) {
+  if (signedIn && supabase) {
     const { data: rows } = await supabase.rpc("get_my_workspaces");
     const row = Array.isArray(rows) ? (rows[0] as WorkspaceRow | undefined) : undefined;
     if (row) organization = { name: row.display_name || row.name, logo_url: row.logo_url ?? null, color: row.brand_color ?? null };
