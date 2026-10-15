@@ -596,8 +596,14 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
 }
 
 /* ---------- Müşteriye görünen onay kutusu (onay-kutusu.tsx) ---------- */
+/* Konum ve margin AÇIKÇA yazılıyor: tarayıcının kipli pencereyi ortalayan
+   `margin:auto` varsayılanı bu sayfada eziliyor ve kutu sol üst köşeye
+   yapışıyordu (canlıda ölçüldü). Panelin penceresi de aynı önlemi
+   alıyor (platform.css, dialog.plt-pencere). */
 .trk-onay{
-  width:min(420px,calc(100vw - 32px));padding:0;border:1px solid var(--trk-line);border-radius:20px;
+  position:fixed;inset:0;margin:auto;
+  width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 48px);
+  padding:0;border:1px solid var(--trk-line);border-radius:20px;
   background:var(--trk-surface);color:var(--trk-ink);box-shadow:var(--trk-shadow-lg);
   font-family:var(--trk-font);
 }
@@ -610,4 +616,10 @@ html[data-theme="dark"] .trk-pay{background:linear-gradient(180deg,var(--trk-bra
 .trk-onay-vazgec{border:1px solid var(--trk-line);background:var(--trk-surface-2);color:var(--trk-ink)}
 .trk-onay-evet{border:1px solid color-mix(in srgb,#b42318 40%,transparent);background:var(--trk-surface);color:#b42318}
 .trk-onay-eylem button:focus-visible{outline:3px solid var(--trk-focus);outline-offset:2px}
-@media (max-width:420px){.trk-onay-eylem{grid-template-columns:1fr}}
+/* Dar ekranda alt alta ve TERS: başparmağa en yakın düğme "Vazgeç"
+   olsun, iki yüz piksel ötedeki ret değil (iOS eylem sayfalarının
+   sırası; konsolun onay penceresi de böyle). */
+@media (max-width:420px){
+  .trk-onay-eylem{display:flex;flex-direction:column-reverse}
+  .trk-onay-eylem button{width:100%}
+}
