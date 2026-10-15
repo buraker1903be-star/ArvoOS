@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPersonName } from "@/lib/format-name";
+import { kisiAdlari } from "@/lib/kisi-adlari";
 import { formatSubject } from "@/lib/table-format";
 import { MobilSatir, RepresentativeCell } from "../../crm/table-cells";
 import { SatirTiklama } from "../../crm/satir-tiklama";
@@ -113,7 +114,14 @@ export default async function OperasyonArsivi({ searchParams }: {
   const isler = (data ?? []) as ArsivIsi[];
   const personeller = (personelVerisi ?? []) as { id: string; full_name: string; user_id: string | null; employment_status: string }[];
   const adById = new Map(personeller.map((personel) => [personel.id, personel.full_name]));
-  const adByUser = new Map(personeller.filter((p) => p.user_id).map((p) => [p.user_id as string, formatPersonName(p.full_name)]));
+  /*
+    Arşivleyenin adı personel kaydıyla SINIRLI DEĞİL. Eskiden yalnızca
+    hr_employees'ten aranıyordu ve personel kaydı olmayan herkes — kurum
+    sahibi dahil — "Ekip üyesi" diye yazılıyordu; kendi işini arşivleyen
+    bir kurum sahibi arşiv listesinde isimsiz kalıyordu. Kural ve iki
+    kaynağın sırası lib/kisi-adlari.ts'te.
+  */
+  const adByUser = await kisiAdlari(supabase, organizationId, isler.map((is) => is.archived_by));
   const yonetebilir = izin("operations.arsiv.yonet");
   const kendiPersonelId = personeller.find((p) => p.user_id === userId && p.employment_status === "active")?.id ?? null;
 

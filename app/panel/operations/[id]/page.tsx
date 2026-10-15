@@ -17,7 +17,10 @@ import type { Kunye } from "@/lib/musteri-kunyesi";
 import { BEKLEYEN_TARAFLAR, BEKLEYEN_TARAF_ADLARI, BEKLEYEN_TARAF_TONLARI, beklemeOzeti, bekleyenTarafMi } from "@/lib/bekleyen-taraf";
 import { REVIZYON_TONLARI, revizyonBilgisi, revizyonOzeti } from "@/lib/revizyon";
 import { ConfirmDeleteButton } from "../../accounts/confirm-delete-button";
+import { KopyalaDugmesi } from "../../accounts/kopyala-dugmesi";
 import { formatPersonName } from "@/lib/format-name";
+import { kisiAdlari } from "@/lib/kisi-adlari";
+import { resolvePublicHost } from "@/lib/public-host";
 import { formatPhone } from "@/lib/format-phone";
 import { formatSubject, initials } from "@/lib/table-format";
 import { statusTone } from "@/lib/status-tone";
@@ -144,7 +147,7 @@ export default async function OperationDetailPage({
   const canDelete = izin("operations.is.sil");
 
   const isArchived = workflow.status === "archived";
-  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: archiver }] = await Promise.all([
+  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }] = await Promise.all([
     supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
     workflow.assigned_employee_id
@@ -158,9 +161,6 @@ export default async function OperationDetailPage({
       çiziliyor (canAssign).
     */
     supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
-    isArchived && workflow.archived_by
-      ? supabase.from("hr_employees").select("full_name").eq("organization_id", organizationId).eq("user_id", workflow.archived_by).maybeSingle()
-      : Promise.resolve({ data: null }),
   ]);
   if (customerMessagesError) throw new Error("Müşteri mesajları okunamadı: " + customerMessagesError.message);
   const customerMessages = (customerMessagesData ?? []) as CustomerMessage[];
@@ -211,7 +211,6 @@ export default async function OperationDetailPage({
   const canEditDue = canAssign || Boolean((me as { id?: string } | null)?.id && (me as { id: string }).id === workflow.assigned_employee_id);
   // Arşivleme de aynı kural (actions.ts isManagerOrAssignee)
   const canArchive = canEditDue;
-  const archiverName = isArchived ? (workflow.archived_by ? formatPersonName((archiver as { full_name?: string } | null)?.full_name) || "Ekip üyesi" : "Otomatik (ödeme kapandı)") : null;
 
   const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult, ekipDosyaSonucu] = await Promise.all([
     contract?.opportunity_id
@@ -264,46 +263,28 @@ export default async function OperationDetailPage({
       ? musteriPostalari(supabase, organizationId, { talepIdleri: [contract.opportunity_id], eposta: yazismaFirsati?.contact_email })
       : Promise.resolve([]),
   ]);
-  /* Dosyayı yükleyen ve görevi tamamlayan kişilerin adları tek sorguda
+  /* Dosyayı yükleyen ve görevi tamamlayan kişilerin adları tek yerden
      (görevi kimin tiklediği satırın altında yazıyor, 13.10.2026).
-
-     İKİ KAYNAK: hr_employees VE profiles. Ad yalnızca personel
-     kaydından aranınca, personel kaydı olmayan herkes "Ekip üyesi"
-     oluyordu — kurum sahibi dahil. Yeni kurulan bir kurumda sahip
-     personel listesinde yok (hr_employees satırı ancak İK ekranından
-     elle açılıyor), yani işi fiilen yürüten kişinin adı hiçbir yerde
-     yazmıyordu. Aynı ekranın altındaki "Alan değişiklikleri" listesi
-     adı DOĞRU yazıyor, çünkü o profiles'a da bakıyor: tek bir aşama
-     tamamlama olayı üstte "Ekip üyesi", altta "Burak Erdoğan"
-     görünüyordu (15.10.2026, Arvo Deneme'de ölçüldü).
-
-     Sıra önemli: personel kaydındaki ad profiles'takini eziyor, kurumun
-     kendi kayıtlarındaki yazım esas (crm/record-history ile aynı kural). */
-  const uploaderIds = [...new Set([
+     Kaynağın neden iki tablo olduğu lib/kisi-adlari.ts'te. */
+  const uploaderIds = [
     ...[...portalFileRows, ...ekipDosyaSatirlari].map((file) => file.uploaded_by),
     ...steps.map((step) => (step.is_completed ? step.completed_by : null)),
-  ].filter((value): value is string => Boolean(value)))];
-  const [{ data: imzaliAdresler }, { data: uploaderData }, { data: uploaderProfilleri }] = await Promise.all([
+    isArchived ? workflow.archived_by : null,
+  ];
+  const [{ data: imzaliAdresler }, uploaderNames, takipSunucusu] = await Promise.all([
     ekipDosyaSatirlari.length
       ? supabase.storage.from(TEAM_BUCKET).createSignedUrls(ekipDosyaSatirlari.map((d) => d.storage_path), 3600)
       : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
-    uploaderIds.length
-      ? supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", uploaderIds)
-      : Promise.resolve({ data: [] }),
-    uploaderIds.length
-      ? supabase.from("profiles").select("id,full_name").in("id", uploaderIds)
-      : Promise.resolve({ data: [] }),
+    kisiAdlari(supabase, organizationId, uploaderIds),
+    /* Takip ekranının adresi: kurum kendi alan adını doğrulattıysa onu
+       kullanıyor (lib/public-host). Yalnızca kod varken soruluyor. */
+    contract?.tracking_code ? resolvePublicHost(supabase, organizationId) : Promise.resolve(null),
   ]);
   const imzaliAdres = new Map((imzaliAdresler ?? []).filter((a) => a.path && a.signedUrl).map((a) => [a.path as string, a.signedUrl]));
-  const uploaderNames = new Map<string, string>();
-  for (const satir of (uploaderProfilleri ?? []) as { id: string; full_name: string | null }[]) {
-    const ad = formatPersonName(satir.full_name);
-    if (ad) uploaderNames.set(satir.id, ad);
-  }
-  for (const satir of (uploaderData ?? []) as { user_id: string; full_name: string | null }[]) {
-    const ad = formatPersonName(satir.full_name);
-    if (ad) uploaderNames.set(satir.user_id, ad);
-  }
+  const takipAdresi = takipSunucusu ? `https://${takipSunucusu}/takip` : null;
+  const archiverName = isArchived
+    ? (workflow.archived_by ? uploaderNames.get(workflow.archived_by) ?? "Ekip üyesi" : "Otomatik (ödeme kapandı)")
+    : null;
   const downloadCounts = new Map<string, number>();
   for (const row of (portalDownloadsResult.data ?? []) as { file_id: string | null }[]) {
     if (row.file_id) downloadCounts.set(row.file_id, (downloadCounts.get(row.file_id) ?? 0) + 1);
@@ -567,6 +548,22 @@ export default async function OperationDetailPage({
             {/* Müşteri takip portalına girdi mi, şu an ekranda mı (20261012131639). */}
             {contract?.tracking_code ? <div><dt>Portal</dt><dd><PortalZiyareti contractId={contract.id} sade /></dd></div> : null}
           </dl>
+
+          {/*
+            TAKİP KODU ÖLÜ METİN DEĞİL. Kod yukarıda yazıyordu ve
+            yapabileceğin hiçbir şey yoktu: müşteriye telefonda söylemek
+            için altı karakteri elle seçmek, müşterinin ne gördüğüne
+            bakmak için adresi kendin yazmak gerekiyordu. Oysa ekran
+            müşterinin portala girdiğini zaten söylüyor (üstteki satır).
+            Gönderim akışının tamamı sözleşme detayında duruyor (menüdeki
+            "Sözleşmeye git"); burada günlük iki iş var: aç ve kopyala.
+          */}
+          {contract?.tracking_code && takipAdresi ? (
+            <div className="talep-iletisim">
+              <a className="panel-secondary" target="_blank" rel="noreferrer" href={`${takipAdresi}?code=${encodeURIComponent(contract.tracking_code)}`}>Takip ekranını aç</a>
+              <KopyalaDugmesi metin={contract.tracking_code} etiket="Kodu kopyala" />
+            </div>
+          ) : null}
 
           {/* TERMİN: tarih, durumu ve (yetkisi olana) değiştirme alanı. */}
           <div className="talep-gecmis" id="termin">

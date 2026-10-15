@@ -1,6 +1,6 @@
 import { getPanelContext } from "@/lib/panel-context";
-import { formatPersonName } from "@/lib/format-name";
 import { istanbulDateTime } from "@/lib/istanbul-date";
+import { kisiAdlari } from "@/lib/kisi-adlari";
 import type { FieldChange } from "@/lib/activity-log";
 
 /**
@@ -177,20 +177,10 @@ export async function RecordHistory({
     );
   }
 
-  const actorIds = [...new Set(logs.map((l) => l.actor_user_id).filter(Boolean))] as string[];
-  const [{ data: employees }, { data: profiles }] = await Promise.all([
-    supabase
-      .from("hr_employees")
-      .select("user_id,full_name")
-      .eq("organization_id", membership.organization_id)
-      .in("user_id", actorIds.length ? actorIds : ["-"]),
-    supabase.from("profiles").select("id,full_name").in("id", actorIds.length ? actorIds : ["-"]),
-  ]);
-  const names = new Map<string, string>();
-  for (const p of profiles ?? []) names.set(p.id, p.full_name);
-  for (const e of employees ?? []) if (e.user_id) names.set(e.user_id, e.full_name);
-  const actorName = (id: string | null) =>
-    (id && formatPersonName(names.get(id))) || "Bilinmeyen kullanıcı";
+  /* Adın iki kaynağı ve sırası lib/kisi-adlari.ts'te; aynı kural
+     operasyonun iş detayında ve arşivinde de geçerli. */
+  const names = await kisiAdlari(supabase, membership.organization_id, logs.map((l) => l.actor_user_id));
+  const actorName = (id: string | null) => (id && names.get(id)) || "Bilinmeyen kullanıcı";
 
   return (
     <section className="panel-card crm-record-history">
