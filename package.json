@@ -19,6 +19,7 @@
     "check:rakamlar": "node scripts/check-rakamlar.mjs",
     "check:okunamayan": "node scripts/check-okunamayan.mjs",
     "check:saat-dilimi": "node scripts/check-saat-dilimi.mjs",
+    "duman": "node scripts/duman-testi.mjs",
     "db:new": "node scripts/new-migration.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",

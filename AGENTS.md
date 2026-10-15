@@ -445,6 +445,25 @@ AYA kaydediyordu ve kârlılık raporu o aya göre hesaplanıyor. Doğrusu
 (`new Date(\`${gun}T00:00:00Z\`)`) zaten UTC'ye sabitli, taranmıyor.
 Bilerek dilimsizse: `// dilim-tamam: <sebep>`.
 
+**Canlı duman testi** (`npm run duman`, CI'DA DEĞİL): hangi sayfanın
+AÇILDIĞINI sınar. tsc, lint, testler ve derleme sayfanın derlendiğini
+söylüyor, çalıştığını değil: 16.10.2026'da başlangıç paketindeki bir
+kurumda `/panel/finance/raporlar` "Bir sorun oluştu · Hata kodu:
+3223241041" veriyordu ve hiçbir denetim bunu göremiyordu. Sayfanın
+HTML'ini çekip hata metni aramak da yetmiyor — o ekran React'in hata
+sınırında, yani İSTEMCİDE çiziliyor; ilk taramam bu yüzden "41 rota
+temiz" deyip yanılmıştı. Çalışan yöntem sayfayı `RSC: 1` başlığıyla
+istemek: dönen akışta hatalar `digest` ile işaretli ve üçü ayırt
+edilebiliyor — `NEXT_HTTP_ERROR_FALLBACK;404` ile `NEXT_REDIRECT;…`
+KASITLI, sayısal bir digest ise gerçek çökme (o sayı sunucu
+günlüğündeki kaydın anahtarı). Rota listesi `app/` ağacından
+türetiliyor; dinamik segmentliler atlanıyor ve kaç tanesi atlandığı
+yazılıyor. Oturum çerezi ve gerçek veri gerektirdiği için CI'da
+koşmuyor: dağıtımdan sonra elle çalıştırılır, çerez hangi ÇALIŞMA
+ALANININ taranacağını da belirler (kurumun paketine göre sonuç değişir;
+kapalı modül artık çökme değil yönlendirme üretir). Çerez eskiyip
+sayfalar girişe düşerse betik "temiz" demez, uyarıp 2 ile çıkar.
+
 **Şema sözleşmesi** (`npm run check:schema`): koddaki tablo, sütun ve RPC
 adları canlı şemanın kataloğuyla (`supabase/schema/katalog.json`)
 karşılaştırılır. **Sütun doğru ama DEĞER imkânsız** olabiliyor: kısıtı
