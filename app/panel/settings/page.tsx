@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
+import { sektorAdi } from "@/lib/sektorler";
+import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi, paketAdi } from "@/lib/paket-adlari";
 import { getPanelContext } from "@/lib/panel-context";
 import { ORGANIZATION_LEGAL_COLUMNS } from "@/app/_components/legal/organization";
 import { updateDocumentBranding, updateCustomDomain, checkCustomDomainStatus } from "./actions";
@@ -230,7 +231,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {bolum === "genel" ? (
         <nav className="kayit-serit talep-serit stg-serit" aria-label="Kurum özeti">
           <dl>
-            <div><dt>Paket</dt><dd>{organization.plan_code.toUpperCase()}<small>Aktif kurum paketi</small></dd></div>
+            <div><dt>Paket</dt><dd>{paketAdi(organization.plan_code)}<small>Aktif kurum paketi</small></dd></div>
             <div><dt>Modüller</dt><dd>{modules.length}<small>{integrations.length ? `${integrations.length} entegrasyon alanı` : "Etkin çalışma alanı"}</small></dd></div>
             <div data-tone={legalComplete ? "success" : "warning"}>
               <dt>Belge kimliği</dt>
@@ -249,7 +250,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <StgSection id="kurum" icon="building" tone="info" kicker="KURUM" title="Kurum bilgileri" description="Çalışma alanınızın temel kimliği.">
         <dl className="stg-list">
           <StgValueRow label="Kurum" value={organization.name} />
-          <StgValueRow label="Sektör" value={organization.sector} />
+          <StgValueRow label="Sektör" value={sektorAdi(organization.sector)} />
           <StgValueRow label="Çalışma alanı" value={organization.slug} mono />
           <StgValueRow label="Ticari unvan" value={legal.legal_name} />
           <StgValueRow label="Vergi no" value={legal.tax_number} mono />
@@ -262,7 +263,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           : <p className="stg-muted"><StgIcon name="lock" size={16} />Bu alanlara erişiminiz yok.</p>}
       </StgSection>
 
-      <StgSection id="paket" wide icon="box" tone="gold" kicker="PAKET VE KAPSAM" title="Aktif modüller" description={`${organization.plan_code.toUpperCase()} paketinde erişime açık ${modules.length} modül.`}>
+      <StgSection id="paket" wide icon="box" tone="gold" kicker="PAKET VE KAPSAM" title="Aktif modüller" description={`${paketAdi(organization.plan_code)} paketinde erişime açık ${modules.length} modül.`}>
         <div className="stg-tags">{modules.map((module) => <span key={module.code}><StgIcon name="check" size={14} />{module.name}</span>)}</div>
       </StgSection>
       </> : null}

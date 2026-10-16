@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { SEKTORLER } from "@/lib/sektorler";
 
 type Plan = { code: string; name: string };
 type Props = {
@@ -17,15 +18,8 @@ const steps = [
   { label: "Onay", hint: "Özet ve kurulum" },
 ];
 
-const sectors = [
-  { value: "general", label: "Genel" },
-  { value: "akademik-danismanlik", label: "Akademik danışmanlık" },
-  { value: "egitim", label: "Eğitim" },
-  { value: "saglik", label: "Sağlık" },
-  { value: "hukuk-danismanlik", label: "Hukuk ve danışmanlık" },
-  { value: "ajans-yazilim", label: "Ajans ve yazılım" },
-  { value: "perakende", label: "Perakende ve e-ticaret" },
-];
+// Sektör listesi tek kaynaktan (Ayarlar da aynı adları yazıyor).
+const sectors = SEKTORLER;
 
 const planNotes: Record<string, string> = {
   starter: "Temel modüllerle hızlı başlangıç",
