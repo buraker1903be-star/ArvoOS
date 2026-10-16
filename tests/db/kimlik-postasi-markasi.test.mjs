@@ -22,10 +22,10 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migrations/", ad);
-/* Boş: işlev artık anlık görüntüde ve yetkileri de dökümde
-   (fonksiyon yetkileri taşınıyor, görünüm yetkileri taşınmıyor —
-   AGENTS.md "Testler"). */
-const MIGRATIONLAR = [];
+/* İşlev anlık görüntüde; tabela adını ekleyen sürüm (16.10.2026) henüz
+   dökümde değil, bu yüzden en sonda uygulanıyor (işlevi yeniden yazan
+   migration listede SONDAN eklenir — AGENTS.md "Testler"). */
+const MIGRATIONLAR = ["20261016071215_kimlik_postasi_tabela_adi.sql"];
 
 const KURUM = "00000000-0000-4000-8000-00000000e1a1";
 const BASKA = "00000000-0000-4000-8000-00000000e1a2";
@@ -48,9 +48,9 @@ before(async () => {
     insert into auth.users (id, email) values
       ('${UYE}','${UYE_POSTA}'),('${DAVETLI}','${DAVETLI_POSTA}'),('${KURUMSUZ}','kimsesiz@x.com');
     insert into public.plans (code, name, description) values ('starter','B','');
-    insert into public.organizations (id,name,slug,status,plan_code,logo_url,primary_color,contact_email,contact_phone,website_url) values
-      ('${KURUM}','Akademik Merkez','am','active','starter','https://am.com/logo.png','#1f6feb','bilgi@am.com','02121112233','https://am.com'),
-      ('${BASKA}','Öteki Kurum','oteki','active','starter','https://oteki.com/logo.png','#aa0000','gizli@oteki.com','05550001122','https://oteki.com');
+    insert into public.organizations (id,name,display_name,slug,status,plan_code,logo_url,primary_color,contact_email,contact_phone,website_url) values
+      ('${KURUM}','Akademik Merkez','AkademikMerkez','am','active','starter','https://am.com/logo.png','#1f6feb','bilgi@am.com','02121112233','https://am.com'),
+      ('${BASKA}','Öteki Kurum',null,'oteki','active','starter','https://oteki.com/logo.png','#aa0000','gizli@oteki.com','05550001122','https://oteki.com');
     insert into public.organization_memberships (organization_id,user_id,role,is_active,joined_at) values
       ('${KURUM}','${UYE}','owner',true, now() - interval '10 days');
     /* Davetli: henüz ÜYELİĞİ yok, bekleyen daveti var. */
@@ -79,6 +79,11 @@ test("üyelikle doğrulanan iddia kabul ediliyor", async () => {
     assert.equal(m.logo_url, "https://am.com/logo.png");
     assert.equal(m.primary_color, "#1f6feb");
     assert.equal(m.contact_email, "bilgi@am.com");
+    /* Tabela adı da dönüyor: posta gönderen ve konuda yasal unvan değil
+       bu yazılıyor (16.10.2026). Tabela adı yoksa null — kanca o zaman
+       yasal unvana düşer. */
+    assert.equal(m.display_name, "AkademikMerkez");
+    assert.equal(m.name, "Akademik Merkez", "yasal unvan da duruyor (alt bilgi satırı)");
   });
 });
 

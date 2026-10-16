@@ -20,7 +20,10 @@ type HookPayload = {
 };
 
 type Brand = {
+  /** Tabela adı (display_name): gönderen, konu ve başlıkta bu yazılır. */
   name: string;
+  /** Yasal unvan: yalnızca alt bilgideki küçük yasal satırda. */
+  legalName: string | null;
   logoUrl: string | null;
   primaryColor: string;
   contactEmail: string;
@@ -30,8 +33,10 @@ type Brand = {
 
 const fallbackBrand: Brand = {
   name: "ArvoOS",
+  legalName: "ArvoCulture Group Teknoloji Sanayi ve Ticaret Ltd. Şti.",
   logoUrl: "https://app.arvo-os.com/arvoos-logo.png",
-  primaryColor: "#6e9448",
+  /* Panelin gece mavisi (eskiden yeşildi; panel ve belgelerle uyuşmuyordu). */
+  primaryColor: "#0b1b2e",
   contactEmail: "info@arvo-os.com",
   contactPhone: null,
   websiteUrl: "https://arvo-os.com",
@@ -91,42 +96,42 @@ function confirmationUrl(payload: HookPayload) {
 function copyFor(type: string, brandName: string) {
   const messages: Record<string, { subject: string; eyebrow: string; title: string; body: string; button: string }> = {
     invite: {
-      subject: `${brandName} çalışma alanına davet edildiniz`,
+      subject: `${brandName} · Çalışma alanına davetiniz`,
       eyebrow: "KURUMSAL DAVET",
       title: `${brandName} ekibine hoş geldiniz`,
       body: "Hesabınızı etkinleştirmek ve kendi şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın. Bağlantı tek kullanımlıktır; süresi dolarsa yöneticinizden yeni davet isteyin.",
       button: "Daveti Kabul Et",
     },
     recovery: {
-      subject: `${brandName} şifre yenileme bağlantınız`,
+      subject: `${brandName} · Şifre yenileme bağlantınız`,
       eyebrow: "ŞİFRE YENİLEME",
-      title: "Şifrenizi güvenle yenileyin",
+      title: "Yeni şifrenizi belirleyin",
       body: "Hesabınız için bir şifre yenileme talebi aldık. Yeni şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın. Bağlantı tek kullanımlıktır ve kısa süre geçerlidir; birden çok e-posta aldıysanız yalnızca en son geleni açın.",
-      button: "Yeni Şifre Oluştur",
+      button: "Şifremi Yenile",
     },
     signup: {
-      subject: `${brandName} e-posta doğrulama`,
+      subject: `${brandName} · E-posta doğrulama`,
       eyebrow: "E-POSTA DOĞRULAMA",
       title: "E-posta adresinizi doğrulayın",
       body: "Hesabınızı etkinleştirmek için aşağıdaki güvenli bağlantıyı kullanın.",
       button: "E-postamı Doğrula",
     },
     magiclink: {
-      subject: `${brandName} güvenli giriş bağlantınız`,
+      subject: `${brandName} · Güvenli giriş bağlantınız`,
       eyebrow: "GÜVENLİ GİRİŞ",
       title: "Tek kullanımlık giriş bağlantınız",
       body: "Hesabınıza güvenli biçimde giriş yapmak için aşağıdaki bağlantıyı kullanın.",
       button: "Güvenli Giriş Yap",
     },
     email_change: {
-      subject: `${brandName} e-posta değişikliği onayı`,
+      subject: `${brandName} · E-posta değişikliği onayı`,
       eyebrow: "E-POSTA DEĞİŞİKLİĞİ",
       title: "Yeni e-posta adresinizi onaylayın",
       body: "E-posta adresi değişikliğini tamamlamak için aşağıdaki güvenli bağlantıyı kullanın.",
       button: "Değişikliği Onayla",
     },
     reauthentication: {
-      subject: `${brandName} doğrulama kodunuz`,
+      subject: `${brandName} · Doğrulama kodunuz`,
       eyebrow: "GÜVENLİK DOĞRULAMASI",
       title: "Doğrulama kodunuz",
       body: "Hassas işlemi tamamlamak için aşağıdaki tek kullanımlık doğrulama kodunu kullanın.",
@@ -136,46 +141,103 @@ function copyFor(type: string, brandName: string) {
   return messages[type] ?? messages.magiclink;
 }
 
+/* "05074370507" → "0507 437 05 07"; tanınmayan biçim olduğu gibi kalır. */
+const telefonYaz = (deger: string) => {
+  const rakam = deger.replace(/\D/g, "");
+  const yerel = rakam.length === 12 && rakam.startsWith("90") ? `0${rakam.slice(2)}` : rakam;
+  return /^0\d{10}$/.test(yerel)
+    ? `${yerel.slice(0, 4)} ${yerel.slice(4, 7)} ${yerel.slice(7, 9)} ${yerel.slice(9)}`
+    : deger;
+};
+
+/*
+  GÖRÜNÜM: PANELİN DİLİ (16.10.2026, "daha elit ve premium, panele
+  yakışır"). Gece mavisi ve şampanya — giriş ekranı, panel ve teklif/
+  sözleşme belgeleriyle aynı aile. Eskiden yeşil vurgu, emoji kilit
+  rozeti ve her yerde yasal unvan vardı. Başlık serif (Georgia: her
+  posta istemcisinde var), metin sistem yazısı; vurgular ince şampanya
+  çizgiler. Tablo tabanlı ve satır içi stil: Outlook dahil.
+*/
+const GECE = "#0b1b2e";
+const SAMPANYA = "#b28a49";
+const FILDISI = "#f4f3ef";
+const CIZGI = "#e7e3da";
+const YAZI = "#4a5160";
+const SOLUK = "#8a8f99";
+const SANS = "'Segoe UI',Helvetica,Arial,sans-serif";
+const SERIF = "Georgia,'Times New Roman',serif";
+
 function renderEmail(payload: HookPayload, brand: Brand) {
   const type = payload.email_data.email_action_type;
   const copy = copyFor(type, brand.name);
   const link = confirmationUrl(payload);
   const code = payload.email_data.token ?? "";
-  /* Logo yalnızca genişlikle (16.10.2026): width+height ikisi birden
-     verilince Outlook object-fit'i tanımadığı için kare ve dikey logolar
-     yamuluyordu. Yükseklik orantılı kalır. */
+  const vurgu = brand.primaryColor;
+  /* Logo yalnızca genişlikle sınırlı: width+height ikisi birden verilince
+     Outlook object-fit'i tanımadığı için kare ve dikey logolar yamuluyordu. */
   const logo = brand.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:auto;height:auto;max-width:180px;max-height:70px;">`
-    : `<p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:32px;color:#1f2d25;font-weight:700;letter-spacing:-0.3px;">${escapeHtml(brand.name)}</p>`;
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="160" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:auto;height:auto;max-width:160px;max-height:56px;border:0;">`
+    : `<p style="margin:0;font-family:${SERIF};font-size:26px;line-height:32px;color:${GECE};font-weight:700;">${escapeHtml(brand.name)}</p>`;
 
-  const badgeGlyph = type === "recovery" ? "&#128274;" : type === "reauthentication" ? "&#128272;" : "&#10003;";
-  const badge = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:0 0 20px;"><tr><td width="44" height="44" align="center" valign="middle" bgcolor="${brand.primaryColor}" style="width:44px;height:44px;border-radius:12px;background-color:${brand.primaryColor};font-family:Arial,Helvetica,sans-serif;font-size:19px;line-height:44px;color:#ffffff;">${badgeGlyph}</td></tr></table>`;
+  const eylem = type === "reauthentication"
+    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td style="background-color:${FILDISI};border:1px solid ${CIZGI};border-radius:12px;padding:18px 30px;font-family:'Courier New',monospace;font-size:30px;line-height:36px;color:${GECE};font-weight:700;letter-spacing:8px;">${escapeHtml(code)}</td></tr></table>`
+    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" bgcolor="${vurgu}" style="background-color:${vurgu};border-radius:10px;border:1px solid ${SAMPANYA};"><a href="${escapeHtml(link)}" style="display:inline-block;padding:15px 30px;font-family:${SANS};font-size:15px;line-height:20px;color:#ffffff;text-decoration:none;font-weight:600;letter-spacing:0.3px;">${escapeHtml(copy.button)}&nbsp;&nbsp;&rarr;</a></td></tr></table>`;
 
-  const action = type === "reauthentication"
-    ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-left:auto;margin-right:auto;"><tr><td bgcolor="#f4f6f2" style="background-color:#f4f6f2;border:1px solid #e4e9e2;border-radius:12px;padding-top:18px;padding-right:32px;padding-bottom:18px;padding-left:32px;font-family:'Courier New',monospace;font-size:30px;line-height:36px;color:#20291f;font-weight:700;letter-spacing:8px;">${escapeHtml(code)}</td></tr></table>`
-    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-left:auto;margin-right:auto;"><tr><td align="center" bgcolor="${brand.primaryColor}" style="background-color:${brand.primaryColor};border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.12);"><a href="${escapeHtml(link)}" style="display:inline-block;padding-top:16px;padding-right:34px;padding-bottom:16px;padding-left:34px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;color:#ffffff;text-decoration:none;font-weight:700;letter-spacing:0.2px;">${escapeHtml(copy.button)} &rarr;</a></td></tr></table>`;
-
-  const contactParts = [brand.contactEmail, brand.contactPhone, brand.websiteUrl]
-    .filter(Boolean)
-    .map((item) => escapeHtml(String(item)))
-    .join(" &middot; ");
+  const iletisim = [
+    brand.contactEmail ? `<a href="mailto:${escapeHtml(brand.contactEmail)}" style="color:${YAZI};text-decoration:none;">${escapeHtml(brand.contactEmail)}</a>` : null,
+    brand.contactPhone ? escapeHtml(telefonYaz(brand.contactPhone)) : null,
+    brand.websiteUrl ? `<a href="${escapeHtml(brand.websiteUrl)}" style="color:${YAZI};text-decoration:none;">${escapeHtml(brand.websiteUrl.replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a>` : null,
+  ].filter(Boolean).join(` <span style="color:${CIZGI};">&nbsp;|&nbsp;</span> `);
 
   const preheader = `${copy.title} — ${copy.body}`.slice(0, 140);
+  /* Yasal satır: yalnızca tabela adından farklıysa ve yalnızca en altta. */
+  const yasalSatir = brand.legalName
+    ? `<p style="margin:10px 0 0;font-family:${SANS};font-size:10px;line-height:16px;color:${SOLUK};">${escapeHtml(brand.legalName)}</p>`
+    : "";
+  /* Arvo'nun kendi postasında "ArvoOS altyapısıyla" demek tekrar olurdu. */
+  const altyapi = brand.name === fallbackBrand.name
+    ? ""
+    : `<p style="margin:6px 0 0;font-family:${SANS};font-size:10px;line-height:16px;color:${SOLUK};">ArvoOS altyapısıyla gönderilmiştir.</p>`;
 
-  const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>${escapeHtml(copy.subject)}</title>
-<!--[if mso]><style type="text/css">table,td,div,h1,p{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
-</head><body style="margin:0;padding:0;background-color:#eef1ec;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#eef1ec;opacity:0;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;background-color:#eef1ec;background-image:linear-gradient(180deg,#f4f6f2 0%,#eef1ec 220px);"><tr><td align="center" style="padding-top:48px;padding-right:16px;padding-bottom:48px;padding-left:16px;">
-<table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:600px;background-color:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e6ebe2;box-shadow:0 24px 60px rgba(20,40,25,0.08);">
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding-top:32px;padding-right:40px;padding-bottom:24px;padding-left:40px;border-top:5px solid ${brand.primaryColor};">${logo}<p style="margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:16px;color:${brand.primaryColor};font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">${escapeHtml(copy.eyebrow)}</p></td></tr>
-<tr><td style="padding-top:30px;padding-right:40px;padding-bottom:6px;padding-left:40px;border-top:1px solid #f0f2ee;">${badge}<h1 style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:34px;color:#1a251c;font-weight:700;letter-spacing:-0.4px;">${escapeHtml(copy.title)}</h1><p style="margin-top:14px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:25px;color:#5c6b60;">${escapeHtml(copy.body)}</p></td></tr>
-<tr><td align="center" style="padding-top:26px;padding-right:40px;padding-bottom:32px;padding-left:40px;">${action}</td></tr>
-<tr><td style="padding-top:0;padding-right:40px;padding-bottom:32px;padding-left:40px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%"><tr><td style="border-top:1px solid #f0f2ee;padding-top:22px;"><p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#8a948c;">Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz. Güvenliğiniz için bağlantıyı veya doğrulama kodunu kimseyle paylaşmayın.</p>${type === "reauthentication" ? "" : `<p style="margin-top:16px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:#a3aca5;word-break:break-all;">Buton çalışmazsa bağlantıyı tarayıcınıza yapıştırın:<br><a href="${escapeHtml(link)}" style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:${brand.primaryColor};text-decoration:underline;">${escapeHtml(link)}</a></p>`}</td></tr></table></td></tr>
-<tr><td bgcolor="#f7f8f6" style="background-color:#f7f8f6;padding-top:24px;padding-right:40px;padding-bottom:24px;padding-left:40px;border-top:1px solid #e9ece6;"><p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#6e786f;font-weight:600;">${escapeHtml(brand.name)}</p>${contactParts ? `<p style="margin-top:4px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;line-height:18px;color:#8a948c;">${contactParts}</p>` : ""}<p style="margin-top:14px;margin-right:0;margin-bottom:0;margin-left:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;line-height:16px;color:#b3bab2;">Bu e-posta ArvoOS güvenli altyapısı üzerinden otomatik olarak gönderilmiştir.</p></td></tr>
+  const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(copy.subject)}</title>
+<!--[if mso]><style type="text/css">table,td,div,h1,p,a{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
+</head><body style="margin:0;padding:0;background-color:${FILDISI};">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${FILDISI};opacity:0;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${FILDISI}" style="width:100%;background-color:${FILDISI};"><tr><td align="center" style="padding:44px 16px;">
+<table width="560" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:560px;">
+<tr><td style="padding:0 4px 18px;">${logo}</td></tr>
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${CIZGI};border-radius:16px;border-top:4px solid ${GECE};">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+<tr><td style="padding:38px 44px 0;">
+<p style="margin:0;font-family:${SANS};font-size:11px;line-height:16px;color:${SAMPANYA};font-weight:700;letter-spacing:2.4px;text-transform:uppercase;">${escapeHtml(copy.eyebrow)}</p>
+<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:14px 0 0;"><tr><td width="36" height="1" bgcolor="${SAMPANYA}" style="width:36px;height:1px;line-height:1px;font-size:1px;background-color:${SAMPANYA};">&nbsp;</td></tr></table>
+<h1 style="margin:20px 0 0;font-family:${SERIF};font-size:30px;line-height:38px;color:${GECE};font-weight:400;letter-spacing:-0.2px;">${escapeHtml(copy.title)}</h1>
+<p style="margin:16px 0 0;font-family:${SANS};font-size:15px;line-height:26px;color:${YAZI};">${escapeHtml(copy.body)}</p>
+</td></tr>
+<tr><td style="padding:30px 44px 34px;">${eylem}</td></tr>
+<tr><td style="padding:0 44px 36px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td style="border-top:1px solid ${CIZGI};padding-top:22px;">
+<p style="margin:0;font-family:${SANS};font-size:12px;line-height:20px;color:${SOLUK};">Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz; hesabınızda bir şey değişmez. Bağlantıyı ya da kodu kimseyle paylaşmayın.</p>${type === "reauthentication" ? "" : `<p style="margin:14px 0 0;font-family:${SANS};font-size:11px;line-height:18px;color:${SOLUK};word-break:break-all;">Düğme çalışmazsa bu adresi tarayıcınıza yapıştırın:<br><a href="${escapeHtml(link)}" style="color:${GECE};text-decoration:underline;">${escapeHtml(link)}</a></p>`}
+</td></tr></table></td></tr>
+</table></td></tr>
+<tr><td align="center" style="padding:26px 12px 0;">
+<p style="margin:0;font-family:${SANS};font-size:12px;line-height:18px;color:${GECE};font-weight:600;letter-spacing:0.4px;">${escapeHtml(brand.name)}</p>
+${iletisim ? `<p style="margin:6px 0 0;font-family:${SANS};font-size:11px;line-height:18px;color:${YAZI};">${iletisim}</p>` : ""}
+${yasalSatir}${altyapi}
+</td></tr>
 </table></td></tr></table></body></html>`;
 
-  const text = `${copy.title}\n\n${copy.body}\n\n${type === "reauthentication" ? `Kod: ${code}` : link}\n\n${brand.name} ${contactParts ? `· ${contactParts}` : ""}`;
+  const text = [
+    copy.title,
+    "",
+    copy.body,
+    "",
+    type === "reauthentication" ? `Kod: ${code}` : link,
+    "",
+    "Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.",
+    "",
+    [brand.name, brand.contactEmail, brand.contactPhone ? telefonYaz(brand.contactPhone) : null, brand.websiteUrl].filter(Boolean).join(" · "),
+    brand.legalName ?? "",
+  ].join("\n").trim();
   return { subject: copy.subject, html, text };
 }
 
@@ -216,14 +278,25 @@ async function resolveBrand(payload: HookPayload): Promise<Brand> {
 
   const organization = data as {
     name: string | null;
+    display_name?: string | null;
     logo_url: string | null;
     primary_color: string | null;
     contact_email: string | null;
     contact_phone: string | null;
     website_url: string | null;
   };
+  /*
+    TABELA ADI (16.10.2026, kurum sahibi: "her yerde şirket unvanımı
+    kullanma"). Gönderen adı, konu ve başlık yasal unvanı yazıyordu
+    ("ARVOCULTURE GROUP … LTD.ŞTİ. şifre yenileme bağlantınız"). Artık
+    tabela adı; yasal unvan yalnızca alt bilgide. display_name işleve
+    20261016071215'te eklendi — gelmezse yasal unvana düşer.
+  */
+  const tabela = (organization.display_name ?? "").trim();
+  const yasal = (organization.name ?? "").trim();
   return {
-    name: organization.name || fallbackBrand.name,
+    name: tabela || yasal || fallbackBrand.name,
+    legalName: yasal && yasal !== tabela ? yasal : null,
     logoUrl: organization.logo_url || null,
     primaryColor: safeColor(organization.primary_color),
     contactEmail: organization.contact_email || fallbackBrand.contactEmail,
