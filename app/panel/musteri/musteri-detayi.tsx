@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MobilSatir } from "../crm/table-cells";
 import { notFound } from "next/navigation";
 import { modulGerekKosullu } from "@/lib/modul-kapisi";
+import { kimlikMi } from "@/lib/kimlik";
 import { getPanelContext } from "@/lib/panel-context";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
@@ -68,6 +69,13 @@ export async function MusteriDetayi({ talepId, cariId, pencere, adres, kayit }: 
   const org = membership.organization_id;
   const crmVar = modules.some((m) => m.code === "crm");
   const cariModulu = modules.some((m) => m.code === "accounts");
+
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur (lib/kimlik). Bu bileşen eskiden
+     okuma hatasını yutup notFound veriyordu, yani bozuk kimlik tesadüfen
+     doğru davranıyordu; hata yutmayı kaldırırken (231ac64) biçim denetimi
+     onun yerine konmamıştı ve üç adres birden çökmeye başladı
+     (crm/musteri, finance/musteri ve oraya inen eski accounts/[id]). */
+  if ((talepId && !kimlikMi(talepId)) || (cariId && !kimlikMi(cariId))) notFound();
 
   /* ---- Çapa: müşterinin bir talebi ve/veya carisi ---- */
   let talep: Talep | null = null;

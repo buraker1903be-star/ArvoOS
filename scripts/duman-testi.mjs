@@ -324,6 +324,33 @@ if (!argv.includes("--bayat-yok")) {
   }
 }
 
+/*
+  BOZUK KİMLİK: dinamik rotanın kimlik segmenti yerine uuid OLMAYAN bir
+  değer koyuluyor. Postgres böyle bir değeri 22P02 ile reddediyor ve
+  hatayı fırlatan sayfa çökme ekranı veriyor; doğrusu "kayıt yok"
+  (lib/kimlik → kimlikMi).
+
+  Bu sınama bir GERİLEMEYİ yakaladı: beş detay sayfası eskiden HER okuma
+  hatasını notFound'a çeviriyordu, yani bozuk kimlik tesadüfen doğru
+  davranıyordu. Hata yutma kaldırılırken (231ac64) biçim denetimi onun
+  yerine konmadı ve sayfalar çökmeye başladı — tsc, lint, 975 birim ve
+  454 akış testi hepsi yeşildi. Yalnızca bu istek gördü.
+*/
+const BOZUK_KIMLIK = "bozuk-kimlik";
+let bozukSayisi = 0;
+if (!argv.includes("--bayat-yok")) {
+  for (const rota of dinamikler) {
+    if (yalnizca && !rota.startsWith(yalnizca)) continue;
+    let yol = rota;
+    /* Enum segment geçerli kalsın: sınanan şey kimlik. */
+    for (const [desen, adaylar] of Object.entries(SABIT_SEGMENT)) yol = yol.split(desen).join(adaylar[0]);
+    yol = yol.replace(/\[[^\]]+\]/g, BOZUK_KIMLIK);
+    if (yol.includes("[")) continue;
+    bozukSayisi += 1;
+    sonuclar.push(await dene(yol));
+  }
+}
+
 const cokmeler = sonuclar.filter((s) => s.durum === "COKME");
 const oturum = sonuclar.filter((s) => s.durum === "OTURUM");
 const yonlendirmeler = sonuclar.filter((s) => s.durum === "yonlendirme");
@@ -335,7 +362,7 @@ for (const s of sonuclar) {
 }
 
 console.log(
-  `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü + ${bayatSayisi} bayat adres tarandı`
+  `\n${taranacak.length} rota + ${sorguSayisi} sorgu görünümü + ${bayatSayisi} bayat adres + ${bozukSayisi} bozuk kimlik tarandı`
   + ` · ${sonuclar.length - cokmeler.length - oturum.length} sorunsuz`
   + ` · ${yonlendirmeler.length} yönlendirme`
   + ` · ${cokmeler.length} çökme`

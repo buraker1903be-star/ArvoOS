@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { waMeAdresi } from "@/lib/wa-me";
@@ -85,6 +86,11 @@ export default async function RequestDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur (lib/kimlik). Bu sayfa eskiden
+     HER okuma hatasını notFound'a çeviriyordu, yani bozuk kimlik
+     tesadüfen doğru davranıyordu; hata yutmayı kaldırırken (231ac64)
+     biçim denetimi onun yerine konmamıştı ve sayfa çökmeye başladı. */
+  if (!kimlikMi(id)) notFound();
   const context = await getPanelContext();
   const { supabase, membership, modules, izin } = context;
   modulGerek(modules, "crm");

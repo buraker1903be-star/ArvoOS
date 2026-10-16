@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
 import { istanbulDateTime } from "@/lib/istanbul-date";
@@ -9,6 +10,11 @@ type Agreement = { id:string; organization_id:string; employee_id:string; agreem
 
 export default async function ConfidentialityAgreementPage({ params, searchParams }: { params: Promise<{id:string}>; searchParams: Promise<{signed?:string}> }) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur (lib/kimlik). Bu sayfa eskiden
+     HER okuma hatasını notFound'a çeviriyordu, yani bozuk kimlik
+     tesadüfen doğru davranıyordu; hata yutmayı kaldırırken (231ac64)
+     biçim denetimi onun yerine konmamıştı ve sayfa çökmeye başladı. */
+  if (!kimlikMi(id)) notFound();
   const query = await searchParams;
   const { supabase, userId, membership, organization, izin } = await getPanelContext();
   const { data, error } = await supabase.from("hr_confidentiality_agreements").select("id,organization_id,employee_id,agreement_no,content_snapshot,status,signer_name,signature_path,signed_at,created_at,hr_employees!inner(full_name,user_id,job_title)").eq("id",id).maybeSingle();

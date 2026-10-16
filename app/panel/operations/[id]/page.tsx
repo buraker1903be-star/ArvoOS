@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kimlikMi } from "@/lib/kimlik";
 import { Fragment, Suspense, type CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { getPanelContext } from "@/lib/panel-context";
@@ -82,6 +83,11 @@ export default async function OperationDetailPage({
   searchParams: Promise<{ sekme?: string; pencere?: string }>;
 }) {
   const { id } = await params;
+  /* Bozuk/kırpılmış kimlik "kayıt yok"tur (lib/kimlik). Bu sayfa eskiden
+     HER okuma hatasını notFound'a çeviriyordu, yani bozuk kimlik
+     tesadüfen doğru davranıyordu; hata yutmayı kaldırırken (231ac64)
+     biçim denetimi onun yerine konmamıştı ve sayfa çökmeye başladı. */
+  if (!kimlikMi(id)) notFound();
   const { sekme: istenenSekme, pencere: istenenPencere } = await searchParams;
   const { supabase, membership, modules, userId, izin } = await getPanelContext();
   modulGerek(modules, "operations");
