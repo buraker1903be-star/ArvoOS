@@ -22,7 +22,7 @@ export type OsIkon =
   | "home" | "crm" | "operations" | "finance" | "hr" | "documents"
   | "posta" | "messages" | "settings" | "apps" | "notifications" | "whatsapp"
   /* Kurucu konsolunun uygulamaları (os/konsol-apps.ts). */
-  | "building" | "wallet" | "check" | "pulse" | "tag" | "repeat";
+  | "box" | "building" | "wallet" | "check" | "pulse" | "tag" | "repeat";
 
 export type OsUygulama = {
   key: string;

@@ -17,6 +17,9 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   messages: <path d="M4 5h16v11H9l-5 4z" />,
   whatsapp: <><path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5a8.4 8.4 0 1 1 15.4-4.4Z" /><path d="M9 8.8c.2 3 2.6 5.6 5.7 6l1.1-1.4-1.8-1-.9.8a3.6 3.6 0 0 1-1.9-1.9l.8-.9-1-1.8Z" /></>,
   settings: <><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></>,
+  /* Ürün kutusu (16.10.2026): konsolda Ürünler eskiden "apps" (dört kare)
+     kullanıyordu — dock'un en sağındaki Uygulamalar düğmesiyle aynı simge. */
+  box: <><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></>,
   apps: <><rect x="4" y="4" width="6" height="6" rx="1.5" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><rect x="4" y="14" width="6" height="6" rx="1.5" /><rect x="14" y="14" width="6" height="6" rx="1.5" /></>,
   /* Kurucu konsolu: kiracı (bina), tahsilat (cüzdan), onay (tik). */
   building: <><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16" /><path d="M15 9h3a2 2 0 0 1 2 2v10" /><path d="M8 7h3M8 11h3M8 15h3M3 21h18" /></>,

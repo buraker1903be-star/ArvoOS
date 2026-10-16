@@ -52,7 +52,7 @@ export function konsolUygulamalari(bekleyen?: { odeme?: number; sozlesme?: numbe
   return [
     { key: "home", label: "Genel Bakış", href: "/panel", ikon: "home", yollar: [] },
     {
-      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "apps",
+      key: "urunler", label: "Ürünler", href: "/panel/platform/urunler", ikon: "box",
       /* Bireysel abone planı (deneme süresi) ürünün kendi ayarı. */
       yollar: ["/panel/platform/urunler", "/panel/platform/moduller", "/panel/platform/subscribers"],
       /* Yalnızca dört ürün (14.10.2026, kurum sahibinin isteği): yedi
