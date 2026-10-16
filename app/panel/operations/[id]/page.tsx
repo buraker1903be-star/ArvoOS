@@ -10,6 +10,7 @@ import { addWorkflowStep, archiveWorkflow, changeWorkType, assignStep, assignWor
 import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
+import { DurumSecici } from "../../components/durum-secici";
 import { PanelDrawer } from "../../components/panel-drawer";
 import { PanelModal } from "../../components/panel-modal";
 import { MusteriKunyesi } from "./musteri-kunyesi";
@@ -486,20 +487,17 @@ export default async function OperationDetailPage({
       <div className="opd-serit">
         <AnindaForm action={setWorkflowStatus} className="opd-ff">
           <input type="hidden" name="workflow_id" value={workflow.id} />
-          <label className="opd-ff-etiket" htmlFor="is-durumu">Durum</label>
-          <select key={workflow.status} id="is-durumu" name="status" defaultValue={workflow.status} disabled={isArchived} data-tone={statusTone(workflow.status)}>
-            {statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          <span className="opd-ff-etiket">Durum</span>
+          {/* Ortak durum seçici (components/durum-secici): tarayıcının <select>'i yerine hap düğme + liste, ArvoARC'ta da aynı. */}
+          <DurumSecici name="status" etiket="İş durumu" deger={workflow.status} disabled={isArchived}
+            secenekler={statusOptions.map(([value, label]) => ({ deger: value, etiket: label, ton: statusTone(value) }))} />
         </AnindaForm>
 
         <AnindaForm action={setWaitingParty} className="opd-ff opd-ff-genis">
           <input type="hidden" name="workflow_id" value={workflow.id} />
-          <label className="opd-ff-etiket" htmlFor="bekleyen-taraf">Top kimde</label>
-          <select key={bekleyenTaraf} id="bekleyen-taraf" name="waiting_party" defaultValue={bekleyenTaraf} disabled={isArchived} data-tone={BEKLEYEN_TARAF_TONLARI[bekleyenTaraf]}>
-            {BEKLEYEN_TARAFLAR.map((taraf) => (
-              <option key={taraf} value={taraf}>{BEKLEYEN_TARAF_ADLARI[taraf]}</option>
-            ))}
-          </select>
+          <span className="opd-ff-etiket">Top kimde</span>
+          <DurumSecici name="waiting_party" etiket="Top kimde" deger={bekleyenTaraf} disabled={isArchived}
+            secenekler={BEKLEYEN_TARAFLAR.map((taraf) => ({ deger: taraf, etiket: BEKLEYEN_TARAF_ADLARI[taraf], ton: BEKLEYEN_TARAF_TONLARI[taraf] }))} />
           {/* "Ne bekleniyor" yalnızca top bizde değilken sorulur. */}
           {bekleyenTaraf === "us" ? null : (
             <input key={workflow.waiting_note ?? "bos"} type="text" name="waiting_note" defaultValue={workflow.waiting_note ?? ""} maxLength={200} disabled={isArchived} placeholder="Ne bekleniyor?" aria-label="Beklenen şey" />
@@ -509,11 +507,9 @@ export default async function OperationDetailPage({
 
         <AnindaForm action={setRevisionDays} className="opd-ff">
           <input type="hidden" name="workflow_id" value={workflow.id} />
-          <label className="opd-ff-etiket" htmlFor="revizyon-gun">Revizyon</label>
-          <select key={workflow.revision_days ?? "varsayilan"} id="revizyon-gun" name="revision_days" defaultValue={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}>
-            <option value="">Kurum varsayılanı</option>
-            {[30, 45, 60, 90, 180].map((gun) => <option key={gun} value={gun}>{gun} gün</option>)}
-          </select>
+          <span className="opd-ff-etiket">Revizyon</span>
+          <DurumSecici name="revision_days" etiket="Revizyon süresi" deger={workflow.revision_days ? String(workflow.revision_days) : ""} disabled={isArchived}
+            secenekler={[{ deger: "", etiket: "Kurum varsayılanı" }, ...[30, 45, 60, 90, 180].map((gun) => ({ deger: String(gun), etiket: `${gun} gün` }))]} />
           {revizyon && revizyonYazi ? <span className="opd-ff-not" data-tone={REVIZYON_TONLARI[revizyon.durum]}>{revizyonYazi}</span> : null}
         </AnindaForm>
       </div>
@@ -842,11 +838,8 @@ export default async function OperationDetailPage({
                     <div className="opd-step-meta">
                       <AnindaForm action={setStepStatus} className="opd-ff">
                         <input type="hidden" name="step_id" value={step.id} />
-                        <select key={step.status} name="status" defaultValue={step.status} data-tone={STEP_STATUS_TONES[step.status]} aria-label={`${step.title} durumu`}>
-                          {STEP_STATUSES.map((value) => (
-                            <option key={value} value={value}>{STEP_STATUS_LABELS[value]}</option>
-                          ))}
-                        </select>
+                        <DurumSecici name="status" etiket={`${step.title} durumu`} deger={step.status}
+                          secenekler={STEP_STATUSES.map((value) => ({ deger: value, etiket: STEP_STATUS_LABELS[value], ton: STEP_STATUS_TONES[value] }))} />
                       </AnindaForm>
                       {canEditDue ? (
                         <AnindaForm action={setStepDueDate} className="opd-ff">
