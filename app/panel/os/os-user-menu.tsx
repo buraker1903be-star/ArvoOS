@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PanelWorkspace } from "@/lib/panel-context";
+import { paketAdi } from "@/lib/paket-adlari";
 import { basHarfler } from "./os-apps";
 import { OsSimge } from "./os-icons";
 
@@ -64,7 +65,7 @@ export function OsKullaniciMenusu({
                 const icerik = (
                   <>
                     <span className="os-ws-mark" aria-hidden="true">{ad.slice(0, 1).toLocaleUpperCase("tr")}</span>
-                    <span className="os-ws-text"><b>{ad}</b><small>{alan.organization.plan_code} paket</small></span>
+                    <span className="os-ws-text"><b>{ad}</b><small>{paketAdi(alan.organization.plan_code)} paket</small></span>
                     {aktif ? <span className="os-ws-check" aria-hidden="true">✓</span> : null}
                   </>
                 );
@@ -105,7 +106,7 @@ export function OsKullaniciMenusu({
           <button type="submit"><OsSimge ad="logout" boyut={16} />Çıkış yap</button>
         </form>
         {/* Birden çok çalışma alanında paket listede yazıyor; tekrar etme. */}
-        {workspaces.length > 1 ? null : <p className="os-user-foot">{paket.toUpperCase()} paket</p>}
+        {workspaces.length > 1 ? null : <p className="os-user-foot">{paketAdi(paket)} paket</p>}
       </div>
     </details>
   );

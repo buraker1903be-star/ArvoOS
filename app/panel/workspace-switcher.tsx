@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChangeEvent } from "react";
+import { paketAdi } from "@/lib/paket-adlari";
 import type { PanelWorkspace } from "@/lib/panel-context";
 
 type Props = {
@@ -43,7 +44,7 @@ export function WorkspaceSwitcher({ workspaces, activeOrganizationId, variant = 
         </select>
         <i aria-hidden="true">⌄</i>
       </div>
-      <em>{activeWorkspace.organization.plan_code} paket</em>
+      <em>{paketAdi(activeWorkspace.organization.plan_code)} paket</em>
     </div>;
   }
 

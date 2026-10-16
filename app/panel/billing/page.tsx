@@ -1,11 +1,16 @@
 import { getPanelContextErisimdenBagimsiz as getPanelContext } from "@/lib/panel-context";
 import { getPaytrStatus, getPlatformOrganizationId } from "@/lib/paytr-status";
+import { paketAdi } from "@/lib/paket-adlari";
 import { PRODUCTS, productLicenseLabels, productName } from "@/lib/products";
 import { KREDI_PAKETLERI, binKrediFiyati } from "@/lib/ai-kredi-paketleri";
 import { arvolabKrediDurumu } from "@/lib/arvolab";
 import { ekKullaniciSayisi, ekKullaniciUcretiKurus } from "@/lib/kota-durumu";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { submitBankTransferPayment } from "./actions";
+
+/* Ödeme bildiriminin durumu kurumun dilinde (eskiden ham kod: "pending"). */
+const ODEME_DURUMU: Record<string, string> = { pending: "İnceleniyor", approved: "Onaylandı", rejected: "Reddedildi", canceled: "İptal" };
+const ODEME_TONU: Record<string, string> = { pending: "warning", approved: "success", rejected: "danger", canceled: "neutral" };
 import { buyAiCredit, payLicenseWithCard } from "./paytr-actions";
 import "../team.css";
 // Ortak kayıt formu düzeni (zorunlu alan işareti, kaydet çubuğu).
@@ -113,10 +118,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </article>
 
       <article className="panel-card management-card">
-        <div className="management-heading"><div><small>MEVCUT LİSANS</small><h2>{organization.name}</h2></div><span className="status-pill">{license?.plan_code ?? organization.plan_code}</span></div>
+        <div className="management-heading"><div><small>MEVCUT LİSANS</small><h2>{organization.name}</h2></div><span className="status-pill">{paketAdi(license?.plan_code ?? organization.plan_code)}</span></div>
         <dl className="billing-summary">
-          <div><dt>Durum</dt><dd>{license?.license_status ?? "trialing"}</dd></div>
-          <div><dt>Paket</dt><dd>{license?.plan_code ?? organization.plan_code}</dd></div>
+          <div><dt>Durum</dt><dd>{productLicenseLabels[license?.license_status ?? "trialing"] ?? license?.license_status}</dd></div>
+          <div><dt>Paket</dt><dd>{paketAdi(license?.plan_code ?? organization.plan_code)}</dd></div>
           <div><dt>Dönem sonu</dt><dd>{license?.current_period_end ? istanbulDateTime(license.current_period_end, { dateStyle: "short" }) : "—"}</dd></div>
           <div><dt>Kullanıcı</dt><dd>{dahilLimit ? `${sayi(uyeSayisi)} / ${sayi(dahilLimit)} dahil` : sayi(uyeSayisi)}</dd></div>
           {ekKoltuk > 0 ? (
@@ -232,7 +237,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <section className="panel-card management-card">
       <div className="management-heading"><div><small>ÖDEME GEÇMİŞİ</small><h2>Bildirimler</h2></div><span className="status-pill">{payments?.length ?? 0} kayıt</span></div>
       <div className="module-control-list">
-        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {payment.plan_code} · {formatTry(payment.amount)}</b><small>{istanbulDateTime(payment.created_at)}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill">{payment.status}</span></div>)}
+        {(payments ?? []).map((payment) => <div className="module-control" key={payment.id}><div><b>{productName(payment.product ?? "arvoos")} · {paketAdi(payment.plan_code)} · {formatTry(payment.amount)}</b><small>{istanbulDateTime(payment.created_at)}{payment.reference_no ? ` · ${payment.reference_no}` : ""}{payment.review_note ? ` · ${payment.review_note}` : ""}</small></div><span className="status-pill" data-tone={ODEME_TONU[payment.status] ?? "neutral"}>{ODEME_DURUMU[payment.status] ?? payment.status}</span></div>)}
         {!payments?.length ? <p className="panel-muted">Henüz ödeme bildirimi bulunmuyor.</p> : null}
       </div>
     </section>
