@@ -23,3 +23,20 @@ const ADIM: Record<string, number> = {
 export function talepAdimi(asama: string): number | null {
   return asama in ADIM ? ADIM[asama] : null;
 }
+
+/*
+  ÇİZGİ BAĞLI KAYITLARLA DA İLERLER (16.10.2026). Talebin `stage` alanı
+  sözleşme imzalanıp iş açılınca ilerletilmiyor: deneme kurumunda teklif
+  kabul edilmiş, sözleşme imzalanmış ve iş başlamışken çizgi hâlâ
+  "Teklif"te duruyordu — hemen altındaki Bağlantılar listesi "İmzalandı",
+  "Planlandı" yazarken. Çizgi artık bağlı kayıtlara da bakıyor: geçerli
+  (iptal ya da red olmayan) sözleşme varsa en az "Sözleşme", sözleşmenin
+  işi açıldıysa "İş". Geri gitmez: talebin kendi aşaması daha ilerideyse
+  o kalır. Arşivlenmiş talep (null) arşivde kalır.
+*/
+export function talepAdimiZincirle(asama: string, zincir: { sozlesmeVar: boolean; isVar: boolean }): number | null {
+  const kendi = talepAdimi(asama);
+  if (kendi === null) return null;
+  const zincirden = zincir.isVar ? 4 : zincir.sozlesmeVar ? 3 : 0;
+  return Math.max(kendi, zincirden);
+}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { formatPhone } from "@/lib/format-phone";
 import { formatPersonName } from "@/lib/format-name";
 import { waMeAdresi } from "@/lib/wa-me";
-import { TALEP_ADIMLARI, talepAdimi } from "@/lib/talep-asamalari";
+import { TALEP_ADIMLARI, talepAdimiZincirle } from "@/lib/talep-asamalari";
 import { tekrarsizNot } from "@/lib/talep-notu";
 import { findCustomerHistory, type CustomerHistoryResult } from "../../customer-history-query";
 import { notFound } from "next/navigation";
@@ -145,7 +145,6 @@ export default async function RequestDetailPage({
       : null;
   const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
   const calismaTuru = calismaTurleri.find((tur) => tur.code === item.step_template_set)?.name ?? null;
-  const adim = talepAdimi(item.stage);
 
   /*
     BAĞLANTILAR (teklif, sözleşme ve iş detayıyla eşitleme): bu talepten
@@ -168,6 +167,12 @@ export default async function RequestDetailPage({
   const is = isData as { id: string; status: string; operation_steps: { is_completed: boolean }[] | null } | null;
   const isAdimlari = is?.operation_steps ?? [];
   const isIlerleme = isAdimlari.length ? Math.round((isAdimlari.filter((a) => a.is_completed).length / isAdimlari.length) * 100) : null;
+  /* Çizgi bağlı kayıtlarla da ilerliyor (lib/talep-asamalari): stage alanı
+     sözleşme ve iş açılınca güncellenmiyor. */
+  const adim = talepAdimiZincirle(item.stage, {
+    sozlesmeVar: Boolean(gecerliSozlesme && gecerliSozlesme.status !== "cancelled" && gecerliSozlesme.status !== "rejected"),
+    isVar: Boolean(is),
+  });
   const arsivde = item.stage === "lost";
   const musteri = formatPersonName(item.customer_name) || item.customer_name;
   const temsilciler = (employees ?? []).map((e) => ({ id: e.id, full_name: e.full_name }));

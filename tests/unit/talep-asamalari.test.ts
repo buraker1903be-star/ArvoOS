@@ -23,3 +23,17 @@ test("arşivlenmiş ya da bilinmeyen aşama çizgide yok", () => {
   assert.equal(talepAdimi("lost"), null);
   assert.equal(talepAdimi("tanimsiz"), null);
 });
+
+test("çizgi bağlı kayıtlarla ilerler, geri gitmez", async () => {
+  const { talepAdimiZincirle } = await import("@/lib/talep-asamalari");
+  // Teklif aşamasında kalmış ama sözleşmesi imzalı ve işi açık talep: İş.
+  assert.equal(talepAdimiZincirle("proposal", { sozlesmeVar: true, isVar: true }), 4);
+  // Yalnızca sözleşme: Sözleşme.
+  assert.equal(talepAdimiZincirle("proposal", { sozlesmeVar: true, isVar: false }), 3);
+  // Zincir yoksa kendi aşaması.
+  assert.equal(talepAdimiZincirle("qualified", { sozlesmeVar: false, isVar: false }), 1);
+  // Kendi aşaması ilerideyse geri gitmez.
+  assert.equal(talepAdimiZincirle("won", { sozlesmeVar: false, isVar: false }), 4);
+  // Arşivlenmiş talep arşivde kalır.
+  assert.equal(talepAdimiZincirle("lost", { sozlesmeVar: true, isVar: true }), null);
+});
