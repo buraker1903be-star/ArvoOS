@@ -35,9 +35,11 @@ export async function setInitialPassword(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirm_password") ?? "");
   const next = safeNextPath(formData.get("next"));
+  /* Yenileme mi ilk şifre mi: hata dönüşünde ekran aynı dili konuşsun. */
+  const tur = formData.get("tur") === "yenile" ? "&tur=yenile" : "";
 
-  if (password.length < 8) redirect(`/auth/set-password?error=short&next=${encodeURIComponent(next)}`);
-  if (password !== confirmPassword) redirect(`/auth/set-password?error=mismatch&next=${encodeURIComponent(next)}`);
+  if (password.length < 8) redirect(`/auth/set-password?error=short&next=${encodeURIComponent(next)}${tur}`);
+  if (password !== confirmPassword) redirect(`/auth/set-password?error=mismatch&next=${encodeURIComponent(next)}${tur}`);
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getClaims();
@@ -45,7 +47,7 @@ export async function setInitialPassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   /* Reddin sebebi söyleniyor: yeni şifre eskisiyle aynı ya da zayıf (lib/giris-hatasi). */
-  if (error) redirect(`/auth/set-password?error=${sifreHataAnahtari(error)}&next=${encodeURIComponent(next)}`);
+  if (error) redirect(`/auth/set-password?error=${sifreHataAnahtari(error)}&next=${encodeURIComponent(next)}${tur}`);
 
   if (!next || next === "/panel") {
     const firstRun = await firstRunDestination(auth.claims.sub);

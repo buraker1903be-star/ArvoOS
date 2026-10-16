@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { WORKSPACE_COOKIE } from "@/lib/panel-context";
 import { supabaseAyarlari } from "@/lib/supabase/yapilandirma";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { setInitialPassword } from "./actions";
@@ -38,9 +40,10 @@ type WorkspaceRow = { name: string; display_name: string | null; logo_url: strin
 export default async function SetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; tur?: string }>;
 }) {
-  const { error, next } = await searchParams;
+  const { error, next, tur } = await searchParams;
+  const yenileme = tur === "yenile";
 
   // Davet ya da şifre bağlantısı açıldıysa oturum vardır. Yoksa bağlantının
   // süresi dolmuş veya kullanılmıştır; form doldurtmadan baştan söylenir.
@@ -56,16 +59,23 @@ export default async function SetPasswordPage({
   const email = typeof auth?.claims?.email === "string" ? auth.claims.email : null;
 
   // Katılınan kurum: davet edilen kişi hangi ekibe girdiğini görsün.
+  /*
+    HANGİ KURUM (16.10.2026). Eskiden kişinin kurum listesinin İLKİ
+    alınıyordu: birden çok kurumdaki biri, seçili kurumu başka olsa da
+    "AkademikMerkez ekibine hoş geldiniz" görüyordu. Sıra: kurumun kendi
+    alan adı → seçili çalışma alanı (çerez) → tek kurumu varsa o. Birden
+    çok kurumu olup hangisi olduğu belli değilse kurum adı YAZILMAZ —
+    yanlış kurumu söylemektense genel karşılama.
+  */
   let organization: { name: string; logo_url: string | null; color: string | null } | null = null;
-  if (signedIn && supabase) {
+  const hostBrand = await getLoginBrand();
+  if (hostBrand) organization = { name: hostBrand.name, logo_url: hostBrand.logo_url, color: hostBrand.primary_color };
+  if (!organization && signedIn && supabase) {
     const { data: rows } = await supabase.rpc("get_my_workspaces");
-    const row = Array.isArray(rows) ? (rows[0] as WorkspaceRow | undefined) : undefined;
+    const satirlar = (Array.isArray(rows) ? rows : []) as (WorkspaceRow & { organization_id?: string })[];
+    const secili = (await cookies()).get(WORKSPACE_COOKIE)?.value;
+    const row = satirlar.find((satir) => secili && satir.organization_id === secili) ?? (satirlar.length === 1 ? satirlar[0] : undefined);
     if (row) organization = { name: row.display_name || row.name, logo_url: row.logo_url ?? null, color: row.brand_color ?? null };
-  }
-  // Oturum yoksa (geçersiz bağlantı) kurumun alan adındaki marka kullanılır.
-  if (!organization) {
-    const hostBrand = await getLoginBrand();
-    if (hostBrand) organization = { name: hostBrand.name, logo_url: hostBrand.logo_url, color: hostBrand.primary_color };
   }
 
   return (
@@ -78,9 +88,11 @@ export default async function SetPasswordPage({
         )}
         <div>
           <span>{organization ? "KURUM PANELİ" : "ARVOOS KURUM PANELİ"}</span>
-          <h1>{!signedIn ? "Bağlantınızı yenileyelim." : organization ? `${organization.name} ekibine hoş geldiniz.` : "Hesabınıza hoş geldiniz."}</h1>
+          <h1>{!signedIn ? "Bağlantınızı yenileyelim." : yenileme ? "Yeni şifrenizi belirleyin." : organization ? `${organization.name} ekibine hoş geldiniz.` : "Hesabınıza hoş geldiniz."}</h1>
           <p>{signedIn
-            ? "Panelinize girmeden önce kendi şifrenizi belirleyin. Bu adım yalnızca bir kez yapılır; sonraki girişlerinizde e-posta adresiniz ve bu şifreyi kullanırsınız."
+            ? yenileme
+              ? "Eski şifreniz bu adımla geçersiz olur; sonraki girişlerinizde e-posta adresiniz ve yeni şifrenizi kullanırsınız."
+              : "Panelinize girmeden önce kendi şifrenizi belirleyin. Bu adım yalnızca bir kez yapılır; sonraki girişlerinizde e-posta adresiniz ve bu şifreyi kullanırsınız."
             : "Güvenliğiniz için davet ve şifre bağlantıları tek kullanımlıktır ve kısa süre içinde geçerliliğini yitirir."}</p>
         </div>
       </section>
@@ -90,8 +102,8 @@ export default async function SetPasswordPage({
             <div className="login-card-brand">
               {organization?.logo_url ? <img src={organization.logo_url} alt={organization.name} className="login-card-logo" /> : <small>{organization ? organization.name : "ARVOOS"}</small>}
             </div>
-            <span>ŞİFRE OLUŞTUR</span>
-            <h2>Kendi şifrenizi belirleyin</h2>
+            <span>{yenileme ? "ŞİFRE YENİLE" : "ŞİFRE OLUŞTUR"}</span>
+            <h2>{yenileme ? "Yeni şifrenizi belirleyin" : "Kendi şifrenizi belirleyin"}</h2>
             <p>En az 8 karakterli bir şifre girin, panelinize hemen geçeceksiniz.</p>
             {email ? (
               <div className="login-account">
@@ -101,11 +113,12 @@ export default async function SetPasswordPage({
             ) : null}
             {error && <div className="login-error" role="alert">{errorMessages[error] ?? "Bir hata oluştu, lütfen tekrar deneyin."}</div>}
             <input type="hidden" name="next" value={next ?? "/panel"} />
+            {yenileme ? <input type="hidden" name="tur" value="yenile" /> : null}
             {/* Parola yöneticileri şifreyi doğru hesapla eşleştirsin diye */}
             {email ? <input type="hidden" name="username" autoComplete="username" value={email} /> : null}
             <label>Yeni şifre<input name="password" type="password" autoComplete="new-password" required minLength={8} placeholder="En az 8 karakter" /></label>
             <label>Şifreyi doğrula<input name="confirm_password" type="password" autoComplete="new-password" required minLength={8} placeholder="Şifreyi tekrar girin" /></label>
-            <button type="submit">Şifreyi Kaydet ve Panele Gir <b>→</b></button>
+            <button type="submit">{yenileme ? "Yeni Şifreyi Kaydet" : "Şifreyi Kaydet ve Panele Gir"} <b>→</b></button>
           </form>
         ) : (
           <div className="login-card">

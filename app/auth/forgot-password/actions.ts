@@ -16,7 +16,8 @@ export async function requestPasswordReset(formData: FormData) {
   const origin = requestHeaders.get("origin") ?? "https://app.arvo-os.com";
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/panel`,
+    /* tur=yenile: şifre ekranı davetle gelen yeni kullanıcı gibi karşılamasın (auth/callback). */
+    redirectTo: `${origin}/auth/callback?next=/panel&tur=yenile`,
   });
 
   if (error) {

@@ -8,6 +8,14 @@ export async function GET(request: Request) {
   const next = safeNextPath(url.searchParams.get("next"));
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
+  /*
+    Şifre YENİLEME mi, ilk şifre mi (16.10.2026)? Şifre ekranı ikisini de
+    "ekibine hoş geldiniz … bu adım yalnızca bir kez yapılır" diye
+    karşılıyordu; şifresini unutan eski kullanıcı için ikisi de yanlış.
+    Jetonlu bağlantı türünü kendisi söylüyor (type=recovery); kodlu
+    bağlantıyı "Şifremi unuttum" tur=yenile ile işaretliyor.
+  */
+  const yenileme = type === "recovery" || url.searchParams.get("tur") === "yenile";
 
   const supabase = await createClient();
 
@@ -16,6 +24,7 @@ export async function GET(request: Request) {
     if (!error) {
       const destination = new URL("/auth/set-password", url.origin);
       destination.searchParams.set("next", next);
+      if (yenileme) destination.searchParams.set("tur", "yenile");
       return NextResponse.redirect(destination);
     }
   } else if (tokenHash && type) {
@@ -23,6 +32,7 @@ export async function GET(request: Request) {
     if (!error) {
       const destination = new URL("/auth/set-password", url.origin);
       destination.searchParams.set("next", next);
+      if (yenileme) destination.searchParams.set("tur", "yenile");
       return NextResponse.redirect(destination);
     }
   }
