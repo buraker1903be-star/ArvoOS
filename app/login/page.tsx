@@ -4,6 +4,7 @@ import { login } from "./actions";
 import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import "./login.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
+import { hatirlananEposta } from "@/lib/eposta-hatirla";
 
 /*
   Giriş hatasının METNİ koda göre değişir. Eskiden `error` ne olursa olsun
@@ -15,6 +16,8 @@ import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 const LOGIN_HATASI: Record<string, string> = {
   missing: "E-posta adresi ve parola gerekli.",
   invalid: "E-posta adresi veya parola hatalı.",
+  cok_deneme: "Çok fazla giriş denemesi yapıldı. Güvenliğiniz için birkaç dakika bekleyip yeniden deneyin; parolanızdan emin değilseniz “Şifremi unuttum”u kullanın.",
+  dogrulanmamis: "E-posta adresiniz henüz doğrulanmamış. Davet e-postanızdaki bağlantıyı açın ya da yöneticinizden yeni davet isteyin.",
   yapilandirma: "Giriş şu anda yapılandırılmamış: sunucuda Supabase bağlantı bilgileri tanımlı değil.",
 };
 
@@ -42,7 +45,8 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   const orgBrand = await getLoginBrand();
-
+  /* Hata dönüşünde e-posta yeniden yazdırılmıyor (çerezden, adresten değil). */
+  const eposta = error ? await hatirlananEposta() : "";
   return (
     <main className="login-shell" style={loginAccentStyle(orgBrand?.primary_color)}>
       <section className="login-brand">
@@ -77,7 +81,7 @@ export default async function LoginPage({
           <h2>Panele hoş geldiniz</h2>
           <p>Size tanımlanan kurumsal e-posta adresiyle giriş yapın.</p>
           {error && <div className="login-error" role="alert">{LOGIN_HATASI[error] ?? LOGIN_HATASI.invalid}</div>}
-          <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" /></label>
+          <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" defaultValue={eposta} /></label>
           <label>Parola<input name="password" type="password" autoComplete="current-password" required placeholder="••••••••" /></label>
           <button type="submit">Giriş Yap <b>→</b></button>
           <Link href="/auth/forgot-password">Şifremi unuttum</Link>

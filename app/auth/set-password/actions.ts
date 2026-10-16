@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { sifreHataAnahtari } from "@/lib/giris-hatasi";
 
 // Davetle yeni katılan kurum sahibi/yöneticisi, kurumun ilk kurulumu
 // tamamlanmadıysa boş panel yerine doğrudan ilk kurulum ekranına alınır.
@@ -43,7 +44,8 @@ export async function setInitialPassword(formData: FormData) {
   if (!auth?.claims?.sub) redirect("/login?error=invalid");
 
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) redirect(`/auth/set-password?error=failed&next=${encodeURIComponent(next)}`);
+  /* Reddin sebebi söyleniyor: yeni şifre eskisiyle aynı ya da zayıf (lib/giris-hatasi). */
+  if (error) redirect(`/auth/set-password?error=${sifreHataAnahtari(error)}&next=${encodeURIComponent(next)}`);
 
   if (!next || next === "/panel") {
     const firstRun = await firstRunDestination(auth.claims.sub);

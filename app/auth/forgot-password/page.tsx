@@ -4,6 +4,7 @@ import { getLoginBrand, loginAccentStyle } from "@/lib/login-branding";
 import { requestPasswordReset } from "./actions";
 import "../../login/login.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
+import { hatirlananEposta } from "@/lib/eposta-hatirla";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -32,9 +33,11 @@ const errorMessages: Record<string, string> = {
 export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string; email?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string }>;
 }) {
-  const { error, sent, email } = await searchParams;
+  const { error, sent } = await searchParams;
+  /* E-posta adresten değil kısa ömürlü çerezden (lib/eposta-hatirla). */
+  const email = error || sent ? await hatirlananEposta() : "";
   // Kurumun kendi alan adında giriş ekranıyla aynı marka görünür.
   const orgBrand = await getLoginBrand();
 

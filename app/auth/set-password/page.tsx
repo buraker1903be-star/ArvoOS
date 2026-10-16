@@ -27,6 +27,10 @@ const errorMessages: Record<string, string> = {
   short: "Şifre en az 8 karakter olmalı.",
   mismatch: "Girdiğiniz şifreler birbiriyle uyuşmuyor.",
   failed: "Şifre kaydedilemedi, lütfen tekrar deneyin.",
+  ayni: "Yeni şifreniz eskisiyle aynı olamaz. Farklı bir şifre belirleyin.",
+  zayif: "Bu şifre çok zayıf ya da sızdırılmış şifreler listesinde. Harf, rakam ve işaret karıştırarak daha uzun bir şifre seçin.",
+  cok_deneme: "Çok fazla deneme yapıldı. Birkaç dakika bekleyip yeniden deneyin.",
+  oturum: "Bağlantınızın oturumu sona erdi. “Şifremi unuttum” ile yeni bir bağlantı isteyin.",
 };
 
 type WorkspaceRow = { name: string; display_name: string | null; logo_url: string | null; brand_color?: string | null };
