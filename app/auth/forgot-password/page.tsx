@@ -5,6 +5,7 @@ import { requestPasswordReset } from "./actions";
 import "../../login/login.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { hatirlananEposta } from "@/lib/eposta-hatirla";
+import { HashOturumu } from "./hash-oturumu";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -66,7 +67,9 @@ export default async function ForgotPasswordPage({
           <span>ŞİFRE YENİLEME</span>
           <h2>E-posta adresinizi girin</h2>
           <p>Hesabınız sistemde kayıtlıysa şifre oluşturma bağlantısı e-posta adresinize gönderilecektir.</p>
-          {error && <div className="login-error" role="alert">{errorMessages[error] ?? "Bir hata oluştu."}</div>}
+          {/* Eski biçimli davet bağlantısı oturumu #… kısmında getirir; yakalayıcı onu kurar (hash-oturumu.tsx). */}
+          <HashOturumu />
+          {error && <div className="login-error" role="alert" data-sunucu-hatasi="">{errorMessages[error] ?? "Bir hata oluştu."}</div>}
           {sent === "1" && <div className="login-success" role="status">Şifre yenileme bağlantısı {email ? `${email} adresine ` : ""}gönderildi. Gelen kutunuzu ve spam klasörünüzü kontrol edin.</div>}
           <label>E-posta adresi<input name="email" type="email" autoComplete="email" required placeholder="adiniz@kurum.com" defaultValue={email ?? ""} /></label>
           <button type="submit">Yenileme Bağlantısı Gönder <b>→</b></button>

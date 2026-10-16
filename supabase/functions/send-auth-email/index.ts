@@ -47,12 +47,43 @@ const escapeHtml = (value: string) => value
 const safeColor = (value: string | null) =>
   value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallbackBrand.primaryColor;
 
+/*
+  BAĞLANTI DOĞRUDAN UYGULAMAYA (16.10.2026).
+
+  Eskiden düğme Supabase'in /auth/v1/verify adresine gidiyordu. Davet
+  (implicit akış) oturumu adresin #… kısmına koyup dönüyordu ve sunucuda
+  çalışan /auth/callback o kısmı göremediği için davetli "bağlantı süresi
+  dolmuş" ekranına düşüyordu; şifre yenileme (PKCE) ise yalnızca isteği
+  yapan tarayıcıda açılabiliyordu. Ayrıca verify adresi GET'te jetonu
+  harcıyor, kurumsal posta tarayıcıları bağlantıyı kullanıcıdan önce
+  açınca davet tükeniyordu.
+
+  Şimdi bağlantı uygulamanın /auth/callback adresine token_hash ve type
+  ile gider; uygulama "Devam et" ekranını gösterir ve jetonu ANCAK
+  orada harcar (verifyOtp — cihazdan ve akıştan bağımsız). Kural
+  lib/kimlik-baglantisi.ts'in kopyası (Deno ile kod paylaşılmıyor);
+  birim testi ikisinin aynı kaldığını denetliyor.
+
+  E-posta değişikliği iki jeton taşıdığı için Supabase'in adresinde kalır.
+*/
+function dogrudanBaglanti(redirectTo: string | undefined | null, tokenHash: string | undefined | null, tur: string): string | null {
+  if (!redirectTo || !tokenHash || !["invite", "recovery", "magiclink", "signup", "email"].includes(tur)) return null;
+  let hedef: URL;
+  try { hedef = new URL(redirectTo); } catch { return null; }
+  if (hedef.protocol !== "https:" || hedef.pathname !== "/auth/callback") return null;
+  hedef.searchParams.set("token_hash", tokenHash);
+  hedef.searchParams.set("type", tur);
+  return hedef.toString();
+}
+
 function confirmationUrl(payload: HookPayload) {
   const projectUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const tokenHash = payload.email_data.token_hash ?? "";
   const type = payload.email_data.email_action_type;
   const redirectTo = payload.email_data.redirect_to || payload.email_data.site_url ||
     "https://app.arvo-os.com/auth/callback?next=/panel";
+  const dogrudan = dogrudanBaglanti(redirectTo, tokenHash, type);
+  if (dogrudan) return dogrudan;
   const params = new URLSearchParams({ token: tokenHash, type, redirect_to: redirectTo });
   return `${projectUrl}/auth/v1/verify?${params.toString()}`;
 }
@@ -63,14 +94,14 @@ function copyFor(type: string, brandName: string) {
       subject: `${brandName} çalışma alanına davet edildiniz`,
       eyebrow: "KURUMSAL DAVET",
       title: `${brandName} ekibine hoş geldiniz`,
-      body: "Hesabınızı etkinleştirmek ve kendi şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın.",
+      body: "Hesabınızı etkinleştirmek ve kendi şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın. Bağlantı tek kullanımlıktır; süresi dolarsa yöneticinizden yeni davet isteyin.",
       button: "Daveti Kabul Et",
     },
     recovery: {
       subject: `${brandName} şifre yenileme bağlantınız`,
       eyebrow: "ŞİFRE YENİLEME",
       title: "Şifrenizi güvenle yenileyin",
-      body: "Hesabınız için bir şifre yenileme talebi aldık. Yeni şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın.",
+      body: "Hesabınız için bir şifre yenileme talebi aldık. Yeni şifrenizi oluşturmak için aşağıdaki güvenli bağlantıyı kullanın. Bağlantı tek kullanımlıktır ve kısa süre geçerlidir; birden çok e-posta aldıysanız yalnızca en son geleni açın.",
       button: "Yeni Şifre Oluştur",
     },
     signup: {
