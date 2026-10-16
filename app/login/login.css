@@ -57,9 +57,6 @@
   box-shadow:0 1px 2px rgba(11,27,46,.04),0 30px 80px rgba(11,27,46,.1)
 }
 .login-card::before{content:"";position:absolute;top:0;left:46px;width:44px;height:2px;background:var(--gold)}
-.login-card-brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-bottom:26px}
-.login-card-logo{max-width:210px;max-height:64px;width:auto;height:auto;object-fit:contain}
-.login-card-brand small{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em}
 .mark{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;margin-bottom:28px;background:linear-gradient(150deg,var(--gold-soft),var(--gold));color:var(--midnight);font:700 24px var(--display)}
 .login-card>span{font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--gold-deep)}
 .login-card h2{margin:12px 0 8px;font:600 36px/1.08 var(--display);letter-spacing:0;color:var(--ink)}
