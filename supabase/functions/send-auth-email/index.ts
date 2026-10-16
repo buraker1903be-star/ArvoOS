@@ -145,7 +145,7 @@ function renderEmail(payload: HookPayload, brand: Brand) {
      verilince Outlook object-fit'i tanımadığı için kare ve dikey logolar
      yamuluyordu. Yükseklik orantılı kalır. */
   const logo = brand.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:180px;max-width:180px;height:auto;max-height:70px;">`
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:auto;height:auto;max-width:180px;max-height:70px;">`
     : `<p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:32px;color:#1f2d25;font-weight:700;letter-spacing:-0.3px;">${escapeHtml(brand.name)}</p>`;
 
   const badgeGlyph = type === "recovery" ? "&#128274;" : type === "reauthentication" ? "&#128272;" : "&#10003;";
