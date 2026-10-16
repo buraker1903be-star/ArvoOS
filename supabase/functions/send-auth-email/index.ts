@@ -141,8 +141,11 @@ function renderEmail(payload: HookPayload, brand: Brand) {
   const copy = copyFor(type, brand.name);
   const link = confirmationUrl(payload);
   const code = payload.email_data.token ?? "";
+  /* Logo yalnızca genişlikle (16.10.2026): width+height ikisi birden
+     verilince Outlook object-fit'i tanımadığı için kare ve dikey logolar
+     yamuluyordu. Yükseklik orantılı kalır. */
   const logo = brand.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" height="70" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:180px;height:70px;object-fit:contain;">`
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="180" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:180px;max-width:180px;height:auto;max-height:70px;">`
     : `<p style="margin:0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:32px;color:#1f2d25;font-weight:700;letter-spacing:-0.3px;">${escapeHtml(brand.name)}</p>`;
 
   const badgeGlyph = type === "recovery" ? "&#128274;" : type === "reauthentication" ? "&#128272;" : "&#10003;";
@@ -247,7 +250,8 @@ Deno.serve(async (request) => {
     const email = renderEmail(payload, brand);
     const resend = new Resend(resendKey);
     const { error } = await resend.emails.send({
-      from: `${brand.name} <noreply@arvo-os.com>`,
+      /* Gönderen adında " < > başlığı bozar ve gönderim reddedilir. */
+      from: `${brand.name.replace(/["<>]/g, "").trim() || fallbackBrand.name} <noreply@arvo-os.com>`,
       to: [payload.user.email],
       replyTo: brand.contactEmail,
       subject: email.subject,
