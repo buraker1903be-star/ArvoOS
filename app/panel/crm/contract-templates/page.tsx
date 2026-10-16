@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getPanelContext } from "@/lib/panel-context";
-import { akademikMerkezTemplate, arvoOSGeneralTemplate } from "@/lib/contract-templates";
+import { akademikMerkezTemplate, arvoOSGeneralTemplate, getContractTemplate } from "@/lib/contract-templates";
 import { LEGAL_TEXT_VERSION } from "@/app/_components/legal/format";
 import "../crm.css";
 import "../kayit-detay/kayit-detay.css";
@@ -23,7 +23,7 @@ import { modulGerek } from "@/lib/modul-kapisi";
 */
 
 export default async function SozlesmeSablonlari() {
-  const { supabase, membership, modules } = await getPanelContext();
+  const { supabase, membership, modules, organization } = await getPanelContext();
   modulGerek(modules, "crm");
 
   const sablonlar = [arvoOSGeneralTemplate, akademikMerkezTemplate];
@@ -47,11 +47,21 @@ export default async function SozlesmeSablonlari() {
   ]);
 
   /* Sayımlar şablon sırasıyla ikişerli geldi: [kullanım, imzalı]. */
+  /*
+    KURUM YALNIZCA KENDİ ŞABLONUNU GÖRÜR (16.10.2026). Sayfa iki sistem
+    şablonunu da her kiracıya listeliyordu: deneme kurumu "AkademikMerkez
+    çalışma alanında … otomatik kullanılır" diye başka bir markanın
+    şablonunu görüyordu. Gösterilen: kurumun SEÇİLEN şablonu
+    (getContractTemplate, sözleşmeyi hazırlayan kuralın aynısı) ve kurumun
+    sözleşmelerinde GERÇEKTEN kullanılmış başka bir şablon varsa o — eski
+    sözleşme hangi metinle gittiyse görünür kalsın.
+  */
+  const aktifSablon = getContractTemplate(organization.slug);
   const sayim = sablonlar.map((sablon, sira) => ({
     sablon,
     kullanim: sablonSayimlari[sira * 2]?.count ?? 0,
     imzali: sablonSayimlari[sira * 2 + 1]?.count ?? 0,
-  }));
+  })).filter(({ sablon, kullanim }) => sablon.key === aktifSablon.key || kullanim > 0);
 
   return <main className="talep cari">
     <header className="talep-bas">
@@ -68,7 +78,7 @@ export default async function SozlesmeSablonlari() {
 
     <nav className="kayit-serit talep-serit" aria-label="Şablon özeti">
       <dl>
-        <div><dt>Sistem şablonu</dt><dd>{sablonlar.length}</dd></div>
+        <div><dt>Şablon</dt><dd>{sayim.length}</dd></div>
         <div><dt>Şablonlu sözleşme</dt><dd>{sablonlu ?? 0}</dd></div>
         <div><dt>İmzalı</dt><dd>{imzali ?? 0}</dd></div>
         <div><dt>Yasal metin sürümü</dt><dd>v{LEGAL_TEXT_VERSION}</dd></div>
@@ -90,11 +100,15 @@ export default async function SozlesmeSablonlari() {
                     ? "AkademikMerkez çalışma alanında akademik danışmanlık, etik, veri, yayın ve revizyon hükümleriyle otomatik kullanılır."
                     : "ArvoOS üzerindeki diğer kurumlarda genel hizmet, yazılım, danışmanlık, teslim ve fikri hak hükümleriyle kullanılır."}</p>
                   <small>
-                    {sablon.key} · v{sablon.version} · {sablon.clauses.length} ana madde ·{" "}
+                    {/* İç anahtar (arvoos_general) eskiden burada yazıyordu; kullanıcıya bir şey anlatmıyor. */}
+                    v{sablon.version} · {sablon.clauses.length} ana madde ·{" "}
                     {kullanim} sözleşmede kullanıldı, {sablonImzali} imzalı
                   </small>
                 </div>
-                <span className="status-pill" data-tone="success">Aktif</span>
+                {/* Aktif = yeni sözleşmede kullanılan; öteki yalnızca eski sözleşmelerde. */}
+                {sablon.key === aktifSablon.key
+                  ? <span className="status-pill" data-tone="success">Kullanılıyor</span>
+                  : <span className="status-pill" data-tone="neutral">Eski sözleşmelerde</span>}
               </li>
             );
           })}
