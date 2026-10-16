@@ -97,8 +97,9 @@ export default async function SozlesmeSablonlari() {
                 <div>
                   <h3>{sablon.name}</h3>
                   <p>{akademik
-                    ? "AkademikMerkez çalışma alanında akademik danışmanlık, etik, veri, yayın ve revizyon hükümleriyle otomatik kullanılır."
-                    : "ArvoOS üzerindeki diğer kurumlarda genel hizmet, yazılım, danışmanlık, teslim ve fikri hak hükümleriyle kullanılır."}</p>
+                    ? "Akademik danışmanlık, etik, veri, yayın ve revizyon hükümleriyle; kurumunuzun sözleşmelerinde otomatik kullanılır."
+                    /* Kurumun gözünden: eskiden "ArvoOS üzerindeki diğer kurumlarda" diyordu (kurucunun bakışı). */
+                    : "Genel hizmet, yazılım, danışmanlık, teslim ve fikri hak hükümleriyle; kurumunuzun sözleşmelerinde otomatik kullanılır."}</p>
                   <small>
                     {/* İç anahtar (arvoos_general) eskiden burada yazıyordu; kullanıcıya bir şey anlatmıyor. */}
                     v{sablon.version} · {sablon.clauses.length} ana madde ·{" "}
