@@ -157,11 +157,21 @@ const telefonYaz = (deger: string) => {
   rozeti ve her yerde yasal unvan vardı. Başlık serif (Georgia: her
   posta istemcisinde var), metin sistem yazısı; vurgular ince şampanya
   çizgiler. Tablo tabanlı ve satır içi stil: Outlook dahil.
+
+  Zemin BEYAZ (16.10.2026, ikinci tur): fildişi zemin ve kalın gece
+  mavisi üst çizgi panelden çok bir bülten gibi duruyordu. Panelin
+  kartı gibi: beyaz zemin, ince gri çerçeve, logo kartın içinde ve
+  altında ince bir çizgi; düğmenin şampanya kenarı kahverengi görünüyordu,
+  kalktı. Bütün kimlik postaları (davet, yenileme, doğrulama, giriş,
+  e-posta değişikliği, kod) bu tek şablondan çıkıyor.
 */
 const GECE = "#0b1b2e";
 const SAMPANYA = "#b28a49";
-const FILDISI = "#f4f3ef";
-const CIZGI = "#e7e3da";
+const ZEMIN = "#ffffff";
+/* Kod kutusunun zemini: panelin --ivory'si. */
+const FILDISI = "#f2f2f7";
+/* Panelin --line'ı. */
+const CIZGI = "#e3e3e8";
 const YAZI = "#4a5160";
 const SOLUK = "#8a8f99";
 const SANS = "'Segoe UI',Helvetica,Arial,sans-serif";
@@ -176,12 +186,12 @@ function renderEmail(payload: HookPayload, brand: Brand) {
   /* Logo yalnızca genişlikle sınırlı: width+height ikisi birden verilince
      Outlook object-fit'i tanımadığı için kare ve dikey logolar yamuluyordu. */
   const logo = brand.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" width="160" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:auto;height:auto;max-width:160px;max-height:56px;border:0;">`
+    ? `<img src="${escapeHtml(brand.logoUrl)}" width="160" border="0" alt="${escapeHtml(brand.name)}" style="display:block;width:auto;height:auto;max-width:140px;max-height:44px;border:0;">`
     : `<p style="margin:0;font-family:${SERIF};font-size:26px;line-height:32px;color:${GECE};font-weight:700;">${escapeHtml(brand.name)}</p>`;
 
   const eylem = type === "reauthentication"
     ? `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td style="background-color:${FILDISI};border:1px solid ${CIZGI};border-radius:12px;padding:18px 30px;font-family:'Courier New',monospace;font-size:30px;line-height:36px;color:${GECE};font-weight:700;letter-spacing:8px;">${escapeHtml(code)}</td></tr></table>`
-    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" bgcolor="${vurgu}" style="background-color:${vurgu};border-radius:10px;border:1px solid ${SAMPANYA};"><a href="${escapeHtml(link)}" style="display:inline-block;padding:15px 30px;font-family:${SANS};font-size:15px;line-height:20px;color:#ffffff;text-decoration:none;font-weight:600;letter-spacing:0.3px;">${escapeHtml(copy.button)}&nbsp;&nbsp;&rarr;</a></td></tr></table>`;
+    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" bgcolor="${vurgu}" style="background-color:${vurgu};border-radius:10px;"><a href="${escapeHtml(link)}" style="display:inline-block;padding:15px 30px;font-family:${SANS};font-size:15px;line-height:20px;color:#ffffff;text-decoration:none;font-weight:600;letter-spacing:0.3px;">${escapeHtml(copy.button)}&nbsp;&nbsp;&rarr;</a></td></tr></table>`;
 
   const iletisim = [
     brand.contactEmail ? `<a href="mailto:${escapeHtml(brand.contactEmail)}" style="color:${YAZI};text-decoration:none;">${escapeHtml(brand.contactEmail)}</a>` : null,
@@ -201,14 +211,14 @@ function renderEmail(payload: HookPayload, brand: Brand) {
 
   const html = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(copy.subject)}</title>
 <!--[if mso]><style type="text/css">table,td,div,h1,p,a{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
-</head><body style="margin:0;padding:0;background-color:${FILDISI};">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${FILDISI};opacity:0;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${FILDISI}" style="width:100%;background-color:${FILDISI};"><tr><td align="center" style="padding:44px 16px;">
+</head><body style="margin:0;padding:0;background-color:${ZEMIN};">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:${ZEMIN};opacity:0;">${escapeHtml(preheader)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${ZEMIN}" style="width:100%;background-color:${ZEMIN};"><tr><td align="center" style="padding:40px 16px;">
 <table width="560" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:560px;">
-<tr><td style="padding:0 4px 18px;">${logo}</td></tr>
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${CIZGI};border-radius:16px;border-top:4px solid ${GECE};">
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${CIZGI};border-radius:18px;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
-<tr><td style="padding:38px 44px 0;">
+<tr><td style="padding:28px 44px 24px;border-bottom:1px solid ${CIZGI};">${logo}</td></tr>
+<tr><td style="padding:34px 44px 0;">
 <p style="margin:0;font-family:${SANS};font-size:11px;line-height:16px;color:${SAMPANYA};font-weight:700;letter-spacing:2.4px;text-transform:uppercase;">${escapeHtml(copy.eyebrow)}</p>
 <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:14px 0 0;"><tr><td width="36" height="1" bgcolor="${SAMPANYA}" style="width:36px;height:1px;line-height:1px;font-size:1px;background-color:${SAMPANYA};">&nbsp;</td></tr></table>
 <h1 style="margin:20px 0 0;font-family:${SERIF};font-size:30px;line-height:38px;color:${GECE};font-weight:400;letter-spacing:-0.2px;">${escapeHtml(copy.title)}</h1>
