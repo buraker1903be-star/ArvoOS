@@ -89,6 +89,17 @@ Bunlar geçmişte gerçek hatalara yol açtı; birim testleri bunları sabitliyo
   (kurumun kendi numarası mı Arvo'nunki mi) kapıdadır; ürün seçmez. Meta'nın
   kuralı gereği iş tarafının başlattığı mesaj onaylı şablonla gider, serbest
   metin yalnızca müşterinin son mesajından sonraki 24 saat içinde.
+- **Ürünlerin panel bildirimi de kapıdan geçer.** WhatsApp'ta olduğu
+  gibi: ürün `notifications` tablosuna doğrudan yazmaz,
+  `app/api/bridge/bildirim`'e çağırır. Yazma mantığı tek yerde
+  (`lib/panel-bildirimi.ts`), yetki de tek yerde
+  (`lib/kopru-yetki.ts`) — ikinci uç yazılırken ikisi de
+  kopyalanacaktı. Satır KURUMA yazılır (`audience: "organization"`,
+  `user_id` yok): kişiye özel satır anlık bildirim tetikleyicisini
+  çalıştırıyor ve her siparişin herkesin telefonunu çaldırması
+  istenen bir şey değil. Her bildirimde yineleme anahtarı verin;
+  ödeme sağlayıcısı bildirimini tekrarlıyor ve tarama aynı kaydı her
+  turda yeniden görüyor.
 - **Silme engeli, kaskat yüzeyi kadar geniş olmalı.** Bir kaydı silmeden
   önce "bağlı kayıt var mı" diye bakan kontrol, veritabanının o silmeyle
   BİRLİKTE götürdüğü her şeyi kapsamalı. Sözleşmede engel yalnızca işe ve
