@@ -241,6 +241,34 @@ listelerle aynı yapıya geçti:
   gerekçesi dosyada yazılı olmalı, yoksa bir sonraki "iyileştirme"
   onu sessizce kırar.
 
+## notFound() ve durum kodu
+
+`loading.tsx` bir Suspense sınırı kurar: yanıt iskeletle birlikte hemen
+akmaya başlar ve o noktadan sonra çağrılan `notFound()` **durum kodunu
+değiştiremez** — sayfa 404 ekranını gösterir ama HTTP 200 döner. Buna
+"yumuşak 404" denir.
+
+**Kamusal rotalarda bu kabul edilemez** ve düzeltildi (17.10.2026):
+`/durum/[slug]` ile `/is-durumu` 200 dönüyordu. Kurum denetimi sınırın
+ÜSTÜNE, segmentin `layout.tsx`'ine alındı; yerleşim Suspense sınırından
+önce çalıştığı için oradaki `notFound()` gerçek 404 üretiyor ve iskelet
+yerinde kalıyor. Yumuşak 404'ün bedeli görünmez ama gerçek: arama motoru
+sayfayı var sayıp dizine alır, izleme araçları kırık bağlantıyı
+yakalayamaz, bağlantıyı yanlış yazan müşteri "sayfa var ama boş"
+izlenimi alır. Yeni bir kamusal rota `notFound()` çağıracaksa denetimi
+yerleşime koyun.
+
+**Panel içinde bilerek böyle bırakıldı.** `app/panel/loading.tsx` bütün
+panel sayfalarını tek sınıra alıyor ve `notFound()` çağıran otuz kadar
+sayfa (silinmiş kayıt, bozuk kimlik, yetkisi olmayan platform sayfası)
+bu yüzden 200 döndürüyor. Üçü de burada önemsiz: sayfalar oturum
+arkasında, arama motoru görmüyor, kullanıcı doğru ekranı
+(`app/panel/not-found.tsx`) görüyor ve içerik render edilmediği için
+sızan bir şey yok. Otuz segmente yerleşim eklemek ya da panel
+iskeletinden vazgeçmek, kazandığından çok götürürdü. Durum kodunun
+gerçekten gerektiği bir panel sayfası çıkarsa çözüm aynı: o segmente
+`layout.tsx`.
+
 ## Sunucu işlemleri
 
 Panel işlemleri `runPanelAction` ile sarılır (`lib/panel-action.ts`): üretimde
