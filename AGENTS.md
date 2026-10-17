@@ -241,6 +241,33 @@ listelerle aynı yapıya geçti:
   gerekçesi dosyada yazılı olmalı, yoksa bir sonraki "iyileştirme"
   onu sessizce kırar.
 
+## Ürün köprüleri
+
+ArvoARC, ArvoLab ve ArvoRandevu kendi Supabase projelerinde; lisansı,
+modül erişimini ve personeli oradaki kopyadan okuyorlar, kopyayı
+ArvoOS yazıyor (`lib/arc-bridge.ts`, `lib/arvolab.ts`,
+`lib/randevu-bridge.ts`). Köprü durursa ürün son bilinen durumla
+çalışmaya devam eder — ama yeni lisans ulaşmaz.
+
+**Yansıtma tek yerden:** `lib/urun-yansitma.ts`. Lisans formu, modül
+erişim anahtarı ve "yeniden yansıt" düğmesi onu çağırır. Sonucu hata
+metnine çeviren karar da tek ve saf: `lib/yansitma-hatasi.ts`
+(testi `tests/unit/yansitma-hatasi.test.ts`).
+
+Bu yapı 17.10.2026'da kuruldu, çünkü karar üç ayrı yerde elle
+yazılıydı ve sapmıştı: "köprü kapalı" (`not_configured`) hâli ArvoLab
+ile Randevu'da hata sayılıyor, **ArvoARC'ta sayılmıyordu**. Ortam
+değişkenleri girilmemiş ya da girilip yeniden dağıtılmamış bir
+kurulumda ArvoARC lisansı yansımıyor, kurucu ekranında işlem BAŞARILI
+görünüyordu — mağaza hiç açılmıyor ve sebebi hiçbir yerde yazmıyordu.
+Yeni bir ürün köprüsü eklerken üç hâli (yazıldı / yazılamadı / köprü
+kapalı) yeniden düşünmeyin, tabloya satır ekleyin.
+
+Ödeme onayında köprü çağrıları BİLEREK sessiz
+(`syncArcTenantQuietly`): ödeme kararı veritabanına yazıldıktan sonra
+köprü hatası kararı geri almaz, kaçan yansıma on dakikalık eşitlemede
+yakalanır.
+
 ## notFound() ve durum kodu
 
 `loading.tsx` bir Suspense sınırı kurar: yanıt iskeletle birlikte hemen

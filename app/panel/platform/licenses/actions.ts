@@ -7,9 +7,6 @@ import { lisansOlcumEtiketi } from "@/lib/lisans-olcumleri";
 import { getPanelContext } from "@/lib/panel-context";
 import { isAddonProduct, productName, type ProductCode } from "@/lib/products";
 import { URUN_KOTALARI } from "@/lib/urun-kotasi";
-import { syncRandevuTenants } from "@/lib/randevu-bridge";
-import { syncArvolabLicense } from "@/lib/arvolab";
-import { syncArcTenants } from "@/lib/arc-bridge";
 import { urunLisansiniYansit } from "@/lib/urun-yansitma";
 import { OZEL_ALAN_ADI_UYARISI, ozelAlanAdiAcikMi } from "@/lib/paket-adlari";
 import { kurusOku } from "@/lib/turkish-amount";
@@ -195,24 +192,18 @@ async function urunuYenidenYansit__impl(formData: FormData) {
   if (!organizationId) throw new Error("Kurum seçilmedi.");
   if (!isAddonProduct(product)) throw new Error("Bu ürünün köprüsü yok.");
 
-  if (product === "arvolab") {
-    const synced = await syncArvolabLicense(organizationId);
-    if (synced === "not_configured")
-      throw new Error("ArvoLab köprüsü kapalı (ARVOLAB_SUPABASE_URL / ARVOLAB_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın.");
-    if (synced !== "synced") throw new Error("ArvoLab'a yansıtılamadı. Bağlantı ayarlarını kontrol edin.");
-  }
-  if (product === "arc") {
-    const arc = await syncArcTenants(organizationId);
-    if (arc.status === "failed" || arc.errors.length)
-      throw new Error(`ArvoARC'a yansıtılamadı: ${arc.errors[0] ?? "bilinmeyen hata"}`);
-  }
-  if (product === "randevu") {
-    const randevu = await syncRandevuTenants(organizationId);
-    if (randevu.status === "not_configured")
-      throw new Error("Randevu köprüsü kapalı (RANDEVU_SUPABASE_URL / RANDEVU_SUPABASE_SECRET_KEY). Değişkenleri ekleyip yeniden dağıtın.");
-    if (randevu.status === "failed" || randevu.errors.length)
-      throw new Error(`Randevu'ya yansıtılamadı: ${randevu.errors[0] ?? "bilinmeyen hata"}`);
-  }
+  /*
+    YANSITMA TEK YERDEN (17.10.2026 düzeltmesi).
+
+    Burada üç ürün dalı ELLE yeniden yazılıydı; oysa
+    lib/urun-yansitma.ts tam bunu önlemek için var ("ikisi ayrı
+    yazılsaydı birinin hata mesajı ötekinden sapardı"). Zaten
+    sapmışlardı: mesajlar farklıydı ve ArvoARC dalında "köprü
+    kapalı" hâli iki kopyada da hata sayılmıyordu. Lisans formu
+    (updateProductLicense) ve modül erişim anahtarı bu yardımcıyı
+    çağırıyor; yeniden yansıtma düğmesi de artık çağırıyor.
+  */
+  await urunLisansiniYansit(organizationId, product);
 
   revalidatePath(`/panel/platform/licenses?organization=${organizationId}`);
   // Müşteri detayının Lisanslar penceresi aynı bileşeni gösteriyor.
