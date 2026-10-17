@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { panelBildirimiYaz } from "@/lib/panel-bildirimi";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arcOrganizationIds, planArcSync, type ArcSource, type Row } from "@/lib/arc-bridge-plan";
 import { KURUM_KOPRU_SECIMI, lisansKopyasi } from "@/lib/kurum-kopru-alanlari";
@@ -261,4 +262,59 @@ export async function arcKopyalari(): Promise<Map<string, UrunKopyasi> | null> {
     periodEnd: satir.current_period_end ?? null,
     updatedAt: satir.updated_at ?? null,
   }]));
+}
+
+/*
+  ARVOARC'TAKİ YENİ İADE TALEPLERİNİ PANELE BİLDİRİR.
+
+  Neden ÇEKEREK değil de iterek değil: iade talebini müşteri
+  tarayıcıdan doğrudan veritabanı fonksiyonuna yazıyor
+  (arc_storefront_return_request), yani ArvoARC'ta yakalanacak bir
+  sunucu anı yok. Sipariş bildirimi kapıdan İTİLİYOR çünkü orada
+  sunucu akışı var; burada tarama tek yol.
+
+  SU SEVİYESİ TUTULMUYOR, yineleme anahtarı kullanılıyor: pencere
+  bilerek cron aralığından (10 dk) geniş, atlanan bir tur bildirimi
+  kaçırmasın. Aynı talep ikinci turda yeniden görülüyor ama
+  panelBildirimiYaz onu yazmıyor. Su seviyesi tutmak, seviyeyi
+  yazamadığı turda bildirimi sessizce kaybetmek demekti.
+*/
+const IADE_PENCERESI_DK = 60;
+
+export async function arcIadeleriBildir(): Promise<{ bakildi: number; yazildi: number } | null> {
+  const arc = arcClient();
+  const admin = createAdminClient();
+  if (!arc || !admin) return null;
+
+  const since = new Date(Date.now() - IADE_PENCERESI_DK * 60_000).toISOString();
+  const { data, error } = await arc
+    .from("arc_return_requests")
+    .select("id,organization_id,status,created_at,arc_orders(order_number,customer_name)")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error("[arc] iade talepleri okunamadı", error.message);
+    return null;
+  }
+
+  let yazildi = 0;
+  for (const satir of data ?? []) {
+    const siparis = (Array.isArray(satir.arc_orders) ? satir.arc_orders[0] : satir.arc_orders) as
+      | { order_number?: string | null; customer_name?: string | null }
+      | null;
+    const sonuc = await panelBildirimiYaz(admin, {
+      organizationId: satir.organization_id as string,
+      category: "arc_iade",
+      title: "İade talebi",
+      message: [siparis?.order_number, siparis?.customer_name].filter(Boolean).join(" · ") || "Yeni iade talebi",
+      dedupeKey: satir.id as string,
+      metadata: { return_request_id: satir.id, order_number: siparis?.order_number ?? null },
+      kaynak: "arc",
+    });
+    if (sonuc.yazildi) yazildi += 1;
+  }
+
+  return { bakildi: (data ?? []).length, yazildi };
 }

@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { syncArcTenants } from "@/lib/arc-bridge";
+import { arcIadeleriBildir, syncArcTenants } from "@/lib/arc-bridge";
 import { cronRotasi, type CronKosusu } from "@/lib/cron-kaydi";
 
 // ArvoARC köprüsünün tam eşitlemesi (lib/arc-bridge.ts). Vercel zamanlayıcısı
@@ -32,6 +32,15 @@ export async function GET(request: Request) {
 
 async function kosu(): Promise<CronKosusu> {
   const result = await syncArcTenants();
+
+  /*
+    Aynı turda ArvoARC'taki yeni iade taleplerini panele bildiriyoruz.
+    Eşitlemenin BAŞARISINA BAĞLI DEĞİL: lisans aktarımı düşse bile
+    iade talebi kurum sahibine ulaşmalı. Kendi hatası da eşitlemeyi
+    başarısız göstermiyor — ikisi ayrı iş, tek rotada koşuyorlar.
+  */
+  const iadeler = await arcIadeleriBildir();
+  if (iadeler === null) console.error("[arc] iade bildirimleri taranamadı");
   // Kısmi hata da başarısızlıktır: 200 dönmek Vercel'in zamanlayıcı
   // geçmişinde "sorun yok" gösteriyor, eksik kalan aktarım hiç fark edilmiyordu.
   const failed = result.status === "failed" || result.status === "partial";
@@ -43,6 +52,6 @@ async function kosu(): Promise<CronKosusu> {
   return {
     yanit: Response.json(result, { status: failed ? 500 : 200, headers: { "Cache-Control": "no-store" } }),
     sonuc: result.status === "failed" ? "hata" : result.status === "partial" ? "eksik" : "tamam",
-    ayrinti: { durum: result.status, kurum: result.organizations, uyelik: result.memberships, hata: result.errors.slice(0, 5) },
+    ayrinti: { durum: result.status, kurum: result.organizations, uyelik: result.memberships, iade: iadeler, hata: result.errors.slice(0, 5) },
   };
 }

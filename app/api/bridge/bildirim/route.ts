@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { KOPRU_URUNLERI, kopruYetkili, type KopruUrunu } from "@/lib/kopru-yetki";
+import { kurumVarMi, panelBildirimiYaz } from "@/lib/panel-bildirimi";
 
 /*
   ÜRÜNLERİN PANEL BİLDİRİMİ KAPISI.
@@ -89,57 +90,22 @@ export async function POST(istek: Request) {
     ekranda görünmez ve sessizce birikir; ürünün yanlış kimlik
     göndermesi sessiz kalmamalı.
   */
-  const { data: kurum, error: kurumHatasi } = await admin
-    .from("organizations")
-    .select("id")
-    .eq("id", organizationId)
-    .maybeSingle();
-  if (kurumHatasi) {
-    console.error("[bildirim] kurum okunamadı", kurumHatasi.message);
-    return json(500, { error: "Kurum doğrulanamadı." });
-  }
+  const kurum = await kurumVarMi(admin, organizationId);
+  if (kurum === null) return json(500, { error: "Kurum doğrulanamadı." });
   if (!kurum) return json(404, { error: "Kurum bulunamadı." });
 
-  const dedupeKey = kirp(govde.dedupeKey, 120);
-  if (dedupeKey) {
-    /*
-      AYNI OLAY İKİ KEZ BİLDİRİLMESİN. PayTR ödeme bildirimini
-      yanıt alana kadar TEKRARLIYOR ve ArvoARC her tekrarda sipariş
-      onay akışını yeniden çalıştırabiliyor; anahtarsız bırakılsa
-      kurum sahibi aynı sipariş için üç bildirim görürdü.
-    */
-    const { data: var_mi, error: okumaHatasi } = await admin
-      .from("notifications")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("category", category)
-      .eq("metadata->>dedupe_key", dedupeKey)
-      .limit(1)
-      .maybeSingle();
-    /* Okunamazsa yazmaya devam: eksik bildirimdense yinelenen bildirim. */
-    if (okumaHatasi) console.error("[bildirim] yineleme denetimi düştü", okumaHatasi.message);
-    if (var_mi) return json(200, { yazildi: false, sebep: "zaten var" });
-  }
+  const sonuc = await panelBildirimiYaz(admin, {
+    organizationId,
+    category,
+    title,
+    message,
+    actionUrl,
+    dedupeKey: kirp(govde.dedupeKey, 120),
+    metadata: govde.metadata,
+    kaynak: product,
+  });
 
-  const { data: satir, error } = await admin
-    .from("notifications")
-    .insert({
-      organization_id: organizationId,
-      user_id: null,
-      audience: "organization",
-      category,
-      title,
-      message,
-      action_url: actionUrl || null,
-      metadata: { ...(govde.metadata ?? {}), kaynak: product, ...(dedupeKey ? { dedupe_key: dedupeKey } : {}) },
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error("[bildirim] yazılamadı", error.message);
-    return json(500, { error: "Bildirim yazılamadı." });
-  }
-
-  return json(200, { yazildi: true, id: satir.id });
+  if (!sonuc.yazildi && sonuc.sebep === "hata") return json(500, { error: "Bildirim yazılamadı." });
+  if (!sonuc.yazildi) return json(200, { yazildi: false, sebep: sonuc.sebep });
+  return json(200, { yazildi: true, id: sonuc.id });
 }
