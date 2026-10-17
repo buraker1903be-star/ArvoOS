@@ -8,6 +8,7 @@ import { OrgLookupShell } from "../durum/[slug]/lookup-shell";
 import "../durum/[slug]/status-lookup.css";
 import { kurumSimgeleri } from "@/lib/kurum-simgesi";
 import { alanAdiKurumu } from "@/lib/alan-adi-kurumu";
+import { kurumMarkasi } from "@/lib/takip-markasi";
 
 /*
   Sekme başlığı ve simgesi kurumun: kendi alan adında açılan bu ekran
@@ -34,8 +35,9 @@ export default async function CustomDomainStatusLookupPage({ searchParams }: { s
   const organizationId = await alanAdiKurumu(supabase, host);
   if (!organizationId) notFound();
 
-  const { data: orgData } = await supabase.rpc("get_public_organization_branding_by_id", { p_org_id: organizationId });
-  const org = Array.isArray(orgData) ? orgData[0] : orgData;
+  /* Varlık denetimi YERLEŞİMDE (yumuşak 404 notu orada); burada
+     marka yalnızca okunuyor ve aynı istekte tek sorgu yapılıyor. */
+  const org = await kurumMarkasi(supabase, organizationId);
   if (!org) notFound();
 
   return (

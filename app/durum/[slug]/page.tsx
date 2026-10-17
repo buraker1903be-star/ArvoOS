@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { slugMarkasi } from "@/lib/takip-markasi";
 import { StatusLookupForm } from "./lookup-form";
 import { OrgLookupShell } from "./lookup-shell";
 import "./status-lookup.css";
@@ -12,8 +13,9 @@ type Params={slug:string};
 export async function generateMetadata({params}:{params:Promise<Params>}):Promise<Metadata>{
  const {slug}=await params;
  const supabase=await createClient();
- const {data}=await supabase.rpc("get_public_organization_branding",{p_slug:slug});
- const org=Array.isArray(data)?data[0]:data;
+ /* Marka tek kaynaktan ve 60 sn önbellekli (lib/takip-markasi):
+    başlık, yerleşim ve sayfa aynı istekte tek sorgu yapıyor. */
+ const org=await slugMarkasi(supabase,slug);
  if(!org)return {title:"İş Durumu Sorgula"};
  return {
   title:`${org.name} | İş Durumu Sorgula`,
@@ -22,7 +24,10 @@ export async function generateMetadata({params}:{params:Promise<Params>}):Promis
  };
 }
 export default async function StatusLookupPage({params,searchParams}:{params:Promise<Params>;searchParams:Promise<{code?:string}>}){
- const {slug}=await params;const {code}=await searchParams;const supabase=await createClient();const {data}=await supabase.rpc("get_public_organization_branding",{p_slug:slug});const org=Array.isArray(data)?data[0]:data;if(!org)notFound();
+ const {slug}=await params;const {code}=await searchParams;const supabase=await createClient();
+ /* Kurumun varlığı YERLEŞİMDE denetleniyor (yumuşak 404 notu
+    orada); buradaki kontrol yalnızca tipi daraltıyor. */
+ const org=await slugMarkasi(supabase,slug);if(!org)notFound();
  return (
   <OrgLookupShell org={org} title="Dosya Takibi" description="Dosyanızın güncel durumunu görmek için WhatsApp üzerinden size iletilen 6 haneli takip kodunu girin.">
    <StatusLookupForm orgSlug={slug} prefillCode={code}/>
