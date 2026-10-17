@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
-import { GatewayError, sendThroughGateway, type GatewayProduct, type GatewaySender } from "@/lib/whatsapp-gateway";
+import { GatewayError, sendThroughGateway, type GatewaySender } from "@/lib/whatsapp-gateway";
+import { KOPRU_URUNLERI, kopruYetkili, type KopruUrunu } from "@/lib/kopru-yetki";
 
 /*
   Dört ürünün WhatsApp gönderim kapısı.
@@ -9,9 +9,10 @@ import { GatewayError, sendThroughGateway, type GatewayProduct, type GatewaySend
   tek yerde hata haritası. Dört ürün ayrı ayrı Meta'ya konuşsaydı dört yerde
   token, dört ayrı hata yönetimi ve dağınık kayıt olurdu.
 
-  Yetki: ürün başına ayrı gizli anahtar (x-arvo-bridge-secret). Randevu
-  RANDEVU_BRIDGE_SECRET, diğerleri PRODUCT_BRIDGE_SECRET kullanır; biri
-  sızarsa diğer ürün açılmasın. Anahtarı tanımlı olmayan ürün kapalıdır.
+  Yetki lib/kopru-yetki.ts'te: ürün başına ayrı gizli anahtar
+  (x-arvo-bridge-secret). İkinci köprü ucu (bildirim) yazılırken
+  denetim oraya taşındı — aynı kuralın iki kopyası, birinde
+  düzeltilen bir eksiğin ötekinde kalması demekti.
 
   Gövde:
     { product, organizationId, sender?, messages: [{ ref?, to, template, params?, language?, body? }] }
@@ -25,33 +26,16 @@ export const dynamic = "force-dynamic";
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
-const PRODUCTS: GatewayProduct[] = ["arvoos", "arvolab", "arc", "randevu"];
-
-/** Ürünün kendi anahtarı; Randevu'nunki ayrı (lib/randevu-bridge-auth.ts ile aynı değer). */
-function secretFor(product: GatewayProduct): string | undefined {
-  return product === "randevu" ? process.env.RANDEVU_BRIDGE_SECRET : process.env.PRODUCT_BRIDGE_SECRET;
-}
-
-function authorized(request: Request, product: GatewayProduct) {
-  const secret = secretFor(product);
-  const sent = request.headers.get("x-arvo-bridge-secret");
-  if (!secret || !sent) return false;
-  const expected = Buffer.from(secret);
-  const received = Buffer.from(sent);
-  // Uzunluk farkı timingSafeEqual'i patlatır; önce onu eşitle.
-  return expected.length === received.length && timingSafeEqual(expected, received);
-}
-
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     product?: string; organizationId?: string; sender?: string; messages?: unknown;
   } | null;
   if (!body) return json(400, { error: "Geçersiz istek gövdesi." });
 
-  const product = body.product as GatewayProduct;
-  if (!PRODUCTS.includes(product)) return json(400, { error: "Geçersiz ürün." });
+  const product = body.product as KopruUrunu;
+  if (!KOPRU_URUNLERI.includes(product)) return json(400, { error: "Geçersiz ürün." });
   // Yetkisizlikte ürün adını doğrulamadan önce sızdırmamak için tek mesaj.
-  if (!authorized(request, product)) return json(401, { error: "Yetkisiz." });
+  if (!kopruYetkili(request, product)) return json(401, { error: "Yetkisiz." });
 
   const sender = body.sender as GatewaySender | undefined;
   if (sender && sender !== "organization" && sender !== "arvo") return json(400, { error: "Geçersiz gönderen." });
