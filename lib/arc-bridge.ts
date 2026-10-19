@@ -300,6 +300,7 @@ export async function arcIadeleriBildir(): Promise<{ bakildi: number; yazildi: n
   }
 
   let yazildi = 0;
+  // tuzak-tamam: toplam değil, bu turda yazılan bildirim sayısı (cron raporu); 200 sınırı 60 dakikalık pencerede.
   for (const satir of data ?? []) {
     const siparis = (Array.isArray(satir.arc_orders) ? satir.arc_orders[0] : satir.arc_orders) as
       | { order_number?: string | null; customer_name?: string | null }
