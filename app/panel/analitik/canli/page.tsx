@@ -2,7 +2,7 @@ import { getPanelContext } from "@/lib/panel-context";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { GenelBakis } from "../../os/genel-bakis";
 import { CIHAZ_ADI, sayiYaz, siteleriOku, ulkeAdi } from "../veri";
-import { DagilimKarti, KurulumUyarisi, SeciciSeridi } from "../parcalar";
+import { DagilimKarti, KurulumUyarisi, SeciciSeridi, SeritKutusu } from "../parcalar";
 import { CanliHarita, type HaritaNoktasi } from "./canli-harita";
 import { CanliYenile } from "./yenile";
 
@@ -57,23 +57,10 @@ export default async function AnalitikCanli({ searchParams }: { searchParams: Pr
       <SeciciSeridi siteler={siteler} secili={secili} yol="/panel/analitik/canli" />
 
       <section className="an-serit" aria-label="Şu an">
-        <div className="an-serit-kutu is-canli">
-          <span className="an-nabiz" aria-hidden="true" />
-          <strong>{sayiYaz(canli.suAn)}</strong>
-          <small>şu an sitede</small>
-        </div>
-        <div className="an-serit-kutu">
-          <strong>{sayiYaz(canli.sonSaatZiyaretci)}</strong>
-          <small>ziyaretçi · son 1 saat</small>
-        </div>
-        <div className="an-serit-kutu">
-          <strong>{sayiYaz(canli.sonSaat)}</strong>
-          <small>sayfa görüntüleme · son 1 saat</small>
-        </div>
-        <div className="an-serit-kutu" data-tone={canli.sonSaatForm ? "success" : undefined}>
-          <strong>{sayiYaz(canli.sonSaatForm)}</strong>
-          <small>form gönderimi · son 1 saat</small>
-        </div>
+        <SeritKutusu canli etiket="Şu an sitede" deger={sayiYaz(canli.suAn)} alt="son 5 dakikada hareket eden" />
+        <SeritKutusu etiket="Ziyaretçi" deger={sayiYaz(canli.sonSaatZiyaretci)} alt="son 1 saat" />
+        <SeritKutusu etiket="Sayfa görüntüleme" deger={sayiYaz(canli.sonSaat)} alt="son 1 saat" />
+        <SeritKutusu etiket="Form gönderimi" deger={sayiYaz(canli.sonSaatForm)} alt="son 1 saat" ton={canli.sonSaatForm ? "success" : undefined} />
       </section>
 
       <section className="an-canli-ust">

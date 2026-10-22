@@ -8,7 +8,7 @@ import "./analitik.css";
   Analitik ekranlarının ortak parçaları. Dağılım kartı genel bakışın
   liste kartıyla (os/genel-bakis.tsx ListeKarti) aynı kabukta, ama
   satırları bağlantı DEĞİL: "Instagram 42" tıklanacak bir kayıt değil,
-  bir pay. Payı satırın altındaki ince çubuk gösteriyor.
+  bir pay. Payı satırın arkasındaki soluk dolgu gösteriyor.
 */
 export function DagilimKarti({ baslik, alt, bos, satirlar, toplam, ekSutun }: {
   baslik: string;
@@ -84,5 +84,34 @@ export function KurulumUyarisi({ baslik, metin, yonetebilir }: { baslik: string;
         ? <Link className="panel-primary" href="/panel/analitik/kurulum">Kuruluma git</Link>
         : <p className="an-not">Kurulumu kurum sahibi ya da yönetici yapabilir.</p>}
     </section>
+  );
+}
+
+/*
+  ÜST ŞERİT KUTUSU. Genel bakış ve canlı ekran aynı kutuyu kullanıyor.
+  Değişim önceki AYNI UZUNLUKTAKİ dönemle; önceki dönem boşsa yüzde
+  yazılmıyor (sıfırdan büyümenin yüzdesi yok).
+*/
+export function SeritKutusu({ deger, etiket, alt, degisimYuzde, ton, canli }: {
+  deger: string;
+  etiket: string;
+  alt?: string;
+  degisimYuzde?: number | null;
+  ton?: "success";
+  canli?: boolean;
+}) {
+  return (
+    <div className={canli ? "an-serit-kutu is-canli" : "an-serit-kutu"} data-tone={ton}>
+      {canli ? <span className="an-nabiz" aria-hidden="true" /> : null}
+      <small className="an-serit-etiket">{etiket}</small>
+      <strong>{deger}</strong>
+      {degisimYuzde !== undefined ? (
+        degisimYuzde === null
+          ? <small className="an-serit-alt">önceki dönemde veri yok</small>
+          : <small className="an-serit-alt" data-yon={degisimYuzde > 0 ? "artis" : degisimYuzde < 0 ? "dusus" : undefined}>
+              {degisimYuzde > 0 ? "▲" : degisimYuzde < 0 ? "▼" : "•"} %{Math.abs(degisimYuzde)} önceki döneme göre
+            </small>
+      ) : alt ? <small className="an-serit-alt">{alt}</small> : null}
+    </div>
   );
 }
