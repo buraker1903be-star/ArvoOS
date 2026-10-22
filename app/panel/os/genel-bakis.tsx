@@ -17,7 +17,7 @@ import "../dashboard.css";
 
 export const GENEL_BAKIS_SATIR = 6;
 
-export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
+export function GenelBakis({ baslik, gizliBaslik, ust, uyari, sinif, children }: {
   /** Görünen başlık (ana ekranda selamlama). Modül genel bakışlarında yok. */
   baslik?: ReactNode;
   /*
@@ -31,10 +31,12 @@ export function GenelBakis({ baslik, gizliBaslik, ust, uyari, children }: {
   ust?: ReactNode;
   /** Okunamayan veriler için uyarı satırı. */
   uyari?: string[];
+  /** Ek sınıf: kendi düzenini kuran ekranlar (ör. Analitik, tek ekrana sabit). */
+  sinif?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="dash dash-v2">
+    <div className={sinif ? `dash dash-v2 ${sinif}` : "dash dash-v2"}>
       {baslik ? (
         <header className="dash-hero">
           <div>

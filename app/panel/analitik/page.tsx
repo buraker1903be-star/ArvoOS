@@ -3,6 +3,7 @@ import { todayInIstanbul } from "@/lib/istanbul-date";
 import { kaynakAdi } from "@/lib/analitik-olay";
 import { analitikSerisi, degisim, gunEkle, type GunSatiri } from "@/lib/analitik-seri";
 import { GenelBakis } from "../os/genel-bakis";
+import { PanelModal } from "../components/panel-modal";
 import { CIHAZ_ADI, sayiYaz, siteleriOku, ulkeAdi, yuzde } from "./veri";
 import { DagilimKarti, KurulumUyarisi, SeciciSeridi, SeritKutusu } from "./parcalar";
 import { CihazSeridi, TrendGrafigi } from "./trend";
@@ -11,10 +12,11 @@ import { CihazSeridi, TrendGrafigi } from "./trend";
   ANALİTİK · GENEL BAKIŞ. Bütün sayılar analitik_ozet'ten
   (20261022092820); sayfa ham olay okumuyor.
 
-  DÜZEN (22.10.2026, canlı ekranla aynı dil — kurum sahibinin isteği):
-  beş sayılık şerit → trend → nereden geldiler (kaynak, ülke, şehir) →
-  ne yaptılar (sayfalar, giriş, kampanya) → nasıl geldiler (cihaz,
-  tarayıcı, form sayfaları). Eskiden genel bakış şablonunun 14 çubukluk
+  DÜZEN (22.10.2026, kurum sahibinin altın kuralı: panel sayfası AŞAĞI
+  KAYMAZ). Masaüstünde ekrana sabit: şerit → trend + kaynaklar → dört
+  kart (konum, sayfalar, kampanyalar, cihazlar). Kartlar ilk birkaç
+  satırı gösterir; şehirler, giriş/form sayfaları ve tarayıcılar
+  "Tümü" penceresinde. Eskiden genel bakış şablonunun 14 çubukluk
   grafiği kullanılıyordu; 30 gün seçilince çubuklar iki satıra taşıp
   kartların üstüne biniyordu.
 
@@ -69,7 +71,7 @@ export default async function AnalitikGenelBakis({ searchParams }: { searchParam
   const sayfaBasina = ozet.ziyaretci ? (ozet.sayfa / ozet.ziyaretci).toLocaleString("tr-TR", { maximumFractionDigits: 1 }) : "—";
 
   return (
-    <GenelBakis gizliBaslik="Analitik · Genel bakış">
+    <GenelBakis gizliBaslik="Analitik · Genel bakış" sinif="an-ekran an-ekran--genel">
       <SeciciSeridi siteler={siteler} secili={secili} yol="/panel/analitik" gun={gun} gunler={GUNLER} />
       {!secili.ilk_olay_at ? (
         <KurulumUyarisi baslik="Takip kodundan henüz veri gelmedi" yonetebilir={yonetebilir}
@@ -84,41 +86,59 @@ export default async function AnalitikGenelBakis({ searchParams }: { searchParam
         <SeritKutusu etiket="Ziyaret başına sayfa" deger={sayfaBasina} alt={`tek sayfada çıkan ${yuzde(ozet.tekSayfa, ozet.ziyaretci)}`} />
       </section>
 
-      <article className="dash-card an-trend-kart">
-        <header className="dash-card-head">
-          <div><h2>Günlük ziyaretçi</h2><p>Son {gun} gün · günlük tekil ziyaretçi · yeşil nokta: form gönderilen gün</p></div>
-        </header>
-        <TrendGrafigi gunler={gunler} enCok={enCok} />
-      </article>
-
-      <section className="an-izgara an-izgara--genis-ilk" aria-label="Ziyaretçiler nereden geldi">
-        <DagilimKarti baslik="Kaynaklar" alt="Ziyaretçi nereden geldi · formu dolduran" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci} ekSutun="Form"
-          satirlar={ozet.kaynaklar.map((k) => ({ anahtar: k.ad, ad: k.ad, adet: k.adet, ek: k.form ? `${sayiYaz(k.form)} · ${yuzde(k.form, k.adet)}` : undefined }))} />
-        <DagilimKarti baslik="Ülkeler" alt="Ziyaretçinin bağlandığı ülke" bos="Konum bilgisi yok." toplam={ozet.ziyaretci}
-          satirlar={ozet.ulkeler.map((u) => ({ anahtar: u.ad, ad: ulkeAdi(u.ad), adet: u.adet }))} />
-        <DagilimKarti baslik="Şehirler" alt="Yaklaşık konum" bos="Konum bilgisi yok." toplam={ozet.ziyaretci}
-          satirlar={ozet.sehirler.map((s) => ({ anahtar: `${s.ad}|${s.ulke}`, ad: <>{s.ad} <small>{ulkeAdi(s.ulke)}</small></>, adet: s.adet }))} />
+      <section className="an-orta" aria-label="Trend ve kaynaklar">
+        <article className="dash-card an-trend-kart">
+          <header className="dash-card-head">
+            <div><h2>Günlük ziyaretçi</h2><p>Son {gun} gün · yeşil nokta: form gönderilen gün</p></div>
+          </header>
+          <TrendGrafigi gunler={gunler} enCok={enCok} />
+        </article>
+        <DagilimKarti baslik="Kaynaklar" alt="Nereden geldi · formu dolduran" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci} ekSutun="Form" sinir={6}
+          satirlar={ozet.kaynaklar.map((k) => ({ anahtar: k.ad, ad: k.ad, adet: k.adet, ek: k.form ? `${sayiYaz(k.form)} · ${yuzde(k.form, k.adet)}` : undefined }))}
+          ayrinti={<>
+            <DagilimKarti baslik="Kaynaklar" alt="Ziyaretçi nereden geldi · formu dolduran ve oranı" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci} ekSutun="Form" sinif="an-pencere-kart"
+              satirlar={ozet.kaynaklar.map((k) => ({ anahtar: k.ad, ad: k.ad, adet: k.adet, ek: k.form ? `${sayiYaz(k.form)} · ${yuzde(k.form, k.adet)}` : undefined }))} />
+            <DagilimKarti baslik="Kampanyalar" alt="utm_campaign ile işaretli bağlantılar" bos="Kampanya bağlantısıyla gelen yok." toplam={ozet.ziyaretci} sinif="an-pencere-kart"
+              satirlar={ozet.kampanyalar.map((k) => ({ anahtar: `${k.ad}|${k.kaynak}`, ad: <>{k.ad} <small>{kaynakAdi(k.kaynak)}</small></>, adet: k.adet }))} />
+          </>} />
       </section>
 
-      <section className="an-izgara" aria-label="Ne yaptılar">
-        <DagilimKarti baslik="En çok bakılan sayfalar" alt="Sayfa görüntüleme" bos="Bu aralıkta ziyaret yok." toplam={ozet.sayfa}
-          satirlar={ozet.sayfalar.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.sayfa }))} />
-        <DagilimKarti baslik="Giriş sayfaları" alt="Ziyaretçinin ilk açtığı sayfa" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci}
-          satirlar={ozet.girisSayfalari.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.adet }))} />
-        <DagilimKarti baslik="Kampanyalar" alt="utm_campaign ile işaretli bağlantılar" toplam={ozet.ziyaretci}
-          bos="Kampanya bağlantısıyla gelen yok. Paylaştığınız bağlantının sonuna ?utm_source=instagram&utm_campaign=kampanya-adi ekleyin."
+      <section className="an-alt" aria-label="Ayrıntılar">
+        <DagilimKarti baslik="Konum" alt="Ülke · şehirler pencerede" bos="Konum bilgisi yok." toplam={ozet.ziyaretci} sinir={4}
+          satirlar={ozet.ulkeler.map((u) => ({ anahtar: u.ad, ad: ulkeAdi(u.ad), adet: u.adet }))}
+          ayrinti={<>
+            <DagilimKarti baslik="Ülkeler" alt="Ziyaretçinin bağlandığı ülke" bos="Konum bilgisi yok." toplam={ozet.ziyaretci} sinif="an-pencere-kart"
+              satirlar={ozet.ulkeler.map((u) => ({ anahtar: u.ad, ad: ulkeAdi(u.ad), adet: u.adet }))} />
+            <DagilimKarti baslik="Şehirler" alt="Yaklaşık konum" bos="Konum bilgisi yok." toplam={ozet.ziyaretci} sinif="an-pencere-kart"
+              satirlar={ozet.sehirler.map((s) => ({ anahtar: `${s.ad}|${s.ulke}`, ad: <>{s.ad} <small>{ulkeAdi(s.ulke)}</small></>, adet: s.adet }))} />
+          </>} />
+        <DagilimKarti baslik="Sayfalar" alt="En çok bakılan · giriş ve form sayfaları pencerede" bos="Bu aralıkta ziyaret yok." toplam={ozet.sayfa} sinir={4}
+          satirlar={ozet.sayfalar.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.sayfa }))}
+          ayrinti={<>
+            <DagilimKarti baslik="En çok bakılan sayfalar" alt="Sayfa görüntüleme" bos="Bu aralıkta ziyaret yok." toplam={ozet.sayfa} sinif="an-pencere-kart"
+              satirlar={ozet.sayfalar.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.sayfa }))} />
+            <DagilimKarti baslik="Giriş sayfaları" alt="Ziyaretçinin ilk açtığı sayfa" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci} sinif="an-pencere-kart"
+              satirlar={ozet.girisSayfalari.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.adet }))} />
+            <DagilimKarti baslik="Form gönderilen sayfalar" alt="Dönüşüm" bos="Bu aralıkta form gönderilmedi." toplam={ozet.form} sinif="an-pencere-kart"
+              satirlar={ozet.formSayfalari.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.adet }))} />
+          </>} />
+        <DagilimKarti baslik="Kampanyalar" alt="utm_campaign bağlantıları" toplam={ozet.ziyaretci} sinir={4}
+          bos="Paylaştığınız bağlantıya ?utm_source=instagram&utm_campaign=ad ekleyin; burada görünür."
           satirlar={ozet.kampanyalar.map((k) => ({ anahtar: `${k.ad}|${k.kaynak}`, ad: <>{k.ad} <small>{kaynakAdi(k.kaynak)}</small></>, adet: k.adet }))} />
-      </section>
-
-      <section className="an-izgara" aria-label="Nasıl geldiler">
         <article className="dash-card dash-col an-dagilim">
-          <header className="dash-card-head"><div><h2>Cihazlar</h2><p>Ziyaretçinin kullandığı</p></div></header>
+          <header className="dash-card-head an-kart-bas">
+            <div><h2>Cihazlar</h2><p>Tarayıcılar pencerede</p></div>
+            {ozet.tarayicilar.length ? (
+              <PanelModal triggerLabel="Tarayıcılar" triggerClassName="an-tumu" title="Tarayıcılar" description="Uygulama içi tarayıcılar (Instagram, Facebook) ayrı" boy="genis">
+                <div className="an-pencere">
+                  <DagilimKarti baslik="Tarayıcılar" alt="Ziyaretçinin kullandığı" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci} sinif="an-pencere-kart"
+                    satirlar={ozet.tarayicilar.map((t) => ({ anahtar: t.ad, ad: t.ad, adet: t.adet }))} />
+                </div>
+              </PanelModal>
+            ) : null}
+          </header>
           {ozet.cihazlar.length ? <CihazSeridi cihazlar={ozet.cihazlar} adlar={CIHAZ_ADI} /> : <p className="dash-empty">Bu aralıkta ziyaret yok.</p>}
         </article>
-        <DagilimKarti baslik="Tarayıcılar" alt="Uygulama içi tarayıcılar ayrı" bos="Bu aralıkta ziyaret yok." toplam={ozet.ziyaretci}
-          satirlar={ozet.tarayicilar.map((t) => ({ anahtar: t.ad, ad: t.ad, adet: t.adet }))} />
-        <DagilimKarti baslik="Form gönderilen sayfalar" alt="Dönüşüm" bos="Bu aralıkta form gönderilmedi." toplam={ozet.form}
-          satirlar={ozet.formSayfalari.map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.adet }))} />
       </section>
     </GenelBakis>
   );

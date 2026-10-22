@@ -45,13 +45,11 @@
 .an-nabiz{position:absolute;top:var(--sp-3);right:var(--sp-3);width:10px;height:10px;border-radius:50%;background:var(--success);animation:an-nabiz 1.6s ease-out infinite}
 @keyframes an-nabiz{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
 
-.an-canli-ust{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(260px,1fr);gap:var(--sp-4);align-items:stretch}
-.an-canli-alt{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:var(--sp-4);align-items:stretch}
 
 /* Harita */
 .an-harita-kart{display:flex;flex-direction:column;gap:var(--sp-2)}
-.an-harita{position:relative;flex:1;min-height:280px;border-radius:var(--r-sm);background:var(--surface-2);overflow:hidden}
-.an-harita svg{display:block;width:100%;height:100%;aspect-ratio:2/1}
+.an-harita{position:relative;flex:1;min-height:0;border-radius:var(--r-sm);background:var(--surface-2);overflow:hidden}
+.an-harita svg{display:block;width:100%;height:100%}
 .an-harita-arac{position:absolute;top:var(--sp-2);right:var(--sp-2);z-index:1;display:flex;gap:var(--sp-1)}
 .an-harita-arac .an-hap{min-height:28px;cursor:pointer;font:inherit;font-size:var(--fs-micro)}
 .an-harita-arac .an-hap[aria-pressed="true"]{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-strong)}
@@ -65,7 +63,7 @@
 @media (prefers-reduced-motion:reduce){.an-nabiz,.an-dalga{animation:none}}
 
 /* Akış */
-.an-akis-liste{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;max-height:360px;overflow:auto}
+.an-akis-liste{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;overflow:auto}
 .an-akis-liste li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--sp-3);align-items:baseline;padding:var(--sp-2);border-bottom:1px solid var(--line-soft)}
 .an-akis-liste li:last-child{border-bottom:0}
 .an-akis-liste li[data-tur="form"]{border-radius:var(--r-sm);background:color-mix(in srgb,var(--success) 7%,transparent)}
@@ -75,15 +73,6 @@
 .an-akis-ana b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:var(--fw-medium)}
 .an-akis-ana small{color:var(--muted)}
 
-@media (max-width:1100px){
-  .an-canli-alt{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .an-akis{grid-column:1 / -1}
-}
-@media (max-width:760px){
-  .an-serit{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .an-canli-ust,.an-canli-alt{grid-template-columns:minmax(0,1fr)}
-  .an-harita{min-height:200px}
-}
 
 /* Kurulum */
 .an-kurulum{display:flex;flex-direction:column;gap:var(--sp-4)}
@@ -102,12 +91,10 @@
 .an-rehber ol{margin:0 0 var(--sp-3);padding-left:calc(var(--sp-4) + var(--sp-2));color:var(--ink-soft);font-size:var(--fs-sm);line-height:1.6}
 
 /* Genel bakış ızgaraları: üç kart; ilk sıranın ilk kartı (kaynaklar) geniş */
-.an-izgara{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);align-items:stretch}
-.an-izgara--genis-ilk{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)}
 
 /* Trend grafiği: sütun sayısı gün sayısından, her aralıkta tek satır */
 .an-trend-kart{display:flex;flex-direction:column;gap:var(--sp-3)}
-.an-trend{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--sp-2);height:220px}
+.an-trend{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--sp-2);flex:1;min-height:0}
 .an-trend-eksen{display:flex;flex-direction:column;justify-content:space-between;padding-bottom:22px;color:var(--muted);font-size:var(--fs-micro);font-variant-numeric:tabular-nums;text-align:right}
 .an-trend-cubuklar{display:grid;grid-template-columns:repeat(var(--gun, 14),minmax(0,1fr));gap:clamp(2px,0.6vw,8px);margin:0;padding:0;list-style:none;background:linear-gradient(var(--line-soft),var(--line-soft)) 0 0/100% 1px no-repeat,linear-gradient(var(--line-soft),var(--line-soft)) 0 calc((100% - 22px) / 2)/100% 1px no-repeat,linear-gradient(var(--line),var(--line)) 0 calc(100% - 22px)/100% 1px no-repeat}
 .an-trend-cubuklar li{display:flex;flex-direction:column;min-width:0}
@@ -135,13 +122,55 @@
 .an-cihaz-aciklama b{margin-left:auto;font-variant-numeric:tabular-nums}
 .an-cihaz-aciklama small{min-width:36px;color:var(--muted);text-align:right}
 
-@media (max-width:1100px){
-  .an-serit--bes{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .an-izgara,.an-izgara--genis-ilk{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .an-izgara--genis-ilk > :first-child{grid-column:1 / -1}
+
+/* ---------- TEK EKRAN (22.10.2026, kurum sahibinin altın kuralı) ----------
+   Panel sayfası aşağı KAYMAZ. Yükseklik liste sayfalarıyla aynı formülden
+   (os-shell.css .liste-sayfa): üst çubuk, üst boşluk ve dock düşülür;
+   çubuk ya da dock değişirse kendiliğinden uyar. Sığmayan liste kartın
+   içinde sınırlı, tamamı "Tümü" penceresinde. Zincirin her halkasında
+   min-height:0 — yoksa flex/grid öğesi içeriği kadar uzayıp taşar. */
+@media (min-width:901px){
+  .an-ekran{
+    display:flex;flex-direction:column;gap:var(--sp-3);
+    height:calc(100dvh - var(--os-bar-h) - var(--sp-6) - var(--os-dock-space) - env(safe-area-inset-bottom));
+    /* Çok kısa pencerede okunmaz hâle gelmesin; orada sayfa kayar. */
+    min-height:600px;
+  }
+  .an-ekran > *{flex:0 0 auto}
+  .an-ekran .dash-card{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+  .an-ekran .an-satirlar{overflow:hidden}
+
+  .an-ekran--genel .an-orta{flex:1.3 1 0;min-height:0;display:grid;grid-template-columns:minmax(0,2fr) minmax(300px,1fr);gap:var(--sp-3)}
+  .an-ekran--genel .an-alt{flex:1 1 0;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-3)}
+
+  .an-ekran--canli .an-canli{flex:1 1 0;min-height:0;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1.3fr) minmax(0,1fr);gap:var(--sp-3)}
+  .an-ekran--canli .an-harita-kart{grid-row:1 / 3}
+  .an-ekran--canli .an-akis{grid-column:2 / 4}
 }
-@media (max-width:760px){
-  .an-serit--bes{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .an-izgara,.an-izgara--genis-ilk{grid-template-columns:minmax(0,1fr)}
-  .an-trend{height:180px}
+/* Şerit sıkı: dört/beş kutu tek satır, sayı bir boy küçük */
+.an-ekran .an-serit-kutu{padding:var(--sp-2) var(--sp-4);gap:2px}
+.an-ekran .an-serit-kutu strong{font-size:var(--fs-xl)}
+
+/* Kart başlığı: başlık solda, "Tümü" sağda */
+.an-kart-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-2)}
+.an-tumu{flex:none;display:inline-flex;align-items:center;min-height:28px;padding:0 var(--sp-3);border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-soft);font:inherit;font-size:var(--fs-micro);font-weight:var(--fw-medium);cursor:pointer;white-space:nowrap}
+.an-tumu:hover{border-color:var(--primary);color:var(--primary)}
+
+/* Pencere içi: listeler yan yana, kartsız */
+.an-pencere{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--sp-4)}
+.an-pencere .an-pencere-kart{padding:0;border:0;box-shadow:none;background:transparent}
+
+/* Haritanın altındaki şehir etiketleri */
+.an-sehir-etiketleri{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin:0;padding:0;list-style:none}
+.an-sehir-etiketleri li{display:inline-flex;align-items:center;gap:var(--sp-1);padding:2px var(--sp-2);border-radius:999px;background:var(--surface-2);color:var(--ink-soft);font-size:var(--fs-micro)}
+.an-sehir-etiketleri b{color:var(--ink)}
+
+/* Dar ekran: tek ekrana sığmak mümkün değil, bölümler alt alta ve sayfa kayar */
+@media (max-width:900px){
+  .an-ekran{display:flex;flex-direction:column;gap:var(--sp-3)}
+  .an-serit,.an-serit--bes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .an-orta,.an-alt,.an-canli{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3)}
+  .an-trend{height:180px;flex:none}
+  .an-harita{flex:none;height:220px}
+  .an-akis-liste{max-height:320px}
 }

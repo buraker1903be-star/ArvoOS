@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { Site } from "./veri";
 import { sayiYaz } from "./veri";
+import { PanelModal } from "../components/panel-modal";
 import "./analitik.css";
 
 /*
@@ -10,7 +11,12 @@ import "./analitik.css";
   satırları bağlantı DEĞİL: "Instagram 42" tıklanacak bir kayıt değil,
   bir pay. Payı satırın arkasındaki soluk dolgu gösteriyor.
 */
-export function DagilimKarti({ baslik, alt, bos, satirlar, toplam, ekSutun }: {
+/*
+  TEK EKRAN KURALI (22.10.2026, kurum sahibi): panel sayfası aşağı kaymaz.
+  Kart en fazla `sinir` satır gösterir; fazlası ve ilgili listeler
+  başlıktaki "Tümü" düğmesiyle açılır pencerede.
+*/
+export function DagilimKarti({ baslik, alt, bos, satirlar, toplam, ekSutun, sinir, ayrinti, sinif }: {
   baslik: string;
   alt: string;
   bos: string;
@@ -19,14 +25,30 @@ export function DagilimKarti({ baslik, alt, bos, satirlar, toplam, ekSutun }: {
   toplam: number;
   /** Sağdaki ikinci sayının başlığı (ör. "Form"). */
   ekSutun?: string;
+  /** Kartta gösterilecek en fazla satır. */
+  sinir?: number;
+  /** "Tümü" penceresinin içeriği; verilmezse ve satır sınırı aşılıyorsa tam liste. */
+  ayrinti?: ReactNode;
+  sinif?: string;
 }) {
+  const gorunen = sinir ? satirlar.slice(0, sinir) : satirlar;
+  const pencere = ayrinti ?? (sinir && satirlar.length > sinir
+    ? <DagilimKarti baslik={baslik} alt={alt} bos={bos} satirlar={satirlar} toplam={toplam} ekSutun={ekSutun} sinif="an-pencere-kart" />
+    : null);
   return (
-    <article className="dash-card dash-col an-dagilim">
-      <header className="dash-card-head"><div><h2>{baslik}</h2><p>{alt}</p></div></header>
-      {satirlar.length ? (
+    <article className={["dash-card dash-col an-dagilim", sinif].filter(Boolean).join(" ")}>
+      <header className="dash-card-head an-kart-bas">
+        <div><h2>{baslik}</h2><p>{alt}</p></div>
+        {pencere ? (
+          <PanelModal triggerLabel={satirlar.length > gorunen.length ? `Tümü (${satirlar.length})` : "Ayrıntı"} triggerClassName="an-tumu" title={baslik} description={alt} boy="genis">
+            <div className="an-pencere">{pencere}</div>
+          </PanelModal>
+        ) : null}
+      </header>
+      {gorunen.length ? (
         <ul className="an-satirlar">
           {ekSutun ? <li className="an-satir an-satir-baslik" aria-hidden="true"><span /><small>{ekSutun}</small><small>Ziyaret</small></li> : null}
-          {satirlar.map((satir) => (
+          {gorunen.map((satir) => (
             <li className="an-satir" key={satir.anahtar} style={{ "--pay": toplam ? Math.min(1, Math.max(0.02, satir.adet / toplam)) : 0 } as CSSProperties}>
               <span className="an-satir-ad">{satir.ad}</span>
               {ekSutun ? <small className="an-satir-ek">{satir.ek ?? "—"}</small> : null}

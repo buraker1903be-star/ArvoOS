@@ -1,6 +1,7 @@
 import { getPanelContext } from "@/lib/panel-context";
 import { istanbulDateTime } from "@/lib/istanbul-date";
 import { GenelBakis } from "../../os/genel-bakis";
+import { PanelModal } from "../../components/panel-modal";
 import { CIHAZ_ADI, sayiYaz, siteleriOku, ulkeAdi } from "../veri";
 import { DagilimKarti, KurulumUyarisi, SeciciSeridi, SeritKutusu } from "../parcalar";
 import { CanliHarita, type HaritaNoktasi } from "./canli-harita";
@@ -11,7 +12,9 @@ import { CanliYenile } from "./yenile";
   sahibinin isteğiyle).
 
   Düzen soru sırasıyla: kaç kişi var (üst şerit) → nereden bağlanıyorlar
-  (harita + şehirler) → ne yapıyorlar (akış, açık sayfalar, kaynaklar).
+  (harita, en yoğun şehirler altında, tamamı pencerede) → ne yapıyorlar
+  (akış, açık sayfalar, kaynaklar). Masaüstünde ekrana sabit, sayfa
+  aşağı kaymaz (kurum sahibinin altın kuralı); akış kendi kartında kayar.
   Eskiden iki büyük sayı ve iki liste vardı; ekranın yarısı boştu ve
   "şu an ne okuyorlar" sorusunun yanıtı yoktu.
 
@@ -48,11 +51,11 @@ export default async function AnalitikCanli({ searchParams }: { searchParams: Pr
   const noktalar = canli.noktalar ?? [];
 
   /* Şehirler haritadaki noktalardan: aynı veri, iki görünüm. */
-  const sehirler = [...noktalar].sort((a, b) => b.adet - a.adet).slice(0, 8);
+  const sehirler = [...noktalar].sort((a, b) => b.adet - a.adet);
   const sehirToplami = noktalar.reduce((toplam, n) => toplam + n.adet, 0);
 
   return (
-    <GenelBakis gizliBaslik="Analitik · Canlı">
+    <GenelBakis gizliBaslik="Analitik · Canlı" sinif="an-ekran an-ekran--canli">
       <CanliYenile />
       <SeciciSeridi siteler={siteler} secili={secili} yol="/panel/analitik/canli" />
 
@@ -63,16 +66,27 @@ export default async function AnalitikCanli({ searchParams }: { searchParams: Pr
         <SeritKutusu etiket="Form gönderimi" deger={sayiYaz(canli.sonSaatForm)} alt="son 1 saat" ton={canli.sonSaatForm ? "success" : undefined} />
       </section>
 
-      <section className="an-canli-ust">
+      <section className="an-canli" aria-label="Canlı">
         <article className="dash-card an-harita-kart">
-          <header className="dash-card-head"><div><h2>Ziyaretçi haritası</h2><p>Son 1 saat · yeni ziyaret parlak, eskisi soluk</p></div></header>
+          <header className="dash-card-head an-kart-bas">
+            <div><h2>Ziyaretçi haritası</h2><p>Son 1 saat · yeni ziyaret parlak, eskisi soluk</p></div>
+            {sehirler.length ? (
+              <PanelModal triggerLabel={`Şehirler (${noktalar.length})`} triggerClassName="an-tumu" title="Şehirler" description="Son 1 saat · yaklaşık konum" boy="genis">
+                <div className="an-pencere">
+                  <DagilimKarti baslik="Şehirler" alt="Ziyaretçi" bos="Son bir saatte konumlu ziyaret yok." toplam={sehirToplami} sinif="an-pencere-kart"
+                    satirlar={[...noktalar].sort((a, b) => b.adet - a.adet).map((n) => ({ anahtar: `${n.enlem},${n.boylam}`, ad: <>{n.sehir ?? "Bilinmeyen şehir"} <small>{ulkeAdi(n.ulke)}</small></>, adet: n.adet }))} />
+                </div>
+              </PanelModal>
+            ) : null}
+          </header>
           <CanliHarita noktalar={noktalar} />
+          {sehirler.length ? (
+            <ul className="an-sehir-etiketleri" aria-label="En çok ziyaret gelen şehirler">
+              {sehirler.slice(0, 5).map((n) => <li key={`${n.enlem},${n.boylam}`}>{n.sehir ?? "Bilinmeyen"} <b>{sayiYaz(n.adet)}</b></li>)}
+            </ul>
+          ) : null}
         </article>
-        <DagilimKarti baslik="Şehirler" alt="Son 1 saat · yaklaşık konum" bos="Son bir saatte konumlu ziyaret yok." toplam={sehirToplami}
-          satirlar={sehirler.map((n) => ({ anahtar: `${n.enlem},${n.boylam}`, ad: <>{n.sehir ?? "Bilinmeyen şehir"} <small>{ulkeAdi(n.ulke)}</small></>, adet: n.adet }))} />
-      </section>
 
-      <section className="an-canli-alt">
         <article className="dash-card dash-col an-akis">
           <header className="dash-card-head"><div><h2>Son hareketler</h2><p>Son 30 dakika · 15 saniyede bir yenilenir</p></div></header>
           {canli.akis.length ? (
@@ -89,9 +103,10 @@ export default async function AnalitikCanli({ searchParams }: { searchParams: Pr
             </ul>
           ) : <p className="dash-empty">Son 30 dakikada ziyaret yok.</p>}
         </article>
-        <DagilimKarti baslik="Şu an açık sayfalar" alt="Son 5 dakika · ziyaretçi" bos="Şu an sitede kimse yok." toplam={canli.suAn}
+
+        <DagilimKarti sinif="an-canli-sayfa" baslik="Şu an açık sayfalar" alt="Son 5 dakika" bos="Şu an sitede kimse yok." toplam={canli.suAn} sinir={4}
           satirlar={(canli.aktifSayfalar ?? []).map((s) => ({ anahtar: s.ad, ad: <code>{s.ad}</code>, adet: s.adet }))} />
-        <DagilimKarti baslik="Nereden geldiler" alt="Son 1 saat · ziyaretçi" bos="Son bir saatte ziyaret yok." toplam={canli.sonSaatZiyaretci}
+        <DagilimKarti sinif="an-canli-kaynak" baslik="Nereden geldiler" alt="Son 1 saat" bos="Son bir saatte ziyaret yok." toplam={canli.sonSaatZiyaretci} sinir={4}
           satirlar={(canli.kaynaklar ?? []).map((k) => ({ anahtar: k.ad, ad: k.ad, adet: k.adet }))} />
       </section>
     </GenelBakis>
