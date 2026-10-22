@@ -24,6 +24,8 @@ import "./request-page.css";
 import "./kayit-detay/kayit-detay.css";
 import { SatirTiklama } from "./satir-tiklama";
 import { modulGerek } from "@/lib/modul-kapisi";
+import { PanelModal } from "../components/panel-modal";
+import { talebiBirak } from "./actions";
 
 /*
   TALEPLER LİSTESİ (2026-10): ekip listesiyle aynı kalıp. Üstte başlık,
@@ -72,6 +74,10 @@ type TalepSatiri = {
   /** Arşiv sebebi; listede durum rozetinin altında görünür. */
   lost_reason: string | null;
   created_at: string;
+  /* Satışçı listesinden kaldırdı (20261022135951); yalnızca yöneticiye gelir. */
+  birakildi_at: string | null;
+  birakma_sebebi: string | null;
+  birakan_adi: string | null;
 };
 
 /*
@@ -94,11 +100,14 @@ const SUTUNLAR = [
   // Sıralama sütunu SEÇİMDE de olmalı: liste işlevden (crm_talep_suz) okununca
   // seçilmeyen sütuna göre sıralama PostgREST'te hata veriyor.
   "updated_at",
+  // Satışçının listesinden kaldırdığı talep: yöneticiye kırmızı uyarı (20261022135951).
+  "birakildi_at", "birakma_sebebi", "birakan_adi",
 ].join(",");
 type SalesRepresentative = {
   id: string;
   full_name: string;
   job_title: string | null;
+  user_id: string | null;
 };
 const ASAMALAR = [
   { kod: "lead", ad: "Yeni talep" },
@@ -131,7 +140,7 @@ export default async function RequestsPage({
   const search = clean(arama).toLocaleLowerCase("tr-TR");
   const selected = clean(durum);
   const selectedRepresentative = clean(temsilci);
-  const { supabase, membership, modules, izin } = await getPanelContext();
+  const { supabase, membership, modules, izin, userId } = await getPanelContext();
   const canAssign = izin("crm.kayit.ata");
   modulGerek(modules, "crm");
   /*
@@ -195,7 +204,7 @@ export default async function RequestsPage({
       .eq("is_active", true),
     supabase
       .from("hr_employees")
-      .select("id,full_name,job_title")
+      .select("id,full_name,job_title,user_id")
       .eq("organization_id", membership.organization_id)
       .eq("employment_status", "active")
       .eq("can_receive_sales_requests", true)
@@ -231,6 +240,14 @@ export default async function RequestsPage({
   const representativeMap = new Map(
     representatives.map((item) => [item.id, item.full_name]),
   );
+  /*
+    "Listemden kaldır" yalnızca talebin KENDİSİNE atandığı satışçıya ve
+    açık talepte (veritabanı da aynı kuralı uyguluyor: crm_talebi_birak).
+  */
+  const benimPersonelId = representatives.find((item) => item.user_id === userId)?.id ?? null;
+  const birakabilir = (item: TalepSatiri) =>
+    izin("crm.talep.birak") && Boolean(benimPersonelId) && item.assigned_employee_id === benimPersonelId
+    && !item.birakildi_at && !["lost", "won", "completed"].includes(item.stage);
   const academicMode = (stages ?? []).some((s) => s.code === "academic_review");
   const calismaTurleri = ((turData ?? []) as { code: string; name: string; is_default: boolean; hizmet_turleri?: string[] | null }[])
     .map((t) => ({ code: t.code, name: t.name, is_default: t.is_default, hizmet_turleri: t.hizmet_turleri ?? [] }));
@@ -412,10 +429,40 @@ export default async function RequestsPage({
                           {item.stage === "lost" && item.lost_reason ? (
                             <small className="crm-liste-sebep" title={item.lost_reason}>{item.lost_reason}</small>
                           ) : null}
+                          {/* Satışçı listesinden kaldırdı: karar yöneticide (arşivle, başkasına ata ya da geri ver). */}
+                          {item.birakildi_at ? (
+                            <>
+                              <span className="crm-alert-chip">{formatPersonName(item.birakan_adi) || "Satışçı"} talebi kaldırdı</span>
+                              {item.birakma_sebebi ? <small className="crm-liste-sebep crm-birakma-sebebi" title={item.birakma_sebebi}>{item.birakma_sebebi}</small> : null}
+                            </>
+                          ) : null}
                         </td>
                         <DateCell label="Teslim" value={item.expected_close_date} />
                         <LastContactCell contact={lastContacts.get(item.id)} />
-                        <td className="crm-table-actions"><span className="crm-row-chevron" aria-hidden="true">›</span></td>
+                        <td className="crm-table-actions">
+                          {birakabilir(item) ? (
+                            <PanelModal
+                              triggerLabel="Kaldır"
+                              triggerClassName="crm-satir-kaldir"
+                              kicker={`TLP-${item.id.slice(0, 8).toUpperCase()}`}
+                              title={`${formatPersonName(item.customer_name) || "Talep"} · listenden kaldır`}
+                              description="Talep silinmez; yöneticinin listesinde yazdığın sebeple görünür. Yönetici arşivler ya da başka birine atar."
+                              boy="dar"
+                              basaridaKapan
+                            >
+                              <form className="panel-form kayit-formu" action={talebiBirak}>
+                                <input type="hidden" name="opportunity_id" value={item.id} />
+                                <label className="wide">Neden kaldırıyorsun? *
+                                  <textarea name="birakma_sebebi" required minLength={5} maxLength={500} rows={3} placeholder="Örn. Fiyatı yüksek buldu, başka bir yerle anlaştı." />
+                                </label>
+                                <div className="wide panel-form-actions kayit-formu-eylem">
+                                  <p>Sebep yazmadan kaldırılamaz.</p>
+                                  <button className="panel-danger">Listemden kaldır</button>
+                                </div>
+                              </form>
+                            </PanelModal>
+                          ) : <span className="crm-row-chevron" aria-hidden="true">›</span>}
+                        </td>
                         <MobilSatir
                           href={`/panel/crm/requests/${item.id}`}
                           baslik={formatPersonName(item.customer_name) || "—"}
@@ -425,6 +472,7 @@ export default async function RequestsPage({
                             { metin: `TLP-${item.id.slice(0, 8).toUpperCase()}`, ton: "sessiz" },
                             item.expected_close_date ? { metin: `Teslim ${kisaTarih(item.expected_close_date)}`, ton: "bilgi" } : null,
                             item.stage === "lost" && item.lost_reason ? { metin: item.lost_reason, ton: "sessiz" } : null,
+                            item.birakildi_at ? { metin: `${formatPersonName(item.birakan_adi) || "Satışçı"} kaldırdı: ${item.birakma_sebebi ?? ""}`, ton: "tehlike" } : null,
                           ]}
                         />
                       </tr>

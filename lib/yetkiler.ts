@@ -76,6 +76,8 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
     yetkiler: [
       { key: "crm.kayit.ata", modul: "crm", label: "Kayıt atama", aciklama: "Talep, teklif ve sözleşmeyi başka bir personele atar", varsayilan: YONETIM_VE_SEF, rlsBagli: true },
       { key: "crm.talep.yonet", modul: "crm", label: "Talep yönetimi", aciklama: "Talep durumunu ve aşamasını değiştirir", varsayilan: YONETIM_VE_SEF },
+      // Yalnızca kendisine atanmış talep (crm_talebi_birak, 20261022135951); sebep zorunlu.
+      { key: "crm.talep.birak", modul: "crm", label: "Talebi listeden kaldırma", aciklama: "Kendisine atanmış talebi sebebiyle listesinden kaldırır; talep yöneticinin listesinde uyarıyla kalır", varsayilan: YONETIM_SEF_VE_SATIS },
       { key: "crm.talep.arsivle", modul: "crm", label: "Talep arşivleme", aciklama: "Talebi sebebiyle birlikte arşivler; kayıt silinmez, aşaması \"Arşivlendi\" olur", varsayilan: YONETIM_SEF_VE_SATIS },
       { key: "crm.teklif.yonet", modul: "crm", label: "Teklif yönetimi", aciklama: "Teklif oluşturur, revize eder, gönderir", varsayilan: YONETIM_VE_SEF },
       { key: "crm.teklif.sil", modul: "crm", label: "Teklif silme", aciklama: "Teklif kaydını siler", varsayilan: YONETIM, rlsBagli: true },

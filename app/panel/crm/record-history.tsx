@@ -38,6 +38,9 @@ const ACTION_LABELS: Record<string, string> = {
   send: "müşteriye gönderdi",
   convert: "sözleşmeye dönüştürdü",
   archive: "arşivledi",
+  // Satışçı talebi listesinden kaldırdı / yönetici geri verdi (20261022135951).
+  release: "listesinden kaldırdı",
+  release_undo: "kaldırma uyarısını kaldırıp satışçıya geri verdi",
   delete: "sildi",
   step: "adım ekledi",
   comment: "not ekledi",

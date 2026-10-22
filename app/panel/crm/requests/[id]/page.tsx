@@ -17,8 +17,11 @@ import { RecordHistory } from "../../record-history";
 import {
   archiveOpportunity,
   assignOpportunity,
+  birakmayiGeriAl,
+  talebiBirak,
   updateOpportunity,
 } from "../../actions";
+import { istanbulDateTime } from "@/lib/istanbul-date";
 import { requestStageNames } from "../../request-status";
 import { contractStatusLabel } from "../../status-labels";
 import { teklifGrubu, TEKLIF_GRUP_ADLARI } from "@/lib/teklif-grubu";
@@ -75,6 +78,10 @@ type Opportunity = {
   assigned_employee_id: string | null;
   /** Arşivleme sebebi. Yazılıyordu ama hiçbir ekranda görünmüyordu. */
   lost_reason: string | null;
+  /* Satışçı listesinden kaldırdı (20261022135951). */
+  birakildi_at: string | null;
+  birakan_user_id: string | null;
+  birakma_sebebi: string | null;
 };
 
 const tarih = (deger: string | null) =>
@@ -107,14 +114,14 @@ export default async function RequestDetailPage({
       supabase
         .from("crm_opportunities")
         .select(
-          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id,step_template_set,lost_reason",
+          "id,title,customer_name,contact_email,contact_phone,stage,expected_close_date,source,notes,request_details,assigned_employee_id,step_template_set,lost_reason,birakildi_at,birakan_user_id,birakma_sebebi",
         )
         .eq("id", id)
         .eq("organization_id", membership.organization_id)
         .maybeSingle(),
       supabase
         .from("hr_employees")
-        .select("id,full_name")
+        .select("id,full_name,user_id")
         .eq("organization_id", membership.organization_id)
         .eq("employment_status", "active")
         .eq("can_receive_sales_requests", true)
@@ -154,6 +161,11 @@ export default async function RequestDetailPage({
   const listedAssignee = (employees ?? []).find(
     (e) => e.id === item.assigned_employee_id,
   );
+  /* Listeden kaldıranın adı: kullanıcı → personel kaydı (ikinci turda). */
+  const birakanAdiSozu = item.birakildi_at && item.birakan_user_id
+    ? supabase.from("hr_employees").select("full_name").eq("organization_id", membership.organization_id).eq("user_id", item.birakan_user_id).maybeSingle()
+        .then(({ data: satir }) => satir?.full_name ?? null)
+    : Promise.resolve(null);
   const pasifTemsilciSozu = item.assigned_employee_id && !listedAssignee
     ? supabase.from("hr_employees").select("full_name").eq("id", item.assigned_employee_id).eq("organization_id", membership.organization_id).maybeSingle()
         .then(({ data: satir }) => satir?.full_name ?? "Pasif personel")
@@ -212,7 +224,7 @@ export default async function RequestDetailPage({
     kuralı (RLS; satış personeli yalnızca görebildiğini görür). Okunamazsa
     sayfa düşmez, bölüm görünmez.
   */
-  const [gecmis, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, unlistedAssignee] = await Promise.all([
+  const [gecmis, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, unlistedAssignee, birakanAdi] = await Promise.all([
     findCustomerHistory(context, { phone: item.contact_phone, name: item.customer_name, excludeOpportunityId: item.id }, { maxItems: 4 })
       .catch((hata): CustomerHistoryResult | null => {
         console.error("[talep] müşteri geçmişi okunamadı", hata);
@@ -222,7 +234,15 @@ export default async function RequestDetailPage({
     musteriWhatsapp(membership.organization_id, item.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [item.id], eposta: item.contact_email }) : Promise.resolve([]),
     pasifTemsilciSozu,
+    birakanAdiSozu,
   ]);
+  /*
+    "Listemden kaldır" yalnızca talebin KENDİSİNE atandığı satışçıya, açık
+    talepte (crm_talebi_birak aynı kuralı uyguluyor).
+  */
+  const benimPersonelId = (employees ?? []).find((e) => e.user_id === context.userId)?.id ?? null;
+  const birakabilir = izin("crm.talep.birak") && Boolean(benimPersonelId) && item.assigned_employee_id === benimPersonelId
+    && !item.birakildi_at && !["lost", "won", "completed"].includes(item.stage);
   const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
   const gecmisSayilari = gecmis
     ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
@@ -388,6 +408,26 @@ export default async function RequestDetailPage({
                   />
                 </PanelDrawer>
               ) : null}
+              {birakabilir ? (
+                <PanelDrawer
+                  triggerLabel="Listemden kaldır"
+                  triggerClassName="os-menu-item is-danger"
+                  kicker={`TALEP · TLP-${item.id.slice(0, 8).toUpperCase()}`}
+                  title="Talebi listenden kaldır"
+                  description="Talep silinmez; yöneticinin listesinde yazdığın sebeple görünür. Yönetici arşivler ya da başka birine atar."
+                >
+                  <form className="panel-form kayit-formu" action={talebiBirak}>
+                    <input type="hidden" name="opportunity_id" value={item.id} />
+                    <label className="wide"><span>Neden kaldırıyorsun?<b className="req" aria-hidden="true">*</b></span>
+                      <textarea name="birakma_sebebi" required minLength={5} maxLength={500} rows={3} placeholder="Örn. Fiyatı yüksek buldu, başka bir yerle anlaştı." />
+                    </label>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p>Sebep yazmadan kaldırılamaz.</p>
+                      <button className="panel-danger">Listemden kaldır</button>
+                    </div>
+                  </form>
+                </PanelDrawer>
+              ) : null}
               {canArchive && !arsivde ? (
                 /*
                   Kayıt SİLİNMİYOR: aşaması "lost" yapılıp arşive düşüyor
@@ -412,6 +452,8 @@ export default async function RequestDetailPage({
                         maxLength={500}
                         rows={3}
                         placeholder="Örn. Müşteri bütçe nedeniyle vazgeçti."
+                        /* Satışçı kaldırırken yazdıysa yönetici yeniden yazmasın. */
+                        defaultValue={item.birakma_sebebi ?? undefined}
                       />
                     </label>
                     <div className="wide panel-form-actions kayit-formu-eylem">
@@ -425,6 +467,27 @@ export default async function RequestDetailPage({
           </details>
         </div>
       </header>
+
+      {/*
+        SATIŞÇI KALDIRDI (20261022135951): yönetici kimin, ne zaman, neden
+        bıraktığını görür ve karar verir — arşivler (sebep hazır gelir),
+        başkasına atar (uyarı kendiliğinden kalkar) ya da aynı kişiye geri verir.
+      */}
+      {item.birakildi_at ? (
+        <div className="talep-birakma" role="status">
+          <p>
+            <strong>{formatPersonName(birakanAdi) || "Satışçı"} talebi listesinden kaldırdı</strong>
+            <small>{istanbulDateTime(item.birakildi_at, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</small>
+            {item.birakma_sebebi ? <span><b>Sebep:</b> {item.birakma_sebebi}</span> : null}
+          </p>
+          {izin("crm.talep.yonet") ? (
+            <form action={birakmayiGeriAl}>
+              <input type="hidden" name="opportunity_id" value={item.id} />
+              <button className="panel-secondary">Satışçıya geri ver</button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Aşama çizgisi. Arşivlenen talepte çizgi yerine sebep. */}
       {arsivde ? (

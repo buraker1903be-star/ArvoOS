@@ -22,6 +22,8 @@ const MIGRATIONLAR = [
   "20261013143144_liste_suzgeci_satir_ici.sql",
   /* operasyon_is_suz ek sorumluyu da tanıyor (yeni tablo da burada kuruluyor). */
   "20261022081123_is_ek_sorumlular.sql",
+  /* crm_talep_suz: satışçının bıraktığı talep yalnızca yöneticinin listesinde. */
+  "20261022135951_talebi_listeden_kaldir.sql",
 ];
 const KURUM = "00000000-0000-4000-8000-000000007701";
 const OTEKI = "00000000-0000-4000-8000-000000007702";

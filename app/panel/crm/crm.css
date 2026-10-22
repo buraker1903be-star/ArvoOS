@@ -291,3 +291,8 @@
 .panel-root .crm-resmi-uyari{margin:8px 0 10px;color:var(--warning);font-size:12px;line-height:1.5}
 .panel-root .crm-resmi-uyari b{font-weight:650}
 .panel-root .crm-resmi-uyari a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
+/* Satır sonundaki "Kaldır" (satışçı, 20261022135951): satır tıklamasına karışmaz (satir-tiklama.tsx düğmeleri yok sayar). */
+.panel-root .crm-satir-kaldir{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));border-radius:999px;background:var(--surface);color:var(--danger);font:inherit;font-size:var(--fs-micro);font-weight:600;cursor:pointer;white-space:nowrap}
+.panel-root .crm-satir-kaldir:hover{background:color-mix(in srgb,var(--danger) 8%,var(--surface))}
+.panel-root .crm-data-table td[data-label="Durum"] .crm-alert-chip{display:flex;width:max-content;margin-top:6px}

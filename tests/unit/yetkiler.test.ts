@@ -48,9 +48,14 @@ test("ayar yapılmamış kurumda bugünkü davranış birebir korunuyor", () => 
        günlük iş akışının parçası. Hangi talebi kapatabileceğini RLS
        söylüyor: yalnızca kendisine atanmış olanı. Operasyon personeline
        verilmedi; satış talebi onun işi değil.
+    3. Talebi listeden kaldırma (yalnız SATIŞ personeli, 22.10.2026,
+       AkademikMerkez) — kayıt silinmiyor, arşivlenmiyor: satışçının
+       listesinden düşüp yöneticinin listesinde sebebiyle kalıyor ve karar
+       yöneticide. Yalnızca kendisine atanmış talep (crm_talebi_birak).
   */
   assert.deepEqual([...member].sort(), [
     "crm.talep.arsivle",
+    "crm.talep.birak",
     "posta.gor",
     "posta.yanitla",
   ]);

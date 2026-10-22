@@ -826,6 +826,61 @@ export async function createOpportunity(...args: Parameters<typeof createOpportu
 export async function updateOpportunity(...args: Parameters<typeof updateOpportunity__impl>) {
   return runPanelAction(() => updateOpportunity__impl(...args), "Talep güncellendi");
 }
+/*
+  SATIŞÇI TALEBİ LİSTESİNDEN KALDIRIR (20261022135951, AkademikMerkez).
+  Kurallar veritabanı işlevinde: yalnızca kendisine atanmış açık talep,
+  sebep zorunlu. Talep silinmez ve arşivlenmez; yöneticinin listesinde
+  "<satışçı> talebi kaldırdı" uyarısıyla durur. Sebep kayıt geçmişine de
+  yazılıyor: yönetici sonradan başkasına atasa da neden bırakıldığı kalır.
+*/
+async function talebiBirak__impl(formData: FormData) {
+  const { supabase, membership, userId, yetkiler } = await crmContext();
+  if (!yetkiler.has("crm.talep.birak")) throw new Error("Talebi listeden kaldırma yetkiniz yok.");
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const sebep = text(formData, "birakma_sebebi", 500);
+  if (sebep.length < 5) throw new Error("Neden kaldırdığınızı yazın (en az 5 karakter).");
+  const { error } = await supabase.rpc("crm_talebi_birak", { p_talep: opportunityId, p_sebep: sebep });
+  if (error) throw new Error(error.message);
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "release",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    note: `Listesinden kaldırdı: ${sebep}`,
+  });
+  revalidatePath("/panel/crm");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
+}
+
+/* Yönetici: uyarıyı kaldırır, talep aynı satışçının listesine döner. */
+async function birakmayiGeriAl__impl(formData: FormData) {
+  const { supabase, membership, userId, yetkiler } = await crmContext();
+  if (!yetkiler.has("crm.talep.yonet")) throw new Error("Talep yönetimi yetkiniz yok.");
+  const opportunityId = text(formData, "opportunity_id", 80);
+  const { error } = await supabase.rpc("crm_talep_birakmayi_geri_al", { p_talep: opportunityId });
+  if (error) throw new Error(error.message);
+  await logActivity(supabase, {
+    organizationId: membership.organization_id,
+    actorUserId: userId,
+    action: "release_undo",
+    entityType: "crm_opportunity",
+    entityId: opportunityId,
+    opportunityId,
+    note: "Kaldırma uyarısını kaldırdı; talep satışçının listesine döndü.",
+  });
+  revalidatePath("/panel/crm");
+  revalidatePath(`/panel/crm/requests/${opportunityId}`);
+}
+
+export async function talebiBirak(...args: Parameters<typeof talebiBirak__impl>) {
+  return runPanelAction(() => talebiBirak__impl(...args), "Talep listenizden kaldırıldı; yöneticiniz sebebini görecek");
+}
+export async function birakmayiGeriAl(...args: Parameters<typeof birakmayiGeriAl__impl>) {
+  return runPanelAction(() => birakmayiGeriAl__impl(...args), "Talep satışçının listesine geri döndü");
+}
+
 export async function archiveOpportunity(...args: Parameters<typeof archiveOpportunity__impl>) {
   return runPanelAction(() => archiveOpportunity__impl(...args));
 }
