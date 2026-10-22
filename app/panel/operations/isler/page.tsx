@@ -156,18 +156,37 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   const sayiAl = (deger: number | null | undefined) => Number(deger ?? 0);
   const archivedCount = sayiAl(ozet.arsiv);
 
-  /* Ödeme kapanmış mı: yalnızca BU SAYFADAKİ tamamlanan işlerin
-     faturaları soruluyor. Eskiden kurumun bütün işlerinin faturaları
-     tek seferde okunuyordu. */
+  /*
+    SAYFADAKİ İŞLERE BAĞLI ÜÇ OKUMA AYNI TURDA (22.10.2026, hız çalışması):
+    faturalar, ek sorumlular, son temaslar. Üçü de yalnızca bu sayfanın
+    işlerine bakıyor, birbirine değil; eskiden art arda koşuyordu ve
+    canlıda tur başına ~170 ms, sayfaya ~340 ms ekliyordu.
+
+    Ödeme kapanmış mı: yalnızca BU SAYFADAKİ tamamlanan işlerin
+    faturaları soruluyor. Eskiden kurumun bütün işlerinin faturaları
+    tek seferde okunuyordu.
+  */
   const invoiceIds = [...new Set(workflows.filter((w) => w.status === "completed" && w.invoice_id).map((w) => w.invoice_id!))];
+  const sayfaIsIdleri = workflows.map((w) => w.id);
+  const [{ data: invoices, error: faturaHatasi }, { data: ekSorumluData, error: ekSorumluError }, lastContacts] = await Promise.all([
+    invoiceIds.length
+      ? supabase.from("billing_invoices").select("id,status").in("id", invoiceIds)
+      : Promise.resolve({ data: [] as { id: string; status: string }[], error: null }),
+    /* EK SORUMLULAR (20261022081123): yalnızca BU SAYFADAKİ işlerin. */
+    sayfaIsIdleri.length
+      ? supabase.from("operation_workflow_assignees").select("workflow_id,employee_id").in("workflow_id", sayfaIsIdleri)
+      : Promise.resolve({ data: [] as { workflow_id: string; employee_id: string }[], error: null }),
+    fetchLastContacts(
+      supabase,
+      membership.organization_id,
+      [...new Set(workflows.map((workflow) => workflow.opportunity_id).filter((v): v is string => Boolean(v)))],
+    ),
+  ]);
+  /* Okunamazsa ödenmiş fatura "ödenmemiş" sayılır ve tamamlanan iş
+     "arşive hazır" görünmez: operasyoncu arşivleyemediği işi bekler. */
+  if (faturaHatasi) throw new Error("Fatura durumları okunamadı: " + faturaHatasi.message);
   const paidInvoiceIds = new Set<string>();
-  if (invoiceIds.length) {
-    const { data: invoices, error: faturaHatasi } = await supabase.from("billing_invoices").select("id,status").in("id", invoiceIds);
-    /* Okunamazsa ödenmiş fatura "ödenmemiş" sayılır ve tamamlanan iş
-       "arşive hazır" görünmez: operasyoncu arşivleyemediği işi bekler. */
-    if (faturaHatasi) throw new Error("Fatura durumları okunamadı: " + faturaHatasi.message);
-    for (const invoice of invoices ?? []) if (invoice.status === "paid") paidInvoiceIds.add(invoice.id);
-  }
+  for (const invoice of invoices ?? []) if (invoice.status === "paid") paidInvoiceIds.add(invoice.id);
   const readyForArchive = (workflow: IsSatiri) => {
     if (workflow.status !== "completed") return false;
     if (!workflow.contract_id) return true;
@@ -176,14 +195,10 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   };
 
   /*
-    EK SORUMLULAR (20261022081123): yalnızca BU SAYFADAKİ işlerin.
-    "Sorumlu" sütununda asıl sorumlunun yanında yazılıyor ve listeden
-    yapılan işlemlerin yetkisine giriyor (actions.ts isManagerOrAssignee).
+    Ek sorumlular "Sorumlu" sütununda asıl sorumlunun yanında yazılıyor
+    ve listeden yapılan işlemlerin yetkisine giriyor (actions.ts
+    isManagerOrAssignee).
   */
-  const sayfaIsIdleri = workflows.map((w) => w.id);
-  const { data: ekSorumluData, error: ekSorumluError } = sayfaIsIdleri.length
-    ? await supabase.from("operation_workflow_assignees").select("workflow_id,employee_id").in("workflow_id", sayfaIsIdleri)
-    : { data: [] as { workflow_id: string; employee_id: string }[], error: null };
   if (ekSorumluError) throw new Error("Ek sorumlular okunamadı: " + ekSorumluError.message);
   const ekSorumlular = new Map<string, string[]>();
   for (const satir of (ekSorumluData ?? []) as { workflow_id: string; employee_id: string }[]) {
@@ -197,11 +212,6 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     return [asil, ekler.length ? ekler.join(", ") : null].filter(Boolean).join(" · ");
   };
 
-  const lastContacts = await fetchLastContacts(
-    supabase,
-    membership.organization_id,
-    [...new Set(workflows.map((workflow) => workflow.opportunity_id).filter((v): v is string => Boolean(v)))],
-  );
   // Termini ve arşivi yöneticiler ve işin sorumlusu yönetebilir (actions.ts isManagerOrAssignee)
   const canManage = izin("operations.is.yonet");
   /*

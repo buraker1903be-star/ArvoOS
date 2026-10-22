@@ -53,8 +53,28 @@ function ProgressBarInner() {
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
       start();
     }
+    /*
+      Form gönderimi de çubuğu başlatır (22.10.2026): eskiden yalnızca
+      bağlantılar başlatıyordu; düğmeye basınca üstte hiçbir şey kıpırdamıyor,
+      kapsül de gecikmeli geldiği için ilk yarım saniye tepkisiz geçiyordu.
+      İşlem aynı sayfada bittiğinde adres değişmez; çubuk sayfa içeriği
+      yenilenince (gözlemci) ya da en geç 8 sn sonra kapanır.
+    */
+    function handleSubmit(event: SubmitEvent) {
+      const form = event.target as HTMLFormElement;
+      if (form.dataset.noFeedback === "true") return;
+      start();
+      const icerik = document.querySelector(".panel-content");
+      const gozlemci = icerik ? new MutationObserver(() => { gozlemci?.disconnect(); window.setTimeout(finish, 120); }) : null;
+      if (icerik && gozlemci) gozlemci.observe(icerik, { childList: true, subtree: true });
+      window.setTimeout(() => { gozlemci?.disconnect(); finish(); }, 8000);
+    }
     document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    document.addEventListener("submit", handleSubmit);
+    return () => {
+      document.removeEventListener("click", handleClick);
+      document.removeEventListener("submit", handleSubmit);
+    };
   }, []);
 
 

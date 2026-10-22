@@ -8,7 +8,7 @@ import { formatPersonName } from "@/lib/format-name";
 import { todayInIstanbul } from "@/lib/istanbul-date";
 import { formatSubject } from "@/lib/table-format";
 import { dueBadge } from "@/lib/operasyon-termin";
-import { postaDurumu } from "@/lib/posta-hesabi";
+import { postaBaglantiDurumu } from "@/lib/posta-hesabi";
 import { activeStatuses, workflowStatusNames } from "./operations/ops-shared";
 import { relativeTime } from "./crm/last-contact";
 import { musteriMesajGondereni } from "@/lib/musteri-mesaji";
@@ -91,7 +91,12 @@ export default async function PanelPage() {
   const canSeeOperations = canSee("operations") && modulAcik("operations");
   /* Posta: menüdeki kuralla aynı — yetki ve kutu bağlı (layout.tsx). */
   const postaYetkisi = izin("posta.gor");
-  const canSeePosta = postaYetkisi && (await postaDurumu(organizationId)).durum === "bagli";
+  /*
+    Bağlantı durumu ve son postalar AYNI turda (22.10.2026, hız çalışması):
+    eskiden önce durum okunuyor (hesabın tamamı, imza dahil), ancak sonra
+    diğer sorgular başlıyordu. Kutu bağlı değilse okunan satırlar atılır.
+  */
+  const postaDurumSozu = postaYetkisi ? postaBaglantiDurumu(organizationId) : Promise.resolve(null);
   /* Kutu bağlı değilse kart yine durur ve bunu söyler: dördüncü sütun boş
      kalmasın, bağlayabilen kişi nereden bağlanacağını görsün. */
   const postaBaglayabilir = izin("settings.kurum.yonet");
@@ -140,7 +145,7 @@ export default async function PanelPage() {
           .eq("organization_id", organizationId).eq("sender_type", "customer").neq("operation_workflows.status", "cancelled")
           .order("created_at", { ascending: false }).limit(LISTE)
       : none,
-    canSeePosta
+    postaYetkisi
       ? supabase.from("mail_threads").select("thread_id,konu,son_gonderen_ad,son_gonderen_adres,son_mesaj_at,okunmamis")
           .eq("organization_id", organizationId).is("silindi_at", null)
           .order("son_mesaj_at", { ascending: false, nullsFirst: false }).limit(LISTE)
@@ -152,6 +157,7 @@ export default async function PanelPage() {
     // Kurulum adımı "ilk talebinizi girin" için: kurumda hiç talep var mı.
     canSetup && canSeeCrm ? supabase.from("crm_opportunities").select("id", { count: "exact", head: true }).eq("organization_id", organizationId) : none,
   ]);
+  const canSeePosta = postaYetkisi && (await postaDurumSozu)?.durum === "bagli";
 
   /*
     Supabase istemcisi hata fırlatmaz, yalnızca error alanına yazar; okuma
@@ -162,7 +168,7 @@ export default async function PanelPage() {
     ["Operasyonlar", isError],
     ["Aşamalar", asamaError],
     ["Müşteri mesajları", mesajError],
-    ["Postalar", postaError],
+    ["Postalar", canSeePosta ? postaError : null],
     ["Kurulum durumu", onboardingError],
     ["Kurum bilgileri", setupOrganizationError],
     ["Ekip sayısı", memberCountError],
@@ -179,7 +185,7 @@ export default async function PanelPage() {
   const isler = (isRows ?? []) as IsSatiri[];
   const asamalar = (asamaRows ?? []) as unknown as AsamaSatiri[];
   const mesajlar = (mesajRows ?? []) as unknown as MesajSatiri[];
-  const postalar = (postaRows ?? []) as PostaSatiri[];
+  const postalar = (canSeePosta ? postaRows ?? [] : []) as PostaSatiri[];
 
   // Kurulum adımları: belgeler ve müşteri ekranı eksiksiz görünene kadar
   // gösterilir; hepsi tamamlanınca kart kendiliğinden kaybolur. Ölçütler

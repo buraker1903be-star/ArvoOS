@@ -70,6 +70,8 @@ const panelBaglaminiKur = cache(async () => {
     moduller: { module_code: string; arvo_modules: unknown }[];
     rol_modul: (ModulKurali & { role: string })[]; kisi_modul: ModulKurali[];
     rol_yetki: (YetkiKurali & { role: string })[]; kisi_yetki: YetkiKurali[];
+    /* 20261022130450'den beri; migration uygulanmadan önce alan yok. */
+    lisans?: { license_status: string | null; suspension_reason: string | null } | null;
   };
   let onceden: OncedenBaglam | null = null;
   if (requestedOrganizationId && !yonetimHostu && /^[0-9a-f-]{36}$/i.test(requestedOrganizationId)) {
@@ -159,10 +161,17 @@ const panelBaglaminiKur = cache(async () => {
           .eq("organization_id", membership.organization_id)
           .eq("is_enabled", true),
     yetkiSorgulari,
-    /* Lisans durumu erişim kapısı için (aşağıda); modüllerle aynı turda,
-       panel isteğine ayrı bir gidiş-dönüş eklemiyor. */
-    supabase.from("organization_licenses").select("license_status,suspension_reason")
-      .eq("organization_id", membership.organization_id).maybeSingle(),
+    /*
+      Lisans durumu erişim kapısı için (aşağıda). Çerezdeki kurumda bağlam
+      çağrısından geliyor (20261022130450). Eskiden burada ayrı bir sorguydu
+      ve bağlam çağrısı bittikten SONRA koştuğu için her panel isteğine
+      ~170 ms'lik bir tur ekliyordu. Alan yoksa (migration öncesi ya da
+      eski yol) eski sorgu.
+    */
+    hazir && "lisans" in hazir
+      ? Promise.resolve({ data: hazir.lisans ?? null, error: null })
+      : supabase.from("organization_licenses").select("license_status,suspension_reason")
+          .eq("organization_id", membership.organization_id).maybeSingle(),
   ]);
   if (moduleError) throw new Error("Modül yetkileri okunamadı.");
 

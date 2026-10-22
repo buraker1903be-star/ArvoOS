@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret, encryptSecret, paymentCredentialsConfigured } from "@/lib/payment-credentials";
 import { TOKEN_UCU, adresUyusuyorMu, kapsamEksigi, tokenCevabiniOku } from "@/lib/posta-oauth";
@@ -95,13 +96,17 @@ export async function postaDurumu(organizationId: string): Promise<PostaDurumu> 
   okuyordu: tek satırlık tablo 416 KB (imzada gömülü görsel olabilir) ve
   yavaş sorgu günlüğünde ortalama 0,31 sn. Menü yalnızca "bağlı mı"yı
   soruyor.
+
+  İstek başına BİR KEZ (React cache, 22.10.2026): yerleşim ve anasayfa aynı
+  soruyu soruyor; anasayfa eskiden ayrıca postaDurumu ile hesabın tamamını
+  (imza dahil) okuyordu ve bunu diğer sorgulardan ÖNCE, ayrı bir turda.
 */
-export async function postaBaglantiDurumu(organizationId: string): Promise<Pick<PostaDurumu, "durum">> {
+export const postaBaglantiDurumu = cache(async (organizationId: string): Promise<Pick<PostaDurumu, "durum">> => {
   const admin = createAdminClient();
   if (!admin) return { durum: null };
   const { data } = await admin.from("mail_accounts").select("status").eq("organization_id", organizationId).maybeSingle();
   return { durum: (data?.status as PostaDurumu["durum"] | undefined) ?? null };
-}
+});
 
 function sunucuHazirMi() {
   const admin = createAdminClient();

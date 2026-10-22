@@ -99,15 +99,46 @@ export default async function OperationDetailPage({
     önizleme adresleri, yükleyen adları ve WhatsApp/posta yazışmaları
     birlikte (aşağıda).
   */
-  const [{ data: workflowData, error: workflowError }, { data: turSatirlari }, { data: turGorevleri }] = await Promise.all([
+  /*
+    İLK TURDA İŞİN KİMLİĞİNE BAĞLI HER ŞEY (22.10.2026, hız çalışması).
+    Sözleşme, müşteri mesajları, ek sorumlular, portal dosyaları, ödeme
+    durumu, indirmeler ve ekip dosyaları yalnızca işin kimliğine bakıyor;
+    kimlik de adreste. Eskiden iş kaydı okunup bitince ikinci, o bitince
+    üçüncü turda soruluyorlardı (canlıda tur başına ~170 ms). Sorumlu
+    personel işin kendi sorgusuna gömülü. İş görünmüyorsa (RLS) bunlar boş
+    döner ve aşağıda 404 çizilir — sızan bir şey yok.
+  */
+  const [
+    { data: workflowData, error: workflowError }, { data: turSatirlari }, { data: turGorevleri },
+    { data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError },
+    { data: me }, { data: employeeData }, { data: ekSorumluData, error: ekSorumluError },
+    portalFilesResult, portalPaymentResult, portalDownloadsResult, ekipDosyaSonucu,
+  ] = await Promise.all([
     supabase
     .from("operation_workflows")
-    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,revision_days,delivered_at,revision_until,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title)")
+    .select("id,title,assigned_employee_id,customer_name,description,status,priority,start_date,due_date,created_at,updated_at,archived_at,archived_by,step_template_set,waiting_party,waiting_note,waiting_since,revision_days,delivered_at,revision_until,operation_steps(id,title,is_completed,sort_order,completed_at,completed_by,due_date,status,assigned_employee_id,phase_title),sorumlu:hr_employees!operation_workflows_assigned_employee_id_fkey(id,full_name,job_title)")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single(),
     supabase.from("organization_step_template_sets").select("code,name,sort_order").eq("organization_id", organizationId).eq("is_active", true).order("sort_order"),
     supabase.from("organization_step_templates").select("set_code").eq("organization_id", organizationId).eq("is_active", true),
+    supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", id).eq("organization_id", organizationId).maybeSingle(),
+    supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
+    supabase.from("hr_employees").select("id").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
+    /*
+      Personel listesi artık YÖNETİCİ OLMAYANA da okunuyor: adımın
+      sorumlusunu göstermek için ada ihtiyaç var ve eskiden liste yalnızca
+      atama yetkisi olana geliyordu. Atama kutusu yine yalnızca yöneticiye
+      çiziliyor (canAssign).
+    */
+    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
+    /* Ek sorumlular (20261022081123): işi asıl sorumluyla birlikte takip edenler. */
+    supabase.from("operation_workflow_assignees").select("employee_id").eq("workflow_id", id),
+    supabase.from("operation_customer_files").select("id,file_name,mime_type,size_bytes,note,access_rule,created_at,uploaded_by").eq("workflow_id", id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
+    supabase.rpc("portal_workflow_payment_status", { p_workflow_id: id }),
+    supabase.from("operation_customer_file_downloads").select("file_id").eq("workflow_id", id).eq("outcome", "granted").limit(5000),
+    // Ekip içi dosyalar (20261013065421): sahadan fotoğraf/belge, müşteri görmez.
+    supabase.from("operation_team_files").select("id,file_name,mime_type,size_bytes,note,created_at,uploaded_by,storage_path").eq("workflow_id", id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
   ]);
   /* Hata 404'e çevriliyordu: okuma düşünce ekran "kayıt bulunamadı"
      diyor, kullanıcı da kaydın silindiğini sanıyordu. Hatanın
@@ -159,23 +190,6 @@ export default async function OperationDetailPage({
   const canDelete = izin("operations.is.sil");
 
   const isArchived = workflow.status === "archived";
-  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: ekSorumluData, error: ekSorumluError }] = await Promise.all([
-    supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
-    supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
-    workflow.assigned_employee_id
-      ? supabase.from("hr_employees").select("id,full_name,job_title").eq("id", workflow.assigned_employee_id).eq("organization_id", organizationId).maybeSingle()
-      : Promise.resolve({ data: null }),
-    supabase.from("hr_employees").select("id").eq("organization_id", organizationId).eq("user_id", userId).maybeSingle(),
-    /*
-      Personel listesi artık YÖNETİCİ OLMAYANA da okunuyor: adımın
-      sorumlusunu göstermek için ada ihtiyaç var ve eskiden liste yalnızca
-      atama yetkisi olana geliyordu. Atama kutusu yine yalnızca yöneticiye
-      çiziliyor (canAssign).
-    */
-    supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
-    /* Ek sorumlular (20261022081123): işi asıl sorumluyla birlikte takip edenler. */
-    supabase.from("operation_workflow_assignees").select("employee_id").eq("workflow_id", workflow.id),
-  ]);
   /* Okunamazsa "ek sorumlu yok" demek yanlış olur: ikinci operasyoncu
      yetkisini görmez, yönetici de listeyi boş sanıp yeniden atar. */
   if (ekSorumluError) throw new Error("Ek sorumlular okunamadı: " + ekSorumluError.message);
@@ -224,14 +238,17 @@ export default async function OperationDetailPage({
   */
   const revizyon = revizyonBilgisi(workflow.revision_until, bugunIstanbul);
   const revizyonYazi = revizyonOzeti(workflow.revision_until, bugunIstanbul);
-  const assigneeRow = assignee as { id: string; full_name: string; job_title: string | null } | null;
+  /* PostgREST gömülü ilişkiyi nesne ya da tek elemanlı dizi döndürebiliyor. */
+  const sorumluHam = (workflowData as { sorumlu?: unknown }).sorumlu as { id: string; full_name: string; job_title: string | null } | { id: string; full_name: string; job_title: string | null }[] | null | undefined;
+  const assigneeRow = (Array.isArray(sorumluHam) ? sorumluHam[0] : sorumluHam) ?? null;
   // Termini yöneticiler, işin sorumlusu ve ek sorumluları girebilir (actions.ts isManagerOrAssignee ile aynı kural)
   const benimPersonelId = (me as { id?: string } | null)?.id ?? null;
   const canEditDue = canAssign || Boolean(benimPersonelId && (benimPersonelId === workflow.assigned_employee_id || ekSorumluIdleri.includes(benimPersonelId)));
   // Arşivleme de aynı kural (actions.ts isManagerOrAssignee)
   const canArchive = canEditDue;
 
-  const [opportunityResult, proposalResult, commentsResult, portalFilesResult, portalPaymentResult, portalDownloadsResult, ekipDosyaSonucu] = await Promise.all([
+  /* Yalnızca sözleşmeye bağlı okumalar ikinci turda. */
+  const [opportunityResult, proposalResult, commentsResult] = await Promise.all([
     contract?.opportunity_id
       ? supabase.from("ops_opportunities").select("customer_name,contact_email,contact_phone,title,stage,kunye").eq("id", contract.opportunity_id).eq("organization_id", organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -241,11 +258,6 @@ export default async function OperationDetailPage({
     contract?.opportunity_id
       ? supabase.from("crm_internal_comments").select("id,body,created_at,created_by,context_type").eq("organization_id", organizationId).eq("opportunity_id", contract.opportunity_id).order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
-    supabase.from("operation_customer_files").select("id,file_name,mime_type,size_bytes,note,access_rule,created_at,uploaded_by").eq("workflow_id", workflow.id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
-    supabase.rpc("portal_workflow_payment_status", { p_workflow_id: workflow.id }),
-    supabase.from("operation_customer_file_downloads").select("file_id").eq("workflow_id", workflow.id).eq("outcome", "granted").limit(5000),
-    // Ekip içi dosyalar (20261013065421): sahadan fotoğraf/belge, müşteri görmez.
-    supabase.from("operation_team_files").select("id,file_name,mime_type,size_bytes,note,created_at,uploaded_by,storage_path").eq("workflow_id", workflow.id).eq("organization_id", organizationId).is("deleted_at", null).order("created_at", { ascending: false }),
   ]);
   if ("error" in commentsResult && commentsResult.error) throw new Error("Kurum içi yorumlar okunamadı: " + commentsResult.error.message);
 

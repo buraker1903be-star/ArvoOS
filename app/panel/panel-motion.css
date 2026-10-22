@@ -58,8 +58,11 @@
   box-shadow:0 14px 34px rgba(4,12,24,.3);color:var(--n-0);
   font-family:var(--font-body);font-size:13px;font-weight:700;line-height:1;letter-spacing:.01em;white-space:nowrap;
   transform:translate(-50%,0);
-  /* Anında biten işlemde kapsül hiç görünmesin */
-  animation:panel-capsule-in .45s var(--ease-spring) .2s both
+  /* Anında biten işlemde kapsül hiç görünmesin. Gecikme 0,2 sn idi;
+     canlıdaki tipik yanıt ~0,3–0,5 sn olduğu için kapsül neredeyse her
+     tıklamada bir anlığına yanıp sönüyor, hızlı işlemi yavaş gösteriyordu
+     (22.10.2026). Anında tepkiyi üstteki çubuk ve düğmenin basılma hâli veriyor. */
+  animation:panel-capsule-in .45s var(--ease-spring) .45s both
 }
 /* Mobilde üst bar marka adını kapatmasın: kapsül barın hemen altında */
 @media(max-width:900px){

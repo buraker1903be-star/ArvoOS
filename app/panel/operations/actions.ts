@@ -46,16 +46,23 @@ function revalidateOperations() {
 // operasyoncu işi göremiyordu bile.
 async function isManagerOrAssignee({ supabase, membership, userId, izin }: OperationContext, assignedEmployeeId: string | null, workflowId: string) {
   if (izin("operations.is.yonet")) return true;
-  const { data: me, error: meError } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle();
+  /*
+    Personel kaydı ve işin ek sorumluları AYNI turda (22.10.2026, hız
+    çalışması): eskiden önce kayıt okunuyor, sonra o kimlikle ek sorumlu
+    soruluyordu — her termin/durum/atama işleminde fazladan ~170 ms.
+    Bir işin ek sorumlu listesi küçük (en çok 10), tamamı okunuyor.
+  */
+  const [{ data: me, error: meError }, { data: ekler, error: ekError }] = await Promise.all([
+    supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle(),
+    supabase.from("operation_workflow_assignees").select("employee_id").eq("workflow_id", workflowId),
+  ]);
   /* Okunamayan yetki "yetki yok" değil, hata: sessizce reddetmek
      kullanıcıya yanlış sebep söylerdi. */
   if (meError) throw new Error("Personel kaydınız okunamadı: " + meError.message);
   if (!me?.id) return false;
   if (me.id === assignedEmployeeId) return true;
-  const { data: ek, error: ekError } = await supabase.from("operation_workflow_assignees").select("employee_id")
-    .eq("workflow_id", workflowId).eq("employee_id", me.id).maybeSingle();
   if (ekError) throw new Error("Ek sorumlular okunamadı: " + ekError.message);
-  return Boolean(ek);
+  return (ekler ?? []).some((satir) => satir.employee_id === me.id);
 }
 
 async function createWorkflow__impl(formData: FormData) {

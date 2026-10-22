@@ -94,7 +94,15 @@ export default async function RequestDetailPage({
   const context = await getPanelContext();
   const { supabase, membership, modules, izin } = context;
   modulGerek(modules, "crm");
-  const [{ data, error }, { data: employees, error: employeeError }, { data: turData }] =
+  /*
+    İKİ TUR (22.10.2026, hız çalışması). Sayfa veritabanına altı SIRALI
+    adımda gidiyordu: talep → pasif temsilci → teklif/sözleşme → iş →
+    müşteri geçmişi → yazışmalar. Canlıda tur başına ~170 ms. Talebin
+    kimliğine bağlı her şey (teklifler, sözleşmeler, işleri gömülü,
+    hizmet türleri) ilk turda; talebin İÇERİĞİNE bağlı olanlar (temsilci
+    adı, telefonla geçmiş, yazışmalar) ikinci turda, birlikte.
+  */
+  const [{ data, error }, { data: employees, error: employeeError }, { data: turData }, { data: teklifData }, { data: sozlesmeData }, hizmetTurleri] =
     await Promise.all([
       supabase
         .from("crm_opportunities")
@@ -118,6 +126,14 @@ export default async function RequestDetailPage({
         .eq("is_active", true)
         .order("sort_order")
         .order("code"),
+      /*
+        BAĞLANTILAR (teklif, sözleşme ve iş detayıyla eşitleme): bu talepten
+        çıkan teklif, sözleşme ve iş. Okunamazsa (RLS) bölüm boş kalır.
+      */
+      supabase.from("crm_proposals").select("id,proposal_no,status,archive_reason,superseded_by,amount,currency,revision_no").eq("organization_id", membership.organization_id).eq("opportunity_id", id).order("created_at", { ascending: false }),
+      supabase.from("crm_contracts").select("id,contract_no,status,amount,currency,workflow_id,is:operation_workflows!crm_contracts_workflow_id_fkey(id,status,operation_steps(is_completed))").eq("organization_id", membership.organization_id).eq("opportunity_id", id).order("created_at", { ascending: false }),
+      // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
+      kurumHizmetTurleri(supabase, membership.organization_id),
     ]);
   /* Hata 404'e çevriliyordu: okuma düşünce ekran "kayıt bulunamadı"
      diyor, kullanıcı da kaydın silindiğini sanıyordu. Hatanın
@@ -138,18 +154,10 @@ export default async function RequestDetailPage({
   const listedAssignee = (employees ?? []).find(
     (e) => e.id === item.assigned_employee_id,
   );
-  const unlistedAssignee =
-    item.assigned_employee_id && !listedAssignee
-      ? ((
-          await supabase
-            .from("hr_employees")
-            .select("full_name")
-            .eq("id", item.assigned_employee_id)
-            .eq("organization_id", membership.organization_id)
-            .maybeSingle()
-        ).data?.full_name ?? "Pasif personel")
-      : null;
-  const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
+  const pasifTemsilciSozu = item.assigned_employee_id && !listedAssignee
+    ? supabase.from("hr_employees").select("full_name").eq("id", item.assigned_employee_id).eq("organization_id", membership.organization_id).maybeSingle()
+        .then(({ data: satir }) => satir?.full_name ?? "Pasif personel")
+    : Promise.resolve(null);
   const calismaTuru = calismaTurleri.find((tur) => tur.code === item.step_template_set)?.name ?? null;
 
   /*
@@ -158,19 +166,15 @@ export default async function RequestDetailPage({
     DİĞER kayıtları vardı; bu talebin kendi zinciri için listelere
     gidilip aranması gerekiyordu. Okunamazsa (RLS) bölüm boş kalır.
   */
-  const [{ data: teklifData }, { data: sozlesmeData }] = await Promise.all([
-    context.supabase.from("crm_proposals").select("id,proposal_no,status,archive_reason,superseded_by,amount,currency,revision_no").eq("organization_id", context.membership.organization_id).eq("opportunity_id", item.id).order("created_at", { ascending: false }),
-    context.supabase.from("crm_contracts").select("id,contract_no,status,amount,currency,workflow_id").eq("organization_id", context.membership.organization_id).eq("opportunity_id", item.id).order("created_at", { ascending: false }),
-  ]);
   const teklifler = (teklifData ?? []) as { id: string; proposal_no: string; status: string; archive_reason: string | null; superseded_by: string | null; amount: number; currency: string; revision_no: number }[];
   // Geçerli teklif: yeni revizyonla değişmemiş en son teklif.
   const gecerliTeklif = teklifler.find((t) => !t.superseded_by) ?? teklifler[0] ?? null;
-  const sozlesmeler = (sozlesmeData ?? []) as { id: string; contract_no: string; status: string; amount: number; currency: string; workflow_id: string | null }[];
+  type IsOzeti = { id: string; status: string; operation_steps: { is_completed: boolean }[] | null };
+  const sozlesmeler = (sozlesmeData ?? []) as { id: string; contract_no: string; status: string; amount: number; currency: string; workflow_id: string | null; is: IsOzeti | IsOzeti[] | null }[];
   const gecerliSozlesme = sozlesmeler.find((s) => s.status !== "cancelled" && s.status !== "rejected") ?? sozlesmeler[0] ?? null;
-  const { data: isData } = gecerliSozlesme?.workflow_id
-    ? await context.supabase.from("operation_workflows").select("id,status,operation_steps(is_completed)").eq("id", gecerliSozlesme.workflow_id).eq("organization_id", context.membership.organization_id).maybeSingle()
-    : { data: null };
-  const is = isData as { id: string; status: string; operation_steps: { is_completed: boolean }[] | null } | null;
+  /* İş sözleşmeye gömülü geliyor (crm_contracts_workflow_id_fkey); görünmüyorsa (RLS) null. */
+  const isHam = gecerliSozlesme?.is ?? null;
+  const is = (Array.isArray(isHam) ? isHam[0] : isHam) ?? null;
   const isAdimlari = is?.operation_steps ?? [];
   const isIlerleme = isAdimlari.length ? Math.round((isAdimlari.filter((a) => a.is_completed).length / isAdimlari.length) * 100) : null;
   /* Çizgi bağlı kayıtlarla da ilerliyor (lib/talep-asamalari): stage alanı
@@ -208,20 +212,18 @@ export default async function RequestDetailPage({
     kuralı (RLS; satış personeli yalnızca görebildiğini görür). Okunamazsa
     sayfa düşmez, bölüm görünmez.
   */
-  let gecmis: CustomerHistoryResult | null = null;
-  try {
-    gecmis = await findCustomerHistory(context, { phone: item.contact_phone, name: item.customer_name, excludeOpportunityId: item.id }, { maxItems: 4 });
-  } catch (hata) {
-    console.error("[talep] müşteri geçmişi okunamadı", hata);
-  }
-
-  // Müşteriyle yazışmalar (WhatsApp ve posta sekmeleri); müşteri sayfasıyla aynı kural.
-  const [{ numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, hizmetTurleri] = await Promise.all([
+  const [gecmis, { numara: whatsappNumarasi, mesajlar: whatsappMesajlari }, postalar, unlistedAssignee] = await Promise.all([
+    findCustomerHistory(context, { phone: item.contact_phone, name: item.customer_name, excludeOpportunityId: item.id }, { maxItems: 4 })
+      .catch((hata): CustomerHistoryResult | null => {
+        console.error("[talep] müşteri geçmişi okunamadı", hata);
+        return null;
+      }),
+    // Müşteriyle yazışmalar (WhatsApp ve posta sekmeleri); müşteri sayfasıyla aynı kural.
     musteriWhatsapp(membership.organization_id, item.contact_phone),
     postaGorur ? musteriPostalari(supabase, membership.organization_id, { talepIdleri: [item.id], eposta: item.contact_email }) : Promise.resolve([]),
-    // Düzenleme formundaki hizmet türü önerileri (Ayarlar → Hizmet türleri).
-    kurumHizmetTurleri(supabase, membership.organization_id),
+    pasifTemsilciSozu,
   ]);
+  const representative = listedAssignee?.full_name ?? unlistedAssignee ?? null;
   const gecmisSayilari = gecmis
     ? ([["talep", gecmis.counts.request], ["teklif", gecmis.counts.proposal], ["sözleşme", gecmis.counts.contract], ["iş", gecmis.counts.job]] as [string, number][]).filter(([, n]) => n > 0)
     : [];

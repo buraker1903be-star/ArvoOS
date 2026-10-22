@@ -15,6 +15,8 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261013121621_panel_baglami_tek_cagri.sql");
+// Lisans durumu da bağlamda (20261022130450); SONDAN uygulanır.
+const MIGRATION_LISANS = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022130450_panel_baglaminda_lisans.sql");
 const KURUM = "00000000-0000-4000-8000-000000008701";
 const OTEKI = "00000000-0000-4000-8000-000000008702";
 const SAHIP = "00000000-0000-4000-8000-000000008711";
@@ -30,6 +32,7 @@ const baglam = async (kim, org) => {
 before(async () => {
   db = await veritabani();
   await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  await db.exec(fs.readFileSync(MIGRATION_LISANS, "utf8"));
   await rol(db, "postgres");
   await db.exec(`
     insert into auth.users (id,email) values ('${SAHIP}','s@x.com'),('${UYE}','u@x.com'),('${YABANCI}','y@x.com');
@@ -61,6 +64,21 @@ describe("panel bağlamı", () => {
       assert.deepEqual(b.rol_yetki, []);
       assert.deepEqual(b.kisi_yetki, []);
       assert.deepEqual(b.moduller, []);
+    }));
+
+  /*
+    Erişim kapısının baktığı lisans satırı bağlamla aynı turda geliyor;
+    eskiden ayrı bir sorguydu ve her panel isteğine bir tur ekliyordu.
+  */
+  test("lisans durumu bağlamda; başka kurumun lisansı dönmez", async () =>
+    islem(db, async () => {
+      await rol(db, "postgres");
+      // Kurum açılınca lisans satırı tetikleyiciyle oluşuyor; askıya alma güncellemedir.
+      await db.query(`update public.organization_licenses set license_status = 'suspended', suspension_reason = 'Ödeme bekleniyor' where organization_id = $1`, [KURUM]);
+      const b = await baglam(UYE, KURUM);
+      assert.deepEqual(b.lisans, { license_status: "suspended", suspension_reason: "Ödeme bekleniyor" });
+      const yabanci = await baglam(YABANCI, KURUM);
+      assert.equal(yabanci.lisans, null, "üyesi olmadığı kurumun lisansı okunmamalı (RLS)");
     }));
 
   test("anon çağıramaz", async () =>
