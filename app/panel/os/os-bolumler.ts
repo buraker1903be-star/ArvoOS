@@ -92,6 +92,14 @@ export function dokumanBolumleri(): Bolum[] {
   ];
 }
 
+export function analitikBolumleri(): Bolum[] {
+  return [
+    { key: "genel-bakis", href: "/panel/analitik", label: "Genel Bakış" },
+    { key: "canli", href: "/panel/analitik/canli", label: "Canlı" },
+    { key: "kurulum", href: "/panel/analitik/kurulum", label: "Kurulum" },
+  ];
+}
+
 /** Uygulama anahtarına (os-apps.ts) göre bölümler; bölümü olmayan uygulama boş döner. */
 export function uygulamaBolumleri(uygulama: string, e: BolumErisimi): Bolum[] {
   switch (uygulama) {
@@ -100,6 +108,7 @@ export function uygulamaBolumleri(uygulama: string, e: BolumErisimi): Bolum[] {
     case "finance": return finansBolumleri(e);
     case "hr": return ikBolumleri();
     case "documents": return dokumanBolumleri();
+    case "analitik": return analitikBolumleri();
     default: return [];
   }
 }

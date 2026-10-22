@@ -147,6 +147,16 @@ export const YETKI_GRUPLARI: readonly { id: string; modul: string | null; baslik
     ],
   },
   {
+    id: "analitik",
+    modul: "analitik",
+    baslik: "Analitik",
+    yetkiler: [
+      { key: "analitik.gor", modul: "analitik", label: "Site trafiği", aciklama: "Ziyaretçi, kaynak, kampanya, ülke ve canlı ekranı görür", varsayilan: YONETIM_VE_SEF },
+      // RLS de site eklemeyi owner/admin/manager'a açıyor (20261022092820): yalnızca daraltılabilir.
+      { key: "analitik.yonet", modul: "analitik", label: "Site ve kurulum", aciklama: "Takip edilecek siteyi ekler, siler ve takip kodunu görür", varsayilan: YONETIM, rlsBagli: true },
+    ],
+  },
+  {
     id: "kurum",
     modul: null,
     baslik: "Kurum ayarları",

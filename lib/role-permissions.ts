@@ -14,6 +14,7 @@ export const PERMISSION_MODULES = [
   { key: "documents", label: "Dokümanlar" },
   { key: "posta", label: "Posta" },
   { key: "reports", label: "Raporlar" },
+  { key: "analitik", label: "Analitik" },
 ] as const;
 
 export const PERMISSION_ROLES = [
@@ -43,6 +44,7 @@ const PATH_PREFIX_TO_MODULE_KEY: Record<string, string> = {
   "/panel/reporting": "reports",
   "/panel/documents": "documents",
   "/panel/posta": "posta",
+  "/panel/analitik": "analitik",
 };
 
 export function modulesKeyForPath(pathname: string): string | null {

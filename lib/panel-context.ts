@@ -16,6 +16,7 @@ export const panelModules: Record<string, PanelModule & { icon: string }> = {
   hr: { code: "hr", name: "Ekip ve İnsan Kaynakları", description: "Ekip ve organizasyon yönetimi", icon: "İK" },
   documents: { code: "documents", name: "Belgeler", description: "Kurumsal belge merkezi", icon: "BL" },
   support: { code: "support", name: "Destek Merkezi", description: "Destek talepleri ve çözüm takibi", icon: "DS" },
+  analitik: { code: "analitik", name: "Analitik", description: "Web sitesi trafiği, kaynaklar ve dönüşüm", icon: "AN" },
 };
 
 export const WORKSPACE_COOKIE = "arvo_workspace_v2";

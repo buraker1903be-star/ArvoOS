@@ -167,7 +167,7 @@ test("hata metni hangi yetkinin eksik olduğunu söylüyor", () => {
 test("katalog tutarlı: anahtarlar tekil, modüller bilinen küme", () => {
   const anahtarlar = TUM_YETKILER.map((yetki) => yetki.key);
   assert.equal(new Set(anahtarlar).size, anahtarlar.length, "yinelenen yetki anahtarı");
-  const modulAnahtarlari = new Set(["crm", "operations", "finance", "hr", "documents", "reports", "posta"]);
+  const modulAnahtarlari = new Set(["crm", "operations", "finance", "hr", "documents", "reports", "posta", "analitik"]);
   for (const yetki of TUM_YETKILER) {
     if (yetki.modul !== null) assert.ok(modulAnahtarlari.has(yetki.modul), `bilinmeyen modül: ${yetki.modul}`);
     assert.ok(yetki.varsayilan.every((rol) => ["admin", "manager", "member", "operasyoncu"].includes(rol)),

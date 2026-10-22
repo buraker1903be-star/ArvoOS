@@ -22,6 +22,8 @@ export const navigationGroups: NavigationGroup[] = [
   { key: "finance", label: "Finans", icon: "F", codes: ["finance", "accounts", "banking", "billing", "payments", "e_invoice"], preferredHref: "/panel/finance/genel-bakis" },
   { key: "hr", label: "İnsan Kaynakları", icon: "İK", codes: ["hr"], preferredHref: "/panel/hr/genel-bakis" },
   { key: "documents", label: "Dokümanlar", icon: "D", codes: ["documents", "files", "templates"] },
+  // Ayrı satılan modül (20261022092820): kurumda kapalıysa dock'ta yok.
+  { key: "analitik", label: "Analitik", icon: "A", codes: ["analitik"], preferredHref: "/panel/analitik" },
   // Raporlar ayrı menü değil: Finans → Raporlar sekmesi (/panel/finance/raporlar).
 ];
 

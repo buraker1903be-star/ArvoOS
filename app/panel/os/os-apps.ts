@@ -19,7 +19,7 @@ import {
 import { uygulamaBolumleri, type Bolum, type BolumErisimi } from "./os-bolumler";
 
 export type OsIkon =
-  | "home" | "crm" | "operations" | "finance" | "hr" | "documents"
+  | "home" | "crm" | "operations" | "finance" | "hr" | "documents" | "analitik"
   | "posta" | "messages" | "settings" | "apps" | "notifications" | "whatsapp"
   /* Kurucu konsolunun uygulamaları (os/konsol-apps.ts). */
   | "box" | "building" | "wallet" | "check" | "pulse" | "tag" | "repeat";
@@ -47,6 +47,7 @@ const GRUP_IKONU: Record<string, OsIkon> = {
   finance: "finance",
   hr: "hr",
   documents: "documents",
+  analitik: "analitik",
 };
 
 export function osUygulamalari({

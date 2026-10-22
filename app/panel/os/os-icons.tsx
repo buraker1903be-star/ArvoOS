@@ -13,6 +13,7 @@ const YOLLAR: Record<OsIkon | "search" | "bell" | "close" | "logout" | "external
   finance: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 14.5h2" /></>,
   hr: <><rect x="4" y="3" width="16" height="18" rx="2" /><circle cx="12" cy="10" r="3" /><path d="M8 17c.7-1.8 2.2-2.8 4-2.8s3.3 1 4 2.8" /></>,
   documents: <><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4M9 12h6M9 16h6" /></>,
+  analitik: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
   posta: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3.5 6.5 8.5 6.5 8.5-6.5" /></>,
   messages: <path d="M4 5h16v11H9l-5 4z" />,
   whatsapp: <><path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5a8.4 8.4 0 1 1 15.4-4.4Z" /><path d="M9 8.8c.2 3 2.6 5.6 5.7 6l1.1-1.4-1.8-1-.9.8a3.6 3.6 0 0 1-1.9-1.9l.8-.9-1-1.8Z" /></>,
