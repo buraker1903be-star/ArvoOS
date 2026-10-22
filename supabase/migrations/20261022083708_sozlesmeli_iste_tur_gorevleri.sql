@@ -1,29 +1,27 @@
 /*
-  SÖZLEŞMELİ İŞ DE ÇALIŞMA TÜRÜNÜN GÖREVLERİYLE AÇILIR (22.10.2026).
+  SÖZLEŞMELİ İŞ ÇALIŞMA TÜRÜNÜN GÖREVLERİYLE AÇILIR (22.10.2026).
 
-  Eskiden add_standard_operation_steps üç kaynaktan YALNIZCA birini
-  kullanıyordu: sözleşmenin ara teslim takvimi (work_plan) doluysa iş
-  yalnızca o kalemlerle açılıyor, çalışma türünün görev listesi hiç
-  eklenmiyordu. AkademikMerkez'de Tez türünün 20 görevi var; Tuğçe
-  Drama'nın işi sözleşmesindeki 5 ara teslimle açıldı ve 20 görevin
-  hiçbiri gelmedi. "Çalışma türünü değiştir" de çare değildi: iş zaten
-  Tez türündeydi ve aynı türe çevirmek reddediliyor.
+  Eskiden add_standard_operation_steps sözleşmenin ara teslim takvimini
+  (work_plan) ÖNCE deniyordu: takvim doluysa iş yalnızca o kalemlerle
+  açılıyor, çalışma türünün görev listesi hiç eklenmiyordu.
+  AkademikMerkez'de Tez türünün 20 görevi var; Tuğçe Drama'nın işi
+  sözleşmesindeki 5 ara teslimle açıldı ve 20 görevin hiçbiri gelmedi.
+  "Çalışma türünü değiştir" de çare değildi: iş zaten Tez türündeydi ve
+  aynı türe çevirmek reddediliyor.
 
-  Yeni kural:
-    - Çalışma türünün görevleri HER ZAMAN eklenir (tür → kurumun
-      öntanımlısı → 'varsayilan'; öncekiyle aynı seçim).
-    - Sözleşmenin ara teslimleri ATILMAZ: müşteriye tarihleriyle satılan
-      taahhüt, termin hatırlatması da onların tarihinden çalışıyor. Ayrı
-      bir aşamada, türün görevlerinin ARDINA eklenir
-      ("Sözleşme ara teslimleri").
-    - İkisi de yoksa eski 8 varsayılan adım (davranış değişmedi).
+  Kurum sahibinin kararı: ara teslimler görev listesine GİRMEZ. Onlar
+  sözleşmede ve müşteri takip sayfasında duruyor; operasyonun listesi
+  türün listesidir. Yeni öncelik:
+    1) Çalışma türünün görevleri (tür → kurumun öntanımlısı → 'varsayilan').
+    2) Tür listesi boşsa sözleşmenin takvimi (şablon tanımlamamış kurum
+       için eski davranış).
+    3) İkisi de yoksa eski 8 varsayılan adım.
 
-  arvo_is_turunu_degistir de ara teslimleri artık silmiyor: tür
-  değişince değişen operasyonun listesi, müşteriye verilen tarihler
-  değil. Gövde anlık görüntüden (canli-sema.sql) alındı.
-
-  Sonda geriye dönük düzeltme: sözleşme takviminden açılıp türün hiçbir
-  görevini almamış, kapanmamış işlere türün görevleri eklenir.
+  Bu migration'ın ilk hâli (aynı gün) ara teslimleri "Sözleşme ara
+  teslimleri" aşamasında türün görevlerinin ardına ekliyor ve tür
+  değiştirmede onları koruyordu. O hâl uygulanmış olabileceği için
+  arvo_is_turunu_degistir anlık görüntüdeki gövdesine geri yazılıyor ve
+  geriye dönük düzeltme iki durumu da temizliyor.
 */
 
 create or replace function public.add_standard_operation_steps(target_workflow_id uuid, target_organization_id uuid)
@@ -37,8 +35,6 @@ declare
   plan jsonb;
   set_kodu text;
   eklenen integer := 0;
-  plan_eklenen integer := 0;
-  taban integer := 0;
 begin
   -- Adımı olan işe dokunulmaz: fonksiyon tekrar çağrılabilir olmalı.
   if exists (select 1 from public.operation_steps s where s.workflow_id = target_workflow_id) then
@@ -69,8 +65,9 @@ begin
   where t.organization_id = target_organization_id and t.is_active and t.set_code = set_kodu
   order by t.sort_order, t.code;
   get diagnostics eklenen = row_count;
+  if eklenen > 0 then return; end if;
 
-  -- 2) Sözleşmenin ara teslim takvimi: türün görevlerinin ardına, kendi aşamasında.
+  -- 2) Tür listesi boşsa sözleşmenin ara teslim takvimi.
   if wf.contract_id is not null then
     select c.work_plan into plan
     from public.crm_contracts c
@@ -78,23 +75,18 @@ begin
   end if;
 
   if jsonb_typeof(plan) = 'array' and jsonb_array_length(plan) > 0 then
-    select coalesce(max(s.sort_order), 0) into taban
-    from public.operation_steps s where s.workflow_id = target_workflow_id;
-
-    insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date, phase_title)
+    insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date)
     select
       target_organization_id,
       target_workflow_id,
       left(trim(item.value ->> 'title'), 180),
-      taban + (row_number() over (order by item.value ->> 'due_date', (item.value ->> 'sequence')::int))::int * 10,
-      nullif(item.value ->> 'due_date', '')::date,
-      'Sözleşme ara teslimleri'
+      (row_number() over (order by item.value ->> 'due_date', (item.value ->> 'sequence')::int))::int * 10,
+      nullif(item.value ->> 'due_date', '')::date
     from jsonb_array_elements(plan) as item(value)
     where char_length(trim(coalesce(item.value ->> 'title', ''))) >= 2;
-    get diagnostics plan_eklenen = row_count;
+    get diagnostics eklenen = row_count;
+    if eklenen > 0 then return; end if;
   end if;
-
-  if eklenen + plan_eklenen > 0 then return; end if;
 
   -- 3) Ne tür listesi ne takvim: eski 8 varsayılan adım.
   insert into public.operation_steps (organization_id, workflow_id, title, sort_order)
@@ -112,6 +104,7 @@ begin
 end;
 $$;
 
+-- Anlık görüntüdeki gövde: bu migration'ın ilk hâli uygulandıysa onu geri alır.
 create or replace function public.arvo_is_turunu_degistir(p_workflow uuid, p_set text)
 returns jsonb
 language plpgsql
@@ -157,14 +150,9 @@ begin
   select coalesce(max(s.sort_order), 0) into v_taban from public.operation_steps s
   where s.workflow_id = p_workflow and s.is_completed;
 
-  /*
-    Değişecek görevler EKLEMEDEN ÖNCE kimlikleriyle alınır. Sözleşmenin
-    ara teslimleri değişmez (20261022083708): eskiden onlar da silinip
-    müşteriye verilen tarihler işten kayboluyordu.
-  */
+  -- Değişecek görevler EKLEMEDEN ÖNCE kimlikleriyle alınır.
   select coalesce(array_agg(s.id), '{}') into v_eski from public.operation_steps s
-  where s.workflow_id = p_workflow and not s.is_completed
-    and s.phase_title is distinct from 'Sözleşme ara teslimleri';
+  where s.workflow_id = p_workflow and not s.is_completed;
 
   -- 1) Önce ekle (işi bir anlığına bile görevsiz/bitmiş bırakma).
   insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date, phase_title)
@@ -197,21 +185,25 @@ revoke all on function public.arvo_is_turunu_degistir(uuid, text) from public, a
 grant execute on function public.arvo_is_turunu_degistir(uuid, text) to authenticated, service_role;
 
 /*
-  GERİYE DÖNÜK DÜZELTME. Etkilenen iş: sözleşmesinin takvimi dolu,
-  türünün listesinde görev var ama işte o listeden TEK BİR görev yok,
-  iş kapanmamış (tamamlanan/iptal/arşiv işe görev eklemek onu yeniden
-  "açık" gösterirdi). Mevcut görevlere dokunulmaz — tamamlanmışlar,
-  atamalar ve tarihler yerinde kalır; yalnızca ara teslim aşamasına
-  alınıp türün görevlerinin ardına sıralanırlar.
+  GERİYE DÖNÜK DÜZELTME — yalnızca KAPANMAMIŞ sözleşmeli işler
+  (tamamlanan/iptal/arşiv işe görev eklemek onu yeniden "açık"
+  gösterirdi) ve yalnızca türünün listesi dolu olanlar (yoksa iş
+  görevsiz kalırdı).
+    a) Türün görevlerinden hiçbiri işte yoksa eklenir.
+    b) Sözleşmenin ara teslimlerinden gelen görevler silinir: adı
+       takvimdeki bir kalemle aynı olan (eski davranış) ya da ilk hâlin
+       açtığı "Sözleşme ara teslimleri" aşamasındaki. Adı türün bir
+       göreviyle aynı olan satır silinmez — o türün görevidir. Elle
+       eklenmiş, adı takvimde olmayan görevlere dokunulmaz.
 */
 do $$
 declare
   r record;
   v_set text;
-  v_tavan integer;
 begin
   for r in
-    select w.id, w.organization_id, w.step_template_set, coalesce(w.start_date, current_date) as baslangic
+    select w.id, w.organization_id, w.step_template_set, c.work_plan,
+      coalesce(w.start_date, current_date) as baslangic
     from public.operation_workflows w
     join public.crm_contracts c on c.id = w.contract_id and c.organization_id = w.organization_id
     where w.status in ('planned', 'in_progress', 'blocked')
@@ -227,27 +219,36 @@ begin
     continue when not exists (
       select 1 from public.organization_step_templates t
       where t.organization_id = r.organization_id and t.set_code = v_set and t.is_active);
-    continue when exists (
+
+    -- a) Önce ekle: sync_workflow_completion_from_steps kalan görevler bitmişse işi kapatıyor.
+    if not exists (
       select 1 from public.operation_steps s
       join public.organization_step_templates t
         on t.organization_id = r.organization_id and t.set_code = v_set and t.is_active
        and lower(trim(t.title)) = lower(trim(s.title))
-      where s.workflow_id = r.id);
+      where s.workflow_id = r.id
+    ) then
+      insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date, phase_title)
+      select r.organization_id, r.id, t.title, t.sort_order,
+        case when t.day_offset is null then null else r.baslangic + t.day_offset end,
+        t.phase_title
+      from public.organization_step_templates t
+      where t.organization_id = r.organization_id and t.set_code = v_set and t.is_active
+      order by t.sort_order, t.code;
+    end if;
 
-    select coalesce(max(t.sort_order), 0) into v_tavan
-    from public.organization_step_templates t
-    where t.organization_id = r.organization_id and t.set_code = v_set and t.is_active;
-
-    update public.operation_steps s
-    set phase_title = 'Sözleşme ara teslimleri', sort_order = v_tavan + s.sort_order
-    where s.workflow_id = r.id and s.phase_title is null;
-
-    insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date, phase_title)
-    select r.organization_id, r.id, t.title, t.sort_order,
-      case when t.day_offset is null then null else r.baslangic + t.day_offset end,
-      t.phase_title
-    from public.organization_step_templates t
-    where t.organization_id = r.organization_id and t.set_code = v_set and t.is_active
-    order by t.sort_order, t.code;
+    -- b) Sonra ara teslimleri sil.
+    delete from public.operation_steps s
+    where s.workflow_id = r.id
+      and (
+        s.phase_title = 'Sözleşme ara teslimleri'
+        or exists (
+          select 1 from jsonb_array_elements(r.work_plan) as item(value)
+          where lower(trim(item.value ->> 'title')) = lower(trim(s.title)))
+      )
+      and not exists (
+        select 1 from public.organization_step_templates t
+        where t.organization_id = r.organization_id and t.set_code = v_set and t.is_active
+          and lower(trim(t.title)) = lower(trim(s.title)));
   end loop;
 end $$;

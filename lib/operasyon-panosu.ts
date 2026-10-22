@@ -89,11 +89,9 @@ export const KURUM_ICI = "Kurum içi iş";
   İŞİN KOLONU: tamamlanmayan İLK adımı (sıraya göre). Hepsi bittiyse iş
   "Tamamlandı" kolonunda.
 
-  ŞABLON DIŞI kolon şart. Sözleşmeden açılan işte türün görevlerinin
-  ardına sözleşmenin ara teslimleri de ekleniyor ("Sözleşme ara
-  teslimleri" aşaması, 20261022083708; eskiden iş YALNIZCA onlarla
-  açılıyordu), elle eklenen görev de olabiliyor — bunlar şablonla
-  eşleşmez. Böyle bir işi ilk kolona koymak ya da
+  ŞABLON DIŞI kolon şart. Elle eklenen görev olabiliyor; türün listesi
+  boş olan kurumda iş sözleşmenin ara teslim takvimiyle açılıyor
+  (add_standard_operation_steps) — bunlar şablonla eşleşmez. Böyle bir işi ilk kolona koymak ya da
   gizlemek, panonun yanlış bir tablo göstermesi olurdu — kendi kolonunda,
   adıyla duruyor.
 

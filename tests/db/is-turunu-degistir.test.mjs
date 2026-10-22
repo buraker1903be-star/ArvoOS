@@ -17,7 +17,7 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261013110047_is_turunu_degistir.sql");
-// Ara teslimleri silmeyen gövde (20261022083708); SONDAN uygulanır.
+// Gövdeyi anlık görüntüdekine geri yazıyor (20261022083708); SONDAN uygulanır.
 const MIGRATION_ARA_TESLIM = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022083708_sozlesmeli_iste_tur_gorevleri.sql");
 const KURUM = "00000000-0000-4000-8000-00000000b701";
 const SAHIP = "00000000-0000-4000-8000-00000000b711";
@@ -67,24 +67,6 @@ describe("meşru yol", () => {
       const is = await tek(`select status, step_template_set from public.operation_workflows where id = $1`, [IS]);
       assert.equal(is.status, "in_progress", "iş kendiliğinden tamamlanmamalı");
       assert.equal(is.step_template_set, "makale");
-    }));
-});
-
-describe("sözleşmenin ara teslimleri", () => {
-  /*
-    Eskiden tür değişince tamamlanmamış her görev silinirdi; müşteriye
-    tarihiyle verilen ara teslimler de gidiyordu (20261022083708).
-  */
-  test("tür değişince ara teslim görevi silinmez", async () =>
-    islem(db, async () => {
-      await db.query(`insert into public.operation_steps (organization_id, workflow_id, title, sort_order, due_date, phase_title)
-                      values ($1, $2, 'Ara paylaşım', 900, '2026-12-27', 'Sözleşme ara teslimleri')`, [KURUM, IS]);
-      await rol(db, "authenticated", SAHACI);
-      await db.query(`select public.arvo_is_turunu_degistir($1, 'makale')`, [IS]);
-      await rol(db, "postgres");
-      const liste = (await gorevler()).map((g) => g.title);
-      assert.ok(liste.includes("Ara paylaşım"), "ara teslim kalmalı");
-      assert.ok(!liste.includes("Tez Savunması"), "türün eski görevi gitmeli");
     }));
 });
 

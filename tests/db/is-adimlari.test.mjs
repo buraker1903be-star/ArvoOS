@@ -120,7 +120,7 @@ async function isAc() {
 }
 
 describe("iş adımları nereden üretiliyor", () => {
-  test("şablon yoksa sözleşmenin work_plan'ı TARİHLİ ve kendi aşamasında gelir", () =>
+  test("şablon yoksa adımlar sözleşmenin work_plan'ından TARİHLİ gelir", () =>
     islem(db, async () => {
       await tohum({
         workPlan: [
@@ -144,15 +144,15 @@ describe("iş adımları nereden üretiliyor", () => {
         ["2026-10-05", "2026-10-20", "2026-11-05", "2026-11-25"],
       );
       assert.deepEqual(liste.map((a) => a.status), ["planned", "planned", "planned", "planned"]);
-      assert.ok(liste.every((a) => a.phase_title === "Sözleşme ara teslimleri"));
     }));
 
   /*
     22.10.2026, AkademikMerkez: Tez türünün 20 görevi var, Tuğçe Drama'nın
     işi sözleşmesindeki 5 ara teslimle açıldı ve türün görevlerinin
-    HİÇBİRİ gelmedi — eskiden takvim doluysa şablon atlanıyordu.
+    HİÇBİRİ gelmedi — eskiden takvim doluysa şablon atlanıyordu. Kurum
+    sahibinin kararı: ara teslimler görev listesine hiç girmez.
   */
-  test("work_plan VE şablon varsa önce türün görevleri, ardından ara teslimler gelir", () =>
+  test("work_plan VE şablon varsa YALNIZCA türün görevleri gelir", () =>
     islem(db, async () => {
       await tohum({
         workPlan: [
@@ -168,15 +168,18 @@ describe("iş adımları nereden üretiliyor", () => {
       const isId = await isAc();
       const liste = await adimlar(isId);
 
-      assert.deepEqual(liste.map((a) => a.title), ["Konu belirleme", "Literatür taraması", "Ara paylaşım", "Teslim"]);
-      assert.deepEqual(liste.map((a) => a.phase_title), ["Hazırlık", "Yazım", "Sözleşme ara teslimleri", "Sözleşme ara teslimleri"]);
-      // Müşteriye verilen tarihler korunuyor.
-      assert.equal(liste[2].due_date.toISOString().slice(0, 10), "2026-12-27");
+      assert.deepEqual(liste.map((a) => a.title), ["Konu belirleme", "Literatür taraması"]);
+      assert.deepEqual(liste.map((a) => a.phase_title), ["Hazırlık", "Yazım"]);
     }));
 
-  test("geriye dönük düzeltme: takvimle açılmış açık işe türün görevleri eklenir, mevcutlar korunur", () =>
+  test("geriye dönük düzeltme: takvimle açılmış açık iş türün görevlerine geçer, elle eklenen kalır", () =>
     islem(db, async () => {
-      await tohum({ workPlan: [{ sequence: 1, title: "Taslak İçindekiler", due_date: "2026-10-29" }] });
+      await tohum({
+        workPlan: [
+          { sequence: 1, title: "Taslak İçindekiler", due_date: "2026-10-29" },
+          { sequence: 2, title: "Ara paylaşım", due_date: "2026-12-27" },
+        ],
+      });
       // Eski davranışın bıraktığı iş: yalnızca takvim kalemi, tamamlanmış ve atanmış.
       const isId = (await tek(
         `insert into public.operation_workflows (organization_id, contract_id, title, status, start_date, created_by)
@@ -184,7 +187,8 @@ describe("iş adımları nereden üretiliyor", () => {
       await db.query(`delete from public.operation_steps where workflow_id = $1`, [isId]);
       await db.query(
         `insert into public.operation_steps (organization_id, workflow_id, title, sort_order, assigned_employee_id, status)
-         values ($1, $2, 'Taslak İçindekiler', 10, $3, 'done'), ($1, $2, 'Ara paylaşım', 20, $3, 'planned')`,
+         values ($1, $2, 'Taslak İçindekiler', 10, $3, 'done'), ($1, $2, 'Ara paylaşım', 20, $3, 'planned'),
+                ($1, $2, 'Elle eklenen sunum', 30, $3, 'planned')`,
         [KURUM, isId, CALISAN]);
       await db.exec(`
         insert into public.organization_step_templates (organization_id, code, title, sort_order) values
@@ -194,12 +198,13 @@ describe("iş adımları nereden üretiliyor", () => {
 
       await db.exec(fs.readFileSync(MIGRATION_TUR_GOREVLERI, "utf8"));
       const liste = await adimlar(isId);
-      assert.deepEqual(liste.map((a) => a.title), ["Konu belirleme", "Yazım", "Taslak İçindekiler", "Ara paylaşım"]);
-      assert.equal(liste[2].is_completed, true, "Tamamlanmış görev yerinde kalmalı");
+      assert.deepEqual(liste.map((a) => a.title), ["Konu belirleme", "Yazım", "Elle eklenen sunum"]);
+      const is = await tek(`select status from public.operation_workflows where id = $1`, [isId]);
+      assert.equal(is.status, "in_progress", "iş kendiliğinden kapanmamalı");
 
-      // İkinci kez çalışmak bir şey eklemez.
+      // İkinci kez çalışmak bir şey değiştirmez.
       await db.exec(fs.readFileSync(MIGRATION_TUR_GOREVLERI, "utf8"));
-      assert.equal((await adimlar(isId)).length, 4);
+      assert.equal((await adimlar(isId)).length, 3);
     }));
 
   test("work_plan boşsa kurumun şablonu kullanılır; gün ofseti tarihe çevrilir", () =>
