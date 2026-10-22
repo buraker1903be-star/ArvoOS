@@ -14,6 +14,8 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022092820_analitik_modulu.sql");
+// Canlı ekranın yeni gövdesi (harita, aktif sayfalar); SONDAN uygulanır.
+const MIGRATION_CANLI = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022100458_analitik_canli_harita.sql");
 const KURUM = "00000000-0000-4000-8000-00000000a901";
 const YABANCI_KURUM = "00000000-0000-4000-8000-00000000a902";
 const SAHIP = "00000000-0000-4000-8000-00000000a911";
@@ -36,6 +38,7 @@ before(async () => {
       ('${KURUM}','${SAHIP}','owner'),('${YABANCI_KURUM}','${YABANCI}','owner');
   `);
   await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  await db.exec(fs.readFileSync(MIGRATION_CANLI, "utf8"));
   /* Düzenek tabloları Supabase varsayılanıyla açıyor; migration'ın kapısı sınansın. */
   await db.exec(`
     revoke all on public.analitik_olaylar from anon, authenticated;
@@ -118,14 +121,23 @@ describe("özet", () => {
 
   test("canlı: şu an ve akış", () =>
     islem(db, async () => {
-      await yaz({ ip: "A" });
+      await yaz({ ip: "A", kaynak: "Instagram" });
+      await yaz({ ip: "A", yol: "/iletisim" });
+      await yaz({ ip: "A", yol: "/iletisim", tur: "form" });
       await yaz({ ip: "B" });
       await rol(db, "authenticated", SAHIP);
       const { canli } = await tek(`select public.analitik_canli($1) as canli`, [SITE]);
       await rol(db, "postgres");
       assert.equal(canli.suAn, 2);
-      assert.equal(canli.akis.length, 2);
+      assert.equal(canli.akis.length, 4);
+      assert.equal(canli.sonSaatZiyaretci, 2);
+      assert.equal(canli.sonSaatForm, 1);
       assert.equal(canli.noktalar.length, 1);
+      assert.equal(canli.noktalar[0].adet, 2);
+      assert.equal(canli.noktalar[0].dakika, 0);
+      // Kaynak ziyaretçinin ilk sayfasından: A Instagram (iç sayfa ve form Doğrudan sayılmaz).
+      assert.deepEqual(canli.kaynaklar.map((k) => [k.ad, k.adet]).sort(), [["Doğrudan", 1], ["Instagram", 1]]);
+      assert.deepEqual(canli.aktifSayfalar.find((p) => p.ad === "/"), { ad: "/", adet: 2 });
     }));
 
   test("başka kurumun üyesi özeti, canlıyı ve siteyi göremez", () =>
