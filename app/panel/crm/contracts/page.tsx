@@ -1,4 +1,5 @@
-import Link from "next/link";
+// Liste bağlantıları tembel önyüklemeli: sayfa açılınca 60+ istek gitmesin (tembel-baglanti.tsx).
+import { TembelBaglanti as Link } from "@/app/panel/components/tembel-baglanti";
 import { belgeGonderimYolu } from "@/lib/belge-gonderim-yolu";
 import { arvoKurumuMu } from "@/lib/arvo-kurumu";
 import { getWhatsappStatus } from "@/lib/whatsapp-status";

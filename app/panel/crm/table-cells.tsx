@@ -1,4 +1,5 @@
-import Link from "next/link";
+// Liste bağlantıları tembel önyüklemeli: sayfa açılınca 60+ istek gitmesin (tembel-baglanti.tsx).
+import { TembelBaglanti as Link } from "@/app/panel/components/tembel-baglanti";
 import "../components/mobil-satir.css";
 /* Son temas hücresinin sınıfları (.crm-last-contact*) crm.css'te:
    bileşen posta ekranında da kullanılıyor ve o rotada stil

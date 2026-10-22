@@ -1,4 +1,5 @@
-import Link from "next/link";
+// Liste bağlantıları tembel önyüklemeli: sayfa açılınca 60+ istek gitmesin (tembel-baglanti.tsx).
+import { TembelBaglanti as Link } from "@/app/panel/components/tembel-baglanti";
 import { statusTone } from "@/lib/status-tone";
 import { fetchLastContacts } from "./last-contact";
 import { CustomerCell, DateCell, LastContactCell, MobilSatir, RepresentativeCell, ServiceCell, kisaTarih } from "./table-cells";
