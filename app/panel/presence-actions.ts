@@ -1,9 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
-import { revalidatePath } from "next/cache";
 import { getPanelContext } from "@/lib/panel-context";
-import { runPanelAction } from "@/lib/panel-action";
 
 const SESSION_COOKIE = "arvo_presence_session";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,62 +43,4 @@ export async function recordPresence(currentPath: string) {
   }, { onConflict: "organization_id,user_id" });
   if (presenceError) throw new Error("Çevrimiçi durumu güncellenemedi: " + presenceError.message);
   await supabase.from("user_session_logs").update({ last_seen_at: now, current_path: safePath }).eq("id", sessionId).eq("user_id", userId).is("logout_at", null);
-}
-
-/*
-  EKİBE ÇEVRİMDIŞI GÖRÜNME.
-
-  Üst çubuktaki çevrimiçi ekip göstergesi kapatılamıyordu: panel açıkken
-  herkes birbirini görüyordu ve görünmeden çalışmanın tek yolu oturumu
-  kapatmaktı.
-
-  İşaret SİLME DEĞİL: son görülme yine yazılıyor (recordPresence bu
-  sütuna dokunmuyor). Kaydı hiç yazmamak, yöneticinin personel
-  ekranındaki oturum geçmişini de boşaltırdı; orası bir yönetim kaydı ve
-  kişinin görünürlük tercihi onu değiştirmemeli.
-
-  Yalnızca KENDİ satırı: RLS'in presence_update_own politikası
-  başkasının görünürlüğünü değiştirmeyi zaten engelliyor, burada da
-  user_id sorguya yazılıyor.
-*/
-export async function cevrimiciGorunurlugu(formData: FormData) {
-  const gizli = String(formData.get("gizli") ?? "") === "1";
-  await runPanelAction(async () => {
-    const { supabase, membership, userId } = await getPanelContext();
-    const simdi = new Date().toISOString();
-
-    /*
-      ÖNCE GÜNCELLE, GEREKİRSE EKLE — upsert DEĞİL.
-
-      user_presence.session_id NOT NULL ve upsert'in ON CONFLICT dalına
-      hiç sıra gelmiyor: PostgreSQL eklenecek satırı önce kuruyor, oturum
-      kimliği verilmediği için satır VARKEN bile "null value in column
-      session_id" ile düşüyordu (10.10.2026'da canlıda). Kalp atışı
-      (recordPresence) zaten her sayfa açılışında satırı yazıyor, yani
-      güncelleme neredeyse her zaman yetiyor; ekleme yalnızca panelin ilk
-      saniyeleri için.
-    */
-    const { data: guncellenen, error: guncellemeHatasi } = await supabase
-      .from("user_presence")
-      .update({ gizli, updated_at: simdi })
-      .eq("organization_id", membership.organization_id)
-      .eq("user_id", userId)
-      .select("user_id");
-    if (guncellemeHatasi) throw new Error("Görünürlük kaydedilemedi: " + guncellemeHatasi.message);
-
-    if (!guncellenen?.length) {
-      /* Oturum kimliği burada üretiliyor; bir sonraki kalp atışı gerçek
-         oturumunkiyle değiştiriyor. */
-      const { error: eklemeHatasi } = await supabase.from("user_presence").insert({
-        organization_id: membership.organization_id,
-        user_id: userId,
-        session_id: crypto.randomUUID(),
-        gizli,
-        last_seen_at: simdi,
-        updated_at: simdi,
-      });
-      if (eklemeHatasi) throw new Error("Görünürlük kaydedilemedi: " + eklemeHatasi.message);
-    }
-    revalidatePath("/panel", "layout");
-  }, gizli ? "Ekibe çevrimdışı görünüyorsunuz" : "Ekibe çevrimiçi görünüyorsunuz");
 }
