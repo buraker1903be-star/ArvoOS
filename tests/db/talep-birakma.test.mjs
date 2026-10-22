@@ -16,6 +16,9 @@ import path from "node:path";
 import { islem, reddedilir, rol, veritabani } from "./ortam.mjs";
 
 const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022135951_talebi_listeden_kaldir.sql");
+// Yöneticiye bildirim (aynı işlevin yeni gövdesi); SONDAN uygulanır.
+const MIGRATION_BILDIRIM = path.resolve(import.meta.dirname, "../../supabase/migrations/20261022142724_talep_birakma_bildirimi.sql");
+const YONETICI = "00000000-0000-4000-8000-00000000d114";
 const KURUM = "00000000-0000-4000-8000-00000000d101";
 const SAHIP = "00000000-0000-4000-8000-00000000d111";
 const SATISCI = "00000000-0000-4000-8000-00000000d112";
@@ -41,13 +44,14 @@ const birak = async (kim, sebep) => {
 before(async () => {
   db = await veritabani();
   await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+  await db.exec(fs.readFileSync(MIGRATION_BILDIRIM, "utf8"));
   await rol(db, "postgres");
   await db.exec(`
-    insert into auth.users (id,email) values ('${SAHIP}','s@x.com'),('${SATISCI}','a@x.com'),('${DIGER}','d@x.com');
+    insert into auth.users (id,email) values ('${SAHIP}','s@x.com'),('${SATISCI}','a@x.com'),('${DIGER}','d@x.com'),('${YONETICI}','y@x.com');
     insert into public.plans (code,name,description) values ('starter','B','');
     insert into public.organizations (id,name,slug,status,plan_code) values ('${KURUM}','Akademik Merkez','am','active','starter');
     insert into public.organization_memberships (organization_id,user_id,role) values
-      ('${KURUM}','${SAHIP}','owner'),('${KURUM}','${SATISCI}','member'),('${KURUM}','${DIGER}','member');
+      ('${KURUM}','${SAHIP}','owner'),('${KURUM}','${SATISCI}','member'),('${KURUM}','${DIGER}','member'),('${KURUM}','${YONETICI}','manager');
   `);
   satisciId = (await tek(`insert into public.hr_employees (organization_id,user_id,full_name,employment_status) values ($1,$2,'Ali Cengizhan','active') returning id`, [KURUM, SATISCI])).id;
   digerId = (await tek(`insert into public.hr_employees (organization_id,user_id,full_name,employment_status) values ($1,$2,'Gizem Atar','active') returning id`, [KURUM, DIGER])).id;
@@ -83,6 +87,21 @@ describe("talebi listeden kaldırma", () => {
       assert.equal(yonetici[0].birakma_sebebi, "Fiyatı yüksek buldu, başka yerle anlaştı");
       const kayit = await tek(`select stage from public.crm_opportunities where id = $1`, [TALEP]);
       assert.equal(kayit.stage, "lead", "talep silinmez, arşivlenmez");
+    }));
+
+  /*
+    20261022142724: kaldırınca yöneticilere (owner/admin/manager) kişiye
+    özel bildirim; satışçıya ve diğer satış personeline gitmez.
+  */
+  test("kaldırınca yöneticilere bildirim gider, satışçılara gitmez", () =>
+    islem(db, async () => {
+      await db.query(`delete from public.notifications where organization_id = $1`, [KURUM]);
+      await birak(SATISCI, "Fiyatı yüksek buldu, başka yerle anlaştı");
+      const { rows } = await db.query(
+        `select user_id, category, message, action_url from public.notifications where organization_id = $1 and category = 'talep_birakildi' order by user_id`, [KURUM]);
+      assert.deepEqual(rows.map((r) => r.user_id).sort(), [SAHIP, YONETICI].sort());
+      assert.match(rows[0].message, /Ali Cengizhan, Ayşe Yılmaz talebini listesinden kaldırdı: Fiyatı yüksek/);
+      assert.equal(rows[0].action_url, `/panel/crm/requests/${TALEP}`);
     }));
 
   test("sütunlar panelden doğrudan yazılamaz", () =>

@@ -60,7 +60,7 @@ export async function describeNotifications(
   const idsFor = (categories: string[], key: string) => unique(rows.filter((row) => categories.includes(row.category)).map((row) => meta(row, key)));
   const contractIds = idsFor(["customer_message"], "contract_id");
   const commentIds = idsFor(["internal_comment"], "comment_id");
-  const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation", "site_lead"], "opportunity_id");
+  const opportunityIds = idsFor(["internal_comment", "sales_assignment", "crm_won_automation", "site_lead", "talep_birakildi"], "opportunity_id");
   const workflowIds = idsFor(["operation_assignment", "operation_step_due", "operation_waiting_party", "operation_revision_window"], "workflow_id");
 
   const [contractResult, messageResult, commentResult, opportunityResult, workflowResult] = await Promise.all([
@@ -77,6 +77,7 @@ export async function describeNotifications(
   const peopleIds = unique([
     ...[...comments.values()].map((comment) => comment.created_by),
     ...rows.map((row) => meta(row, "assigned_by")),
+    ...rows.map((row) => meta(row, "birakan_user_id")),
   ]);
   const { data: peopleRows } = peopleIds.length
     ? await supabase.from("hr_employees").select("user_id,full_name").eq("organization_id", organizationId).in("user_id", peopleIds)
@@ -169,6 +170,21 @@ export async function describeNotifications(
           headline: "Web sitesinden yeni talep geldi",
           detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Ziyaretçi"} — ${formatSubject(opportunity.title) || "Yeni talep"}` : row.message,
           context: join(reference ? `Ref ${reference}` : null, meta(row, "locale") === "en" ? "İngilizce form" : null, "Temsilci atanmadı"),
+          actionLabel: "Talebi aç",
+        };
+      }
+      case "talep_birakildi": {
+        /* Satışçı talebi sebebiyle listesinden kaldırdı (20261022142724): karar yöneticide. */
+        const opportunity = opportunities.get(meta(row, "opportunity_id") ?? "");
+        const birakan = people.get(meta(row, "birakan_user_id") ?? "");
+        return {
+          ...base,
+          label: "Talep kaldırıldı",
+          tone: "danger",
+          icon: "person",
+          headline: `${birakan ?? "Satışçı"} talebi listesinden kaldırdı`,
+          detail: opportunity ? `${formatPersonName(opportunity.customer_name) || "Müşteri"} — ${meta(row, "sebep") ?? ""}` : row.message,
+          context: "Arşivleyin, başka satışçıya atayın ya da geri verin",
           actionLabel: "Talebi aç",
         };
       }
