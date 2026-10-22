@@ -39,14 +39,23 @@ function revalidateOperations() {
   revalidatePath("/panel");
 }
 
-// Yöneticiler her işte, diğerleri yalnızca sorumlusu oldukları işte
-// yetkili (termin ve arşiv işlemleri). RLS (members_update_assigned_operation_workflows)
-// da aynı kuralı uygular.
-async function isManagerOrAssignee({ supabase, membership, userId, izin }: OperationContext, assignedEmployeeId: string | null) {
+// Yöneticiler her işte, diğerleri yalnızca sorumlusu ya da EK SORUMLUSU
+// oldukları işte yetkili (termin ve arşiv işlemleri). RLS
+// (members_update_assigned_operation_workflows) da aynı kuralı uygular.
+// Ek sorumlu 22.10.2026'da geldi (20261022081123): eskiden ikinci
+// operasyoncu işi göremiyordu bile.
+async function isManagerOrAssignee({ supabase, membership, userId, izin }: OperationContext, assignedEmployeeId: string | null, workflowId: string) {
   if (izin("operations.is.yonet")) return true;
-  if (!assignedEmployeeId) return false;
-  const { data: me } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle();
-  return Boolean(me?.id && me.id === assignedEmployeeId);
+  const { data: me, error: meError } = await supabase.from("hr_employees").select("id").eq("organization_id", membership.organization_id).eq("user_id", userId).eq("employment_status", "active").maybeSingle();
+  /* Okunamayan yetki "yetki yok" değil, hata: sessizce reddetmek
+     kullanıcıya yanlış sebep söylerdi. */
+  if (meError) throw new Error("Personel kaydınız okunamadı: " + meError.message);
+  if (!me?.id) return false;
+  if (me.id === assignedEmployeeId) return true;
+  const { data: ek, error: ekError } = await supabase.from("operation_workflow_assignees").select("employee_id")
+    .eq("workflow_id", workflowId).eq("employee_id", me.id).maybeSingle();
+  if (ekError) throw new Error("Ek sorumlular okunamadı: " + ekError.message);
+  return Boolean(ek);
 }
 
 async function createWorkflow__impl(formData: FormData) {
@@ -97,6 +106,51 @@ async function assignWorkflow__impl(formData: FormData) {
   const { data, error } = await supabase.from("operation_workflows").update({ assigned_employee_id: assignedEmployeeId, updated_at: new Date().toISOString() }).eq("id", workflowId).eq("organization_id", membership.organization_id).select("id").maybeSingle();
   if (error) throw new Error("Operasyon sorumlusu güncellenemedi: " + error.message);
   if (!data) throw new Error("İş akışı bulunamadı.");
+  revalidateOperations();
+}
+
+/*
+  EK SORUMLULAR (20261022081123). Formdan gelen liste TAM liste: işaretli
+  olmayan çıkarılır, yeni işaretlenen eklenir. Asıl sorumlu listede
+  olamaz — aynı kişiyi iki kez saymak "iki kişi takip ediyor" izlenimi
+  verirdi. Yalnızca eklenenlere bildirim gider (veritabanı tetikleyicisi),
+  yerinde kalanlara yeniden gitmez.
+*/
+async function setWorkflowAssistants__impl(formData: FormData) {
+  const { supabase, membership, yetkiler } = await operationContext();
+  assertYetki(yetkiler, "operations.gorev.ata");
+  const workflowId = String(formData.get("workflow_id") ?? "");
+  if (!UUID.test(workflowId)) throw new Error("İş akışı bulunamadı.");
+  const istenen = [...new Set(formData.getAll("ek_sorumlu").map(String).filter((id) => UUID.test(id)))].slice(0, 10);
+
+  const { data: workflow, error: workflowError } = await supabase.from("operation_workflows").select("id,assigned_employee_id")
+    .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
+  if (workflowError) throw new Error("İş akışı okunamadı: " + workflowError.message);
+  if (!workflow) throw new Error("İş akışı bulunamadı.");
+  const hedef = istenen.filter((id) => id !== workflow.assigned_employee_id);
+
+  if (hedef.length) {
+    const { data: aktif, error: aktifError } = await supabase.from("hr_employees").select("id")
+      .eq("organization_id", membership.organization_id).eq("employment_status", "active").in("id", hedef);
+    if (aktifError) throw new Error("Personel okunamadı: " + aktifError.message);
+    if ((aktif ?? []).length !== hedef.length) throw new Error("Seçilen kişilerden biri aktif personel değil.");
+  }
+
+  const { data: mevcut, error: mevcutError } = await supabase.from("operation_workflow_assignees").select("employee_id").eq("workflow_id", workflowId);
+  if (mevcutError) throw new Error("Ek sorumlular okunamadı: " + mevcutError.message);
+  const simdiki = new Set((mevcut ?? []).map((satir) => satir.employee_id as string));
+  const cikacak = [...simdiki].filter((id) => !hedef.includes(id));
+  const girecek = hedef.filter((id) => !simdiki.has(id));
+
+  if (cikacak.length) {
+    const { error } = await supabase.from("operation_workflow_assignees").delete().eq("workflow_id", workflowId).in("employee_id", cikacak);
+    if (error) throw new Error("Ek sorumlu çıkarılamadı: " + error.message);
+  }
+  if (girecek.length) {
+    const { error } = await supabase.from("operation_workflow_assignees").insert(
+      girecek.map((id) => ({ workflow_id: workflowId, employee_id: id, organization_id: membership.organization_id })));
+    if (error) throw new Error("Ek sorumlu eklenemedi: " + error.message);
+  }
   revalidateOperations();
 }
 
@@ -224,7 +278,7 @@ async function moveWorkflowToStage__impl(formData: FormData) {
     .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
   if (workflow.status === "archived") throw new Error("Arşivdeki işin aşamaları değiştirilemez; önce arşivden çıkarın.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null, workflow.id as string))) {
     throw new Error("İşi başka aşamaya taşımayı yalnızca yöneticiler ve işin sorumlusu yapabilir.");
   }
 
@@ -296,7 +350,7 @@ async function distributeStepDates__impl(formData: FormData) {
     .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
   if (workflow.status === "archived") throw new Error("Arşivdeki işin tarihleri değiştirilemez; önce arşivden çıkarın.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null, workflow.id as string))) {
     throw new Error("Aşama tarihlerini yalnızca yöneticiler ve işin sorumlusu dağıtabilir.");
   }
   if (!workflow.due_date) throw new Error("Önce işin teslim tarihini girin: aşamalar onunla işin başlangıcı arasına dağıtılıyor.");
@@ -377,7 +431,7 @@ async function setStepDueDate__impl(formData: FormData) {
   const stepId = String(formData.get("step_id") ?? "");
   const dueDate = stepDueDate(formData.get("due_date"));
   const step = await stepRow(supabase, membership.organization_id, stepId);
-  if (!(await isManagerOrAssignee(context, step.assignedEmployeeId))) throw new Error("Adım tarihini yalnızca yöneticiler ve işin sorumlusu belirleyebilir.");
+  if (!(await isManagerOrAssignee(context, step.assignedEmployeeId, step.workflowId))) throw new Error("Adım tarihini yalnızca yöneticiler ve işin sorumlusu belirleyebilir.");
   const { data, error } = await supabase.from("operation_steps").update({ due_date: dueDate }).eq("id", stepId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Adım tarihi kaydedilemedi: " + error.message);
   if (!data?.length) throw new Error("Adım tarihi kaydedilemedi: bu iş için yetkiniz yok.");
@@ -481,7 +535,7 @@ async function setWaitingParty__impl(formData: FormData) {
     .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
   if (workflow.status === "archived") throw new Error("Arşivdeki iş güncellenemez; önce arşivden çıkarın.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null, workflow.id as string))) {
     throw new Error("Bekleyen tarafı yönetici ya da işin sorumlusu değiştirebilir.");
   }
 
@@ -530,7 +584,7 @@ async function setRevisionDays__impl(formData: FormData) {
     .from("operation_workflows").select("id,status,assigned_employee_id,revision_days")
     .eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null))) {
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id as string | null, workflow.id as string))) {
     throw new Error("Revizyon süresini yönetici ya da işin sorumlusu değiştirebilir.");
   }
   const { data, error } = await supabase
@@ -588,7 +642,7 @@ async function archiveWorkflow__impl(formData: FormData) {
   if (!workflowId) throw new Error("İş seçilmedi.");
   const { data: workflow } = await supabase.from("operation_workflows").select("id,status,assigned_employee_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id))) throw new Error("İşi yalnızca yöneticiler ve işin sorumlusu arşivleyebilir.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id, workflow.id))) throw new Error("İşi yalnızca yöneticiler ve işin sorumlusu arşivleyebilir.");
   if (workflow.status === "archived") throw new Error("Bu iş zaten arşivde.");
   if (workflow.status !== "completed") throw new Error("Yalnızca tamamlanan işler arşivlenebilir.");
   const { data, error } = await supabase.from("operation_workflows")
@@ -607,7 +661,7 @@ async function unarchiveWorkflow__impl(formData: FormData) {
   if (!workflowId) throw new Error("İş seçilmedi.");
   const { data: workflow } = await supabase.from("operation_workflows").select("id,status,assigned_employee_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id))) throw new Error("İşi yalnızca yöneticiler ve işin sorumlusu arşivden çıkarabilir.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id, workflow.id))) throw new Error("İşi yalnızca yöneticiler ve işin sorumlusu arşivden çıkarabilir.");
   if (workflow.status !== "archived") throw new Error("Bu iş arşivde değil.");
   const { data, error } = await supabase.from("operation_workflows")
     .update({ status: "completed", archived_at: null, archived_by: null })
@@ -629,7 +683,7 @@ async function setWorkflowDueDate__impl(formData: FormData) {
   if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error("Geçerli bir termin tarihi seçin.");
   const { data: workflow } = await supabase.from("operation_workflows").select("id,start_date,assigned_employee_id").eq("id", workflowId).eq("organization_id", membership.organization_id).maybeSingle();
   if (!workflow) throw new Error("İş akışı bulunamadı.");
-  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id))) throw new Error("Termini yalnızca yöneticiler ve işin sorumlusu belirleyebilir.");
+  if (!(await isManagerOrAssignee(context, workflow.assigned_employee_id, workflow.id))) throw new Error("Termini yalnızca yöneticiler ve işin sorumlusu belirleyebilir.");
   if (dueDate && workflow.start_date && dueDate < workflow.start_date) throw new Error("Termin başlangıç tarihinden önce olamaz.");
   const { data, error } = await supabase.from("operation_workflows").update({ due_date: dueDate, updated_at: new Date().toISOString() }).eq("id", workflowId).eq("organization_id", membership.organization_id).select("id");
   if (error) throw new Error("Termin kaydedilemedi: " + error.message);
@@ -855,6 +909,10 @@ export async function createWorkflow(...args: Parameters<typeof createWorkflow__
 }
 export async function assignWorkflow(...args: Parameters<typeof assignWorkflow__impl>) {
   return runPanelAction(() => assignWorkflow__impl(...args), "Sorumlu atandı");
+}
+
+export async function setWorkflowAssistants(...args: Parameters<typeof setWorkflowAssistants__impl>) {
+  return runPanelAction(() => setWorkflowAssistants__impl(...args), "Ek sorumlular güncellendi");
 }
 export async function addWorkflowStep(...args: Parameters<typeof addWorkflowStep__impl>) {
   return runPanelAction(() => addWorkflowStep__impl(...args), "Görev eklendi");

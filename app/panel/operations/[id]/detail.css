@@ -665,3 +665,13 @@ html[data-theme="dark"] .opd-pf-type[data-kind="image"]{color:var(--brand-200)}
 .opd-tur-degistir{padding:0;border:0;background:none;color:var(--primary);font:inherit;font-size:12.5px;font-weight:var(--fw-medium);cursor:pointer}
 .opd-tur-degistir:hover{text-decoration:underline}
 .opd-tur-bilgi{display:flex;flex-direction:column;gap:6px;margin:0;padding:12px 14px 12px 30px;border-radius:12px;background:var(--surface-2);color:var(--ink-soft);font-size:13.5px;line-height:1.45}
+
+/* Ek sorumlular (22.10.2026): atama penceresinde kişi listesi, iki sütun. */
+.ek-sorumlu-formu{margin-top:var(--sp-5);padding-top:var(--sp-5);border-top:1px solid var(--line)}
+.ek-sorumlu-secimi{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px var(--sp-3);margin:0;padding:0;border:0}
+.ek-sorumlu-secimi legend{grid-column:1/-1;margin-bottom:var(--sp-2);color:var(--ink);font-weight:var(--fw-semibold)}
+.ek-sorumlu-secimi legend small{margin-left:6px;color:var(--muted);font-weight:400}
+.ek-sorumlu-secimi label{display:flex;align-items:center;gap:var(--sp-2);min-height:36px;padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--r-sm);cursor:pointer}
+.ek-sorumlu-secimi label:has(input:checked){border-color:color-mix(in srgb,var(--primary) 45%,var(--line));background:var(--primary-soft)}
+.ek-sorumlu-secimi input{width:auto;margin:0}
+@media (max-width:760px){.ek-sorumlu-secimi{grid-template-columns:minmax(0,1fr)}}

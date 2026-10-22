@@ -7,7 +7,7 @@ import { reportActionFailure } from "@/lib/action-diagnostics";
 import { InternalComments } from "../../crm/internal-comments";
 import { RecordHistory } from "../../crm/record-history";
 import { tarihleriDagit } from "@/lib/tarih-dagitimi";
-import { addWorkflowStep, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
+import { setWorkflowAssistants, addWorkflowStep, archiveWorkflow, changeWorkType, assignStep, assignWorkflow, deleteWorkflow, distributeStepDates, setStepDueDate, setRevisionDays, setStepStatus, setWaitingParty, setWorkflowDueDate, setWorkflowStatus, toggleWorkflowStep, unarchiveWorkflow } from "../actions";
 import { STEP_STATUSES, STEP_STATUS_LABELS, STEP_STATUS_TONES, asamalaraBol, hatirlatmaDurumu, type StepStatus } from "@/lib/is-adimlari";
 // Öncelik adları ve tonları ops-shared'da: burada ikinci bir kopyası vardı.
 import { dueBadge, priorityNames, priorityTones, todayIstanbul } from "../ops-shared";
@@ -159,7 +159,7 @@ export default async function OperationDetailPage({
   const canDelete = izin("operations.is.sil");
 
   const isArchived = workflow.status === "archived";
-  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }] = await Promise.all([
+  const [{ data: contractData, error: contractError }, { data: customerMessagesData, error: customerMessagesError }, { data: assignee }, { data: me }, { data: employeeData }, { data: ekSorumluData, error: ekSorumluError }] = await Promise.all([
     supabase.from("ops_contracts").select("id,contract_no,proposal_id,opportunity_id,status,tracking_code,share_token").eq("workflow_id", workflow.id).eq("organization_id", organizationId).maybeSingle(),
     supabase.from("customer_file_messages").select("id,sender_type,sender_name,body,created_at,read_at").eq("workflow_id", workflow.id).eq("organization_id", organizationId).order("created_at", { ascending: true }),
     workflow.assigned_employee_id
@@ -173,7 +173,13 @@ export default async function OperationDetailPage({
       çiziliyor (canAssign).
     */
     supabase.from("hr_employees").select("id,full_name").eq("organization_id", organizationId).eq("employment_status", "active").order("full_name"),
+    /* Ek sorumlular (20261022081123): işi asıl sorumluyla birlikte takip edenler. */
+    supabase.from("operation_workflow_assignees").select("employee_id").eq("workflow_id", workflow.id),
   ]);
+  /* Okunamazsa "ek sorumlu yok" demek yanlış olur: ikinci operasyoncu
+     yetkisini görmez, yönetici de listeyi boş sanıp yeniden atar. */
+  if (ekSorumluError) throw new Error("Ek sorumlular okunamadı: " + ekSorumluError.message);
+  const ekSorumluIdleri = ((ekSorumluData ?? []) as { employee_id: string }[]).map((satir) => satir.employee_id);
   if (customerMessagesError) throw new Error("Müşteri mesajları okunamadı: " + customerMessagesError.message);
   const customerMessages = (customerMessagesData ?? []) as CustomerMessage[];
   const unreadCustomerMessages = customerMessages.filter((message) => message.sender_type === "customer" && !message.read_at).length;
@@ -219,8 +225,9 @@ export default async function OperationDetailPage({
   const revizyon = revizyonBilgisi(workflow.revision_until, bugunIstanbul);
   const revizyonYazi = revizyonOzeti(workflow.revision_until, bugunIstanbul);
   const assigneeRow = assignee as { id: string; full_name: string; job_title: string | null } | null;
-  // Termini yöneticiler ve işin sorumlusu girebilir (actions.ts ile aynı kural)
-  const canEditDue = canAssign || Boolean((me as { id?: string } | null)?.id && (me as { id: string }).id === workflow.assigned_employee_id);
+  // Termini yöneticiler, işin sorumlusu ve ek sorumluları girebilir (actions.ts isManagerOrAssignee ile aynı kural)
+  const benimPersonelId = (me as { id?: string } | null)?.id ?? null;
+  const canEditDue = canAssign || Boolean(benimPersonelId && (benimPersonelId === workflow.assigned_employee_id || ekSorumluIdleri.includes(benimPersonelId)));
   // Arşivleme de aynı kural (actions.ts isManagerOrAssignee)
   const canArchive = canEditDue;
 
@@ -392,7 +399,7 @@ export default async function OperationDetailPage({
             <summary className="panel-secondary" aria-label="Diğer işlemler">⋯</summary>
             <div className="os-menu-list" role="menu">
               {canAssign ? (
-                <PanelDrawer triggerLabel="Sorumlu ata" kicker={`İŞ · ${formatSubject(workflow.title)}`} title="Operasyon sorumlusu ata" description="Bu işi yürütecek personeli seçin; seçilen kişi bilgilendirilir." triggerClassName="os-menu-item">
+                <PanelDrawer triggerLabel="Sorumluları ata" kicker={`İŞ · ${formatSubject(workflow.title)}`} title="Operasyon sorumluları" description="İşi yürütecek asıl sorumluyu ve onunla birlikte takip edecek ek sorumluları seçin; eklenen herkes bilgilendirilir." triggerClassName="os-menu-item">
                   {/* Ortak form düzeni (components/kayit-formu.css), talep ve sözleşme çekmeceleriyle aynı. */}
                   <form className="panel-form kayit-formu" action={assignWorkflow}>
                     <input type="hidden" name="workflow_id" value={workflow.id} />
@@ -405,6 +412,29 @@ export default async function OperationDetailPage({
                     <div className="wide panel-form-actions kayit-formu-eylem">
                       <p>İş bu kişinin listesine düşer.</p>
                       <button className="panel-primary">Atamayı kaydet</button>
+                    </div>
+                  </form>
+                  {/*
+                    EK SORUMLULAR (22.10.2026, AkademikMerkez'in talebi). Ek
+                    sorumlu işi görür, takip eder ve sorumluya açık işlemleri
+                    yapar; asıl sorumluyu değiştiremez. Prim ve "sorumluya
+                    göre" sayılar asıl sorumluda kalıyor. Ayrı form: asıl
+                    sorumluyu değiştirmeden ek eklemek tek tıkla olsun.
+                  */}
+                  <form className="panel-form kayit-formu ek-sorumlu-formu" action={setWorkflowAssistants}>
+                    <input type="hidden" name="workflow_id" value={workflow.id} />
+                    <fieldset className="wide ek-sorumlu-secimi">
+                      <legend>Ek sorumlular <small>işi birlikte takip edenler</small></legend>
+                      {employees.filter((employee) => employee.id !== workflow.assigned_employee_id).map((employee) => (
+                        <label key={employee.id}>
+                          <input type="checkbox" name="ek_sorumlu" value={employee.id} defaultChecked={ekSorumluIdleri.includes(employee.id)} />
+                          <span>{formatPersonName(employee.full_name)}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                    <div className="wide panel-form-actions kayit-formu-eylem">
+                      <p>Ek sorumlu işi görür ve takip eder; asıl sorumluyu değiştiremez.</p>
+                      <button className="panel-primary">Ek sorumluları kaydet</button>
                     </div>
                   </form>
                 </PanelDrawer>
@@ -549,6 +579,9 @@ export default async function OperationDetailPage({
             <div><dt>Telefon</dt><dd>{formatPhone(opportunity?.contact_phone) || <em>Yok</em>}</dd></div>
             <div><dt>E-posta</dt><dd>{opportunity?.contact_email || <em>Yok</em>}</dd></div>
             <div><dt>Sorumlu</dt><dd>{assigneeRow ? formatPersonName(assigneeRow.full_name) : <em>Atanmamış</em>}</dd></div>
+            {ekSorumluIdleri.length ? (
+              <div><dt>Ek sorumlu</dt><dd>{ekSorumluIdleri.map((id) => formatPersonName(employeeNames.get(id) ?? "Pasif personel")).join(", ")}</dd></div>
+            ) : null}
             <div><dt>Öncelik</dt><dd><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></dd></div>
             <div><dt>Başlangıç</dt><dd>{workflow.start_date ? formatDate(workflow.start_date) : <em>Belirtilmedi</em>}</dd></div>
             <div><dt>Takip kodu</dt><dd>{contract?.tracking_code ? <code>{contract.tracking_code}</code> : <em>Yok</em>}</dd></div>

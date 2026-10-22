@@ -129,6 +129,12 @@ export default async function OperasyonArsivi({ searchParams }: {
   const adByUser = await kisiAdlari(supabase, organizationId, isler.map((is) => is.archived_by));
   const yonetebilir = izin("operations.arsiv.yonet");
   const kendiPersonelId = personeller.find((p) => p.user_id === userId && p.employment_status === "active")?.id ?? null;
+  /* Ek sorumlu olduğum işler (20261022081123): onlarda da yetkiliyim. */
+  const { data: ekSorumluOldugumData, error: ekSorumluOldugumHata } = kendiPersonelId
+    ? await supabase.from("operation_workflow_assignees").select("workflow_id").eq("organization_id", membership.organization_id).eq("employee_id", kendiPersonelId)
+    : { data: [] as { workflow_id: string }[], error: null };
+  if (ekSorumluOldugumHata) throw new Error("Ek sorumluluklar okunamadı: " + ekSorumluOldugumHata.message);
+  const ekSorumluOldugum = new Set(((ekSorumluOldugumData ?? []) as { workflow_id: string }[]).map((satir) => satir.workflow_id));
 
   // Arşivdeki işe müşteri yeniden yazmış olabilir: satırda kırmızı belirteç
   const idler = isler.map((is) => is.id);
@@ -218,7 +224,7 @@ export default async function OperasyonArsivi({ searchParams }: {
                 <tbody>
                   {isler.map((is) => {
                     const yeniMesaj = okunmamis.get(is.id) ?? 0;
-                    const yetkili = yonetebilir || (Boolean(kendiPersonelId) && is.assigned_employee_id === kendiPersonelId);
+                    const yetkili = yonetebilir || (Boolean(kendiPersonelId) && (is.assigned_employee_id === kendiPersonelId || ekSorumluOldugum.has(is.id)));
                     return (
                       <tr key={is.id} className={yeniMesaj ? "has-alert" : undefined}>
                         {/* Satırın tamamı bu bağlantıyla tıklanır (kayit-detay.css, ilk hücre) */}

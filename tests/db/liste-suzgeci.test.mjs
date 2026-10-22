@@ -20,6 +20,8 @@ const migration = (ad) => path.resolve(import.meta.dirname, "../../supabase/migr
 const MIGRATIONLAR = [
   "20261013141922_liste_suzgeci_tek_tanim.sql",
   "20261013143144_liste_suzgeci_satir_ici.sql",
+  /* operasyon_is_suz ek sorumluyu da tanıyor (yeni tablo da burada kuruluyor). */
+  "20261022081123_is_ek_sorumlular.sql",
 ];
 const KURUM = "00000000-0000-4000-8000-000000007701";
 const OTEKI = "00000000-0000-4000-8000-000000007702";

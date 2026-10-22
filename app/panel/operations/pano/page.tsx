@@ -199,15 +199,22 @@ export default async function OperationsPanoPage({
   const tumIsler: OperasyonIsi[] = kayitlar.map((kayit) => ({ ...kayit, steps: kayit.operation_steps ?? [] }));
 
   /*
-    Aşamaları yöneticiler ve İŞİN sorumlusu değiştirebiliyor (actions.ts
+    Aşamaları yöneticiler, İŞİN sorumlusu ve ek sorumlusu değiştirebiliyor (actions.ts
     isManagerOrAssignee ile aynı kural). Yetkisi olmayanın kartı
     sürüklenemiyor ve tarih alanı gösterilmiyor — kaydetmeyen bir alan
     göstermek yanıltıcı olurdu. Asıl karar yine sunucuda ve RLS'te.
   */
   const benimPersonelId = (benimKaydim as { id?: string } | null)?.id ?? null;
   const yonetici = izin("operations.is.yonet");
+  /* Ek sorumlu olduğum işler (20261022081123): onlarda da yetkiliyim. */
+  const { data: ekSorumluOldugumData, error: ekSorumluOldugumHata } = benimPersonelId && !yonetici
+    ? await supabase.from("operation_workflow_assignees").select("workflow_id").eq("organization_id", membership.organization_id).eq("employee_id", benimPersonelId as string)
+    : { data: [] as { workflow_id: string }[], error: null };
+  if (ekSorumluOldugumHata) throw new Error("Ek sorumluluklar okunamadı: " + ekSorumluOldugumHata.message);
+  const ekSorumluOldugum = new Set(((ekSorumluOldugumData ?? []) as { workflow_id: string }[]).map((satir) => satir.workflow_id));
+
   const yetkiliIsler = kayitlar
-    .filter((kayit) => yonetici || Boolean(benimPersonelId && benimPersonelId === kayit.assigned_employee_id))
+    .filter((kayit) => yonetici || Boolean(benimPersonelId && (benimPersonelId === kayit.assigned_employee_id || ekSorumluOldugum.has(kayit.id))))
     .map((kayit) => kayit.id);
 
   const bugun = todayIstanbul();

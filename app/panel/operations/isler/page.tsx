@@ -175,6 +175,28 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
     return paidInvoiceIds.has(workflow.invoice_id);
   };
 
+  /*
+    EK SORUMLULAR (20261022081123): yalnızca BU SAYFADAKİ işlerin.
+    "Sorumlu" sütununda asıl sorumlunun yanında yazılıyor ve listeden
+    yapılan işlemlerin yetkisine giriyor (actions.ts isManagerOrAssignee).
+  */
+  const sayfaIsIdleri = workflows.map((w) => w.id);
+  const { data: ekSorumluData, error: ekSorumluError } = sayfaIsIdleri.length
+    ? await supabase.from("operation_workflow_assignees").select("workflow_id,employee_id").in("workflow_id", sayfaIsIdleri)
+    : { data: [] as { workflow_id: string; employee_id: string }[], error: null };
+  if (ekSorumluError) throw new Error("Ek sorumlular okunamadı: " + ekSorumluError.message);
+  const ekSorumlular = new Map<string, string[]>();
+  for (const satir of (ekSorumluData ?? []) as { workflow_id: string; employee_id: string }[]) {
+    ekSorumlular.set(satir.workflow_id, [...(ekSorumlular.get(satir.workflow_id) ?? []), satir.employee_id]);
+  }
+  /* "Asıl · Ek1, Ek2" — asıl yoksa yalnızca ekler. */
+  const sorumluYazisi = (workflow: IsSatiri) => {
+    const asil = workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null;
+    const ekler = (ekSorumlular.get(workflow.id) ?? []).map((id) => employeeMap.get(id) ?? "Pasif personel");
+    if (!asil && !ekler.length) return null;
+    return [asil, ekler.length ? ekler.join(", ") : null].filter(Boolean).join(" · ");
+  };
+
   const lastContacts = await fetchLastContacts(
     supabase,
     membership.organization_id,
@@ -190,7 +212,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
   */
   const musteriBaglantisi = modules.some((module) => module.code === "crm") && (izin("crm.musteri.sorgula") || canManage);
   const myEmployeeId = employees.find((employee) => employee.user_id === userId)?.id ?? null;
-  const canActOn = (workflow: IsSatiri) => canManage || (Boolean(myEmployeeId) && workflow.assigned_employee_id === myEmployeeId);
+  const canActOn = (workflow: IsSatiri) => canManage || (Boolean(myEmployeeId) && (workflow.assigned_employee_id === myEmployeeId || (ekSorumlular.get(workflow.id) ?? []).includes(myEmployeeId as string)));
   const hasFilter = Boolean(arama || selectedStatus || selectedDue || onlyUnread || selectedOwner);
 
   /* Süzgeç değişince sayfa başa dönüyor; numara yalnızca
@@ -317,7 +339,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                   {/* Satırın tamamı bu bağlantıyla tıklanır (kayit-detay.css, ilk hücre) */}
                   <td data-label="İş"><Link className="crm-row-link" href={`/panel/operations/${workflow.id}`} aria-label={`${workflow.title} işini aç`}><span className="crm-table-title" title={workflow.title}>{formatSubject(workflow.title)}</span><span className="crm-table-sub">{adimSayisi ? `${done}/${adimSayisi} adım tamamlandı` : "Adım yok"}</span>{unreadMessages ? <span className="crm-alert-chip">{unreadMessages} yeni müşteri mesajı</span> : null}</Link></td>
                   <CustomerCell name={workflow.customer_name || "Kurum içi iş"} phone={contact?.phone} email={contact?.email} href={musteriBaglantisi && opportunityId ? `/panel/crm/musteri/${opportunityId}` : null} />
-                  <RepresentativeCell label="Sorumlu" name={workflow.assigned_employee_id ? employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel" : null} />
+                  <RepresentativeCell label="Sorumlu" name={sorumluYazisi(workflow)} />
                   <td data-label="Öncelik"><span className="status-pill" data-tone={priorityTones[workflow.priority] ?? "neutral"}>{priorityNames[workflow.priority] ?? workflow.priority}</span></td>
                   <td data-label="Durum" className="ops-status-cell">
                     <span className="status-pill" data-tone={statusTone(workflow.status)}>{workflowStatusNames[workflow.status] ?? workflow.status}</span>
@@ -348,7 +370,7 @@ export default async function OperationsJobsPage({ searchParams }: { searchParam
                     baslik={formatSubject(workflow.title)}
                     /* "Devam ediyor" işlerin çoğunda aynı: her satırda tekrarlanınca başlığı kesiyordu. Telefonda yalnızca farklı durum yazılır. */
                     durum={workflow.status === "in_progress" ? null : { etiket: workflowStatusNames[workflow.status] ?? workflow.status, ton: statusTone(workflow.status) }}
-                    alt={[formatPersonName(workflow.customer_name) || "Kurum içi iş", workflow.assigned_employee_id ? formatPersonName(employeeMap.get(workflow.assigned_employee_id) ?? "Pasif personel") : "Atanmamış"]}
+                    alt={[formatPersonName(workflow.customer_name) || "Kurum içi iş", formatPersonName(sorumluYazisi(workflow)) || "Atanmamış"]}
                     isaretler={[
                       unreadMessages ? { metin: `${unreadMessages} yeni mesaj`, ton: "tehlike" } : null,
                       workflow.due_date

@@ -95,6 +95,32 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
   const benId = (ben as { id?: string } | null)?.id ?? null;
 
   /*
+    BENİM İŞLERİM: asıl sorumlusu ya da EK SORUMLUSU olduğum işler
+    (20261022081123). Müşteri mesajlarının tablosu (customer_file_messages)
+    işe göre değil kuruma göre RLS'li; yönetici olmayanın mesajları bu
+    yüzden burada açıkça süzülüyor. Eskiden süzgeç yalnızca asıl
+    sorumluya bakıyordu ve ikinci operasyoncu mesajları hiç görmezdi.
+  */
+  const benimIsIdleri = operasyonGorur && !yonetici && benId ? await (async () => {
+    const [asil, ek] = await Promise.all([
+      supabase.from("operation_workflows").select("id").eq("organization_id", orgId).eq("assigned_employee_id", benId),
+      supabase.from("operation_workflow_assignees").select("workflow_id").eq("organization_id", orgId).eq("employee_id", benId),
+    ]);
+    /* Okunamazsa boş liste: mesaj sayısı "0" yerine yanlış iş göstermekten iyi;
+       hata sunucu günlüğüne düşüyor. */
+    if (asil.error || ek.error) {
+      console.error("[bugun] benim işlerim okunamadı", asil.error?.message ?? ek.error?.message);
+      return [] as string[];
+    }
+    return [...new Set([
+      ...((asil.data ?? []) as { id: string }[]).map((satir) => satir.id),
+      ...((ek.data ?? []) as { workflow_id: string }[]).map((satir) => satir.workflow_id),
+    ])];
+  })() : [];
+  /* .in() boş listeyle PostgREST'te hata veriyor; hiçbir işle eşleşmeyen kimlik. */
+  const isSuzgeci = benimIsIdleri.length ? benimIsIdleri : ["00000000-0000-0000-0000-000000000000"];
+
+  /*
     YANIT BEKLEYEN MESAJLAR: sayı kutusu "kaç tane" diyordu, kime ve ne
     yazıldığı için işler listesine, oradan işe, oradan da sayfanın en
     altındaki sohbete inmek gerekiyordu. Burada son mesajlar iş başına
@@ -106,7 +132,7 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
     const q = supabase.from("customer_file_messages").select("workflow_id,body,created_at,operation_workflows!inner(title,customer_name,status,assigned_employee_id)")
       .eq("organization_id", orgId).eq("sender_type", "customer").is("read_at", null).neq("operation_workflows.status", "cancelled")
       .order("created_at", { ascending: false }).limit(40);
-    return yonetici ? q : q.eq("operation_workflows.assigned_employee_id", benId as string);
+    return yonetici ? q : q.in("workflow_id", isSuzgeci);
   };
 
   const [adimSonucu, gecikenIs, atanmamisIs, imzaBekleyen, bugunTalep, okunmamisMesaj, tahsilat, mesajSonucu] = await Promise.all([
@@ -120,7 +146,7 @@ export async function BugunPaneli({ supabase, orgId, userId, izin, crmGorur, ope
       ? say((() => {
           const q = supabase.from("customer_file_messages").select("id,operation_workflows!inner(status,assigned_employee_id)", { count: "exact", head: true })
             .eq("organization_id", orgId).eq("sender_type", "customer").is("read_at", null).neq("operation_workflows.status", "cancelled");
-          return yonetici ? q : q.eq("operation_workflows.assigned_employee_id", benId as string);
+          return yonetici ? q : q.in("workflow_id", isSuzgeci);
         })())
       : yok,
     // Bugünkü tahsilat: yalnızca bugünün ödeme kayıtları (gün sınırlı okuma, toplam doğru).
