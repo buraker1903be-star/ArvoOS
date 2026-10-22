@@ -28,6 +28,14 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false, email: false, address: false },
 };
 
+/*
+  ARVO ANALİTİK (22.10.2026): arvo-os.com kendi Analitik modülümüzle
+  izleniyor (Arvo kurumu → Analitik → Kurulum). Anahtar gizli değil;
+  yalnızca hangi siteye yazılacağını söylüyor ve olay ucu kaynağın
+  arvo-os.com olduğunu ayrıca denetliyor. Kod çerezsiz.
+*/
+const ANALITIK_ANAHTARI = "323fb17f38e54b24ba0caba9be3ef537";
+
 export const viewport: Viewport = { themeColor: "#050c1a" };
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +44,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       {children}
       <RevealObserver />
       <TiltObserver />
+      <script defer src="https://app.arvo-os.com/k.js" data-site={ANALITIK_ANAHTARI} />
     </div>
   );
 }
