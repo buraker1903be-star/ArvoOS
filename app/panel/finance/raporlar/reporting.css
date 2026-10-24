@@ -277,13 +277,13 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
 .rpt-yigin-cubuk{display:flex;height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .rpt-yigin-cubuk i{display:block;width:var(--w,0%);height:100%;background:var(--tone-fg)}
 .rpt-mini-lejant{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0;padding:0;list-style:none}
-.rpt-mini-lejant li{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}
+.rpt-mini-lejant li{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;line-height:1.25}
 .rpt-mini-lejant li i{width:8px;height:8px;border-radius:50%;background:var(--tone-fg)}
 .rpt-mini-lejant b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 /* Şelale: tahsilattan düşülenler */
 .rpt-mini-selale{display:flex;flex-direction:column;justify-content:center;gap:4px;margin:6px 0 2px;padding:0;list-style:none}
 .rpt-mini-selale li{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:8px}
-.rpt-mini-selale li>span:first-child{color:var(--muted);font-size:11px;white-space:nowrap}
+.rpt-mini-selale li>span:first-child{color:var(--muted);font-size:11px;line-height:1.25;white-space:nowrap}
 .rpt-selale-iz{display:block;height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
 .rpt-selale-iz i{display:block;width:var(--w,0%);height:100%;border-radius:inherit;background:var(--tone-fg);transform-origin:left;animation:rpt-fill .9s var(--rpt-ease) both}
 
@@ -384,7 +384,30 @@ html[data-theme="dark"] .rpt-trend-bars .is-lead,html[data-theme="dark"] .rpt-le
    bırakıyordu. */
 .panel-root .rpt{gap:14px}
 .panel-root .rpt-widget{padding:12px 14px}
-.panel-root .rpt-mini{height:44px;margin:4px 0 0}
+/*
+  MİNİ GRAFİK PANELDE 44 PX'E İNİYORDU (24.10.2026'da düzeltildi).
+
+  Çubuğun azami yüksekliği `calc(100% - 16px)`, yani 44 px'de 28 px
+  kalıyordu; altı aylık çubuk grafiği ince çizgilere dönüşüyor ve
+  "şekil" hiç okunmuyordu. Şelale daha kötüydü: dört satırı 78 px
+  tutuyor, 44 px'lik kutuya sığmayıp alttaki nota biniyordu — canlıda
+  Finansal Performans'ın "Net sonuç" kutusunda görüldü.
+
+  Ölçü 64 px'e (taban değere) çıkarıldı. Kutular rapor PENCERESİNDE
+  duruyor artık; eski sayfadaki on kutuyu sıkıştırma gerekçesi
+  ortadan kalktı.
+*/
+.panel-root .rpt-mini{height:64px;margin:4px 0 0}
+
+/*
+  Yüksekliği İÇERİĞİ belirleyen iki tür: şelale ve yığın. İkisi de
+  yüzdelik yükseklik kullanmıyor (şelale genişlikle, yığın sabit
+  12 px'lik çubukla çiziliyor), o yüzden sabit yükseklik yalnızca
+  taşmaya yarıyordu. Çubuk ve gösterge ise KESİN yükseklik istiyor
+  (yükseklikleri kapsayıcının yüzdesi), onlara dokunulmuyor.
+*/
+.panel-root .rpt-mini-selale,
+.panel-root .rpt-mini-yigin{height:auto;min-height:64px}
 .panel-root .rpt-group{gap:8px}
 .panel-root .rpt-group-title{font-size:12px}
 
@@ -628,3 +651,8 @@ body.rapor-kilit{overflow:hidden}
 .rpt-table thead th + th,
 .rpt-table tbody td,
 .rpt-table tfoot td{padding-left:12px}
+
+/* Uyarı tonundaki tanım kutusu: "doğru çalışıyor ama yanlış okunuyor"
+   durumları için (gelir defteri boşken net sonucun zarar sanılması). */
+.rapor-tanim.is-uyari{border-color:color-mix(in srgb,var(--warning) 40%,var(--line));background:color-mix(in srgb,var(--warning) 10%,transparent)}
+.rapor-tanim.is-uyari svg{color:var(--warning)}

@@ -46,6 +46,27 @@ export type FinansHareketi = {
   created_at: string;
 };
 
+/*
+  KASA HAREKETİ — YALNIZCA REFERANS İÇİN.
+
+  Bu rapor gelir/gider defterine bakıyor ve tahsilat ONUN YERİNE
+  geçmiyor. Ama kurum gelirini defterde tutmuyorsa (sözleşme +
+  tahsilat olarak işliyorsa) rapor "gelir ₺0, net sonuç −₺498.789"
+  diyor ve bu sayı bir ZARAR DEĞİL — sadece gelir defterinin boş
+  olduğunun işareti. Canlıda tam bu görüldü (24.10.2026).
+
+  Çözüm tahsilatı gelire KATMAK değil — üç kavram ayrı
+  (docs/RAPORLAMA-ASAMA-1.md §3.2). Çözüm, defterin boş olduğunu
+  SÖYLEMEK ve paranın nerede göründüğünü işaret etmek. O yüzden
+  dönem tahsilatı ayrı bir alanda duruyor, hiçbir toplama girmiyor.
+*/
+export type KasaHareketi = {
+  entry_type: string;
+  source_type: string | null;
+  amount: number;
+  transaction_date: string;
+};
+
 export type MaliyetKalemi = {
   amount: number;
   status: string;
@@ -74,6 +95,10 @@ export type FinansModeli = {
   gecikenGider: Bekleyen;
   /** Planlı ama vadesi girilmemiş: hiçbir döneme düşmüyor. */
   vadesizPlan: Bekleyen;
+  /** Dönemde kasaya giren net para — REFERANS; gelire eklenmiyor. */
+  tahsilatReferansi: number;
+  /** Gelir defteri bu dönemde boş mu (kayıt sayısı sıfır). */
+  gelirDefteriBos: boolean;
   gelirKategorileri: Kirilim[];
   giderKategorileri: Kirilim[];
   maliyetKategorileri: Kirilim[];
@@ -99,12 +124,15 @@ export function finansModeli({
   bugun,
   hareketler,
   maliyetler,
+  kasaHareketleri = [],
   aySayisi = 6,
 }: {
   donem: Donem;
   bugun: string;
   hareketler: readonly FinansHareketi[];
   maliyetler: readonly MaliyetKalemi[];
+  /** Cari hareketleri — yalnızca referans rakamı için. */
+  kasaHareketleri?: readonly KasaHareketi[];
   aySayisi?: number;
 }): FinansModeli {
   const aralikta = aralikYuklemi(donem);
@@ -193,6 +221,16 @@ export function finansModeli({
     if (satir) satir.maliyet += tutar;
   }
 
+  /* Tahsilat referansı RPR-03'teki kuralla aynı: alacak kayıtları
+     eksi düzeltme türündeki borç (iade). Hiçbir toplama girmiyor. */
+  let tahsilat = 0;
+  let iade = 0;
+  for (const h of kasaHareketleri) {
+    if (!aralikta(h.transaction_date)) continue;
+    if (h.entry_type === "credit") tahsilat += Number(h.amount);
+    else if (h.entry_type === "debit" && h.source_type === "adjustment") iade += Number(h.amount);
+  }
+
   const toplamCikis = gider + isMaliyeti;
   const netSonuc = gelir - toplamCikis;
 
@@ -205,6 +243,8 @@ export function finansModeli({
     toplamCikis,
     netSonuc,
     marj: gelir ? (netSonuc / gelir) * 100 : null,
+    tahsilatReferansi: Math.max(0, tahsilat - iade),
+    gelirDefteriBos: gelirAdet === 0,
     bekleyenGelir,
     bekleyenGider,
     gecikenGelir,
@@ -253,6 +293,9 @@ export function finansSayfalari({ model, donemEtiket }: { model: FinansModeli; d
         ["Vadesi geçmiş planlı gelir", para(model.gecikenGelir.tutar)],
         ["Vadesi geçmiş planlı gider", para(model.gecikenGider.tutar)],
         ["Vadesi girilmemiş plan", para(model.vadesizPlan.tutar)],
+        /* Referans satırı: gelire EKLENMİYOR, nerede göründüğünü
+           söylüyor. Başlığı da bunu yazıyor. */
+        ["Dönemde kasaya giren (referans — gelir değil)", para(model.tahsilatReferansi)],
       ] as Hucre[][],
     },
     {

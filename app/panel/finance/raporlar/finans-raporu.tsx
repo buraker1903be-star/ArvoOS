@@ -1,6 +1,7 @@
 import { istanbulMidnight, monthStartKey, todayInIstanbul } from "@/lib/istanbul-date";
 import { tumSatirlar } from "@/lib/rapor-okuma";
-import { finansModeli, type FinansHareketi, type FinansModeli, type Kirilim, type MaliyetKalemi } from "@/lib/rapor-finans";
+import { finansModeli, type FinansHareketi, type FinansModeli, type KasaHareketi, type Kirilim, type MaliyetKalemi } from "@/lib/rapor-finans";
+import Link from "next/link";
 import { Icon, WidgetCard, cssVar, money, percent, type Widget } from "./rapor-parcalari";
 import type { RaporGirdisi } from "./rapor-girdisi";
 
@@ -32,7 +33,7 @@ export async function finansVerisi({ supabase, organizationId, donem }: RaporGir
 
   const ALANLAR = "transaction_type,status,amount,category,title,counterparty,due_date,paid_at,created_at";
 
-  const [odenmisler, planlilar, maliyetler] = await Promise.all([
+  const [odenmisler, planlilar, maliyetler, kasaHareketleri] = await Promise.all([
     tumSatirlar<FinansHareketi>("finans hareketleri", (bas, son) =>
       supabase.from("finance_transactions")
         .select(ALANLAR)
@@ -60,18 +61,41 @@ export async function finansVerisi({ supabase, organizationId, donem }: RaporGir
         .gte("cost_date", pencereGunu)
         .order("id")
         .range(bas, son)),
+    /*
+      KASA HAREKETLERİ YALNIZCA REFERANS İÇİN okunuyor ve hiçbir
+      toplama girmiyor. Gerekçe: kurum gelirini defterde tutmuyorsa
+      (sözleşme + tahsilat olarak işliyorsa) rapor "gelir ₺0, net
+      sonuç eksi" diyor ve bu bir zarar değil. Rakamı göstermek,
+      kullanıcıya parasının NEREDE göründüğünü söylüyor.
+      Pencere yalnızca DÖNEM: referans rakamı dönemseldir.
+    */
+    tumSatirlar<KasaHareketi>("cari hareketleri", (bas, son) =>
+      supabase.from("account_entries")
+        .select("entry_type,source_type,amount,transaction_date")
+        .eq("organization_id", organizationId)
+        .gte("transaction_date", donem.startKey)
+        .order("id")
+        .range(bas, son)),
   ]);
 
-  return finansModeli({ donem, bugun, hareketler: [...odenmisler, ...planlilar], maliyetler });
+  return finansModeli({ donem, bugun, hareketler: [...odenmisler, ...planlilar], maliyetler, kasaHareketleri });
 }
 
 export async function FinansRaporu({ supabase, organizationId, donem }: RaporGirdisi) {
   const m = await finansVerisi({ supabase, organizationId, donem });
   const enYuksek = Math.max(1, ...m.aylik.flatMap((a) => [a.gelir, a.gider + a.maliyet]));
+  /* Gelir defteri boş ama para çıkmışsa "net sonuç" bir zarar değil,
+     defterin boş olduğunun işareti. Rapor bunu söylemek zorunda. */
+  const defterEksik = m.gelirDefteriBos && m.toplamCikis > 0;
 
   const kutular: Widget[] = [
     {
-      label: "Gelir", value: money(m.gelir), note: `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
+      label: "Gelir", value: money(m.gelir),
+      note: m.gelirDefteriBos
+        ? (m.tahsilatReferansi
+          ? `Gelir defterinde kayıt yok · kasaya ${money(m.tahsilatReferansi)} girdi`
+          : "Gelir defterinde ödenmiş kayıt yok")
+        : `${m.gelirAdet} ödenmiş kayıt · muhasebesel`,
       icon: "wallet", tone: "success",
       grafik: { tur: "cubuk", seri: m.aylik.map((a) => ({ ad: a.etiket, eksen: a.etiket, deger: a.gelir, etiket: money(a.gelir) })) },
     },
@@ -87,7 +111,9 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
     },
     {
       label: "Net sonuç", value: money(m.netSonuc),
-      note: m.marj === null ? "Dönemde gelir kaydı yok" : `${percent(m.marj)} net marj`,
+      note: defterEksik
+        ? "Gelir defteri boş · bu rakam yalnızca çıkışları yansıtıyor"
+        : m.marj === null ? "Dönemde gelir kaydı yok" : `${percent(m.marj)} net marj`,
       icon: "chart", tone: m.netSonuc >= 0 ? "success" : "danger", toned: true,
       grafik: { tur: "selale", adimlar: [
         { ad: "Gelir", deger: m.gelir, ton: "success" },
@@ -107,6 +133,29 @@ export async function FinansRaporu({ supabase, organizationId, donem }: RaporGir
   ];
 
   return <>
+    {/*
+      GELİR DEFTERİ BOŞKEN UYARI. Rapor doğru çalışıyor ama rakam
+      yanlış OKUNUYOR: "net sonuç −₺498.789" bir zarar sanılıyor.
+      Kurum gelirini `finance_transactions`'a yazmıyorsa (sözleşme +
+      tahsilat olarak işliyorsa) defter boş kalır. Uyarı, hem durumu
+      hem de paranın nerede göründüğünü söylüyor — tahsilatı gelire
+      EKLEMEK yanlış olurdu, üç kavram ayrıdır.
+    */}
+    {defterEksik ? (
+      <p className="rapor-tanim is-uyari">
+        <Icon name="alert" size={15} />
+        <span>
+          <b>Bu dönemde gelir defterinde hiç ödenmiş kayıt yok</b>, bu yüzden “Net sonuç”
+          yalnızca çıkışları gösteriyor — <b>bu bir zarar değil</b>.
+          {m.tahsilatReferansi ? <> Aynı dönemde kasaya <b>{money(m.tahsilatReferansi)}</b> girdi;
+            müşteri ödemeleri cari hesaplara işleniyor.</> : null}
+          {" "}Gelirleri burada görmek için ödemeleri <b>Finans → Gelir/Gider</b> defterine de
+          kaydetmek gerekiyor; kasaya giren para <Link href="/panel/finance/raporlar?rapor=tahsilat" className="rapor-kayit-link"><b>Tahsilat ve Alacak</b></Link> raporunda,
+          imzalanan sözleşme tutarı <Link href="/panel/finance/raporlar?rapor=satis" className="rapor-kayit-link"><b>Satış Analitiği</b></Link>’nde.
+        </span>
+      </p>
+    ) : null}
+
     <p className="rapor-tanim">
       <Icon name="alert" size={15} />
       <span>

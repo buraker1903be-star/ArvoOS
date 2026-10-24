@@ -211,3 +211,82 @@ describe("finans Excel sayfaları", () => {
     }
   });
 });
+
+describe("gelir defteri boşken tahsilat referansı", () => {
+  const kasa = (o: Partial<{ entry_type: string; source_type: string | null; amount: number; transaction_date: string }>) => ({
+    entry_type: "credit", source_type: "payment", amount: 100_000, transaction_date: "2026-10-10", ...o,
+  });
+  const calistirKasa = (girdi: {
+    hareketler?: FinansHareketi[];
+    maliyetler?: MaliyetKalemi[];
+    kasa?: ReturnType<typeof kasa>[];
+  }) => finansModeli({
+    donem: EKIM, bugun: BUGUN,
+    hareketler: girdi.hareketler ?? [],
+    maliyetler: girdi.maliyetler ?? [],
+    kasaHareketleri: girdi.kasa ?? [],
+  });
+
+  it("gelir kaydı yoksa defteri boş işaretler", () => {
+    /*
+      Canlıda görüldü: 49 ödenmiş gider, 0 ödenmiş gelir ve "net
+      sonuç −₺498.789". Bu bir zarar değil — kurum gelirini
+      sözleşme + tahsilat olarak işliyor, deftere yazmıyor. Rapor
+      durumu söylemek zorunda.
+    */
+    const m = calistirKasa({
+      hareketler: [hareket({ transaction_type: "expense", amount: 327_939 })],
+      kasa: [kasa({ amount: 1_500_000 })],
+    });
+    assert.equal(m.gelirDefteriBos, true);
+    assert.equal(m.gelir, 0);
+    assert.equal(m.tahsilatReferansi, 1_500_000);
+  });
+
+  it("TAHSİLAT GELİRE KARIŞMIYOR", () => {
+    /* Üç kavram ayrı (docs §3.2): referans hiçbir toplama girmiyor,
+       net sonuç ve marj ondan etkilenmiyor. */
+    const kasasiz = calistirKasa({ hareketler: [hareket({ transaction_type: "expense", amount: 50_000 })] });
+    const kasali = calistirKasa({
+      hareketler: [hareket({ transaction_type: "expense", amount: 50_000 })],
+      kasa: [kasa({ amount: 900_000 })],
+    });
+    assert.equal(kasali.gelir, kasasiz.gelir);
+    assert.equal(kasali.netSonuc, kasasiz.netSonuc);
+    assert.equal(kasali.marj, kasasiz.marj);
+    assert.equal(kasali.toplamCikis, kasasiz.toplamCikis);
+    assert.equal(kasali.tahsilatReferansi, 900_000);
+  });
+
+  it("referanstan iadeyi düşer, eksiye indirmez", () => {
+    const m = calistirKasa({ kasa: [
+      kasa({ amount: 100_000 }),
+      kasa({ entry_type: "debit", source_type: "adjustment", amount: 400_000 }),
+    ] });
+    assert.equal(m.tahsilatReferansi, 0);
+  });
+
+  it("dönem dışındaki tahsilatı referansa katmaz", () => {
+    const m = calistirKasa({ kasa: [kasa({ transaction_date: "2026-09-20" })] });
+    assert.equal(m.tahsilatReferansi, 0);
+  });
+
+  it("sözleşme borcu kaydı tahsilat sayılmaz", () => {
+    const m = calistirKasa({ kasa: [kasa({ entry_type: "debit", source_type: "contract", amount: 900_000 })] });
+    assert.equal(m.tahsilatReferansi, 0);
+  });
+
+  it("gelir kaydı varsa defter boş sayılmaz", () => {
+    const m = calistirKasa({ hareketler: [hareket({ amount: 10_000 })] });
+    assert.equal(m.gelirDefteriBos, false);
+  });
+
+  it("Excel özetinde referans satırı adıyla duruyor", () => {
+    const m = calistirKasa({ kasa: [kasa({ amount: 700_000 })] });
+    const satir = finansSayfalari({ model: m, donemEtiket: "Bu ay" })[0]
+      .satirlar.find((r) => String(r[0]).startsWith("Dönemde kasaya giren"));
+    assert.ok(satir, "referans satırı yok");
+    assert.ok(String(satir?.[0]).includes("gelir değil"), "başlık gelir olmadığını söylemeli");
+    assert.deepEqual(satir?.[1], { deger: 7000, bicim: "para" });
+  });
+});
